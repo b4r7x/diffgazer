@@ -796,12 +796,7 @@
       "title": "Dialog Shell",
       "description": "Native dialog element wrapper with presence animations and backdrop handling",
       "dependencies": [],
-      "registryDependencies": [
-        "compose-refs",
-        "presence",
-        "@diffgazer-keys/focus-trap",
-        "@diffgazer-keys/scroll-lock"
-      ],
+      "registryDependencies": ["compose-refs", "presence", "@diffgazer-keys/focus-trap", "aria"],
       "meta": {
         "client": true,
         "hidden": true,
@@ -1208,8 +1203,8 @@
       "name": "code-block",
       "type": "registry:ui",
       "title": "Code Block",
-      "description": "Code display with three visual variants (hairline, bare, terminal), per-line diff/highlight states, optional copy button, and optional auto-coloring via lowlight",
-      "dependencies": ["class-variance-authority", "lowlight"],
+      "description": "Code display with three visual variants (hairline, bare, terminal), per-line diff/highlight states, and optional copy button. Add ui/code-block-highlight separately for lowlight syntax coloring.",
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": ["theme", "scroll-area", "utils"],
       "meta": {
         "client": true
@@ -1245,14 +1240,6 @@
         },
         {
           "path": "registry/ui/code-block/code-block-copy-button.tsx",
-          "type": "registry:ui"
-        },
-        {
-          "path": "registry/ui/code-block/code-block-highlight.tsx",
-          "type": "registry:ui"
-        },
-        {
-          "path": "registry/ui/code-block/highlight.ts",
           "type": "registry:ui"
         },
         {
@@ -1660,8 +1647,8 @@
       "name": "logo",
       "type": "registry:ui",
       "title": "Logo",
-      "description": "Static text logo primitive. Precompute ASCII art and pass it as asciiText.",
-      "dependencies": ["figlet"],
+      "description": "Static text logo primitive. Precompute ASCII art and pass it as asciiText. Add ui/logo-figlet separately for runtime figlet rendering.",
+      "dependencies": [],
       "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": false
@@ -1674,13 +1661,49 @@
         {
           "path": "registry/ui/logo/logo.tsx",
           "type": "registry:ui"
-        },
+        }
+      ]
+    },
+    {
+      "name": "logo-figlet",
+      "type": "registry:ui",
+      "title": "Logo Figlet",
+      "description": "Optional figlet helpers for Logo. Requires the figlet npm package.",
+      "dependencies": ["figlet"],
+      "registryDependencies": ["logo"],
+      "meta": {
+        "client": false,
+        "hidden": true
+      },
+      "files": [
         {
           "path": "registry/ui/logo/figlet.ts",
           "type": "registry:ui"
         },
         {
           "path": "registry/ui/logo/figlet-text.ts",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "code-block-highlight",
+      "type": "registry:ui",
+      "title": "Code Block Highlight",
+      "description": "Optional lowlight-powered syntax highlighting helpers for CodeBlock.",
+      "dependencies": ["lowlight"],
+      "registryDependencies": ["code-block"],
+      "meta": {
+        "client": true,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/code-block/code-block-highlight.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/code-block/highlight.ts",
           "type": "registry:ui"
         }
       ]

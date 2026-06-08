@@ -24,6 +24,16 @@ export function isRelativeSubpath(path: string): boolean {
   return !path.split(/[\\/]+/).includes("..");
 }
 
+/** Reject absolute, Windows-absolute, and parent-escaping registry source paths before file reads. */
+export function assertRegistrySourceFilePath(path: string, label = "Registry file path"): void {
+  if (isAbsolute(path) || win32.isAbsolute(path)) {
+    throw new Error(`${label} must be relative: ${path}`);
+  }
+  if (!isRelativeSubpath(path)) {
+    throw new Error(`${label} must not contain '..' segments: ${path}`);
+  }
+}
+
 /** Plain relative-prefix containment: is `target` at or inside `base`? */
 export function isWithinDir(target: string, base: string): boolean {
   const rel = relative(resolve(base), resolve(target));

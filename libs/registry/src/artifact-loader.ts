@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
-import { ARTIFACT_MANIFEST_REL_PATH } from "./constants.js";
+import { PACKAGE_ARTIFACT_MANIFEST_REL_PATH } from "./constants.js";
 import type { ArtifactManifest } from "./manifest.js";
 import { loadValidatedManifest } from "./manifest.js";
 import { ensureExists, resolveInside } from "./utils/fs.js";
@@ -30,7 +30,7 @@ function assertPackageName(name: string): void {
 export function loadArtifactsFromPackage(options: LoadFromPackageOptions): LoadedArtifacts {
   const {
     packageName,
-    manifestRelPath = ARTIFACT_MANIFEST_REL_PATH,
+    manifestRelPath = PACKAGE_ARTIFACT_MANIFEST_REL_PATH,
     from = process.cwd(),
   } = options;
 

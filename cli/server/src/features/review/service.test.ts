@@ -42,6 +42,7 @@ let createSession: SessionsModule["createSession"];
 let deleteSession: SessionsModule["deleteSession"];
 let getSession: SessionsModule["getSession"];
 let getActiveSessionForProject: SessionsModule["getActiveSessionForProject"];
+let buildReviewConfigKey: SessionsModule["buildReviewConfigKey"];
 let buildScopeKey: SessionsModule["buildScopeKey"];
 let markComplete: SessionsModule["markComplete"];
 let markReady: SessionsModule["markReady"];
@@ -202,6 +203,7 @@ beforeAll(async () => {
   deleteSession = sessions.deleteSession;
   getSession = sessions.getSession;
   getActiveSessionForProject = sessions.getActiveSessionForProject;
+  buildReviewConfigKey = sessions.buildReviewConfigKey;
   buildScopeKey = sessions.buildScopeKey;
   markComplete = sessions.markComplete;
   markReady = sessions.markReady;
@@ -248,12 +250,41 @@ describe("createReviewSession", () => {
     expect(session?.mode).toBe("unstaged");
   });
 
+  it("does not reuse an existing session when reviewConfigKey differs", async () => {
+    const existing = createSession("existing-config", {
+      projectPath: projectRoot,
+      headCommit: "abc123",
+      statusHash: "hash123",
+      mode: "unstaged",
+      reviewConfigKey: buildReviewConfigKey({
+        lenses: ["security"],
+        minSeverity: "high",
+      }),
+    });
+    trackSession(existing.reviewId);
+    markReady(existing.reviewId);
+
+    const result = await createReviewSession(makeAIClient(), {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSessionWithRunner(result.value.reviewId);
+    expect(result.value.reviewId).not.toBe("existing-config");
+  });
+
   it("returns the existing session when a matching ready session exists", async () => {
     const existing = createSession("existing-dedup", {
       projectPath: projectRoot,
       headCommit: "abc123",
       statusHash: "hash123",
       mode: "unstaged",
+      reviewConfigKey: buildReviewConfigKey({
+        lenses: ["correctness"],
+        minSeverity: "low",
+      }),
     });
     trackSession(existing.reviewId);
     markReady(existing.reviewId);

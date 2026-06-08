@@ -17,6 +17,7 @@ export interface EnsurePublicRegistryReadyOptions {
   transformSourceContent?: Parameters<
     typeof validatePublicRegistryFresh
   >[0]["transformSourceContent"];
+  shouldSkipSourceItem?: Parameters<typeof validatePublicRegistryFresh>[0]["shouldSkipSourceItem"];
 }
 
 export function ensurePublicRegistryReady(options: EnsurePublicRegistryReadyOptions): void {
@@ -31,6 +32,7 @@ export function ensurePublicRegistryReady(options: EnsurePublicRegistryReadyOpti
     afterBuild,
     transformSourceItem,
     transformSourceContent,
+    shouldSkipSourceItem,
   } = options;
 
   const publicRegistryIndex = resolve(rootDir, publicRegistryDir, "registry.json");
@@ -59,6 +61,7 @@ export function ensurePublicRegistryReady(options: EnsurePublicRegistryReadyOpti
       publicRegistryDir,
       transformSourceItem,
       transformSourceContent,
+      shouldSkipSourceItem,
     });
   } catch (error) {
     if (!hasLocalShadcn) throw error;
@@ -72,6 +75,7 @@ export function ensurePublicRegistryReady(options: EnsurePublicRegistryReadyOpti
       publicRegistryDir,
       transformSourceItem,
       transformSourceContent,
+      shouldSkipSourceItem,
     });
   }
 }

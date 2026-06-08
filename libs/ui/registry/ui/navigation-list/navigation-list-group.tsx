@@ -47,6 +47,7 @@ export function NavigationListGroup({
   const parentGroup = useNavigationListGroupContext();
   const position = useNavigationListGroupPositionContext();
   const generatedId = useId();
+  const sectionHeaderId = controlledHeaderId ?? `__section_${label}`;
   const treeHeaderId = controlledHeaderId ?? `__group_${generatedId}`;
 
   const [expanded, setExpanded] = useControllableState<boolean>({
@@ -89,52 +90,106 @@ export function NavigationListGroup({
     </NavigationListGroupContext>
   );
 
-  return (
-    // biome-ignore lint/a11y/useSemanticElements: role="group" labels a related set of navigation options; <fieldset> is for form controls and is not appropriate here.
-    <div
-      role="group"
-      aria-label={groupLabel}
-      className={cn(variant === "section" && "border-t border-border first:border-t-0", className)}
-    >
-      {variant === "section" ? (
-        <SectionHeader label={label} count={count} expanded={expanded} toggle={toggle} />
-      ) : (
-        <TreeHeader
-          headerId={treeHeaderId}
+  if (variant === "section") {
+    return (
+      <div className={cn("border-t border-border first:border-t-0", className)}>
+        <SectionHeader
+          headerId={sectionHeaderId}
           label={label}
+          count={count}
           expanded={expanded}
           toggle={toggle}
-          depth={depth}
-          parentLinePrefix={parentGroup.linePrefix}
-          isLast={position?.isLast ?? false}
         />
-      )}
+        {expanded && wrappedChildren}
+      </div>
+    );
+  }
+
+  return (
+    // biome-ignore lint/a11y/useSemanticElements: role="group" labels a related set of navigation options; <fieldset> is for form controls and is not appropriate here.
+    <div role="group" aria-label={groupLabel} className={className}>
+      <TreeHeader
+        headerId={treeHeaderId}
+        label={label}
+        expanded={expanded}
+        toggle={toggle}
+        depth={depth}
+        parentLinePrefix={parentGroup.linePrefix}
+        isLast={position?.isLast ?? false}
+      />
       {expanded && wrappedChildren}
     </div>
   );
 }
 
 function SectionHeader({
+  headerId,
   label,
   count,
   expanded,
   toggle,
 }: {
+  headerId: string;
   label: string;
   count?: number;
   expanded: boolean;
   toggle: () => void;
 }) {
+  const {
+    highlighted,
+    highlight,
+    focusContainer,
+    focused,
+    idPrefix,
+    registerGroupHeader,
+    unregisterGroupHeader,
+  } = useNavigationListContext();
+
+  const itemId = getEncodedListboxItemId(idPrefix, headerId);
+  const accessibleLabel = count !== undefined ? `${label} (${count})` : label;
+  const isHighlighted = highlighted === headerId;
+  const isActive = focused && isHighlighted;
+
+  useEffect(() => {
+    registerGroupHeader(headerId, { toggle, expanded });
+    return () => unregisterGroupHeader(headerId);
+  }, [headerId, toggle, expanded, registerGroupHeader, unregisterGroupHeader]);
+
+  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    toggle();
+    highlight(headerId);
+    focusContainer();
+  };
+
+  const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
+    if (!event.defaultPrevented) highlight(headerId);
+  };
+
   return (
+    // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — this collapsible group header is an option that stays non-focusable while the container holds focus and aria-activedescendant tracks the active option.
+    // biome-ignore lint/a11y/useKeyWithClickEvents: Enter/Space toggle is handled centrally by the navigation list container, not per header.
     <div
-      aria-hidden="true"
-      onClick={toggle}
-      className="flex w-full items-center gap-1 px-3 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-mono cursor-pointer select-none hover:text-foreground/80"
+      id={itemId}
+      role="option"
+      aria-selected={false}
+      aria-label={`${accessibleLabel}, ${expanded ? "collapse" : "expand"} section`}
+      data-value={headerId}
+      data-active={isActive || undefined}
+      data-group-header="true"
       data-expanded={expanded}
+      onClick={handleClick}
+      onFocus={handleFocus}
+      className={cn(
+        "flex w-full items-center gap-1 px-3 py-2 text-[11px] uppercase tracking-wider font-mono cursor-pointer select-none",
+        isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground/80",
+      )}
     >
-      <span className="text-[10px]">{expanded ? "▼" : "▶"}</span>
-      <span>{label}</span>
-      {count !== undefined && <span>({count})</span>}
+      <span aria-hidden="true" className="text-[10px]">
+        {expanded ? "▼" : "▶"}
+      </span>
+      <span aria-hidden="true">{label}</span>
+      {count !== undefined && <span aria-hidden="true">({count})</span>}
     </div>
   );
 }

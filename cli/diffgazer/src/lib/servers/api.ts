@@ -3,6 +3,7 @@ import { createProcessServer, type ServerController } from "./process";
 export interface ApiServerConfig {
   cwd: string;
   port: number;
+  projectRoot: string;
   onReady?: (address: string) => void;
 }
 
@@ -51,7 +52,6 @@ export async function waitForHealthy({
 }
 
 export function createApiServer(config: ApiServerConfig): ServerController {
-  const projectRoot = process.cwd();
   return createProcessServer({
     command: "npx",
     args: ["tsx", "src/serve.ts"],
@@ -59,7 +59,7 @@ export function createApiServer(config: ApiServerConfig): ServerController {
     port: config.port,
     env: {
       PORT: String(config.port),
-      DIFFGAZER_PROJECT_ROOT: projectRoot,
+      DIFFGAZER_PROJECT_ROOT: config.projectRoot,
       ...(process.env.DIFFGAZER_SHUTDOWN_TOKEN
         ? { DIFFGAZER_SHUTDOWN_TOKEN: process.env.DIFFGAZER_SHUTDOWN_TOKEN }
         : {}),

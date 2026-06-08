@@ -1,6 +1,11 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it } from "vitest";
-import { isHTMLElementForContainer, mergeIds, resolveAriaInvalid } from "../aria";
+import {
+  isHTMLDialogElement,
+  isHTMLElementForContainer,
+  mergeIds,
+  resolveAriaInvalid,
+} from "../aria";
 
 describe("resolveAriaInvalid", () => {
   it.each([
@@ -62,6 +67,25 @@ describe("mergeIds", () => {
 
   it("returns undefined when nothing to merge", () => {
     expect(mergeIds()).toBeUndefined();
+  });
+});
+
+describe("isHTMLDialogElement", () => {
+  it("narrows on dialog elements in the element owner realm", () => {
+    expect(isHTMLDialogElement(document.createElement("dialog"))).toBe(true);
+    expect(isHTMLDialogElement(document.createElement("div"))).toBe(false);
+  });
+
+  it("recognizes dialog elements created in an iframe ownerDocument", () => {
+    const frame = document.createElement("iframe");
+    document.body.append(frame);
+    const frameDocument = frame.contentDocument;
+    if (!frameDocument) throw new Error("Expected iframe document");
+
+    const frameDialog = frameDocument.createElement("dialog");
+    expect(isHTMLDialogElement(frameDialog)).toBe(true);
+
+    frame.remove();
   });
 });
 

@@ -1,5 +1,5 @@
 import { Box, Text } from "ink";
-import { useTheme } from "../../../app/providers/theme";
+import { useTheme } from "../../../theme/provider";
 
 export interface CodeSnippetProps {
   filePath: string;

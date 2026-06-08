@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import { homedir } from "node:os";
 import * as path from "node:path";
 
-export const PROJECT_ROOT_HEADER = "x-diffgazer-project-root";
+export { PROJECT_ROOT_HEADER } from "@diffgazer/core/api";
 
 export const isPackaged = (): boolean => process.env.DIFFGAZER_PACKAGED === "1";
 

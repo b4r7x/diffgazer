@@ -444,7 +444,7 @@ describe("useModelDialogKeyboard", () => {
     await user.click(screen.getByRole("button", { name: /confirm/i }));
 
     expect(onSelect).toHaveBeenCalledWith("visible-model");
-    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onOpenChange).not.toHaveBeenCalled();
   });
 
   it("focuses model search with slash without typing slash into the field", async () => {

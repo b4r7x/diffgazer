@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { getInitialWizardData } from "./defaults.js";
-import { buildConfigPayload, buildSettingsPayload, saveWizard } from "./save-wizard.js";
+import {
+  buildConfigPayload,
+  buildCredentialRef,
+  buildSettingsPayload,
+  saveWizard,
+} from "./save-wizard.js";
 import type { WizardData } from "./types.js";
 
 function withData(overrides: Partial<WizardData>): WizardData {
@@ -24,6 +29,17 @@ describe("buildSettingsPayload", () => {
 });
 
 describe("buildConfigPayload", () => {
+  it("builds canonical credential refs for early-save payloads", () => {
+    expect(buildCredentialRef("gemini", "env", "ignored")).toEqual({
+      kind: "env",
+      varName: "GOOGLE_API_KEY",
+    });
+    expect(buildCredentialRef("gemini", "paste", "real-key")).toEqual({
+      kind: "literal",
+      value: "real-key",
+    });
+  });
+
   it("forwards model when set", () => {
     const data = withData({
       provider: "gemini",

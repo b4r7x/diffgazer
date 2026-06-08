@@ -1,0 +1,37 @@
+---
+title: Introduction
+description: Keyboard-first behavior hooks for React 19.2 and newer, with no runtime dependencies.
+---
+
+`@diffgazer/keys` is a keyboard-first behavior library for React `>=19.2.0`. It ships scopes, key registration, list navigation, focus zones, focus trap and restore, and small focus and scroll helpers as hooks. It has no runtime dependencies.
+
+The hooks fall into two groups, and which group a hook belongs to decides how you install it.
+
+## Standalone hooks
+
+Standalone hooks work on their own. They need no provider and carry no package runtime dependency once copied into your app with [`dgadd`](/keys/getting-started/installation), so you can own the source outright.
+
+- `useNavigation` — roving keyboard navigation for role-based lists and tabs.
+- `useFocusTrap` — confine focus to a container, for dialogs and popovers.
+- `useFocusRestore` — restore focus to the previously focused element.
+- `useScrollLock` — lock body scroll while an overlay is open.
+
+## Provider-backed hooks
+
+Provider-backed hooks read from a shared keyboard context, so they require `KeyboardProvider` from the package and are not available through the copy paths.
+
+- `useKey` — register a keyboard shortcut in the active scope.
+- `useScope` — define and activate a scope.
+- `useScopedNavigation` — list navigation bound to a scope.
+- `useActionRowNavigation` — horizontal navigation across a row of actions.
+- `useFocusZone` — group focusable regions into a navigable zone.
+
+## Integration with @diffgazer/ui
+
+`@diffgazer/ui` components are visual primitives. Components that need keyboard behavior consume these hooks, either as copied source or as package imports from `@diffgazer/keys`. See the installation guide for both modes.
+
+## Where to go next
+
+- [Installation](/keys/getting-started/installation): install the package or copy standalone hooks with `dgadd`.
+- [API Reference](/keys/api): every hook, option, and return value.
+- [Navigation Guide](/keys/guides/navigation): build list and tab navigation step by step.

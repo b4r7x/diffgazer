@@ -8,12 +8,18 @@ import { createGitService } from "../../shared/lib/git/service.js";
 import { log } from "../../shared/lib/log.js";
 import { isReviewAbort } from "./abort.js";
 import { resolveGitDiff } from "./diff.js";
-import { executeReview, finalizeReview, resolveReviewConfig } from "./pipeline.js";
+import {
+  executeReview,
+  finalizeReview,
+  resolveReviewConfig,
+  resolveReviewDefaults,
+} from "./pipeline.js";
 import { isAbortError, normalizeReviewStreamError, reviewStreamError } from "./stream/events.js";
 import { stepError } from "./stream/steps.js";
 import {
   type ActiveSession,
   addEvent,
+  buildReviewConfigKey,
   buildScopeKey,
   cancelStaleSessionsForProjectMode,
   createSession,
@@ -112,6 +118,12 @@ export async function createReviewSession(
   const headCommit = headCommitResult.value;
   const statusHash = statusHashResult ?? "";
   const scopeKey = buildScopeKey({ files, lenses: lensIds, profile: profileId });
+  const reviewDefaults = resolveReviewDefaults({ lensIds, profileId });
+  const reviewConfigKey = buildReviewConfigKey({
+    lenses: reviewDefaults.activeLenses,
+    profile: reviewDefaults.effectiveProfileId,
+    minSeverity: reviewDefaults.severityFilter?.minSeverity,
+  });
 
   if (headCommit && statusHashResult !== null) {
     const existingSession = getActiveSessionForProject(projectPath, {
@@ -119,16 +131,25 @@ export async function createReviewSession(
       statusHash,
       mode,
       scopeKey,
+      reviewConfigKey,
     });
     if (existingSession) {
       return ok({ reviewId: existingSession.reviewId, session: existingSession });
     }
   }
 
-  cancelStaleSessionsForProjectMode(projectPath, mode, headCommit, statusHash);
+  cancelStaleSessionsForProjectMode(projectPath, mode, headCommit, statusHash, reviewConfigKey);
 
   const reviewId = randomUUID();
-  const session = createSession(reviewId, { projectPath, headCommit, statusHash, mode, scopeKey });
+  const session = createSession(reviewId, {
+    projectPath,
+    headCommit,
+    statusHash,
+    mode,
+    scopeKey,
+    reviewConfigKey,
+    provider: aiClient.provider,
+  });
   markReady(reviewId);
 
   void runReviewSession(
@@ -195,8 +216,9 @@ async function runReviewSession(
       projectPath,
       mode,
       parsed,
-      profileId,
+      profileId: config.effectiveProfileId ?? profileId,
       activeLenses: config.activeLenses,
+      severityFilter: config.severityFilter,
       startTime,
       signal,
       headCommit,

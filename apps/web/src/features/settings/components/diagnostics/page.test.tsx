@@ -7,7 +7,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
-import { ConfigProvider } from "@/app/providers/config";
+import { ConfigProvider } from "@/hooks/use-config";
 
 const mockNavigate = vi.fn();
 

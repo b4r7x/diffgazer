@@ -1,8 +1,8 @@
 import { act, cleanup, render } from "@testing-library/react";
 import { useContext } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ThemeContext, ThemeProvider } from "@/hooks/use-theme";
 import type { ThemeContextValue } from "@/types/theme";
-import { ThemeContext, ThemeProvider } from "./theme";
 
 // Boundary mock: api/hooks is the HTTP-data fetch boundary; we provide canned data and assert on the resulting UI.
 vi.mock("@diffgazer/core/api/hooks", () => ({
@@ -211,6 +211,37 @@ describe("ThemeProvider", () => {
     );
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+  });
+
+  it("rolls back the local theme override when persistence fails", async () => {
+    let capturedSetTheme: ThemeContextValue["setTheme"] | undefined;
+    const mockMutateAsync = vi.fn().mockRejectedValue(new Error("Save failed"));
+    mockUseSaveSettings.mockReturnValue({
+      mutate: mockMutate,
+      mutateAsync: mockMutateAsync,
+      isPending: false,
+      error: null,
+    });
+
+    render(
+      <ThemeProvider>
+        <ThemeConsumer
+          onRender={(ctx) => {
+            capturedSetTheme = ctx.setTheme;
+          }}
+        />
+      </ThemeProvider>,
+    );
+
+    const setTheme = capturedSetTheme;
+    if (!setTheme) throw new Error("setTheme was not captured");
+
+    await act(async () => {
+      await expect(setTheme("dark")).rejects.toThrow("Save failed");
+    });
+
+    expect(localStorage.getItem("diffgazer-theme")).toBeNull();
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
   it("reflects a system theme change while mounted", () => {

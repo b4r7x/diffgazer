@@ -474,6 +474,52 @@ describe("useFocusTrap", () => {
     });
   });
 
+  describe("per-document trap stacks", () => {
+    it("keeps independent trap stacks in separate owner documents", () => {
+      const frame = document.createElement("iframe");
+      document.body.append(frame);
+      const frameDocument = requireFrameDocument(frame);
+
+      const hostContainer = createContainer('<button id="h1">H1</button>');
+      const frameContainer = createContainerIn(
+        frameDocument,
+        '<button id="f1">F1</button>',
+        '<button id="f2">F2</button>',
+      );
+
+      const hostRef: RefObject<HTMLElement | null> = { current: hostContainer };
+      const frameRef: RefObject<HTMLElement | null> = { current: frameContainer };
+
+      renderHook(() => {
+        useFocusTrap(hostRef, { restoreFocus: false });
+        useFocusTrap(frameRef, { restoreFocus: false });
+      });
+
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      const hostFirst = queryTestElement(hostContainer, "h1");
+      hostFirst.focus();
+      expect(document.activeElement).toBe(hostFirst);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(frameDocument.activeElement).toBe(frameContainer.querySelector("#f1"));
+
+      const hostOutside = document.createElement("button");
+      document.body.append(hostOutside);
+      hostOutside.focus();
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(hostContainer.querySelector("#h1"));
+
+      const frameOutside = frameDocument.createElement("button");
+      frameDocument.body.append(frameOutside);
+      frameOutside.focus();
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(frameDocument.activeElement).toBe(frameContainer.querySelector("#f1"));
+
+      hostOutside.remove();
+      frameOutside.remove();
+      frame.remove();
+    });
+  });
+
   describe("nested trap stack", () => {
     it("inner trap captures focus while outer trap is suspended, and outer recaptures on inner release", () => {
       // Set up outer trap

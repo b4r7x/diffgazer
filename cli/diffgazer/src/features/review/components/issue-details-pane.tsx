@@ -1,30 +1,18 @@
-import type { DetailsEmptyKind } from "@diffgazer/core/review";
+import { type DetailsEmptyKind, getDetailsEmptyCopy } from "@diffgazer/core/review";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
 import { useState } from "react";
-import { useTheme } from "../../../app/providers/theme";
 import { Badge } from "../../../components/ui/badge";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { ScrollArea } from "../../../components/ui/scroll-area";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { Tabs } from "../../../components/ui/tabs";
+import { useTheme } from "../../../theme/provider";
 import { severityVariant } from "../../../theme/severity-variant";
 import { formatIssueLineRange } from "../lib/issue-line-range";
 import { CodeSnippet } from "./code-snippet";
 import { DiffView } from "./diff-view";
 import { FixPlanChecklist } from "./fix-plan-checklist";
-
-const EMPTY_COPY: Record<DetailsEmptyKind, { title: string; description?: string }> = {
-  "no-issues": {
-    title: "No issues in this review",
-    description: "This analysis passed without findings.",
-  },
-  "filter-empty": {
-    title: "No issues match this filter",
-    description: "Choose another severity to continue.",
-  },
-  "no-selection": { title: "Select an issue to view details" },
-};
 
 export interface IssueDetailsPaneProps {
   issue?: ReviewIssue;
@@ -230,7 +218,7 @@ export function IssueDetailsPane({
   const effectiveTab = activeTab === "patch" && !issue?.suggested_patch ? "details" : activeTab;
 
   if (!issue) {
-    const empty = EMPTY_COPY[emptyKind];
+    const empty = getDetailsEmptyCopy(emptyKind);
     return (
       <EmptyState>
         <EmptyState.Message>{empty.title}</EmptyState.Message>

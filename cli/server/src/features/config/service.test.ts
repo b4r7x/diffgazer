@@ -272,6 +272,21 @@ describe("config service", () => {
     });
   });
 
+  it("reflects updated setup readiness after settings are saved", async () => {
+    const { getInitState } = await loadService();
+    const store = await loadStore();
+
+    const before = getInitState(projectRoot);
+    expect(before.setup.hasSecretsStorage).toBe(false);
+    expect(before.setup.isReady).toBe(false);
+
+    await store.updateSettings({ secretsStorage: "file" });
+
+    const after = getInitState(projectRoot);
+    expect(after.setup.hasSecretsStorage).toBe(true);
+    expect(after.setup.missing).not.toContain("secretsStorage");
+  });
+
   it("derives setup readiness from settings, provider config, and project trust", async () => {
     const { getSetupStatus } = await loadService();
 

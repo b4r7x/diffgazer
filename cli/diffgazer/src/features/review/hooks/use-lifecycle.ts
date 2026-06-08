@@ -22,6 +22,7 @@ export function getDisplayPhase(input: {
 
 export interface ReviewLifecycleState {
   phase: ReviewPhase | "loading";
+  mode: ReviewMode;
   reviewId: string | null;
   startedAt: Date | null;
   issues: ReviewIssue[];
@@ -38,19 +39,26 @@ export interface ReviewLifecycleState {
   loadingMessage: string | null;
 }
 
-export function useReviewLifecycle(): {
+interface UseReviewLifecycleOptions {
+  mode?: ReviewMode;
+  reviewId?: string;
+}
+
+export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
   state: ReviewLifecycleState;
   start: (mode: ReviewMode) => void;
+  cancel: () => Promise<string | null>;
   goToSummary: () => void;
   goToResults: () => void;
   reset: () => void;
 } {
   const { data: initData, isLoading: configLoading } = useInit();
   const createReview = useCreateReview();
-  const [mode, setMode] = useState<ReviewMode>("staged");
-  const [reviewId, setReviewId] = useState<string | undefined>();
+  const [mode, setMode] = useState<ReviewMode>(options.mode ?? "staged");
+  const [startedReviewId, setStartedReviewId] = useState<string | undefined>();
   const [phase, setPhase] = useState<"streaming" | "summary" | "results">("streaming");
   const [startError, setStartError] = useState<string | null>(null);
+  const requestedReviewId = options.reviewId ?? startedReviewId;
 
   const isConfigured = initData?.configured ?? false;
   const provider = initData?.config?.provider ?? null;
@@ -60,8 +68,14 @@ export function useReviewLifecycle(): {
     mode,
     configLoading,
     isConfigured,
-    reviewId,
+    reviewId: requestedReviewId,
     onComplete: () => setPhase("summary"),
+    onNotFoundInSession: () => {
+      setStartError("Review session not found.");
+    },
+    onStaleSession: () => {
+      setStartError("Review session expired. Start a new review.");
+    },
   });
 
   const hasStartFailed = startError !== null;
@@ -77,6 +91,7 @@ export function useReviewLifecycle(): {
   async function start(selectedMode: ReviewMode) {
     setMode(selectedMode);
     setStartError(null);
+    setStartedReviewId(undefined);
     lifecycle.stream.abort();
     lifecycle.completion.resetCompletion();
     lifecycle.start.setHasStarted(false);
@@ -84,11 +99,20 @@ export function useReviewLifecycle(): {
     setPhase("streaming");
     try {
       const result = await createReview.mutateAsync({ mode: selectedMode });
-      setReviewId(result.reviewId);
+      setStartedReviewId(result.reviewId);
     } catch (err) {
       setStartError(err instanceof Error ? err.message : String(err));
     }
   }
+
+  const cancel = async (): Promise<string | null> => {
+    const result = await Promise.resolve(
+      lifecycle.stream.cancel(
+        lifecycle.stream.state.reviewId ?? startedReviewId ?? options.reviewId ?? null,
+      ) as unknown as string | null | Promise<string | null>,
+    );
+    return result ?? null;
+  };
 
   function goToSummary() {
     lifecycle.completion.skipDelay();
@@ -104,13 +128,14 @@ export function useReviewLifecycle(): {
     lifecycle.start.setHasStarted(false);
     lifecycle.start.setHasStreamed(false);
     setPhase("streaming");
-    setReviewId(undefined);
+    setStartedReviewId(undefined);
     lifecycle.stream.abort();
   }
 
   const state: ReviewLifecycleState = {
     phase: displayPhase,
-    reviewId: lifecycle.stream.state.reviewId ?? null,
+    mode,
+    reviewId: lifecycle.stream.state.reviewId ?? startedReviewId ?? options.reviewId ?? null,
     startedAt: lifecycle.stream.state.startedAt,
     issues: lifecycle.stream.state.issues,
     steps: lifecycle.stream.state.steps,
@@ -126,5 +151,5 @@ export function useReviewLifecycle(): {
     loadingMessage: lifecycle.checks.loadingMessage,
   };
 
-  return { state, start, goToSummary, goToResults, reset };
+  return { state, start, cancel, goToSummary, goToResults, reset };
 }

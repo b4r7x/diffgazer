@@ -4,8 +4,8 @@ import type { Shortcut, UISeverityFilter } from "@diffgazer/core/schemas/present
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
 import { type ReactElement, useState } from "react";
-import { useTheme } from "../../../app/providers/theme";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions";
+import { useTheme } from "../../../theme/provider";
 import { useReviewKeyboard } from "../hooks/use-keyboard";
 import { IssueDetailsPane } from "./issue-details-pane";
 import { IssueListPane, type IssueListSubZone } from "./issue-list-pane";

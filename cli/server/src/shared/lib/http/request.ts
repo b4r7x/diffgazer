@@ -1,5 +1,6 @@
+import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api";
 import type { Context } from "hono";
-import { isPackaged, PROJECT_ROOT_HEADER, resolveProjectRoot } from "../paths.js";
+import { isPackaged, resolveProjectRoot } from "../paths.js";
 
 export const getProjectRoot = (c: Context): string =>
   resolveProjectRoot({

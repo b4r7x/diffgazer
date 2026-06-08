@@ -8,11 +8,6 @@ export type GitDiffErrorCode =
   | "NOT_A_REPOSITORY"
   | "UNKNOWN";
 
-export interface ClassifiedError {
-  code: GitDiffErrorCode;
-  message: string;
-}
-
 export interface BranchInfo {
   branch: string | null;
   remoteBranch: string | null;

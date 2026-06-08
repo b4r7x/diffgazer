@@ -1,0 +1,37 @@
+---
+title: Hooks
+description: Per-hook API reference for @diffgazer/keys.
+---
+
+Keyboard and focus hooks split into two groups. **Standalone** hooks work anywhere — they take a ref, return handlers or run effects, and need no setup. **Provider-backed** hooks register through [`KeyboardProvider`](/keys/api/keyboard-provider) so they share one key dispatcher and participate in the scope stack; wrap your app (or the relevant subtree) in a provider to use them.
+
+## Standalone hooks
+
+No provider required. Source-copyable after installing a locally packed `@diffgazer/add` tarball. Hosted registry copy remains gated until `r.b4r7.dev` resolves publicly.
+
+| Hook | Use it for |
+|------|------------|
+| [`useNavigation`](/keys/hooks/use-navigation) | Arrow-key movement, selection, and focus tracking across a role-based list or tab bar. |
+| [`useFocusTrap`](/keys/hooks/use-focus-trap) | Keeping Tab and Shift+Tab focus inside a modal or overlay container. |
+| [`useFocusRestore`](/keys/hooks/use-focus-restore) | Returning focus to where the user was after triggerless temporary UI closes. |
+| [`useScrollLock`](/keys/hooks/use-scroll-lock) | Freezing body or container scroll behind an overlay, with reference counting. |
+
+## Provider-backed hooks
+
+Require [`KeyboardProvider`](/keys/api/keyboard-provider). Package-only, since dispatch goes through the shared registry.
+
+| Hook | Use it for |
+|------|------------|
+| [`useKey`](/keys/hooks/use-key) | Binding an individual shortcut, optionally scoped to a region or scope. |
+| [`useScope`](/keys/hooks/use-scope) | Letting a dialog or drawer shadow a page-level shortcut while it is open. |
+| [`useScopedNavigation`](/keys/hooks/use-scoped-navigation) | Scope-aware list navigation that works without first clicking into the list. |
+| [`useActionRowNavigation`](/keys/hooks/use-action-row-navigation) | Two-zone rows with content plus a strip of inline action buttons. |
+| [`useFocusZone`](/keys/hooks/use-focus-zone) | Moving focus between regions of a layout via arrow keys or Tab. |
+
+## Choosing a navigation hook
+
+- Movement **within one list** — [`useNavigation`](/keys/hooks/use-navigation) (standalone, you attach `onKeyDown`) or [`useScopedNavigation`](/keys/hooks/use-scoped-navigation) (provider-backed, scope-aware, no `onKeyDown`).
+- Movement **between regions** of a layout — [`useFocusZone`](/keys/hooks/use-focus-zone).
+- A **row with inline actions** — [`useActionRowNavigation`](/keys/hooks/use-action-row-navigation).
+
+See the [navigation](/keys/guides/navigation), [scopes](/keys/guides/scopes), and [focus zones](/keys/guides/focus-zones) guides for end-to-end patterns.

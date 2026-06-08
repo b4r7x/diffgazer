@@ -1,5 +1,6 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import { deriveSaveState } from "@diffgazer/core/forms";
+import { isSelectableTheme, SELECTABLE_THEME_OPTIONS } from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
@@ -15,10 +16,6 @@ import { ThemeSelectorContent } from "./selector-content";
 
 function resolveTheme(theme: WebTheme, systemResolved?: ResolvedTheme | null): ResolvedTheme {
   return theme === "auto" ? (systemResolved ?? "dark") : theme;
-}
-
-function isWebTheme(value: string | null): value is WebTheme {
-  return value === "auto" || value === "dark" || value === "light";
 }
 
 export function SettingsThemePage() {
@@ -45,6 +42,7 @@ function SettingsThemeEditor({ savedTheme, systemResolved, setTheme }: SettingsT
   const [selectedTheme, setSelectedTheme] = useState<WebTheme>(savedTheme);
   const [focusedTheme, setFocusedTheme] = useState<WebTheme | null>(savedTheme);
   const [hoveredTheme, setHoveredTheme] = useState<WebTheme | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const previewTheme = hoveredTheme ?? focusedTheme ?? selectedTheme;
   const previewResolved = resolveTheme(previewTheme, systemResolved);
@@ -62,11 +60,14 @@ function SettingsThemeEditor({ savedTheme, systemResolved, setTheme }: SettingsT
 
   const handleSave = async () => {
     if (!canSave) return;
+    setSaveError(null);
     try {
       await setTheme(selectedTheme);
       navigate({ to: "/settings" });
-    } catch {
-      toast.error("Failed to Save Theme", { message: "Could not persist theme settings." });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not persist theme settings.";
+      setSaveError(message);
+      toast.error("Failed to Save Theme", { message });
     }
   };
 
@@ -106,21 +107,24 @@ function SettingsThemeEditor({ savedTheme, systemResolved, setTheme }: SettingsT
   };
 
   const handleChange = (value: string) => {
-    if (isWebTheme(value)) selectTheme(value);
+    if (isSelectableTheme(value)) selectTheme(value);
   };
 
   const handleEnterOnList = async (value: string) => {
-    if (!isWebTheme(value)) return;
+    if (!isSelectableTheme(value)) return;
     selectTheme(value);
+    setSaveError(null);
     try {
       await setTheme(value);
       navigate({ to: "/settings" });
-    } catch {
-      toast.error("Failed to Save Theme", { message: "Could not persist theme settings." });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not persist theme settings.";
+      setSaveError(message);
+      toast.error("Failed to Save Theme", { message });
     }
   };
 
-  const themeOptions: WebTheme[] = ["auto", "dark", "light"];
+  const themeOptions = SELECTABLE_THEME_OPTIONS.map((option) => option.value);
 
   const moveFocus = (direction: 1 | -1) => {
     const current = focusedTheme ?? selectedTheme;
@@ -171,10 +175,10 @@ function SettingsThemeEditor({ savedTheme, systemResolved, setTheme }: SettingsT
               value={selectedTheme}
               highlighted={focusedTheme}
               onHighlightChange={(value) => {
-                if (isWebTheme(value)) setFocusedTheme(value);
+                if (isSelectableTheme(value)) setFocusedTheme(value);
               }}
               onPreviewValueChange={(value) => {
-                setHoveredTheme(isWebTheme(value) ? value : null);
+                setHoveredTheme(isSelectableTheme(value) ? value : null);
               }}
               onChange={handleChange}
               onEnter={handleEnterOnList}
@@ -193,6 +197,12 @@ function SettingsThemeEditor({ savedTheme, systemResolved, setTheme }: SettingsT
                   Focus previews themes live. Space selects, Enter saves &amp; exits.
                 </Callout.Content>
               </Callout>
+
+              {saveError && (
+                <Callout tone="error" live className="text-sm">
+                  <Callout.Content>{saveError}</Callout.Content>
+                </Callout>
+              )}
 
               <div className="flex justify-end gap-3">
                 <Button

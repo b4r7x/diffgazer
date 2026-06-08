@@ -151,6 +151,7 @@ function CatalogModelList({
         <p className="text-sm text-tui-muted font-mono">Enter a model ID manually:</p>
         <Input
           type="text"
+          aria-label="Model ID"
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder={providerInfo?.defaultModel ?? "model-id"}
@@ -167,6 +168,7 @@ function CatalogModelList({
         </p>
         <Input
           type="text"
+          aria-label="Model ID"
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder={providerInfo?.defaultModel ?? "model-id"}
@@ -214,6 +216,24 @@ function OpenRouterModelList({
         </p>
         <Input
           type="text"
+          aria-label="OpenRouter model ID"
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="openai/gpt-4o"
+        />
+      </div>
+    );
+  }
+
+  if (models.length === 0) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-tui-muted font-mono">
+          No models available. Enter a model ID manually (e.g. openai/gpt-4o):
+        </p>
+        <Input
+          type="text"
+          aria-label="OpenRouter model ID"
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder="openai/gpt-4o"

@@ -1,16 +1,28 @@
+import { SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api";
 import { TrustConfigSchema } from "@diffgazer/core/schemas/config";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import { zValidator } from "@hono/zod-validator";
-import { Hono } from "hono";
+import { type Context, Hono, type Next } from "hono";
 import { getStore } from "../../shared/lib/config/store.js";
+import { safeTokenMatch } from "../../shared/lib/crypto.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
 import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
+import { cancelSessionsForProject } from "../review/stream/store.js";
 import { SettingsSchema } from "./schemas.js";
 
 const settingsRouter = new Hono();
 
 const bodyLimitMiddleware = createBodyLimitMiddleware(10);
+
+const requireTrustRouteToken = async (c: Context, next: Next): Promise<Response | undefined> => {
+  const token = process.env.DIFFGAZER_SHUTDOWN_TOKEN?.trim();
+  if (!token || !safeTokenMatch(c.req.header(SHUTDOWN_TOKEN_HEADER), token)) {
+    return errorResponse(c, "Unauthorized", ErrorCode.UNAUTHORIZED, 401);
+  }
+  await next();
+  return undefined;
+};
 
 settingsRouter.get("/", (c) => {
   return c.json(getStore().getSettings());
@@ -30,7 +42,7 @@ settingsRouter.post(
   },
 );
 
-settingsRouter.get("/trust", (c) => {
+settingsRouter.get("/trust", requireTrustRouteToken, (c) => {
   const projectRoot = getProjectRoot(c);
   const project = getStore().getProjectInfo(projectRoot);
   if (!project.projectId) {
@@ -43,7 +55,7 @@ settingsRouter.get("/trust", (c) => {
   return c.json({ trust });
 });
 
-settingsRouter.get("/trust/list", (c) => {
+settingsRouter.get("/trust/list", requireTrustRouteToken, (c) => {
   const projectRoot = getProjectRoot(c);
   const project = getStore().getProjectInfo(projectRoot);
   const all = getStore().listTrustedProjects();
@@ -53,6 +65,7 @@ settingsRouter.get("/trust/list", (c) => {
 
 settingsRouter.post(
   "/trust",
+  requireTrustRouteToken,
   bodyLimitMiddleware,
   zValidator("json", TrustConfigSchema, zodErrorHandler),
   async (c) => {
@@ -83,11 +96,17 @@ settingsRouter.post(
     if (!result.ok) {
       return errorResponse(c, result.error.message, result.error.code, 400);
     }
+    if (existingTrust?.capabilities.readFiles && !trustConfig.capabilities.readFiles) {
+      cancelSessionsForProject(projectRoot, {
+        message: "Review session cancelled because repository trust was revoked.",
+        reason: "trust_revoked",
+      });
+    }
     return c.json({ trust: result.value });
   },
 );
 
-settingsRouter.delete("/trust", async (c) => {
+settingsRouter.delete("/trust", requireTrustRouteToken, async (c) => {
   const projectRoot = getProjectRoot(c);
   const project = getStore().getProjectInfo(projectRoot);
   if (!project.projectId) {
@@ -96,6 +115,12 @@ settingsRouter.delete("/trust", async (c) => {
   const result = await getStore().removeTrust(project.projectId);
   if (!result.ok) {
     return errorResponse(c, result.error.message, result.error.code, 400);
+  }
+  if (result.value) {
+    cancelSessionsForProject(projectRoot, {
+      message: "Review session cancelled because repository trust was revoked.",
+      reason: "trust_revoked",
+    });
   }
   return c.json({ removed: result.value });
 });

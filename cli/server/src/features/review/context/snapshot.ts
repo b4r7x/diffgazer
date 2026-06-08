@@ -5,10 +5,19 @@ import type {
   ProjectContextMeta,
   ProjectContextSnapshot,
 } from "@diffgazer/core/schemas/context";
-import { atomicWriteFile, readJsonFile } from "../../../shared/lib/fs.js";
+import {
+  ProjectContextGraphSchema,
+  ProjectContextMetaSchema,
+  ProjectContextSnapshotSchema,
+} from "@diffgazer/core/schemas/context";
+import { atomicWriteFile } from "../../../shared/lib/fs.js";
 import { createGitService } from "../../../shared/lib/git/service.js";
 import { buildFileTree, formatFileTree, MAX_TREE_NODES } from "./file-tree.js";
-import { discoverWorkspacePackages, formatWorkspaceGraph } from "./workspace-discovery.js";
+import {
+  discoverWorkspacePackages,
+  formatWorkspaceGraph,
+  readPackageManifest,
+} from "./workspace-discovery.js";
 
 const MAX_CONTEXT_BYTES = 50_000;
 const DEFAULT_TREE_DEPTH = 5;
@@ -21,10 +30,29 @@ export async function loadContextSnapshot(
     const markdown = await readFile(markdownPath, "utf8");
     const graphRaw = await readFile(path.join(contextDir, "context.json"), "utf8");
     const metaRaw = await readFile(path.join(contextDir, "context.meta.json"), "utf8");
-    const graph = JSON.parse(graphRaw) as ProjectContextGraph;
-    const meta = JSON.parse(metaRaw) as ProjectContextMeta;
-    return { markdown, graph, meta };
-  } catch {
+    const parsed = ProjectContextSnapshotSchema.safeParse({
+      markdown,
+      graph: JSON.parse(graphRaw),
+      meta: JSON.parse(metaRaw),
+    });
+    if (!parsed.success) {
+      console.warn(
+        `[context] Ignoring invalid cached context snapshot in ${contextDir}: ${parsed.error.issues
+          .map((issue) => {
+            const issuePath = issue.path.length > 0 ? issue.path.join(".") : "<root>";
+            return `${issuePath}: ${issue.message}`;
+          })
+          .join("; ")}`,
+      );
+      return null;
+    }
+    return parsed.data;
+  } catch (error) {
+    if (error instanceof Error) {
+      console.warn(
+        `[context] Ignoring unreadable cached context snapshot in ${contextDir}: ${error.message}`,
+      );
+    }
     return null;
   }
 }
@@ -62,11 +90,7 @@ export async function buildProjectContextSnapshot(
     counter: treeCounter,
   });
 
-  const packageJson = await readJsonFile<{
-    name?: string;
-    description?: string;
-    version?: string;
-  }>(path.join(projectPath, "package.json"));
+  const packageJson = await readPackageManifest(path.join(projectPath, "package.json"));
 
   const readmePath = path.join(projectPath, "README.md");
   const readmeRaw = await readFile(readmePath, "utf8").catch(() => "");
@@ -111,7 +135,7 @@ export async function buildProjectContextSnapshot(
     rawMarkdown += "\n\n(Context truncated to fit size limit)";
   }
 
-  const graph: ProjectContextGraph = {
+  const graphResult = ProjectContextGraphSchema.safeParse({
     generatedAt: new Date().toISOString(),
     root: projectPath,
     packages: packages.map((pkg) => ({
@@ -125,16 +149,24 @@ export async function buildProjectContextSnapshot(
     })),
     fileTree,
     changedFiles: [],
-  };
+  });
+  if (!graphResult.success) {
+    throw new Error(`Failed to build context graph: ${graphResult.error.message}`);
+  }
+  const graph: ProjectContextGraph = graphResult.data;
 
-  const meta: ProjectContextMeta = {
+  const metaResult = ProjectContextMetaSchema.safeParse({
     generatedAt: new Date().toISOString(),
     root: projectPath,
     statusHash: currentHash,
     headCommit: currentHeadCommit || undefined,
     charCount: rawMarkdown.length,
     ...(treeCounter.truncated ? { treeTruncated: true } : {}),
-  };
+  });
+  if (!metaResult.success) {
+    throw new Error(`Failed to build context metadata: ${metaResult.error.message}`);
+  }
+  const meta: ProjectContextMeta = metaResult.data;
 
   await atomicWriteFile(path.join(contextDir, "context.json"), JSON.stringify(graph, null, 2));
   await atomicWriteFile(path.join(contextDir, "context.md"), rawMarkdown);

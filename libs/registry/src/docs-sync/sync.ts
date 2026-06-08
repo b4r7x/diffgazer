@@ -33,7 +33,7 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
   logger.info(`[docs-sync] Mode: ${mode}`);
 
   const artifacts = libraries.map((lib) =>
-    loadLibraryArtifacts(lib, mode, docsRoot, workspaceRoot),
+    loadLibraryArtifacts(lib, mode, docsRoot, workspaceRoot, origin),
   );
 
   const primaryArtifact = artifacts.find((a) => a.id === primaryLibraryId);

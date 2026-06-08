@@ -26,9 +26,9 @@ export const reviewQueries = {
       staleTime: 0,
     }),
 
-  context: (api: BoundApi) =>
+  context: (api: BoundApi, reviewId?: string | null) =>
     queryOptions({
-      queryKey: [...reviewQueries.all(), "context"] as const,
+      queryKey: [...reviewQueries.all(), "context", reviewId ?? "latest"] as const,
       queryFn: () => api.getReviewContext(),
       staleTime: 60_000,
     }),

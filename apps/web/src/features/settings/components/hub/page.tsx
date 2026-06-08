@@ -1,6 +1,6 @@
 import { useSettings } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
-import type { AgentExecution } from "@diffgazer/core/schemas/config";
+import { buildHubValues } from "@diffgazer/core/schemas/config";
 import {
   SETTINGS_MENU_ITEMS,
   SETTINGS_SHORTCUTS,
@@ -10,7 +10,7 @@ import { useKey, useScope } from "@diffgazer/keys";
 import { Menu, MenuItem } from "@diffgazer/ui/components/menu";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { useNavigate } from "@tanstack/react-router";
-import { useConfigData } from "@/app/providers/config";
+import { useConfigData } from "@/hooks/use-config";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -32,12 +32,6 @@ function getSettingsMenuHighlighted(value: string | null): string | null {
   return SETTINGS_MENU_ITEMS[0]?.id ?? null;
 }
 
-function getAgentExecutionLabel(mode: AgentExecution | undefined): string {
-  if (!mode) return "Sequential";
-  if (mode === "parallel") return "Parallel";
-  return "Sequential";
-}
-
 export function SettingsHubPage() {
   const navigate = useNavigate();
   const { provider, isConfigured, trust } = useConfigData();
@@ -47,7 +41,6 @@ export function SettingsHubPage() {
     SETTINGS_MENU_ITEMS[0]?.id ?? null,
   );
   const effectiveHighlighted = getSettingsMenuHighlighted(highlighted);
-  const isTrusted = Boolean(trust?.capabilities.readFiles);
   const { data: settings, error: settingsQueryError } = useSettings();
   const settingsError = settingsQueryError?.message ?? null;
 
@@ -63,41 +56,46 @@ export function SettingsHubPage() {
     }
   };
 
-  const providerLabel = isConfigured && provider ? provider.toUpperCase() : "Not configured";
-  const storageLabel = settings?.secretsStorage ? settings.secretsStorage.toUpperCase() : "Not set";
+  const values = buildHubValues({
+    provider,
+    isConfigured,
+    isTrusted: Boolean(trust?.capabilities.readFiles),
+    theme,
+    secretsStorage: settings?.secretsStorage,
+    agentExecution: settings?.agentExecution,
+    selectedLensCount: settings?.defaultLenses?.length,
+  });
 
   const menuValues: Record<
     SettingsAction,
     { value: string; valueVariant?: "default" | "success" | "success-badge" | "muted" }
   > = {
     trust: {
-      value: isTrusted ? "Trusted" : "Not trusted",
-      valueVariant: isTrusted ? "success-badge" : "muted",
+      value: values.trust,
+      valueVariant: values.trust === "Trusted" ? "success-badge" : "muted",
     },
     theme: {
-      value: theme.toUpperCase(),
+      value: values.theme,
       valueVariant: "default",
     },
     provider: {
-      value: providerLabel,
+      value: values.provider,
       valueVariant: isConfigured ? "success" : "muted",
     },
     storage: {
-      value: storageLabel,
+      value: values.storage,
       valueVariant: settings?.secretsStorage ? "default" : "muted",
     },
     "agent-execution": {
-      value: getAgentExecutionLabel(settings?.agentExecution),
+      value: values["agent-execution"],
       valueVariant: "default",
     },
     analysis: {
-      value: settings?.defaultLenses?.length
-        ? `${settings.defaultLenses.length} agents`
-        : "Default",
+      value: values.analysis,
       valueVariant: settings?.defaultLenses?.length ? "default" : "muted",
     },
     diagnostics: {
-      value: "Local",
+      value: values.diagnostics,
       valueVariant: "muted",
     },
   };

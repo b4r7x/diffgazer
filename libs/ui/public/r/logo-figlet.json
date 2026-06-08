@@ -1,0 +1,25 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "logo-figlet",
+  "title": "Logo Figlet",
+  "description": "Optional figlet helpers for Logo. Requires the figlet npm package.",
+  "dependencies": ["figlet"],
+  "registryDependencies": ["https://r.b4r7.dev/r/ui/logo.json"],
+  "files": [
+    {
+      "path": "registry/ui/logo/figlet.ts",
+      "content": "export { type FigletFont, getFigletText } from \"./figlet-text\";\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/logo/figlet-text.ts",
+      "content": "import type figlet from \"figlet\";\n\nexport type FigletFont = \"Big\" | \"Small\";\n\ntype FigletModule = typeof figlet;\n\nconst FONT_FILES: Record<FigletFont, string> = {\n  Big: \"figlet/importable-fonts/Big.js\",\n  Small: \"figlet/importable-fonts/Small.js\",\n};\n\nconst MISSING_DEPENDENCY_MESSAGE =\n  \"@diffgazer/ui/components/logo/figlet requires the optional peer dependency 'figlet'. Install it with: npm install figlet\";\n\nlet figletPromise: Promise<FigletModule> | null = null;\nconst fontPromises = new Map<FigletFont, Promise<void>>();\n\nfunction loadFiglet(): Promise<FigletModule> {\n  if (!figletPromise) {\n    figletPromise = import(\"figlet\")\n      .then((mod) => (mod.default ?? mod) as FigletModule)\n      .catch(() => {\n        throw new Error(MISSING_DEPENDENCY_MESSAGE);\n      });\n  }\n  return figletPromise;\n}\n\nfunction loadFont(figletModule: FigletModule, font: FigletFont): Promise<void> {\n  let promise = fontPromises.get(font);\n  if (!promise) {\n    promise = import(/* @vite-ignore */ FONT_FILES[font])\n      .then((mod) => {\n        const data = (mod.default ?? mod) as string;\n        figletModule.parseFont(font, data);\n      })\n      .catch(() => {\n        throw new Error(MISSING_DEPENDENCY_MESSAGE);\n      });\n    fontPromises.set(font, promise);\n  }\n  return promise;\n}\n\nexport async function getFigletText(text: string, font: FigletFont = \"Big\"): Promise<string> {\n  const figletModule = await loadFiglet();\n  await loadFont(figletModule, font);\n  return figletModule.textSync(text, { font });\n}\n",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": false,
+    "hidden": true
+  },
+  "type": "registry:ui"
+}

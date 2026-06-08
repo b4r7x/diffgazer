@@ -1,19 +1,12 @@
-import { getAgentDetail } from "@diffgazer/core/review";
-import type { AgentState, AgentStatus } from "@diffgazer/core/schemas/events";
+import { getAgentDetail, getAgentStatusMeta } from "@diffgazer/core/review";
+import type { AgentState } from "@diffgazer/core/schemas/events";
 import { Box, Text } from "ink";
-import { useTheme } from "../../../app/providers/theme";
 import { Badge, type BadgeProps } from "../../../components/ui/badge";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
+import { useTheme } from "../../../theme/provider";
 
 type BadgeVariant = NonNullable<BadgeProps["variant"]>;
-
-const STATUS_META: Record<AgentStatus, { label: string; variant: BadgeVariant }> = {
-  queued: { label: "WAIT", variant: "neutral" },
-  running: { label: "RUN", variant: "info" },
-  complete: { label: "DONE", variant: "success" },
-  error: { label: "FAIL", variant: "error" },
-};
 
 export interface AgentBoardProps {
   agents: AgentState[];
@@ -31,7 +24,10 @@ export function AgentBoard({ agents }: AgentBoardProps) {
       </SectionHeader>
       <Box flexDirection="column" paddingTop={1}>
         {agents.map((agent) => {
-          const status = STATUS_META[agent.status];
+          const status = getAgentStatusMeta(agent.status) as {
+            label: string;
+            variant: BadgeVariant;
+          };
           const detail = getAgentDetail(agent);
 
           return (

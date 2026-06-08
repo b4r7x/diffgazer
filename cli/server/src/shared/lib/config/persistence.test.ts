@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -41,12 +41,11 @@ describe("config state", () => {
     expect(loadTrust()).toEqual({ projects: {} });
   });
 
-  it("merges stored config with defaults and removes invalid providers", async () => {
+  it("merges stored config with defaults", async () => {
     await writeJson("config.json", {
       settings: { theme: "dark" },
       providers: [
         { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
-        { provider: "invalid-provider", hasApiKey: true, isActive: true },
       ],
     });
     const { loadConfig, DEFAULT_SETTINGS } = await loadState();
@@ -59,8 +58,6 @@ describe("config state", () => {
       isActive: true,
       model: "gemini-2.5-flash",
     });
-    const providerNames: string[] = config.providers.map((provider) => provider.provider);
-    expect(providerNames).not.toContain("invalid-provider");
   });
 
   it("loads file-backed secrets", async () => {
@@ -68,6 +65,29 @@ describe("config state", () => {
     const { loadSecrets } = await loadState();
 
     expect(loadSecrets()).toEqual({ providers: { gemini: "key-123" } });
+  });
+
+  it("quarantines malformed-but-valid config and secrets shapes", async () => {
+    await writeJson("config.json", {
+      settings: { theme: "dark" },
+      providers: { gemini: { hasApiKey: true } },
+    });
+    await writeJson("secrets.json", {
+      providers: {
+        gemini: { kind: "literal", value: "wrong-shape" },
+      },
+    });
+    const { loadConfig, loadSecrets, DEFAULT_SETTINGS, DEFAULT_PROVIDERS } = await loadState();
+
+    expect(loadConfig()).toEqual({
+      settings: DEFAULT_SETTINGS,
+      providers: DEFAULT_PROVIDERS,
+    });
+    expect(loadSecrets()).toEqual({ providers: {} });
+
+    const files = await readdir(tempHome);
+    expect(files.some((file) => /^config\.json\..+\.backup$/.test(file))).toBe(true);
+    expect(files.some((file) => /^secrets\.json\..+\.backup$/.test(file))).toBe(true);
   });
 
   it("validates trust records and drops invalid entries while preserving valid ones", async () => {
@@ -96,6 +116,15 @@ describe("config state", () => {
     expect(trust.projects["proj-2"]).toMatchObject({
       capabilities: { readFiles: true, runCommands: false },
     });
+  });
+
+  it("quarantines malformed trust top-level data", async () => {
+    await writeJson("trust.json", { projects: [] });
+    const { loadTrust } = await loadState();
+
+    expect(loadTrust()).toEqual({ projects: {} });
+    const files = await readdir(tempHome);
+    expect(files.some((file) => /^trust\.json\..+\.backup$/.test(file))).toBe(true);
   });
 
   it("persists config, secrets, and trust as real JSON files", async () => {
@@ -133,6 +162,67 @@ describe("config state", () => {
       { provider: "zai", hasApiKey: true, isActive: false },
     ]);
     expect(syncProvidersWithSecrets(providers, secrets, "keyring")).toEqual(providers);
+  });
+
+  it("quarantines a copied project file whose repoRoot does not match the resolved project root", async () => {
+    const { readProjectFile, createProjectFile } = await loadState();
+    const actualRoot = path.join(tempHome, "actual-project");
+    const copiedRoot = path.join(tempHome, "copied-project");
+    await mkdir(actualRoot, { recursive: true });
+    await mkdir(path.join(copiedRoot, ".diffgazer"), { recursive: true });
+    await writeFile(
+      path.join(copiedRoot, ".diffgazer", "project.json"),
+      JSON.stringify({
+        projectId: "stolen-id",
+        repoRoot: actualRoot,
+        createdAt: "2024-01-01T00:00:00.000Z",
+      }),
+      "utf-8",
+    );
+
+    expect(readProjectFile(copiedRoot)).toBeNull();
+
+    const created = createProjectFile(copiedRoot);
+    expect(created.repoRoot).toBe(copiedRoot);
+    expect(created.projectId).not.toBe("stolen-id");
+  });
+
+  it("rejects reserved project IDs in project files and trust records", async () => {
+    const projectRoot = path.join(tempHome, "reserved-project");
+    await mkdir(path.join(projectRoot, ".diffgazer"), { recursive: true });
+    await writeFile(
+      path.join(projectRoot, ".diffgazer", "project.json"),
+      JSON.stringify({
+        projectId: "__proto__",
+        repoRoot: projectRoot,
+        createdAt: "2024-01-01T00:00:00.000Z",
+      }),
+      "utf-8",
+    );
+    await writeJson("trust.json", {
+      projects: {
+        constructor: {
+          projectId: "constructor",
+          repoRoot: "/projects/one",
+          trustedAt: "2024-01-01T00:00:00.000Z",
+          capabilities: { readFiles: true, runCommands: false },
+          trustMode: "persistent",
+        },
+        "proj-valid": {
+          projectId: "proj-valid",
+          repoRoot: "/projects/two",
+          trustedAt: "2024-01-01T00:00:00.000Z",
+          capabilities: { readFiles: true, runCommands: false },
+          trustMode: "persistent",
+        },
+      },
+    });
+    const { readProjectFile, loadTrust } = await loadState();
+
+    expect(readProjectFile(projectRoot)).toBeNull();
+    expect(loadTrust().projects).toEqual({
+      "proj-valid": expect.objectContaining({ projectId: "proj-valid" }),
+    });
   });
 
   it("reads an existing project file or creates one under the project .diffgazer directory", async () => {

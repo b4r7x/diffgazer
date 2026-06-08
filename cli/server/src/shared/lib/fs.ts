@@ -78,16 +78,6 @@ export const removeFileSync = (filePath: string): boolean => {
   }
 };
 
-export const readJsonFile = async <T>(filePath: string): Promise<T | null> => {
-  try {
-    const content = await fs.promises.readFile(filePath, "utf-8");
-    return JSON.parse(content) as T;
-  } catch (error) {
-    if (isNodeError(error, "ENOENT")) return null;
-    return null;
-  }
-};
-
 export async function writeJsonFile(
   filePath: string,
   data: unknown,

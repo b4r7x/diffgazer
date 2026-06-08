@@ -27,7 +27,7 @@ export const codeBlockDoc: ComponentDoc = {
     {
       title: "Optional Auto-Coloring",
       content:
-        'CodeBlockHighlight is a separate subpath import: `import { CodeBlockHighlight } from "@diffgazer/ui/components/code-block/highlight"`. It is split from the main <CodeBlock> bundle so consumers who never render it are not charged for the lowlight grammar bundle. `lowlight` is declared as an optional peer dependency — install it only when you import CodeBlockHighlight. The component emits highlight.js-compatible class names (hljs-keyword, hljs-string, ...) which the shared CSS maps onto the --code-* theme tokens.',
+        "CodeBlockHighlight is optional and split from the main <CodeBlock> bundle so consumers who never render it are not charged for the lowlight grammar bundle. Package consumers can import it from @diffgazer/ui/components/code-block/highlight. Copy, dgadd, and direct registry consumers can add the separate ui/code-block-highlight item. `lowlight` is declared as an optional peer dependency — install it only when you use CodeBlockHighlight. The component emits highlight.js-compatible class names (hljs-keyword, hljs-string, ...) which the shared CSS maps onto the --code-* theme tokens.",
     },
     {
       title: "Keyboard Scrolling",

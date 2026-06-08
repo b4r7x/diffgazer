@@ -20,9 +20,8 @@ export function startWeb(
   dependencies: WebLauncherDependencies = {},
 ): () => Promise<void> {
   ensureShutdownToken();
-  const resolveServerFactories = dependencies.createServerFactories ?? createModeServerFactories;
-  const servers = resolveServerFactories(options).map((create) => create());
   let stopPromise: Promise<void> | null = null;
+  let servers: ServerController[] = [];
 
   const stop = (): Promise<void> => {
     if (!stopPromise) {
@@ -30,6 +29,21 @@ export function startWeb(
     }
     return stopPromise;
   };
+
+  const handleStartupFailure = (message: string): void => {
+    console.error(message);
+    process.exitCode = 1;
+    void stopWithTimeout(stop, config.shutdown.gracefulMs).finally(() => {
+      process.exit(1);
+    });
+  };
+
+  const resolveServerFactories = dependencies.createServerFactories ?? createModeServerFactories;
+
+  servers = resolveServerFactories({
+    ...options,
+    onStartupFailure: handleStartupFailure,
+  }).map((create) => create());
 
   const stopAndExit = (): void => {
     void stopWithTimeout(stop, config.shutdown.gracefulMs).finally(() => {

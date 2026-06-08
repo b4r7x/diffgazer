@@ -24,7 +24,7 @@ export interface UseReviewLifecycleBaseResult {
   stream: {
     stop: () => void;
     abort: () => void;
-    cancel: (reviewId: string | null) => void;
+    cancel: (reviewId: string | null) => Promise<string | null>;
     state: ReviewStreamState;
   };
 

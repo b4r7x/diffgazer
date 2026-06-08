@@ -8,7 +8,7 @@ import {
   collectBundleRelativeJsImportErrors,
   collectTreeParityErrors,
   computeBundleIntegrity,
-  computeStrictInputsFingerprint,
+  computeStrictArtifactFingerprint,
   validateIntegrityBundle,
   validateLibraryArtifacts,
 } from "./validation.mjs";
@@ -26,13 +26,11 @@ function writeLibraryFixture(root) {
   writeFile(root, "public/r/registry.json", '{"items":[]}\n');
   writeFile(root, "package.json", '{"name":"@test/lib","version":"1.0.0"}\n');
 
-  const { fingerprint } = computeStrictInputsFingerprint(root, [
-    "docs/content",
-    "docs/generated",
-    "registry",
-    "public/r",
-    "package.json",
-  ]);
+  const { fingerprint } = computeStrictArtifactFingerprint(
+    root,
+    ["docs/content", "docs/generated", "registry", "public/r", "package.json"],
+    "https://r.b4r7.dev",
+  );
 
   writeFile(
     root,
@@ -99,6 +97,22 @@ describe("artifact validation", () => {
       validateLibraryArtifacts({ rootDir: root, label: "fixture" }).includes(
         "fixture public/r: artifact differs from source for registry.json",
       ),
+    );
+  });
+
+  it("includes the registry origin in the validated fingerprint", () => {
+    const root = makeTempDir();
+    writeLibraryFixture(root);
+
+    const errors = validateLibraryArtifacts({
+      rootDir: root,
+      label: "fixture",
+      origin: "https://other.example.com",
+    });
+
+    assert.ok(
+      errors.some((error) => error.includes("artifact fingerprint mismatch")),
+      errors.join("\n"),
     );
   });
 

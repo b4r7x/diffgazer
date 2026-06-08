@@ -2,11 +2,12 @@ import { showDryRunDeps, showDryRunPreview } from "../dry-run-preview.js";
 import {
   type FileOp,
   formatWriteSummary,
+  rollbackFiles,
   type WriteFilesResult,
   writeFilesWithRollback,
 } from "../file-write-rollback.js";
 import { installDepsWithRollback } from "../install-deps.js";
-import { heading, info, newline, promptConfirm, success } from "../terminal.js";
+import { heading, info, newline, promptConfirm, success, warn } from "../terminal.js";
 
 export interface ApplyInstallPlanOptions {
   cwd: string;
@@ -49,8 +50,14 @@ async function writeAndInstall(options: ApplyInstallPlanOptions): Promise<void> 
 
   heading(options.headingMessage);
   const writeResult = writeFilesWithRollback(fileOps, overwrite);
-  await installOrSkip(missingDeps, cwd, writeResult, skipInstall);
-  await options.onApplied?.(writeResult);
+  try {
+    await installOrSkip(missingDeps, cwd, writeResult, skipInstall);
+    await options.onApplied?.(writeResult);
+  } catch (error) {
+    warn("Rolling back written files due to install-plan finalization failure...");
+    rollbackFiles(writeResult.newFiles, writeResult.backups, writeResult.createdDirs);
+    throw error;
+  }
 
   newline();
   success(formatWriteSummary(writeResult));

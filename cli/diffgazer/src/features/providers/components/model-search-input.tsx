@@ -1,5 +1,7 @@
 import { Box, Text, useInput } from "ink";
-import { useTheme } from "../../../app/providers/theme";
+import { useContext, useEffect } from "react";
+import { KeyboardContext } from "../../../hooks/use-keyboard";
+import { useTheme } from "../../../theme/provider";
 
 interface SearchInputProps {
   value: string;
@@ -7,8 +9,21 @@ interface SearchInputProps {
   isActive: boolean;
 }
 
+function useInputMode(isActive: boolean): void {
+  const ctx = useContext(KeyboardContext);
+  const setInputActive = ctx?.setInputActive;
+
+  useEffect(() => {
+    if (!setInputActive || !isActive) return;
+    setInputActive(true);
+    return () => setInputActive(false);
+  }, [isActive, setInputActive]);
+}
+
 export function SearchInput({ value, onChange, isActive }: SearchInputProps) {
   const { tokens } = useTheme();
+
+  useInputMode(isActive);
 
   useInput(
     (input, key) => {

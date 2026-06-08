@@ -10,10 +10,11 @@
       "@/components/ui/*": ["registry/ui/*"]
     }
   },
-  "include": ["registry/**/*.ts", "registry/**/*.tsx"],
+  "include": ["registry/**/*.ts", "registry/**/*.tsx", "theme/**/*.ts"],
   "exclude": [
     "registry/**/*.test.ts",
     "registry/**/*.test.tsx",
+    "theme/**/*.test.ts",
     "registry/**/testing/**",
     "registry/component-docs/**",
     "registry/hook-docs/**",

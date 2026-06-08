@@ -1,6 +1,6 @@
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
-import { useTheme } from "../../../app/providers/theme";
+import { useTheme } from "../../../theme/provider";
 
 interface WizardProgressProps {
   steps: string[];

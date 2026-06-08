@@ -1,0 +1,52 @@
+---
+title: "useFocusRestore"
+description: "Capture and restore focus around overlays, panels, command palettes, and triggerless temporary UI with nested stack safety."
+hook: "use-focus-restore"
+---
+
+`useFocusRestore` captures the currently focused element before temporary UI opens and returns focus to it when that UI closes. It is **standalone** (no provider) and stack-aware, so nested overlays restore in close order and an older layer never steals focus from a newer one. Use it when there is no single trigger button to focus back — command palettes, globally summoned panels, and toasts-turned-dialogs.
+
+<UsageSnippet />
+
+## When to use it
+
+- A panel or palette is opened from a keyboard shortcut rather than a specific button, so focus must return to wherever the user was.
+- Several temporary surfaces can stack and each must restore focus to the layer beneath it.
+- You need restore semantics but not Tab trapping — for trapping, use [`useFocusTrap`](/keys/hooks/use-focus-trap) (which manages restoration internally).
+
+## Installation
+
+<ConsumptionBlock />
+
+## Parameters
+
+<ParameterTable />
+
+## Returns
+
+<ReturnsTable />
+
+Call `capture()` as the overlay opens (storing the active element) and `restore()` as it closes. `target` exposes the last captured element.
+
+## Examples
+
+<Examples />
+
+## Notes
+
+<Notes />
+
+## Edge cases
+
+- **`fallback`.** When nothing was focused at capture time, or the captured element is gone, focus moves to the `fallback` element. Supply one for triggerless UI so focus never lands on `<body>`.
+- **`restoreOnUnmount`.** On by default — if the component unmounts after `capture()` without an explicit `restore()`, cleanup restores focus. Set it to `false` when another hook (such as `useFocusTrap`) owns the restoration timing.
+- **Stack ordering.** Only the top stack entry restores. Releasing a middle entry removes it without moving focus, so nested overlays unwind correctly.
+- **Hook vs utilities.** `useFocusRestore` is the React hook; `getRestorableFocusTarget` and `restoreFocus` are plain DOM utilities for non-hook code.
+
+## Related
+
+- [`useFocusTrap`](/keys/hooks/use-focus-trap) — trap Tab and restore focus on release.
+- [Utilities](/keys/api/utilities) — `getRestorableFocusTarget` and `restoreFocus` for imperative code.
+- [Focus and scroll guide](/keys/guides/focus-and-scroll) — overlay focus patterns.
+
+<SourceViewer />

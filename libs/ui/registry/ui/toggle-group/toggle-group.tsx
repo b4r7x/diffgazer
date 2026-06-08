@@ -98,8 +98,10 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
   const singleProps = selectionMode === "single" ? (props as ToggleGroupSingleProps) : null;
   const multipleProps = selectionMode === "multiple" ? (props as ToggleGroupMultipleProps) : null;
 
-  const [singleValue, setSingleValue, isSingleControlled] = useControllableState<string | null>({
-    value: singleProps?.value,
+  const isValueControlled = "value" in props;
+  const [singleValue, setSingleValue] = useControllableState<string | null>({
+    value: isValueControlled ? (singleProps?.value ?? null) : undefined,
+    controlled: isValueControlled,
     defaultValue: singleProps?.defaultValue ?? null,
     onChange: singleProps?.onChange as ((value: string | null) => void) | undefined,
   });
@@ -107,11 +109,12 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
     containerRef,
     singleProps?.defaultValue ?? null,
     setSingleValue,
-    !isSingleControlled && selectionMode === "single",
+    !isValueControlled && selectionMode === "single",
   );
 
   const [multipleValue, setMultipleValue] = useControllableState<readonly string[]>({
-    value: multipleProps?.value,
+    value: isValueControlled ? (multipleProps?.value ?? []) : undefined,
+    controlled: isValueControlled,
     defaultValue: multipleProps?.defaultValue ?? [],
     onChange: multipleProps?.onChange as ((value: readonly string[]) => void) | undefined,
   });

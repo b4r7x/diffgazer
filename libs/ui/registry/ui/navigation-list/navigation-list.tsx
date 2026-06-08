@@ -33,6 +33,7 @@ function collectNavigationListItems(children: ReactNode): ListboxMetadataItem[] 
         children?: ReactNode;
         variant?: string;
         headerId?: string;
+        label?: string;
       }>(child)
     )
       return;
@@ -42,12 +43,15 @@ function collectNavigationListItems(children: ReactNode): ListboxMetadataItem[] 
       return;
     }
 
-    if (
-      child.type === NavigationListGroup &&
-      child.props.variant === "tree" &&
-      typeof child.props.headerId === "string"
-    ) {
-      items.push({ id: child.props.headerId });
+    if (child.type === NavigationListGroup) {
+      const variant = child.props.variant ?? "section";
+      if (variant === "tree" && typeof child.props.headerId === "string") {
+        items.push({ id: child.props.headerId });
+      }
+      if (variant === "section" && typeof child.props.label === "string") {
+        const headerId = child.props.headerId ?? `__section_${child.props.label}`;
+        items.push({ id: headerId });
+      }
     }
 
     // Always collect items from groups regardless of expanded state.

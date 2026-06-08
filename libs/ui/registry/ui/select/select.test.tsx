@@ -1049,6 +1049,53 @@ describe("Select dropdown width", () => {
   });
 });
 
+describe("Select cross-document portal", () => {
+  it("renders dropdown content into an explicit portalContainer", async () => {
+    const portalHost = document.createElement("div");
+    portalHost.id = "select-portal-host";
+    document.body.appendChild(portalHost);
+
+    render(
+      <Select defaultOpen>
+        <Select.Trigger>
+          <Select.Value placeholder={PICK_FRUIT} />
+        </Select.Trigger>
+        <Select.Content portalContainer={portalHost}>
+          <Select.Item value="apple">Apple</Select.Item>
+          <Select.Item value="banana">Banana</Select.Item>
+        </Select.Content>
+      </Select>,
+    );
+
+    expect(portalHost.querySelector('[role="listbox"]')).not.toBeNull();
+
+    portalHost.remove();
+  });
+});
+
+describe("Select searchable combobox controlled value", () => {
+  it("treats explicit undefined value as controlled for searchable combobox", async () => {
+    const onChange = vi.fn();
+    render(
+      <Select value={undefined} onChange={onChange} defaultOpen>
+        <Select.Trigger>
+          <Select.Value placeholder={PICK_FRUIT} />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Search />
+          <Select.Item value="apple">Apple</Select.Item>
+          <Select.Item value="banana">Banana</Select.Item>
+        </Select.Content>
+      </Select>,
+    );
+
+    expect(screen.getByText(PICK_FRUIT)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("option", { name: /banana/i }));
+    expect(onChange).toHaveBeenCalledWith("banana");
+    expect(screen.getByText(PICK_FRUIT)).toBeInTheDocument();
+  });
+});
+
 describe("Select types", () => {
   it("narrows value/onChange in single mode to the supplied union", () => {
     type SingleNarrow = Extract<SelectProps<"a" | "b">, { multiple?: false }>;

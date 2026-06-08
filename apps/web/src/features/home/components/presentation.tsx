@@ -8,9 +8,9 @@ import { useKey, useScope } from "@diffgazer/keys";
 import { toast } from "@diffgazer/ui/components/toast";
 import type { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { TrustPanel } from "@/components/shared/trust-panel";
 import { ContextSidebar } from "@/features/home/components/context-sidebar";
 import { HomeMenu } from "@/features/home/components/menu";
-import { TrustPanel } from "./trust-panel";
 
 type Navigate = ReturnType<typeof useNavigate>;
 type CreateReview = (input: { mode: ReviewMode }) => Promise<{ reviewId: string }>;

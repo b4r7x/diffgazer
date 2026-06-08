@@ -1,8 +1,8 @@
 import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
-import { useTheme } from "../../../app/providers/theme";
 import { KeyValue } from "../../../components/ui/key-value";
 import { Panel } from "../../../components/ui/panel";
+import { useTheme } from "../../../theme/provider";
 
 export interface ContextSidebarProps {
   context: ContextInfo;

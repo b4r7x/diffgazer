@@ -23,7 +23,7 @@ import {
 import { loadDocData } from "@/lib/load-doc-data";
 import { findPageNeighbors, type PageTree } from "@/lib/page-tree";
 import { buildPageSeo } from "@/lib/seo";
-import { parseDocsPageInput } from "@/lib/server-inputs";
+import { parseDocsPageInput, safeParseDocsPageInput } from "@/lib/server-inputs";
 import { useMDXComponents } from "@/mdx-components";
 import { Route as DocsRoute } from "@/routes/$lib";
 import type { ComponentData } from "@/types/data";
@@ -42,8 +42,11 @@ export const Route = createFileRoute("/$lib/$")({
   component: Page,
   loader: async ({ params }) => {
     const library = parseDocsLibrary(params.lib);
-    const routeSlugs = params._splat?.split("/") ?? [];
-    const data = await serverLoader({ data: { library, routeSlugs } });
+    const routeSlugs = params._splat?.split("/").filter(Boolean) ?? [];
+    const pageInput = safeParseDocsPageInput({ library, routeSlugs });
+    if (!pageInput) throw notFound();
+
+    const data = await serverLoader({ data: pageInput });
     if (!data) throw notFound();
 
     const [componentData, hookData] = await Promise.all([

@@ -7,7 +7,7 @@ import { error, isSilentMode } from "./terminal.js";
 const VALID_PKG_NAME = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/i;
 const VERSION_SPEC_PATTERN = /^[a-zA-Z0-9._\-~/^*@:+]+$/;
 
-const REJECTED_PROTOCOLS = ["file:", "git+", "git:", "https:", "http:"];
+const REJECTED_PROTOCOLS = ["file:", "git+", "git:", "https:", "http:", "link:", "npm:"];
 
 export function depName(dep: string): string {
   if (!dep.includes("@")) return dep;
@@ -28,6 +28,14 @@ export function normalizeVersionSpec(raw: unknown, packageName = "package"): str
     throw new Error(
       `Invalid ${packageName} version "${spec}". Use a semver, range, or dist tag (for example: latest, 0.1.1, ^0.1.0).`,
     );
+  }
+  const lower = spec.toLowerCase();
+  for (const protocol of REJECTED_PROTOCOLS) {
+    if (lower.startsWith(protocol)) {
+      throw new Error(
+        `Invalid ${packageName} version "${spec}". Protocol or alias sources are not allowed.`,
+      );
+    }
   }
   return spec;
 }

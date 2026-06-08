@@ -61,6 +61,14 @@ export function parseDocsPageInput(input: unknown): {
   return docsPageInputSchema.parse(input);
 }
 
+export function safeParseDocsPageInput(input: unknown): {
+  library: DocsLibraryId;
+  routeSlugs: string[];
+} | null {
+  const parsed = docsPageInputSchema.safeParse(input);
+  return parsed.success ? parsed.data : null;
+}
+
 export function parseLibrarySwitchInput(input: unknown): {
   targetLibrary: DocsLibraryId;
   currentSlugs: string[];

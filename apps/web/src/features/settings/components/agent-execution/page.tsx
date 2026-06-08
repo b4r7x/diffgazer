@@ -2,7 +2,11 @@ import { matchQueryState, useSaveSettings, useSettings } from "@diffgazer/core/a
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { deriveSaveState } from "@diffgazer/core/forms";
-import type { AgentExecution } from "@diffgazer/core/schemas/config";
+import {
+  AGENT_EXECUTION_OPTIONS,
+  type AgentExecution,
+  isAgentExecution,
+} from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import {
   toVerticalBoundaryDirection,
@@ -11,16 +15,11 @@ import {
   useScope,
 } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
+import { Callout } from "@diffgazer/ui/components/callout";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { CardLayout } from "@/components/ui/card-layout";
-
-const EXECUTION_MODES: AgentExecution[] = ["sequential", "parallel"];
-
-function isAgentExecution(value: string | null): value is AgentExecution {
-  return EXECUTION_MODES.some((mode) => mode === value);
-}
 
 export function SettingsAgentExecutionPage() {
   const navigate = useNavigate();
@@ -175,18 +174,20 @@ export function SettingsAgentExecutionPage() {
           }}
           className="space-y-1"
         >
-          <RadioGroupItem
-            value="sequential"
-            label="Sequential"
-            description="Agents run one after another. Works with all providers and tiers."
-          />
-          <RadioGroupItem
-            value="parallel"
-            label="Parallel"
-            description="All agents run at once. Faster, but may hit rate limits on free tiers."
-          />
+          {AGENT_EXECUTION_OPTIONS.map((option) => (
+            <RadioGroupItem
+              key={option.value}
+              value={option.value}
+              label={option.label}
+              description={option.description}
+            />
+          ))}
         </RadioGroup>
-        {error && <p className="text-tui-red text-sm">{error}</p>}
+        {error && (
+          <Callout tone="error" live className="text-sm">
+            <Callout.Content>{error}</Callout.Content>
+          </Callout>
+        )}
       </div>
     </CardLayout>
   );

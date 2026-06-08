@@ -1,3 +1,4 @@
+// @hidden-imports-ok — demo imports optional highlight helper from code-block-highlight registry item
 import { CodeBlock } from "@/components/ui/code-block";
 import { CodeBlockHighlight } from "@/components/ui/code-block/highlight";
 

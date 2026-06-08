@@ -1,0 +1,65 @@
+---
+title: "useScopedNavigation"
+description: "Scope-aware keyboard navigation registered via KeyboardProvider. Use when navigation should respect the scope stack (e.g., modals, panels)."
+hook: "use-scoped-navigation"
+---
+
+`useScopedNavigation` is the provider-backed sibling of [`useNavigation`](/keys/hooks/use-navigation). It shares the same DOM item-discovery contract and the same options, but registers its keys through [`KeyboardProvider`](/keys/api/keyboard-provider) instead of returning an `onKeyDown` handler. Because dispatch goes through the provider, navigation participates in the scope stack and can listen at the document level without the list being focused first.
+
+<UsageSnippet />
+
+## When to use it
+
+- The list is the primary content of a panel, dialog, drawer, or command palette and arrow keys should work immediately.
+- Navigation must be suppressed while a deeper scope (a nested overlay) is active.
+- You want page-level keys via `focusWithinOnly` rather than wiring `onKeyDown` onto a focusable container.
+
+For a list embedded inside a self-contained component — a combobox popup, a dropdown — prefer [`useNavigation`](/keys/hooks/use-navigation); it avoids the provider dependency.
+
+## Installation
+
+<ConsumptionBlock />
+
+## Parameters
+
+<ParameterTable />
+
+## Returns
+
+<ReturnsTable />
+
+Unlike `useNavigation`, there is no returned `onKeyDown` — the provider owns key dispatch.
+
+## Keyboard behavior
+
+| Key | Behavior |
+|-----|----------|
+| `ArrowDown` / `ArrowUp` | Move highlight (vertical orientation). |
+| `ArrowRight` / `ArrowLeft` | Move highlight (horizontal orientation). |
+| `Home` / `End` | Jump to the first / last item. |
+| `Enter` | Calls `onEnter(value)`, falling back to `onSelect(value)`. |
+| `Space` | Calls `onSelect(value)`. |
+
+Editable-target filtering is handled by the provider via `allowInInput`. Scope resolution means that if a deeper scope is active, this hook's bindings are suppressed until it is popped.
+
+## Examples
+
+<Examples />
+
+## Notes
+
+<Notes />
+
+## Edge cases
+
+- **Missing provider.** This hook asserts the provider context on mount and throws a clear error if no `KeyboardProvider` is present — unlike `useKey`, it does not silently no-op.
+- **`scope: null`.** Pass `null` to skip registration while a conditional scope is disabled, without removing the Hook call.
+- **`focusWithinOnly`.** Set it when several navigable regions share one page-level provider so each region only responds while it holds focus.
+
+## Related
+
+- [`useNavigation`](/keys/hooks/use-navigation) — the standalone version with an `onKeyDown` handler.
+- [`useScope`](/keys/hooks/use-scope) — push the scope this hook registers under.
+- [Scopes guide](/keys/guides/scopes) — how the scope stack resolves competing bindings.
+
+<SourceViewer />

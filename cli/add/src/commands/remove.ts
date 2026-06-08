@@ -168,8 +168,8 @@ function removeOwnedCssChunks(
 // one another through arguments:
 //   - `getAllItems` runs with no cwd; the workflow calls `requireConfig(cwd)`
 //     first, so the active cwd captured there is the one to resolve against.
-//   - `onAfterRemove` runs after `updateManifest`, so the live manifest no
-//     longer lists removed items; the pre-removal cssChunks must be snapshotted
+//   - `onAfterRemove` runs before `updateManifest`, but the pre-removal
+//     cssChunks must still be snapshotted during expandRequestedNames so CSS
 //     during `expandRequestedNames` (before any deletion) and read back later.
 // The registry command factory (B7-owned) cannot thread a per-call context
 // through these callbacks, so the state lives in one object instead of loose

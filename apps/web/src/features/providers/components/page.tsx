@@ -2,14 +2,14 @@ import { usePageFooter } from "@diffgazer/core/footer";
 import type { CredentialRef } from "@diffgazer/core/schemas/config";
 import { PROVIDER_ENV_VARS } from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import { useConfigData } from "@/app/providers/config";
 import { ApiKeyDialog } from "@/features/providers/components/api-key-dialog/dialog";
 import { ProviderDetails } from "@/features/providers/components/details";
 import { ProviderList } from "@/features/providers/components/list";
 import { ModelSelectDialog } from "@/features/providers/components/model-select-dialog/dialog";
 import { useProvidersPageState } from "@/features/providers/hooks/use-page-state";
+import { useConfigData } from "@/hooks/use-config";
 
-export function getProvidersFooter(
+function getProvidersFooter(
   focusZone: "input" | "filters" | "list" | "buttons",
   hasSelectedProvider: boolean,
 ): { shortcuts: Shortcut[]; rightShortcuts: Shortcut[] } {
@@ -71,6 +71,7 @@ export function ProvidersPage() {
     dialogs,
     handlers,
     keyboard,
+    isSubmitting,
   } = useProvidersPageState();
 
   const { secretsStorage } = useConfigData();
@@ -180,6 +181,7 @@ export function ProvidersPage() {
             onOpenChange={dialogs.setModelOpen}
             provider={selectedProvider.id}
             currentModel={selectedProvider.model}
+            isSaving={isSubmitting}
             onSelect={(modelId) => void handlers.selectModel(selectedProvider.id, modelId)}
           />
         </>

@@ -706,3 +706,25 @@ describe("Toast", () => {
     });
   });
 });
+
+describe("Toaster cross-document behavior", () => {
+  it("renders the notification region inside the container ownerDocument", () => {
+    const iframe = document.createElement("iframe");
+    document.body.appendChild(iframe);
+    const iframeDoc = iframe.contentDocument;
+    if (!iframeDoc) {
+      iframe.remove();
+      throw new Error("iframe.contentDocument is null; cannot exercise cross-document toaster");
+    }
+    const container = iframeDoc.createElement("div");
+    iframeDoc.body.appendChild(container);
+
+    render(<Toaster />, { container });
+
+    const region = iframeDoc.querySelector("[role='region'][aria-label='Notifications']");
+    expect(region).not.toBeNull();
+    expect(region?.ownerDocument).toBe(iframeDoc);
+
+    iframe.remove();
+  });
+});

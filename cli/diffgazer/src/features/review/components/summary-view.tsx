@@ -6,12 +6,12 @@ import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { pluralize } from "@diffgazer/core/strings";
 import { Box, Text, useInput } from "ink";
 import { type ReactElement, useState } from "react";
-import { useTheme } from "../../../app/providers/theme";
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { SeverityBreakdown } from "../../../components/ui/severity/breakdown";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
+import { useTheme } from "../../../theme/provider";
 import { IssuePreviewItem } from "./issue-preview-item";
 import { LensStatsTable } from "./lens-stats-table";
 

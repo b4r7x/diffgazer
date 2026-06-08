@@ -1,6 +1,6 @@
 import { Box, Text } from "ink";
 import type { ReactNode } from "react";
-import { useTheme } from "../../app/providers/theme";
+import { useTheme } from "../../theme/provider";
 
 export interface CalloutProps {
   variant?: "info" | "warning" | "error" | "success";

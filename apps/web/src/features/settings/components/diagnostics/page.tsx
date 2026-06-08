@@ -7,7 +7,7 @@ import { Divider } from "@diffgazer/ui/components/divider";
 import { KeyValue } from "@diffgazer/ui/components/key-value";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { Typography } from "@diffgazer/ui/components/typography";
-import { useConfigData } from "@/app/providers/config";
+import { useConfigData } from "@/hooks/use-config";
 import { useDiagnosticsKeyboard } from "./use-diagnostics-keyboard";
 
 type OverallState = "loading" | "error" | "empty" | "success";

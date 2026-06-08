@@ -1,0 +1,134 @@
+import { type BoundApi, createApi } from "@diffgazer/core/api";
+import { ApiProvider } from "@diffgazer/core/api/hooks";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, render } from "ink-testing-library";
+import type { ReactNode } from "react";
+import { afterEach, describe, expect, test, vi } from "vitest";
+import { CliThemeProvider } from "../../../theme/provider";
+import { TrustPanel } from "./trust-panel";
+
+function makeInitResponse(): Awaited<ReturnType<BoundApi["loadInit"]>> {
+  return {
+    config: null,
+    providers: [],
+    settings: {
+      theme: "dark",
+      defaultLenses: [],
+      defaultProfile: null,
+      severityThreshold: "low",
+      secretsStorage: "file",
+      agentExecution: "sequential",
+    },
+    configured: true,
+    project: {
+      projectId: "project-1",
+      path: "/tmp/repo",
+      trust: null,
+    },
+    setup: {
+      hasSecretsStorage: true,
+      hasProvider: false,
+      hasModel: false,
+      hasTrust: false,
+      isConfigured: true,
+      isReady: false,
+      missing: ["provider", "model", "trust"],
+    },
+  };
+}
+
+async function flush(times = 4): Promise<void> {
+  for (let i = 0; i < times; i += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+}
+
+async function flushUntil(predicate: () => boolean, attempts = 200): Promise<void> {
+  for (let i = 0; i < attempts; i += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
+
+function Wrapper({ children, api }: { children: ReactNode; api: BoundApi }) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ApiProvider value={api}>
+        <CliThemeProvider initialTheme="dark">{children}</CliThemeProvider>
+      </ApiProvider>
+    </QueryClientProvider>
+  );
+}
+
+describe("TrustPanel", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  test("marks runCommands unavailable and never submits it when accepting trust", async () => {
+    const loadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse());
+    const saveTrust = vi.fn<BoundApi["saveTrust"]>().mockResolvedValue({
+      trust: {
+        projectId: "project-1",
+        repoRoot: "/tmp/repo",
+        capabilities: { readFiles: true, runCommands: false },
+        trustMode: "persistent",
+        trustedAt: new Date().toISOString(),
+      },
+    });
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      loadInit,
+      saveTrust,
+    } satisfies BoundApi;
+    const onAccept = vi.fn();
+
+    const view = render(
+      <Wrapper api={api}>
+        <TrustPanel onAccept={onAccept} />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => view.lastFrame()?.includes("Currently unavailable") ?? false);
+
+    const frame = view.lastFrame() ?? "";
+    expect(frame).toContain("Currently unavailable");
+
+    view.stdin.write("\t");
+    await flush();
+    view.stdin.write("\r");
+    await flush(8);
+
+    expect(saveTrust).toHaveBeenCalledWith(
+      expect.objectContaining({
+        capabilities: { readFiles: true, runCommands: false },
+      }),
+    );
+    expect(onAccept).toHaveBeenCalled();
+  });
+
+  test.each([
+    { keyName: "Enter", input: "\r" },
+    { keyName: "Space", input: " " },
+  ])("toggles readFiles with $keyName while the capability list is focused", async ({ input }) => {
+    const loadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse());
+    const api = { ...createApi({ baseUrl: "http://localhost" }), loadInit } satisfies BoundApi;
+
+    const view = render(
+      <Wrapper api={api}>
+        <TrustPanel onAccept={() => {}} />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => view.lastFrame()?.includes("[x]") ?? false);
+    expect(view.lastFrame()).toContain("[x]");
+
+    view.stdin.write(input);
+    await flush();
+
+    expect(view.lastFrame()).toContain("[ ]");
+  });
+});

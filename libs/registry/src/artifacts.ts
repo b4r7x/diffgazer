@@ -1,11 +1,12 @@
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   ARTIFACT_FINGERPRINT_FILENAME,
   ARTIFACT_MANIFEST_FILENAME,
   DEFAULT_ARTIFACT_ROOT,
+  PACKAGE_ARTIFACT_ROOT,
 } from "./constants.js";
-import { computeInputsFingerprint } from "./fingerprint.js";
+import { computeArtifactFingerprint } from "./fingerprint.js";
 import { defaultLogger, type Logger } from "./logger.js";
 import type { ArtifactManifest } from "./manifest.js";
 import { normalizeOrigin, rewriteOriginsInDir } from "./origin.js";
@@ -122,7 +123,7 @@ export function buildRegistryArtifacts(
 
   afterCopy?.({ rootDir, artifactRoot: artifactRootPath, origin });
 
-  const fingerprint = computeInputsFingerprint(rootDir, inputs);
+  const fingerprint = computeArtifactFingerprint(rootDir, inputs, origin);
   const manifestPath = resolve(artifactRootPath, manifestFile);
   const fingerprintPath = resolve(artifactRootPath, fingerprintFile);
 
@@ -142,6 +143,7 @@ export interface CopyArtifactsToPackageOptions {
   sourceRoot: string;
   packageRoot: string;
   artifactDir?: string;
+  packageArtifactDir?: string;
   label: string;
   rebuildHint?: string;
   validateManifest?: boolean;
@@ -154,6 +156,7 @@ export function copyArtifactsToPackage(options: CopyArtifactsToPackageOptions): 
     sourceRoot,
     packageRoot,
     artifactDir = DEFAULT_ARTIFACT_ROOT,
+    packageArtifactDir = PACKAGE_ARTIFACT_ROOT,
     label,
     rebuildHint,
     validateManifest: shouldValidateManifest = true,
@@ -162,7 +165,7 @@ export function copyArtifactsToPackage(options: CopyArtifactsToPackageOptions): 
   } = options;
 
   const source = resolve(sourceRoot, artifactDir);
-  const target = resolve(packageRoot, artifactDir);
+  const target = resolve(packageRoot, packageArtifactDir);
 
   if (!existsSync(source)) {
     const hint = rebuildHint ? `\nRun: ${rebuildHint}` : "";
@@ -181,8 +184,18 @@ export function copyArtifactsToPackage(options: CopyArtifactsToPackageOptions): 
   } else {
     rmSync(target, { recursive: true, force: true });
   }
+  rmSync(target, { recursive: true, force: true });
 
   cpSync(source, target, { recursive: true, force: true });
+  rewritePackageArtifactManifest(target, packageArtifactDir);
 
   logger.info(`[${label}] copied artifacts from ${source}`);
+}
+
+function rewritePackageArtifactManifest(target: string, packageArtifactDir: string): void {
+  const manifestPath = resolve(target, ARTIFACT_MANIFEST_FILENAME);
+  if (!existsSync(manifestPath)) return;
+
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf-8")) as Record<string, unknown>;
+  writeJson(manifestPath, { ...manifest, artifactRoot: packageArtifactDir });
 }

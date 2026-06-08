@@ -109,6 +109,16 @@ export function OnboardingWizard(): ReactElement {
     if (wizard.isSaving) return;
     if (key.tab) {
       wizard.toggleFocusArea();
+      return;
+    }
+    if (wizard.focusArea === "nav") {
+      if (key.leftArrow) {
+        wizard.moveNavIndex(-1);
+        return;
+      }
+      if (key.rightArrow) {
+        wizard.moveNavIndex(1);
+      }
     }
   });
 
@@ -148,7 +158,7 @@ export function OnboardingWizard(): ReactElement {
               <Button
                 variant="ghost"
                 onPress={wizard.handleBack}
-                isActive={wizard.focusArea === "nav"}
+                isActive={wizard.focusArea === "nav" && wizard.navIndex === 0}
               >
                 Back
               </Button>
@@ -156,7 +166,9 @@ export function OnboardingWizard(): ReactElement {
             <Button
               variant="primary"
               onPress={wizard.handleNext}
-              isActive={wizard.focusArea === "nav"}
+              isActive={
+                wizard.focusArea === "nav" && wizard.navIndex === (wizard.isFirstStep ? 0 : 1)
+              }
               disabled={!wizard.canProceed}
             >
               {wizard.isLastStep ? "Complete Setup" : "Next"}

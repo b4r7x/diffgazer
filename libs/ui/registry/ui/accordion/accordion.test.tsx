@@ -116,6 +116,20 @@ describe("Accordion", () => {
     );
   });
 
+  it("keeps explicit value undefined controlled instead of adopting internal state", async () => {
+    const onChange = vi.fn();
+    renderAccordion({ value: undefined, onChange });
+    const sectionOne = screen.getByRole("button", { name: "Section One" });
+    const sectionTwo = screen.getByRole("button", { name: "Section Two" });
+    expect(sectionOne).toHaveAttribute("aria-expanded", "false");
+    expect(sectionTwo).toHaveAttribute("aria-expanded", "false");
+
+    await userEvent.click(sectionTwo);
+    expect(onChange).toHaveBeenCalledWith("two");
+    expect(sectionOne).toHaveAttribute("aria-expanded", "false");
+    expect(sectionTwo).toHaveAttribute("aria-expanded", "false");
+  });
+
   it("controlled single mode calls onChange with new value", async () => {
     const onChange = vi.fn();
     renderAccordion({ value: "one", onChange });

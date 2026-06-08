@@ -1,0 +1,25 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "code-block-highlight",
+  "title": "Code Block Highlight",
+  "description": "Optional lowlight-powered syntax highlighting helpers for CodeBlock.",
+  "dependencies": ["lowlight"],
+  "registryDependencies": ["https://r.b4r7.dev/r/ui/code-block.json"],
+  "files": [
+    {
+      "path": "registry/ui/code-block/code-block-highlight.tsx",
+      "content": "import { createElement, type ReactNode } from \"react\";\nimport { CodeBlockContent, type CodeBlockContentProps } from \"./code-block-content\";\nimport { CodeBlockLine, type CodeBlockLineState } from \"./code-block-line\";\n\ninterface HastText {\n  type: \"text\";\n  value: string;\n}\ninterface HastElement {\n  type: \"element\";\n  tagName: string;\n  properties?: { className?: string | string[] | undefined } | undefined;\n  children?: HastNode[] | undefined;\n}\ntype HastNode = HastText | HastElement | { type: string };\ninterface HastRoot {\n  type: \"root\";\n  children: HastNode[];\n}\n\nexport interface LowlightInstance {\n  highlight(language: string, value: string): HastRoot;\n  highlightAuto(value: string): HastRoot;\n}\n\nconst MISSING_DEPENDENCY_MESSAGE =\n  \"@diffgazer/ui/components/code-block/highlight requires the optional peer dependency 'lowlight'. Install it with: npm install lowlight\";\n\nlet lowlightPromise: Promise<LowlightInstance> | null = null;\n\nexport function createDefaultLowlight(): Promise<LowlightInstance> {\n  if (!lowlightPromise) {\n    lowlightPromise = import(\"lowlight\")\n      .then((mod) => mod.createLowlight(mod.common) as LowlightInstance)\n      .catch(() => {\n        throw new Error(MISSING_DEPENDENCY_MESSAGE);\n      });\n  }\n  return lowlightPromise;\n}\n\nexport interface CodeBlockHighlightProps extends Omit<CodeBlockContentProps, \"children\"> {\n  code: string;\n  language?: string;\n  lineStates?: Record<number, CodeBlockLineState>;\n  lowlight?: LowlightInstance;\n}\n\nfunction classListOf(node: HastElement): string | undefined {\n  const className = node.properties?.className;\n  if (!className) return undefined;\n  if (typeof className === \"string\") return className;\n  if (Array.isArray(className)) return className.join(\" \");\n  return undefined;\n}\n\nfunction renderNode(node: HastNode, key: number): ReactNode {\n  if (node.type === \"text\") return (node as HastText).value;\n  if (node.type === \"element\") {\n    const el = node as HastElement;\n    const children = (el.children ?? []).map((child, i) => renderNode(child, i));\n    return createElement(el.tagName, { key, className: classListOf(el) }, ...children);\n  }\n  return null;\n}\n\nfunction highlightLine(\n  source: string,\n  language: string | undefined,\n  lowlight: LowlightInstance | undefined,\n): ReactNode {\n  if (source.length === 0) return null;\n  if (!lowlight) return source;\n  try {\n    const tree: HastRoot = language\n      ? lowlight.highlight(language, source)\n      : lowlight.highlightAuto(source);\n    return tree.children.map((child, i) => renderNode(child, i));\n  } catch {\n    // lowlight throws when the language is unregistered; render plain text so\n    // a typo'd language name never crashes the page.\n    return source;\n  }\n}\n\nexport function CodeBlockHighlight({\n  code,\n  language,\n  lineStates,\n  lowlight,\n  showLineNumbers = true,\n  ...contentProps\n}: CodeBlockHighlightProps) {\n  const lines = code.split(\"\\n\");\n  return (\n    <CodeBlockContent showLineNumbers={showLineNumbers} {...contentProps}>\n      {lines.map((line, i) => {\n        const number = i + 1;\n        return (\n          <CodeBlockLine\n            // biome-ignore lint/suspicious/noArrayIndexKey: code lines render in fixed source order and are never reordered; the line index is the stable identity (line content can repeat).\n            key={i}\n            number={showLineNumbers ? number : undefined}\n            state={lineStates?.[number]}\n          >\n            {highlightLine(line, language, lowlight)}\n          </CodeBlockLine>\n        );\n      })}\n    </CodeBlockContent>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/code-block/highlight.ts",
+      "content": "export {\n  CodeBlockHighlight,\n  type CodeBlockHighlightProps,\n  createDefaultLowlight,\n  type LowlightInstance,\n} from \"./code-block-highlight\";\n",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": true,
+    "hidden": true
+  },
+  "type": "registry:ui"
+}

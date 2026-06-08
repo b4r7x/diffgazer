@@ -1,15 +1,42 @@
-// Post-move dead-file / dead-export / unused-dependency sweep that neither Biome
-// nor dependency-cruiser performs.
+// Dead-file / dead-export / unused-dependency sweep that neither Biome nor
+// dependency-cruiser performs.
 //
-// STAGED ADOPTION: knip runs as a non-blocking REPORT (`pnpm run knip`). It is
-// intentionally NOT wired into the blocking `verify` / `test-ci` / `check` gates
-// yet. Workspace path aliases and the dual-mode registry source produce expected
-// false positives. Triage the reported findings, then promote individual rules to
-// errors (via the `rules` map) and add `knip` to the gate as a follow-up.
+// Generated registries, docs fixtures, package artifact mirrors, and package
+// entry contracts are intentionally configured here so `pnpm run knip` reports
+// actionable drift instead of public handoff surfaces.
 {
   "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
-  "ignoreBinaries": ["depcruise", "biome", "turbo", "playwright", "lhci"],
-  "ignoreDependencies": ["@diffgazer/.+"],
+  "ignoreExportsUsedInFile": true,
+  "ignoreBinaries": ["depcruise", "biome", "turbo", "playwright", "lhci", "dev"],
+  "ignoreDependencies": [
+    "@diffgazer/.+",
+    "@clack/prompts",
+    "@types/diff",
+    "@types/figlet",
+    "@types/hast",
+    "@chialab/vitest-axe",
+    "@tailwindcss/postcss",
+    "commander",
+    "diff",
+    "figlet",
+    "next",
+    "picocolors",
+    "postcss",
+    "shadcn",
+    "tsup",
+    "vitest"
+  ],
+  "ignoreFiles": [
+    "libs/keys/artifacts/artifacts/source/registry/examples/**",
+    "libs/keys/docs/hook-docs/**",
+    "libs/keys/examples/playground/**",
+    "libs/ui/registry/ui/shared/*.css",
+    "libs/ui/styles/*.css"
+  ],
+  "ignoreIssues": {
+    "libs/registry/src/manifest.ts": ["types"],
+    "libs/ui/theme/index.ts": ["exports"]
+  },
   "ignore": [
     "**/dist/**",
     "**/.output/**",
@@ -20,18 +47,17 @@
     "**/*.gen.ts",
     "libs/ui/public/r/**",
     "libs/keys/public/r/**",
-    "libs/core/src/catalog/catalog-snapshot.ts",
-    "apps/docs/registry/**"
+    "libs/core/src/catalog/catalog-snapshot.ts"
   ],
   "workspaces": {
     ".": {
       "entry": ["scripts/monorepo/**/*.mjs", "scripts/monorepo/**/*.test.mjs"]
     },
     "apps/web": {
-      "entry": ["src/main.tsx", "src/routes/**/*.tsx", "vite.config.ts", "vitest.config.ts"]
+      "entry": ["src/main.tsx", "src/routes/**/*.tsx"]
     },
     "apps/landing": {
-      "entry": ["src/main.tsx", "index.html", "vite.config.ts", "vitest.config.ts"]
+      "entry": ["src/main.tsx", "index.html"]
     },
     "apps/docs": {
       "entry": [
@@ -39,9 +65,7 @@
         "src/server.ts",
         "src/router.tsx",
         "src/routes/**/*.tsx",
-        "vite.config.ts",
         "source.config.ts",
-        "playwright.config.ts",
         "scripts/**/*.{ts,mjs}"
       ]
     },

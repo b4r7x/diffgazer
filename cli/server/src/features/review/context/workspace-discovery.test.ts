@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -64,5 +64,40 @@ describe("discoverWorkspacePackages", () => {
       name: "@diffgazer/core",
       dir: "packages/core",
     });
+  });
+
+  it("ignores symlinked workspace roots that escape the project root", async () => {
+    const outsideRoot = await mkdtemp(join(tmpdir(), "diffgazer-outside-"));
+    try {
+      await writeProjectFile(
+        "pnpm-workspace.yaml",
+        ["packages:", '  - "apps/*"', '  - "outside"', ""].join("\n"),
+      );
+      await writePackage("apps/web", "@diffgazer/web");
+      await writePackage(join(outsideRoot, "escaped"), "@diffgazer/escaped");
+      await symlink(join(outsideRoot, "escaped"), join(projectRoot, "outside"));
+
+      const packages = await discoverWorkspacePackages(projectRoot);
+
+      expect(packages.map((pkg) => pkg.name)).toEqual(["@diffgazer/web"]);
+    } finally {
+      await rm(outsideRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("ignores malformed or schema-invalid package manifests", async () => {
+    await writeProjectFile("pnpm-workspace.yaml", ["packages:", '  - "packages/*"', ""].join("\n"));
+    await writeProjectFile("packages/bad-json/package.json", "{not-json");
+    await writeProjectFile(
+      "packages/bad-shape/package.json",
+      JSON.stringify({ name: ["wrong"], dependencies: "nope" }),
+    );
+    await writePackage("packages/good", "@diffgazer/good");
+
+    const packages = await discoverWorkspacePackages(projectRoot);
+
+    expect(packages).toEqual([
+      expect.objectContaining({ name: "@diffgazer/good", dir: "packages/good" }),
+    ]);
   });
 });

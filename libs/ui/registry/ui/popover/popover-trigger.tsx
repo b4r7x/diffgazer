@@ -123,7 +123,8 @@ export function PopoverTrigger({ children, className, ref }: PopoverTriggerProps
     const trigger = triggerRef.current;
     if (!trigger) return;
     const handlePointerDown = (event: PointerEvent) => {
-      if (!(event.target instanceof Node)) return;
+      const View = trigger.ownerDocument.defaultView;
+      if (!View || !(event.target instanceof View.Node)) return;
       if (trigger.contains(event.target)) return;
       const content = trigger.ownerDocument.getElementById(popoverId);
       if (content?.contains(event.target)) return;

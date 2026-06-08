@@ -51,7 +51,6 @@ reviewRouter.post(
 
 reviewRouter.get(
   "/reviews/:id/stream",
-  requireSetup,
   requireRepoAccess,
   zValidator("param", ReviewIdParamSchema, zodErrorHandler),
   resumeStreamById,
@@ -59,7 +58,6 @@ reviewRouter.get(
 
 reviewRouter.get(
   "/sessions/active",
-  requireSetup,
   requireRepoAccess,
   zValidator("query", ActiveSessionQuerySchema, zodErrorHandler),
   (c) => {
@@ -70,7 +68,6 @@ reviewRouter.get(
 
 reviewRouter.delete(
   "/sessions/:id",
-  requireSetup,
   requireRepoAccess,
   zValidator("param", ReviewIdParamSchema, zodErrorHandler),
   (c) => cancelSessionHandler(c, c.req.valid("param").id),

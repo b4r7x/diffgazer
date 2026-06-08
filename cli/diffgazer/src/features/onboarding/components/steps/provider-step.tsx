@@ -3,9 +3,9 @@ import type { ProviderStatus } from "@diffgazer/core/schemas/config";
 import { AVAILABLE_PROVIDERS, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
-import { useTheme } from "../../../../app/providers/theme";
 import { RadioGroup } from "../../../../components/ui/radio";
 import { Spinner } from "../../../../components/ui/spinner";
+import { useTheme } from "../../../../theme/provider";
 
 interface ProviderStepProps {
   value?: string;

@@ -145,10 +145,39 @@ describe("ModelStep", () => {
 
     render(<Harness />, { wrapper: makeWrapper(api) });
 
-    const input = await screen.findByPlaceholderText("gemini-2.5-flash");
+    const input = await screen.findByRole("textbox", { name: "Model ID" });
     await user.type(input, "gemini-custom");
 
     expect(input).toHaveValue("gemini-custom");
+  });
+
+  it("offers a manual OpenRouter model-id input when the catalog resolves with no models", async () => {
+    const user = userEvent.setup();
+    const mockGetOpenRouterModels = vi
+      .fn<() => Promise<OpenRouterModelsResponse>>()
+      .mockResolvedValue({
+        models: [],
+        fetchedAt: new Date().toISOString(),
+        cached: false,
+      });
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      getOpenRouterModels: mockGetOpenRouterModels,
+    } satisfies BoundApi;
+
+    function Harness() {
+      const [model, setModel] = useState<string | null>(null);
+      return (
+        <ModelStep provider="openrouter" value={model} onChange={setModel} onCommit={vi.fn()} />
+      );
+    }
+
+    render(<Harness />, { wrapper: makeWrapper(api) });
+
+    const input = await screen.findByRole("textbox", { name: "OpenRouter model ID" });
+    await user.type(input, "openai/gpt-4o");
+
+    expect(input).toHaveValue("openai/gpt-4o");
   });
 
   it("commits the selected OpenRouter model after models load", async () => {

@@ -43,6 +43,7 @@ export interface ValidatePublicRegistryFreshOptions {
   publicRegistryDir?: string;
   transformSourceItem?: (ctx: { itemName: string; item: RegistryItem }) => RegistryItem;
   transformSourceContent?: (ctx: { itemName: string; filePath: string; content: string }) => string;
+  shouldSkipSourceItem?: (ctx: { itemName: string; item: RegistryItem }) => boolean;
 }
 
 const PublicItemSchema = RegistryItemSchema.extend({
@@ -101,6 +102,7 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
     publicRegistryDir = "public/r",
     transformSourceItem,
     transformSourceContent,
+    shouldSkipSourceItem,
   } = options;
 
   const sourceRegistry = readJson(resolve(rootDir, sourceRegistryPath), RegistrySchema);
@@ -126,6 +128,10 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
   }
 
   for (const sourceItem of allSourceItems) {
+    if (shouldSkipSourceItem?.({ itemName: sourceItem.name, item: sourceItem })) {
+      continue;
+    }
+
     const isHidden = (sourceItem.meta as Record<string, unknown> | undefined)?.hidden;
     const expectedItem =
       transformSourceItem?.({

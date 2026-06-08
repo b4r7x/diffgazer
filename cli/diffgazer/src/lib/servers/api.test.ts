@@ -91,7 +91,7 @@ describe("createApiServer readiness wiring", () => {
     execaMock.mockReturnValue(child);
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse());
 
-    const server = createApiServer({ cwd: "/srv", port: 4100 });
+    const server = createApiServer({ cwd: "/srv", port: 4100, projectRoot: "/repo" });
     server.start();
     child.stdout.emit("data", Buffer.from("Server running on 4100"));
 
@@ -110,7 +110,7 @@ describe("createApiServer readiness wiring", () => {
     vi.spyOn(globalThis, "fetch").mockReturnValue(healthGate);
     const onReady = vi.fn();
 
-    const server = createApiServer({ cwd: "/srv", port: 4200, onReady });
+    const server = createApiServer({ cwd: "/srv", port: 4200, projectRoot: "/repo", onReady });
     server.start();
     child.stdout.emit("data", Buffer.from("Server running"));
 
@@ -121,5 +121,25 @@ describe("createApiServer readiness wiring", () => {
     await vi.waitFor(() => {
       expect(onReady).toHaveBeenCalledExactlyOnceWith("http://localhost:4200");
     });
+  });
+
+  it("passes the configured project root to the API child env", () => {
+    const child = createFakeChild();
+    execaMock.mockReturnValue(child);
+
+    const server = createApiServer({ cwd: "/srv", port: 4300, projectRoot: "/repo/root" });
+    server.start();
+
+    expect(execaMock).toHaveBeenCalledWith(
+      "npx",
+      ["tsx", "src/serve.ts"],
+      expect.objectContaining({
+        cwd: "/srv",
+        env: expect.objectContaining({
+          PORT: "4300",
+          DIFFGAZER_PROJECT_ROOT: "/repo/root",
+        }),
+      }),
+    );
   });
 });

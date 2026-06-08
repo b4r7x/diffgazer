@@ -15,6 +15,7 @@ interface ModelListProps {
   onHighlightChange: (modelId: string | null) => void;
   onBoundaryReached: (direction: "previous" | "next") => void;
   isLoading?: boolean;
+  isSaving?: boolean;
   emptyLabel?: string;
   ref?: React.Ref<HTMLDivElement>;
 }
@@ -29,9 +30,26 @@ export function ModelList({
   onHighlightChange,
   onBoundaryReached,
   isLoading,
+  isSaving = false,
   emptyLabel,
   ref,
 }: ModelListProps) {
+  if (isSaving) {
+    return (
+      <div
+        ref={ref}
+        role="radiogroup"
+        aria-label="Available models"
+        className="px-4 py-3 max-h-[50vh] overflow-y-auto scrollbar-thin"
+      >
+        <EmptyState size="sm" live>
+          <Spinner size="sm" aria-hidden="true" />
+          <EmptyState.Message>Saving...</EmptyState.Message>
+        </EmptyState>
+      </div>
+    );
+  }
+
   if (models.length === 0) {
     return (
       <div

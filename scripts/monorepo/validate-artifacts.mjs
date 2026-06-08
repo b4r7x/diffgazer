@@ -90,6 +90,7 @@ function validateUiPackageExports() {
   registryExports.add("./components/code-block/highlight");
   registryExports.add("./components/command-palette/highlight");
   registryExports.add("./lib/utils");
+  registryExports.add("./theme");
   registryExports.add("./theme-base.css");
   registryExports.add("./theme.css");
   registryExports.add("./sources.css");
@@ -119,6 +120,41 @@ function validateUiPackageExports() {
   if (exportedHiddenItems.length) {
     errors.push(
       `@diffgazer/ui package exports expose hidden registry items: ${exportedHiddenItems.join(", ")}`,
+    );
+  }
+
+  return errors;
+}
+
+function collectKeysArtifactsMirrorErrors() {
+  const sourceRoot = resolve(root, "libs/keys/dist/artifacts");
+  const packageRoot = resolve(root, "libs/keys/artifacts/artifacts");
+  const notManifest = (path) => !path.endsWith("artifact-manifest.json");
+  const errors = collectTreeParityErrors(
+    sourceRoot,
+    packageRoot,
+    "@diffgazer/keys-artifacts mirror",
+    {
+      sourceFilter: notManifest,
+      artifactFilter: notManifest,
+    },
+  );
+
+  const sourceManifestPath = resolve(sourceRoot, "artifact-manifest.json");
+  const packageManifestPath = resolve(packageRoot, "artifact-manifest.json");
+  if (!existsSync(sourceManifestPath) || !existsSync(packageManifestPath)) {
+    errors.push("@diffgazer/keys-artifacts mirror: missing artifact-manifest.json");
+    return errors;
+  }
+
+  const expectedPackageManifest = {
+    ...readJson(sourceManifestPath),
+    artifactRoot: "artifacts",
+  };
+  const packageManifest = readJson(packageManifestPath);
+  if (JSON.stringify(expectedPackageManifest) !== JSON.stringify(packageManifest)) {
+    errors.push(
+      "@diffgazer/keys-artifacts mirror: package manifest differs beyond artifactRoot rewrite",
     );
   }
 
@@ -237,11 +273,7 @@ const checks = [
     rootDir: resolve(root, "libs/keys"),
     label: "@diffgazer/keys",
   }),
-  ...collectTreeParityErrors(
-    resolve(root, "libs/keys/dist/artifacts"),
-    resolve(root, "libs/keys/artifacts/dist/artifacts"),
-    "@diffgazer/keys-artifacts mirror",
-  ),
+  ...collectKeysArtifactsMirrorErrors(),
   ...validateIntegrityBundle(
     resolve(root, "cli/add/src/generated/keys-copy-bundle.json"),
     ["items"],

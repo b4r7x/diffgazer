@@ -1,6 +1,12 @@
 import type { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { FullReviewStreamEvent, LensStat, StepId } from "@diffgazer/core/schemas/events";
-import type { LensId, ProfileId, ReviewIssue, ReviewMode } from "@diffgazer/core/schemas/review";
+import type {
+  LensId,
+  ProfileId,
+  ReviewIssue,
+  ReviewMode,
+  SeverityFilter,
+} from "@diffgazer/core/schemas/review";
 import type { AIError } from "../../shared/lib/ai/types.js";
 import type { getProfile } from "../../shared/lib/review/profiles.js";
 import type { StoreError } from "../../shared/lib/storage/types.js";
@@ -18,7 +24,9 @@ export interface StreamReviewParams {
 /** Review pipeline resolved config (lenses + profile). @see cli/add/src/context.ts for CLI-specific variants. */
 export interface ResolvedConfig {
   activeLenses: LensId[];
+  effectiveProfileId?: ProfileId;
   profile: ReturnType<typeof getProfile> | undefined;
+  severityFilter?: SeverityFilter;
   projectContext: string;
 }
 

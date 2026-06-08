@@ -1,4 +1,5 @@
 import { matchQueryState } from "@diffgazer/core/api/hooks";
+import { deriveTrustStatus } from "@diffgazer/core/navigation";
 import { isListNavigationKey, toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
@@ -6,12 +7,25 @@ import { Panel } from "@diffgazer/ui/components/panel";
 import { SearchInput } from "@diffgazer/ui/components/search-input";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { type KeyboardEvent, useRef } from "react";
+import { TrustPanel } from "@/components/shared/trust-panel";
 import { HistoryInsightsPane } from "@/features/history/components/insights-pane";
 import { TimelineList } from "@/features/history/components/timeline-list";
 import { useHistoryKeyboard } from "@/features/history/hooks/use-keyboard";
 import { useHistoryPage } from "@/features/history/hooks/use-page";
+import { useConfigData } from "@/hooks/use-config";
 
 export function HistoryPage() {
+  const { trust, repoRoot, projectId } = useConfigData();
+  const { needsTrust } = deriveTrustStatus({ trust, projectId, repoRoot });
+
+  if (needsTrust && projectId && repoRoot) {
+    return <TrustPanel directory={repoRoot} projectId={projectId} />;
+  }
+
+  return <HistoryPageContent />;
+}
+
+function HistoryPageContent() {
   const {
     reviewsQuery,
     focusZone,

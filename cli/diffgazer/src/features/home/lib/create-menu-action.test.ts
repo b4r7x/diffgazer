@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import type { Route } from "../../../app/routes";
+import type { Route } from "../../../lib/routes.js";
 import { createHomeMenuAction, type HomeMenuActionOptions } from "./create-menu-action";
 
 interface Harness {
@@ -65,17 +65,10 @@ describe("createHomeMenuAction", () => {
     expect(h.routes).toEqual([{ screen: "review", mode: "staged" }]);
   });
 
-  test("review-files is a no-op (placeholder until feature lands)", () => {
-    const h = buildHarness();
-    h.dispatch("review-files");
-    expect(h.routes).toEqual([]);
-  });
-
   test("review-start actions are gated when not trusted", () => {
     const h = buildHarness({ isTrusted: false });
     h.dispatch("review-unstaged");
     h.dispatch("review-staged");
-    h.dispatch("review-files");
     expect(h.routes).toEqual([]);
   });
 
@@ -84,9 +77,14 @@ describe("createHomeMenuAction", () => {
     noSession.dispatch("resume-review");
     expect(noSession.routes).toEqual([]);
 
-    const withSession = buildHarness({ hasActiveSession: true });
+    const withSession = buildHarness({
+      hasActiveSession: true,
+      activeSession: { reviewId: "active-review", mode: "staged" },
+    });
     withSession.dispatch("resume-review");
-    expect(withSession.routes).toEqual([{ screen: "review" }]);
+    expect(withSession.routes).toEqual([
+      { screen: "review", reviewId: "active-review", mode: "staged" },
+    ]);
   });
 
   test("history/settings/help navigate to their screens", () => {
@@ -111,13 +109,13 @@ describe("createHomeMenuAction", () => {
     h.dispatch("history");
     h.dispatch("settings");
     h.dispatch("help");
+    expect(h.routes).toEqual([{ screen: "history" }, { screen: "settings" }, { screen: "help" }]);
+  });
+
+  test("resume-review is gated by the shared trust contract", () => {
+    const h = buildHarness({ isTrusted: false, hasActiveSession: true });
     h.dispatch("resume-review");
-    expect(h.routes).toEqual([
-      { screen: "history" },
-      { screen: "settings" },
-      { screen: "help" },
-      { screen: "review" },
-    ]);
+    expect(h.routes).toEqual([]);
   });
 
   test("unknown menu actions are no-ops (do not navigate or shutdown)", () => {

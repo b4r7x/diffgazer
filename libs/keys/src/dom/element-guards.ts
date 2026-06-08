@@ -18,6 +18,11 @@ export function isHTMLTextAreaElement(value: unknown): value is HTMLTextAreaElem
   return Boolean(View && value instanceof View.HTMLTextAreaElement);
 }
 
+export function isHTMLDialogElement(value: unknown): value is HTMLDialogElement {
+  const View = getOwnerView(value);
+  return Boolean(View && value instanceof View.HTMLDialogElement);
+}
+
 export function isNode(
   value: unknown,
   ownerView: (Window & typeof globalThis) | null,

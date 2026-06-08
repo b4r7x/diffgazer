@@ -191,6 +191,7 @@ try {
   }
 
   writePublicDeclaration("lib/utils", resolve(declarationRoot, "registry/lib/utils.d.ts"));
+  writePublicDeclaration("theme/index", resolve(declarationRoot, "theme/index.d.ts"));
   writePublicDeclaration(
     "components/logo/figlet",
     resolve(declarationRoot, "registry/ui/logo/figlet-text.d.ts"),

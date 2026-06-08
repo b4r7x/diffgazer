@@ -27,6 +27,16 @@ describe("createReadyHandler", () => {
     expect(openMock).not.toHaveBeenCalled();
   });
 
+  it("opens the actual Vite address when auto-open is enabled", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    createReadyHandler(true)("http://localhost:3002");
+    await flushMicrotasks();
+
+    expect(log).toHaveBeenCalledWith("Diffgazer is running at http://localhost:3002");
+    expect(openMock).toHaveBeenCalledWith("http://localhost:3002");
+  });
+
   it("prints the server URL and opens the browser when auto-open is enabled", async () => {
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
 

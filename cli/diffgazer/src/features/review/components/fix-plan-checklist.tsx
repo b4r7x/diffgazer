@@ -1,9 +1,9 @@
 import type { FixPlanStep } from "@diffgazer/core/schemas/review";
 import { Box, Text, useInput } from "ink";
 import { useState } from "react";
-import { useTheme } from "../../../app/providers/theme";
 import { Badge } from "../../../components/ui/badge";
 import type { CliColorTokens } from "../../../theme/palettes";
+import { useTheme } from "../../../theme/provider";
 
 export interface FixPlanChecklistProps {
   steps: FixPlanStep[];

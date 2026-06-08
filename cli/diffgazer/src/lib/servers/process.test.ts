@@ -80,6 +80,54 @@ describe("createProcessServer readiness", () => {
     });
   });
 
+  it("uses resolveReadyAddress when Vite reports a different port", async () => {
+    const child = createFakeChild();
+    execaMock.mockReturnValue(child);
+    const onReady = vi.fn();
+    const resolveReadyAddress = vi.fn(
+      (_output: string, defaultAddress: string) => `${defaultAddress}/vite`,
+    );
+
+    const server = createProcessServer({
+      ...BASE_CONFIG,
+      onReady,
+      resolveReadyAddress,
+    });
+    server.start();
+    child.stdout.emit("data", Buffer.from("ready\n  ➜  Local:   http://localhost:3002/"));
+
+    await vi.waitFor(() => {
+      expect(resolveReadyAddress).toHaveBeenCalled();
+      expect(onReady).toHaveBeenCalledExactlyOnceWith("http://localhost:5000/vite");
+    });
+  });
+
+  it("clears crashed child state so start can spawn a new process", async () => {
+    let rejectChild: (error: Error) => void = () => {};
+    const child = new Promise<unknown>((_resolve, reject) => {
+      rejectChild = reject;
+    }) as FakeChild;
+    child.stdout = new EventEmitter();
+    child.kill = vi.fn();
+
+    execaMock.mockReturnValueOnce(child);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const server = createProcessServer({ ...BASE_CONFIG });
+    server.start();
+    rejectChild(new Error("child crashed"));
+
+    await vi.waitFor(() => {
+      expect(execaMock).toHaveBeenCalledTimes(1);
+    });
+
+    const child2 = createFakeChild();
+    execaMock.mockReturnValueOnce(child2);
+    server.start();
+
+    expect(execaMock).toHaveBeenCalledTimes(2);
+  });
+
   it("runs readyCheck only once across repeated ready output", async () => {
     const child = createFakeChild();
     execaMock.mockReturnValue(child);

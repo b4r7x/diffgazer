@@ -1,0 +1,47 @@
+---
+title: KeyboardProvider
+description: Context provider that enables scoped keyboard handling for @diffgazer/keys hooks.
+---
+
+# KeyboardProvider
+
+Context provider that enables scoped keyboard handling. Wraps your app (or a subtree) and listens for `keydown` events on `window`.
+
+```tsx
+import { KeyboardProvider } from "@diffgazer/keys";
+
+function App() {
+  return (
+    <KeyboardProvider>
+      <YourApp />
+    </KeyboardProvider>
+  );
+}
+```
+
+## Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `children` | `ReactNode` | Required. Child elements. |
+
+## Behavior
+
+- Creates a `"global"` scope on mount. All handlers registered without a scope push land here.
+- Maintains a scope stack. Declarative scopes follow React tree order, imperative `pushScope` calls sit above declarative scopes, and only handlers in the active scope fire.
+- Skips events where `event.defaultPrevented` is already `true`.
+- Skips handlers for text-editable targets (text-like `input`, `textarea`, and editable content) unless `allowInInput` is set. Non-text controls such as `select`, checkbox, radio, range, and button inputs are allowed by default.
+- When a handler specifies `containerRef` + `focusWithinOnly`, only fires if the event target is inside that container.
+- Handler priority: iterates entries from **last-registered to first**. The first handled match wins; a handler can return `false` to decline the match and continue to the next lower-priority handler. If `preventDefault` is enabled for that handler, the event is still prevented before the handler returns.
+- Errors in handlers are caught and logged: `[@diffgazer/keys] Handler error for "${hotkey}": ...`
+- When `preventDefault` is set on a handler's options, `event.preventDefault()` is called before the handler runs.
+
+## Provider-Aware Hooks
+
+The following hooks participate in `KeyboardProvider` scope and dispatch:
+
+- [useKey](/keys/hooks/use-key) is a no-op without a provider.
+- [useScope](/keys/hooks/use-scope)
+- [useScopedNavigation](/keys/hooks/use-scoped-navigation)
+- [useActionRowNavigation](/keys/hooks/use-action-row-navigation)
+- [useFocusZone](/keys/hooks/use-focus-zone)

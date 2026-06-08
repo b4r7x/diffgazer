@@ -49,12 +49,8 @@ async function readProjectIndex(projectPath: string): Promise<string[]> {
 }
 
 async function writeProjectIndex(projectPath: string, ids: string[]): Promise<void> {
-  try {
-    await mkdir(PROJECT_INDEX_DIR, { recursive: true });
-    await atomicWriteFile(projectIndexPath(projectPath), JSON.stringify(ids));
-  } catch (e) {
-    console.warn("[reviews] failed to write project index:", e);
-  }
+  await mkdir(PROJECT_INDEX_DIR, { recursive: true });
+  await atomicWriteFile(projectIndexPath(projectPath), JSON.stringify(ids));
 }
 
 async function addToProjectIndex(projectPath: string, reviewId: string): Promise<void> {
@@ -226,10 +222,37 @@ export async function listReviews(
           items.push(readResult.value.metadata);
         }
       }
-      const sorted = filterByProjectAndSort(items, undefined, "createdAt");
+      const indexedItems = filterByProjectAndSort(items, undefined, "createdAt");
+      const fullScanResult = await reviewStore.list();
+      if (!fullScanResult.ok) return fullScanResult;
 
-      const migratedItems = await migrateMetadataList(sorted);
-      return ok({ items: migratedItems, warnings });
+      const fullScanItems = filterByProjectAndSort(
+        fullScanResult.value.items,
+        projectPath,
+        "createdAt",
+      );
+      const indexedKey = indexedItems.map((item) => item.id).join(",");
+      const fullScanKey = fullScanItems.map((item) => item.id).join(",");
+
+      if (indexedKey !== fullScanKey) {
+        warnings.push("Project review index was stale and has been rebuilt from saved reviews.");
+        try {
+          await writeProjectIndex(
+            projectPath,
+            fullScanItems.map((item) => item.id),
+          );
+        } catch (error) {
+          warnings.push(
+            `[reviews] Failed to rebuild project index: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      }
+
+      const migratedItems = await migrateMetadataList(fullScanItems);
+      return ok({
+        items: migratedItems,
+        warnings: [...warnings, ...fullScanResult.value.warnings],
+      });
     }
   }
 
@@ -239,17 +262,21 @@ export async function listReviews(
 
   const items = filterByProjectAndSort(result.value.items, projectPath, "createdAt");
 
-  // Lazily build project index from full scan when projectPath is provided
+  const migratedItems = await migrateMetadataList(items);
+  const warnings = [...result.value.warnings];
+
   if (projectPath && items.length > 0) {
-    const ids = items.map((m) => m.id);
-    writeProjectIndex(projectPath, ids).catch((e) =>
-      console.warn("[reviews] project index write failed:", e),
-    );
+    const ids = items.map((item) => item.id);
+    try {
+      await writeProjectIndex(projectPath, ids);
+    } catch (error) {
+      warnings.push(
+        `[reviews] Failed to build project index: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
-  const migratedItems = await migrateMetadataList(items);
-
-  return ok({ items: migratedItems, warnings: result.value.warnings });
+  return ok({ items: migratedItems, warnings });
 }
 
 export async function getReview(reviewId: string): Promise<Result<SavedReview, StoreError>> {

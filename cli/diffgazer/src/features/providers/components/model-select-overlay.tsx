@@ -10,12 +10,12 @@ import { OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useEffect, useEffectEvent, useState } from "react";
-import { useTheme } from "../../../app/providers/theme";
 import { Button } from "../../../components/ui/button";
 import { Dialog } from "../../../components/ui/dialog";
 import { Spinner } from "../../../components/ui/spinner";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import type { CliColorTokens } from "../../../theme/palettes";
+import { useTheme } from "../../../theme/provider";
 import { ModelListItem } from "./model-list-item";
 import { SearchInput } from "./model-search-input";
 import { TierFilterTabs } from "./tier-filter-tabs";
@@ -124,11 +124,21 @@ export function ModelSelectOverlay({
     resetFilters();
     setFocusZone("list");
     setHighlightIndex(0);
+    activateProvider.reset();
   });
 
+  const resetOnClose = useEffectEvent(() => {
+    activateProvider.reset();
+  });
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: providerId is a reset trigger; useEffectEvent keeps reset callbacks current without depending on unstable filter helpers.
   useEffect(() => {
-    if (open) resetOnOpen();
-  }, [open]);
+    if (open) {
+      resetOnOpen();
+      return;
+    }
+    resetOnClose();
+  }, [open, providerId]);
 
   function handleSelect(modelId: string) {
     activateProvider.mutate(

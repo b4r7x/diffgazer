@@ -25,7 +25,12 @@ export type {
   UsageSection,
 } from "./docs-data/types.js";
 export { syncDocsFromArtifacts } from "./docs-sync/sync.js";
+export {
+  type RewriteKeysImportOptions,
+  rewriteKeysPackageImportsInContent,
+} from "./keys-import-rewrite.js";
 export { KEYS_PACKAGE_IMPORT_TARGETS } from "./keys-imports.js";
 export { createArtifactManifest } from "./manifest.js";
 export { normalizeOrigin } from "./origin.js";
 export { buildShadcnRegistryWithOrigin } from "./shadcn/build.js";
+export { assertRegistrySourceFilePath, isRelativeSubpath } from "./utils/fs.js";

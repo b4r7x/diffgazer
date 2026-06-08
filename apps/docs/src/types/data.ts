@@ -41,5 +41,3 @@ export interface ComponentData {
   docs: ComponentDoc | null;
   crossDeps?: Array<{ library: string; type: string; items: string[] }>;
 }
-
-export type DocsData = Record<string, ComponentData>;

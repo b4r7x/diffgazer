@@ -28,7 +28,7 @@ function setupSourceArtifacts(root: string): string {
 }
 
 describe("copyArtifactsToPackage", () => {
-  it("copies artifacts from source to package dist/artifacts", () => {
+  it("copies artifacts from source dist/artifacts to package artifacts", () => {
     const sourceRoot = createTempDir();
     const packageRoot = createTempDir();
     setupSourceArtifacts(sourceRoot);
@@ -39,11 +39,15 @@ describe("copyArtifactsToPackage", () => {
       label: "test-lib",
     });
 
-    const target = join(packageRoot, "dist/artifacts");
+    const target = join(packageRoot, "artifacts");
     expect(existsSync(join(target, "artifact-manifest.json"))).toBe(true);
     expect(existsSync(join(target, "fingerprint.sha256"))).toBe(true);
     expect(existsSync(join(target, "some-file.json"))).toBe(true);
     expect(readFileSync(join(target, "some-file.json"), "utf-8")).toBe('{"test": true}');
+    expect(readFileSync(join(target, "artifact-manifest.json"), "utf-8")).toContain(
+      '"artifactRoot": "artifacts"',
+    );
+    expect(existsSync(join(packageRoot, "dist/artifacts"))).toBe(false);
   });
 
   it("throws with label and rebuildHint when source artifacts directory does not exist", () => {
@@ -106,7 +110,7 @@ describe("copyArtifactsToPackage", () => {
       validateManifest: false,
     });
 
-    expect(existsSync(join(packageRoot, "dist/artifacts/data.json"))).toBe(true);
+    expect(existsSync(join(packageRoot, "artifacts/data.json"))).toBe(true);
   });
 
   it("cleans entire dist/ with parent-dist strategy (default)", () => {
@@ -125,7 +129,7 @@ describe("copyArtifactsToPackage", () => {
     });
 
     expect(existsSync(join(distDir, "stale.txt"))).toBe(false);
-    expect(existsSync(join(packageRoot, "dist/artifacts/artifact-manifest.json"))).toBe(true);
+    expect(existsSync(join(packageRoot, "artifacts/artifact-manifest.json"))).toBe(true);
   });
 
   it("only cleans artifact dir with artifact-dir strategy", () => {
@@ -137,7 +141,7 @@ describe("copyArtifactsToPackage", () => {
     mkdirSync(distDir, { recursive: true });
     writeFileSync(join(distDir, "index.js"), "compiled output");
 
-    const targetArtifacts = join(distDir, "artifacts");
+    const targetArtifacts = join(packageRoot, "artifacts");
     mkdirSync(targetArtifacts, { recursive: true });
     writeFileSync(join(targetArtifacts, "stale.json"), "old");
 
@@ -167,10 +171,11 @@ describe("copyArtifactsToPackage", () => {
       packageRoot,
       label: "test-lib",
       artifactDir: "output/build-artifacts",
+      packageArtifactDir: "package-artifacts",
     });
 
-    expect(existsSync(join(packageRoot, "output/build-artifacts/data.json"))).toBe(true);
-    expect(readFileSync(join(packageRoot, "output/build-artifacts/data.json"), "utf-8")).toBe(
+    expect(existsSync(join(packageRoot, "package-artifacts/data.json"))).toBe(true);
+    expect(readFileSync(join(packageRoot, "package-artifacts/data.json"), "utf-8")).toBe(
       '{"custom": true}',
     );
   });

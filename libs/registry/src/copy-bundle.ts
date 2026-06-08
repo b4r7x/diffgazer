@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { z } from "zod";
 import { RegistrySchema } from "./registry-types.js";
+import { assertRegistrySourceFilePath } from "./utils/fs.js";
 
 export const CopyBundleItemSchema = z.object({
   name: z.string(),
@@ -86,6 +87,9 @@ export function buildCopyBundle(options: BuildCopyBundleOptions): BuildCopyBundl
       description: item.description ?? "",
       meta: item.meta,
       files: item.files.map((file) => {
+        assertRegistrySourceFilePath(file.path);
+        const installPath = file.target ?? file.path;
+        assertRegistrySourceFilePath(installPath, "Registry file target path");
         const filePath = resolve(sourceRoot, file.path);
         if (!existsSync(filePath)) {
           throw new Error(`Source file not found: ${filePath}`);
@@ -95,7 +99,6 @@ export function buildCopyBundle(options: BuildCopyBundleOptions): BuildCopyBundl
         // disk after `dgadd`. Registry `target` is the canonical install location;
         // when present, prefer it. Otherwise the source `path` IS the install path
         // (the legacy case where source layout matches target layout).
-        const installPath = file.target ?? file.path;
         return {
           path: normalizeFilePath(installPath, pathMapping),
           content: transformContent ? transformContent(content, file.path) : content,

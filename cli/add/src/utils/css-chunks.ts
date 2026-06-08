@@ -90,10 +90,15 @@ export function planComponentCss(
   config: ResolvedConfig,
 ): ComponentCssPlan {
   const chunksByItem = new Map<string, string[]>();
-  if (!config.tailwind?.css) return { fileOp: null, chunksByItem };
-
   const chunks = collectComponentCssChunks(resolved);
   if (chunks.length === 0) return { fileOp: null, chunksByItem };
+
+  if (!config.tailwind?.css) {
+    const itemList = [...new Set(chunks.map((chunk) => chunk.itemName))].join(", ");
+    throw new Error(
+      `Cannot install CSS for ${itemList} because components.json has no tailwind.css path. Run dgadd init or add tailwind.css to components.json before installing CSS-bearing items.`,
+    );
+  }
 
   for (const chunk of chunks) {
     const existing = chunksByItem.get(chunk.itemName) ?? [];

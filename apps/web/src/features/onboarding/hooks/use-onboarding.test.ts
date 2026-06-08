@@ -13,7 +13,7 @@ import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 let useOnboarding: typeof import("./use-onboarding").useOnboarding;
 let useSettings: typeof import("@diffgazer/core/api/hooks").useSettings;
 let ApiProvider: typeof import("@diffgazer/core/api/hooks").ApiProvider;
-let ConfigProvider: typeof import("@/app/providers/config").ConfigProvider;
+let ConfigProvider: typeof import("@/hooks/use-config").ConfigProvider;
 
 const SETTINGS_FIXTURE: SettingsConfig = {
   theme: "terminal",
@@ -47,6 +47,7 @@ function makeInitResponse(overrides: Partial<InitResponse> = {}): InitResponse {
 let mockGetSettings: Mock<BoundApi["getSettings"]>;
 let mockSaveSettings: Mock<BoundApi["saveSettings"]>;
 let mockSaveConfig: Mock<BoundApi["saveConfig"]>;
+let mockDeleteProviderCredentials: Mock<BoundApi["deleteProviderCredentials"]>;
 let mockLoadInit: Mock<BoundApi["loadInit"]>;
 let mockGetProviderStatus: Mock<BoundApi["getProviderStatus"]>;
 let queryClient: QueryClient;
@@ -60,6 +61,7 @@ function createWrapper() {
     getSettings: mockGetSettings,
     saveSettings: mockSaveSettings,
     saveConfig: mockSaveConfig,
+    deleteProviderCredentials: mockDeleteProviderCredentials,
     loadInit: mockLoadInit,
     getProviderStatus: mockGetProviderStatus,
   } satisfies BoundApi;
@@ -77,10 +79,13 @@ describe("onboarding/settings synchronization", () => {
     vi.resetModules();
     ({ useSettings, ApiProvider } = await import("@diffgazer/core/api/hooks"));
     ({ useOnboarding } = await import("./use-onboarding"));
-    ({ ConfigProvider } = await import("@/app/providers/config"));
+    ({ ConfigProvider } = await import("@/hooks/use-config"));
     mockGetSettings = vi.fn<BoundApi["getSettings"]>().mockResolvedValue(SETTINGS_FIXTURE);
     mockSaveSettings = vi.fn<BoundApi["saveSettings"]>().mockResolvedValue(undefined);
     mockSaveConfig = vi.fn<BoundApi["saveConfig"]>().mockResolvedValue(undefined);
+    mockDeleteProviderCredentials = vi
+      .fn<BoundApi["deleteProviderCredentials"]>()
+      .mockResolvedValue({ deleted: true, provider: "openrouter" });
     mockLoadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse());
     mockGetProviderStatus = vi
       .fn<BoundApi["getProviderStatus"]>()
@@ -113,5 +118,53 @@ describe("onboarding/settings synchronization", () => {
       expect(settingsHook.result.current.data?.secretsStorage).toBe("file");
       expect(settingsHook.result.current.data?.agentExecution).toBe("sequential");
     });
+  });
+
+  it("uses canonical early-save refs and keeps cleanup retryable after deletion failure", async () => {
+    mockDeleteProviderCredentials
+      .mockRejectedValueOnce(new Error("cleanup failed"))
+      .mockResolvedValueOnce({ deleted: true, provider: "openrouter" });
+
+    const wrapper = createWrapper();
+    const onboardingHook = renderHook(() => useOnboarding(), { wrapper });
+
+    act(() => onboardingHook.result.current.next());
+    act(() => onboardingHook.result.current.setProvider("openrouter"));
+    act(() => onboardingHook.result.current.next());
+    act(() =>
+      onboardingHook.result.current.updateData({
+        inputMethod: "env",
+        apiKey: "ignored",
+      }),
+    );
+
+    await act(async () => {
+      onboardingHook.result.current.next();
+    });
+
+    expect(mockSaveConfig).toHaveBeenCalledWith({
+      provider: "openrouter",
+      apiKey: { kind: "env", varName: "OPENROUTER_API_KEY" },
+    });
+
+    let cleanupError: unknown;
+    await act(async () => {
+      try {
+        await onboardingHook.result.current.cleanupEarlySave();
+      } catch (error) {
+        cleanupError = error;
+      }
+    });
+
+    expect(cleanupError).toBeInstanceOf(Error);
+    expect((cleanupError as Error).message).toBe("cleanup failed");
+    expect(onboardingHook.result.current.error).toContain("Failed to remove saved credentials");
+
+    await act(async () => {
+      await onboardingHook.result.current.cleanupEarlySave();
+    });
+
+    expect(mockDeleteProviderCredentials).toHaveBeenCalledTimes(2);
+    expect(onboardingHook.result.current.error).toBeNull();
   });
 });

@@ -3,7 +3,7 @@ import { useFooterData } from "@diffgazer/core/footer";
 import { getProviderDisplay, getProviderDisplayStatus } from "@diffgazer/core/providers";
 import { Box, Text } from "ink";
 import type { ReactNode } from "react";
-import { useNavigation } from "../../app/providers/navigation-provider";
+import { useNavigation } from "../../hooks/use-navigation";
 import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions";
 import { Footer } from "./footer";
 import { Header } from "./header";

@@ -13,7 +13,7 @@ import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { syncDocsFromArtifacts } from "../docs-sync/sync.js";
 import type { SyncLibraryConfig } from "../docs-sync/types.js";
-import { computeInputsFingerprint } from "../fingerprint.js";
+import { computeArtifactFingerprint } from "../fingerprint.js";
 import type { ArtifactManifest } from "../manifest.js";
 import { writeJson as writeJsonFile } from "../utils/json.js";
 import { requireValue } from "./assertions.js";
@@ -114,7 +114,7 @@ function createLibraryFixture(options: CreateLibraryFixtureOptions): TestLibrary
     writeJson(join(artifactRoot, relPath), { from: relPath });
   }
 
-  const currentFingerprint = computeInputsFingerprint(libraryRoot, manifest.inputs);
+  const currentFingerprint = computeArtifactFingerprint(libraryRoot, manifest.inputs, TEST_ORIGIN);
   writeText(
     join(artifactRoot, manifest.integrity.fingerprintFile),
     staleFingerprint ? `${currentFingerprint}-stale` : currentFingerprint,
@@ -142,11 +142,11 @@ function installFixturePackage(docsRoot: string, fixture: TestLibraryFixture): v
     version: fixture.manifest.version,
     type: "module",
   });
-  cpSync(
-    join(fixture.libraryRoot, fixture.manifest.artifactRoot),
-    join(packageRoot, fixture.manifest.artifactRoot),
-    { recursive: true },
-  );
+  const packageManifest = { ...fixture.manifest, artifactRoot: "artifacts" };
+  cpSync(join(fixture.libraryRoot, fixture.manifest.artifactRoot), join(packageRoot, "artifacts"), {
+    recursive: true,
+  });
+  writeJson(join(packageRoot, "artifacts/artifact-manifest.json"), packageManifest);
 }
 
 function installManifestOnlyPackage(
@@ -155,13 +155,16 @@ function installManifestOnlyPackage(
   manifest: ArtifactManifest,
 ): void {
   const packageRoot = join(docsRoot, "node_modules", "@test", config.id);
-  mkdirSync(join(packageRoot, "dist/artifacts"), { recursive: true });
+  mkdirSync(join(packageRoot, "artifacts"), { recursive: true });
   writeJson(join(packageRoot, "package.json"), {
     name: config.packageName,
     version: manifest.version,
     type: "module",
   });
-  writeJson(join(packageRoot, "dist/artifacts/artifact-manifest.json"), manifest);
+  writeJson(join(packageRoot, "artifacts/artifact-manifest.json"), {
+    ...manifest,
+    artifactRoot: manifest.artifactRoot === "dist/artifacts" ? "artifacts" : manifest.artifactRoot,
+  });
 }
 
 describe("syncDocsFromArtifacts", () => {
@@ -530,7 +533,10 @@ describe("syncDocsFromArtifacts", () => {
 
     expect(result.synced).toBe(true);
     expect(result.artifacts[0]?.manifestPath).toContain(
-      join("node_modules", "@test", "demo", "dist", "artifacts", "artifact-manifest.json"),
+      join("node_modules", "@test", "demo", "artifacts", "artifact-manifest.json"),
+    );
+    expect(existsSync(join(docsRoot, "node_modules", "@test", "demo", "dist", "artifacts"))).toBe(
+      false,
     );
     expect(existsSync(join(docsRoot, "content/docs/demo/meta.json"))).toBe(true);
     expect(existsSync(join(docsRoot, "public/r/demo/registry.json"))).toBe(true);

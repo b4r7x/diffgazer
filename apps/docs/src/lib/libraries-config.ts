@@ -29,6 +29,5 @@ const DocsLibrariesConfigSchema = z.object({
 
 export type ArtifactSourceConfig = z.infer<typeof ArtifactSourceSchema>;
 export type DocsLibraryConfigData = z.infer<typeof DocsLibraryConfigSchema>;
-export type DocsLibrariesConfigData = z.infer<typeof DocsLibrariesConfigSchema>;
 
 export const docsLibrariesConfig = DocsLibrariesConfigSchema.parse(rawConfig);

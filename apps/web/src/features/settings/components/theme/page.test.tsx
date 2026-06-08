@@ -8,7 +8,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
-import { ThemeProvider } from "@/app/providers/theme";
+import { ThemeProvider } from "@/hooks/use-theme";
 
 const mockNavigate = vi.fn();
 

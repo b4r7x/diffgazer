@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
@@ -703,6 +703,84 @@ describe("Popover hover timer cleanup", () => {
     });
 
     expect(onOpenChange).not.toHaveBeenCalled();
+  });
+});
+
+function createSameOriginIframe() {
+  const iframe = document.createElement("iframe");
+  document.body.appendChild(iframe);
+  const iframeDoc = iframe.contentDocument;
+  if (!iframeDoc) {
+    iframe.remove();
+    throw new Error("iframe.contentDocument is null; cannot exercise cross-document popover");
+  }
+  const mount = iframeDoc.createElement("div");
+  const portalRoot = iframeDoc.createElement("div");
+  iframeDoc.body.append(mount, portalRoot);
+  return { iframe, iframeDoc, mount, portalRoot };
+}
+
+describe("Popover cross-document behavior", () => {
+  it("closes click-mode popover on outside pointerdown in the trigger ownerDocument", () => {
+    const { iframe, iframeDoc, mount, portalRoot } = createSameOriginIframe();
+
+    render(
+      <div>
+        <button type="button">Outside</button>
+        <Popover triggerMode="click" defaultOpen>
+          <Popover.Trigger>Open</Popover.Trigger>
+          <Popover.Content portalContainer={portalRoot} aria-label="Popover menu">
+            Popover body
+          </Popover.Content>
+        </Popover>
+      </div>,
+      { container: mount },
+    );
+
+    const outside = within(iframeDoc.body).getByRole("button", { name: "Outside" });
+    fireEvent.pointerDown(outside);
+    expect(within(portalRoot).getByText("Popover body")).toHaveAttribute("data-state", "closed");
+
+    iframe.remove();
+  });
+
+  it("closes hover-mode popover on outside pointerdown in the trigger ownerDocument", () => {
+    const { iframe, iframeDoc, mount, portalRoot } = createSameOriginIframe();
+
+    render(
+      <div>
+        <button type="button">Outside</button>
+        <Popover triggerMode="hover" defaultOpen>
+          <Popover.Trigger>Passive label</Popover.Trigger>
+          <Popover.Content portalContainer={portalRoot}>Tooltip body</Popover.Content>
+        </Popover>
+      </div>,
+      { container: mount },
+    );
+
+    fireEvent.pointerDown(within(iframeDoc.body).getByRole("button", { name: "Outside" }));
+    expect(within(portalRoot).getByRole("tooltip")).toHaveAttribute("data-state", "closed");
+
+    iframe.remove();
+  });
+
+  it("renders content into an explicit portalContainer", () => {
+    const portalHost = document.createElement("div");
+    portalHost.id = "popover-portal-host";
+    document.body.appendChild(portalHost);
+
+    render(
+      <Popover triggerMode="click" defaultOpen>
+        <Popover.Trigger>Open</Popover.Trigger>
+        <Popover.Content portalContainer={portalHost} aria-label="Popover menu">
+          Portaled body
+        </Popover.Content>
+      </Popover>,
+    );
+
+    expect(within(portalHost).getByText("Portaled body")).toBeInTheDocument();
+
+    portalHost.remove();
   });
 });
 

@@ -13,6 +13,8 @@ export interface ProcessServerConfig {
   port: number;
   env?: Record<string, string>;
   readyPattern: string;
+  /** Resolve the ready address from stdout; defaults to http://localhost:{port}. */
+  resolveReadyAddress?: (output: string, defaultAddress: string) => string;
   onReady?: (address: string) => void;
   /**
    * Optional readiness verification run after `readyPattern` is seen on stdout.
@@ -33,7 +35,7 @@ function isProcessErrorLike(error: unknown): error is ProcessErrorLike {
   return error !== null && typeof error === "object";
 }
 
-export function formatProcessError(error: unknown): string {
+function formatProcessError(error: unknown): string {
   if (!isProcessErrorLike(error)) return String(error);
 
   if (typeof error.stderr === "string" && error.stderr.trim()) {
@@ -94,9 +96,11 @@ export function createProcessServer(config: ProcessServerConfig): ServerControll
         return;
       }
 
-      if (data.toString().includes(config.readyPattern)) {
+      const output = data.toString();
+      if (output.includes(config.readyPattern)) {
         signaledReady = true;
-        const address = `http://localhost:${config.port}`;
+        const defaultAddress = `http://localhost:${config.port}`;
+        const address = config.resolveReadyAddress?.(output, defaultAddress) ?? defaultAddress;
         void confirmReady(address).then((ready) => {
           if (ready && childProcess === serverProcess) {
             config.onReady?.(address);
@@ -109,6 +113,9 @@ export function createProcessServer(config: ProcessServerConfig): ServerControll
       if (childProcess !== serverProcess) {
         return;
       }
+
+      serverProcess = null;
+      signaledReady = false;
 
       if (!isProcessErrorLike(err) || !err.killed) {
         console.error(formatProcessError(err));

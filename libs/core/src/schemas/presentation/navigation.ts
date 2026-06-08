@@ -1,7 +1,6 @@
 export type MenuAction =
   | "review-unstaged"
   | "review-staged"
-  | "review-files"
   | "resume-review"
   | "history"
   | "settings"

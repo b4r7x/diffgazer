@@ -43,16 +43,18 @@ export function useOpenRouterModelsMapped(
 
   if (!enabled) return EMPTY_STATE;
 
-  if (query.isLoading) {
-    return { ...EMPTY_STATE, loading: true };
-  }
-
-  if (query.error) {
-    return { ...EMPTY_STATE, error: query.error.message };
-  }
-
   const response = query.data;
-  if (!response) return EMPTY_STATE;
+  if (!response) {
+    if (query.isLoading) {
+      return { ...EMPTY_STATE, loading: true };
+    }
+
+    if (query.error) {
+      return { ...EMPTY_STATE, error: query.error.message };
+    }
+
+    return EMPTY_STATE;
+  }
 
   const withParams = response.models.filter(
     (model) => (model.supportedParameters?.length ?? 0) > 0,

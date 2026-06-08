@@ -15,6 +15,7 @@
       "!**/.output",
       "!**/.diffgazer",
       "!cli/add/src/generated",
+      "!libs/keys/artifacts/artifacts",
       "!libs/keys/docs/generated",
       "!libs/ui/docs/generated",
       "!**/libs/ui/styles/sources.css",

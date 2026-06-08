@@ -1,6 +1,6 @@
 import { access, readdir, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
-import { readJsonFile } from "../../../shared/lib/fs.js";
+import { z } from "zod";
 
 export type WorkspacePackage = {
   name: string;
@@ -16,12 +16,54 @@ type WorkspaceRoot = {
   includeChildren: boolean;
 };
 
-type PackageJson = {
-  name?: string;
-  dependencies?: Record<string, string>;
-  devDependencies?: Record<string, string>;
-  peerDependencies?: Record<string, string>;
-};
+const PackageManifestSchema = z.object({
+  name: z.string().optional(),
+  description: z.string().optional(),
+  version: z.string().optional(),
+  dependencies: z.record(z.string(), z.string()).optional(),
+  devDependencies: z.record(z.string(), z.string()).optional(),
+  peerDependencies: z.record(z.string(), z.string()).optional(),
+});
+
+export type PackageManifest = z.infer<typeof PackageManifestSchema>;
+
+function formatSchemaIssues(error: z.ZodError): string {
+  return error.issues
+    .map((issue) => {
+      const path = issue.path.length > 0 ? issue.path.join(".") : "<root>";
+      return `${path}: ${issue.message}`;
+    })
+    .join("; ");
+}
+
+export async function readPackageManifest(filePath: string): Promise<PackageManifest | null> {
+  let raw: string;
+  try {
+    raw = await readFile(filePath, "utf8");
+  } catch {
+    return null;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    console.warn(
+      `[context] Ignoring unreadable package manifest at ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return null;
+  }
+
+  const result = PackageManifestSchema.safeParse(parsed);
+  if (!result.success) {
+    console.warn(
+      `[context] Ignoring invalid package manifest at ${filePath}: ${formatSchemaIssues(result.error)}`,
+    );
+    return null;
+  }
+
+  return result.data;
+}
 
 export async function readFileDirectory(
   dirPath: string,
@@ -123,7 +165,7 @@ async function readWorkspacePackage(
   dir: string,
   kind: WorkspacePackage["kind"],
 ): Promise<WorkspacePackage | null> {
-  const pkgJson = await readJsonFile<PackageJson>(path.join(projectPath, dir, "package.json"));
+  const pkgJson = await readPackageManifest(path.join(projectPath, dir, "package.json"));
   if (!pkgJson?.name) return null;
 
   return {

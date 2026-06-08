@@ -106,6 +106,21 @@ describe("loadContextSnapshot", () => {
 
     await expect(loadContextSnapshot(contextDir)).resolves.toBeNull();
   });
+
+  it("returns null when cached snapshot JSON has the wrong shape", async () => {
+    const contextDir = join(projectRoot, ".diffgazer");
+    await mkdir(contextDir, { recursive: true });
+    await writeFile(join(contextDir, "context.md"), "# cached", "utf-8");
+    await writeJson(join(contextDir, "context.json"), { packages: "wrong" });
+    await writeJson(join(contextDir, "context.meta.json"), {
+      generatedAt: "2025-01-01",
+      root: projectRoot,
+      statusHash: "hash-1",
+      charCount: 10,
+    });
+
+    await expect(loadContextSnapshot(contextDir)).resolves.toBeNull();
+  });
 });
 
 describe("buildProjectContextSnapshot", () => {
@@ -189,6 +204,26 @@ describe("buildProjectContextSnapshot", () => {
     expect(rebuilt.markdown).toContain("- Name: second");
   });
 
+  it("rebuilds instead of reusing a structurally invalid cached snapshot", async () => {
+    const contextDir = join(projectRoot, ".diffgazer");
+    await mkdir(contextDir, { recursive: true });
+    await writeProjectFile("package.json", JSON.stringify({ name: "fresh", version: "1.0.0" }));
+    await writeFile(join(contextDir, "context.md"), "# stale", "utf-8");
+    await writeJson(join(contextDir, "context.json"), { generatedAt: "oops" });
+    await writeJson(join(contextDir, "context.meta.json"), {
+      generatedAt: "2025-01-01",
+      root: projectRoot,
+      statusHash: "hash-1",
+      headCommit: "HEAD",
+      charCount: 7,
+    });
+
+    const rebuilt = await buildProjectContextSnapshot(projectRoot);
+
+    expect(rebuilt.markdown).toContain("- Name: fresh");
+    expect(rebuilt.markdown).not.toBe("# stale");
+  });
+
   it("rebuilds when the git status hash changes", async () => {
     await writeProjectFile("package.json", JSON.stringify({ name: "first", version: "1.0.0" }));
     await buildProjectContextSnapshot(projectRoot);
@@ -238,6 +273,14 @@ describe("buildProjectContextSnapshot", () => {
 
     expect(Buffer.byteLength(result.markdown, "utf-8")).toBeLessThanOrEqual(50_000 + 50);
     expect(result.markdown).toContain("Context truncated to fit size limit");
+  });
+
+  it("ignores an invalid root package manifest instead of crashing", async () => {
+    await writeProjectFile("package.json", JSON.stringify({ name: ["wrong"], version: "1.0.0" }));
+
+    const result = await buildProjectContextSnapshot(projectRoot, { force: true });
+
+    expect(result.markdown).toContain("package.json not found.");
   });
 
   it("rejects workspace globs that escape the project root", async () => {

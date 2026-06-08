@@ -8,11 +8,19 @@ import { toastPositionVariants } from "./toast-variants";
 import { useToastContainer } from "./use-container";
 
 function handleBlur(e: FocusEvent<HTMLDivElement>) {
-  if (!(e.relatedTarget instanceof Node) || !e.currentTarget.contains(e.relatedTarget)) resume();
+  const View = e.currentTarget.ownerDocument.defaultView;
+  if (
+    !View ||
+    !(e.relatedTarget instanceof View.Node) ||
+    !e.currentTarget.contains(e.relatedTarget)
+  ) {
+    resume();
+  }
 }
 
-function supportsPopover(): boolean {
-  return typeof HTMLElement !== "undefined" && "popover" in HTMLElement.prototype;
+function supportsPopover(ownerDocument: Document): boolean {
+  const HTMLElementCtor = ownerDocument.defaultView?.HTMLElement;
+  return Boolean(HTMLElementCtor && "popover" in HTMLElementCtor.prototype);
 }
 
 export interface ToasterProps {
@@ -21,9 +29,9 @@ export interface ToasterProps {
 
 export function Toaster({ position = "bottom-right" }: ToasterProps) {
   const { toasts, dismissingIds } = useToastStore();
-  useToastContainer(toasts, dismissingIds);
-  const hasToasts = toasts.length > 0;
   const containerRef = useRef<HTMLDivElement | null>(null);
+  useToastContainer(toasts, dismissingIds, containerRef);
+  const hasToasts = toasts.length > 0;
 
   // Native <dialog>.showModal() raises the dialog into the browser top-layer,
   // which `z-index` cannot beat. Opting the container into the Popover API
@@ -40,7 +48,7 @@ export function Toaster({ position = "bottom-right" }: ToasterProps) {
   useEffect(() => {
     if (!hasToasts) return;
     const element = containerRef.current;
-    if (!element || !supportsPopover()) return;
+    if (!element || !supportsPopover(element.ownerDocument)) return;
     if (element.popover !== "manual") element.popover = "manual";
     if (element.matches(":popover-open")) element.hidePopover();
     try {

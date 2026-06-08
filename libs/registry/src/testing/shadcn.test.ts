@@ -10,7 +10,6 @@ import { validatePublicRegistryFresh } from "../shadcn/validate.js";
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
 const FIX_CMD = "pnpm build:registry";
 
-type RegistryContentTransform = (content: string) => string;
 type RegistrySourceContentTransform = (ctx: {
   itemName: string;
   filePath: string;
@@ -18,6 +17,9 @@ type RegistrySourceContentTransform = (ctx: {
 }) => string;
 type RegistrySourceItemTransform = NonNullable<
   Parameters<typeof validatePublicRegistryFresh>[0]["transformSourceItem"]
+>;
+type ShouldSkipSourceItem = NonNullable<
+  Parameters<typeof validatePublicRegistryFresh>[0]["shouldSkipSourceItem"]
 >;
 type RegistryItemFixture = { name: string } & Partial<Omit<RegistryItem, "name">>;
 type PublicRegistryFileFixture = RegistryFile & { content: string };
@@ -29,10 +31,6 @@ async function loadExport<T>(modulePath: string, exportName: string): Promise<T>
     throw new Error(`Missing export: ${exportName}`);
   }
   return value as T;
-}
-
-function makeContentTransform(transform: RegistryContentTransform): RegistrySourceContentTransform {
-  return ({ content }) => transform(content);
 }
 
 function makeItemTransform(
@@ -175,6 +173,7 @@ describe("validatePublicRegistryFresh", () => {
       transformModule: resolve(repoRoot, "libs/ui/scripts/registry/rewrite-keys-imports.ts"),
       transformExport: "transformUiPublicRegistryKeysImportContent",
       transformItemExport: "transformUiPublicRegistryItem" as string | undefined,
+      skipSourceItemExport: "isHiddenKeysShim" as string | undefined,
       useFactory: false,
     },
     {
@@ -184,22 +183,27 @@ describe("validatePublicRegistryFresh", () => {
       transformModule: resolve(repoRoot, "libs/keys/scripts/transform-public-registry-imports.ts"),
       transformExport: "createKeysSourceContentTransform",
       transformItemExport: undefined,
+      skipSourceItemExport: undefined,
       useFactory: true,
     },
   ])("keeps committed $label public/r in sync with the source registry", async (registry) => {
-    const transformSourceContent: RegistrySourceContentTransform = registry.useFactory
-      ? (
-          await loadExport<(rootDir: string) => RegistrySourceContentTransform>(
-            registry.transformModule,
-            registry.transformExport,
-          )
-        )(registry.rootDir)
-      : makeContentTransform(
-          await loadExport<RegistryContentTransform>(
-            registry.transformModule,
-            registry.transformExport,
-          ),
-        );
+    let transformSourceContent: RegistrySourceContentTransform;
+    if (registry.useFactory) {
+      transformSourceContent = (
+        await loadExport<(rootDir: string) => RegistrySourceContentTransform>(
+          registry.transformModule,
+          registry.transformExport,
+        )
+      )(registry.rootDir);
+    } else {
+      const transformUiContent = await loadExport<
+        (content: string, options?: { shimHookBasename?: string }) => string
+      >(registry.transformModule, registry.transformExport);
+      transformSourceContent = ({ content, itemName }) =>
+        transformUiContent(content, {
+          shimHookBasename: itemName.startsWith("use-") ? itemName : undefined,
+        });
+    }
 
     const transformSourceItem = registry.transformItemExport
       ? makeItemTransform(
@@ -209,6 +213,15 @@ describe("validatePublicRegistryFresh", () => {
           ),
         )
       : undefined;
+    const skipSourceItem = registry.skipSourceItemExport
+      ? await loadExport<(item: RegistryItem) => boolean>(
+          registry.transformModule,
+          registry.skipSourceItemExport,
+        )
+      : undefined;
+    const shouldSkipSourceItem: ShouldSkipSourceItem | undefined = skipSourceItem
+      ? ({ item }) => skipSourceItem(item)
+      : undefined;
 
     expect(() =>
       validatePublicRegistryFresh({
@@ -216,6 +229,7 @@ describe("validatePublicRegistryFresh", () => {
         fixCommand: registry.fixCommand,
         transformSourceItem,
         transformSourceContent,
+        shouldSkipSourceItem,
       }),
     ).not.toThrow();
   });

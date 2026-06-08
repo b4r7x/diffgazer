@@ -46,8 +46,10 @@ export function useReviewStream() {
   const api = useApi();
   const [state, dispatch] = useReducer(streamReducer, createInitialStreamState());
   const abortControllerRef = useRef<AbortController | null>(null);
+  const resumeTokenRef = useRef(0);
 
   const cancelStream = (reason = "cancel") => {
+    resumeTokenRef.current += 1;
     if (abortControllerRef.current) {
       abortControllerRef.current.abort(reason);
       abortControllerRef.current = null;
@@ -64,17 +66,46 @@ export function useReviewStream() {
     dispatch({ type: "RESET" });
   };
 
-  /** Abort the client stream AND tell the server to stop work. Fire-and-forget. */
-  const cancel = (reviewId: string | null) => {
+  /** Abort the client stream AND tell the server to stop work. */
+  const cancel = async (reviewId: string | null): Promise<string | null> => {
     cancelStream("cancel");
+    const cancelToken = resumeTokenRef.current;
+    const isCurrentCancel = () =>
+      resumeTokenRef.current === cancelToken && abortControllerRef.current === null;
+
     dispatch({ type: "COMPLETE" });
-    if (reviewId) {
-      api.cancelReviewSession(reviewId).catch(() => {});
+
+    if (!reviewId) {
+      return null;
+    }
+
+    try {
+      const result = await api.cancelReviewSession(reviewId);
+      if (result.cancelled) {
+        if (isCurrentCancel()) {
+          dispatch({ type: "COMPLETE" });
+        }
+        return null;
+      }
+      const message = "Failed to cancel the review session on the server.";
+      if (isCurrentCancel()) {
+        dispatch({ type: "ERROR", error: message });
+      }
+      return message;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to cancel the review session.";
+      if (isCurrentCancel()) {
+        dispatch({ type: "ERROR", error: message });
+      }
+      return message;
     }
   };
 
   const resume = async (reviewId: string): Promise<Result<void, StreamReviewError>> => {
     cancelStream("resume");
+    const resumeToken = resumeTokenRef.current + 1;
+    resumeTokenRef.current = resumeToken;
 
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
@@ -82,7 +113,15 @@ export function useReviewStream() {
     dispatch({ type: "START" });
     dispatch({ type: "SET_REVIEW_ID", reviewId });
 
-    const dispatchEvent = (event: ReviewEvent) => dispatch({ type: "EVENT", event });
+    const isCurrentResume = () =>
+      resumeTokenRef.current === resumeToken && abortControllerRef.current === abortController;
+
+    const dispatchEvent = (event: ReviewEvent) => {
+      if (!isCurrentResume()) {
+        return;
+      }
+      dispatch({ type: "EVENT", event });
+    };
 
     try {
       const result = await api.resumeReviewStream({
@@ -93,8 +132,7 @@ export function useReviewStream() {
         onEnrichEvent: dispatchEvent,
       });
 
-      if (abortController.signal.aborted) {
-        dispatch({ type: "RESET" });
+      if (!isCurrentResume()) {
         return result.ok ? ok(undefined) : result;
       }
 
@@ -115,8 +153,7 @@ export function useReviewStream() {
       dispatch({ type: "ERROR", error: result.error.message });
       return err(result.error);
     } catch (e) {
-      if (abortController.signal.aborted) {
-        dispatch({ type: "RESET" });
+      if (!isCurrentResume()) {
         return err({ code: "STREAM_ERROR" as const, message: "aborted" });
       }
       const message = e instanceof Error ? e.message : "Failed to resume";

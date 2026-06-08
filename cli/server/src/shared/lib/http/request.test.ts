@@ -1,7 +1,7 @@
+import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../paths.js", () => ({
-  PROJECT_ROOT_HEADER: "x-diffgazer-project-root",
   isPackaged: () => process.env.DIFFGAZER_PACKAGED === "1",
   resolveProjectRoot: vi.fn(
     (opts: { header?: string | null; env?: string | null; cwd?: string | null }) => {
@@ -56,7 +56,7 @@ describe("getProjectRoot", () => {
   it("passes the client header in dev mode with explicit opt-in", () => {
     delete process.env.DIFFGAZER_PACKAGED;
     process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT = "1";
-    const c = createMockContext({ "x-diffgazer-project-root": "/user/supplied" });
+    const c = createMockContext({ [PROJECT_ROOT_HEADER]: "/user/supplied" });
 
     getProjectRoot(c);
 
@@ -68,7 +68,7 @@ describe("getProjectRoot", () => {
   it("ignores the client header in dev mode without opt-in", () => {
     delete process.env.DIFFGAZER_PACKAGED;
     delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
-    const c = createMockContext({ "x-diffgazer-project-root": "/user/supplied" });
+    const c = createMockContext({ [PROJECT_ROOT_HEADER]: "/user/supplied" });
 
     getProjectRoot(c);
 
@@ -77,7 +77,7 @@ describe("getProjectRoot", () => {
 
   it("ignores the client header in packaged mode", () => {
     process.env.DIFFGAZER_PACKAGED = "1";
-    const c = createMockContext({ "x-diffgazer-project-root": "/malicious/path" });
+    const c = createMockContext({ [PROJECT_ROOT_HEADER]: "/malicious/path" });
 
     getProjectRoot(c);
 
@@ -87,7 +87,7 @@ describe("getProjectRoot", () => {
   it("falls through to env when packaged and header is present", () => {
     process.env.DIFFGAZER_PACKAGED = "1";
     process.env.DIFFGAZER_PROJECT_ROOT = "/safe/root";
-    const c = createMockContext({ "x-diffgazer-project-root": "/evil" });
+    const c = createMockContext({ [PROJECT_ROOT_HEADER]: "/evil" });
 
     getProjectRoot(c);
 

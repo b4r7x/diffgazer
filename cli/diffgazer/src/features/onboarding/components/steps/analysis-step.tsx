@@ -1,8 +1,8 @@
 import type { LensId } from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
-import { useTheme } from "../../../../app/providers/theme";
 import { AnalysisSelector } from "../../../../components/shared/analysis-selector";
+import { useTheme } from "../../../../theme/provider";
 
 interface AnalysisStepProps {
   selectedLenses: LensId[];

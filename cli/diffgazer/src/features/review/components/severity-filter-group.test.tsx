@@ -6,7 +6,7 @@ import {
 import { cleanup, render } from "ink-testing-library";
 import { useState } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { CliThemeProvider } from "../../../app/providers/theme";
+import { CliThemeProvider } from "../../../theme/provider";
 import { SeverityFilterGroup } from "./severity-filter-group";
 
 const ARROW_RIGHT = "[C";

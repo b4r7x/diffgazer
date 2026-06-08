@@ -80,6 +80,33 @@ describe("ReviewProgressView", () => {
     expect(onViewResults).not.toHaveBeenCalled();
   });
 
+  it("announces stream errors in an alert live region", () => {
+    renderView({ isRunning: false, error: "Provider request failed", onCancel: vi.fn() });
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveAttribute("aria-live", "assertive");
+    expect(alert).toHaveTextContent("Provider request failed");
+  });
+
+  it("auto-expands the review step when agent substeps become available", async () => {
+    renderView({
+      isRunning: true,
+      data: makeProgressData({
+        steps: [
+          { id: "parse", label: "Parse diff", status: "completed" },
+          {
+            id: "review",
+            label: "Review",
+            status: "active",
+            substeps: [{ id: "security", tag: "SEC", label: "Security", status: "active" }],
+          },
+        ],
+      }),
+    });
+
+    expect(await screen.findByText("Security")).toBeVisible();
+  });
+
   it("runs progress shortcuts when result and cancel actions are available", async () => {
     const user = userEvent.setup();
     const onViewResults = vi.fn();

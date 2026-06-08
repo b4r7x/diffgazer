@@ -38,7 +38,12 @@ export function useSaveSettings() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (settings: Partial<SettingsConfig>) => api.saveSettings(settings),
-    onSuccess: () => qc.invalidateQueries({ queryKey: configQueries.settings(api).queryKey }),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: configQueries.settings(api).queryKey }),
+        qc.invalidateQueries({ queryKey: configQueries.init(api).queryKey }),
+      ]);
+    },
   });
 }
 

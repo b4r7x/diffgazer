@@ -73,8 +73,8 @@ function installableUiNames(items: RegistryItem[]): Set<string> {
 export function validateInstallNames(names: string[]): void {
   validateInstallNamesAgainst(
     names,
-    installableUiNames(ctx.registry.getPublicItems()),
-    getPublicKeysHookNames(),
+    installableUiNames(ctx.registry.getAllItems()),
+    getKeysHookNames(),
   );
 }
 

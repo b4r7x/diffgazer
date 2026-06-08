@@ -9,6 +9,7 @@ interface ModelSearchInputProps {
   onArrowDown: () => void;
   showCustomAction?: boolean;
   onUseCustom?: () => void;
+  disabled?: boolean;
   ref?: React.Ref<HTMLInputElement>;
 }
 
@@ -20,6 +21,7 @@ export function ModelSearchInput({
   onArrowDown,
   showCustomAction,
   onUseCustom,
+  disabled = false,
   ref,
 }: ModelSearchInputProps) {
   const canUseCustom = Boolean(value.trim());
@@ -32,6 +34,7 @@ export function ModelSearchInput({
           value={value}
           onChange={onChange}
           onFocus={onFocus}
+          disabled={disabled}
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               onEscape();
@@ -56,7 +59,7 @@ export function ModelSearchInput({
             size="sm"
             variant="secondary"
             onClick={onUseCustom}
-            disabled={!canUseCustom}
+            disabled={disabled || !canUseCustom}
             className="h-auto px-2 py-1 text-2xs"
           >
             Use ID

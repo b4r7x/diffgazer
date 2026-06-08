@@ -1,9 +1,9 @@
+import { moveHighlight } from "@diffgazer/keys";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext, useState } from "react";
-import { useTheme } from "../../app/providers/theme";
-import { moveHighlight } from "../../lib/highlight-navigation";
 import { collectChildItems } from "../../lib/list-navigation";
+import { useTheme } from "../../theme/provider";
 
 interface TabsProps {
   value?: string;
@@ -79,13 +79,16 @@ function TabsList({ loop = true, isActive = true, children }: TabsListProps) {
   const ctx = useTabsContext();
   const { tokens } = useTheme();
   const triggers = collectChildItems(children, extractTabsTrigger);
-  const selectableTriggers = triggers.filter((t) => !t.disabled);
 
   useInput(
     (_input, key) => {
       if (!key.leftArrow && !key.rightArrow) return;
-      const navigable = selectableTriggers.map((t) => ({ id: t.value, disabled: false }));
-      const result = moveHighlight(navigable, ctx.activeValue, key.rightArrow ? 1 : -1, loop);
+      const result = moveHighlight(
+        triggers.map((trigger) => ({ id: trigger.value, disabled: trigger.disabled })),
+        ctx.activeValue,
+        key.rightArrow ? 1 : -1,
+        loop,
+      );
       if (result) {
         ctx.setActiveValue(result.id);
       }

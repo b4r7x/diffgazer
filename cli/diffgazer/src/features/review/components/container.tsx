@@ -3,10 +3,10 @@ import { convertAgentEventsToLogEntries, mapStepsToProgressData } from "@diffgaz
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { Box } from "ink";
 import { type ReactElement, useEffect, useRef } from "react";
-import { useNavigation } from "../../../app/providers/navigation-provider";
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
 import { Spinner } from "../../../components/ui/spinner";
+import { useNavigation } from "../../../hooks/use-navigation";
 import { useReviewLifecycle } from "../hooks/use-lifecycle";
 import { ApiKeyMissingView } from "./api-key-missing-view";
 import { NoChangesView } from "./no-changes-view";
@@ -19,23 +19,34 @@ interface ReviewContainerProps {
   reviewId?: string;
 }
 
-export function ReviewContainer({ mode }: ReviewContainerProps): ReactElement {
-  const { navigate } = useNavigation();
-  const { state, start, goToSummary, goToResults, reset } = useReviewLifecycle();
+export function ReviewContainer({ mode, reviewId }: ReviewContainerProps): ReactElement {
+  const { navigate, goBack } = useNavigation();
+  const { state, start, cancel, goToSummary, goToResults, reset } = useReviewLifecycle({
+    mode,
+    reviewId,
+  });
+
+  function handleGateBack() {
+    reset();
+    goBack();
+  }
 
   const contextStep = state.steps.find((s) => s.id === "context");
   const contextReady = contextStep?.status === "completed" && !!state.reviewId;
-  const { data: contextData } = useReviewContext({ enabled: contextReady });
+  const { data: contextData } = useReviewContext({
+    enabled: contextReady,
+    reviewId: state.reviewId,
+  });
   const contextSnapshot = contextReady ? (contextData ?? null) : null;
 
   const hasStarted = useRef(false);
 
   useEffect(() => {
-    if (mode && !hasStarted.current) {
+    if (mode && !reviewId && !hasStarted.current) {
       hasStarted.current = true;
       start(mode);
     }
-  }, [mode, start]);
+  }, [mode, reviewId, start]);
 
   if (state.loadingMessage) {
     return (
@@ -54,13 +65,13 @@ export function ReviewContainer({ mode }: ReviewContainerProps): ReactElement {
           reset();
           navigate({ screen: "settings/providers" });
         }}
-        onBack={reset}
+        onBack={handleGateBack}
       />
     );
   }
 
   if (state.isNoDiffError) {
-    const currentMode = mode ?? "unstaged";
+    const currentMode = state.mode;
     const otherMode = currentMode === "staged" ? "unstaged" : "staged";
     return (
       <NoChangesView
@@ -69,7 +80,7 @@ export function ReviewContainer({ mode }: ReviewContainerProps): ReactElement {
           reset();
           start(otherMode);
         }}
-        onBack={reset}
+        onBack={handleGateBack}
       />
     );
   }
@@ -82,7 +93,7 @@ export function ReviewContainer({ mode }: ReviewContainerProps): ReactElement {
           <Callout.Content>{state.error}</Callout.Content>
         </Callout>
         <Box gap={2}>
-          <Button variant="secondary" isActive onPress={reset}>
+          <Button variant="secondary" isActive onPress={handleGateBack}>
             Back
           </Button>
         </Box>
@@ -108,9 +119,18 @@ export function ReviewContainer({ mode }: ReviewContainerProps): ReactElement {
           fileProgress={state.fileProgress}
           isStreaming={state.phase === "streaming"}
           error={state.error}
-          onCancel={reset}
+          onCancel={() => {
+            void cancel().then((error) => {
+              if (error) {
+                return;
+              }
+              reset();
+              navigate({ screen: "home" });
+            });
+          }}
           issuesFound={state.issues.length}
           startedAt={state.startedAt}
+          reviewId={state.reviewId}
           contextSnapshot={contextSnapshot}
           onViewResults={goToSummary}
         />

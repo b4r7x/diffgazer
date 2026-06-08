@@ -1,13 +1,13 @@
 import { Button } from "@diffgazer/ui/components/button";
 import { Panel, PanelContent, PanelHeader } from "@diffgazer/ui/components/panel";
+import { orderThemeDocsPrimitives, THEME_DOCS_PLAYGROUND_ORDER } from "@diffgazer/ui/theme";
 import { useState } from "react";
-import { orderPrimitives, PLAYGROUND_PRIMITIVE_ORDER } from "../tui-primitives";
 import { ColorPickerRow } from "./color-picker-row";
 import { CssOutput } from "./css-output";
 import { PreviewPanel } from "./preview-panel";
 
 const DEFAULT_PRIMITIVES: Record<string, string> = Object.fromEntries(
-  orderPrimitives(PLAYGROUND_PRIMITIVE_ORDER).map((primitive) => [
+  orderThemeDocsPrimitives(THEME_DOCS_PLAYGROUND_ORDER).map((primitive) => [
     primitive.name,
     primitive.darkValue,
   ]),

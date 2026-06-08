@@ -4,7 +4,7 @@ import { getFileMtimeMs } from "../fs.js";
 import { getGlobalTrustPath } from "../paths.js";
 import { loadTrust, persistTrustAsync } from "./persistence.js";
 import { persistError } from "./secrets-store.js";
-import type { SecretsStorageError, SecretsStorageErrorCode, TrustState } from "./types.js";
+import type { SecretsStorageError, TrustState } from "./types.js";
 
 export interface TrustStore {
   getTrust(projectId: string): TrustConfig | null;
@@ -23,22 +23,20 @@ export function createTrustStore(): TrustStore {
   const sessionTrust: Record<string, TrustConfig> = {};
   let trustMtimeMs: number | null = getFileMtimeMs(getGlobalTrustPath());
 
-  const persistTrust = async (
-    failOnConflict: boolean = false,
-  ): Promise<Result<void, SecretsStorageError>> => {
+  const cloneTrustState = (state: TrustState): TrustState => ({
+    projects: Object.fromEntries(
+      Object.entries(state.projects).map(([projectId, trust]) => [projectId, { ...trust }]),
+    ),
+  });
+
+  const refreshTrustState = (): void => {
     const currentMtime = getFileMtimeMs(getGlobalTrustPath());
-    if (trustMtimeMs !== null && currentMtime !== null && currentMtime !== trustMtimeMs) {
-      if (failOnConflict) {
-        return err({
-          code: "CONCURRENCY_CONFLICT" as SecretsStorageErrorCode,
-          message: "Trust file was modified concurrently; operation rejected for safety",
-        });
-      }
-      const diskTrust = loadTrust();
-      trustState = {
-        projects: { ...diskTrust.projects, ...trustState.projects },
-      };
-    }
+    if (currentMtime === trustMtimeMs) return;
+    trustState = loadTrust();
+    trustMtimeMs = currentMtime;
+  };
+
+  const persistTrust = async (): Promise<Result<void, SecretsStorageError>> => {
     try {
       await persistTrustAsync(trustState);
       trustMtimeMs = getFileMtimeMs(getGlobalTrustPath());
@@ -48,11 +46,15 @@ export function createTrustStore(): TrustStore {
     }
   };
 
-  const getTrust = (projectId: string): TrustConfig | null =>
-    sessionTrust[projectId] ?? trustState.projects[projectId] ?? null;
+  const getTrust = (projectId: string): TrustConfig | null => {
+    refreshTrustState();
+    return sessionTrust[projectId] ?? trustState.projects[projectId] ?? null;
+  };
 
-  const listTrustedProjects = (): TrustConfig[] =>
-    Object.values({ ...trustState.projects, ...sessionTrust });
+  const listTrustedProjects = (): TrustConfig[] => {
+    refreshTrustState();
+    return Object.values({ ...trustState.projects, ...sessionTrust });
+  };
 
   const saveTrust = async (
     config: TrustConfig,
@@ -61,30 +63,33 @@ export function createTrustStore(): TrustStore {
       sessionTrust[config.projectId] = config;
       return ok(config);
     }
+    refreshTrustState();
+    const backup = cloneTrustState(trustState);
     trustState.projects[config.projectId] = config;
-    const result = await persistTrust(false);
+    refreshTrustState();
+    trustState.projects[config.projectId] = config;
+    const result = await persistTrust();
     if (!result.ok) {
-      delete trustState.projects[config.projectId];
+      trustState = backup;
       return result;
     }
     return ok(config);
   };
 
   const removeTrust = async (projectId: string): Promise<Result<boolean, SecretsStorageError>> => {
+    refreshTrustState();
     const inSession = projectId in sessionTrust;
     const inPersistent = projectId in trustState.projects;
     if (!inSession && !inPersistent) return ok(false);
     if (inSession) delete sessionTrust[projectId];
     if (inPersistent) {
-      const backup = trustState.projects[projectId];
+      const backup = cloneTrustState(trustState);
       delete trustState.projects[projectId];
-      const result = await persistTrust(true);
+      refreshTrustState();
+      delete trustState.projects[projectId];
+      const result = await persistTrust();
       if (!result.ok) {
-        if (backup === undefined) {
-          delete trustState.projects[projectId];
-        } else {
-          trustState.projects[projectId] = backup;
-        }
+        trustState = backup;
         return result;
       }
     }

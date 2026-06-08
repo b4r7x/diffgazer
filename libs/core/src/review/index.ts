@@ -27,6 +27,17 @@ export {
   type SeverityPart,
 } from "./history.js";
 export { getLoadingMessage, isCheckingForChanges, isNoDiffError } from "./lifecycle.js";
+export {
+  AGENT_STATUS_META,
+  type AgentStatusBadgeVariant,
+  DETAILS_EMPTY_COPY,
+  getAgentStatusMeta,
+  getDetailsEmptyCopy,
+  getNoChangesCopy,
+  NO_CHANGES_COPY,
+  type ReviewEmptyCopy,
+  type ReviewNoChangesCopy,
+} from "./presentation.js";
 export { mapStepsToProgressData } from "./progress-mapping.js";
 export {
   createInitialReviewState,

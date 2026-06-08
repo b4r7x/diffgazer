@@ -102,6 +102,12 @@ export function ReviewPage() {
   };
 
   useEffect(() => {
+    setLiveState(reviewId && isLiveNavigation ? { phase: "streaming", reviewId } : null);
+    setStreamNotFound(false);
+    notFoundReportedRef.current = false;
+  }, [reviewId, isLiveNavigation]);
+
+  useEffect(() => {
     if (savedOutcomeKind === "report-error") {
       handleApiError(savedErrorForReport);
     }
@@ -143,6 +149,7 @@ export function ReviewPage() {
     case "streaming":
       return (
         <ReviewContainer
+          key={reviewId}
           mode={reviewMode}
           onComplete={handleComplete}
           onStreamNotFound={handleStreamNotFound}

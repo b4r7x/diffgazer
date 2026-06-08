@@ -1,5 +1,5 @@
 import { mapProvidersWithStatus } from "@diffgazer/core/providers";
-import { useConfigActions, useConfigData } from "@/app/providers/config";
+import { useConfigActions, useConfigData } from "@/hooks/use-config";
 
 export function useProviders() {
   const { isLoading, providerStatus } = useConfigData();

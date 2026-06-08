@@ -47,14 +47,16 @@ export function useProvidersActionButtons({
   onRemoveKey,
   onSelectProvider,
 }: UseProvidersActionButtonsOptions): UseProvidersActionButtonsResult {
-  const canRemoveKey = selectedProvider?.hasApiKey ?? false;
+  const hasApiKey = selectedProvider?.hasApiKey ?? false;
+  const canRemoveKey = hasApiKey;
   const needsModel = selectedProvider !== null && !selectedProvider.model;
+  const canSelectProvider = hasApiKey && !needsModel;
 
   const handleButtonAction = (index: number) => {
     if (!selectedProvider) return;
     switch (index) {
       case 0:
-        if (!needsModel)
+        if (canSelectProvider)
           void onSelectProvider(selectedProvider.id, selectedProvider.name, selectedProvider.model);
         break;
       case 1:
@@ -72,7 +74,7 @@ export function useProvidersActionButtons({
   const actionRow = useActionRowNavigation({
     enabled: !dialogOpen && inButtons,
     actionCount: BUTTON_COUNT,
-    disabledActions: [needsModel, false, !canRemoveKey, false],
+    disabledActions: [!canSelectProvider, false, !canRemoveKey, !hasApiKey],
     onAction: handleButtonAction,
     onNavigationBoundaryReached: (direction) => {
       if (direction === "previous") {
@@ -102,7 +104,7 @@ export function useProvidersActionButtons({
   };
 
   const navigateButtonsVertical = (direction: 1 | -1) => {
-    const enabledFlags = [!needsModel, true, canRemoveKey, true];
+    const enabledFlags = [canSelectProvider, true, canRemoveKey, hasApiKey];
     let next = actionRow.focusedIndex + direction;
     while (next >= 0 && next < BUTTON_COUNT) {
       if (enabledFlags[next]) {

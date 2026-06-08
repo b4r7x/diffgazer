@@ -1,7 +1,9 @@
-import { dirname, resolve } from "node:path";
+import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { getPreRenderPages } from "./generate-sitemap.ts";
+import { formatLastMod, getPreRenderPages, SITEMAP_FALLBACK_LASTMOD } from "./generate-sitemap.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const docsRoot = resolve(__dirname, "..");
@@ -95,5 +97,28 @@ describe("getPreRenderPages", () => {
     expect(uiFirstPage).toBeDefined();
     expect(uiFirstPage?.source).not.toBeNull();
     expect(uiFirstPage?.source).toContain(`${docsRoot}/content/docs/ui/getting-started/index.mdx`);
+  });
+});
+
+describe("formatLastMod", () => {
+  it("uses a fixed timestamp so Docker checkout mtimes cannot change sitemap output", () => {
+    const dir = join(tmpdir(), `diffgazer-sitemap-${Date.now()}`);
+    mkdirSync(dir, { recursive: true });
+    const source = join(dir, "page.mdx");
+    writeFileSync(source, "# test\n");
+
+    const first = formatLastMod(source);
+    utimesSync(source, new Date("2030-01-01T00:00:00.000Z"), new Date("2030-01-01T00:00:00.000Z"));
+    const second = formatLastMod(source);
+
+    expect(first).toBe(SITEMAP_FALLBACK_LASTMOD);
+    expect(second).toBe(SITEMAP_FALLBACK_LASTMOD);
+  });
+
+  it("falls back to a fixed timestamp when no source file exists", () => {
+    expect(formatLastMod(null)).toBe(SITEMAP_FALLBACK_LASTMOD);
+    expect(formatLastMod(join(tmpdir(), "missing-sitemap-source.mdx"))).toBe(
+      SITEMAP_FALLBACK_LASTMOD,
+    );
   });
 });

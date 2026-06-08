@@ -10,6 +10,7 @@ import type { ServerController } from "./process";
 export interface EmbeddedServerConfig {
   port: number;
   onReady?: (address: string) => void;
+  onFailure?: (message: string) => void;
   projectRoot?: string;
 }
 
@@ -78,14 +79,18 @@ export function createEmbeddedServer(config: EmbeddedServerConfig): ServerContro
     state = "starting";
     void startServer().catch((err: unknown) => {
       state = "idle";
+      const message = err instanceof Error ? err.message : String(err);
       console.error(err);
+      config.onFailure?.(message);
     });
   }
 
   async function startServer(): Promise<void> {
     if (!existsSync(webRoot)) {
-      console.error(`Web assets not found at ${webRoot}`);
+      const message = `Web assets not found at ${webRoot}`;
+      console.error(message);
       state = "idle";
+      config.onFailure?.(message);
       return;
     }
 
@@ -133,19 +138,22 @@ export function createEmbeddedServer(config: EmbeddedServerConfig): ServerContro
 
       server.on("error", (err: NodeJS.ErrnoException) => {
         state = "idle";
+        let message: string;
         if (err.code === "EADDRINUSE") {
-          console.error(
-            `Port ${config.port} is already in use. Close the other process or set a different PORT.`,
-          );
+          message = `Port ${config.port} is already in use. Close the other process or set a different PORT.`;
         } else if (err.code === "EACCES") {
-          console.error(`Permission denied binding to port ${config.port}. Try a port above 1024.`);
+          message = `Permission denied binding to port ${config.port}. Try a port above 1024.`;
         } else {
-          console.error("Server listen error:", err);
+          message = `Server listen error: ${err.message}`;
         }
+        console.error(message);
+        config.onFailure?.(message);
       });
     } catch (err) {
       state = "idle";
+      const message = err instanceof Error ? err.message : String(err);
       console.error(err);
+      config.onFailure?.(message);
     }
   }
 

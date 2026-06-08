@@ -29,10 +29,19 @@ interface ActiveTrap {
   release: () => void;
 }
 
-// Module-level trap stack: only the top (last) entry captures focus.
+// Per-document trap stacks: only the top (last) entry in each document captures focus.
 // When a new trap activates, the previous top is suspended (listeners removed).
 // When the top trap releases, the next-in-stack is re-armed (listeners re-attached).
-const trapStack: TrapEntry[] = [];
+const trapStacks = new WeakMap<Document, TrapEntry[]>();
+
+function getTrapStack(ownerDocument: Document): TrapEntry[] {
+  let stack = trapStacks.get(ownerDocument);
+  if (!stack) {
+    stack = [];
+    trapStacks.set(ownerDocument, stack);
+  }
+  return stack;
+}
 
 function suspendEntry(entry: TrapEntry): void {
   if (entry.suspended) return;
@@ -64,18 +73,20 @@ function resumeEntry(entry: TrapEntry): void {
 }
 
 function pushTrap(entry: TrapEntry): void {
-  const prev = trapStack.at(-1);
+  const stack = getTrapStack(entry.ownerDocument);
+  const prev = stack.at(-1);
   if (prev) suspendEntry(prev);
-  trapStack.push(entry);
+  stack.push(entry);
 }
 
 function removeTrap(entry: TrapEntry): void {
-  const index = trapStack.indexOf(entry);
+  const stack = getTrapStack(entry.ownerDocument);
+  const index = stack.indexOf(entry);
   if (index < 0) return;
-  const wasTop = index === trapStack.length - 1;
-  trapStack.splice(index, 1);
+  const wasTop = index === stack.length - 1;
+  stack.splice(index, 1);
   if (wasTop) {
-    const newTop = trapStack.at(-1);
+    const newTop = stack.at(-1);
     if (newTop) resumeEntry(newTop);
   }
 }
@@ -266,7 +277,7 @@ export function useFocusTrap(
         // Only restore focus to pre-trap target if there is no outer trap
         // waiting. When an outer trap exists, resumeEntry() already moved
         // focus back into the outer container.
-        if (restoreFocus && trapStack.length === 0) {
+        if (restoreFocus && getTrapStack(ownerDocument).length === 0) {
           restoreFocusTarget(restoreTarget);
         }
       },

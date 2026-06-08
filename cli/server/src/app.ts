@@ -1,4 +1,4 @@
-import { SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api";
+import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { Context } from "hono";
 import { Hono } from "hono";
@@ -115,12 +115,7 @@ export const createApp = (): Hono<AppEnv> => {
         return isLocalhostOrigin(origin) ? origin : "";
       },
       allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      allowHeaders: [
-        "Content-Type",
-        "Authorization",
-        "x-diffgazer-project-root",
-        SHUTDOWN_TOKEN_HEADER,
-      ],
+      allowHeaders: ["Content-Type", "Authorization", PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER],
     }),
   );
 

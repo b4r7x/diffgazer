@@ -1,9 +1,11 @@
 import {
+  type AIProvider,
+  type CredentialRef,
   PROVIDER_ENV_VARS,
   type SaveConfigRequest,
   type SettingsConfig,
 } from "../schemas/config/index.js";
-import type { WizardData } from "./types.js";
+import type { InputMethod, WizardData } from "./types.js";
 
 export type SettingsPayload = Pick<
   SettingsConfig,
@@ -18,17 +20,23 @@ export function buildSettingsPayload(data: WizardData): SettingsPayload {
   };
 }
 
+export function buildCredentialRef(
+  provider: AIProvider,
+  inputMethod: InputMethod,
+  apiKey: string,
+): CredentialRef {
+  return inputMethod === "env"
+    ? { kind: "env", varName: PROVIDER_ENV_VARS[provider] }
+    : { kind: "literal", value: apiKey };
+}
+
 export function buildConfigPayload(data: WizardData): SaveConfigRequest {
   if (!data.provider) {
     throw new Error("Cannot build config payload without a provider");
   }
-  const apiKey =
-    data.inputMethod === "env"
-      ? { kind: "env" as const, varName: PROVIDER_ENV_VARS[data.provider] }
-      : { kind: "literal" as const, value: data.apiKey };
   return {
     provider: data.provider,
-    apiKey,
+    apiKey: buildCredentialRef(data.provider, data.inputMethod, data.apiKey),
     model: data.model ?? undefined,
   };
 }

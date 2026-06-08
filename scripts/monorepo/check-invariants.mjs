@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { readJson } from "./artifacts/json.mjs";
 import { runValidationChecks } from "./artifacts/run-checks.mjs";
@@ -183,11 +183,14 @@ function assertLicenseFilesMatch(parsedPackages) {
   );
 }
 
-function listPackageJsonFiles() {
-  const files = execSync("rg --files -g 'package.json' -g '!node_modules/**' --no-heading", {
+export function listPackageJsonFiles() {
+  const output = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], {
     encoding: "utf8",
   });
-  return files.trim().split("\n").filter(Boolean);
+  return output
+    .trim()
+    .split("\n")
+    .filter((path) => path.endsWith("package.json") && !path.includes("node_modules/"));
 }
 
 addResult("root workspace file exists", existsSync("pnpm-workspace.yaml"));

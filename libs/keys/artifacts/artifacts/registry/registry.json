@@ -1,0 +1,134 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "keys",
+  "homepage": "https://github.com/b4r7x/diffgazer/tree/main/libs/keys",
+  "items": [
+    {
+      "name": "navigation",
+      "type": "registry:hook",
+      "title": "Navigation",
+      "description": "Standalone keyboard navigation for role-based lists and tabs",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "src/hooks/use-navigation.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/use-navigation.ts"
+        },
+        {
+          "path": "src/core/navigation-dispatch.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/utils/navigation-dispatch.ts"
+        },
+        {
+          "path": "src/dom/navigation-items.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/utils/navigation-items.ts"
+        },
+        {
+          "path": "src/core/navigation-directions.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/utils/navigation-directions.ts"
+        },
+        {
+          "path": "src/dom/focusable.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/utils/focusable.ts"
+        },
+        {
+          "path": "src/dom/element-guards.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/utils/element-guards.ts"
+        }
+      ]
+    },
+    {
+      "name": "focus-restore",
+      "type": "registry:hook",
+      "title": "Focus Restore",
+      "description": "Capture and restore focus around overlays and temporary UI with nested stack safety",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "src/hooks/use-focus-restore.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/use-focus-restore.ts"
+        },
+        {
+          "path": "src/dom/focus-restore.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/utils/focus-restore.ts"
+        },
+        {
+          "path": "src/dom/element-guards.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/utils/element-guards.ts"
+        }
+      ]
+    },
+    {
+      "name": "focus-trap",
+      "type": "registry:hook",
+      "title": "Focus Trap",
+      "description": "Trap Tab focus within a container element",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "src/hooks/use-focus-trap.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/use-focus-trap.ts"
+        },
+        {
+          "path": "src/hooks/use-focus-restore.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/use-focus-restore.ts"
+        },
+        {
+          "path": "src/dom/focus-restore.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/utils/focus-restore.ts"
+        },
+        {
+          "path": "src/dom/focusable.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/utils/focusable.ts"
+        },
+        {
+          "path": "src/dom/element-guards.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/utils/element-guards.ts"
+        }
+      ]
+    },
+    {
+      "name": "scroll-lock",
+      "type": "registry:hook",
+      "title": "Scroll Lock",
+      "description": "Prevent body/element scrolling with reference counting",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "src/hooks/use-scroll-lock.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/use-scroll-lock.ts"
+        }
+      ]
+    }
+  ]
+}

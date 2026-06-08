@@ -5,6 +5,7 @@ import {
   REGISTRY_ORIGIN,
 } from "@diffgazer/registry";
 import {
+  isHiddenKeysShim,
   transformUiPublicRegistryItem,
   transformUiPublicRegistryKeysImportContent,
   transformUiPublicRegistryKeysImports,
@@ -60,7 +61,11 @@ function main(): void {
       label: "ui public registry index",
       afterBuild: ({ outputDir }) => transformUiPublicRegistryKeysImports(outputDir),
       transformSourceItem: ({ item }) => transformUiPublicRegistryItem(item),
-      transformSourceContent: ({ content }) => transformUiPublicRegistryKeysImportContent(content),
+      shouldSkipSourceItem: ({ item }) => isHiddenKeysShim(item),
+      transformSourceContent: ({ content, itemName }) =>
+        transformUiPublicRegistryKeysImportContent(content, {
+          shimHookBasename: itemName.startsWith("use-") ? itemName : undefined,
+        }),
     },
     requiredPaths: [
       { path: "public/r", label: "ui public registry" },

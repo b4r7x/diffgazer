@@ -1,11 +1,12 @@
+import type { SecretsStorage } from "@diffgazer/core/schemas/config";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
-import { useTheme } from "../../../../app/providers/theme";
 import { StorageSelector } from "../../../../components/shared/storage-selector";
+import { useTheme } from "../../../../theme/provider";
 
 interface StorageStepProps {
-  value: string | null;
-  onChange: (value: string) => void;
+  value: SecretsStorage | null;
+  onChange: (value: SecretsStorage) => void;
   isActive?: boolean;
 }
 

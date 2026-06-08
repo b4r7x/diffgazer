@@ -5,9 +5,9 @@ import {
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { Box, Text, useInput } from "ink";
 import { useState } from "react";
-import { useTheme } from "../../../app/providers/theme";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { getVisibleSliceOffset } from "../../../lib/visible-slice-offset";
+import { useTheme } from "../../../theme/provider";
 import { IssuePreviewItem } from "./issue-preview-item";
 import { SeverityFilterGroup } from "./severity-filter-group";
 

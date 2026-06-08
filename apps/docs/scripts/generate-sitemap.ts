@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -107,33 +106,11 @@ function resolveItemMdxSource(libId: string, routeSegment: string, name: string)
   return existsSync(candidate) ? candidate : null;
 }
 
-/** Cache git log timestamps so we only spawn once per source file. */
-const gitTimestampCache = new Map<string, string | null>();
+/** Fixed lastmod for routes without a backing MDX source (home, generated lists). */
+export const SITEMAP_FALLBACK_LASTMOD = "2025-01-01T00:00:00.000Z";
 
-function getGitTimestamp(filePath: string): string | null {
-  const cached = gitTimestampCache.get(filePath);
-  if (cached !== undefined) return cached;
-  try {
-    const iso = execFileSync("git", ["log", "-1", "--format=%aI", "--", filePath], {
-      encoding: "utf-8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-    const result = iso || null;
-    gitTimestampCache.set(filePath, result);
-    return result;
-  } catch {
-    gitTimestampCache.set(filePath, null);
-    return null;
-  }
-}
-
-function formatLastMod(sourcePath: string | null): string {
-  if (sourcePath && existsSync(sourcePath)) {
-    const gitDate = getGitTimestamp(sourcePath);
-    if (gitDate) return new Date(gitDate).toISOString();
-  }
-  // Fallback: fixed date so the sitemap is reproducible across builds.
-  return "2025-01-01T00:00:00.000Z";
+export function formatLastMod(_sourcePath: string | null): string {
+  return SITEMAP_FALLBACK_LASTMOD;
 }
 
 function escapeXml(value: string): string {

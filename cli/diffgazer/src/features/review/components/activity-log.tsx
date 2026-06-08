@@ -1,10 +1,10 @@
 import { formatTimestamp } from "@diffgazer/core/format";
 import { type LogEntryData, TAG_BADGE_VARIANTS } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
-import { useTheme } from "../../../app/providers/theme";
 import { Badge } from "../../../components/ui/badge";
 import { ScrollArea } from "../../../components/ui/scroll-area";
 import type { CliColorTokens } from "../../../theme/palettes";
+import { useTheme } from "../../../theme/provider";
 
 export interface ActivityLogProps {
   entries: LogEntryData[];

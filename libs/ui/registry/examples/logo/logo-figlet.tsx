@@ -1,4 +1,5 @@
 "use client";
+// @hidden-imports-ok — demo imports optional figlet helper from logo-figlet registry item
 
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/ui/logo";

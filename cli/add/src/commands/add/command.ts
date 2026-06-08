@@ -6,6 +6,7 @@ import {
   info,
   normalizeVersionSpec,
   parseEnumOption,
+  readPackageJson,
 } from "@diffgazer/registry/cli";
 import type { ResolvedConfig } from "../../context.js";
 import { ctx } from "../../context.js";
@@ -52,7 +53,23 @@ function collectFileOps(
   return { fileOps, cssChunksByItem: cssPlan.chunksByItem };
 }
 
-function computeMissingDeps(
+function installedVersion(cwd: string, packageName: string): string | undefined {
+  const pkg = readPackageJson(cwd);
+  if (!pkg) return undefined;
+  return (
+    pkg.dependencies?.[packageName] ??
+    pkg.devDependencies?.[packageName] ??
+    pkg.peerDependencies?.[packageName]
+  );
+}
+
+function requestedVersion(dep: string): string | undefined {
+  const name = depName(dep);
+  const versionAt = dep.indexOf("@", name.startsWith("@") ? 1 : 0);
+  return versionAt > 0 ? dep.slice(versionAt + 1) : undefined;
+}
+
+export function computeMissingDeps(
   resolved: string[],
   selection: ResolvedIntegrationSelection,
   keysVersionSpec: string,
@@ -60,7 +77,13 @@ function computeMissingDeps(
 ): string[] {
   const npmDeps = applyIntegrationDeps(ctx.registry.npmDeps(resolved), selection, keysVersionSpec);
   const installed = getInstalledDeps(cwd);
-  return npmDeps.filter((dep) => !installed.has(depName(dep)));
+  return npmDeps.filter((dep) => {
+    const name = depName(dep);
+    if (!installed.has(name)) return true;
+    const requested = requestedVersion(dep);
+    if (!requested) return false;
+    return installedVersion(cwd, name) !== requested;
+  });
 }
 
 const addBaseCommand = createAddCommand<ResolvedConfig>({
@@ -70,7 +93,15 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
   emptyRequestedMessage: "No items specified. Usage: dgadd add ui/button keys/navigation",
   allIgnoresSpecifiedWarning: "--all flag ignores specified item names.",
   requireConfig: ctx.items.requireConfig,
-  getPublicNames: () => publicAvailableNames(),
+  getPublicNames: () => [
+    ...new Set([
+      ...publicAvailableNames(),
+      ...ctx.registry
+        .getAllItems()
+        .filter((item) => item.meta?.hidden === true && item.type !== "registry:hook")
+        .map((item) => `ui/${item.name}`),
+    ]),
+  ],
   validateRequestedNames: validateInstallNames,
   extraOptions: [
     {

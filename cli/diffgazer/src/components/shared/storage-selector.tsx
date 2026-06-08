@@ -1,9 +1,14 @@
+import {
+  isSecretsStorage,
+  SECRETS_STORAGE_OPTIONS,
+  type SecretsStorage,
+} from "@diffgazer/core/schemas/config";
 import type { ReactElement } from "react";
 import { RadioGroup } from "../ui/radio";
 
 interface StorageSelectorProps {
-  value?: string;
-  onChange?: (v: string) => void;
+  value?: SecretsStorage;
+  onChange?: (value: SecretsStorage) => void;
   isActive?: boolean;
 }
 
@@ -13,17 +18,21 @@ export function StorageSelector({
   isActive = true,
 }: StorageSelectorProps): ReactElement {
   return (
-    <RadioGroup value={value} onChange={onChange} isActive={isActive}>
-      <RadioGroup.Item
-        value="file"
-        label="File Storage (Local)"
-        description="Store secrets in a local file with OS file permissions (mode 0600). Simple and portable. For stronger protection, consider the system keyring."
-      />
-      <RadioGroup.Item
-        value="keyring"
-        label="System Keyring"
-        description="Use your operating system's secure keychain. Better security, system-integrated."
-      />
+    <RadioGroup
+      value={value}
+      onChange={(nextValue) => {
+        if (isSecretsStorage(nextValue)) onChange?.(nextValue);
+      }}
+      isActive={isActive}
+    >
+      {SECRETS_STORAGE_OPTIONS.map((option) => (
+        <RadioGroup.Item
+          key={option.value}
+          value={option.value}
+          label={option.label}
+          description={option.description}
+        />
+      ))}
     </RadioGroup>
   );
 }

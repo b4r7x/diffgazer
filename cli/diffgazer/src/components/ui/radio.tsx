@@ -1,10 +1,10 @@
-import { clampIndex } from "@diffgazer/keys";
+import { moveHighlight } from "@diffgazer/keys";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext, useState } from "react";
-import { useTheme } from "../../app/providers/theme";
 import { collectChildItems } from "../../lib/list-navigation";
 import type { CliColorTokens } from "../../theme/palettes";
+import { useTheme } from "../../theme/provider";
 
 export interface RadioGroupProps {
   value?: string;
@@ -119,26 +119,33 @@ function RadioGroupRoot({
 }: RadioGroupProps) {
   const { tokens } = useTheme();
   const items = collectChildItems(children, extractRadioItem);
-  const selectableItems = items.filter((item) => !item.disabled && !disabled);
+  const navigableItems = items.map((item) => ({
+    id: item.value,
+    disabled: disabled || item.disabled,
+  }));
+  const selectableItems = navigableItems.filter((item) => !item.disabled);
 
   const [internalValue, setInternalValue] = useState(defaultValue ?? "");
-  const [highlightIndex, setHighlightIndex] = useState(0);
+  const [internalHighlightedValue, setInternalHighlightedValue] = useState<string | null>(null);
 
   const selectedValue = value ?? internalValue;
-  const highlightedValue = selectableItems[highlightIndex]?.value ?? "";
+  const highlightedValue =
+    internalHighlightedValue !== null &&
+    selectableItems.some((item) => item.id === internalHighlightedValue)
+      ? internalHighlightedValue
+      : (selectableItems[0]?.id ?? "");
 
   function moveBy(direction: 1 | -1) {
-    if (selectableItems.length === 0) return;
-    const nextIdx = clampIndex(highlightIndex, direction, selectableItems.length, wrap);
-    setHighlightIndex(nextIdx);
-    const nextItem = selectableItems[nextIdx];
-    if (nextItem) {
-      onHighlightChange?.(nextItem.value);
-    }
+    const result = moveHighlight(navigableItems, highlightedValue, direction, wrap);
+    if (!result) return;
+    setInternalHighlightedValue(result.id);
+    onHighlightChange?.(result.id);
   }
 
   function selectCurrent() {
-    const item = selectableItems[highlightIndex];
+    const item = items.find(
+      (candidate) => candidate.value === highlightedValue && !candidate.disabled,
+    );
     if (!item) return;
 
     if (value === undefined) {

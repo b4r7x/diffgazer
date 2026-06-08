@@ -21,6 +21,8 @@ export const REVIEW_CATEGORY = [
 export const ReviewCategorySchema = z.enum(REVIEW_CATEGORY);
 export type ReviewCategory = z.infer<typeof ReviewCategorySchema>;
 
+const LineNumberSchema = z.number().int().positive();
+
 const EVIDENCE_TYPE = ["code", "doc", "trace", "external"] as const;
 const EvidenceTypeSchema = z.enum(EVIDENCE_TYPE);
 
@@ -31,8 +33,12 @@ export const EvidenceRefSchema = z.object({
   file: z.string().optional(),
   range: z
     .object({
-      start: z.number(),
-      end: z.number(),
+      start: LineNumberSchema,
+      end: LineNumberSchema,
+    })
+    .refine((range) => range.end >= range.start, {
+      message: "range.end must be greater than or equal to range.start",
+      path: ["end"],
     })
     .optional(),
   excerpt: z.string(),
@@ -81,27 +87,40 @@ export const EnrichmentDataSchema = z.object({
 });
 export type EnrichmentData = z.infer<typeof EnrichmentDataSchema>;
 
-export const ReviewIssueSchema = z.object({
-  id: z.string(),
-  severity: ReviewSeveritySchema,
-  category: ReviewCategorySchema,
-  title: z.string(),
-  file: z.string(),
-  line_start: z.number().nullable(),
-  line_end: z.number().nullable(),
-  rationale: z.string(),
-  recommendation: z.string(),
-  suggested_patch: z.string().nullable(),
-  confidence: z.number().min(0).max(1),
-  symptom: z.string(),
-  whyItMatters: z.string(),
-  fixPlan: z.array(FixPlanStepSchema).optional(),
-  betterOptions: z.array(z.string()).optional(),
-  testsToAdd: z.array(z.string()).optional(),
-  evidence: z.array(EvidenceRefSchema),
-  trace: z.array(TraceRefSchema).optional(),
-  enrichment: EnrichmentDataSchema.optional(),
-});
+export const ReviewIssueSchema = z
+  .object({
+    id: z.string(),
+    severity: ReviewSeveritySchema,
+    category: ReviewCategorySchema,
+    title: z.string(),
+    file: z.string(),
+    line_start: LineNumberSchema.nullable(),
+    line_end: LineNumberSchema.nullable(),
+    rationale: z.string(),
+    recommendation: z.string(),
+    suggested_patch: z.string().nullable(),
+    confidence: z.number().min(0).max(1),
+    symptom: z.string(),
+    whyItMatters: z.string(),
+    fixPlan: z.array(FixPlanStepSchema).optional(),
+    betterOptions: z.array(z.string()).optional(),
+    testsToAdd: z.array(z.string()).optional(),
+    evidence: z.array(EvidenceRefSchema),
+    trace: z.array(TraceRefSchema).optional(),
+    enrichment: EnrichmentDataSchema.optional(),
+  })
+  .refine((issue) => issue.line_end === null || issue.line_start !== null, {
+    message: "line_end requires line_start",
+    path: ["line_end"],
+  })
+  .refine(
+    (issue) =>
+      issue.line_start === null || issue.line_end === null || issue.line_end >= issue.line_start,
+    {
+      message: "line_end must be greater than or equal to line_start",
+      path: ["line_end"],
+    },
+  );
 export type ReviewIssue = z.infer<typeof ReviewIssueSchema>;
 
 export const ReviewResultSchema = z.object({

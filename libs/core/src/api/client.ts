@@ -1,4 +1,4 @@
-import { SHUTDOWN_TOKEN_HEADER } from "./protocol.js";
+import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "./protocol.js";
 import type {
   ApiClient,
   ApiClientConfig,
@@ -28,7 +28,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
 
   const projectHeaders: Record<string, string> = { ...baseHeaders };
   if (projectRoot) {
-    projectHeaders["x-diffgazer-project-root"] = projectRoot;
+    projectHeaders[PROJECT_ROOT_HEADER] = projectRoot;
   }
 
   /**

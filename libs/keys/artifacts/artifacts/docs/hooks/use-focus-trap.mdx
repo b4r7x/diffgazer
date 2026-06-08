@@ -1,0 +1,62 @@
+---
+title: "useFocusTrap"
+description: "Trap Tab/Shift+Tab focus within a container element. Auto-focuses first focusable element on mount, restores focus on unmount."
+hook: "use-focus-trap"
+---
+
+`useFocusTrap` keeps Tab and Shift+Tab focus inside a container while it is mounted — the standard requirement for modal dialogs. It is **standalone** (no provider), moves focus into the container on activation, recaptures focus if it escapes, and restores focus to the previously focused element when the trap releases. Nested traps stack: only the topmost trap captures, and releasing it re-arms the one beneath.
+
+<UsageSnippet />
+
+## When to use it
+
+- Modal dialogs, confirmation prompts, and other surfaces that must hold focus until dismissed.
+- Any overlay where Tab should never reach the page behind it.
+
+A focus trap governs Tab order; it does not close on `Escape` or lock scroll. Pair it with [`useKey`](/keys/hooks/use-key) for `Escape`-to-close and [`useScrollLock`](/keys/hooks/use-scroll-lock) for background scroll. For focus restoration around triggerless UI without trapping, see [`useFocusRestore`](/keys/hooks/use-focus-restore).
+
+## Installation
+
+<ConsumptionBlock />
+
+## Parameters
+
+<ParameterTable />
+
+The container ref is the first positional argument; options follow as the second argument.
+
+## Returns
+
+<ReturnsTable />
+
+## Keyboard behavior
+
+| Key | Behavior |
+|-----|----------|
+| `Tab` | Advances through tabbable elements; wraps from the last back to the first. |
+| `Shift+Tab` | Moves backward; wraps from the first to the last. |
+| `Tab` (no tabbables) | Prevented; focus stays on the container so the trap is never escaped. |
+
+Focusable and tabbable are treated as distinct: programmatic recapture may target a `tabIndex={-1}` container, while Tab cycling only visits tabbable elements. A `MutationObserver` re-captures focus if the focused element is removed or becomes unfocusable.
+
+## Examples
+
+<Examples />
+
+## Notes
+
+<Notes />
+
+## Edge cases
+
+- **`initialFocus`.** Defaults to the first focusable element. Provide a ref to focus a specific control — for a destructive prompt, point it at Cancel rather than Confirm.
+- **`restoreFocus`.** On by default; focus returns to the element that was focused before the trap activated. When an outer trap is still active, focus returns to that trap instead of the pre-trap element.
+- **Container `tabindex`.** If the container has no `tabindex`, the hook adds `tabindex="-1"` while active and removes it on release so an empty trap can still hold focus.
+
+## Related
+
+- [`useFocusRestore`](/keys/hooks/use-focus-restore) — restore focus without trapping Tab.
+- [`useScrollLock`](/keys/hooks/use-scroll-lock) — lock background scroll behind a modal.
+- [Focus and scroll guide](/keys/guides/focus-and-scroll) — composing trap, restore, and scroll lock.
+
+<SourceViewer />

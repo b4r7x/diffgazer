@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ConfigProvider, useConfigActions, useConfigData } from "./config";
+import { ConfigProvider, useConfigActions, useConfigData } from "@/hooks/use-config";
 
 function makeSetupStatus(overrides: Record<string, unknown> = {}) {
   return {
@@ -68,7 +68,14 @@ function ConfigConsumer() {
       <p>Saving: {String(actions.isSaving)}</p>
       <p>Error: {actions.error ?? "none"}</p>
       <p>Project: {data.projectId ?? "none"}</p>
-      <button type="button" onClick={() => actions.activateProvider("gemini", "gemini-2.5-pro")}>
+      <button
+        type="button"
+        onClick={() =>
+          void actions.activateProvider("gemini", "gemini-2.5-pro").catch(() => {
+            // Error is surfaced via actions.error
+          })
+        }
+      >
         Activate Gemini
       </button>
       <button

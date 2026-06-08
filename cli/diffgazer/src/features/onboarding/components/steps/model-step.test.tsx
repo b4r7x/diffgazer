@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { CliThemeProvider } from "../../../../app/providers/theme";
+import { CliThemeProvider } from "../../../../theme/provider";
 import { ModelStep } from "./model-step";
 
 const GEMINI_CATALOG: ProviderModelsResponse = {

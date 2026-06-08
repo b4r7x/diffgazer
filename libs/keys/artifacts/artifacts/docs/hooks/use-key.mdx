@@ -1,0 +1,64 @@
+---
+title: "useKey"
+description: "Bind keyboard shortcuts to handlers with scoped, document-level, or container-scoped listening. Supports single key, array of keys, or key map overloads."
+hook: "use-key"
+---
+
+`useKey` is the core binding primitive of `@diffgazer/keys`. It registers one or more hotkeys with the nearest [`KeyboardProvider`](/keys/api/keyboard-provider) and runs your handler when a matching combo fires. Bindings are scope-aware: the provider resolves which handler wins when several match, and a binding is automatically removed when its component unmounts.
+
+<UsageSnippet />
+
+## When to use it
+
+- Application shortcuts — `Cmd+K` to open a palette, `Escape` to close an overlay, `?` to show help.
+- Component shortcuts that should only fire while a region has focus (pass `containerRef` + `focusWithinOnly`).
+- Layered UI where a deeper surface (dialog, drawer) should shadow a shortcut owned by the page underneath — combine with [`useScope`](/keys/hooks/use-scope).
+
+Higher-level navigation hooks ([`useScopedNavigation`](/keys/hooks/use-scoped-navigation), [`useFocusZone`](/keys/hooks/use-focus-zone), [`useActionRowNavigation`](/keys/hooks/use-action-row-navigation)) are built on `useKey`; reach for it directly when you need an individual shortcut rather than list or zone movement.
+
+## Installation
+
+<ConsumptionBlock />
+
+## Parameters
+
+<ParameterTable />
+
+The hotkey string uses the [hotkey format](/keys/api/hotkey-format): a key name with optional `ctrl+`, `meta+`, `alt+`, and `shift+` modifiers (for example `"meta+k"`, `"shift+?"`, `"Escape"`).
+
+## Returns
+
+<ReturnsTable />
+
+## Behavior
+
+| Concern | Behavior |
+|---------|----------|
+| Editable targets | Ignored by default. A shortcut does not fire while an `input`, `textarea`, or `contenteditable` element is focused unless `allowInInput` is set. |
+| Focus scoping | With `containerRef` + `focusWithinOnly`, the handler only runs while focus is inside the container. |
+| Scope resolution | When several bindings match the same combo, the handler in the deepest active scope runs first. |
+| Declining | Return exactly `false` from a handler to fall through to the next lower-priority handler for that combo. Any other return value consumes the event. |
+| `preventDefault` | When enabled, the browser default is prevented even if the handler declines by returning `false`. |
+| Cleanup | Bindings are removed on unmount, when `enabled` is `false`, or when `scope` is `null`. |
+
+## Examples
+
+<Examples />
+
+## Notes
+
+<Notes />
+
+## Edge cases
+
+- **No provider.** Without a `KeyboardProvider` ancestor, `useKey` is a no-op — it never throws, so a copied component degrades to "no shortcut" rather than crashing.
+- **`scope: null`.** Passing `null` skips registration entirely while keeping the Hook call in place, which is the supported way to disable a binding conditionally without violating the Rules of Hooks.
+- **Key map overload.** `useKey({ "ctrl+b": ..., Escape: ... })` registers several combos at once; do not pass a separate handler argument with this form.
+
+## Related
+
+- [`useScope`](/keys/hooks/use-scope) — push a named scope so deeper surfaces shadow page-level shortcuts.
+- [`KeyboardProvider`](/keys/api/keyboard-provider) — the context that dispatches matched keys.
+- [Hotkey format](/keys/api/hotkey-format) — modifier and key-name reference.
+
+<SourceViewer />

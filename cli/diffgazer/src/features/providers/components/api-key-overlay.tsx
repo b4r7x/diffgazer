@@ -1,35 +1,53 @@
 import { useSaveConfig } from "@diffgazer/core/api/hooks";
 import type { AIProvider, CredentialRef } from "@diffgazer/core/schemas/config";
-import { Box, Text } from "ink";
+import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
-import { useState } from "react";
-import { useTheme } from "../../../app/providers/theme";
+import { useEffect, useEffectEvent, useState } from "react";
 import { ApiKeyMethodSelector } from "../../../components/shared/api-key-method-selector";
 import { Button } from "../../../components/ui/button";
 import { Dialog } from "../../../components/ui/dialog";
 import { Spinner } from "../../../components/ui/spinner";
+import { useTheme } from "../../../theme/provider";
 
 interface ApiKeyOverlayProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   providerId: string;
-  onSave: (key: string, method: string) => void;
+  onSaved?: () => void;
 }
 
 export function ApiKeyOverlay({
   open,
   onOpenChange,
   providerId,
-  onSave,
+  onSaved,
 }: ApiKeyOverlayProps): ReactElement | null {
   const { tokens } = useTheme();
   const saveConfig = useSaveConfig();
   const [method, setMethod] = useState<"paste" | "env">("paste");
   const [apiKey, setApiKey] = useState("");
   const [envVar, setEnvVar] = useState("");
+  const [footerIndex, setFooterIndex] = useState(0);
 
   const saving = saveConfig.isPending;
   const error = saveConfig.error?.message ?? null;
+
+  const resetSecrets = useEffectEvent(() => {
+    setMethod("paste");
+    setApiKey("");
+    setEnvVar("");
+    setFooterIndex(0);
+    saveConfig.reset();
+  });
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: open/providerId are the reset triggers; useEffectEvent keeps the reset body current without depending on mutation object identity.
+  useEffect(() => {
+    resetSecrets();
+  }, [open, providerId]);
+
+  function handleClose() {
+    onOpenChange(false);
+  }
 
   function handleSave() {
     const value = method === "paste" ? apiKey : envVar;
@@ -42,8 +60,8 @@ export function ApiKeyOverlay({
       { provider: providerId as AIProvider, apiKey: credentialRef },
       {
         onSuccess: () => {
-          onSave(value, method);
-          onOpenChange(false);
+          onSaved?.();
+          handleClose();
         },
       },
     );
@@ -54,6 +72,20 @@ export function ApiKeyOverlay({
       setMethod(m);
     }
   }
+
+  useInput(
+    (_input, key) => {
+      if (saving) return;
+      if (key.leftArrow) {
+        setFooterIndex((index) => Math.max(0, index - 1));
+        return;
+      }
+      if (key.rightArrow) {
+        setFooterIndex((index) => Math.min(1, index + 1));
+      }
+    },
+    { isActive: open && !saving },
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -82,10 +114,10 @@ export function ApiKeyOverlay({
               <Spinner label="Saving..." />
             ) : (
               <>
-                <Button variant="primary" onPress={handleSave}>
+                <Button variant="primary" onPress={handleSave} isActive={footerIndex === 0}>
                   Save
                 </Button>
-                <Button variant="ghost" onPress={() => onOpenChange(false)}>
+                <Button variant="ghost" onPress={handleClose} isActive={footerIndex === 1}>
                   Cancel
                 </Button>
               </>

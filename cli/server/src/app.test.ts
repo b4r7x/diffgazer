@@ -1,4 +1,4 @@
-import { SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api";
+import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "./app.js";
 import { resetShutdownStateForTests } from "./features/shutdown/service.js";
@@ -61,6 +61,24 @@ describe("CORS configuration", () => {
     });
 
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe(origin);
+  });
+
+  it("allows the shared project and shutdown headers on preflight", async () => {
+    const app = createApp();
+    const res = await app.request("/api/health", {
+      method: "OPTIONS",
+      headers: {
+        Host: "localhost:3000",
+        Origin: "http://localhost:3001",
+        "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Headers": `${PROJECT_ROOT_HEADER}, ${SHUTDOWN_TOKEN_HEADER}`,
+      },
+    });
+
+    const allowHeaders = res.headers.get("Access-Control-Allow-Headers");
+    expect(allowHeaders?.split(",").map((value) => value.trim())).toEqual(
+      expect.arrayContaining([PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER]),
+    );
   });
 
   it("omits Access-Control-Allow-Origin for disallowed origins", async () => {

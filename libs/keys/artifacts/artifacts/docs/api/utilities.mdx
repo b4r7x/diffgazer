@@ -1,0 +1,228 @@
+---
+title: Utilities
+description: Helper functions for working with @diffgazer/keys — keys, navigation item utilities, DOM focus restore utilities, and keyboard context hooks.
+---
+
+# Utilities
+
+## navigation item utilities
+
+DOM helpers shared by `useNavigation` and composite widgets. These are package exports, not standalone shadcn registry items.
+
+```ts
+import {
+  NAVIGATION_ITEM_ATTRIBUTE,
+  getNavigationItemProps,
+  getNavigationItems,
+  containsActiveElement,
+  findNavigationItemByValue,
+  focusNavigationItem,
+  getFocusedNavigationValue,
+  getFirstFocusableElement,
+  getFocusableElements,
+  getTabbableElements,
+  isFocusable,
+} from "@diffgazer/keys";
+```
+
+Use `getNavigationItemProps(type, value)` to apply the public data contract:
+
+```tsx
+<button {...getNavigationItemProps("option", "activity")}>Activity</button>
+```
+
+### Signature
+
+```ts
+type NavigationItemType =
+  | "radio"
+  | "checkbox"
+  | "option"
+  | "menuitem"
+  | "menuitemcheckbox"
+  | "menuitemradio"
+  | "button"
+  | "tab";
+
+interface NavigationItemQuery {
+  type: NavigationItemType;
+  skipDisabled?: boolean;
+  scopeToContainer?: boolean;
+  ownerSelector?: string | null;
+}
+
+function getNavigationItemProps(
+  type: NavigationItemType,
+  value: string,
+): {
+  "data-diffgazer-navigation-item": NavigationItemType;
+  "data-value": string;
+};
+
+function getNavigationItems(
+  container: HTMLElement | null,
+  query: NavigationItemQuery,
+): HTMLElement[];
+
+function containsActiveElement(element: HTMLElement): boolean;
+function findNavigationItemByValue(
+  container: HTMLElement | null,
+  query: NavigationItemQuery & { value: string },
+): HTMLElement | null;
+
+function focusNavigationItem(
+  container: HTMLElement | null,
+  query: NavigationItemQuery & {
+    value: string;
+    fallback?: "first" | "last" | "none";
+    preventScroll?: boolean;
+  },
+): string | null;
+
+function getFocusedNavigationValue(
+  container: HTMLElement | null,
+  query: NavigationItemQuery,
+): string | null;
+
+function getFocusableElements(container: HTMLElement | null): HTMLElement[];
+function getFirstFocusableElement(container: HTMLElement | null): HTMLElement | null;
+function getTabbableElements(container: HTMLElement | null): HTMLElement[];
+function isFocusable(element: HTMLElement | null): boolean;
+```
+
+The query helpers read `data-diffgazer-navigation-item`, role selectors, and native radio/checkbox/button controls. Navigation items should expose a stable `data-value`. Typed data-contract markers only match the requested item type, which keeps mixed widgets separated inside the same subtree.
+
+Focusable helpers use the same DOM contract as focus traps and overlays. `getFocusableElements()` includes programmatic focus targets such as `tabIndex={-1}`; `getTabbableElements()` returns browser Tab order and collapses native radio groups to one Tab stop.
+
+---
+
+## DOM focus restore utilities
+
+Plain DOM helpers used by [useFocusRestore](/keys/hooks/use-focus-restore). Use these when you are writing non-hook code that still needs the same focus target contract.
+
+```ts
+import {
+  getRestorableFocusTarget,
+  restoreFocus,
+} from "@diffgazer/keys";
+```
+
+### Signature
+
+```ts
+function getRestorableFocusTarget(ownerDocument?: Document): HTMLElement | null;
+function restoreFocus(target: HTMLElement | null, options?: { preventScroll?: boolean }): boolean;
+```
+
+`getRestorableFocusTarget()` ignores `body`, `documentElement`, disconnected nodes, and missing DOM. `restoreFocus()` focuses a connected target and returns whether focus moved there.
+
+For React components, prefer [useFocusRestore](/keys/hooks/use-focus-restore). The hook owns the nested overlay stack and the cleanup behavior.
+
+---
+
+## keys
+
+Utility to create a `Record<string, KeyHandler>` from an array of hotkeys and a single handler. Useful with the key-map overload of [useKey](/keys/hooks/use-key).
+
+```ts
+import { keys } from "@diffgazer/keys";
+```
+
+### Signature
+
+```ts
+function keys(
+  hotkeys: readonly string[],
+  handler: (event: KeyboardEvent) => void,
+): Record<string, (event: KeyboardEvent) => void>;
+```
+
+### Example
+
+```tsx
+// Instead of writing each arrow key separately:
+useKey(keys(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"], handleArrow));
+
+// Combine with other key maps:
+useKey({
+  ...keys(["ArrowUp", "ArrowDown"], navigate),
+  Enter: select,
+  Escape: cancel,
+});
+```
+
+---
+
+## useKeyboardContext and useOptionalKeyboardContext
+
+Low-level hooks to access the `KeyboardProvider` context. `useKeyboardContext` throws when no provider is present. `useOptionalKeyboardContext` returns `null`.
+
+```ts
+import { useKeyboardContext, useOptionalKeyboardContext } from "@diffgazer/keys";
+```
+
+### Signature
+
+```ts
+function useKeyboardContext(): KeyboardContextValue;
+function useOptionalKeyboardContext(): KeyboardContextValue | null;
+```
+
+### KeyboardContextValue
+
+```ts
+interface KeyboardContextValue {
+  activeScope: string | null;
+  getActiveScope: () => string | null;
+  pushScope: (scope: string) => () => void;
+  register: (scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => () => void;
+}
+```
+
+### Behavior
+
+- `useKeyboardContext` returns the active keyboard context and throws if `KeyboardProvider` is missing.
+- `useOptionalKeyboardContext` returns the active keyboard context or `null` if `KeyboardProvider` is missing.
+- This is what `useKey` uses internally. You probably don't need this directly unless you're building a custom hook on top of @diffgazer/keys.
+
+---
+
+## isEditableElement and isInputElement
+
+Predicate functions for classifying event targets. Used internally by `KeyboardProvider` to skip non-`allowInInput` handlers, and useful when building custom keyboard hooks.
+
+```ts
+import { isEditableElement, isInputElement } from "@diffgazer/keys";
+```
+
+### Signature
+
+```ts
+function isInputElement(target: EventTarget | null): boolean;
+function isEditableElement(target: EventTarget | null): boolean;
+```
+
+### Behavior
+
+- `isInputElement` returns `true` for `<input>`, `<textarea>`, `<select>`, and `contenteditable` elements.
+- `isEditableElement` is stricter: returns `true` only for elements that accept text editing keys (text-like inputs, textarea, contenteditable). Returns `false` for checkboxes, radios, selects, buttons, disabled, and readonly inputs.
+
+---
+
+## canonicalizeHotkey
+
+Normalizes a hotkey string so that aliases and modifier orderings collapse to a single canonical form. Useful when building registries or deduplicating hotkey bindings.
+
+```ts
+import { canonicalizeHotkey } from "@diffgazer/keys";
+```
+
+### Signature
+
+```ts
+function canonicalizeHotkey(hotkey: string): string;
+```
+
+### Behavior
+
+Resolves key aliases (`esc` to `escape`, `up` to `arrowup`, `question` to `?`), normalizes `mod` to `meta` or `ctrl`, and sorts modifiers alphabetically. Two hotkey strings that match the same physical key event will produce the same canonical string.

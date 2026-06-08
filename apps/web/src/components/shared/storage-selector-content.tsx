@@ -1,4 +1,8 @@
-import type { SecretsStorage } from "@diffgazer/core/schemas/config";
+import {
+  isSecretsStorage,
+  SECRETS_STORAGE_OPTIONS,
+  type SecretsStorage,
+} from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { useId, useState } from "react";
@@ -11,26 +15,6 @@ export interface StorageSelectorContentProps {
   keyboardNavigation?: boolean;
   autoFocusList?: boolean;
   onBoundaryReached?: (direction: "up" | "down") => void;
-}
-
-const STORAGE_OPTIONS: Array<{ value: SecretsStorage; label: string; description: string }> = [
-  {
-    value: "file",
-    label: "File Storage (Local)",
-    description:
-      "Store secrets in a local file with OS file permissions (mode 0600). Simple and portable. For stronger protection, consider the system keyring.",
-  },
-  {
-    value: "keyring",
-    label: "System Keyring",
-    description: "Use your operating system's secure keychain. Better security, system-integrated.",
-  },
-];
-
-const STORAGE_VALUES = STORAGE_OPTIONS.map((option) => option.value);
-
-function isStorageValue(value: string | null): value is SecretsStorage {
-  return STORAGE_VALUES.some((storageValue) => storageValue === value);
 }
 
 export function StorageSelectorContent({
@@ -46,15 +30,15 @@ export function StorageSelectorContent({
   const [focusedStorage, setFocusedStorage] = useState<SecretsStorage | null>(null);
 
   const navigationEnabled = !disabled && keyboardNavigation;
-  const highlightedStorage = focusedStorage ?? value ?? STORAGE_OPTIONS[0]?.value ?? null;
+  const highlightedStorage = focusedStorage ?? value ?? SECRETS_STORAGE_OPTIONS[0]?.value ?? null;
 
   const handleChange = (nextValue: string) => {
-    if (!isStorageValue(nextValue)) return;
+    if (!isSecretsStorage(nextValue)) return;
     onChange(nextValue);
   };
 
   const handleEnter = (nextValue: string) => {
-    if (!isStorageValue(nextValue)) return;
+    if (!isSecretsStorage(nextValue)) return;
     onChange(nextValue);
     onEnter?.(nextValue);
   };
@@ -70,7 +54,7 @@ export function StorageSelectorContent({
         onEnter={handleEnter}
         highlighted={navigationEnabled ? highlightedStorage : null}
         onHighlightChange={(nextValue) => {
-          if (isStorageValue(nextValue)) setFocusedStorage(nextValue);
+          if (isSecretsStorage(nextValue)) setFocusedStorage(nextValue);
         }}
         keyboardNavigation={navigationEnabled}
         activationMode="manual"
@@ -84,7 +68,7 @@ export function StorageSelectorContent({
         className="space-y-2"
         disabled={disabled}
       >
-        {STORAGE_OPTIONS.map((option) => (
+        {SECRETS_STORAGE_OPTIONS.map((option) => (
           <RadioGroupItem
             key={option.value}
             value={option.value}

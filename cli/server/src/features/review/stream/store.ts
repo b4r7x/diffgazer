@@ -8,6 +8,8 @@ export interface ActiveSession {
   statusHash: string;
   mode: ReviewMode;
   scopeKey: string;
+  reviewConfigKey: string;
+  provider: string | null;
   startedAt: Date;
   events: FullReviewStreamEvent[];
   isComplete: boolean;
@@ -32,6 +34,24 @@ export function buildScopeKey(params: {
   }
   if (params.profile) {
     parts.push(`p:${params.profile}`);
+  }
+  return parts.join("|");
+}
+
+export function buildReviewConfigKey(params: {
+  lenses?: string[];
+  profile?: string;
+  minSeverity?: string;
+}): string {
+  const parts: string[] = [];
+  if (params.lenses && params.lenses.length > 0) {
+    parts.push(`l:${[...params.lenses].sort().join(",")}`);
+  }
+  if (params.profile) {
+    parts.push(`p:${params.profile}`);
+  }
+  if (params.minSeverity) {
+    parts.push(`s:${params.minSeverity}`);
   }
   return parts.join("|");
 }
@@ -223,6 +243,8 @@ export function createSession(
     statusHash: string;
     mode: ReviewMode;
     scopeKey?: string;
+    reviewConfigKey?: string;
+    provider?: string | null;
   },
 ): ActiveSession {
   if (activeSessions.size >= MAX_SESSIONS) {
@@ -236,6 +258,8 @@ export function createSession(
     statusHash: options.statusHash,
     mode: options.mode,
     scopeKey: options.scopeKey ?? "",
+    reviewConfigKey: options.reviewConfigKey ?? "",
+    provider: options.provider ?? null,
     startedAt: new Date(),
     events: [],
     isComplete: false,
@@ -287,16 +311,19 @@ export function markComplete(reviewId: string): void {
   }
 }
 
-export function cancelSession(reviewId: string): void {
+export function cancelSession(
+  reviewId: string,
+  options?: { message?: string; reason?: string },
+): void {
   const session = activeSessions.get(reviewId);
   if (!session || session.isComplete) return;
 
-  session.controller.abort("session_stale");
+  session.controller.abort(options?.reason ?? "session_stale");
   const cancelEvent: FullReviewStreamEvent = {
     type: "error",
     error: {
       code: ReviewErrorCode.SESSION_STALE,
-      message: "Review session cancelled because repository state changed.",
+      message: options?.message ?? "Review session cancelled because repository state changed.",
     },
   };
   storeSessionEvent(session, cancelEvent);
@@ -313,6 +340,7 @@ export function cancelStaleSessionsForProjectMode(
   mode: ReviewMode,
   headCommit: string,
   statusHash: string,
+  reviewConfigKey = "",
 ): void {
   if (!headCommit || !statusHash) {
     return;
@@ -322,10 +350,33 @@ export function cancelStaleSessionsForProjectMode(
     if (session.isComplete) continue;
     if (session.projectPath !== projectPath) continue;
     if (session.mode !== mode) continue;
-    if (session.headCommit === headCommit && session.statusHash === statusHash) {
+    if (
+      session.headCommit === headCommit &&
+      session.statusHash === statusHash &&
+      session.reviewConfigKey === reviewConfigKey
+    ) {
       continue;
     }
     cancelSession(reviewId);
+  }
+}
+
+export function cancelSessionsForProject(
+  projectPath: string,
+  options?: {
+    provider?: string;
+    message?: string;
+    reason?: string;
+  },
+): void {
+  for (const [reviewId, session] of activeSessions) {
+    if (session.isComplete) continue;
+    if (session.projectPath !== projectPath) continue;
+    if (options?.provider && session.provider !== options.provider) continue;
+    cancelSession(reviewId, {
+      message: options?.message,
+      reason: options?.reason,
+    });
   }
 }
 
@@ -359,6 +410,7 @@ export function getActiveSessionForProject(
     statusHash: string;
     mode: ReviewMode;
     scopeKey?: string;
+    reviewConfigKey?: string;
   },
 ): ActiveSession | undefined {
   const scopeKey = options.scopeKey ?? "";
@@ -369,6 +421,8 @@ export function getActiveSessionForProject(
       session.statusHash === options.statusHash &&
       session.mode === options.mode &&
       session.scopeKey === scopeKey &&
+      (options.reviewConfigKey === undefined ||
+        session.reviewConfigKey === options.reviewConfigKey) &&
       !session.isComplete &&
       session.isReady
     ) {

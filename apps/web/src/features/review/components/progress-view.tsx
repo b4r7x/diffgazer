@@ -9,7 +9,7 @@ import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ProgressList, type ProgressStepData } from "@/components/ui/progress/list";
 import { useReviewProgressKeyboard } from "../hooks/use-progress-keyboard";
 import { ActivityLog, type LogEntryData } from "./activity-log";
@@ -89,7 +89,7 @@ function ErrorDisplay({
 
   return (
     <div className="flex-1 flex items-center justify-center">
-      <div className="text-center p-6 max-w-md">
+      <div role="alert" aria-live="assertive" className="text-center p-6 max-w-md">
         <div className="text-tui-red text-lg font-bold mb-2">
           {isApiKeyError ? "API Key Error" : "Error"}
         </div>
@@ -138,10 +138,11 @@ export function ReviewProgressView({
 
   const { focusPane } = useReviewProgressKeyboard({ onViewResults, onCancel });
 
-  if (!hasAutoExpanded && isReviewStepReadyToExpand(steps)) {
+  useEffect(() => {
+    if (hasAutoExpanded || !isReviewStepReadyToExpand(steps)) return;
     setHasAutoExpanded(true);
     setExpandedStepId("review");
-  }
+  }, [hasAutoExpanded, steps]);
 
   const isApiKeyError = error ? API_KEY_ERROR_PATTERN.test(error) : false;
 

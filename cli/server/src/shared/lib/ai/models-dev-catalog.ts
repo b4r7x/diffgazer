@@ -126,6 +126,54 @@ const isOffline = (): boolean => {
   return flag !== undefined && flag !== "" && flag !== "0" && flag.toLowerCase() !== "false";
 };
 
+const readJsonResponseWithLimit = async (
+  response: Response,
+): Promise<Result<unknown, { message: string }>> => {
+  const declaredLength = Number(response.headers?.get?.("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_RESPONSE_BYTES) {
+    return err({ message: `models.dev catalog response too large: ${declaredLength} bytes` });
+  }
+
+  if (!response.body) {
+    try {
+      return ok((await response.json()) as unknown);
+    } catch (error) {
+      return err({ message: getErrorMessage(error, "models.dev catalog response was not JSON") });
+    }
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let receivedBytes = 0;
+  let text = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+
+      receivedBytes += value.byteLength;
+      if (receivedBytes > MAX_RESPONSE_BYTES) {
+        await reader.cancel("models.dev catalog response exceeded the size limit");
+        return err({ message: `models.dev catalog response too large: ${receivedBytes} bytes` });
+      }
+
+      text += decoder.decode(value, { stream: true });
+    }
+
+    text += decoder.decode();
+  } catch (error) {
+    return err({ message: getErrorMessage(error, "Failed to read models.dev catalog response") });
+  }
+
+  try {
+    return ok(JSON.parse(text) as unknown);
+  } catch (error) {
+    return err({ message: getErrorMessage(error, "models.dev catalog response was not JSON") });
+  }
+};
+
 /**
  * The single live-fetch + parse + shrink/corruption-guard step. Exported as a
  * deliberate test seam so the guards can be exercised directly; production reaches
@@ -149,17 +197,10 @@ export const fetchModelsDevCatalog = async (options?: {
   if (!response.ok)
     return err({ message: `models.dev catalog request failed: ${response.status}` });
 
-  const declaredLength = Number(response.headers.get("content-length"));
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_RESPONSE_BYTES) {
-    return err({ message: `models.dev catalog response too large: ${declaredLength} bytes` });
-  }
+  const payloadResult = await readJsonResponseWithLimit(response);
+  if (!payloadResult.ok) return payloadResult;
 
-  let payload: unknown;
-  try {
-    payload = await response.json();
-  } catch (error) {
-    return err({ message: getErrorMessage(error, "models.dev catalog response was not JSON") });
-  }
+  const payload = payloadResult.value;
 
   const catalog = parseModelsDevCatalog(payload);
   const liveCount = countModels(catalog);

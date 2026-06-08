@@ -1,19 +1,19 @@
 import type { ReactElement } from "react";
-import { useNavigation } from "./providers/navigation-provider";
-import type { ScreenName } from "./routes";
+import { HistoryScreen } from "../features/history/components/screen.js";
+import { HomeScreen } from "../features/home/components/screen.js";
+import { ReviewScreen } from "../features/review/components/screen.js";
+import { AgentExecutionScreen } from "../features/settings/components/agent-execution-screen.js";
+import { AnalysisScreen } from "../features/settings/components/analysis-screen.js";
+import { DiagnosticsScreen } from "../features/settings/components/diagnostics-screen.js";
+import { SettingsHubScreen } from "../features/settings/components/hub-screen.js";
+import { ProvidersScreen } from "../features/settings/components/providers-screen.js";
+import { StorageScreen } from "../features/settings/components/storage-screen.js";
+import { ThemeScreen } from "../features/settings/components/theme-screen.js";
+import { TrustPermissionsScreen } from "../features/settings/components/trust-permissions-screen.js";
+import { useNavigation } from "../hooks/use-navigation";
+import type { ScreenName } from "../lib/routes.js";
 import { HelpScreen } from "./screens/help";
-import { HistoryScreen } from "./screens/history";
-import { HomeScreen } from "./screens/home";
 import { OnboardingScreen } from "./screens/onboarding";
-import { ReviewScreen } from "./screens/review";
-import { AgentExecutionScreen } from "./screens/settings/agent-execution";
-import { AnalysisScreen } from "./screens/settings/analysis";
-import { DiagnosticsScreen } from "./screens/settings/diagnostics";
-import { SettingsHubScreen } from "./screens/settings/hub";
-import { ProvidersScreen } from "./screens/settings/providers";
-import { StorageScreen } from "./screens/settings/storage";
-import { ThemeScreen } from "./screens/settings/theme";
-import { TrustPermissionsScreen } from "./screens/settings/trust-permissions";
 
 export const SCREEN_MAP: Record<ScreenName, () => ReactElement> = {
   home: () => <HomeScreen />,

@@ -1,7 +1,11 @@
 "use client";
 
 export { keys } from "./core/keys.js";
-export { clampIndex } from "./core/list-navigation.js";
+export type {
+  HighlightNavigationItem,
+  MoveHighlightResult,
+} from "./core/list-navigation.js";
+export { clampIndex, moveHighlight } from "./core/list-navigation.js";
 export type {
   BoundaryDirection,
   VerticalDirection,

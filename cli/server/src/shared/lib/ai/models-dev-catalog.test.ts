@@ -22,8 +22,28 @@ const writeCache = (catalog: unknown, fetchedAt: string): void => {
 const readCache = (): unknown => JSON.parse(fs.readFileSync(cachePath(), "utf-8"));
 const okResponse = (body: unknown, headers?: Record<string, string>): Response =>
   ({ ok: true, status: 200, headers: new Headers(headers), json: async () => body }) as Response;
+const chunkedResponse = (text: string, headers?: Record<string, string>): Response => {
+  const bytes = new TextEncoder().encode(text);
+  return {
+    ok: true,
+    status: 200,
+    headers: new Headers(headers),
+    body: new ReadableStream({
+      start(controller) {
+        let offset = 0;
+        const chunkSize = 64 * 1024;
+        while (offset < bytes.length) {
+          controller.enqueue(bytes.slice(offset, offset + chunkSize));
+          offset += chunkSize;
+        }
+        controller.close();
+      },
+    }),
+  } as Response;
+};
 const fresh = (): string => new Date().toISOString();
 const stale = (): string => new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+const MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
 
 const ENABLED_PROVIDERS = (
   Object.entries(PROVIDER_OVERLAY) as [AIProvider, (typeof PROVIDER_OVERLAY)[AIProvider]][]
@@ -79,6 +99,19 @@ describe("fetchModelsDevCatalog", () => {
     const result = await fetchModelsDevCatalog();
     expect(result.ok).toBe(false);
     expect(json).not.toHaveBeenCalled();
+    if (!result.ok) expect(result.error.message.toLowerCase()).toContain("too large");
+  });
+
+  it("refuses a chunked response whose body exceeds the ceiling without Content-Length", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      chunkedResponse(
+        `{"google":{"id":"google","models":{"big":{"id":"big","name":"${"x".repeat(MAX_RESPONSE_BYTES)}"}}}}`,
+      ),
+    );
+
+    const result = await fetchModelsDevCatalog();
+
+    expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.message.toLowerCase()).toContain("too large");
   });
 

@@ -1,6 +1,6 @@
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
-import { useTheme } from "../../app/providers/theme";
+import { useTheme } from "../../theme/provider";
 
 export interface ButtonProps {
   variant?: "primary" | "secondary" | "destructive" | "success" | "ghost" | "outline";

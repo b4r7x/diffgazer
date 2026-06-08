@@ -93,11 +93,38 @@ function validateCredential(
   return ok(undefined);
 }
 
-export const saveConfig = (
+async function validateProviderModelSelection(
+  provider: AIProvider,
+  model: string | undefined,
+): Promise<Result<void, { message: string; code: string }>> {
+  if (!model) {
+    return ok(undefined);
+  }
+
+  if (provider === "openrouter") {
+    return ok(undefined);
+  }
+
+  const { models } = await getProviderModelsFromCatalog(provider);
+  if (models.some((candidate) => candidate.id === model)) {
+    return ok(undefined);
+  }
+
+  return err(
+    createError("MODEL_ERROR", `Model "${model}" is not available for provider "${provider}".`),
+  );
+}
+
+export const saveConfig = async (
   input: SaveConfigRequest,
 ): Promise<Result<ProviderStatus, SecretsStorageError | { message: string; code: string }>> => {
-  const validation = validateCredential(input.provider, input.apiKey);
-  if (!validation.ok) return Promise.resolve(validation);
+  const credentialValidation = validateCredential(input.provider, input.apiKey);
+  if (!credentialValidation.ok) return credentialValidation;
+
+  const modelValidation = await validateProviderModelSelection(input.provider, input.model);
+  if (!modelValidation.ok) {
+    return modelValidation;
+  }
 
   return getStore().saveProviderCredentials({
     provider: input.provider,
@@ -153,19 +180,10 @@ export const activateProvider = async (input: {
     return err(createError("INVALID_BODY", "API key required before selecting model"));
   }
 
-  // Reject a model id absent from the provider's resolved catalog. OpenRouter is
-  // exempt: its models come from the live key-gated route, not the catalog.
   const effectiveModel = model ?? existing.model;
-  if (effectiveModel && provider !== "openrouter") {
-    const { models } = await getProviderModelsFromCatalog(provider);
-    if (!models.some((m) => m.id === effectiveModel)) {
-      return err(
-        createError(
-          "MODEL_ERROR",
-          `Model "${effectiveModel}" is not available for provider "${provider}".`,
-        ),
-      );
-    }
+  const modelValidation = await validateProviderModelSelection(provider, effectiveModel);
+  if (!modelValidation.ok) {
+    return modelValidation;
   }
 
   const result = await getStore().activateProvider(input);

@@ -31,6 +31,14 @@ describe("detectPackageManager", () => {
     expect(detectPackageManager(root)).toBe("pnpm");
   });
 
+  it("does not crash on malformed package.json and falls back to lockfile detection", () => {
+    writeFileSync(join(root, "package.json"), "{ not valid json");
+    writeFileSync(join(root, "package-lock.json"), "{}");
+    process.env.npm_config_user_agent = "pnpm/10.0.0 node/v22";
+
+    expect(detectPackageManager(root)).toBe("npm");
+  });
+
   it("prefers lockfiles over one-off executor user agent when packageManager is missing", () => {
     writeFileSync(join(root, "package.json"), "{}");
     writeFileSync(join(root, "yarn.lock"), "");

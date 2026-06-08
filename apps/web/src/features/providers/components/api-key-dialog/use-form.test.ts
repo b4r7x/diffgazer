@@ -126,6 +126,21 @@ describe("useApiKeyForm", () => {
     expect(result.current.isSubmitting).toBe(false);
   });
 
+  it("keeps the typed key after a failed paste submit", async () => {
+    const onSubmit = vi.fn().mockRejectedValue(new Error("Network error"));
+    const onOpenChange = vi.fn();
+    const { result } = renderHook(() => useApiKeyForm(defaultProps({ onSubmit, onOpenChange })));
+
+    act(() => result.current.setKeyValue("sk-test-key"));
+
+    await act(async () => {
+      await result.current.handleSubmit();
+    });
+
+    expect(result.current.keyValue).toBe("sk-test-key");
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
   it("clears the keyValue after a successful submit", async () => {
     const { result } = renderHook(() => useApiKeyForm(defaultProps()));
 

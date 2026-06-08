@@ -101,6 +101,32 @@ describe("useOpenRouterModelsMapped", () => {
     expect(result.current.models).toEqual([]);
   });
 
+  it("keeps the last-good models when a background refetch fails", () => {
+    mockUseOpenRouterModels.mockReturnValue({
+      data: {
+        models: [
+          {
+            id: "openrouter/known",
+            name: "Known",
+            description: "supports structured outputs",
+            isFree: true,
+            supportedParameters: ["structured_outputs"],
+          },
+        ],
+        fetchedAt: new Date().toISOString(),
+        cached: false,
+      },
+      isLoading: false,
+      error: new Error("Network error"),
+    });
+
+    const { result } = renderHook(() => useOpenRouterModelsMapped(true, "openrouter"));
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.compatible).toBe(1);
+    expect(result.current.models.map((model) => model.id)).toEqual(["openrouter/known"]);
+  });
+
   it("returns empty state when provider is not openrouter", () => {
     mockUseOpenRouterModels.mockReturnValue({
       data: undefined,
@@ -152,5 +178,39 @@ describe("useOpenRouterModelsMapped", () => {
     expect(result.current.hasParams).toBe(false);
     expect(result.current.compatible).toBe(1);
     expect(result.current.models).toHaveLength(1);
+  });
+
+  it("returns zero compatible models when every model exposes parameters but none support structured outputs", () => {
+    mockUseOpenRouterModels.mockReturnValue({
+      data: {
+        models: [
+          {
+            id: "or/text-a",
+            name: "Text A",
+            description: "text only",
+            isFree: false,
+            supportedParameters: ["temperature"],
+          },
+          {
+            id: "or/text-b",
+            name: "Text B",
+            description: "text only",
+            isFree: true,
+            supportedParameters: ["top_p"],
+          },
+        ],
+        fetchedAt: new Date().toISOString(),
+        cached: false,
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    const { result } = renderHook(() => useOpenRouterModelsMapped(true, "openrouter"));
+
+    expect(result.current.hasParams).toBe(true);
+    expect(result.current.total).toBe(2);
+    expect(result.current.compatible).toBe(0);
+    expect(result.current.models).toEqual([]);
   });
 });

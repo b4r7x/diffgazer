@@ -39,7 +39,7 @@ interface SearchStatusView {
   role: "status" | "alert";
 }
 
-function getSearchStatusView(
+export function getSearchStatusView(
   hasQuery: boolean,
   status: SearchStatus,
   error: string | null,

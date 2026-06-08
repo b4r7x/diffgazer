@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync as realRmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync as realRmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -102,6 +102,29 @@ describe("runRemoveWorkflow", () => {
 
     expect(updateManifest).not.toHaveBeenCalled();
     expect(onAfterRemove).not.toHaveBeenCalled();
+  });
+
+  it("does not update manifest when post-removal cleanup fails", async () => {
+    const filePath = join(tempDir, "component.tsx");
+    writeFileSync(filePath, "export {};\n");
+
+    const item: TestItem = {
+      name: "test-component",
+      files: [{ absolutePath: filePath }],
+    };
+    const updateManifest = vi.fn();
+    const onAfterRemove = vi.fn(() => {
+      throw new Error("css cleanup failed");
+    });
+
+    await expect(
+      runRemoveWorkflow<TestItem, null>(
+        buildOptions(tempDir, item, { updateManifest, onAfterRemove }),
+      ),
+    ).rejects.toThrow("css cleanup failed");
+
+    expect(updateManifest).not.toHaveBeenCalled();
+    expect(existsSync(filePath)).toBe(false);
   });
 
   it("updates manifest when all files are deleted successfully", async () => {

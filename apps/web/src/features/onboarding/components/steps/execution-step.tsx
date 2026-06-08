@@ -1,13 +1,11 @@
-import type { AgentExecution } from "@diffgazer/core/schemas/config";
+import {
+  AGENT_EXECUTION_OPTIONS,
+  type AgentExecution,
+  isAgentExecution,
+} from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { useState } from "react";
-
-const EXECUTION_MODES: AgentExecution[] = ["sequential", "parallel"];
-
-function isAgentExecution(value: string | null): value is AgentExecution {
-  return EXECUTION_MODES.some((mode) => mode === value);
-}
 
 interface ExecutionStepProps {
   value: AgentExecution;
@@ -54,16 +52,14 @@ export function ExecutionStep({
         wrap={false}
         className="space-y-1"
       >
-        <RadioGroupItem
-          value="sequential"
-          label="Sequential"
-          description="Agents run one after another. Works with all providers and tiers."
-        />
-        <RadioGroupItem
-          value="parallel"
-          label="Parallel"
-          description="All agents run at once. Faster, but may hit rate limits on free tiers."
-        />
+        {AGENT_EXECUTION_OPTIONS.map((option) => (
+          <RadioGroupItem
+            key={option.value}
+            value={option.value}
+            label={option.label}
+            description={option.description}
+          />
+        ))}
       </RadioGroup>
     </div>
   );

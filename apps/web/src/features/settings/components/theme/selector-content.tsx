@@ -1,4 +1,9 @@
-import type { Theme } from "@diffgazer/core/schemas/config";
+import {
+  isTheme,
+  SELECTABLE_THEME_OPTIONS,
+  THEME_OPTIONS,
+  type Theme,
+} from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { type KeyboardEvent, useState } from "react";
@@ -17,17 +22,6 @@ export interface ThemeSelectorContentProps {
   showTerminalOption?: boolean;
 }
 
-const THEME_OPTIONS: Array<{ value: Theme; label: string; description: string }> = [
-  { value: "auto", label: "Auto", description: "Follow system preference" },
-  { value: "dark", label: "Dark", description: "Dark background with light text" },
-  { value: "light", label: "Light", description: "Light background with dark text" },
-  { value: "terminal", label: "Terminal Default", description: "Use terminal default colors" },
-];
-
-function isThemeOption(value: string | null, optionValues: Theme[]): value is Theme {
-  return optionValues.some((optionValue) => optionValue === value);
-}
-
 export function ThemeSelectorContent({
   value,
   onChange,
@@ -41,20 +35,19 @@ export function ThemeSelectorContent({
   enabled = true,
   showTerminalOption = false,
 }: ThemeSelectorContentProps) {
-  const options = showTerminalOption
-    ? THEME_OPTIONS
-    : THEME_OPTIONS.filter((opt) => opt.value !== "terminal");
+  const options = showTerminalOption ? THEME_OPTIONS : SELECTABLE_THEME_OPTIONS;
   const optionValues = options.map((option) => option.value);
 
   const [internalHighlight, setInternalHighlight] = useState<Theme>(highlighted ?? value);
   const rawHighlighted = highlighted ?? internalHighlight;
-  const effectiveHighlighted = isThemeOption(rawHighlighted, optionValues)
-    ? rawHighlighted
-    : (optionValues[0] ?? "auto");
+  const effectiveHighlighted =
+    isTheme(rawHighlighted) && optionValues.includes(rawHighlighted)
+      ? rawHighlighted
+      : (optionValues[0] ?? "auto");
 
   const handleHighlightChange = (nextValue: string | null) => {
     if (nextValue === null) return;
-    if (!isThemeOption(nextValue, optionValues)) return;
+    if (!isTheme(nextValue) || !optionValues.includes(nextValue)) return;
 
     setInternalHighlight(nextValue);
     onHighlightChange?.(nextValue);
@@ -62,7 +55,7 @@ export function ThemeSelectorContent({
   };
 
   const handleChange = (nextValue: string) => {
-    if (isThemeOption(nextValue, optionValues)) onChange(nextValue);
+    if (isTheme(nextValue) && optionValues.includes(nextValue)) onChange(nextValue);
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {

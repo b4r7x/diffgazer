@@ -1,4 +1,4 @@
-import { Button } from "@diffgazer/ui/components/button";
+import { buttonVariants } from "@diffgazer/ui/components/button";
 import { Link } from "@tanstack/react-router";
 import { DocsContentLayout } from "@/components/layout/content-layout";
 import { NotFoundState } from "@/components/not-found-state";
@@ -20,13 +20,17 @@ export function DocsNotFoundBlock({ tree, library }: DocsNotFoundBlockProps) {
         title="Documentation page not found"
         description="The page you requested does not exist or was moved."
         primaryAction={
-          <Link to="/$lib/$" params={{ lib: library, _splat: defaultRouteSlugs.join("/") }}>
-            <Button variant="primary">Go to docs home</Button>
+          <Link
+            to="/$lib/$"
+            params={{ lib: library, _splat: defaultRouteSlugs.join("/") }}
+            className={buttonVariants({ variant: "primary" })}
+          >
+            Go to docs home
           </Link>
         }
         secondaryAction={
-          <Link to="/">
-            <Button variant="ghost">Go home</Button>
+          <Link to="/" className={buttonVariants({ variant: "ghost" })}>
+            Go home
           </Link>
         }
       />

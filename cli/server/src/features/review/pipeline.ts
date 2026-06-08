@@ -3,11 +3,20 @@ import { err, ok, type Result } from "@diffgazer/core/result";
 import type { SettingsConfig } from "@diffgazer/core/schemas/config";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { EnrichProgressEvent } from "@diffgazer/core/schemas/events";
-import type { LensId, ProfileId, ReviewMode, ReviewResult } from "@diffgazer/core/schemas/review";
+import { severityRank } from "@diffgazer/core/schemas/presentation";
+import type {
+  LensId,
+  ProfileId,
+  ReviewMode,
+  ReviewResult,
+  ReviewSeverity,
+  SeverityFilter,
+} from "@diffgazer/core/schemas/review";
 import type { AIClient } from "../../shared/lib/ai/types.js";
 import { getStore } from "../../shared/lib/config/store.js";
 import type { ParsedDiff } from "../../shared/lib/diff/types.js";
 import type { createGitService } from "../../shared/lib/git/service.js";
+import { filterIssuesByMinSeverity } from "../../shared/lib/review/issues.js";
 import { orchestrateReview } from "../../shared/lib/review/orchestrate.js";
 import { getProfile } from "../../shared/lib/review/profiles.js";
 import { saveReview } from "../../shared/lib/storage/reviews.js";
@@ -32,17 +41,53 @@ function resolveActiveLenses(
   return DEFAULT_LENSES;
 }
 
+function resolveEffectiveProfileId(
+  profileId: ProfileId | undefined,
+  settings: SettingsConfig,
+): ProfileId | undefined {
+  return profileId ?? settings.defaultProfile ?? undefined;
+}
+
+function resolveSeverityFilter(
+  profileFilter: SeverityFilter | undefined,
+  severityThreshold: ReviewSeverity,
+): SeverityFilter | undefined {
+  const thresholdFilter = { minSeverity: severityThreshold };
+  if (!profileFilter) {
+    return thresholdFilter;
+  }
+  return severityRank(profileFilter.minSeverity) <= severityRank(thresholdFilter.minSeverity)
+    ? profileFilter
+    : thresholdFilter;
+}
+
+export function resolveReviewDefaults(params: {
+  lensIds?: LensId[];
+  profileId?: ProfileId;
+  settings?: SettingsConfig;
+}): Omit<ResolvedConfig, "projectContext"> {
+  const settings = params.settings ?? getStore().getSettings();
+  const effectiveProfileId = resolveEffectiveProfileId(params.profileId, settings);
+  const profile = effectiveProfileId ? getProfile(effectiveProfileId) : undefined;
+  const activeLenses = resolveActiveLenses(params.lensIds, profile, settings);
+  const severityFilter = resolveSeverityFilter(profile?.filter, settings.severityThreshold);
+
+  return {
+    activeLenses,
+    effectiveProfileId,
+    profile,
+    severityFilter,
+  };
+}
+
 export async function resolveReviewConfig(params: {
   lensIds?: LensId[];
   profileId?: ProfileId;
   projectPath: string;
   emit: EmitFn;
 }): Promise<ResolvedConfig> {
-  const { lensIds, profileId, projectPath, emit } = params;
-
-  const profile = profileId ? getProfile(profileId) : undefined;
-  const settings = getStore().getSettings();
-  const activeLenses = resolveActiveLenses(lensIds, profile, settings);
+  const { projectPath, emit } = params;
+  const defaults = resolveReviewDefaults(params);
 
   await emit(stepStart("context"));
   let projectContext = "";
@@ -56,7 +101,7 @@ export async function resolveReviewConfig(params: {
     await emit(stepError("context", `Context build failed: ${getErrorMessage(error)}`));
   }
 
-  return { activeLenses, profile, projectContext };
+  return { ...defaults, projectContext };
 }
 
 export async function executeReview(params: {
@@ -75,7 +120,7 @@ export async function executeReview(params: {
     parsed,
     {
       lenses: config.activeLenses,
-      filter: config.profile?.filter,
+      filter: config.severityFilter,
     },
     async (event) => {
       await emit(event);
@@ -112,6 +157,7 @@ export async function finalizeReview(params: {
   parsed: ParsedDiff;
   profileId?: ProfileId;
   activeLenses: LensId[];
+  severityFilter?: SeverityFilter;
   startTime: number;
   signal?: AbortSignal;
   headCommit?: string;
@@ -126,6 +172,7 @@ export async function finalizeReview(params: {
     parsed,
     profileId,
     activeLenses,
+    severityFilter,
     startTime,
     signal,
     headCommit,
@@ -143,12 +190,13 @@ export async function finalizeReview(params: {
     signal,
     reviewedFiles,
   );
+  const finalIssues = filterIssuesByMinSeverity(enrichedIssues, severityFilter);
 
   await emit(stepComplete("enrich"));
 
   await emit(stepStart("report"));
 
-  const finalResult = generateReport(enrichedIssues, outcome.summary);
+  const finalResult = generateReport(finalIssues, outcome.summary);
 
   await emit(stepComplete("report"));
 

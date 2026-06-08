@@ -89,8 +89,9 @@ export function Stepper({
     );
     if (triggers.length === 0) return false;
     const activeElement = list.ownerDocument.activeElement;
+    const ButtonCtor = list.ownerDocument.defaultView?.HTMLButtonElement;
     const currentIndex =
-      activeElement instanceof HTMLButtonElement ? triggers.indexOf(activeElement) : -1;
+      ButtonCtor && activeElement instanceof ButtonCtor ? triggers.indexOf(activeElement) : -1;
     const nextIndex = next(triggers.length, currentIndex);
     const target = triggers[nextIndex];
     if (!target) return false;

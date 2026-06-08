@@ -1,5 +1,6 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { requireFrameDocument } from "../testing/assertions.js";
 import { useFocusRestore } from "./use-focus-restore.js";
 
 function button(label: string) {
@@ -76,6 +77,52 @@ describe("useFocusRestore", () => {
     });
 
     expect(document.activeElement).toBe(fallback);
+  });
+
+  it("keeps independent restore stacks per ownerDocument", () => {
+    const frame = document.createElement("iframe");
+    document.body.append(frame);
+    const frameDocument = requireFrameDocument(frame);
+
+    const hostTrigger = button("Host trigger");
+    const hostInside = button("Host inside");
+    const frameTrigger = frameDocument.createElement("button");
+    frameTrigger.textContent = "Frame trigger";
+    frameDocument.body.append(frameTrigger);
+    const frameInside = frameDocument.createElement("button");
+    frameInside.textContent = "Frame inside";
+    frameDocument.body.append(frameInside);
+
+    const hostRestore = renderHook(() => useFocusRestore({ restoreOnUnmount: false }));
+    const frameRestore = renderHook(() => useFocusRestore({ restoreOnUnmount: false }));
+
+    hostTrigger.focus();
+    act(() => {
+      expect(hostRestore.result.current.capture()).toBe(hostTrigger);
+    });
+
+    frameTrigger.focus();
+    act(() => {
+      expect(frameRestore.result.current.capture(frameDocument)).toBe(frameTrigger);
+    });
+
+    hostInside.focus();
+    frameInside.focus();
+    expect(document.activeElement).toBe(hostInside);
+    expect(frameDocument.activeElement).toBe(frameInside);
+
+    act(() => {
+      expect(frameRestore.result.current.restore()).toBe(true);
+    });
+    expect(frameDocument.activeElement).toBe(frameTrigger);
+    expect(document.activeElement).toBe(hostInside);
+
+    act(() => {
+      expect(hostRestore.result.current.restore()).toBe(true);
+    });
+    expect(document.activeElement).toBe(hostTrigger);
+
+    frame.remove();
   });
 
   it("removes a captured entry when disabled", () => {

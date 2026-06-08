@@ -1,9 +1,9 @@
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
 import { pluralize } from "@diffgazer/core/strings";
 import { Box, Text } from "ink";
-import { useTheme } from "../../../app/providers/theme";
 import { KeyValue } from "../../../components/ui/key-value";
 import { SectionHeader } from "../../../components/ui/section-header";
+import { useTheme } from "../../../theme/provider";
 
 interface ContextSnapshotPreviewProps {
   snapshot: ReviewContextResponse;

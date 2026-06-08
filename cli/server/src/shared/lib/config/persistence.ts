@@ -1,17 +1,21 @@
 import { randomUUID } from "node:crypto";
+import { realpathSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   AI_PROVIDERS,
   type AIProvider,
   PROVIDER_ENV_VARS,
   type ProviderStatus,
+  ProviderStatusSchema,
   type SecretsStorage,
   type SettingsConfig,
+  SettingsConfigSchema,
   type TrustConfig,
   TrustConfigSchema,
 } from "@diffgazer/core/schemas/config";
+import { z } from "zod";
 import {
   quarantineCorruptFile,
-  readJsonFileSync,
   readJsonFileSyncSafe,
   removeFileSync,
   writeJsonFile,
@@ -27,6 +31,56 @@ import type { ConfigState, ProjectFile, SecretsState, TrustState } from "./types
 
 const isValidAIProvider = (value: string): value is AIProvider => {
   return AI_PROVIDERS.includes(value as AIProvider);
+};
+
+const PersistedConfigStateSchema = z.object({
+  settings: SettingsConfigSchema.partial().optional(),
+  providers: z.array(ProviderStatusSchema).optional(),
+});
+
+const PersistedEnvCredentialRefSchema = z.object({
+  kind: z.literal("env"),
+  varName: z.string().min(1),
+});
+
+const PersistedSecretsStateSchema = z.object({
+  providers: z
+    .record(z.string(), z.union([z.string(), PersistedEnvCredentialRefSchema]))
+    .optional(),
+});
+
+const PersistedTrustStateSchema = z.object({
+  projects: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const RESERVED_PROJECT_IDS = new Set(["__proto__", "constructor", "prototype"]);
+
+const SafeProjectIdSchema = z
+  .string()
+  .min(1)
+  .refine((id) => !RESERVED_PROJECT_IDS.has(id), { message: "projectId is reserved" });
+
+const ProjectFileSchema = z.object({
+  projectId: SafeProjectIdSchema,
+  repoRoot: z.string().min(1),
+  createdAt: z.string().min(1),
+});
+
+const resolveProjectRootPath = (projectRoot: string): string => {
+  try {
+    return realpathSync(resolve(projectRoot));
+  } catch {
+    return resolve(projectRoot);
+  }
+};
+
+const projectFileMatchesRoot = (file: ProjectFile, projectRoot: string): boolean => {
+  const resolvedProject = resolveProjectRootPath(projectRoot);
+  try {
+    return realpathSync(resolve(file.repoRoot)) === resolvedProject;
+  } catch {
+    return resolve(file.repoRoot) === resolvedProject;
+  }
 };
 
 export const DEFAULT_SETTINGS: SettingsConfig = {
@@ -71,9 +125,25 @@ const normalizeProviders = (providers: ProviderStatus[]): ProviderStatus[] => {
   }));
 };
 
-const loadOrQuarantine = <T>(filePath: string, label: string): T | null => {
-  const result = readJsonFileSyncSafe<T>(filePath);
-  if (result.status === "ok") return result.data;
+const formatSchemaIssues = (error: z.ZodError): string =>
+  error.issues
+    .map((issue) => {
+      const path = issue.path.length > 0 ? issue.path.join(".") : "<root>";
+      return `${path}: ${issue.message}`;
+    })
+    .join("; ");
+
+const loadOrQuarantine = <T>(filePath: string, label: string, schema: z.ZodType<T>): T | null => {
+  const result = readJsonFileSyncSafe<unknown>(filePath);
+  if (result.status === "ok") {
+    const parsed = schema.safeParse(result.data);
+    if (parsed.success) return parsed.data;
+    const backupPath = quarantineCorruptFile(filePath);
+    console.warn(
+      `[config] Invalid ${label} at ${filePath} — quarantined as ${backupPath}. ${formatSchemaIssues(parsed.error)}`,
+    );
+    return null;
+  }
   if (result.status === "missing") return null;
   const backupPath = quarantineCorruptFile(filePath);
   console.warn(
@@ -83,7 +153,7 @@ const loadOrQuarantine = <T>(filePath: string, label: string): T | null => {
 };
 
 export const loadConfig = (): ConfigState => {
-  const stored = loadOrQuarantine<ConfigState>(CONFIG_PATH(), "config");
+  const stored = loadOrQuarantine(CONFIG_PATH(), "config", PersistedConfigStateSchema);
   const settings = { ...DEFAULT_SETTINGS, ...(stored?.settings ?? {}) };
   const providers = normalizeProviders(stored?.providers ?? DEFAULT_PROVIDERS);
 
@@ -94,7 +164,7 @@ export const loadConfig = (): ConfigState => {
 };
 
 export const loadSecrets = (): SecretsState => {
-  const stored = loadOrQuarantine<SecretsState>(SECRETS_PATH(), "secrets");
+  const stored = loadOrQuarantine(SECRETS_PATH(), "secrets", PersistedSecretsStateSchema);
   if (!stored?.providers) {
     return { providers: {} };
   }
@@ -122,13 +192,17 @@ const validateTrustRecord = (projectId: string, raw: unknown): TrustConfig | nul
 };
 
 export const loadTrust = (): TrustState => {
-  const stored = loadOrQuarantine<TrustState>(TRUST_PATH(), "trust");
+  const stored = loadOrQuarantine(TRUST_PATH(), "trust", PersistedTrustStateSchema);
   if (!stored?.projects) {
     return { projects: {} };
   }
 
   const validated: Record<string, TrustConfig> = {};
   for (const [projectId, config] of Object.entries(stored.projects)) {
+    if (RESERVED_PROJECT_IDS.has(projectId)) {
+      console.warn(`[config] Dropping trust record with reserved projectId: ${projectId}`);
+      continue;
+    }
     const record = validateTrustRecord(projectId, config);
     if (record) validated[projectId] = record;
   }
@@ -190,9 +264,16 @@ export const syncProvidersWithSecrets = (
 
 export const readProjectFile = (projectRoot: string): ProjectFile | null => {
   const projectInfoPath = getProjectInfoPath(projectRoot);
-  const stored = readJsonFileSync<ProjectFile>(projectInfoPath);
-  if (stored?.projectId) return stored;
-  return null;
+  const loaded = loadOrQuarantine(projectInfoPath, "project file", ProjectFileSchema);
+  if (!loaded) return null;
+  if (!projectFileMatchesRoot(loaded, projectRoot)) {
+    const backupPath = quarantineCorruptFile(projectInfoPath);
+    console.warn(
+      `[config] Project file repoRoot does not match resolved project root at ${projectInfoPath} — quarantined as ${backupPath}.`,
+    );
+    return null;
+  }
+  return loaded;
 };
 
 export const createProjectFile = (projectRoot: string): ProjectFile => {

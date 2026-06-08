@@ -14,6 +14,7 @@ const hashApiKey = (apiKey: string): string =>
 
 const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
 
 const parseCost = (value: unknown): number => {
   if (typeof value === "number") return value;
@@ -81,6 +82,54 @@ const mapOpenRouterModel = (raw: unknown): OpenRouterModel | null => {
 const countWithParams = (models: OpenRouterModel[]): number =>
   models.filter((model) => (model.supportedParameters?.length ?? 0) > 0).length;
 
+const readJsonResponseWithLimit = async (
+  response: Response,
+): Promise<Result<unknown, { message: string }>> => {
+  const declaredLength = Number(response.headers?.get?.("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_RESPONSE_BYTES) {
+    return err({ message: `OpenRouter models response too large: ${declaredLength} bytes` });
+  }
+
+  if (!response.body) {
+    try {
+      return ok((await response.json()) as unknown);
+    } catch (error) {
+      return err({ message: getErrorMessage(error, "OpenRouter models response was not JSON") });
+    }
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let receivedBytes = 0;
+  let text = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+
+      receivedBytes += value.byteLength;
+      if (receivedBytes > MAX_RESPONSE_BYTES) {
+        await reader.cancel("OpenRouter models response exceeded the size limit");
+        return err({ message: `OpenRouter models response too large: ${receivedBytes} bytes` });
+      }
+
+      text += decoder.decode(value, { stream: true });
+    }
+
+    text += decoder.decode();
+  } catch (error) {
+    return err({ message: getErrorMessage(error, "Failed to read OpenRouter models response") });
+  }
+
+  try {
+    return ok(JSON.parse(text) as unknown);
+  } catch (error) {
+    return err({ message: getErrorMessage(error, "OpenRouter models response was not JSON") });
+  }
+};
+
 export const fetchOpenRouterModels = async (
   apiKey: string,
 ): Promise<Result<OpenRouterModel[], { message: string }>> => {
@@ -91,6 +140,7 @@ export const fetchOpenRouterModels = async (
         Authorization: `Bearer ${apiKey}`,
       },
       signal: AbortSignal.timeout(10_000),
+      redirect: "error",
     });
   } catch (error) {
     return err({ message: getErrorMessage(error, "Failed to fetch OpenRouter models") });
@@ -100,7 +150,10 @@ export const fetchOpenRouterModels = async (
     return err({ message: `OpenRouter models request failed: ${response.status}` });
   }
 
-  const payload = (await response.json()) as unknown;
+  const payloadResult = await readJsonResponseWithLimit(response);
+  if (!payloadResult.ok) return payloadResult;
+
+  const payload = payloadResult.value;
   const rawModels = Array.isArray(payload)
     ? payload
     : payload && typeof payload === "object" && "data" in payload
@@ -122,23 +175,31 @@ export const getOpenRouterModelsWithCache = async (
 > => {
   const currentKeyHash = hashApiKey(apiKey);
 
-  const resolution = await withTtlAndFallback({
-    path: getGlobalOpenRouterModelsPath(),
-    schema: OpenRouterModelCacheSchema,
-    ttlMs: CACHE_TTL_MS,
-    isCacheUsable: (entry) => countWithParams(entry.models) > 0,
-    keyHashOf: (entry) => entry.keyHash,
-    currentKeyHash,
-    fetcher: async () => {
-      const fetchResult = await fetchOpenRouterModels(apiKey);
-      if (!fetchResult.ok) return fetchResult;
-      return ok({
-        models: fetchResult.value,
-        fetchedAt: new Date().toISOString(),
-        keyHash: currentKeyHash,
+  const resolution = await (async () => {
+    try {
+      return await withTtlAndFallback({
+        path: getGlobalOpenRouterModelsPath(),
+        schema: OpenRouterModelCacheSchema,
+        ttlMs: CACHE_TTL_MS,
+        isCacheUsable: (entry) => entry.models.length > 0,
+        keyHashOf: (entry) => entry.keyHash,
+        currentKeyHash,
+        fetcher: async () => {
+          const fetchResult = await fetchOpenRouterModels(apiKey);
+          if (!fetchResult.ok) return fetchResult;
+          return ok({
+            models: fetchResult.value,
+            fetchedAt: new Date().toISOString(),
+            keyHash: currentKeyHash,
+          });
+        },
       });
-    },
-  });
+    } catch (error) {
+      return err({
+        message: getErrorMessage(error, "Failed to resolve OpenRouter models cache"),
+      });
+    }
+  })();
 
   if (!resolution.ok) return err({ message: resolution.error.message });
 

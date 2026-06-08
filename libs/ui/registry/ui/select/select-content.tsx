@@ -32,6 +32,7 @@ export interface SelectContentProps {
   align?: FloatingAlign;
   sideOffset?: number;
   collisionPadding?: number;
+  portalContainer?: Element | null;
   ref?: Ref<HTMLDivElement>;
 }
 
@@ -47,6 +48,7 @@ export function SelectContent({
   // attached to the trigger. Override per-instance via the prop.
   sideOffset = 4,
   collisionPadding = 8,
+  portalContainer,
   ref,
 }: SelectContentProps) {
   const {
@@ -213,6 +215,7 @@ export function SelectContent({
       {...(hasSearch ? { onKeyDown: handleKeyDown } : listboxProps)}
       open={open}
       triggerRef={triggerRef}
+      portalContainer={portalContainer}
       side={side}
       align={align}
       sideOffset={sideOffset}

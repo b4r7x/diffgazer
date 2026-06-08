@@ -41,8 +41,7 @@ export async function requireConfigured() {
     if (!configured) throw redirect({ to: "/onboarding" });
   } catch (e) {
     if (isRedirectError(e)) throw e;
-    setConfiguredGuardCache(false);
-    throw redirect({ to: "/onboarding" });
+    // Transient API failures must not poison the guard cache with false.
   }
 }
 

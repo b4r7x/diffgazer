@@ -1,10 +1,17 @@
+import { isApiError } from "@diffgazer/core/api";
 import type { ReviewStreamState } from "@diffgazer/core/api/hooks";
-import { useReviewLifecycleBase } from "@diffgazer/core/api/hooks";
+import { useCreateReview, useReviewLifecycleBase } from "@diffgazer/core/api/hooks";
 import type { ReviewIssue, ReviewMode } from "@diffgazer/core/schemas/review";
 import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useRef } from "react";
-import { useConfigData } from "@/app/providers/config";
+import { useConfigData } from "@/hooks/use-config";
+
+function getAlternateReviewMode(mode: ReviewMode): ReviewMode {
+  if (mode === "staged") return "unstaged";
+  if (mode === "unstaged") return "staged";
+  return "unstaged";
+}
 
 export interface ReviewCompleteData {
   issues: ReviewIssue[];
@@ -25,12 +32,22 @@ export function useReviewLifecycle({
   const navigate = useNavigate();
   const params = useParams({ strict: false });
   const { isConfigured, provider, model, isLoading: configLoading } = useConfigData();
+  const createReview = useCreateReview();
 
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
   const onStreamNotFoundRef = useRef(onStreamNotFound);
   onStreamNotFoundRef.current = onStreamNotFound;
   const streamStateRef = useRef<ReviewStreamState | null>(null);
+  const cancelOnServer = async (): Promise<string | null> => {
+    const result = await Promise.resolve(
+      base.stream.cancel(streamStateRef.current?.reviewId ?? null) as unknown as
+        | string
+        | null
+        | Promise<string | null>,
+    );
+    return result ?? null;
+  };
 
   const base = useReviewLifecycleBase({
     mode,
@@ -62,8 +79,14 @@ export function useReviewLifecycle({
   streamStateRef.current = base.stream.state;
 
   const handleCancel = () => {
-    base.stream.cancel(streamStateRef.current?.reviewId ?? null);
-    navigate({ to: "/" });
+    void (async () => {
+      const error = await cancelOnServer();
+      if (error) {
+        toast.error("Cancel failed", { message: error });
+        return;
+      }
+      navigate({ to: "/" });
+    })();
   };
 
   const handleViewResults = () => {
@@ -71,13 +94,29 @@ export function useReviewLifecycle({
   };
 
   const handleSetupProvider = () => {
-    base.stream.cancel(streamStateRef.current?.reviewId ?? null);
-    navigate({ to: "/settings/providers" });
+    void (async () => {
+      await cancelOnServer();
+      navigate({ to: "/settings/providers" });
+    })();
   };
 
   const handleSwitchMode = () => {
-    base.stream.cancel(streamStateRef.current?.reviewId ?? null);
-    navigate({ to: "/", replace: true });
+    void (async () => {
+      await cancelOnServer();
+      const alternateMode = getAlternateReviewMode(mode);
+      try {
+        const { reviewId } = await createReview.mutateAsync({ mode: alternateMode });
+        navigate({
+          to: "/review/{-$reviewId}",
+          params: { reviewId },
+          search: { mode: alternateMode, live: true },
+          replace: true,
+        });
+      } catch (error) {
+        const message = isApiError(error) ? error.message : "Could not create a review session.";
+        toast.error("Failed to Start Review", { message });
+      }
+    })();
   };
 
   return {

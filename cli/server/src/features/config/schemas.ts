@@ -6,7 +6,7 @@ export const ProviderParamSchema = z.object({
 });
 
 export const ActivateProviderBodySchema = z.object({
-  model: z.string().min(1).optional(),
+  model: z.string().trim().min(1, "Model must not be empty").optional(),
 });
 
 /**

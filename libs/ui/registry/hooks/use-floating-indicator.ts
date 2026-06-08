@@ -43,7 +43,8 @@ export function useFloatingIndicator(
 
     const findTarget = (): HTMLElement | null => {
       const node = container.querySelector(selector);
-      return node instanceof HTMLElement ? node : null;
+      const HTMLElementCtor = container.ownerDocument.defaultView?.HTMLElement;
+      return HTMLElementCtor && node instanceof HTMLElementCtor ? node : null;
     };
 
     let currentTarget: HTMLElement | null = null;

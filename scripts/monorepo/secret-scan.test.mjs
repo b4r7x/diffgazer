@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import { collectSecretFindings, formatSecretFindings } from "./secret-scan.mjs";
 
 function scanSource(source) {
@@ -55,4 +56,14 @@ test("secret scan detects generic high-entropy secret assignments", () => {
 
   assert.equal(findings.length, 1);
   assert.equal(findings[0].pattern, "generic-secret-assignment");
+});
+
+test("secret scan includes committed public registry contracts", () => {
+  const source = readFileSync(
+    fileURLToPath(new URL("./secret-scan.mjs", import.meta.url)),
+    "utf-8",
+  );
+
+  assert.doesNotMatch(source, /libs\/ui\/public\/r\//);
+  assert.doesNotMatch(source, /libs\/keys\/public\/r\//);
 });

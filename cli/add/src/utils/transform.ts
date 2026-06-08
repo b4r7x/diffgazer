@@ -1,4 +1,4 @@
-import { KEYS_PACKAGE_IMPORT_TARGETS } from "@diffgazer/registry";
+import { rewriteKeysPackageImportsInContent } from "@diffgazer/registry";
 import type { ResolvedConfig } from "../context.js";
 import { SOURCE_ALIASES } from "../context.js";
 import { getKeysHookImportNames } from "./keys-copy-bundle.js";
@@ -10,8 +10,6 @@ const IMPORT_PREFIX = String.raw`(from\s+|import\(\s*|require\(\s*)(["'])`;
 // flag a copied side-effect import with no transform able to fix it.
 const RELATIVE_JS_IMPORT_RE =
   /(from\s+|import\(\s*|require\(\s*|import\s+(?=["']))(["'])(\.{1,2}\/[^"']+)\.js\2/g;
-const KEYS_PACKAGE_IMPORT_LINE_RE =
-  /^(\s*)import\s+(type\s+)?\{([^}]+)\}\s+from\s+(["'])@diffgazer\/keys\4;?\s*$/;
 
 // Kept local on purpose. `dgadd` publishes as a self-contained npm bundle, so
 // pulling a one-line regex-escape from a workspace package would drag that
@@ -190,66 +188,16 @@ export function rewriteRelativeJsExtensionsForCopy(content: string): string {
   );
 }
 
-function specifierName(specifier: string): string {
-  return (
-    specifier
-      .replace(/^type\s+/, "")
-      .split(/\s+as\s+/)[0]
-      ?.trim() ?? ""
-  );
-}
-
 function renderImport(specifiers: string[], target: string, quote: string): string {
   const hooksBase = SOURCE_ALIASES.hooks.replace(/\/$/, "");
   return `import { ${specifiers.join(", ")} } from ${quote}${hooksBase}/${target}${quote};`;
 }
 
-function rewriteKeysPackageImportLine(line: string): string {
-  const match = KEYS_PACKAGE_IMPORT_LINE_RE.exec(line);
-  if (!match) return line;
-
-  const indent = match[1] ?? "";
-  const typePrefix = match[2] ?? "";
-  const quote = match[4] ?? '"';
-  const grouped = new Map<string, string[]>();
-  const unknown: string[] = [];
-
-  for (const rawSpecifier of (match[3] ?? "").split(",")) {
-    const specifier = rawSpecifier.trim();
-    if (!specifier) continue;
-
-    const target = KEYS_PACKAGE_IMPORT_TARGETS.get(specifierName(specifier));
-    if (!target) {
-      unknown.push(specifierName(specifier));
-      continue;
-    }
-
-    const specifiers = grouped.get(target) ?? [];
-    specifiers.push(`${typePrefix}${specifier}`.trim());
-    grouped.set(target, specifiers);
-  }
-
-  // Copy mode resolves `@diffgazer/keys` exports to local hook files. An export
-  // missing from KEYS_PACKAGE_IMPORT_TARGETS would otherwise be re-emitted as a
-  // package import that a copy-only install cannot resolve — fail loudly so the
-  // import-target map stays in sync with the keys public surface.
-  if (unknown.length > 0) {
-    throw new Error(
-      `Cannot rewrite @diffgazer/keys import for copy mode: no local hook target for ` +
-        `${unknown.map((name) => `"${name}"`).join(", ")}. ` +
-        "Update KEYS_PACKAGE_IMPORT_TARGETS in @diffgazer/registry.",
-    );
-  }
-
-  const rewritten = [...grouped.entries()].map(
-    ([target, specifiers]) => indent + renderImport(specifiers, target, quote),
-  );
-
-  return rewritten.length > 0 ? rewritten.join("\n") : line;
-}
-
 export function rewriteKeysPackageImportsForCopy(content: string): string {
-  return content.split("\n").map(rewriteKeysPackageImportLine).join("\n");
+  return rewriteKeysPackageImportsInContent(content, {
+    renderImport: (specifiers, target, quote, indent) =>
+      indent + renderImport(specifiers, target, quote),
+  });
 }
 
 // Both are derived from the copy bundle, which `@diffgazer/registry` loads once

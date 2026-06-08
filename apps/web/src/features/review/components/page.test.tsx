@@ -7,7 +7,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ConfigProvider } from "@/app/providers/config";
+import { ConfigProvider } from "@/hooks/use-config";
 
 type ReviewQueryState = {
   data?: unknown;
@@ -68,6 +68,7 @@ vi.mock("@diffgazer/core/api/hooks", () => ({
   useReview: mockUseReview,
   useReviewContext: () => ({ data: null }),
   useReviewLifecycleBase: mockUseReviewLifecycleBase,
+  useCreateReview: () => ({ mutateAsync: vi.fn(async () => ({ reviewId: "rev-alternate" })) }),
   useSaveConfig: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
 }));
 
@@ -386,6 +387,101 @@ describe("ReviewPage stale live session falls back to saved review", () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
     });
+  });
+});
+
+describe("ReviewPage reviewId changes", () => {
+  const FIRST_REVIEW_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const SECOND_REVIEW_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+
+  beforeEach(() => {
+    resetReviewMocks();
+    routeState.search = { mode: "unstaged", live: true };
+  });
+
+  it("does not keep the previous live review results when reviewId changes", async () => {
+    const firstIssue = makeIssue({
+      id: "first-issue",
+      title: "First review issue",
+      symptom: "First review symptom",
+    });
+
+    let capturedOnComplete: (() => void) | null = null;
+    routeState.params = { reviewId: FIRST_REVIEW_ID };
+
+    mockUseReviewLifecycleBase.mockImplementation((opts: { onComplete?: () => void }) => {
+      capturedOnComplete = opts.onComplete ?? null;
+      return {
+        stream: {
+          stop: vi.fn(),
+          abort: vi.fn(),
+          cancel: vi.fn(),
+          state: { ...makeStreamState(), reviewId: FIRST_REVIEW_ID, issues: [firstIssue] },
+        },
+        checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
+        completion: { isCompleting: false, skipDelay: vi.fn(), resetCompletion: vi.fn() },
+        start: {
+          hasStarted: true,
+          hasStreamed: true,
+          setHasStarted: vi.fn(),
+          setHasStreamed: vi.fn(),
+        },
+      };
+    });
+
+    function Harness() {
+      return <ReviewPage />;
+    }
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+
+    function Wrapper({ children }: { children: ReactNode }) {
+      return (
+        <QueryClientProvider client={queryClient}>
+          <ConfigProvider>
+            <KeyboardProvider>
+              <FooterProvider>
+                {children}
+                <Toaster />
+              </FooterProvider>
+            </KeyboardProvider>
+          </ConfigProvider>
+        </QueryClientProvider>
+      );
+    }
+
+    const harness = render(<Harness />, { wrapper: Wrapper });
+
+    await act(() => {
+      capturedOnComplete?.();
+    });
+    expect(await screen.findByText(`Analysis Complete #${FIRST_REVIEW_ID}`)).toBeInTheDocument();
+
+    routeState.params = { reviewId: SECOND_REVIEW_ID };
+    mockUseReviewLifecycleBase.mockReturnValue({
+      stream: {
+        stop: vi.fn(),
+        abort: vi.fn(),
+        cancel: vi.fn(),
+        state: { ...makeStreamState(), reviewId: SECOND_REVIEW_ID },
+      },
+      checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
+      completion: { isCompleting: false, skipDelay: vi.fn(), resetCompletion: vi.fn() },
+      start: {
+        hasStarted: true,
+        hasStreamed: true,
+        setHasStarted: vi.fn(),
+        setHasStreamed: vi.fn(),
+      },
+    });
+
+    harness.rerender(<Harness />);
+
+    expect(screen.getByText("Progress Overview")).toBeInTheDocument();
+    expect(screen.queryByText(`Analysis Complete #${FIRST_REVIEW_ID}`)).not.toBeInTheDocument();
+    expect(screen.queryByText("First review issue")).not.toBeInTheDocument();
   });
 });
 

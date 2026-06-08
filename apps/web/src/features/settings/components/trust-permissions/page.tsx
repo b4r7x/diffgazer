@@ -1,79 +1,53 @@
 import { useDeleteTrust, useSaveTrust } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { usePageFooter } from "@diffgazer/core/footer";
-import type { TrustCapabilities, TrustConfig } from "@diffgazer/core/schemas/config";
-import { NO_TRUST_CAPABILITIES, normalizeTrustCapabilities } from "@diffgazer/core/schemas/config";
+import type { TrustCapabilities, TrustConfig, TrustDraft } from "@diffgazer/core/schemas/config";
+import {
+  buildSavePayload,
+  getInitialDraft,
+  NO_TRUST_CAPABILITIES,
+  resolveEditorView,
+} from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { useKey, useScope } from "@diffgazer/keys";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { useConfigData } from "@/app/providers/config";
+import { useEffect, useState } from "react";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
+import { useConfigData } from "@/hooks/use-config";
 
 const SETTINGS_TRUST_PERMISSIONS_SCOPE = "settings-trust-permissions";
 
-function getDraftCapabilities(trust: TrustConfig | null): TrustCapabilities {
-  return normalizeTrustCapabilities(trust?.capabilities);
-}
-
-function getTrustEditorKey(
-  projectId: string | null,
-  repoRoot: string | null,
-  trust: TrustConfig | null,
-): string {
-  if (trust) return `${trust.projectId}:${trust.trustedAt}`;
-  return `${projectId ?? "loading"}:${repoRoot ?? "loading"}:untrusted`;
-}
-
 export function TrustPermissionsPage() {
   const { projectId, repoRoot, trust } = useConfigData();
-  const editorKey = getTrustEditorKey(projectId, repoRoot, trust);
 
-  return (
-    <TrustPermissionsEditor
-      editorKey={editorKey}
-      projectId={projectId}
-      repoRoot={repoRoot}
-      trust={trust}
-      initialCapabilities={getDraftCapabilities(trust)}
-    />
-  );
+  return <TrustPermissionsEditor editorInput={{ projectId, repoRoot, trust }} />;
 }
 
 interface TrustPermissionsEditorProps {
-  editorKey: string;
-  projectId: string | null;
-  repoRoot: string | null;
-  trust: TrustConfig | null;
-  initialCapabilities: TrustCapabilities;
+  editorInput: {
+    projectId: string | null;
+    repoRoot: string | null;
+    trust: TrustConfig | null;
+  };
 }
 
-function TrustPermissionsEditor({
-  editorKey,
-  projectId,
-  repoRoot,
-  trust,
-  initialCapabilities,
-}: TrustPermissionsEditorProps) {
+function TrustPermissionsEditor({ editorInput }: TrustPermissionsEditorProps) {
   const navigate = useNavigate();
   const saveTrust = useSaveTrust();
   const deleteTrust = useDeleteTrust();
   const isLoading = saveTrust.isPending || deleteTrust.isPending;
+  const [draft, setDraft] = useState<TrustDraft>(() => getInitialDraft(editorInput));
+  const view = resolveEditorView(draft, editorInput);
 
-  const [draft, setDraft] = useState(() => ({
-    editorKey,
-    capabilities: initialCapabilities,
-  }));
+  useEffect(() => {
+    if (draft.editorKey === view.editorKey) return;
+    setDraft({ editorKey: view.editorKey, capabilities: view.capabilities });
+  }, [draft.editorKey, view.editorKey, view.capabilities]);
 
-  if (draft.editorKey !== editorKey) {
-    setDraft({ editorKey, capabilities: initialCapabilities });
-  }
-
-  const capabilities = draft.editorKey === editorKey ? draft.capabilities : initialCapabilities;
   const handleCapabilitiesChange = (nextCapabilities: TrustCapabilities) => {
-    setDraft({ editorKey, capabilities: nextCapabilities });
+    setDraft({ editorKey: view.editorKey, capabilities: nextCapabilities });
   };
 
   const footerShortcuts: Shortcut[] = [
@@ -92,19 +66,18 @@ function TrustPermissionsEditor({
 
   async function handleSave(): Promise<void> {
     if (isLoading) return;
-    if (!projectId || !repoRoot) {
+    const result = buildSavePayload({
+      ...editorInput,
+      capabilities: view.capabilities,
+      now: () => new Date(),
+    });
+    if (result.kind === "blocked") {
       toast.error("Error", { message: "Project information not available" });
       return;
     }
 
     try {
-      await saveTrust.mutateAsync({
-        projectId,
-        repoRoot,
-        capabilities,
-        trustMode: trust?.trustMode ?? "persistent",
-        trustedAt: trust?.trustedAt ?? new Date().toISOString(),
-      });
+      await saveTrust.mutateAsync(result.payload);
       toast.success("Saved", { message: "Trust permissions updated" });
       navigate({ to: "/settings" });
     } catch (error) {
@@ -113,10 +86,11 @@ function TrustPermissionsEditor({
   }
 
   async function handleRevoke(): Promise<void> {
+    const { projectId } = editorInput;
     if (isLoading || !projectId) return;
     try {
       await deleteTrust.mutateAsync(projectId);
-      setDraft({ editorKey, capabilities: NO_TRUST_CAPABILITIES });
+      setDraft({ editorKey: view.editorKey, capabilities: NO_TRUST_CAPABILITIES });
       toast.success("Revoked", { message: "Trust has been revoked for this directory" });
     } catch (error) {
       toast.error("Error", { message: getErrorMessage(error, "Failed to revoke trust") });
@@ -131,10 +105,10 @@ function TrustPermissionsEditor({
         </Panel.Header>
         <Panel.Content>
           <TrustPermissionsContent
-            directory={repoRoot ?? "Loading..."}
-            value={capabilities}
+            directory={editorInput.repoRoot ?? "Loading..."}
+            value={view.capabilities}
             onChange={handleCapabilitiesChange}
-            isTrusted={Boolean(trust?.capabilities.readFiles)}
+            isTrusted={view.isTrusted}
             isLoading={isLoading}
             autoFocusList
             showActions

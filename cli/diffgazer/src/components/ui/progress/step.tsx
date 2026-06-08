@@ -1,7 +1,7 @@
 import type { ProgressStatus, ProgressSubstepData } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
-import { useTheme } from "../../../app/providers/theme";
 import type { CliColorTokens } from "../../../theme/palettes";
+import { useTheme } from "../../../theme/provider";
 import { Badge } from "../badge";
 import { Spinner } from "../spinner";
 

@@ -274,6 +274,10 @@
       "types": "./dist/lib/utils.d.ts",
       "import": "./dist/lib/utils.js"
     },
+    "./theme": {
+      "types": "./dist/theme/index.d.ts",
+      "import": "./dist/theme/index.js"
+    },
     "./theme-base.css": "./dist/theme-base.css",
     "./theme.css": "./dist/theme.css",
     "./sources.css": "./dist/sources.css",

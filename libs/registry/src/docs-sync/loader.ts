@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { loadArtifactsFromPackage } from "../artifact-loader.js";
 import { ARTIFACT_MANIFEST_REL_PATH } from "../constants.js";
-import { computeInputsFingerprint } from "../fingerprint.js";
+import { computeArtifactFingerprint } from "../fingerprint.js";
 import type { ArtifactManifest } from "../manifest.js";
 import { loadValidatedManifest } from "../manifest.js";
 import { ensureExists, resolveInside } from "../utils/fs.js";
@@ -79,6 +79,7 @@ function loadFromPackage(config: SyncLibraryConfig, docsRoot: string): LoadedLib
 function loadFromWorkspace(
   config: SyncLibraryConfig,
   workspaceRoot: string,
+  origin: string,
 ): LoadedLibraryArtifacts {
   const libraryRoot = resolveInside(
     workspaceRoot,
@@ -106,7 +107,7 @@ function loadFromWorkspace(
   ensureExists(fingerprintPath, `${config.id} artifact fingerprint`);
 
   const expectedFingerprint = readFileSync(fingerprintPath, "utf-8").trim();
-  const currentFingerprint = computeInputsFingerprint(libraryRoot, manifest.inputs);
+  const currentFingerprint = computeArtifactFingerprint(libraryRoot, manifest.inputs, origin);
 
   if (expectedFingerprint !== currentFingerprint) {
     throw new Error(
@@ -134,9 +135,10 @@ export function loadLibraryArtifacts(
   mode: "workspace" | "package",
   docsRoot: string,
   workspaceRoot: string,
+  origin: string,
 ): LoadedLibraryArtifacts {
   if (mode === "workspace") {
-    return loadFromWorkspace(config, workspaceRoot);
+    return loadFromWorkspace(config, workspaceRoot, origin);
   }
   return loadFromPackage(config, docsRoot);
 }

@@ -7,7 +7,7 @@ import {
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { Box, Text, useInput } from "ink";
 import { useState } from "react";
-import { useTheme } from "../../../app/providers/theme";
+import { useTheme } from "../../../theme/provider";
 import { severityColor } from "../../../theme/severity";
 
 export interface SeverityFilterGroupProps {

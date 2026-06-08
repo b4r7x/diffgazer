@@ -1,7 +1,7 @@
 import { Box, Text, useInput } from "ink";
 import type { ReactNode } from "react";
 import { Children, useRef, useState } from "react";
-import { useTheme } from "../../app/providers/theme";
+import { useTheme } from "../../theme/provider";
 
 export interface ScrollAreaProps {
   height: number;

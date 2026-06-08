@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { STEP_STATUSES, type StepStatus } from "@/lib/step-status";
 import type { StepperVariant } from "@/lib/stepper-variants";
@@ -475,5 +476,46 @@ describe("Stepper prefers-reduced-motion", () => {
     expect(substep.className).toMatch(/motion-safe:animate-pulse/);
     expect(substep.className).not.toMatch(/(?:^|\s)animate-pulse(?:\s|$)/);
     expect(getComputedStyle(substep).animation).toBe("none");
+  });
+});
+
+function renderStepperInSameOriginIframe(ui: ReactElement) {
+  const iframe = document.createElement("iframe");
+  document.body.appendChild(iframe);
+  const iframeDoc = iframe.contentDocument;
+  if (!iframeDoc) {
+    iframe.remove();
+    throw new Error("iframe.contentDocument is null; cannot exercise cross-document stepper");
+  }
+  const container = iframeDoc.createElement("div");
+  iframeDoc.body.appendChild(container);
+  const view = render(ui, { container });
+  return { iframe, iframeDoc, ...view };
+}
+
+describe("Stepper cross-document keyboard navigation", () => {
+  it("moves focus with arrow keys inside the trigger ownerDocument", async () => {
+    const { iframe, iframeDoc } = renderStepperInSameOriginIframe(
+      <Stepper>
+        <Stepper.Step stepId="s1" status="completed">
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s2" status="active">
+          <Stepper.Trigger>Step 2</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s3" status="pending">
+          <Stepper.Trigger>Step 3</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    );
+
+    const user = userEvent.setup({ document: iframeDoc });
+    const s1 = within(iframeDoc.body).getByRole("button", { name: /Step 1/ });
+    const s2 = within(iframeDoc.body).getByRole("button", { name: /Step 2/ });
+    s1.focus();
+    await user.keyboard("{ArrowDown}");
+    expect(s2).toHaveFocus();
+
+    iframe.remove();
   });
 });

@@ -9,6 +9,8 @@
     "registry/**/*.ts",
     "registry/**/*.tsx",
     "shared/**/*.ts",
+    "testing/**/*.ts",
+    "theme/**/*.ts",
     "scripts/**/*.test.ts",
     "src/test-setup.ts"
   ],

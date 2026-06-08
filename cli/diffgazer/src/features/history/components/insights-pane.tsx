@@ -3,11 +3,11 @@ import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { capitalize } from "@diffgazer/core/strings";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
-import { useTheme } from "../../../app/providers/theme";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { ScrollArea } from "../../../components/ui/scroll-area";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { SeverityBreakdown } from "../../../components/ui/severity/breakdown";
+import { useTheme } from "../../../theme/provider";
 import { severityColor } from "../../../theme/severity";
 
 export interface HistoryInsightsPaneProps {

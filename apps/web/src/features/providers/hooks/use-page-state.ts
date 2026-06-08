@@ -15,6 +15,7 @@ export function useProvidersPageState() {
   const {
     providers,
     isLoading,
+    isSubmitting,
     apiKeyDialogOpen,
     setApiKeyDialogOpen,
     modelDialogOpen,
@@ -100,6 +101,8 @@ export function useProvidersPageState() {
       selectModel: handleSelectModel,
       selectProvider: handleSelectProvider,
     },
+
+    isSubmitting,
 
     keyboard: {
       focusZone,

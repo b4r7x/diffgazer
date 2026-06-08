@@ -21,15 +21,28 @@ export interface UseFocusRestoreReturn {
 
 interface FocusRestoreEntry {
   target: HTMLElement | null;
+  ownerDocument: Document;
 }
 
-// The restore stack is module-scoped, so every document shares one stack;
-// entries from different documents (iframes/multi-window) are not isolated.
-const focusRestoreStack: FocusRestoreEntry[] = [];
+const focusRestoreStacks = new WeakMap<Document, FocusRestoreEntry[]>();
+
+function getDefaultDocument(): Document | null {
+  return typeof document === "undefined" ? null : document;
+}
+
+function getFocusRestoreStack(ownerDocument: Document): FocusRestoreEntry[] {
+  let stack = focusRestoreStacks.get(ownerDocument);
+  if (!stack) {
+    stack = [];
+    focusRestoreStacks.set(ownerDocument, stack);
+  }
+  return stack;
+}
 
 function removeEntry(entry: FocusRestoreEntry): void {
-  const index = focusRestoreStack.lastIndexOf(entry);
-  if (index >= 0) focusRestoreStack.splice(index, 1);
+  const stack = getFocusRestoreStack(entry.ownerDocument);
+  const index = stack.lastIndexOf(entry);
+  if (index >= 0) stack.splice(index, 1);
 }
 
 function resolveOptions(options: UseFocusRestoreOptions): Required<UseFocusRestoreOptions> {
@@ -46,7 +59,8 @@ function releaseEntry(
   shouldRestore: boolean,
   options: Required<UseFocusRestoreOptions>,
 ): boolean {
-  const isTopEntry = focusRestoreStack.at(-1) === entry;
+  const stack = getFocusRestoreStack(entry.ownerDocument);
+  const isTopEntry = stack.at(-1) === entry;
   removeEntry(entry);
 
   if (!shouldRestore || !options.enabled || !isTopEntry) return false;
@@ -81,13 +95,25 @@ export function useFocusRestore(options: UseFocusRestoreOptions = {}): UseFocusR
       return null;
     }
 
-    const nextTarget = getRestorableFocusTarget(ownerDocument) ?? resolvedOptions.fallback;
-    const entry = entryRef.current ?? { target: null };
+    const doc = ownerDocument ?? resolvedOptions.fallback?.ownerDocument ?? getDefaultDocument();
+    if (!doc) {
+      const entry = entryRef.current;
+      if (entry) {
+        entryRef.current = null;
+        removeEntry(entry);
+      }
+      setTarget(null);
+      return null;
+    }
+
+    const nextTarget = getRestorableFocusTarget(doc) ?? resolvedOptions.fallback;
+    const entry = entryRef.current ?? { target: null, ownerDocument: doc };
 
     removeEntry(entry);
     entry.target = nextTarget;
+    entry.ownerDocument = doc;
     entryRef.current = entry;
-    focusRestoreStack.push(entry);
+    getFocusRestoreStack(doc).push(entry);
     setTarget(nextTarget);
 
     return nextTarget;

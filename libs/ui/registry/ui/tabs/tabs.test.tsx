@@ -75,6 +75,26 @@ describe("Tabs", () => {
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "false");
   });
 
+  it("keeps explicit value undefined controlled instead of adopting internal selection", async () => {
+    const onChange = vi.fn();
+    render(
+      <Tabs value={undefined} onChange={onChange}>
+        <Tabs.List>
+          <Tabs.Trigger value="one">One</Tabs.Trigger>
+          <Tabs.Trigger value="two">Two</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="one">Content one</Tabs.Content>
+        <Tabs.Content value="two">Content two</Tabs.Content>
+      </Tabs>,
+    );
+
+    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
+    await userEvent.click(screen.getByRole("tab", { name: "Two" }));
+    expect(onChange).toHaveBeenCalledWith("two");
+    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "false");
+  });
+
   it("respects controlled value and fires onChange", async () => {
     const onChange = vi.fn();
     const { rerender } = render(
@@ -550,6 +570,34 @@ describe("Tabs variants", () => {
     // The sliding indicator is a presentational element with no ARIA role; its
     // per-variant presence is the public DOM contract that tabs.css positions.
     expect(container.querySelectorAll('[data-slot="tabs-pill"]').length).toBe(1);
+  });
+
+  it("resolves the pill indicator inside a same-origin iframe ownerDocument", () => {
+    const iframe = document.createElement("iframe");
+    document.body.appendChild(iframe);
+    const iframeDoc = iframe.contentDocument;
+    if (!iframeDoc) {
+      iframe.remove();
+      throw new Error("iframe.contentDocument is null; cannot exercise cross-document tabs");
+    }
+    const container = iframeDoc.createElement("div");
+    iframeDoc.body.appendChild(container);
+
+    render(
+      <Tabs defaultValue="b" variant="pill">
+        <Tabs.List>
+          <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
+          <Tabs.Trigger value="b">Beta</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="a">Alpha content</Tabs.Content>
+        <Tabs.Content value="b">Beta content</Tabs.Content>
+      </Tabs>,
+      { container },
+    );
+
+    expect(container.querySelectorAll('[data-slot="tabs-pill"]').length).toBe(1);
+
+    iframe.remove();
   });
 
   it("omits the sliding pill indicator for variants other than 'pill'", () => {

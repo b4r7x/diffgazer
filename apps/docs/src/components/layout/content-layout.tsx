@@ -33,11 +33,17 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
     getDesktopServerSnapshot,
   );
   const sidebarInert = !isDesktop && !sidebarOpen;
-  const mainInert = !isDesktop && sidebarOpen;
+  const panelInert = !isDesktop && sidebarOpen;
   const mainRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const hadOpenSidebarRef = useRef(false);
   const router = useRouter();
   const pendingDocsPathname = usePendingDocsRoute();
   const isDocsRoutePending = pendingDocsPathname !== null;
+
+  const closeSidebar = () => setSidebarOpen(false);
+  const openSidebar = () => setSidebarOpen(true);
 
   useEffect(() => {
     const unsubscribe = router.subscribe("onResolved", () => {
@@ -46,6 +52,35 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
     return unsubscribe;
   }, [router]);
 
+  useEffect(() => {
+    if (isDesktop) return;
+
+    if (sidebarOpen) {
+      hadOpenSidebarRef.current = true;
+      const firstLink = sidebarRef.current?.querySelector<HTMLElement>("a[href]");
+      (firstLink ?? sidebarRef.current)?.focus();
+      return;
+    }
+
+    if (hadOpenSidebarRef.current) {
+      hadOpenSidebarRef.current = false;
+      menuButtonRef.current?.focus();
+    }
+  }, [sidebarOpen, isDesktop]);
+
+  useEffect(() => {
+    if (!sidebarOpen || isDesktop) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setSidebarOpen(false);
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [sidebarOpen, isDesktop]);
+
   return (
     <div className="flex flex-1 min-h-0 overflow-hidden">
       {sidebarOpen && (
@@ -53,11 +88,12 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
           type="button"
           aria-label="Close sidebar navigation"
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
+          onClick={closeSidebar}
         />
       )}
 
       <aside
+        ref={sidebarRef}
         id="sidebar-nav"
         aria-label="Sidebar navigation"
         aria-busy={isDocsRoutePending}
@@ -70,18 +106,19 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
         )}
         data-pagefind-ignore
       >
-        <DocsSidebar tree={tree} library={library} onNavigate={() => setSidebarOpen(false)} />
+        <DocsSidebar tree={tree} library={library} onNavigate={closeSidebar} />
       </aside>
 
-      <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col" inert={panelInert || undefined}>
         <div className="sticky top-0 z-30 flex items-center border-b border-border bg-background px-4 py-3 lg:hidden">
           <button
+            ref={menuButtonRef}
             type="button"
             aria-label="Open navigation menu"
             aria-expanded={sidebarOpen}
             aria-controls="sidebar-nav"
             className="flex flex-col justify-center gap-1 w-6 h-6"
-            onClick={() => setSidebarOpen(true)}
+            onClick={openSidebar}
           >
             <span className="block h-px w-4 bg-foreground" />
             <span className="block h-px w-4 bg-foreground" />
@@ -95,7 +132,6 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
             id="main-content"
             tabIndex={-1}
             aria-busy={isDocsRoutePending}
-            inert={mainInert || undefined}
             className={cn(
               "h-full min-w-0 min-h-0 overflow-y-auto scrollbar-thin outline-none transition-opacity duration-150",
               isDocsRoutePending && "opacity-60",

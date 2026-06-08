@@ -1,7 +1,7 @@
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
-import { useTheme } from "../../app/providers/theme";
+import { useTheme } from "../../theme/provider";
 import { Input } from "../ui/input";
 import { RadioGroup } from "../ui/radio";
 

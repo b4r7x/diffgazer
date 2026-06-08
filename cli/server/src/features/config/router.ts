@@ -14,6 +14,7 @@ import {
 } from "../../shared/middlewares/body-limit.js";
 import { createRateLimitMiddleware } from "../../shared/middlewares/rate-limit.js";
 import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
+import { cancelSessionsForProject } from "../review/stream/store.js";
 import {
   ActivateProviderBodySchema,
   ProviderModelsParamSchema,
@@ -149,19 +150,37 @@ configRouter.delete(
   zValidator("param", ProviderParamSchema, zodErrorHandler),
   async (c): Promise<Response> => {
     const { providerId } = c.req.valid("param");
+    const projectRoot = getProjectRoot(c);
     const result = await deleteProvider(providerId);
     if (!result.ok) {
       return errorResponse(c, result.error.message, result.error.code, 400);
+    }
+    if (result.value.deleted) {
+      cancelSessionsForProject(projectRoot, {
+        provider: providerId,
+        message: "Review session cancelled because its provider configuration was deleted.",
+        reason: "provider_deleted",
+      });
     }
     return c.json(result.value);
   },
 );
 
 configRouter.delete("/", requireRepoAccess, async (c): Promise<Response> => {
+  const projectRoot = getProjectRoot(c);
+  const currentConfig = getConfig();
+  const activeProvider = currentConfig.ok ? (currentConfig.value?.provider ?? null) : null;
   const result = await deleteConfig();
   if (!result.ok) {
     const status = result.error.code === ErrorCode.CONFIG_NOT_FOUND ? 404 : 400;
     return errorResponse(c, result.error.message, result.error.code, status);
+  }
+  if (result.value.deleted) {
+    cancelSessionsForProject(projectRoot, {
+      provider: activeProvider ?? undefined,
+      message: "Review session cancelled because its provider configuration was deleted.",
+      reason: "config_deleted",
+    });
   }
   return c.json(result.value);
 });

@@ -12,8 +12,6 @@ const SKIPPED_PREFIXES = [
   ".audit-runs/",
   ".worktrees/",
   "node_modules/",
-  "libs/ui/public/r/",
-  "libs/keys/public/r/",
   "cli/add/src/generated/",
 ];
 

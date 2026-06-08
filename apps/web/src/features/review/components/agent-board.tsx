@@ -1,13 +1,14 @@
+import { getAgentStatusMeta } from "@diffgazer/core/review";
 import type { AgentState } from "@diffgazer/core/schemas/events";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { cn } from "@diffgazer/ui/lib/utils";
 
-const AGENT_STATUS_META = {
-  queued: { label: "WAIT", variant: "neutral", bar: "bg-tui-border" },
-  running: { label: "RUN", variant: "info", bar: "bg-tui-blue" },
-  complete: { label: "DONE", variant: "success", bar: "bg-tui-green" },
-  error: { label: "FAIL", variant: "error", bar: "bg-tui-red" },
+const AGENT_STATUS_BARS = {
+  queued: "bg-tui-border",
+  running: "bg-tui-blue",
+  complete: "bg-tui-green",
+  error: "bg-tui-red",
 } as const;
 
 interface AgentBoardProps {
@@ -24,7 +25,7 @@ export function AgentBoard({ agents }: AgentBoardProps) {
       </SectionHeader>
       <div className="space-y-2">
         {agents.map((agent) => {
-          const status = AGENT_STATUS_META[agent.status];
+          const status = getAgentStatusMeta(agent.status);
           return (
             <div key={agent.id} className="border border-tui-border bg-tui-selection/20 p-2">
               <div className="flex items-center gap-2">
@@ -48,7 +49,7 @@ export function AgentBoard({ agents }: AgentBoardProps) {
                 className="mt-2 h-1 w-full bg-tui-border"
               >
                 <div
-                  className={cn("h-1 transition-all", status.bar)}
+                  className={cn("h-1 transition-all", AGENT_STATUS_BARS[agent.status])}
                   style={{ width: `${Math.max(0, Math.min(100, agent.progress))}%` }}
                 />
               </div>

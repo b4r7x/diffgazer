@@ -89,6 +89,25 @@ describe("ModelList", () => {
     expect(onBoundaryReached).not.toHaveBeenCalled();
   });
 
+  it("shows a saving placeholder instead of model radios while persistence is pending", () => {
+    render(
+      <ModelList
+        models={MODELS}
+        focusedModelId="model-a"
+        currentModelId="model-a"
+        isFocused
+        isSaving
+        onSelect={vi.fn()}
+        onConfirm={vi.fn()}
+        onHighlightChange={vi.fn()}
+        onBoundaryReached={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Saving...")).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /Model A/ })).not.toBeInTheDocument();
+  });
+
   it("hands off focus on vertical boundary keys", async () => {
     const user = userEvent.setup();
     const onBoundaryReached = vi.fn();

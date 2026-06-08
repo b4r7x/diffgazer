@@ -16,13 +16,21 @@ import type {
 
 export const getApiKeyName = (provider: string): string => `api_key_${provider}`;
 
+export interface KeyringWriteRollback {
+  providerId: string;
+  previousValue: string | null;
+}
+
 /** Best-effort rollback of keyring writes on migration failure. */
-function rollbackKeyringWrites(providerIds: readonly string[]): void {
-  for (const providerId of providerIds) {
-    const result = deleteKeyringSecret(getApiKeyName(providerId));
+export function rollbackKeyringWrites(entries: readonly KeyringWriteRollback[]): void {
+  for (const entry of entries) {
+    const result =
+      entry.previousValue === null
+        ? deleteKeyringSecret(getApiKeyName(entry.providerId))
+        : writeKeyringSecret(getApiKeyName(entry.providerId), entry.previousValue);
     if (!result.ok) {
       console.warn(
-        `[diffgazer] Failed to rollback keyring write for '${providerId}': ${result.error.message}`,
+        `[diffgazer] Failed to rollback keyring write for '${entry.providerId}': ${result.error.message}`,
       );
     }
   }
@@ -46,6 +54,7 @@ export interface MigrationResult {
    * holds the secret and the migration can safely be re-run.
    */
   keyringDeletions: readonly string[];
+  keyringWrites: readonly KeyringWriteRollback[];
 }
 
 export function migrateSecretsStorage(
@@ -60,6 +69,7 @@ export function migrateSecretsStorage(
       removedFileSecrets: false,
       shouldDeleteSecretsFile: false,
       keyringDeletions: [],
+      keyringWrites: [],
     });
   }
 
@@ -74,7 +84,7 @@ export function migrateSecretsStorage(
     }
 
     const envEntries: Record<string, { kind: "env"; varName: string }> = {};
-    const writtenProviders: string[] = [];
+    const writtenProviders: KeyringWriteRollback[] = [];
 
     for (const [providerId, entry] of Object.entries(secretsState.providers)) {
       if (typeof entry !== "string" && entry.kind === "env") {
@@ -82,6 +92,8 @@ export function migrateSecretsStorage(
         continue;
       }
       const apiKey = typeof entry === "string" ? entry : "";
+      const previousResult = readKeyringSecret(getApiKeyName(providerId));
+      if (!previousResult.ok) return previousResult;
 
       // Phase 1: Write secret to keyring
       const writeResult = writeKeyringSecret(getApiKeyName(providerId), apiKey);
@@ -102,7 +114,10 @@ export function migrateSecretsStorage(
         );
       }
 
-      writtenProviders.push(providerId);
+      writtenProviders.push({
+        providerId,
+        previousValue: previousResult.value,
+      });
     }
 
     // File deletion is deferred to the caller -- the caller must persist the
@@ -116,6 +131,7 @@ export function migrateSecretsStorage(
       removedFileSecrets: false,
       shouldDeleteSecretsFile: shouldDelete,
       keyringDeletions: [],
+      keyringWrites: writtenProviders,
     });
   }
 
@@ -151,6 +167,7 @@ export function migrateSecretsStorage(
       removedFileSecrets: false,
       shouldDeleteSecretsFile: false,
       keyringDeletions: keyringMigrated,
+      keyringWrites: [],
     });
   }
 
@@ -159,6 +176,7 @@ export function migrateSecretsStorage(
     removedFileSecrets: false,
     shouldDeleteSecretsFile: false,
     keyringDeletions: [],
+    keyringWrites: [],
   });
 }
 

@@ -176,6 +176,19 @@ describe("ToggleGroup", () => {
     expect(getRadios()[1]).toHaveAttribute("aria-checked", "false");
   });
 
+  it("keeps explicit value undefined controlled instead of adopting internal selection", async () => {
+    const onChange = vi.fn();
+    renderGroup({ value: undefined, onChange });
+    const radios = getRadios();
+    expect(radios[0]).toHaveAttribute("aria-checked", "false");
+    expect(radios[1]).toHaveAttribute("aria-checked", "false");
+
+    await userEvent.click(screen.getByText("Beta"));
+    expect(onChange).toHaveBeenCalledWith("b");
+    expect(radios[0]).toHaveAttribute("aria-checked", "false");
+    expect(radios[1]).toHaveAttribute("aria-checked", "false");
+  });
+
   it("calls onChange as the preferred controlled callback", async () => {
     const onChange = vi.fn();
     renderGroup({ value: "a", onChange });
@@ -649,6 +662,26 @@ describe("ToggleGroup multiple mode", () => {
 
     await userEvent.keyboard("{Enter}");
     expect(onChange).toHaveBeenLastCalledWith(["a"]);
+    expect(beta).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("keeps explicit multiple value undefined controlled instead of adopting internal selection", async () => {
+    const onChange = vi.fn();
+    render(
+      <ToggleGroup label="Options" selectionMode="multiple" value={undefined} onChange={onChange}>
+        <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+      </ToggleGroup>,
+    );
+
+    const alpha = screen.getByRole("button", { name: /alpha/i });
+    const beta = screen.getByRole("button", { name: /beta/i });
+    expect(alpha).toHaveAttribute("aria-pressed", "false");
+    expect(beta).toHaveAttribute("aria-pressed", "false");
+
+    await userEvent.click(beta);
+    expect(onChange).toHaveBeenCalledWith(["b"]);
+    expect(alpha).toHaveAttribute("aria-pressed", "false");
     expect(beta).toHaveAttribute("aria-pressed", "false");
   });
 

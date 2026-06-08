@@ -43,7 +43,10 @@ export function ReviewContainer({ mode, onComplete, onStreamNotFound }: ReviewCo
 
   const contextStep = state.steps.find((s) => s.id === "context");
   const contextReady = contextStep?.status === "completed" && !!state.reviewId;
-  const { data: contextData } = useReviewContext({ enabled: contextReady });
+  const { data: contextData } = useReviewContext({
+    enabled: contextReady,
+    reviewId: state.reviewId,
+  });
   const contextSnapshot = contextReady ? (contextData ?? null) : null;
 
   const steps = mapStepsToProgressData(state.steps, state.agents);

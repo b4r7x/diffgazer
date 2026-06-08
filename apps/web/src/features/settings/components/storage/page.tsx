@@ -148,7 +148,9 @@ export function SettingsStoragePage() {
         </Callout>
 
         {(error || settingsError) && (
-          <p className="text-tui-red text-sm">{error || settingsError}</p>
+          <Callout tone="error" live className="text-sm">
+            <Callout.Content>{error || settingsError}</Callout.Content>
+          </Callout>
         )}
       </div>
     </CardLayout>

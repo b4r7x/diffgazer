@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -92,8 +92,9 @@ function viteFixtureDependencySpecs(root) {
 }
 
 export function installViteFixtureDeps(root, fixture) {
-  run(
-    `pnpm add --offline --fetch-retries=0 ${quoteArgs(viteFixtureDependencySpecs(root))}`,
+  runArgv(
+    "pnpm",
+    ["add", "--offline", "--fetch-retries=0", ...viteFixtureDependencySpecs(root)],
     fixture,
   );
 }
@@ -364,19 +365,19 @@ export function assertBuiltCss(fixture, options = {}) {
   }
 }
 
-export function run(cmd, cwdOrOptions) {
-  const options = typeof cwdOrOptions === "string" ? { cwd: cwdOrOptions } : (cwdOrOptions ?? {});
+export function runArgv(command, args, cwdOrOptions = {}) {
+  const options = typeof cwdOrOptions === "string" ? { cwd: cwdOrOptions } : cwdOrOptions;
+  const cmdLabel = `${command} ${args.join(" ")}`;
   try {
-    return execSync(cmd, {
+    return execFileSync(command, args, {
       encoding: "utf8",
       cwd: options.cwd,
       env: options.env ? { ...process.env, ...options.env } : undefined,
       stdio: ["ignore", "pipe", "pipe"],
-      shell: true,
     });
   } catch (error) {
     if (error && typeof error === "object" && typeof error.status === "number") {
-      throw new CommandFailedError(cmd, {
+      throw new CommandFailedError(cmdLabel, {
         exitCode: error.status,
         stdout: error.stdout?.toString() ?? "",
         stderr: error.stderr?.toString() ?? "",

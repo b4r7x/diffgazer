@@ -10,12 +10,12 @@ import type {
 import { pluralize } from "@diffgazer/core/strings";
 import { Box, Text } from "ink";
 import { type ReactElement, useState } from "react";
-import { useTheme } from "../../../app/providers/theme";
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
 import { ProgressList } from "../../../components/ui/progress/list";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions";
+import { useTheme } from "../../../theme/provider";
 import { ActivityLog } from "./activity-log";
 import { AgentBoard } from "./agent-board";
 import { AgentFilterBar } from "./agent-filter-bar";
@@ -33,6 +33,7 @@ export interface ReviewProgressViewProps {
   onViewResults?: () => void;
   issuesFound: number;
   startedAt: Date | null;
+  reviewId?: string | null;
   contextSnapshot?: ReviewContextResponse | null;
 }
 
@@ -60,6 +61,7 @@ export function ReviewProgressView({
   onViewResults,
   issuesFound,
   startedAt,
+  reviewId,
   contextSnapshot,
 }: ReviewProgressViewProps): ReactElement {
   const { tokens } = useTheme();
@@ -116,7 +118,7 @@ export function ReviewProgressView({
 
       {contextSnapshot && !isStreaming ? (
         <Box marginTop={1}>
-          <ContextSnapshotPreview snapshot={contextSnapshot} />
+          <ContextSnapshotPreview key={reviewId ?? "pending"} snapshot={contextSnapshot} />
         </Box>
       ) : null}
 

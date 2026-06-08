@@ -10,9 +10,9 @@ export const logoDoc: ComponentDoc = {
         "Precompute ASCII art and pass it through asciiText. The Logo component itself never imports figlet, so consumers stay in control of the ASCII source.",
     },
     {
-      title: "Optional figlet helper (npm package only)",
+      title: "Optional figlet helper",
       content:
-        "When you install @diffgazer/ui via npm, an optional helper is exposed at @diffgazer/ui/components/logo/figlet that wraps the figlet runtime. This entry is only available in package mode — copy/dgadd installs do not vend it. Copy-mode consumers who want runtime figlet output should install figlet themselves (npm install figlet @types/figlet) and call figlet.textSync(...) directly.",
+        "The Logo component stays figlet-free by default. Package consumers can import the optional helper from @diffgazer/ui/components/logo/figlet. Copy, dgadd, and direct registry consumers can add the separate ui/logo-figlet item; it installs the helper source and declares figlet as an optional runtime dependency.",
     },
     {
       title: "Sizing",

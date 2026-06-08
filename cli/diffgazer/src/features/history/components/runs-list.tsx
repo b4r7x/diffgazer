@@ -1,9 +1,9 @@
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
-import { useTheme } from "../../../app/providers/theme";
 import { Badge } from "../../../components/ui/badge";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { NavigationList } from "../../../components/ui/navigation-list";
+import { useTheme } from "../../../theme/provider";
 import type { MappedRun } from "../hooks/use-screen";
 
 export interface RunsListProps {

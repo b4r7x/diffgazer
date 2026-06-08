@@ -38,3 +38,17 @@ export function computeInputsFingerprint(
 
   return hash.digest("hex");
 }
+
+export function computeArtifactFingerprint(
+  rootDir: string,
+  inputs: string[],
+  origin: string,
+  logger: Logger = defaultLogger,
+): string {
+  const inputsFingerprint = computeInputsFingerprint(rootDir, inputs, logger);
+  const hash = createHash("sha256");
+  hash.update(`origin:${origin}\n`);
+  hash.update(inputsFingerprint);
+  hash.update("\n");
+  return hash.digest("hex");
+}

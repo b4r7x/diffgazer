@@ -24,8 +24,7 @@ import {
   assertBuiltCss,
   installViteFixtureDeps,
   joinLines,
-  quoteArgs,
-  run,
+  runArgv,
   writeViteFixture,
 } from "./smoke-shared.mjs";
 
@@ -205,7 +204,7 @@ async function runShadcnAdd(fixture, items) {
   const addArgs = ["add", ...items, "--cwd", fixture, "--yes", "--overwrite"];
 
   if (override) {
-    await runFileAsync(`${override} ${quoteArgs(addArgs)}`, [], root, { shell: true });
+    await runFileAsync(override, addArgs, root);
     return;
   }
 
@@ -457,8 +456,8 @@ function assertInstalledRegistryTree(fixture) {
 function assertFixtureBuilds(fixture, label) {
   importInstalledStyle(fixture, "styles/dialog.css");
   writeSmokeApp(fixture);
-  run("pnpm run typecheck", fixture);
-  run("pnpm run build", fixture);
+  runArgv("pnpm", ["run", "typecheck"], fixture);
+  runArgv("pnpm", ["run", "build"], fixture);
   assertBuiltCss(fixture, { label });
 }
 
@@ -580,8 +579,8 @@ try {
   console.log("OK: solo button install auto-pulled theme via registryDependencies");
 
   writeSoloButtonApp(soloFixture);
-  run("pnpm run typecheck", soloFixture);
-  run("pnpm run build", soloFixture);
+  runArgv("pnpm", ["run", "typecheck"], soloFixture);
+  runArgv("pnpm", ["run", "build"], soloFixture);
   assertBuiltCss(soloFixture, {
     label: "Built solo button shadcn",
     // Dialog isn't part of solo install — only assert theme tokens reach final CSS.

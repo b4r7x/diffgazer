@@ -29,3 +29,9 @@ export function isHTMLElementForContainer(
   const View = container?.ownerDocument.defaultView;
   return Boolean(View && value instanceof View.HTMLElement);
 }
+
+export function isHTMLDialogElement(value: unknown): value is HTMLDialogElement {
+  const element = value as { ownerDocument?: Document } | null;
+  const View = element?.ownerDocument?.defaultView;
+  return Boolean(View && value instanceof View.HTMLDialogElement);
+}

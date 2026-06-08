@@ -213,6 +213,19 @@ async function confirmRemoval(files: Set<string>, yes: boolean, dryRun: boolean)
   return true;
 }
 
+function reportOrphanedDeps<TConfig>(opts: {
+  cwd: string;
+  names: string[];
+  config: TConfig;
+  findOrphanedDeps?: (ctx: { removedNames: string[]; cwd: string; config: TConfig }) => string[];
+}): void {
+  const orphaned =
+    opts.findOrphanedDeps?.({ removedNames: opts.names, cwd: opts.cwd, config: opts.config }) ?? [];
+  if (orphaned.length > 0) {
+    info(`Note: You may want to remove unused packages: ${orphaned.join(", ")}`);
+  }
+}
+
 function finalizeRemoval<TConfig>(opts: {
   cwd: string;
   names: string[];
@@ -224,14 +237,9 @@ function finalizeRemoval<TConfig>(opts: {
   onAfterRemove?: (ctx: { cwd: string; config: TConfig; removedNames: string[] }) => void;
 }): void {
   cleanEmptyDirs([...opts.dirs]);
-  opts.updateManifest({ cwd: opts.cwd, removedNames: opts.names });
   opts.onAfterRemove?.({ cwd: opts.cwd, config: opts.config, removedNames: opts.names });
-
-  const orphaned =
-    opts.findOrphanedDeps?.({ removedNames: opts.names, cwd: opts.cwd, config: opts.config }) ?? [];
-  if (orphaned.length > 0) {
-    info(`Note: You may want to remove unused packages: ${orphaned.join(", ")}`);
-  }
+  opts.updateManifest({ cwd: opts.cwd, removedNames: opts.names });
+  reportOrphanedDeps(opts);
 
   newline();
   success(`Removed ${opts.removed} file(s) (${opts.names.join(", ")}).`);
@@ -337,8 +345,14 @@ export async function runRemoveWorkflow<TItem, TConfig>(
   if (files.size === 0 && removedNames.length > 0) {
     // All owned files are already gone (stale entries). Clean up the manifest.
     if (!options.dryRun) {
-      options.updateManifest({ cwd: options.cwd, removedNames });
       options.onAfterRemove?.({ cwd: options.cwd, config, removedNames });
+      options.updateManifest({ cwd: options.cwd, removedNames });
+      reportOrphanedDeps({
+        cwd: options.cwd,
+        names: removedNames,
+        config,
+        findOrphanedDeps: options.findOrphanedDeps,
+      });
       newline();
       success(
         `Cleaned ${removedNames.length} stale manifest entry/entries (${removedNames.join(", ")}).`,

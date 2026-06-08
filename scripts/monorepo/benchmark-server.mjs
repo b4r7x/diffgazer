@@ -60,6 +60,13 @@ process.env.DIFFGAZER_HOME = fixtureHome;
 // allowed-path check that would reject a temp directory.
 process.env.DIFFGAZER_PROJECT_ROOT = fixtureProject;
 process.env.DIFFGAZER_SHUTDOWN_TOKEN = shutdownToken;
+// Bench latency should measure the request path, not thousands of stdout writes
+// from the standalone server's default per-request info logger. Match the
+// packaged/default quietness unless the caller explicitly asked for another
+// level.
+if (!process.env.DIFFGAZER_LOG_LEVEL) {
+  process.env.DIFFGAZER_LOG_LEVEL = "warn";
+}
 
 // Service Level Objectives. Conservative starting targets for a local,
 // single-process server; tighten once real CI baselines exist.

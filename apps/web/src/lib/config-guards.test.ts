@@ -59,4 +59,14 @@ describe("config guards", () => {
 
     await expect(requireConfigured()).resolves.toBeUndefined();
   });
+
+  it("does not poison the guard cache when configuration checks fail transiently", async () => {
+    mockCheckConfig.mockRejectedValue(new Error("network down"));
+    mockLoadInit.mockRejectedValue(new Error("network down"));
+
+    await expect(requireConfigured()).resolves.toBeUndefined();
+
+    const { getConfiguredGuardCache } = await import("./config-guard-cache");
+    expect(getConfiguredGuardCache(30_000)).toBeNull();
+  });
 });

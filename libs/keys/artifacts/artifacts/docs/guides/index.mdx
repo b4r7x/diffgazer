@@ -1,0 +1,17 @@
+---
+title: Guides
+description: Task-oriented walkthroughs that combine the keys hooks into complete keyboard interaction patterns.
+---
+
+Pick the guide that matches the problem you are solving; each links to the [hook pages](/keys/hooks) it builds on.
+
+## Choose a guide
+
+| Guide | Solves | Primary hooks |
+|-------|--------|---------------|
+| [Scopes](/keys/guides/scopes) | Isolate keyboard handling so a dialog or overlay shadows page-level shortcuts while it is open. | [`useScope`](/keys/hooks/use-scope), [`useKey`](/keys/hooks/use-key) |
+| [Navigation](/keys/guides/navigation) | Arrow-key movement, selection, and focus tracking across a list or tab bar. | [`useNavigation`](/keys/hooks/use-navigation), [`useScopedNavigation`](/keys/hooks/use-scoped-navigation) |
+| [Focus Zones](/keys/guides/focus-zones) | Multi-zone layouts where Tab and arrow keys move focus between regions, with the same key bound differently per zone. | [`useFocusZone`](/keys/hooks/use-focus-zone) |
+| [Focus and Scroll](/keys/guides/focus-and-scroll) | Focus trapping, focus restoration, and scroll locking around modals and overlays. | [`useFocusTrap`](/keys/hooks/use-focus-trap), [`useFocusRestore`](/keys/hooks/use-focus-restore), [`useScrollLock`](/keys/hooks/use-scroll-lock) |
+
+Start with [Scopes](/keys/guides/scopes) if you are wiring [`KeyboardProvider`](/keys/api/keyboard-provider) for the first time; otherwise jump to the guide for your interaction. For the per-hook API behind any pattern, see the [hooks reference](/keys/hooks).

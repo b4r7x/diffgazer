@@ -1,23 +1,7 @@
-import type { OnboardingStep } from "@diffgazer/core/onboarding";
+import { type OnboardingStep, STEP_LABELS, STEP_TITLES } from "@diffgazer/core/onboarding";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 
-export const STEP_TITLES: Record<OnboardingStep, string> = {
-  storage: "Secrets Storage",
-  provider: "AI Provider",
-  "api-key": "API Key",
-  model: "Model Selection",
-  analysis: "Analysis Configuration",
-  execution: "Agent Execution",
-};
-
-export const STEP_LABELS: Record<OnboardingStep, string> = {
-  storage: "Storage",
-  provider: "Provider",
-  "api-key": "API Key",
-  model: "Model",
-  analysis: "Analysis",
-  execution: "Execution",
-};
+export { STEP_LABELS, STEP_TITLES };
 
 export function getStepShortcuts(
   currentStep: OnboardingStep,

@@ -1,10 +1,11 @@
 import { guardQueryState, useInit, useSaveTrust } from "@diffgazer/core/api/hooks";
-import { Box, Text } from "ink";
+import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
+import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
+import { TrustPermissionsContent } from "../../../components/shared/trust-permissions-content";
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
-import { CheckboxGroup } from "../../../components/ui/checkbox";
 import { Panel } from "../../../components/ui/panel";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
@@ -22,13 +23,27 @@ function getActionLabel(isSaving: boolean, hasRepoAccess: boolean): string {
 export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
   const initQuery = useInit();
   const saveTrust = useSaveTrust();
-  const [checked, setChecked] = useState<string[]>(["readFiles"]);
+  const [capabilities, setCapabilities] = useState<TrustCapabilities>({
+    readFiles: true,
+    runCommands: false,
+  });
+  const [buttonActive, setButtonActive] = useState(false);
 
   const saving = saveTrust.isPending;
   const error = saveTrust.error?.message ?? null;
-  const hasRepoAccess = checked.includes("readFiles");
+  const hasRepoAccess = capabilities.readFiles;
 
   const actionLabel = getActionLabel(saving, hasRepoAccess);
+
+  useInput(
+    (_input, key) => {
+      if (saving) return;
+      if (key.tab) {
+        setButtonActive((active) => !active);
+      }
+    },
+    { isActive: !saving },
+  );
 
   function handleAccept() {
     if (!initQuery.data) return;
@@ -38,10 +53,7 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
       {
         projectId,
         repoRoot: initQuery.data.project.path,
-        capabilities: {
-          readFiles: checked.includes("readFiles"),
-          runCommands: checked.includes("runCommands"),
-        },
+        capabilities,
         trustMode: "persistent",
         trustedAt: new Date().toISOString(),
       },
@@ -82,26 +94,18 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
             </Callout.Content>
           </Callout>
 
-          <Text dimColor>Select capabilities to grant:</Text>
-
-          <CheckboxGroup value={checked} onChange={setChecked} isActive={!saving}>
-            <CheckboxGroup.Item
-              value="readFiles"
-              label="Read files"
-              description="Allow reading project files for context"
-            />
-            <CheckboxGroup.Item
-              value="runCommands"
-              label="Run commands"
-              description="Allow running shell commands (e.g., lint, test)"
-            />
-          </CheckboxGroup>
+          <TrustPermissionsContent
+            directory={initQuery.data?.project.path ?? "Loading..."}
+            value={capabilities}
+            onChange={setCapabilities}
+            isActive={!saving && !buttonActive}
+          />
 
           <Box gap={1}>
             <Button
               variant="success"
               onPress={handleAccept}
-              isActive={!saving && !!initQuery.data}
+              isActive={!saving && buttonActive && !!initQuery.data}
               disabled={saving || !initQuery.data}
             >
               {actionLabel}

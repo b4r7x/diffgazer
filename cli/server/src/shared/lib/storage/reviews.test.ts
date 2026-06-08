@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -30,6 +31,10 @@ async function loadStorage() {
 
 const reviewsDir = (): string => join(tempHome, "triage-reviews");
 const reviewPath = (id: string): string => join(reviewsDir(), `${id}.json`);
+const projectIndexPath = (projectPath: string): string => {
+  const hash = createHash("sha256").update(projectPath).digest("hex").slice(0, 16);
+  return join(reviewsDir(), ".index", `${hash}.json`);
+};
 
 async function readJson<T>(filePath: string): Promise<T> {
   return JSON.parse(await readFile(filePath, "utf-8")) as T;
@@ -200,6 +205,43 @@ describe("reviews storage", () => {
     if (filtered.ok) expect(filtered.value.items.map((item) => item.id)).toEqual([REVIEW_ID]);
   });
 
+  it("rebuilds a stale project index so saved reviews are not hidden", async () => {
+    const first = makeSavedReview({
+      metadata: {
+        ...makeSavedReview().metadata,
+        id: REVIEW_ID,
+        projectPath: "/proj/a",
+        createdAt: "2024-01-01T00:00:00.000Z",
+      },
+    });
+    const second = makeSavedReview({
+      metadata: {
+        ...makeSavedReview().metadata,
+        id: REVIEW_ID_2,
+        projectPath: "/proj/a",
+        createdAt: "2025-06-01T00:00:00.000Z",
+      },
+    });
+    await writeSavedReview(first);
+    await writeSavedReview(second);
+    await mkdir(join(reviewsDir(), ".index"), { recursive: true });
+    await writeFile(projectIndexPath("/proj/a"), JSON.stringify([REVIEW_ID]), "utf-8");
+
+    const { listReviews } = await loadStorage();
+    const result = await listReviews("/proj/a");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.items.map((item) => item.id)).toEqual([REVIEW_ID_2, REVIEW_ID]);
+    expect(result.value.warnings).toContain(
+      "Project review index was stale and has been rebuilt from saved reviews.",
+    );
+    await expect(readJson<string[]>(projectIndexPath("/proj/a"))).resolves.toEqual([
+      REVIEW_ID_2,
+      REVIEW_ID,
+    ]);
+  });
+
   it("migrates legacy reviews with missing severity counts when listing or reading", async () => {
     const legacy = makeSavedReview({
       metadata: {
@@ -249,6 +291,30 @@ describe("reviews storage", () => {
     const missing = await getReview(REVIEW_ID);
     expect(missing.ok).toBe(false);
     if (!missing.ok) expect(missing.error.code).toBe("NOT_FOUND");
+  });
+
+  it("surfaces lazy project index write failures as warnings", async () => {
+    const review = makeSavedReview({
+      metadata: {
+        ...makeSavedReview().metadata,
+        projectPath: "/proj/index-fail",
+      },
+    });
+    await writeSavedReview(review);
+
+    const atomicWrite = await import("../fs.js");
+    const writeSpy = vi
+      .spyOn(atomicWrite, "atomicWriteFile")
+      .mockRejectedValueOnce(new Error("disk full"));
+
+    const { listReviews } = await loadStorage();
+    const result = await listReviews("/proj/index-fail");
+
+    writeSpy.mockRestore();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.warnings).toContain("[reviews] Failed to build project index: disk full");
   });
 
   it("adds and replaces drilldowns in the saved review", async () => {

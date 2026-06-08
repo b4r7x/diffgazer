@@ -112,6 +112,26 @@ describe("Part B: unknown @diffgazer/keys copy imports fail validation", () => {
     expect(result).not.toContain("@diffgazer/keys");
   });
 
+  it("rewrites multiline @diffgazer/keys imports", () => {
+    const input = [
+      "import {",
+      "  type UseFocusRestoreOptions,",
+      "  useFocusRestore,",
+      '} from "@diffgazer/keys";',
+    ].join("\n");
+    const result = transformUiPublicRegistryKeysImportContent(input);
+    expect(result).toContain("@/hooks/use-focus-restore");
+    expect(result).not.toContain("@diffgazer/keys");
+  });
+
+  it("preserves hidden shim package imports to avoid self-import rewrites", () => {
+    const input = 'import { useScrollLock } from "@diffgazer/keys";';
+    const result = transformUiPublicRegistryKeysImportContent(input, {
+      shimHookBasename: "use-scroll-lock",
+    });
+    expect(result).toBe(input);
+  });
+
   it("throws on unknown @diffgazer/keys import specifiers", () => {
     const input = `import { unknownExport } from "@diffgazer/keys";`;
     expect(() => transformUiPublicRegistryKeysImportContent(input)).toThrow(
@@ -240,6 +260,21 @@ describe("Part F: CSS side-effect imports stripped from public registry content"
 });
 
 describe("Part G: export-from re-exports rewritten in public registry", () => {
+  it("no public registry file content contains bare @diffgazer/keys imports", () => {
+    const BARE_KEYS_IMPORT =
+      /\b(?:import|export)\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?["']@diffgazer\/keys["']/;
+    const leaks: string[] = [];
+    for (const item of readPublicRegistryItems()) {
+      for (const file of item.files ?? []) {
+        if (typeof file.content !== "string") continue;
+        if (BARE_KEYS_IMPORT.test(file.content)) {
+          leaks.push(`${item.name}/${file.path}`);
+        }
+      }
+    }
+    expect(leaks, `Found bare @diffgazer/keys leaks:\n${leaks.join("\n")}`).toEqual([]);
+  });
+
   it("no public registry file content contains export-from @diffgazer/keys", () => {
     const EXPORT_FROM_KEYS = /export\s+\{[^}]*\}\s+from\s+["']@diffgazer\/keys["']/;
     const leaks: string[] = [];

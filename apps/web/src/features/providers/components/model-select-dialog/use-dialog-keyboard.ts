@@ -23,6 +23,7 @@ type FocusZone = "close" | "search" | "filters" | "list" | "footer";
 
 interface ModelDialogKeyboardOptions {
   open: boolean;
+  isSaving?: boolean;
   currentModel: string | undefined;
   models: ModelInfo[];
   filteredModels: ModelInfo[];
@@ -84,6 +85,7 @@ function getModelFocusTargetId({
 
 export function useModelDialogKeyboard({
   open,
+  isSaving = false,
   currentModel,
   models,
   filteredModels,
@@ -101,7 +103,7 @@ export function useModelDialogKeyboard({
   const [tabFocusedFooterIndex, setTabFocusedFooterIndex] = useState<number | null>(null);
   const hasHandledInitialFocusRef = useRef(false);
   const filterButtonRefs = useRef(new Map<number, HTMLButtonElement>());
-  const canConfirm = filteredModels.length > 0;
+  const canConfirm = !isSaving && filteredModels.length > 0;
 
   const {
     focusZone,
@@ -114,22 +116,25 @@ export function useModelDialogKeyboard({
 
   const blurSearchInput = () => searchInputRef.current?.blur();
 
-  const handleCancel = () => onOpenChange(false);
+  const handleCancel = () => {
+    if (isSaving) return;
+    onOpenChange(false);
+  };
 
   const handleConfirm = (explicitModelId?: string) => {
+    if (isSaving) return;
     const nextModelId =
       [explicitModelId, checkedModelId, focusedModelId].find(
         (id) => id != null && filteredModels.some((model) => model.id === id),
       ) ?? filteredModels[0]?.id;
     if (!nextModelId) return;
     onSelect(nextModelId);
-    onOpenChange(false);
   };
 
   const footerActionRow = useActionRowNavigation({
-    enabled: open && isZone("footer"),
+    enabled: open && isZone("footer") && !isSaving,
     actionCount: 2,
-    disabledActions: [false, !canConfirm],
+    disabledActions: [isSaving, !canConfirm],
     onAction: (index) => {
       if (index === 0) handleCancel();
       else if (index === 1 && canConfirm) handleConfirm();
@@ -204,7 +209,7 @@ export function useModelDialogKeyboard({
   const { highlighted: focusedModelId, highlight: focusModel } = useScopedNavigation({
     containerRef: listContainerRef,
     role: "radio",
-    enabled: open && isZone("list") && filteredModels.length > 0,
+    enabled: open && !isSaving && isZone("list") && filteredModels.length > 0,
     wrap: false,
     moveFocus: true,
     upKeys: ["k"],
@@ -316,10 +321,10 @@ export function useModelDialogKeyboard({
   }, [focusZone]);
 
   const handleUseCustom = () => {
+    if (isSaving) return;
     const customId = searchQuery.trim();
     if (!customId) return;
     onSelect(customId);
-    onOpenChange(false);
   };
 
   const handleListSelect = (modelId: string) => {

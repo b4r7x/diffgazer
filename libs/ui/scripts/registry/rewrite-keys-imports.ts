@@ -1,59 +1,15 @@
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { KEYS_PACKAGE_IMPORT_TARGETS, REGISTRY_ORIGIN } from "@diffgazer/registry";
+import { REGISTRY_ORIGIN, rewriteKeysPackageImportsInContent } from "@diffgazer/registry";
 
-function specifierName(specifier: string): string {
-  return (
-    specifier
-      .replace(/^type\s+/, "")
-      .split(/\s+as\s+/)[0]
-      ?.trim() ?? ""
-  );
-}
-
-function renderImport(specifiers: string[], target: string, quote: string): string {
-  return `import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`;
+function renderImport(specifiers: string[], target: string, quote: string, indent: string): string {
+  return `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`;
 }
 
 function rewriteKeysPackageImportLine(line: string): string {
-  const match = /^(\s*)import\s+(type\s+)?\{([^}]+)\}\s+from\s+(["'])@diffgazer\/keys\4;?\s*$/.exec(
-    line,
-  );
-  if (!match) return line;
-
-  const indent = match[1] ?? "";
-  const typePrefix = match[2] ?? "";
-  const quote = match[4] ?? '"';
-  const grouped = new Map<string, string[]>();
-  const unknown: string[] = [];
-
-  for (const rawSpecifier of (match[3] ?? "").split(",")) {
-    const specifier = rawSpecifier.trim();
-    if (!specifier) continue;
-
-    const target = KEYS_PACKAGE_IMPORT_TARGETS.get(specifierName(specifier));
-    if (!target) {
-      unknown.push(`${typePrefix}${specifier}`.trim());
-      continue;
-    }
-
-    const specifiers = grouped.get(target) ?? [];
-    specifiers.push(`${typePrefix}${specifier}`.trim());
-    grouped.set(target, specifiers);
-  }
-
-  if (unknown.length > 0) {
-    throw new Error(
-      `Unknown @diffgazer/keys import specifiers in public registry copy content: ${unknown.join(", ")}. ` +
-        `Add them to KEYS_PACKAGE_IMPORT_TARGETS in rewrite-keys-imports.ts.`,
-    );
-  }
-
-  const rewritten = [...grouped.entries()].map(
-    ([target, specifiers]) => indent + renderImport(specifiers, target, quote),
-  );
-
-  return rewritten.length > 0 ? rewritten.join("\n") : line;
+  return rewriteKeysPackageImportsInContent(`${line}\n`, {
+    renderImport,
+  }).trimEnd();
 }
 
 function stripRelativeJsExtensions(content: string): string {
@@ -68,14 +24,21 @@ function stripCssSideEffectImports(content: string): string {
   return content.replace(/^\s*import\s+["'][^"']+\.css["'];?\s*\n?/gm, "");
 }
 
-export function transformUiPublicRegistryKeysImportContent(content: string): string {
-  const keysRewritten = content.split("\n").map(rewriteKeysPackageImportLine).join("\n");
+export function transformUiPublicRegistryKeysImportContent(
+  content: string,
+  options?: { shimHookBasename?: string },
+): string {
+  const keysRewritten = rewriteKeysPackageImportsInContent(content, {
+    shimHookBasename: options?.shimHookBasename,
+    renderImport,
+  });
   const cssStripped = stripCssSideEffectImports(keysRewritten);
   return stripRelativeJsExtensions(cssStripped);
 }
 
 interface RegistryFileWithContent {
   content?: string;
+  path?: string;
 }
 
 interface PublicRegistryItemJson {
@@ -117,6 +80,16 @@ function transformRegistryDependencies(item: PublicRegistryItemJson): boolean {
   return true;
 }
 
+export function isHiddenKeysShim(item: PublicRegistryItemJson & { name?: string }): boolean {
+  return (
+    item.meta?.hidden === true &&
+    item.name?.startsWith("use-") === true &&
+    (item.registryDependencies ?? []).some(
+      (dep) => dep.startsWith("@diffgazer-keys/") || dep.startsWith("@diffgazer/keys/"),
+    )
+  );
+}
+
 export function transformUiPublicRegistryKeysImports(outputDir: string): void {
   const indexPath = join(outputDir, "registry.json");
   const index = JSON.parse(readFileSync(indexPath, "utf-8")) as PublicRegistryIndexJson;
@@ -140,13 +113,24 @@ export function transformUiPublicRegistryKeysImports(outputDir: string): void {
     if (!entry.endsWith(".json") || entry === "registry.json") continue;
 
     const itemPath = join(outputDir, entry);
-    const item = JSON.parse(readFileSync(itemPath, "utf-8")) as PublicRegistryItemJson;
+    const item = JSON.parse(readFileSync(itemPath, "utf-8")) as PublicRegistryItemJson & {
+      name?: string;
+    };
+
+    if (isHiddenKeysShim(item)) {
+      unlinkSync(itemPath);
+      continue;
+    }
+
     let changed = transformRegistryDependencies(item);
+    const shimHookBasename = item.name?.startsWith("use-") ? item.name : undefined;
 
     for (const file of item.files ?? []) {
       if (typeof file.content !== "string") continue;
 
-      const nextContent = transformUiPublicRegistryKeysImportContent(file.content);
+      const nextContent = transformUiPublicRegistryKeysImportContent(file.content, {
+        shimHookBasename,
+      });
       if (nextContent === file.content) continue;
 
       file.content = nextContent;
@@ -158,3 +142,6 @@ export function transformUiPublicRegistryKeysImports(outputDir: string): void {
     }
   }
 }
+
+// Kept for tests that exercise single-line rewrite behavior.
+export { rewriteKeysPackageImportLine };

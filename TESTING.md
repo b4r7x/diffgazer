@@ -44,7 +44,7 @@ Use `it.each` to collapse parameterizable cases (different keys → same action)
 - Browser-only APIs unavailable in jsdom (`IntersectionObserver`, `ResizeObserver`, `matchMedia`, `HTMLDialogElement.showModal`/`close`)
 - External libraries with their own contract (`@tanstack/react-router` — routing decisions are explicit user behavior, the library is the boundary)
 
-**Every retained `vi.mock(...)` MUST carry a `// Boundary mock: <why>` comment** naming the specific boundary. The audit gate enforces this.
+**Every retained `vi.mock(...)` SHOULD carry a `// Boundary mock: <why>` comment** naming the specific boundary. This is a repo convention for reviewers and future audits; it is not wired into an automated CI gate today.
 
 **Mocking internal modules (sibling files, app composition, hooks owned by the same app) is forbidden.** When a test needs to isolate a unit from its compositional dependencies, refactor the unit for dependency injection (the `apps/web/src/features/home/components/home-presentation.tsx` split is the reference).
 
@@ -69,7 +69,7 @@ Replace hardcoded `setTimeout(N)` / `await new Promise(r => setTimeout(r, N))` w
 - `vi.waitFor(() => expect(predicate).toBe(true), { timeout, interval })` (bounded wait, exits early)
 - Real `setTimeout` only inside `vi.useFakeTimers()` scope driven by `vi.advanceTimersByTimeAsync`
 
-Hardcoded waits without justification are brittle and flaky. The CI gate forbids them.
+Hardcoded waits without justification are brittle and flaky. Prefer fake timers or `vi.waitFor`; there is no dedicated CI grep gate for them yet.
 
 ### 7. Accessibility coverage
 
@@ -113,7 +113,7 @@ Helpers live in per-package `testing/` directories (not a separate `@diffgazer/t
 
 ## Verification gates (per `AGENTS.md`)
 
-Per-package after changes:
+Per-package after localized changes:
 ```
 pnpm --filter <pkg> type-check        # production type-check
 pnpm --filter <pkg> test              # runtime tests
@@ -125,15 +125,29 @@ After registry/UI/keys/CLI/docs changes (handoff-affecting):
 pnpm run prepare:artifacts && pnpm run validate:artifacts:check
 ```
 
-Before declaring SOTA-ready:
+Root hygiene (non-blocking report vs blocking gates):
 ```
-pnpm run verify                       # full chain incl. test:types + smoke
+pnpm run knip                         # dead-file / unused-dep report (non-blocking today)
+pnpm run depcruise                    # import-boundary rules (blocking in `pnpm run check`)
 ```
+
+CI-safe gate (`test-ci`):
+```
+pnpm run test-ci
+```
+Runs artifact validation, secret scan, Biome check (incl. `depcruise`), type-check, tests, `test:types`, strict smoke, bench, and `verify:monorepo`.
+
+Full local readiness (`verify`):
+```
+pnpm run verify
+```
+Runs `verify:monorepo`, artifact validation, secret scan, check, `test:scripts`, type-check, tests, `test:types`, smoke, and bench.
 
 Final release gate:
 ```
-pnpm run release-check                # verify + smoke:packages + pack --dry-run × 4
+pnpm run release-check
 ```
+Runs the `test-ci` chain plus pack dry-runs for all four public packages, `verify:monorepo`, and `git diff --check`.
 
 `turbo run test:types` is wired in `verify`, `test-ci`, and `release-check` as a required step.
 

@@ -1,9 +1,9 @@
 import { TextInput } from "@inkjs/ui";
 import { Box, Text, useInput } from "ink";
 import { useContext, useEffect, useState } from "react";
-import { KeyboardContext } from "../../app/providers/keyboard";
-import { useTheme } from "../../app/providers/theme";
+import { KeyboardContext } from "../../hooks/use-keyboard";
 import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions";
+import { useTheme } from "../../theme/provider";
 
 export interface InputProps {
   value?: string;

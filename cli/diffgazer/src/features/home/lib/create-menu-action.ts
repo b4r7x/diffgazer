@@ -1,7 +1,7 @@
-import { isReviewStartAction } from "@diffgazer/core/navigation";
+import { isMenuActionDisabled } from "@diffgazer/core/navigation";
 import type { MenuAction } from "@diffgazer/core/schemas/presentation";
 import type { UseMutationResult } from "@tanstack/react-query";
-import type { Route } from "../../../app/routes";
+import type { Route } from "../../../lib/routes.js";
 
 type RouteReviewMode = Extract<Route, { screen: "review" }>["mode"];
 
@@ -30,7 +30,12 @@ export function createHomeMenuAction({
   return (action: string) => {
     const menuAction = action as MenuAction;
 
-    if (isReviewStartAction(menuAction) && !isTrusted) {
+    if (
+      isMenuActionDisabled(menuAction, {
+        isTrusted,
+        hasResumableSession: hasActiveSession,
+      })
+    ) {
       return;
     }
 
@@ -40,8 +45,6 @@ export function createHomeMenuAction({
         return;
       case "review-staged":
         navigate({ screen: "review", mode: "staged" });
-        return;
-      case "review-files":
         return;
       case "resume-review":
         if (hasActiveSession && activeSession) {

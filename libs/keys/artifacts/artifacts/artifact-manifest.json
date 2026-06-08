@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "library": "keys",
+  "package": "@diffgazer/keys",
+  "version": "0.2.0",
+  "artifactRoot": "artifacts",
+  "inputs": [
+    "docs/content",
+    "docs/generated",
+    "docs/hook-docs",
+    "registry",
+    "public/r",
+    "internal-docs-manifest.json",
+    "package.json"
+  ],
+  "docs": {
+    "contentDir": "docs",
+    "metaFile": "docs/meta.json",
+    "generatedDir": "generated"
+  },
+  "registry": {
+    "namespace": "@diffgazer/keys",
+    "basePath": "/r/keys",
+    "publicDir": "registry",
+    "index": "registry/registry.json"
+  },
+  "source": {
+    "registryDir": "source/registry"
+  },
+  "generated": {
+    "keysHooksFile": "generated/keys-hooks.json",
+    "hookList": "generated/hook-list.json",
+    "hooksDir": "generated/hooks",
+    "demoIndex": "generated/demo-index.ts"
+  },
+  "integrity": {
+    "algorithm": "sha256",
+    "fingerprintFile": "fingerprint.sha256"
+  }
+}

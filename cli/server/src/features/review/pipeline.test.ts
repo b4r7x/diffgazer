@@ -1,8 +1,10 @@
+import type { SettingsConfig } from "@diffgazer/core/schemas/config";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { describe, expect, it } from "vitest";
 import type { ParsedDiff } from "../../shared/lib/diff/types.js";
 import type { createGitService } from "../../shared/lib/git/service.js";
 import { filterDiffByFiles, resolveGitDiff } from "./diff.js";
+import { resolveReviewDefaults } from "./pipeline.js";
 import { generateExecutiveSummary, generateReport } from "./summary.js";
 
 const makeFile = (filePath: string, additions = 1, deletions = 0) => ({
@@ -70,6 +72,34 @@ const makeIssue = (
     line_start: 1,
     line_end: 5,
   }) as ReviewIssue;
+
+describe("resolveReviewDefaults", () => {
+  const baseSettings: SettingsConfig = {
+    theme: "auto",
+    secretsStorage: null,
+    defaultLenses: ["correctness", "security"],
+    defaultProfile: null,
+    severityThreshold: "low",
+    agentExecution: "sequential",
+  };
+
+  it("applies defaultProfile from settings when no explicit profile is provided", () => {
+    const defaults = resolveReviewDefaults({
+      settings: { ...baseSettings, defaultProfile: "strict" },
+    });
+
+    expect(defaults.effectiveProfileId).toBe("strict");
+    expect(defaults.activeLenses).toEqual(["correctness", "security", "tests"]);
+  });
+
+  it("applies severityThreshold from settings when the profile filter is looser", () => {
+    const defaults = resolveReviewDefaults({
+      settings: { ...baseSettings, defaultProfile: "perf", severityThreshold: "high" },
+    });
+
+    expect(defaults.severityFilter).toEqual({ minSeverity: "high" });
+  });
+});
 
 describe("filterDiffByFiles", () => {
   const parsed = makeParsedDiff([

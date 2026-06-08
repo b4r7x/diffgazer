@@ -94,6 +94,31 @@ describe("startWeb", () => {
     await expect(stop()).resolves.toBeUndefined();
   });
 
+  it("exits with code 1 when a server reports a startup failure", async () => {
+    const exit = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    startWeb(
+      { mode: "prod", openBrowser: false },
+      {
+        printBanner: vi.fn(),
+        createServerFactories: ({ onStartupFailure }) => [
+          () => ({
+            start() {
+              onStartupFailure?.("embedded web failed");
+            },
+            stop: () => Promise.resolve(),
+          }),
+        ],
+      },
+    );
+
+    await vi.waitFor(() => {
+      expect(exit).toHaveBeenCalledWith(1);
+    });
+    expect(process.exitCode).toBe(1);
+  });
+
   it("prints the banner before starting web servers and stops them on cleanup", async () => {
     const events: string[] = [];
 

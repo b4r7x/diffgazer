@@ -128,6 +128,8 @@ function ProviderListSubject({
   const inputRef = useRef<HTMLInputElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
   const selectedProvider = PROVIDERS.find((provider) => provider.id === selectedId) ?? null;
+  const canSelectProvider = Boolean(selectedProvider?.hasApiKey && selectedProvider.model);
+  const canRemoveKey = Boolean(selectedProvider?.hasApiKey);
   const applyFilter = (nextFilter: ProviderFilter) => {
     setFilter(nextFilter);
     onFilter(nextFilter);
@@ -173,8 +175,32 @@ function ProviderListSubject({
         onActivate={onActivate}
         onBoundaryReached={keyboard.handleListBoundary}
       />
-      <button type="button" {...keyboard.getActionButtonProps(0)}>
+      <button
+        type="button"
+        disabled={!canSelectProvider}
+        aria-disabled={!canSelectProvider}
+        {...keyboard.getActionButtonProps(0)}
+      >
         Select Provider
+      </button>
+      <button type="button" {...keyboard.getActionButtonProps(1)}>
+        Set API Key
+      </button>
+      <button
+        type="button"
+        disabled={!canRemoveKey}
+        aria-disabled={!canRemoveKey}
+        {...keyboard.getActionButtonProps(2)}
+      >
+        Remove Key
+      </button>
+      <button
+        type="button"
+        disabled={!canRemoveKey}
+        aria-disabled={!canRemoveKey}
+        {...keyboard.getActionButtonProps(3)}
+      >
+        Select Model
       </button>
     </>
   );
@@ -246,7 +272,7 @@ describe("useProvidersKeyboard", () => {
     expect(screen.getByRole("listbox", { name: "Providers" })).not.toHaveFocus();
   });
 
-  it("moves real focus from the provider list to action buttons and back", async () => {
+  it("moves real focus from the provider list to the first enabled action and back", async () => {
     const user = userEvent.setup();
 
     renderSubject();
@@ -255,7 +281,7 @@ describe("useProvidersKeyboard", () => {
     await waitFor(() => expect(providerList).toHaveFocus());
 
     await user.keyboard("{ArrowRight}");
-    expect(screen.getByRole("button", { name: "Connect" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "API Key" })).toHaveFocus();
 
     await user.keyboard("{ArrowLeft}");
     expect(providerList).toHaveFocus();
@@ -334,6 +360,23 @@ describe("useProvidersKeyboard", () => {
     await user.keyboard("{Escape}");
 
     expect(screen.getByRole("radio", { name: "All" })).toHaveFocus();
+  });
+
+  it("skips the disabled Select Provider action when the provider has no API key", async () => {
+    const user = userEvent.setup();
+
+    renderProviderListSubject();
+
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: "Select Provider" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: "Set API Key" })).toHaveFocus();
   });
 
   it("activates the highlighted provider with Enter and moves to actions with Space", async () => {

@@ -51,6 +51,7 @@ for (const item of registry.items) {
 
 // Add utils (cn function)
 entry["lib/utils"] = resolve(registryRoot, "lib/utils.ts");
+entry["theme/index"] = resolve(import.meta.dirname, "theme/index.ts");
 entry["components/logo/figlet"] = resolve(registryRoot, "ui/logo/figlet-text.ts");
 entry["components/code-block/highlight"] = resolve(registryRoot, "ui/code-block/highlight.ts");
 entry["components/command-palette/highlight"] = resolve(

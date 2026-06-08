@@ -71,26 +71,28 @@ function collectTabMetadata(children: ReactNode): TabMetadata {
   return metadata;
 }
 
-function TabsRoot<TValue extends string = string>({
-  value: controlledValue,
-  onChange,
-  defaultValue,
-  orientation = "horizontal",
-  variant = "underline",
-  size = "sm",
-  activationMode = "automatic",
-  children,
-  className,
-  ref,
-  ...rest
-}: TabsProps<TValue>) {
+function TabsRoot<TValue extends string = string>(props: TabsProps<TValue>) {
+  const {
+    value: controlledValue,
+    onChange,
+    defaultValue,
+    orientation = "horizontal",
+    variant = "underline",
+    size = "sm",
+    activationMode = "automatic",
+    children,
+    className,
+    ref,
+    ...rest
+  } = props;
   const tabsId = useId();
   const { enabledValues, panelValues, triggerValues } = useMemo(
     () => collectTabMetadata(children),
     [children],
   );
   const [value, setValue] = useControllableState<string>({
-    value: controlledValue,
+    value: "value" in props ? (controlledValue ?? "") : undefined,
+    controlled: "value" in props,
     defaultValue: defaultValue ?? "",
     // TValue is a string subtype; downstream context uses string for runtime DOM matching.
     onChange: onChange as ((value: string) => void) | undefined,

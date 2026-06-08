@@ -1,10 +1,10 @@
+import { moveHighlight } from "@diffgazer/keys";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext, useState } from "react";
-import { useTheme } from "../../app/providers/theme";
-import { moveHighlight } from "../../lib/highlight-navigation";
 import { collectChildItems } from "../../lib/list-navigation";
 import type { CliColorTokens } from "../../theme/palettes";
+import { useTheme } from "../../theme/provider";
 
 export interface CheckboxGroupProps<T extends string = string> {
   value?: T[];
@@ -117,24 +117,33 @@ function CheckboxGroupRoot<T extends string = string>({
 }: CheckboxGroupProps<T>) {
   const { tokens } = useTheme();
   const items = collectChildItems(children, extractCheckboxItem);
-  const selectableItems = items.filter((item) => !item.disabled && !disabled);
+  const navigableItems = items.map((item) => ({
+    id: item.value,
+    disabled: disabled || item.disabled,
+  }));
+  const selectableItems = navigableItems.filter((item) => !item.disabled);
 
   const [internalValue, setInternalValue] = useState<string[]>(defaultValue ?? []);
-  const [internalIndex, setInternalIndex] = useState(0);
+  const [internalHighlightedValue, setInternalHighlightedValue] = useState<string | null>(null);
 
   const checkedValues = value ?? internalValue;
-  const highlightedValue = selectableItems[internalIndex]?.value ?? "";
+  const highlightedValue =
+    internalHighlightedValue !== null &&
+    selectableItems.some((item) => item.id === internalHighlightedValue)
+      ? internalHighlightedValue
+      : (selectableItems[0]?.id ?? "");
 
   function moveBy(direction: 1 | -1) {
-    const navigable = selectableItems.map((item) => ({ id: item.value, disabled: false }));
-    const result = moveHighlight(navigable, highlightedValue, direction, wrap);
+    const result = moveHighlight(navigableItems, highlightedValue, direction, wrap);
     if (!result) return;
-    setInternalIndex(result.index);
+    setInternalHighlightedValue(result.id);
     onHighlightChange?.(result.id);
   }
 
   function toggleCurrent() {
-    const item = selectableItems.find((i) => i.value === highlightedValue);
+    const item = items.find(
+      (candidate) => candidate.value === highlightedValue && !candidate.disabled,
+    );
     if (!item) return;
 
     const nextValues = checkedValues.includes(item.value)
@@ -157,7 +166,7 @@ function CheckboxGroupRoot<T extends string = string>({
         moveBy(1);
         return;
       }
-      if (_input === " ") {
+      if (_input === " " || key.return) {
         toggleCurrent();
         return;
       }

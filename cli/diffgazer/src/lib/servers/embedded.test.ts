@@ -1,5 +1,5 @@
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { buildHtmlShell, createEmbeddedServer, isSpaNavigationRequest } from "./embedded";
 
 const MINIMAL_HTML = "<!DOCTYPE html><html><head></head><body></body></html>";
@@ -98,6 +98,20 @@ describe("isSpaNavigationRequest", () => {
         "/index.html",
       ),
     ).toBe(false);
+  });
+});
+
+describe("createEmbeddedServer startup failures", () => {
+  it("reports missing web assets through onFailure", async () => {
+    const onFailure = vi.fn();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const server = createEmbeddedServer({ port: 0, onFailure });
+    server.start();
+
+    await vi.waitFor(() => {
+      expect(onFailure).toHaveBeenCalledWith(expect.stringContaining("Web assets not found"));
+    });
   });
 });
 

@@ -2,10 +2,10 @@ import { getDisplayStatusBadge } from "@diffgazer/core/providers";
 import type { DisplayStatus } from "@diffgazer/core/schemas/config";
 import { Box, Text, useInput } from "ink";
 import { type ReactElement, useState } from "react";
-import { useTheme } from "../../../app/providers/theme";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { KeyValue } from "../../../components/ui/key-value";
+import { useTheme } from "../../../theme/provider";
 
 export interface ProviderDetailData {
   id: string;
@@ -40,17 +40,33 @@ export function ProviderDetails({
   const [actionIndex, setActionIndex] = useState(0);
 
   const showRemove = provider?.displayStatus !== "needs-key";
-  const actionCount = showRemove ? 3 : 2;
+  const selectModelDisabled = provider?.displayStatus === "needs-key";
+  const enabledActions = [true, !selectModelDisabled, showRemove];
+  const actionCount = enabledActions.filter(Boolean).length;
+
+  function moveActionIndex(direction: 1 | -1) {
+    if (actionCount === 0) return;
+    setActionIndex((current) => {
+      const clamped = Math.min(current, enabledActions.length - 1);
+      let next = clamped;
+      do {
+        next += direction;
+        if (next < 0 || next >= enabledActions.length) {
+          return clamped;
+        }
+      } while (!enabledActions[next]);
+      return next;
+    });
+  }
 
   useInput(
     (_input, key) => {
       if (key.leftArrow) {
-        setActionIndex((i) => Math.max(0, i - 1));
+        moveActionIndex(-1);
         return;
       }
       if (key.rightArrow) {
-        setActionIndex((i) => Math.min(actionCount - 1, i + 1));
-        return;
+        moveActionIndex(1);
       }
     },
     { isActive },
@@ -65,7 +81,9 @@ export function ProviderDetails({
   }
 
   const badge = getDisplayStatusBadge(provider.displayStatus);
-  const clampedIndex = Math.min(actionIndex, actionCount - 1);
+  const focusedIndex = enabledActions[actionIndex]
+    ? actionIndex
+    : enabledActions.findIndex((enabled) => enabled);
 
   return (
     <Box flexDirection="column" gap={1}>
@@ -89,23 +107,23 @@ export function ProviderDetails({
       <Box gap={1} marginTop={1}>
         <Button
           variant="primary"
-          isActive={isActive && clampedIndex === 0}
+          isActive={isActive && focusedIndex === 0}
           onPress={onConfigureKey}
         >
           Configure API Key
         </Button>
         <Button
           variant="secondary"
-          isActive={isActive && clampedIndex === 1}
+          isActive={isActive && focusedIndex === 1}
           onPress={onSelectModel}
-          disabled={provider.displayStatus === "needs-key"}
+          disabled={selectModelDisabled}
         >
           Select Model
         </Button>
         {showRemove && (
           <Button
             variant="destructive"
-            isActive={isActive && clampedIndex === 2}
+            isActive={isActive && focusedIndex === 2}
             onPress={onRemove}
           >
             Remove

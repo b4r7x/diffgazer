@@ -13,6 +13,9 @@ const keyring = vi.hoisted(() => ({
 
 const fsHooks = vi.hoisted(() => ({
   writeJsonFileSyncHook: null as ((filePath: string, data: unknown, mode?: number) => void) | null,
+  writeJsonFileHook: null as
+    | ((filePath: string, data: unknown, mode?: number) => Promise<void>)
+    | null,
 }));
 
 // Boundary mock: keyring wraps the OS keychain via @napi-rs/keyring; tests provide canned secret read/write results so store behavior can be exercised without a real keychain.
@@ -27,6 +30,12 @@ vi.mock("../fs.js", async (importOriginal) => {
         return fsHooks.writeJsonFileSyncHook(filePath, data, mode);
       }
       return real.writeJsonFileSync(filePath, data, mode);
+    },
+    writeJsonFile: async (filePath: string, data: unknown, mode?: number) => {
+      if (fsHooks.writeJsonFileHook) {
+        return fsHooks.writeJsonFileHook(filePath, data, mode);
+      }
+      return real.writeJsonFile(filePath, data, mode);
     },
   };
 });
@@ -70,6 +79,11 @@ async function loadStore() {
   return getStore();
 }
 
+async function loadStoreFactory() {
+  const { createConfigStore } = await import("./store.js");
+  return createConfigStore;
+}
+
 function trustConfig(overrides: Partial<TrustConfig> = {}): TrustConfig {
   return {
     projectId: "proj-1",
@@ -101,6 +115,7 @@ describe("config store", () => {
 
   afterEach(() => {
     fsHooks.writeJsonFileSyncHook = null;
+    fsHooks.writeJsonFileHook = null;
     delete process.env.DIFFGAZER_HOME;
     rmSync(diffgazerHome, { recursive: true, force: true });
     warnSpy.mockRestore();
@@ -219,6 +234,27 @@ describe("config store", () => {
     expect(keyring.readKeyringSecret).toHaveBeenCalledWith("api_key_gemini");
   });
 
+  it("reads env-backed credentials from the sidecar in keyring mode", async () => {
+    process.env.GOOGLE_API_KEY = "env-key";
+    writeJson(configPath(), {
+      settings: { secretsStorage: "keyring" },
+      providers: [{ provider: "gemini", hasApiKey: true, isActive: false }],
+    });
+    writeJson(secretsPath(), {
+      providers: {
+        gemini: { kind: "env", varName: "GOOGLE_API_KEY" },
+      },
+    });
+
+    try {
+      const store = await loadStore();
+      expect(store.getProviderApiKey("gemini")).toEqual({ ok: true, value: "env-key" });
+      expect(keyring.readKeyringSecret).not.toHaveBeenCalledWith("api_key_gemini");
+    } finally {
+      delete process.env.GOOGLE_API_KEY;
+    }
+  });
+
   it("activates an existing provider only when a model is known or supplied", async () => {
     writeJson(configPath(), {
       settings: {},
@@ -260,6 +296,150 @@ describe("config store", () => {
     const removeResult2 = await store.removeTrust(trust.projectId);
     expect(removeResult2).toMatchObject({ ok: true, value: false });
     expect(store.getTrust(trust.projectId)).toBeNull();
+  });
+
+  it("rolls back file-backed credential writes when config persistence fails", async () => {
+    const store = await loadStore();
+    await store.updateSettings({ secretsStorage: "file" });
+    fsHooks.writeJsonFileHook = async (filePath, data, _mode) => {
+      if (filePath.endsWith("config.json")) {
+        throw new Error("Injected config.json write failure");
+      }
+      writeJson(filePath, data);
+      return undefined;
+    };
+
+    try {
+      const result = await store.saveProviderCredentials({
+        provider: "gemini",
+        apiKey: "new-key",
+        model: "gemini-2.5-flash",
+      });
+
+      expect(result).toMatchObject({
+        ok: false,
+        error: { code: "PERSIST_FAILED" },
+      });
+      expect(store.getProviderApiKey("gemini")).toEqual({ ok: true, value: null });
+      await expectFileMissingEventually(secretsPath());
+    } finally {
+      fsHooks.writeJsonFileHook = null;
+    }
+  });
+
+  it("restores deleted file-backed credentials when config persistence fails", async () => {
+    writeJson(configPath(), {
+      settings: { secretsStorage: "file" },
+      providers: [
+        { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
+      ],
+    });
+    writeJson(secretsPath(), { providers: { gemini: "existing-key" } });
+    const store = await loadStore();
+    fsHooks.writeJsonFileHook = async (filePath, data, _mode) => {
+      if (filePath.endsWith("config.json")) {
+        throw new Error("Injected config.json write failure");
+      }
+      writeJson(filePath, data);
+      return undefined;
+    };
+
+    try {
+      const result = await store.deleteProviderCredentials("gemini");
+
+      expect(result).toMatchObject({
+        ok: false,
+        error: { code: "PERSIST_FAILED" },
+      });
+      expect(store.getProviderApiKey("gemini")).toEqual({ ok: true, value: "existing-key" });
+      expect(store.getProviders().find((provider) => provider.provider === "gemini")).toMatchObject(
+        {
+          hasApiKey: true,
+          isActive: true,
+        },
+      );
+      expect(readJson<{ providers: Record<string, string> }>(secretsPath())).toEqual({
+        providers: { gemini: "existing-key" },
+      });
+    } finally {
+      fsHooks.writeJsonFileHook = null;
+    }
+  });
+
+  it("refreshes stale config before writing provider changes", async () => {
+    writeJson(configPath(), {
+      settings: { secretsStorage: "file", theme: "auto" },
+      providers: [],
+    });
+    const createStore = await loadStoreFactory();
+    const storeA = createStore();
+    const storeB = createStore();
+
+    await storeB.updateSettings({ theme: "dark" });
+    await storeA.saveProviderCredentials({
+      provider: "gemini",
+      apiKey: "new-key",
+      model: "gemini-2.5-flash",
+    });
+
+    expect(readJson<{ settings: { theme: string } }>(configPath())).toMatchObject({
+      settings: { theme: "dark" },
+    });
+  });
+
+  it("does not resurrect deleted secrets from stale in-memory state", async () => {
+    writeJson(configPath(), {
+      settings: { secretsStorage: "file" },
+      providers: [{ provider: "gemini", hasApiKey: true, isActive: false }],
+    });
+    writeJson(secretsPath(), { providers: { gemini: "existing-key" } });
+    const createStore = await loadStoreFactory();
+    const storeA = createStore();
+    const storeB = createStore();
+
+    await storeB.deleteProviderCredentials("gemini");
+    await storeA.saveProviderCredentials({
+      provider: "openrouter",
+      apiKey: "new-key",
+      model: "openrouter/model",
+    });
+
+    expect(readJson<{ providers: Record<string, string> }>(secretsPath())).toEqual({
+      providers: { openrouter: "new-key" },
+    });
+  });
+
+  it("does not resurrect revoked trust from stale in-memory state", async () => {
+    const createStore = await loadStoreFactory();
+    const storeA = createStore();
+    const storeB = createStore();
+
+    await storeA.saveTrust(trustConfig({ projectId: "proj-1", repoRoot: "/projects/one" }));
+    await storeB.removeTrust("proj-1");
+    await storeA.saveTrust(trustConfig({ projectId: "proj-2", repoRoot: "/projects/two" }));
+
+    expect(readJson<{ projects: Record<string, TrustConfig> }>(trustPath())).toEqual({
+      projects: {
+        "proj-2": trustConfig({ projectId: "proj-2", repoRoot: "/projects/two" }),
+      },
+    });
+    expect(storeA.getTrust("proj-1")).toBeNull();
+  });
+
+  it("preserves newer trust records when another store writes later", async () => {
+    const createStore = await loadStoreFactory();
+    const storeA = createStore();
+    const storeB = createStore();
+
+    await storeB.saveTrust(trustConfig({ projectId: "proj-2", repoRoot: "/projects/two" }));
+    await storeA.saveTrust(trustConfig({ projectId: "proj-1", repoRoot: "/projects/one" }));
+
+    expect(readJson<{ projects: Record<string, TrustConfig> }>(trustPath())).toMatchObject({
+      projects: {
+        "proj-1": trustConfig({ projectId: "proj-1", repoRoot: "/projects/one" }),
+        "proj-2": trustConfig({ projectId: "proj-2", repoRoot: "/projects/two" }),
+      },
+    });
   });
 
   it("migrates file secrets to keyring and removes the file secrets store", async () => {
@@ -322,34 +502,28 @@ describe("config store", () => {
 
     const store = await loadStore();
 
-    // Inject a deterministic write failure: hook writeJsonFileSync to throw only
-    // when persisting secrets.json. The config.json persist (step 1 of the
-    // two-phase migration) has already succeeded by the time secrets are written,
-    // so this selectively breaks step 2 without affecting step 1.
     let configWriteCount = 0;
-    fsHooks.writeJsonFileSyncHook = (filePath: string, data: unknown, _mode?: number) => {
+    fsHooks.writeJsonFileHook = async (filePath: string, data: unknown, _mode?: number) => {
       if (filePath.endsWith("secrets.json")) {
         throw new Error("Injected secrets.json write failure");
       }
-      // Allow config.json writes through to the real implementation.
       configWriteCount++;
       writeJson(filePath, data);
+      return undefined;
     };
 
     try {
-      await expect(store.updateSettings({ secretsStorage: "file" })).rejects.toThrow(
-        "Injected secrets.json write failure",
-      );
+      const result = await store.updateSettings({ secretsStorage: "file" });
 
-      // Config.json was written successfully (step 1 completed).
-      expect(configWriteCount).toBeGreaterThanOrEqual(1);
-      // The keyring entry must NOT have been deleted — the file persist failed
-      // before the cleanup phase, so the secret is still safely in the keyring.
+      expect(result).toMatchObject({
+        ok: false,
+        error: { code: "PERSIST_FAILED" },
+      });
+      expect(configWriteCount).toBe(0);
       expect(keyring.deleteKeyringSecret).not.toHaveBeenCalled();
-      // No secrets.json should exist — the write was interrupted.
       expect(existsSync(secretsPath())).toBe(false);
     } finally {
-      fsHooks.writeJsonFileSyncHook = null;
+      fsHooks.writeJsonFileHook = null;
     }
   });
 

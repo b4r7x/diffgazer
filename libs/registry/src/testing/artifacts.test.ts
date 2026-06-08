@@ -116,6 +116,29 @@ describe("buildRegistryArtifacts", () => {
     expect(result.fingerprint).toBe(content.trim());
   });
 
+  it("includes the resolved registry origin in the artifact fingerprint", () => {
+    const root = createTempRoot();
+    mkdirSync(join(root, "src"), { recursive: true });
+    writeFileSync(join(root, "src/input.txt"), "same input");
+
+    const first = buildRegistryArtifacts({
+      rootDir: root,
+      manifest: createMinimalManifest(),
+      defaultOrigin: "https://example.com",
+      originRaw: "https://one.example.com",
+      inputs: ["src"],
+    });
+    const second = buildRegistryArtifacts({
+      rootDir: root,
+      manifest: createMinimalManifest(),
+      defaultOrigin: "https://example.com",
+      originRaw: "https://two.example.com",
+      inputs: ["src"],
+    });
+
+    expect(first.fingerprint).not.toBe(second.fingerprint);
+  });
+
   it("runs build hooks as part of produced artifact output", () => {
     const root = createTempRoot();
 

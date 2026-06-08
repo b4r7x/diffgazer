@@ -3,4 +3,7 @@ export * from "./models.js";
 export * from "./provider-registry.js";
 export * from "./providers.js";
 export * from "./settings.js";
+export * from "./settings-hub.js";
+export * from "./settings-options.js";
 export * from "./trust-capabilities.js";
+export * from "./trust-editor.js";

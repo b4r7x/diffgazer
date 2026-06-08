@@ -1,3 +1,4 @@
+import { getNoChangesCopy } from "@diffgazer/core/review";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { Box } from "ink";
 import { Button } from "../../../components/ui/button";
@@ -10,26 +11,8 @@ export interface NoChangesViewProps {
   onBack: () => void;
 }
 
-const MESSAGES: Record<ReviewMode, { title: string; body: string; switchLabel: string }> = {
-  staged: {
-    title: "No Staged Changes",
-    body: "No staged changes found. Use 'git add' to stage files, or review unstaged changes instead.",
-    switchLabel: "Review Unstaged",
-  },
-  unstaged: {
-    title: "No Unstaged Changes",
-    body: "No unstaged changes found. Make some edits first, or review staged changes instead.",
-    switchLabel: "Review Staged",
-  },
-  files: {
-    title: "No Changes in Selected Files",
-    body: "No changes found in the selected files. Make some edits first, or select different files.",
-    switchLabel: "Review Unstaged",
-  },
-};
-
 export function NoChangesView({ mode, onSwitchMode, onBack }: NoChangesViewProps) {
-  const { title, body, switchLabel } = MESSAGES[mode];
+  const { title, message, switchLabel } = getNoChangesCopy(mode);
 
   return (
     <Panel>
@@ -37,7 +20,7 @@ export function NoChangesView({ mode, onSwitchMode, onBack }: NoChangesViewProps
         <Box flexDirection="column" gap={1}>
           <Callout variant="warning">
             <Callout.Title>{title}</Callout.Title>
-            <Callout.Content>{body}</Callout.Content>
+            <Callout.Content>{message}</Callout.Content>
           </Callout>
           <Box gap={2}>
             <Button variant="primary" isActive onPress={onSwitchMode}>

@@ -1,4 +1,5 @@
 import { usePageFooter } from "@diffgazer/core/footer";
+import { getNoChangesCopy } from "@diffgazer/core/review";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
@@ -11,31 +12,11 @@ export interface NoChangesViewProps {
   onSwitchMode?: () => void;
 }
 
-const MESSAGES: Record<ReviewMode, { title: string; message: string; switchLabel: string }> = {
-  staged: {
-    title: "No Staged Changes",
-    message:
-      "No staged changes found. Use 'git add' to stage files, or review unstaged changes instead.",
-    switchLabel: "Review Unstaged",
-  },
-  unstaged: {
-    title: "No Unstaged Changes",
-    message: "No unstaged changes found. Make some edits first, or review staged changes instead.",
-    switchLabel: "Review Staged",
-  },
-  files: {
-    title: "No Changes in Selected Files",
-    message:
-      "No changes found in the selected files. Make some edits first, or select different files.",
-    switchLabel: "Review Unstaged",
-  },
-};
-
 export function NoChangesView({ mode, onBack, onSwitchMode }: NoChangesViewProps) {
   useScope("no-changes");
 
   const focusFallbackRef = useRef<HTMLDivElement>(null);
-  const { title, message, switchLabel } = MESSAGES[mode];
+  const { title, message, switchLabel } = getNoChangesCopy(mode);
 
   const actions = onSwitchMode ? [onSwitchMode, onBack] : [onBack];
   const actionCount = actions.length;

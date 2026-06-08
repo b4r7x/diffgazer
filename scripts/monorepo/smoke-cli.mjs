@@ -6,16 +6,10 @@
 // propagates. Do not swap the throws for process.exit() — that would bypass the
 // finally cleanup and leak fixture directories.
 
-import {
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, isAbsolute, join, resolve } from "node:path";
 import {
   assertBuiltCss,
   CommandFailedError,
@@ -24,10 +18,9 @@ import {
   networkAllowed,
   packageNameFromSpec,
   pnpmAddFlags,
-  quoteArgs,
   resolveAndCollectMissing,
   resolveLocalDependency as resolveWorkspaceDependency,
-  run,
+  runArgv,
   skipMissingSmokeDeps,
   uiSmokeAppBody,
   writeNextFixture,
@@ -35,11 +28,21 @@ import {
 } from "./smoke-shared.mjs";
 
 const root = process.cwd();
+const dgaddBin = resolve(root, "cli/add/dist/index.js");
+const diffgazerBin = resolve(root, "cli/diffgazer/dist/index.js");
 
-function runFailure(cmd, cwd = root) {
+if (!existsSync(diffgazerBin)) {
+  throw new Error(
+    `diffgazer CLI not built at ${diffgazerBin}; run pnpm --filter diffgazer build before smoke:cli`,
+  );
+}
+
+function runFailureArgv(command, args, cwd = root) {
   try {
-    const output = run(cmd, cwd);
-    throw new Error(`Expected command to fail but it succeeded: ${cmd}\n${output.slice(0, 250)}`);
+    const output = runArgv(command, args, cwd);
+    throw new Error(
+      `Expected command to fail but it succeeded: ${command} ${args.join(" ")}\n${output.slice(0, 250)}`,
+    );
   } catch (err) {
     if (!(err instanceof CommandFailedError)) {
       throw err;
@@ -53,6 +56,45 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function parsePackOutput(raw) {
+  const starts = [...raw.matchAll(/[[{]/g)].map((match) => match.index ?? 0);
+  const ends = [...raw.matchAll(/[\]}]/g)].map((match) => match.index ?? 0).reverse();
+
+  for (const start of starts) {
+    for (const end of ends) {
+      if (end <= start) continue;
+      const candidate = raw.slice(start, end + 1);
+      try {
+        const parsed = JSON.parse(candidate);
+        const packInfo = Array.isArray(parsed) ? parsed[0] : parsed;
+        if (packInfo?.filename) return parsed;
+      } catch {
+        // pnpm lifecycle logs can be mixed into stdout; keep scanning.
+      }
+    }
+  }
+
+  throw new Error(`Could not parse pnpm pack --json output:\n${raw.slice(0, 1000)}`);
+}
+
+function packWorkspacePackage(workspacePackage, packDir) {
+  const packOutput = execFileSync(
+    "pnpm",
+    ["--dir", root, "--filter", workspacePackage, "pack", "--pack-destination", packDir, "--json"],
+    {
+      cwd: root,
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  ).trim();
+
+  const parsedPack = parsePackOutput(packOutput);
+  const packInfo = Array.isArray(parsedPack) ? parsedPack[0] : parsedPack;
+  return isAbsolute(packInfo.filename)
+    ? packInfo.filename
+    : join(packDir, basename(packInfo.filename));
+}
+
 function missingLocalDeps(deps) {
   return resolveAndCollectMissing(deps, (dep) => resolveWorkspaceDependency(root, dep));
 }
@@ -61,7 +103,7 @@ function installDeps(fixture, depSpecs) {
   const deps = networkAllowed()
     ? depSpecs
     : depSpecs.map((dep) => resolveWorkspaceDependency(root, packageNameFromSpec(dep) ?? dep));
-  run(`pnpm add ${pnpmAddFlags().join(" ")} ${quoteArgs(deps)}`, fixture);
+  runArgv("pnpm", ["add", ...pnpmAddFlags(), ...deps], fixture);
 }
 
 function writeNextCopyFirstApp(fixture) {
@@ -183,7 +225,7 @@ function assertCopyFirstCssInstall(fixture) {
   }
 }
 
-function runOptionalNextCopyFirstSmoke(dgadd) {
+function runOptionalNextCopyFirstSmoke() {
   const nextDeps = [
     "react@^19.2.0",
     "react-dom@^19.2.0",
@@ -213,13 +255,22 @@ function runOptionalNextCopyFirstSmoke(dgadd) {
   try {
     writeNextFixture(fixture, { root, withSrc: true, paths: true });
     installDeps(fixture, nextDeps);
-    run(`${dgadd} init --cwd ${JSON.stringify(fixture)} --yes --skip-install`);
-    run(
-      `${dgadd} add ui/button ui/dialog ui/select ui/form-reset --cwd ${JSON.stringify(fixture)} --yes --skip-install`,
-    );
+    runArgv("node", [dgaddBin, "init", "--cwd", fixture, "--yes", "--skip-install"]);
+    runArgv("node", [
+      dgaddBin,
+      "add",
+      "ui/button",
+      "ui/dialog",
+      "ui/select",
+      "ui/form-reset",
+      "--cwd",
+      fixture,
+      "--yes",
+      "--skip-install",
+    ]);
     assertCopyFirstCssInstall(fixture);
     writeNextCopyFirstApp(fixture);
-    run("pnpm exec next build --webpack", fixture);
+    runArgv("pnpm", ["exec", "next", "build", "--webpack"], fixture);
     assertBuiltCss(fixture, { outputDir: ".next", label: "Built copy-first" });
     console.log("OK: dgadd Next copy-first build flow");
   } finally {
@@ -234,53 +285,53 @@ const diffgazerPackage = JSON.parse(
 const commands = [
   {
     name: "diffgazer --help",
-    command: "node cli/diffgazer/dist/index.js --help",
+    command: "node",
+    args: [diffgazerBin, "--help"],
     expect: /--tui[\s\S]*beta terminal UI \(incomplete; not recommended\)/i,
     label: "product CLI help",
-    optionalPath: "cli/diffgazer/dist/index.js",
   },
   {
     name: "diffgazer --version",
-    command: "node cli/diffgazer/dist/index.js --version",
+    command: "node",
+    args: [diffgazerBin, "--version"],
     expect: new RegExp(`^${escapeRegExp(diffgazerPackage.version)}\\s*$`),
     label: "product CLI version",
-    optionalPath: "cli/diffgazer/dist/index.js",
   },
   {
     name: "diffgazer --theme without --tui",
-    command: "node cli/diffgazer/dist/index.js --theme classic",
+    command: "node",
+    args: [diffgazerBin, "--theme", "classic"],
     expect: /--theme requires --tui\./,
     label: "product CLI rejects TUI-only theme",
-    optionalPath: "cli/diffgazer/dist/index.js",
     expectFailure: true,
   },
   {
     name: "dgadd --help",
-    command: "node cli/add/dist/index.js --help",
+    command: "node",
+    args: [dgaddBin, "--help"],
     expect: /help|Usage|add/i,
     label: "installer CLI help",
   },
   {
     name: "dgadd ui item",
-    command: "node cli/add/dist/index.js add --help",
+    command: "node",
+    args: [dgaddBin, "add", "--help"],
     expect: /ui\/\*|ui/i,
     label: "installer ui namespace",
   },
   {
     name: "dgadd keys item",
-    command: "node cli/add/dist/index.js add --help",
+    command: "node",
+    args: [dgaddBin, "add", "--help"],
     expect: /keys\/\*|keys/i,
     label: "installer keys namespace",
   },
 ];
 
 for (const check of commands) {
-  if (check.optionalPath && !existsSync(resolve(root, check.optionalPath))) {
-    console.log(`SKIP: ${check.name} (${check.optionalPath} not built)`);
-    continue;
-  }
-
-  const output = check.expectFailure ? runFailure(check.command) : run(check.command);
+  const output = check.expectFailure
+    ? runFailureArgv(check.command, check.args)
+    : runArgv(check.command, check.args);
 
   if (!check.expect.test(output)) {
     throw new Error(
@@ -296,24 +347,41 @@ try {
   writeViteFixture(fixture);
   installViteFixtureDeps(root, fixture);
 
-  const dgadd = `node ${JSON.stringify(resolve(root, "cli/add/dist/index.js"))}`;
-  run(`${dgadd} init --cwd ${JSON.stringify(fixture)} --yes --skip-install`);
-  run(
-    `${dgadd} add ui/button ui/dialog ui/select ui/checkbox ui/radio ui/toggle-group ui/form-reset keys/navigation --cwd ${JSON.stringify(fixture)} --yes --skip-install`,
-  );
+  runArgv("node", [dgaddBin, "init", "--cwd", fixture, "--yes", "--skip-install"]);
+  runArgv("node", [
+    dgaddBin,
+    "add",
+    "ui/button",
+    "ui/dialog",
+    "ui/select",
+    "ui/checkbox",
+    "ui/radio",
+    "ui/toggle-group",
+    "ui/form-reset",
+    "keys/navigation",
+    "--cwd",
+    fixture,
+    "--yes",
+    "--skip-install",
+  ]);
   assertCopyFirstCssInstall(fixture);
   if (!existsSync(join(fixture, "src/lib/selectable-collection.ts"))) {
     throw new Error("selectable-collection helper was not copied for selectable UI components");
   }
   writeCopyFirstApp(fixture);
-  run(`${dgadd} list --installed --json --cwd ${JSON.stringify(fixture)}`);
-  run(`${dgadd} diff --cwd ${JSON.stringify(fixture)}`);
-  run("pnpm run typecheck", fixture);
-  run("pnpm run build", fixture);
+  runArgv("node", [dgaddBin, "list", "--installed", "--json", "--cwd", fixture]);
+  runArgv("node", [dgaddBin, "diff", "--cwd", fixture]);
+  runArgv("pnpm", ["run", "typecheck"], fixture);
+  runArgv("pnpm", ["run", "build"], fixture);
   assertBuiltCss(fixture, { label: "Built copy-first" });
-  const removeOutput = run(
-    `${dgadd} remove keys/navigation --cwd ${JSON.stringify(fixture)} --yes`,
-  );
+  const removeOutput = runArgv("node", [
+    dgaddBin,
+    "remove",
+    "keys/navigation",
+    "--cwd",
+    fixture,
+    "--yes",
+  ]);
 
   if (!/Keeping keys\/navigation/.test(removeOutput)) {
     throw new Error(
@@ -330,10 +398,10 @@ try {
   if (!existsSync(join(fixture, "src/hooks/use-navigation.ts"))) {
     throw new Error("keys/navigation hook was removed while copy-mode UI still depends on it");
   }
-  run("pnpm run typecheck", fixture);
-  run("pnpm run build", fixture);
+  runArgv("pnpm", ["run", "typecheck"], fixture);
+  runArgv("pnpm", ["run", "build"], fixture);
   console.log("OK: dgadd copy-first init/add/list/diff/remove typecheck/build flow");
-  runOptionalNextCopyFirstSmoke(dgadd);
+  runOptionalNextCopyFirstSmoke();
 } finally {
   rmSync(fixture, { recursive: true, force: true });
 }
@@ -356,9 +424,8 @@ function runInstallDependencySmoke() {
     };
     writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`);
 
-    const dgaddInstallDeps = `node ${JSON.stringify(resolve(root, "cli/add/dist/index.js"))}`;
-    run(`${dgaddInstallDeps} init --cwd ${JSON.stringify(fixture)} --yes`);
-    run(`${dgaddInstallDeps} add ui/badge --cwd ${JSON.stringify(fixture)} --yes`);
+    runArgv("node", [dgaddBin, "init", "--cwd", fixture, "--yes"]);
+    runArgv("node", [dgaddBin, "add", "ui/badge", "--cwd", fixture, "--yes"]);
 
     const installedPackageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
     if (!installedPackageJson.dependencies?.["class-variance-authority"]) {
@@ -385,11 +452,18 @@ function runKeysPackageIntegrationSmoke() {
     writeViteFixture(fixture);
     installViteFixtureDeps(root, fixture);
 
-    const dgaddKeys = `node ${JSON.stringify(resolve(root, "cli/add/dist/index.js"))}`;
-    run(`${dgaddKeys} init --cwd ${JSON.stringify(fixture)} --yes --skip-install`);
-    run(
-      `${dgaddKeys} add ui/button --integration keys --cwd ${JSON.stringify(fixture)} --yes --skip-install`,
-    );
+    runArgv("node", [dgaddBin, "init", "--cwd", fixture, "--yes", "--skip-install"]);
+    runArgv("node", [
+      dgaddBin,
+      "add",
+      "ui/button",
+      "--integration",
+      "keys",
+      "--cwd",
+      fixture,
+      "--yes",
+      "--skip-install",
+    ]);
 
     const keysDepConfig = JSON.parse(readFileSync(join(fixture, "diffgazer.json"), "utf-8"));
     if (keysDepConfig.installedComponents?.["ui/button"]?.integrationMode === "@diffgazer/keys") {
@@ -398,15 +472,55 @@ function runKeysPackageIntegrationSmoke() {
       );
     }
 
-    const localKeysVersion = `link:${realpathSync(resolve(root, "libs/keys"))}`;
-    run(
-      `${dgaddKeys} add ui/select --integration keys --keys-version ${JSON.stringify(localKeysVersion)} --cwd ${JSON.stringify(fixture)} --yes`,
-    );
+    const keysVersionSpec = JSON.parse(
+      readFileSync(resolve(root, "libs/keys/package.json"), "utf-8"),
+    ).version;
+    const keysVersionRange = `^${keysVersionSpec}`;
+    const packageJsonPath = join(fixture, "package.json");
+    const packDir = join(fixture, "packs");
+    mkdirSync(packDir, { recursive: true });
+    const keysPackPath = packWorkspacePackage("@diffgazer/keys", packDir);
+    const keysFixturePkg = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+    keysFixturePkg.pnpm = {
+      ...(keysFixturePkg.pnpm ?? {}),
+      overrides: {
+        ...(keysFixturePkg.pnpm?.overrides ?? {}),
+        "@diffgazer/keys": `file:${keysPackPath}`,
+      },
+    };
+    writeFileSync(packageJsonPath, `${JSON.stringify(keysFixturePkg, null, 2)}\n`);
+
+    runArgv("node", [
+      dgaddBin,
+      "add",
+      "ui/select",
+      "--integration",
+      "keys",
+      "--keys-version",
+      keysVersionRange,
+      "--cwd",
+      fixture,
+      "--yes",
+      "--skip-install",
+    ]);
+
+    runArgv("pnpm", ["add", ...pnpmAddFlags(), keysPackPath], fixture);
+    const installedKeysPkg = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+    installedKeysPkg.dependencies = {
+      ...installedKeysPkg.dependencies,
+      "@diffgazer/keys": keysVersionRange,
+    };
+    writeFileSync(packageJsonPath, `${JSON.stringify(installedKeysPkg, null, 2)}\n`);
     const keysSelectConfig = JSON.parse(readFileSync(join(fixture, "diffgazer.json"), "utf-8"));
     const selectRecord = keysSelectConfig.installedComponents?.["ui/select"];
     if (selectRecord?.integrationMode !== "@diffgazer/keys") {
       throw new Error(
         `Expected select integrationMode to be "@diffgazer/keys", got "${selectRecord?.integrationMode}"`,
+      );
+    }
+    if (selectRecord?.keysVersion !== keysVersionRange) {
+      throw new Error(
+        `Expected select keysVersion to be "${keysVersionRange}", got "${selectRecord?.keysVersion}"`,
       );
     }
 
@@ -419,17 +533,17 @@ function runKeysPackageIntegrationSmoke() {
       throw new Error("select-content.tsx still references @/hooks/use-navigation in keys mode");
     }
     const keysDepPackage = JSON.parse(readFileSync(join(fixture, "package.json"), "utf-8"));
-    if (keysDepPackage.dependencies?.["@diffgazer/keys"] !== localKeysVersion) {
+    if (keysDepPackage.dependencies?.["@diffgazer/keys"] !== keysVersionRange) {
       throw new Error(
-        "ui/select --integration keys did not install the local @diffgazer/keys dependency",
+        `ui/select --integration keys did not record @diffgazer/keys@${keysVersionRange} in package.json`,
       );
     }
     if (existsSync(join(fixture, "src/hooks/use-navigation.ts"))) {
       throw new Error("keys package mode should not copy local use-navigation.ts");
     }
     writeKeysPackageSelectApp(fixture);
-    run("pnpm run typecheck", fixture);
-    run("pnpm run build", fixture);
+    runArgv("pnpm", ["run", "typecheck"], fixture);
+    runArgv("pnpm", ["run", "build"], fixture);
 
     console.log("OK: keys package integration dependency install/build flow");
   } finally {
@@ -441,11 +555,16 @@ function runBareNameRejectionSmoke() {
   const fixture = mkdtempSync(join(tmpdir(), "smoke-bare-"));
   try {
     writeViteFixture(fixture);
-    const dgaddBare = `node ${JSON.stringify(resolve(root, "cli/add/dist/index.js"))}`;
-    run(`${dgaddBare} init --cwd ${JSON.stringify(fixture)} --yes`);
-    const bareOutput = runFailure(
-      `${dgaddBare} add button --cwd ${JSON.stringify(fixture)} --yes --skip-install`,
-    );
+    runArgv("node", [dgaddBin, "init", "--cwd", fixture, "--yes"]);
+    const bareOutput = runFailureArgv("node", [
+      dgaddBin,
+      "add",
+      "button",
+      "--cwd",
+      fixture,
+      "--yes",
+      "--skip-install",
+    ]);
     if (!/not found|Invalid item name|Use a namespaced name/.test(bareOutput)) {
       throw new Error(`Expected bare name rejection, got: ${bareOutput.slice(0, 250)}`);
     }

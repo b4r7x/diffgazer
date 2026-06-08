@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./app";
 import { DOCS_URL, GITHUB_URL, INSTALL_COMMAND } from "./content";
 
@@ -14,6 +14,10 @@ async function runAxe(container: Element) {
 }
 
 describe("Landing App", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("renders the product name as the page heading", () => {
     render(<App />);
     expect(screen.getByRole("heading", { level: 1, name: /diffgazer/i })).toBeInTheDocument();
@@ -56,6 +60,18 @@ describe("Landing App", () => {
     render(<App />);
     expect(screen.getByText("j")).toBeInTheDocument();
     expect(screen.getByText("k")).toBeInTheDocument();
+  });
+
+  it("shows accessible feedback when install command copy fails", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(navigator.clipboard, "writeText").mockRejectedValue(new Error("denied"));
+
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /copy install command/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Copy failed");
+    expect(screen.getByRole("button", { name: /copy failed/i })).toBeInTheDocument();
   });
 
   it("labels the install command and copies it on click", async () => {

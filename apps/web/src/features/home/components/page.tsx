@@ -1,11 +1,15 @@
-import { useActiveReviewSession, useApi, useCreateReview } from "@diffgazer/core/api/hooks";
+import {
+  useActiveReviewSession,
+  useApi,
+  useCreateReview,
+  useReviews,
+} from "@diffgazer/core/api/hooks";
 import { deriveTrustStatus } from "@diffgazer/core/navigation";
 import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
 import { MENU_ITEMS } from "@diffgazer/core/schemas/presentation";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useConfigData } from "@/app/providers/config";
 import { shutdown } from "@/features/home/shutdown";
-import { useReviewHistory } from "@/hooks/use-review-history";
+import { useConfigData } from "@/hooks/use-config";
 import { clearScopedRouteState, useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { HomePagePresentation } from "./presentation";
 
@@ -13,7 +17,7 @@ const MAIN_MENU_ITEMS = MENU_ITEMS.filter((item) => item.id !== "help");
 
 export function HomePage() {
   const { provider, model, trust, repoRoot, projectId } = useConfigData();
-  const { reviews } = useReviewHistory();
+  const reviews = useReviews().data?.reviews ?? [];
   const navigate = useNavigate();
   const search = useSearch({ strict: false });
   const api = useApi();

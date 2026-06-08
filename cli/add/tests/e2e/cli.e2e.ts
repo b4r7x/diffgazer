@@ -414,6 +414,65 @@ describe("remove command", () => {
     expect(existsSync(join(root, "src/hooks/utils/focusable.ts"))).toBe(false);
   });
 
+  test("package-mode remove reports orphaned @diffgazer/keys", () => {
+    runDgadd([
+      "add",
+      "ui/select",
+      "--integration",
+      "keys",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
+
+    const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf-8"));
+    pkg.dependencies = { ...(pkg.dependencies ?? {}), "@diffgazer/keys": "^0.2.0" };
+    writeFileSync(join(root, "package.json"), JSON.stringify(pkg, null, 2));
+
+    const output = runDgadd(["remove", "ui/select", "--cwd", root, "--yes"], { silent: false });
+
+    expect(output).toMatch(/unused packages:.*@diffgazer\/keys/);
+  });
+
+  test("stale cleanup reports orphaned npm dependencies", () => {
+    runDgadd([
+      "add",
+      "ui/select",
+      "--integration",
+      "keys",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
+
+    const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf-8"));
+    pkg.dependencies = {
+      ...(pkg.dependencies ?? {}),
+      "@diffgazer/keys": "^0.2.0",
+      clsx: "^2.0.0",
+    };
+    writeFileSync(join(root, "package.json"), JSON.stringify(pkg, null, 2));
+
+    rmSync(join(root, "src"), { recursive: true, force: true });
+
+    const output = runDgadd(["remove", "ui/select", "--cwd", root, "--yes", "--force"], {
+      silent: false,
+    });
+
+    expect(output).toMatch(/stale manifest entry/);
+    expect(output).toMatch(/unused packages:.*@diffgazer\/keys/);
+  });
+
+  test("copy-mode remove does not suggest removing @diffgazer/keys when it was never installed", () => {
+    runDgadd(["add", "ui/button", "--cwd", root, "--yes", "--skip-install"]);
+
+    const output = runDgadd(["remove", "ui/button", "--cwd", root, "--yes"], { silent: false });
+
+    expect(output).not.toMatch(/@diffgazer\/keys/);
+  });
+
   test("remove blocks copied keys hooks still required by retained copy-mode UI", () => {
     runDgadd(["add", "ui/select", "--cwd", root, "--yes", "--skip-install"]);
 
@@ -944,6 +1003,27 @@ describe("ownership boundaries", () => {
       updatedHash,
       "reinstalled content matches registry, so the recorded hash is unchanged",
     ).toBe(initialHash);
+  });
+
+  test("hidden optional logo-figlet install writes figlet helpers", () => {
+    runDgadd(["add", "ui/logo-figlet", "--cwd", root, "--yes", "--skip-install"]);
+
+    expect(existsSync(join(root, "src/components/ui/logo/figlet.ts"))).toBe(true);
+    expect(existsSync(join(root, "src/components/ui/logo/figlet-text.ts"))).toBe(true);
+
+    const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    expect(config.installedComponents?.["ui/logo-figlet"]).toBeTruthy();
+  });
+
+  test("hidden optional code-block-highlight install writes lowlight helper", () => {
+    runDgadd(["add", "ui/code-block-highlight", "--cwd", root, "--yes", "--skip-install"]);
+
+    expect(existsSync(join(root, "src/components/ui/code-block/code-block-highlight.tsx"))).toBe(
+      true,
+    );
+
+    const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    expect(config.installedComponents?.["ui/code-block-highlight"]).toBeTruthy();
   });
 
   test("add without --overwrite keeps locally-modified content and does not corrupt the existing ownership entry", () => {

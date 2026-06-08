@@ -1,0 +1,76 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const createApiServer = vi.hoisted(() => vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })));
+const createWebServer = vi.hoisted(() => vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })));
+const createEmbeddedServer = vi.hoisted(() => vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })));
+
+vi.mock("./api", () => ({ createApiServer }));
+vi.mock("./web", () => ({ createWebServer }));
+vi.mock("./embedded", () => ({ createEmbeddedServer }));
+vi.mock("./git-root", () => ({ findGitRoot: () => "/repo" }));
+
+import { config } from "../../config";
+import { createServerFactories } from "./factories";
+
+describe("createServerFactories", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.clearAllMocks();
+  });
+
+  it("passes the configured API port from PORT into the dev API child", () => {
+    vi.stubEnv("PORT", "4321");
+
+    const factories = createServerFactories({ mode: "dev", openBrowser: false });
+    factories[0]?.();
+
+    expect(createApiServer).toHaveBeenCalledWith(
+      expect.objectContaining({ port: 4321, cwd: config.paths.server, projectRoot: "/repo" }),
+    );
+  });
+
+  it("passes the canonical git root into the dev API child", () => {
+    const factories = createServerFactories({ mode: "dev", openBrowser: false });
+    factories[0]?.();
+
+    expect(createApiServer).toHaveBeenCalledWith(expect.objectContaining({ projectRoot: "/repo" }));
+  });
+
+  it("does not create a Vite child for dev TUI when includeWebServer is false", () => {
+    const factories = createServerFactories({
+      mode: "dev",
+      openBrowser: false,
+      includeWebServer: false,
+    });
+
+    expect(factories).toHaveLength(1);
+    factories[0]?.();
+    expect(createApiServer).toHaveBeenCalled();
+    expect(createWebServer).not.toHaveBeenCalled();
+  });
+
+  it("creates API and Vite children for dev web mode by default", () => {
+    const factories = createServerFactories({ mode: "dev", openBrowser: true });
+
+    expect(factories).toHaveLength(2);
+    factories[0]?.();
+    factories[1]?.();
+    expect(createApiServer).toHaveBeenCalled();
+    expect(createWebServer).toHaveBeenCalled();
+  });
+
+  it("wires embedded startup failures to onStartupFailure in prod mode", () => {
+    const onStartupFailure = vi.fn();
+
+    const factories = createServerFactories({
+      mode: "prod",
+      openBrowser: false,
+      onStartupFailure,
+    });
+    factories[0]?.();
+
+    expect(createEmbeddedServer).toHaveBeenCalledWith(
+      expect.objectContaining({ onFailure: onStartupFailure }),
+    );
+  });
+});

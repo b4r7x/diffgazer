@@ -202,6 +202,41 @@ describe("buildCopyBundle", () => {
     ).toThrow(expectedMessage);
   });
 
+  it.each([
+    {
+      label: "parent-escaping path",
+      filePath: "../escape.ts",
+      expectedMessage: "must not contain '..' segments",
+    },
+    {
+      label: "absolute Unix path",
+      filePath: "/etc/passwd",
+      expectedMessage: "must be relative",
+    },
+    {
+      label: "absolute Windows path",
+      filePath: "C:\\windows\\system32",
+      expectedMessage: "must be relative",
+    },
+  ])("rejects $label before reading source files", ({ filePath, expectedMessage }) => {
+    const root = createTempRoot();
+    writeRegistry(root, [
+      {
+        name: "unsafe",
+        type: "registry:hook",
+        files: [{ path: filePath }],
+      },
+    ]);
+
+    expect(() =>
+      buildCopyBundle({
+        sourceRoot: root,
+        outputPath: join(root, "bundle.json"),
+        itemType: "registry:hook",
+      }),
+    ).toThrow(expectedMessage);
+  });
+
   it("items are sorted by name", () => {
     const root = createTempRoot();
     writeHookFile(root, "use-zebra.ts", "export const useZebra = () => null\n");

@@ -1,14 +1,21 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { type BoundApi, createApi } from "@diffgazer/core/api";
+import { ApiProvider } from "@diffgazer/core/api/hooks";
+import { FooterProvider } from "@diffgazer/core/footer";
+import { KeyboardProvider } from "@diffgazer/keys";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { makeReview } from "@/testing/factories";
 import { renderWithProviders } from "@/testing/render";
 
-const { mockNavigate, mockUseReview, mockUseReviews } = vi.hoisted(() => ({
+const { mockNavigate, mockUseReview, mockUseReviews, mockUseConfigData } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockUseReview: vi.fn(),
   mockUseReviews: vi.fn(),
+  mockUseConfigData: vi.fn(),
 }));
 
 // Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
@@ -18,6 +25,10 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 // Boundary mock: api/hooks is the HTTP-data fetch boundary; we provide canned data and assert on the resulting UI.
+vi.mock("@/hooks/use-config", () => ({
+  useConfigData: () => mockUseConfigData(),
+}));
+
 vi.mock("@diffgazer/core/api/hooks", async () => {
   const actual = await vi.importActual<typeof import("@diffgazer/core/api/hooks")>(
     "@diffgazer/core/api/hooks",
@@ -32,10 +43,122 @@ vi.mock("@diffgazer/core/api/hooks", async () => {
 
 import { HistoryPage } from "./page";
 
+function trustedConfig() {
+  return {
+    trust: {
+      projectId: "proj-1",
+      repoRoot: "/repo",
+      capabilities: { readFiles: true, runCommands: false },
+      trustMode: "persistent" as const,
+      trustedAt: "2026-01-01T00:00:00.000Z",
+    },
+    projectId: "proj-1",
+    repoRoot: "/repo",
+  };
+}
+
+function defaultReviewsQuery() {
+  return {
+    data: {
+      reviews: [
+        makeReview({ id: "11111111-1111-4111-8111-111111111111" }),
+        makeReview({ id: "22222222-2222-4222-8222-222222222222" }),
+      ],
+    },
+    error: null,
+    isLoading: false,
+  };
+}
+
+function renderHistoryPage() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  const api = createApi({ baseUrl: "http://localhost" }) satisfies BoundApi;
+
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ApiProvider value={api}>
+          <FooterProvider>
+            <KeyboardProvider>{children}</KeyboardProvider>
+          </FooterProvider>
+        </ApiProvider>
+      </QueryClientProvider>
+    );
+  }
+
+  return render(<HistoryPage />, { wrapper: Wrapper });
+}
+
+describe("HistoryPage trust workflow", () => {
+  beforeEach(() => {
+    mockUseConfigData.mockReset();
+    mockUseReviews.mockReturnValue(defaultReviewsQuery());
+    mockUseReview.mockReturnValue({
+      data: { review: { result: { issues: [] } } },
+      error: null,
+      isLoading: false,
+    });
+  });
+
+  it("shows the trust workflow on direct /history access before trust is granted", () => {
+    mockUseConfigData.mockReturnValue({
+      trust: null,
+      projectId: "proj-1",
+      repoRoot: "/repo",
+    });
+
+    renderHistoryPage();
+
+    expect(screen.getByText("Trust This Repository?")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/search runs by id/i)).not.toBeInTheDocument();
+  });
+
+  it("shows history after trust is granted and returns to trust workflow when trust is revoked", () => {
+    mockUseConfigData.mockReturnValue(trustedConfig());
+    const view = renderHistoryPage();
+    expect(screen.getByPlaceholderText(/search runs by id/i)).toBeInTheDocument();
+
+    mockUseConfigData.mockReturnValue({
+      trust: null,
+      projectId: "proj-1",
+      repoRoot: "/repo",
+    });
+    view.rerender(<HistoryPage />);
+
+    expect(screen.getByText("Trust This Repository?")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/search runs by id/i)).not.toBeInTheDocument();
+  });
+
+  it("does not surface raw TRUST_REQUIRED errors when trust is missing", () => {
+    mockUseConfigData.mockReturnValue({
+      trust: null,
+      projectId: "proj-1",
+      repoRoot: "/repo",
+    });
+    mockUseReviews.mockReturnValue({
+      data: undefined,
+      error: Object.assign(new Error("Repository access not granted."), {
+        code: "TRUST_REQUIRED",
+        status: 403,
+      }),
+      isLoading: false,
+    });
+
+    renderHistoryPage();
+
+    expect(screen.getByText("Trust This Repository?")).toBeInTheDocument();
+    expect(screen.queryByText(/TRUST_REQUIRED/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/repository access not granted/i)).not.toBeInTheDocument();
+  });
+});
+
 describe("HistoryPage keyboard navigation", () => {
   beforeEach(() => {
     clearScopedRouteState("/history-page-test", "date");
     clearScopedRouteState("/history-page-test", "run");
+    mockUseConfigData.mockReturnValue(trustedConfig());
     mockNavigate.mockReset();
     mockNavigate.mockResolvedValue(undefined);
     mockUseReviews.mockReset();

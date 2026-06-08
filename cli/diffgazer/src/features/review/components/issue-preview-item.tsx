@@ -1,8 +1,8 @@
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
-import { useTheme } from "../../../app/providers/theme";
 import { Badge } from "../../../components/ui/badge";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
+import { useTheme } from "../../../theme/provider";
 import { severityVariant } from "../../../theme/severity-variant";
 
 export interface IssuePreviewItemProps {

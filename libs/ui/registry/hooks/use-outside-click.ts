@@ -1,6 +1,6 @@
 "use client";
 
-import { type RefObject, useEffect, useEffectEvent } from "react";
+import { type RefObject, useEffectEvent, useLayoutEffect } from "react";
 
 type OutsideClickEntry = {
   id: symbol;
@@ -134,9 +134,10 @@ function isDuplicateTouchFallback(event: Event): boolean {
 }
 
 function makeDocumentOutsidePointerHandler(ownerDocument: Document) {
+  const View = ownerDocument.defaultView;
   return (event: Event) => {
     if (isDuplicateTouchFallback(event)) return;
-    if (!(event.target instanceof Node)) return;
+    if (!View || !(event.target instanceof View.Node)) return;
     const entry = getTopOutsideClickEntry(ownerDocument);
     if (!entry) return;
     if (isInEntry(event, event.target, entry)) return;
@@ -248,13 +249,10 @@ export function useOutsideClick(
 ): void {
   const handleOutsideClick = useEffectEvent(handler);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!enabled) return;
-    // Resolve at attach time. The ref points at a portal node owned by the same
-    // document tree as the trigger; iframe overlays would otherwise listen on the
-    // host document and miss interactions.
-    const ownerDocument =
-      ref.current?.ownerDocument ?? (typeof document !== "undefined" ? document : null);
+    // Resolve after commit so portaled nodes exist and expose their ownerDocument.
+    const ownerDocument = ref.current?.ownerDocument;
     if (!ownerDocument) return;
     const id = Symbol("outside-click-layer");
     outsideClickEntries.push({
@@ -281,7 +279,7 @@ export function useEscapeKey(
 ): void {
   const handleEscape = useEffectEvent(handler);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!enabled) return;
     const ownerDocument =
       options?.ref?.current?.ownerDocument ?? (typeof document !== "undefined" ? document : null);

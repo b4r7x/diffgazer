@@ -2,9 +2,9 @@ import { getDisplayStatusBadge } from "@diffgazer/core/providers";
 import type { DisplayStatus } from "@diffgazer/core/schemas/config";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
-import { useTheme } from "../../../app/providers/theme";
 import { Badge } from "../../../components/ui/badge";
 import { NavigationList } from "../../../components/ui/navigation-list";
+import { useTheme } from "../../../theme/provider";
 
 export interface ProviderListItem {
   id: string;

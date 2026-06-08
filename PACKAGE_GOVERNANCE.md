@@ -13,15 +13,16 @@ Public package targets:
 
 All four published packages declare a single `engines.node: ">=20.0.0"` floor (CI and Docker run Node 22, so Node 20 is the realistic minimum). The `check-invariants` script asserts this floor is uniform across the published surface so it cannot drift.
 
-**Publish gate: NOT YET PUBLISHED.** These are publish targets, not live npm packages. Verify current status before relying on any npm install path:
+**Publish status is per package.** `diffgazer` is live on npm (`npm view diffgazer version` returns a version). The scoped libraries (`@diffgazer/add`, `@diffgazer/ui`, `@diffgazer/keys`) remain gated until `npm view` succeeds for each:
 
 ```bash
+npm view diffgazer version
 npm view @diffgazer/add version
 npm view @diffgazer/ui version
 npm view @diffgazer/keys version
 ```
 
-A package is published once `npm view` returns a version (a 404 means still gated). See [Hosted Registry Status](#hosted-registry-status) for the registry-endpoint checks.
+A 404 on a scoped package means that install path is still gated. See [Hosted Registry Status](#hosted-registry-status) for the registry-endpoint checks.
 
 Workspace-only packages:
 

@@ -136,6 +136,22 @@ describe("settings trust routes — server-scoped project", () => {
     expect(body.projects[0]?.projectId).toBe(projectA.projectId);
   });
 
+  it("requires the shutdown token for trust reads even in standalone dev", async () => {
+    delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    const store = await loadStore();
+    store.ensureProjectFile(projectRootA);
+
+    const app = await loadApp();
+    const res = await app.request("/api/settings/trust", {
+      headers: {
+        Host: "localhost:3000",
+        [PROJECT_ROOT_HEADER]: projectRootA,
+      },
+    });
+
+    expect(res.status).toBe(401);
+  });
+
   it("POST /trust normalizes runCommands to false even when client sends true", async () => {
     const store = await loadStore();
     store.ensureProjectFile(projectRootA);
@@ -161,6 +177,77 @@ describe("settings trust routes — server-scoped project", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { trust: { capabilities: { runCommands: boolean } } };
     expect(body.trust.capabilities.runCommands).toBe(false);
+  });
+
+  it("requires the shutdown token for trust writes even in standalone dev", async () => {
+    delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    const store = await loadStore();
+    store.ensureProjectFile(projectRootA);
+
+    const app = await loadApp();
+    const res = await app.request("/api/settings/trust", {
+      method: "POST",
+      headers: {
+        Host: "localhost:3000",
+        "Content-Type": "application/json",
+        [PROJECT_ROOT_HEADER]: projectRootA,
+      },
+      body: JSON.stringify({
+        projectId: "client-supplied",
+        repoRoot: "/client-supplied",
+        trustedAt: new Date().toISOString(),
+        capabilities: { readFiles: true, runCommands: false },
+        trustMode: "persistent",
+      }),
+    });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects empty defaultLenses persistence", async () => {
+    const app = await loadApp();
+    const res = await app.request("/api/settings", {
+      method: "POST",
+      headers: {
+        Host: "localhost:3000",
+        "Content-Type": "application/json",
+        [SHUTDOWN_TOKEN_HEADER]: TEST_TOKEN,
+      },
+      body: JSON.stringify({ defaultLenses: [] }),
+    });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("DELETE /trust aborts active review sessions for the project", async () => {
+    const store = await loadStore();
+    const project = store.ensureProjectFile(projectRootA);
+    const projectAId = requireValue(project.projectId, "project A id");
+    await store.saveTrust(trustForProject(projectAId, projectRootA));
+
+    const sessions = await import("../review/stream/store.js");
+    const session = sessions.createSession("trust-abort-review", {
+      projectPath: projectRootA,
+      headCommit: "abc123",
+      statusHash: "hash123",
+      mode: "unstaged",
+    });
+    sessions.markReady(session.reviewId);
+
+    const app = await loadApp();
+    const res = await app.request("/api/settings/trust", {
+      method: "DELETE",
+      headers: {
+        Host: "localhost:3000",
+        [SHUTDOWN_TOKEN_HEADER]: TEST_TOKEN,
+        [PROJECT_ROOT_HEADER]: projectRootA,
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(session.isComplete).toBe(true);
+    expect(session.controller.signal.aborted).toBe(true);
+    sessions.deleteSession(session.reviewId);
   });
 
   it("DELETE /trust derives project from server, cannot delete another project's trust", async () => {

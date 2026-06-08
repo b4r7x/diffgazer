@@ -58,6 +58,7 @@ const OPENROUTER_RESPONSE: OpenRouterModelsResponse = {
 interface RenderOptions {
   provider?: AIProvider;
   currentModel?: string;
+  isSaving?: boolean;
   onSelect?: (modelId: string) => void;
   onOpenChange?: (open: boolean) => void;
   getProviderModels?: BoundApi["getProviderModels"];
@@ -93,6 +94,7 @@ function renderDialog(options: RenderOptions = {}) {
       onOpenChange={onOpenChange}
       provider={options.provider ?? "gemini"}
       currentModel={options.currentModel ?? "gemini-2.5-flash"}
+      isSaving={options.isSaving}
       onSelect={onSelect}
     />,
     { wrapper },
@@ -140,7 +142,7 @@ describe("ModelSelectDialog (catalog)", () => {
     expect(screen.getByRole("radio", { name: /Gemini 3 Pro Preview/ })).not.toBeChecked();
   });
 
-  it("fires onSelect with the chosen model and closes when confirmed", async () => {
+  it("fires onSelect with the chosen model when confirmed", async () => {
     const user = userEvent.setup();
     const { onSelect, onOpenChange } = renderDialog({ currentModel: "gemini-2.5-flash" });
     const targetRadio = await screen.findByRole("radio", { name: /Gemini 2\.5 Pro/ });
@@ -149,7 +151,19 @@ describe("ModelSelectDialog (catalog)", () => {
     await user.click(screen.getByRole("button", { name: /confirm/i }));
 
     expect(onSelect).toHaveBeenCalledWith("gemini-2.5-pro");
-    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it("shows a saving state and disables confirmation while persistence is pending", async () => {
+    renderDialog({ currentModel: "gemini-2.5-flash", isSaving: true });
+
+    const dialog = await screen.findByRole("dialog");
+    const savingButton = await waitFor(() =>
+      within(dialog).getByRole("button", { name: /^saving/i }),
+    );
+
+    expect(savingButton).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: /cancel/i })).toBeDisabled();
   });
 });
 

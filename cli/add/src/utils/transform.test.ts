@@ -42,9 +42,24 @@ describe("rewriteLocalImportsForKeysPackage", () => {
 });
 
 describe("rewriteKeysPackageImportsForCopy", () => {
+  test("rewrites multiline @diffgazer/keys imports", () => {
+    const source = [
+      "import {",
+      "  type UseFocusRestoreOptions,",
+      "  useFocusRestore,",
+      '} from "@diffgazer/keys";',
+    ].join("\n");
+
+    const result = rewriteKeysPackageImportsForCopy(source);
+    expect(result).toContain("@/hooks/use-focus-restore");
+    expect(result).not.toContain("@diffgazer/keys");
+  });
+
   test("throws when an @diffgazer/keys specifier has no local hook target", () => {
     const source = `import { thisExportDoesNotExist } from "@diffgazer/keys";`;
-    expect(() => rewriteKeysPackageImportsForCopy(source)).toThrow(/no local hook target/);
+    expect(() => rewriteKeysPackageImportsForCopy(source)).toThrow(
+      /Unknown @diffgazer\/keys import specifiers/,
+    );
   });
 });
 

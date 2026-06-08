@@ -1,6 +1,6 @@
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
-import { useTheme } from "../../../app/providers/theme";
+import { useTheme } from "../../../theme/provider";
 import { severityColor } from "../../../theme/severity";
 
 export interface SeverityBarProps {

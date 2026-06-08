@@ -13,6 +13,7 @@ import {
 } from "react";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { usePresence } from "@/hooks/use-presence";
+import { isHTMLDialogElement } from "@/lib/aria";
 import { composeRefs } from "@/lib/compose-refs";
 
 export interface DialogShellProps extends HTMLAttributes<HTMLDialogElement> {
@@ -27,28 +28,50 @@ export interface DialogShellProps extends HTMLAttributes<HTMLDialogElement> {
   initialFocus?: RefObject<HTMLElement | null>;
 }
 
-// Module-level stack of currently mounted, open DialogShell elements. Only the
-// topmost shell runs its focus trap so peer/stacked dialogs do not fight over
-// focus via competing focusin listeners on ownerDocument. Subscribers are
-// notified after every push/pop with the new top element; each shell updates
-// its local isTopShell state in response.
-const openShellStack: HTMLElement[] = [];
-const shellStackSubscribers = new Set<(top: HTMLElement | null) => void>();
+// Per-document stacks of currently mounted, open DialogShell elements. Only the
+// topmost shell in each document runs its focus trap so peer/stacked dialogs do
+// not fight over focus via competing focusin listeners on ownerDocument.
+// Subscribers are notified after every push/pop with the new top element for
+// their document; each shell updates its local isTopShell state in response.
+const openShellStacks = new WeakMap<Document, HTMLElement[]>();
 
-function notifyShellStack(): void {
-  const top = openShellStack.at(-1) ?? null;
-  for (const cb of shellStackSubscribers) cb(top);
+interface ShellStackSubscriber {
+  ownerDocument: Document;
+  onTopChange: (top: HTMLElement | null) => void;
+}
+
+const shellStackSubscribers = new Set<ShellStackSubscriber>();
+
+function getOpenShellStack(ownerDocument: Document): HTMLElement[] {
+  let stack = openShellStacks.get(ownerDocument);
+  if (!stack) {
+    stack = [];
+    openShellStacks.set(ownerDocument, stack);
+  }
+  return stack;
+}
+
+function notifyShellStack(ownerDocument: Document): void {
+  const top = getOpenShellStack(ownerDocument).at(-1) ?? null;
+  for (const subscriber of shellStackSubscribers) {
+    if (subscriber.ownerDocument === ownerDocument) {
+      subscriber.onTopChange(top);
+    }
+  }
 }
 
 function pushShell(element: HTMLElement): void {
-  openShellStack.push(element);
-  notifyShellStack();
+  const ownerDocument = element.ownerDocument;
+  getOpenShellStack(ownerDocument).push(element);
+  notifyShellStack(ownerDocument);
 }
 
 function popShell(element: HTMLElement): void {
-  const index = openShellStack.lastIndexOf(element);
-  if (index >= 0) openShellStack.splice(index, 1);
-  notifyShellStack();
+  const ownerDocument = element.ownerDocument;
+  const stack = getOpenShellStack(ownerDocument);
+  const index = stack.lastIndexOf(element);
+  if (index >= 0) stack.splice(index, 1);
+  notifyShellStack(ownerDocument);
 }
 
 function isClickOutsideDialogRect(
@@ -88,7 +111,7 @@ export function DialogShell({
     ref: shellRef,
     onExitComplete: () => {
       const element = shellRef.current;
-      if (element instanceof HTMLDialogElement && element.open) {
+      if (isHTMLDialogElement(element) && element.open) {
         element.close();
       }
       onClose?.();
@@ -111,11 +134,15 @@ export function DialogShell({
     if (!trapActive) return;
     const element = shellRef.current;
     if (!element) return;
-    const updateTop = (top: HTMLElement | null) => setIsTopShell(top === element);
-    shellStackSubscribers.add(updateTop);
+    const ownerDocument = element.ownerDocument;
+    const subscriber: ShellStackSubscriber = {
+      ownerDocument,
+      onTopChange: (top) => setIsTopShell(top === element),
+    };
+    shellStackSubscribers.add(subscriber);
     pushShell(element);
     return () => {
-      shellStackSubscribers.delete(updateTop);
+      shellStackSubscribers.delete(subscriber);
       popShell(element);
       setIsTopShell(false);
     };
@@ -125,7 +152,7 @@ export function DialogShell({
 
   useLayoutEffect(() => {
     const element = shellRef.current;
-    if (!(element instanceof HTMLDialogElement)) return;
+    if (!isHTMLDialogElement(element)) return;
     if (open && present && !element.open) {
       onBeforeShowModal?.(element.ownerDocument);
       element.showModal();
@@ -153,7 +180,7 @@ export function DialogShell({
         onClick?.(e);
         const element = shellRef.current;
         if (
-          element instanceof HTMLDialogElement &&
+          isHTMLDialogElement(element) &&
           e.target === element &&
           isClickOutsideDialogRect(e, element)
         ) {

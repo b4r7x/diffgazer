@@ -1,6 +1,6 @@
 export { type BoundApi, createApi } from "./bound.js";
 export { isOpenRouterCompatible, mapOpenRouterModels } from "./openrouter.js";
-export { SHUTDOWN_TOKEN_HEADER } from "./protocol.js";
+export { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "./protocol.js";
 export { createQueryClientBase } from "./query-client.js";
 export {
   mapShutdownResponseToResult,

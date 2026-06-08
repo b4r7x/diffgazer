@@ -1,10 +1,10 @@
+import { moveHighlight } from "@diffgazer/keys";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext, useState } from "react";
-import { useTheme } from "../../app/providers/theme";
-import { moveHighlight } from "../../lib/highlight-navigation";
 import { collectChildItems } from "../../lib/list-navigation";
 import type { CliColorTokens } from "../../theme/palettes";
+import { useTheme } from "../../theme/provider";
 
 export interface MenuProps {
   highlightedId?: string | null;
@@ -132,15 +132,18 @@ function MenuRoot({
   const { tokens } = useTheme();
   const items = collectChildItems(children, extractMenuItem);
   const selectableItems = items.filter((item) => !item.disabled);
-
-  const [internalIndex, setInternalIndex] = useState(0);
-
-  const currentHighlightedId = controlledHighlightedId ?? selectableItems[internalIndex]?.id ?? "";
+  const [internalHighlightedId, setInternalHighlightedId] = useState<string | null>(null);
+  const uncontrolledHighlightedId =
+    internalHighlightedId !== null &&
+    selectableItems.some((item) => item.id === internalHighlightedId)
+      ? internalHighlightedId
+      : (selectableItems[0]?.id ?? "");
+  const currentHighlightedId = controlledHighlightedId ?? uncontrolledHighlightedId;
 
   function moveBy(direction: 1 | -1) {
-    const result = moveHighlight(selectableItems, currentHighlightedId, direction, wrap);
+    const result = moveHighlight(items, currentHighlightedId, direction, wrap);
     if (!result) return;
-    setInternalIndex(result.index);
+    setInternalHighlightedId(result.id);
     onHighlightChange?.(result.id);
   }
 

@@ -9,11 +9,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { CliThemeProvider } from "../../../app/providers/theme";
+import { TerminalKeyboardProvider } from "../../../hooks/use-keyboard";
+import { CliThemeProvider } from "../../../theme/provider";
 import { ModelSelectOverlay } from "./model-select-overlay";
 
-const ARROW_UP = "[A";
-const ARROW_DOWN = "[B";
+const ARROW_UP = "\u001b[A";
+const ARROW_DOWN = "\u001b[B";
 
 // Free-first 5-model Gemini layout (3 free, 2 paid), matching the catalog's
 // deterministic free-first ordering. The transform (P1) produces this order; the
@@ -91,7 +92,29 @@ function Wrapper({ children, api }: { children: ReactNode; api?: BoundApi }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ApiProvider value={boundApi}>
-        <CliThemeProvider initialTheme="dark">{children}</CliThemeProvider>
+        <CliThemeProvider initialTheme="dark">
+          <TerminalKeyboardProvider>{children}</TerminalKeyboardProvider>
+        </CliThemeProvider>
+      </ApiProvider>
+    </QueryClientProvider>
+  );
+}
+
+function StableWrapper({
+  children,
+  api,
+  queryClient,
+}: {
+  children: ReactNode;
+  api: BoundApi;
+  queryClient: QueryClient;
+}) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ApiProvider value={api}>
+        <CliThemeProvider initialTheme="dark">
+          <TerminalKeyboardProvider>{children}</TerminalKeyboardProvider>
+        </CliThemeProvider>
       </ApiProvider>
     </QueryClientProvider>
   );
@@ -153,7 +176,7 @@ describe("ModelSelectOverlay ArrowUp after the tier filter shrinks the list", ()
       `after 4 ArrowDown presses, the last gemini model should be highlighted. Frame: ${lastFrame()}`,
     ).toBe(1);
 
-    // Shrink the filter to "paid" — 2 of the 5 models. With this free-first data:
+    // Shrink the filter to "paid" : 2 of the 5 models. With this free-first data:
     //   free: 2.5-flash, 2.5-flash-lite, 2.5-pro
     //   paid: 3-flash-preview, 3-pro-preview
     // "f" cycles all -> free -> paid, so two presses land on "paid".
@@ -349,6 +372,44 @@ describe("ModelSelectOverlay saving state", () => {
 
     expect(lastFrame()).toContain("Activation failed: missing credentials");
   });
+
+  test("clears activation errors when the provider changes while open", async () => {
+    const queryClient = makeQueryClient();
+    const activateProvider = vi
+      .fn<(providerId: string, model?: string) => Promise<ActivateProviderResponse>>()
+      .mockRejectedValue(new Error("Activation failed: missing credentials"));
+    const api = { ...makeGeminiApi(), activateProvider } satisfies BoundApi;
+
+    const view = render(
+      <StableWrapper api={api} queryClient={queryClient}>
+        <ModelSelectOverlay
+          open={true}
+          onOpenChange={() => {}}
+          providerId="gemini"
+          onSelect={() => {}}
+        />
+      </StableWrapper>,
+    );
+
+    await flushUntil(() => view.lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
+
+    view.stdin.write("\r");
+    await flushUntil(() => view.lastFrame()?.includes("Activation failed") ?? false);
+
+    view.rerender(
+      <StableWrapper api={api} queryClient={queryClient}>
+        <ModelSelectOverlay
+          open={true}
+          onOpenChange={() => {}}
+          providerId="anthropic"
+          onSelect={() => {}}
+        />
+      </StableWrapper>,
+    );
+    await flush();
+
+    expect(view.lastFrame()).not.toContain("Activation failed");
+  });
 });
 
 describe("ModelSelectOverlay selected marker", () => {
@@ -415,6 +476,37 @@ describe("ModelSelectOverlay OpenRouter compatibility", () => {
   });
 });
 
+describe("ModelSelectOverlay search input mode", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  test("typing q in model search does not trigger the global quit shortcut", async () => {
+    const onOpenChange = vi.fn();
+    const { stdin, lastFrame } = render(
+      <Wrapper>
+        <ModelSelectOverlay
+          open={true}
+          onOpenChange={onOpenChange}
+          providerId="gemini"
+          onSelect={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
+
+    stdin.write("/");
+    await flush();
+    stdin.write("q");
+    await flush();
+
+    expect(lastFrame()).toContain("q");
+    expect(lastFrame()).not.toContain("Search models...");
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+});
+
 describe("ModelSelectOverlay long description", () => {
   afterEach(() => {
     cleanup();
@@ -452,7 +544,8 @@ describe("ModelSelectOverlay long description", () => {
 
     await flushUntil(() => lastFrame()?.includes("Flash") ?? false);
 
-    expect(lastFrame()).toContain("…");
-    expect(lastFrame()).not.toContain("FULLTAILVISIBLE");
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("easily over");
+    expect(frame).not.toContain("FULLTAILVISIBLE");
   });
 });

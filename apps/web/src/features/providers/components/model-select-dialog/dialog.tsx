@@ -28,6 +28,7 @@ interface ModelSelectDialogProps {
   provider: AIProvider;
   currentModel: string | undefined;
   onSelect: (modelId: string) => void;
+  isSaving?: boolean;
 }
 
 const FOOTER_HINTS: KeyboardHint[] = [
@@ -43,6 +44,7 @@ export function ModelSelectDialog({
   provider,
   currentModel,
   onSelect,
+  isSaving = false,
 }: ModelSelectDialogProps) {
   const openRouter = useOpenRouterModelsMapped(open, provider);
   const catalog = useProviderModelsMapped(open, provider);
@@ -83,6 +85,7 @@ export function ModelSelectDialog({
     getFilterButtonProps,
   } = useModelDialogKeyboard({
     open,
+    isSaving,
     currentModel,
     models,
     filteredModels,
@@ -127,6 +130,7 @@ export function ModelSelectDialog({
             onArrowDown={handleSearchArrowDown}
             showCustomAction={isOpenRouter}
             onUseCustom={handleUseCustom}
+            disabled={isSaving}
           />
 
           <ModelFilterTabs
@@ -152,12 +156,13 @@ export function ModelSelectDialog({
             models={filteredModels}
             focusedModelId={focusedModelId}
             currentModelId={checkedModelId}
-            isFocused={focusZone === "list"}
+            isFocused={focusZone === "list" && !isSaving}
             onSelect={handleListSelect}
             onConfirm={handleConfirm}
             onHighlightChange={handleListHighlightChange}
             onBoundaryReached={handleListBoundaryReached}
             isLoading={isLoading}
+            isSaving={isSaving}
             emptyLabel={emptyLabel}
           />
         </DialogBody>
@@ -168,7 +173,8 @@ export function ModelSelectDialog({
             variant="ghost"
             size="sm"
             bracket
-            highlighted={focusZone === "footer" && footerButtonIndex === 0}
+            disabled={isSaving}
+            highlighted={focusZone === "footer" && footerButtonIndex === 0 && !isSaving}
           >
             Cancel
           </DialogClose>
@@ -177,16 +183,19 @@ export function ModelSelectDialog({
             variant="primary"
             size="sm"
             bracket
-            disabled={filteredModels.length === 0}
+            disabled={isSaving || filteredModels.length === 0}
             highlighted={
-              focusZone === "footer" && footerButtonIndex === 1 && filteredModels.length > 0
+              focusZone === "footer" &&
+              footerButtonIndex === 1 &&
+              !isSaving &&
+              filteredModels.length > 0
             }
             onClick={(event) => {
               event.preventDefault();
               handleConfirm();
             }}
           >
-            Confirm
+            {isSaving ? "Saving..." : "Confirm"}
           </DialogAction>
         </DialogFooter>
       </DialogContent>

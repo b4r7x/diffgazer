@@ -7,6 +7,7 @@ import { isRelativeSubpath, resolveInside, toPosixPath } from "./paths.mjs";
 
 const HASH_RE = /^[a-f0-9]{64}$/;
 const NAMESPACE_RE = /^@[a-z0-9][\w-]*(?:\/[a-z0-9][\w-]*)?$/i;
+const DEFAULT_REGISTRY_ORIGIN = "https://r.b4r7.dev";
 
 function artifactCopyFilter(path) {
   return (
@@ -149,6 +150,25 @@ export function computeStrictInputsFingerprint(rootDir, inputs) {
     hash.update("\n");
   }
 
+  return { fingerprint: hash.digest("hex"), missing };
+}
+
+function normalizeOrigin(raw) {
+  const value = (raw ?? DEFAULT_REGISTRY_ORIGIN).trim();
+  const url = new URL(value);
+  url.pathname = url.pathname.replace(/\/+$/, "");
+  return url.toString().replace(/\/$/, "");
+}
+
+export function computeStrictArtifactFingerprint(rootDir, inputs, originRaw) {
+  const { fingerprint: inputsFingerprint, missing } = computeStrictInputsFingerprint(
+    rootDir,
+    inputs,
+  );
+  const hash = createHash("sha256");
+  hash.update(`origin:${normalizeOrigin(originRaw)}\n`);
+  hash.update(inputsFingerprint);
+  hash.update("\n");
   return { fingerprint: hash.digest("hex"), missing };
 }
 
@@ -339,7 +359,12 @@ function validateManifestDeclaredCopiedDirs(rootDir, artifactRootAbs, manifest, 
 }
 
 export function validateLibraryArtifacts(options) {
-  const { rootDir, label = rootDir, artifactRoot = "dist/artifacts" } = options;
+  const {
+    rootDir,
+    label = rootDir,
+    artifactRoot = "dist/artifacts",
+    origin = process.env.REGISTRY_ORIGIN,
+  } = options;
   const errors = [];
   let manifestRootAbs;
   try {
@@ -398,7 +423,11 @@ export function validateLibraryArtifacts(options) {
     errors.push(`${label}: artifact fingerprint is not a sha256 hex digest`);
   }
 
-  const { fingerprint, missing } = computeStrictInputsFingerprint(rootDir, manifest.inputs ?? []);
+  const { fingerprint, missing } = computeStrictArtifactFingerprint(
+    rootDir,
+    manifest.inputs ?? [],
+    origin,
+  );
   for (const input of missing) {
     errors.push(`${label}: missing fingerprint input ${input}`);
   }

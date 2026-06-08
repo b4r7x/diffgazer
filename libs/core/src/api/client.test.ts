@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createApiClient } from "./client.js";
+import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "./protocol.js";
 
 const mockFetch = vi.fn();
 // Boundary mock: replaces the global fetch network boundary so tests can stub HTTP responses without hitting a real server.
@@ -110,7 +111,7 @@ describe("createApiClient", () => {
 
       await projectClient.get("/api/test");
 
-      expect(lastHeaders().get("x-diffgazer-project-root")).toBe("/home/user/project");
+      expect(lastHeaders().get(PROJECT_ROOT_HEADER)).toBe("/home/user/project");
     });
 
     it("includes custom base headers", async () => {
@@ -134,7 +135,7 @@ describe("createApiClient", () => {
 
       await tokenClient.get("/api/test");
 
-      expect(lastHeaders().get("x-diffgazer-shutdown-token")).toBe("my-token");
+      expect(lastHeaders().get(SHUTDOWN_TOKEN_HEADER)).toBe("my-token");
     });
 
     it("includes shutdown token header when configured with a function", async () => {
@@ -146,7 +147,7 @@ describe("createApiClient", () => {
 
       await tokenClient.post("/api/reviews", { mode: "staged" });
 
-      expect(lastHeaders().get("x-diffgazer-shutdown-token")).toBe("fn-token");
+      expect(lastHeaders().get(SHUTDOWN_TOKEN_HEADER)).toBe("fn-token");
     });
 
     it("omits shutdown token header when not configured", async () => {
@@ -154,7 +155,7 @@ describe("createApiClient", () => {
 
       await client.get("/api/test");
 
-      expect(lastHeaders().get("x-diffgazer-shutdown-token")).toBeNull();
+      expect(lastHeaders().get(SHUTDOWN_TOKEN_HEADER)).toBeNull();
     });
 
     it("includes request headers only on that request", async () => {

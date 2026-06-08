@@ -1,6 +1,6 @@
 import { formatTime } from "@diffgazer/core/format";
 import { Box, Text } from "ink";
-import { useTheme } from "../../../app/providers/theme";
+import { useTheme } from "../../../theme/provider";
 
 export interface ReviewMetricsFooterProps {
   filesProcessed: number;

@@ -37,6 +37,7 @@ export interface PopoverContentProps
   avoidCollisions?: boolean;
   collisionPadding?: number;
   autoFocus?: boolean;
+  portalContainer?: Element | null;
   "aria-label"?: string;
   "aria-labelledby"?: string;
   ref?: Ref<HTMLDivElement>;
@@ -50,6 +51,7 @@ export function PopoverContent({
   alignOffset = 0,
   avoidCollisions = true,
   collisionPadding = 8,
+  portalContainer,
   className,
   role,
   autoFocus = true,
@@ -129,6 +131,7 @@ export function PopoverContent({
       {...rest}
       open={open}
       triggerRef={triggerRef}
+      portalContainer={portalContainer}
       side={side}
       align={align}
       sideOffset={sideOffset}

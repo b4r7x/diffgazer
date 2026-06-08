@@ -8,6 +8,7 @@ import {
   parseDocsShellInput,
   parseLibrarySwitchInput,
   parseSearchQueryInput,
+  safeParseDocsPageInput,
 } from "./server-inputs";
 
 describe("docs server input parsing", () => {
@@ -17,6 +18,15 @@ describe("docs server input parsing", () => {
 
   it("rejects unknown docs library IDs", () => {
     expect(() => parseDocsShellInput({ library: "missing" })).toThrow();
+  });
+
+  it("returns null for malformed page route input instead of throwing", () => {
+    expect(
+      safeParseDocsPageInput({
+        library: "ui",
+        routeSlugs: ["BadSlug"],
+      }),
+    ).toBeNull();
   });
 
   it("normalizes page route slugs", () => {

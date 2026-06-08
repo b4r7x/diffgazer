@@ -1,4 +1,4 @@
-import type { DetailsEmptyKind } from "@diffgazer/core/review";
+import { type DetailsEmptyKind, getDetailsEmptyCopy } from "@diffgazer/core/review";
 import { isIssueTab, type IssueTab as TabId } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { CodeBlock, type CodeBlockLineState } from "@diffgazer/ui/components/code-block";
@@ -27,18 +27,6 @@ export interface IssueDetailsPaneProps {
   className?: string;
 }
 
-const EMPTY_COPY: Record<DetailsEmptyKind, { title: string; description?: string }> = {
-  "no-issues": {
-    title: "No issues in this review",
-    description: "This analysis passed without findings.",
-  },
-  "filter-empty": {
-    title: "No issues match this filter",
-    description: "Choose another severity to continue.",
-  },
-  "no-selection": { title: "Select an issue to view details" },
-};
-
 export function IssueDetailsPane({
   issue,
   activeTab,
@@ -51,7 +39,7 @@ export function IssueDetailsPane({
   className,
 }: IssueDetailsPaneProps) {
   const hasPatch = !!issue?.suggested_patch;
-  const empty = EMPTY_COPY[emptyKind ?? "no-selection"];
+  const empty = getDetailsEmptyCopy(emptyKind ?? "no-selection");
   const handleTabChange = (value: string) => {
     if (isIssueTab(value)) onTabChange(value);
   };

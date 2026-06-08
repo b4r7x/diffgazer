@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ConfigProvider } from "@/app/providers/config";
+import { ConfigProvider } from "@/hooks/use-config";
 
 type ActiveSessionState = { reviewId: string; mode: ReviewMode } | null;
 

@@ -1,5 +1,5 @@
 import { Breadcrumbs as BreadcrumbsBase } from "@diffgazer/ui/components/breadcrumbs";
-import { useLocation } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import { SECTIONS_WITH_INDEX } from "@/generated/sections-with-index";
 import { isDocsLibraryId } from "@/lib/library";
 
@@ -26,12 +26,21 @@ export function Breadcrumbs() {
         const isLast = i === pathParts.length - 1;
         const isLinkable = !isLast && hasIndexPage(library, pathParts, i);
 
+        const label = part.replace(/-/g, " ");
+        const splat = pathParts.slice(0, i + 1).join("/");
+
         return (
           <BreadcrumbsBase.Item key={href} current={isLast}>
             {isLinkable ? (
-              <BreadcrumbsBase.Link href={href}>{part.replace(/-/g, " ")}</BreadcrumbsBase.Link>
+              <BreadcrumbsBase.Link>
+                {(linkProps) => (
+                  <Link to="/$lib/$" params={{ lib: library, _splat: splat }} {...linkProps}>
+                    {label}
+                  </Link>
+                )}
+              </BreadcrumbsBase.Link>
             ) : (
-              <span>{part.replace(/-/g, " ")}</span>
+              <span>{label}</span>
             )}
           </BreadcrumbsBase.Item>
         );

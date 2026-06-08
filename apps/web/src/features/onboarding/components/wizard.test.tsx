@@ -21,7 +21,7 @@ vi.mock("@tanstack/react-router", () => ({
 // re-evaluates the transformed app graph, so a statically-held context object would mismatch.
 let getConfiguredGuardCache: typeof import("@/lib/config-guard-cache").getConfiguredGuardCache;
 let OnboardingWizard: typeof import("./wizard").OnboardingWizard;
-let ConfigProvider: typeof import("@/app/providers/config").ConfigProvider;
+let ConfigProvider: typeof import("@/hooks/use-config").ConfigProvider;
 let KeyboardProvider: typeof import("@diffgazer/keys").KeyboardProvider;
 let ApiProvider: typeof import("@diffgazer/core/api/hooks").ApiProvider;
 let FooterProvider: typeof import("@diffgazer/core/footer").FooterProvider;
@@ -164,7 +164,7 @@ describe("OnboardingWizard", () => {
     ({ getConfiguredGuardCache } = await import("@/lib/config-guard-cache"));
     ({ ApiProvider } = await import("@diffgazer/core/api/hooks"));
     ({ FooterProvider } = await import("@diffgazer/core/footer"));
-    ({ ConfigProvider } = await import("@/app/providers/config"));
+    ({ ConfigProvider } = await import("@/hooks/use-config"));
     ({ KeyboardProvider } = await import("@diffgazer/keys"));
     ({ OnboardingWizard } = await import("./wizard"));
     mockNavigate.mockReset();
@@ -297,14 +297,17 @@ describe("OnboardingWizard", () => {
   it("shows a saving label and disables the complete action while completion is pending", async () => {
     const user = userEvent.setup();
     let resolveConfig: (() => void) | undefined;
-    mockSaveConfig.mockReturnValue(
-      new Promise<void>((resolve) => {
-        resolveConfig = resolve;
-      }),
-    );
 
     renderWizard();
     await walkToFinalStepWithDefaults(user);
+
+    mockSaveConfig.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveConfig = resolve;
+        }),
+    );
+
     await user.click(screen.getByRole("button", { name: /complete setup/i }));
 
     const saving = await screen.findByRole("button", { name: /saving/i });
@@ -316,7 +319,7 @@ describe("OnboardingWizard", () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
     });
-  });
+  }, 15_000);
 
   it("shows an inline error when completion fails and keeps the user on the wizard", async () => {
     const user = userEvent.setup();

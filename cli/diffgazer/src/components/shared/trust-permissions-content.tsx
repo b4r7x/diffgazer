@@ -6,7 +6,7 @@ import {
 } from "@diffgazer/core/schemas/config";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
-import { useTheme } from "../../app/providers/theme";
+import { useTheme } from "../../theme/provider";
 import { Badge } from "../ui/badge";
 import { Callout } from "../ui/callout";
 import { CheckboxGroup } from "../ui/checkbox";

@@ -18,9 +18,10 @@ export function useActiveReviewSession(mode?: ReviewMode) {
   return useQuery(reviewQueries.activeSession(api, mode));
 }
 
-export function useReviewContext(options?: { enabled?: boolean }) {
+export function useReviewContext(options?: { enabled?: boolean; reviewId?: string | null }) {
   const api = useApi();
-  return useQuery({ ...reviewQueries.context(api), ...options });
+  const { reviewId, ...queryOptionsOverrides } = options ?? {};
+  return useQuery({ ...reviewQueries.context(api, reviewId), ...queryOptionsOverrides });
 }
 
 export function useDeleteReview() {

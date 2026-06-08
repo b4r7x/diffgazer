@@ -1,4 +1,4 @@
-import { ApiProvider, useServerStatus } from "@diffgazer/core/api/hooks";
+import { ApiProvider, useConfigCheck, useServerStatus } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Box, Text, useInput } from "ink";
@@ -8,11 +8,13 @@ import type { CliMode } from "../cli-options";
 import { GlobalLayout } from "../components/layout/global";
 import { Spinner } from "../components/ui/spinner";
 import { useExit } from "../hooks/use-exit";
+import { KeyboardContext } from "../hooks/use-keyboard";
+import { useNavigation } from "../hooks/use-navigation";
 import { api } from "../lib/api";
 import { createCliQueryClient } from "../lib/query-client";
 import { createServerFactories } from "../lib/servers/factories";
-import { KeyboardContext, TerminalKeyboardProvider } from "./providers/keyboard";
-import { NavigationProvider, useNavigation } from "./providers/navigation-provider";
+import { TerminalKeyboardProvider } from "./providers/keyboard";
+import { NavigationProvider } from "./providers/navigation-provider";
 import { ServerProvider } from "./providers/server";
 import { CliThemeProvider } from "./providers/theme";
 import { ScreenRouter } from "./router";
@@ -55,11 +57,33 @@ function HealthGate({ children }: { children: ReactNode }): ReactElement {
 
 function ConfigGate({ children }: { children: ReactNode }): ReactElement {
   const configState = useConfigGuard();
+  const configCheck = useConfigCheck();
+
+  useInput(
+    (input) => {
+      if (input === "r") {
+        void configCheck.refetch();
+      }
+    },
+    { isActive: configState === "api-error" },
+  );
 
   if (configState === "checking") {
     return (
       <Box flexDirection="column" alignItems="center" justifyContent="center" padding={1}>
         <Spinner label="Checking configuration..." />
+      </Box>
+    );
+  }
+
+  if (configState === "api-error") {
+    return (
+      <Box flexDirection="column" alignItems="center" justifyContent="center" padding={1}>
+        <Text color="red">Configuration Check Failed</Text>
+        <Text dimColor>
+          {configCheck.error?.message ?? "Unable to reach the configuration API."}
+        </Text>
+        <Text dimColor>Press r to retry</Text>
       </Box>
     );
   }
@@ -123,7 +147,7 @@ interface AppProps {
 export function App({ mode, theme, openBrowser }: AppProps): ReactElement {
   const serverProviderKey = `${mode}:${openBrowser ? "open" : "closed"}`;
   const serverFactories = useMemo(
-    () => createServerFactories({ mode, openBrowser }),
+    () => createServerFactories({ mode, openBrowser, includeWebServer: false }),
     [mode, openBrowser],
   );
 

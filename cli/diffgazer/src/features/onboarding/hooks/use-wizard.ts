@@ -10,28 +10,22 @@ import {
   saveWizard,
   useWizardState,
 } from "@diffgazer/core/onboarding";
-import type { AgentExecution, AIProvider, SecretsStorage } from "@diffgazer/core/schemas/config";
+import type { AIProvider } from "@diffgazer/core/schemas/config";
 import {
-  AGENT_EXECUTION_MODES,
   AI_PROVIDERS,
-  SECRETS_STORAGE,
+  isAgentExecution,
+  isSecretsStorage,
+  PROVIDER_ENV_VARS,
 } from "@diffgazer/core/schemas/config";
 import type { LensId } from "@diffgazer/core/schemas/review";
-import { useState } from "react";
-import { useNavigation } from "../../../app/providers/navigation-provider";
+import { useRef, useState } from "react";
+import { useNavigation } from "../../../hooks/use-navigation";
 
 type FocusArea = "step" | "nav";
-
-function isSecretsStorage(v: string): v is SecretsStorage {
-  return (SECRETS_STORAGE as readonly string[]).includes(v);
-}
+const EARLY_SAVE_CLEANUP_ERROR = "Failed to remove saved credentials";
 
 function isAIProvider(v: string): v is AIProvider {
   return (AI_PROVIDERS as readonly string[]).includes(v);
-}
-
-function isAgentExecution(v: string): v is AgentExecution {
-  return (AGENT_EXECUTION_MODES as readonly string[]).includes(v);
 }
 
 function isInputMethod(v: string): v is InputMethod {
@@ -43,18 +37,32 @@ export function useOnboardingWizard() {
   const saveSettings = useSaveSettings();
   const saveConfig = useSaveConfig();
   const deleteCredentials = useDeleteProviderCredentials();
+  const earlySavedProviderRef = useRef<AIProvider | null>(null);
+  const [focusArea, setFocusArea] = useState<FocusArea>("step");
+  const [navIndex, setNavIndex] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   const wizard = useWizardState(undefined, {
     saveCredentials: async (provider, apiKey) => {
-      await saveConfig.mutateAsync({ provider, apiKey });
+      await saveConfig.mutateAsync({
+        provider,
+        apiKey:
+          apiKey === "env"
+            ? { kind: "env", varName: PROVIDER_ENV_VARS[provider] }
+            : { kind: "literal", value: apiKey },
+      });
+      earlySavedProviderRef.current = provider;
     },
     deleteCredentials: async (provider) => {
       await deleteCredentials.mutateAsync(provider);
     },
   });
-  const [focusArea, setFocusArea] = useState<FocusArea>("step");
-  const [navIndex, setNavIndex] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+
+  function clearEarlySaveState() {
+    earlySavedProviderRef.current = null;
+    wizard.acknowledgeEarlySave();
+    setError((current) => (current?.startsWith(EARLY_SAVE_CLEANUP_ERROR) ? null : current));
+  }
 
   const isSaving = saveSettings.isPending || saveConfig.isPending || wizard.isEarlySaving;
 
@@ -96,8 +104,26 @@ export function useOnboardingWizard() {
       setError(getErrorMessage(result.error, "Setup failed"));
       return;
     }
-    wizard.acknowledgeEarlySave();
+    clearEarlySaveState();
     navigate({ screen: "home" });
+  }
+
+  async function cleanupEarlySave() {
+    const provider = earlySavedProviderRef.current;
+    if (!provider) {
+      await wizard.cleanupEarlySave();
+      return;
+    }
+
+    try {
+      await deleteCredentials.mutateAsync(provider);
+      clearEarlySaveState();
+    } catch (cleanupError) {
+      setError(
+        `${EARLY_SAVE_CLEANUP_ERROR}: ${getErrorMessage(cleanupError, "Retry to remove them.")}`,
+      );
+      throw cleanupError;
+    }
   }
 
   function handleNext() {
@@ -148,7 +174,7 @@ export function useOnboardingWizard() {
     handleApiKeyChange,
     handleModelChange,
     handleLensesChange,
-    cleanupEarlySave: wizard.cleanupEarlySave,
+    cleanupEarlySave,
     handleNext,
     handleBack,
     toggleFocusArea,

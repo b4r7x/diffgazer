@@ -1,5 +1,5 @@
 import { KeyboardProvider } from "@diffgazer/keys";
-import { Button } from "@diffgazer/ui/components/button";
+import { Button, buttonVariants } from "@diffgazer/ui/components/button";
 import { Toaster } from "@diffgazer/ui/components/toast";
 import { createRootRoute, HeadContent, Link, Outlet, Scripts } from "@tanstack/react-router";
 import { TanstackProvider } from "fumadocs-core/framework/tanstack";
@@ -94,8 +94,12 @@ function RootErrorBoundary({ reset }: { reset: () => void }) {
           </Button>
         }
         secondaryAction={
-          <Link to="/$lib" params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}>
-            <Button variant="ghost">Open docs</Button>
+          <Link
+            to="/$lib"
+            params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}
+            className={buttonVariants({ variant: "ghost" })}
+          >
+            Open docs
           </Link>
         }
       />

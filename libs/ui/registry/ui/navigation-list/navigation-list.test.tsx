@@ -741,7 +741,7 @@ describe("NavigationListGroup", () => {
     expect(screen.getByText("(4)")).toBeInTheDocument();
   });
 
-  it("group renders with role=group and aria-label", () => {
+  it("section group exposes a labelled collapse control and options", () => {
     render(
       <NavigationList aria-label="Test nav">
         <NavigationList.Group label="Section">
@@ -752,8 +752,8 @@ describe("NavigationListGroup", () => {
       </NavigationList>,
     );
 
-    const group = screen.getByRole("group", { name: "Section" });
-    expect(group).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Section, collapse section/i })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "One" })).toBeInTheDocument();
   });
 
   it("click on header toggles expanded/collapsed", async () => {
@@ -767,13 +767,39 @@ describe("NavigationListGroup", () => {
       </NavigationList>,
     );
 
-    const header = screen.getByText("Section");
+    const header = screen.getByRole("option", { name: /Section/i });
     expect(screen.getByRole("option", { name: "One" })).toBeInTheDocument();
 
     await userEvent.click(header);
     expect(screen.queryByRole("option", { name: "One" })).not.toBeInTheDocument();
 
     await userEvent.click(header);
+    expect(screen.getByRole("option", { name: "One" })).toBeInTheDocument();
+  });
+
+  it("exposes section headers as keyboard-accessible collapse controls", async () => {
+    const user = userEvent.setup();
+    render(
+      <NavigationList aria-label="Test nav" defaultHighlighted="__section_Section">
+        <NavigationList.Group label="Section" count={2}>
+          <NavigationList.Item id="one">
+            <NavigationList.Title>One</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    );
+
+    const listbox = screen.getByRole("listbox");
+    const header = screen.getByRole("option", { name: /Section \(2\), collapse section/i });
+    expect(header).toHaveAttribute("data-expanded", "true");
+
+    listbox.focus();
+    await user.keyboard("{Enter}");
+    expect(header).toHaveAttribute("data-expanded", "false");
+    expect(screen.queryByRole("option", { name: "One" })).not.toBeInTheDocument();
+
+    await user.keyboard("{Enter}");
+    expect(header).toHaveAttribute("data-expanded", "true");
     expect(screen.getByRole("option", { name: "One" })).toBeInTheDocument();
   });
 
@@ -812,7 +838,7 @@ describe("NavigationListGroup", () => {
     listbox.focus();
 
     // Collapse the group by clicking the header
-    await userEvent.click(screen.getByText("Collapsible"));
+    await userEvent.click(screen.getByRole("option", { name: /Collapsible/i }));
     expect(screen.queryByRole("option", { name: "Inside" })).not.toBeInTheDocument();
 
     // Arrow down from "before" should skip the collapsed "inside" and land on "after"
@@ -820,7 +846,7 @@ describe("NavigationListGroup", () => {
     expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("-after"));
   });
 
-  it("keyboard navigation skips group headers", async () => {
+  it("keyboard navigation moves through section headers between items", async () => {
     render(
       <NavigationList aria-label="Test nav" defaultHighlighted="one">
         <NavigationList.Group label="Section A">
@@ -838,6 +864,9 @@ describe("NavigationListGroup", () => {
 
     const listbox = screen.getByRole("listbox");
     listbox.focus();
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(listbox.getAttribute("aria-activedescendant")).toContain("__section_Section");
 
     await userEvent.keyboard("{ArrowDown}");
     expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("-two"));
@@ -898,7 +927,7 @@ describe("NavigationListGroup", () => {
 
     expect(screen.getByRole("option", { name: "One" })).toBeInTheDocument();
 
-    await userEvent.click(screen.getByText("Section"));
+    await userEvent.click(screen.getByRole("option", { name: /Section/i }));
     expect(onExpandedChange).toHaveBeenCalledWith(false);
     expect(screen.getByRole("option", { name: "One" })).toBeInTheDocument();
 

@@ -14,46 +14,48 @@ interface ServerFactoryOptions {
 
 interface ModeServerFactoryOptions extends ServerFactoryOptions {
   mode: CliMode;
+  /** Dev web mode starts Vite; dev TUI only needs the API child. Defaults to true. */
+  includeWebServer?: boolean;
+  onStartupFailure?: (message: string) => void;
 }
 
-export function createDevServerFactories(
-  options: ServerFactoryOptions = {},
-): Array<() => ServerController> {
-  const onReady = createReadyHandler(options.openBrowser);
-
-  return [
-    () =>
-      createApiServer({
-        cwd: config.paths.server,
-        port: config.ports.api,
-      }),
-    () =>
-      createWebServer({
-        cwd: config.paths.web,
-        port: config.ports.web,
-        onReady,
-      }),
-  ];
-}
-
-export function createProdServerFactories(
-  options: ServerFactoryOptions = {},
+export function createServerFactories(
+  options: ModeServerFactoryOptions,
 ): Array<() => ServerController> {
   const projectRoot = findGitRoot(process.cwd());
+
+  if (options.mode === "dev") {
+    const apiPort = parsePortEnv(process.env.PORT, config.ports.api);
+    const factories: Array<() => ServerController> = [
+      () =>
+        createApiServer({
+          cwd: config.paths.server,
+          port: apiPort,
+          projectRoot,
+        }),
+    ];
+
+    if (options.includeWebServer !== false) {
+      const onReady = createReadyHandler(options.openBrowser);
+      factories.push(() =>
+        createWebServer({
+          cwd: config.paths.web,
+          port: config.ports.web,
+          onReady,
+        }),
+      );
+    }
+
+    return factories;
+  }
+
   return [
     () =>
       createEmbeddedServer({
         port: parsePortEnv(process.env.PORT, config.ports.api),
         projectRoot,
         onReady: createReadyHandler(options.openBrowser),
+        onFailure: options.onStartupFailure,
       }),
   ];
-}
-
-export function createServerFactories(
-  options: ModeServerFactoryOptions,
-): Array<() => ServerController> {
-  return options.mode === "dev"
-    ? createDevServerFactories({ openBrowser: options.openBrowser })
-    : createProdServerFactories({ openBrowser: options.openBrowser });
 }

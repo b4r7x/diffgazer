@@ -1,0 +1,115 @@
+---
+title: Types
+description: Shared TypeScript interfaces and type definitions exported by @diffgazer/keys.
+---
+
+# Types
+
+Shared type definitions exported by `@diffgazer/keys`.
+
+## HandlerOptions
+
+Passed to `register()` in the keyboard context. You won't use this directly — it's the internal representation of `UseKeyOptions` fields.
+
+```ts
+interface HandlerOptions {
+  allowInInput?: boolean;
+  containerRef?: RefObject<HTMLElement | null>;
+  focusWithinOnly?: boolean;
+  preventDefault?: boolean;
+}
+```
+
+## UseKeyOptions
+
+Options for [useKey](/keys/hooks/use-key).
+
+```ts
+interface UseKeyOptions {
+  enabled?: boolean;
+  scope?: string | null;
+  allowInInput?: boolean;
+  containerRef?: RefObject<HTMLElement | null>;
+  focusWithinOnly?: boolean;
+  preventDefault?: boolean;
+}
+```
+
+## UseFocusTrapOptions
+
+Options for [useFocusTrap](/keys/hooks/use-focus-trap).
+
+```ts
+interface UseFocusTrapOptions {
+  initialFocus?: RefObject<HTMLElement | null>;
+  restoreFocus?: boolean;
+  enabled?: boolean;
+}
+```
+
+## RestoreFocusOptions
+
+Options for `restoreFocus()` and [useFocusRestore](/keys/hooks/use-focus-restore).
+
+```ts
+interface RestoreFocusOptions {
+  preventScroll?: boolean;
+}
+```
+
+## UseFocusRestoreOptions
+
+Options for [useFocusRestore](/keys/hooks/use-focus-restore).
+
+```ts
+interface UseFocusRestoreOptions extends RestoreFocusOptions {
+  enabled?: boolean;
+  restoreOnUnmount?: boolean;
+  fallback?: HTMLElement | null;
+}
+```
+
+## UseScrollLockOptions
+
+Options for [useScrollLock](/keys/hooks/use-scroll-lock).
+
+```ts
+interface UseScrollLockOptions {
+  target?: RefObject<HTMLElement | null>;
+  enabled?: boolean;
+}
+```
+
+## NavigationRole
+
+Used by [useNavigation](/keys/hooks/use-navigation) and [useScopedNavigation](/keys/hooks/use-scoped-navigation) to determine which DOM elements are navigable.
+
+```ts
+type NavigationRole = "radio" | "checkbox" | "option" | "menuitem" | "menuitemcheckbox" | "menuitemradio" | "button" | "tab";
+```
+
+## VerticalDirection
+
+Returned by `getVerticalArrowDirection()` and `toVerticalBoundaryDirection()`.
+
+```ts
+type VerticalDirection = "up" | "down";
+```
+
+## BoundaryDirection
+
+Accepted by `toVerticalBoundaryDirection()`.
+
+```ts
+type BoundaryDirection = "previous" | "next";
+```
+
+## KeyHandler
+
+Callback type for keyboard event handlers.
+
+```ts
+type KeyHandler = (event: KeyboardEvent) => unknown;
+```
+
+Only the exact return value `false` has special meaning: it declines the matched key and lets the next lower-priority matching handler in the active scope run. Other return values are ignored. If `preventDefault` is enabled for that handler, the event is still prevented before the handler returns.
