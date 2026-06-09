@@ -4,12 +4,14 @@ import { useTheme } from "../../theme/provider";
 export interface SectionHeaderProps {
   variant?: "default" | "muted";
   bordered?: boolean;
+  bold?: boolean;
   children: string;
 }
 
 export function SectionHeader({
   variant = "default",
   bordered = false,
+  bold = true,
   children,
 }: SectionHeaderProps) {
   const { tokens } = useTheme();
@@ -18,7 +20,7 @@ export function SectionHeader({
 
   return (
     <Box flexDirection="column">
-      <Text bold color={color}>
+      <Text bold={bold} color={color}>
         {children.toUpperCase()}
       </Text>
       {bordered ? (

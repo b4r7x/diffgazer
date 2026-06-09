@@ -52,7 +52,9 @@ export function SettingsHubScreen(): ReactElement {
           <Panel>
             <Panel.Content>
               <Box flexDirection="column" gap={1}>
-                <SectionHeader>Settings Hub</SectionHeader>
+                <SectionHeader variant="muted" bold={false}>
+                  Settings Hub
+                </SectionHeader>
                 <Spinner label="Loading settings..." />
               </Box>
             </Panel.Content>
@@ -66,7 +68,9 @@ export function SettingsHubScreen(): ReactElement {
           <Panel>
             <Panel.Content>
               <Box flexDirection="column" gap={1}>
-                <SectionHeader>Settings Hub</SectionHeader>
+                <SectionHeader variant="muted" bold={false}>
+                  Settings Hub
+                </SectionHeader>
                 <Text color="red">Error: {err.message}</Text>
               </Box>
             </Panel.Content>
@@ -84,7 +88,9 @@ export function SettingsHubScreen(): ReactElement {
           <Panel>
             <Panel.Content>
               <Box flexDirection="column" gap={1}>
-                <SectionHeader>Settings Hub</SectionHeader>
+                <SectionHeader variant="muted" bold={false}>
+                  Settings Hub
+                </SectionHeader>
                 <Spinner label="Loading settings..." />
               </Box>
             </Panel.Content>
@@ -111,7 +117,9 @@ export function SettingsHubScreen(): ReactElement {
         <Panel>
           <Panel.Content>
             <Box flexDirection="column" gap={1}>
-              <SectionHeader>Settings Hub</SectionHeader>
+              <SectionHeader variant="muted" bold={false}>
+                Settings Hub
+              </SectionHeader>
               <Menu variant="hub" onSelect={onSelect}>
                 {SETTINGS_MENU_ITEMS.map((item) => (
                   <Menu.Item key={item.id} id={item.id} value={values[item.id]}>
