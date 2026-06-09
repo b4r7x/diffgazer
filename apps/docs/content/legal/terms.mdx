@@ -1,0 +1,51 @@
+---
+title: Terms
+description: Terms for using diffgazer documentation and the open-source software in this repository.
+lastUpdated: "2026-06-09"
+---
+
+## Use of this website
+
+diffgazer docs is provided for reference. Documentation may be incomplete, outdated, or incorrect. Use it at your own risk. We do not guarantee uninterrupted access to the site.
+
+Nothing on this site is legal advice. For licensing questions about the software itself, see the sections below and the canonical license files in the repository.
+
+## Software licensing
+
+diffgazer ships under a two-license split that matches each package's distribution model.
+
+### MIT
+
+MIT covers `libs/keys`, `libs/ui`, `libs/registry`, `cli/add` (`@diffgazer/add`), and the root repository license. These packages are intended for copy-paste shadcn-style consumption and npm install paths.
+
+- [Root LICENSE (MIT)](https://github.com/b4r7x/diffgazer/blob/main/LICENSE)
+- [libs/ui LICENSE](https://github.com/b4r7x/diffgazer/blob/main/libs/ui/LICENSE)
+- [libs/keys LICENSE](https://github.com/b4r7x/diffgazer/blob/main/libs/keys/LICENSE)
+- [libs/registry LICENSE](https://github.com/b4r7x/diffgazer/blob/main/libs/registry/LICENSE)
+- [cli/add LICENSE](https://github.com/b4r7x/diffgazer/blob/main/cli/add/LICENSE)
+
+The root MIT license also applies to non-package source, documentation, and tooling in the monorepo.
+
+### Apache-2.0
+
+Apache-2.0 covers `cli/diffgazer`, the end-user CLI binary. The license includes an explicit patent grant and attribution requirements suited to a distributable binary entry point.
+
+- [cli/diffgazer LICENSE (Apache-2.0)](https://github.com/b4r7x/diffgazer/blob/main/cli/diffgazer/LICENSE)
+
+Every published package directory contains its own `LICENSE` file so the license travels with both npm tarballs and direct registry copies.
+
+## Contributions
+
+Contributions are accepted under the license of the directory they touch. Moving code across the MIT and Apache-2.0 boundary requires an explicit relicensing note in the changeset.
+
+By contributing, you agree that your contribution is licensed under the applicable project license for the files you modify.
+
+## Community
+
+Participation in the diffgazer community is governed by the [Contributor Covenant Code of Conduct](https://github.com/b4r7x/diffgazer/blob/main/CODE_OF_CONDUCT.md).
+
+## Product disclaimer
+
+diffgazer is a local code-review tool. When you run a review, your diff and prompt content are sent to the model provider you configure, under that provider's terms and data policy. diffgazer does not operate a hosted relay for review content.
+
+You are responsible for choosing a provider you trust, for the code you submit to review, and for complying with your organization's policies. The software is provided "as is", without warranty of any kind, express or implied, as stated in the applicable license.

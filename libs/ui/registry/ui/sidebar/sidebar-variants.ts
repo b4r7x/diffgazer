@@ -1,6 +1,13 @@
 import { cva } from "class-variance-authority";
 
-export type SidebarVariant = "caret" | "inverted" | "bar" | "bracket" | "block" | "terminal";
+export type SidebarVariant =
+  | "caret"
+  | "inverted"
+  | "bar"
+  | "bracket"
+  | "block"
+  | "terminal"
+  | "tree";
 
 export const sidebarContainerVariants = cva(
   [
@@ -93,6 +100,11 @@ export const sidebarItemVariants = cva(
           "text-foreground/60 hover:text-foreground hover:border-foreground/40",
           "data-[active=true]:text-foreground data-[active=true]:border-l-foreground",
           "data-[active=true]:hover:border-l-foreground",
+        ].join(" "),
+        tree: [
+          "text-foreground/70 hover:text-foreground hover:bg-foreground/5",
+          "data-[active=true]:bg-foreground/8 data-[active=true]:text-foreground data-[active=true]:font-semibold",
+          "data-[active=true]:hover:bg-foreground/10",
         ].join(" "),
       },
     },

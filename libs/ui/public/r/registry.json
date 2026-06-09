@@ -447,9 +447,37 @@
           "type": "registry:ui"
         },
         {
+          "path": "registry/ui/panel/panel-label.tsx",
+          "type": "registry:ui"
+        },
+        {
           "path": "registry/ui/shared/panel.css",
           "type": "registry:style",
           "target": "~/styles/panel.css"
+        }
+      ]
+    },
+    {
+      "name": "status-indicator",
+      "type": "registry:ui",
+      "title": "Status Indicator",
+      "description": "Pulsing status dot with monospace label for terminal chrome",
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": [
+        "https://r.b4r7.dev/r/ui/theme.json",
+        "https://r.b4r7.dev/r/ui/utils.json"
+      ],
+      "meta": {
+        "client": false
+      },
+      "files": [
+        {
+          "path": "registry/ui/status-indicator/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/status-indicator/status-indicator.tsx",
+          "type": "registry:ui"
         }
       ]
     },
@@ -1656,6 +1684,14 @@
         },
         {
           "path": "registry/ui/sidebar/sidebar-item-badge.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/sidebar/sidebar-item-position-context.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/sidebar/sidebar-tree-glyphs.ts",
           "type": "registry:ui"
         },
         {

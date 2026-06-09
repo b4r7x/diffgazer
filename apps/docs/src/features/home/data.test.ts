@@ -3,6 +3,15 @@ import type { DocsLibraryConfigData } from "@/lib/libraries-config";
 import type { LandingSection } from "@/lib/page-tree";
 import { buildHomeLibrary, toBrowseRows } from "./data";
 
+const APP_CONFIG = {
+  id: "app",
+  displayName: "diffgazer",
+  logoText: "diffgazer",
+  githubUrl: "https://github.com/b4r7x/diffgazer",
+  enabled: true,
+  defaultRouteSlugs: ["getting-started", "installation"],
+} satisfies DocsLibraryConfigData;
+
 const UI_CONFIG = {
   id: "ui",
   displayName: "@diffgazer/ui",
@@ -31,7 +40,36 @@ const SECTIONS: LandingSection[] = [
   { name: "Project", items: [{ name: "Changelog", url: "/ui/changelog" }] },
 ];
 
+const APP_SECTIONS: LandingSection[] = [
+  {
+    name: "Getting Started",
+    items: [{ name: "Installation", url: "/app/getting-started/installation" }],
+  },
+  {
+    name: "Product",
+    items: [{ name: "Story", url: "/app/story" }],
+  },
+  {
+    name: "Concepts",
+    items: [{ name: "Overview", url: "/app/concepts/overview" }],
+  },
+  {
+    name: "Registry CLI",
+    items: [{ name: "dgadd", url: "/app/cli/dgadd" }],
+  },
+];
+
 describe("buildHomeLibrary", () => {
+  it("surfaces every app section in sidebar order", () => {
+    const result = buildHomeLibrary(APP_CONFIG, "app", APP_SECTIONS);
+    expect(result.sections.map((section) => section.name)).toEqual([
+      "Getting Started",
+      "Product",
+      "Concepts",
+      "Registry CLI",
+    ]);
+  });
+
   it("derives section deep links as /$lib/$ splats from the first page", () => {
     const result = buildHomeLibrary(UI_CONFIG, "ui", SECTIONS);
     expect(result.sections).toEqual([

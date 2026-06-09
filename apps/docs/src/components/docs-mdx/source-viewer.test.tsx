@@ -76,4 +76,13 @@ describe("SourceViewer", () => {
 
     expect(container.firstChild).toBeNull();
   });
+
+  it("exposes the Source heading with an id for the page ToC", () => {
+    render(<SourceViewer files={files} />);
+
+    expect(screen.getByRole("heading", { level: 2, name: "Source" })).toHaveAttribute(
+      "id",
+      "source",
+    );
+  });
 });

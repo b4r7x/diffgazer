@@ -324,6 +324,20 @@ describe("Panel", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
+  it("renders Panel.Label overlapping the top border", () => {
+    const { container } = render(
+      <Panel frame="hairline" className="relative mt-4">
+        <Panel.Label>[ 01 / FS_TREE ]</Panel.Label>
+        <Panel.Content>Body</Panel.Content>
+      </Panel>,
+    );
+
+    const label = container.querySelector('[data-slot="panel-label"]');
+    expect(label).not.toBeNull();
+    expect(label).toHaveTextContent("[ 01 / FS_TREE ]");
+    expect(label).toHaveClass("absolute");
+  });
+
   it("has no a11y violations across the full frame × tone matrix", async () => {
     const frames = ["hairline", "rail", "viewfinder", "surface"] as const;
     const tones = ["info", "success", "warning", "error", "accent"] as const;

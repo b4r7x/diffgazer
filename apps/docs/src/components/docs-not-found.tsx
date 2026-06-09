@@ -16,7 +16,6 @@ export function DocsNotFoundBlock({ tree, library }: DocsNotFoundBlockProps) {
   return (
     <DocsContentLayout tree={tree} library={library}>
       <NotFoundState
-        variant="docs"
         title="Documentation page not found"
         description="The page you requested does not exist or was moved."
         primaryAction={

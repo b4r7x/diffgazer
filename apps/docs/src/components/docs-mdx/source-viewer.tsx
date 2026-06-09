@@ -33,11 +33,13 @@ export function SourceViewer({
 
   return (
     <div className="mb-8">
-      <div
-        className="flex items-baseline justify-between mt-10 mb-4 pb-2 border-b border-border scroll-mt-16"
-        id="source"
-      >
-        <Typography as="h2" size="xl" className="font-bold text-foreground">
+      <div className="flex items-baseline justify-between mt-10 mb-4 pb-2 border-b border-border">
+        <Typography
+          as="h2"
+          size="xl"
+          id="source"
+          className="font-bold text-foreground scroll-mt-16"
+        >
           Source
         </Typography>
         {mergedSource && (

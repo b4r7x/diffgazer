@@ -4,6 +4,7 @@ import {
   SidebarContent,
   SidebarItem,
   SidebarSection,
+  SidebarSectionContent,
   SidebarSectionTitle,
 } from "@diffgazer/ui/components/sidebar";
 import { Spinner } from "@diffgazer/ui/components/spinner";
@@ -32,7 +33,7 @@ function sectionKey(title: string, items: PageTreeNode[]): string {
 }
 
 function formatSectionLabel(title: string): string {
-  return `/${title.toLowerCase().replace(/\s+/g, "_")}`;
+  return title.trim() || "Section";
 }
 
 function getSlug(path: string): string {
@@ -137,18 +138,31 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
   const sections = groupBySection(tree.children);
 
   return (
-    <Sidebar variant="terminal" className="w-full">
-      <SidebarContent className="p-0 overflow-hidden">
+    <Sidebar variant="tree" embedded className="h-full w-full">
+      <SidebarContent className="overflow-hidden p-0">
         <ScrollArea className="h-full">
           <div className="px-3 pt-2 pb-4" ref={navContainerRef}>
             {sections.map((section) => {
               const indexUrl = findSectionIndexUrl(section.items);
+              const sectionHasActive = section.items.some(
+                (item) =>
+                  item.url && (pathname === item.url || pendingPathname === item.url),
+              );
               return (
-                <SidebarSection key={section.key}>
-                  {section.title && (
-                    <SidebarSectionTitle>{formatSectionLabel(section.title)}</SidebarSectionTitle>
-                  )}
+                <SidebarSection key={section.key} collapsible defaultOpen>
+                  {section.title ? (
+                    <SidebarSectionTitle
+                      className={cn(
+                        sectionHasActive
+                          ? "text-foreground"
+                          : "font-medium text-muted-foreground",
+                      )}
+                    >
+                      {formatSectionLabel(section.title)}
+                    </SidebarSectionTitle>
+                  ) : null}
 
+                  <SidebarSectionContent>
                   {section.items.map((item) => {
                     const url = item.url ?? "";
                     const label = sidebarItemLabel(section.title, indexUrl, item);
@@ -159,13 +173,8 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
                     const itemContent = isPending ? (
                       <Spinner size="sm" className="ml-2" />
                     ) : (
-                      <span
-                        className={cn(
-                          "text-xs font-mono",
-                          indented && "pl-3 text-muted-foreground",
-                        )}
-                      >
-                        {indented ? `· ${label}` : label}
+                      <span className={cn("text-xs font-mono", indented && "text-muted-foreground")}>
+                        {label}
                       </span>
                     );
 
@@ -178,7 +187,7 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
                           onNavigate?.();
                         }}
                       >
-                        {({ ref: _ref, ...itemProps }) =>
+                        {({ itemPrefix, ref: _ref, ...itemProps }) =>
                           isCurrentUrl ? (
                             <a
                               href={url}
@@ -189,6 +198,7 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
                                 if (isPrimaryNavigationClick(event)) event.preventDefault();
                               }}
                             >
+                              {itemPrefix}
                               {itemContent}
                             </a>
                           ) : (
@@ -201,6 +211,7 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
                               {...itemProps}
                               data-value={url}
                             >
+                              {itemPrefix}
                               {itemContent}
                             </Link>
                           )
@@ -208,6 +219,7 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
                       </SidebarItem>
                     );
                   })}
+                  </SidebarSectionContent>
                 </SidebarSection>
               );
             })}

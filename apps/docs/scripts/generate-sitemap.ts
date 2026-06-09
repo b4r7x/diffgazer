@@ -31,7 +31,12 @@ export function getPreRenderPages(): PreRenderPage[] {
   // Library roots (/ui, /keys, /app) 307-redirect to their first page, so the
   // sitemap lists those canonical first pages (emitted by walkMdx) rather than
   // the redirecting roots.
-  const pages: PreRenderPage[] = [{ path: "/", source: null }];
+  const legalDir = resolve(DOCS_ROOT, "content/legal");
+  const pages: PreRenderPage[] = [
+    { path: "/", source: null },
+    { path: "/privacy", source: join(legalDir, "privacy.mdx") },
+    { path: "/terms", source: join(legalDir, "terms.mdx") },
+  ];
 
   function walkMdx(dir: string) {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {

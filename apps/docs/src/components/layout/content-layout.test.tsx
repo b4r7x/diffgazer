@@ -4,7 +4,10 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { MobileNavProvider } from "@/lib/mobile-nav-context";
 import type { PageTree } from "@/lib/page-tree";
+import { SearchProvider } from "@/lib/search-context";
+import { CommandRow } from "./command-row";
 import { DocsContentLayout } from "./content-layout";
 
 const routerBoundary = vi.hoisted(() => ({
@@ -51,6 +54,10 @@ vi.mock("@/lib/use-pending-docs-route", () => ({
   usePendingDocsRoute: () => null,
 }));
 
+vi.mock("./sidebar-chrome", () => ({
+  SidebarChrome: () => <div data-testid="sidebar-chrome" />,
+}));
+
 const TREE: PageTree = {
   name: "ui",
   children: [{ type: "page", name: "Button", url: "/ui/components/button" }],
@@ -79,9 +86,14 @@ describe("DocsContentLayout mobile sidebar", () => {
     const user = userEvent.setup();
 
     render(
-      <DocsContentLayout tree={TREE} library="ui">
-        <p>Docs body</p>
-      </DocsContentLayout>,
+      <MobileNavProvider>
+        <SearchProvider>
+          <CommandRow />
+          <DocsContentLayout tree={TREE} library="ui">
+            <p>Docs body</p>
+          </DocsContentLayout>
+        </SearchProvider>
+      </MobileNavProvider>,
     );
 
     const menuButton = screen.getByRole("button", { name: /open navigation menu/i });
@@ -93,5 +105,10 @@ describe("DocsContentLayout mobile sidebar", () => {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(menuButton).toHaveFocus());
     expect(menuButton).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(menuButton);
+    await waitFor(() => expect(menuButton).toHaveAttribute("aria-expanded", "true"));
+    await waitFor(() => expect(screen.getByRole("link", { name: "Button" })).toBeVisible());
   });
+
 });

@@ -11,6 +11,11 @@ export interface SidebarProps extends HTMLAttributes<HTMLElement> {
   ref?: Ref<HTMLElement>;
   variant?: SidebarVariant;
   autoTone?: boolean;
+  /**
+   * When true, always render inline navigation even on mobile. Use when a parent
+   * layout (for example an app shell drawer) already owns the mobile presentation.
+   */
+  embedded?: boolean;
   children: ReactNode;
 }
 
@@ -48,6 +53,7 @@ function SidebarShell({
   ref,
   variant,
   autoTone,
+  embedded = false,
   className,
   children,
   "aria-label": ariaLabel,
@@ -56,13 +62,14 @@ function SidebarShell({
   ref?: Ref<HTMLElement>;
   variant: SidebarVariant;
   autoTone: boolean;
+  embedded?: boolean;
   className?: string;
   children: ReactNode;
 } & HTMLAttributes<HTMLElement>) {
   const { state, isMobile, onStateChange } = useSidebar();
   const open = state !== "hidden";
 
-  if (isMobile) {
+  if (isMobile && !embedded) {
     // Mobile: render the same chrome inside a Dialog sheet. Width is fixed
     // by the sheet wrapper (86vw / max 320px) and the inner nav fills it.
     return (
@@ -106,6 +113,7 @@ export function Sidebar({
   ref,
   variant,
   autoTone = false,
+  embedded = false,
   children,
   className,
   ...rest
@@ -123,6 +131,7 @@ export function Sidebar({
         ref={ref}
         variant={resolvedVariant}
         autoTone={autoTone}
+        embedded={embedded}
         className={className}
         {...rest}
       >

@@ -7,6 +7,7 @@ import { PanelContent, type PanelContentProps, panelContentVariants } from "./pa
 import { PanelDescription, type PanelDescriptionProps } from "./panel-description";
 import { PanelFooter, type PanelFooterProps } from "./panel-footer";
 import { PanelHeader, type PanelHeaderProps } from "./panel-header";
+import { PanelLabel, type PanelLabelProps } from "./panel-label";
 import { PanelRow, type PanelRowProps } from "./panel-row";
 import { PanelTitle, type PanelTitleProps } from "./panel-title";
 
@@ -17,6 +18,7 @@ const Panel = Object.assign(PanelRoot, {
   Content: PanelContent,
   Row: PanelRow,
   Footer: PanelFooter,
+  Label: PanelLabel,
 });
 
 export { Panel, type PanelProps };
@@ -26,3 +28,4 @@ export { PanelDescription, type PanelDescriptionProps };
 export { PanelContent, type PanelContentProps, panelContentVariants };
 export { PanelFooter, type PanelFooterProps };
 export { PanelRow, type PanelRowProps };
+export { PanelLabel, type PanelLabelProps };

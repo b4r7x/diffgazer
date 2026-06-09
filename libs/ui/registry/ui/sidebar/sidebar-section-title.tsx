@@ -9,7 +9,9 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 import { Chevron } from "../icons/chevron";
+import { useSidebarChrome } from "./sidebar-context";
 import { useSidebarSectionContext } from "./sidebar-section-context";
+import { SIDEBAR_TREE_CARET } from "./sidebar-tree-glyphs";
 
 export type SidebarSectionTitleHeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
@@ -25,6 +27,9 @@ export interface SidebarSectionTitleProps extends HTMLAttributes<HTMLElement> {
 const HEADING_CLASS_NAME =
   "px-2 pt-4 pb-1.5 text-muted-foreground text-xs font-mono font-medium uppercase tracking-wider m-0 group-data-[state=rail]/sidebar:hidden";
 
+const TREE_HEADING_CLASS_NAME =
+  "px-2 pt-2 pb-1 text-foreground text-sm font-mono font-bold normal-case tracking-normal m-0 group-data-[state=rail]/sidebar:hidden";
+
 export function SidebarSectionTitle({
   ref,
   children,
@@ -35,7 +40,21 @@ export function SidebarSectionTitle({
   ...rest
 }: SidebarSectionTitleProps) {
   const { collapsible, open, onToggle, titleId, panelId } = useSidebarSectionContext();
-  const resolvedHandle = handle === undefined ? <Chevron open={open} size="sm" /> : handle;
+  const { variant } = useSidebarChrome();
+  const isTree = variant === "tree";
+  const resolvedHandle =
+    handle === undefined ? (
+      isTree ? (
+        <span aria-hidden="true" className="text-[10px]">
+          {open ? SIDEBAR_TREE_CARET.expanded : SIDEBAR_TREE_CARET.collapsed}
+        </span>
+      ) : (
+        <Chevron open={open} size="sm" />
+      )
+    ) : (
+      handle
+    );
+  const headingClassName = isTree ? TREE_HEADING_CLASS_NAME : HEADING_CLASS_NAME;
   const isInteractive = collapsible || !!onClick;
 
   if (isInteractive) {
@@ -46,7 +65,7 @@ export function SidebarSectionTitle({
 
     return createElement(
       headingLevel,
-      { ref, id: titleId, className: cn(HEADING_CLASS_NAME, className) },
+      { ref, id: titleId, className: cn(headingClassName, className) },
       <button
         {...(rest as HTMLAttributes<HTMLButtonElement>)}
         type="button"
@@ -71,7 +90,7 @@ export function SidebarSectionTitle({
 
   return createElement(
     headingLevel,
-    { ...rest, ref, id: titleId, className: cn(HEADING_CLASS_NAME, className) },
+    { ...rest, ref, id: titleId, className: cn(headingClassName, className) },
     children,
   );
 }

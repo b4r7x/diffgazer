@@ -77,14 +77,26 @@ function pickMainSections(sections: LandingSection[]): HomeSectionLink[] {
   return links;
 }
 
+/** App docs use product-area separators (Product, Concepts, CLI, …), not ui/keys buckets. */
+function pickAllSections(sections: LandingSection[]): HomeSectionLink[] {
+  const links: HomeSectionLink[] = [];
+  for (const section of sections) {
+    const link = toSectionLink(section);
+    if (link) links.push(link);
+  }
+  return links;
+}
+
 export function buildHomeLibrary(
   config: DocsLibraryConfigData,
   library: DocsLibraryId,
   sections: LandingSection[],
 ): HomeLibrary {
+  const sectionLinks = library === "app" ? pickAllSections(sections) : pickMainSections(sections);
+
   return {
     id: library,
     displayName: config.displayName,
-    sections: pickMainSections(sections),
+    sections: sectionLinks,
   };
 }

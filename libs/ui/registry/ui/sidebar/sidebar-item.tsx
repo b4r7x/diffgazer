@@ -12,7 +12,9 @@ import type {
 import { useId } from "react";
 import { cn } from "@/lib/utils";
 import { useSidebarChrome } from "./sidebar-context";
+import { useSidebarItemPosition } from "./sidebar-item-position-context";
 import { resolveSidebarIntent, type SidebarIntent } from "./sidebar-intent";
+import { SIDEBAR_TREE_CONNECTOR } from "./sidebar-tree-glyphs";
 import { type SidebarVariant, sidebarItemVariants } from "./sidebar-variants";
 
 export interface SidebarItemRenderProps {
@@ -28,6 +30,8 @@ export interface SidebarItemRenderProps {
   "data-value"?: string;
   "data-disabled"?: "";
   tabIndex?: number;
+  /** Tree connector / variant glyph prefix for custom link renderers. */
+  itemPrefix?: ReactNode;
 }
 
 interface SidebarItemSharedProps {
@@ -106,7 +110,24 @@ function VariantGlyph({ variant, active }: { variant: SidebarVariant; active: bo
       </span>
     );
   }
+  if (variant === "tree") {
+    return null;
+  }
   return null;
+}
+
+function TreeConnector({ variant }: { variant: SidebarVariant }) {
+  const { isLast } = useSidebarItemPosition();
+  if (variant !== "tree") return null;
+
+  return (
+    <span
+      aria-hidden="true"
+      className="mr-2 shrink-0 text-muted-foreground tabular-nums group-data-[state=rail]/sidebar:hidden"
+    >
+      {isLast ? SIDEBAR_TREE_CONNECTOR.last : SIDEBAR_TREE_CONNECTOR.branch}
+    </span>
+  );
 }
 
 function IntentDot({ intent }: { intent: SidebarIntent }) {
@@ -150,17 +171,26 @@ export function SidebarItem(props: SidebarItemProps): ReactNode {
     tabIndex: disabled ? -1 : undefined,
   };
 
+  const glyph = <VariantGlyph variant={variant} active={active} />;
+  const treeConnector = <TreeConnector variant={variant} />;
+  const dot = resolvedIntent ? <IntentDot intent={resolvedIntent} /> : null;
+  const itemPrefix = (
+    <>
+      {dot}
+      {treeConnector}
+      {glyph}
+    </>
+  );
+
   if (typeof props.children === "function") {
     return props.children({
       ref: props.ref as Ref<HTMLElement>,
       disabled: disabled || undefined,
       onClick: guardedClick(props.onClick as MouseEventHandler<HTMLElement> | undefined),
+      itemPrefix,
       ...sharedProps,
     });
   }
-
-  const glyph = <VariantGlyph variant={variant} active={active} />;
-  const dot = resolvedIntent ? <IntentDot intent={resolvedIntent} /> : null;
 
   if (props.as === "button") {
     const {
@@ -185,6 +215,7 @@ export function SidebarItem(props: SidebarItemProps): ReactNode {
         onClick={guardedClick(onClick)}
       >
         {dot}
+        {treeConnector}
         {glyph}
         {children}
       </button>
@@ -220,6 +251,7 @@ export function SidebarItem(props: SidebarItemProps): ReactNode {
       }}
     >
       {dot}
+      {treeConnector}
       {glyph}
       {children}
     </a>

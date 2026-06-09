@@ -174,6 +174,10 @@
       "types": "./dist/components/spinner.d.ts",
       "import": "./dist/components/spinner.js"
     },
+    "./components/status-indicator": {
+      "types": "./dist/components/status-indicator.d.ts",
+      "import": "./dist/components/status-indicator.js"
+    },
     "./components/sidebar": {
       "types": "./dist/components/sidebar.d.ts",
       "import": "./dist/components/sidebar.js"

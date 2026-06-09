@@ -35,6 +35,11 @@ export const panelDoc: ComponentDoc = {
       note: "Key-value row primitive. Adjacent rows get an automatic top divider.",
     },
     { name: "PanelFooter", indent: 1, note: "Bottom metadata/action row." },
+    {
+      name: "Panel.Label",
+      indent: 1,
+      note: "Floating corner label (e.g. [ 01 / FS_TREE ]). Place inside a relative Panel with frame='hairline'.",
+    },
   ],
   notes: [
     {
@@ -66,6 +71,11 @@ export const panelDoc: ComponentDoc = {
       title: "Eyebrow tags",
       content:
         'There is no Title `meta` prop on Panel (unlike Dialog) because the header has a right-slot for actions. Compose eyebrow tags (e.g. "MAIN", "PROD") as plain siblings inside PanelHeader; they land in the right slot, vertically centered next to action buttons.',
+    },
+    {
+      title: "Corner labels",
+      content:
+        "Use Panel.Label variant='border' for a boxed border label, or variant='gap' for a border cutout label. The parent Panel must be relative positioned (hairline frame sets this).",
     },
   ],
   usage: { example: "panel-default" },
@@ -184,6 +194,20 @@ export const panelDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description: "Footer metadata or actions.",
+      },
+    },
+    "Panel.Label": {
+      variant: {
+        type: '"border" | "gap"',
+        required: false,
+        defaultValue: '"border"',
+        description: "Border style around the floating label text.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Label text (e.g. [ 01 / FS_TREE ]).",
       },
     },
   },

@@ -1,14 +1,11 @@
-import { KeyboardProvider } from "@diffgazer/keys";
-import { Button, buttonVariants } from "@diffgazer/ui/components/button";
-import { Toaster } from "@diffgazer/ui/components/toast";
+import { Button } from "@diffgazer/ui/components/button";
 import { createRootRoute, HeadContent, Link, Outlet, Scripts } from "@tanstack/react-router";
-import { TanstackProvider } from "fumadocs-core/framework/tanstack";
+import type { ErrorComponentProps } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { DocsAppChrome } from "@/components/layout/docs-app-chrome";
+import { TuiFaultPanel } from "@/components/layout/tui-fault-panel";
 import { GlobalNotFound } from "@/components/global-not-found";
-import { NotFoundState } from "@/components/not-found-state";
-import { SearchDialog } from "@/features/search/components/dialog";
 import { PRIMARY_DOCS_LIBRARY_ID } from "@/lib/library";
-import { SearchProvider } from "@/lib/search-context";
 import { buildRootHeadDefaults } from "@/lib/seo";
 import appCss from "../index.css?url";
 
@@ -62,48 +59,42 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 
 function RootLayout() {
   return (
-    <TanstackProvider>
-      <KeyboardProvider>
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[60] focus:bg-foreground focus:text-background focus:px-3 focus:py-1 focus:text-xs focus:font-mono"
-        >
-          Skip to content
-        </a>
-        <SearchProvider>
-          <Outlet />
-          <SearchDialog />
-        </SearchProvider>
-        <Toaster />
-      </KeyboardProvider>
-    </TanstackProvider>
+    <DocsAppChrome>
+      <Outlet />
+    </DocsAppChrome>
   );
 }
 
-function RootErrorBoundary({ reset }: { reset: () => void }) {
+function RootErrorBoundary({ error, reset }: ErrorComponentProps) {
   return (
-    <main id="main-content" className="px-4">
-      <NotFoundState
-        variant="global"
-        statusLabel="ERROR"
-        title="Something went wrong"
-        description="An unexpected error occurred while rendering this page."
-        primaryAction={
-          <Button variant="primary" onClick={() => reset()}>
-            Try again
-          </Button>
-        }
-        secondaryAction={
-          <Link
-            to="/$lib"
-            params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}
-            className={buttonVariants({ variant: "ghost" })}
-          >
-            Open docs
-          </Link>
-        }
-      />
-    </main>
+    <DocsAppChrome>
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="flex min-h-0 min-w-0 flex-1 flex-col outline-none"
+      >
+        <TuiFaultPanel
+          statusCode="ERR_RENDER"
+          title="Something went wrong"
+          description="An unexpected error occurred while rendering this page."
+          detail={import.meta.env.DEV ? error.message : undefined}
+          primaryAction={
+            <Button variant="primary" bracket onClick={() => reset()}>
+              Try again
+            </Button>
+          }
+          secondaryAction={
+            <Link
+              to="/$lib"
+              params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}
+              className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
+              [ OPEN_DOCS ]
+            </Link>
+          }
+        />
+      </main>
+    </DocsAppChrome>
   );
 }
 

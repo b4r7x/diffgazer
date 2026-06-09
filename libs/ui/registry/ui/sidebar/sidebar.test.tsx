@@ -416,18 +416,20 @@ describe("SidebarSection collapsible", () => {
 
 describe("Sidebar variants", () => {
   function renderWithVariant(
-    variant: "caret" | "inverted" | "bar" | "bracket" | "block" | "terminal",
+    variant: "caret" | "inverted" | "bar" | "bracket" | "block" | "terminal" | "tree",
   ) {
     return render(
       <Sidebar variant={variant}>
         <Sidebar.Content>
-          <Sidebar.Section>
+          <Sidebar.Section collapsible defaultOpen>
             <Sidebar.SectionTitle>Section</Sidebar.SectionTitle>
-            <Sidebar.Item as="button">Install</Sidebar.Item>
-            <Sidebar.Item as="button" active>
-              Quickstart
-            </Sidebar.Item>
-            <Sidebar.Item as="button">Theming</Sidebar.Item>
+            <Sidebar.SectionContent>
+              <Sidebar.Item as="button">Install</Sidebar.Item>
+              <Sidebar.Item as="button" active>
+                Quickstart
+              </Sidebar.Item>
+              <Sidebar.Item as="button">Theming</Sidebar.Item>
+            </Sidebar.SectionContent>
           </Sidebar.Section>
         </Sidebar.Content>
       </Sidebar>,
@@ -510,6 +512,22 @@ describe("Sidebar variants", () => {
     expect(active.textContent).toContain(">");
     expect(inactive.textContent).not.toContain(">");
     expect(active.textContent).not.toMatch(/[▸▾[\]*]/);
+  });
+
+  it("tree variant renders caret section headers and branch connectors on items", () => {
+    renderWithVariant("tree");
+    expect(screen.getByRole("navigation")).toHaveAttribute("data-variant", "tree");
+    expect(screen.getByRole("heading", { name: /Section/i }).textContent).toContain("▼");
+
+    const install = screen.getByRole("button", { name: /Install/i });
+    const quickstart = screen.getByRole("button", { name: /Quickstart/i });
+    const theming = screen.getByRole("button", { name: /Theming/i });
+
+    expect(install.textContent).toContain("├─");
+    expect(quickstart.textContent).toContain("├─");
+    expect(theming.textContent).toContain("└─");
+    expect(quickstart).toHaveAttribute("aria-current", "page");
+    expect(quickstart).toHaveAttribute("data-active", "true");
   });
 
   it("keeps a single Primary nav landmark and h3 section title across variants", () => {
@@ -643,5 +661,21 @@ describe("Sidebar mobile sheet", () => {
     );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
+  });
+
+  it("renders inline navigation on mobile when embedded is true", () => {
+    stubMatchMedia(true);
+    render(
+      <Sidebar.Provider>
+        <Sidebar embedded>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Item" })).toBeInTheDocument();
   });
 });

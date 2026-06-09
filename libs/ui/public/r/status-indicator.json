@@ -1,0 +1,27 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "status-indicator",
+  "title": "Status Indicator",
+  "description": "Pulsing status dot with monospace label for terminal chrome",
+  "dependencies": ["class-variance-authority"],
+  "registryDependencies": [
+    "https://r.b4r7.dev/r/ui/theme.json",
+    "https://r.b4r7.dev/r/ui/utils.json"
+  ],
+  "files": [
+    {
+      "path": "registry/ui/status-indicator/index.ts",
+      "content": "export {\n  StatusIndicator,\n  type StatusIndicatorProps,\n  type StatusIndicatorStatus,\n  statusIndicatorDotVariants,\n} from \"./status-indicator\";\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/status-indicator/status-indicator.tsx",
+      "content": "import { cva, type VariantProps } from \"class-variance-authority\";\nimport type { HTMLAttributes, ReactNode, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type StatusIndicatorStatus = \"online\" | \"offline\" | \"busy\";\n\nexport const statusIndicatorDotVariants = cva(\"inline-block h-1.5 w-1.5 shrink-0 rounded-full\", {\n  variants: {\n    status: {\n      online: \"bg-primary\",\n      offline: \"bg-muted-foreground\",\n      busy: \"bg-warning\",\n    },\n    pulse: {\n      true: \"animate-pulse motion-reduce:animate-none\",\n      false: \"\",\n    },\n  },\n  defaultVariants: {\n    status: \"online\",\n    pulse: false,\n  },\n});\n\nexport interface StatusIndicatorProps\n  extends HTMLAttributes<HTMLSpanElement>,\n    VariantProps<typeof statusIndicatorDotVariants> {\n  children?: ReactNode;\n  ref?: Ref<HTMLSpanElement>;\n}\n\nexport function StatusIndicator({\n  ref,\n  className,\n  status = \"online\",\n  pulse = true,\n  children,\n  ...props\n}: StatusIndicatorProps) {\n  const shouldPulse = pulse && status === \"online\";\n\n  return (\n    <span\n      ref={ref}\n      role=\"status\"\n      className={cn(\n        \"inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted-foreground\",\n        className,\n      )}\n      {...props}\n    >\n      <span\n        aria-hidden=\"true\"\n        className={statusIndicatorDotVariants({ status, pulse: shouldPulse })}\n      />\n      {children}\n    </span>\n  );\n}\n",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": false
+  },
+  "type": "registry:ui"
+}

@@ -2,3 +2,69 @@
 @import "@diffgazer/ui/sources.css";
 @import "@diffgazer/ui/styles.css";
 @source "../registry/examples";
+
+/* Docs TUI chrome: sharp corners + reference palette (scoped; web/landing unchanged). */
+.tui-chrome {
+  --radius: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+
+  /* Panels share the page background — not the elevated --surface-1 step. */
+  --panel-bg: var(--background);
+  --panel-hairline: var(--border);
+
+  /* Subtle row/hover fills on near-black (reference uses #131313, not #333). */
+  --secondary: color-mix(in oklab, var(--foreground) 6%, var(--background));
+
+  /* Chrome bands match page background — no elevated gray step. */
+  --tui-chrome-status-bg: var(--background);
+  --tui-chrome-band-bg: var(--background);
+  --surface-1: var(--background);
+}
+
+.tui-chrome [data-slot="panel"][data-frame="hairline"] {
+  border-color: var(--border);
+}
+
+/* Sidebar tree: dimmer inactive links; active fill stays subtle on black. */
+.tui-chrome [data-slot="sidebar"] a:not([data-active="true"]) {
+  color: color-mix(in oklab, var(--foreground) 52%, transparent);
+}
+
+.tui-chrome [data-slot="sidebar"] a:not([data-active="true"]):hover {
+  color: var(--foreground);
+  background-color: color-mix(in oklab, var(--foreground) 4%, transparent);
+}
+
+.tui-chrome [data-slot="sidebar-section-content-inner"] {
+  border-color: color-mix(in oklab, var(--border) 75%, transparent);
+}
+
+/*
+ * Scope select menu — portaled to document.body (outside .tui-chrome shell).
+ * Use explicit panel bg + self-scoped .tui-chrome on the floating panel for tokens.
+ */
+.sidebar-scope-menu.ui-floating-panel {
+  background-color: var(--background);
+}
+
+.sidebar-scope-menu [role="option"] {
+  border-radius: 0;
+  background-color: var(--background);
+}
+
+.sidebar-scope-menu [role="option"][aria-selected="true"] {
+  background-color: color-mix(in oklab, var(--foreground) 8%, var(--background)) !important;
+  color: var(--foreground) !important;
+  font-weight: 600;
+}
+
+.sidebar-scope-menu [role="option"]:not([aria-selected="true"]) {
+  color: color-mix(in oklab, var(--foreground) 55%, transparent);
+}
+
+.sidebar-scope-menu [role="option"]:not([aria-selected="true"]).bg-secondary {
+  background-color: color-mix(in oklab, var(--foreground) 6%, var(--background)) !important;
+  color: var(--foreground) !important;
+}
