@@ -9,8 +9,9 @@ import { toSelectedArray } from "./selection";
 const selectValuePlaceholderVariants = cva("", {
   variants: {
     variant: {
-      default: "text-foreground/50",
-      card: "text-accent-foreground/50",
+      // 55% keeps placeholder text at >=4.5:1 (WCAG AA) on --background.
+      default: "text-foreground/55",
+      card: "text-accent-foreground/55",
     },
   },
   defaultVariants: { variant: "default" },

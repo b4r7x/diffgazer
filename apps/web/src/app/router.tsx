@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { lazy } from "react";
 import { z } from "zod";
+import { RouteLoadingFallback } from "@/components/layout/route-loading-fallback";
 import { requireConfigured, requireNotConfigured } from "../lib/config-guards";
 import { RootLayout } from "./routes/__root";
 import { HomePage } from "./routes/home";
@@ -197,7 +198,12 @@ const routeTree = rootRoute.addChildren([
   ]),
 ]);
 
-export const router = createRouter({ routeTree });
+export const router = createRouter({
+  routeTree,
+  defaultPendingComponent: RouteLoadingFallback,
+  defaultPendingMs: 100,
+  defaultPendingMinMs: 300,
+});
 
 declare module "@tanstack/react-router" {
   interface Register {

@@ -14,28 +14,6 @@ export interface HomeSectionLink {
   count: number;
 }
 
-// One navigable row in the Browse table: a single library section flattened with
-// its parent library so the row can deep-link to /$lib/$ and show a real count.
-export interface HomeBrowseRow {
-  lib: DocsLibraryId;
-  libraryName: string;
-  name: string;
-  splat: string;
-  count: number;
-}
-
-export function toBrowseRows(libraries: HomeLibrary[]): HomeBrowseRow[] {
-  return libraries.flatMap((library) =>
-    library.sections.map((section) => ({
-      lib: library.id,
-      libraryName: library.displayName,
-      name: section.name,
-      splat: section.splat,
-      count: section.count,
-    })),
-  );
-}
-
 // Sections worth surfacing on the entry card, in display priority. The grouped
 // tree may not contain all of them, so this is an intersection, capped at six.
 const MAIN_SECTION_NAMES = [
@@ -77,14 +55,26 @@ function pickMainSections(sections: LandingSection[]): HomeSectionLink[] {
   return links;
 }
 
+/** App docs use product-area separators (Product, Concepts, CLI, …), not ui/keys buckets. */
+function pickAllSections(sections: LandingSection[]): HomeSectionLink[] {
+  const links: HomeSectionLink[] = [];
+  for (const section of sections) {
+    const link = toSectionLink(section);
+    if (link) links.push(link);
+  }
+  return links;
+}
+
 export function buildHomeLibrary(
   config: DocsLibraryConfigData,
   library: DocsLibraryId,
   sections: LandingSection[],
 ): HomeLibrary {
+  const sectionLinks = library === "app" ? pickAllSections(sections) : pickMainSections(sections);
+
   return {
     id: library,
     displayName: config.displayName,
-    sections: pickMainSections(sections),
+    sections: sectionLinks,
   };
 }

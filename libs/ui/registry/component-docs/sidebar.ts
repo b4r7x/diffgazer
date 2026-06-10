@@ -2,7 +2,7 @@ import type { ComponentDoc } from "./types";
 
 export const sidebarDoc: ComponentDoc = {
   description:
-    "Full-height navigation sidebar with tri-state visibility (open/rail/hidden), six active-marker variants, collapsible sections, optional intent tones, mobile sheet, and a configurable global hotkey. Composable parts plus two context providers.",
+    "Full-height navigation sidebar with tri-state visibility (open/rail/hidden), seven active-marker variants, collapsible sections, optional intent tones, mobile sheet, and a configurable global hotkey. Composable parts plus two context providers.",
   anatomy: [
     {
       name: "SidebarProvider",
@@ -74,7 +74,7 @@ export const sidebarDoc: ComponentDoc = {
     {
       title: "Visual variants",
       content:
-        "Six active-marker variants share row metrics (24px line height, JBMono 12px) so glyph slots stay aligned: caret (▸ glyph prefix; active = font-semibold), inverted (full-bleed bg-foreground row), bar (1px border-l on active), bracket ([*]/[ ] glyph prefix), block (soft bg-foreground/8 fill on active), terminal (`>` prompt prefix on active; 1px hairline left rail, no bg fill). Selected via <Sidebar variant=…> and propagated to items via context. Exposed as data-variant on the nav root.",
+        "Seven active-marker variants share row metrics (24px line height, JBMono 12px) so glyph slots stay aligned: caret (▸ glyph prefix; active = font-semibold), inverted (full-bleed bg-foreground row), bar (1px border-l on active), bracket ([*]/[ ] glyph prefix), block (soft bg-foreground/8 fill on active), terminal (`>` prompt prefix on active; 1px hairline left rail, no bg fill), tree (▼/▶ section headers; ├─/└─ item connectors with left guide; active = soft bg fill). Selected via <Sidebar variant=…> and propagated to items via context. Exposed as data-variant on the nav root.",
     },
     {
       title: "Auto-tone (intent dot)",
@@ -89,7 +89,7 @@ export const sidebarDoc: ComponentDoc = {
     {
       title: "Item render props",
       content:
-        "SidebarItem supports a render-prop children for custom elements (e.g. framework Link components). The render function receives ref, className, disabled, aria-current, aria-disabled, data-active, data-intent, data-value, onClick, tabIndex.",
+        "SidebarItem supports a render-prop children for custom elements (e.g. framework Link components). The render function receives ref, className, disabled, aria-current, aria-disabled, data-active, data-intent, data-value, onClick, tabIndex, and itemPrefix — a ReactNode carrying the intent dot, tree connector, and variant glyph. Destructure itemPrefix and render it as the element's leading content; never spread it onto the element.",
     },
     {
       title: "SSR persistence",
@@ -105,6 +105,7 @@ export const sidebarDoc: ComponentDoc = {
     { name: "sidebar-variant-bar", title: "Variant — bar" },
     { name: "sidebar-variant-bracket", title: "Variant — bracket" },
     { name: "sidebar-variant-block", title: "Variant — block" },
+    { name: "sidebar-variant-tree", title: "Variant — tree" },
     { name: "sidebar-collapsible", title: "Collapsible sections" },
     { name: "sidebar-rail", title: "Rail mode" },
     { name: "sidebar-mobile-sheet", title: "Mobile sheet" },
@@ -115,11 +116,11 @@ export const sidebarDoc: ComponentDoc = {
   props: {
     Sidebar: {
       variant: {
-        type: '"caret" | "inverted" | "bar" | "bracket" | "block" | "terminal"',
+        type: '"caret" | "inverted" | "bar" | "bracket" | "block" | "terminal" | "tree"',
         required: false,
         defaultValue: '"caret"',
         description:
-          'Visual variant. "caret" prefixes each item with ▸; "inverted" full-bleeds the active row with bg-foreground; "bar" draws a 1px left border on active; "bracket" prefixes items with [*]/[ ]; "block" applies a soft bg-foreground/8 fill on active; "terminal" prefixes active items with a `>` prompt and draws a 1px hairline left rail with no background fill. Propagated to items via context and exposed as data-variant on the nav root.',
+          'Visual variant. "caret" prefixes each item with ▸; "inverted" full-bleeds the active row with bg-foreground; "bar" draws a 1px left border on active; "bracket" prefixes items with [*]/[ ]; "block" applies a soft bg-foreground/8 fill on active; "terminal" prefixes active items with a `>` prompt and draws a 1px hairline left rail with no background fill; "tree" renders ▼/▶ section headers and ├─/└─ connectors with a left guide and soft active fill. Propagated to items via context and exposed as data-variant on the nav root.',
       },
       autoTone: {
         type: "boolean",
@@ -127,6 +128,13 @@ export const sidebarDoc: ComponentDoc = {
         defaultValue: "false",
         description:
           "When true, renders a small intent dot before each item label and derives intent from the item value via the built-in dictionary unless overridden by an explicit intent prop on the item. Color is decoration only (WCAG 1.4.1) — pair with a text/glyph cue.",
+      },
+      embedded: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description:
+          "When true, keeps navigation inline on mobile instead of portaling into the built-in Dialog sheet. Use when a parent shell already owns the mobile drawer or overlay.",
       },
       children: {
         type: "ReactNode",
@@ -311,7 +319,7 @@ export const sidebarDoc: ComponentDoc = {
         required: true,
         defaultValue: null,
         description:
-          "Item content or a render function (for framework Link components) that receives ref, className, disabled, aria-current, aria-disabled, data-active, data-intent, data-value, onClick, tabIndex.",
+          "Item content or a render function (for framework Link components) that receives ref, className, disabled, aria-current, aria-disabled, data-active, data-intent, data-value, onClick, tabIndex, and itemPrefix. itemPrefix is a ReactNode (intent dot, tree connector, variant glyph) that must be rendered as the element's leading content, never spread onto the element.",
       },
     },
     "Sidebar.ItemLabel": {

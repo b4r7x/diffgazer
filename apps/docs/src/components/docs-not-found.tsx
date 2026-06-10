@@ -1,6 +1,5 @@
-import { buttonVariants } from "@diffgazer/ui/components/button";
-import { Link } from "@tanstack/react-router";
 import { DocsContentLayout } from "@/components/layout/content-layout";
+import { TuiBracketLink } from "@/components/layout/tui-bracket-link";
 import { NotFoundState } from "@/components/not-found-state";
 import { type DocsLibraryId, getDocsLibraryConfig } from "@/lib/library";
 import type { PageTree } from "@/lib/page-tree";
@@ -16,23 +15,18 @@ export function DocsNotFoundBlock({ tree, library }: DocsNotFoundBlockProps) {
   return (
     <DocsContentLayout tree={tree} library={library}>
       <NotFoundState
-        variant="docs"
         title="Documentation page not found"
         description="The page you requested does not exist or was moved."
         primaryAction={
-          <Link
+          <TuiBracketLink
+            variant="primary"
             to="/$lib/$"
             params={{ lib: library, _splat: defaultRouteSlugs.join("/") }}
-            className={buttonVariants({ variant: "primary" })}
           >
             Go to docs home
-          </Link>
+          </TuiBracketLink>
         }
-        secondaryAction={
-          <Link to="/" className={buttonVariants({ variant: "ghost" })}>
-            Go home
-          </Link>
-        }
+        secondaryAction={<TuiBracketLink to="/">Go home</TuiBracketLink>}
       />
     </DocsContentLayout>
   );

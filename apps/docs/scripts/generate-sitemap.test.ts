@@ -21,6 +21,12 @@ describe("getPreRenderPages", () => {
     expect(pages.some((page) => page.path === "/")).toBe(true);
   });
 
+  it("includes legal pages", () => {
+    const pages = getPreRenderPages();
+    expect(pages.some((page) => page.path === "/privacy")).toBe(true);
+    expect(pages.some((page) => page.path === "/terms")).toBe(true);
+  });
+
   it("omits the library roots that redirect to their first page", () => {
     const pages = getPreRenderPages();
     for (const root of ["/ui", "/keys", "/app"]) {

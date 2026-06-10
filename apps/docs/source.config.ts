@@ -12,6 +12,18 @@ export const docs = defineDocs({
   },
 });
 
+export const legal = defineDocs({
+  dir: "content/legal",
+  docs: {
+    schema: frontmatterSchema.extend({
+      lastUpdated: z
+        .union([z.string(), z.date()])
+        .optional()
+        .transform((value) => (value instanceof Date ? value.toISOString().slice(0, 10) : value)),
+    }),
+  },
+});
+
 export default defineConfig({
   mdxOptions: {
     rehypeCodeOptions: {

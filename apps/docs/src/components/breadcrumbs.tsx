@@ -1,14 +1,23 @@
-import { Breadcrumbs as BreadcrumbsBase } from "@diffgazer/ui/components/breadcrumbs";
+import {
+  Breadcrumbs as BreadcrumbsBase,
+  type BreadcrumbsProps,
+} from "@diffgazer/ui/components/breadcrumbs";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { Link, useLocation } from "@tanstack/react-router";
+import { isPrimaryNavigationClick } from "@/components/layout/sidebar";
 import { SECTIONS_WITH_INDEX } from "@/generated/sections-with-index";
 import { isDocsLibraryId } from "@/lib/library";
+
+type DocsBreadcrumbsProps = Pick<BreadcrumbsProps, "className" | "separator"> & {
+  onNavigate?: () => void;
+};
 
 function hasIndexPage(library: string, pathParts: string[], segmentIndex: number): boolean {
   const sectionPath = [library, ...pathParts.slice(0, segmentIndex + 1)].join("/");
   return SECTIONS_WITH_INDEX.has(sectionPath);
 }
 
-export function Breadcrumbs() {
+export function Breadcrumbs({ className, separator, onNavigate }: DocsBreadcrumbsProps = {}) {
   const pathname = useLocation({ select: (l) => l.pathname });
   const parts = pathname.split("/").filter(Boolean);
   const library = parts[0];
@@ -20,7 +29,7 @@ export function Breadcrumbs() {
   if (pathParts.length === 0) return null;
 
   return (
-    <BreadcrumbsBase className="capitalize">
+    <BreadcrumbsBase separator={separator} className={cn("capitalize", className)}>
       {pathParts.map((part, i) => {
         const href = `/${[library, ...pathParts.slice(0, i + 1)].join("/")}`;
         const isLast = i === pathParts.length - 1;
@@ -34,7 +43,14 @@ export function Breadcrumbs() {
             {isLinkable ? (
               <BreadcrumbsBase.Link>
                 {(linkProps) => (
-                  <Link to="/$lib/$" params={{ lib: library, _splat: splat }} {...linkProps}>
+                  <Link
+                    to="/$lib/$"
+                    params={{ lib: library, _splat: splat }}
+                    {...linkProps}
+                    onClick={(event) => {
+                      if (isPrimaryNavigationClick(event)) onNavigate?.();
+                    }}
+                  >
                     {label}
                   </Link>
                 )}

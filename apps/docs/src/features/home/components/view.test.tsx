@@ -1,40 +1,41 @@
 // @vitest-environment jsdom
 
-import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import type { ReactNode } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { render, screen, within } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Boundary mock: @tanstack/react-router is the routing boundary. Link renders an
-// anchor whose href is the resolved /$lib or /$lib/$ target so tests can assert
-// navigation destinations without a full route tree.
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    to,
-    params,
-    children,
-    ...rest
-  }: {
-    to: string;
-    params?: { lib: string; _splat?: string };
-    children: ReactNode;
-  } & Record<string, unknown>) => {
-    let href = to;
-    if (params?.lib) href = href.replace("$lib", params.lib);
-    href = href.replace("/$", params?._splat ? `/${params._splat}` : "");
-    return (
-      <a href={href} {...rest}>
-        {children}
-      </a>
-    );
-  },
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const { RouterLinkMock } = await import("@/testing/router-mock");
+  return {
+    Link: RouterLinkMock,
+    useLocation: ({ select }: { select: (location: { pathname: string }) => unknown }) =>
+      select({ pathname: "/" }),
+  };
+});
 
-import { SearchProvider, useSearchOpen } from "@/lib/search-context";
+import { MobileNavProvider } from "@/lib/mobile-nav-context";
+import { stubMatchMedia } from "@/testing/match-media";
 import type { HomeLibrary } from "../data";
 import { HomeView } from "./view";
 
 const LIBRARIES: HomeLibrary[] = [
+  {
+    id: "app",
+    displayName: "diffgazer",
+    sections: [
+      {
+        name: "Getting Started",
+        splat: "getting-started/installation",
+        count: 4,
+      },
+      { name: "Product", splat: "story", count: 4 },
+      { name: "Concepts", splat: "concepts/overview", count: 3 },
+      { name: "Web Mode", splat: "web/overview", count: 2 },
+      { name: "Terminal UI", splat: "tui/overview", count: 2 },
+      { name: "Reference", splat: "reference/overview", count: 5 },
+      { name: "Registry CLI", splat: "cli/dgadd", count: 6 },
+      { name: "Operations", splat: "operations/overview", count: 2 },
+    ],
+  },
   {
     id: "ui",
     displayName: "@diffgazer/ui",
@@ -46,7 +47,6 @@ const LIBRARIES: HomeLibrary[] = [
       },
       { name: "Components", splat: "components/button", count: 47 },
       { name: "Hooks", splat: "hooks/listbox", count: 11 },
-      { name: "Theme", splat: "theme/tokens", count: 1 },
     ],
   },
   {
@@ -59,113 +59,96 @@ const LIBRARIES: HomeLibrary[] = [
         count: 3,
       },
       { name: "Hooks", splat: "hooks/use-key", count: 9 },
-      { name: "API", splat: "api/keyboard-provider", count: 4 },
     ],
   },
 ];
 
-function SearchProbe() {
-  const { open } = useSearchOpen();
-  return <span data-testid="search-state">{open ? "open" : "closed"}</span>;
-}
-
 function renderHome() {
   return render(
-    <SearchProvider>
-      <SearchProbe />
+    <MobileNavProvider>
       <HomeView libraries={LIBRARIES} />
-    </SearchProvider>,
+    </MobileNavProvider>,
   );
 }
 
-afterEach(cleanup);
+beforeEach(() => {
+  stubMatchMedia({ isDesktop: true });
+  Element.prototype.scrollIntoView = () => {};
+});
 
 describe("HomeView", () => {
   it("exposes an accessible Documentation heading", () => {
     renderHome();
-
     expect(screen.getByRole("heading", { level: 1, name: "Documentation" })).toBeInTheDocument();
   });
 
-  it("opens search when the search affordance is clicked", () => {
+  it("renders the SYS_INFO status block", () => {
     renderHome();
-
-    expect(screen.getByTestId("search-state")).toHaveTextContent("closed");
-
-    fireEvent.click(screen.getByRole("button", { name: /search documentation/i }));
-
-    expect(screen.getByTestId("search-state")).toHaveTextContent("open");
+    expect(screen.getByText("STATUS:")).toBeInTheDocument();
+    expect(screen.getByText("OPERATIONAL")).toBeInTheDocument();
+    expect(screen.getByText(/REGISTRY:/)).toBeInTheDocument();
   });
 
-  it("links the three documentation areas to their roots", () => {
+  it("lists packages in the modules index table", () => {
     renderHome();
 
-    const areas = screen.getByRole("region", { name: "Documentation areas" });
-
-    expect(within(areas).getByRole("link", { name: /^diffgazer AI code review/i })).toHaveAttribute(
+    const modules = screen.getByRole("navigation", { name: "Documentation packages" });
+    expect(within(modules).getByRole("link", { name: /^diffgazer\b/i })).toHaveAttribute(
       "href",
-      "/app",
+      "/app/getting-started/installation",
     );
-
-    expect(within(areas).getByRole("link", { name: /^@diffgazer\/ui/i })).toHaveAttribute(
+    expect(within(modules).getByRole("link", { name: /^@diffgazer\/ui\b/i })).toHaveAttribute(
       "href",
-      "/ui",
+      "/ui/getting-started/installation",
     );
+    expect(within(modules).getByText("47 Comp")).toBeInTheDocument();
+    expect(within(modules).getByText("9 Hooks")).toBeInTheDocument();
+  });
 
-    expect(within(areas).getByRole("link", { name: /^@diffgazer\/keys/i })).toHaveAttribute(
+  it("renders a tree sidebar with library sections", () => {
+    renderHome();
+
+    const sidebar = screen.getByRole("navigation", { name: "Primary" });
+    expect(within(sidebar).getByRole("heading", { name: "@diffgazer/ui" })).toBeInTheDocument();
+    expect(within(sidebar).getByRole("link", { name: /Components \(47\)/i })).toHaveAttribute(
       "href",
-      "/keys",
+      "/ui/components/button",
     );
   });
 
-  it("surfaces the real component and hook counts on the area cards", () => {
+  it("places the page h1 before the sidebar section headings in DOM order", () => {
     renderHome();
 
-    const areas = screen.getByRole("region", { name: "Documentation areas" });
-    expect(within(areas).getByText(/browse 47 components/i)).toBeInTheDocument();
-    expect(within(areas).getByText(/browse 9 hooks/i)).toBeInTheDocument();
-  });
-
-  it("titles the browse section with an accurate, non-recency heading", () => {
-    renderHome();
-
-    expect(screen.getByRole("heading", { level: 2, name: "Browse the docs" })).toBeInTheDocument();
-    expect(screen.queryByText(/recent updates/i)).not.toBeInTheDocument();
-  });
-
-  it("lists every library section as a navigable Browse row", () => {
-    renderHome();
-
-    const browse = screen.getByRole("navigation", {
-      name: "Browse documentation",
-    });
-
-    const componentsRow = within(browse).getByRole("link", {
-      name: /components/i,
-    });
-    expect(componentsRow).toHaveAttribute("href", "/ui/components/button");
-
-    const keysApiRow = within(browse).getByRole("link", { name: /api/i });
-    expect(keysApiRow).toHaveAttribute("href", "/keys/api/keyboard-provider");
-
-    // One row per library section across both libraries (4 + 3).
-    expect(within(browse).getAllByRole("link")).toHaveLength(7);
-    for (const link of within(browse).getAllByRole("link")) {
-      expect(link.getAttribute("href")).toMatch(/^\/(ui|keys)\/.+/);
+    const h1 = screen.getByRole("heading", { level: 1, name: "Documentation" });
+    const h3s = screen.getAllByRole("heading", { level: 3 });
+    expect(h3s.length).toBeGreaterThan(0);
+    for (const h3 of h3s) {
+      expect(h1.compareDocumentPosition(h3) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     }
   });
 
-  it("exposes available external links in the footer", () => {
+  it("hides the decorative END OF DIRECTORY divider from assistive tech", () => {
     renderHome();
 
-    const footerNav = screen.getByRole("navigation", {
-      name: "External links",
-    });
-    expect(within(footerNav).getByRole("link", { name: "GitHub" })).toHaveAttribute(
-      "href",
-      "https://github.com/b4r7x/diffgazer",
-    );
-    expect(within(footerNav).queryByRole("link", { name: "NPM" })).not.toBeInTheDocument();
-    expect(within(footerNav).getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/ui");
+    const modules = screen.getByRole("navigation", { name: "Documentation packages" });
+    const divider = within(modules).getByText("END OF DIRECTORY");
+    expect(divider.closest('[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it("makes the main content region programmatically focusable", () => {
+    renderHome();
+
+    const main = screen.getByRole("main");
+    expect(main).toHaveAttribute("id", "main-content");
+    main.focus();
+    expect(main).toHaveFocus();
+  });
+
+  it("lets the main column scroll below lg while keeping the fixed layout at lg", () => {
+    renderHome();
+
+    const main = screen.getByRole("main");
+    expect(main.className).toContain("overflow-y-auto");
+    expect(main.className).toContain("lg:overflow-hidden");
   });
 });

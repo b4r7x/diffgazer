@@ -7,7 +7,7 @@ import {
   type SettingsAction,
 } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { Menu } from "../../../components/ui/menu";
 import { Panel } from "../../../components/ui/panel";
 import { SectionHeader } from "../../../components/ui/section-header";
@@ -28,6 +28,34 @@ const SETTINGS_ROUTE_MAP: Record<SettingsAction, Route["screen"]> = {
   diagnostics: "settings/diagnostics",
 };
 
+function HubFrame({
+  columns,
+  children,
+  footer,
+}: {
+  columns: number;
+  children: ReactNode;
+  footer?: ReactNode;
+}): ReactElement {
+  return (
+    <Box justifyContent="center" alignItems="center" flexGrow={1}>
+      <Box width={Math.min(columns, 70)} flexDirection="column">
+        <Panel>
+          <Panel.Content>
+            <Box flexDirection="column" gap={1}>
+              <SectionHeader variant="muted" bold={false}>
+                Settings Hub
+              </SectionHeader>
+              {children}
+            </Box>
+          </Panel.Content>
+        </Panel>
+        {footer}
+      </Box>
+    </Box>
+  );
+}
+
 export function SettingsHubScreen(): ReactElement {
   useScope("settings-hub");
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
@@ -47,50 +75,23 @@ export function SettingsHubScreen(): ReactElement {
 
   const guard = guardQueryState(initQuery, {
     loading: () => (
-      <Box justifyContent="center" alignItems="center" flexGrow={1}>
-        <Box width={Math.min(columns, 70)}>
-          <Panel>
-            <Panel.Content>
-              <Box flexDirection="column" gap={1}>
-                <SectionHeader>Settings Hub</SectionHeader>
-                <Spinner label="Loading settings..." />
-              </Box>
-            </Panel.Content>
-          </Panel>
-        </Box>
-      </Box>
+      <HubFrame columns={columns}>
+        <Spinner label="Loading settings..." />
+      </HubFrame>
     ),
     error: (err) => (
-      <Box justifyContent="center" alignItems="center" flexGrow={1}>
-        <Box width={Math.min(columns, 70)}>
-          <Panel>
-            <Panel.Content>
-              <Box flexDirection="column" gap={1}>
-                <SectionHeader>Settings Hub</SectionHeader>
-                <Text color="red">Error: {err.message}</Text>
-              </Box>
-            </Panel.Content>
-          </Panel>
-        </Box>
-      </Box>
+      <HubFrame columns={columns}>
+        <Text color="red">Error: {err.message}</Text>
+      </HubFrame>
     ),
   });
   if (guard) return guard;
 
   if (settingsQuery.isLoading) {
     return (
-      <Box justifyContent="center" alignItems="center" flexGrow={1}>
-        <Box width={Math.min(columns, 70)}>
-          <Panel>
-            <Panel.Content>
-              <Box flexDirection="column" gap={1}>
-                <SectionHeader>Settings Hub</SectionHeader>
-                <Spinner label="Loading settings..." />
-              </Box>
-            </Panel.Content>
-          </Panel>
-        </Box>
-      </Box>
+      <HubFrame columns={columns}>
+        <Spinner label="Loading settings..." />
+      </HubFrame>
     );
   }
 
@@ -106,22 +107,9 @@ export function SettingsHubScreen(): ReactElement {
   const settingsError = settingsQuery.error?.message ?? null;
 
   return (
-    <Box justifyContent="center" alignItems="center" flexGrow={1}>
-      <Box width={Math.min(columns, 70)} flexDirection="column">
-        <Panel>
-          <Panel.Content>
-            <Box flexDirection="column" gap={1}>
-              <SectionHeader>Settings Hub</SectionHeader>
-              <Menu variant="hub" onSelect={onSelect}>
-                {SETTINGS_MENU_ITEMS.map((item) => (
-                  <Menu.Item key={item.id} id={item.id} value={values[item.id]}>
-                    {item.label}
-                  </Menu.Item>
-                ))}
-              </Menu>
-            </Box>
-          </Panel.Content>
-        </Panel>
+    <HubFrame
+      columns={columns}
+      footer={
         <Box marginTop={1} gap={2}>
           <Text dimColor>config path: ~/.diffgazer/config.json</Text>
           <Text dimColor>|</Text>
@@ -129,7 +117,15 @@ export function SettingsHubScreen(): ReactElement {
             {settingsError ?? "local settings"}
           </Text>
         </Box>
-      </Box>
-    </Box>
+      }
+    >
+      <Menu variant="hub" onSelect={onSelect}>
+        {SETTINGS_MENU_ITEMS.map((item) => (
+          <Menu.Item key={item.id} id={item.id} value={values[item.id]}>
+            {item.label}
+          </Menu.Item>
+        ))}
+      </Menu>
+    </HubFrame>
   );
 }

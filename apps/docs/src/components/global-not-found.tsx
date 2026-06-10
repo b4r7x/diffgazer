@@ -1,25 +1,23 @@
-import { Button } from "@diffgazer/ui/components/button";
-import { Link } from "@tanstack/react-router";
+import { TuiBracketLink } from "@/components/layout/tui-bracket-link";
 import { NotFoundState } from "@/components/not-found-state";
 import { PRIMARY_DOCS_LIBRARY_ID } from "@/lib/library";
 
 export function GlobalNotFound() {
   return (
-    <main id="main-content" className="px-4">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="flex min-h-0 min-w-0 flex-1 flex-col outline-hidden"
+    >
       <NotFoundState
-        variant="global"
         title="Page not found"
         description="The requested route does not exist."
         primaryAction={
-          <Link to="/$lib" params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}>
-            <Button variant="primary">Open docs</Button>
-          </Link>
+          <TuiBracketLink variant="primary" to="/$lib" params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}>
+            Open docs
+          </TuiBracketLink>
         }
-        secondaryAction={
-          <Link to="/">
-            <Button variant="ghost">Go home</Button>
-          </Link>
-        }
+        secondaryAction={<TuiBracketLink to="/">GO_HOME</TuiBracketLink>}
       />
     </main>
   );

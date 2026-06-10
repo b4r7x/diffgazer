@@ -6,11 +6,13 @@ test.describe("Select", () => {
     await page.goto("/ui/components/select");
     await expect(page.getByRole("heading", { level: 1, name: /select/i })).toBeVisible();
 
-    const combo = page.getByRole("combobox").first();
+    const combo = page.getByRole("main").getByRole("combobox").first();
     await combo.focus();
     await page.keyboard.press("Enter");
 
-    const listbox = page.getByRole("listbox").first();
+    const listboxId = await combo.getAttribute("aria-controls");
+    expect(listboxId).toBeTruthy();
+    const listbox = page.locator(`[id="${listboxId}"]`);
     await expect(listbox).toBeVisible();
     await expect(listbox).toHaveScreenshot("select-listbox-open.png");
 

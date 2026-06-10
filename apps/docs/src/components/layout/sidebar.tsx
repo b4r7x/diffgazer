@@ -1,9 +1,7 @@
-import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import {
-  Sidebar,
-  SidebarContent,
   SidebarItem,
   SidebarSection,
+  SidebarSectionContent,
   SidebarSectionTitle,
 } from "@diffgazer/ui/components/sidebar";
 import { Spinner } from "@diffgazer/ui/components/spinner";
@@ -13,6 +11,7 @@ import { type MouseEvent, useEffect, useRef } from "react";
 import { DOCS_LIBRARY_IDS, type DocsLibraryId, routeSplatFromDocsPath } from "@/lib/library";
 import type { PageTree, PageTreeNode } from "@/lib/page-tree";
 import { usePendingDocsRoute } from "@/lib/use-pending-docs-route";
+import { TreeSidebarShell } from "./tree-sidebar-shell";
 
 interface DocsSidebarProps {
   tree: PageTree;
@@ -32,7 +31,7 @@ function sectionKey(title: string, items: PageTreeNode[]): string {
 }
 
 function formatSectionLabel(title: string): string {
-  return `/${title.toLowerCase().replace(/\s+/g, "_")}`;
+  return title.trim() || "Section";
 }
 
 function getSlug(path: string): string {
@@ -137,83 +136,85 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
   const sections = groupBySection(tree.children);
 
   return (
-    <Sidebar variant="terminal" className="w-full">
-      <SidebarContent className="p-0 overflow-hidden">
-        <ScrollArea className="h-full">
-          <div className="px-3 pt-2 pb-4" ref={navContainerRef}>
-            {sections.map((section) => {
-              const indexUrl = findSectionIndexUrl(section.items);
-              return (
-                <SidebarSection key={section.key}>
-                  {section.title && (
-                    <SidebarSectionTitle>{formatSectionLabel(section.title)}</SidebarSectionTitle>
-                  )}
+    <TreeSidebarShell innerRef={navContainerRef}>
+      {sections.map((section) => {
+        const indexUrl = findSectionIndexUrl(section.items);
+        const sectionHasActive = section.items.some(
+          (item) => item.url && (pathname === item.url || pendingPathname === item.url),
+        );
+        return (
+          <SidebarSection key={section.key} collapsible defaultOpen>
+            {section.title ? (
+              <SidebarSectionTitle
+                className={cn(
+                  sectionHasActive ? "text-foreground" : "font-medium text-muted-foreground",
+                )}
+              >
+                {formatSectionLabel(section.title)}
+              </SidebarSectionTitle>
+            ) : null}
 
-                  {section.items.map((item) => {
-                    const url = item.url ?? "";
-                    const label = sidebarItemLabel(section.title, indexUrl, item);
-                    const indented = isIndentedItem(url);
+            <SidebarSectionContent>
+              {section.items.map((item) => {
+                const url = item.url ?? "";
+                const label = sidebarItemLabel(section.title, indexUrl, item);
+                const indented = isIndentedItem(url);
 
-                    const isPending = pendingPathname === url;
-                    const isCurrentUrl = pathname === url;
-                    const itemContent = isPending ? (
-                      <Spinner size="sm" className="ml-2" />
-                    ) : (
-                      <span
-                        className={cn(
-                          "text-xs font-mono",
-                          indented && "pl-3 text-muted-foreground",
-                        )}
-                      >
-                        {indented ? `· ${label}` : label}
-                      </span>
-                    );
+                const isPending = pendingPathname === url;
+                const isCurrentUrl = pathname === url;
+                const itemContent = isPending ? (
+                  <Spinner size="sm" className="ml-2" />
+                ) : (
+                  <span className={cn("text-xs font-mono", indented && "text-muted-foreground")}>
+                    {label}
+                  </span>
+                );
 
-                    return (
-                      <SidebarItem
-                        key={url}
-                        active={pathname === url || isPending}
-                        onClick={(event) => {
-                          if (!isPrimaryNavigationClick(event)) return;
-                          onNavigate?.();
-                        }}
-                      >
-                        {({ ref: _ref, ...itemProps }) =>
-                          isCurrentUrl ? (
-                            <a
-                              href={url}
-                              {...itemProps}
-                              data-value={url}
-                              onClick={(event) => {
-                                itemProps.onClick?.(event);
-                                if (isPrimaryNavigationClick(event)) event.preventDefault();
-                              }}
-                            >
-                              {itemContent}
-                            </a>
-                          ) : (
-                            <Link
-                              to="/$lib/$"
-                              params={{
-                                lib: library,
-                                _splat: routeSplatFromDocsPath(url),
-                              }}
-                              {...itemProps}
-                              data-value={url}
-                            >
-                              {itemContent}
-                            </Link>
-                          )
-                        }
-                      </SidebarItem>
-                    );
-                  })}
-                </SidebarSection>
-              );
-            })}
-          </div>
-        </ScrollArea>
-      </SidebarContent>
-    </Sidebar>
+                return (
+                  <SidebarItem
+                    key={url}
+                    active={pathname === url || isPending}
+                    onClick={(event) => {
+                      if (!isPrimaryNavigationClick(event)) return;
+                      onNavigate?.();
+                    }}
+                  >
+                    {({ itemPrefix, ref: _ref, ...itemProps }) =>
+                      isCurrentUrl ? (
+                        <a
+                          href={url}
+                          {...itemProps}
+                          data-value={url}
+                          onClick={(event) => {
+                            itemProps.onClick?.(event);
+                            if (isPrimaryNavigationClick(event)) event.preventDefault();
+                          }}
+                        >
+                          {itemPrefix}
+                          {itemContent}
+                        </a>
+                      ) : (
+                        <Link
+                          to="/$lib/$"
+                          params={{
+                            lib: library,
+                            _splat: routeSplatFromDocsPath(url),
+                          }}
+                          {...itemProps}
+                          data-value={url}
+                        >
+                          {itemPrefix}
+                          {itemContent}
+                        </Link>
+                      )
+                    }
+                  </SidebarItem>
+                );
+              })}
+            </SidebarSectionContent>
+          </SidebarSection>
+        );
+      })}
+    </TreeSidebarShell>
   );
 }

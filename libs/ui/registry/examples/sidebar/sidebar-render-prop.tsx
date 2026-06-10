@@ -21,8 +21,9 @@ export default function SidebarRenderProp() {
         <SidebarSection>
           <SidebarSectionTitle>Pages</SidebarSectionTitle>
           <SidebarItem active>
-            {({ ref, ...itemProps }) => (
+            {({ itemPrefix, ref, ...itemProps }) => (
               <a {...itemProps} ref={ref as Ref<HTMLAnchorElement>} href="/dashboard">
+                {itemPrefix}
                 <SidebarItemLabel>Dashboard</SidebarItemLabel>
                 <SidebarItemBadge>
                   <span className="text-xs text-muted-foreground">3</span>
@@ -31,15 +32,17 @@ export default function SidebarRenderProp() {
             )}
           </SidebarItem>
           <SidebarItem>
-            {({ ref, ...itemProps }) => (
+            {({ itemPrefix, ref, ...itemProps }) => (
               <a {...itemProps} ref={ref as Ref<HTMLAnchorElement>} href="/settings">
+                {itemPrefix}
                 <SidebarItemLabel>Settings</SidebarItemLabel>
               </a>
             )}
           </SidebarItem>
           <SidebarItem disabled>
-            {({ ref, disabled, ...itemProps }) => (
+            {({ itemPrefix, ref, disabled, ...itemProps }) => (
               <a {...itemProps} ref={ref as Ref<HTMLAnchorElement>} aria-disabled={disabled}>
+                {itemPrefix}
                 <SidebarItemLabel>Admin</SidebarItemLabel>
               </a>
             )}

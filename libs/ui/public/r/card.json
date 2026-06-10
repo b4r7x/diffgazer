@@ -6,6 +6,7 @@
   "dependencies": ["class-variance-authority"],
   "registryDependencies": [
     "https://r.b4r7.dev/r/ui/theme.json",
+    "https://r.b4r7.dev/r/ui/corner-label-variants.json",
     "https://r.b4r7.dev/r/ui/utils.json"
   ],
   "files": [
@@ -46,7 +47,7 @@
     },
     {
       "path": "registry/ui/card/card-label.tsx",
-      "content": "import { cva, type VariantProps } from \"class-variance-authority\";\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport const cardLabelVariants = cva(\n  \"absolute -top-3 left-4 z-[var(--z-base)] bg-background px-2 text-xs font-bold uppercase tracking-wider text-muted-foreground\",\n  {\n    variants: {\n      variant: {\n        border: \"border border-border\",\n        gap: \"\",\n      },\n    },\n    defaultVariants: { variant: \"border\" },\n  },\n);\n\nexport type CardLabelProps = ComponentPropsWithRef<\"div\"> & VariantProps<typeof cardLabelVariants>;\n\nexport function CardLabel({ className, variant, ...props }: CardLabelProps) {\n  return (\n    <div\n      data-slot=\"card-label\"\n      className={cn(cardLabelVariants({ variant }), className)}\n      {...props}\n    />\n  );\n}\n",
+      "content": "import type { VariantProps } from \"class-variance-authority\";\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cornerLabelVariants } from \"@/lib/corner-label-variants\";\nimport { cn } from \"@/lib/utils\";\n\nexport const cardLabelVariants = cornerLabelVariants;\n\nexport type CardLabelProps = ComponentPropsWithRef<\"div\"> & VariantProps<typeof cardLabelVariants>;\n\nexport function CardLabel({ className, variant, ...props }: CardLabelProps) {\n  return (\n    <div\n      data-slot=\"card-label\"\n      className={cn(cardLabelVariants({ variant }), className)}\n      {...props}\n    />\n  );\n}\n",
       "type": "registry:ui"
     },
     {

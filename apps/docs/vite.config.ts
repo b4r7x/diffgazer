@@ -88,6 +88,7 @@ const config = defineConfig(() => {
         "@/lib/utils": uiRegistryPath("lib/utils"),
         "@/lib/aria": uiRegistryPath("lib/aria"),
         "@/lib/compose-refs": uiRegistryPath("lib/compose-refs"),
+        "@/lib/corner-label-variants": uiRegistryPath("lib/corner-label-variants"),
         "@/lib/diff": uiRegistryPath("lib/diff"),
         "@/lib/floating-position": uiRegistryPath("lib/floating-position"),
         "@/lib/floating-position-constants": uiRegistryPath("lib/floating-position-constants"),

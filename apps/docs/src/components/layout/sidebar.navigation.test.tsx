@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import type { AnchorHTMLAttributes, MouseEventHandler, ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PageTree } from "@/lib/page-tree";
+import { stubMatchMedia } from "@/testing/match-media";
 import { DocsSidebar } from "./sidebar";
 
 const routerBoundary = vi.hoisted(() => ({
@@ -85,19 +86,7 @@ function renderSidebar(onNavigate = vi.fn()) {
 }
 
 beforeEach(() => {
-  Object.defineProperty(window, "matchMedia", {
-    value: (query: string) => ({
-      addEventListener: () => {},
-      addListener: () => {},
-      dispatchEvent: () => false,
-      matches: false,
-      media: query,
-      onchange: null,
-      removeEventListener: () => {},
-      removeListener: () => {},
-    }),
-    writable: true,
-  });
+  stubMatchMedia({ isDesktop: true });
   Element.prototype.scrollIntoView = () => {};
   routerBoundary.navigations.length = 0;
   routerBoundary.pathname = "/ui/components/button";

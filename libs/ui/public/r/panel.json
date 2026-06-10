@@ -6,12 +6,13 @@
   "dependencies": ["class-variance-authority"],
   "registryDependencies": [
     "https://r.b4r7.dev/r/ui/theme.json",
+    "https://r.b4r7.dev/r/ui/corner-label-variants.json",
     "https://r.b4r7.dev/r/ui/utils.json"
   ],
   "files": [
     {
       "path": "registry/ui/panel/index.ts",
-      "content": "\"use client\";\nimport { type PanelProps, Panel as PanelRoot } from \"./panel\";\nimport { PanelContent, type PanelContentProps, panelContentVariants } from \"./panel-content\";\nimport { PanelDescription, type PanelDescriptionProps } from \"./panel-description\";\nimport { PanelFooter, type PanelFooterProps } from \"./panel-footer\";\nimport { PanelHeader, type PanelHeaderProps } from \"./panel-header\";\nimport { PanelRow, type PanelRowProps } from \"./panel-row\";\nimport { PanelTitle, type PanelTitleProps } from \"./panel-title\";\n\nconst Panel = Object.assign(PanelRoot, {\n  Header: PanelHeader,\n  Title: PanelTitle,\n  Description: PanelDescription,\n  Content: PanelContent,\n  Row: PanelRow,\n  Footer: PanelFooter,\n});\n\nexport { Panel, type PanelProps };\nexport { PanelHeader, type PanelHeaderProps };\nexport { PanelTitle, type PanelTitleProps };\nexport { PanelDescription, type PanelDescriptionProps };\nexport { PanelContent, type PanelContentProps, panelContentVariants };\nexport { PanelFooter, type PanelFooterProps };\nexport { PanelRow, type PanelRowProps };\n",
+      "content": "\"use client\";\nimport { type PanelProps, Panel as PanelRoot } from \"./panel\";\nimport { PanelContent, type PanelContentProps, panelContentVariants } from \"./panel-content\";\nimport { PanelDescription, type PanelDescriptionProps } from \"./panel-description\";\nimport { PanelFooter, type PanelFooterProps } from \"./panel-footer\";\nimport { PanelHeader, type PanelHeaderProps } from \"./panel-header\";\nimport { PanelLabel, type PanelLabelProps, panelLabelVariants } from \"./panel-label\";\nimport { PanelRow, type PanelRowProps } from \"./panel-row\";\nimport { PanelTitle, type PanelTitleProps } from \"./panel-title\";\n\nconst Panel = Object.assign(PanelRoot, {\n  Header: PanelHeader,\n  Title: PanelTitle,\n  Description: PanelDescription,\n  Content: PanelContent,\n  Row: PanelRow,\n  Footer: PanelFooter,\n  Label: PanelLabel,\n});\n\nexport { Panel, type PanelProps };\nexport { PanelHeader, type PanelHeaderProps };\nexport { PanelTitle, type PanelTitleProps };\nexport { PanelDescription, type PanelDescriptionProps };\nexport { PanelContent, type PanelContentProps, panelContentVariants };\nexport { PanelFooter, type PanelFooterProps };\nexport { PanelRow, type PanelRowProps };\nexport { PanelLabel, panelLabelVariants, type PanelLabelProps };\n",
       "type": "registry:ui"
     },
     {
@@ -52,6 +53,11 @@
     {
       "path": "registry/ui/panel/panel-footer.tsx",
       "content": "import type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type PanelFooterProps = ComponentPropsWithRef<\"div\">;\n\nexport function PanelFooter({ className, ...props }: PanelFooterProps) {\n  return (\n    <div\n      {...props}\n      data-slot=\"panel-footer\"\n      className={cn(\"text-xs text-muted-foreground\", className)}\n    />\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/panel/panel-label.tsx",
+      "content": "import type { VariantProps } from \"class-variance-authority\";\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cornerLabelVariants } from \"@/lib/corner-label-variants\";\nimport { cn } from \"@/lib/utils\";\n\nexport const panelLabelVariants = cornerLabelVariants;\n\nexport type PanelLabelProps = ComponentPropsWithRef<\"div\"> &\n  VariantProps<typeof panelLabelVariants>;\n\nexport function PanelLabel({ className, variant, ...props }: PanelLabelProps) {\n  return (\n    <div\n      data-slot=\"panel-label\"\n      className={cn(panelLabelVariants({ variant }), className)}\n      {...props}\n    />\n  );\n}\n",
       "type": "registry:ui"
     },
     {

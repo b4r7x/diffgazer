@@ -1,11 +1,14 @@
 import { KeyboardProvider } from "@diffgazer/keys";
-import { Button, buttonVariants } from "@diffgazer/ui/components/button";
+import { Button } from "@diffgazer/ui/components/button";
 import { Toaster } from "@diffgazer/ui/components/toast";
-import { createRootRoute, HeadContent, Link, Outlet, Scripts } from "@tanstack/react-router";
+import type { ErrorComponentProps } from "@tanstack/react-router";
+import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { TanstackProvider } from "fumadocs-core/framework/tanstack";
 import type { ReactNode } from "react";
 import { GlobalNotFound } from "@/components/global-not-found";
-import { NotFoundState } from "@/components/not-found-state";
+import { TuiBracketLink } from "@/components/layout/tui-bracket-link";
+import { TuiFaultPanel } from "@/components/layout/tui-fault-panel";
+import { TuiShell } from "@/components/layout/tui-shell";
 import { SearchDialog } from "@/features/search/components/dialog";
 import { PRIMARY_DOCS_LIBRARY_ID } from "@/lib/library";
 import { SearchProvider } from "@/lib/search-context";
@@ -71,7 +74,9 @@ function RootLayout() {
           Skip to content
         </a>
         <SearchProvider>
-          <Outlet />
+          <TuiShell>
+            <Outlet />
+          </TuiShell>
           <SearchDialog />
         </SearchProvider>
         <Toaster />
@@ -80,30 +85,32 @@ function RootLayout() {
   );
 }
 
-function RootErrorBoundary({ reset }: { reset: () => void }) {
+function RootErrorBoundary({ error, reset }: ErrorComponentProps) {
   return (
-    <main id="main-content" className="px-4">
-      <NotFoundState
-        variant="global"
-        statusLabel="ERROR"
-        title="Something went wrong"
-        description="An unexpected error occurred while rendering this page."
-        primaryAction={
-          <Button variant="primary" onClick={() => reset()}>
-            Try again
-          </Button>
-        }
-        secondaryAction={
-          <Link
-            to="/$lib"
-            params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}
-            className={buttonVariants({ variant: "ghost" })}
-          >
-            Open docs
-          </Link>
-        }
-      />
-    </main>
+    <div className="tui-chrome flex h-dvh flex-col overflow-hidden bg-background text-foreground">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="flex min-h-0 min-w-0 flex-1 flex-col outline-hidden"
+      >
+        <TuiFaultPanel
+          statusCode="ERR_RENDER"
+          title="Something went wrong"
+          description="An unexpected error occurred while rendering this page."
+          detail={import.meta.env.DEV ? error.message : undefined}
+          primaryAction={
+            <Button variant="primary" bracket onClick={() => reset()}>
+              Try again
+            </Button>
+          }
+          secondaryAction={
+            <TuiBracketLink to="/$lib" params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}>
+              OPEN_DOCS
+            </TuiBracketLink>
+          }
+        />
+      </main>
+    </div>
   );
 }
 

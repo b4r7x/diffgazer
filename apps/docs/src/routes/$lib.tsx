@@ -1,8 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { DocsNotFoundBlock } from "@/components/docs-not-found";
-import { Footer } from "@/components/layout/footer";
-import { Header } from "@/components/layout/header";
 import {
   getDocsLibraryConfig,
   isDocsLibraryId,
@@ -49,15 +47,9 @@ export const Route = createFileRoute("/$lib")({
 });
 
 function DocsShell() {
-  const { library } = Route.useLoaderData();
-
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-      <Header library={library} />
-      <div className="flex-1 min-w-0 min-h-0 overflow-hidden flex flex-col">
-        <Outlet />
-      </div>
-      <Footer />
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <Outlet />
     </div>
   );
 }

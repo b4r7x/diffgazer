@@ -20,6 +20,7 @@ const INSET_EXAMPLES = new Set<string>([
   "sidebar-variant-bracket",
   "sidebar-variant-caret",
   "sidebar-variant-inverted",
+  "sidebar-variant-tree",
   "sidebar-render-prop",
   "sidebar-auto-tone",
 ]);

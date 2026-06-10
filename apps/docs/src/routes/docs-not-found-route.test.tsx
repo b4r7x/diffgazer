@@ -4,6 +4,7 @@ import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/rea
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PageTree } from "@/lib/page-tree";
+import { stubMatchMedia } from "@/testing/match-media";
 import { routeTree } from "../routeTree.gen";
 
 const docsPageTree: PageTree = {
@@ -21,6 +22,9 @@ vi.mock("@tanstack/react-start", () => ({
       handler:
         () =>
         async ({ data }: { data?: Record<string, unknown> } = {}) => {
+          if (data && "slug" in data) {
+            return null;
+          }
           if (data && "library" in data) {
             return { library: data.library, pageTree: docsPageTree };
           }
@@ -32,18 +36,7 @@ vi.mock("@tanstack/react-start", () => ({
 }));
 
 function installBrowserMocks() {
-  Object.defineProperty(window, "matchMedia", {
-    writable: true,
-    value: vi.fn().mockImplementation((query: string) => ({
-      matches: true,
-      media: query,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    })),
-  });
+  stubMatchMedia({ isDesktop: false });
 
   HTMLDialogElement.prototype.showModal = vi.fn(function showModal(this: HTMLDialogElement) {
     this.open = true;
@@ -75,5 +68,13 @@ describe("docs route not-found handling", () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Something went wrong" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Page not found" })).not.toBeInTheDocument();
+  });
+
+  it("renders the root not-found inside a single chrome when a loader throws notFound()", async () => {
+    renderRoute("/privacy");
+
+    expect(await screen.findByRole("heading", { name: "Page not found" })).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Skip to content" })).toHaveLength(1);
+    expect(screen.getAllByRole("navigation", { name: "Primary" })).toHaveLength(1);
   });
 });

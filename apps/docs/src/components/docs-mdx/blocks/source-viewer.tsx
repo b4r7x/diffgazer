@@ -10,8 +10,8 @@ import {
   CodeBlockLine,
   InlineCode,
 } from "@diffgazer/ui/components/code-block";
-import { Typography } from "@diffgazer/ui/components/typography";
 import { CopyButton } from "@/components/copy-button";
+import { SourceHeading } from "@/components/docs-mdx/source-heading";
 import { SourceViewer } from "@/components/docs-mdx/source-viewer";
 import { type CrossDepSourceFile, resolveCrossDepFiles } from "@/lib/cross-deps-data";
 import { type DocsLibraryId, getInstallCommand } from "@/lib/library";
@@ -73,15 +73,9 @@ function ComponentSourceViewer({ data, library }: { data: ComponentData; library
 function HookSourceViewer({ data }: { data: HookData }) {
   return (
     <div className="mb-8">
-      <div
-        className="flex items-baseline justify-between mt-10 mb-4 pb-2 border-b border-border scroll-mt-16"
-        id="source"
-      >
-        <Typography as="h2" size="xl" className="font-bold text-foreground">
-          Source
-        </Typography>
+      <SourceHeading>
         <CopyButton text={data.source.raw} label={`Copy ${data.title}`} />
-      </div>
+      </SourceHeading>
       <Accordion collapsible className="divide-y-0">
         <AccordionItem value="source" className="py-0">
           <AccordionTrigger variant="source">View hook source</AccordionTrigger>

@@ -334,10 +334,13 @@ describe("Select controlled state", () => {
     onHighlightChange.mockClear();
 
     const appleOption = screen.getByRole("option", { name: /apple/i });
-    await userEvent.hover(screen.getByRole("option", { name: /banana/i }));
+    const bananaOption = screen.getByRole("option", { name: /banana/i });
+    await userEvent.hover(bananaOption);
 
     expect(onHighlightChange).not.toHaveBeenCalled();
     expect(screen.getByRole("listbox")).toHaveAttribute("aria-activedescendant", appleOption.id);
+    expect(appleOption).toHaveAttribute("data-highlighted", "true");
+    expect(bananaOption).not.toHaveAttribute("data-highlighted");
   });
 
   it("assigns a div element to the forwarded ref", () => {

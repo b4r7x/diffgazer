@@ -10,6 +10,7 @@ import { useKey, useScope } from "@diffgazer/keys";
 import { Menu, MenuItem } from "@diffgazer/ui/components/menu";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { useNavigate } from "@tanstack/react-router";
+import { HubCornerLabel } from "@/components/shared/hub-corner-label";
 import { useConfigData } from "@/hooks/use-config";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
@@ -101,18 +102,21 @@ export function SettingsHubPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-4 pb-12">
+    <div className="flex-1 flex flex-col items-center justify-center px-4 pb-12 pt-4">
       <div className="w-full max-w-3xl">
-        <Panel className="bg-tui-bg shadow-2xl">
-          <Panel.Header>
-            <Panel.Title>SETTINGS HUB</Panel.Title>
-          </Panel.Header>
+        <Panel
+          frame="hairline"
+          density="compact"
+          aria-label="Settings Hub"
+          className="mt-4 bg-tui-bg shadow-2xl"
+        >
+          <HubCornerLabel>Settings Hub</HubCornerLabel>
           <Menu
             highlighted={effectiveHighlighted}
             onHighlightChange={setHighlighted}
             onSelect={handleActivate}
             variant="hub"
-            className="flex flex-col text-sm pt-2"
+            className="flex flex-col text-sm"
             autoFocus
           >
             {SETTINGS_MENU_ITEMS.map((item) => {
@@ -129,13 +133,11 @@ export function SettingsHubPage() {
               );
             })}
           </Menu>
+          <Panel.Footer className="font-mono">
+            <span>config path: ~/.diffgazer/config.json</span>
+            <span>{settingsError ?? "local settings"}</span>
+          </Panel.Footer>
         </Panel>
-
-        <div className="mt-6 flex gap-4 text-xs text-muted-foreground font-mono select-none">
-          <span>config path: ~/.diffgazer/config.json</span>
-          <span className="text-muted-foreground">|</span>
-          <span>{settingsError ? settingsError : "local settings"}</span>
-        </div>
       </div>
     </div>
   );

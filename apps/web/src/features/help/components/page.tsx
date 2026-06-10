@@ -4,6 +4,7 @@ import { Kbd } from "@diffgazer/ui/components/kbd";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { Typography } from "@diffgazer/ui/components/typography";
 import { useNavigate } from "@tanstack/react-router";
+import { HubCornerLabel } from "@/components/shared/hub-corner-label";
 
 const SHORTCUTS = [
   { key: "↑/↓", label: "Navigate Menus and Lists" },
@@ -26,12 +27,15 @@ export function HelpPage() {
   usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }] });
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-4 pb-12">
+    <div className="flex-1 flex flex-col items-center justify-center px-4 pt-4 pb-12">
       <div className="w-full max-w-2xl">
-        <Panel className="bg-tui-bg shadow-2xl">
-          <Panel.Header>
-            <Panel.Title>HELP</Panel.Title>
-          </Panel.Header>
+        <Panel
+          frame="hairline"
+          density="compact"
+          aria-label="Help"
+          className="mt-4 bg-tui-bg shadow-2xl"
+        >
+          <HubCornerLabel>Help</HubCornerLabel>
           <Panel.Content>
             <div className="flex flex-col gap-6 pt-2">
               <section>

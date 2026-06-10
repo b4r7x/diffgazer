@@ -1,0 +1,48 @@
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { axe } from "../../../testing/axe";
+import { StatusIndicator, statusIndicatorDotVariants } from "./status-indicator";
+
+function getDot(container: HTMLElement) {
+  return container.querySelector('[aria-hidden="true"]');
+}
+
+describe("StatusIndicator", () => {
+  it("renders with role=status and label text", () => {
+    render(<StatusIndicator>ONLINE</StatusIndicator>);
+    expect(screen.getByRole("status")).toHaveTextContent("ONLINE");
+  });
+
+  it("pulses for online status by default", () => {
+    const { container } = render(<StatusIndicator>ONLINE</StatusIndicator>);
+    const dot = getDot(container);
+    expect(dot).toHaveAttribute("data-status", "online");
+    expect(dot).toHaveAttribute("data-pulse", "true");
+  });
+
+  it("disables pulse when pulse=false", () => {
+    const { container } = render(<StatusIndicator pulse={false}>OFFLINE</StatusIndicator>);
+    expect(getDot(container)).not.toHaveAttribute("data-pulse");
+  });
+
+  it("never pulses for busy status even with pulse enabled", () => {
+    const { container } = render(
+      <StatusIndicator status="busy" pulse>
+        BUSY
+      </StatusIndicator>,
+    );
+    const dot = getDot(container);
+    expect(dot).toHaveAttribute("data-status", "busy");
+    expect(dot).not.toHaveAttribute("data-pulse");
+  });
+
+  it("matches the bare exported CVA defaults when rendered without props", () => {
+    const { container } = render(<StatusIndicator>ONLINE</StatusIndicator>);
+    expect(getDot(container)).toHaveClass(...statusIndicatorDotVariants().split(" "));
+  });
+
+  it("has no a11y violations", async () => {
+    const { container } = render(<StatusIndicator>OPERATIONAL</StatusIndicator>);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});
