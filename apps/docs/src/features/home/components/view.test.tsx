@@ -1,43 +1,19 @@
 // @vitest-environment jsdom
 
-import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
-import type { ReactNode } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, within } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    to,
-    params,
-    children,
-    ...rest
-  }: {
-    to: string;
-    params?: { lib: string; _splat?: string };
-    children: ReactNode;
-  } & Record<string, unknown>) => {
-    let href = to;
-    if (params?.lib) href = href.replace("$lib", params.lib);
-    href = href.replace("/$", params?._splat ? `/${params._splat}` : "");
-    if (to === "/$lib" && params?.lib && !params._splat) {
-      href = `/${params.lib}`;
-    }
-    return (
-      <a href={href} {...rest}>
-        {children}
-      </a>
-    );
-  },
-  useLocation: ({ select }: { select: (location: { pathname: string }) => unknown }) =>
-    select({ pathname: "/" }),
-  useRouterState: ({
-    select,
-  }: {
-    select: (state: { location: { pathname: string } }) => unknown;
-  }) => select({ location: { pathname: "/" } }),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const { RouterLinkMock } = await import("@/testing/router-mock");
+  return {
+    Link: RouterLinkMock,
+    useLocation: ({ select }: { select: (location: { pathname: string }) => unknown }) =>
+      select({ pathname: "/" }),
+  };
+});
 
 import { MobileNavProvider } from "@/lib/mobile-nav-context";
+import { stubMatchMedia } from "@/testing/match-media";
 import type { HomeLibrary } from "../data";
 import { HomeView } from "./view";
 
@@ -87,23 +63,6 @@ const LIBRARIES: HomeLibrary[] = [
   },
 ];
 
-function mockDesktopViewport() {
-  Object.defineProperty(window, "matchMedia", {
-    writable: true,
-    value: (query: string) => ({
-      matches: query.includes("1024"),
-      media: query,
-      onchange: null,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      addListener: () => {},
-      removeListener: () => {},
-      dispatchEvent: () => false,
-    }),
-  });
-  Element.prototype.scrollIntoView = () => {};
-}
-
 function renderHome() {
   return render(
     <MobileNavProvider>
@@ -112,10 +71,9 @@ function renderHome() {
   );
 }
 
-afterEach(cleanup);
-
 beforeEach(() => {
-  mockDesktopViewport();
+  stubMatchMedia({ isDesktop: true });
+  Element.prototype.scrollIntoView = () => {};
 });
 
 describe("HomeView", () => {
@@ -158,4 +116,39 @@ describe("HomeView", () => {
     );
   });
 
+  it("places the page h1 before the sidebar section headings in DOM order", () => {
+    renderHome();
+
+    const h1 = screen.getByRole("heading", { level: 1, name: "Documentation" });
+    const h3s = screen.getAllByRole("heading", { level: 3 });
+    expect(h3s.length).toBeGreaterThan(0);
+    for (const h3 of h3s) {
+      expect(h1.compareDocumentPosition(h3) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+
+  it("hides the decorative END OF DIRECTORY divider from assistive tech", () => {
+    renderHome();
+
+    const modules = screen.getByRole("navigation", { name: "Documentation packages" });
+    const divider = within(modules).getByText("END OF DIRECTORY");
+    expect(divider.closest('[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it("makes the main content region programmatically focusable", () => {
+    renderHome();
+
+    const main = screen.getByRole("main");
+    expect(main).toHaveAttribute("id", "main-content");
+    main.focus();
+    expect(main).toHaveFocus();
+  });
+
+  it("lets the main column scroll below lg while keeping the fixed layout at lg", () => {
+    renderHome();
+
+    const main = screen.getByRole("main");
+    expect(main.className).toContain("overflow-y-auto");
+    expect(main.className).toContain("lg:overflow-hidden");
+  });
 });

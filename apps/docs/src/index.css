@@ -10,34 +10,48 @@
   --radius-md: 0px;
   --radius-lg: 0px;
 
-  /* Panels share the page background — not the elevated --surface-1 step. */
-  --panel-bg: var(--background);
-  --panel-hairline: var(--border);
-
-  /* Subtle row/hover fills on near-black (reference uses #131313, not #333). */
-  --secondary: color-mix(in oklab, var(--foreground) 6%, var(--background));
-
   /* Chrome bands match page background — no elevated gray step. */
   --tui-chrome-status-bg: var(--background);
   --tui-chrome-band-bg: var(--background);
   --surface-1: var(--background);
 }
 
+/* Chrome panels draw full-opacity borders so panel frames read as one
+   continuous line with the chrome rows. panel.css declares --panel-hairline
+   on the element itself, so a token override on .tui-chrome cannot reach it —
+   this border rule is the mechanism. Demo subtrees restore the library
+   default below. */
 .tui-chrome [data-slot="panel"][data-frame="hairline"] {
   border-color: var(--border);
 }
 
-/* Sidebar tree: dimmer inactive links; active fill stays subtle on black. */
-.tui-chrome [data-slot="sidebar"] a:not([data-active="true"]) {
+.tui-chrome [data-demo-preview] [data-slot="panel"][data-frame="hairline"] {
+  border-color: var(--panel-hairline);
+}
+
+/* Demo subtrees + theme swatches: restore library defaults so inline
+   component demos render the values they document, not the chrome overrides.
+   --surface-1 freezes the dark-theme value (docs pins data-theme="dark"). */
+.tui-chrome [data-demo-preview] {
+  --radius: 0.25rem;
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: max(calc(var(--radius) - 4px), 1px);
+  --surface-1: #111111;
+}
+
+/* Chrome sidebar tree (drawer/aside only — not the sidebar demos under main):
+   dimmer inactive links; active fill stays subtle on black. */
+.tui-chrome #sidebar-nav [data-slot="sidebar"] a:not([data-active="true"]) {
   color: color-mix(in oklab, var(--foreground) 52%, transparent);
 }
 
-.tui-chrome [data-slot="sidebar"] a:not([data-active="true"]):hover {
+.tui-chrome #sidebar-nav [data-slot="sidebar"] a:not([data-active="true"]):hover {
   color: var(--foreground);
   background-color: color-mix(in oklab, var(--foreground) 4%, transparent);
 }
 
-.tui-chrome [data-slot="sidebar-section-content-inner"] {
+.tui-chrome #sidebar-nav [data-slot="sidebar-section-content-inner"] {
   border-color: color-mix(in oklab, var(--border) 75%, transparent);
 }
 
@@ -64,7 +78,7 @@
   color: color-mix(in oklab, var(--foreground) 55%, transparent);
 }
 
-.sidebar-scope-menu [role="option"]:not([aria-selected="true"]).bg-secondary {
+.sidebar-scope-menu [role="option"][data-highlighted]:not([aria-selected="true"]) {
   background-color: color-mix(in oklab, var(--foreground) 6%, var(--background)) !important;
   color: var(--foreground) !important;
 }

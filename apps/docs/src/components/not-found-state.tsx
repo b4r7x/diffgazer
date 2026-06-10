@@ -1,8 +1,7 @@
-import { TuiFaultPanel } from "@/components/layout/tui-fault-panel";
 import type { ReactNode } from "react";
+import { TuiFaultPanel } from "@/components/layout/tui-fault-panel";
 
 export interface NotFoundStateProps {
-  statusLabel?: string;
   title: string;
   description: string;
   primaryAction: ReactNode;
@@ -10,7 +9,6 @@ export interface NotFoundStateProps {
 }
 
 export function NotFoundState({
-  statusLabel = "404",
   title,
   description,
   primaryAction,
@@ -18,7 +16,7 @@ export function NotFoundState({
 }: NotFoundStateProps) {
   return (
     <TuiFaultPanel
-      statusCode={statusLabel}
+      statusCode="404"
       statusValue="NOT_FOUND"
       title={title}
       description={description}

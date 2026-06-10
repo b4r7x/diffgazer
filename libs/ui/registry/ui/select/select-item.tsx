@@ -128,6 +128,7 @@ export function SelectItem<TValue extends string = string>({
       aria-disabled={disabled || undefined}
       data-value={itemValue}
       data-label={label}
+      data-highlighted={isHighlighted || undefined}
       onClick={handleClick}
       onMouseEnter={onMouseEnter}
       className={cn(

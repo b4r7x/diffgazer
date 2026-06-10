@@ -41,7 +41,7 @@ function DemoNode({ demo: Demo }: { demo: LazyExoticComponent<ComponentType> | n
 
 function DefaultPreviewPane({ demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
   return (
-    <div className="border border-border bg-secondary/10">
+    <div data-demo-preview className="border border-border bg-secondary/10">
       <div className="min-h-[200px] flex items-center justify-center px-8 py-12">
         <DemoNode demo={demo} />
       </div>
@@ -51,7 +51,7 @@ function DefaultPreviewPane({ demo }: { demo: LazyExoticComponent<ComponentType>
 
 function FillPreviewPane({ demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
   return (
-    <div className="border border-border bg-background">
+    <div data-demo-preview className="border border-border bg-background">
       <div className="w-full [&>*]:w-full">
         <DemoNode demo={demo} />
       </div>
@@ -66,7 +66,13 @@ function PreviewPane({
   demo: LazyExoticComponent<ComponentType> | null;
   frame: PreviewFrame;
 }) {
-  if (frame === "inset") return <InsetPreviewPane demo={demo} />;
+  if (frame === "inset") {
+    return (
+      <div data-demo-preview>
+        <InsetPreviewPane demo={demo} />
+      </div>
+    );
+  }
   if (frame === "fill") return <FillPreviewPane demo={demo} />;
   if (frame === "default") return <DefaultPreviewPane demo={demo} />;
   frame satisfies never;

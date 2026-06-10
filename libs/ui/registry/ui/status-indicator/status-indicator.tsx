@@ -1,5 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import type { HTMLAttributes, ReactNode, Ref } from "react";
+import type { HTMLAttributes, Ref } from "react";
 import { cn } from "@/lib/utils";
 
 export type StatusIndicatorStatus = "online" | "offline" | "busy";
@@ -12,34 +12,40 @@ export const statusIndicatorDotVariants = cva("inline-block h-1.5 w-1.5 shrink-0
       busy: "bg-warning",
     },
     pulse: {
-      true: "animate-pulse motion-reduce:animate-none",
+      true: "",
       false: "",
     },
   },
+  compoundVariants: [
+    { status: "online", pulse: true, className: "animate-pulse motion-reduce:animate-none" },
+  ],
   defaultVariants: {
     status: "online",
-    pulse: false,
+    pulse: true,
   },
 });
 
 export interface StatusIndicatorProps
   extends HTMLAttributes<HTMLSpanElement>,
-    VariantProps<typeof statusIndicatorDotVariants> {
-  children?: ReactNode;
+    Omit<VariantProps<typeof statusIndicatorDotVariants>, "status" | "pulse"> {
+  status?: StatusIndicatorStatus;
+  pulse?: boolean;
   ref?: Ref<HTMLSpanElement>;
 }
 
 export function StatusIndicator({
   ref,
   className,
-  status = "online",
-  pulse = true,
+  status,
+  pulse,
   children,
   ...props
 }: StatusIndicatorProps) {
-  const shouldPulse = pulse && status === "online";
+  const resolvedStatus = status ?? "online";
+  const pulseActive = resolvedStatus === "online" && (pulse ?? true);
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: role="status" provides the polite live-region semantics for the readout; <output> carries form-association semantics that do not fit here.
     <span
       ref={ref}
       role="status"
@@ -51,7 +57,9 @@ export function StatusIndicator({
     >
       <span
         aria-hidden="true"
-        className={statusIndicatorDotVariants({ status, pulse: shouldPulse })}
+        data-status={resolvedStatus}
+        data-pulse={pulseActive || undefined}
+        className={statusIndicatorDotVariants({ status, pulse })}
       />
       {children}
     </span>

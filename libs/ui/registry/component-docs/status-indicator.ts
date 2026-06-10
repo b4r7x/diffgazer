@@ -14,16 +14,21 @@ export const statusIndicatorDoc: ComponentDoc = {
     {
       title: "Pulse",
       content:
-        "Pulse defaults to true for online status only. Set pulse={false} to disable animation. Honors prefers-reduced-motion via motion-reduce:animate-none.",
+        "Pulse defaults to true, but the dot only animates when status='online' (a compound variant in statusIndicatorDotVariants). Set pulse={false} to disable animation. Honors prefers-reduced-motion via motion-reduce:animate-none.",
     },
     {
       title: "Status colors",
       content:
         "status='online' uses primary, 'offline' uses muted-foreground, and 'busy' uses warning.",
     },
+    {
+      title: "Live region",
+      content:
+        'The root renders role="status" — an implicit polite live region — so screen readers announce label changes without interrupting.',
+    },
   ],
   usage: { example: "status-indicator-default" },
-  examples: [],
+  examples: [{ name: "status-indicator-default", title: "Default" }],
   keyboard: null,
   props: {
     StatusIndicator: {
@@ -36,8 +41,9 @@ export const statusIndicatorDoc: ComponentDoc = {
       pulse: {
         type: "boolean",
         required: false,
-        defaultValue: "true (online only)",
-        description: "Animate the dot. Online status pulses by default when true.",
+        defaultValue: "true",
+        description:
+          "Animate the dot. Only the online status animates; busy and offline never pulse.",
       },
       children: {
         type: "ReactNode",

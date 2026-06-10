@@ -1,7 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
-import { StatusIndicator } from "./status-indicator";
+import { StatusIndicator, statusIndicatorDotVariants } from "./status-indicator";
+
+function getDot(container: HTMLElement) {
+  return container.querySelector('[aria-hidden="true"]');
+}
 
 describe("StatusIndicator", () => {
   it("renders with role=status and label text", () => {
@@ -9,20 +13,32 @@ describe("StatusIndicator", () => {
     expect(screen.getByRole("status")).toHaveTextContent("ONLINE");
   });
 
-  it("applies pulse animation for online status by default", () => {
+  it("pulses for online status by default", () => {
     const { container } = render(<StatusIndicator>ONLINE</StatusIndicator>);
-    const dot = container.querySelector('[aria-hidden="true"]');
-    expect(dot).toHaveClass("animate-pulse");
+    const dot = getDot(container);
+    expect(dot).toHaveAttribute("data-status", "online");
+    expect(dot).toHaveAttribute("data-pulse", "true");
   });
 
   it("disables pulse when pulse=false", () => {
+    const { container } = render(<StatusIndicator pulse={false}>OFFLINE</StatusIndicator>);
+    expect(getDot(container)).not.toHaveAttribute("data-pulse");
+  });
+
+  it("never pulses for busy status even with pulse enabled", () => {
     const { container } = render(
-      <StatusIndicator pulse={false}>
-        OFFLINE
+      <StatusIndicator status="busy" pulse>
+        BUSY
       </StatusIndicator>,
     );
-    const dot = container.querySelector('[aria-hidden="true"]');
-    expect(dot).not.toHaveClass("animate-pulse");
+    const dot = getDot(container);
+    expect(dot).toHaveAttribute("data-status", "busy");
+    expect(dot).not.toHaveAttribute("data-pulse");
+  });
+
+  it("matches the bare exported CVA defaults when rendered without props", () => {
+    const { container } = render(<StatusIndicator>ONLINE</StatusIndicator>);
+    expect(getDot(container)).toHaveClass(...statusIndicatorDotVariants().split(" "));
   });
 
   it("has no a11y violations", async () => {

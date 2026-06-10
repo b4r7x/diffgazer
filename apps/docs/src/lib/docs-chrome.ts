@@ -1,6 +1,10 @@
-/** Display version for docs chrome (matches @diffgazer/ui package version). */
-export const DOCS_CHROME_VERSION = "v0.2.0";
+import { version } from "@diffgazer/ui/package.json";
 
-export const DOCS_GITHUB_URL = "https://github.com/b4r7x/diffgazer";
+export const DOCS_CHROME_VERSION = `v${version}`;
 
-export const DOCS_REGISTRY_HOST = "diffgazer.dev";
+/**
+ * Host of @diffgazer/registry's REGISTRY_ORIGIN. Kept as a literal because the
+ * registry barrel pulls node-only modules into the client bundle; the
+ * colocated test guards against drift.
+ */
+export const DOCS_REGISTRY_HOST = "r.b4r7.dev";

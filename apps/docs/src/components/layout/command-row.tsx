@@ -38,16 +38,17 @@ export function CommandRow() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Search documentation"
         className="flex min-w-0 flex-1 cursor-text items-center bg-transparent text-left font-mono text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       >
-        <span className="truncate">search docs, components, hooks (Press </span>
-        <Kbd size="sm" className="mx-1 shrink-0 text-muted-foreground">
-          ⌘K
+        <span className="truncate">search docs, components, hooks…</span>
+        <Kbd size="sm" className="ml-auto shrink-0 text-muted-foreground">
+          /
         </Kbd>
-        <span className="truncate">)…</span>
       </button>
-      <span className="ml-4 shrink-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+      <span
+        aria-hidden="true"
+        className="ml-4 shrink-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+      >
         [MODE: CMD]
       </span>
     </div>

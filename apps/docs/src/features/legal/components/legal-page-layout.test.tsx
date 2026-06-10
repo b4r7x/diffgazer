@@ -1,13 +1,31 @@
 // @vitest-environment jsdom
 
+import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { stubMatchMedia } from "@/testing/match-media";
 import { LegalPageLayout } from "./legal-page-layout";
+import { LegalSidebar } from "./legal-sidebar";
 
 vi.mock("@/components/layout/tui-two-pane", () => ({
   TuiTwoPane: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
+
+vi.mock("@tanstack/react-router", async () => {
+  const { RouterLinkMock } = await import("@/testing/router-mock");
+  return {
+    Link: RouterLinkMock,
+    useLocation: ({ select }: { select: (location: { pathname: string }) => unknown }) =>
+      select({ pathname: "/privacy" }),
+  };
+});
+
+beforeEach(() => {
+  stubMatchMedia({ isDesktop: true });
+  Element.prototype.scrollIntoView = () => {};
+});
 
 describe("LegalPageLayout", () => {
   it("renders the panel label and child content", () => {
@@ -20,5 +38,49 @@ describe("LegalPageLayout", () => {
     expect(screen.getByText("[ LEGAL / PRIVACY ]")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Privacy policy" })).toBeInTheDocument();
     expect(screen.getByRole("main")).toHaveAttribute("id", "main-content");
+  });
+
+  it("makes the main content region programmatically focusable", () => {
+    render(
+      <LegalPageLayout panelLabel="PRIVACY">
+        <p>Body</p>
+      </LegalPageLayout>,
+    );
+
+    const main = screen.getByRole("main");
+    main.focus();
+    expect(main).toHaveFocus();
+  });
+});
+
+describe("LegalSidebar", () => {
+  it("renders Home and the legal links", () => {
+    render(<LegalSidebar />);
+
+    expect(screen.getByRole("link", { name: /Home/ })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: /Privacy/ })).toHaveAttribute("href", "/privacy");
+    expect(screen.getByRole("link", { name: /Terms/ })).toHaveAttribute("href", "/terms");
+  });
+
+  it("calls onNavigate when a sidebar link is clicked", async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    render(<LegalSidebar onNavigate={onNavigate} />);
+
+    await user.click(screen.getByRole("link", { name: /Terms/ }));
+
+    expect(onNavigate).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call onNavigate for a modifier click", async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    render(<LegalSidebar onNavigate={onNavigate} />);
+
+    await user.keyboard("{Meta>}");
+    await user.click(screen.getByRole("link", { name: /Terms/ }));
+    await user.keyboard("{/Meta}");
+
+    expect(onNavigate).not.toHaveBeenCalled();
   });
 });

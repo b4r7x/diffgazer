@@ -12,7 +12,6 @@ import type {
 import { useId } from "react";
 import { cn } from "@/lib/utils";
 import { useSidebarChrome } from "./sidebar-context";
-import { useSidebarItemPosition } from "./sidebar-item-position-context";
 import { resolveSidebarIntent, type SidebarIntent } from "./sidebar-intent";
 import { SIDEBAR_TREE_CONNECTOR } from "./sidebar-tree-glyphs";
 import { type SidebarVariant, sidebarItemVariants } from "./sidebar-variants";
@@ -110,14 +109,13 @@ function VariantGlyph({ variant, active }: { variant: SidebarVariant; active: bo
       </span>
     );
   }
-  if (variant === "tree") {
-    return null;
-  }
   return null;
 }
 
+// Connector glyphs toggle via CSS last-child, so tree items must be direct
+// siblings of their container; a non-item element after the last item (or a
+// per-item wrapper element) would mislabel the connectors.
 function TreeConnector({ variant }: { variant: SidebarVariant }) {
-  const { isLast } = useSidebarItemPosition();
   if (variant !== "tree") return null;
 
   return (
@@ -125,7 +123,8 @@ function TreeConnector({ variant }: { variant: SidebarVariant }) {
       aria-hidden="true"
       className="mr-2 shrink-0 text-muted-foreground tabular-nums group-data-[state=rail]/sidebar:hidden"
     >
-      {isLast ? SIDEBAR_TREE_CONNECTOR.last : SIDEBAR_TREE_CONNECTOR.branch}
+      <span className="group-last/tree-item:hidden">{SIDEBAR_TREE_CONNECTOR.branch}</span>
+      <span className="hidden group-last/tree-item:inline">{SIDEBAR_TREE_CONNECTOR.last}</span>
     </span>
   );
 }
@@ -160,7 +159,11 @@ export function SidebarItem(props: SidebarItemProps): ReactNode {
     };
 
   const sharedProps = {
-    className: cn(sidebarItemVariants({ variant }), props.className),
+    className: cn(
+      variant === "tree" && "group/tree-item",
+      sidebarItemVariants({ variant }),
+      props.className,
+    ),
     "aria-current": active ? ("page" as const) : undefined,
     "aria-disabled": disabled || undefined,
     "data-active": active ? ("true" as const) : undefined,
@@ -214,9 +217,7 @@ export function SidebarItem(props: SidebarItemProps): ReactNode {
         {...sharedProps}
         onClick={guardedClick(onClick)}
       >
-        {dot}
-        {treeConnector}
-        {glyph}
+        {itemPrefix}
         {children}
       </button>
     );
@@ -250,9 +251,7 @@ export function SidebarItem(props: SidebarItemProps): ReactNode {
         onClick?.(event);
       }}
     >
-      {dot}
-      {treeConnector}
-      {glyph}
+      {itemPrefix}
       {children}
     </a>
   );

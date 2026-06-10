@@ -53,7 +53,7 @@ function SidebarShell({
   ref,
   variant,
   autoTone,
-  embedded = false,
+  embedded,
   className,
   children,
   "aria-label": ariaLabel,
@@ -62,7 +62,7 @@ function SidebarShell({
   ref?: Ref<HTMLElement>;
   variant: SidebarVariant;
   autoTone: boolean;
-  embedded?: boolean;
+  embedded: boolean;
   className?: string;
   children: ReactNode;
 } & HTMLAttributes<HTMLElement>) {

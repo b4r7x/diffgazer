@@ -1,16 +1,17 @@
+import { useKey } from "@diffgazer/keys";
 import { Kbd } from "@diffgazer/ui/components/kbd";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 
 export function FooterBar() {
-  const year = new Date().getFullYear();
+  const navigate = useNavigate();
+
+  useKey("f2", () => {
+    void navigate({ to: "/$lib/$", params: { lib: "ui", _splat: "theme" } });
+  });
 
   return (
     <footer className="flex shrink-0 items-center justify-between border-t border-border bg-[var(--tui-chrome-band-bg)] px-4 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
       <div className="flex items-center gap-6">
-        <span className="inline-flex items-center gap-1.5">
-          <Kbd size="sm">F1</Kbd>
-          <span>Help</span>
-        </span>
         <Link
           to="/$lib/$"
           params={{ lib: "ui", _splat: "theme" }}
@@ -19,10 +20,6 @@ export function FooterBar() {
           <Kbd size="sm">F2</Kbd>
           <span>Theme</span>
         </Link>
-        <span className="inline-flex items-center gap-1.5">
-          <Kbd size="sm">Esc</Kbd>
-          <span>Exit</span>
-        </span>
       </div>
       <div className="flex items-center gap-6">
         <Link
@@ -37,7 +34,7 @@ export function FooterBar() {
         >
           Terms
         </Link>
-        <span>© {year} DIFFGAZER_LABS</span>
+        <span>© DIFFGAZER_LABS</span>
       </div>
     </footer>
   );

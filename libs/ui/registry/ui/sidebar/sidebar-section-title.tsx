@@ -42,18 +42,14 @@ export function SidebarSectionTitle({
   const { collapsible, open, onToggle, titleId, panelId } = useSidebarSectionContext();
   const { variant } = useSidebarChrome();
   const isTree = variant === "tree";
-  const resolvedHandle =
-    handle === undefined ? (
-      isTree ? (
-        <span aria-hidden="true" className="text-[10px]">
-          {open ? SIDEBAR_TREE_CARET.expanded : SIDEBAR_TREE_CARET.collapsed}
-        </span>
-      ) : (
-        <Chevron open={open} size="sm" />
-      )
-    ) : (
-      handle
-    );
+  const defaultHandle = isTree ? (
+    <span aria-hidden="true" className="text-[10px]">
+      {open ? SIDEBAR_TREE_CARET.expanded : SIDEBAR_TREE_CARET.collapsed}
+    </span>
+  ) : (
+    <Chevron open={open} size="sm" />
+  );
+  const resolvedHandle = handle === undefined ? defaultHandle : handle;
   const headingClassName = isTree ? TREE_HEADING_CLASS_NAME : HEADING_CLASS_NAME;
   const isInteractive = collapsible || !!onClick;
 

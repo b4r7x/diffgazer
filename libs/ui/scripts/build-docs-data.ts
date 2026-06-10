@@ -167,7 +167,7 @@ buildDocsData({
   skipMdxGeneration: true,
   hooks: {
     contentDir: resolve(ROOT, "docs/content/hooks"),
-    filter: (item) => item.type === "registry:hook" && isPublicItem(item),
+    filter: (item) => item.type === "registry:hook" && isPublicItem(item) && hasOwnDocsPage(item),
     mapItem: mapHookItem,
     loadHookDoc,
     backwardCompatFile: "ui-hooks.json",

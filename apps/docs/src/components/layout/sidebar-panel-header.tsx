@@ -1,5 +1,5 @@
 import { cn } from "@diffgazer/ui/lib/utils";
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 
 export function SidebarPanelHeader({ children }: { children: ReactNode }) {
   return <div className="flex flex-col">{children}</div>;
@@ -8,12 +8,12 @@ export function SidebarPanelHeader({ children }: { children: ReactNode }) {
 export function SidebarPanelHeaderRow({
   children,
   className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+  ...rest
+}: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("flex min-h-9 items-center gap-2 px-3 py-2", className)}>{children}</div>
+    <div className={cn("flex min-h-9 items-center gap-2 px-3 py-2", className)} {...rest}>
+      {children}
+    </div>
   );
 }
 

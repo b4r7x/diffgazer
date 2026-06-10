@@ -1,5 +1,6 @@
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@diffgazer/ui/components/select";
 import { Spinner } from "@diffgazer/ui/components/spinner";
+import { toast } from "@diffgazer/ui/components/toast";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
@@ -14,6 +15,7 @@ import {
   routeSlugsFromSourcePath,
   sourceSlugsForLibrary,
 } from "@/lib/library";
+import { useMobileNav } from "@/lib/mobile-nav-context";
 import { parseLibrarySwitchInput } from "@/lib/server-inputs";
 import { usePendingDocsRoute } from "@/lib/use-pending-docs-route";
 import {
@@ -49,6 +51,7 @@ export function SidebarChrome({ library }: { library: DocsLibraryId }) {
   const pathname = useLocation({ select: (location) => location.pathname });
   const pendingDocsPathname = usePendingDocsRoute();
   const navigate = useNavigate();
+  const { setOpen: setMobileNavOpen } = useMobileNav();
   const [switching, setSwitching] = useState(false);
   const activeLibrary = getDocsLibraryConfig(library);
   const isHeaderBusy = switching || pendingDocsPathname !== null;
@@ -57,6 +60,7 @@ export function SidebarChrome({ library }: { library: DocsLibraryId }) {
   const showBreadcrumbs = isDocsLibraryId(pathParts[0] ?? "") && pathParts.length > 1;
 
   const handleLibraryChange = async (nextValue: string) => {
+    if (switching) return;
     if (!isDocsLibraryId(nextValue)) return;
 
     const targetLibrary = getDocsLibraryConfig(nextValue);
@@ -76,6 +80,8 @@ export function SidebarChrome({ library }: { library: DocsLibraryId }) {
         to: "/$lib/$",
         params: { lib: targetLib, _splat: slugs.join("/") },
       });
+    } catch {
+      toast.error("Couldn't switch library");
     } finally {
       setSwitching(false);
     }
@@ -88,9 +94,13 @@ export function SidebarChrome({ library }: { library: DocsLibraryId }) {
         <Select value={library} onChange={(v) => void handleLibraryChange(v)}>
           <SelectTrigger
             className={cn(selectTriggerClassName, switching && "pointer-events-none opacity-50")}
+            aria-disabled={switching || undefined}
             aria-label="Select documentation library"
             handle={
-              <span aria-hidden="true" className="shrink-0 font-mono text-[10px] text-muted-foreground">
+              <span
+                aria-hidden="true"
+                className="shrink-0 font-mono text-[10px] text-muted-foreground"
+              >
                 ▼
               </span>
             }
@@ -133,6 +143,7 @@ export function SidebarChrome({ library }: { library: DocsLibraryId }) {
             <Breadcrumbs
               className="min-w-0 flex-1 font-mono text-[10px] uppercase tracking-wide"
               separator="›"
+              onNavigate={() => setMobileNavOpen(false)}
             />
           </SidebarPanelHeaderRow>
         </>

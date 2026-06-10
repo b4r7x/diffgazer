@@ -36,9 +36,9 @@ export const panelDoc: ComponentDoc = {
     },
     { name: "PanelFooter", indent: 1, note: "Bottom metadata/action row." },
     {
-      name: "Panel.Label",
+      name: "PanelLabel",
       indent: 1,
-      note: "Floating corner label (e.g. [ 01 / FS_TREE ]). Place inside a relative Panel with frame='hairline'.",
+      note: "Floating corner label (e.g. [ 01 / FS_TREE ]). The Panel root is the positioning context (panel.css sets position: relative on every frame).",
     },
   ],
   notes: [
@@ -75,7 +75,7 @@ export const panelDoc: ComponentDoc = {
     {
       title: "Corner labels",
       content:
-        "Use Panel.Label variant='border' for a boxed border label, or variant='gap' for a border cutout label. The parent Panel must be relative positioned (hairline frame sets this).",
+        "Use Panel.Label variant='border' for a boxed border label, or variant='gap' for a border cutout label.",
     },
   ],
   usage: { example: "panel-default" },
@@ -196,7 +196,7 @@ export const panelDoc: ComponentDoc = {
         description: "Footer metadata or actions.",
       },
     },
-    "Panel.Label": {
+    PanelLabel: {
       variant: {
         type: '"border" | "gap"',
         required: false,

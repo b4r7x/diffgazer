@@ -4,7 +4,7 @@ import { useCopyFeedback } from "@/lib/use-copy-feedback";
 
 export function ColorGrid() {
   return (
-    <div className="space-y-8">
+    <div data-demo-preview className="space-y-8">
       {THEME_DOCS_COLOR_GROUPS.map((group) => (
         <SwatchGroup key={group.title} title={group.title} swatches={group.tokens} />
       ))}

@@ -14,28 +14,6 @@ export interface HomeSectionLink {
   count: number;
 }
 
-// One navigable row in the Browse table: a single library section flattened with
-// its parent library so the row can deep-link to /$lib/$ and show a real count.
-export interface HomeBrowseRow {
-  lib: DocsLibraryId;
-  libraryName: string;
-  name: string;
-  splat: string;
-  count: number;
-}
-
-export function toBrowseRows(libraries: HomeLibrary[]): HomeBrowseRow[] {
-  return libraries.flatMap((library) =>
-    library.sections.map((section) => ({
-      lib: library.id,
-      libraryName: library.displayName,
-      name: section.name,
-      splat: section.splat,
-      count: section.count,
-    })),
-  );
-}
-
 // Sections worth surfacing on the entry card, in display priority. The grouped
 // tree may not contain all of them, so this is an intersection, capped at six.
 const MAIN_SECTION_NAMES = [

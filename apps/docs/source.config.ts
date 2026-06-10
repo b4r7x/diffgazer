@@ -19,9 +19,7 @@ export const legal = defineDocs({
       lastUpdated: z
         .union([z.string(), z.date()])
         .optional()
-        .transform((value) =>
-          value instanceof Date ? value.toISOString().slice(0, 10) : value,
-        ),
+        .transform((value) => (value instanceof Date ? value.toISOString().slice(0, 10) : value)),
     }),
   },
 });

@@ -1,55 +1,44 @@
-import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import {
-  Sidebar,
-  SidebarContent,
   SidebarItem,
   SidebarSection,
   SidebarSectionContent,
   SidebarSectionTitle,
 } from "@diffgazer/ui/components/sidebar";
 import { Link, useLocation } from "@tanstack/react-router";
+import { isPrimaryNavigationClick } from "@/components/layout/sidebar";
+import { TreeSidebarShell } from "@/components/layout/tree-sidebar-shell";
+import { LEGAL_LINKS } from "../lib/legal-pages";
 
-const LEGAL_LINKS = [
-  { slug: "privacy", label: "Privacy", to: "/privacy" as const },
-  { slug: "terms", label: "Terms", to: "/terms" as const },
-] as const;
+const NAV_LINKS = [{ slug: "home", label: "Home", to: "/" }, ...LEGAL_LINKS] as const;
 
-export function LegalSidebar() {
+export function LegalSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useLocation({ select: (location) => location.pathname });
 
   return (
-    <Sidebar variant="tree" embedded className="h-full w-full">
-      <SidebarContent className="overflow-hidden p-0">
-        <ScrollArea className="h-full">
-          <div className="px-3 pt-2 pb-4">
-            <SidebarSection collapsible defaultOpen>
-              <SidebarSectionTitle className="font-medium text-muted-foreground">
-                Legal
-              </SidebarSectionTitle>
-              <SidebarSectionContent>
-                {LEGAL_LINKS.map((link) => (
-                  <SidebarItem key={link.slug} active={pathname === link.to}>
-                    {({ itemPrefix, ref: _ref, ...itemProps }) => (
-                      <Link to={link.to} {...itemProps}>
-                        {itemPrefix}
-                        {link.label}
-                      </Link>
-                    )}
-                  </SidebarItem>
-                ))}
-                <SidebarItem active={pathname === "/"}>
-                  {({ itemPrefix, ref: _ref, ...itemProps }) => (
-                    <Link to="/" {...itemProps}>
-                      {itemPrefix}
-                      Home
-                    </Link>
-                  )}
-                </SidebarItem>
-              </SidebarSectionContent>
-            </SidebarSection>
-          </div>
-        </ScrollArea>
-      </SidebarContent>
-    </Sidebar>
+    <TreeSidebarShell>
+      <SidebarSection collapsible defaultOpen>
+        <SidebarSectionTitle className="font-medium text-muted-foreground">
+          Legal
+        </SidebarSectionTitle>
+        <SidebarSectionContent>
+          {NAV_LINKS.map((link) => (
+            <SidebarItem
+              key={link.slug}
+              active={pathname === link.to}
+              onClick={(event) => {
+                if (isPrimaryNavigationClick(event)) onNavigate?.();
+              }}
+            >
+              {({ itemPrefix, ref: _ref, ...itemProps }) => (
+                <Link to={link.to} {...itemProps}>
+                  {itemPrefix}
+                  {link.label}
+                </Link>
+              )}
+            </SidebarItem>
+          ))}
+        </SidebarSectionContent>
+      </SidebarSection>
+    </TreeSidebarShell>
   );
 }

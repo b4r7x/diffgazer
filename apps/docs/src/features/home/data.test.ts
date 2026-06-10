@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DocsLibraryConfigData } from "@/lib/libraries-config";
 import type { LandingSection } from "@/lib/page-tree";
-import { buildHomeLibrary, toBrowseRows } from "./data";
+import { buildHomeLibrary } from "./data";
 
 const APP_CONFIG = {
   id: "app",
@@ -86,36 +86,5 @@ describe("buildHomeLibrary", () => {
   it("only surfaces curated main sections, dropping the rest", () => {
     const result = buildHomeLibrary(UI_CONFIG, "ui", SECTIONS);
     expect(result.sections.map((s) => s.name)).not.toContain("Project");
-  });
-});
-
-describe("toBrowseRows", () => {
-  it("flattens libraries into one navigable row per section", () => {
-    const ui = buildHomeLibrary(UI_CONFIG, "ui", SECTIONS);
-    const rows = toBrowseRows([ui]);
-
-    expect(rows).toEqual([
-      {
-        lib: "ui",
-        libraryName: "@diffgazer/ui",
-        name: "Getting Started",
-        splat: "getting-started/installation",
-        count: 1,
-      },
-      {
-        lib: "ui",
-        libraryName: "@diffgazer/ui",
-        name: "Components",
-        splat: "components/button",
-        count: 2,
-      },
-      {
-        lib: "ui",
-        libraryName: "@diffgazer/ui",
-        name: "Hooks",
-        splat: "hooks/listbox",
-        count: 1,
-      },
-    ]);
   });
 });

@@ -404,6 +404,7 @@
       "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
+        "https://r.b4r7.dev/r/ui/corner-label-variants.json",
         "https://r.b4r7.dev/r/ui/utils.json"
       ],
       "meta": {
@@ -513,6 +514,7 @@
       "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
+        "https://r.b4r7.dev/r/ui/corner-label-variants.json",
         "https://r.b4r7.dev/r/ui/utils.json"
       ],
       "meta": {
@@ -1687,10 +1689,6 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/sidebar/sidebar-item-position-context.tsx",
-          "type": "registry:ui"
-        },
-        {
           "path": "registry/ui/sidebar/sidebar-tree-glyphs.ts",
           "type": "registry:ui"
         },
@@ -2059,6 +2057,24 @@
         {
           "path": "registry/lib/selectable-collection.ts",
           "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "use-is-mobile",
+      "type": "registry:hook",
+      "title": "useIsMobile",
+      "description": "matchMedia-backed hook that returns true when the viewport is narrower than a breakpoint (default 1024px).",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true,
+        "docsPage": false
+      },
+      "files": [
+        {
+          "path": "registry/hooks/use-is-mobile.ts",
+          "type": "registry:hook"
         }
       ]
     },

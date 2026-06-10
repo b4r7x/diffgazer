@@ -258,6 +258,10 @@
       "types": "./dist/hooks/presence.d.ts",
       "import": "./dist/hooks/presence.js"
     },
+    "./hooks/use-is-mobile": {
+      "types": "./dist/hooks/use-is-mobile.d.ts",
+      "import": "./dist/hooks/use-is-mobile.js"
+    },
     "./hooks/floating-position": {
       "types": "./dist/hooks/floating-position.d.ts",
       "import": "./dist/hooks/floating-position.js"

@@ -1,3 +1,4 @@
+import { KeyValue } from "@diffgazer/ui/components/key-value";
 import { Panel } from "@diffgazer/ui/components/panel";
 import type { ReactNode } from "react";
 
@@ -42,19 +43,24 @@ export function TuiFaultPanel({
               <div className="mt-3 flex flex-wrap items-center gap-3">{secondaryAction}</div>
             ) : null}
           </div>
-          <div className="flex w-full flex-col justify-center gap-2 border-t border-border pt-4 font-mono text-sm text-muted-foreground lg:w-56 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
-            <div className="flex justify-between gap-4">
-              <span>STATUS:</span>
-              <span className="font-bold text-foreground">{statusValue}</span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span>MODE:</span>
-              <span>RECOVER</span>
-            </div>
-            <div className="mt-2 flex justify-between gap-4 border-t border-dashed border-border pt-2">
-              <span>ACTION:</span>
-              <span className="text-foreground">RETRY</span>
-            </div>
+          <div
+            aria-hidden="true"
+            className="flex w-full flex-col justify-center border-t border-border pt-4 font-mono text-sm text-muted-foreground lg:w-56 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6"
+          >
+            <KeyValue className="gap-x-4">
+              <KeyValue.Item label="STATUS:" value={statusValue} />
+              <KeyValue.Item
+                label="MODE:"
+                value="RECOVER"
+                valueClassName="font-normal text-muted-foreground"
+              />
+              <KeyValue.Item
+                label="ACTION:"
+                value="RETRY"
+                labelClassName="mt-2 border-t border-dashed border-border pt-2"
+                valueClassName="mt-2 border-t border-dashed border-border pt-2 font-normal"
+              />
+            </KeyValue>
           </div>
         </div>
       </Panel>

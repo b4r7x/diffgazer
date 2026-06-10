@@ -7,7 +7,7 @@ import { PanelContent, type PanelContentProps, panelContentVariants } from "./pa
 import { PanelDescription, type PanelDescriptionProps } from "./panel-description";
 import { PanelFooter, type PanelFooterProps } from "./panel-footer";
 import { PanelHeader, type PanelHeaderProps } from "./panel-header";
-import { PanelLabel, type PanelLabelProps } from "./panel-label";
+import { PanelLabel, type PanelLabelProps, panelLabelVariants } from "./panel-label";
 import { PanelRow, type PanelRowProps } from "./panel-row";
 import { PanelTitle, type PanelTitleProps } from "./panel-title";
 
@@ -28,4 +28,4 @@ export { PanelDescription, type PanelDescriptionProps };
 export { PanelContent, type PanelContentProps, panelContentVariants };
 export { PanelFooter, type PanelFooterProps };
 export { PanelRow, type PanelRowProps };
-export { PanelLabel, type PanelLabelProps };
+export { PanelLabel, panelLabelVariants, type PanelLabelProps };

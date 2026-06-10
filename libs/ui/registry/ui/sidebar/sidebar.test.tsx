@@ -200,8 +200,9 @@ describe("Sidebar", () => {
         <Sidebar>
           <Sidebar.Content>
             <Sidebar.Item disabled onClick={onClick}>
-              {({ ref, ...itemProps }) => (
+              {({ itemPrefix, ref, ...itemProps }) => (
                 <a href="/settings" ref={ref as Ref<HTMLAnchorElement> | undefined} {...itemProps}>
+                  {itemPrefix}
                   Settings
                 </a>
               )}
@@ -217,6 +218,33 @@ describe("Sidebar", () => {
     expect(onClick).not.toHaveBeenCalled();
     expect(item).toHaveAttribute("aria-disabled", "true");
     expect(item).toHaveAttribute("tabindex", "-1");
+  });
+
+  it("renders the render-prop itemPrefix as content, not as a DOM attribute", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(
+      <Sidebar.Provider>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item active>
+              {({ itemPrefix, ref, ...itemProps }) => (
+                <a href="/dashboard" ref={ref as Ref<HTMLAnchorElement> | undefined} {...itemProps}>
+                  {itemPrefix}
+                  Dashboard
+                </a>
+              )}
+            </Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    );
+    const item = screen.getByRole("link", { name: "Dashboard" });
+
+    expect(item).not.toHaveAttribute("itemprefix");
+    // Default caret variant: the prefix carries the ▸ glyph into the custom element.
+    expect(item.textContent).toContain("▸");
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
   });
 
   it("keeps disabled anchor items inert and out of tab order", async () => {
@@ -514,20 +542,71 @@ describe("Sidebar variants", () => {
     expect(active.textContent).not.toMatch(/[▸▾[\]*]/);
   });
 
+  // The tree connector renders BOTH glyphs and toggles them with CSS last-child
+  // group variants (jsdom cannot compute last-child visibility). The toggle
+  // classes are the public contract: branch (├─) hides on the last item, last
+  // (└─) shows only on the last item.
+  function expectTreeConnectorContract(item: HTMLElement) {
+    expect(item).toHaveClass("group/tree-item");
+    const spans = Array.from(item.querySelectorAll("span"));
+    const branch = spans.find((span) => span.textContent === "├─");
+    const last = spans.find((span) => span.textContent === "└─");
+    expect(branch).toHaveClass("group-last/tree-item:hidden");
+    expect(last).toHaveClass("hidden", "group-last/tree-item:inline");
+  }
+
   it("tree variant renders caret section headers and branch connectors on items", () => {
     renderWithVariant("tree");
     expect(screen.getByRole("navigation")).toHaveAttribute("data-variant", "tree");
     expect(screen.getByRole("heading", { name: /Section/i }).textContent).toContain("▼");
 
-    const install = screen.getByRole("button", { name: /Install/i });
     const quickstart = screen.getByRole("button", { name: /Quickstart/i });
-    const theming = screen.getByRole("button", { name: /Theming/i });
-
-    expect(install.textContent).toContain("├─");
-    expect(quickstart.textContent).toContain("├─");
-    expect(theming.textContent).toContain("└─");
+    expectTreeConnectorContract(screen.getByRole("button", { name: /Install/i }));
+    expectTreeConnectorContract(quickstart);
+    expectTreeConnectorContract(screen.getByRole("button", { name: /Theming/i }));
     expect(quickstart).toHaveAttribute("aria-current", "page");
     expect(quickstart).toHaveAttribute("data-active", "true");
+  });
+
+  it("tree variant renders connectors on fragment-composed items", () => {
+    function FragmentItems() {
+      return (
+        <>
+          <Sidebar.Item as="button">Alpha</Sidebar.Item>
+          <Sidebar.Item as="button">Beta</Sidebar.Item>
+        </>
+      );
+    }
+    render(
+      <Sidebar variant="tree">
+        <Sidebar.Content>
+          <Sidebar.Section>
+            <Sidebar.SectionTitle>Section</Sidebar.SectionTitle>
+            <Sidebar.SectionContent>
+              <FragmentItems />
+            </Sidebar.SectionContent>
+          </Sidebar.Section>
+        </Sidebar.Content>
+      </Sidebar>,
+    );
+
+    expectTreeConnectorContract(screen.getByRole("button", { name: /Alpha/i }));
+    expectTreeConnectorContract(screen.getByRole("button", { name: /Beta/i }));
+  });
+
+  it("tree variant resets the guide and indent in rail state", () => {
+    renderWithVariant("tree");
+    const inner = requireElement(
+      document.querySelector('[data-slot="sidebar-section-content-inner"]'),
+      "tree section content wrapper",
+    );
+    // jsdom cannot compute the rail state styles; the reset classes on the
+    // tree wrapper are the contract that rail mode drops the guide and indent.
+    expect(inner).toHaveClass(
+      "group-data-[state=rail]/sidebar:ml-0",
+      "group-data-[state=rail]/sidebar:border-l-0",
+      "group-data-[state=rail]/sidebar:pl-0",
+    );
   });
 
   it("keeps a single Primary nav landmark and h3 section title across variants", () => {

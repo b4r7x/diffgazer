@@ -1,13 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getLegalPage, type LegalPageSlug } from "@/lib/legal-source";
+import { legalPageSlugSchema } from "@/features/legal/lib/legal-pages";
 
 const legalPageInputSchema = z.object({
-  slug: z.enum(["privacy", "terms"]),
+  slug: legalPageSlugSchema,
 });
 
 export interface LegalPageLoaderData {
-  slug: LegalPageSlug;
   path: string;
   title: string;
   description?: string;
@@ -17,17 +16,14 @@ export interface LegalPageLoaderData {
 export const loadLegalPage = createServerFn({ method: "GET" })
   .inputValidator(legalPageInputSchema)
   .handler(async ({ data }): Promise<LegalPageLoaderData | null> => {
+    const { getLegalPage } = await import("@/features/legal/lib/legal-source");
     const page = getLegalPage(data.slug);
     if (!page) return null;
 
-    const lastUpdated =
-      typeof page.data.lastUpdated === "string" ? page.data.lastUpdated : undefined;
-
     return {
-      slug: data.slug,
       path: page.path,
       title: page.data.title,
       description: page.data.description,
-      lastUpdated,
+      lastUpdated: page.data.lastUpdated,
     };
   });

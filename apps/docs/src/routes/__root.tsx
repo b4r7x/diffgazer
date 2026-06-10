@@ -1,11 +1,17 @@
+import { KeyboardProvider } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
-import { createRootRoute, HeadContent, Link, Outlet, Scripts } from "@tanstack/react-router";
+import { Toaster } from "@diffgazer/ui/components/toast";
 import type { ErrorComponentProps } from "@tanstack/react-router";
+import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { TanstackProvider } from "fumadocs-core/framework/tanstack";
 import type { ReactNode } from "react";
-import { DocsAppChrome } from "@/components/layout/docs-app-chrome";
-import { TuiFaultPanel } from "@/components/layout/tui-fault-panel";
 import { GlobalNotFound } from "@/components/global-not-found";
+import { TuiBracketLink } from "@/components/layout/tui-bracket-link";
+import { TuiFaultPanel } from "@/components/layout/tui-fault-panel";
+import { TuiShell } from "@/components/layout/tui-shell";
+import { SearchDialog } from "@/features/search/components/dialog";
 import { PRIMARY_DOCS_LIBRARY_ID } from "@/lib/library";
+import { SearchProvider } from "@/lib/search-context";
 import { buildRootHeadDefaults } from "@/lib/seo";
 import appCss from "../index.css?url";
 
@@ -59,19 +65,33 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 
 function RootLayout() {
   return (
-    <DocsAppChrome>
-      <Outlet />
-    </DocsAppChrome>
+    <TanstackProvider>
+      <KeyboardProvider>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[60] focus:bg-foreground focus:text-background focus:px-3 focus:py-1 focus:text-xs focus:font-mono"
+        >
+          Skip to content
+        </a>
+        <SearchProvider>
+          <TuiShell>
+            <Outlet />
+          </TuiShell>
+          <SearchDialog />
+        </SearchProvider>
+        <Toaster />
+      </KeyboardProvider>
+    </TanstackProvider>
   );
 }
 
 function RootErrorBoundary({ error, reset }: ErrorComponentProps) {
   return (
-    <DocsAppChrome>
+    <div className="tui-chrome flex h-dvh flex-col overflow-hidden bg-background text-foreground">
       <main
         id="main-content"
         tabIndex={-1}
-        className="flex min-h-0 min-w-0 flex-1 flex-col outline-none"
+        className="flex min-h-0 min-w-0 flex-1 flex-col outline-hidden"
       >
         <TuiFaultPanel
           statusCode="ERR_RENDER"
@@ -84,17 +104,13 @@ function RootErrorBoundary({ error, reset }: ErrorComponentProps) {
             </Button>
           }
           secondaryAction={
-            <Link
-              to="/$lib"
-              params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}
-              className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            >
-              [ OPEN_DOCS ]
-            </Link>
+            <TuiBracketLink to="/$lib" params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}>
+              OPEN_DOCS
+            </TuiBracketLink>
           }
         />
       </main>
-    </DocsAppChrome>
+    </div>
   );
 }
 

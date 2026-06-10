@@ -4,7 +4,7 @@ import { Button } from "@diffgazer/ui/components/button";
 import { Toaster } from "@diffgazer/ui/components/toast";
 import { Typography } from "@diffgazer/ui/components/typography";
 import { Outlet } from "@tanstack/react-router";
-import React, { Suspense } from "react";
+import React from "react";
 import { GlobalLayout } from "@/components/layout/global";
 import { RouteLoadingFallback } from "@/components/layout/route-loading-fallback";
 
@@ -52,7 +52,7 @@ export function RootLayout() {
 
   if (state.status === "checking") {
     return (
-      <div className="flex h-screen flex-col bg-tui-bg text-tui-fg font-mono">
+      <div className="flex h-screen flex-col">
         <RouteLoadingFallback />
       </div>
     );
@@ -77,9 +77,7 @@ export function RootLayout() {
       <GlobalLayout>
         <RouteErrorBoundary>
           <div className="flex flex-1 flex-col min-h-0">
-            <Suspense fallback={<RouteLoadingFallback />}>
-              <Outlet />
-            </Suspense>
+            <Outlet />
           </div>
         </RouteErrorBoundary>
       </GlobalLayout>

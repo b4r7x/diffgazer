@@ -21,6 +21,7 @@ const VARIANTS: { value: SidebarVariant; label: string }[] = [
   { value: "bracket", label: "bracket" },
   { value: "block", label: "block" },
   { value: "terminal", label: "terminal" },
+  { value: "tree", label: "tree" },
 ];
 
 export default function SidebarVariants() {

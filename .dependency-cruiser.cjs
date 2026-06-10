@@ -69,6 +69,7 @@ module.exports = {
           "(^|/)(src|registry)/testing/(assertions|navigation-behavior)\\.tsx?$",
           "^libs/ui/testing/",
           "^apps/web/src/testing/(escape-regexp|factories|render)\\.tsx?$",
+          "^apps/docs/src/testing/(match-media|router-mock)\\.tsx?$",
           "(^|/)test-setup\\.ts$",
           "\\.(test|spec|e2e|stories)\\.[jt]sx?$",
           "\\.config\\.[jt]s$",
@@ -83,8 +84,8 @@ module.exports = {
           // A single root crawl cannot resolve the same @ alias per app, so keep
           // no-orphans precise for alias-reached web modules instead of disabling it.
           "^apps/web/src/hooks/(use-theme|use-config)\\.tsx$",
-          "^apps/web/src/(features/(providers/components/list|history/hooks/use-keyboard|help/components/page)|components/ui/card-layout)\\.tsx?$",
-          "^apps/docs/src/(components/(content-spinner|not-found-state|preview-inset-pane|layout/footer|docs-mdx/(markdown-renderers|blocks/steps))|features/theme/components/(diffgazer-preview|variable-diagram)|lib/(consumption-metadata|cross-deps-data|example-frames|resolve-examples|use-copy-feedback|use-demos))\\.tsx?$",
+          "^apps/web/src/(features/(providers/components/list|history/hooks/use-keyboard|help/components/page)|components/(ui/card-layout|shared/hub-corner-label))\\.tsx?$",
+          "^apps/docs/src/(components/(content-spinner|not-found-state|preview-inset-pane|layout/(tui-fault-panel|tui-bracket-link)|docs-mdx/(markdown-renderers|blocks/steps))|features/theme/components/(diffgazer-preview|variable-diagram)|lib/(consumption-metadata|cross-deps-data|docs-chrome|example-frames|resolve-examples|use-copy-feedback|use-demos))\\.tsx?$",
         ],
       },
       to: {},

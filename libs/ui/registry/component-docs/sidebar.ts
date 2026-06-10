@@ -89,7 +89,7 @@ export const sidebarDoc: ComponentDoc = {
     {
       title: "Item render props",
       content:
-        "SidebarItem supports a render-prop children for custom elements (e.g. framework Link components). The render function receives ref, className, disabled, aria-current, aria-disabled, data-active, data-intent, data-value, onClick, tabIndex.",
+        "SidebarItem supports a render-prop children for custom elements (e.g. framework Link components). The render function receives ref, className, disabled, aria-current, aria-disabled, data-active, data-intent, data-value, onClick, tabIndex, and itemPrefix — a ReactNode carrying the intent dot, tree connector, and variant glyph. Destructure itemPrefix and render it as the element's leading content; never spread it onto the element.",
     },
     {
       title: "SSR persistence",
@@ -319,7 +319,7 @@ export const sidebarDoc: ComponentDoc = {
         required: true,
         defaultValue: null,
         description:
-          "Item content or a render function (for framework Link components) that receives ref, className, disabled, aria-current, aria-disabled, data-active, data-intent, data-value, onClick, tabIndex.",
+          "Item content or a render function (for framework Link components) that receives ref, className, disabled, aria-current, aria-disabled, data-active, data-intent, data-value, onClick, tabIndex, and itemPrefix. itemPrefix is a ReactNode (intent dot, tree connector, variant glyph) that must be rendered as the element's leading content, never spread onto the element.",
       },
     },
     "Sidebar.ItemLabel": {

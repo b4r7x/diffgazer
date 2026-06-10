@@ -393,7 +393,7 @@
       "title": "Panel",
       "description": "Card-like container with composable header, title, description, content, row, and footer primitives",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["theme", "utils"],
+      "registryDependencies": ["theme", "corner-label-variants", "utils"],
       "meta": {
         "client": true
       },
@@ -493,7 +493,7 @@
       "title": "Card",
       "description": "Simple bordered card primitives with floating border labels and semantic HTML support",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["theme", "utils"],
+      "registryDependencies": ["theme", "corner-label-variants", "utils"],
       "meta": {
         "client": false
       },
@@ -1633,10 +1633,6 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/sidebar/sidebar-item-position-context.tsx",
-          "type": "registry:ui"
-        },
-        {
           "path": "registry/ui/sidebar/sidebar-tree-glyphs.ts",
           "type": "registry:ui"
         },
@@ -2119,6 +2115,24 @@
       ]
     },
     {
+      "name": "corner-label-variants",
+      "type": "registry:lib",
+      "title": "Corner Label Variants",
+      "description": "Shared CVA variant definitions for floating corner labels (card, panel).",
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": [],
+      "meta": {
+        "client": false,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/lib/corner-label-variants.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
       "name": "segmented-variants",
       "type": "registry:lib",
       "title": "Segmented Variants",
@@ -2257,7 +2271,7 @@
       "registryDependencies": [],
       "meta": {
         "client": true,
-        "hidden": true
+        "docsPage": false
       },
       "files": [
         {

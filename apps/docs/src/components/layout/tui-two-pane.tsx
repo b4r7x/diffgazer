@@ -4,7 +4,7 @@ import { type ReactNode, useEffect, useRef } from "react";
 import { useMobileNav } from "@/lib/mobile-nav-context";
 
 export interface TuiTwoPaneProps {
-  sidebar: ReactNode | ((closeSidebar: () => void) => ReactNode);
+  sidebar: (closeSidebar: () => void) => ReactNode;
   sidebarHeader?: ReactNode;
   sidebarBusy?: boolean;
   /** Wrap the main column in a hairline panel (docs). Home passes false for stacked panels. */
@@ -33,7 +33,7 @@ export function TuiTwoPane({
   const hadOpenSidebarRef = useRef(false);
 
   const closeSidebar = () => setSidebarOpen(false);
-  const sidebarNode = typeof sidebar === "function" ? sidebar(closeSidebar) : sidebar;
+  const sidebarNode = sidebar(closeSidebar);
 
   useEffect(() => {
     registerSidebar();
@@ -41,7 +41,10 @@ export function TuiTwoPane({
   }, [registerSidebar, unregisterSidebar]);
 
   useEffect(() => {
-    if (isDesktop) return;
+    if (isDesktop) {
+      hadOpenSidebarRef.current = false;
+      return;
+    }
 
     if (sidebarOpen) {
       hadOpenSidebarRef.current = true;
@@ -60,7 +63,7 @@ export function TuiTwoPane({
     if (!sidebarOpen || isDesktop) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      if (event.key !== "Escape" || event.defaultPrevented) return;
       event.preventDefault();
       setSidebarOpen(false);
     };
@@ -99,7 +102,6 @@ export function TuiTwoPane({
           "lg:static lg:z-auto lg:col-start-1 lg:row-start-1 lg:h-full lg:min-h-0 lg:w-auto lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
-        data-pagefind-ignore
       >
         <Panel frame="hairline" className="flex h-full min-h-0 flex-col">
           {sidebarHeader ? (

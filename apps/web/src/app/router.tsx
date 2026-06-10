@@ -201,7 +201,8 @@ const routeTree = rootRoute.addChildren([
 export const router = createRouter({
   routeTree,
   defaultPendingComponent: RouteLoadingFallback,
-  defaultPendingMs: 0,
+  defaultPendingMs: 100,
+  defaultPendingMinMs: 300,
 });
 
 declare module "@tanstack/react-router" {

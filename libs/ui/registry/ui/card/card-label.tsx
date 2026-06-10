@@ -1,19 +1,9 @@
-import { cva, type VariantProps } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
 import type { ComponentPropsWithRef } from "react";
+import { cornerLabelVariants } from "@/lib/corner-label-variants";
 import { cn } from "@/lib/utils";
 
-export const cardLabelVariants = cva(
-  "absolute -top-3 left-4 z-[var(--z-base)] bg-background px-2 text-xs font-bold uppercase tracking-wider text-muted-foreground",
-  {
-    variants: {
-      variant: {
-        border: "border border-border",
-        gap: "",
-      },
-    },
-    defaultVariants: { variant: "border" },
-  },
-);
+export const cardLabelVariants = cornerLabelVariants;
 
 export type CardLabelProps = ComponentPropsWithRef<"div"> & VariantProps<typeof cardLabelVariants>;
 

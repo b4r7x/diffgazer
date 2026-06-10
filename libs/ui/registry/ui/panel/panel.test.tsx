@@ -326,7 +326,7 @@ describe("Panel", () => {
 
   it("renders Panel.Label overlapping the top border", () => {
     const { container } = render(
-      <Panel frame="hairline" className="relative mt-4">
+      <Panel frame="hairline" className="mt-4">
         <Panel.Label>[ 01 / FS_TREE ]</Panel.Label>
         <Panel.Content>Body</Panel.Content>
       </Panel>,

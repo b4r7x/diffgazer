@@ -14,7 +14,7 @@
   ],
   "meta": {
     "client": true,
-    "hidden": true
+    "docsPage": false
   },
   "type": "registry:hook"
 }

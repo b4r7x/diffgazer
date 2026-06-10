@@ -1,7 +1,6 @@
 import { legal } from "fumadocs-mdx:collections/server";
 import { loader } from "fumadocs-core/source";
-
-export type LegalPageSlug = "privacy" | "terms";
+import type { LegalPageSlug } from "@/features/legal/lib/legal-pages";
 
 export const legalSource = loader({
   baseUrl: "/",

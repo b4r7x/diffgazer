@@ -1,3 +1,4 @@
+import { useIsMobile } from "@diffgazer/ui/hooks/use-is-mobile";
 import {
   createContext,
   type ReactNode,
@@ -7,24 +8,7 @@ import {
   useEffect,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
-
-const LG_QUERY = "(min-width: 1024px)";
-
-function subscribeDesktop(callback: () => void) {
-  const mql = window.matchMedia(LG_QUERY);
-  mql.addEventListener("change", callback);
-  return () => mql.removeEventListener("change", callback);
-}
-
-function getDesktopSnapshot() {
-  return window.matchMedia(LG_QUERY).matches;
-}
-
-function getDesktopServerSnapshot() {
-  return true;
-}
 
 interface MobileNavContextValue {
   open: boolean;
@@ -42,18 +26,13 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [sidebarEnabled, setSidebarEnabled] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const isDesktop = useSyncExternalStore(
-    subscribeDesktop,
-    getDesktopSnapshot,
-    getDesktopServerSnapshot,
-  );
+  const isDesktop = !useIsMobile();
 
   useEffect(() => {
-    const mql = window.matchMedia(LG_QUERY);
-    const onBreakpointChange = () => setOpen(false);
-    mql.addEventListener("change", onBreakpointChange);
-    return () => mql.removeEventListener("change", onBreakpointChange);
-  }, []);
+    if (isDesktop) {
+      setOpen(false);
+    }
+  }, [isDesktop]);
 
   const registerSidebar = useCallback(() => {
     setSidebarEnabled(true);
@@ -65,7 +44,7 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <MobileNavContext.Provider
+    <MobileNavContext
       value={{
         open,
         setOpen,
@@ -77,7 +56,7 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
-    </MobileNavContext.Provider>
+    </MobileNavContext>
   );
 }
 
