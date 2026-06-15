@@ -22,7 +22,7 @@ export default function OverflowAvatarsExample() {
             mode="items"
             gap="gap-1"
             indicator={({ count }) => (
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center border border-dashed border-foreground/30 font-mono text-[10px] text-muted-foreground">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center border border-dashed border-foreground/30 font-mono text-2xs text-muted-foreground">
                 +{count}
               </span>
             )}
@@ -41,7 +41,7 @@ export default function OverflowAvatarsExample() {
             mode="items"
             gap="gap-1"
             indicator={({ count }) => (
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center border border-dashed border-foreground/30 font-mono text-[10px] text-muted-foreground">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center border border-dashed border-foreground/30 font-mono text-2xs text-muted-foreground">
                 +{count}
               </span>
             )}

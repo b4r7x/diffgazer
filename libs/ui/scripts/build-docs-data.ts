@@ -11,18 +11,10 @@ import {
   type HookRegistryItem,
   highlightCode,
 } from "@diffgazer/registry";
-import type { Registry, RegistryItem } from "@diffgazer/registry/schemas";
+import { REGISTRY_ITEM_TYPE, type Registry, type RegistryItem } from "@diffgazer/registry/schemas";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const REGISTRY_PATH = resolve(ROOT, "registry/registry.json");
-
-/** Rewrite copy-mode `@/` import paths to package-mode `@diffgazer/ui/` paths for docs snippets. */
-function rewriteSnippetImports(snippet: string): string {
-  return snippet
-    .replace(/from ["']@\/components\/ui\/([^"']+)["']/g, 'from "@diffgazer/ui/components/$1"')
-    .replace(/from ["']@\/hooks\/([^"']+)["']/g, 'from "@diffgazer/ui/hooks/$1"')
-    .replace(/from ["']@\/lib\/([^"']+)["']/g, 'from "@diffgazer/ui/lib/$1"');
-}
 
 function loadRegistryItems(): RegistryItem[] {
   return (
@@ -50,6 +42,7 @@ function hasOwnDocsPage(item: RegistryItem): boolean {
 function mapHookItem(item: RegistryItem): HookRegistryItem {
   return {
     name: item.name,
+    registryName: item.name,
     title: item.title ?? item.name,
     description: item.description ?? "",
     files: item.files,
@@ -135,7 +128,7 @@ async function processComponent(
     docs?.usage?.code ??
     (usageExample ? examplesData.exampleSource[usageExample]?.raw : undefined) ??
     "";
-  const usageSnippet = rawSnippet ? rewriteSnippetImports(rawSnippet) : "";
+  const usageSnippet = rawSnippet;
 
   return {
     name: item.name,
@@ -164,21 +157,22 @@ buildDocsData({
   registryPath: REGISTRY_PATH,
   examplesDir: resolve(ROOT, "registry/examples"),
   outputDir: resolve(ROOT, "docs/generated"),
-  skipMdxGeneration: true,
   hooks: {
     contentDir: resolve(ROOT, "docs/content/hooks"),
-    filter: (item) => item.type === "registry:hook" && isPublicItem(item) && hasOwnDocsPage(item),
+    filter: (item) =>
+      item.type === REGISTRY_ITEM_TYPE.hook && isPublicItem(item) && hasOwnDocsPage(item),
     mapItem: mapHookItem,
     loadHookDoc,
     backwardCompatFile: "ui-hooks.json",
   },
   components: {
     contentDir: resolve(ROOT, "docs/content/components"),
-    filter: (item) => item.type === "registry:ui" && isPublicItem(item) && hasOwnDocsPage(item),
+    filter: (item) =>
+      item.type === REGISTRY_ITEM_TYPE.ui && isPublicItem(item) && hasOwnDocsPage(item),
     processComponent,
   },
   libs: {
-    filter: (item) => item.type === "registry:lib" && isPublicItem(item),
+    filter: (item) => item.type === REGISTRY_ITEM_TYPE.lib && isPublicItem(item),
     outputFile: "ui-libs.json",
   },
   demoIndex: {

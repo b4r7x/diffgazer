@@ -1,3 +1,4 @@
+import { resolveSelectedId } from "@diffgazer/core/review";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { useRef, useState } from "react";
 
@@ -21,9 +22,7 @@ export function useIssueSelection({
     setSelectedIssueId(null);
   }
 
-  const effectiveSelectedId = filteredIssues.some((i) => i.id === selectedIssueId)
-    ? selectedIssueId
-    : (filteredIssues[0]?.id ?? null);
+  const effectiveSelectedId = resolveSelectedId(selectedIssueId, filteredIssues);
 
   const selectedIssue = filteredIssues.find((i) => i.id === effectiveSelectedId) ?? null;
 

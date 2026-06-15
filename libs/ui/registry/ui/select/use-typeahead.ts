@@ -5,13 +5,19 @@ import { typeaheadSearch } from "@/lib/typeahead";
 import type { SelectOptionMetadata } from "./select-context";
 import { getVisibleEnabledOptionEntries } from "./visible-options";
 
+/** Options for use select typeahead. */
 interface UseSelectTypeaheadOptions {
+  /** options used by use select typeahead. */
   options: ReadonlyMap<string, SelectOptionMetadata>;
+  /** search query used by use select typeahead. */
   searchQuery: string;
+  /** Controlled highlighted item id. Pair with onHighlightChange. */
   highlighted: string | null;
+  /** Updates highlighted. */
   setHighlighted: (value: string) => void;
 }
 
+/** Provides select typeahead behavior. */
 export function useSelectTypeahead({
   options,
   searchQuery,
@@ -20,12 +26,14 @@ export function useSelectTypeahead({
 }: UseSelectTypeaheadOptions) {
   const readTypeaheadQuery = useTypeaheadBuffer();
 
-  return function handleTypeahead(key: string): void {
+  // Returns true when the key was buffered into the typeahead query so callers
+  // can suppress a competing Space-select for the same keystroke.
+  return function handleTypeahead(key: string): boolean {
     const query = readTypeaheadQuery(key);
-    if (query === null) return;
+    if (query === null) return false;
 
     const visibleOptions = getVisibleEnabledOptionEntries(options, searchQuery);
-    if (visibleOptions.length === 0) return;
+    if (visibleOptions.length === 0) return true;
 
     const currentIndex =
       highlighted === null
@@ -40,5 +48,6 @@ export function useSelectTypeahead({
     });
 
     if (match) setHighlighted(match[0]);
+    return true;
   };
 }

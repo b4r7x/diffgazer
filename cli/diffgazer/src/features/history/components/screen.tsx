@@ -1,5 +1,6 @@
 import { guardQueryState } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
+import { HISTORY_SEARCH_PLACEHOLDER } from "@diffgazer/core/review";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { EmptyState } from "../../../components/ui/empty-state.js";
@@ -9,7 +10,6 @@ import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Spinner } from "../../../components/ui/spinner.js";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useNavigation } from "../../../hooks/use-navigation";
-import { useScope } from "../../../hooks/use-scope";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions";
 import { useTheme } from "../../../theme/provider.js";
 import { useHistoryScreen } from "../hooks/use-screen.js";
@@ -33,8 +33,6 @@ function getInsightScrollHeight({
 }
 
 export function HistoryScreen(): ReactElement {
-  useScope("history");
-
   const { tokens } = useTheme();
   const { columns, rows, isNarrow, isMedium } = useResponsive();
   const { navigate } = useNavigation();
@@ -95,9 +93,9 @@ export function HistoryScreen(): ReactElement {
       <Panel>
         <Panel.Content>
           <Box flexDirection="column" gap={1}>
-            <SectionHeader>Reviews</SectionHeader>
+            <SectionHeader>Runs</SectionHeader>
             <Box justifyContent="center" paddingY={2}>
-              <Spinner label="Loading reviews..." />
+              <Spinner label="Loading runs..." />
             </Box>
           </Box>
         </Panel.Content>
@@ -107,7 +105,7 @@ export function HistoryScreen(): ReactElement {
       <Panel>
         <Panel.Content>
           <Box flexDirection="column" gap={1}>
-            <SectionHeader>Reviews</SectionHeader>
+            <SectionHeader>Runs</SectionHeader>
             <Box justifyContent="center" paddingY={2}>
               <Text color={tokens.error}>Error: {err.message}</Text>
             </Box>
@@ -124,7 +122,7 @@ export function HistoryScreen(): ReactElement {
       <Panel>
         <Panel.Content>
           <Box flexDirection="column" gap={1}>
-            <SectionHeader>Reviews</SectionHeader>
+            <SectionHeader>Runs</SectionHeader>
             <Box justifyContent="center" paddingY={2}>
               <EmptyState>
                 <EmptyState.Message>{screen.emptyRunsMessage}</EmptyState.Message>
@@ -141,12 +139,12 @@ export function HistoryScreen(): ReactElement {
     <Panel>
       <Panel.Content>
         <Box flexDirection="column" gap={1}>
-          <SectionHeader>Reviews</SectionHeader>
+          <SectionHeader>Runs</SectionHeader>
           <Box>
             <Input
               value={screen.searchQuery}
               onChange={screen.setSearchQuery}
-              placeholder="Search runs by ID..."
+              placeholder={HISTORY_SEARCH_PLACEHOLDER}
               size="lg"
               isActive={screen.focusZone === "search"}
             />
@@ -179,7 +177,7 @@ export function HistoryScreen(): ReactElement {
               flexDirection="column"
             >
               <Box paddingX={1} paddingTop={1}>
-                <SectionHeader variant="muted">Reviews</SectionHeader>
+                <SectionHeader variant="muted">Runs</SectionHeader>
               </Box>
               <RunsList
                 runs={screen.mappedRuns}

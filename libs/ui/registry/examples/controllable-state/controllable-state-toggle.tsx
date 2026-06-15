@@ -27,8 +27,8 @@ function Toggle({
       aria-checked={isPressed}
       className={`inline-flex items-center gap-2 border px-3 py-1.5 text-sm transition-colors ${
         isPressed
-          ? "border-green-500 bg-green-500/10 text-green-400"
-          : "border-neutral-700 bg-neutral-900 text-neutral-400"
+          ? "border-success-border bg-success-subtle text-success-text"
+          : "border-border bg-background text-muted-foreground"
       }`}
       onClick={() => setIsPressed((prev) => !prev)}
     >
@@ -44,12 +44,12 @@ export default function ControllableStateToggle() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs text-neutral-400">Uncontrolled</span>
+        <span className="text-xs text-muted-foreground">Uncontrolled</span>
         <Toggle>Notifications</Toggle>
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs text-neutral-400">Controlled: {enabled ? "on" : "off"}</span>
+        <span className="text-xs text-muted-foreground">Controlled: {enabled ? "on" : "off"}</span>
         <Toggle pressed={enabled} onPressedChange={setEnabled}>
           Dark mode
         </Toggle>

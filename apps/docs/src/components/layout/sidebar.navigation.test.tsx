@@ -20,6 +20,7 @@ type LinkProps = {
   onClick?: MouseEventHandler<HTMLAnchorElement>;
 } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href">;
 
+// Boundary mock: TanStack Router is the external routing library; the test controls link navigation semantics.
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ to, params, children, onClick, ...rest }: LinkProps) => {
     let href = to;

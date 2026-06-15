@@ -5,17 +5,21 @@ import { useEscapeKey } from "@/hooks/use-outside-click";
 import type { Toast } from "./toast-store";
 import { dismiss, pause, resume } from "./toast-store";
 
+/** Provides toast container behavior. */
 export function useToastContainer(
   toasts: Toast[],
   dismissingIds: Set<string>,
   containerRef: RefObject<HTMLElement | null>,
 ) {
-  const handleEscape = () => {
-    const ownerDocument = containerRef.current?.ownerDocument;
-    if (!ownerDocument) return;
-    if (ownerDocument.querySelector("dialog[open]")) return;
+  const handleEscape = (event: KeyboardEvent) => {
     const last = toasts.findLast((t) => !dismissingIds.has(t.id));
-    if (last) dismiss(last.id);
+    if (!last) return;
+    // Mark the keypress handled so @diffgazer/keys' window-level dispatch
+    // (skip-on-defaultPrevented) does not also run a scope's Escape binding —
+    // dismissing a toast must not double-fire navigate/cancel actions, and the
+    // region now sits above any open dialog so it must not also close the dialog.
+    event.preventDefault();
+    dismiss(last.id);
   };
 
   useEscapeKey(handleEscape, toasts.length > 0, { priority: 0, ref: containerRef });

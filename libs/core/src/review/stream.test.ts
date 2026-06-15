@@ -1,5 +1,24 @@
 import { describe, expect, it } from "vitest";
+import type { FullReviewStreamEvent } from "../schemas/events/index.js";
 import { processReviewStream } from "./stream.js";
+
+// Compile-time contract for the dispatcher's exhaustiveness guard (stream.ts
+// `default: { const _exhaustive: never = event; }`). stream.ts assigning
+// `event` to `never` in its default arm compiles only because every current
+// member is handled. To prove the guard would CATCH a future variant, model the
+// union with one extra unhandled member: after narrowing away the handled type,
+// the residual is that variant, not `never`, so the `never` assignment errors —
+// exactly the failure stream.ts would surface if a new member were unhandled.
+type FutureEvent = { type: "future_variant"; payload: number };
+
+function assertFutureVariantFailsGuard(event: FullReviewStreamEvent | FutureEvent): void {
+  if (event.type !== "future_variant") return;
+  // `event` is now `FutureEvent`, not `never`.
+  // @ts-expect-error -- an unhandled future variant is not assignable to never.
+  const _exhaustive: never = event;
+  void _exhaustive;
+}
+void assertFutureVariantFailsGuard;
 
 function createSSEReader(events: unknown[]): ReadableStreamDefaultReader<Uint8Array> {
   const encoder = new TextEncoder();
@@ -81,13 +100,10 @@ describe("processReviewStream", () => {
     }
   });
 
-  it("forwards step, enrich, agent, chunk, and lens events", async () => {
+  it("forwards step, agent, and chunk events", async () => {
     const stepEvents: unknown[] = [];
-    const enrichEvents: unknown[] = [];
     const agentEvents: unknown[] = [];
     const chunks: string[] = [];
-    const lensesStarted: unknown[] = [];
-    const lensesCompleted: string[] = [];
 
     const result = await processReviewStream(
       createSSEReader([
@@ -100,25 +116,13 @@ describe("processReviewStream", () => {
         { type: "step_start", step: "diff", timestamp: "2025-01-01T00:00:00Z" },
         { type: "step_complete", step: "diff", timestamp: "2025-01-01T00:00:01Z" },
         agentStarted,
-        {
-          type: "enrich_progress",
-          issueId: "i1",
-          enrichmentType: "blame",
-          status: "started",
-          timestamp: "2025-01-01T00:00:02Z",
-        },
         { type: "chunk", content: "partial" },
-        { type: "lens_start", lens: "security", index: 1, total: 2 },
-        { type: "lens_complete", lens: "security" },
         { type: "complete", reviewId: "r1", result: reviewResult },
       ]),
       {
         onStepEvent: (event) => stepEvents.push(event),
-        onEnrichEvent: (event) => enrichEvents.push(event),
         onAgentEvent: (event) => agentEvents.push(event),
         onChunk: (content) => chunks.push(content),
-        onLensStart: (lens, index, total) => lensesStarted.push({ lens, index, total }),
-        onLensComplete: (lens) => lensesCompleted.push(lens),
       },
     );
 
@@ -129,11 +133,6 @@ describe("processReviewStream", () => {
       expect.objectContaining({ type: "step_complete", step: "diff" }),
     ]);
     expect(agentEvents).toEqual([expect.objectContaining({ type: "agent_start" })]);
-    expect(enrichEvents).toEqual([
-      expect.objectContaining({ type: "enrich_progress", issueId: "i1" }),
-    ]);
     expect(chunks).toEqual(["partial"]);
-    expect(lensesStarted).toEqual([{ lens: "security", index: 1, total: 2 }]);
-    expect(lensesCompleted).toEqual(["security"]);
   });
 });

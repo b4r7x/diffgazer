@@ -5,6 +5,7 @@ import {
   addEvent,
   cancelSession,
   cancelStaleSessionsForProjectMode,
+  cleanupStaleSessions,
   createSession,
   deleteSession,
   getActiveSessionForProject,
@@ -32,6 +33,7 @@ function createTrackedSession(
     projectPath: options.projectPath ?? "/project",
     headCommit: options.headCommit ?? "abc",
     statusHash: options.statusHash ?? "hash",
+    statusHashKind: "full",
     mode: options.mode ?? "staged",
   });
 }
@@ -93,6 +95,7 @@ describe("review session lifecycle", () => {
       getActiveSessionForProject("/project", {
         headCommit: "abc",
         statusHash: "hash",
+        statusHashKind: "full",
         mode: "staged",
       }),
     ).toBeUndefined();
@@ -103,6 +106,7 @@ describe("review session lifecycle", () => {
       getActiveSessionForProject("/project", {
         headCommit: "abc",
         statusHash: "hash",
+        statusHashKind: "full",
         mode: "staged",
       })?.reviewId,
     ).toBe(session.reviewId);
@@ -121,6 +125,7 @@ describe("review session lifecycle", () => {
       getActiveSessionForProject("/project", {
         headCommit: "abc",
         statusHash: "hash",
+        statusHashKind: "full",
         mode: "staged",
       }),
     ).toBeUndefined();
@@ -172,6 +177,7 @@ describe("session cancellation", () => {
       getActiveSessionForProject("/project", {
         headCommit: "abc",
         statusHash: "hash",
+        statusHashKind: "full",
         mode: "unstaged",
       }),
     ).toBeUndefined();
@@ -191,7 +197,7 @@ describe("session cancellation", () => {
     }
     subscribe(stale.reviewId, (event) => staleEvents.push(event));
 
-    cancelStaleSessionsForProjectMode("/project", "unstaged", "abc", "hash");
+    cancelStaleSessionsForProjectMode("/project", "unstaged", "abc", "hash", "full");
 
     expect(staleEvents).toMatchObject([
       { type: "error", error: { code: ReviewErrorCode.SESSION_STALE } },
@@ -200,6 +206,7 @@ describe("session cancellation", () => {
       getActiveSessionForProject("/project", {
         headCommit: "old-head",
         statusHash: "old-hash",
+        statusHashKind: "full",
         mode: "unstaged",
       }),
     ).toBeUndefined();
@@ -207,6 +214,7 @@ describe("session cancellation", () => {
       getActiveSessionForProject("/project", {
         headCommit: "abc",
         statusHash: "hash",
+        statusHashKind: "full",
         mode: "unstaged",
       })?.reviewId,
     ).toBe(keptByState.reviewId);
@@ -214,6 +222,7 @@ describe("session cancellation", () => {
       getActiveSessionForProject("/project", {
         headCommit: "abc",
         statusHash: "hash",
+        statusHashKind: "full",
         mode: "staged",
       })?.reviewId,
     ).toBe(keptByMode.reviewId);
@@ -223,12 +232,13 @@ describe("session cancellation", () => {
     const session = createTrackedSession("unknown-git-state", { mode: "unstaged" });
     markReady(session.reviewId);
 
-    cancelStaleSessionsForProjectMode("/project", "unstaged", "", "");
+    cancelStaleSessionsForProjectMode("/project", "unstaged", "", "", "unavailable");
 
     expect(
       getActiveSessionForProject("/project", {
         headCommit: "abc",
         statusHash: "hash",
+        statusHashKind: "full",
         mode: "unstaged",
       })?.reviewId,
     ).toBe(session.reviewId);
@@ -264,16 +274,30 @@ describe("session bounds and subscriber failures", () => {
     createTrackedSession("evict-trigger");
 
     expect(received).toMatchObject([
-      { type: "error", error: { code: ReviewErrorCode.SESSION_STALE } },
+      { type: "error", error: { code: ReviewErrorCode.SESSION_EVICTED } },
     ]);
     expect(getSession("evict-oldest")).toBeUndefined();
   });
 
+  it("emits a SESSION_TIMEOUT error event when a stale session is cleaned up", () => {
+    const received: FullReviewStreamEvent[] = [];
+    const session = createTrackedSession("timeout-session");
+    subscribe(session.reviewId, (event) => received.push(event));
+
+    // Advance the clock past the 30-minute SESSION_TIMEOUT_MS, then run the
+    // stale-session sweep the cleanup interval drives in production.
+    vi.advanceTimersByTime(30 * 60 * 1000 + 1);
+    cleanupStaleSessions();
+
+    expect(received).toMatchObject([
+      { type: "error", error: { code: ReviewErrorCode.SESSION_TIMEOUT } },
+    ]);
+    expect(getSession("timeout-session")).toBeUndefined();
+  });
+
   it("continues dispatching when an async subscriber rejects", async () => {
-    // Suppress the expected console.error noise; we assert on the public
-    // observable contract (the second subscriber still receives the event),
-    // not on the specific error string the impl chose to log.
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    // The contract under test is the public observable behavior (the second
+    // subscriber still receives the event), not the dispatch error the impl logs.
     const received: FullReviewStreamEvent[] = [];
     const session = createTrackedSession("subscriber-rejects");
     subscribe(session.reviewId, async () => {
@@ -308,10 +332,8 @@ describe("session bounds and subscriber failures", () => {
   });
 
   it("preserves the cap warning in the buffer after a terminal event overflows the cap", () => {
-    // Suppress the expected server-side cap console.warn; the contract under
-    // test is that the buffered cap notice survives terminal replacement so a
-    // late SSE subscriber replaying session.events sees both.
-    vi.spyOn(console, "warn").mockImplementation(() => {});
+    // The contract under test is that the buffered cap notice survives terminal
+    // replacement so a late SSE subscriber replaying session.events sees both.
     const session = createTrackedSession("cap-then-terminal");
 
     // Fill to the cap, then overflow with a non-terminal event so the warning
@@ -336,9 +358,7 @@ describe("session bounds and subscriber failures", () => {
   });
 
   it("emits one client-facing cap notice when non-terminal events are dropped past the cap", () => {
-    // Suppress the expected server-side cap console.warn; the contract under
-    // test is the client-facing notice, not the log line.
-    vi.spyOn(console, "warn").mockImplementation(() => {});
+    // The contract under test is the client-facing notice, not the log line.
     const received: FullReviewStreamEvent[] = [];
     const session = createTrackedSession("event-cap-notice");
     subscribe(session.reviewId, (event) => received.push(event));
@@ -417,9 +437,8 @@ describe("onSessionComplete", () => {
   });
 
   it("isolates listener errors without preventing other listeners from running", () => {
-    // Suppress the expected console.error noise; the observable contract is
-    // that the second listener still runs after the first one throws.
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    // The observable contract is that the second listener still runs after the
+    // first one throws.
     const session = createTrackedSession("on-complete-error-isolation");
     let secondRan = false;
     onSessionComplete(session.reviewId, () => {
@@ -432,6 +451,39 @@ describe("onSessionComplete", () => {
     markComplete(session.reviewId);
 
     expect(secondRan).toBe(true);
+  });
+});
+
+describe("deletion timer cleanup", () => {
+  // Both retention timers must be unref'd so a pending session deletion never
+  // keeps the Node process alive past its work (matches the module's unref'd
+  // cleanup interval).
+  it.each([
+    {
+      label: "markComplete",
+      act: (id: string) => markComplete(id),
+      expectedDelayMs: 5 * 60 * 1000,
+    },
+    {
+      label: "cancelSession",
+      act: (id: string) => cancelSession(id),
+      expectedDelayMs: 2 * 60 * 1000,
+    },
+  ])("unrefs the $label deletion timer", ({ label, act, expectedDelayMs }) => {
+    const session = createTrackedSession(`unref-${label}`);
+    markReady(session.reviewId);
+
+    const unref = vi.fn();
+    const setTimeoutSpy = vi
+      .spyOn(globalThis, "setTimeout")
+      .mockReturnValue({ unref } as unknown as ReturnType<typeof setTimeout>);
+
+    act(session.reviewId);
+
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), expectedDelayMs);
+    expect(unref).toHaveBeenCalledTimes(1);
+
+    setTimeoutSpy.mockRestore();
   });
 });
 
@@ -461,9 +513,9 @@ describe("shutdownSessions", () => {
 
     // The in-flight review work is aborted...
     expect(session.controller.signal.aborted).toBe(true);
-    // ...the subscriber sees a terminal stale error...
+    // ...the subscriber sees a terminal server-shutdown error...
     expect(received).toMatchObject([
-      { type: "error", error: { code: ReviewErrorCode.SESSION_STALE } },
+      { type: "error", error: { code: ReviewErrorCode.SERVER_SHUTDOWN } },
     ]);
     // ...and the session is removed so no SSE client keeps the process alive.
     expect(getSession(session.reviewId)).toBeUndefined();
@@ -471,6 +523,7 @@ describe("shutdownSessions", () => {
       getActiveSessionForProject("/project", {
         headCommit: "abc",
         statusHash: "hash",
+        statusHashKind: "full",
         mode: "unstaged",
       }),
     ).toBeUndefined();
@@ -478,33 +531,90 @@ describe("shutdownSessions", () => {
 });
 
 describe("scoped active-session lookup", () => {
-  it("finds a session created with a scope key only when the same scope is supplied", () => {
+  it("matches a scoped session by mode only (no scope key) so a reload can resume it", () => {
     const session = createSession("scoped", {
       projectPath: "/scoped",
       headCommit: "head",
       statusHash: "status",
+      statusHashKind: "full",
       mode: "unstaged",
       scopeKey: "p:strict",
     });
     createdSessionIds.add("scoped");
     markReady("scoped");
 
-    // A mode-only lookup (empty scope key) must NOT match the scoped session.
+    // A mode-only lookup (no scope key) resolves the scoped session — this is the
+    // /sessions/active reload path that must not miss a scoped review (F-163).
     expect(
       getActiveSessionForProject("/scoped", {
         headCommit: "head",
         statusHash: "status",
+        statusHashKind: "full",
+        mode: "unstaged",
+      })?.reviewId,
+    ).toBe(session.reviewId);
+
+    // The same scope key still resolves the session.
+    expect(
+      getActiveSessionForProject("/scoped", {
+        headCommit: "head",
+        statusHash: "status",
+        statusHashKind: "full",
+        mode: "unstaged",
+        scopeKey: "p:strict",
+      })?.reviewId,
+    ).toBe(session.reviewId);
+
+    // An explicit DIFFERENT scope key does not match (dedupe stays exact).
+    expect(
+      getActiveSessionForProject("/scoped", {
+        headCommit: "head",
+        statusHash: "status",
+        statusHashKind: "full",
+        mode: "unstaged",
+        scopeKey: "p:other",
+      }),
+    ).toBeUndefined();
+  });
+
+  it("does not dedupe or match across status-hash kinds", () => {
+    const session = createSession("kind-full", {
+      projectPath: "/kinds",
+      headCommit: "head",
+      statusHash: "abc",
+      statusHashKind: "full",
+      mode: "unstaged",
+    });
+    createdSessionIds.add("kind-full");
+    markReady("kind-full");
+
+    // A status-only hash with the same value must NOT match a full-kind session.
+    expect(
+      getActiveSessionForProject("/kinds", {
+        headCommit: "head",
+        statusHash: "abc",
+        statusHashKind: "status-only",
         mode: "unstaged",
       }),
     ).toBeUndefined();
 
-    // The same scope key resolves the session.
+    // An unavailable kind never dedupes.
     expect(
-      getActiveSessionForProject("/scoped", {
+      getActiveSessionForProject("/kinds", {
         headCommit: "head",
-        statusHash: "status",
+        statusHash: "abc",
+        statusHashKind: "unavailable",
         mode: "unstaged",
-        scopeKey: "p:strict",
+      }),
+    ).toBeUndefined();
+
+    // The same full-kind hash resolves it.
+    expect(
+      getActiveSessionForProject("/kinds", {
+        headCommit: "head",
+        statusHash: "abc",
+        statusHashKind: "full",
+        mode: "unstaged",
       })?.reviewId,
     ).toBe(session.reviewId);
   });

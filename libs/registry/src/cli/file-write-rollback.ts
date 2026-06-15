@@ -45,22 +45,35 @@ export function rollbackFiles(
     ),
     ...newFiles.map((f) => tryQuietly(() => rmSync(f), `rollback ${f}`)),
   ];
-  cleanEmptyDirs(createdDirs.reverse());
+  // Remove created dirs deepest-first: a parent only becomes empty once all its
+  // newly created children are gone.
+  const deepestFirst = [...createdDirs].sort((a, b) => b.length - a.length);
+  cleanEmptyDirs(deepestFirst);
 
   if (results.includes(false)) {
     warn("Some files could not be rolled back. Check the paths above and restore them manually.");
   }
 }
 
-function trackNewDir(
-  dir: string,
-  existingDirs: Set<string>,
-  createdDirs: string[],
-  createdDirSet: Set<string>,
-): void {
-  if (existingDirs.has(dir) || createdDirSet.has(dir)) return;
-  createdDirSet.add(dir);
-  createdDirs.push(dir);
+// `atomicWriteFile` mkdirs the whole ancestor chain recursively, so rollback
+// must track every directory it will create — not just the file's immediate
+// parent — or a fresh `src/components/ui/` chain survives rollback as empty
+// litter. Walk up from `dir` to the nearest already-existing ancestor, recording
+// each to-be-created directory once.
+function trackNewDir(dir: string, createdDirs: string[], createdDirSet: Set<string>): void {
+  let current = dir;
+  const chain: string[] = [];
+  while (!existsSync(current) && !createdDirSet.has(current)) {
+    chain.push(current);
+    const parent = dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  for (const created of chain) {
+    if (createdDirSet.has(created)) continue;
+    createdDirSet.add(created);
+    createdDirs.push(created);
+  }
 }
 
 function backupIfOverwriting(
@@ -103,16 +116,13 @@ function countResults(results: WriteResult[]): {
 export function writeFilesWithRollback(fileOps: FileOp[], overwrite: boolean): WriteFilesResult {
   const newFiles: string[] = [];
   const backups: Array<{ path: string; content: string }> = [];
-  const existingDirs = new Set(
-    fileOps.map((op) => dirname(op.targetPath)).filter((dir) => existsSync(dir)),
-  );
   const createdDirs: string[] = [];
   const createdDirSet = new Set<string>();
   const results: WriteResult[] = [];
 
   try {
     for (const op of fileOps) {
-      trackNewDir(dirname(op.targetPath), existingDirs, createdDirs, createdDirSet);
+      trackNewDir(dirname(op.targetPath), createdDirs, createdDirSet);
       const canOverwrite = op.overwrite ?? overwrite;
       backupIfOverwriting(op.targetPath, canOverwrite, backups);
       const result = writeFileSafe(op.targetPath, op.content, canOverwrite);
@@ -120,7 +130,7 @@ export function writeFilesWithRollback(fileOps: FileOp[], overwrite: boolean): W
       results.push(result);
     }
   } catch (e) {
-    if (newFiles.length > 0 || backups.length > 0) {
+    if (newFiles.length > 0 || backups.length > 0 || createdDirs.length > 0) {
       warn("Rolling back changes...");
       rollbackFiles(newFiles, backups, createdDirs);
     }

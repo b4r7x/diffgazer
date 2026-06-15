@@ -3,10 +3,11 @@ import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Input } from "@diffgazer/ui/components/input";
 import { Panel, PanelContent, PanelHeader } from "@diffgazer/ui/components/panel";
+import { DOT_GRID_CLASS } from "../dot-grid";
 
 export function PreviewPanel() {
   return (
-    <div className="bg-background bg-[radial-gradient(#333_1px,transparent_1px)] [background-size:20px_20px] p-4 space-y-4 border border-border">
+    <div className={`bg-background ${DOT_GRID_CLASS} p-4 space-y-4 border border-border`}>
       <div className="flex flex-wrap gap-2">
         <Button variant="primary">Primary</Button>
         <Button variant="secondary">Secondary</Button>

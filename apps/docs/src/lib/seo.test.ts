@@ -91,7 +91,7 @@ describe("buildRootHeadDefaults", () => {
 
     expect(meta.some((tag) => "charSet" in tag && tag.charSet === "utf-8")).toBe(true);
     expect(findMeta(meta, "name", "viewport")?.content).toBe("width=device-width, initial-scale=1");
-    expect(findMeta(meta, "name", "theme-color")?.content).toBe("#000000");
+    expect(findMeta(meta, "name", "theme-color")?.content).toBe("#0a0a0a");
     expect(findMeta(meta, "name", "description")?.content).toBe(DEFAULT_SITE_DESCRIPTION);
     expect(findMeta(meta, "name", "twitter:card")?.content).toBe("summary");
     expect(findTitle(meta)?.title).toBe(DEFAULT_SITE_NAME);

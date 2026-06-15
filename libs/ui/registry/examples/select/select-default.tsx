@@ -10,7 +10,7 @@ export default function SelectDefault() {
   return (
     <div className="w-64">
       <Select>
-        <SelectTrigger>
+        <SelectTrigger aria-label="Branch">
           <SelectValue placeholder="Select a branch..." />
         </SelectTrigger>
         <SelectContent>

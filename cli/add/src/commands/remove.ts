@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRemoveCommand, findOrphanedNpmDeps } from "@diffgazer/registry/cli";
-import { ctx, type DiffgazerAddConfig, type ResolvedConfig } from "../context.js";
+import { ctx, type ManifestItem, type ResolvedConfig } from "../context.js";
 import { readInstalledCssChunkHashes, removeCssChunks } from "../utils/css-chunks.js";
 import { sha256 } from "../utils/hashing.js";
 import {
@@ -12,13 +12,12 @@ import {
   getNamespacedItem,
   isNamespacedInstalled,
   parseInstallName,
-  validateInstallNames,
+  validateInstallableNames,
 } from "../utils/namespaces.js";
 import { normalizeManifestPath, resolveInstallPath, resolveProjectPath } from "../utils/paths.js";
 import { getInstallBaseForFilePath, getInstallDirForBase } from "../utils/registry.js";
 
-type ManifestEntry = NonNullable<DiffgazerAddConfig["installedComponents"]>[string];
-type Manifest = Record<string, ManifestEntry>;
+type Manifest = Record<string, ManifestItem>;
 
 function ownedFileHash(cwd: string, itemName: string, absolutePath: string): string | null {
   const parsed = parseInstallName(itemName);
@@ -33,7 +32,7 @@ function ownedFileHash(cwd: string, itemName: string, absolutePath: string): str
   return files.find((file) => file.path === filePath)?.hash ?? null;
 }
 
-function hasCopyModeFiles(record: ManifestEntry): boolean {
+function hasCopyModeFiles(record: ManifestItem): boolean {
   return (
     record.integrationMode === "copy" ||
     (record.files ?? []).some((file) => file.integrationMode === "copy")
@@ -41,7 +40,7 @@ function hasCopyModeFiles(record: ManifestEntry): boolean {
 }
 
 function loadManifest(cwd: string): Manifest {
-  return (ctx.config.getManifestItems(cwd) ?? {}) as Manifest;
+  return ctx.config.getManifestItems(cwd) ?? {};
 }
 
 function uiRegistryDependencyNames(installedName: string): string[] {
@@ -141,9 +140,10 @@ function removeOwnedCssChunks(
   const installedHashes = readInstalledCssChunkHashes(cwd, config);
   if (installedHashes.size === 0) return;
 
-  // onAfterRemove fires after updateManifest, so the live manifest no longer
-  // lists removed items. Compute kept and removed chunk sets from the
-  // pre-removal snapshot captured during expandRequestedNames.
+  // onAfterRemove fires before updateManifest, so the live manifest still lists
+  // the removed items and cannot tell kept chunks from removed ones. Compute the
+  // kept and removed chunk sets from the pre-removal snapshot captured during
+  // expandRequestedNames instead.
   const removedSet = new Set(removedNames);
   const keptChunkHashes = new Set<string>();
   const chunksOfRemovedItems = new Set<string>();
@@ -228,7 +228,7 @@ export const removeCommand = createRemoveCommand({
     removeWorkflow.beginInvocation(cwd);
     return ctx.items.requireConfig(cwd);
   },
-  validateNames: validateInstallNames,
+  validateNames: validateInstallableNames,
   getAllItems: () =>
     removeWorkflow.activeCwd ? manifestItemsForResolve(removeWorkflow.activeCwd) : [],
   getItemOrThrow: getNamespacedItem,

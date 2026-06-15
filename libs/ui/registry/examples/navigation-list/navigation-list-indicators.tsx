@@ -17,7 +17,7 @@ export default function NavigationListIndicators() {
     <div className="grid grid-cols-2 gap-4">
       {(["bar", "bar-thick", "arrow", "bracket"] as const).map((indicator) => (
         <div key={indicator} className="border border-border">
-          <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border">
+          <div className="px-3 py-1 text-2xs uppercase tracking-wider text-muted-foreground border-b border-border">
             {indicator}
           </div>
           <NavigationList

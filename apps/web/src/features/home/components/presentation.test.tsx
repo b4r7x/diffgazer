@@ -1,24 +1,21 @@
 import type { ShutdownResult } from "@diffgazer/core/api";
 import { FooterProvider } from "@diffgazer/core/footer";
 import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
-import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { Toaster } from "@diffgazer/ui/components/toast";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
+import { type ReactNode, StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockRouterNavigate = vi.hoisted(() => vi.fn());
 
+// Boundary mock: TanStack Router is the external routing library; this presentation test asserts navigation requests.
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockRouterNavigate,
 }));
 
 import { HomePagePresentation, type HomePagePresentationProps } from "./presentation";
-
-type ActiveSession = { reviewId: string; mode: ReviewMode } | null;
-type ActiveSessionResult = { session: ActiveSession };
 
 function Wrapper({ children }: { children: ReactNode }) {
   return (
@@ -44,13 +41,12 @@ function buildProps(overrides: Partial<HomePagePresentationProps> = {}): HomePag
     needsTrust: false,
     projectId: "proj-1",
     repoRoot: "/repo",
-    hasResumableSession: false,
+    resumableSession: null,
     highlighted: null,
     searchError: undefined,
     onHighlightChange: vi.fn(),
     navigate: vi.fn() as unknown as HomePagePresentationProps["navigate"],
     createReview: vi.fn(async () => ({ reviewId: "rev-new" })),
-    getActiveReviewSession: vi.fn(async () => ({ session: null })),
     clearScopedRouteState: vi.fn(),
     shutdown: vi.fn(async (): Promise<ShutdownResult> => ({ status: "closed" })),
     ...overrides,
@@ -61,14 +57,26 @@ function renderPresentation(props: HomePagePresentationProps) {
   return render(<HomePagePresentation {...props} />, { wrapper: Wrapper });
 }
 
+function StrictWrapper({ children }: { children: ReactNode }) {
+  return (
+    <StrictMode>
+      <Wrapper>{children}</Wrapper>
+    </StrictMode>
+  );
+}
+
+function renderPresentationStrict(props: HomePagePresentationProps) {
+  return render(<HomePagePresentation {...props} />, { wrapper: StrictWrapper });
+}
+
 describe("HomePagePresentation — Resume Last Review gating", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRouterNavigate.mockReset();
   });
 
-  it("disables Resume Last Review when no active session exists for either mode", () => {
-    renderPresentation(buildProps({ hasResumableSession: false }));
+  it("disables Resume Last Review when no resumable session exists", () => {
+    renderPresentation(buildProps({ resumableSession: null }));
     const item = screen.getByRole("menuitem", { name: "Resume Last Review" });
     expect(item).toHaveAttribute("aria-disabled", "true");
   });
@@ -76,34 +84,25 @@ describe("HomePagePresentation — Resume Last Review gating", () => {
   it("does not navigate or start a new review when clicking the disabled Resume Last Review item", async () => {
     const navigate = vi.fn();
     const createReview = vi.fn();
-    const getActiveReviewSession = vi.fn();
     const props = buildProps({
-      hasResumableSession: false,
+      resumableSession: null,
       navigate: navigate as unknown as HomePagePresentationProps["navigate"],
       createReview,
-      getActiveReviewSession,
     });
     const user = userEvent.setup();
     renderPresentation(props);
     await user.click(screen.getByRole("menuitem", { name: "Resume Last Review" }));
     expect(navigate).not.toHaveBeenCalled();
     expect(createReview).not.toHaveBeenCalled();
-    expect(getActiveReviewSession).not.toHaveBeenCalled();
   });
 
-  it("enables and resumes the unstaged session when only unstaged is active", async () => {
+  it("enables and resumes the cached unstaged session", async () => {
     const navigate = vi.fn();
     const createReview = vi.fn();
-    const getActiveReviewSession = vi.fn(
-      async (mode: ReviewMode): Promise<ActiveSessionResult> => ({
-        session: mode === "unstaged" ? { reviewId: "rev-unstaged", mode: "unstaged" } : null,
-      }),
-    );
     const props = buildProps({
-      hasResumableSession: true,
+      resumableSession: { reviewId: "rev-unstaged", mode: "unstaged" },
       navigate: navigate as unknown as HomePagePresentationProps["navigate"],
       createReview,
-      getActiveReviewSession,
     });
     const user = userEvent.setup();
     renderPresentation(props);
@@ -120,19 +119,13 @@ describe("HomePagePresentation — Resume Last Review gating", () => {
     expect(createReview).not.toHaveBeenCalled();
   });
 
-  it("enables and resumes the staged session when only staged is active", async () => {
+  it("enables and resumes the cached staged session", async () => {
     const navigate = vi.fn();
     const createReview = vi.fn();
-    const getActiveReviewSession = vi.fn(
-      async (mode: ReviewMode): Promise<ActiveSessionResult> => ({
-        session: mode === "staged" ? { reviewId: "rev-staged", mode: "staged" } : null,
-      }),
-    );
     const props = buildProps({
-      hasResumableSession: true,
+      resumableSession: { reviewId: "rev-staged", mode: "staged" },
       navigate: navigate as unknown as HomePagePresentationProps["navigate"],
       createReview,
-      getActiveReviewSession,
     });
     const user = userEvent.setup();
     renderPresentation(props);
@@ -145,27 +138,6 @@ describe("HomePagePresentation — Resume Last Review gating", () => {
       }),
     );
     expect(createReview).not.toHaveBeenCalled();
-  });
-
-  it("shows 'No Active Review' toast and does not start a new review when sessions disappear between query and click", async () => {
-    const navigate = vi.fn();
-    const createReview = vi.fn();
-    const getActiveReviewSession = vi.fn(
-      async (): Promise<ActiveSessionResult> => ({ session: null }),
-    );
-    const props = buildProps({
-      hasResumableSession: true,
-      navigate: navigate as unknown as HomePagePresentationProps["navigate"],
-      createReview,
-      getActiveReviewSession,
-    });
-    const user = userEvent.setup();
-    renderPresentation(props);
-    await user.click(screen.getByRole("menuitem", { name: "Resume Last Review" }));
-    expect(await screen.findByText("No Active Review")).toBeInTheDocument();
-    expect(screen.getByText("Start a new review from the menu.")).toBeInTheDocument();
-    expect(createReview).not.toHaveBeenCalled();
-    expect(navigate).not.toHaveBeenCalled();
   });
 });
 
@@ -222,5 +194,123 @@ describe("HomePagePresentation — startReview error surfacing", () => {
     await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
     expect(await screen.findByText("Failed to Start Review")).toBeInTheDocument();
     expect(screen.getByText("Could not create a review session.")).toBeInTheDocument();
+  });
+});
+
+describe("HomePagePresentation — menu parity", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRouterNavigate.mockReset();
+  });
+
+  it("renders the Help menu item alongside the rest of the menu", () => {
+    renderPresentation(buildProps());
+    expect(screen.getByRole("menuitem", { name: "Help" })).toBeInTheDocument();
+  });
+
+  it("navigates to history via the home shortcut", async () => {
+    const navigate = vi.fn();
+    const clearScopedRouteState = vi.fn();
+    const user = userEvent.setup();
+    renderPresentation(
+      buildProps({
+        navigate: navigate as unknown as HomePagePresentationProps["navigate"],
+        clearScopedRouteState,
+      }),
+    );
+    await user.keyboard("h");
+    expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/history" }));
+  });
+
+  it("clears each target page's own scoped keys when navigating, never silent no-ops", async () => {
+    const navigate = vi.fn();
+    const clearScopedRouteState = vi.fn();
+    const user = userEvent.setup();
+    renderPresentation(
+      buildProps({
+        navigate: navigate as unknown as HomePagePresentationProps["navigate"],
+        clearScopedRouteState,
+      }),
+    );
+
+    // /history stores "run"/"date" — both must be reset so its selection clears (F-159).
+    await user.keyboard("h");
+    expect(clearScopedRouteState).toHaveBeenCalledWith("/history", "run");
+    expect(clearScopedRouteState).toHaveBeenCalledWith("/history", "date");
+    expect(clearScopedRouteState).not.toHaveBeenCalledWith("/history", "highlighted");
+
+    clearScopedRouteState.mockClear();
+
+    // /help stores nothing — no clear should fire.
+    await user.keyboard("{Shift>}?{/Shift}");
+    expect(clearScopedRouteState).not.toHaveBeenCalled();
+  });
+});
+
+describe("HomePagePresentation — review-start pending state", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRouterNavigate.mockReset();
+  });
+
+  it("surfaces a pending status and disables the menu while a review is starting", async () => {
+    const resolvers: Array<(value: { reviewId: string }) => void> = [];
+    const createReview = vi.fn(
+      () =>
+        new Promise<{ reviewId: string }>((resolve) => {
+          resolvers.push(resolve);
+        }),
+    );
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ createReview }));
+
+    await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
+
+    // F-353(a): the in-flight start is now visible and blocks re-activation.
+    expect(await screen.findByRole("status")).toHaveTextContent(/starting review/i);
+    expect(screen.getByRole("menuitem", { name: "Review Unstaged" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+
+    resolvers[0]?.({ reviewId: "rev-new" });
+  });
+});
+
+describe("HomePagePresentation — invalid review id toast", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRouterNavigate.mockReset();
+  });
+
+  it("reports an invalid review id exactly once under StrictMode and effect re-runs", async () => {
+    const navigate = vi.fn();
+    const props = buildProps({
+      searchError: "invalid-review-id",
+      navigate: navigate as unknown as HomePagePresentationProps["navigate"],
+    });
+    // StrictMode double-invokes the report effect on mount; the fired-once ref must
+    // survive that so the toast + home redirect fire exactly once (F-181).
+    const { rerender } = renderPresentationStrict(props);
+
+    expect(await screen.findByText("Invalid Review ID")).toBeInTheDocument();
+
+    // A fresh navigate identity also re-runs the report effect; without the fired-once
+    // ref it would re-toast and re-redirect on every re-render (F-181).
+    rerender(
+      <HomePagePresentation
+        {...props}
+        navigate={vi.fn() as unknown as HomePagePresentationProps["navigate"]}
+      />,
+    );
+    rerender(
+      <HomePagePresentation
+        {...props}
+        navigate={vi.fn() as unknown as HomePagePresentationProps["navigate"]}
+      />,
+    );
+
+    expect(screen.getAllByText("Invalid Review ID")).toHaveLength(1);
+    expect(navigate.mock.calls.filter(([arg]) => arg?.to === "/" && arg?.replace)).toHaveLength(1);
   });
 });

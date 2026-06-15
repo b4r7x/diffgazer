@@ -3,11 +3,11 @@ title: Providers reference
 description: Per-provider environment variables, default models, and base URLs.
 ---
 
-This is the authoritative list of the providers diffgazer can run reviews with: the environment variable each one reads for its key, the model it selects by default, and the base URL it talks to. For the conceptual side of how diffgazer uses a provider, start with [providers and models](/app/concepts/providers-and-models).
+This is the authoritative list of the providers Diffgazer can run reviews with: the environment variable each one reads for its key, the model it selects by default, and the base URL it talks to. For the conceptual side of how Diffgazer uses a provider, start with [providers and models](/app/concepts/providers-and-models).
 
 ## Providers
 
-Six providers are enabled and selectable in the picker. Each row is the contract diffgazer actually uses at runtime, taken from the provider overlay and the env-var map rather than from any setup template.
+Six providers are enabled and selectable in the picker. Each row is the contract Diffgazer actually uses at runtime, taken from the provider overlay and the env-var map rather than from any setup template.
 
 | Provider | Env var | Default model | Base URL |
 | --- | --- | --- | --- |
@@ -26,11 +26,11 @@ A few details worth calling out:
 
 > Note: Gemini reads `GOOGLE_API_KEY`, not `GEMINI_API_KEY`. The variable name follows the provider's own SDK convention even though the provider is labelled "Google Gemini" in the UI.
 
-When you do not override the model, diffgazer falls back to the provider's default from the table above. A request then runs with a temperature of 0.7 and up to 65536 output tokens unless your config sets different values.
+When you do not override the model, Diffgazer falls back to the provider's default from the table above. Requests use fixed internal defaults in this release: temperature 0.7 and an output-token budget of 65536, clamped down to the selected model's documented output limit when the catalog has one.
 
 ## Catalog-only providers
 
-diffgazer's bundled catalog also carries data for a few providers that are present but switched off. They are not part of the selectable provider set, they do not appear in any picker, and you cannot activate them. They exist only so the catalog has model metadata for them; treat them as unavailable.
+Diffgazer's bundled catalog also carries data for a few providers that are present but switched off. They are not part of the selectable provider set, they do not appear in any picker, and you cannot activate them. They exist only so the catalog has model metadata for them; treat them as unavailable.
 
 | Provider | Env var | Status |
 | --- | --- | --- |
@@ -44,14 +44,14 @@ The root `.env.example` lists the same enabled provider keys shown above.
 
 How a key is supplied and where it lives:
 
-- A key can be stored two ways. As a literal value, diffgazer keeps the secret itself. As an environment reference, diffgazer stores only the name of the variable to read at runtime, so the secret never enters its own files. You choose between these when you add the key during [onboarding](/app/web/onboarding) or in [settings](/app/web/settings).
+- A key can be stored two ways. As a literal value, Diffgazer keeps the secret itself. As an environment reference, Diffgazer stores only the name of the variable to read at runtime, so the secret never enters its own files. You choose between these when you add the key during [onboarding](/app/web/onboarding) or in [settings](/app/web/settings).
 - Stored secrets live in one of two places, depending on your Secrets Storage choice: your operating system keyring, or a local `secrets.json` file under `~/.diffgazer/`. The file backend stores plaintext JSON protected by `0600` filesystem permissions. Switching storage migrates existing keys to the new location.
 - An environment reference must point at that provider's own variable. The accepted names are exactly the env vars in the [Providers](#providers) table, the set `ALLOWED_CREDENTIAL_ENV_VARS` derived from the per-provider env-var map. Pointing one provider at another provider's variable is rejected, so for example a Groq credential may only reference `GROQ_API_KEY`.
 - Activating a provider checks the model. The model you select must exist in that provider's resolved catalog, or activation fails. OpenRouter is the exception: because its models come from its live key-gated route rather than the catalog, any model id you choose for it is accepted.
 
-> Tip: If you would rather not type a key into the app at all, set the provider's environment variable in your shell and use the environment-reference option. diffgazer then reads the live variable each run and stores only its name.
+> Tip: If you would rather not type a key into the app at all, set the provider's environment variable in your shell and use the environment-reference option. Diffgazer then reads the live variable each run and stores only its name.
 
 ## Related
 
 - [Configuration](/app/reference/configuration) documents the config file and every field these choices write to.
-- [Environment variables](/app/reference/environment-variables) lists every variable diffgazer reads, including these provider keys.
+- [Environment variables](/app/reference/environment-variables) lists every variable Diffgazer reads, including these provider keys.

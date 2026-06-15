@@ -214,11 +214,8 @@ describe("TrustPermissionsPage", () => {
 
     await waitFor(() => {
       expect(mockSaveTrust).toHaveBeenCalledWith({
-        projectId: "project-1",
-        repoRoot: "/repo",
-        capabilities: { readFiles: false, runCommands: false },
+        capabilities: { readFiles: false },
         trustMode: "persistent",
-        trustedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
       });
     });
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
@@ -241,7 +238,7 @@ describe("TrustPermissionsPage", () => {
     );
     await user.keyboard("{ArrowDown}{ArrowRight}{Enter}");
 
-    await waitFor(() => expect(mockDeleteTrust).toHaveBeenCalledWith("project-1"));
+    await waitFor(() => expect(mockDeleteTrust).toHaveBeenCalledWith());
     expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute(
       "aria-checked",
       "false",

@@ -2,6 +2,8 @@ import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { Portal } from "./portal";
 
+// axe skipped: internal portal infrastructure with no standalone accessible UI; consumer overlays run axe.
+
 describe("Portal", () => {
   it("renders nothing when no target can be resolved", () => {
     // An explicit null container opts out of the document.body fallback, so the

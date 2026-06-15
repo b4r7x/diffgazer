@@ -1,8 +1,8 @@
 import type { IssueTab } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { makeIssue } from "@diffgazer/core/testing/factories";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { makeIssue } from "@/testing/factories";
 import { IssueDetailsPane } from "./issue-details-pane";
 
 function renderPane(issue: ReviewIssue | null, activeTab: IssueTab = "details") {
@@ -19,6 +19,16 @@ function renderPane(issue: ReviewIssue | null, activeTab: IssueTab = "details") 
 }
 
 describe("IssueDetailsPane", () => {
+  it("exposes the issue severity textually in the details heading, not only by color", () => {
+    renderPane(makeIssue({ severity: "blocker", title: "Null deref crashes startup" }));
+
+    // F-230: the colored h1 alone leaves severity inaccessible; the heading now
+    // carries the severity word for screen readers.
+    expect(
+      screen.getByRole("heading", { name: /blocker severity.*null deref crashes startup/i }),
+    ).toBeInTheDocument();
+  });
+
   it("shows an empty details state until an issue is selected", () => {
     renderPane(null);
 

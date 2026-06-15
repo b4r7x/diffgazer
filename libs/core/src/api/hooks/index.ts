@@ -15,7 +15,17 @@ export {
 export { ApiProvider, useApi } from "./context.js";
 export {
   type ContextStatus,
+  type DiagnosticsActions,
+  type DiagnosticsActionsInput,
   type DiagnosticsData,
+  type DiagnosticsPresentation,
+  deriveDiagnosticsActions,
+  getContextActionLabel,
+  getContextPresentation,
+  getServerStatusPresentation,
+  getSetupPresentation,
+  refreshAllDiagnostics,
+  type SetupPresentationInput,
   useDiagnosticsData,
 } from "./diagnostics.js";
 export { guardQueryState, matchQueryState } from "./match-query-state.js";
@@ -37,6 +47,8 @@ export {
   useReviewCompletion,
 } from "./use-review-completion.js";
 export {
+  deriveReviewGate,
+  type ReviewGate,
   type UseReviewLifecycleBaseOptions,
   type UseReviewLifecycleBaseResult,
   useReviewLifecycleBase,
@@ -47,3 +59,9 @@ export {
   useReviewStart,
 } from "./use-review-start.js";
 export { type ReviewStreamState, useReviewStream } from "./use-review-stream.js";
+export {
+  TRUST_EDITOR_MESSAGES,
+  type UseTrustEditorCallbacks,
+  type UseTrustEditorResult,
+  useTrustEditor,
+} from "./use-trust-editor.js";

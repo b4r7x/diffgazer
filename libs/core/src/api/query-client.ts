@@ -6,13 +6,21 @@ function isClientHttpError(error: unknown): boolean {
   return typeof status === "number" && status >= 400 && status < 500;
 }
 
+/**
+ * Builds a retry predicate that gives up on 4xx responses and retries other
+ * failures up to `maxFailures` times. Surfaces (web, TUI) cap the attempts
+ * without losing the shared 4xx give-up policy.
+ */
+export function createQueryRetry(
+  maxFailures: number,
+): (failureCount: number, error: unknown) => boolean {
+  return (failureCount, error) => !isClientHttpError(error) && failureCount < maxFailures;
+}
+
 const baseQueries: QueryClientConfig["defaultOptions"] = {
   queries: {
     staleTime: 60_000,
-    retry: (failureCount, error) => {
-      if (isClientHttpError(error)) return false;
-      return failureCount < 2;
-    },
+    retry: createQueryRetry(2),
   },
 };
 

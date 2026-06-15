@@ -181,18 +181,6 @@ When reviewing or writing tests, run through this list:
 - Is `vi.fn()` typed as bare `Mock<Procedure | Constructable>`? → add a generic: `vi.fn<typeof realFn>()` or `Mock<Api["method"]>`
 - Is `as any` used? → narrow the types properly; never silence
 
-## Test counts (baseline at SOTA refactor completion)
+## Current test counts
 
-| Package | Files | Tests | Tests delta vs pre-SOTA |
-|---|---|---|---|
-| libs/core | 46 | 380 | +1 |
-| libs/keys | 20 | 290 | +11 |
-| libs/registry | 12 | 140 | +8 |
-| cli/server | 39 | 374 | +9 |
-| libs/ui | 132 (multi-project ×2) | 1564 | +32 |
-| apps/web | 49 | 257 | +2 |
-| apps/docs | 6 | 61 | 0 |
-| cli/add | 3 | 49 | 0 |
-| cli/diffgazer | 22 | 195 | +23 |
-
-Net change: +86 tests across the suite. All increases come from `it.each` row expansion (granular per-case names) and new axe coverage. No test was deleted.
+Do not keep a checked-in per-package test-count snapshot here. Use `pnpm run test` for the workspace test run or `pnpm exec turbo run test` when you need Turbo's per-package output; those command outputs are the current source of truth for counts.

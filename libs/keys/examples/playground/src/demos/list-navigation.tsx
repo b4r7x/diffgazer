@@ -26,7 +26,7 @@ export function ListNavigationDemo() {
     showActivatedItem(value);
   };
 
-  const { highlighted, isHighlighted } = useScopedNavigation({
+  const { highlighted, isHighlighted } = useScopedNavigation<string>({
     containerRef,
     role: "option",
     onSelect: (value) => toggleSelection(value),

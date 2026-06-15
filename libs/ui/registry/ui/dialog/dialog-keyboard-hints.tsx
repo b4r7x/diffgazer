@@ -1,19 +1,34 @@
 "use client";
 
-import type { HTMLAttributes } from "react";
+import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 import { Kbd } from "../kbd/kbd";
 
+/**
+ * Modal dialog with compound component architecture. Built on the native dialog element with
+ * two orthogonal visual axes: frame (border or none) and corners (none, subtle, standard, bold,
+ * or outset), and an optional header marker bar spanning the title and description.
+ */
 export interface KeyboardHint {
+  /** key used by keyboard hint. */
   key: string;
+  /** Accessible label text. */
   label: string;
 }
 
-export interface DialogKeyboardHintsProps extends HTMLAttributes<HTMLDivElement> {
+/** Props for dialog keyboard hints. */
+export interface DialogKeyboardHintsProps extends ComponentProps<"div"> {
+  /** hints used by dialog keyboard hints. */
   hints: KeyboardHint[];
+  /** Size variant. */
   size?: "sm" | "md";
 }
 
+/**
+ * Modal dialog with compound component architecture. Built on the native dialog element with
+ * two orthogonal visual axes: frame (border or none) and corners (none, subtle, standard, bold,
+ * or outset), and an optional header marker bar spanning the title and description.
+ */
 export function DialogKeyboardHints({
   hints,
   size = "md",
@@ -29,9 +44,9 @@ export function DialogKeyboardHints({
     >
       {hints.map((hint) => (
         <span key={`${hint.key}-${hint.label}`} className="inline-flex items-center gap-1">
-          <Kbd size={size} aria-hidden="true">
-            {hint.key}
-          </Kbd>
+          {/* Key name stays exposed to AT (no aria-hidden) so keyboard users can
+              discover the shortcut — CommandPaletteInput's Kbd is the model. */}
+          <Kbd size={size}>{hint.key}</Kbd>
           <span>{hint.label}</span>
         </span>
       ))}

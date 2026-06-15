@@ -1,6 +1,6 @@
 import type { Key } from "ink";
 import { describe, expect, test } from "vitest";
-import { inkKeyToHotkey, isLetterKey } from "./ink-key";
+import { inkKeyToHotkey, isTypeableShortcutKey } from "./ink-key";
 
 const emptyKey: Key = {
   upArrow: false,
@@ -59,7 +59,7 @@ describe("inkKeyToHotkey", () => {
   });
 });
 
-describe("isLetterKey", () => {
+describe("isTypeableShortcutKey", () => {
   test.each([
     { input: "a" },
     { input: "Z" },
@@ -67,7 +67,7 @@ describe("isLetterKey", () => {
     { input: "?" },
     { input: "/" },
   ])("accepts single character '$input'", ({ input }) => {
-    expect(isLetterKey(input)).toBe(true);
+    expect(isTypeableShortcutKey(input)).toBe(true);
   });
 
   test.each([
@@ -75,6 +75,6 @@ describe("isLetterKey", () => {
     { input: "", reason: "empty string" },
     { input: "@", reason: "non-letter symbol outside the printable letter set" },
   ])("rejects $reason ('$input')", ({ input }) => {
-    expect(isLetterKey(input)).toBe(false);
+    expect(isTypeableShortcutKey(input)).toBe(false);
   });
 });

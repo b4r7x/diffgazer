@@ -1,6 +1,7 @@
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
+/** Root <figure>. */
 export function InlineCode({ className, ...props }: ComponentProps<"code">) {
   return (
     <code

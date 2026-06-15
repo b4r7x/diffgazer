@@ -1,4 +1,3 @@
-import { PROVIDER_FILTERS, type ProviderFilter } from "@diffgazer/core/providers";
 import type { AIProvider, ProviderWithStatus } from "@diffgazer/core/schemas/config";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -6,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ProviderList } from "@/features/providers/components/list";
+import { PROVIDER_FILTERS, type ProviderFilter } from "../lib/filter.js";
 import { useProvidersKeyboard } from "./use-keyboard";
 
 const mockNavigate = vi.fn();

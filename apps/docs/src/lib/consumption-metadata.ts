@@ -16,7 +16,17 @@ const KEYS_PACKAGE_ONLY = new Set([
   "use-optional-keyboard-context",
 ]);
 
-/** All public registry and package paths are publish-gated as of June 6, 2026. */
+/**
+ * All public registry and package paths are publish-gated as of June 6, 2026.
+ * Flipping this to `false` un-gates every gated copy/package availability and
+ * drops the gating notes below — it is the single switch for the §10 gating state.
+ *
+ * SOURCE-TEXT CONSUMER: scripts/monorepo/check-live-registry.mjs regex-matches
+ * the literal `PUBLISH_GATED = true|false` assignment in THIS file to decide
+ * whether CI skips the live host check. Do not rename, move, or reformat this
+ * assignment without updating that script (it now fails loudly if the literal
+ * disappears).
+ */
 export const PUBLISH_GATED = true;
 
 export const PUBLISH_GATE_NOTE =
@@ -27,6 +37,9 @@ const HOSTED_REGISTRY_GATE_NOTE =
 
 const LOCAL_DGADD_GATE_NOTE =
   "dgadd is not public on npm yet. Pack @diffgazer/add from this workspace, install the tarball in your app, then run this command.";
+
+const KEYS_PACKAGE_GATE_NOTE =
+  "Requires KeyboardProvider and the @diffgazer/keys package, which is not public on npm yet.";
 
 function getKeysHookFileName(itemId: string): string {
   return itemId.startsWith("use-") ? itemId : `use-${itemId}`;
@@ -73,17 +86,18 @@ export function getConsumptionMetadata(
       paths: {
         copy: isKeysPackageOnly
           ? {
-              available: false,
-              note: "Requires KeyboardProvider and the @diffgazer/keys package, which is not public on npm yet.",
+              available: !PUBLISH_GATED,
+              note: PUBLISH_GATED ? KEYS_PACKAGE_GATE_NOTE : undefined,
             }
           : {
-              available: false,
-              note: HOSTED_REGISTRY_GATE_NOTE,
+              available: !PUBLISH_GATED,
+              note: PUBLISH_GATED ? HOSTED_REGISTRY_GATE_NOTE : undefined,
             },
         dgadd: isKeysPackageOnly
           ? {
-              available: false,
-              note: "Requires KeyboardProvider and the @diffgazer/keys package, which is not public on npm yet.",
+              available: !PUBLISH_GATED,
+              command: `pnpm exec dgadd add ${dgaddName}`,
+              note: PUBLISH_GATED ? KEYS_PACKAGE_GATE_NOTE : undefined,
             }
           : {
               available: true,
@@ -91,7 +105,7 @@ export function getConsumptionMetadata(
               note: PUBLISH_GATED ? LOCAL_DGADD_GATE_NOTE : undefined,
             },
         package: {
-          available: false,
+          available: !PUBLISH_GATED,
           note: PUBLISH_GATED ? PUBLISH_GATE_NOTE : undefined,
         },
       },
@@ -113,8 +127,8 @@ export function getConsumptionMetadata(
     publishGated: PUBLISH_GATED,
     paths: {
       copy: {
-        available: false,
-        note: HOSTED_REGISTRY_GATE_NOTE,
+        available: !PUBLISH_GATED,
+        note: PUBLISH_GATED ? HOSTED_REGISTRY_GATE_NOTE : undefined,
       },
       dgadd: {
         available: true,
@@ -122,7 +136,7 @@ export function getConsumptionMetadata(
         note: PUBLISH_GATED ? LOCAL_DGADD_GATE_NOTE : undefined,
       },
       package: {
-        available: false,
+        available: !PUBLISH_GATED,
         note: PUBLISH_GATED ? PUBLISH_GATE_NOTE : undefined,
       },
     },

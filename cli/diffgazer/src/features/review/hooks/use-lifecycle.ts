@@ -1,18 +1,19 @@
+import type { ReviewGate, UseReviewLifecycleBaseResult } from "@diffgazer/core/api/hooks";
 import { useCreateReview, useInit, useReviewLifecycleBase } from "@diffgazer/core/api/hooks";
-import type { FileProgress, ReviewEvent } from "@diffgazer/core/review";
+import { getErrorMessage } from "@diffgazer/core/errors";
+import type { FileProgress, ReviewEvent, ReviewScreenPhase } from "@diffgazer/core/review";
+import { sessionTerminationCopy } from "@diffgazer/core/review";
 import type { AgentState, StepState } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue, ReviewMode } from "@diffgazer/core/schemas/review";
 import { useState } from "react";
 
-export type ReviewPhase = "streaming" | "completing" | "summary" | "results";
-
-type LifecyclePhase = ReviewPhase | "loading";
+type LifecyclePhase = ReviewScreenPhase | "completing" | "loading";
 
 export function getDisplayPhase(input: {
   hasStartFailed: boolean;
   hasStarted: boolean;
   isCompleting: boolean;
-  phase: "streaming" | "summary" | "results";
+  phase: ReviewScreenPhase;
 }): LifecyclePhase {
   if (input.hasStartFailed) return "summary";
   if (!input.hasStarted) return "loading";
@@ -21,7 +22,9 @@ export function getDisplayPhase(input: {
 }
 
 export interface ReviewLifecycleState {
-  phase: ReviewPhase | "loading";
+  phase: LifecyclePhase;
+  gate: ReviewGate;
+  contextSnapshot: UseReviewLifecycleBaseResult["contextSnapshot"];
   mode: ReviewMode;
   reviewId: string | null;
   startedAt: Date | null;
@@ -30,6 +33,7 @@ export interface ReviewLifecycleState {
   agents: AgentState[];
   events: ReviewEvent[];
   fileProgress: FileProgress;
+  notices: string[];
   error: string | null;
   isConfigured: boolean;
   provider: string | null;
@@ -56,7 +60,7 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
   const createReview = useCreateReview();
   const [mode, setMode] = useState<ReviewMode>(options.mode ?? "staged");
   const [startedReviewId, setStartedReviewId] = useState<string | undefined>();
-  const [phase, setPhase] = useState<"streaming" | "summary" | "results">("streaming");
+  const [phase, setPhase] = useState<ReviewScreenPhase>("streaming");
   const [startError, setStartError] = useState<string | null>(null);
   const requestedReviewId = options.reviewId ?? startedReviewId;
 
@@ -65,7 +69,6 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
   const model = initData?.config?.model ?? null;
 
   const lifecycle = useReviewLifecycleBase({
-    mode,
     configLoading,
     isConfigured,
     reviewId: requestedReviewId,
@@ -73,8 +76,8 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
     onNotFoundInSession: () => {
       setStartError("Review session not found.");
     },
-    onStaleSession: () => {
-      setStartError("Review session expired. Start a new review.");
+    onStaleSession: (code) => {
+      setStartError(sessionTerminationCopy(code).message);
     },
   });
 
@@ -101,18 +104,14 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
       const result = await createReview.mutateAsync({ mode: selectedMode });
       setStartedReviewId(result.reviewId);
     } catch (err) {
-      setStartError(err instanceof Error ? err.message : String(err));
+      setStartError(getErrorMessage(err));
     }
   }
 
-  const cancel = async (): Promise<string | null> => {
-    const result = await Promise.resolve(
-      lifecycle.stream.cancel(
-        lifecycle.stream.state.reviewId ?? startedReviewId ?? options.reviewId ?? null,
-      ) as unknown as string | null | Promise<string | null>,
+  const cancel = (): Promise<string | null> =>
+    lifecycle.stream.cancel(
+      lifecycle.stream.state.reviewId ?? startedReviewId ?? options.reviewId ?? null,
     );
-    return result ?? null;
-  };
 
   function goToSummary() {
     lifecycle.completion.skipDelay();
@@ -134,6 +133,8 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
 
   const state: ReviewLifecycleState = {
     phase: displayPhase,
+    gate: lifecycle.gate,
+    contextSnapshot: lifecycle.contextSnapshot,
     mode,
     reviewId: lifecycle.stream.state.reviewId ?? startedReviewId ?? options.reviewId ?? null,
     startedAt: lifecycle.stream.state.startedAt,
@@ -142,6 +143,7 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
     agents: lifecycle.stream.state.agents,
     events: lifecycle.stream.state.events,
     fileProgress: lifecycle.stream.state.fileProgress,
+    notices: lifecycle.stream.state.notices,
     error: startError ?? lifecycle.stream.state.error,
     isConfigured,
     provider,

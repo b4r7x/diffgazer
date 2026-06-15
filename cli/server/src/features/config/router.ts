@@ -2,19 +2,20 @@ import { PROVIDER_DISABLED, SaveConfigRequestSchema } from "@diffgazer/core/sche
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
+import type { ProviderModelsErrorCode } from "../../shared/lib/http/error-codes.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 import {
   type ErrorStatus,
   errorResponse,
   zodErrorHandler,
 } from "../../shared/lib/http/response.js";
+import { cancelSessionsForProject } from "../../shared/lib/session-registry.js";
 import {
   createBodyLimitMiddleware,
   DEFAULT_BODY_LIMIT_KB,
 } from "../../shared/middlewares/body-limit.js";
 import { createRateLimitMiddleware } from "../../shared/middlewares/rate-limit.js";
 import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
-import { cancelSessionsForProject } from "../review/stream/store.js";
 import {
   ActivateProviderBodySchema,
   ProviderModelsParamSchema,
@@ -30,7 +31,6 @@ import {
   getOpenRouterModels,
   getProviderModels,
   getProvidersStatus,
-  type ProviderModelsErrorCode,
   saveConfig,
 } from "./service.js";
 

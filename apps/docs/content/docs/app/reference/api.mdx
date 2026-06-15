@@ -1,9 +1,9 @@
 ---
 title: Local API reference
-description: The localhost API exposed by the embedded diffgazer server.
+description: The localhost API exposed by the embedded Diffgazer server.
 ---
 
-The API documented here is the local API used by the diffgazer web app. It is not a hosted public API and it is not meant to be deployed as a standalone internet service.
+The API documented here is the local API used by the Diffgazer web app. It is not a hosted public API and it is not meant to be deployed as a standalone internet service.
 
 In web mode, the `diffgazer` CLI starts the embedded server, serves the browser app, and keeps both on the same localhost origin. Packaged runs require the internal shutdown token header for API access outside health checks and preflight requests.
 
@@ -69,7 +69,7 @@ Git routes require repository trust. If the current directory is not a git repos
 | `GET` | `/api/review/reviews` | List saved reviews. |
 | `GET` | `/api/review/reviews/:id` | Read one saved review. |
 | `DELETE` | `/api/review/reviews/:id` | Delete one saved review. |
-| `POST` | `/api/review/reviews/:id/drilldown` | Ask a follow-up question about a saved finding or review. |
+| `POST` | `/api/review/reviews/:id/drilldown` | Ask a follow-up question about a saved issue or review. |
 
 Review creation and drilldown routes require setup, repository trust, JSON validation, body-size limits, and route-specific rate limits.
 

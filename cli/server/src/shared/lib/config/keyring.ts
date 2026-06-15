@@ -1,6 +1,7 @@
 import { createRequire } from "node:module";
 import { createError, getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
+import { log } from "../log.js";
 import type { SecretsStorageError, SecretsStorageErrorCode } from "./types.js";
 
 type KeyringModule = typeof import("@napi-rs/keyring");
@@ -19,7 +20,7 @@ const loadKeyring = (): KeyringModule | null => {
     cachedKeyring = requireModule("@napi-rs/keyring") as KeyringModule;
   } catch (error) {
     cachedKeyring = null;
-    console.warn(`[diffgazer] Keyring module unavailable: ${getErrorMessage(error)}`);
+    log("warn", "keyring_module_unavailable", { error: getErrorMessage(error) });
   }
 
   return cachedKeyring;
@@ -34,13 +35,11 @@ const checkKeyringAvailability = (keyring: KeyringModule): boolean => {
     try {
       entry.deletePassword();
     } catch (cleanupError) {
-      console.warn(
-        `[diffgazer] Failed to clean up keyring test key: ${getErrorMessage(cleanupError)}`,
-      );
+      log("warn", "keyring_test_key_cleanup_failed", { error: getErrorMessage(cleanupError) });
     }
     return readBack === testValue;
   } catch (error) {
-    console.warn(`[diffgazer] Keyring availability check failed: ${getErrorMessage(error)}`);
+    log("warn", "keyring_availability_check_failed", { error: getErrorMessage(error) });
     return false;
   }
 };

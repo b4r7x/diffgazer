@@ -35,8 +35,43 @@ export const tabsDoc: ComponentDoc = {
   keyboard: {
     description:
       "TabsList has built-in keyboard navigation via @diffgazer/keys. ArrowLeft/ArrowRight (horizontal) or ArrowUp/ArrowDown (vertical) navigate between tabs. Home/End jump to first/last tab. Enter/Space activate the focused tab.",
+    keys: [
+      {
+        keys: "ArrowLeft / ArrowRight",
+        action: "Moves focus across horizontal tab triggers.",
+      },
+      { keys: "ArrowUp / ArrowDown", action: "Moves focus across vertical tab triggers." },
+      { keys: "Home / End", action: "Moves focus to the first or last enabled trigger." },
+      { keys: "Enter / Space", action: "Activates the focused tab in manual mode." },
+    ],
     examples: [{ name: "tabs-keyboard", title: "Keyboard Navigation" }],
   },
+  dataAttributes: [
+    {
+      attribute: "data-state",
+      appliesTo: "Tabs.Trigger / Tabs.Content",
+      values: '"active" | "inactive"',
+      description: "Active tab/panel state for styling and visibility.",
+    },
+    {
+      attribute: "data-orientation",
+      appliesTo: "Tabs.List",
+      values: '"horizontal" | "vertical"',
+      description: "Keyboard/navigation axis.",
+    },
+    {
+      attribute: "data-value",
+      appliesTo: "Tabs.Trigger / Tabs.Content",
+      values: "tab value",
+      description: "Stable value pairing triggers and panels.",
+    },
+    {
+      attribute: "data-variant",
+      appliesTo: "Tabs.List / Tabs.Trigger",
+      values: '"default" | "underline"',
+      description: "Visual variant propagated to list and triggers.",
+    },
+  ],
   props: {
     Tabs: {
       value: {

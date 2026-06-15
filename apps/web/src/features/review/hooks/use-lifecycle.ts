@@ -1,10 +1,12 @@
 import { isApiError } from "@diffgazer/core/api";
 import type { ReviewStreamState } from "@diffgazer/core/api/hooks";
 import { useCreateReview, useReviewLifecycleBase } from "@diffgazer/core/api/hooks";
-import type { ReviewIssue, ReviewMode } from "@diffgazer/core/schemas/review";
+import { sessionTerminationCopy } from "@diffgazer/core/review";
+import type { LensStat } from "@diffgazer/core/schemas/events";
+import type { ReviewIssue, ReviewMode, ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { useRef } from "react";
+import { useEffectEvent, useLayoutEffect, useRef } from "react";
 import { useConfigData } from "@/hooks/use-config";
 
 function getAlternateReviewMode(mode: ReviewMode): ReviewMode {
@@ -16,6 +18,27 @@ function getAlternateReviewMode(mode: ReviewMode): ReviewMode {
 export interface ReviewCompleteData {
   issues: ReviewIssue[];
   reviewId: string | null;
+  lensStats?: LensStat[];
+  droppedBelowThreshold?: number;
+  minSeverity?: ReviewSeverity;
+}
+
+/** Pulls the persisted-equivalent lens stats and drop count from the live event log. */
+function extractOrchestratorStats(
+  state: ReviewStreamState | null,
+): Pick<ReviewCompleteData, "lensStats" | "droppedBelowThreshold" | "minSeverity"> {
+  const events = state?.events ?? [];
+  for (let i = events.length - 1; i >= 0; i--) {
+    const event = events[i];
+    if (event?.type === "orchestrator_complete") {
+      return {
+        lensStats: event.lensStats,
+        droppedBelowThreshold: event.droppedBelowThreshold,
+        minSeverity: event.minSeverity,
+      };
+    }
+  }
+  return {};
 }
 
 interface UseReviewLifecycleOptions {
@@ -34,49 +57,43 @@ export function useReviewLifecycle({
   const { isConfigured, provider, model, isLoading: configLoading } = useConfigData();
   const createReview = useCreateReview();
 
-  const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
-  const onStreamNotFoundRef = useRef(onStreamNotFound);
-  onStreamNotFoundRef.current = onStreamNotFound;
   const streamStateRef = useRef<ReviewStreamState | null>(null);
-  const cancelOnServer = async (): Promise<string | null> => {
-    const result = await Promise.resolve(
-      base.stream.cancel(streamStateRef.current?.reviewId ?? null) as unknown as
-        | string
-        | null
-        | Promise<string | null>,
-    );
-    return result ?? null;
-  };
+  const cancelOnServer = (): Promise<string | null> =>
+    base.stream.cancel(streamStateRef.current?.reviewId ?? null);
+
+  const emitComplete = useEffectEvent(() => {
+    const s = streamStateRef.current;
+    onComplete?.({
+      issues: s?.issues ?? [],
+      reviewId: s?.reviewId ?? null,
+      ...extractOrchestratorStats(s),
+    });
+  });
+
+  const emitStreamNotFound = useEffectEvent((reviewId: string) => {
+    if (onStreamNotFound) {
+      onStreamNotFound(reviewId);
+    } else {
+      navigate({ to: "/" });
+    }
+  });
 
   const base = useReviewLifecycleBase({
-    mode,
     configLoading,
     isConfigured,
     reviewId: params.reviewId,
-    onComplete: () => {
-      const s = streamStateRef.current;
-      onCompleteRef.current?.({
-        issues: s?.issues ?? [],
-        reviewId: s?.reviewId ?? null,
-      });
-    },
-    onNotFoundInSession: (reviewId: string) => {
-      if (onStreamNotFoundRef.current) {
-        onStreamNotFoundRef.current(reviewId);
-      } else {
-        navigate({ to: "/" });
-      }
-    },
-    onStaleSession: () => {
-      toast.error("Session Expired", {
-        message: "The review session has become stale. Please start a new review.",
-      });
+    onComplete: () => emitComplete(),
+    onNotFoundInSession: (reviewId: string) => emitStreamNotFound(reviewId),
+    onStaleSession: (code) => {
+      const copy = sessionTerminationCopy(code);
+      toast.error(copy.title, { message: copy.message });
       navigate({ to: "/" });
     },
   });
 
-  streamStateRef.current = base.stream.state;
+  useLayoutEffect(() => {
+    streamStateRef.current = base.stream.state;
+  });
 
   const handleCancel = () => {
     void (async () => {
@@ -121,11 +138,11 @@ export function useReviewLifecycle({
 
   return {
     state: base.stream.state,
-    isConfigured,
+    gate: base.gate,
+    contextSnapshot: base.contextSnapshot,
+    loadingMessage: base.checks.loadingMessage,
     provider,
     model,
-    loadingMessage: base.checks.loadingMessage,
-    isNoDiffError: base.checks.isNoDiffError,
     handleCancel,
     handleViewResults,
     handleSetupProvider,

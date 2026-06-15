@@ -1,14 +1,25 @@
+/** Item shape consumed by `moveHighlight` when calculating list movement. */
 export interface HighlightNavigationItem {
+  /** Stable identifier returned when this item becomes highlighted. */
   id: string;
+  /** Whether navigation should skip this item. */
   disabled?: boolean;
 }
 
+/** Result of moving highlight through a list of enabled items. */
 export interface MoveHighlightResult {
+  /** Index of the item that should be highlighted after movement. */
   index: number;
+  /** Identifier of the item that should be highlighted after movement. */
   id: string;
+  /** Whether movement stopped at the current edge instead of advancing. */
   hitBoundary: boolean;
 }
 
+/**
+ * Moves a numeric index by one step, clamping at list edges or wrapping around
+ * when requested.
+ */
 export function clampIndex(
   currentIndex: number,
   direction: 1 | -1,
@@ -55,6 +66,10 @@ function createMoveHighlightResult<T extends HighlightNavigationItem>(
   return { index, id: item.id, hitBoundary };
 }
 
+/**
+ * Finds the next enabled item relative to the current item id, skipping disabled
+ * entries and reporting boundaries when wrapping is disabled.
+ */
 export function moveHighlight<T extends HighlightNavigationItem>(
   items: readonly T[],
   currentId: string | null | undefined,
@@ -84,11 +99,9 @@ export function moveHighlight<T extends HighlightNavigationItem>(
     return createMoveHighlightResult(items, wrappedIndex, false);
   }
 
-  const boundaryIndex =
-    items[currentIndex]?.disabled === true
-      ? direction === 1
-        ? lastEnabledIndex
-        : firstEnabledIndex
-      : currentIndex;
+  let boundaryIndex = currentIndex;
+  if (items[currentIndex]?.disabled === true) {
+    boundaryIndex = direction === 1 ? lastEnabledIndex : firstEnabledIndex;
+  }
   return createMoveHighlightResult(items, boundaryIndex, true);
 }

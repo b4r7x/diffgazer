@@ -1,12 +1,12 @@
 "use client";
 
-import type { HTMLAttributes, Ref } from "react";
+import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
-export interface SidebarHeaderProps extends HTMLAttributes<HTMLDivElement> {
-  ref?: Ref<HTMLDivElement>;
-}
+/** Props for sidebar header. */
+export interface SidebarHeaderProps extends ComponentProps<"div"> {}
 
+/** Top section with bottom border. */
 export function SidebarHeader({ ref, children, className, ...props }: SidebarHeaderProps) {
   return (
     <div

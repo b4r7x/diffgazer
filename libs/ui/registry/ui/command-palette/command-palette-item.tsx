@@ -8,10 +8,11 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
-import { composeRefs } from "@/lib/compose-refs";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useCommandPaletteContext } from "./command-palette-context";
 import { getCommandPaletteItemDomId } from "./use-state";
 
+/** Allowed command palette item tone values. */
 export type CommandPaletteItemTone =
   | "neutral"
   | "nav"
@@ -20,18 +21,32 @@ export type CommandPaletteItemTone =
   | "destructive"
   | "ai";
 
+/** Props for command palette item. */
 export interface CommandPaletteItemProps
   extends Omit<ComponentPropsWithRef<"div">, "children" | "id" | "onSelect"> {
+  /** Stable unique id used for highlight state and aria-activedescendant. */
   id: string;
+  /** Searchable text. Defaults to id when omitted. */
   value?: string;
+  /** Optional leading icon. Inherits tone color when a non-neutral tone is set. */
   icon?: ReactNode;
+  /** Keyboard shortcut hint rendered next to the label. */
   shortcut?: string;
+  /**
+   * Semantic tone. Renders a 2px left bar and tints the optional icon via [data-tone]
+   * selectors. The label color stays inherited so contrast holds under any frame. Map:
+   * nav→info, action→success, settings→warning, destructive→destructive, ai→accent.
+   */
   tone?: CommandPaletteItemTone;
+  /** Called when the item is activated. Runs before CommandPalette.onActivate. */
   onSelect?: () => void;
+  /** Disable activation and skip in keyboard navigation. */
   disabled?: boolean;
+  /** Content rendered inside the component. */
   children: ReactNode;
 }
 
+/** Selectable item with icon, shortcut, tone, value. */
 export function CommandPaletteItem({
   id,
   value,
@@ -60,6 +75,7 @@ export function CommandPaletteItem({
   } = useCommandPaletteContext();
   const registrationId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
+  const composedRef = useComposedRefs(rootRef, ref);
 
   const searchValue = value ?? id;
   const isVisible = !shouldFilter || !search || filter(searchValue, search);
@@ -105,7 +121,7 @@ export function CommandPaletteItem({
     // biome-ignore lint/a11y/useKeyWithClickEvents: Enter activation is handled centrally by the command palette input, not per option.
     <div
       {...props}
-      ref={composeRefs(rootRef, ref)}
+      ref={composedRef}
       id={getCommandPaletteItemDomId(listId, id)}
       role="option"
       data-slot="command-palette-item"

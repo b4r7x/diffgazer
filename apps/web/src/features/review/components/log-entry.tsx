@@ -39,7 +39,7 @@ export function LogEntry({
   const tagStyle = TAG_VARIANTS[tagType ?? "system"];
   return (
     <div className={cn("font-mono text-sm leading-relaxed", className)}>
-      <span className="text-tui-muted">[{formatTimestamp(timestamp)}]</span>{" "}
+      <span className="text-muted-foreground">[{formatTimestamp(timestamp)}]</span>{" "}
       <Badge
         variant={tagStyle.variant}
         size="sm"
@@ -49,12 +49,16 @@ export function LogEntry({
       </Badge>
       {source && (
         <>
-          <span className="font-bold text-tui-fg">{source}</span>
-          <span className="text-tui-muted"> → </span>
+          <span className="font-bold text-foreground">{source}</span>
+          <span className="text-muted-foreground"> → </span>
         </>
       )}
       <span
-        className={cn("text-tui-muted", isWarning && "text-tui-yellow", isError && "text-tui-red")}
+        className={cn(
+          "text-muted-foreground",
+          isWarning && "text-warning-text",
+          isError && "text-error-text",
+        )}
       >
         {message}
       </span>

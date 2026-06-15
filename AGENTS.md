@@ -36,10 +36,10 @@ If your environment supports skills, load these before acting:
 - `libs/registry` owns registry contracts, shadcn/public registry validation/building, copy bundle behavior, and shared CLI workflow helpers.
 - `cli/add` owns the user-facing add/remove/list/diff commands and must preserve copy, package, and direct registry consumption paths.
 - `cli/server` owns the embedded Hono backend (review pipeline, git, config, shutdown token) consumed only by the `diffgazer` CLI. It is CLI-internal, not a reusable primitive, and ships bundled into the `diffgazer` binary via tsup `noExternal`.
-- `libs/core` owns private business logic shared between the CLI and apps: Zod schemas/types (config, review, events, presentation, git, context), result/error types, format/string utilities, review state machines, provider filtering, API client factories, shared env/port parsing, and form/API/derived-state React hooks. It must not import from `apps/*` or `cli/*`.
+- `libs/core` owns private business logic shared between the CLI and apps: Zod schemas/types (config, review, events, presentation, git, context), result/error types, format/string utilities, review state machines, the web/TUI theme token-keys parity contract (`libs/core/src/theme`, consumed by both the TUI runtime and the `libs/ui` theme-parity test), API client factories, shared env/port parsing, and form/API/derived-state React hooks. It must not import from `apps/*` or `cli/*`. Single-surface helpers (provider filtering, `select`, `timer` for the web app; `breakpoints`, `get-figlet` for the TUI binary) live in their consuming surface, not core.
 - `cli/diffgazer` owns the public `diffgazer` CLI binary with two modes: web (embeds the built `@diffgazer/web` SPA behind a local `cli/server` Hono server) and TUI (Ink terminal UI). It is a binary, not a library; it stays thin and consumes `libs/core`, `libs/keys`, and `cli/server` rather than holding app-specific features.
 - `apps/docs` owns the component and hook documentation site. It consumes `libs/core`, `libs/keys`, `libs/registry`, and `libs/ui` to build the registry browser, theme visualizer, and consumption examples. It must consume `@diffgazer/ui`, never mirror it; extract only generic utilities from docs, never docs-specific layout.
-- `apps/landing` owns the marketing landing page. It uses only `libs/ui` (currently for theme CSS) and carries no product/domain logic and no docs utilities.
+- `apps/landing` owns the marketing landing page. It uses only `libs/ui` for theme CSS and display primitives (`Button`, `Card`, `CodeBlock`, `DiffView`, `Kbd`) and carries no product/domain logic and no docs utilities. It intentionally does not declare `@diffgazer/keys`: the required `@diffgazer/ui` peer resolves through the workspace link, and the imported primitives do not import keys. Revisit this if landing adopts keyboard-dependent UI components.
 
 ## Per-Surface Taxonomy
 
@@ -48,7 +48,7 @@ This is the single source of truth for how each workspace is shaped. Bulletproof
 - **UI surfaces (`apps/web`, `apps/docs`, `apps/landing`, `cli/diffgazer` Ink TUI).** Bulletproof-react taxonomy: `app/` for providers, routers, and thin routes where the surface owns that shell; on-demand `features/<x>/{components,hooks,lib}`; shared `components/{ui,shared,layout}`, `hooks/`, `lib/`, `config/`, `types/`, and `testing/`. `apps/docs` keeps the TanStack-owned `routes/` root plus `router.tsx`/`client.tsx`/`server.ts`; `apps/landing` stays intentionally small and only adds taxonomy folders when the surface earns them; `apps/web` keeps `utils/`; `cli/diffgazer` keeps `lib/servers/` launcher adapters and `theme/`. Flat-sibling colocation; no internal barrels.
 - **Hono server (`cli/server`).** Feature-backend, not bulletproof-react: a `createApp()` factory (`app.ts`) separate from the runtime entry (`http-server.ts`/`serve.ts`) and the lib entry (`index.ts`); `features/<domain>/{router,service,schemas,types}` mounted via `app.route()`; colocated zod schemas with `zValidator`; `shared/{lib,middlewares}/`. NO Rails-style controllers (they break Hono type inference).
 - **Command CLI (`cli/add`).** Command-screaming `commands/` — one file or folder per subcommand (folder = spec + handler split) — with domain logic in `utils/` and a shared `context.ts`. NOT bulletproof-react taxonomy.
-- **Publishable libraries (`libs/core`, `libs/ui`, `libs/keys`, `libs/registry`).** Organized by domain module behind ONE `src/index.ts` public entry plus granular subpath `exports`; no `features/` taxonomy. `libs/ui` additionally keeps per-component registry folders with colocated tests and a per-component `index.ts` (the sanctioned copy/shadcn distribution surface).
+- **Library packages (`libs/core`, `libs/ui`, `libs/keys`, `libs/registry`).** Organized by domain module; no `features/` taxonomy. `libs/core` is subpath-only with 31 package exports and deliberately no root `.` entry. `libs/keys` and `libs/registry` use one `src/index.ts` root entry plus the package subpaths declared in their manifests. `libs/ui` source lives under `registry/` in per-component, hook, and lib folders; it ships package subpaths plus copy/shadcn registry items and has no `src/index.ts`.
 
 ## Extraction Rules
 
@@ -97,6 +97,7 @@ This is a documented exception to the generic `value/defaultValue/onChange(value
 - Store stable IDs instead of object copies when source data already exists.
 - Prefer union state over multiple booleans for status.
 - Avoid nested ternaries and long nullish chains in JSX/control flow; name the decision with a helper when it improves readability.
+- Biome enforces nested ternaries. The remaining React rules in this section are review-time checks; apply them when reading or changing React code.
 
 ## Keys Library Rules
 
@@ -134,6 +135,7 @@ This is a documented exception to the generic `value/defaultValue/onChange(value
 - For keyboard/focus work, test actual focus movement, active descendant, boundary callbacks, editable-target behavior, and disabled/skipped item behavior.
 - For registry/CLI work, test copy/package/direct public registry paths and removal ownership behavior.
 - For React hooks, test behavior under rerender and cleanup, not internal refs or implementation-only state.
+- `test:scripts` enforces retained `fireEvent` rationales and UI component axe coverage. The other testing rules in this section remain review-time checks.
 
 ## Generated Artifacts
 
@@ -148,7 +150,7 @@ This is a documented exception to the generic `value/defaultValue/onChange(value
 - After UI primitive changes: run focused UI tests and `pnpm --filter @diffgazer/ui type-check`.
 - After web adoption changes: run focused web tests and `pnpm --filter @diffgazer/web type-check`.
 - After registry, CLI, docs, or public handoff changes: run `pnpm run prepare:artifacts` and `pnpm run validate:artifacts:check`.
-- Before declaring SOTA/ready: run `DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run type-check`, `DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run test`, `DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke`, and `pnpm run verify:monorepo`. The catalog smoke validates the bundled offline snapshot on every run; add `DIFFGAZER_SMOKE_ALLOW_NETWORK=1` (as CI does) to also validate the live models.dev fetch.
+- Before declaring SOTA/ready: run `DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run type-check`, `DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run test`, `pnpm run test:scripts`, `DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke`, and `pnpm run verify:monorepo`. The catalog smoke validates the bundled offline snapshot on every run; add `DIFFGAZER_SMOKE_ALLOW_NETWORK=1` (as CI does) to also validate the live models.dev fetch.
 - Always run `git diff --check` before final response.
 
 ## Dependency Policy

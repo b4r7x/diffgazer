@@ -1,5 +1,6 @@
 import { cva } from "class-variance-authority";
 
+/** Allowed sidebar variant values. */
 export type SidebarVariant =
   | "caret"
   | "inverted"
@@ -9,6 +10,7 @@ export type SidebarVariant =
   | "terminal"
   | "tree";
 
+/** Class variants for sidebar container. */
 export const sidebarContainerVariants = cva(
   [
     // group/sidebar lets descendants (item label/badge/glyph, section title)
@@ -34,6 +36,7 @@ export const sidebarContainerVariants = cva(
   },
 );
 
+/** Class variants for sidebar item. */
 export const sidebarItemVariants = cva(
   [
     "flex items-center gap-2 w-full min-w-0 px-2 py-1 text-sm",
@@ -52,12 +55,12 @@ export const sidebarItemVariants = cva(
       variant: {
         caret: [
           "text-foreground/70 hover:text-foreground hover:bg-foreground/5",
-          "data-[active=true]:text-foreground data-[active=true]:font-semibold",
-          "data-[active=true]:hover:bg-foreground/5",
+          "data-[selected]:text-foreground data-[selected]:font-semibold",
+          "data-[selected]:hover:bg-foreground/5",
         ].join(" "),
         inverted: [
           "text-foreground/70 hover:text-foreground hover:bg-foreground/5",
-          "data-[active=true]:bg-foreground data-[active=true]:text-background data-[active=true]:font-semibold",
+          "data-[selected]:bg-foreground data-[selected]:text-background data-[selected]:font-semibold",
           // Contract: requires SidebarContent to ship `p-4` (16px horizontal
           // padding). If you change Content padding, update -mx-4 / +2rem / px-6
           // here too — they hard-couple to that 16px gutter.
@@ -67,28 +70,28 @@ export const sidebarItemVariants = cva(
           // width — w-full alone resolves to the section's content box, which
           // negative margins do not widen). px-6 compensates the 16px margin
           // bleed so the label glyph X stays stable when (in)active.
-          "data-[active=true]:-mx-4 data-[active=true]:w-[calc(100%+2rem)] data-[active=true]:px-6",
+          "data-[selected]:-mx-4 data-[selected]:w-[calc(100%+2rem)] data-[selected]:px-6",
           // Rail mode: SidebarContent zeroes horizontal padding (no 16px gutter
           // to bleed past). Reset the active row's full-bleed math so the row
           // stays at the 32px square footprint inside the 48px rail.
-          "group-data-[state=rail]/sidebar:data-[active=true]:mx-0 group-data-[state=rail]/sidebar:data-[active=true]:w-full group-data-[state=rail]/sidebar:data-[active=true]:px-0",
-          "data-[active=true]:hover:bg-foreground data-[active=true]:hover:text-background",
+          "group-data-[state=rail]/sidebar:data-[selected]:mx-0 group-data-[state=rail]/sidebar:data-[selected]:w-full group-data-[state=rail]/sidebar:data-[selected]:px-0",
+          "data-[selected]:hover:bg-foreground data-[selected]:hover:text-background",
         ].join(" "),
         bar: [
           "border-l border-transparent -ml-px pl-[calc(0.5rem+3px)]",
           "text-foreground/70 hover:text-foreground hover:bg-foreground/5",
-          "data-[active=true]:text-foreground data-[active=true]:font-semibold data-[active=true]:border-l-foreground",
-          "data-[active=true]:bg-foreground/5 data-[active=true]:hover:bg-foreground/5",
+          "data-[selected]:text-foreground data-[selected]:font-semibold data-[selected]:border-l-foreground",
+          "data-[selected]:bg-foreground/5 data-[selected]:hover:bg-foreground/5",
         ].join(" "),
         bracket: [
           "text-foreground/70 hover:text-foreground hover:bg-foreground/5",
-          "data-[active=true]:text-foreground data-[active=true]:font-semibold",
-          "data-[active=true]:hover:bg-foreground/5",
+          "data-[selected]:text-foreground data-[selected]:font-semibold",
+          "data-[selected]:hover:bg-foreground/5",
         ].join(" "),
         block: [
           "text-foreground/70 hover:text-foreground hover:bg-foreground/5",
-          "data-[active=true]:bg-foreground/8 data-[active=true]:text-foreground data-[active=true]:font-semibold",
-          "data-[active=true]:hover:bg-foreground/10",
+          "data-[selected]:bg-foreground/8 data-[selected]:text-foreground data-[selected]:font-semibold",
+          "data-[selected]:hover:bg-foreground/10",
         ].join(" "),
         // Terminal/TUI rail: every row carries a faint 1px left rail so stacked
         // items form one continuous hairline (the "grid" of the CLI aesthetic).
@@ -98,13 +101,13 @@ export const sidebarItemVariants = cva(
         terminal: [
           "border-l border-border -ml-px pl-[calc(0.5rem+3px)]",
           "text-foreground/60 hover:text-foreground hover:border-foreground/40",
-          "data-[active=true]:text-foreground data-[active=true]:border-l-foreground",
-          "data-[active=true]:hover:border-l-foreground",
+          "data-[selected]:text-foreground data-[selected]:border-l-foreground",
+          "data-[selected]:hover:border-l-foreground",
         ].join(" "),
         tree: [
           "text-foreground/70 hover:text-foreground hover:bg-foreground/5",
-          "data-[active=true]:bg-foreground/8 data-[active=true]:text-foreground data-[active=true]:font-semibold",
-          "data-[active=true]:hover:bg-foreground/10",
+          "data-[selected]:bg-foreground/8 data-[selected]:text-foreground data-[selected]:font-semibold",
+          "data-[selected]:hover:bg-foreground/10",
         ].join(" "),
       },
     },

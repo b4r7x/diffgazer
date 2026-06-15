@@ -2,15 +2,12 @@
   "name": "@diffgazer/core",
   "version": "0.0.1",
   "private": true,
+  "license": "Apache-2.0",
   "type": "module",
   "sideEffects": [
     "./dist/testing/dom-polyfills.js"
   ],
   "exports": {
-    "./breakpoints": {
-      "types": "./dist/breakpoints.d.ts",
-      "import": "./dist/breakpoints.js"
-    },
     "./errors": {
       "types": "./dist/errors.d.ts",
       "import": "./dist/errors.js"
@@ -63,21 +60,9 @@
       "types": "./dist/navigation/index.d.ts",
       "import": "./dist/navigation/index.js"
     },
-    "./timer": {
-      "types": "./dist/timer.d.ts",
-      "import": "./dist/timer.js"
-    },
-    "./select": {
-      "types": "./dist/select.d.ts",
-      "import": "./dist/select.js"
-    },
     "./forms": {
       "types": "./dist/forms.d.ts",
       "import": "./dist/forms.js"
-    },
-    "./get-figlet": {
-      "types": "./dist/get-figlet.d.ts",
-      "import": "./dist/get-figlet.js"
     },
     "./api": {
       "types": "./dist/api/index.d.ts",
@@ -90,6 +75,10 @@
     "./api/hooks": {
       "types": "./dist/api/hooks/index.d.ts",
       "import": "./dist/api/hooks/index.js"
+    },
+    "./api/protocol": {
+      "types": "./dist/api/protocol.d.ts",
+      "import": "./dist/api/protocol.js"
     },
     "./schemas": {
       "types": "./dist/schemas/index.d.ts",
@@ -130,6 +119,18 @@
     "./testing/dom-polyfills": {
       "types": "./dist/testing/dom-polyfills.d.ts",
       "import": "./dist/testing/dom-polyfills.js"
+    },
+    "./testing/factories": {
+      "types": "./dist/testing/factories.d.ts",
+      "import": "./dist/testing/factories.js"
+    },
+    "./testing/match-media": {
+      "types": "./dist/testing/match-media.d.ts",
+      "import": "./dist/testing/match-media.js"
+    },
+    "./testing/query-wrapper": {
+      "types": "./dist/testing/query-wrapper.d.ts",
+      "import": "./dist/testing/query-wrapper.js"
     }
   },
   "scripts": {
@@ -140,11 +141,9 @@
     "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p scripts/tsconfig.json",
     "check": "biome check .",
     "test": "vitest run",
-    "test:types": "tsc --noEmit -p tsconfig.test.json",
     "test:watch": "vitest"
   },
   "dependencies": {
-    "figlet": "^1.10.0",
     "zod": "^4.3.6"
   },
   "peerDependencies": {
@@ -163,7 +162,6 @@
     "@diffgazer/registry": "workspace:*",
     "@tanstack/react-query": "^5.80.7",
     "@testing-library/react": "^16.3.2",
-    "@types/figlet": "^1.7.0",
     "@types/node": "^25.2.3",
     "@types/react": "^19.2.13",
     "jsdom": "^28.1.0",

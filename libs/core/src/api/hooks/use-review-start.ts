@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { Result } from "../../result.js";
-import type { StreamReviewError } from "../../review/index.js";
-import type { ReviewMode } from "../../schemas/review/index.js";
+import {
+  isSessionTerminationCode,
+  type SessionTerminationCode,
+  type StreamReviewError,
+} from "../../review/index.js";
 import { ReviewErrorCode } from "../../schemas/review/index.js";
 
 export interface UseReviewStartOptions {
-  mode: ReviewMode;
   configLoading: boolean;
   settingsLoading: boolean;
   isConfigured: boolean;
@@ -13,7 +15,7 @@ export interface UseReviewStartOptions {
   currentReviewId?: string | null;
   resume: (id: string) => Promise<Result<void, StreamReviewError>>;
   onNotFoundInSession?: (reviewId: string) => void;
-  onStaleSession?: () => void;
+  onStaleSession?: (code: SessionTerminationCode) => void;
 }
 
 export interface UseReviewStartResult {
@@ -56,8 +58,8 @@ export function useReviewStart(options: UseReviewStartOptions): UseReviewStartRe
       if (ignore) return;
       if (result.ok) return;
 
-      if (result.error.code === ReviewErrorCode.SESSION_STALE) {
-        onStaleRef.current?.();
+      if (isSessionTerminationCode(result.error.code)) {
+        onStaleRef.current?.(result.error.code);
       } else if (result.error.code === ReviewErrorCode.SESSION_NOT_FOUND) {
         onNotFoundRef.current?.(reviewId);
       }

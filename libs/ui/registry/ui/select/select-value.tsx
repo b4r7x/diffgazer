@@ -17,10 +17,17 @@ const selectValuePlaceholderVariants = cva("", {
   defaultVariants: { variant: "default" },
 });
 
+/**
+ * Dropdown select with search, multiple selection, card variant, and controlled keyboard
+ * integration points. 8 composable parts.
+ */
 export type SelectValueDisplay = "count" | "list" | "truncate";
 
+/** Props for select value render. */
 export interface SelectValueRenderProps {
+  /** Marks the item as selected. */
   selected: string[];
+  /** labels used by select value. */
   labels: ReadonlyMap<string, string>;
 }
 
@@ -30,12 +37,28 @@ function getLabelMap(
   return new Map(Array.from(options, ([value, option]) => [value, option.label]));
 }
 
+/** Props for select value. */
 export interface SelectValueProps {
+  /** Rendered when nothing is selected. */
   placeholder?: ReactNode;
+  /**
+   * Multi-select display mode. "count" shows N selected, "list" comma-separates, "truncate"
+   * shows first N + "+M more".
+   */
   display?: SelectValueDisplay;
+  /** Number of items shown before "+N more" when display="truncate". */
   truncateAfter?: number;
+  /** Additional class names merged onto the rendered element. */
   className?: string;
+  /**
+   * Render function for fully custom selection display. Example: selected.map((value) =>
+   * labels.get(value) ?? value).join(', ').
+   */
   children?: ((props: SelectValueRenderProps) => ReactNode) | ReactNode;
+  /** "N selected" summary text (count display). Defaults to `${count} selected`. */
+  getSelectedLabel?: (count: number) => string;
+  /** "+N more" overflow text (truncate display). Defaults to ` +${count} more`. */
+  getOverflowLabel?: (count: number) => string;
 }
 
 function MultiValue({
@@ -43,11 +66,15 @@ function MultiValue({
   options,
   display,
   truncateAfter,
+  getSelectedLabel,
+  getOverflowLabel,
 }: {
   selected: string[];
   options: ReadonlyMap<string, SelectOptionMetadata>;
   display: SelectValueDisplay;
   truncateAfter: number;
+  getSelectedLabel?: (count: number) => string;
+  getOverflowLabel?: (count: number) => string;
 }): ReactNode {
   if (selected.length === 1) {
     const firstSelected = selected[0];
@@ -68,22 +95,28 @@ function MultiValue({
       return (
         <span>
           {visible.join(", ")}
-          {overflow > 0 && ` +${overflow} more`}
+          {overflow > 0 && (getOverflowLabel?.(overflow) ?? ` +${overflow} more`)}
         </span>
       );
     }
 
     default:
-      return <span>{selected.length} selected</span>;
+      return <span>{getSelectedLabel?.(selected.length) ?? `${selected.length} selected`}</span>;
   }
 }
 
+/**
+ * Displays selected value or placeholder. Props: display (count|list|truncate), truncateAfter,
+ * children as render function.
+ */
 export function SelectValue({
   placeholder = "Select...",
   display = "count",
   truncateAfter = 2,
   className,
   children,
+  getSelectedLabel,
+  getOverflowLabel,
 }: SelectValueProps) {
   const { value, multiple, options, variant } = useSelectContext("SelectValue");
 
@@ -113,6 +146,8 @@ export function SelectValue({
         options={options}
         display={display}
         truncateAfter={truncateAfter}
+        getSelectedLabel={getSelectedLabel}
+        getOverflowLabel={getOverflowLabel}
       />
     </span>
   );

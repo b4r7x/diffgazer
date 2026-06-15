@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createMiddleware } from "hono/factory";
 import { log } from "../lib/log.js";
 
-export const REQUEST_ID_HEADER = "X-Request-Id";
+const REQUEST_ID_HEADER = "X-Request-Id";
 
 export type RequestLoggerEnv = {
   Variables: {
@@ -11,8 +11,11 @@ export type RequestLoggerEnv = {
   };
 };
 
-const levelForStatus = (status: number): "info" | "warn" | "error" =>
-  status >= 500 ? "error" : status >= 400 ? "warn" : "info";
+function levelForStatus(status: number): "info" | "warn" | "error" {
+  if (status >= 500) return "error";
+  if (status >= 400) return "warn";
+  return "info";
+}
 
 /**
  * Assigns a request id, times the request, exposes the id via response header,

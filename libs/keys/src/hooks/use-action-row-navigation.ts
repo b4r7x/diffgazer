@@ -23,21 +23,35 @@ type ActionRowDisabledFlags<Actions extends readonly unknown[]> = number extends
   ? readonly boolean[]
   : { readonly [K in keyof Actions]: boolean };
 
+/** Options for two-zone keyboard navigation across row content and inline actions. */
 export interface UseActionRowNavigationOptions<
   Actions extends readonly unknown[] = readonly unknown[],
 > {
+  /** Enables row keyboard handling. Pass the row's active or selected state. */
   enabled: boolean;
+  /** Number of action controls managed by the row. */
   actionCount: Actions["length"];
+  /** Called when Enter or Space activates the focused action. */
   onAction: (index: ActionRowIndex<Actions>) => void;
+  /** Per-index disabled flags; disabled actions are skipped and ignored on activation. */
   disabledActions?: ActionRowDisabledFlags<Actions>;
+  /** Receives focus when entering actions but no action is enabled. */
   disabledFocusFallbackRef?: RefObject<HTMLElement | null>;
+  /** Limits zone handling to one row subtree. */
   containerRef?: RefObject<HTMLElement | null>;
+  /** Allow row shortcuts to run when an editable element is focused. */
   allowInInput?: boolean;
+  /** Wrap ArrowLeft/ArrowRight movement across the action ends. */
   wrap?: boolean;
+  /** Initial zone; `"actions"` focuses the default action on mount. */
   defaultZone?: ActionRowZone;
+  /** Initial action index focused when entering the actions zone. */
   defaultIndex?: ActionRowIndex<Actions>;
+  /** Allow ArrowUp to leave the actions zone back to content. */
   canExitActions?: boolean;
+  /** Called when navigation lands on an action index. */
   onNavigate?: (index: ActionRowIndex<Actions>) => void;
+  /** Called when navigation cannot move further in a direction. */
   onNavigationBoundaryReached?: (direction: "previous" | "next") => void;
 }
 
@@ -82,20 +96,40 @@ function getNextIndex(
   return isIndexEnabled(current, actionCount, disabledKey) ? current : null;
 }
 
-export interface UseActionRowNavigationReturn {
+/** Return value from `useActionRowNavigation`. */
+export interface UseActionRowNavigationReturn<
+  Actions extends readonly unknown[] = readonly unknown[],
+> {
+  /** Whether the row is currently in the actions zone. */
   inActions: boolean;
-  focusedIndex: number;
+  /** Current focused action index. */
+  focusedIndex: ActionRowIndex<Actions>;
+  /** Whether the current action index is disabled. */
   isFocusedActionDisabled: boolean;
-  enterActions: (index?: number) => number | null;
+  /**
+   * Moves into the actions zone and focuses the requested or first enabled
+   * action. Returns the focused index, or null when no action is enabled.
+   */
+  enterActions: (index?: ActionRowIndex<Actions>) => number | null;
+  /** Returns to the content zone when `canExitActions` is true. */
   exitActions: () => void;
-  reset: (initialIndex?: number) => void;
-  getActionProps: (index: number) => {
+  /** Returns to content and resets the focused action index. */
+  reset: (initialIndex?: ActionRowIndex<Actions>) => void;
+  /** Props to spread onto each action element so the hook can focus and track it. */
+  getActionProps: (index: ActionRowIndex<Actions>) => {
+    /** Ref callback that registers the action element at this index. */
     ref: RefCallback<HTMLElement>;
+    /** Numeric action index exposed for debugging and tests. */
     "data-action-index": number;
+    /** Focus handler that marks this action as the active action-zone item. */
     onFocus: () => void;
   };
 }
 
+/**
+ * Coordinates a row's main content with a strip of inline action buttons using
+ * provider-backed two-zone keyboard navigation.
+ */
 export function useActionRowNavigation<Actions extends readonly unknown[] = readonly unknown[]>({
   enabled,
   actionCount,
@@ -110,7 +144,7 @@ export function useActionRowNavigation<Actions extends readonly unknown[] = read
   canExitActions = true,
   onNavigate,
   onNavigationBoundaryReached,
-}: UseActionRowNavigationOptions<Actions>): UseActionRowNavigationReturn {
+}: UseActionRowNavigationOptions<Actions>): UseActionRowNavigationReturn<Actions> {
   const [focusedIndex, setFocusedIndex] = useState<number>(defaultIndex);
   const actionRefs = useRef(new Map<number, HTMLElement>());
   const hasFocusedDefaultRef = useRef(false);
@@ -298,7 +332,9 @@ export function useActionRowNavigation<Actions extends readonly unknown[] = read
 
   return {
     inActions,
-    focusedIndex,
+    // focusedIndex is bounded to 0..actionCount-1 by the navigation logic, so it
+    // is always a valid Actions index when Actions is a tuple.
+    focusedIndex: focusedIndex as ActionRowIndex<Actions>,
     isFocusedActionDisabled: !isIndexEnabled(focusedIndex, actionCount, disabledKey),
     enterActions,
     exitActions,

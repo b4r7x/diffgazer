@@ -16,6 +16,7 @@ const TONE_RULES: ReadonlyArray<readonly [RegExp, CommandPaletteItemTone]> = [
   [/^(run|exec|build|test|deploy|create|new|add|export|import|copy)\b/i, "action"],
 ];
 
+/** categorize utility. */
 export function categorize(value: string): CommandPaletteItemTone {
   const trimmed = value.trim();
   for (const [pattern, tone] of TONE_RULES) {
@@ -24,6 +25,7 @@ export function categorize(value: string): CommandPaletteItemTone {
   return "neutral";
 }
 
+/** match positions utility. */
 export function matchPositions(value: string, search: string): number[] {
   if (!search) return [];
   const lowerValue = value.toLowerCase();
@@ -83,11 +85,19 @@ function isPureText(children: ReactNode): boolean {
   return false;
 }
 
+/** Props for command palette highlight item. */
 export interface CommandPaletteHighlightItemProps extends Omit<CommandPaletteItemProps, "tone"> {
+  /** Visual tone. */
   tone?: CommandPaletteItemTone;
+  /** Accessible label text. */
   label?: string;
 }
 
+/**
+ * Terminal-styled command palette with built-in search filtering, grouped items, and keyboard
+ * navigation. Uses native dialog element with backdrop blur. Two orthogonal visual axes on
+ * Content (frame and density) keep visual chrome configurable without touching internals.
+ */
 export function CommandPaletteHighlightItem({
   tone,
   value,

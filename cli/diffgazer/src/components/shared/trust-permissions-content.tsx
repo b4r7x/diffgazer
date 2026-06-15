@@ -2,6 +2,7 @@ import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
 import {
   fromSelectedCapabilityIds,
   TRUST_CAPABILITY_OPTIONS,
+  TRUST_SECURITY_WARNING,
   toSelectedCapabilityIds,
 } from "@diffgazer/core/schemas/config";
 import { Box, Text } from "ink";
@@ -36,7 +37,7 @@ export function TrustPermissionsContent({
   return (
     <Box flexDirection="column" gap={1}>
       <Box flexDirection="column">
-        <Text color={tokens.muted}>TARGET DIRECTORY</Text>
+        <Text color={tokens.muted}>TARGET REPOSITORY</Text>
         <Box justifyContent="space-between" gap={1}>
           <Text color={tokens.info} bold>
             {directory}
@@ -58,11 +59,8 @@ export function TrustPermissionsContent({
       </CheckboxGroup>
 
       <Callout variant="warning">
-        <Callout.Title>SECURITY WARNING</Callout.Title>
-        <Callout.Content>
-          Run commands is currently unavailable. When enabled, it allows the AI to execute shell
-          scripts. This grants significant access to your system.
-        </Callout.Content>
+        <Callout.Title>{TRUST_SECURITY_WARNING.title}</Callout.Title>
+        <Callout.Content>{TRUST_SECURITY_WARNING.body}</Callout.Content>
       </Callout>
     </Box>
   );

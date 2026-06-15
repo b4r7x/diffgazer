@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { assertDistEsmRelativeImports } from "@diffgazer/registry/cli";
+import { assertDistEsmRelativeImports } from "@diffgazer/registry/build-checks";
 
 // dist/artifacts holds copied shadcn/copy payloads that are intentionally
 // extensionless; only the tsc-emitted tree is subject to the Node ESM rule.

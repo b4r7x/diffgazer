@@ -3,7 +3,7 @@ import { Menu, MenuItem } from "@/components/ui/menu";
 export default function MenuNested() {
   return (
     <div className="w-80 border border-border">
-      <Menu variant="hub" aria-label="Project menu">
+      <Menu variant="detail" aria-label="Project menu">
         <MenuItem id="overview" value="12 files">
           Overview
         </MenuItem>

@@ -2,6 +2,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
+/** Class variants for typography. */
 export const typographyVariants = cva("font-mono", {
   variants: {
     variant: {
@@ -25,9 +26,8 @@ export const typographyVariants = cva("font-mono", {
       bold: "font-bold",
     },
     color: {
-      default: "text-muted-foreground",
+      default: "text-foreground",
       muted: "text-muted-foreground",
-      foreground: "text-foreground",
       accent: "text-primary",
     },
     lineClamp: {
@@ -52,6 +52,7 @@ export const typographyVariants = cva("font-mono", {
   },
 });
 
+/** Allowed typography size values. */
 type TypographySize = NonNullable<VariantProps<typeof typographyVariants>["size"]>;
 type TypographyWeight = NonNullable<VariantProps<typeof typographyVariants>["weight"]>;
 
@@ -77,8 +78,10 @@ const HEADING_DEFAULT_WEIGHT: Record<HeadingTag, TypographyWeight> = {
 
 type TypographyElement = "div" | "p" | "span" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
+/** Props for typography own. */
 type TypographyOwnProps = VariantProps<typeof typographyVariants>;
 
+/** Props for typography. */
 export type TypographyProps<T extends TypographyElement = "div"> = Omit<
   ComponentPropsWithRef<T>,
   keyof TypographyOwnProps | "as"
@@ -87,6 +90,11 @@ export type TypographyProps<T extends TypographyElement = "div"> = Omit<
     as?: T;
   };
 
+/**
+ * Terminal-styled typography wrapper for consistent text styling. Provides variants for body
+ * text, prose content, and compact displays, plus semantic h1-h6 headings with sensible default
+ * sizing.
+ */
 export function Typography<T extends TypographyElement = "div">(props: TypographyProps<T>) {
   const { as, className, variant, size, weight, color, lineClamp, truncate, ref, ...rest } =
     props as TypographyProps<TypographyElement>;
@@ -106,6 +114,7 @@ export function Typography<T extends TypographyElement = "div">(props: Typograph
       // polymorphic ref: the element type is only known at the call site,
       // so the ref type cannot be narrowed inside the generic component body.
       ref={ref as never}
+      data-slot="typography"
       className={cn(
         typographyVariants({
           variant,

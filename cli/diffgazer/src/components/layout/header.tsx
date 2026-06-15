@@ -1,8 +1,6 @@
+import type { ProviderDisplayStatus } from "@diffgazer/core/providers";
 import { Box, Text } from "ink";
 import { useTheme } from "../../theme/provider";
-
-/** @see diffgazer/apps/web/src/components/layout/header.tsx ProviderDisplayStatus (identical web variant) */
-export type ProviderDisplayStatus = "active" | "idle";
 
 export interface HeaderProps {
   providerName: string;

@@ -1,12 +1,17 @@
 "use client";
 
 import { cva } from "class-variance-authority";
-import type { ComponentPropsWithRef, MouseEvent, ReactNode } from "react";
+import {
+  type ComponentPropsWithRef,
+  type MouseEvent,
+  type ReactNode,
+  useLayoutEffect,
+} from "react";
 import { matchesSearch } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { OverflowText } from "../overflow/overflow-text";
 import { useSelectContext } from "./select-context";
-import { isValueSelected, toOptionId } from "./selection";
+import { getNodeText, isValueSelected, toOptionId } from "./selection";
 
 const NBSP = "\u00a0";
 const BULLET = "\u25cf";
@@ -45,6 +50,7 @@ const selectItemVariants = cva(
   },
 );
 
+/** Allowed item state values. */
 type ItemState =
   | "default"
   | "highlighted"
@@ -58,14 +64,27 @@ function getItemState(isSelected: boolean, isHighlighted: boolean, multiple: boo
   return "selected";
 }
 
+/**
+ * Dropdown select with search, multiple selection, card variant, and controlled keyboard
+ * integration points. 8 composable parts.
+ */
 export type SelectItemIndicator = "auto" | "checkbox" | "radio" | "none";
 
+/** Props for select item. */
 export interface SelectItemProps<TValue extends string = string>
   extends Omit<ComponentPropsWithRef<"div">, "children" | "onSelect"> {
+  /** Item value. Must be unique within the Select. */
   value: TValue;
+  /** Content rendered inside the component. */
   children: ReactNode;
+  /** Disable the option. */
   disabled?: boolean;
+  /**
+   * Selection indicator style. "auto" picks checkbox in multi mode and a check mark in single
+   * mode.
+   */
   indicator?: SelectItemIndicator;
+  /** Override the searchable/typeahead text when children are not plain text. */
   textValue?: string;
 }
 
@@ -84,6 +103,10 @@ function renderIndicator(
   return isSelected ? CHECKMARK : null;
 }
 
+/**
+ * Selectable option. indicator prop: auto/checkbox/radio/none. textValue prop for custom search
+ * text.
+ */
 export function SelectItem<TValue extends string = string>({
   value: itemValue,
   children,
@@ -96,15 +119,38 @@ export function SelectItem<TValue extends string = string>({
   onMouseEnter,
   ...props
 }: SelectItemProps<TValue>) {
-  const { value, open, multiple, highlighted, searchQuery, selectItem, variant, listboxId } =
-    useSelectContext("SelectItem");
+  const {
+    value,
+    open,
+    multiple,
+    highlighted,
+    searchQuery,
+    selectItem,
+    registerOption,
+    unregisterOption,
+    options,
+    variant,
+    listboxId,
+  } = useSelectContext("SelectItem");
 
-  const label = textValue ?? (typeof children === "string" ? children : itemValue);
+  // One derivation for registration and the visibility filter: textValue wins,
+  // then the flattened node text (icon + text JSX), then the raw value.
+  const label = textValue ?? getNodeText(children) ?? itemValue;
+
+  useLayoutEffect(() => {
+    registerOption(itemValue, { label, disabled });
+    return () => unregisterOption(itemValue);
+  }, [registerOption, unregisterOption, itemValue, label, disabled]);
 
   const isSelected = isValueSelected(value, itemValue);
 
+  // Read the registered label so the filter matches the same text the metadata
+  // (typeahead, match count, active descendant) uses; fall back to the local
+  // derivation on the first render before registration commits.
+  const filterLabel = options.get(itemValue)?.label ?? label;
+
   if (!open) return null;
-  if (!matchesSearch(label, searchQuery)) return null;
+  if (!matchesSearch(filterLabel, searchQuery)) return null;
 
   const isHighlighted = !disabled && highlighted === itemValue;
   const state = getItemState(isSelected, isHighlighted, multiple);
@@ -128,7 +174,7 @@ export function SelectItem<TValue extends string = string>({
       aria-disabled={disabled || undefined}
       data-value={itemValue}
       data-label={label}
-      data-highlighted={isHighlighted || undefined}
+      data-highlighted={isHighlighted ? "" : undefined}
       onClick={handleClick}
       onMouseEnter={onMouseEnter}
       className={cn(
@@ -156,7 +202,7 @@ export function SelectItem<TValue extends string = string>({
         <span className="flex-1 min-w-0 truncate">{children}</span>
       )}
       {variant === "card" && isHighlighted && isSelected && (
-        <span aria-hidden="true" className="ml-auto text-[10px] motion-safe:animate-pulse">
+        <span aria-hidden="true" className="ml-auto text-2xs motion-safe:animate-pulse">
           &lt;
         </span>
       )}

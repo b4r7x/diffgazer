@@ -1,9 +1,9 @@
 ---
 title: Variant Conventions
-description: How @diffgazer/ui decides between CVA, CSS files, Records, and plain Tailwind for component variants.
+description: How `@diffgazer/ui` decides between CVA, CSS files, Records, and plain Tailwind for component variants.
 ---
 
-## Decision Rules
+## Decision rules
 
 Pick the first rule that matches:
 
@@ -16,7 +16,15 @@ Everything else defaults to CVA.
 
 ---
 
-## CVA Pattern
+## Token layer rule
+
+Component CSS and CVA strings read the **semantic layer** (`var(--border)`, `var(--success)`, the `bg-*`/`text-*`/`border-*` utilities). They must **never** reference the Tailwind bridge namespace (`var(--color-*)`).
+
+The bridge (`--color-*`) is emitted only at `:root`, so a `var(--color-border)` reference would freeze at the root theme and ignore a `data-theme` subtree. The semantic layer is re-declared inside every `[data-theme]` block, so reading `var(--border)` lets subtree re-theming reach component CSS. This is what makes `@theme inline` deliver subtree theming end-to-end.
+
+---
+
+## CVA pattern
 
 Every component with variant dimensions follows this shape:
 
@@ -68,7 +76,7 @@ export function Button({ className, variant, size, ...props }: ButtonProps) {
 - **Use `defaultVariants`** — not fallback logic at the call site.
 - **Wrap with `cn()`** so consumers can override classes via `className`.
 
-### Shared Variant Modules
+### Shared variant modules
 
 Extract to `registry/lib/` when two or more components share the same variant axes:
 
@@ -78,13 +86,13 @@ Extract to `registry/lib/` when two or more components share the same variant ax
 | `segmented-variants.ts` | Tabs, ToggleGroup |
 | `input-variants.ts` | Input, InputGroup, Textarea |
 | `stepper-variants.ts` | Stepper, HorizontalStepper |
-| `sidebar-variants.ts` | Sidebar |
+| `corner-label-variants.ts` | Panel, Card |
 
 Keep variants local when only one component uses them.
 
 ---
 
-## When CSS Files Are Justified
+## When CSS files are justified
 
 CSS files handle things Tailwind utilities cannot express. Put **only** these in CSS:
 
@@ -120,7 +128,7 @@ CSS files handle things Tailwind utilities cannot express. Put **only** these in
 
 ---
 
-## When Records Are OK
+## When records are OK
 
 Use a `Record<VariantKey, T>` when the mapping produces **non-className values**:
 
@@ -142,6 +150,30 @@ Do **not** use a Record when the values are className strings that duplicate a C
 
 ---
 
+## Data-Attribute Vocabulary
+
+State-driven styling hooks use ONE fixed vocabulary across every component (the Radix model) so a copy/shadcn consumer can write one selector strategy per concept:
+
+| Concept | Attribute | Value form |
+|---|---|---|
+| Keyboard / virtual focus (active descendant) | `data-highlighted` | presence-only (`data-highlighted`) |
+| Selection in a composite (menu item, listbox option, sidebar/toc current item) | `data-selected` | presence-only (`data-selected`) |
+| Enumerated widget state | `data-state` | `active`/`inactive` (tabs), `on`/`off` (pressed toggles), `checked`/`unchecked`/`indeterminate` (checks), `open`/`closed` (disclosure) |
+
+Rules:
+
+- Presence-only attributes carry no value (`data-highlighted`, not `data-highlighted="true"`). Match them with `data-[highlighted]:` / `group-data-[highlighted]:`, never `data-[highlighted=true]:`.
+- `data-state` is the only state attribute that carries an enumerated value; match a specific value with `data-[state=active]:` / `group-data-[state=on]:`.
+- The active diff hunk uses `data-highlighted` (it is keyboard navigation focus, not a widget state).
+- Do not introduce `data-active` or `data-focus` — they previously carried four different meanings and are removed.
+
+## Component CSS variable naming
+
+Component-scoped CSS custom properties — the copy-mode theming contract — use ONE prefix rule: the full component slug, never an abbreviation.
+
+- `--dialog-*`, `--diff-view-*`, `--callout-*`, `--command-palette-*`, `--code-block-*`, `--panel-*` (not `--dlg-`, `--dv-`, `--cal-`, `--cp-`, `--cb-`).
+- The viewfinder corner knob is shared across panel, diff-view, and dialog under ONE name: `--viewfinder-size`, `--viewfinder-weight`, `--viewfinder-color`, `--viewfinder-offset`.
+
 ## Anti-Patterns
 
 ### CVA-as-type-guard
@@ -160,7 +192,7 @@ If the CSS file owns the styling, use a plain TypeScript type for the prop and s
 type Frame = "border" | "viewfinder" | "terminal" | "card" | "none";
 ```
 
-### Parallel Records duplicating CVA keys
+### Parallel records duplicating CVA keys
 
 ```tsx
 // BAD: same variant keys in both CVA and a separate Record

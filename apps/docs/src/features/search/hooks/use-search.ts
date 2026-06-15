@@ -7,7 +7,6 @@ import {
   routeSlugsFromSourcePath,
   SOURCE_DOCS_PREFIX,
 } from "@/lib/library";
-import { searchAPI } from "@/lib/search-server";
 import { normalizeSearchQuery, parseSearchQueryInput } from "@/lib/server-inputs";
 
 export interface SearchResult {
@@ -41,6 +40,7 @@ const doSearch = createServerFn({ method: "GET" })
   .handler(async ({ data: query }): Promise<ServerSearchResult[]> => {
     if (!query) return [];
 
+    const { searchAPI } = await import("@/features/search/lib/search-server");
     const results = await searchAPI.search(query);
     return results.slice(0, 16).map((result) => ({
       id: result.id,

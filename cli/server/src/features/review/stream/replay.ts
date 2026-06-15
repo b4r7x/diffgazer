@@ -1,7 +1,8 @@
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
-import type { SSEWriter } from "../../../shared/lib/http/types.js";
+import { log } from "../../../shared/lib/log.js";
 import { isAbortError, isTerminalEvent } from "./events.js";
+import type { SSEWriter } from "./sse.js";
 import { type ActiveSession, getSession, onSessionComplete, subscribe } from "./store.js";
 
 async function writeStreamEvent(stream: SSEWriter, event: FullReviewStreamEvent): Promise<void> {
@@ -48,7 +49,7 @@ export async function streamActiveSessionToSSE(
       if (clientSignal?.aborted || isAbortError(e)) {
         return;
       }
-      console.warn("SSE terminal write failed:", e);
+      log("warn", "sse_terminal_write_failed", { error: e });
       throw e;
     }
     return;
@@ -124,7 +125,7 @@ export async function streamActiveSessionToSSE(
             finish(resolve);
             return;
           }
-          console.warn("SSE terminal write failed:", e);
+          log("warn", "sse_terminal_write_failed", { error: e });
           finish(() => reject(e));
         },
       );
@@ -151,7 +152,7 @@ export async function streamActiveSessionToSSE(
             finish(resolve);
             return;
           }
-          console.warn("SSE subscriber write failed:", e);
+          log("warn", "sse_subscriber_write_failed", { error: e });
           finish(() => reject(e));
         },
       );

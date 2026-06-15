@@ -1,9 +1,10 @@
 "use client";
 
 import {
+  type ComponentProps,
   createElement,
-  type HTMLAttributes,
   type MouseEvent,
+  type MouseEventHandler,
   type ReactNode,
   type Ref,
 } from "react";
@@ -13,11 +14,22 @@ import { useSidebarChrome } from "./sidebar-context";
 import { useSidebarSectionContext } from "./sidebar-section-context";
 import { SIDEBAR_TREE_CARET } from "./sidebar-tree-glyphs";
 
+/** Root nav element (standalone or within SidebarProvider). Owns variant + autoTone. */
 export type SidebarSectionTitleHeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
-export interface SidebarSectionTitleProps extends HTMLAttributes<HTMLElement> {
+/** Props for sidebar section title. */
+export interface SidebarSectionTitleProps extends Omit<ComponentProps<"h2">, "ref" | "onClick"> {
+  /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLElement>;
+  /** Called when click occurs. */
+  onClick?: MouseEventHandler<HTMLElement>;
+  /** Custom handle element for collapsible sections. Pass null to hide. */
   handle?: ReactNode | null;
+  /**
+   * Heading level rendered for the section title. Default h3 keeps screen-reader heading-rotor
+   * navigation predictable. Collapsible sections wrap a button with aria-expanded/aria-controls
+   * inside the heading.
+   */
   headingLevel?: SidebarSectionTitleHeadingLevel;
 }
 
@@ -30,6 +42,7 @@ const HEADING_CLASS_NAME =
 const TREE_HEADING_CLASS_NAME =
   "px-2 pt-2 pb-1 text-foreground text-sm font-mono font-bold normal-case tracking-normal m-0 group-data-[state=rail]/sidebar:hidden";
 
+/** Section label heading. Disclosure-pattern toggle when collapsible. */
 export function SidebarSectionTitle({
   ref,
   children,
@@ -43,7 +56,7 @@ export function SidebarSectionTitle({
   const { variant } = useSidebarChrome();
   const isTree = variant === "tree";
   const defaultHandle = isTree ? (
-    <span aria-hidden="true" className="text-[10px]">
+    <span aria-hidden="true" className="text-2xs">
       {open ? SIDEBAR_TREE_CARET.expanded : SIDEBAR_TREE_CARET.collapsed}
     </span>
   ) : (
@@ -63,7 +76,7 @@ export function SidebarSectionTitle({
       headingLevel,
       { ref, id: titleId, className: cn(headingClassName, className) },
       <button
-        {...(rest as HTMLAttributes<HTMLButtonElement>)}
+        {...(rest as ComponentProps<"button">)}
         type="button"
         className={cn(
           "text-left w-full appearance-none cursor-pointer select-none bg-transparent border-0 p-0 m-0",

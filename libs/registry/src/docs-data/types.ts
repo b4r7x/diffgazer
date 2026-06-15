@@ -51,6 +51,7 @@ export interface ComponentNote {
 
 export interface KeyboardSection {
   description: string;
+  keys?: { keys: string; action: string }[];
   examples: ExampleRef[];
 }
 
@@ -70,6 +71,17 @@ export interface ComponentDoc {
   examples?: ExampleRef[];
   anatomy?: AnatomyNode[];
   keyboard?: KeyboardSection | null;
+  dataAttributes?: {
+    attribute: string;
+    appliesTo: string;
+    values: string;
+    description: string;
+  }[];
+  cssVariables?: {
+    name: string;
+    description: string;
+    defaultValue?: string;
+  }[];
   tags?: string[];
   props?: ComponentPropsTable;
   /**

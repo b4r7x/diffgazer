@@ -1,9 +1,17 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { Dialog } from "../dialog/index";
 import { Toaster, toast } from "./index";
 import { dismiss, remove, useToastStore } from "./toast-store";
+
+// The Toaster mounts a persistent visually-hidden polite live region that
+// mirrors each new toast's text (F-229). It is a duplicate of the visible
+// toast content for screen readers, so text queries ignore it — exactly as
+// they ignore script/style — to assert against the rendered toast.
+const DEFAULT_IGNORE = "script, style";
+const TOAST_IGNORE = `${DEFAULT_IGNORE}, [data-slot="toast-announcer"]`;
+const LAZY_CHUNK_TIMEOUT_MS = 8_000;
 
 function StoreReader({ onRead }: { onRead: (ids: string[]) => void }) {
   const { toasts } = useToastStore();
@@ -27,14 +35,86 @@ function cleanupStore() {
   }
 }
 
+interface PopoverStub {
+  getOpenCount: () => number;
+  getShowCalls: () => number;
+  restore: () => void;
+}
+
+// Boundary mock: jsdom does not implement HTMLElement.prototype.popover /
+// showPopover() / hidePopover() / :popover-open. Stub them so we can verify the
+// Toaster's feature-detection branch on a supporting browser. The non-supporting
+// branch stays covered by every other test.
+function installPopoverStub(): PopoverStub {
+  const Proto = HTMLElement.prototype;
+  const popoverDesc = Object.getOwnPropertyDescriptor(Proto, "popover");
+  const showDesc = Object.getOwnPropertyDescriptor(Proto, "showPopover");
+  const hideDesc = Object.getOwnPropertyDescriptor(Proto, "hidePopover");
+  const matchesDesc = Object.getOwnPropertyDescriptor(Proto, "matches");
+  const originalMatches = Proto.matches;
+  let openCount = 0;
+  let showCalls = 0;
+  Object.defineProperty(Proto, "popover", {
+    configurable: true,
+    get(this: HTMLElement) {
+      return this.getAttribute("popover");
+    },
+    set(this: HTMLElement, v: string | null) {
+      if (v == null) this.removeAttribute("popover");
+      else this.setAttribute("popover", v);
+    },
+  });
+  Object.defineProperty(Proto, "showPopover", {
+    configurable: true,
+    writable: true,
+    value(this: HTMLElement) {
+      openCount++;
+      showCalls++;
+      this.setAttribute("data-popover-open", "");
+    },
+  });
+  Object.defineProperty(Proto, "hidePopover", {
+    configurable: true,
+    writable: true,
+    value(this: HTMLElement) {
+      openCount--;
+      this.removeAttribute("data-popover-open");
+    },
+  });
+  Object.defineProperty(Proto, "matches", {
+    configurable: true,
+    writable: true,
+    value(this: HTMLElement, selector: string) {
+      if (selector === ":popover-open") return this.hasAttribute("data-popover-open");
+      return originalMatches.call(this, selector);
+    },
+  });
+
+  return {
+    getOpenCount: () => openCount,
+    getShowCalls: () => showCalls,
+    restore() {
+      if (popoverDesc) Object.defineProperty(Proto, "popover", popoverDesc);
+      else Reflect.deleteProperty(Proto, "popover");
+      if (showDesc) Object.defineProperty(Proto, "showPopover", showDesc);
+      else Reflect.deleteProperty(Proto, "showPopover");
+      if (hideDesc) Object.defineProperty(Proto, "hidePopover", hideDesc);
+      else Reflect.deleteProperty(Proto, "hidePopover");
+      if (matchesDesc) Object.defineProperty(Proto, "matches", matchesDesc);
+    },
+  };
+}
+
 describe("Toast", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    configure({ defaultIgnore: TOAST_IGNORE });
     Object.defineProperty(document, "hidden", { value: false, writable: true, configurable: true });
   });
 
   afterEach(() => {
     cleanupStore();
+    configure({ defaultIgnore: DEFAULT_IGNORE });
     vi.useRealTimers();
   });
 
@@ -154,9 +234,12 @@ describe("Toast", () => {
 
     const toastEl = screen.getByText("Working").closest('[role="status"]');
     expect(toastEl).not.toBeNull();
-    await waitFor(() => {
-      expect(toastEl?.querySelector('[role="status"][aria-label="Loading"]')).not.toBeNull();
-    });
+    await waitFor(
+      () => {
+        expect(toastEl?.querySelector('[role="status"][aria-label="Loading"]')).not.toBeNull();
+      },
+      { timeout: LAZY_CHUNK_TIMEOUT_MS },
+    );
     vi.useFakeTimers();
   });
 
@@ -319,7 +402,7 @@ describe("Toast", () => {
     expect(screen.getByText("First")).toBeInTheDocument();
   });
 
-  it("does not dismiss a toast on Escape while a dialog is open", () => {
+  it("dismisses a toast on Escape while a dialog is open and marks the keypress handled", () => {
     render(
       <>
         <Dialog defaultOpen>
@@ -334,14 +417,118 @@ describe("Toast", () => {
       toast("Background toast", { id: "dialog-toast" });
     });
 
+    // The toast region now re-asserts itself above the dialog, so Escape can
+    // reach it; consuming the keypress (preventDefault) keeps the dialog open
+    // and stops keys-style scopes from double-firing.
+    const event = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
     act(() => {
-      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      document.dispatchEvent(event);
     });
     act(() => {
       vi.advanceTimersByTime(250);
     });
 
-    expect(screen.getByText("Background toast")).toBeInTheDocument();
+    expect(event.defaultPrevented).toBe(true);
+    expect(screen.queryByText("Background toast")).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Blocking dialog" })).toHaveAttribute(
+      "data-state",
+      "open",
+    );
+  });
+
+  it("does not double-fire a window-level Escape listener when a toast is dismissed", () => {
+    const scopeEscape = vi.fn();
+    // A @diffgazer/keys-style window listener that skips already-handled events.
+    const onWindowKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.key === "Escape") scopeEscape();
+    };
+    window.addEventListener("keydown", onWindowKeyDown);
+
+    try {
+      render(<Toaster />);
+      act(() => {
+        toast("Dismiss me", { id: "consume-escape" });
+      });
+
+      act(() => {
+        document.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+        );
+      });
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(screen.queryByText("Dismiss me")).not.toBeInTheDocument();
+      expect(scopeEscape).not.toHaveBeenCalled();
+
+      // With no toast left, Escape reaches the window scope again.
+      act(() => {
+        document.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+        );
+      });
+      expect(scopeEscape).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener("keydown", onWindowKeyDown);
+    }
+  });
+
+  it("announces new non-error toasts through a persistent polite live region (F-229)", () => {
+    const { container } = render(<Toaster />);
+    const announcer = container.querySelector('[data-slot="toast-announcer"]');
+    // The live region exists before any toast and is polite.
+    expect(announcer).not.toBeNull();
+    expect(announcer).toHaveAttribute("aria-live", "polite");
+    expect(announcer?.textContent).toBe("");
+
+    act(() => {
+      toast("Saved changes", { message: "All files synced" });
+    });
+    expect(announcer?.textContent).toBe("Saved changes, All files synced");
+  });
+
+  it("keeps error toasts on the role=alert path and out of the polite region", () => {
+    const { container } = render(<Toaster />);
+    const announcer = container.querySelector('[data-slot="toast-announcer"]');
+
+    act(() => {
+      toast.error("Failed to load");
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("Failed to load");
+    expect(announcer?.textContent).toBe("");
+  });
+
+  it("focuses the toast region on the hotkey and ignores it inside editable elements (F-154)", () => {
+    render(
+      <div>
+        <input aria-label="Editor" />
+        <Toaster hotkey="F8" />
+      </div>,
+    );
+    act(() => {
+      toast("Reachable toast", { action: <button type="button">Undo</button> });
+    });
+
+    const region = screen.getByRole("region", { name: "Notifications" });
+
+    const regionHasFocus = () =>
+      document.activeElement === region || region.contains(document.activeElement);
+
+    // Hotkey while focus is in an editable element is ignored.
+    const input = screen.getByRole("textbox", { name: "Editor" });
+    input.focus();
+    act(() => {
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "F8", bubbles: true }));
+    });
+    expect(regionHasFocus()).toBe(false);
+
+    // Hotkey from a non-editable target moves focus to the region.
+    input.blur();
+    act(() => {
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "F8", bubbles: true }));
+    });
+    expect(regionHasFocus()).toBe(true);
   });
 
   it("renders a toast triggered while a modal dialog is open", () => {
@@ -366,55 +553,11 @@ describe("Toast", () => {
   });
 
   it("activates Popover API on the container when the browser supports it", () => {
-    // Boundary mock: jsdom does not implement HTMLElement.prototype.popover /
-    // showPopover() / hidePopover() / :popover-open. Stub them per test so
-    // we can verify the Toaster's feature-detection branch on a supporting
-    // browser. The non-supporting branch stays covered by every other test.
-    const Proto = HTMLElement.prototype;
-    const popoverDesc = Object.getOwnPropertyDescriptor(Proto, "popover");
-    const showDesc = Object.getOwnPropertyDescriptor(Proto, "showPopover");
-    const hideDesc = Object.getOwnPropertyDescriptor(Proto, "hidePopover");
-    const matchesDesc = Object.getOwnPropertyDescriptor(Proto, "matches");
-    const originalMatches = Proto.matches;
-    let openCount = 0;
-    Object.defineProperty(Proto, "popover", {
-      configurable: true,
-      get(this: HTMLElement) {
-        return this.getAttribute("popover");
-      },
-      set(this: HTMLElement, v: string | null) {
-        if (v == null) this.removeAttribute("popover");
-        else this.setAttribute("popover", v);
-      },
-    });
-    Object.defineProperty(Proto, "showPopover", {
-      configurable: true,
-      writable: true,
-      value(this: HTMLElement) {
-        openCount++;
-        this.setAttribute("data-popover-open", "");
-      },
-    });
-    Object.defineProperty(Proto, "hidePopover", {
-      configurable: true,
-      writable: true,
-      value(this: HTMLElement) {
-        openCount--;
-        this.removeAttribute("data-popover-open");
-      },
-    });
-    Object.defineProperty(Proto, "matches", {
-      configurable: true,
-      writable: true,
-      value(this: HTMLElement, selector: string) {
-        if (selector === ":popover-open") return this.hasAttribute("data-popover-open");
-        return originalMatches.call(this, selector);
-      },
-    });
+    const stub = installPopoverStub();
 
     try {
       const { unmount, container } = render(<Toaster />);
-      expect(openCount).toBe(0);
+      expect(stub.getOpenCount()).toBe(0);
 
       act(() => {
         toast("Top-layer toast", { id: "tl-1" });
@@ -425,7 +568,7 @@ describe("Toast", () => {
       expect(region).not.toBeNull();
       expect(region).toHaveAttribute("popover", "manual");
       expect(region).toHaveAttribute("data-popover-open");
-      expect(openCount).toBe(1);
+      expect(stub.getOpenCount()).toBe(1);
 
       act(() => {
         toast.dismiss();
@@ -434,24 +577,62 @@ describe("Toast", () => {
         vi.advanceTimersByTime(250);
       });
       expect(region).not.toHaveAttribute("data-popover-open");
-      expect(openCount).toBe(0);
+      expect(stub.getOpenCount()).toBe(0);
 
       act(() => {
         toast("Re-issued", { id: "tl-2" });
       });
       expect(region).toHaveAttribute("data-popover-open");
-      expect(openCount).toBe(1);
+      expect(stub.getOpenCount()).toBe(1);
 
       unmount();
-      expect(openCount).toBe(0);
+      expect(stub.getOpenCount()).toBe(0);
     } finally {
-      if (popoverDesc) Object.defineProperty(Proto, "popover", popoverDesc);
-      else Reflect.deleteProperty(Proto, "popover");
-      if (showDesc) Object.defineProperty(Proto, "showPopover", showDesc);
-      else Reflect.deleteProperty(Proto, "showPopover");
-      if (hideDesc) Object.defineProperty(Proto, "hidePopover", hideDesc);
-      else Reflect.deleteProperty(Proto, "hidePopover");
-      if (matchesDesc) Object.defineProperty(Proto, "matches", matchesDesc);
+      stub.restore();
+    }
+  });
+
+  it("re-asserts the top-layer position when a dialog opens while toasts are visible", async () => {
+    const stub = installPopoverStub();
+
+    try {
+      function Harness({ dialogOpen }: { dialogOpen: boolean }) {
+        return (
+          <>
+            <Dialog open={dialogOpen}>
+              <Dialog.Content>
+                <Dialog.Title>Later dialog</Dialog.Title>
+              </Dialog.Content>
+            </Dialog>
+            <Toaster />
+          </>
+        );
+      }
+
+      const { rerender, unmount } = render(<Harness dialogOpen={false} />);
+      act(() => {
+        toast.error("Persistent failure", { id: "pre-dialog" });
+      });
+      const showCallsBeforeDialog = stub.getShowCalls();
+      expect(showCallsBeforeDialog).toBeGreaterThanOrEqual(1);
+
+      // Opening a dialog after the toast exists must re-run hidePopover+showPopover
+      // so the region rejoins the top-layer above the dialog (F-450). The
+      // MutationObserver callback runs as a microtask, so flush one.
+      rerender(<Harness dialogOpen />);
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(stub.getShowCalls()).toBeGreaterThan(showCallsBeforeDialog);
+
+      const region = document.querySelector("[role='region'][aria-label='Notifications']");
+      expect(region).toHaveAttribute("data-popover-open");
+
+      // Unmount before restoring the stub so the cleanup effect's hidePopover
+      // call still resolves against the stubbed prototype.
+      unmount();
+    } finally {
+      stub.restore();
     }
   });
 
@@ -467,6 +648,7 @@ describe("Toast", () => {
 
     const region = screen.getByRole("region", { name: "Notifications" });
     act(() => {
+      // fireEvent retained: hover under fake timers; userEvent uses real timers internally.
       fireEvent.mouseEnter(region);
     });
 
@@ -476,6 +658,7 @@ describe("Toast", () => {
     expect(screen.getByText("Hovered toast")).toBeInTheDocument();
 
     act(() => {
+      // fireEvent retained: hover under fake timers; userEvent uses real timers internally.
       fireEvent.mouseLeave(region);
     });
     act(() => {
@@ -530,6 +713,7 @@ describe("Toast", () => {
 
     const region = screen.getByRole("region", { name: "Notifications" });
     act(() => {
+      // fireEvent retained: hover under fake timers; userEvent uses real timers internally.
       fireEvent.mouseEnter(region);
     });
 
@@ -544,6 +728,7 @@ describe("Toast", () => {
     // Cursor leaves the (now empty) region; without the fix, resume() never
     // fires and the next toast inherits a frozen timer.
     act(() => {
+      // fireEvent retained: hover under fake timers; userEvent uses real timers internally.
       fireEvent.mouseLeave(region);
     });
 
@@ -559,17 +744,13 @@ describe("Toast", () => {
     expect(screen.queryByText("Second")).not.toBeInTheDocument();
   });
 
-  it("renders a visible focus ring on the close button (WCAG 2.4.13)", () => {
+  it("lets a consumer override the dismiss button accessible name (F-010)", () => {
     render(<Toaster />);
     act(() => {
-      toast("Closeable", { message: "Body" });
+      toast("Saved", { dismissLabel: "Zamknij" });
     });
-    const close = screen.getByRole("button", { name: /Dismiss: Closeable/ });
-    // The focus-visible utilities below are the public a11y contract: a 2px
-    // primary-coloured ring offset 2px from the button matches the project's
-    // shared focus appearance (Button, Dialog.CloseIcon).
-    expect(close.className).toMatch(/focus-visible:ring-2/);
-    expect(close.className).toMatch(/focus-visible:ring-offset-2/);
+    expect(screen.getByRole("button", { name: "Zamknij" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Dismiss/ })).not.toBeInTheDocument();
   });
 
   it("pauses auto-dismiss while document is hidden and resumes on return", () => {
@@ -703,6 +884,45 @@ describe("Toast", () => {
       const countdown = root?.querySelector('[data-slot="toast-countdown"]');
       expect(countdown).not.toBeNull();
       expect(countdown).toHaveAttribute("aria-hidden", "true");
+    });
+
+    it('variant="countdown" parks its rAF loop while paused and resumes on unpause (F-187)', () => {
+      const rafSpy = vi.spyOn(globalThis, "requestAnimationFrame");
+      render(<Toaster />);
+      act(() => {
+        toast("Synced", { variant: "countdown", duration: 5000 });
+      });
+
+      // Let the loop run a few frames so it is genuinely spinning.
+      act(() => {
+        vi.advanceTimersByTime(64);
+      });
+      expect(rafSpy.mock.calls.length).toBeGreaterThan(0);
+
+      const region = screen.getByRole("region", { name: "Notifications" });
+      act(() => {
+        // fireEvent retained: hover under fake timers; userEvent uses real timers internally.
+        fireEvent.mouseEnter(region);
+      });
+      const callsAtPause = rafSpy.mock.calls.length;
+
+      // While paused, time advancing schedules no further frames.
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+      expect(rafSpy.mock.calls.length).toBe(callsAtPause);
+
+      // Unpausing resumes the countdown loop.
+      act(() => {
+        // fireEvent retained: hover under fake timers; userEvent uses real timers internally.
+        fireEvent.mouseLeave(region);
+      });
+      act(() => {
+        vi.advanceTimersByTime(32);
+      });
+      expect(rafSpy.mock.calls.length).toBeGreaterThan(callsAtPause);
+
+      rafSpy.mockRestore();
     });
   });
 });

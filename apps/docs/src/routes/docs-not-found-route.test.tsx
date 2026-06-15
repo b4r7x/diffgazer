@@ -15,6 +15,7 @@ const docsPageTree: PageTree = {
   ],
 };
 
+// Boundary mock: TanStack Start server functions cross the server/client boundary.
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const chain = {

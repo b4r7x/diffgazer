@@ -9,12 +9,18 @@ export function mapProvidersWithStatus(
     const status = statuses.find((s) => s.provider === provider.id);
     const hasApiKey = status?.hasApiKey ?? false;
     const isActive = status?.isActive ?? false;
+    let displayStatus: ProviderWithStatus["displayStatus"] = "needs-key";
+    if (isActive) {
+      displayStatus = "active";
+    } else if (hasApiKey) {
+      displayStatus = "configured";
+    }
     return {
       ...provider,
       hasApiKey,
       isActive,
       model: status?.model,
-      displayStatus: isActive ? "active" : hasApiKey ? "configured" : "needs-key",
+      displayStatus,
     };
   });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentProps, ReactNode } from "react";
+import { type ComponentProps, type ReactNode, useLayoutEffect, useRef } from "react";
 import { STEP_STATUSES, type StepStatus } from "@/lib/step-status";
 import {
   NUMBERED_COMPLETED_GLYPH,
@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useStepperContext, useStepperStepContext } from "./stepper-context";
 
+/** Root provider (manages expansion + variant) */
 export const DEFAULT_STEP_STATUS_LABELS: Record<StepStatus, string> = {
   completed: "DONE",
   active: "RUN",
@@ -34,11 +35,18 @@ const STATUS_SR_PREFIX: Record<StepStatus, string> = {
   disabled: "Disabled:",
 };
 
+/** Props for stepper trigger. */
 export interface StepperTriggerProps extends Omit<ComponentProps<"button">, "children" | "type"> {
+  /** Step label rendered next to the indicator glyph. */
   children: ReactNode;
+  /**
+   * Per-status indicator label overrides. Used directly by `variant="tag"`; other variants use
+   * these labels as the screen-reader fallback for the indicator glyph.
+   */
   statusLabels?: Partial<Record<StepStatus, string>>;
 }
 
+/** Clickable step header with indicator and label. */
 export function StepperTrigger({
   children,
   className,
@@ -48,13 +56,23 @@ export function StepperTrigger({
   ...props
 }: StepperTriggerProps) {
   const { onToggle, variant, tabTargetId } = useStepperContext();
-  const { stepId, isExpanded, status, triggerId, contentId, hasContent } = useStepperStepContext();
+  const { stepId, isExpanded, status, triggerId, contentId, hasContent, setTriggerLabel } =
+    useStepperStepContext();
+  const labelRef = useRef<HTMLSpanElement>(null);
 
   const isDisabled = disabledProp || status === "disabled";
   const isInteractive = status !== "disabled";
   const tabIndex = tabTargetId === stepId && isInteractive ? 0 : -1;
 
   const tagLabel = statusLabels?.[status] ?? DEFAULT_STEP_STATUS_LABELS[status];
+
+  // Report the rendered label text up to the step so the Stepper live region can
+  // announce it, mirroring the previous static label extraction but resilient to
+  // JSX/wrapper-rendered trigger content.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: children is the label source; re-read the rendered text whenever it changes.
+  useLayoutEffect(() => {
+    setTriggerLabel(labelRef.current?.textContent?.trim() || undefined);
+  }, [children, setTriggerLabel]);
 
   return (
     <button
@@ -81,14 +99,20 @@ export function StepperTrigger({
         <span className="sr-only">{STATUS_SR_PREFIX[status]} </span>
         <Glyph variant={variant} status={status} tagLabel={tagLabel} />
       </span>
-      <span className={stepperLabelVariants({ status })}>{children}</span>
+      <span ref={labelRef} className={stepperLabelVariants({ status })}>
+        {children}
+      </span>
     </button>
   );
 }
 
+/** Props for glyph. */
 interface GlyphProps {
+  /** Visual variant. Controls the indicator glyph and connector treatment across every step. */
   variant: StepperVariant;
+  /** Current status value. */
   status: StepStatus;
+  /** Accessible label for tag. */
   tagLabel: string;
 }
 
@@ -125,6 +149,7 @@ function Glyph({ variant, status, tagLabel }: GlyphProps) {
   return <>{STEP_INDICATOR_GLYPHS[variant][status]}</>;
 }
 
+/** Returns stepper indicator glyph. */
 export function getStepperIndicatorGlyph(variant: StepperVariant, status: StepStatus): string {
   if (variant === "numbered") {
     switch (status) {

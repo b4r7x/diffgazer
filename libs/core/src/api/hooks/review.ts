@@ -18,10 +18,15 @@ export function useActiveReviewSession(mode?: ReviewMode) {
   return useQuery(reviewQueries.activeSession(api, mode));
 }
 
+/**
+ * Reads the CURRENT workspace context snapshot. The optional `reviewId` is
+ * accepted for caller ergonomics but does NOT partition the cache: the server
+ * has no per-review context route, so the snapshot is workspace-global.
+ */
 export function useReviewContext(options?: { enabled?: boolean; reviewId?: string | null }) {
   const api = useApi();
-  const { reviewId, ...queryOptionsOverrides } = options ?? {};
-  return useQuery({ ...reviewQueries.context(api, reviewId), ...queryOptionsOverrides });
+  const { reviewId: _reviewId, ...queryOptionsOverrides } = options ?? {};
+  return useQuery({ ...reviewQueries.context(api), ...queryOptionsOverrides });
 }
 
 export function useDeleteReview() {

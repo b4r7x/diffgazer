@@ -39,10 +39,10 @@ export default function TocActive() {
       <div className="flex flex-col gap-16">
         {sections.map((section) => (
           <section key={section.id}>
-            <h2 id={section.id} className="mb-4 text-lg font-medium text-neutral-100">
+            <h2 id={section.id} className="mb-4 text-lg font-medium text-foreground">
               {section.title}
             </h2>
-            <p className="text-sm text-neutral-400">
+            <p className="text-sm text-muted-foreground">
               Content for the {section.title.toLowerCase()} section. Scroll to see the active
               heading update in the sidebar.
             </p>

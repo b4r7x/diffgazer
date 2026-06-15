@@ -2,7 +2,7 @@ import type { ComponentDoc } from "./types";
 
 export const stepperDoc: ComponentDoc = {
   description:
-    "Step-by-step progress indicator with expandable steps, substeps, and five visual variants. Compound component with context-based state management, roving tabIndex keyboard model, and a polite live region for active-step announcements. A separate `HorizontalStepper` primitive ships alongside for compact CI-bar / wizard-header use cases (three matching horizontal variants).",
+    "Step-by-step progress indicator with expandable steps, substeps, and five visual variants. Compound component with context-based state management, roving tabIndex keyboard model, and a polite live region for active-step announcements.",
   anatomy: [
     { name: "Stepper", indent: 0, note: "Root provider (manages expansion + variant)" },
     { name: "StepperStep", indent: 1, note: "Individual step with status context" },
@@ -13,27 +13,12 @@ export const stepperDoc: ComponentDoc = {
       note: "Expandable content panel (substeps, custom content)",
     },
     { name: "StepperSubstep", indent: 3, note: "Nested substep with tag badge and status" },
-    {
-      name: "HorizontalStepper",
-      indent: 0,
-      note: "Sibling primitive: compact horizontal step bar",
-    },
-    {
-      name: "HorizontalStepper.Step",
-      indent: 1,
-      note: "Single horizontal step (derives status from parent value)",
-    },
   ],
   notes: [
     {
       title: "Visual variants (vertical)",
       content:
         "Five variants: ascii (default — mono 1ch bracket glyphs with blinking active cursor), numbered (CSS-counter square with ✓ on completed), bullet (single glyph with dashed connector), tag (uppercase text tag, no width shift on active), progress (Unicode block-element bar per step). All variants render the same six canonical states.",
-    },
-    {
-      title: "Visual variants (horizontal)",
-      content:
-        "Three matching horizontal variants: ascii ([x] Init ─── [~] Build inline glyphs with solid connectors), numbered (Material-flavoured numbered square above a continuous 1px line with uppercase labels), breadcrumb (init / build › deploy slash separators with a caret on the active step).",
     },
     {
       title: "Six canonical states",
@@ -60,14 +45,8 @@ export const stepperDoc: ComponentDoc = {
       content:
         "Active-step transitions are announced via a polite live region: 'Step {n} of {total}: {label}'. Label is sourced from the trigger's text content.",
     },
-    {
-      title: "Vertical vs horizontal",
-      content:
-        "Vertical Stepper carries rich expandable content, substeps, and per-step actions — use it for deploy pipelines, multi-step forms with detail, and onboarding flows. HorizontalStepper is a compact path bar (label-only) — use it for CI bars, wizard headers, and breadcrumb-style progress where vertical space is precious.",
-    },
   ],
   usage: { example: "stepper-default" },
-  companionExamples: ["horizontal-stepper"],
   examples: [
     { name: "stepper-default", title: "Default" },
     { name: "stepper-variants", title: "Variants" },
@@ -86,11 +65,55 @@ export const stepperDoc: ComponentDoc = {
   keyboard: {
     description:
       "Roving tabIndex: a single Tab key reaches the stepper. Arrow keys (Up/Down/Left/Right) move focus between enabled steps and skip disabled ones. Home/End jump to the first/last enabled step. Enter or Space toggles direct StepperContent.",
+    keys: [
+      {
+        keys: "ArrowUp / ArrowLeft",
+        action: "Moves focus to the previous enabled StepperTrigger.",
+      },
+      {
+        keys: "ArrowDown / ArrowRight",
+        action: "Moves focus to the next enabled StepperTrigger.",
+      },
+      { keys: "Home / End", action: "Moves focus to the first or last enabled trigger." },
+      { keys: "Enter / Space", action: "Toggles the focused step content when present." },
+    ],
     examples: [
       { name: "stepper-interactive", title: "Controlled expansion with keyboard" },
       { name: "stepper-keyboard", title: "Keyboard navigation" },
     ],
   },
+  dataAttributes: [
+    {
+      attribute: "data-state",
+      appliesTo: "StepperStep",
+      values: '"open" | "closed"',
+      description: "Expanded/collapsed state for the step content.",
+    },
+    {
+      attribute: "data-status",
+      appliesTo: "StepperStep / StepperTrigger",
+      values: '"pending" | "active" | "completed" | "error" | "skipped" | "disabled"',
+      description: "Canonical step lifecycle state used by indicators and labels.",
+    },
+    {
+      attribute: "data-step-id",
+      appliesTo: "StepperTrigger",
+      values: "step id",
+      description: "Stable id used by roving focus, expansion lookup, and trigger/content linking.",
+    },
+    {
+      attribute: "data-variant",
+      appliesTo: "Stepper",
+      values: '"ascii" | "numbered" | "bullet" | "tag" | "progress"',
+      description: "Visual indicator and connector variant.",
+    },
+    {
+      attribute: "data-counter",
+      appliesTo: "StepperTrigger",
+      values: "present in numbered variant",
+      description: "CSS-counter hook for numbered indicators.",
+    },
+  ],
   props: {
     Stepper: {
       variant: {
@@ -202,54 +225,6 @@ export const stepperDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description: "Per-status fallback labels shown when detail is omitted.",
-      },
-    },
-    HorizontalStepper: {
-      variant: {
-        type: '"ascii" | "numbered" | "breadcrumb"',
-        required: false,
-        defaultValue: '"ascii"',
-        description:
-          "Visual variant. Drives the indicator glyph, connector treatment, and label typography.",
-      },
-      steps: {
-        type: "string[]",
-        required: true,
-        defaultValue: null,
-        description:
-          "Ordered step ids. Used to compute status (completed/active/pending) for each step relative to value.",
-      },
-      value: {
-        type: "string",
-        required: true,
-        defaultValue: null,
-        description: "Id of the active step.",
-      },
-      "aria-label": {
-        type: "string",
-        required: false,
-        defaultValue: '"Progress"',
-        description: "Accessible name for the <ol> list.",
-      },
-      children: {
-        type: "ReactNode",
-        required: true,
-        defaultValue: null,
-        description: "HorizontalStepper.Step children, one per id in steps.",
-      },
-    },
-    "HorizontalStepper.Step": {
-      value: {
-        type: "string",
-        required: true,
-        defaultValue: null,
-        description: "Step id matched against the parent value to derive status.",
-      },
-      children: {
-        type: "ReactNode",
-        required: true,
-        defaultValue: null,
-        description: "Step label.",
       },
     },
   },

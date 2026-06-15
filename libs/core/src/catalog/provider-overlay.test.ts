@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AI_PROVIDERS } from "../schemas/config/index.js";
+import { AI_PROVIDERS } from "../schemas/config/providers.js";
 import { PROVIDER_OVERLAY, SURFACED_OVERLAYS } from "./provider-overlay.js";
 
 describe("PROVIDER_OVERLAY", () => {

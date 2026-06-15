@@ -62,7 +62,7 @@ export const lightPalette: Palette = {
 };
 
 // High-contrast: bold, maximally distinct colors for accessibility
-export const highContrastPalette: Palette = {
+const highContrastPalette: Palette = {
   bg: "#000000",
   fg: "#ffffff",
   blue: "#71b7ff",

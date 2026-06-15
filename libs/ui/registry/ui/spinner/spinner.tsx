@@ -1,14 +1,20 @@
 "use client";
 
 import { cva, type VariantProps } from "class-variance-authority";
-import type { HTMLAttributes, ReactNode, Ref } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { SNAKE_FRAME_COUNT, SnakeGrid } from "./spinner-snake-grid";
+import { SNAKE_FRAME_COUNT, SnakeGrid, type SpinnerSize } from "./spinner-snake-grid";
 import { useSpinnerAnimation } from "./use-animation";
 
-export type SpinnerSize = "sm" | "md" | "lg";
+export type { SpinnerSize } from "./spinner-snake-grid";
+/** Allowed spinner variant values. */
 export type SpinnerVariant = "snake" | "braille" | "dots" | "pulse";
+/** Allowed spinner label position values. */
 export type SpinnerLabelPosition = "right" | "left" | "top" | "bottom";
+/**
+ * Root element - renders the animation glyph. Accepts variant, size, labelPosition, gap, and
+ * speed props. Pass children for a label.
+ */
 export type SpinnerGap = "none" | "sm" | "md" | "lg";
 
 const BRAILLE_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
@@ -25,6 +31,7 @@ const VARIANT_CONFIG: Record<SpinnerVariant, { frames: number; speed: number }> 
   pulse: { frames: PULSE_FRAMES.length, speed: 80 },
 };
 
+/** Class variants for spinner. */
 export const spinnerVariants = cva("inline-flex items-center font-mono", {
   variants: {
     size: {
@@ -48,16 +55,26 @@ export const spinnerVariants = cva("inline-flex items-center font-mono", {
   defaultVariants: { size: "md", labelPosition: "right", gap: "md" },
 });
 
-export interface SpinnerProps
-  extends HTMLAttributes<HTMLSpanElement>,
-    VariantProps<typeof spinnerVariants> {
+/** Props for spinner. */
+export interface SpinnerProps extends ComponentProps<"span">, VariantProps<typeof spinnerVariants> {
+  /**
+   * Animation style. Snake renders a 3x3 pixel grid; braille, dots, and pulse render text glyph
+   * sequences.
+   */
   variant?: SpinnerVariant;
+  /** Font size token applied to the glyph and label. */
   size?: SpinnerSize;
+  /** Placement of the children label relative to the spinner glyph. */
   labelPosition?: SpinnerLabelPosition;
+  /** Space between the spinner glyph and its label. */
   gap?: SpinnerGap;
+  /**
+   * Frame interval in milliseconds. Overrides the variant default (snake 100, braille 80, dots
+   * 300, pulse 80).
+   */
   speed?: number;
+  /** Optional label. When omitted, the spinner uses aria-label="Loading". */
   children?: ReactNode;
-  ref?: Ref<HTMLSpanElement>;
 }
 
 function SpinnerAnimation({
@@ -82,6 +99,10 @@ function SpinnerAnimation({
   return <>{PULSE_FRAMES[safeFrame]}</>;
 }
 
+/**
+ * Root element - renders the animation glyph. Accepts variant, size, labelPosition, gap, and
+ * speed props. Pass children for a label.
+ */
 export function Spinner({
   variant = "snake",
   size,
@@ -106,6 +127,7 @@ export function Spinner({
     <span
       ref={ref}
       role="status"
+      data-slot="spinner"
       aria-live="polite"
       aria-label={children ? undefined : "Loading"}
       className={cn(spinnerVariants({ size: resolvedSize, labelPosition, gap }), className)}

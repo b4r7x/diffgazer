@@ -4,11 +4,12 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DOCS_ROOT = resolve(HERE, "..");
-const DEFAULT_ORIGIN = "https://docs.b4r7.dev";
+export const DEFAULT_ORIGIN = "https://docs.b4r7.dev";
+export const DOCS_CONTENT_ROOT = resolve(DOCS_ROOT, "content/docs");
 
 export interface PreRenderPage {
   path: string;
-  source: string | null;
+  source?: string;
 }
 
 interface DocsLibrary {
@@ -26,16 +27,19 @@ function readLibrariesConfig(): DocsLibrary[] {
 
 export function getPreRenderPages(): PreRenderPage[] {
   const enabledLibraries = readLibrariesConfig();
-  const contentDir = resolve(DOCS_ROOT, "content/docs");
+  const contentDir = DOCS_CONTENT_ROOT;
 
   // Library roots (/ui, /keys, /app) 307-redirect to their first page, so the
   // sitemap lists those canonical first pages (emitted by walkMdx) rather than
   // the redirecting roots.
   const legalDir = resolve(DOCS_ROOT, "content/legal");
-  const pages: PreRenderPage[] = [{ path: "/", source: null }];
+  const pages: PreRenderPage[] = [{ path: "/" }];
   for (const entry of readdirSync(legalDir).sort()) {
     if (!entry.endsWith(".mdx")) continue;
-    pages.push({ path: `/${entry.replace(/\.mdx$/, "")}`, source: join(legalDir, entry) });
+    pages.push({
+      path: `/${entry.replace(/\.mdx$/, "")}`,
+      source: join(legalDir, entry),
+    });
   }
 
   function walkMdx(dir: string) {
@@ -99,23 +103,12 @@ function pushGeneratedListPages(
     name: string;
   }>;
   for (const item of items) {
+    const source = resolve(DOCS_ROOT, `content/docs/${libId}/${routeSegment}/${item.name}.mdx`);
     pages.push({
       path: `/${libId}/${routeSegment}/${item.name}`,
-      source: resolveItemMdxSource(libId, routeSegment, item.name),
+      source: existsSync(source) ? source : undefined,
     });
   }
-}
-
-function resolveItemMdxSource(libId: string, routeSegment: string, name: string): string | null {
-  const candidate = resolve(DOCS_ROOT, `content/docs/${libId}/${routeSegment}/${name}.mdx`);
-  return existsSync(candidate) ? candidate : null;
-}
-
-/** Fixed lastmod for routes without a backing MDX source (home, generated lists). */
-export const SITEMAP_FALLBACK_LASTMOD = "2025-01-01T00:00:00.000Z";
-
-export function formatLastMod(_sourcePath: string | null): string {
-  return SITEMAP_FALLBACK_LASTMOD;
 }
 
 function escapeXml(value: string): string {
@@ -131,14 +124,13 @@ function buildSitemapXml(pages: PreRenderPage[], origin: string): string {
   const urls = pages
     .map((page) => {
       const loc = escapeXml(`${origin}${page.path === "/" ? "" : page.path}`);
-      const lastmod = formatLastMod(page.source);
-      return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </url>`;
+      return `  <url>\n    <loc>${loc}</loc>\n  </url>`;
     })
     .join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
 }
 
-function resolveOrigin(): string {
+export function resolveOrigin(): string {
   const raw = process.env.VITE_PUBLIC_ORIGIN;
   if (typeof raw === "string" && raw.length > 0) {
     return raw.replace(/\/+$/, "");

@@ -1,7 +1,9 @@
 import { containsActiveElement, documentOrder } from "./focusable.js";
 
+/** Data attribute used by @diffgazer/keys to mark navigable DOM items. */
 export const NAVIGATION_ITEM_ATTRIBUTE = "data-diffgazer-navigation-item";
 
+/** Navigation item types recognized by DOM query helpers and navigation hooks. */
 export type NavigationItemType =
   | "radio"
   | "checkbox"
@@ -12,10 +14,15 @@ export type NavigationItemType =
   | "button"
   | "tab";
 
+/** Query used to discover navigable items inside a container. */
 export interface NavigationItemQuery {
+  /** Item role or data-contract type to query. */
   type: NavigationItemType;
+  /** Exclude aria-disabled, data-disabled, and native disabled items. */
   skipDisabled?: boolean;
+  /** Exclude items owned by nested composite containers. */
   scopeToContainer?: boolean;
+  /** Override the composite owner selector used for scoping, or null to disable owner scoping. */
   ownerSelector?: string | null;
 }
 
@@ -122,6 +129,10 @@ function isOwnedByContainer(
   return owner === null || owner === container;
 }
 
+/**
+ * Finds navigable descendants matching the role/data contract in DOM order.
+ * Disabled items are skipped by default.
+ */
 export function getNavigationItems(
   container: HTMLElement | null,
   query: NavigationItemQuery,
@@ -137,6 +148,7 @@ export function getNavigationItems(
   );
 }
 
+/** Finds one navigable item by its `data-value`. */
 export function findNavigationItemByValue(
   container: HTMLElement | null,
   query: NavigationItemQuery & { value: string },
@@ -147,6 +159,7 @@ export function findNavigationItemByValue(
   );
 }
 
+/** Returns the public data attributes needed for role-independent navigation. */
 export function getNavigationItemProps(
   type: NavigationItemType,
   value: string,
@@ -160,6 +173,7 @@ export function getNavigationItemProps(
   };
 }
 
+/** Returns the `data-value` for the navigable item containing DOM focus. */
 export function getFocusedNavigationValue(
   container: HTMLElement | null,
   query: NavigationItemQuery,
@@ -168,6 +182,10 @@ export function getFocusedNavigationValue(
   return focusedItem?.dataset.value ?? null;
 }
 
+/**
+ * Moves DOM focus to a navigable item by value, with optional first/last
+ * fallback, and returns the focused value.
+ */
 export function focusNavigationItem(
   container: HTMLElement | null,
   query: NavigationItemQuery & {

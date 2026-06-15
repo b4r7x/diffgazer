@@ -1,12 +1,16 @@
 "use client";
 
-import { type RefObject, useEffectEvent, useLayoutEffect } from "react";
+import { type RefObject, useEffectEvent, useLayoutEffect, useRef } from "react";
+
+type ExcludeRefs = ReadonlyArray<RefObject<HTMLElement | null>> | undefined;
 
 type OutsideClickEntry = {
   id: symbol;
   ref: RefObject<HTMLElement | null>;
   handler: () => void;
-  excludeRefs?: ReadonlyArray<RefObject<HTMLElement | null>>;
+  // Read through a ref so an inline excludeRefs array does not re-register the
+  // stack entry (and reorder equal-priority tie-breaks) on every consumer render.
+  excludeRefsRef: { current: ExcludeRefs };
   priority: number;
   ownerDocument: Document;
 };
@@ -15,14 +19,18 @@ type EscapeKeyEntry = {
   id: symbol;
   handler: (event: KeyboardEvent) => void;
   ref?: RefObject<HTMLElement | null>;
-  excludeRefs?: ReadonlyArray<RefObject<HTMLElement | null>>;
+  excludeRefsRef: { current: ExcludeRefs };
   priority: number;
   ownerDocument: Document;
 };
 
+/** Shared stack options for outside-pointer and Escape-key overlay dismissal. */
 export interface OverlayStackOptions {
+  /** Higher priority entries receive the dismiss event before lower priority entries. @default 1 */
   priority?: number;
+  /** Element ref used for ownerDocument resolution and nested-overlay ordering. */
   ref?: RefObject<HTMLElement | null>;
+  /** Additional refs treated as part of the overlay for dismissal and stack ordering. */
   excludeRefs?: ReadonlyArray<RefObject<HTMLElement | null>>;
 }
 
@@ -52,14 +60,17 @@ function isInEntry(event: Event, target: Node, entry: OutsideClickEntry): boolea
   if (pathContains(path, entry.ref.current) || isTargetInside(target, entry.ref.current))
     return true;
   return (
-    entry.excludeRefs?.some(
+    entry.excludeRefsRef.current?.some(
       (r) => pathContains(path, r.current) || isTargetInside(target, r.current),
     ) ?? false
   );
 }
 
 function getEntryElements(entry: OutsideClickEntry): HTMLElement[] {
-  const elements = [entry.ref.current, ...(entry.excludeRefs?.map((ref) => ref.current) ?? [])];
+  const elements = [
+    entry.ref.current,
+    ...(entry.excludeRefsRef.current?.map((ref) => ref.current) ?? []),
+  ];
   return elements.filter((element): element is HTMLElement => element != null);
 }
 
@@ -85,7 +96,10 @@ function getTopOutsideClickEntry(ownerDocument: Document): OutsideClickEntry | u
 }
 
 function getEscapeEntryElements(entry: EscapeKeyEntry): HTMLElement[] {
-  const elements = [entry.ref?.current, ...(entry.excludeRefs?.map((ref) => ref.current) ?? [])];
+  const elements = [
+    entry.ref?.current,
+    ...(entry.excludeRefsRef.current?.map((ref) => ref.current) ?? []),
+  ];
   return elements.filter((element): element is HTMLElement => element != null);
 }
 
@@ -133,6 +147,29 @@ function isDuplicateTouchFallback(event: Event): boolean {
   return isDuplicate;
 }
 
+// After an outside-pointerdown dismisses a layer, swallow the same gesture's
+// follow-up click exactly once so the press that closed a select/popover cannot
+// also close a dialog under it (backdrop-click path) or activate an underlying
+// link/button (click-through). Radix's "one layer per outside press" contract.
+function swallowNextClick(ownerDocument: Document, View: Window): void {
+  let removed = false;
+  const cleanup = () => {
+    if (removed) return;
+    removed = true;
+    ownerDocument.removeEventListener("click", onClickCapture, true);
+    View.clearTimeout(timer);
+  };
+  const onClickCapture = (clickEvent: Event) => {
+    cleanup();
+    clickEvent.preventDefault();
+    clickEvent.stopImmediatePropagation();
+  };
+  ownerDocument.addEventListener("click", onClickCapture, true);
+  // Fallback removal if no click follows the press (e.g. touch sequences) so we
+  // never swallow an unrelated later click.
+  const timer = View.setTimeout(cleanup, 0);
+}
+
 function makeDocumentOutsidePointerHandler(ownerDocument: Document) {
   const View = ownerDocument.defaultView;
   return (event: Event) => {
@@ -141,6 +178,7 @@ function makeDocumentOutsidePointerHandler(ownerDocument: Document) {
     const entry = getTopOutsideClickEntry(ownerDocument);
     if (!entry) return;
     if (isInEntry(event, event.target, entry)) return;
+    swallowNextClick(ownerDocument, View);
     entry.handler();
   };
 }
@@ -240,6 +278,7 @@ function removeEntry<Entry extends { id: symbol }>(entries: Entry[], id: symbol)
   if (index >= 0) entries.splice(index, 1);
 }
 
+/** Detects pointer presses outside a referenced element. */
 export function useOutsideClick(
   ref: RefObject<HTMLElement | null>,
   handler: () => void,
@@ -248,6 +287,11 @@ export function useOutsideClick(
   options?: OverlayStackOptions,
 ): void {
   const handleOutsideClick = useEffectEvent(handler);
+  // Keep the latest excludeRefs without making it an effect dep, so an inline
+  // array does not re-register (and reorder) the stack entry every render.
+  const excludeRefsRef = useRef<ExcludeRefs>(excludeRefs);
+  excludeRefsRef.current = excludeRefs;
+  const priority = options?.priority ?? DEFAULT_OVERLAY_PRIORITY;
 
   useLayoutEffect(() => {
     if (!enabled) return;
@@ -259,8 +303,8 @@ export function useOutsideClick(
       id,
       ref,
       handler: handleOutsideClick,
-      excludeRefs,
-      priority: options?.priority ?? DEFAULT_OVERLAY_PRIORITY,
+      excludeRefsRef,
+      priority,
       ownerDocument,
     });
     attachPointerListeners(ownerDocument);
@@ -269,28 +313,35 @@ export function useOutsideClick(
       removeEntry(outsideClickEntries, id);
       detachPointerListeners(ownerDocument);
     };
-  }, [enabled, excludeRefs, options?.priority, ref]);
+  }, [enabled, priority, ref]);
 }
 
+/** Registers an Escape-key dismissal handler in the shared overlay stack. */
 export function useEscapeKey(
   handler: (event: KeyboardEvent) => void,
   enabled: boolean = true,
   options?: OverlayStackOptions,
 ): void {
   const handleEscape = useEffectEvent(handler);
+  const optionsRef = options?.ref;
+  const priority = options?.priority ?? DEFAULT_OVERLAY_PRIORITY;
+  // Keep the latest excludeRefs off the effect deps (inline arrays/objects
+  // otherwise re-register the stack entry on every render).
+  const excludeRefsRef = useRef<ExcludeRefs>(options?.excludeRefs);
+  excludeRefsRef.current = options?.excludeRefs;
 
   useLayoutEffect(() => {
     if (!enabled) return;
     const ownerDocument =
-      options?.ref?.current?.ownerDocument ?? (typeof document !== "undefined" ? document : null);
+      optionsRef?.current?.ownerDocument ?? (typeof document !== "undefined" ? document : null);
     if (!ownerDocument) return;
     const id = Symbol("escape-key-layer");
     escapeKeyEntries.push({
       id,
       handler: handleEscape,
-      ref: options?.ref,
-      excludeRefs: options?.excludeRefs,
-      priority: options?.priority ?? DEFAULT_OVERLAY_PRIORITY,
+      ref: optionsRef,
+      excludeRefsRef,
+      priority,
       ownerDocument,
     });
     attachKeydownListener(ownerDocument);
@@ -299,5 +350,5 @@ export function useEscapeKey(
       removeEntry(escapeKeyEntries, id);
       detachKeydownListener(ownerDocument);
     };
-  }, [enabled, options?.excludeRefs, options?.priority, options?.ref]);
+  }, [enabled, priority, optionsRef]);
 }

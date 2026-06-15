@@ -5,6 +5,7 @@ import { type ComponentPropsWithRef, type ReactNode, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { KeyValueContext, type KeyValueLayout } from "./key-value-context";
 
+/** Class variants for key value. */
 export const keyValueVariants = cva("grid", {
   variants: {
     layout: {
@@ -19,12 +20,26 @@ export const keyValueVariants = cva("grid", {
   defaultVariants: { layout: "horizontal", bordered: false },
 });
 
+/** Props for key value. */
 export interface KeyValueProps extends ComponentPropsWithRef<"dl"> {
+  /**
+   * Horizontal places label and value side-by-side; vertical stacks them. Propagated to
+   * KeyValue.Item via context.
+   */
   layout?: KeyValueLayout;
+  /**
+   * Adds row borders and switches items to compact xs sizing. Propagated to KeyValue.Item via
+   * context.
+   */
   bordered?: boolean;
+  /** KeyValue.Item rows rendered inside a semantic <dl>. */
   children: ReactNode;
 }
 
+/**
+ * Compound component for displaying labeled data. KeyValue wraps one or more KeyValue.Item rows
+ * in a semantic description list.
+ */
 export function KeyValue({
   layout = "horizontal",
   bordered = false,
@@ -37,7 +52,12 @@ export function KeyValue({
 
   return (
     <KeyValueContext value={contextValue}>
-      <dl ref={ref} className={cn(keyValueVariants({ layout, bordered }), className)} {...props}>
+      <dl
+        ref={ref}
+        data-slot="key-value"
+        className={cn(keyValueVariants({ layout, bordered }), className)}
+        {...props}
+      >
         {children}
       </dl>
     </KeyValueContext>

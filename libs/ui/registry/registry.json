@@ -15,7 +15,8 @@
         "compose-refs",
         "icons",
         "@diffgazer-keys/navigation",
-        "utils"
+        "utils",
+        "composed-refs"
       ],
       "meta": {
         "client": true,
@@ -149,7 +150,7 @@
       "title": "Input",
       "description": "Terminal-styled text input",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["theme", "input-variants", "utils"],
+      "registryDependencies": ["theme", "input-variants", "utils", "composed-refs"],
       "meta": {
         "client": true
       },
@@ -174,7 +175,7 @@
       "title": "Field",
       "description": "Form field primitives for labels, controls, descriptions, and validation messages",
       "dependencies": [],
-      "registryDependencies": ["theme", "aria", "compose-refs", "utils"],
+      "registryDependencies": ["theme", "aria", "composed-refs", "utils"],
       "meta": {
         "client": true
       },
@@ -250,7 +251,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/shared/callout.css",
+          "path": "registry/ui/callout/callout.css",
           "type": "registry:style",
           "target": "~/styles/callout.css"
         }
@@ -293,7 +294,9 @@
         "compose-refs",
         "selectable-collection",
         "selectable-variants",
-        "utils"
+        "utils",
+        "composed-refs",
+        "warn-unregistered-value"
       ],
       "meta": {
         "client": true,
@@ -358,7 +361,9 @@
         "@diffgazer-keys/navigation",
         "selectable-collection",
         "selectable-variants",
-        "utils"
+        "utils",
+        "composed-refs",
+        "warn-unregistered-value"
       ],
       "meta": {
         "client": true,
@@ -439,7 +444,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/shared/panel.css",
+          "path": "registry/ui/panel/panel.css",
           "type": "registry:style",
           "target": "~/styles/panel.css"
         }
@@ -684,8 +689,8 @@
         "tooltip",
         "overflow-detection",
         "overflow-items",
-        "compose-refs",
-        "utils"
+        "utils",
+        "composed-refs"
       ],
       "meta": {
         "client": true
@@ -746,11 +751,11 @@
         "controllable-state",
         "@diffgazer-keys/focus-restore",
         "dialog-shell",
-        "compose-refs",
         "portal",
         "kbd",
         "aria",
-        "utils"
+        "utils",
+        "composed-refs"
       ],
       "meta": {
         "client": true,
@@ -821,7 +826,13 @@
       "title": "Dialog Shell",
       "description": "Native dialog element wrapper with presence animations and backdrop handling",
       "dependencies": [],
-      "registryDependencies": ["compose-refs", "presence", "@diffgazer-keys/focus-trap", "aria"],
+      "registryDependencies": [
+        "compose-refs",
+        "presence",
+        "@diffgazer-keys/focus-trap",
+        "aria",
+        "composed-refs"
+      ],
       "meta": {
         "client": true,
         "hidden": true,
@@ -898,7 +909,10 @@
         "compose-refs",
         "floating-indicator",
         "segmented-variants",
-        "utils"
+        "selectable-collection",
+        "utils",
+        "composed-refs",
+        "warn-unregistered-value"
       ],
       "meta": {
         "client": true,
@@ -937,7 +951,15 @@
       "title": "Menu",
       "description": "Terminal-styled selection list with keyboard navigation",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["theme", "listbox", "utils", "floating-panel"],
+      "registryDependencies": [
+        "theme",
+        "listbox",
+        "selectable-collection",
+        "outside-click",
+        "utils",
+        "floating-panel",
+        "composed-refs"
+      ],
       "meta": {
         "client": true,
         "optionalIntegrations": ["keyboard-navigation"]
@@ -999,7 +1021,17 @@
       "title": "Navigation List",
       "description": "Terminal-styled navigation sidebar list",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["theme", "listbox", "badge", "utils", "icons"],
+      "registryDependencies": [
+        "theme",
+        "listbox",
+        "selectable-collection",
+        "badge",
+        "utils",
+        "icons",
+        "aria",
+        "composed-refs",
+        "warn-unregistered-value"
+      ],
       "meta": {
         "client": true,
         "optionalIntegrations": ["keyboard-navigation"]
@@ -1065,9 +1097,16 @@
       "title": "Toast",
       "description": "Terminal-styled toast notification system",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["theme", "outside-click", "spinner", "utils"],
+      "registryDependencies": [
+        "theme",
+        "outside-click",
+        "spinner",
+        "utils",
+        "@diffgazer-keys/navigation"
+      ],
       "meta": {
-        "client": true
+        "client": true,
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -1113,9 +1152,12 @@
         "theme",
         "badge",
         "controllable-state",
+        "selectable-collection",
+        "compose-refs",
         "step-status",
         "stepper-variants",
-        "utils"
+        "utils",
+        "composed-refs"
       ],
       "files": [
         {
@@ -1168,7 +1210,8 @@
         "controllable-state",
         "form-reset",
         "compose-refs",
-        "utils"
+        "utils",
+        "composed-refs"
       ],
       "meta": {
         "client": true
@@ -1199,7 +1242,8 @@
         "floating-indicator",
         "selectable-collection",
         "segmented-variants",
-        "utils"
+        "utils",
+        "composed-refs"
       ],
       "meta": {
         "client": true,
@@ -1230,7 +1274,7 @@
       "title": "Code Block",
       "description": "Code display with three visual variants (hairline, bare, terminal), per-line diff/highlight states, and optional copy button. Add ui/code-block-highlight separately for lowlight syntax coloring.",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["theme", "scroll-area", "utils"],
+      "registryDependencies": ["theme", "scroll-area", "utils", "copy-to-clipboard"],
       "meta": {
         "client": true
       },
@@ -1272,7 +1316,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/shared/code-block.css",
+          "path": "registry/ui/code-block/code-block.css",
           "type": "registry:style",
           "target": "~/styles/code-block.css"
         }
@@ -1311,7 +1355,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/shared/diff-view.css",
+          "path": "registry/ui/diff-view/diff-view.css",
           "type": "registry:style",
           "target": "~/styles/diff-view.css"
         }
@@ -1323,8 +1367,7 @@
       "title": "Horizontal Stepper",
       "description": "Horizontal step-by-step progress indicator",
       "meta": {
-        "client": true,
-        "docsPage": false
+        "client": true
       },
       "dependencies": ["class-variance-authority"],
       "registryDependencies": ["theme", "step-status", "stepper-variants", "utils"],
@@ -1369,7 +1412,8 @@
         "search",
         "selectable-collection",
         "kbd",
-        "utils"
+        "utils",
+        "composed-refs"
       ],
       "meta": {
         "client": true,
@@ -1429,7 +1473,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/shared/command-palette.css",
+          "path": "registry/ui/command-palette/command-palette.css",
           "type": "registry:style",
           "target": "~/styles/command-palette.css"
         }
@@ -1455,7 +1499,8 @@
         "search",
         "typeahead",
         "typeahead-buffer",
-        "utils"
+        "utils",
+        "composed-refs"
       ],
       "meta": {
         "client": true,
@@ -1568,8 +1613,9 @@
         "dialog",
         "sidebar-variants",
         "sidebar-intent",
-        "use-is-mobile",
-        "utils"
+        "is-mobile",
+        "utils",
+        "composed-refs"
       ],
       "meta": {
         "client": true,
@@ -1641,7 +1687,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/shared/sidebar.css",
+          "path": "registry/ui/sidebar/sidebar.css",
           "type": "registry:style",
           "target": "~/styles/sidebar.css"
         }
@@ -1904,7 +1950,7 @@
       },
       "files": [
         {
-          "path": "registry/hooks/use-overflow.ts",
+          "path": "registry/hooks/use-overflow-detection.ts",
           "type": "registry:hook"
         }
       ]
@@ -2049,6 +2095,38 @@
       ]
     },
     {
+      "name": "composed-refs",
+      "type": "registry:hook",
+      "title": "useComposedRefs",
+      "description": "Cached companion to composeRefs: returns a stable RefCallback so React does not detach/re-attach the composed refs every commit. Use at component call sites instead of calling composeRefs inline during render.",
+      "registryDependencies": ["compose-refs"],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/hooks/use-composed-refs.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "copy-to-clipboard",
+      "type": "registry:hook",
+      "title": "useCopyToClipboard",
+      "description": "Copy-to-clipboard state machine: writes text to the clipboard and exposes an idle → copied | failed status that resets after a delay (default 2000ms), with timer cleanup on unmount.",
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/hooks/use-copy-to-clipboard.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
       "name": "utils",
       "type": "registry:lib",
       "title": "Utilities",
@@ -2076,6 +2154,22 @@
       "files": [
         {
           "path": "registry/lib/aria.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "warn-unregistered-value",
+      "type": "registry:lib",
+      "title": "warnUnregisteredValue",
+      "description": "Dev-mode guard for the convenience-assertion TValue/TId generics on compound-collection components: warns when a typed callback fires with a value that was never registered. No-op in production.",
+      "meta": {
+        "client": false,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/lib/warn-unregistered-value.ts",
           "type": "registry:lib"
         }
       ]
@@ -2263,15 +2357,14 @@
       ]
     },
     {
-      "name": "use-is-mobile",
+      "name": "is-mobile",
       "type": "registry:hook",
       "title": "useIsMobile",
       "description": "matchMedia-backed hook that returns true when the viewport is narrower than a breakpoint (default 1024px).",
       "dependencies": [],
       "registryDependencies": [],
       "meta": {
-        "client": true,
-        "docsPage": false
+        "client": true
       },
       "files": [
         {
@@ -2409,7 +2502,8 @@
         "presence",
         "floating-position",
         "compose-refs",
-        "utils"
+        "utils",
+        "composed-refs"
       ],
       "meta": {
         "client": true
@@ -2435,6 +2529,7 @@
         "controllable-state",
         "@diffgazer-keys/navigation",
         "compose-refs",
+        "composed-refs",
         "typeahead",
         "typeahead-buffer"
       ],
@@ -2483,12 +2578,12 @@
       "dependencies": [],
       "registryDependencies": [
         "theme",
-        "compose-refs",
         "controllable-state",
         "floating-panel",
         "outside-click",
         "@diffgazer-keys/focusable",
-        "utils"
+        "utils",
+        "composed-refs"
       ],
       "meta": {
         "client": true,
@@ -2537,7 +2632,8 @@
         "controllable-state",
         "form-reset",
         "compose-refs",
-        "utils"
+        "utils",
+        "composed-refs"
       ],
       "meta": {
         "client": true

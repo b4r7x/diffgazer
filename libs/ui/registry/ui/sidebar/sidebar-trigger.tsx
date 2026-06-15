@@ -4,10 +4,13 @@ import type { ButtonHTMLAttributes, Ref } from "react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./sidebar-context";
 
+/** Props for sidebar trigger. */
 export interface SidebarTriggerProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLButtonElement>;
 }
 
+/** Toggle button. Desktop cycles open ↔ rail; mobile cycles open ↔ hidden. */
 export function SidebarTrigger({
   ref,
   className,
@@ -19,13 +22,10 @@ export function SidebarTrigger({
   const { state, isMobile, contentId, toggleSidebar, onStateChange } = useSidebar();
   const isOpen = isMobile ? state !== "hidden" : state === "open";
   const visualState: "open" | "collapsed" = isOpen ? "open" : "collapsed";
-  const labelDefault = isMobile
-    ? isOpen
-      ? "Close navigation"
-      : "Open navigation"
-    : isOpen
-      ? "Collapse sidebar"
-      : "Expand sidebar";
+  let labelDefault = isOpen ? "Collapse sidebar" : "Expand sidebar";
+  if (isMobile) {
+    labelDefault = isOpen ? "Close navigation" : "Open navigation";
+  }
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     onClick?.(event);

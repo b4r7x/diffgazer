@@ -3,11 +3,12 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  HeadContent,
   Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RouteLoadingFallback } from "@/components/layout/route-loading-fallback";
 import { router } from "./router";
 
@@ -52,6 +53,14 @@ function createTestRouter({
 }
 
 describe("router pending behavior", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("configures the anti-flash pending pair", () => {
     expect(router.options.defaultPendingMs).toBe(100);
     expect(router.options.defaultPendingMinMs).toBe(300);
@@ -65,11 +74,19 @@ describe("router pending behavior", () => {
       onPendingRender,
     });
     render(<RouterProvider router={testRouter} />);
-    await screen.findByText("home ready");
+    await act(async () => {
+      await testRouter.load();
+    });
+    expect(screen.getByText("home ready")).toBeInTheDocument();
 
-    await testRouter.navigate({ to: "/history" });
-    await screen.findByText("guarded ready");
+    const nav = testRouter.navigate({ to: "/history" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    await nav;
 
+    expect(screen.getByText("guarded ready")).toBeInTheDocument();
+    expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
     expect(onPendingRender).not.toHaveBeenCalled();
   });
 
@@ -81,12 +98,105 @@ describe("router pending behavior", () => {
       onPendingRender,
     });
     render(<RouterProvider router={testRouter} />);
-    await screen.findByText("home ready");
+    await act(async () => {
+      await testRouter.load();
+    });
+    expect(screen.getByText("home ready")).toBeInTheDocument();
 
-    await testRouter.navigate({ to: "/history" });
-    // The guard resolves at ~150ms; content must appear well before a 500ms hold.
-    await screen.findByText("guarded ready", undefined, { timeout: 400 });
+    const nav = testRouter.navigate({ to: "/history" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(99);
+    });
+    expect(onPendingRender).not.toHaveBeenCalled();
+    expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
 
-    expect(onPendingRender).toHaveBeenCalled();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(onPendingRender).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50);
+    });
+    await nav;
+
+    expect(screen.getByText("guarded ready")).toBeInTheDocument();
+    expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+  });
+});
+
+const EXPECTED_ROUTE_TITLES: Record<string, string> = {
+  "/": "Home — Diffgazer",
+  "/onboarding": "Setup — Diffgazer",
+  "/review/{-$reviewId}": "Review — Diffgazer",
+  "/history": "History — Diffgazer",
+  "/help": "Help — Diffgazer",
+  "/settings/": "Settings — Diffgazer",
+  "/settings/theme": "Theme — Diffgazer",
+  "/settings/providers": "Providers — Diffgazer",
+  "/settings/storage": "Storage — Diffgazer",
+  "/settings/agent-execution": "Agent Execution — Diffgazer",
+  "/settings/analysis": "Analysis — Diffgazer",
+  "/settings/diagnostics": "Diagnostics — Diffgazer",
+  "/settings/trust-permissions": "Trust & Permissions — Diffgazer",
+};
+
+function titleFromHead(head: unknown): string | undefined {
+  if (typeof head !== "function") return undefined;
+  const result = (head as () => { meta?: Array<{ title?: string }> })();
+  return result.meta?.find((entry) => typeof entry.title === "string")?.title;
+}
+
+describe("route document titles", () => {
+  it("declares a head title on every one of the 13 leaf routes", () => {
+    const titlesByPath: Record<string, string> = {};
+    for (const route of Object.values(router.routesById)) {
+      const title = titleFromHead(route.options.head);
+      if (title) titlesByPath[route.fullPath] = title;
+    }
+
+    expect(titlesByPath).toEqual(EXPECTED_ROUTE_TITLES);
+  });
+
+  it("gives every titled route a unique title (WCAG 2.4.2)", () => {
+    const titles = Object.values(EXPECTED_ROUTE_TITLES);
+    expect(new Set(titles).size).toBe(titles.length);
+    expect(titles).toHaveLength(13);
+  });
+
+  it("writes the matched route's title to document.title on navigation", async () => {
+    // A mirror router carrying the same head() declarations, with HeadContent
+    // rendered in the root, proves the title plumbing writes document.title as
+    // the user navigates between views.
+    const root = createRootRoute({
+      component: () => (
+        <>
+          <HeadContent />
+          <Outlet />
+        </>
+      ),
+    });
+    const titleRoutes = Object.entries(EXPECTED_ROUTE_TITLES).map(([path, title]) =>
+      createRoute({
+        getParentRoute: () => root,
+        path: path === "/settings/" ? "/settings" : path,
+        component: () => <div>{title}</div>,
+        head: () => ({ meta: [{ title }] }),
+      }),
+    );
+    const titleRouter = createRouter({
+      routeTree: root.addChildren(titleRoutes),
+      history: createMemoryHistory({ initialEntries: ["/"] }),
+    });
+
+    render(<RouterProvider router={titleRouter} />);
+    await waitFor(() => expect(document.title).toBe("Home — Diffgazer"));
+
+    await titleRouter.navigate({ to: "/history" });
+    await waitFor(() => expect(document.title).toBe("History — Diffgazer"));
+
+    await titleRouter.navigate({ to: "/settings/theme" });
+    await waitFor(() => expect(document.title).toBe("Theme — Diffgazer"));
   });
 });

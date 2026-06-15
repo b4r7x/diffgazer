@@ -43,3 +43,12 @@ PACKAGE_GOVERNANCE*
 AUDIT_*
 OPUS_AUDIT_*
 FIX_SPEC_*
+
+# Host-synced docs state must never leak into images
+apps/docs/content/docs/ui
+apps/docs/content/docs/keys
+apps/docs/src/generated
+apps/docs/registry/examples
+apps/docs/public/r/ui
+apps/docs/public/r/keys
+apps/docs/src/routeTree.gen.ts

@@ -1,6 +1,8 @@
 import { access, readdir, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import { z } from "zod";
+import { log } from "../../../shared/lib/log.js";
 
 export type WorkspacePackage = {
   name: string;
@@ -48,17 +50,16 @@ export async function readPackageManifest(filePath: string): Promise<PackageMani
   try {
     parsed = JSON.parse(raw);
   } catch (error) {
-    console.warn(
-      `[context] Ignoring unreadable package manifest at ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    log("warn", "context_manifest_unreadable", { filePath, error: getErrorMessage(error) });
     return null;
   }
 
   const result = PackageManifestSchema.safeParse(parsed);
   if (!result.success) {
-    console.warn(
-      `[context] Ignoring invalid package manifest at ${filePath}: ${formatSchemaIssues(result.error)}`,
-    );
+    log("warn", "context_manifest_invalid", {
+      filePath,
+      issues: formatSchemaIssues(result.error),
+    });
     return null;
   }
 

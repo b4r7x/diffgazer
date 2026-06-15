@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { defaultLogger, type Logger } from "../logger.js";
+import { log } from "../logger.js";
 import { isWithinDir } from "../utils/fs.js";
 import { toDocExportName } from "./naming.js";
 import type { HookDoc } from "./types.js";
@@ -43,7 +43,6 @@ function isHookDoc(value: object): value is HookDoc {
 export function createHookDocLoader(
   docsDir: string,
   fileNameTransform?: (hookName: string) => string,
-  logger: Logger = defaultLogger,
 ): (hookName: string) => Promise<HookDoc | null> {
   const resolvedDocsDir = resolve(docsDir);
   return async (hookName: string): Promise<HookDoc | null> => {
@@ -51,7 +50,7 @@ export function createHookDocLoader(
     try {
       assertSafeRelativeFileName(fileName);
     } catch (err) {
-      logger.warn(`Rejected hook doc name: ${err}`);
+      log.warn(`Rejected hook doc name: ${err}`);
       return null;
     }
     const docPath = resolve(resolvedDocsDir, `${fileName}.ts`);
@@ -66,7 +65,7 @@ export function createHookDocLoader(
       if (!isHookDoc(value)) return null;
       return value;
     } catch (err) {
-      logger.warn(`Failed to load hook doc: ${err}`);
+      log.warn(`Failed to load hook doc: ${err}`);
       return null;
     }
   };

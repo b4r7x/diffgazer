@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
 import { KeyboardProvider } from "@diffgazer/keys";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { type ReactNode, useEffect } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SearchProvider, useSearchOpen } from "@/lib/search-context";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { SearchProvider, useSearchOpen } from "@/hooks/search-context";
 import { SearchDialog } from "./dialog";
 
 const mocks = vi.hoisted(() => ({
@@ -12,10 +13,12 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
 }));
 
+// Boundary mock: TanStack Router is the routing library boundary.
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
 }));
 
+// Boundary mock: TanStack Start server functions cross the client/server boundary.
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => ({
     inputValidator: () => ({
@@ -59,22 +62,18 @@ function TestProviders({ children }: { children: ReactNode }) {
   );
 }
 
-async function flushDebounce(ms = 150): Promise<void> {
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(ms);
-    await Promise.resolve();
-  });
-}
-
 async function renderOpenDialog(): Promise<HTMLElement> {
   render(<SearchDialog />, { wrapper: TestProviders });
   await act(async () => {});
   return screen.getByRole("combobox", { name: /command search/i });
 }
 
+function setupUser() {
+  return userEvent.setup();
+}
+
 describe("SearchDialog integration", () => {
   beforeEach(() => {
-    vi.useFakeTimers();
     HTMLDialogElement.prototype.showModal = vi.fn(function showModal(this: HTMLDialogElement) {
       this.open = true;
     });
@@ -82,14 +81,12 @@ describe("SearchDialog integration", () => {
       this.open = false;
     });
     mocks.doSearch.mockReset();
+    mocks.doSearch.mockResolvedValue([]);
     mocks.navigate.mockReset();
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("debounces server search, renders results, and activates the highlighted result", async () => {
+  it("runs server search, renders results, and activates the highlighted result", async () => {
+    const user = setupUser();
     mocks.doSearch.mockResolvedValue([
       pageResult("button", "Button"),
       pageResult("callout", "Callout"),
@@ -97,37 +94,48 @@ describe("SearchDialog integration", () => {
 
     const input = await renderOpenDialog();
 
-    fireEvent.change(input, { target: { value: "button" } });
-    await flushDebounce(149);
-    expect(mocks.doSearch).not.toHaveBeenCalled();
-
-    await flushDebounce(1);
-    expect(mocks.doSearch).toHaveBeenCalledWith(expect.objectContaining({ data: "button" }));
-    expect(screen.getByText("Button")).toBeInTheDocument();
+    await user.type(input, "button");
+    await waitFor(() =>
+      expect(mocks.doSearch).toHaveBeenCalledWith(expect.objectContaining({ data: "button" })),
+    );
+    expect(await screen.findByText("Button")).toBeInTheDocument();
     expect(screen.getByText("Callout")).toBeInTheDocument();
 
-    fireEvent.keyDown(input, { key: "ArrowDown" });
-    fireEvent.keyDown(input, { key: "Enter" });
+    await user.keyboard("{ArrowDown}{Enter}");
     expect(mocks.navigate).toHaveBeenCalledWith({ to: "/ui/components/callout" });
   });
 
   it("suppresses stale results when a slower earlier search resolves after the current query", async () => {
+    const user = setupUser();
     let resolveFirst: (value: ServerSearchResult[]) => void = () => {};
     const firstSearch = new Promise<ServerSearchResult[]>((resolve) => {
       resolveFirst = resolve;
     });
-    mocks.doSearch.mockReturnValueOnce(firstSearch);
-    mocks.doSearch.mockResolvedValueOnce([pageResult("callout", "Callout")]);
+    mocks.doSearch.mockImplementation(({ data }: { data: string }) => {
+      if (data === "button") return firstSearch;
+      if (data === "callout") return Promise.resolve([pageResult("callout", "Callout")]);
+      return Promise.resolve([]);
+    });
 
     const input = await renderOpenDialog();
 
-    fireEvent.change(input, { target: { value: "button" } });
-    await flushDebounce();
-    fireEvent.change(input, { target: { value: "callout" } });
-    await flushDebounce();
+    await user.type(input, "button");
+    await waitFor(() =>
+      expect(mocks.doSearch).toHaveBeenCalledWith(expect.objectContaining({ data: "button" })),
+    );
+    const buttonSearch = mocks.doSearch.mock.calls.find(
+      ([request]) => request.data === "button",
+    )?.[0];
+    expect(buttonSearch).toBeDefined();
 
-    expect(screen.getByText("Callout")).toBeInTheDocument();
-    expect(mocks.doSearch.mock.calls[0]?.[0]?.signal.aborted).toBe(true);
+    await user.clear(input);
+    await user.type(input, "callout");
+    await waitFor(() =>
+      expect(mocks.doSearch).toHaveBeenCalledWith(expect.objectContaining({ data: "callout" })),
+    );
+
+    expect(await screen.findByText("Callout")).toBeInTheDocument();
+    expect(buttonSearch?.signal.aborted).toBe(true);
 
     await act(async () => {
       resolveFirst([pageResult("button", "Button")]);
@@ -138,14 +146,42 @@ describe("SearchDialog integration", () => {
     expect(screen.getByText("Callout")).toBeInTheDocument();
   });
 
-  it("renders search failures as an alert", async () => {
+  it("announces search failures assertively outside the listbox", async () => {
+    const user = setupUser();
     mocks.doSearch.mockRejectedValue(new Error("network down"));
 
     const input = await renderOpenDialog();
 
-    fireEvent.change(input, { target: { value: "button" } });
-    await flushDebounce();
+    await user.type(input, "button");
 
-    expect(screen.getByRole("alert")).toHaveTextContent("Search failed. Try again.");
+    // The error is announced assertively with the actual error copy.
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Search failed. Try again.");
+    expect(alert).toHaveAttribute("aria-live", "assertive");
+
+    // The error message must not live inside the listbox (only options belong there).
+    const listbox = screen.getByRole("listbox");
+    expect(listbox).not.toHaveTextContent("Search failed. Try again.");
+    expect(within(listbox).queryAllByRole("option")).toHaveLength(0);
+  });
+
+  it("announces empty results exactly once without an alert", async () => {
+    const user = setupUser();
+    mocks.doSearch.mockResolvedValue([]);
+
+    const input = await renderOpenDialog();
+
+    await user.type(input, "nomatch");
+
+    expect(await screen.findByText("No results found.")).toBeInTheDocument();
+
+    // The empty (success, zero matches) case keeps no app-level alert and is announced
+    // exactly once by the palette's built-in polite "No results" live region.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+
+    // The listbox holds only option children (zero here) during the empty state.
+    const listbox = screen.getByRole("listbox");
+    expect(within(listbox).queryAllByRole("option")).toHaveLength(0);
   });
 });

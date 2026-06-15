@@ -1,11 +1,11 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, useEffect, useRef } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DECLINE } from "../core/normalize-key-input.js";
 import { useScope } from "../hooks/use-scope.js";
 import { KeyboardWrapper, fireKey as pressKey } from "../testing/test-utils.js";
-import { useKeyboardContext } from "./keyboard-context.js";
+import { useKeyboardContext, useKeyboardRegistryContext } from "./keyboard-context.js";
 
 function fireKeyFrom(element: Element, key: string) {
   act(() => {
@@ -18,8 +18,6 @@ function renderInProvider(children: ReactNode) {
 }
 
 describe("KeyboardProvider", () => {
-  afterEach(() => cleanup());
-
   it("fires handler only for matching key in the active scope", async () => {
     const handler = vi.fn();
 
@@ -310,6 +308,83 @@ describe("KeyboardProvider", () => {
     expect(first).toHaveBeenCalledOnce();
   });
 
+  it("warns once per registration for an unknown modifier, never per keydown", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const handler = vi.fn();
+
+    function Consumer() {
+      const { register } = useKeyboardContext();
+      useEffect(() => {
+        // Unknown modifiers are rejected by ValidateHotkey, so the dynamic
+        // escape hatch reaches the runtime registration-time warn.
+        const hotkey: string = "Hyper+a";
+        return register("global", hotkey, handler);
+      }, []);
+      return <div>consumer</div>;
+    }
+
+    render(
+      <KeyboardWrapper>
+        <Consumer />
+      </KeyboardWrapper>,
+    );
+
+    expect(warn).toHaveBeenCalledTimes(1);
+
+    act(() => pressKey("a"));
+    act(() => pressKey("a"));
+    act(() => pressKey("a"));
+
+    // The warn fired only at registration; dispatch never re-parses the string.
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(handler).not.toHaveBeenCalled();
+
+    warn.mockRestore();
+  });
+
+  it.each([
+    { label: "typo registered first", typoFirst: true },
+    { label: "typo registered second", typoFirst: false },
+  ])("keeps a typo'd modifier from colliding with a legitimate hotkey ($label)", ({
+    typoFirst,
+  }) => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const legit = vi.fn();
+    const typo = vi.fn();
+
+    function Consumer() {
+      const { register } = useKeyboardContext();
+      useEffect(() => {
+        // The unknown-modifier segment must keep the typo'd hotkey on a
+        // distinct canonical key so it cannot share the "a" entry list.
+        const typoHotkey: string = "Hyper+a";
+        if (typoFirst) {
+          const unregisterTypo = register("global", typoHotkey, typo);
+          const unregisterLegit = register("global", "a", legit);
+          return () => {
+            unregisterTypo();
+            unregisterLegit();
+          };
+        }
+        const unregisterLegit = register("global", "a", legit);
+        const unregisterTypo = register("global", typoHotkey, typo);
+        return () => {
+          unregisterLegit();
+          unregisterTypo();
+        };
+      }, []);
+      return <div>consumer</div>;
+    }
+
+    renderInProvider(<Consumer />);
+
+    act(() => pressKey("a"));
+    expect(legit).toHaveBeenCalledOnce();
+    expect(typo).not.toHaveBeenCalled();
+
+    vi.restoreAllMocks();
+  });
+
   it("keeps processing subsequent events when a handler throws", () => {
     const errorHandler = vi.fn(() => {
       throw new Error("handler exploded");
@@ -471,6 +546,94 @@ describe("KeyboardProvider", () => {
     act(() => pressKey("a"));
     // call-count IS the contract: popping the manual scope must restore routing to the panel scope (panelHandler fires again, count is 2)
     expect(panelHandler).toHaveBeenCalledTimes(2);
+  });
+
+  it("activates the later-mounted scope across sibling branches under client useId encoding", () => {
+    // Precedence is a depth-major comparison of parsed React `useId` segments.
+    // Under the sequential ids React generates on the client, a scope deep
+    // inside the EARLIER sibling yields to a shallow scope in the LATER sibling
+    // (the later sibling's id segment is larger). The SSR-id case below shows
+    // the same comparison resolving the other way (deepest-wins).
+    const deepHandler = vi.fn();
+    const shallowHandler = vi.fn();
+
+    function DeepScope() {
+      useScope("deep");
+      const { register } = useKeyboardContext();
+      useEffect(() => register("deep", "a", deepHandler), [register]);
+      return <div>deep</div>;
+    }
+
+    function Nest({ children }: { children: ReactNode }) {
+      return <div>{children}</div>;
+    }
+
+    function EarlierBranch() {
+      return (
+        <Nest>
+          <Nest>
+            <Nest>
+              <DeepScope />
+            </Nest>
+          </Nest>
+        </Nest>
+      );
+    }
+
+    function LaterBranch() {
+      useScope("shallow");
+      const { register } = useKeyboardContext();
+      useEffect(() => register("shallow", "a", shallowHandler), [register]);
+      return <div>shallow</div>;
+    }
+
+    render(
+      <KeyboardWrapper>
+        <EarlierBranch />
+        <LaterBranch />
+      </KeyboardWrapper>,
+    );
+
+    act(() => pressKey("a"));
+    expect(shallowHandler).toHaveBeenCalledOnce();
+    expect(deepHandler).not.toHaveBeenCalled();
+  });
+
+  it("activates the deepest scope when SSR/hydration bit-packs nesting depth into the useId", () => {
+    // Under SSR the tree position is bit-packed into a single base-32 id, so a
+    // deeply nested scope in an EARLIER branch produces a larger order segment
+    // than a shallow scope in a LATER branch. These two ids are what React
+    // 19.2.4 emits server-side for that shape (deep "_R_t_" -> segments [27,29],
+    // shallow "_R_2_" -> [27,2]); the depth-major comparison makes "deep" active.
+    const deepHandler = vi.fn();
+    const shallowHandler = vi.fn();
+
+    function SsrScopes() {
+      const { pushScope, register } = useKeyboardRegistryContext();
+      useEffect(() => {
+        const popDeep = pushScope("deep", "_R_t_");
+        const popShallow = pushScope("shallow", "_R_2_");
+        const unregisterDeep = register("deep", "a", deepHandler);
+        const unregisterShallow = register("shallow", "a", shallowHandler);
+        return () => {
+          unregisterDeep();
+          unregisterShallow();
+          popDeep();
+          popShallow();
+        };
+      }, [pushScope, register]);
+      return <div>ssr scopes</div>;
+    }
+
+    render(
+      <KeyboardWrapper>
+        <SsrScopes />
+      </KeyboardWrapper>,
+    );
+
+    act(() => pressKey("a"));
+    expect(deepHandler).toHaveBeenCalledOnce();
+    expect(shallowHandler).not.toHaveBeenCalled();
   });
 
   it("stops receiving key events after the provider unmounts", () => {

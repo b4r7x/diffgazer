@@ -1,15 +1,10 @@
+export type { BackTarget } from "./back-target.js";
 export { getBackTarget } from "./back-target.js";
-export type { GroupedMenuItems, MenuGroup, MenuItemWithDivider } from "./group-menu-items.js";
-export {
-  groupMenuItems,
-  MENU_GROUP_ORDER,
-  withGroupDividers,
-} from "./group-menu-items.js";
+export type { MenuGroup, MenuItemWithDivider } from "./group-menu-items.js";
+export { withGroupDividers } from "./group-menu-items.js";
+export type { HomeMenuActivation, NavigableMenuAction } from "./home-screen.js";
+export { resolveHomeMenuActivation, selectResumableSession } from "./home-screen.js";
 export type { MenuDisablingContext } from "./menu-disabling.js";
-export {
-  isMenuActionDisabled,
-  isReviewAction,
-  isReviewStartAction,
-} from "./menu-disabling.js";
-export type { DerivedTrustStatus, TrustStatus, TrustStatusInput } from "./trust-status.js";
+export { isMenuActionDisabled, isReviewStartAction } from "./menu-disabling.js";
+export type { DerivedTrustStatus, TrustStatusInput } from "./trust-status.js";
 export { deriveTrustStatus } from "./trust-status.js";

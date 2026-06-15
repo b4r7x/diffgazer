@@ -1,21 +1,16 @@
-import { createApi } from "@diffgazer/core/api";
-
-declare global {
-  interface Window {
-    __DIFFGAZER_SHUTDOWN_TOKEN__?: string;
-  }
-}
+import { createApi, SHUTDOWN_TOKEN_GLOBAL } from "@diffgazer/core/api";
+import { buildLocalhostOrigin, DEFAULT_API_PORT } from "@diffgazer/core/env";
 
 function getDefaultApiUrl(): string {
   if (typeof window !== "undefined") {
     return window.location.origin;
   }
-  return "http://127.0.0.1:3000";
+  return buildLocalhostOrigin(DEFAULT_API_PORT);
 }
 
 function getShutdownToken(): string | undefined {
   return (
-    (typeof window !== "undefined" ? window.__DIFFGAZER_SHUTDOWN_TOKEN__ : undefined) ||
+    (typeof window !== "undefined" ? window[SHUTDOWN_TOKEN_GLOBAL] : undefined) ||
     import.meta.env.VITE_DIFFGAZER_SHUTDOWN_TOKEN
   );
 }

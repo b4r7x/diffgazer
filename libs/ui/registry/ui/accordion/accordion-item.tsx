@@ -4,13 +4,19 @@ import { type ReactNode, useId, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { AccordionItemContext, useAccordionContext } from "./accordion-context";
 
+/** Props for accordion item. */
 export interface AccordionItemProps {
+  /** Stable identifier matched against the Accordion value. */
   value: string;
+  /** Disables the item: trigger is not focusable and not toggleable. */
   disabled?: boolean;
+  /** Header and Content children. */
   children: ReactNode;
+  /** Additional class names merged onto the rendered element. */
   className?: string;
 }
 
+/** Wrapper for each collapsible section. */
 export function AccordionItem({
   value,
   disabled = false,
@@ -32,6 +38,7 @@ export function AccordionItem({
     <AccordionItemContext value={contextValue}>
       <div
         className={cn("py-2", className)}
+        data-slot="accordion-item"
         data-state={isOpen ? "open" : "closed"}
         data-disabled={disabled || undefined}
       >

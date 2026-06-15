@@ -1,10 +1,11 @@
 "use client";
 
 import { type ReactNode, type Ref, useId, useLayoutEffect, useRef } from "react";
-import { composeRefs } from "@/lib/compose-refs";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { Checkbox, type CheckboxProps } from "./checkbox";
 import { useCheckboxGroupContext } from "./checkbox-group-context";
 
+/** Props for checkbox item. */
 export type CheckboxItemProps = Omit<
   CheckboxProps,
   | "checked"
@@ -26,6 +27,7 @@ export type CheckboxItemProps = Omit<
   ref?: Ref<HTMLDivElement>;
 };
 
+/** Group-aware checkbox that reads context for state. */
 export function CheckboxItem({
   value,
   label,
@@ -37,6 +39,7 @@ export function CheckboxItem({
   const ctx = useCheckboxGroupContext();
   const itemId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
+  const composedRef = useComposedRefs(rootRef, ref);
   const isDisabled = disabled || ctx.disabled;
   const { registerItem, unregisterItem } = ctx;
 
@@ -48,7 +51,7 @@ export function CheckboxItem({
   return (
     <Checkbox
       {...checkboxProps}
-      ref={composeRefs(rootRef, ref)}
+      ref={composedRef}
       value={value}
       data-value={value}
       checked={ctx.value.includes(value)}

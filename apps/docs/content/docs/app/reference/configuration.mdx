@@ -1,9 +1,9 @@
 ---
 title: Configuration
-description: Where diffgazer stores config and what each setting does.
+description: Where Diffgazer stores config and what each setting does.
 ---
 
-diffgazer keeps its configuration global by default. There is no single unified config file: settings, secrets, and trust each live in their own JSON file under `~/.diffgazer`, and a tiny per-project file records the repository's identity. Think of the global directory as your account-level defaults, with the per-project file pinning a stable id for the repo you are reviewing.
+Diffgazer keeps its configuration global by default. There is no single unified config file: settings, secrets, and trust each live in their own JSON file under `~/.diffgazer`, and a tiny per-project file records the repository's identity. Think of the global directory as your account-level defaults, with the per-project file pinning a stable id for the repo you are reviewing.
 
 ## File locations
 
@@ -12,9 +12,14 @@ diffgazer keeps its configuration global by default. There is no single unified 
 | `~/.diffgazer/config.json` | Your settings and the list of known providers (theme, default lenses, severity threshold, agent execution, and so on). |
 | `~/.diffgazer/secrets.json` | Stored API keys and environment-variable references, keyed by provider. |
 | `~/.diffgazer/trust.json` | Per-project trust records: which repositories you have trusted and what they are allowed to do. |
-| `.diffgazer/project.json` | Lives inside the repository. Holds a generated `projectId` and the repo root, so trust records can point at this project across runs. |
+| `~/.diffgazer/triage-reviews/` | Saved review history, keyed by project path, plus a per-project index. |
+| `.diffgazer/project.json` | Lives inside the repository. Holds a generated `projectId` and the repo root, so trust records and review history can point at this project across runs. |
 
-Set `DIFFGAZER_HOME` to move the global directory somewhere other than `~/.diffgazer`. When it is set, all three global files resolve under that path instead. diffgazer writes every config file with `0600` permissions, so only your user account can read them.
+Set `DIFFGAZER_HOME` to move the global directory somewhere other than `~/.diffgazer`. When it is set, every global file and the review history resolve under that path instead. Diffgazer writes every config file with `0600` permissions, so only your user account can read them.
+
+### Moving a repository
+
+When you move or rename a repository directory, Diffgazer treats it as a move rather than a new project: the `.diffgazer/project.json` keeps its `projectId` and its `repoRoot` is updated to the new location, and your saved review history follows automatically. Trust is the exception — for safety it stays gated, so the first request from the new path returns a trust prompt and you re-confirm trust once; that re-confirmation updates the same `projectId` record rather than creating a duplicate.
 
 ## Settings
 
@@ -25,21 +30,21 @@ These are the fields in the settings config. Anything you do not set falls back 
 | `theme` | `auto` \| `dark` \| `light` \| `terminal` | `auto` | The UI theme. `auto` follows your system preference. |
 | `defaultLenses` | array of lens ids | `correctness`, `security`, `performance`, `simplicity`, `tests` | Which review lenses run by default. All five are on out of the box. |
 | `defaultProfile` | profile id or `null` | `null` | A saved review profile to apply by default. `null` means no profile is preselected. |
-| `severityThreshold` | `blocker` \| `high` \| `medium` \| `low` \| `nit` | `low` | The lowest severity a finding can have and still be shown. `low` keeps almost everything; `nit` would keep even the smallest notes. |
+| `severityThreshold` | `blocker` \| `high` \| `medium` \| `low` \| `nit` | `low` | The lowest severity an issue can have and still be shown. `low` keeps almost everything; `nit` would keep even the smallest notes. |
 | `secretsStorage` | `file` \| `keyring` \| `null` | `null` | Where API keys are stored. `null` means you have not chosen yet. |
 | `agentExecution` | `parallel` \| `sequential` | `sequential` | Whether review agents run one after another or at the same time. |
 
 ## Secrets storage
 
-`secretsStorage` decides where your API keys live once you save them. With `file`, keys are written as plaintext JSON to `~/.diffgazer/secrets.json` with the same `0600` permissions as the rest. With `keyring`, diffgazer hands them to your operating system's credential store instead of writing them to that file. The default is `null`, which means the choice has not been made yet, so pick one before you save a key. Either way, credentials stay local to your machine. You can also skip stored secrets entirely and point a provider at an environment variable, which is covered under [Providers](/app/reference/providers) and [Environment variables](/app/reference/environment-variables).
+`secretsStorage` decides where your API keys live once you save them. With `file`, keys are written as plaintext JSON to `~/.diffgazer/secrets.json` with the same `0600` permissions as the rest. With `keyring`, Diffgazer hands them to your operating system's credential store instead of writing them to that file. The default is `null`, which means the choice has not been made yet, so pick one before you save a key. Either way, credentials stay local to your machine. You can also skip stored secrets entirely and point a provider at an environment variable, which is covered under [Providers](/app/reference/providers) and [Environment variables](/app/reference/environment-variables).
 
 ## Trust
 
-Trust is granted per project, not globally. Each trust record names the project, when you trusted it, and a small set of capabilities: `readFiles` lets diffgazer read files in the repository, and `runCommands` would let it run commands. A trust record also carries a mode, either `persistent` (the grant survives across runs) or `session` (it lasts for the current session only).
+Trust is granted per project, not globally. Each trust record names the project, when you trusted it, and a small set of capabilities: `readFiles` lets Diffgazer read files in the repository, and `runCommands` would let it run commands. A trust record also carries a mode, either `persistent` (the grant survives across runs) or `session` (it lasts for the current session only).
 
 > Note: `runCommands` is off by default. When trust is saved, the server forces `runCommands` to `false` regardless of what was requested, because running commands is not supported yet. So in practice, trusting a project grants file reads, not command execution. For the full picture of what stays on your machine, see [Privacy and security](/app/concepts/privacy).
 
 ## Related
 
-- [Providers](/app/reference/providers): the model providers diffgazer talks to and how bring-your-own-key fits each one.
-- [Environment variables](/app/reference/environment-variables): the variables diffgazer reads and how they override config.
+- [Providers](/app/reference/providers): the model providers Diffgazer talks to and how bring-your-own-key fits each one.
+- [Environment variables](/app/reference/environment-variables): the variables Diffgazer reads and how they override config.

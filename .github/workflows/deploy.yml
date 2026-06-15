@@ -16,6 +16,13 @@ on:
         description: Type "deploy" to confirm production deployment
         required: true
         type: string
+      image_sha:
+        description: >-
+          Optional rollback: full 40-char commit SHA of a previously built and
+          deployed image. When set, that SHA's existing GHCR images are
+          re-promoted to :prod instead of building from main HEAD.
+        required: false
+        type: string
 
 concurrency:
   group: deploy-public-surfaces-production
@@ -29,7 +36,14 @@ jobs:
     name: Validate Manual Request
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions: {}
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      # SHA actually deployed: the rollback image_sha when provided, else HEAD.
+      target_sha: ${{ steps.resolve.outputs.target_sha }}
+      # "true" when rolling back to a pre-built image (skips build-scan).
+      rollback: ${{ steps.resolve.outputs.rollback }}
     steps:
       - name: Require production confirmation
         env:
@@ -49,9 +63,72 @@ jobs:
             exit 1
           fi
 
+      - name: Resolve target SHA
+        id: resolve
+        env:
+          IMAGE_SHA: ${{ inputs.image_sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ -n "${IMAGE_SHA}" ]; then
+            if ! printf '%s' "${IMAGE_SHA}" | grep -Eq '^[0-9a-f]{40}$'; then
+              echo "::error::image_sha must be a full 40-character lowercase commit SHA."
+              exit 1
+            fi
+            echo "target_sha=${IMAGE_SHA}" >> "$GITHUB_OUTPUT"
+            echo "rollback=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "target_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
+            echo "rollback=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Require Release Readiness success for target SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ steps.resolve.outputs.target_sha }}
+        run: |
+          set -euo pipefail
+
+          run_info="$(gh api \
+            "repos/${{ github.repository }}/actions/workflows/release-readiness.yml/runs?head_sha=${TARGET_SHA}&per_page=20" \
+            --jq '[.workflow_runs[] | select(.event == "push" and .head_branch == "main" and .status == "completed")] | sort_by(.run_started_at // .created_at) | last | select(. != null) | [.id, .conclusion, .html_url] | @tsv')"
+          if [ -z "${run_info}" ]; then
+            echo "::error::No completed Release Readiness run found on main for ${TARGET_SHA}."
+            exit 1
+          fi
+
+          IFS=$'\t' read -r run_id run_conclusion run_url <<< "${run_info}"
+          if [ "${run_conclusion}" != "success" ]; then
+            echo "::error::Release Readiness for ${TARGET_SHA} concluded '${run_conclusion}', not success: ${run_url}"
+            exit 1
+          fi
+
+          jobs="$(gh api \
+            "repos/${{ github.repository }}/actions/runs/${run_id}/jobs?per_page=100" \
+            --jq '.jobs[] | [.name, .conclusion] | @tsv')"
+          expected_jobs=(
+            "Full History Secret Scan"
+            "Build, Verify, and Pack"
+            "Docs E2E (Playwright + axe + visual)"
+          )
+          for expected_job in "${expected_jobs[@]}"; do
+            conclusion="$(awk -F '\t' -v job="${expected_job}" '$1 == job { print $2 }' <<< "${jobs}" | tail -n 1)"
+            if [ -z "${conclusion}" ]; then
+              echo "::error::Release Readiness job '${expected_job}' is missing for ${TARGET_SHA}: ${run_url}"
+              exit 1
+            fi
+            if [ "${conclusion}" != "success" ]; then
+              echo "::error::Release Readiness job '${expected_job}' concluded '${conclusion}', not success: ${run_url}"
+              exit 1
+            fi
+          done
+          echo "Release Readiness run ${run_id} is green for ${TARGET_SHA}."
+
   build-scan:
     name: Build and Scan ${{ matrix.service.name }}
     needs: validate-request
+    # Rollback re-promotes pre-built images, so the build matrix is skipped.
+    if: ${{ needs.validate-request.outputs.rollback != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -126,16 +203,24 @@ jobs:
 
   promote-deploy:
     name: Promote and Deploy
-    needs: build-scan
+    needs: [validate-request, build-scan]
+    # build-scan is skipped on rollback; require validate-request success and
+    # build-scan to have either succeeded (fresh deploy) or been skipped (rollback).
+    if: >-
+      ${{ always()
+        && needs.validate-request.result == 'success'
+        && (needs.build-scan.result == 'success' || needs.build-scan.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
     permissions:
+      contents: read
       packages: write
     env:
       IMAGE_OWNER: ghcr.io/b4r7x
       DEPLOY_TARGET: ${{ inputs.target }}
-      SOURCE_TAG: ${{ github.sha }}
+      SOURCE_TAG: ${{ needs.validate-request.outputs.target_sha }}
+      ROLLBACK: ${{ needs.validate-request.outputs.rollback }}
       GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GHCR_USERNAME: ${{ github.actor }}
       COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
@@ -143,6 +228,17 @@ jobs:
       COOLIFY_WEBHOOK_REGISTRY: ${{ secrets.COOLIFY_WEBHOOK_REGISTRY }}
       COOLIFY_WEBHOOK_LANDING: ${{ secrets.COOLIFY_WEBHOOK_LANDING }}
     steps:
+      - name: Checkout deployed SHA
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.validate-request.outputs.target_sha }}
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+
       - name: Promote scanned images and trigger Coolify
         run: |
           set -euo pipefail
@@ -181,6 +277,14 @@ jobs:
 
           promote() {
             image="$1"
+            # On rollback the source image was built by an earlier run; fail with a
+            # clear message if its manifest is missing for the requested SHA.
+            if [ "${ROLLBACK}" = "true" ]; then
+              if ! docker buildx imagetools inspect "${IMAGE_OWNER}/${image}:${SOURCE_TAG}" > /dev/null 2>&1; then
+                echo "::error::No GHCR image ${IMAGE_OWNER}/${image}:${SOURCE_TAG} to roll back to."
+                exit 1
+              fi
+            fi
             docker buildx imagetools create \
               --tag "${IMAGE_OWNER}/${image}:prod" \
               "${IMAGE_OWNER}/${image}:${SOURCE_TAG}"
@@ -224,6 +328,11 @@ jobs:
           esac
 
       - name: Verify selected public endpoints
+        env:
+          # Hard-gate the live-check: assert every required registry endpoint
+          # (incl. /r/keys/navigation.json and the editor schema URL) AND that the
+          # served registry bytes match the committed contract at the deployed SHA.
+          DIFFGAZER_LIVE_REGISTRY_REQUIRED: "1"
         run: |
           set -euo pipefail
           sleep 30
@@ -232,19 +341,20 @@ jobs:
             curl -fsS --retry 5 --retry-delay 15 "$1" > /dev/null
           }
 
+          # Registry endpoints + content freshness come from the single committed
+          # definition in check-live-registry.mjs; only HTML origins it does not
+          # cover stay as plain curls here.
           case "${DEPLOY_TARGET}" in
             docs-registry)
+              node scripts/monorepo/check-live-registry.mjs
               check https://docs.b4r7.dev
-              check https://r.b4r7.dev/r/ui/registry.json
-              check https://r.b4r7.dev/r/ui/button.json
               ;;
             landing)
               check https://diffgazer.b4r7.dev
               ;;
             all)
+              node scripts/monorepo/check-live-registry.mjs
               check https://docs.b4r7.dev
-              check https://r.b4r7.dev/r/ui/registry.json
-              check https://r.b4r7.dev/r/ui/button.json
               check https://diffgazer.b4r7.dev
               ;;
             *)

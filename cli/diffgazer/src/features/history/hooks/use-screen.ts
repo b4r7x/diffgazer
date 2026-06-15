@@ -1,19 +1,9 @@
-import { useReview, useReviews } from "@diffgazer/core/api/hooks";
-import { formatDuration } from "@diffgazer/core/format";
-import {
-  buildHistoryRunSummary,
-  buildTimelineItems,
-  filterReviewsForHistory,
-  getEmptyRunsMessage,
-  HISTORY_SECTION_ALL_ID,
-  metadataToSeverityCounts,
-  resolveSelectedDateId,
-  resolveSelectedRunId,
-} from "@diffgazer/core/review";
+import type { useReviews } from "@diffgazer/core/api/hooks";
+import { type HistoryScreenState, useHistoryScreenState } from "@diffgazer/core/review";
 import type { SeverityCounts } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue, ReviewMetadata } from "@diffgazer/core/schemas/review";
 import { useState } from "react";
-import { type MappedRun, nextHistoryZone, sortIssuesBySeverity } from "../lib/history-run-mapping";
+import { type MappedRun, nextHistoryZone } from "../lib/history-run-mapping";
 import type { HistoryFocusZone } from "../types";
 
 export type { MappedRun } from "../lib/history-run-mapping";
@@ -29,7 +19,7 @@ export interface UseHistoryScreenResult {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
 
-  timelineItems: ReturnType<typeof buildTimelineItems>;
+  timelineItems: HistoryScreenState["timelineItems"];
   selectedDateId: string;
   setSelectedDateId: (id: string) => void;
 
@@ -55,48 +45,9 @@ interface UseHistoryScreenOptions {
 export function useHistoryScreen({
   onOpenReview,
 }: UseHistoryScreenOptions): UseHistoryScreenResult {
-  const reviewsQuery = useReviews();
-  const reviews = reviewsQuery.data?.reviews ?? [];
+  const history = useHistoryScreenState();
 
   const [focusZone, setFocusZoneState] = useState<HistoryFocusZone>("runs");
-  const [searchQuery, setSearchQueryState] = useState("");
-  const [rawSelectedDateId, setSelectedDateIdState] = useState<string>(HISTORY_SECTION_ALL_ID);
-  const [rawSelectedRunId, setSelectedRunIdState] = useState<string | null>(null);
-
-  const timelineItems = buildTimelineItems(reviews);
-  const selectedDateId = resolveSelectedDateId(rawSelectedDateId, timelineItems);
-
-  const filteredReviews = filterReviewsForHistory(reviews, selectedDateId, searchQuery);
-  const mappedRuns = filteredReviews.map(buildHistoryRunSummary);
-
-  const selectedRunId = resolveSelectedRunId(rawSelectedRunId, mappedRuns);
-
-  const selectedRun = reviews.find((r) => r.id === selectedRunId) ?? null;
-
-  const reviewDetailQuery = useReview(selectedRunId ?? "");
-  const reviewDetail = reviewDetailQuery.data?.review ?? null;
-  const sortedIssues = sortIssuesBySeverity(reviewDetail?.result?.issues);
-
-  const severityCounts = metadataToSeverityCounts(selectedRun);
-  const duration = formatDuration(selectedRun?.durationMs);
-
-  const hasReviews = reviews.length > 0;
-  const hasSearchQuery = searchQuery.trim().length > 0;
-  const emptyRunsMessage = getEmptyRunsMessage(hasReviews, hasSearchQuery, selectedDateId);
-
-  const resetSelectedRun = () => {
-    if (rawSelectedRunId !== null) setSelectedRunIdState(null);
-  };
-
-  const setSearchQuery = (next: string) => {
-    setSearchQueryState(next);
-    resetSelectedRun();
-  };
-
-  const setSelectedDateId = (id: string) => {
-    setSelectedDateIdState(id);
-    resetSelectedRun();
-  };
 
   const setFocusZone = (zone: HistoryFocusZone) => {
     setFocusZoneState(zone);
@@ -107,29 +58,29 @@ export function useHistoryScreen({
   };
 
   const handleIssueClick = () => {
-    if (selectedRunId) onOpenReview(selectedRunId);
+    if (history.selectedRunId) onOpenReview(history.selectedRunId);
   };
 
   return {
-    reviewsQuery,
-    reviews,
+    reviewsQuery: history.reviewsQuery,
+    reviews: history.reviews,
     focusZone,
     setFocusZone,
     cycleFocusZone,
-    searchQuery,
-    setSearchQuery,
-    timelineItems,
-    selectedDateId,
-    setSelectedDateId,
-    mappedRuns,
-    selectedRunId,
-    setSelectedRunId: setSelectedRunIdState,
-    selectedRun,
-    severityCounts,
-    sortedIssues,
-    duration,
-    hasReviews,
-    emptyRunsMessage,
+    searchQuery: history.searchQuery,
+    setSearchQuery: history.setSearchQuery,
+    timelineItems: history.timelineItems,
+    selectedDateId: history.selectedDateId,
+    setSelectedDateId: history.setSelectedDateId,
+    mappedRuns: history.mappedRuns,
+    selectedRunId: history.selectedRunId,
+    setSelectedRunId: history.setSelectedRunId,
+    selectedRun: history.selectedRun,
+    severityCounts: history.severityCounts,
+    sortedIssues: history.sortedIssues,
+    duration: history.duration,
+    hasReviews: history.hasReviews,
+    emptyRunsMessage: history.emptyRunsMessage,
     handleRunActivate: onOpenReview,
     handleIssueClick,
   };

@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const execaMock = vi.hoisted(() => vi.fn());
+// Boundary mock: subprocess launcher for the API child process.
 vi.mock("execa", () => ({ execa: execaMock }));
 
 import { createApiServer, waitForHealthy } from "./api";

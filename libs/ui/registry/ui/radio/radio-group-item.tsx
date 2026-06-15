@@ -1,10 +1,11 @@
 "use client";
 
 import { type ReactNode, useId, useLayoutEffect, useRef } from "react";
-import { composeRefs } from "@/lib/compose-refs";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { Radio, type RadioProps } from "./radio";
 import { useRadioGroupContext } from "./radio-group-context";
 
+/** Props for radio group item. */
 export interface RadioGroupItemProps<TValue extends string = string>
   extends Omit<
     RadioProps,
@@ -21,12 +22,17 @@ export interface RadioGroupItemProps<TValue extends string = string>
     | "value"
     | "data-value"
   > {
+  /** Item value. Must be unique within the group. */
   value: TValue;
+  /** Visible item label. */
   label: ReactNode;
+  /** Visible item description wired with aria-describedby. */
   description?: ReactNode;
+  /** Disables the item. */
   disabled?: boolean;
 }
 
+/** Standalone radio button (controlled or uncontrolled) */
 export function RadioGroupItem<TValue extends string = string>({
   value,
   label,
@@ -38,6 +44,7 @@ export function RadioGroupItem<TValue extends string = string>({
   const context = useRadioGroupContext();
   const itemId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
+  const composedRef = useComposedRefs(rootRef, ref);
   const isSelected = context.value === value;
   const isDisabled = context.disabled || !!itemDisabled;
   const isHighlighted = context.highlightedValue === value;
@@ -53,7 +60,7 @@ export function RadioGroupItem<TValue extends string = string>({
   return (
     <Radio
       {...radioProps}
-      ref={composeRefs(rootRef, ref)}
+      ref={composedRef}
       data-value={value}
       value={value}
       checked={isSelected}

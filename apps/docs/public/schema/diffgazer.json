@@ -3,7 +3,6 @@
   "$id": "https://r.b4r7.dev/schema/diffgazer.json",
   "title": "Diffgazer Installer Config",
   "type": "object",
-  "additionalProperties": false,
   "properties": {
     "$schema": {
       "type": "string"
@@ -13,19 +12,22 @@
     },
     "aliases": {
       "type": "object",
-      "additionalProperties": false,
       "properties": {
         "components": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^(\\.\\.?\\/|[@~#][\\w-]*\\/)"
         },
         "utils": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^(\\.\\.?\\/|[@~#][\\w-]*\\/)"
         },
         "lib": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^(\\.\\.?\\/|[@~#][\\w-]*\\/)"
         },
         "hooks": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^(\\.\\.?\\/|[@~#][\\w-]*\\/)"
         }
       }
     },
@@ -43,7 +45,6 @@
     },
     "tailwind": {
       "type": "object",
-      "additionalProperties": false,
       "properties": {
         "css": {
           "type": "string"
@@ -53,6 +54,9 @@
     },
     "installedComponents": {
       "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
       "additionalProperties": {
         "type": "object",
         "properties": {

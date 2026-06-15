@@ -52,8 +52,49 @@ export const checkboxDoc: ComponentDoc = {
   keyboard: {
     description:
       "CheckboxGroup includes arrow-key navigation with wrapping and real focus movement. Control highlighted/onHighlightChange when external state coordination is needed, use autoFocus when activating a composite region, use keyboardNavigation to suspend only arrow handling, and use onNavigationBoundaryReached for composite focus handoff. Standalone Checkbox responds to Space when focused.",
+    keys: [
+      { keys: "Space", action: "Toggles a focused standalone Checkbox or CheckboxItem." },
+      {
+        keys: "ArrowUp / ArrowDown",
+        action: "Moves focus to the previous or next enabled CheckboxItem inside CheckboxGroup.",
+      },
+      { keys: "Home / End", action: "Moves focus to the first or last enabled item." },
+      { keys: "Enter", action: "Toggles the focused/highlighted enabled group item." },
+    ],
     examples: [{ name: "checkbox-group", title: "Group with built-in keyboard navigation" }],
   },
+  dataAttributes: [
+    {
+      attribute: "data-state",
+      appliesTo: "Checkbox / CheckboxItem",
+      values: '"checked" | "unchecked" | "indeterminate"',
+      description: "Boolean visual state for styling the custom control.",
+    },
+    {
+      attribute: "data-disabled",
+      appliesTo: "Checkbox / CheckboxItem",
+      values: "present when disabled",
+      description: "Marks disabled controls and group items.",
+    },
+    {
+      attribute: "data-highlighted",
+      appliesTo: "Checkbox / CheckboxItem",
+      values: "present when highlighted",
+      description: "Marks the current keyboard-highlighted group item.",
+    },
+    {
+      attribute: "data-value",
+      appliesTo: "Checkbox / CheckboxItem",
+      values: "item value",
+      description: "Stable item value used by group navigation and form submission wiring.",
+    },
+    {
+      attribute: "data-diffgazer-selectable-owner",
+      appliesTo: "CheckboxGroup",
+      values: '"checkbox"',
+      description: "Scopes nested selectable-item discovery for keyboard navigation.",
+    },
+  ],
   props: {
     Checkbox: {
       checked: {
@@ -203,6 +244,27 @@ export const checkboxDoc: ComponentDoc = {
         required: false,
         defaultValue: "false",
         description: "Requires at least one enabled item to be selected.",
+      },
+      label: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description:
+          "Visible group label. Also provides the accessible name when aria-label is omitted.",
+      },
+      "aria-label": {
+        type: "string",
+        required: false,
+        defaultValue: "label text",
+        description:
+          "Accessible name for the group. Overrides the label-derived fallback when supplied.",
+      },
+      "aria-labelledby": {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description:
+          "ID reference for an external label. Use when another element already names the group.",
       },
     },
     CheckboxItem: {

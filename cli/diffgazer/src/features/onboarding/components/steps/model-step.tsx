@@ -1,6 +1,6 @@
-import { useOpenRouterModelsMapped, useProviderModelsMapped } from "@diffgazer/core/providers";
+import { useModelSource } from "@diffgazer/core/providers";
 import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
-import { AVAILABLE_PROVIDERS, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
+import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { Badge } from "../../../../components/ui/badge";
@@ -12,7 +12,7 @@ import { useTheme } from "../../../../theme/provider";
 interface ModelStepProps {
   value?: string;
   onChange: (v: string) => void;
-  provider: string;
+  provider: AIProvider;
   isActive?: boolean;
 }
 
@@ -45,13 +45,9 @@ export function ModelStep({
   isActive = true,
 }: ModelStepProps): ReactElement {
   const { tokens } = useTheme();
-  const isOpenRouter = provider === OPENROUTER_PROVIDER_ID;
-  const openRouter = useOpenRouterModelsMapped(true, provider as AIProvider);
-  const catalog = useProviderModelsMapped(true, provider as AIProvider);
+  const { models: sourceModels, loading, error, isOpenRouter } = useModelSource(true, provider);
 
   const subtitle = isOpenRouter ? "Select a model from OpenRouter." : getSubtitle(provider);
-  const loading = isOpenRouter ? openRouter.loading : catalog.loading;
-  const error = isOpenRouter ? openRouter.error : catalog.error;
 
   if (loading) {
     return (
@@ -82,7 +78,7 @@ export function ModelStep({
     );
   }
 
-  const models = (isOpenRouter ? openRouter.models : catalog.models).map(modelInfoToOption);
+  const models = sourceModels.map(modelInfoToOption);
 
   if (models.length === 0) {
     return (

@@ -1,4 +1,4 @@
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { requireFrameDocument } from "../testing/assertions.js";
 import { useFocusRestore } from "./use-focus-restore.js";
@@ -12,7 +12,6 @@ function button(label: string) {
 
 describe("useFocusRestore", () => {
   afterEach(() => {
-    cleanup();
     document.body.replaceChildren();
   });
 

@@ -2,21 +2,30 @@ import { buildLcsTable } from "./lcs";
 import { collectEditPairs } from "./pairs";
 import type { DiffChange } from "./parse";
 
+/** A contiguous word-level segment in a diff line. */
 export interface WordSegment {
+  /** Segment text. */
   text: string;
+  /** True when the segment is part of the changed span. */
   changed: boolean;
 }
 
+/** Diff change annotated with optional word-level segments. */
 export interface AnnotatedChange extends DiffChange {
+  /** Intra-line segments for changed add/remove lines. */
   wordSegments?: WordSegment[];
 }
 
+/** Mutable budget used to cap word-diff LCS work across a render. */
 export interface WordDiffBudget {
+  /** Remaining LCS table cells available for word-diff computation. */
   remainingCells: number;
 }
 
+/** Default total word-diff LCS cell budget. */
 export const DEFAULT_WORD_DIFF_CELL_BUDGET = 50_000;
 
+/** Creates a shared budget for word-diff segment computation. */
 export function createWordDiffBudget(maxCells = DEFAULT_WORD_DIFF_CELL_BUDGET): WordDiffBudget {
   return { remainingCells: maxCells };
 }
@@ -31,6 +40,7 @@ function changedLineSegments(
   };
 }
 
+/** Computes word-level old/new segments for one changed line pair. */
 export function computeWordSegments(
   oldContent: string,
   newContent: string,
@@ -103,6 +113,7 @@ function mergeSegments(segments: WordSegment[]): WordSegment[] {
   return result;
 }
 
+/** Annotates adjacent remove/add line pairs with word-level segments. */
 export function annotateWordDiff(
   changes: DiffChange[],
   budget = createWordDiffBudget(),

@@ -1,8 +1,8 @@
+import { testNavigationBehavior } from "@diffgazer/keys/testing/navigation-behavior";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior";
 import { axe } from "../../../testing/axe";
 import { Accordion } from "./index";
 
@@ -452,6 +452,54 @@ describe("Accordion", () => {
   });
 });
 
+describe("Accordion heading semantics", () => {
+  it("wraps a bare trigger in a default h3 heading", () => {
+    render(
+      <Accordion>
+        <Accordion.Item value="one">
+          <Accordion.Trigger>Section One</Accordion.Trigger>
+          <Accordion.Content>Content One</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+    );
+
+    const heading = screen.getByRole("heading", { level: 3, name: "Section One" });
+    expect(heading.querySelector("button")).toBe(
+      screen.getByRole("button", { name: "Section One" }),
+    );
+  });
+
+  it("honors a custom headingLevel on a bare trigger", () => {
+    render(
+      <Accordion>
+        <Accordion.Item value="one">
+          <Accordion.Trigger headingLevel="h2">Section One</Accordion.Trigger>
+          <Accordion.Content>Content One</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+    );
+
+    expect(screen.getByRole("heading", { level: 2, name: "Section One" })).toBeInTheDocument();
+  });
+
+  it("yields exactly one heading when composed inside AccordionHeader", () => {
+    render(
+      <Accordion>
+        <Accordion.Item value="one">
+          <Accordion.Header as="h4">
+            <Accordion.Trigger>Section One</Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content>Content One</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+    );
+
+    const headings = screen.getAllByRole("heading", { name: "Section One" });
+    expect(headings).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 4, name: "Section One" }).tagName).toBe("H4");
+  });
+});
+
 describe("Accordion inert on collapsed content", () => {
   it("collapsed content is inert, expanded content is not", async () => {
     render(
@@ -547,7 +595,6 @@ describe("Accordion prefers-reduced-motion", () => {
     const transitionWrapper = innerContent?.parentElement;
     if (!transitionWrapper)
       throw new Error("Expected accordion content to have a transition wrapper parent");
-    expect(transitionWrapper.className).toMatch(/motion-reduce:transition-none/);
     expect(getComputedStyle(transitionWrapper).transitionProperty).toBe("none");
   });
 });

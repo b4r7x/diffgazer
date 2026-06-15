@@ -25,7 +25,10 @@ export function Kbd({ keys }: KbdProps) {
     <span>
       {segments.map((seg) => {
         const mapped = keyMap[seg.toLowerCase()];
-        const label = mapped ? (isMac ? mapped[0] : mapped[1]) : seg;
+        let label = seg;
+        if (mapped) {
+          label = isMac ? mapped[0] : mapped[1];
+        }
         return (
           <kbd key={`${seg.toLowerCase()}:${label}`} className="kbd">
             {label}

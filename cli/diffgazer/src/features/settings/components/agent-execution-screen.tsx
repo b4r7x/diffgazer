@@ -1,10 +1,16 @@
 import { guardQueryState, useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
+import { deriveSaveState } from "@diffgazer/core/forms";
 import {
   AGENT_EXECUTION_OPTIONS,
   type AgentExecution,
   isAgentExecution,
 } from "@diffgazer/core/schemas/config";
+import {
+  BACK_SHORTCUT,
+  NAVIGATE_SHORTCUT,
+  type Shortcut,
+} from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
@@ -15,27 +21,25 @@ import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useNavigation } from "../../../hooks/use-navigation";
-import { useScope } from "../../../hooks/use-scope";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import { useSettingsZone } from "../hooks/use-settings-zone.js";
 
-const LIST_SHORTCUTS = [
-  { key: "Esc", label: "Back" },
+const LIST_SHORTCUTS: Shortcut[] = [
+  BACK_SHORTCUT,
   { key: "Tab", label: "Switch Zone" },
-  { key: "↑/↓", label: "Navigate" },
+  NAVIGATE_SHORTCUT,
   { key: "Enter", label: "Select Mode" },
-] as const;
+];
 
-const BUTTON_SHORTCUTS = [
-  { key: "Esc", label: "Back" },
+const BUTTON_SHORTCUTS: Shortcut[] = [
+  BACK_SHORTCUT,
   { key: "Tab", label: "Switch Zone" },
   { key: "←/→", label: "Move Action" },
   { key: "Enter", label: "Activate" },
-] as const;
+];
 
 export function AgentExecutionScreen(): ReactElement {
   const { columns } = useTerminalDimensions();
-  useScope("settings-agent-execution");
   useBackHandler();
 
   const { goBack } = useNavigation();
@@ -45,10 +49,12 @@ export function AgentExecutionScreen(): ReactElement {
   const [error, setError] = useState<string | null>(null);
 
   const isSaving = saveSettings.isPending;
-  const persistedMode = settingsQuery.data?.agentExecution ?? "sequential";
-  const effectiveMode = modeChoice ?? persistedMode;
-  const isDirty = modeChoice !== null && modeChoice !== persistedMode;
-  const canSave = !isSaving && isDirty;
+  const { effective: effectiveMode, canSave } = deriveSaveState<AgentExecution>({
+    persisted: settingsQuery.data?.agentExecution,
+    choice: modeChoice,
+    saving: isSaving,
+    fallback: "sequential",
+  });
 
   const { isListActive, isButtonActive, zone } = useSettingsZone({
     buttonCount: 2,

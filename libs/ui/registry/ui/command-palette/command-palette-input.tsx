@@ -2,23 +2,35 @@
 
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode, Ref } from "react";
 import { Kbd } from "@/components/ui/kbd";
-import { composeRefs } from "@/lib/compose-refs";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { cn } from "@/lib/utils";
 import { useCommandPaletteContext } from "./command-palette-context";
 import { getCommandPaletteItemDomId } from "./use-state";
 
 const INPUT_NAVIGATION_KEYS = new Set(["ArrowUp", "ArrowDown", "Enter"]);
 
+/** Props for command palette input. */
 export interface CommandPaletteInputProps {
+  /** Search input placeholder. */
   placeholder?: string;
+  /** Accessible label text. */
   label?: string;
+  /**
+   * Optional leading content. When omitted, a CSS-driven glyph from
+   * --command-palette-prefix-content is rendered (default ">"; terminal frame swaps to "$").
+   */
   prefix?: ReactNode;
+  /** Optional trailing content. Defaults to a Kbd "Esc" hint. */
   suffix?: ReactNode;
+  /** Called when key down occurs. */
   onKeyDown?: (event: ReactKeyboardEvent<HTMLInputElement>) => void;
+  /** Additional class names merged onto the rendered element. */
   className?: string;
+  /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLInputElement>;
 }
 
+/** Search input with prefix/suffix slots (Esc Kbd by default) */
 export function CommandPaletteInput({
   placeholder = "Type a command…",
   label = "Command search",
@@ -30,6 +42,7 @@ export function CommandPaletteInput({
 }: CommandPaletteInputProps) {
   const { open, search, onSearchChange, navKeyDown, highlighted, listId, inputRef } =
     useCommandPaletteContext();
+  const composedRef = useComposedRefs(inputRef, ref);
 
   return (
     <div data-slot="command-palette-input" className={cn(className)}>
@@ -39,7 +52,7 @@ export function CommandPaletteInput({
         <span data-slot="command-palette-input-prefix" data-default aria-hidden="true" />
       )}
       <input
-        ref={ref ? composeRefs(inputRef, ref) : inputRef}
+        ref={composedRef}
         type="text"
         role="combobox"
         aria-label={label}
@@ -66,7 +79,7 @@ export function CommandPaletteInput({
         }}
         placeholder={placeholder}
         className="flex-1 min-w-0 bg-transparent border-0 outline-none p-0 text-foreground placeholder-muted-foreground/70 font-mono caret-foreground"
-        style={{ fontSize: "var(--cp-text-size)" }}
+        style={{ fontSize: "var(--command-palette-text-size)" }}
       />
       {suffix !== undefined ? (
         <span data-slot="command-palette-input-suffix">{suffix}</span>

@@ -9,9 +9,13 @@ export const accordionDoc: ComponentDoc = {
     {
       name: "AccordionHeader",
       indent: 2,
-      note: "Heading wrapper for trigger (h3 by default, configurable via as prop)",
+      note: "Optional explicit heading wrapper for trigger (h3 by default, configurable via as prop). Omit it and AccordionTrigger supplies its own default heading.",
     },
-    { name: "AccordionTrigger", indent: 3, note: "Clickable button that toggles content" },
+    {
+      name: "AccordionTrigger",
+      indent: 3,
+      note: "Clickable button that toggles content. Wraps itself in a default h3 heading unless composed inside AccordionHeader.",
+    },
     { name: "AccordionContent", indent: 2, note: "Collapsible body region" },
   ],
   notes: [
@@ -31,6 +35,11 @@ export const accordionDoc: ComponentDoc = {
         "In single mode, collapsible defaults to true. Set collapsible={false} to always keep one item open.",
     },
     {
+      title: "Heading semantics",
+      content:
+        "The APG accordion pattern requires each trigger to sit inside a heading. AccordionTrigger wraps itself in a default h3; set its headingLevel prop to match the surrounding document outline. Compose an explicit AccordionHeader to control the level instead — the trigger then skips its own wrapper so no doubled heading appears.",
+    },
+    {
       title: "Keyboard Navigation",
       content:
         "Arrow Up/Down moves focus between triggers. Home/End jumps to first/last trigger. Enter or Space toggles the focused item. Navigation wraps around.",
@@ -44,8 +53,36 @@ export const accordionDoc: ComponentDoc = {
   keyboard: {
     description:
       "Built-in keyboard navigation via @diffgazer/keys navigation helpers. Arrow Up/Down moves focus between accordion triggers, Home/End jumps to first/last, Enter/Space toggles the focused item.",
+    keys: [
+      {
+        keys: "ArrowUp / ArrowDown",
+        action: "Moves focus to the previous or next enabled trigger.",
+      },
+      { keys: "Home / End", action: "Moves focus to the first or last enabled trigger." },
+      { keys: "Enter / Space", action: "Toggles the focused trigger." },
+    ],
     examples: [{ name: "accordion-default", title: "Default (with keyboard support)" }],
   },
+  dataAttributes: [
+    {
+      attribute: "data-state",
+      appliesTo: "Accordion.Item / Accordion.Trigger / Accordion.Content",
+      values: '"open" | "closed"',
+      description: "Open state for item, trigger, and panel styling.",
+    },
+    {
+      attribute: "data-disabled",
+      appliesTo: "Accordion.Item / Accordion.Trigger",
+      values: "present when disabled",
+      description: "Marks disabled accordion items and triggers.",
+    },
+    {
+      attribute: "data-value",
+      appliesTo: "Accordion.Item / Accordion.Trigger",
+      values: "item value",
+      description: "Stable item value used by navigation and open-state lookup.",
+    },
+  ],
   usage: { example: "accordion-default" },
   examples: [
     { name: "accordion-default", title: "Default" },
@@ -134,6 +171,13 @@ export const accordionDoc: ComponentDoc = {
         required: false,
         defaultValue: '"default"',
         description: "Visual style. Source is a smaller variant used for inline source toggles.",
+      },
+      headingLevel: {
+        type: '"h2" | "h3" | "h4" | "h5" | "h6"',
+        required: false,
+        defaultValue: '"h3"',
+        description:
+          "Heading level wrapping the trigger button (APG heading requirement). Ignored when the trigger is composed inside an AccordionHeader, which then owns the heading.",
       },
       handle: {
         type: "ReactNode | null",

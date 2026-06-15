@@ -4,6 +4,7 @@ import { type CheckboxProps, Checkbox as CheckboxRoot, type CheckboxVariant } fr
 import { CheckboxGroup, type CheckboxGroupProps } from "./checkbox-group";
 import { CheckboxItem, type CheckboxItemProps } from "./checkbox-item";
 
+/** Standalone checkbox (controlled or uncontrolled) */
 const Checkbox = Object.assign(CheckboxRoot, {
   Group: CheckboxGroup,
   Item: CheckboxItem,

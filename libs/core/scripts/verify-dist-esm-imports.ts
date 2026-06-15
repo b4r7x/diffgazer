@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { assertDistEsmRelativeImports } from "@diffgazer/registry/cli";
+import { assertDistEsmRelativeImports } from "@diffgazer/registry/build-checks";
 
 assertDistEsmRelativeImports({
   distDir: resolve(import.meta.dirname, "..", "dist"),

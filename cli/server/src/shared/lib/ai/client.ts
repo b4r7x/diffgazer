@@ -1,15 +1,16 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { PROVIDER_OVERLAY } from "@diffgazer/core/catalog";
-import { createError, toError } from "@diffgazer/core/errors";
+import { CATALOG_SNAPSHOT, findModelLimit, PROVIDER_OVERLAY } from "@diffgazer/core/catalog";
+import { createError } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { generateObject, type LanguageModel, streamText } from "ai";
+import { generateObject, type LanguageModel, NoObjectGeneratedError } from "ai";
 import { createZhipu } from "zhipu-ai-provider";
 import type { z } from "zod";
 import { getStore } from "../config/store.js";
 import { classifyError, type ErrorRule } from "../errors.js";
-import type { AIClient, AIClientConfig, AIError, AIErrorCode, StreamCallbacks } from "./types.js";
+import { log } from "../log.js";
+import type { AIClient, AIClientConfig, AIError, AIErrorCode } from "./types.js";
 
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_MAX_TOKENS = 65536;
@@ -62,6 +63,66 @@ function classifyApiError(error: unknown): AIError {
     message: (msg) => msg,
   });
   return createError<AIErrorCode>(code, message);
+}
+
+/** Rough token estimate (≈4 chars/token), matching the review pipeline's heuristic. */
+function estimatePromptTokens(prompt: string): number {
+  return Math.ceil(prompt.length / 4);
+}
+
+/** Resolve the output budget for a request, clamped to the model's documented limit when known. */
+function resolveMaxOutputTokens(config: AIClientConfig): number {
+  const requested = config.maxTokens ?? DEFAULT_MAX_TOKENS;
+  return config.outputLimit !== undefined ? Math.min(requested, config.outputLimit) : requested;
+}
+
+/** Parse the first JSON object out of raw model text (tolerating surrounding prose / code fences). */
+function extractJsonObject(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start === -1 || end <= start) return undefined;
+    try {
+      return JSON.parse(text.slice(start, end + 1));
+    } catch {
+      return undefined;
+    }
+  }
+}
+
+/**
+ * Recover a usable object from raw model text after strict validation rejected it.
+ * Validates the envelope, then — for review-shaped objects carrying an `issues`
+ * array — keeps only the issues that pass the schema, dropping the rest. Mirrors
+ * the pipeline's per-issue salvage so one bad issue can't void a whole paid review.
+ */
+function recoverObject<T extends z.ZodType>(
+  schema: T,
+  rawText: string | undefined,
+): { value: z.infer<T>; dropped: number } | null {
+  if (!rawText) return null;
+  const parsed = extractJsonObject(rawText);
+  if (parsed === undefined) return null;
+
+  const full = schema.safeParse(parsed);
+  if (full.success) return { value: full.data as z.infer<T>, dropped: 0 };
+
+  if (!parsed || typeof parsed !== "object") return null;
+  const envelope = parsed as Record<string, unknown>;
+  if (!Array.isArray(envelope.issues)) return null;
+
+  const allIssues = envelope.issues;
+  const keptIssues = allIssues.filter(
+    (issue) => schema.safeParse({ ...envelope, issues: [issue] }).success,
+  );
+  if (keptIssues.length === 0) return null;
+
+  const salvaged = schema.safeParse({ ...envelope, issues: keptIssues });
+  if (!salvaged.success) return null;
+
+  return { value: salvaged.data as z.infer<T>, dropped: allIssues.length - keptIssues.length };
 }
 
 function resolveAbortSignal(
@@ -180,6 +241,23 @@ export function createAIClient(config: AIClientConfig): Result<AIClient, AIError
       schema: T,
       options?: { signal?: AbortSignal },
     ): Promise<Result<z.infer<T>, AIError>> {
+      const maxOutputTokens = resolveMaxOutputTokens(config);
+
+      // A request whose prompt plus output budget exceeds the model's context
+      // window deterministically 400s with opaque provider text; refuse it up
+      // front with a message naming the model and its limit.
+      if (config.contextLimit !== undefined) {
+        const projectedTokens = estimatePromptTokens(prompt) + maxOutputTokens;
+        if (projectedTokens > config.contextLimit) {
+          return err(
+            createError<AIErrorCode>(
+              "MODEL_ERROR",
+              `The prompt is too large for ${config.model ?? config.provider} (needs ~${projectedTokens} tokens, model context limit is ${config.contextLimit}). Choose a model with a larger context window or review a smaller diff.`,
+            ),
+          );
+        }
+      }
+
       try {
         const abortSignal = resolveAbortSignal(config, options?.signal);
         const result = await generateObject({
@@ -187,47 +265,35 @@ export function createAIClient(config: AIClientConfig): Result<AIClient, AIError
           prompt,
           schema,
           temperature: config.temperature ?? DEFAULT_TEMPERATURE,
-          maxOutputTokens: config.maxTokens ?? DEFAULT_MAX_TOKENS,
+          maxOutputTokens,
           maxRetries: config.maxRetries ?? DEFAULT_MAX_RETRIES,
           abortSignal,
         });
 
         return ok(result.object as z.infer<T>);
       } catch (error) {
-        return err(classifyApiError(error));
-      }
-    },
-
-    async generateStream(
-      prompt: string,
-      callbacks: StreamCallbacks,
-      options?: { signal?: AbortSignal },
-    ): Promise<void> {
-      try {
-        const abortSignal = resolveAbortSignal(config, options?.signal);
-        const result = streamText({
-          model: languageModel,
-          prompt,
-          temperature: config.temperature ?? DEFAULT_TEMPERATURE,
-          maxOutputTokens: config.maxTokens ?? DEFAULT_MAX_TOKENS,
-          abortSignal,
-        });
-
-        const chunks: string[] = [];
-
-        for await (const chunk of result.textStream) {
-          if (chunk) {
-            chunks.push(chunk);
-            await callbacks.onChunk(chunk);
+        if (NoObjectGeneratedError.isInstance(error)) {
+          const recovered = recoverObject(schema, error.text);
+          if (recovered) {
+            if (recovered.dropped > 0) {
+              log("warn", "ai-client.recovered-issues", {
+                provider: config.provider,
+                model: config.model,
+                droppedIssues: recovered.dropped,
+              });
+            }
+            return ok(recovered.value);
+          }
+          if (error.finishReason === "length") {
+            return err(
+              createError<AIErrorCode>(
+                "MODEL_ERROR",
+                `The model response was cut off at its output limit (${maxOutputTokens} tokens) before producing valid results. Try a model with a larger output limit or review a smaller diff.`,
+              ),
+            );
           }
         }
-
-        const finishReason = await result.finishReason;
-
-        const truncated = finishReason === "length";
-        await callbacks.onComplete(chunks.join(""), { truncated, finishReason });
-      } catch (error) {
-        await callbacks.onError(toError(error));
+        return err(classifyApiError(error));
       }
     },
   };
@@ -259,10 +325,13 @@ export function initializeAIClient(): Result<AIClient, AIError> {
     );
   }
 
+  const limit = findModelLimit(CATALOG_SNAPSHOT, activeProvider.provider, activeProvider.model);
   const clientResult = createAIClient({
     apiKey: apiKeyResult.value,
     provider: activeProvider.provider,
     model: activeProvider.model,
+    outputLimit: limit.output,
+    contextLimit: limit.context,
   });
 
   if (!clientResult.ok) {

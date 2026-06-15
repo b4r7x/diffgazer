@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { activateProvider, deleteTrust, getProviderStatus, getTrust } from "./config.js";
+import { activateProvider, getProviderStatus } from "./config.js";
 import { createMockClient } from "./test-helpers.js";
 import type { ApiClient } from "./types.js";
 
@@ -16,26 +16,24 @@ describe("config API functions", () => {
 
     const result = await getProviderStatus(client);
 
-    expect(client.get).toHaveBeenCalledWith("/api/config/providers");
+    expect(client.get).toHaveBeenCalledWith(
+      "/api/config/providers",
+      undefined,
+      expect.any(Function),
+    );
     expect(result).toEqual(providers);
   });
 
-  it("getTrust queries the trust endpoint scoped to the given project", async () => {
-    const trust = { projectId: "proj-1", trusted: true };
-    vi.mocked(client.get).mockResolvedValue({ trust });
+  it("getProviderStatus validates the response shape, rejecting a drifted payload", async () => {
+    vi.mocked(client.get).mockResolvedValue({ providers: [] });
 
-    await getTrust(client, "proj-1");
+    await getProviderStatus(client);
 
-    expect(client.get).toHaveBeenCalledWith("/api/settings/trust", { projectId: "proj-1" });
-  });
-
-  it("deleteTrust removes the trust entry for the given project and forwards the response", async () => {
-    vi.mocked(client.delete).mockResolvedValue({ removed: true });
-
-    const result = await deleteTrust(client, "proj-1");
-
-    expect(client.delete).toHaveBeenCalledWith("/api/settings/trust", { projectId: "proj-1" });
-    expect(result).toEqual({ removed: true });
+    // The validator passed to the client is what guards against server drift;
+    // the real client invokes it, so assert it rejects an out-of-contract body.
+    const validate = vi.mocked(client.get).mock.calls[0]?.[2];
+    expect(validate).toBeDefined();
+    expect(() => validate?.({ providers: [{ provider: "not-a-provider" }] })).toThrow();
   });
 
   it.each([

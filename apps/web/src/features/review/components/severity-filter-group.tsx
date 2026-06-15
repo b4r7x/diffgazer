@@ -1,10 +1,11 @@
 import { SEVERITY_LABELS, SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
+import { pluralize } from "@diffgazer/core/strings";
 import { Button } from "@diffgazer/ui/components/button";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { KeyboardEvent, Ref } from "react";
-import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
+import { SEVERITY_CONFIG } from "@/components/shared/severity/constants";
 
 export type SeverityFilter = ReadonlySet<ReviewSeverity>;
 
@@ -39,15 +40,32 @@ export function SeverityFilterGroup({
 }: SeverityFilterGroupProps) {
   const isFilterActive = activeFilter.size > 0;
   const resetIndex = SEVERITY_ORDER.length;
+  const lastFilterIndex = SEVERITY_ORDER.length - 1;
   const isResetFocused = !!isFocused && focusedIndex === resetIndex;
 
+  const isReviewSeverity = (value: string): value is ReviewSeverity => value in SEVERITY_LABELS;
+
   const handleValueChange = (value: readonly string[]) => {
-    onFilterChange(new Set(value as readonly ReviewSeverity[]));
+    onFilterChange(new Set(value.filter(isReviewSeverity)));
+  };
+
+  // Resetting unmounts the Reset button, so return the zone's focus to the last
+  // severity chip (mirrors the keyboard path's resetAndReturnToLastFilter);
+  // otherwise DOM focus drops to body while the focused index points at the
+  // now-unmounted Reset button.
+  const handleReset = (container: Element | null) => {
+    const lastSeverity = SEVERITY_ORDER[lastFilterIndex];
+    onFocusedIndexChange?.(lastFilterIndex);
+    onReset?.();
+    if (lastSeverity) {
+      container?.querySelector<HTMLButtonElement>(`button[data-value="${lastSeverity}"]`)?.focus();
+    }
   };
 
   const handleHighlightChange = (value: string | null) => {
     if (value === null) return;
-    const index = SEVERITY_ORDER.indexOf(value as ReviewSeverity);
+    // biome-ignore lint/complexity/useIndexOf: SEVERITY_ORDER is a readonly ReviewSeverity tuple; indexOf(value:string) would require the cast F-202 removed.
+    const index = SEVERITY_ORDER.findIndex((severity) => severity === value);
     if (index >= 0) onFocusedIndexChange?.(index);
   };
 
@@ -80,11 +98,11 @@ export function SeverityFilterGroup({
             <ToggleGroupItem
               key={sev}
               value={sev}
-              aria-label={`${label} severity, ${count} ${count === 1 ? "issue" : "issues"}, ${isActive ? "selected" : "not selected"}`}
+              aria-label={`${label} severity, ${pluralize(count, "issue")}`}
               className={cn(
-                "h-5 min-h-0 min-w-fit px-1.5 text-xs inline-flex items-center whitespace-nowrap tabular-nums focus-visible:ring-0 focus-visible:outline-none",
+                "h-5 min-h-0 min-w-fit px-1.5 text-xs inline-flex items-center whitespace-nowrap tabular-nums",
                 isActive && SEVERITY_CONFIG[sev].color,
-                isFocused && focusedIndex === index && "border-tui-blue bg-tui-selection",
+                isFocused && focusedIndex === index && "border-info bg-secondary",
               )}
             >
               <span aria-hidden="true">
@@ -100,16 +118,15 @@ export function SeverityFilterGroup({
           data-diffgazer-navigation-item="button"
           data-value={RESET_FILTER_VALUE}
           tabIndex={isResetFocused ? 0 : -1}
-          onClick={() => {
-            onFocusedIndexChange?.(resetIndex);
-            onReset?.();
-          }}
+          onClick={(event) =>
+            handleReset(event.currentTarget.closest("[data-severity-filter-row]"))
+          }
           onFocus={() => onFocusedIndexChange?.(resetIndex)}
           onKeyDown={onKeyDown}
           aria-label="Reset severity filter"
           className={cn(
             "h-5 min-h-0 min-w-fit px-1.5 text-xs focus-visible:ring-0 focus-visible:outline-none",
-            isResetFocused && "border-tui-blue bg-tui-selection",
+            isResetFocused && "border-info bg-secondary",
           )}
           bracket
         >

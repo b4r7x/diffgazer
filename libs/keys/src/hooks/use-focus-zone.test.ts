@@ -1,7 +1,7 @@
-import { act, cleanup, render, renderHook, screen } from "@testing-library/react";
+import { act, render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createElement, useEffect, useRef, useState } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fireKey, KeyboardWrapper } from "../testing/test-utils.js";
 import { useFocusZone } from "./use-focus-zone.js";
 import { useKey } from "./use-key.js";
@@ -9,10 +9,6 @@ import { useKey } from "./use-key.js";
 const wrapper = KeyboardWrapper;
 
 describe("useFocusZone", () => {
-  afterEach(() => {
-    cleanup();
-  });
-
   describe("uncontrolled mode", () => {
     it("tracks the active zone and notifies the listener on change", () => {
       const onZoneChange = vi.fn();
@@ -295,6 +291,83 @@ describe("useFocusZone", () => {
 
       act(() => fireKey("Tab", { shiftKey: true }));
       expect(result.current.zone).toBe("c");
+    });
+  });
+
+  describe("tab cycling containment", () => {
+    function ScopedTabHost() {
+      const mainRef = useRef<HTMLDivElement>(null);
+      const sidebarRef = useRef<HTMLDivElement>(null);
+      const focusZone = useFocusZone({
+        initial: "main",
+        zones: ["main", "sidebar"],
+        tabCycle: ["main", "sidebar"],
+        focus: {
+          targets: {
+            main: mainRef,
+            sidebar: sidebarRef,
+          },
+        },
+      });
+
+      return createElement(
+        "div",
+        null,
+        createElement("button", { type: "button" }, "Outside"),
+        createElement(
+          "div",
+          { ref: mainRef },
+          createElement("button", { type: "button" }, "Main action"),
+        ),
+        createElement(
+          "div",
+          { ref: sidebarRef },
+          createElement("button", { type: "button" }, "Sidebar action"),
+        ),
+        createElement("output", { "aria-label": "Active zone" }, focusZone.zone),
+      );
+    }
+
+    it("does not prevent Tab and does not change zone when focus is outside every container", () => {
+      render(createElement(ScopedTabHost), { wrapper });
+
+      screen.getByRole("button", { name: "Outside" }).focus();
+
+      const event = fireKey("Tab");
+      expect(event.defaultPrevented).toBe(false);
+      expect(screen.getByLabelText("Active zone").textContent).toBe("main");
+    });
+
+    it("prevents Tab and cycles the zone when focus is inside a registered container", () => {
+      render(createElement(ScopedTabHost), { wrapper });
+
+      screen.getByRole("button", { name: "Main action" }).focus();
+
+      let event: KeyboardEvent | undefined;
+      act(() => {
+        event = fireKey("Tab");
+      });
+      expect(event?.defaultPrevented).toBe(true);
+      expect(screen.getByLabelText("Active zone").textContent).toBe("sidebar");
+    });
+
+    it("keeps the legacy document-wide cycle when no containment is resolvable", () => {
+      const { result } = renderHook(
+        () =>
+          useFocusZone({
+            initial: "main",
+            zones: ["main", "sidebar"],
+            tabCycle: ["main", "sidebar"],
+          }),
+        { wrapper },
+      );
+
+      let event: KeyboardEvent | undefined;
+      act(() => {
+        event = fireKey("Tab");
+      });
+      expect(event?.defaultPrevented).toBe(true);
+      expect(result.current.zone).toBe("sidebar");
     });
   });
 
@@ -675,6 +748,118 @@ describe("useFocusZone", () => {
     });
   });
 
+  describe("focusin listener stability", () => {
+    it("attaches the document focusin listener once across consumer re-renders", () => {
+      const addSpy = vi.spyOn(document, "addEventListener");
+      const removeSpy = vi.spyOn(document, "removeEventListener");
+
+      function Host() {
+        const [tick, setTick] = useState(0);
+        const mainRef = useRef<HTMLDivElement>(null);
+        useFocusZone({
+          initial: "main",
+          zones: ["main"],
+          // Inline focus/transitions objects re-created on every render.
+          focus: { targets: { main: mainRef } },
+          transitions: () => null,
+        });
+
+        return createElement(
+          "div",
+          null,
+          createElement("div", { ref: mainRef, tabIndex: -1 }, "Main"),
+          createElement(
+            "button",
+            { type: "button", onClick: () => setTick((value) => value + 1) },
+            `Tick ${tick}`,
+          ),
+        );
+      }
+
+      const { unmount } = render(createElement(Host), { wrapper });
+
+      const focusinAdds = () => addSpy.mock.calls.filter(([type]) => type === "focusin").length;
+      const focusinRemoves = () =>
+        removeSpy.mock.calls.filter(([type]) => type === "focusin").length;
+
+      expect(focusinAdds()).toBe(1);
+
+      act(() => screen.getByRole("button", { name: /tick/i }).click());
+      act(() => screen.getByRole("button", { name: /tick/i }).click());
+
+      expect(focusinAdds()).toBe(1);
+      expect(focusinRemoves()).toBe(0);
+
+      unmount();
+      expect(focusinRemoves()).toBe(1);
+
+      addSpy.mockRestore();
+      removeSpy.mockRestore();
+    });
+
+    it("detaches the focusin listener when the hook is disabled", () => {
+      const removeSpy = vi.spyOn(document, "removeEventListener");
+
+      function Host({ enabled }: { enabled: boolean }) {
+        const mainRef = useRef<HTMLDivElement>(null);
+        useFocusZone({
+          initial: "main",
+          zones: ["main"],
+          enabled,
+          focus: { targets: { main: mainRef } },
+        });
+        return createElement("div", { ref: mainRef, tabIndex: -1 }, "Main");
+      }
+
+      const { rerender } = render(createElement(Host, { enabled: true }), { wrapper });
+      expect(removeSpy.mock.calls.filter(([type]) => type === "focusin")).toHaveLength(0);
+
+      rerender(createElement(Host, { enabled: false }));
+      expect(removeSpy.mock.calls.filter(([type]) => type === "focusin")).toHaveLength(1);
+
+      removeSpy.mockRestore();
+    });
+
+    it("still moves focus to the new zone target when the zone changes after a re-render", async () => {
+      function Host() {
+        const [tick, setTick] = useState(0);
+        const mainRef = useRef<HTMLDivElement>(null);
+        const sidebarRef = useRef<HTMLDivElement>(null);
+        const focusZone = useFocusZone({
+          initial: "main",
+          zones: ["main", "sidebar"],
+          focus: { targets: { main: mainRef, sidebar: sidebarRef } },
+        });
+
+        return createElement(
+          "div",
+          null,
+          createElement("div", { ref: mainRef, tabIndex: -1 }, "Main"),
+          createElement("div", { ref: sidebarRef, tabIndex: -1 }, "Sidebar"),
+          createElement(
+            "button",
+            { type: "button", onClick: () => setTick((value) => value + 1) },
+            `Tick ${tick}`,
+          ),
+          createElement(
+            "button",
+            { type: "button", onClick: () => focusZone.setZone("sidebar") },
+            "Move",
+          ),
+        );
+      }
+
+      render(createElement(Host), { wrapper });
+
+      // Re-render several times so the autofocus effect has stale-closure risk.
+      act(() => screen.getByRole("button", { name: /tick/i }).click());
+      act(() => screen.getByRole("button", { name: /tick/i }).click());
+
+      await userEvent.click(screen.getByRole("button", { name: "Move" }));
+      expect(document.activeElement).toBe(screen.getByText("Sidebar"));
+    });
+  });
+
   describe("edge cases", () => {
     it("falls back to first zone when initial is invalid", () => {
       const { result } = renderHook(
@@ -752,7 +937,7 @@ describe("useFocusZone", () => {
     });
 
     it("when current zone is not in tabCycle, Tab moves to first cycle entry and Shift+Tab to last", () => {
-      const { result } = renderHook(
+      const { result, unmount } = renderHook(
         () =>
           useFocusZone({
             initial: "a",
@@ -766,7 +951,7 @@ describe("useFocusZone", () => {
       act(() => fireKey("Tab"));
       expect(result.current.zone).toBe("b");
 
-      cleanup();
+      unmount();
       const { result: r2 } = renderHook(
         () =>
           useFocusZone({

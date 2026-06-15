@@ -1,12 +1,10 @@
 /** @vitest-environment jsdom */
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
-import { createElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BoundApi } from "../api/bound.js";
-import { ApiProvider } from "../api/hooks/context.js";
 import type { ProviderModelsResponse } from "../schemas/config/index.js";
+import { createTestQueryWrapper } from "../testing/query-wrapper.js";
 import { useProviderModelsMapped } from "./use-models-mapped.js";
 
 const GEMINI_CATALOG: ProviderModelsResponse = {
@@ -19,18 +17,6 @@ const GEMINI_CATALOG: ProviderModelsResponse = {
   cached: false,
 };
 
-function makeWrapper(
-  api: BoundApi,
-  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
-) {
-  return ({ children }: { children: ReactNode }) =>
-    createElement(
-      QueryClientProvider,
-      { client: queryClient },
-      createElement(ApiProvider, { value: api }, children),
-    );
-}
-
 describe("useProviderModelsMapped", () => {
   let getProviderModels: ReturnType<typeof vi.fn>;
   let api: BoundApi;
@@ -41,8 +27,9 @@ describe("useProviderModelsMapped", () => {
   });
 
   it("returns the catalog models once the query resolves", async () => {
+    const { Wrapper } = createTestQueryWrapper({ api });
     const { result } = renderHook(() => useProviderModelsMapped(true, "gemini"), {
-      wrapper: makeWrapper(api),
+      wrapper: Wrapper,
     });
 
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -55,9 +42,9 @@ describe("useProviderModelsMapped", () => {
   });
 
   it("keeps the last-good models when a background refetch fails", async () => {
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { Wrapper, queryClient } = createTestQueryWrapper({ api });
     const { result } = renderHook(() => useProviderModelsMapped(true, "gemini"), {
-      wrapper: makeWrapper(api, queryClient),
+      wrapper: Wrapper,
     });
 
     await waitFor(() =>
@@ -86,8 +73,9 @@ describe("useProviderModelsMapped", () => {
   });
 
   it("reports loading while the catalog query is in flight", () => {
+    const { Wrapper } = createTestQueryWrapper({ api });
     const { result } = renderHook(() => useProviderModelsMapped(true, "gemini"), {
-      wrapper: makeWrapper(api),
+      wrapper: Wrapper,
     });
 
     expect(result.current.loading).toBe(true);
@@ -96,8 +84,9 @@ describe("useProviderModelsMapped", () => {
 
   it("surfaces the error message when the catalog query fails", async () => {
     getProviderModels.mockRejectedValue(new Error("catalog unavailable"));
+    const { Wrapper } = createTestQueryWrapper({ api });
     const { result } = renderHook(() => useProviderModelsMapped(true, "gemini"), {
-      wrapper: makeWrapper(api),
+      wrapper: Wrapper,
     });
 
     await waitFor(() => expect(result.current.error).toBe("catalog unavailable"));
@@ -105,8 +94,9 @@ describe("useProviderModelsMapped", () => {
   });
 
   it("stays empty without fetching for openrouter (it has its own live path)", async () => {
+    const { Wrapper } = createTestQueryWrapper({ api });
     const { result } = renderHook(() => useProviderModelsMapped(true, "openrouter"), {
-      wrapper: makeWrapper(api),
+      wrapper: Wrapper,
     });
 
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -115,8 +105,9 @@ describe("useProviderModelsMapped", () => {
   });
 
   it("stays empty without fetching while the dialog is closed", async () => {
+    const { Wrapper } = createTestQueryWrapper({ api });
     const { result } = renderHook(() => useProviderModelsMapped(false, "gemini"), {
-      wrapper: makeWrapper(api),
+      wrapper: Wrapper,
     });
 
     await waitFor(() => expect(result.current.loading).toBe(false));

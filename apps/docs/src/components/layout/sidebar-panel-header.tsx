@@ -1,5 +1,6 @@
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { HTMLAttributes, ReactNode } from "react";
+import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 
 export function SidebarPanelHeader({ children }: { children: ReactNode }) {
   return <div className="flex flex-col">{children}</div>;
@@ -18,11 +19,7 @@ export function SidebarPanelHeaderRow({
 }
 
 export function SidebarPanelHeaderLabel({ children }: { children: ReactNode }) {
-  return (
-    <span className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-      {children}
-    </span>
-  );
+  return <span className={`shrink-0 ${CHROME_LABEL_CLASS}`}>{children}</span>;
 }
 
 export function SidebarPanelHeaderDivider() {

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { StepState } from "../schemas/events/index.js";
-import { getLoadingMessage, isCheckingForChanges, isNoDiffError } from "./lifecycle.js";
+import { ReviewErrorCode } from "../schemas/review/index.js";
+import {
+  getLoadingMessage,
+  isCheckingForChanges,
+  isNoDiffError,
+  isSessionTerminationCode,
+  sessionTerminationCopy,
+} from "./lifecycle.js";
 
 function makeStep(id: string, status: StepState["status"]): StepState {
   return { id, label: id, status } as StepState;
@@ -70,5 +77,34 @@ describe("getLoadingMessage", () => {
     expect(getLoadingMessage({ ...base, configLoading: true, isCheckingForChanges: true })).toBe(
       "Loading configuration...",
     );
+  });
+});
+
+describe("sessionTerminationCopy", () => {
+  it("maps eviction, timeout, shutdown, and stale to four distinct messages", () => {
+    const messages = [
+      sessionTerminationCopy(ReviewErrorCode.SESSION_EVICTED).message,
+      sessionTerminationCopy(ReviewErrorCode.SESSION_TIMEOUT).message,
+      sessionTerminationCopy(ReviewErrorCode.SERVER_SHUTDOWN).message,
+      sessionTerminationCopy(ReviewErrorCode.SESSION_STALE).message,
+    ];
+    expect(new Set(messages).size).toBe(4);
+  });
+
+  it("does not tell the user to start/retry a review when the server is shutting down", () => {
+    const copy = sessionTerminationCopy(ReviewErrorCode.SERVER_SHUTDOWN);
+    expect(copy.message).not.toMatch(/start|retry|again/i);
+    expect(copy.message).toMatch(/shutting down/i);
+  });
+});
+
+describe("isSessionTerminationCode", () => {
+  it("recognizes the four terminal session causes and rejects unrelated codes", () => {
+    expect(isSessionTerminationCode(ReviewErrorCode.SESSION_STALE)).toBe(true);
+    expect(isSessionTerminationCode(ReviewErrorCode.SESSION_EVICTED)).toBe(true);
+    expect(isSessionTerminationCode(ReviewErrorCode.SESSION_TIMEOUT)).toBe(true);
+    expect(isSessionTerminationCode(ReviewErrorCode.SERVER_SHUTDOWN)).toBe(true);
+    expect(isSessionTerminationCode(ReviewErrorCode.SESSION_NOT_FOUND)).toBe(false);
+    expect(isSessionTerminationCode(ReviewErrorCode.AI_ERROR)).toBe(false);
   });
 });

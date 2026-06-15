@@ -205,9 +205,8 @@ To verify containers are not exposed:
 
 ```sh
 # From an external machine, these should all fail/timeout:
-curl -s --connect-timeout 3 http://<VPS_IP>:3000   # should timeout
-curl -s --connect-timeout 3 http://<VPS_IP>:8081   # should timeout
-curl -s --connect-timeout 3 http://<VPS_IP>:8082   # should timeout
+curl -s --connect-timeout 3 http://<VPS_IP>:3000   # docs — should timeout
+curl -s --connect-timeout 3 http://<VPS_IP>:8080   # registry/landing — should timeout
 ```
 
 ---

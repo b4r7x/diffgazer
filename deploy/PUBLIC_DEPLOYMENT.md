@@ -42,7 +42,7 @@ resources, or mutable tags such as `latest` and `main`.
 
 | Item | Where it belongs |
 |---|---|
-| Public origins such as `REGISTRY_ORIGIN`, `VITE_PUBLIC_ORIGIN`, `VITE_REGISTRY_ORIGIN`, `VITE_DOCS_ORIGIN` | Docker build args or public workflow configuration |
+| Public origins such as `REGISTRY_ORIGIN`, `VITE_PUBLIC_ORIGIN`, `VITE_DOCS_ORIGIN` | Docker build args or public workflow configuration |
 | GHCR image names and public domains | Repository docs and workflow files |
 | `COOLIFY_TOKEN` | GitHub `production` environment secret |
 | `COOLIFY_WEBHOOK_DOCS`, `COOLIFY_WEBHOOK_REGISTRY`, `COOLIFY_WEBHOOK_LANDING` | GitHub `production` environment secrets |
@@ -114,22 +114,20 @@ npx shadcn@latest add https://r.b4r7.dev/r/ui/button.json
 
 ## Rollback
 
-Rollback docs and registry together:
+Roll back by re-running the deploy workflow with the `image_sha` input set to the
+full commit SHA of the last-good deploy:
 
-```sh
-docker login ghcr.io
-docker buildx imagetools create --tag ghcr.io/b4r7x/diffgazer-docs:prod ghcr.io/b4r7x/diffgazer-docs:<sha>
-docker buildx imagetools create --tag ghcr.io/b4r7x/diffgazer-registry:prod ghcr.io/b4r7x/diffgazer-registry:<sha>
+```text
+Deploy Public Surfaces -> Run workflow
+  target              = docs-registry | landing | all
+  confirm_production  = deploy
+  image_sha           = <full 40-char SHA of the last-good deploy>
 ```
 
-Then trigger the docs and registry Coolify webhooks and rerun the docs plus
-registry health checks.
-
-Rollback landing separately:
-
-```sh
-docker login ghcr.io
-docker buildx imagetools create --tag ghcr.io/b4r7x/diffgazer-landing:prod ghcr.io/b4r7x/diffgazer-landing:<sha>
-```
-
-Then trigger the landing Coolify webhook and rerun the landing health check.
+With `image_sha` set, the workflow skips the build matrix, re-promotes that SHA's
+existing GHCR images to `:prod`, triggers the selected Coolify webhooks, and reruns
+the post-deploy verification — no local imagetools retagging and no out-of-band
+webhook access. The rollback SHA is subject to the same Release Readiness CI-green
+guard as a fresh deploy: it passed Release Readiness when it first landed, and the
+workflow re-checks it before promoting. Leaving `image_sha` empty deploys current
+`main` HEAD as before.

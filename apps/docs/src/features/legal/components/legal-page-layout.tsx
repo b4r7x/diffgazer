@@ -18,7 +18,7 @@ export function LegalPageLayout({ panelLabel, children }: LegalPageLayoutProps) 
       sidebar={(closeSidebar) => <LegalSidebar onNavigate={closeSidebar} />}
       sidebarHeader={<SidebarNavHeader label="LEGAL" />}
     >
-      <div className="shrink-0 border-b border-border bg-[var(--tui-chrome-band-bg)]">
+      <div className="shrink-0 border-b border-border bg-background">
         <SidebarPanelHeaderRow>
           <SidebarPanelHeaderLabel>[ LEGAL / {panelLabel} ]</SidebarPanelHeaderLabel>
         </SidebarPanelHeaderRow>

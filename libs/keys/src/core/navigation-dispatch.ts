@@ -3,6 +3,7 @@ const VERTICAL_DOWN_KEYS = ["ArrowDown"] as const;
 const HORIZONTAL_UP_KEYS = ["ArrowLeft"] as const;
 const HORIZONTAL_DOWN_KEYS = ["ArrowRight"] as const;
 
+/** Resolves default previous/next keys for a vertical or horizontal list. */
 export function resolveDirectionKeys(
   orientation: "vertical" | "horizontal",
   upKeys?: readonly string[],
@@ -15,6 +16,10 @@ export function resolveDirectionKeys(
   };
 }
 
+/**
+ * Dispatches one navigation key to movement, edge, and activation callbacks.
+ * Returns whether the key was handled.
+ */
 export function dispatchNavigationKey(
   key: string,
   ctx: {

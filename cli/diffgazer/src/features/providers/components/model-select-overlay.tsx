@@ -1,12 +1,6 @@
 import { useActivateProvider } from "@diffgazer/core/api/hooks";
-import {
-  getCompatibilityLabel,
-  useModelFilter,
-  useOpenRouterModelsMapped,
-  useProviderModelsMapped,
-} from "@diffgazer/core/providers";
+import { getCompatibilityLabel, useModelFilter, useModelSource } from "@diffgazer/core/providers";
 import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
-import { OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useEffect, useEffectEvent, useState } from "react";
@@ -74,7 +68,7 @@ function renderModelListBody({
 interface ModelSelectOverlayProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  providerId: string;
+  providerId: AIProvider;
   selectedId?: string;
   onSelect: (id: string) => void;
 }
@@ -88,19 +82,17 @@ export function ModelSelectOverlay({
 }: ModelSelectOverlayProps): ReactElement {
   const { tokens } = useTheme();
   const { columns } = useTerminalDimensions();
-  const isOpenRouter = providerId === OPENROUTER_PROVIDER_ID;
-  const openRouter = useOpenRouterModelsMapped(open, providerId as AIProvider);
-  const catalog = useProviderModelsMapped(open, providerId as AIProvider);
+  const {
+    models,
+    loading,
+    error: sourceError,
+    isOpenRouter,
+    openRouter,
+  } = useModelSource(open, providerId);
   const activateProvider = useActivateProvider();
 
-  const loading = isOpenRouter ? openRouter.loading : catalog.loading;
   const saving = activateProvider.isPending;
-  const error =
-    activateProvider.error?.message ??
-    (isOpenRouter ? openRouter.error : catalog.error) ??
-    undefined;
-
-  const models = isOpenRouter ? openRouter.models : catalog.models;
+  const error = activateProvider.error?.message ?? sourceError ?? undefined;
 
   const {
     searchQuery,

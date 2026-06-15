@@ -3,7 +3,7 @@ title: Consumption Modes
 description: Choose copy-first source you own or versioned runtime package imports.
 ---
 
-`@diffgazer/ui` has two intended consumption modes. The npm packages are external publish-gated as of June 6, 2026, so public npm commands stay gated until `npm view @diffgazer/add version`, `npm view @diffgazer/ui version`, and `npm view @diffgazer/keys version` succeed.
+`@diffgazer/ui` has two intended consumption modes. The npm packages are publish-gated until the npm `view` checks in PACKAGE_GOVERNANCE.md pass, so public npm commands stay gated until `npm view @diffgazer/add version`, `npm view @diffgazer/ui version`, and `npm view @diffgazer/keys version` succeed.
 
 ## Copy-First Mode
 
@@ -32,7 +32,7 @@ Prerequisites:
 
 `src/styles/styles.css` is generated from the shared style seed plus registry component CSS. It is the copied-source equivalent of package-mode `@diffgazer/ui/styles.css`.
 
-## Runtime Package Mode
+## Runtime package mode
 
 Use runtime package mode when you want versioned imports and do not need source customization.
 
@@ -63,7 +63,7 @@ Prerequisites:
 
 `registry.json` is the visible catalog of directly installable items. Items marked `"hidden": true` in their `meta` are internal dependencies (e.g. `portal`, shared primitives). They are not listed in the public registry index but install transitively when a visible item declares them in `registryDependencies`. The public `registry.json` served to consumers contains only visible items; hidden items keep per-item JSON files on disk so transitive resolution works, but they do not appear in `dgadd list` or `npx shadcn add` catalogs.
 
-## Keyboard Integration
+## Keyboard integration
 
 Copy-first mode has two keyboard integration options:
 
@@ -72,6 +72,6 @@ Copy-first mode has two keyboard integration options:
 
 Runtime package mode always requires `@diffgazer/keys` because package entries can import keyboard hooks.
 
-## Support Contract
+## Support contract
 
 During `0.x`, public APIs can still change. Breaking changes require a changeset and migration notes. Runtime package consumers update with their package manager. Copy-first consumers compare and re-apply source updates manually.

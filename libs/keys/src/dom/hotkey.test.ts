@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { canonicalizeHotkey, matchesHotkey } from "./hotkey.js";
+import { canonicalizeHotkey, matchesHotkey, parseHotkey } from "./hotkey.js";
+
+// Unknown-modifier hotkeys are rejected by the compile-time ValidateHotkey type,
+// so the runtime warn/reject path is exercised through a string-typed variable
+// (the documented dynamic escape hatch).
+const dynamicHotkey = (hotkey: string): string => hotkey;
 
 function makeKeyEvent(
   key: string,
@@ -112,20 +117,24 @@ describe("matchesHotkey", () => {
   describe("unknown modifier validation", () => {
     it("returns false for an unknown modifier", () => {
       const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      expect(matchesHotkey(makeKeyEvent("k", { ctrl: true }), "Hyper+k")).toBe(false);
+      expect(matchesHotkey(makeKeyEvent("k", { ctrl: true }), dynamicHotkey("Hyper+k"))).toBe(
+        false,
+      );
       spy.mockRestore();
     });
 
     it("warns in development for an unknown modifier", () => {
       const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      matchesHotkey(makeKeyEvent("k"), "Super+k");
+      matchesHotkey(makeKeyEvent("k"), dynamicHotkey("Super+k"));
       expect(spy).toHaveBeenCalledWith(expect.stringContaining("unknown modifier"));
       spy.mockRestore();
     });
 
     it("returns false for partially valid modifiers when one is unknown", () => {
       const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      expect(matchesHotkey(makeKeyEvent("k", { ctrl: true }), "Ctrl+Hyper+k")).toBe(false);
+      expect(matchesHotkey(makeKeyEvent("k", { ctrl: true }), dynamicHotkey("Ctrl+Hyper+k"))).toBe(
+        false,
+      );
       spy.mockRestore();
     });
   });
@@ -172,5 +181,44 @@ describe("canonicalizeHotkey", () => {
 
   it("normalizes uppercase letter to shift+lowercase", () => {
     expect(canonicalizeHotkey("G")).toBe(canonicalizeHotkey("shift+g"));
+  });
+});
+
+describe("parseHotkey", () => {
+  it("resolves aliases to their canonical key", () => {
+    expect(parseHotkey("esc").key).toBe("escape");
+    expect(parseHotkey("up").key).toBe("arrowup");
+    expect(parseHotkey("space").key).toBe(" ");
+  });
+
+  it("resolves shifted punctuation aliases", () => {
+    expect(parseHotkey("shift+question")).toMatchObject({ key: "?", shift: true });
+  });
+
+  it("treats a trailing '+' segment as the '+' key", () => {
+    expect(parseHotkey("+").key).toBe("+");
+    expect(parseHotkey("mod++").key).toBe("+");
+  });
+
+  it("derives shift from an uppercase single-character key", () => {
+    expect(parseHotkey("G")).toMatchObject({ key: "g", shift: true });
+  });
+
+  it("flags unknown modifiers without throwing", () => {
+    expect(parseHotkey("Hyper+k").unknownModifier).toBe(true);
+    expect(parseHotkey("Ctrl+k").unknownModifier).toBe(false);
+  });
+
+  it("resolves 'mod' to ctrl on non-Mac", () => {
+    const parsed = parseHotkey("mod+k");
+    expect(parsed.ctrl).toBe(true);
+    expect(parsed.meta).toBe(false);
+  });
+
+  it("produces a parse that matchesHotkey and the canonical serialization agree on", () => {
+    expect(canonicalizeHotkey("Ctrl+Shift+z")).toBe("ctrl+shift+z");
+    expect(matchesHotkey(makeKeyEvent("z", { ctrl: true, shift: true }), "Ctrl+Shift+z")).toBe(
+      true,
+    );
   });
 });

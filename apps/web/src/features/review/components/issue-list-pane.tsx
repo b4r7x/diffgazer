@@ -6,7 +6,7 @@ import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { KeyboardEvent, Ref } from "react";
-import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
+import { SEVERITY_CONFIG } from "@/components/shared/severity/constants";
 import { type SeverityFilter, SeverityFilterGroup } from "./severity-filter-group";
 
 interface IssueListState {
@@ -67,16 +67,16 @@ export function IssueListPane({
     onFilterKeyDown,
   },
   refs: { filterRef, listRef },
-  ui: { isFocused, title = "Analysis", className },
+  ui: { isFocused, title = "Issues", className },
 }: IssueListPaneProps) {
   const counts = calculateSeverityCounts(allIssues);
   const isFilterActive = severityFilter.size > 0;
-  const emptyMessage =
-    allIssues.length === 0
-      ? "No issues found"
-      : isFilterActive
-        ? "No issues match the current filters — press [Reset] to clear"
-        : "No issues match filter";
+  let emptyMessage = "No issues match filter";
+  if (allIssues.length === 0) {
+    emptyMessage = "No issues found";
+  } else if (isFilterActive) {
+    emptyMessage = "No issues match the current filters — press [Reset] to clear";
+  }
   // The severity filter visually lives inside this pane, so the pane
   // keeps its focus outline while either zone is active.
   const isPaneFocused = isFocused || !!isFilterFocused;
@@ -88,12 +88,12 @@ export function IssueListPane({
       data-pane="list"
       data-focused={isPaneFocused || undefined}
       className={cn(
-        "w-2/5 flex flex-col min-h-0 overflow-hidden border border-tui-border data-[focused]:border-tui-blue",
+        "w-2/5 flex flex-col min-h-0 overflow-hidden border border-border data-[focused]:border-info",
         className,
       )}
     >
       <div className="px-3 pb-4 pt-2">
-        <div className="text-tui-violet font-bold mb-2">{title}</div>
+        <div className="text-accent font-bold mb-2">{title}</div>
         <SeverityFilterGroup
           counts={counts}
           activeFilter={severityFilter}
@@ -122,6 +122,18 @@ export function IssueListPane({
           onKeyDown={(event) => {
             if (!isFocused && isListNavigationKey(event.key)) {
               event.preventDefault();
+              return;
+            }
+            // With an empty list the auto-focused listbox swallows ArrowUp before
+            // it can reach the zone-escape, so steer the boundary up to the filters
+            // here, ahead of the listbox's own navigation handler.
+            if (
+              isFocused &&
+              issues.length === 0 &&
+              (event.key === "ArrowUp" || event.key === "k")
+            ) {
+              event.preventDefault();
+              onListBoundaryReached?.("previous");
             }
           }}
           onSelect={onSelectIssue}
@@ -139,16 +151,17 @@ export function IssueListPane({
                 id={issue.id}
                 density="compact"
                 className={cn(
-                  "border-b border-tui-border last:border-b-0",
-                  !isFocused && selectedIssueId === issue.id && "border-l-2 border-l-tui-blue/60",
+                  "border-b border-border last:border-b-0",
+                  !isFocused && selectedIssueId === issue.id && "border-l-2 border-l-info/60",
                 )}
               >
                 <NavigationList.Title className="min-w-0">
+                  <span className="sr-only">{issue.severity} severity: </span>
                   <span
                     className={cn(
                       "mr-2",
                       config.color,
-                      "group-data-[active]:text-primary-foreground",
+                      "group-data-[highlighted]:text-primary-foreground",
                     )}
                     aria-hidden="true"
                   >
@@ -166,7 +179,7 @@ export function IssueListPane({
           })}
         </NavigationList>
         {issues.length === 0 && (
-          <EmptyState variant="inline" size="sm">
+          <EmptyState variant="inline" size="sm" live>
             {emptyMessage}
           </EmptyState>
         )}

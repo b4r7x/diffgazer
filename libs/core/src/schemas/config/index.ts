@@ -1,9 +1,116 @@
-export * from "./catalog-errors.js";
-export * from "./models.js";
-export * from "./provider-registry.js";
-export * from "./providers.js";
-export * from "./settings.js";
-export * from "./settings-hub.js";
-export * from "./settings-options.js";
-export * from "./trust-capabilities.js";
-export * from "./trust-editor.js";
+export {
+  CATALOG_SPECIFIC_ERROR_CODES,
+  type CatalogErrorCode,
+  CatalogErrorSchema,
+  PROVIDER_DISABLED,
+} from "./catalog-errors.js";
+export {
+  type ModelInfo,
+  type OpenRouterModel,
+  type OpenRouterModelCache,
+  OpenRouterModelCacheSchema,
+  OpenRouterModelSchema,
+  type OpenRouterModelsResponse,
+  OpenRouterModelsResponseSchema,
+  type ProviderModelsResponse,
+  ProviderModelsResponseSchema,
+} from "./models.js";
+export {
+  ALLOWED_CREDENTIAL_ENV_VARS,
+  AVAILABLE_PROVIDERS,
+  OPENROUTER_PROVIDER_ID,
+  PROVIDER_CAPABILITIES,
+  PROVIDER_ENV_VARS,
+} from "./provider-registry.js";
+export {
+  type ActivateProviderResponse,
+  ActivateProviderResponseSchema,
+  AI_PROVIDERS,
+  type AIProvider,
+  AIProviderSchema,
+  type ConfigCheckResponse,
+  ConfigCheckResponseSchema,
+  type CredentialRef,
+  CredentialRefSchema,
+  type CurrentConfigResponse,
+  CurrentConfigResponseSchema,
+  type DeleteConfigResponse,
+  DeleteConfigResponseSchema,
+  type DeleteProviderCredentialsResponse,
+  DeleteProviderCredentialsResponseSchema,
+  type DisplayStatus,
+  type InitResponse,
+  InitResponseSchema,
+  type ProjectInfo,
+  ProjectInfoSchema,
+  type ProviderInfo,
+  ProviderInfoSchema,
+  type ProviderStatus,
+  ProviderStatusSchema,
+  type ProvidersStatusResponse,
+  ProvidersStatusResponseSchema,
+  type ProviderWithStatus,
+  ProviderWithStatusSchema,
+  type SaveConfigRequest,
+  SaveConfigRequestSchema,
+  type SetupField,
+  type SetupStatus,
+  SetupStatusSchema,
+  type UserConfig,
+  UserConfigSchema,
+} from "./providers.js";
+export {
+  AGENT_EXECUTION_MODES,
+  type AgentExecution,
+  AgentExecutionSchema,
+  type SaveTrustRequest,
+  SaveTrustRequestSchema,
+  SECRETS_STORAGE,
+  type SecretsStorage,
+  SecretsStorageSchema,
+  type SettingsConfig,
+  SettingsConfigSchema,
+  THEMES,
+  type Theme,
+  ThemeSchema,
+  type TrustCapabilities,
+  TrustCapabilitiesSchema,
+  type TrustConfig,
+  TrustConfigSchema,
+} from "./settings.js";
+export { buildHubValues, type SettingsHubInput } from "./settings-hub.js";
+export {
+  AGENT_EXECUTION_OPTIONS,
+  isAgentExecution,
+  isSecretsStorage,
+  isSelectableTheme,
+  isTheme,
+  SECRETS_STORAGE_OPTIONS,
+  SELECTABLE_THEME_OPTIONS,
+  type SelectableTheme,
+  type SettingsOption,
+  THEME_OPTIONS,
+  toSelectableTheme,
+} from "./settings-options.js";
+export {
+  fromSelectedCapabilityIds,
+  getInitialFocusedCapability,
+  getTrustButtonLabel,
+  isFocusableCapability,
+  NO_TRUST_CAPABILITIES,
+  normalizeTrustCapabilities,
+  TRUST_CAPABILITY_OPTIONS,
+  TRUST_SECURITY_WARNING,
+  type TrustCapabilityId,
+  toSelectedCapabilityIds,
+} from "./trust-capabilities.js";
+export {
+  buildSavePayload,
+  getInitialDraft,
+  resolveEditorView,
+  type SavePayloadInput,
+  type SavePayloadResult,
+  type TrustDraft,
+  type TrustEditorInput,
+  type TrustEditorView,
+} from "./trust-editor.js";

@@ -1,7 +1,5 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { lstat, readFile, realpath } from "node:fs/promises";
-import { resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
@@ -12,46 +10,61 @@ import {
   type GitStatus,
   type GitStatusFiles,
 } from "@diffgazer/core/schemas/git";
-import type { GitBlameInfo, ReviewMode } from "@diffgazer/core/schemas/review";
+import type { ReviewMode } from "@diffgazer/core/schemas/review";
+import { log } from "../log.js";
+import { unquoteGitPath } from "./quote.js";
 import type { BranchInfo, CategorizedFile } from "./types.js";
 
 const execFileAsync = promisify(execFile);
 
 const GIT_DIFF_MAX_BUFFER = 5 * 1024 * 1024;
 
-const SANITIZED_GIT_ENV: Record<string, string> = {
-  GIT_EXTERNAL_DIFF: "",
-  GIT_PAGER: "",
-  GIT_DIFF_OPTS: "",
-  GIT_DIR: "",
-  GIT_WORK_TREE: "",
-  GIT_INDEX_FILE: "",
-  GIT_CONFIG: "",
-  GIT_CONFIG_GLOBAL: "",
-  GIT_CONFIG_SYSTEM: "",
-  GIT_CONFIG_COUNT: "",
-  GIT_CONFIG_PARAMETERS: "",
-  GIT_ALTERNATE_OBJECT_DIRECTORIES: "",
-  GIT_OBJECT_DIRECTORY: "",
-  GIT_CEILING_DIRECTORIES: "",
-  GIT_EXEC_PATH: "",
-  GIT_SSH_COMMAND: "",
-  GIT_ASKPASS: "",
-  GIT_PROXY_COMMAND: "",
-  GIT_HOOKS_PATH: "",
-  GIT_TEMPLATE_DIR: "",
-};
+// Git environment variables that point git at a different repo/config/hook and
+// can turn a malicious parent environment into command execution. Each is
+// removed (not blanked) from the child env: an empty GIT_DIR makes git fail
+// `fatal: not a git repository: ''`, while a deleted key is treated as unset.
+const SANITIZED_GIT_ENV_KEYS = [
+  "GIT_EXTERNAL_DIFF",
+  "GIT_PAGER",
+  "GIT_DIFF_OPTS",
+  "GIT_DIR",
+  "GIT_WORK_TREE",
+  "GIT_INDEX_FILE",
+  "GIT_CONFIG",
+  "GIT_CONFIG_GLOBAL",
+  "GIT_CONFIG_SYSTEM",
+  "GIT_CONFIG_COUNT",
+  "GIT_CONFIG_PARAMETERS",
+  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+  "GIT_OBJECT_DIRECTORY",
+  "GIT_CEILING_DIRECTORIES",
+  "GIT_EXEC_PATH",
+  "GIT_SSH_COMMAND",
+  "GIT_ASKPASS",
+  "GIT_PROXY_COMMAND",
+  "GIT_HOOKS_PATH",
+  "GIT_TEMPLATE_DIR",
+] as const;
 
-const _EMPTY_GIT_STATUS: GitStatus = {
-  isGitRepo: false,
-  branch: null,
-  remoteBranch: null,
-  ahead: 0,
-  behind: 0,
-  files: { staged: [], unstaged: [], untracked: [] },
-  hasChanges: false,
-  conflicted: [],
-};
+// Hardening flags applied to every index-touching git invocation: disable
+// fsmonitor (a malicious repo's `core.fsmonitor` is an arbitrary command git
+// would run) and optional index locks. Status and diff both consult fsmonitor,
+// so the override must be uniform across the service. The lone exemption is the
+// `git --version` probe in isGitInstalled, which neither reads the repository
+// nor refreshes the index, so fsmonitor never runs for it.
+const HARDENED_BASE_ARGS = ["-c", "core.fsmonitor=false", "--no-optional-locks"] as const;
+
+/**
+ * Outcome of {@link createGitService.getStatusHash}, distinguishing three states
+ * consumers must not conflate: `full` (status + diff content hashed), `status-only`
+ * (the inner diff read failed, so the hash is content-blind and must only be
+ * compared against another status-only hash), and `unavailable` (status itself
+ * failed — repository state could not be verified, which is NOT "repo changed").
+ */
+export type StatusHashResult =
+  | { kind: "full"; hash: string }
+  | { kind: "status-only"; hash: string }
+  | { kind: "unavailable" };
 
 function parseBranchLine(line: string): BranchInfo {
   const result: BranchInfo = { branch: null, remoteBranch: null, ahead: 0, behind: 0 };
@@ -81,12 +94,24 @@ function toStatusCode(char: string): GitFileStatusCode {
   return STATUS_CODES.has(char) ? (char as GitFileStatusCode) : " ";
 }
 
+/**
+ * Decodes a git porcelain path field, which git wraps in double quotes and
+ * C-style escapes when it contains special bytes (default `core.quotepath`).
+ * Plain paths pass through unchanged.
+ */
+function decodePorcelainPath(path: string): string {
+  if (path.startsWith('"') && path.endsWith('"')) {
+    return unquoteGitPath(path.slice(1, -1));
+  }
+  return path;
+}
+
 function categorizeGitFile(line: string): CategorizedFile | null {
   if (line.length < 3) return null;
 
   const indexStatus = toStatusCode(line[0] ?? " ");
   const workTreeStatus = toStatusCode(line[1] ?? " ");
-  const path = line.slice(3);
+  const path = decodePorcelainPath(line.slice(3));
 
   const entry: GitFileEntry = { path, indexStatus, workTreeStatus };
 
@@ -166,7 +191,7 @@ function isExternalStatusLine(line: string): boolean {
 
   const paths = pathPart
     .split(" -> ")
-    .map((part) => part.trim())
+    .map((part) => decodePorcelainPath(part.trim()))
     .filter(Boolean);
   return paths.every((path) => !isInternalDiffgazerPath(path));
 }
@@ -175,7 +200,11 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
   const { cwd = process.cwd(), timeout = 10000 } = options;
 
   function safeEnv(): Record<string, string | undefined> {
-    return { ...process.env, ...SANITIZED_GIT_ENV };
+    const env = { ...process.env };
+    for (const key of SANITIZED_GIT_ENV_KEYS) {
+      delete env[key];
+    }
+    return env;
   }
 
   async function isGitInstalled(): Promise<boolean> {
@@ -183,7 +212,7 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
       await execFileAsync("git", ["--version"], { timeout });
       return true;
     } catch (error) {
-      console.warn("[git] failed to check git installation:", getErrorMessage(error));
+      log("warn", "git_install_check_failed", { error: getErrorMessage(error) });
       return false;
     }
   }
@@ -192,7 +221,7 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
     try {
       const { stdout } = await execFileAsync(
         "git",
-        ["--no-optional-locks", "-c", "core.fsmonitor=false", "status", "--porcelain=v1", "-b"],
+        [...HARDENED_BASE_ARGS, "status", "--porcelain=v1", "-b"],
         { cwd, timeout, env: safeEnv() },
       );
       const parsed = parseGitStatusOutput(stdout);
@@ -204,99 +233,45 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
       return ok({ isGitRepo: true, ...parsed, hasChanges });
     } catch (error) {
       const msg = getErrorMessage(error);
-      console.warn("[git] failed to get status:", msg);
+      log("warn", "git_status_failed", { error: msg });
       return err({ message: msg });
     }
   }
 
-  async function getDiff(mode: ReviewMode = "unstaged", pathspecs?: string[]): Promise<string> {
+  async function getDiff(
+    mode: ReviewMode = "unstaged",
+    pathspecs?: string[],
+  ): Promise<Result<string, { message: string }>> {
     const args =
       mode === "staged"
-        ? ["diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-color"]
-        : ["diff", "--no-ext-diff", "--no-textconv", "--no-color"];
+        ? [
+            ...HARDENED_BASE_ARGS,
+            "diff",
+            "--cached",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--no-color",
+          ]
+        : [...HARDENED_BASE_ARGS, "diff", "--no-ext-diff", "--no-textconv", "--no-color"];
     if (pathspecs && pathspecs.length > 0) {
       args.push("--", ...pathspecs);
     }
-    const { stdout } = await execFileAsync("git", args, {
-      cwd,
-      timeout,
-      maxBuffer: GIT_DIFF_MAX_BUFFER,
-      env: safeEnv(),
-    });
-    return stdout;
-  }
-
-  async function getBlame(file: string, line: number): Promise<GitBlameInfo | null> {
     try {
-      const args = ["blame", "-L", `${line},${line}`, "--porcelain", "--", file];
-      const { stdout } = await execFileAsync("git", args, { cwd, timeout, env: safeEnv() });
-
-      const lines = stdout.split("\n");
-      const commit = lines[0]?.split(" ")[0] ?? "";
-      const author = lines.find((l) => l.startsWith("author "))?.slice(7) ?? "Unknown";
-      const authorEmail =
-        lines
-          .find((l) => l.startsWith("author-mail "))
-          ?.slice(12)
-          .replace(/[<>]/g, "") ?? "";
-      const commitTime = lines.find((l) => l.startsWith("author-time "))?.slice(12) ?? "0";
-      const summary = lines.find((l) => l.startsWith("summary "))?.slice(8) ?? "";
-
-      return {
-        author,
-        authorEmail,
-        commit,
-        commitDate: new Date(Number(commitTime) * 1000).toISOString(),
-        summary,
-      };
-    } catch (error) {
-      console.warn(`[git] failed to get blame for ${file}:${line}:`, getErrorMessage(error));
-      return null;
-    }
-  }
-
-  async function getFileLines(
-    file: string,
-    startLine: number,
-    endLine: number,
-    source: "HEAD" | "worktree" = "worktree",
-  ): Promise<string[]> {
-    try {
-      if (source === "worktree") {
-        const resolved = resolve(cwd, file);
-        const realCwd = await realpath(cwd);
-        const realResolved = await realpath(resolved).catch(() => resolved);
-        if (realResolved !== realCwd && !realResolved.startsWith(realCwd + sep)) {
-          return [];
-        }
-        const stat = await lstat(realResolved);
-        if (!stat.isFile()) {
-          return [];
-        }
-        const content = await readFile(realResolved, "utf-8");
-        const allLines = content.split("\n");
-        return allLines.slice(Math.max(0, startLine - 1), endLine);
-      }
-      // Note: git show object syntax (HEAD:path) doesn't accept a -- separator;
-      // option injection is structurally impossible since the arg starts with "HEAD:".
-      const args = ["show", `HEAD:${file}`];
       const { stdout } = await execFileAsync("git", args, {
         cwd,
         timeout,
         maxBuffer: GIT_DIFF_MAX_BUFFER,
         env: safeEnv(),
       });
-      const allLines = stdout.split("\n");
-      return allLines.slice(Math.max(0, startLine - 1), endLine);
+      return ok(stdout);
     } catch (error) {
-      console.warn(`[git] failed to get file lines for ${file}:`, getErrorMessage(error));
-      return [];
+      return err({ message: getErrorMessage(error) });
     }
   }
 
   async function getHeadCommit(): Promise<Result<string, { message: string }>> {
     try {
-      const { stdout } = await execFileAsync("git", ["rev-parse", "HEAD"], {
+      const { stdout } = await execFileAsync("git", [...HARDENED_BASE_ARGS, "rev-parse", "HEAD"], {
         cwd,
         timeout,
         env: safeEnv(),
@@ -317,59 +292,72 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
     }
   }
 
-  async function getStatusHash(): Promise<string | null> {
+  async function getStatusHash(): Promise<StatusHashResult> {
+    let stdout: string;
     try {
-      const { stdout } = await execFileAsync(
-        "git",
-        ["--no-optional-locks", "-c", "core.fsmonitor=false", "status", "--porcelain"],
-        { cwd, timeout, env: safeEnv() },
-      );
-      const externalLines = stdout
-        .split("\n")
-        .filter((line) => line.length > 0 && isExternalStatusLine(line) && !isUntrackedLine(line))
-        .sort();
-      if (externalLines.length === 0) {
-        return "";
-      }
+      ({ stdout } = await execFileAsync("git", [...HARDENED_BASE_ARGS, "status", "--porcelain"], {
+        cwd,
+        timeout,
+        env: safeEnv(),
+      }));
+    } catch (error) {
+      log("warn", "git_status_hash_failed", { error: getErrorMessage(error) });
+      return { kind: "unavailable" };
+    }
 
-      const hash = createHash("sha256");
-      hash.update(externalLines.join("\n"));
+    const externalLines = stdout
+      .split("\n")
+      .filter((line) => line.length > 0 && isExternalStatusLine(line) && !isUntrackedLine(line))
+      .sort();
+    if (externalLines.length === 0) {
+      return { kind: "full", hash: "" };
+    }
 
-      // Include diff contents so the hash changes when file content changes
-      // even if the status lines remain the same.
-      try {
-        const [{ stdout: unstagedDiff }, { stdout: stagedDiff }] = await Promise.all([
-          execFileAsync("git", ["diff", "--no-ext-diff", "--no-textconv", "--no-color"], {
+    const hash = createHash("sha256");
+    hash.update(externalLines.join("\n"));
+
+    // Include diff contents so the hash changes when file content changes even
+    // if the status lines remain the same. A diff failure (e.g. a >maxBuffer
+    // worktree diff) degrades the hash to status-lines-only; the discriminant
+    // records that so a content-blind hash is never compared as content-full.
+    try {
+      const [{ stdout: unstagedDiff }, { stdout: stagedDiff }] = await Promise.all([
+        execFileAsync(
+          "git",
+          [...HARDENED_BASE_ARGS, "diff", "--no-ext-diff", "--no-textconv", "--no-color"],
+          {
             cwd,
             timeout,
             maxBuffer: GIT_DIFF_MAX_BUFFER,
             env: safeEnv(),
-          }),
-          execFileAsync(
-            "git",
-            ["diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-color"],
-            { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER, env: safeEnv() },
-          ),
-        ]);
-        if (unstagedDiff) hash.update(unstagedDiff);
-        if (stagedDiff) hash.update(stagedDiff);
-      } catch {
-        // Diff read failure is non-fatal; status lines alone still provide a hash.
-      }
-
-      return hash.digest("hex").slice(0, 16);
-    } catch (error) {
-      console.warn("[git] failed to get status hash:", getErrorMessage(error));
-      return null;
+          },
+        ),
+        execFileAsync(
+          "git",
+          [
+            ...HARDENED_BASE_ARGS,
+            "diff",
+            "--cached",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--no-color",
+          ],
+          { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER, env: safeEnv() },
+        ),
+      ]);
+      if (unstagedDiff) hash.update(unstagedDiff);
+      if (stagedDiff) hash.update(stagedDiff);
+    } catch {
+      return { kind: "status-only", hash: hash.digest("hex").slice(0, 16) };
     }
+
+    return { kind: "full", hash: hash.digest("hex").slice(0, 16) };
   }
 
   return {
     getStatus,
     getDiff,
     isGitInstalled,
-    getBlame,
-    getFileLines,
     getHeadCommit,
     getStatusHash,
   };

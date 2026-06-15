@@ -1,7 +1,5 @@
 "use client";
 
-import "../shared/stepper.css";
-
 import { type StepperProps, Stepper as StepperRoot } from "./stepper";
 import { StepperContent, type StepperContentProps } from "./stepper-content";
 import type { StepStatus, SubstepStatus } from "./stepper-context";
@@ -22,6 +20,7 @@ import {
   type StepperTriggerProps,
 } from "./stepper-trigger";
 
+/** Root provider (manages expansion + variant) */
 const Stepper = Object.assign(StepperRoot, {
   Step: StepperStep,
   Trigger: StepperTrigger,

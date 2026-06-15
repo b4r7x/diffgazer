@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, relative, resolve } from "node:path";
-import { defaultLogger, type Logger } from "../logger.js";
 import { collectAllFiles, resolveInside } from "../utils/fs.js";
 import type { LoadedLibraryArtifacts, SyncOutputPaths, SyncState } from "./types.js";
 
@@ -30,10 +29,7 @@ export function computeSyncFingerprint(
   return hash.digest("hex");
 }
 
-export function readSyncState(
-  stateFilePath: string,
-  logger: Logger = defaultLogger,
-): SyncState | null {
+export function readSyncState(stateFilePath: string): SyncState | null {
   if (!existsSync(stateFilePath)) return null;
   try {
     const parsed = JSON.parse(readFileSync(stateFilePath, "utf-8"));
@@ -45,10 +41,7 @@ export function readSyncState(
       origin: parsed.origin,
       syncedAt: parsed.syncedAt,
     };
-  } catch (err) {
-    logger.debug(
-      `Failed to parse sync state at ${stateFilePath}: ${err instanceof Error ? err.message : String(err)}`,
-    );
+  } catch {
     return null;
   }
 }

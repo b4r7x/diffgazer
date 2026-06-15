@@ -3,30 +3,43 @@ title: Dark Mode
 description: Theme switching with the data-theme attribute, persistence, and flash prevention.
 ---
 
-Dark mode is the default. @diffgazer/ui uses the `[data-theme]` attribute for theme switching.
+Dark mode is the default. `@diffgazer/ui` uses the `[data-theme]` attribute for theme switching.
 
-## How It Works
+## How it works
 
 ```css
 /* Dark mode (default) */
 :root,
 [data-theme="dark"] {
-  --tui-bg: #0a0a0a;
-  --tui-fg: #e5e5e5;
+  --base-bg: #0a0a0a;
+  --base-fg: #e5e5e5;
   /* ... */
 }
 
 /* Light mode */
 [data-theme="light"] {
-  --tui-bg: #f7f8f5;
-  --tui-fg: #1f2328;
+  --base-bg: #f7f8f5;
+  --base-fg: #1f2328;
   /* ... */
 }
 ```
 
-All @diffgazer/ui components use semantic CSS variables (`var(--background)`, `var(--foreground)`, etc.) which reference the primitives. Changing the `data-theme` attribute switches every component instantly.
+All `@diffgazer/ui` components use semantic CSS variables (`var(--background)`, `var(--foreground)`, etc.) which reference the primitives. Changing the `data-theme` attribute switches every component instantly.
 
-## Switching Themes
+## Subtree theming
+
+`data-theme` is not limited to `<html>`. Because the Tailwind bridge maps tokens with `@theme inline`, every token utility resolves its semantic variable at the styled element — so setting `data-theme` on **any** element re-themes that subtree only:
+
+```tsx
+<div data-theme="light">
+  {/* This panel renders in light mode inside an otherwise-dark page. */}
+  <Panel>…</Panel>
+</div>
+```
+
+This is how a theme preview can show light and dark side by side without re-declaring the token table.
+
+## Switching themes
 
 Set the `data-theme` attribute on the root element:
 
@@ -48,7 +61,7 @@ function ThemeToggle() {
 }
 ```
 
-## Persisting Theme Preference
+## Persisting theme preference
 
 Store the user's choice in `localStorage`:
 
@@ -68,7 +81,7 @@ const setTheme = (theme: "dark" | "light") => {
 }
 ```
 
-## Respecting System Preference
+## Respecting system preference
 
 ```tsx
 useEffect(() => {
@@ -86,9 +99,9 @@ useEffect(() => {
 }, [])
 ```
 
-> **Tip**: @diffgazer/ui defaults to dark mode. If no `data-theme` attribute is set, the `:root` selector applies dark mode variables.
+> **Tip**: `@diffgazer/ui` defaults to dark mode. If no `data-theme` attribute is set, the `:root` selector applies dark mode variables.
 
-## Flash Prevention
+## Flash prevention
 
 To prevent a flash of wrong theme on page load, set the attribute before React hydrates:
 

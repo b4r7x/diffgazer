@@ -18,7 +18,6 @@ pnpm add @diffgazer/registry --workspace
 
 ### Consumer side (docs host)
 
-- **`loadArtifactsFromPackage(options)`** — Load and validate artifacts from an npm-installed package.
 - **`syncDocsFromArtifacts(options)`** — Full sync orchestration: load artifacts (workspace or npm), copy docs/registry/styles, fingerprint caching, origin assertion.
 
 ### Shared utilities

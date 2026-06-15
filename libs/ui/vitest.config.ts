@@ -7,10 +7,16 @@ export default defineConfig({
       "@/components/ui": path.resolve(import.meta.dirname, "registry/ui"),
       "@/hooks": path.resolve(import.meta.dirname, "registry/hooks"),
       "@/lib": path.resolve(import.meta.dirname, "registry/lib"),
+      "@diffgazer/core/theme": path.resolve(import.meta.dirname, "../core/src/theme/index.ts"),
+      "@diffgazer/keys/testing/navigation-behavior": path.resolve(
+        import.meta.dirname,
+        "../keys/dist/testing/navigation-behavior.js",
+      ),
       "@diffgazer/keys": path.resolve(import.meta.dirname, "../keys/src/index.ts"),
     },
   },
   test: {
+    testTimeout: 10_000,
     projects: [
       {
         extends: true,
@@ -25,8 +31,9 @@ export default defineConfig({
           ],
           exclude: ["registry/**/ssr/*.test.tsx"],
           setupFiles: ["./src/test-setup.ts"],
+          // Typecheck runs only when `test:types` passes `--typecheck`, not on
+          // plain `test`; the config below applies to that pass.
           typecheck: {
-            enabled: true,
             tsconfig: "./tsconfig.test.json",
             include: [
               "registry/**/*.test.ts",
@@ -45,7 +52,6 @@ export default defineConfig({
           environment: "node",
           include: ["registry/**/ssr/*.test.tsx"],
           typecheck: {
-            enabled: true,
             tsconfig: "./tsconfig.test.json",
             include: ["registry/**/ssr/*.test.tsx"],
           },

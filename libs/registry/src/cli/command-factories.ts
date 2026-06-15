@@ -5,7 +5,7 @@ import { withErrorHandler } from "./with-error-handler.js";
 import { runAddWorkflow } from "./workflows/add.js";
 import { type DiffWorkflowFile, renderDiffPatch, runDiffWorkflow } from "./workflows/diff.js";
 import { runInitWorkflow } from "./workflows/init.js";
-import { type ListDisplayItem, runListWorkflow } from "./workflows/list.js";
+import { runListWorkflow } from "./workflows/list.js";
 import {
   type ExpandRequestedNamesResult,
   type RemoveWorkflowFile,
@@ -52,22 +52,11 @@ export interface ListCommandConfig<TItem extends RegistryLikeItem, TConfig> {
   requireConfig: (cwd: string) => TConfig;
   createInstallChecker: (cwd: string, config: TConfig) => (name: string) => boolean;
   getRelativePath: (file: { path: string }) => string;
-  toDisplayItem?: (item: TItem) => ListDisplayItem;
 }
 
 function buildListAction<TItem extends RegistryLikeItem, TConfig>(
   config: ListCommandConfig<TItem, TConfig>,
 ) {
-  const toDisplay =
-    config.toDisplayItem ??
-    ((item: TItem): ListDisplayItem => ({
-      name: item.name,
-      title: item.title,
-      description: item.description,
-      dependencies: item.dependencies,
-      files: item.files.map((file) => config.getRelativePath(file)),
-    }));
-
   return withErrorHandler(async (opts: SharedCommandOptions) => {
     const cwd = resolveCwd(opts);
     let checker: ((name: string) => boolean) | undefined;
@@ -78,6 +67,7 @@ function buildListAction<TItem extends RegistryLikeItem, TConfig>(
       installedOnly: opts.installed ?? false,
       json: opts.json ?? false,
       itemPlural: config.itemPlural,
+      getRelativePath: config.getRelativePath,
       getAllItems: config.getAllItems,
       getPublicItems: config.getPublicItems,
       requireConfig: config.requireConfig,
@@ -85,7 +75,6 @@ function buildListAction<TItem extends RegistryLikeItem, TConfig>(
         checker ??= config.createInstallChecker(cwd, cfg);
         return checker(item.name);
       },
-      toDisplayItem: toDisplay,
     });
   });
 }

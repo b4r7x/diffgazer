@@ -1,6 +1,8 @@
 import { usePageFooter } from "@diffgazer/core/footer";
+import { getApiKeyMissingCopy } from "@diffgazer/core/review";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
+import { BACK_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { useRef } from "react";
@@ -19,6 +21,8 @@ export function ApiKeyMissingView({
   missingModel = false,
 }: ApiKeyMissingViewProps) {
   useScope("api-key-missing");
+
+  const copy = getApiKeyMissingCopy({ provider: activeProvider, missingModel });
 
   const focusFallbackRef = useRef<HTMLDivElement>(null);
 
@@ -43,7 +47,7 @@ export function ApiKeyMissingView({
 
   usePageFooter({
     shortcuts: footerShortcuts,
-    rightShortcuts: [{ key: "Esc", label: "Back" }],
+    rightShortcuts: [BACK_SHORTCUT],
   });
 
   return (
@@ -53,15 +57,8 @@ export function ApiKeyMissingView({
         tabIndex={-1}
         className="text-center max-w-md p-6 focus:outline-none"
       >
-        <div className="text-tui-yellow text-lg font-bold mb-4">
-          {missingModel ? "Model Required" : "API Key Required"}
-        </div>
-        <p className="text-tui-muted font-mono text-sm mb-6">
-          {missingModel
-            ? `No model selected${activeProvider ? ` for ${activeProvider}` : ""}.`
-            : `No API key configured${activeProvider ? ` for ${activeProvider}` : ""}.`}{" "}
-          Please configure your provider settings to continue.
-        </p>
+        <div className="text-warning-text text-lg font-bold mb-4">{copy.title}</div>
+        <p className="text-muted-foreground font-mono text-sm mb-6">{copy.body}</p>
         <div className="flex gap-4 justify-center">
           <Button
             {...footer.getActionProps(0)}

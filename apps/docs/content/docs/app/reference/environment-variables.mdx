@@ -1,9 +1,9 @@
 ---
 title: Environment variables
-description: The environment variables diffgazer reads and the ones it sets for itself.
+description: The environment variables Diffgazer reads and the ones it sets for itself.
 ---
 
-diffgazer reads a handful of environment variables, and it sets a few more on its own when it runs packaged. The two groups behave very differently, so this page keeps them apart: the first table is variables you can set to change behavior, and the second is variables diffgazer injects internally that you should not set by hand. Most settings live in config rather than the environment, so reach for these only when you need to override where files live, how much it logs, or which port it binds.
+Diffgazer reads a handful of environment variables, and it sets a few more on its own when it runs packaged. The two groups behave very differently, so this page keeps them apart: the first table is variables you can set to change behavior, and the second is variables Diffgazer injects internally that you should not set by hand. Most settings live in config rather than the environment, so reach for these only when you need to override where files live, how much it logs, or which port it binds.
 
 ## Variables you set
 
@@ -23,11 +23,15 @@ These are safe to set in your shell or process environment. Anything not listed 
 | `GROQ_API_KEY` | API key for Groq. | Unset |
 | `CEREBRAS_API_KEY` | API key for Cerebras. | Unset |
 
-The five provider keys map to the six enabled providers because Z.ai and Z.ai Coding Plan share `ZAI_API_KEY`. You do not have to put a key in the environment at all: you can store it in diffgazer instead, or store only the variable's name and let diffgazer read the live value each run. The root `.env.example` mirrors these user-set variables. For the full provider-to-variable mapping and how stored keys work, see [Providers](/app/reference/providers).
+The five provider keys map to the six enabled providers because Z.ai and Z.ai Coding Plan share `ZAI_API_KEY`. You do not have to put a key in the environment at all: you can store it in Diffgazer instead, or store only the variable's name and let Diffgazer read the live value each run. The root `.env.example` mirrors these user-set variables. For the full provider-to-variable mapping and how stored keys work, see [Providers](/app/reference/providers).
+
+### Development-only escape hatch
+
+`DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT=1` tells the standalone development server to trust the project-root request header. Packaged mode ignores it. Never enable it outside local development; the packaged CLI already sets the reviewed project root itself.
 
 ## Set automatically
 
-diffgazer sets these itself. They exist so the packaged CLI and its embedded server can talk to each other; treat them as outputs of how diffgazer runs, not as knobs. Setting them by hand has no useful effect and can break shutdown or the embedded app.
+Diffgazer sets these itself. They exist so the packaged CLI and its embedded server can talk to each other; treat them as outputs of how Diffgazer runs, not as knobs. Setting them by hand has no useful effect and can break shutdown or the embedded app.
 
 | Variable | What sets it | Why it exists |
 | --- | --- | --- |

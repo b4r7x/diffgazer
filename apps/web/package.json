@@ -8,9 +8,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "type-check": "tsc -b",
-    "check": "biome check",
+    "check": "biome check .",
     "test": "vitest run",
-    "test:types": "tsc --noEmit -p tsconfig.test.json",
     "test:watch": "vitest"
   },
   "dependencies": {

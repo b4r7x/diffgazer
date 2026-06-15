@@ -1,6 +1,6 @@
 ---
 title: Tailwind Setup
-description: Configure Tailwind CSS 4 and the @diffgazer/ui theme variables.
+description: Configure Tailwind CSS 4 and the `@diffgazer/ui` theme variables.
 ---
 
 `@diffgazer/ui` requires Tailwind CSS 4 with the `@diffgazer/ui` theme variables. The CSS entrypoint depends on the consumption path:
@@ -12,7 +12,7 @@ description: Configure Tailwind CSS 4 and the @diffgazer/ui theme variables.
 
 `@diffgazer/keys` requires no CSS or Tailwind setup.
 
-## Vite Setup
+## Vite setup
 
 <Steps>
 
@@ -93,11 +93,11 @@ import "./globals.css"
 
 In `globals.css`, use the same Tailwind and Diffgazer imports as the Vite setup.
 
-## @diffgazer/keys CSS
+## `@diffgazer/keys` CSS
 
 `@diffgazer/keys` requires no CSS or Tailwind setup. Keyboard hooks are pure React logic with no style dependencies.
 
-## Package Mode Source Scanning
+## Package mode source scanning
 
 If you install `@diffgazer/ui` as a runtime npm package instead of copying source files, import the package source hints before the package styles:
 
@@ -109,30 +109,32 @@ If you install `@diffgazer/ui` as a runtime npm package instead of copying sourc
 @import "@diffgazer/ui/styles.css";
 ```
 
-## Theme Variables
+## Theme variables
 
 `@diffgazer/ui` uses a two-layer CSS variable system:
 
-**Layer 1 -- Primitives** (`--tui-*`): Raw color values from the Diffgazer monochrome palette.
+**Layer 1 -- Primitives** (`--base-*`): Raw color values from the Diffgazer monochrome palette. The prefix is product-neutral and the names are role-honest.
 
 **Layer 2 -- Semantics**: Functional tokens that reference primitives.
 
-| Primitive | Value (dark) | Semantic tokens |
+The "Semantic tokens (dark)" column lists the dark-theme role edges; light remaps some (e.g. `--primary` → `--base-highlight`, `--accent`/`--action` → `--base-accent`). See [Theme](/ui/theme#variable-architecture) for the per-theme diagram.
+
+| Primitive | Value (dark) | Semantic tokens (dark) |
 |-----------|-------------|-----------------|
-| `--tui-bg` | `#0a0a0a` | `--background` |
-| `--tui-fg` | `#e5e5e5` | `--foreground`, `--primary`, `--ring` |
-| `--tui-dim` | `#9c9c9c` | `--muted-foreground` |
-| `--tui-blue` | `#ccccff` | `--info` |
-| `--tui-green` | `#e5e5e5` | `--success` |
-| `--tui-red` | `#ff7b72` | `--destructive`, `--error` |
-| `--tui-yellow` | `#d29922` | `--warning` |
-| `--tui-violet` | `#787878` | (used in syntax highlighting) |
-| `--tui-border` | `#606060` | `--border` |
-| `--tui-highlight` | `#ffffff` | `--accent`, `--action` |
-| `--tui-highlight-fg` | `#000000` | `--accent-foreground`, `--action-foreground` |
-| `--tui-selection` | `#333333` | `--secondary`, `--card`, `--popover`, `--input` |
-| `--tui-muted` | `#787878` | `--muted` |
-| `--tui-input-bg` | `#0a0a0a` | Primitive available for custom inputs |
+| `--base-bg` | `#0a0a0a` | `--background` |
+| `--base-fg` | `#e5e5e5` | `--foreground`, `--primary`, `--ring` |
+| `--base-dim` | `#9c9c9c` | `--muted-foreground` |
+| `--base-info` | `#ccccff` | `--info` |
+| `--base-success` | `#e5e5e5` | `--success` |
+| `--base-danger` | `#ff7b72` | `--error` |
+| `--base-warning` | `#d29922` | `--warning` |
+| `--base-accent` | `#808080` | `--accent`, `--action` (light); syntax highlighting |
+| `--base-border` | `#606060` | `--border` |
+| `--base-highlight` | `#ffffff` | `--accent`, `--action` |
+| `--base-highlight-foreground` | `#000000` | `--accent-foreground`, `--action-foreground` |
+| `--base-selection` | `#333333` | `--secondary`, `--card`, `--popover`, `--input` |
+| `--base-muted` | `#808080` | `--muted` |
+| `--base-input-bg` | `#0a0a0a` | Primitive available for custom inputs |
 
 See [Theme](/ui/theme#variable-architecture) for the full variable diagram.
 
@@ -140,7 +142,7 @@ See [Theme](/ui/theme#variable-architecture) for the full variable diagram.
 
 Package mode does not require consumers to hard-code a `node_modules` `@source` path. Use `@import "@diffgazer/ui/sources.css";` so package source hints travel with the published package, then validate your app's CSS tooling in a PnP workspace before relying on package mode.
 
-## Dark Mode
+## Dark mode
 
 Dark mode is the default. Light mode activates via `[data-theme="light"]`:
 
@@ -170,5 +172,5 @@ See [Dark Mode](/ui/theme/dark-mode) for theme switching implementation.
 Apply the base styles to your root element:
 
 ```html
-<body class="tui-base">
+<body class="ui-base">
 ```

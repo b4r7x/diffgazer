@@ -1,8 +1,11 @@
 import type { AddressInfo } from "node:net";
+import { DEFAULT_API_PORT } from "@diffgazer/core/env";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import { createAdaptorServer, type ServerType } from "@hono/node-server";
+import { log } from "./shared/lib/log.js";
 
-export const DEFAULT_DEV_SERVER_HOSTNAME = "127.0.0.1";
-export const DEFAULT_DEV_SERVER_PORT = 3000;
+const DEFAULT_DEV_SERVER_HOSTNAME = "127.0.0.1";
+export const DEFAULT_DEV_SERVER_PORT = DEFAULT_API_PORT;
 
 function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && "code" in error;
@@ -10,8 +13,12 @@ function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
 
 export function formatListenError(error: unknown, hostname: string, port: number): string {
   if (isErrnoException(error) && error.code === "EADDRINUSE") {
-    const suggestedPort =
-      port === DEFAULT_DEV_SERVER_PORT ? 3002 : port < 65535 ? port + 1 : DEFAULT_DEV_SERVER_PORT;
+    let suggestedPort = DEFAULT_DEV_SERVER_PORT;
+    if (port === DEFAULT_DEV_SERVER_PORT) {
+      suggestedPort = 3002;
+    } else if (port < 65535) {
+      suggestedPort = port + 1;
+    }
 
     return [
       `Port ${port} is already in use on ${hostname}.`,
@@ -22,7 +29,7 @@ export function formatListenError(error: unknown, hostname: string, port: number
     ].join("\n");
   }
 
-  const message = error instanceof Error ? error.message : String(error);
+  const message = getErrorMessage(error);
   return `Failed to start Diffgazer API server on ${hostname}:${port}: ${message}`;
 }
 
@@ -39,8 +46,8 @@ export function startDevServer({
   fetch,
   hostname = DEFAULT_DEV_SERVER_HOSTNAME,
   port,
-  onReady = (info) => console.log(`Server running on http://localhost:${info.port}`),
-  onError = (message) => console.error(message),
+  onReady = (info) => log("info", "dev_server_ready", { url: `http://localhost:${info.port}` }),
+  onError = (message) => log("error", "dev_server_error", { message }),
   exitOnError = true,
 }: StartDevServerOptions): ServerType {
   const server = createAdaptorServer({ fetch, hostname, port });

@@ -1,5 +1,6 @@
 import { guardQueryState, useInit, useSaveTrust } from "@diffgazer/core/api/hooks";
 import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
+import { getTrustButtonLabel } from "@diffgazer/core/schemas/config";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
@@ -12,12 +13,6 @@ import { Spinner } from "../../../components/ui/spinner";
 
 interface TrustPanelProps {
   onAccept: () => void;
-}
-
-function getActionLabel(isSaving: boolean, hasRepoAccess: boolean): string {
-  if (isSaving) return "Saving...";
-  if (hasRepoAccess) return "Trust & Continue";
-  return "Continue Without Trust";
 }
 
 export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
@@ -33,7 +28,7 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
   const error = saveTrust.error?.message ?? null;
   const hasRepoAccess = capabilities.readFiles;
 
-  const actionLabel = getActionLabel(saving, hasRepoAccess);
+  const actionLabel = getTrustButtonLabel(saving, hasRepoAccess);
 
   useInput(
     (_input, key) => {
@@ -47,18 +42,8 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
 
   function handleAccept() {
     if (!initQuery.data) return;
-    const { projectId } = initQuery.data.project;
-    if (!projectId) return;
-    saveTrust.mutate(
-      {
-        projectId,
-        repoRoot: initQuery.data.project.path,
-        capabilities,
-        trustMode: "persistent",
-        trustedAt: new Date().toISOString(),
-      },
-      { onSuccess: () => onAccept() },
-    );
+    if (!initQuery.data.project.projectId) return;
+    saveTrust.mutate({ capabilities, trustMode: "persistent" }, { onSuccess: () => onAccept() });
   }
 
   const guard = guardQueryState(initQuery, {

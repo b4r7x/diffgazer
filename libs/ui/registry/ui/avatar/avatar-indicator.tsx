@@ -1,22 +1,37 @@
 "use client";
 
 import type { VariantProps } from "class-variance-authority";
+import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 import { avatarVariants } from "./avatar";
 import { useAvatarGroupContext } from "./avatar-context";
 
-export interface AvatarIndicatorProps extends VariantProps<typeof avatarVariants> {
+/** Props for avatar indicator. */
+export interface AvatarIndicatorProps
+  extends Omit<ComponentProps<"span">, "role">,
+    VariantProps<typeof avatarVariants> {
+  /** Number rendered as "+N". Used by AvatarGroup for overflow but available standalone. */
   count: number;
-  className?: string;
+  /** Accessible name for the "+N" overflow indicator. Defaults to `${count} more`. */
+  getLabel?: (count: number) => string;
 }
 
-export function AvatarIndicator({ count, size, className }: AvatarIndicatorProps) {
+/** Overflow count badge (+N). Auto-rendered by AvatarGroup, or usable standalone. */
+export function AvatarIndicator({
+  count,
+  size,
+  className,
+  "aria-label": ariaLabel,
+  getLabel,
+  ...props
+}: AvatarIndicatorProps) {
   const groupCtx = useAvatarGroupContext();
   const resolvedSize = size ?? groupCtx?.size;
   return (
     <span
+      {...props}
       role="img"
-      aria-label={`${count} more`}
+      aria-label={ariaLabel ?? getLabel?.(count) ?? `${count} more`}
       className={cn(
         avatarVariants({ size: resolvedSize }),
         "border-dashed bg-muted text-foreground",

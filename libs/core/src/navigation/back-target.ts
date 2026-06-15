@@ -8,7 +8,9 @@
  *
  * Accepts paths with or without a leading slash.
  */
-export function getBackTarget(currentPath: string): string | null {
+export type BackTarget = "/" | "/settings";
+
+export function getBackTarget(currentPath: string): BackTarget | null {
   const path = currentPath.startsWith("/") ? currentPath : `/${currentPath}`;
   const normalized = path.endsWith("/") && path !== "/" ? path.slice(0, -1) : path;
 

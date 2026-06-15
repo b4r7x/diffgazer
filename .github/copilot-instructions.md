@@ -1,21 +1,6 @@
 # Copilot Instructions
 
-## Project Overview
-
-This repository is the `b4r7x/diffgazer` pnpm monorepo.
-
-Primary workspace roots:
-
-- `apps/web` - private web app bundled into the product CLI.
-- `apps/docs` - private docs and registry host.
-- `apps/landing` - private `@diffgazer/landing` marketing/landing page.
-- `cli/diffgazer` - public product CLI, binary `diffgazer`.
-- `cli/add` - public registry installer CLI, binary `dgadd`.
-- `libs/ui` - public React UI package, `@diffgazer/ui`.
-- `libs/keys` - public React keyboard hooks package, `@diffgazer/keys`.
-- `libs/registry` - private registry/artifact tooling package.
-- `libs/core` - private shared product APIs, schemas, and utilities.
-- `cli/server` - private `@diffgazer/server` embedded Hono backend.
+`AGENTS.md` is the single source of repository rules for Copilot and every other coding agent. Read it before proposing changes; this file only lists the command entry points.
 
 ## Commands
 
@@ -42,21 +27,3 @@ pnpm --filter @diffgazer/add build
 pnpm --filter @diffgazer/ui build
 pnpm --filter @diffgazer/keys build
 ```
-
-## Conventions
-
-- Use `workspace:*` for local workspace dependencies.
-- Do not add `link:` or `file:` dependencies between migrated packages.
-- Keep `diffgazer` product CLI separate from `@diffgazer/add` installer CLI.
-- Keep `@diffgazer/ui` and `@diffgazer/keys` independently installable.
-- Generated docs, registries, `.output`, `dist`, and `.turbo` outputs are not source of truth.
-
-## Verification
-
-Before proposing monorepo layout changes, run:
-
-```bash
-pnpm run verify:monorepo
-```
-
-That script checks workspace roots, package metadata, dependency protocols, and public package boundaries.

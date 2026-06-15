@@ -1,0 +1,56 @@
+name: Docker Build
+
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - deploy/**
+      - apps/docs/**
+      - apps/landing/**
+      - libs/ui/public/r/**
+      - libs/keys/public/r/**
+      - pnpm-lock.yaml
+      - .github/workflows/docker-build.yml
+  push:
+    branches:
+      - main
+    paths:
+      - Dockerfile
+      - deploy/**
+      - apps/docs/**
+      - apps/landing/**
+      - libs/ui/public/r/**
+      - libs/keys/public/r/**
+      - pnpm-lock.yaml
+      - .github/workflows/docker-build.yml
+
+concurrency:
+  group: docker-build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.image }} image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: docs
+            dockerfile: Dockerfile
+          - image: registry
+            dockerfile: deploy/registry.Dockerfile
+          - image: landing
+            dockerfile: deploy/landing.Dockerfile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Build image
+        run: docker build --pull -f "${{ matrix.dockerfile }}" -t "diffgazer-${{ matrix.image }}:ci" .

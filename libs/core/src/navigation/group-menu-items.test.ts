@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { NavItem } from "../schemas/presentation/navigation.js";
-import { groupMenuItems, withGroupDividers } from "./group-menu-items.js";
+import { withGroupDividers } from "./group-menu-items.js";
 
 const FIXTURE: NavItem[] = [
   { id: "review-unstaged", label: "Review Unstaged", group: "review" },
@@ -11,35 +11,6 @@ const FIXTURE: NavItem[] = [
   { id: "help", label: "Help", group: "system" },
   { id: "quit", label: "Quit", variant: "danger", group: "system" },
 ];
-
-describe("groupMenuItems", () => {
-  it("partitions items into review, navigation, and system arrays", () => {
-    const grouped = groupMenuItems(FIXTURE);
-    expect(grouped.review.map((item) => item.id)).toEqual([
-      "review-unstaged",
-      "review-staged",
-      "resume-review",
-    ]);
-    expect(grouped.navigation.map((item) => item.id)).toEqual(["history", "settings"]);
-    expect(grouped.system.map((item) => item.id)).toEqual(["help", "quit"]);
-  });
-
-  it("returns empty arrays for empty input", () => {
-    expect(groupMenuItems([])).toEqual({ review: [], navigation: [], system: [] });
-  });
-
-  it("preserves source order within each group", () => {
-    const shuffled: NavItem[] = [
-      { id: "quit", label: "Quit", group: "system" },
-      { id: "review-unstaged", label: "Review Unstaged", group: "review" },
-      { id: "help", label: "Help", group: "system" },
-      { id: "review-staged", label: "Review Staged", group: "review" },
-    ];
-    const grouped = groupMenuItems(shuffled);
-    expect(grouped.review.map((item) => item.id)).toEqual(["review-unstaged", "review-staged"]);
-    expect(grouped.system.map((item) => item.id)).toEqual(["quit", "help"]);
-  });
-});
 
 describe("withGroupDividers", () => {
   it("marks divider before first item of each new group only", () => {

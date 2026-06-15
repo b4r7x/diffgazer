@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname } from "node:path";
 import type { FileOp } from "@diffgazer/registry/cli";
+import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
 import type { ResolvedConfig } from "../context.js";
 import { ctx } from "../context.js";
 import { resolveProjectPath, toPosixPath } from "./paths.js";
@@ -60,7 +61,7 @@ function collectComponentCssChunks(resolved: string[]): ItemCssChunk[] {
 
   for (const name of resolved) {
     const item = ctx.items.getOrThrow(name);
-    if (item.type === "registry:theme") continue;
+    if (item.type === REGISTRY_ITEM_TYPE.theme) continue;
     for (const file of item.files) {
       if (!file.path.endsWith(".css") || seen.has(file.path)) continue;
       const content = file.content.trimEnd();
@@ -75,7 +76,12 @@ function collectComponentCssChunks(resolved: string[]): ItemCssChunk[] {
 }
 
 function appendCssChunks(existing: string, wrappedChunks: string[]): string {
-  const prefix = existing.length === 0 ? "" : existing.endsWith("\n") ? "\n" : "\n\n";
+  let prefix = "\n\n";
+  if (existing.length === 0) {
+    prefix = "";
+  } else if (existing.endsWith("\n")) {
+    prefix = "\n";
+  }
   return `${existing}${prefix}${wrappedChunks.join("\n\n")}\n`;
 }
 
@@ -237,7 +243,7 @@ export function extractCssChunkContents(cwd: string, config: ResolvedConfig): Ma
 export function buildExpectedChunkContentsForItem(itemName: string): Map<string, string> {
   const expected = new Map<string, string>();
   const item = ctx.items.getOrThrow(itemName);
-  if (item.type === "registry:theme") return expected;
+  if (item.type === REGISTRY_ITEM_TYPE.theme) return expected;
   for (const file of item.files) {
     if (!file.path.endsWith(".css")) continue;
     const content = file.content.trimEnd();

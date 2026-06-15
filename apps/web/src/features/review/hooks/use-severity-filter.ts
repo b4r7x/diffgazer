@@ -1,4 +1,4 @@
-import { filterIssuesBySeverity } from "@diffgazer/core/review";
+import { filterIssuesBySeverity, toggleSeverity } from "@diffgazer/core/review";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue, ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { useState } from "react";
@@ -20,12 +20,7 @@ export function useSeverityFilter({ issues }: UseSeverityFilterOptions) {
   const toggleSeverityFilter = () => {
     const sev = SEVERITY_ORDER[focusedFilterIndex];
     if (!sev) return;
-    setSeverityFilter((prev) => {
-      const next = new Set(prev);
-      if (next.has(sev)) next.delete(sev);
-      else next.add(sev);
-      return next;
-    });
+    setSeverityFilter((prev) => toggleSeverity(prev, sev));
   };
 
   const resetSeverityFilter = () => {

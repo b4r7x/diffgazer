@@ -3,15 +3,16 @@ import type { ComponentPropsWithRef } from "react";
 import { cornerLabelVariants } from "@/lib/corner-label-variants";
 import { cn } from "@/lib/utils";
 
-export const cardLabelVariants = cornerLabelVariants;
+/** Props for card label. */
+export type CardLabelProps = ComponentPropsWithRef<"div"> &
+  VariantProps<typeof cornerLabelVariants>;
 
-export type CardLabelProps = ComponentPropsWithRef<"div"> & VariantProps<typeof cardLabelVariants>;
-
+/** Floating border label with variant='border' or variant='gap'. */
 export function CardLabel({ className, variant, ...props }: CardLabelProps) {
   return (
     <div
       data-slot="card-label"
-      className={cn(cardLabelVariants({ variant }), className)}
+      className={cn(cornerLabelVariants({ variant }), className)}
       {...props}
     />
   );

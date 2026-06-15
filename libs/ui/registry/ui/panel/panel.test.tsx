@@ -5,6 +5,7 @@ import { axe } from "../../../testing/axe";
 import { Panel, type PanelProps } from "./index";
 
 function getRoot(container: HTMLElement): HTMLElement {
+  // querySelector retained: panel's data-slot is a public styling hook and the root may intentionally render without a landmark role.
   const root = container.querySelector('[data-slot="panel"]');
   if (!(root instanceof HTMLElement)) throw new Error("Panel root not found");
   return root;
@@ -37,6 +38,42 @@ describe("Panel", () => {
     expect(root.tagName).toBe("SECTION");
     const title = screen.getByRole("heading", { name: "Release" });
     expect(root).toHaveAttribute("aria-labelledby", title.id);
+  });
+
+  it("keeps a consumer-supplied id on Panel.Title and tracks it in aria-labelledby", () => {
+    const { container } = render(
+      <Panel>
+        <Panel.Header>
+          <Panel.Title id="custom-title">Release</Panel.Title>
+        </Panel.Header>
+      </Panel>,
+    );
+
+    const root = getRoot(container);
+    const title = screen.getByRole("heading", { name: "Release" });
+    expect(title).toHaveAttribute("id", "custom-title");
+    expect(root).toHaveAttribute("aria-labelledby", "custom-title");
+  });
+
+  it("names the panel through a Panel.Title rendered inside a consumer wrapper", () => {
+    function TitleWrapper({ children }: { children: React.ReactNode }) {
+      return <div>{children}</div>;
+    }
+    const { container } = render(
+      <Panel>
+        <Panel.Header>
+          <TitleWrapper>
+            <Panel.Title>Wrapped</Panel.Title>
+          </TitleWrapper>
+        </Panel.Header>
+      </Panel>,
+    );
+
+    const root = getRoot(container);
+    expect(root.tagName).toBe("SECTION");
+    const title = screen.getByRole("heading", { name: "Wrapped" });
+    expect(root).toHaveAttribute("aria-labelledby", title.id);
+    expect(screen.getByRole("region", { name: "Wrapped" })).toBe(root);
   });
 
   it("renders as <section> when aria-label is provided", () => {
@@ -234,7 +271,7 @@ describe("Panel", () => {
         <Panel.Header>
           <Panel.Title>Release</Panel.Title>
           <Panel.Description>v1</Panel.Description>
-          <span data-testid="eyebrow">MAIN</span>
+          <span>MAIN</span>
           <button type="button">Open</button>
         </Panel.Header>
       </Panel>,
@@ -245,7 +282,7 @@ describe("Panel", () => {
 
     expect(body?.querySelector('[data-slot="panel-title"]')).not.toBeNull();
     expect(body?.querySelector('[data-slot="panel-description"]')).not.toBeNull();
-    expect(end?.querySelector('[data-testid="eyebrow"]')).not.toBeNull();
+    expect(end).toHaveTextContent("MAIN");
     expect(end?.querySelector("button")).not.toBeNull();
   });
 
@@ -324,44 +361,42 @@ describe("Panel", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
-  it("renders Panel.Label overlapping the top border", () => {
+  it("renders Panel.Label content", () => {
     const { container } = render(
-      <Panel frame="hairline" className="mt-4">
+      <Panel frame="hairline">
         <Panel.Label>[ 01 / FS_TREE ]</Panel.Label>
         <Panel.Content>Body</Panel.Content>
       </Panel>,
     );
 
+    // querySelector retained: panel label's data-slot is the public styling hook under test.
     const label = container.querySelector('[data-slot="panel-label"]');
     expect(label).not.toBeNull();
     expect(label).toHaveTextContent("[ 01 / FS_TREE ]");
-    expect(label).toHaveClass("absolute");
   });
 
-  it("has no a11y violations across the full frame × tone matrix", async () => {
-    const frames = ["hairline", "rail", "viewfinder", "surface"] as const;
-    const tones = ["info", "success", "warning", "error", "accent"] as const;
-
-    for (const frame of frames) {
-      for (const tone of tones) {
-        const { container, unmount } = render(
-          <Panel frame={frame} tone={tone}>
-            <Panel.Header>
-              <Panel.Title>
-                {frame} / {tone}
-              </Panel.Title>
-              <Panel.Description>matrix combination</Panel.Description>
-            </Panel.Header>
-            <Panel.Content>
-              <Panel.Row label="Frame" value={frame} />
-              <Panel.Row label="Tone" value={tone} />
-            </Panel.Content>
-            <Panel.Footer>Footer</Panel.Footer>
-          </Panel>,
-        );
-        expect(await axe(container)).toHaveNoViolations();
-        unmount();
-      }
-    }
+  it.each(
+    (["hairline", "rail", "viewfinder", "surface"] as const).flatMap((frame) =>
+      (["info", "success", "warning", "error", "accent"] as const).map(
+        (tone) => [frame, tone] as const,
+      ),
+    ),
+  )("has no a11y violations for frame=%s tone=%s", async (frame, tone) => {
+    const { container } = render(
+      <Panel frame={frame} tone={tone}>
+        <Panel.Header>
+          <Panel.Title>
+            {frame} / {tone}
+          </Panel.Title>
+          <Panel.Description>matrix combination</Panel.Description>
+        </Panel.Header>
+        <Panel.Content>
+          <Panel.Row label="Frame" value={frame} />
+          <Panel.Row label="Tone" value={tone} />
+        </Panel.Content>
+        <Panel.Footer>Footer</Panel.Footer>
+      </Panel>,
+    );
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

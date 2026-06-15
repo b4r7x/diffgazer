@@ -16,14 +16,35 @@ export const switchDoc: ComponentDoc = {
       content:
         'Switch renders a hidden native checkbox when name or required is set. The value prop controls the form-submission string (default "on").',
     },
-    {
-      title: "Keyboard",
-      content:
-        "Switch uses a native button element, so Space and Enter toggle the state by default.",
-    },
   ],
   usage: { example: "switch-default" },
-  examples: [{ name: "switch-default", title: "Default" }],
+  examples: [
+    { name: "switch-default", title: "Default" },
+    { name: "switch-controlled", title: "Controlled" },
+  ],
+  keyboard: {
+    description:
+      "Switch renders a native button with role=switch, so keyboard activation follows button semantics.",
+    keys: [
+      { keys: "Space", action: "Toggles the checked state when the switch is focused." },
+      { keys: "Enter", action: "Toggles the checked state when the switch is focused." },
+    ],
+    examples: [{ name: "switch-default", title: "Default" }],
+  },
+  dataAttributes: [
+    {
+      attribute: "data-state",
+      appliesTo: "Switch",
+      values: '"checked" | "unchecked"',
+      description: "Reflects the checked state for track and thumb styling.",
+    },
+    {
+      attribute: "data-disabled",
+      appliesTo: "Switch",
+      values: "present when disabled",
+      description: "Marks the disabled state for styling hooks.",
+    },
+  ],
   props: {
     Switch: {
       checked: {
@@ -73,6 +94,31 @@ export const switchDoc: ComponentDoc = {
         required: false,
         defaultValue: '"md"',
         description: "Switch size token.",
+      },
+      "aria-label": {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Accessible name for the switch when no visible label labels it.",
+      },
+      "aria-labelledby": {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "ID reference for visible text that labels the switch.",
+      },
+      "aria-describedby": {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "ID reference for helper or error text describing the switch.",
+      },
+      "aria-invalid": {
+        type: "boolean | 'true' | 'false' | 'grammar' | 'spelling'",
+        required: false,
+        defaultValue: null,
+        description:
+          "Invalid state override. Field.Control also forwards its invalid state to this prop.",
       },
     },
   },

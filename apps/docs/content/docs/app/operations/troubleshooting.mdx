@@ -1,6 +1,6 @@
 ---
 title: Troubleshooting
-description: Fix the common failures when running diffgazer.
+description: Fix the common failures when running Diffgazer.
 ---
 
 Most failures fall into a handful of buckets: setup isn't finished, the repo isn't trusted yet, the port is taken, the provider rejected the request, or there's nothing to review. Each one below gives you the symptom you'll see, why it happens, and how to get past it.
@@ -25,7 +25,7 @@ Most failures fall into a handful of buckets: setup isn't finished, the repo isn
 
 **Symptom.** A review stops immediately with a `NO_DIFF` code. In staged mode the message is "No staged changes found. Use 'git add' to stage files, or review unstaged changes instead." In unstaged mode it's "No unstaged changes found. Make some edits first, or review staged changes instead."
 
-**Cause.** diffgazer reviews a git diff. If the mode you picked has an empty diff, there's nothing to send to the model, so the run ends before it starts. Note that changes inside the `.diffgazer/` directory are filtered out of the diff, so a change set that only touches diffgazer's own files counts as empty.
+**Cause.** Diffgazer reviews a git diff. If the mode you picked has an empty diff, there's nothing to send to the model, so the run ends before it starts. Note that changes inside the `.diffgazer/` directory are filtered out of the diff, so a change set that only touches Diffgazer's own files counts as empty.
 
 **Fix.** Make sure the mode matches where your changes are. Stage files with `git add` for a staged review, or edit some tracked files for an unstaged one. If you scoped the review to specific files and none of them have changes in that mode, widen the file selection.
 
@@ -33,9 +33,9 @@ Most failures fall into a handful of buckets: setup isn't finished, the repo isn
 
 **Symptom.** A review fails early with a git error before any diff is read.
 
-**Cause.** diffgazer runs git in your project directory to produce the diff. If the directory isn't a git working tree, git has nothing to diff and the underlying command fails.
+**Cause.** Diffgazer runs git in your project directory to produce the diff. If the directory isn't a git working tree, git has nothing to diff and the underlying command fails.
 
-**Fix.** Run diffgazer from inside a git repository. Initialize one with `git init` if you haven't, or change into the project directory that already has a `.git` folder.
+**Fix.** Run Diffgazer from inside a git repository. Initialize one with `git init` if you haven't, or change into the project directory that already has a `.git` folder.
 
 ## Diff too large
 
@@ -79,13 +79,13 @@ PORT=8080 diffgazer
 
 **Cause.** The web mode serves a built copy of the app bundled next to the server. If that bundle is missing from the install, the server has nothing to serve and stops before binding.
 
-**Fix.** Reinstall or rebuild diffgazer so the web assets ship with the binary. A fresh install from the published package includes them. If you're running from a local checkout, build the project first so the web bundle exists.
+**Fix.** Reinstall or rebuild Diffgazer so the web assets ship with the binary. A fresh install from the published package includes them. If you're running from a local checkout, build the project first so the web bundle exists.
 
 ## Provider or key errors
 
 **Symptom.** Setup or activation rejects your provider, or a review fails partway through with a provider-side error. Common cases are a missing key, an invalid key, a rate limit from the provider, or a model that doesn't exist for the provider you chose.
 
-**Cause.** diffgazer sends the review to the provider you configured, using the key and model you set. If the key is absent or wrong, the provider refuses. If you select a model that isn't in that provider's catalog, activation fails before any request goes out. OpenRouter is the exception there, since its model list comes from a live route rather than the bundled catalog.
+**Cause.** Diffgazer sends the review to the provider you configured, using the key and model you set. If the key is absent or wrong, the provider refuses. If you select a model that isn't in that provider's catalog, activation fails before any request goes out. OpenRouter is the exception there, since its model list comes from a live route rather than the bundled catalog.
 
 **Fix.** Confirm the provider has a valid key and a model it actually offers. The [providers reference](/app/reference/providers) lists the exact environment variable each provider reads, its default model, and its base URL. A frequent gotcha: Google Gemini reads `GOOGLE_API_KEY`, not `GEMINI_API_KEY`.
 
@@ -97,7 +97,7 @@ PORT=8080 diffgazer
 
 **Cause.** Web mode runs a server and waits. A review holds an open stream while it's in flight, which can make shutdown feel slow because the server drains that connection first.
 
-**Fix.** Press Ctrl+C in the terminal where diffgazer is running. On the first signal it stops the server, aborts in-flight reviews, and exits. If a child process is slow to die after the stop signal, diffgazer force-kills it after a short delay (2 seconds by default). You can lengthen that delay on a slow machine with `DIFFGAZER_FORCE_KILL_DELAY_MS`, set in milliseconds:
+**Fix.** Press Ctrl+C in the terminal where Diffgazer is running. On the first signal it stops the server, aborts in-flight reviews, and exits. If a child process is slow to die after the stop signal, Diffgazer force-kills it after a short delay (2 seconds by default). You can lengthen that delay on a slow machine with `DIFFGAZER_FORCE_KILL_DELAY_MS`, set in milliseconds:
 
 ```bash
 DIFFGAZER_FORCE_KILL_DELAY_MS=5000 diffgazer

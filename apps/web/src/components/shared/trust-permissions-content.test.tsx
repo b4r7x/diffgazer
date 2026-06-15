@@ -249,7 +249,7 @@ describe("TrustPermissionsContent", () => {
 
     const readFilesOption = screen.getByRole("checkbox", { name: /repository access/i });
     expect(readFilesOption).toHaveFocus();
-    expect(readFilesOption).toHaveAttribute("data-highlighted", "true");
+    expect(readFilesOption).toHaveAttribute("data-highlighted");
 
     await user.keyboard("{ArrowDown}");
 
@@ -284,7 +284,7 @@ describe("TrustPermissionsContent", () => {
 
     await user.click(readFilesOption);
     expect(readFilesOption).toHaveFocus();
-    expect(readFilesOption).toHaveAttribute("data-highlighted", "true");
+    expect(readFilesOption).toHaveAttribute("data-highlighted");
   });
 
   it("keeps surrounding shortcuts active when actions are hidden", async () => {

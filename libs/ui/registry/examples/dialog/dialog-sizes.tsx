@@ -21,7 +21,7 @@ export default function DialogSizes() {
               <DialogTitle>Size: {size}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-              <p className="text-sm text-gray-300">
+              <p className="text-sm text-muted-foreground">
                 This dialog uses the <InlineCode>{size}</InlineCode> size variant.
               </p>
             </DialogBody>

@@ -381,7 +381,7 @@ describe("ToggleGroup", () => {
     await userEvent.hover(beta);
 
     expect(onHighlightChange).not.toHaveBeenCalled();
-    expect(alpha).toHaveAttribute("data-highlighted", "true");
+    expect(alpha).toHaveAttribute("data-highlighted");
     expect(beta).not.toHaveAttribute("data-highlighted");
   });
 
@@ -552,15 +552,15 @@ describe("ToggleGroup variants", () => {
     expect(item.querySelector('[data-slot="toggle-group-count"]')).toHaveTextContent("5");
   });
 
-  it("marks the active item via data-active in underline variant", () => {
+  it("marks the active item via data-state in underline variant", () => {
     render(
       <ToggleGroup label="Options" variant="underline" defaultValue="b">
         <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
         <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
       </ToggleGroup>,
     );
-    expect(screen.getByRole("radio", { name: /alpha/i })).not.toHaveAttribute("data-active");
-    expect(screen.getByRole("radio", { name: /beta/i })).toHaveAttribute("data-active", "true");
+    expect(screen.getByRole("radio", { name: /alpha/i })).toHaveAttribute("data-state", "off");
+    expect(screen.getByRole("radio", { name: /beta/i })).toHaveAttribute("data-state", "on");
   });
 });
 

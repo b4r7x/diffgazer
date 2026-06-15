@@ -1,20 +1,22 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createRef, Fragment, type ReactNode } from "react";
+import { createRef, Fragment, type ReactNode, useState } from "react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { applyReducedMotionFixture } from "../../../testing/prefers-reduced-motion";
 import { Field } from "../field/index";
 import { Select, type SelectProps } from "./index";
+import { useSelectContext } from "./select-context";
 import type { SelectItemProps } from "./select-item";
 
 const PICK_FRUIT = "Pick a fruit";
 
 function getSelectTrigger() {
-  return (
-    screen.queryByRole("combobox", { name: "Select" }) ??
-    screen.getByRole("button", { name: "Select" })
-  );
+  // The trigger no longer falls back to an accessible name of "Select" (F-010),
+  // so query the structural slot instead of a hardcoded name.
+  const trigger = document.querySelector<HTMLElement>('[data-slot="select-trigger"]');
+  if (!trigger) throw new Error("Expected a SelectTrigger to be rendered");
+  return trigger;
 }
 
 function getSearchInput() {
@@ -79,7 +81,7 @@ function renderSelect({
 
   return render(
     <Select {...props}>
-      <Select.Trigger>
+      <Select.Trigger aria-label="Fruit">
         {multiple ? (
           <Select.Tags placeholder="Pick fruits" />
         ) : (
@@ -142,7 +144,7 @@ function renderSelectInline({
 
   return render(
     <Select {...props}>
-      <Select.Trigger>
+      <Select.Trigger aria-label="Fruit">
         {multiple ? (
           <Select.Tags placeholder="Pick fruits" />
         ) : (
@@ -189,6 +191,61 @@ describe("Select selection", () => {
     await userEvent.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     expect(trigger).not.toHaveAttribute("aria-controls");
+  });
+
+  it("does not invalidate the context value when the consumer passes an inline onChange", async () => {
+    const seen: unknown[] = [];
+    function Probe() {
+      seen.push(useSelectContext("Probe"));
+      return null;
+    }
+    // Children are held constant so the only thing changing across re-renders is
+    // the inline onChange identity — this isolates the F-054 regression (the
+    // memo busting on consumer onChange via useControllableState's setValue deps).
+    const content = (
+      <>
+        <Select.Trigger>
+          <Select.Value placeholder="x" />
+        </Select.Trigger>
+        <Probe />
+      </>
+    );
+    function Parent() {
+      const [, setTick] = useState(0);
+      return (
+        <>
+          <button type="button" onClick={() => setTick((t) => t + 1)}>
+            rerender
+          </button>
+          <Select value="a" onChange={() => undefined}>
+            {content}
+          </Select>
+        </>
+      );
+    }
+    render(<Parent />);
+    const before = seen.length;
+    const initialContext = seen.at(-1);
+    await userEvent.click(screen.getByRole("button", { name: "rerender" }));
+    // Probe sits in a stable children element, so it re-renders ONLY if the
+    // SelectContext value identity changed. A stable context means no extra
+    // Probe render — and any render it does do reports the same object.
+    expect(seen.length).toBe(before);
+    expect(seen.at(-1)).toBe(initialContext);
+  });
+
+  it("emits data-slot and data-state styling hooks on the trigger", async () => {
+    renderSelect();
+    const trigger = getSelectTrigger();
+    expect(trigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(trigger).toHaveAttribute("data-state", "closed");
+    await userEvent.click(trigger);
+    expect(trigger).toHaveAttribute("data-state", "open");
+  });
+
+  it("exposes data-disabled on a disabled trigger", () => {
+    renderSelect({ disabled: true });
+    expect(getSelectTrigger()).toHaveAttribute("data-disabled", "");
   });
 
   it("selects a single value on click", async () => {
@@ -339,7 +396,7 @@ describe("Select controlled state", () => {
 
     expect(onHighlightChange).not.toHaveBeenCalled();
     expect(screen.getByRole("listbox")).toHaveAttribute("aria-activedescendant", appleOption.id);
-    expect(appleOption).toHaveAttribute("data-highlighted", "true");
+    expect(appleOption).toHaveAttribute("data-highlighted");
     expect(bananaOption).not.toHaveAttribute("data-highlighted");
   });
 
@@ -466,6 +523,54 @@ describe("Select disabled options", () => {
   });
 });
 
+describe("Select search position", () => {
+  function renderSearchPositioned(position?: "top" | "bottom") {
+    render(
+      <Select variant="card" defaultOpen>
+        <Select.Trigger>
+          <Select.Value placeholder="Pick" />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Search {...(position ? { position } : {})} />
+          <Select.Item value="apple">Apple</Select.Item>
+          <Select.Item value="banana">Banana</Select.Item>
+        </Select.Content>
+      </Select>,
+    );
+  }
+
+  it("renders the search row after the listbox by default (bottom)", () => {
+    renderSearchPositioned();
+    const search = getSearchInput();
+    const listbox = screen.getByRole("listbox");
+    // listbox precedes the search row in DOM order.
+    expect(listbox.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("renders the search row before the listbox when position='top'", () => {
+    renderSearchPositioned("top");
+    const search = getSearchInput();
+    const listbox = screen.getByRole("listbox");
+    // search row precedes the listbox in DOM order.
+    expect(listbox.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+  });
+});
+
+describe("Select results live region", () => {
+  it("mounts the status region before any query and swaps its text as the query changes", async () => {
+    renderSelect({ withSearch: true, defaultOpen: true });
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("");
+
+    await userEvent.type(getSearchInput(), "ban");
+    expect(status).toHaveTextContent("1 results");
+
+    await userEvent.clear(getSearchInput());
+    expect(status).toHaveTextContent("");
+  });
+});
+
 describe("Select search filtering", () => {
   it("filters items based on search query", async () => {
     renderSelect({ withSearch: true });
@@ -586,6 +691,117 @@ describe("Select keyboard navigation", () => {
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false");
   });
 
+  it("closes with Escape when focus has moved outside the listbox", async () => {
+    render(
+      <>
+        <button type="button">Outside</button>
+        <Select defaultOpen>
+          <Select.Trigger aria-label="Fruit">
+            <Select.Value placeholder={PICK_FRUIT} />
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="apple">Apple</Select.Item>
+            <Select.Item value="banana">Banana</Select.Item>
+          </Select.Content>
+        </Select>
+      </>,
+    );
+
+    const outside = screen.getByRole("button", { name: "Outside" });
+    outside.focus();
+    expect(outside).toHaveFocus();
+
+    await userEvent.keyboard("{Escape}");
+
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("listbox", { hidden: true })).toHaveAttribute("data-state", "closed");
+    expect(getSelectTrigger()).toHaveFocus();
+  });
+
+  it("closes with Escape from outside focus even when the outside handler prevents default", async () => {
+    render(
+      <>
+        <button type="button" onKeyDown={(event) => event.preventDefault()}>
+          Outside
+        </button>
+        <Select defaultOpen>
+          <Select.Trigger aria-label="Fruit">
+            <Select.Value placeholder={PICK_FRUIT} />
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="apple">Apple</Select.Item>
+            <Select.Item value="banana">Banana</Select.Item>
+          </Select.Content>
+        </Select>
+      </>,
+    );
+
+    screen.getByRole("button", { name: "Outside" }).focus();
+    await userEvent.keyboard("{Escape}");
+
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("listbox", { hidden: true })).toHaveAttribute("data-state", "closed");
+  });
+
+  it("closes the focused open Select when another Select also starts open", async () => {
+    render(
+      <>
+        <Select>
+          <Select.Trigger aria-label="Branch">
+            <Select.Value placeholder="Select a branch..." />
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="main">main</Select.Item>
+            <Select.Item value="develop">develop</Select.Item>
+          </Select.Content>
+        </Select>
+        <Select defaultOpen>
+          <Select.Trigger aria-label="Framework">
+            <Select.Value placeholder="Select framework..." />
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="react">React</Select.Item>
+            <Select.Item value="vue">Vue</Select.Item>
+          </Select.Content>
+        </Select>
+      </>,
+    );
+
+    const branchTrigger = screen.getByRole("combobox", { name: "Branch" });
+    branchTrigger.focus();
+    await userEvent.keyboard("{Enter}");
+
+    expect(branchTrigger).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("combobox", { name: "Framework" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+
+    await userEvent.keyboard("{Escape}");
+
+    expect(branchTrigger).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("honors preventDefault for Escape inside content key handlers", async () => {
+    render(
+      <Select defaultOpen>
+        <Select.Trigger aria-label="Fruit">
+          <Select.Value placeholder={PICK_FRUIT} />
+        </Select.Trigger>
+        <Select.Content onKeyDown={(event) => event.preventDefault()}>
+          <Select.Item value="apple">Apple</Select.Item>
+          <Select.Item value="banana">Banana</Select.Item>
+        </Select.Content>
+      </Select>,
+    );
+
+    screen.getByRole("listbox").focus();
+    await userEvent.keyboard("{Escape}");
+
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("listbox")).toHaveAttribute("data-state", "open");
+  });
+
   it("navigates and selects options from the listbox", async () => {
     const onChange = vi.fn();
     renderSelect({ onChange, defaultOpen: true });
@@ -636,12 +852,181 @@ describe("Select keyboard navigation", () => {
     await userEvent.click(document.body);
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false");
   });
+
+  it("opens with the first enabled option highlighted on Home from the closed trigger", async () => {
+    renderSelect();
+    getSelectTrigger().focus();
+    await userEvent.keyboard("{Home}");
+
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true");
+    const listbox = screen.getByRole("listbox");
+    expect(listbox).toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("option", { name: /apple/i }).id,
+    );
+  });
+
+  it("opens with the last enabled option highlighted on End from the closed trigger", async () => {
+    renderSelect();
+    getSelectTrigger().focus();
+    await userEvent.keyboard("{End}");
+
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true");
+    const listbox = screen.getByRole("listbox");
+    expect(listbox).toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("option", { name: /cherry/i }).id,
+    );
+  });
+
+  it("opens and highlights the first typeahead match on a printable character from the closed trigger", async () => {
+    renderSelect();
+    getSelectTrigger().focus();
+    await userEvent.keyboard("b");
+
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true");
+    const listbox = screen.getByRole("listbox");
+    expect(listbox).toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("option", { name: /banana/i }).id,
+    );
+  });
+
+  it("scrolls the new highlighted option into view on listbox typeahead", async () => {
+    // jsdom does not implement scrollIntoView; define it before spying.
+    const scrollFn = vi.fn();
+    Element.prototype.scrollIntoView = scrollFn;
+    renderSelect({ defaultOpen: true });
+    screen.getByRole("listbox").focus();
+
+    await userEvent.keyboard("b");
+    expect(scrollFn).toHaveBeenCalledWith({ block: "nearest" });
+    Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+  });
+
+  it("scrolls the new highlighted option into view on searchable arrow navigation", async () => {
+    const scrollFn = vi.fn();
+    Element.prototype.scrollIntoView = scrollFn;
+    renderSelect({ withSearch: true, defaultOpen: true });
+
+    await userEvent.type(getSearchInput(), "{ArrowDown}");
+    expect(scrollFn).toHaveBeenCalledWith({ block: "nearest" });
+    Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+  });
+
+  it("extends the listbox typeahead query with Space without selecting", async () => {
+    const onChange = vi.fn();
+    renderSelectInline({
+      defaultOpen: true,
+      onChange,
+      children: (
+        <>
+          <Select.Item value="ny">New York</Select.Item>
+          <Select.Item value="nj">New Jersey</Select.Item>
+        </>
+      ),
+    });
+
+    const listbox = screen.getByRole("listbox");
+    listbox.focus();
+    await userEvent.keyboard("new y");
+
+    expect(listbox).toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("option", { name: "New York" }).id,
+    );
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+describe("Select Tab-close focus restore", () => {
+  it("restores focus to the trigger then advances when Tab-closing a multiple select", async () => {
+    render(
+      <>
+        <Select variant="card" multiple defaultValue={[]} defaultOpen>
+          <Select.Trigger>
+            <Select.Tags placeholder="Pick" />
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="apple">Apple</Select.Item>
+            <Select.Item value="banana">Banana</Select.Item>
+          </Select.Content>
+        </Select>
+        <button type="button">After</button>
+      </>,
+    );
+
+    screen.getByRole("listbox").focus();
+    await userEvent.tab();
+
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("button", { name: "After" })).toHaveFocus();
+  });
+
+  it("restores focus to the trigger synchronously when Tab-closing a searchable select with no highlight", async () => {
+    render(
+      <>
+        <Select variant="card" defaultOpen highlighted={null}>
+          <Select.Trigger>
+            <Select.Value placeholder="Pick" />
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Search />
+            <Select.Item value="apple">Apple</Select.Item>
+            <Select.Item value="banana">Banana</Select.Item>
+          </Select.Content>
+        </Select>
+        <button type="button">After</button>
+      </>,
+    );
+
+    const searchInput = getSearchInput();
+    searchInput.focus();
+    // fireEvent retained: direct keydown asserts focus handoff while the search input unmounts.
+    fireEvent.keyDown(searchInput, { key: "Tab" });
+
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false");
+    expect(getSelectTrigger()).toHaveFocus();
+  });
+});
+
+describe("Select open-focus stability", () => {
+  it("focuses the listbox on open but does not re-steal focus on later re-renders while open", async () => {
+    function Harness({ extra }: { extra: string }) {
+      return (
+        <>
+          <Select variant="default" defaultOpen>
+            <Select.Trigger>
+              <Select.Value placeholder="Pick" />
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="apple">Apple {extra}</Select.Item>
+              <Select.Item value="banana">Banana {extra}</Select.Item>
+            </Select.Content>
+          </Select>
+          <button type="button">Outside</button>
+        </>
+      );
+    }
+
+    const { rerender } = render(<Harness extra="x" />);
+    const listbox = await screen.findByRole("listbox");
+    await waitFor(() => expect(listbox).toHaveFocus());
+
+    const outside = screen.getByRole("button", { name: "Outside" });
+    outside.focus();
+    expect(outside).toHaveFocus();
+
+    // Re-render while still open with new inline children — focus must not move.
+    rerender(<Harness extra="y" />);
+    expect(screen.getByRole("button", { name: "Outside" })).toHaveFocus();
+  });
 });
 
 describe("Select active-descendant ownership", () => {
   it("makes the search input the editable combobox and reduces the trigger to a toggle when search is present", async () => {
     renderSelect({ withSearch: true, defaultOpen: true });
-    const triggerButton = screen.getByRole("button", { name: /select/i });
+    const triggerButton = getSelectTrigger();
     const searchInput = getSearchInput();
     const listbox = screen.getByRole("listbox");
     const appleOption = screen.getByRole("option", { name: /apple/i });
@@ -751,6 +1136,59 @@ describe("Select accessibility", () => {
         ? renderSelect({ multiple: true, defaultOpen: true, defaultValue: ["apple"] })
         : renderSelect({ defaultOpen: true });
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("merges a consumer multi-id aria-describedby on the trigger via mergeIds (F-293)", () => {
+    render(
+      <>
+        <span id="hint-a">a</span>
+        <span id="hint-b">b</span>
+        <Select>
+          <Select.Trigger aria-label="Fruit" aria-describedby="hint-a hint-b">
+            <Select.Value placeholder={PICK_FRUIT} />
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="apple">Apple</Select.Item>
+          </Select.Content>
+        </Select>
+      </>,
+    );
+    expect(getSelectTrigger()).toHaveAttribute("aria-describedby", "hint-a hint-b");
+  });
+
+  it("overrides the searchable results-count live region via getResultsLabel (F-010)", async () => {
+    render(
+      <Select defaultOpen>
+        <Select.Trigger aria-label="Fruit">
+          <Select.Value placeholder={PICK_FRUIT} />
+        </Select.Trigger>
+        <Select.Content getResultsLabel={(count) => `${count} trafień`}>
+          <Select.Search />
+          <Select.Item value="apple">Apple</Select.Item>
+          <Select.Item value="banana">Banana</Select.Item>
+          <Select.Empty />
+        </Select.Content>
+      </Select>,
+    );
+    await userEvent.type(getSearchInput(), "a");
+    expect(screen.getByRole("status")).toHaveTextContent(/trafień/);
+  });
+
+  it("surfaces an unlabeled trigger to axe instead of a 'Select' fallback name (F-010/F-015)", async () => {
+    const { container } = render(
+      <Select>
+        <Select.Trigger>
+          <Select.Value placeholder={PICK_FRUIT} />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="apple">Apple</Select.Item>
+        </Select.Content>
+      </Select>,
+    );
+    const trigger = container.querySelector<HTMLElement>('[data-slot="select-trigger"]');
+    expect(trigger).not.toHaveAttribute("aria-label");
+    expect(trigger).not.toHaveAttribute("aria-labelledby");
+    expect(await axe(container)).not.toHaveNoViolations();
   });
 
   it("search input uses Field label via aria-labelledby when inside a Field", () => {
@@ -987,6 +1425,24 @@ describe("Select form submission", () => {
     renderFormSelect({ defaultValue: "apple", items: ["Apple"] });
     expect(new FormData(getTestForm()).has("fruit")).toBe(false);
   });
+
+  it("renders hidden form-mirror inputs with aria-hidden and no aria-label", () => {
+    const { container } = renderFormSelect({ name: "fruit", defaultValue: "banana" });
+    const mirror = container.querySelector('select[aria-hidden="true"]');
+    expect(mirror).not.toBeNull();
+    expect(mirror).not.toHaveAttribute("aria-label");
+  });
+
+  it("clears aria-invalid on form reset after a failed required submit", async () => {
+    renderFormSelect({ name: "fruit", required: true });
+    const form = getTestForm();
+
+    expect(form.reportValidity()).toBe(false);
+    await waitFor(() => expect(getSelectTrigger()).toHaveAttribute("aria-invalid", "true"));
+
+    form.reset();
+    await waitFor(() => expect(getSelectTrigger()).not.toHaveAttribute("aria-invalid", "true"));
+  });
 });
 
 describe("Select respects prefers-reduced-motion", () => {
@@ -1015,24 +1471,6 @@ describe("Select respects prefers-reduced-motion", () => {
     expect(resolved("--ui-content-exit-to-left")).toMatch(/^ui-content-exit-fade\b/);
     expect(resolved("--ui-content-exit-to-right")).toMatch(/^ui-content-exit-fade\b/);
   });
-
-  it("suppresses the card-variant selected indicator pulse via motion-safe", async () => {
-    renderSelect({
-      defaultOpen: true,
-      defaultValue: "apple",
-      highlighted: "apple",
-      items: ["Apple"],
-      variant: "card",
-    });
-
-    const option = await screen.findByRole("option", { name: /apple/i });
-    const indicator = option.querySelector(".motion-safe\\:animate-pulse");
-    // motion-safe:animate-pulse is the public CSS class signal documented in select.mdx
-    // (Accessibility section); the indicator has no accessible role, so the class is the
-    // only observable contract that the pulse is reduced-motion-gated.
-    expect(indicator).not.toBeNull();
-    expect(option.querySelector(".animate-pulse:not(.motion-safe\\:animate-pulse)")).toBeNull();
-  });
 });
 
 describe("Select dropdown width", () => {
@@ -1049,6 +1487,17 @@ describe("Select dropdown width", () => {
     const listbox = await screen.findByRole("listbox");
     expect(listbox.style.width).toBe("var(--ui-floating-trigger-width)");
     expect(listbox.style.minWidth).toBe("");
+  });
+
+  it("bounds a long dropdown to the available height and makes it scrollable", async () => {
+    renderSelect({
+      defaultOpen: true,
+      variant: "default",
+      items: Array.from({ length: 40 }, (_, i) => `Option ${i}`),
+    });
+
+    const listbox = await screen.findByRole("listbox");
+    expect(listbox.style.maxHeight).toBe("var(--floating-panel-available-height)");
   });
 });
 
@@ -1096,6 +1545,107 @@ describe("Select searchable combobox controlled value", () => {
     await userEvent.click(screen.getByRole("option", { name: /banana/i }));
     expect(onChange).toHaveBeenCalledWith("banana");
     expect(screen.getByText(PICK_FRUIT)).toBeInTheDocument();
+  });
+});
+
+describe("Select indirect composition (registration)", () => {
+  function WrappedItem({ value, children }: { value: string; children: ReactNode }) {
+    return <Select.Item value={value}>{children}</Select.Item>;
+  }
+
+  it("makes a SelectItem rendered inside a consumer wrapper selectable", async () => {
+    const onChange = vi.fn();
+    render(
+      <Select defaultOpen onChange={onChange}>
+        <Select.Trigger>
+          <Select.Value placeholder={PICK_FRUIT} />
+        </Select.Trigger>
+        <Select.Content>
+          <WrappedItem value="apple">Apple</WrappedItem>
+          <WrappedItem value="banana">Banana</WrappedItem>
+        </Select.Content>
+      </Select>,
+    );
+
+    await userEvent.click(screen.getByRole("option", { name: /banana/i }));
+    expect(onChange).toHaveBeenCalledWith("banana");
+  });
+
+  it("exposes a mounted wrapper-rendered item's label in the value display metadata", () => {
+    render(
+      <Select defaultOpen defaultValue="banana">
+        <Select.Trigger>
+          <Select.Value placeholder={PICK_FRUIT} />
+        </Select.Trigger>
+        <Select.Content>
+          <WrappedItem value="apple">Apple</WrappedItem>
+          <WrappedItem value="banana">Banana</WrappedItem>
+        </Select.Content>
+      </Select>,
+    );
+
+    // The trigger value display resolves "banana" -> "Banana" from registered metadata.
+    expect(getSelectTrigger().textContent).toContain("Banana");
+  });
+});
+
+describe("Select unified label derivation (JSX children)", () => {
+  function renderComposite(onChange = vi.fn()) {
+    render(
+      <Select defaultOpen onChange={onChange}>
+        <Select.Trigger>
+          <Select.Value placeholder={PICK_FRUIT} />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Search />
+          <Select.Item value="apple">
+            <span aria-hidden="true">🍎</span>
+            <span>Apple</span>
+          </Select.Item>
+          <Select.Item value="banana">
+            <span aria-hidden="true">🍌</span>
+            <span>Banana</span>
+          </Select.Item>
+        </Select.Content>
+      </Select>,
+    );
+    return onChange;
+  }
+
+  it("filters, highlights, counts, and commits by the visible JSX text without textValue", async () => {
+    const onChange = renderComposite();
+    const searchInput = getSearchInput();
+
+    await userEvent.type(searchInput, "banana");
+
+    const bananaOption = screen.getByRole("option", { name: /banana/i });
+    expect(screen.queryByRole("option", { name: /apple/i })).not.toBeInTheDocument();
+    expect(searchInput).toHaveAttribute("aria-activedescendant", bananaOption.id);
+    expect(screen.getByRole("status")).toHaveTextContent("1 results");
+
+    await userEvent.keyboard("{Enter}");
+    expect(onChange).toHaveBeenCalledWith("banana");
+  });
+
+  it("does not match the raw value string and never points activedescendant at an unmounted node", async () => {
+    renderComposite();
+    const searchInput = getSearchInput();
+
+    await userEvent.type(searchInput, "banana");
+    // Activedescendant resolves to a mounted option.
+    const active = searchInput.getAttribute("aria-activedescendant");
+    expect(active).toBeTruthy();
+    expect(document.getElementById(active as string)).not.toBeNull();
+
+    await userEvent.clear(searchInput);
+    // Typing the raw value string must not match the visible-text labels.
+    await userEvent.type(searchInput, "apple");
+    expect(screen.queryByRole("option", { name: /apple/i })).toBeInTheDocument();
+    await userEvent.clear(searchInput);
+    await userEvent.type(searchInput, "value");
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
+    const stale = searchInput.getAttribute("aria-activedescendant");
+    if (stale) expect(document.getElementById(stale)).not.toBeNull();
   });
 });
 

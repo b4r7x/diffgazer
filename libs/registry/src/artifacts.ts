@@ -7,7 +7,7 @@ import {
   PACKAGE_ARTIFACT_ROOT,
 } from "./constants.js";
 import { computeArtifactFingerprint } from "./fingerprint.js";
-import { defaultLogger, type Logger } from "./logger.js";
+import { log } from "./logger.js";
 import type { ArtifactManifest } from "./manifest.js";
 import { normalizeOrigin, rewriteOriginsInDir } from "./origin.js";
 import {
@@ -148,7 +148,6 @@ export interface CopyArtifactsToPackageOptions {
   rebuildHint?: string;
   validateManifest?: boolean;
   cleanStrategy?: "parent-dist" | "artifact-dir";
-  logger?: Logger;
 }
 
 export function copyArtifactsToPackage(options: CopyArtifactsToPackageOptions): void {
@@ -161,7 +160,6 @@ export function copyArtifactsToPackage(options: CopyArtifactsToPackageOptions): 
     rebuildHint,
     validateManifest: shouldValidateManifest = true,
     cleanStrategy = "parent-dist",
-    logger = defaultLogger,
   } = options;
 
   const source = resolve(sourceRoot, artifactDir);
@@ -189,7 +187,7 @@ export function copyArtifactsToPackage(options: CopyArtifactsToPackageOptions): 
   cpSync(source, target, { recursive: true, force: true });
   rewritePackageArtifactManifest(target, packageArtifactDir);
 
-  logger.info(`[${label}] copied artifacts from ${source}`);
+  log.info(`[${label}] copied artifacts from ${source}`);
 }
 
 function rewritePackageArtifactManifest(target: string, packageArtifactDir: string): void {

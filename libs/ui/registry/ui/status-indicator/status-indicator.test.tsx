@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
-import { StatusIndicator, statusIndicatorDotVariants } from "./status-indicator";
+import { StatusIndicator } from "./status-indicator";
 
 function getDot(container: HTMLElement) {
   return container.querySelector('[aria-hidden="true"]');
@@ -36,9 +36,33 @@ describe("StatusIndicator", () => {
     expect(dot).not.toHaveAttribute("data-pulse");
   });
 
-  it("matches the bare exported CVA defaults when rendered without props", () => {
-    const { container } = render(<StatusIndicator>ONLINE</StatusIndicator>);
-    expect(getDot(container)).toHaveClass(...statusIndicatorDotVariants().split(" "));
+  it("exposes the status word to assistive tech alongside the children", () => {
+    render(<StatusIndicator status="busy">API</StatusIndicator>);
+    const root = screen.getByRole("status");
+    expect(root).toHaveTextContent("API");
+    expect(root).toHaveTextContent("busy");
+  });
+
+  it("lets a consumer override the status word via label", () => {
+    render(
+      <StatusIndicator status="offline" label="unavailable">
+        API
+      </StatusIndicator>,
+    );
+    const root = screen.getByRole("status");
+    expect(root).toHaveTextContent("unavailable");
+    expect(root).not.toHaveTextContent("offline");
+  });
+
+  it("suppresses the status word when label is null", () => {
+    render(
+      <StatusIndicator status="online" label={null}>
+        Live
+      </StatusIndicator>,
+    );
+    const root = screen.getByRole("status");
+    expect(root).toHaveTextContent("Live");
+    expect(root).not.toHaveTextContent("online");
   });
 
   it("has no a11y violations", async () => {

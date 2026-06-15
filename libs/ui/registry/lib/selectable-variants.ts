@@ -1,9 +1,12 @@
 import { cva } from "class-variance-authority";
 
+/** Size shared by checkbox and radio standalone controls. */
 export type SelectableSize = "sm" | "md" | "lg";
 
+/** Indicator style shared by checkbox and radio standalone controls. */
 export type SelectableVariant = "x" | "bullet";
 
+/** Text glyphs for checked, unchecked, and indeterminate selectable states. */
 export const selectableIndicators = {
   x: { checked: "[x]", unchecked: "[ ]", indeterminate: "[-]" },
   bullet: {
@@ -16,6 +19,7 @@ export const selectableIndicators = {
 const selectableHighlightClass =
   "bg-secondary text-foreground font-bold before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-foreground";
 
+/** Root selectable-control variants for highlighted and disabled states. */
 export const selectableVariants = cva(
   "group/selectable flex cursor-pointer select-none font-mono relative outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:bg-secondary focus-visible:text-foreground focus-visible:font-bold focus-visible:before:content-[''] focus-visible:before:absolute focus-visible:before:left-0 focus-visible:before:top-0 focus-visible:before:bottom-0 focus-visible:before:w-1 focus-visible:before:bg-foreground",
   {
@@ -36,8 +40,10 @@ export const selectableVariants = cva(
   },
 );
 
+/** Inner layout class for selectable control content. */
 export const selectableContainerClass = "flex items-center gap-3 px-3 py-2";
 
+/** Indicator variants for selectable controls. */
 export const selectableIndicatorVariants = cva(
   "font-bold shrink-0 whitespace-nowrap group-focus-visible/selectable:text-foreground",
   {
@@ -67,6 +73,7 @@ export const selectableIndicatorVariants = cva(
   },
 );
 
+/** Label text variants for selectable controls. */
 export const selectableLabelVariants = cva("", {
   variants: {
     size: {
@@ -80,6 +87,7 @@ export const selectableLabelVariants = cva("", {
   },
 });
 
+/** Description text variants for selectable controls. */
 export const selectableDescriptionVariants = cva("text-sm mt-0.5", {
   variants: {
     highlighted: {

@@ -1,6 +1,7 @@
 import { getDateKey, getDateLabel, getTimestamp } from "../format.js";
 import type { SeverityCounts, TimelineItem } from "../schemas/presentation/index.js";
-import type { ReviewMetadata, ReviewSeverity } from "../schemas/review/index.js";
+import { SEVERITY_ORDER } from "../schemas/presentation/index.js";
+import type { ReviewIssue, ReviewMetadata, ReviewSeverity } from "../schemas/review/index.js";
 import { pluralize } from "../strings.js";
 
 export const HISTORY_SECTION_ALL_ID = "all";
@@ -143,23 +144,36 @@ export function resolveSelectedDateId(
   return timelineItems[0]?.id ?? HISTORY_SECTION_ALL_ID;
 }
 
-export function resolveSelectedRunId<T extends { id: string }>(
-  selectedRunId: string | null,
-  runs: T[],
+export function resolveSelectedId<T extends { id: string }>(
+  selectedId: string | null,
+  items: T[],
 ): string | null {
-  if (selectedRunId !== null && runs.some((run) => run.id === selectedRunId)) {
-    return selectedRunId;
+  if (selectedId !== null && items.some((item) => item.id === selectedId)) {
+    return selectedId;
   }
-  return runs[0]?.id ?? null;
+  return items[0]?.id ?? null;
 }
+
+/** History-flavored alias of {@link resolveSelectedId} for the run-selection call sites. */
+export const resolveSelectedRunId = resolveSelectedId;
+
+export const HISTORY_SEARCH_PLACEHOLDER = "Search runs by ID...";
 
 export function getEmptyRunsMessage(
   hasReviews: boolean,
   hasSearchQuery: boolean,
   selectedDateId: string,
 ): string {
-  if (!hasReviews) return "No reviews yet";
+  if (!hasReviews) return "No runs yet";
   if (hasSearchQuery) return "No runs match this search";
   if (selectedDateId === HISTORY_SECTION_ALL_ID) return "No runs available";
   return "No runs for this date";
+}
+
+/** Orders review issues by descending severity, preserving original order within a tier. */
+export function sortIssuesBySeverity(issues: readonly ReviewIssue[] | undefined): ReviewIssue[] {
+  if (!issues || issues.length === 0) return [];
+  return [...issues].sort(
+    (a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity),
+  );
 }

@@ -1,5 +1,5 @@
 import type { OnboardingStep } from "@diffgazer/core/onboarding";
-import type { Shortcut } from "@diffgazer/core/schemas/presentation";
+import { NAVIGATE_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
 
 export function getStepShortcuts(
   currentStep: OnboardingStep,
@@ -16,7 +16,7 @@ export function getStepShortcuts(
   switch (currentStep) {
     case "storage":
       return [
-        { key: "↑/↓", label: "Navigate" },
+        NAVIGATE_SHORTCUT,
         { key: "Enter/Space", label: "Select Storage" },
         { key: "Tab", label: "Focus Actions" },
       ];
@@ -40,7 +40,7 @@ export function getStepShortcuts(
       ];
     case "analysis":
       return [
-        { key: "↑/↓", label: "Navigate" },
+        NAVIGATE_SHORTCUT,
         { key: "Space", label: "Toggle Option" },
         { key: "Tab", label: "Focus Actions" },
       ];

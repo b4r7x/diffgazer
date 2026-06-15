@@ -6,6 +6,7 @@ import { describe, expect, test, vi } from "vitest";
 
 const useInputMock = vi.hoisted(() => vi.fn());
 
+// Boundary mock: Ink terminal input hook.
 vi.mock("ink", () => ({
   useInput: useInputMock,
 }));

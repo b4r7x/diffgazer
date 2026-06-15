@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { MobileNavProvider, useMobileNav } from "@/lib/mobile-nav-context";
+import { MobileNavProvider, useMobileNav } from "@/hooks/mobile-nav-context";
 import { CommandRow } from "./command-row";
 import { FooterBar } from "./footer-bar";
 import { StatusBar } from "./status-bar";
@@ -9,7 +9,7 @@ function TuiShellChrome({ children }: { children: ReactNode }) {
   const chromeInert = (open && !isDesktop) || undefined;
 
   return (
-    <div className="tui-chrome flex h-dvh flex-col overflow-hidden bg-background text-foreground">
+    <div className="docs-chrome flex h-dvh flex-col overflow-hidden bg-background text-foreground">
       <div className="contents" inert={chromeInert}>
         <StatusBar />
       </div>

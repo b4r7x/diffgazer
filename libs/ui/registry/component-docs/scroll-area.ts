@@ -20,7 +20,33 @@ export const scrollAreaDoc: ComponentDoc = {
     { name: "scroll-area-horizontal", title: "Horizontal" },
     { name: "scroll-area-both", title: "Both Directions" },
   ],
-  keyboard: null,
+  keyboard: {
+    description:
+      'When keyboardScrollable is true and the region has aria-label or aria-labelledby, ScrollArea exposes role="region", becomes focusable, and scrolls itself from keyboard events.',
+    keys: [
+      {
+        keys: "ArrowUp / ArrowDown",
+        action: "Scrolls vertical or both-axis regions by 40px.",
+      },
+      {
+        keys: "ArrowLeft / ArrowRight",
+        action: "Scrolls horizontal or both-axis regions by 40px.",
+      },
+      {
+        keys: "PageUp / PageDown",
+        action:
+          "Scrolls vertical regions by 80% of height; horizontal-only regions scroll by 80% of width.",
+      },
+      {
+        keys: "Home / End",
+        action: "Moves to the start or end of each enabled scroll axis.",
+      },
+    ],
+    examples: [
+      { name: "scroll-area-default", title: "Vertical" },
+      { name: "scroll-area-both", title: "Both directions" },
+    ],
+  },
   props: {
     ScrollArea: {
       orientation: {

@@ -19,30 +19,43 @@ import { SourceHeading } from "./source-heading";
 
 interface SourceViewerProps {
   files: (SourceFile & { path: string })[];
-  mergedSource?: string;
   installCommand?: string;
   integrationNote?: React.ReactNode;
+  /** Override the accordion trigger label (defaults to "View component source"). */
+  triggerLabel?: React.ReactNode;
+  /** Render the "Source" heading section. Standalone blocks pass false. */
+  showHeading?: boolean;
+  /** Copy control rendered in the heading (or beside the trigger when no heading). */
+  copyButton?: React.ReactNode;
+  /** Description line rendered under the trigger (standalone hook blocks). */
+  description?: React.ReactNode;
 }
 
 export function SourceViewer({
   files,
-  mergedSource,
   installCommand,
   integrationNote,
+  triggerLabel,
+  showHeading = true,
+  copyButton,
+  description,
 }: SourceViewerProps) {
   if (files.length === 0) return null;
 
+  const defaultLabel = (
+    <>
+      View component source
+      {files.length > 1 ? ` (${files.length} files)` : ""}
+    </>
+  );
+
+  // Single-file blocks name the file via triggerLabel + a header copy button, so
+  // the per-file path/copy row inside the content would just be a duplicate.
+  const showFileHeaders = !(files.length === 1 && triggerLabel && copyButton);
+
   return (
     <div className="mb-8">
-      <SourceHeading>
-        {mergedSource && (
-          <CopyButton
-            text={mergedSource}
-            label="Copy Full Source"
-            title="Copies all component files, hooks, and utilities merged into a single standalone file"
-          />
-        )}
-      </SourceHeading>
+      {showHeading && <SourceHeading>{copyButton}</SourceHeading>}
       {(installCommand || integrationNote) && (
         <Typography as="p" size="sm" className="mb-3 mt-1">
           {installCommand && (
@@ -57,17 +70,28 @@ export function SourceViewer({
 
       <Accordion collapsible className="divide-y-0">
         <AccordionItem value="source" className="py-0">
-          <AccordionTrigger variant="source">
-            View component source
-            {files.length > 1 ? ` (${files.length} files)` : ""}
-          </AccordionTrigger>
+          {!showHeading && (copyButton || description) ? (
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <AccordionTrigger variant="source">{triggerLabel ?? defaultLabel}</AccordionTrigger>
+                {description && (
+                  <p className="text-xs text-muted-foreground -mt-1 mb-2">{description}</p>
+                )}
+              </div>
+              {copyButton}
+            </div>
+          ) : (
+            <AccordionTrigger variant="source">{triggerLabel ?? defaultLabel}</AccordionTrigger>
+          )}
           <AccordionContent className="space-y-4">
             {files.map((file) => (
               <div key={file.path}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-mono text-muted-foreground">{file.path}</span>
-                  <CopyButton text={file.raw} />
-                </div>
+                {showFileHeaders && (
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-mono text-muted-foreground">{file.path}</span>
+                    <CopyButton text={file.raw} />
+                  </div>
+                )}
                 <CodeBlock>
                   <CodeBlockContent>
                     {file.highlighted.map((line) => (

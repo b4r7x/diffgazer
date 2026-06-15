@@ -173,6 +173,22 @@ describe("Popover", () => {
       expect(screen.getByRole("tooltip")).toHaveAttribute("data-state", "closed");
     });
 
+    it("opens immediately on keyboard focus without advancing the hover delay", () => {
+      render(
+        <Popover triggerMode="hover" delayMs={200}>
+          <Popover.Trigger>Hover me</Popover.Trigger>
+          <Popover.Content>Tooltip body</Popover.Content>
+        </Popover>,
+      );
+      const trigger = screen.getByText("Hover me");
+
+      // fireEvent retained: fake timers in use.
+      fireEvent.focus(trigger);
+
+      // No timer advance: focus must open instantly.
+      expect(screen.getByRole("tooltip")).toBeInTheDocument();
+    });
+
     it("cancels open timer if mouse leaves before delay elapses", () => {
       render(
         <Popover triggerMode="hover" delayMs={200}>
@@ -345,9 +361,7 @@ describe("Popover", () => {
     );
     const outside = screen.getByRole("button", { name: "Outside" });
 
-    // fireEvent retained: this test asserts the production code's pointerdown/touchstart
-    // outside-click listeners; user.click would synthesize the full pointer+click sequence and
-    // mask which specific event-type listener fires.
+    // fireEvent retained: direct pointerdown asserts the outside-click listener event type.
     fireEvent.pointerDown(outside);
     expect(screen.getByText("Popover body")).toHaveAttribute("data-state", "closed");
 
@@ -497,7 +511,7 @@ describe("Popover dialog focus", () => {
     vi.restoreAllMocks();
   });
 
-  it("does not trap Tab within click-mode dialog content", async () => {
+  it("does not trap Tab within click-mode dialog content and dismisses when focus leaves", async () => {
     renderClickPopoverWithFocusables();
     const first = screen.getByRole("button", { name: "First" });
     const second = screen.getByRole("button", { name: "Second" });
@@ -507,22 +521,30 @@ describe("Popover dialog focus", () => {
 
     await userEvent.tab();
     expect(second).toHaveFocus();
+    // Moving focus between content elements keeps the popover open.
+    expect(screen.getByRole("dialog")).toHaveAttribute("data-state", "open");
 
     await userEvent.tab();
     expect(third).toHaveFocus();
 
+    // Tabbing past the last focusable element closes the popover.
     await userEvent.tab();
     expect(first).not.toHaveFocus();
+    expect(screen.getByRole("dialog")).toHaveAttribute("data-state", "closed");
   });
 
-  it("Shift+Tab can leave from the first element", async () => {
+  it("keeps the popover open when Shift+Tab moves focus back to the trigger", async () => {
     renderClickPopoverWithFocusables();
     const first = screen.getByRole("button", { name: "First" });
 
     expect(first).toHaveFocus();
 
+    // Shift+Tab from the first content element lands on the trigger (the portal
+    // content follows the trigger in DOM order); focus moving between trigger and
+    // content must NOT dismiss the popover.
     await userEvent.tab({ shift: true });
-    expect(first).not.toHaveFocus();
+    expect(screen.getByRole("button", { name: "Open" })).toHaveFocus();
+    expect(screen.getByRole("dialog")).toHaveAttribute("data-state", "open");
   });
 });
 
@@ -706,6 +728,26 @@ describe("Popover hover timer cleanup", () => {
   });
 });
 
+describe("Popover disabled reset", () => {
+  it("does not re-fire onOpenChange for a controlled, disabled, closed popover across re-renders", () => {
+    const onOpenChange = vi.fn();
+    function Harness({ tick }: { tick: number }) {
+      return (
+        <Popover open={false} enabled={false} onOpenChange={onOpenChange}>
+          <Popover.Trigger>Trigger {tick}</Popover.Trigger>
+          <Popover.Content>Body {tick}</Popover.Content>
+        </Popover>
+      );
+    }
+
+    const { rerender } = render(<Harness tick={0} />);
+    rerender(<Harness tick={1} />);
+    rerender(<Harness tick={2} />);
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+});
+
 function createSameOriginIframe() {
   const iframe = document.createElement("iframe");
   document.body.appendChild(iframe);
@@ -738,6 +780,7 @@ describe("Popover cross-document behavior", () => {
     );
 
     const outside = within(iframeDoc.body).getByRole("button", { name: "Outside" });
+    // fireEvent retained: pointerdown targets the iframe ownerDocument listener without synthesizing unrelated click events.
     fireEvent.pointerDown(outside);
     expect(within(portalRoot).getByText("Popover body")).toHaveAttribute("data-state", "closed");
 
@@ -758,6 +801,7 @@ describe("Popover cross-document behavior", () => {
       { container: mount },
     );
 
+    // fireEvent retained: pointerdown targets the trigger ownerDocument listener for hover-mode outside dismissal.
     fireEvent.pointerDown(within(iframeDoc.body).getByRole("button", { name: "Outside" }));
     expect(within(portalRoot).getByRole("tooltip")).toHaveAttribute("data-state", "closed");
 

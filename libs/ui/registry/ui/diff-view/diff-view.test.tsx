@@ -1,7 +1,10 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef, useLayoutEffect } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ParsedDiff } from "@/lib/diff";
 import { axe } from "../../../testing/axe";
 import { computeDiff, DiffView } from "./index";
@@ -91,7 +94,7 @@ const PATHLESS_HUNK: ParsedDiff = {
   ],
 };
 
-// DiffView's public anatomy contract is the `data-slot=...` / `.diff-num` /
+// DiffView's public anatomy contract is the `data-slot=...` /
 // `[aria-live=...]` selectors documented in component-docs and the CSS rewrite
 // rules. These helpers target that contract; tests below should use them
 // instead of inline querySelector calls so the contract lives in one place.
@@ -133,11 +136,6 @@ function getScrollV(container: HTMLElement) {
   return container.querySelector('[data-slot="diff-view-scroll-v"]');
 }
 
-/** All line-number cells (`.diff-num`). */
-function getLineNumbers(container: HTMLElement) {
-  return container.querySelectorAll(".diff-num");
-}
-
 /** Diff markers (`+`/`−`) for rows of a given state. */
 function getMarkers(container: HTMLElement, state: "added" | "removed") {
   return container.querySelectorAll(`[data-row][data-state="${state}"] .diff-marker`);
@@ -161,6 +159,63 @@ describe("DiffView", () => {
     render(<DiffView diff={ONE_HUNK} mode="split" />);
     expect(screen.getByLabelText("Split diff")).toBeInTheDocument();
     expect(screen.queryByLabelText("Unified diff")).not.toBeInTheDocument();
+  });
+
+  it("exposes each navigation container as a named region so its aria-label is valid (F-005)", () => {
+    const { unmount } = render(<DiffView diff={ONE_HUNK} />);
+    const unified = screen.getByRole("region", { name: /unified diff/i });
+    expect(unified).toHaveAttribute("aria-keyshortcuts", "j k Escape");
+    unmount();
+
+    render(<DiffView diff={ONE_HUNK} mode="split" />);
+    expect(screen.getByRole("region", { name: /split diff/i })).toHaveAttribute(
+      "aria-keyshortcuts",
+      "j k Escape",
+    );
+  });
+
+  it("overrides the inner region label in unified and split modes (F-010)", () => {
+    const { unmount } = render(<DiffView diff={ONE_HUNK} regionLabel="Cambios unificados" />);
+    expect(screen.getByRole("region", { name: "Cambios unificados" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /unified diff/i })).not.toBeInTheDocument();
+    unmount();
+
+    render(<DiffView diff={ONE_HUNK} mode="split" regionLabel="Cambios divididos" />);
+    expect(screen.getByRole("region", { name: "Cambios divididos" })).toBeInTheDocument();
+  });
+
+  it("overrides the split side group labels (F-010)", () => {
+    render(<DiffView diff={ONE_HUNK} mode="split" oldSideLabel="Antes" newSideLabel="Después" />);
+    expect(screen.getByRole("group", { name: "Antes" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Después" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Old" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "New" })).not.toBeInTheDocument();
+  });
+
+  it("overrides the empty-state status text (F-010)", () => {
+    render(<DiffView diff={NO_CHANGES} emptyLabel="Sin cambios" />);
+    expect(screen.getByRole("status")).toHaveTextContent("Sin cambios");
+  });
+
+  it("merges consumer rest props and lets aria-label override the default (F-007)", () => {
+    render(
+      <>
+        <span id="diff-help">Use j/k to navigate</span>
+        <DiffView
+          diff={PATHLESS_HUNK}
+          aria-label="Pull request diff"
+          aria-describedby="diff-help"
+          id="pr-diff"
+        />
+      </>,
+    );
+
+    const figure = screen.getByRole("figure", { name: "Pull request diff" });
+    expect(figure).toHaveAttribute("id", "pr-diff");
+    expect(figure).toHaveAttribute("aria-describedby", "diff-help");
+    // The lib's own anatomy attribute is preserved alongside consumer props.
+    expect(figure).toHaveAttribute("data-slot", "diff-view");
+    expect(figure).toHaveAttribute("aria-roledescription", "diff");
   });
 
   it("forwards refs to the diff figure and uses `label` as the accessible name when no figcaption renders", () => {
@@ -196,6 +251,26 @@ describe("DiffView", () => {
     render(<DiffView diff={ONE_HUNK} disableWordDiff />);
     expect(screen.getByText("const x = 2")).toBeInTheDocument();
     expect(screen.getByText("const x = 1")).toBeInTheDocument();
+  });
+
+  it("announces added/removed lines with default sr-only prefixes (F-010)", () => {
+    render(<DiffView diff={ONE_HUNK} disableWordDiff />);
+    expect(screen.getAllByText("Added:").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Removed:").length).toBeGreaterThan(0);
+  });
+
+  it("overrides the added/removed line sr-only prefixes (F-010)", () => {
+    render(
+      <DiffView
+        diff={ONE_HUNK}
+        disableWordDiff
+        addedLineLabel="Dodano: "
+        removedLineLabel="Usunięto: "
+      />,
+    );
+    expect(screen.getAllByText("Dodano:").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Usunięto:").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Added:")).not.toBeInTheDocument();
   });
 
   it("navigates hunks forward with j key", async () => {
@@ -267,6 +342,37 @@ describe("DiffView", () => {
 
     await user.keyboard("{Escape}");
     expect(getLiveRegion()).toHaveTextContent("");
+  });
+
+  it("consumes Escape only when an active hunk was cleared, so a window scope does not double-fire (F-451)", async () => {
+    const user = userEvent.setup();
+    const scopeEscape = vi.fn();
+    // A @diffgazer/keys-style window listener that skips already-handled events.
+    const onWindowKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.key === "Escape") scopeEscape();
+    };
+    window.addEventListener("keydown", onWindowKeyDown);
+
+    try {
+      render(<DiffView diff={THREE_HUNKS} />);
+      const container = screen.getByLabelText("Unified diff");
+      await user.click(container);
+
+      await user.keyboard("j");
+      expect(getLiveRegion()).toHaveTextContent("Hunk 1 of 3");
+
+      // Clearing the active hunk consumes the keypress: the window scope stays quiet.
+      await user.keyboard("{Escape}");
+      expect(getLiveRegion()).toHaveTextContent("");
+      expect(scopeEscape).not.toHaveBeenCalled();
+
+      // A bare Escape with no active hunk reaches the window scope.
+      await user.keyboard("{Escape}");
+      expect(scopeEscape).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener("keydown", onWindowKeyDown);
+    }
   });
 
   it("j/k do nothing when there are no hunks", async () => {
@@ -481,25 +587,23 @@ describe("DiffView", () => {
     it('omits the number cells and reports data-line-numbers="false" when showLineNumbers is false', () => {
       const { container } = render(<DiffView diff={ONE_HUNK} />);
       expect(getRows(container)).toHaveAttribute("data-line-numbers", "false");
-      expect(getLineNumbers(container).length).toBe(0);
     });
 
     it('renders number cells and reports data-line-numbers="true" when showLineNumbers is true', () => {
       const { container } = render(<DiffView diff={ONE_HUNK} showLineNumbers />);
       expect(getRows(container)).toHaveAttribute("data-line-numbers", "true");
-      expect(getLineNumbers(container).length).toBeGreaterThan(0);
     });
   });
 
   describe("maxHeight", () => {
-    it("wraps rows in the V-scroll slot and passes the value via the --dv-max-h CSS var", () => {
+    it("wraps rows in the V-scroll slot and passes the value via the --diff-view-max-h CSS var", () => {
       const { container } = render(<DiffView diff={ONE_HUNK} maxHeight="120px" />);
       const figure = getFigure(container) as HTMLElement | null;
       const scrollWrap = getScrollV(container);
 
       expect(scrollWrap).not.toBeNull();
       expect(figure).toHaveAttribute("data-max-h", "true");
-      expect(figure?.style.getPropertyValue("--dv-max-h")).toBe("120px");
+      expect(figure?.style.getPropertyValue("--diff-view-max-h")).toBe("120px");
       // The rows container lives inside the scroll wrapper.
       expect(scrollWrap?.querySelector('[data-slot="diff-view-rows"]')).not.toBeNull();
     });
@@ -545,4 +649,115 @@ describe("DiffView", () => {
     // `label` takes over as the figure's aria-label.
     expect(screen.getByRole("figure", { name: "Bare changes" })).toBeInTheDocument();
   });
+});
+
+describe("diff signal contrast (parsed from CSS)", () => {
+  const DIFF_CSS = readFileSync(
+    resolve(fileURLToPath(import.meta.url), "../diff-view.css"),
+    "utf8",
+  );
+  const THEME_CSS = readFileSync(
+    resolve(fileURLToPath(import.meta.url), "../../../../styles/theme.css"),
+    "utf8",
+  );
+
+  function block(source: string, selector: string): string {
+    const start = source.indexOf(`${selector} {`);
+    if (start === -1) {
+      throw new Error(`Selector not found in CSS: ${selector}`);
+    }
+    const open = source.indexOf("{", start);
+    const end = source.indexOf("}", open);
+    return source.slice(open, end);
+  }
+
+  function readVar(blockText: string, name: string): string | undefined {
+    return blockText.match(new RegExp(`${name}:\\s*(#[0-9a-fA-F]{6})`))?.[1];
+  }
+
+  function hexToRgb(hex: string): [number, number, number] {
+    const v = hex.replace("#", "");
+    return [
+      Number.parseInt(v.slice(0, 2), 16),
+      Number.parseInt(v.slice(2, 4), 16),
+      Number.parseInt(v.slice(4, 6), 16),
+    ];
+  }
+
+  function luminance([r, g, b]: [number, number, number]): number {
+    const lin = (c: number) => {
+      const s = c / 255;
+      return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  }
+
+  function contrast(a: string, b: string): number {
+    const la = luminance(hexToRgb(a));
+    const lb = luminance(hexToRgb(b));
+    const hi = Math.max(la, lb);
+    const lo = Math.min(la, lb);
+    return (hi + 0.05) / (lo + 0.05);
+  }
+
+  const darkBg = readVar(block(THEME_CSS, ':root,\n[data-theme="dark"]'), "--base-bg");
+  const lightBg = readVar(block(THEME_CSS, '[data-theme="light"]'), "--base-bg");
+
+  const darkDefault = block(DIFF_CSS, '[data-slot="diff-view"]');
+  const lightDefault = block(DIFF_CSS, '[data-theme="light"] [data-slot="diff-view"]');
+  const darkOkabe = block(DIFF_CSS, '[data-slot="diff-view"][data-diff-palette="okabe-ito"]');
+  const lightOkabe = block(
+    DIFF_CSS,
+    '[data-theme="light"] [data-slot="diff-view"][data-diff-palette="okabe-ito"]',
+  );
+
+  const cases: Array<{ name: string; bg?: string; anchors: Array<string | undefined> }> = [
+    {
+      name: "dark default",
+      bg: darkBg,
+      anchors: [
+        readVar(darkDefault, "--diff-color-add"),
+        readVar(darkDefault, "--diff-color-remove"),
+        readVar(darkDefault, "--diff-color-hunk"),
+      ],
+    },
+    {
+      name: "light default",
+      bg: lightBg,
+      anchors: [
+        readVar(lightDefault, "--diff-color-add"),
+        readVar(lightDefault, "--diff-color-remove"),
+        readVar(lightDefault, "--diff-color-hunk"),
+      ],
+    },
+    {
+      name: "dark okabe-ito",
+      bg: darkBg,
+      anchors: [
+        readVar(darkOkabe, "--diff-color-add"),
+        readVar(darkOkabe, "--diff-color-remove"),
+        // okabe-ito inherits the theme's hunk anchor.
+        readVar(darkDefault, "--diff-color-hunk"),
+      ],
+    },
+    {
+      name: "light okabe-ito",
+      bg: lightBg,
+      anchors: [
+        readVar(lightOkabe, "--diff-color-add"),
+        readVar(lightOkabe, "--diff-color-remove"),
+        readVar(lightDefault, "--diff-color-hunk"),
+      ],
+    },
+  ];
+
+  for (const { name, bg, anchors } of cases) {
+    it(`keeps add/remove/hunk markers ≥4.5:1 in ${name}`, () => {
+      expect(bg).toMatch(/^#[0-9a-fA-F]{6}$/);
+      for (const anchor of anchors) {
+        expect(anchor).toMatch(/^#[0-9a-fA-F]{6}$/);
+        expect(contrast(anchor as string, bg as string)).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  }
 });

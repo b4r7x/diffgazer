@@ -1,4 +1,5 @@
 import type { SecretsStorage } from "@diffgazer/core/schemas/config";
+import { Callout } from "@diffgazer/ui/components/callout";
 import {
   Dialog,
   DialogBody,
@@ -6,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@diffgazer/ui/components/dialog";
-import { useRef } from "react";
+import { useId, useRef } from "react";
 import { ApiKeyMethodSelector } from "@/components/shared/api-key-method-selector";
 import type { FocusElement } from "@/types/focus-element";
 import { ApiKeyFooter } from "./footer";
@@ -33,6 +34,7 @@ export function ApiKeyDialog({
   onSubmit,
 }: ApiKeyDialogProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const errorId = useId();
   const storageNote =
     secretsStorage === "keyring"
       ? `Keys are stored in your OS keychain. Context is only sent to ${providerName}.`
@@ -71,9 +73,9 @@ export function ApiKeyDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-xl overflow-hidden border border-tui-border shadow-2xl">
-        <DialogHeader marker="none" className="bg-tui-selection/50 px-4 py-3">
-          <DialogTitle className="min-w-0 flex-1 w-auto text-tui-blue tracking-wide">
+      <DialogContent className="max-w-xl overflow-hidden border border-border shadow-2xl">
+        <DialogHeader marker="none" className="bg-secondary/50 px-4 py-3">
+          <DialogTitle className="min-w-0 flex-1 w-auto text-info-text tracking-wide">
             {providerName} API Key
           </DialogTitle>
         </DialogHeader>
@@ -92,9 +94,17 @@ export function ApiKeyDialog({
             onKeySubmit={form.handleSubmit}
             onInputMethodKeyDown={handleMethodKeyDown}
             getMethodOptionProps={getMethodOptionProps}
+            invalid={form.error !== null}
+            errorId={errorId}
           />
 
-          <div className="text-xs text-muted-foreground border-t border-tui-border/40 pt-3 leading-relaxed">
+          {form.error && (
+            <Callout id={errorId} tone="error" live>
+              <Callout.Content>{form.error}</Callout.Content>
+            </Callout>
+          )}
+
+          <div className="text-xs text-muted-foreground border-t border-border/40 pt-3 leading-relaxed">
             Note: {storageNote}
           </div>
         </DialogBody>

@@ -3,12 +3,17 @@
 import { type ReactNode, useId } from "react";
 import { cn } from "@/lib/utils";
 
+/** Props for command palette group. */
 export interface CommandPaletteGroupProps {
+  /** Group heading rendered above the items. */
   heading: ReactNode;
+  /** Content rendered inside the component. */
   children: ReactNode;
+  /** Additional class names merged onto the rendered element. */
   className?: string;
 }
 
+/** Labeled group of items. */
 export function CommandPaletteGroup({ heading, children, className }: CommandPaletteGroupProps) {
   const headingId = useId();
   return (

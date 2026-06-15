@@ -1,8 +1,9 @@
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { makeIssue } from "@diffgazer/core/testing/factories";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Footer } from "@/components/layout/footer";
@@ -30,11 +31,10 @@ interface IssueOptions {
 const suggestedPatch =
   "--- a/src/example.ts\n+++ b/src/example.ts\n@@\n-const a = 1;\n+const a = 2;";
 
-function makeIssue(id: string, title: string, options: IssueOptions = {}): ReviewIssue {
-  return {
+function createReviewIssue(id: string, title: string, options: IssueOptions = {}): ReviewIssue {
+  return makeIssue({
     id,
     severity: options.severity ?? "high",
-    category: "correctness",
     title,
     file: "src/example.ts",
     line_start: 10,
@@ -63,7 +63,7 @@ function makeIssue(id: string, title: string, options: IssueOptions = {}): Revie
         timestamp: "2026-01-01T00:00:00.000Z",
       },
     ],
-  };
+  });
 }
 
 function FooterView() {
@@ -72,7 +72,10 @@ function FooterView() {
 }
 
 function renderView(
-  issues: ReviewIssue[] = [makeIssue("issue-1", "Issue one"), makeIssue("issue-2", "Issue two")],
+  issues: ReviewIssue[] = [
+    createReviewIssue("issue-1", "Issue one"),
+    createReviewIssue("issue-2", "Issue two"),
+  ],
 ) {
   return render(
     <KeyboardProvider>
@@ -85,6 +88,15 @@ function renderView(
 }
 
 describe("ReviewResultsView keyboard regression", () => {
+  it("auto-focuses the issue list zone on mount so aria-activedescendant is read", async () => {
+    renderView();
+
+    // Without focus.autoFocus the listbox never receives DOM focus on mount and a
+    // screen reader hears nothing while j/k move aria-activedescendant (F-351).
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
   it("navigates issue list with ArrowDown immediately in list view", async () => {
     const user = userEvent.setup();
     renderView();
@@ -100,9 +112,9 @@ describe("ReviewResultsView keyboard regression", () => {
   it("navigates issue list with j and k in visible order", async () => {
     const user = userEvent.setup();
     renderView([
-      makeIssue("issue-1", "Issue one"),
-      makeIssue("issue-2", "Issue two"),
-      makeIssue("issue-3", "Issue three"),
+      createReviewIssue("issue-1", "Issue one"),
+      createReviewIssue("issue-2", "Issue two"),
+      createReviewIssue("issue-3", "Issue three"),
     ]);
 
     const options = screen.getAllByRole("option");
@@ -140,8 +152,8 @@ describe("ReviewResultsView keyboard regression", () => {
   it("falls back to details when the selected issue has no patch tab", async () => {
     const user = userEvent.setup();
     renderView([
-      makeIssue("issue-1", "Issue one"),
-      makeIssue("issue-2", "Issue two", { suggestedPatch: null }),
+      createReviewIssue("issue-1", "Issue one"),
+      createReviewIssue("issue-2", "Issue two", { suggestedPatch: null }),
     ]);
 
     await user.keyboard("{ArrowRight}");
@@ -161,13 +173,13 @@ describe("ReviewResultsView keyboard regression", () => {
   it("keeps completed fix-plan steps scoped to the selected issue", async () => {
     const user = userEvent.setup();
     renderView([
-      makeIssue("issue-1", "Issue one", {
+      createReviewIssue("issue-1", "Issue one", {
         fixPlan: [
           { step: 1, action: "Inspect issue one" },
           { step: 2, action: "Patch issue one" },
         ],
       }),
-      makeIssue("issue-2", "Issue two", {
+      createReviewIssue("issue-2", "Issue two", {
         fixPlan: [
           { step: 1, action: "Inspect issue two" },
           { step: 2, action: "Patch issue two" },
@@ -182,11 +194,78 @@ describe("ReviewResultsView keyboard regression", () => {
     expect(firstIssuePatchStep).toBeChecked();
 
     await user.click(screen.getByRole("option", { name: /issue two/i }));
-    expect(screen.getByRole("checkbox", { name: "Inspect issue two" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Inspect issue two" })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Patch issue two" })).not.toBeChecked();
 
     await user.click(screen.getByRole("option", { name: /issue one/i }));
     expect(screen.getByRole("checkbox", { name: "Patch issue one" })).toBeChecked();
+  });
+
+  it("toggles fix-plan steps keyboard-only from the details zone", async () => {
+    const user = userEvent.setup();
+    renderView([
+      createReviewIssue("issue-1", "Issue one", {
+        fixPlan: [
+          { step: 1, action: "Inspect issue one" },
+          { step: 2, action: "Patch issue one" },
+        ],
+      }),
+    ]);
+
+    // Move focus into the details zone (default tab is "details", which renders
+    // the fix plan).
+    screen.getByRole("listbox").focus();
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
+    );
+
+    const firstStep = screen.getByRole("checkbox", { name: "Inspect issue one" });
+    const secondStep = screen.getByRole("checkbox", { name: "Patch issue one" });
+    expect(firstStep).not.toBeChecked();
+
+    // Space toggles the focused (first) step without any pointer interaction.
+    await user.keyboard(" ");
+    expect(firstStep).toBeChecked();
+
+    // j moves the focused step down; Space toggles the second step.
+    await user.keyboard("j ");
+    expect(secondStep).toBeChecked();
+
+    // k moves back up; Space untoggles the first step.
+    await user.keyboard("k ");
+    expect(firstStep).not.toBeChecked();
+  });
+
+  it("does not swallow Tab while focus is outside the review zones", async () => {
+    render(
+      <KeyboardProvider>
+        <FooterProvider>
+          <a href="#main">Skip to content</a>
+          <ReviewResultsView
+            issues={[createReviewIssue("issue-1", "Issue one")]}
+            reviewId="review-1"
+          />
+          <FooterView />
+        </FooterProvider>
+      </KeyboardProvider>,
+    );
+
+    // Wait for the screen to mount so the focus-zone containers are registered.
+    await waitFor(() => expect(screen.getByRole("listbox")).toBeInTheDocument());
+
+    const skipLink = screen.getByRole("link", { name: "Skip to content" });
+    skipLink.focus();
+    expect(skipLink).toHaveFocus();
+
+    // fireEvent retained: low-level Tab dispatch asserts the global key handler's preventDefault contract.
+    const prevented = !fireEvent.keyDown(window, { key: "Tab", code: "Tab" });
+    expect(prevented).toBe(false);
+
+    screen.getByRole("listbox").focus();
+    // fireEvent retained: low-level Tab dispatch asserts the scoped cycle prevents native tabbing inside a focus zone.
+    const preventedInside = !fireEvent.keyDown(window, { key: "Tab", code: "Tab" });
+    expect(preventedInside).toBe(true);
   });
 
   it("renders footer hints for the active results zone", async () => {
@@ -289,13 +368,13 @@ describe("ReviewResultsView keyboard regression", () => {
 
     expect(screen.getByText("No issues found")).toBeInTheDocument();
     expect(screen.getByText("No issues in this review")).toBeInTheDocument();
-    expect(screen.getByText("This analysis passed without findings.")).toBeInTheDocument();
+    expect(screen.getByText("This analysis passed without issues.")).toBeInTheDocument();
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
   });
 
   it("distinguishes filtered-out issues from passed reviews", async () => {
     const user = userEvent.setup();
-    renderView([makeIssue("issue-1", "High issue", { severity: "high" })]);
+    renderView([createReviewIssue("issue-1", "High issue", { severity: "high" })]);
 
     await user.click(screen.getByRole("button", { name: /low severity/i }));
 
@@ -308,16 +387,21 @@ describe("ReviewResultsView keyboard regression", () => {
   it("toggles multiple severity filters and clears them via [Reset]", async () => {
     const user = userEvent.setup();
     renderView([
-      makeIssue("issue-1", "High issue", { severity: "high" }),
-      makeIssue("issue-2", "Medium issue", { severity: "medium" }),
-      makeIssue("issue-3", "Low issue", { severity: "low" }),
+      createReviewIssue("issue-1", "High issue", { severity: "high" }),
+      createReviewIssue("issue-2", "Medium issue", { severity: "medium" }),
+      createReviewIssue("issue-3", "Low issue", { severity: "low" }),
     ]);
 
     const high = screen.getByRole("button", { name: /high severity/i });
     const medium = screen.getByRole("button", { name: /med severity/i });
 
+    // The accessible name carries only severity + count; toggle state lives in
+    // aria-pressed, never duplicated as a "selected"/"not selected" suffix (F-287).
+    expect(high.getAttribute("aria-label")).not.toMatch(/selected/i);
+
     await user.click(high);
     expect(high).toHaveAttribute("aria-pressed", "true");
+    expect(high.getAttribute("aria-label")).not.toMatch(/selected/i);
     await user.click(medium);
     expect(medium).toHaveAttribute("aria-pressed", "true");
     expect(high).toHaveAttribute("aria-pressed", "true");
@@ -330,11 +414,16 @@ describe("ReviewResultsView keyboard regression", () => {
     expect(high).toHaveAttribute("aria-pressed", "false");
     expect(medium).toHaveAttribute("aria-pressed", "false");
     expect(screen.getAllByRole("option")).toHaveLength(3);
+
+    const lastSeverityChip = screen.getByRole("button", { name: /nit severity/i });
+    const filterGroup = screen.getByRole("group", { name: "Severity filter" });
+    await waitFor(() => expect(lastSeverityChip).toHaveFocus());
+    expect(filterGroup).toContainElement(document.activeElement as HTMLElement | null);
   });
 
   it("reaches Reset via ArrowRight from the last severity when filter is active", async () => {
     const user = userEvent.setup();
-    renderView([makeIssue("issue-1", "High issue", { severity: "high" })]);
+    renderView([createReviewIssue("issue-1", "High issue", { severity: "high" })]);
 
     await user.keyboard("{ArrowUp}");
     const filterGroup = screen.getByRole("group", { name: "Severity filter" });
@@ -361,8 +450,8 @@ describe("ReviewResultsView keyboard regression", () => {
   it("activates reset via 'r' shortcut when a severity filter is active", async () => {
     const user = userEvent.setup();
     renderView([
-      makeIssue("issue-1", "High issue", { severity: "high" }),
-      makeIssue("issue-2", "Low issue", { severity: "low" }),
+      createReviewIssue("issue-1", "High issue", { severity: "high" }),
+      createReviewIssue("issue-2", "Low issue", { severity: "low" }),
     ]);
 
     await user.click(screen.getByRole("button", { name: /high severity/i }));

@@ -1,6 +1,7 @@
-import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api";
+import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api/protocol";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// Boundary mock: paths resolve OS/env project roots; tests pin request-header handling without depending on the host cwd.
 vi.mock("../paths.js", () => ({
   isPackaged: () => process.env.DIFFGAZER_PACKAGED === "1",
   resolveProjectRoot: vi.fn(

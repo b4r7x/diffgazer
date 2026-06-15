@@ -2,28 +2,42 @@ import { Button } from "@diffgazer/ui/components/button";
 import { Panel, PanelContent, PanelHeader } from "@diffgazer/ui/components/panel";
 import { orderThemeDocsPrimitives, THEME_DOCS_PLAYGROUND_ORDER } from "@diffgazer/ui/theme";
 import { useState } from "react";
+import { type DocsTheme, useTheme } from "@/hooks/theme-context";
 import { ColorPickerRow } from "./color-picker-row";
 import { CssOutput } from "./css-output";
 import { PreviewPanel } from "./preview-panel";
 
-const DEFAULT_PRIMITIVES: Record<string, string> = Object.fromEntries(
-  orderThemeDocsPrimitives(THEME_DOCS_PLAYGROUND_ORDER).map((primitive) => [
-    primitive.name,
-    primitive.darkValue,
-  ]),
-);
+function buildDefaultPrimitives(theme: DocsTheme): Record<string, string> {
+  return Object.fromEntries(
+    orderThemeDocsPrimitives(THEME_DOCS_PLAYGROUND_ORDER).map((primitive) => [
+      primitive.name,
+      theme === "light" ? primitive.lightValue : primitive.darkValue,
+    ]),
+  );
+}
 
 export function ThemePlayground() {
-  const [primitives, setPrimitives] = useState<Record<string, string>>(() => ({
-    ...DEFAULT_PRIMITIVES,
-  }));
+  const { theme } = useTheme();
+  const [primitives, setPrimitives] = useState<Record<string, string>>(() =>
+    buildDefaultPrimitives(theme),
+  );
+  const [editedTheme, setEditedTheme] = useState<DocsTheme>(theme);
+
+  const defaults = buildDefaultPrimitives(theme);
+
+  // Reset the edited primitives to the new theme's defaults when the site theme
+  // switches, so the playground always edits the palette it previews.
+  if (editedTheme !== theme) {
+    setEditedTheme(theme);
+    setPrimitives(defaults);
+  }
 
   const handleChange = (key: string, value: string) => {
     setPrimitives((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleReset = () => {
-    setPrimitives({ ...DEFAULT_PRIMITIVES });
+    setPrimitives(defaults);
   };
 
   const scopedStyle = primitives as React.CSSProperties;
@@ -53,7 +67,7 @@ export function ThemePlayground() {
         <Panel>
           <PanelHeader>Preview</PanelHeader>
           <PanelContent spacing="none">
-            <div style={scopedStyle}>
+            <div data-theme={theme} style={scopedStyle}>
               <PreviewPanel />
             </div>
           </PanelContent>
@@ -63,7 +77,7 @@ export function ThemePlayground() {
       <Panel>
         <PanelHeader>Generated CSS</PanelHeader>
         <PanelContent spacing="none">
-          <CssOutput primitives={primitives} defaults={DEFAULT_PRIMITIVES} />
+          <CssOutput primitives={primitives} defaults={defaults} />
         </PanelContent>
       </Panel>
     </div>

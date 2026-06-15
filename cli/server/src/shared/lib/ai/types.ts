@@ -15,17 +15,6 @@ export type AIErrorCode =
 
 export type AIError = AppError<AIErrorCode>;
 
-export interface StreamMetadata {
-  truncated: boolean;
-  finishReason?: string;
-}
-
-export interface StreamCallbacks {
-  onChunk: (chunk: string) => void | Promise<void>;
-  onComplete: (fullContent: string, metadata: StreamMetadata) => void | Promise<void>;
-  onError: (error: Error) => void | Promise<void>;
-}
-
 export interface AIClientConfig {
   apiKey: string;
   provider: AIProvider;
@@ -34,6 +23,10 @@ export interface AIClientConfig {
   maxTokens?: number;
   maxRetries?: number;
   timeoutMs?: number;
+  /** The selected model's documented output-token limit, when known from the catalog. */
+  outputLimit?: number;
+  /** The selected model's documented context-window limit, when known from the catalog. */
+  contextLimit?: number;
 }
 
 export interface AIClient {
@@ -43,9 +36,4 @@ export interface AIClient {
     schema: T,
     options?: { signal?: AbortSignal },
   ): Promise<Result<z.infer<T>, AIError>>;
-  generateStream(
-    prompt: string,
-    callbacks: StreamCallbacks,
-    options?: { signal?: AbortSignal },
-  ): Promise<void>;
 }

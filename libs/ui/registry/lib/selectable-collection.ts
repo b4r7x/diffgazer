@@ -2,10 +2,15 @@
 
 import { type RefObject, useCallback, useLayoutEffect, useState } from "react";
 
+/** Registered item data for a selectable collection that needs DOM-order navigation. */
 export interface SelectableCollectionItem {
+  /** Stable registration id for the rendered item. */
   id: string;
+  /** Public value emitted by the collection. */
   value: string;
+  /** Whether the item is disabled for selection. */
   disabled: boolean;
+  /** Mounted DOM element used for document-order sorting. */
   element: HTMLElement | null;
 }
 
@@ -36,10 +41,12 @@ function areSelectableItemsEqual(a: SelectableCollectionItem[], b: SelectableCol
   );
 }
 
+/** Sorts registered items by their current DOM order. */
 export function sortSelectableCollectionItems<T extends SelectableCollectionItem>(items: T[]) {
   return [...items].sort(compareSelectableItems);
 }
 
+/** Returns enabled mounted items in DOM order, or an empty array when the collection is disabled. */
 export function getEnabledSelectableCollectionItems(
   items: SelectableCollectionItem[],
   disabled: boolean,
@@ -50,6 +57,7 @@ export function getEnabledSelectableCollectionItems(
   );
 }
 
+/** Finds the enabled item for a public value. */
 export function getSelectableCollectionItemByValue(
   items: SelectableCollectionItem[],
   value: string | null | undefined,
@@ -58,6 +66,7 @@ export function getSelectableCollectionItemByValue(
   return items.find((item) => item.value === value && !item.disabled) ?? null;
 }
 
+/** Resolves a value only when it belongs to an enabled registered item. */
 export function getSelectableCollectionItemValue(
   items: SelectableCollectionItem[],
   value: string | null | undefined,
@@ -65,6 +74,7 @@ export function getSelectableCollectionItemValue(
   return getSelectableCollectionItemByValue(items, value)?.value ?? null;
 }
 
+/** Resolves the first enabled registered item from preferred values, then falls back to the first enabled item. */
 export function resolveSelectableCollectionItem(
   items: SelectableCollectionItem[],
   ...values: Array<string | null | undefined>
@@ -81,6 +91,7 @@ export function resolveSelectableCollectionItem(
   return enabledItems[0] ?? null;
 }
 
+/** Resolves the public value for the first enabled registered item from preferred values. */
 export function resolveSelectableCollectionItemValue(
   items: SelectableCollectionItem[],
   ...values: Array<string | null | undefined>
@@ -88,6 +99,7 @@ export function resolveSelectableCollectionItemValue(
   return resolveSelectableCollectionItem(items, ...values)?.value ?? null;
 }
 
+/** Tracks registered selectable items and keeps them sorted by DOM order. */
 export function useSelectableCollection(containerRef: RefObject<HTMLElement | null>) {
   const [items, setItems] = useState<SelectableCollectionItem[]>([]);
 

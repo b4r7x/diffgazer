@@ -1,3 +1,4 @@
+import type { InputMethod } from "@diffgazer/core/onboarding";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { AVAILABLE_PROVIDERS, PROVIDER_ENV_VARS } from "@diffgazer/core/schemas/config";
 import { Box, Text } from "ink";
@@ -7,15 +8,13 @@ import { useTheme } from "../../../../theme/provider";
 
 interface ApiKeyStepProps {
   provider: AIProvider;
-  method: string;
-  onMethodChange: (m: string) => void;
+  method: InputMethod;
+  onMethodChange: (m: InputMethod) => void;
   apiKey: string;
   onApiKeyChange: (v: string) => void;
   isActive?: boolean;
-}
-
-function isPasteOrEnv(method: string): method is "paste" | "env" {
-  return method === "paste" || method === "env";
+  inputFocused?: boolean;
+  onInputFocusedChange?: (focused: boolean) => void;
 }
 
 export function ApiKeyStep({
@@ -25,24 +24,27 @@ export function ApiKeyStep({
   apiKey,
   onApiKeyChange,
   isActive = true,
+  inputFocused,
+  onInputFocusedChange,
 }: ApiKeyStepProps): ReactElement {
   const { tokens } = useTheme();
   const providerInfo = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
   const providerName = providerInfo?.name ?? provider;
   const envVarName = PROVIDER_ENV_VARS[provider];
-  const resolvedMethod = isPasteOrEnv(method) ? method : "paste";
 
   return (
     <Box flexDirection="column" gap={1}>
       <Text color={tokens.muted}>Provide your API key for {providerName}.</Text>
       <ApiKeyMethodSelector
-        method={resolvedMethod}
+        method={method}
         onMethodChange={onMethodChange}
         apiKey={apiKey}
         onApiKeyChange={onApiKeyChange}
         envVar={envVarName}
         onEnvVarChange={() => {}}
         isActive={isActive}
+        inputFocused={inputFocused}
+        onInputFocusedChange={onInputFocusedChange}
       />
     </Box>
   );

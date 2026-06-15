@@ -20,6 +20,34 @@ interface ModelListProps {
   ref?: React.Ref<HTMLDivElement>;
 }
 
+function StatusMessage({
+  isSaving,
+  isLoading,
+  emptyLabel,
+}: {
+  isSaving: boolean;
+  isLoading: boolean;
+  emptyLabel?: string;
+}) {
+  if (isSaving) {
+    return (
+      <>
+        <Spinner size="sm" aria-hidden="true" />
+        <EmptyState.Message>Saving...</EmptyState.Message>
+      </>
+    );
+  }
+  if (isLoading) {
+    return (
+      <>
+        <Spinner size="sm" aria-hidden="true" />
+        <EmptyState.Message>Loading models...</EmptyState.Message>
+      </>
+    );
+  }
+  return <EmptyState.Message>{emptyLabel ?? "No models match your search"}</EmptyState.Message>;
+}
+
 export function ModelList({
   models,
   focusedModelId,
@@ -29,69 +57,43 @@ export function ModelList({
   onConfirm,
   onHighlightChange,
   onBoundaryReached,
-  isLoading,
+  isLoading = false,
   isSaving = false,
   emptyLabel,
   ref,
 }: ModelListProps) {
-  if (isSaving) {
-    return (
-      <div
-        ref={ref}
-        role="radiogroup"
-        aria-label="Available models"
-        className="px-4 py-3 max-h-[50vh] overflow-y-auto scrollbar-thin"
-      >
-        <EmptyState size="sm" live>
-          <Spinner size="sm" aria-hidden="true" />
-          <EmptyState.Message>Saving...</EmptyState.Message>
-        </EmptyState>
-      </div>
-    );
-  }
-
-  if (models.length === 0) {
-    return (
-      <div
-        ref={ref}
-        role="radiogroup"
-        aria-label="Available models"
-        className="px-4 py-3 max-h-[50vh] overflow-y-auto scrollbar-thin"
-      >
-        <EmptyState size="sm" live>
-          {isLoading ? (
-            <>
-              <Spinner size="sm" aria-hidden="true" />
-              <EmptyState.Message>Loading models...</EmptyState.Message>
-            </>
-          ) : (
-            <EmptyState.Message>{emptyLabel ?? "No models match your search"}</EmptyState.Message>
-          )}
-        </EmptyState>
-      </div>
-    );
-  }
+  const showList = !isSaving && models.length > 0;
 
   return (
-    <RadioGroup
-      ref={ref}
-      aria-label="Available models"
-      value={currentModelId}
-      highlighted={isFocused ? focusedModelId : null}
-      onChange={onSelect}
-      onHighlightChange={onHighlightChange}
-      onEnter={onConfirm}
-      onNavigationBoundaryReached={(direction, event) => {
-        if (getVerticalArrowDirection(event.key) !== null) onBoundaryReached(direction);
-      }}
-      activationMode="manual"
-      autoFocus={isFocused}
-      wrap={false}
-      className="min-h-0 px-4 py-3 space-y-1 max-h-[50vh] overflow-y-auto scrollbar-thin"
-    >
-      {models.map((model) => (
-        <ModelListItem key={model.id} model={model} onDoubleClick={() => onConfirm(model.id)} />
-      ))}
-    </RadioGroup>
+    <div ref={ref} className="px-4 py-3 max-h-[50vh] overflow-y-auto scrollbar-thin">
+      {showList ? (
+        <RadioGroup
+          aria-label="Available models"
+          value={currentModelId}
+          highlighted={isFocused ? focusedModelId : null}
+          onChange={onSelect}
+          onHighlightChange={onHighlightChange}
+          onEnter={onConfirm}
+          onNavigationBoundaryReached={(direction, event) => {
+            if (getVerticalArrowDirection(event.key) !== null) onBoundaryReached(direction);
+          }}
+          activationMode="manual"
+          autoFocus={isFocused}
+          wrap={false}
+          className="min-h-0 space-y-1"
+        >
+          {models.map((model) => (
+            <ModelListItem key={model.id} model={model} onDoubleClick={() => onConfirm(model.id)} />
+          ))}
+        </RadioGroup>
+      ) : null}
+      {/* Live region stays mounted across the results→empty transition so the
+          empty/loading/saving message is announced; empty while results exist. */}
+      <EmptyState size="sm" live>
+        {showList ? null : (
+          <StatusMessage isSaving={isSaving} isLoading={isLoading} emptyLabel={emptyLabel} />
+        )}
+      </EmptyState>
+    </div>
   );
 }

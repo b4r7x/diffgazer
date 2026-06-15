@@ -21,22 +21,26 @@ export function docsDataRebuild(): Plugin {
     const start = Date.now();
     server.config.logger.info("[docs-data] Rebuilding...", { timestamp: true });
 
-    exec("pnpm prepare:generated", { cwd: APP_ROOT }, (error, _stdout, stderr) => {
-      rebuilding = false;
-      if (error) {
-        server.config.logger.error(`[docs-data] Build failed: ${stderr}`);
-      } else {
-        const elapsed = Date.now() - start;
-        server.config.logger.info(`[docs-data] Rebuilt in ${elapsed}ms`, {
-          timestamp: true,
-        });
-        server.ws.send({ type: "full-reload" });
-      }
-      if (pendingRebuild) {
-        pendingRebuild = false;
-        runBuild();
-      }
-    });
+    exec(
+      "pnpm prepare:generated",
+      { cwd: APP_ROOT, env: { ...process.env, DIFFGAZER_SKIP_ARTIFACT_PREPARE: "1" } },
+      (error, _stdout, stderr) => {
+        rebuilding = false;
+        if (error) {
+          server.config.logger.error(`[docs-data] Build failed: ${stderr}`);
+        } else {
+          const elapsed = Date.now() - start;
+          server.config.logger.info(`[docs-data] Rebuilt in ${elapsed}ms`, {
+            timestamp: true,
+          });
+          server.ws.send({ type: "full-reload" });
+        }
+        if (pendingRebuild) {
+          pendingRebuild = false;
+          runBuild();
+        }
+      },
+    );
   }
 
   return {
@@ -62,6 +66,7 @@ export function docsDataRebuild(): Plugin {
       server.watcher.on("all", (event, filePath) => {
         const isWatched = watchPaths.some((dir) => filePath.startsWith(dir));
         if (!isWatched) return;
+        if (rebuilding) return;
         if (!["add", "change", "unlink"].includes(event)) return;
 
         if (timer) clearTimeout(timer);

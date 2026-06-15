@@ -3,7 +3,7 @@
   "title": "useFocusTrap",
   "description": "Trap Tab/Shift+Tab focus within a container element. Auto-focuses first focusable element on mount, restores focus on unmount.",
   "source": {
-    "raw": "\"use client\";\n\nimport { type RefObject, useEffect, useRef } from \"react\";\nimport { getOwnerView, isNode } from \"../dom/element-guards.js\";\nimport { restoreFocus as restoreFocusTarget } from \"../dom/focus-restore.js\";\nimport { getFocusableElements, getTabbableElements, isFocusable } from \"../dom/focusable.js\";\nimport { useFocusRestore } from \"./use-focus-restore.js\";\n\nexport interface UseFocusTrapOptions {\n  initialFocus?: RefObject<HTMLElement | null>;\n  restoreFocus?: boolean;\n  enabled?: boolean;\n}\n\ninterface TrapEntry {\n  container: HTMLElement;\n  ownerDocument: Document;\n  initialFocus: RefObject<HTMLElement | null> | undefined;\n  lastFocused: HTMLElement;\n  handleKeyDown: (event: KeyboardEvent) => void;\n  handleFocusIn: (event: FocusEvent) => void;\n  observer: MutationObserver;\n  suspended: boolean;\n}\n\ninterface ActiveTrap {\n  container: HTMLElement;\n  restoreFocus: boolean;\n  release: () => void;\n}\n\n// Per-document trap stacks: only the top (last) entry in each document captures focus.\n// When a new trap activates, the previous top is suspended (listeners removed).\n// When the top trap releases, the next-in-stack is re-armed (listeners re-attached).\nconst trapStacks = new WeakMap<Document, TrapEntry[]>();\n\nfunction getTrapStack(ownerDocument: Document): TrapEntry[] {\n  let stack = trapStacks.get(ownerDocument);\n  if (!stack) {\n    stack = [];\n    trapStacks.set(ownerDocument, stack);\n  }\n  return stack;\n}\n\nfunction suspendEntry(entry: TrapEntry): void {\n  if (entry.suspended) return;\n  entry.ownerDocument.removeEventListener(\"keydown\", entry.handleKeyDown, true);\n  entry.ownerDocument.removeEventListener(\"focusin\", entry.handleFocusIn, true);\n  entry.observer.disconnect();\n  entry.suspended = true;\n}\n\nfunction resumeEntry(entry: TrapEntry): void {\n  if (!entry.suspended) return;\n  entry.ownerDocument.addEventListener(\"keydown\", entry.handleKeyDown, true);\n  entry.ownerDocument.addEventListener(\"focusin\", entry.handleFocusIn, true);\n  entry.observer.observe(entry.container, {\n    childList: true,\n    subtree: true,\n    attributes: true,\n    attributeFilter: [\"disabled\", \"hidden\", \"tabindex\", \"aria-hidden\", \"inert\"],\n  });\n  entry.suspended = false;\n  // Recapture focus into the resumed trap's container\n  const target =\n    entry.container.contains(entry.lastFocused) &&\n    entry.lastFocused.isConnected &&\n    isFocusable(entry.lastFocused)\n      ? entry.lastFocused\n      : pickInitialTarget(entry.container, entry.initialFocus);\n  target.focus();\n}\n\nfunction pushTrap(entry: TrapEntry): void {\n  const stack = getTrapStack(entry.ownerDocument);\n  const prev = stack.at(-1);\n  if (prev) suspendEntry(prev);\n  stack.push(entry);\n}\n\nfunction removeTrap(entry: TrapEntry): void {\n  const stack = getTrapStack(entry.ownerDocument);\n  const index = stack.indexOf(entry);\n  if (index < 0) return;\n  const wasTop = index === stack.length - 1;\n  stack.splice(index, 1);\n  if (wasTop) {\n    const newTop = stack.at(-1);\n    if (newTop) resumeEntry(newTop);\n  }\n}\n\nfunction pickInitialTarget(\n  container: HTMLElement,\n  initialFocus: RefObject<HTMLElement | null> | undefined,\n): HTMLElement {\n  const requested = initialFocus?.current;\n  if (requested && container.contains(requested) && isFocusable(requested)) return requested;\n  return getFocusableElements(container)[0] ?? container;\n}\n\nfunction isInsideContainer(\n  container: HTMLElement,\n  target: EventTarget | null,\n): target is HTMLElement {\n  const View = getOwnerView(container);\n  return isNode(target, View) && container.contains(target);\n}\n\n// Effect-on-every-render is intentional: React does not re-fire effects when\n// containerRef.current mutates while the ref object stays stable.\nexport function useFocusTrap(\n  containerRef: RefObject<HTMLElement | null>,\n  options: UseFocusTrapOptions = {},\n): void {\n  const { initialFocus, restoreFocus = true, enabled = true } = options;\n  const activeTrapRef = useRef<ActiveTrap | null>(null);\n  const trapEntryRef = useRef<TrapEntry | null>(null);\n  // useFocusRestore manages the focus-restore stack so nested overlays\n  // restore correctly. Restoration itself happens in this hook's release()\n  // so listeners are detached BEFORE focus moves out of the container --\n  // otherwise the document-level focusin recapture re-traps the restored\n  // target. `restoreOnUnmount: false` prevents the stack hook from moving\n  // focus during its own unmount cleanup.\n  const { capture } = useFocusRestore({\n    enabled: restoreFocus,\n    restoreOnUnmount: false,\n  });\n\n  // No dependency array on purpose; see hook-level comment above.\n  // eslint-disable-next-line react-hooks/exhaustive-deps\n  useEffect(() => {\n    const nextContainer = enabled ? containerRef.current : null;\n    if (\n      activeTrapRef.current?.container === nextContainer &&\n      activeTrapRef.current.restoreFocus === restoreFocus\n    ) {\n      return;\n    }\n\n    activeTrapRef.current?.release();\n    activeTrapRef.current = null;\n\n    if (!nextContainer) return;\n    const container = nextContainer;\n    const ownerDocument = container.ownerDocument;\n    const restoreTarget = capture(ownerDocument);\n\n    const hadTabIndex = container.hasAttribute(\"tabindex\");\n    const originalTabIndex = container.getAttribute(\"tabindex\");\n    if (!hadTabIndex) container.setAttribute(\"tabindex\", \"-1\");\n\n    // lastFocused is set after initial focus below\n    let lastFocused: HTMLElement = container;\n\n    const recapture = () => {\n      const target =\n        container.contains(lastFocused) && lastFocused.isConnected && isFocusable(lastFocused)\n          ? lastFocused\n          : pickInitialTarget(container, initialFocus);\n      target.focus();\n    };\n\n    const handleFocusIn = (event: FocusEvent) => {\n      const target = event.target;\n      if (isInsideContainer(container, target)) {\n        lastFocused = target;\n        // Keep the stack entry in sync so resume() can use it\n        if (trapEntryRef.current) trapEntryRef.current.lastFocused = target;\n        return;\n      }\n      recapture();\n    };\n\n    const handleKeyDown = (event: KeyboardEvent) => {\n      if (event.key !== \"Tab\") return;\n\n      const focusableEls = getTabbableElements(container);\n      if (focusableEls.length === 0) {\n        event.preventDefault();\n        if (ownerDocument.activeElement !== container) container.focus();\n        return;\n      }\n\n      const first = focusableEls[0];\n      const last = focusableEls[focusableEls.length - 1];\n      const activeElement = ownerDocument.activeElement;\n\n      if (!isInsideContainer(container, activeElement)) {\n        event.preventDefault();\n        (event.shiftKey ? last : first)?.focus();\n        return;\n      }\n\n      if (!focusableEls.includes(activeElement as HTMLElement)) {\n        event.preventDefault();\n        (event.shiftKey ? last : first)?.focus();\n        return;\n      }\n\n      if (event.shiftKey) {\n        if (activeElement === first) {\n          event.preventDefault();\n          last?.focus();\n        }\n      } else {\n        if (activeElement === last) {\n          event.preventDefault();\n          first?.focus();\n        }\n      }\n    };\n\n    const observer = new MutationObserver(() => {\n      if (lastFocused.isConnected && container.contains(lastFocused) && isFocusable(lastFocused))\n        return;\n      recapture();\n    });\n\n    // Build the stack entry and push it BEFORE attaching listeners or\n    // focusing. pushTrap suspends the previous top trap so its focusin\n    // handler does not recapture focus away from this new trap.\n    const entry: TrapEntry = {\n      container,\n      ownerDocument,\n      initialFocus,\n      lastFocused,\n      handleKeyDown,\n      handleFocusIn,\n      observer,\n      suspended: false,\n    };\n    trapEntryRef.current = entry;\n    pushTrap(entry);\n\n    // Attach listeners and focus now that the outer trap is suspended\n    ownerDocument.addEventListener(\"keydown\", handleKeyDown, true);\n    ownerDocument.addEventListener(\"focusin\", handleFocusIn, true);\n    observer.observe(container, {\n      childList: true,\n      subtree: true,\n      attributes: true,\n      attributeFilter: [\"disabled\", \"hidden\", \"tabindex\", \"aria-hidden\", \"inert\"],\n    });\n\n    const initialTarget = pickInitialTarget(container, initialFocus);\n    initialTarget.focus();\n    lastFocused = container.contains(ownerDocument.activeElement)\n      ? (ownerDocument.activeElement as HTMLElement)\n      : initialTarget;\n    entry.lastFocused = lastFocused;\n\n    activeTrapRef.current = {\n      container,\n      restoreFocus,\n      release: () => {\n        // Detach own listeners BEFORE removing from the stack. removeTrap\n        // calls resumeEntry on the outer trap which focuses into the outer\n        // container — if our focusin listener is still attached, it would\n        // see that focus escaped and recapture, fighting the outer trap.\n        ownerDocument.removeEventListener(\"keydown\", handleKeyDown, true);\n        ownerDocument.removeEventListener(\"focusin\", handleFocusIn, true);\n        observer.disconnect();\n\n        // Remove from stack. This re-arms the outer trap (if any) which\n        // recaptures focus into its container.\n        removeTrap(entry);\n        trapEntryRef.current = null;\n\n        if (!hadTabIndex) {\n          container.removeAttribute(\"tabindex\");\n        } else if (originalTabIndex !== null) {\n          container.setAttribute(\"tabindex\", originalTabIndex);\n        }\n\n        // Only restore focus to pre-trap target if there is no outer trap\n        // waiting. When an outer trap exists, resumeEntry() already moved\n        // focus back into the outer container.\n        if (restoreFocus && getTrapStack(ownerDocument).length === 0) {\n          restoreFocusTarget(restoreTarget);\n        }\n      },\n    };\n  });\n\n  useEffect(() => {\n    return () => {\n      const activeTrap = activeTrapRef.current;\n      if (!activeTrap) return;\n      activeTrapRef.current = null;\n      activeTrap.release();\n    };\n  }, []);\n}\n",
+    "raw": "\"use client\";\n\nimport { type RefObject, useEffect, useRef } from \"react\";\nimport { getOwnerView, isNode } from \"../dom/element-guards.js\";\nimport { restoreFocus as restoreFocusTarget } from \"../dom/focus-restore.js\";\nimport { getFocusableElements, getTabbableElements, isFocusable } from \"../dom/focusable.js\";\nimport { useFocusRestore } from \"./use-focus-restore.js\";\n\n/** Options for trapping Tab focus inside a container. */\nexport interface UseFocusTrapOptions {\n  /** Element that receives focus when the trap activates. */\n  initialFocus?: RefObject<HTMLElement | null>;\n  /** Restore focus to the previously focused element when the trap releases. */\n  restoreFocus?: boolean;\n  /** Whether the focus trap is active. */\n  enabled?: boolean;\n}\n\ninterface TrapEntry {\n  container: HTMLElement;\n  ownerDocument: Document;\n  initialFocus: RefObject<HTMLElement | null> | undefined;\n  lastFocused: HTMLElement;\n  handleKeyDown: (event: KeyboardEvent) => void;\n  handleFocusIn: (event: FocusEvent) => void;\n  observer: MutationObserver;\n  suspended: boolean;\n}\n\ninterface ActiveTrap {\n  container: HTMLElement;\n  restoreFocus: boolean;\n  release: () => void;\n}\n\n// Per-document trap stacks: only the top (last) entry in each document captures focus.\n// When a new trap activates, the previous top is suspended (listeners removed).\n// When the top trap releases, the next-in-stack is re-armed (listeners re-attached).\nconst trapStacks = new WeakMap<Document, TrapEntry[]>();\n\nfunction getTrapStack(ownerDocument: Document): TrapEntry[] {\n  let stack = trapStacks.get(ownerDocument);\n  if (!stack) {\n    stack = [];\n    trapStacks.set(ownerDocument, stack);\n  }\n  return stack;\n}\n\nfunction suspendEntry(entry: TrapEntry): void {\n  if (entry.suspended) return;\n  entry.ownerDocument.removeEventListener(\"keydown\", entry.handleKeyDown, true);\n  entry.ownerDocument.removeEventListener(\"focusin\", entry.handleFocusIn, true);\n  entry.observer.disconnect();\n  entry.suspended = true;\n}\n\nfunction resumeEntry(entry: TrapEntry): void {\n  if (!entry.suspended) return;\n  entry.ownerDocument.addEventListener(\"keydown\", entry.handleKeyDown, true);\n  entry.ownerDocument.addEventListener(\"focusin\", entry.handleFocusIn, true);\n  entry.observer.observe(entry.container, {\n    childList: true,\n    subtree: true,\n    attributes: true,\n    attributeFilter: [\"disabled\", \"hidden\", \"tabindex\", \"aria-hidden\", \"inert\"],\n  });\n  entry.suspended = false;\n  // Recapture focus into the resumed trap's container\n  const target =\n    entry.container.contains(entry.lastFocused) &&\n    entry.lastFocused.isConnected &&\n    isFocusable(entry.lastFocused)\n      ? entry.lastFocused\n      : pickInitialTarget(entry.container, entry.initialFocus);\n  target.focus();\n}\n\nfunction pushTrap(entry: TrapEntry): void {\n  const stack = getTrapStack(entry.ownerDocument);\n  const prev = stack.at(-1);\n  if (prev) suspendEntry(prev);\n  stack.push(entry);\n}\n\nfunction removeTrap(entry: TrapEntry): void {\n  const stack = getTrapStack(entry.ownerDocument);\n  const index = stack.indexOf(entry);\n  if (index < 0) return;\n  const wasTop = index === stack.length - 1;\n  stack.splice(index, 1);\n  if (wasTop) {\n    const newTop = stack.at(-1);\n    if (newTop) resumeEntry(newTop);\n  }\n}\n\nfunction pickInitialTarget(\n  container: HTMLElement,\n  initialFocus: RefObject<HTMLElement | null> | undefined,\n): HTMLElement {\n  const requested = initialFocus?.current;\n  if (requested && container.contains(requested) && isFocusable(requested)) return requested;\n  return getFocusableElements(container)[0] ?? container;\n}\n\nfunction isInsideContainer(\n  container: HTMLElement,\n  target: EventTarget | null,\n): target is HTMLElement {\n  const View = getOwnerView(container);\n  return isNode(target, View) && container.contains(target);\n}\n\n// Effect-on-every-render is intentional: React does not re-fire effects when\n// containerRef.current mutates while the ref object stays stable.\n/**\n * Keeps Tab and Shift+Tab focus inside a container while active, with nested\n * trap stacking and optional focus restoration on release.\n */\nexport function useFocusTrap(\n  containerRef: RefObject<HTMLElement | null>,\n  options: UseFocusTrapOptions = {},\n): void {\n  const { initialFocus, restoreFocus = true, enabled = true } = options;\n  const activeTrapRef = useRef<ActiveTrap | null>(null);\n  const trapEntryRef = useRef<TrapEntry | null>(null);\n  // useFocusRestore manages the focus-restore stack so nested overlays\n  // restore correctly. Restoration itself happens in this hook's release()\n  // so listeners are detached BEFORE focus moves out of the container --\n  // otherwise the document-level focusin recapture re-traps the restored\n  // target. `restoreOnUnmount: false` prevents the stack hook from moving\n  // focus during its own unmount cleanup.\n  const { capture } = useFocusRestore({\n    enabled: restoreFocus,\n    restoreOnUnmount: false,\n  });\n\n  // No dependency array on purpose; see hook-level comment above.\n  useEffect(() => {\n    const nextContainer = enabled ? containerRef.current : null;\n    if (\n      activeTrapRef.current?.container === nextContainer &&\n      activeTrapRef.current.restoreFocus === restoreFocus\n    ) {\n      return;\n    }\n\n    activeTrapRef.current?.release();\n    activeTrapRef.current = null;\n\n    if (!nextContainer) return;\n    const container = nextContainer;\n    const ownerDocument = container.ownerDocument;\n    const restoreTarget = capture(ownerDocument);\n\n    const hadTabIndex = container.hasAttribute(\"tabindex\");\n    const originalTabIndex = container.getAttribute(\"tabindex\");\n    if (!hadTabIndex) container.setAttribute(\"tabindex\", \"-1\");\n\n    // lastFocused is set after initial focus below\n    let lastFocused: HTMLElement = container;\n\n    const recapture = () => {\n      const target =\n        container.contains(lastFocused) && lastFocused.isConnected && isFocusable(lastFocused)\n          ? lastFocused\n          : pickInitialTarget(container, initialFocus);\n      target.focus();\n    };\n\n    const handleFocusIn = (event: FocusEvent) => {\n      const target = event.target;\n      if (isInsideContainer(container, target)) {\n        lastFocused = target;\n        // Keep the stack entry in sync so resume() can use it\n        if (trapEntryRef.current) trapEntryRef.current.lastFocused = target;\n        return;\n      }\n      recapture();\n    };\n\n    const handleKeyDown = (event: KeyboardEvent) => {\n      if (event.key !== \"Tab\") return;\n\n      const focusableEls = getTabbableElements(container);\n      if (focusableEls.length === 0) {\n        event.preventDefault();\n        if (ownerDocument.activeElement !== container) container.focus();\n        return;\n      }\n\n      const first = focusableEls[0];\n      const last = focusableEls[focusableEls.length - 1];\n      const activeElement = ownerDocument.activeElement;\n\n      if (!isInsideContainer(container, activeElement)) {\n        event.preventDefault();\n        (event.shiftKey ? last : first)?.focus();\n        return;\n      }\n\n      if (!focusableEls.includes(activeElement as HTMLElement)) {\n        event.preventDefault();\n        (event.shiftKey ? last : first)?.focus();\n        return;\n      }\n\n      if (event.shiftKey) {\n        if (activeElement === first) {\n          event.preventDefault();\n          last?.focus();\n        }\n      } else {\n        if (activeElement === last) {\n          event.preventDefault();\n          first?.focus();\n        }\n      }\n    };\n\n    const observer = new MutationObserver(() => {\n      if (lastFocused.isConnected && container.contains(lastFocused) && isFocusable(lastFocused))\n        return;\n      recapture();\n    });\n\n    // Build the stack entry and push it BEFORE attaching listeners or\n    // focusing. pushTrap suspends the previous top trap so its focusin\n    // handler does not recapture focus away from this new trap.\n    const entry: TrapEntry = {\n      container,\n      ownerDocument,\n      initialFocus,\n      lastFocused,\n      handleKeyDown,\n      handleFocusIn,\n      observer,\n      suspended: false,\n    };\n    trapEntryRef.current = entry;\n    pushTrap(entry);\n\n    // Attach listeners and focus now that the outer trap is suspended\n    ownerDocument.addEventListener(\"keydown\", handleKeyDown, true);\n    ownerDocument.addEventListener(\"focusin\", handleFocusIn, true);\n    observer.observe(container, {\n      childList: true,\n      subtree: true,\n      attributes: true,\n      attributeFilter: [\"disabled\", \"hidden\", \"tabindex\", \"aria-hidden\", \"inert\"],\n    });\n\n    const initialTarget = pickInitialTarget(container, initialFocus);\n    initialTarget.focus();\n    lastFocused = container.contains(ownerDocument.activeElement)\n      ? (ownerDocument.activeElement as HTMLElement)\n      : initialTarget;\n    entry.lastFocused = lastFocused;\n\n    activeTrapRef.current = {\n      container,\n      restoreFocus,\n      release: () => {\n        // Detach own listeners BEFORE removing from the stack. removeTrap\n        // calls resumeEntry on the outer trap which focuses into the outer\n        // container — if our focusin listener is still attached, it would\n        // see that focus escaped and recapture, fighting the outer trap.\n        ownerDocument.removeEventListener(\"keydown\", handleKeyDown, true);\n        ownerDocument.removeEventListener(\"focusin\", handleFocusIn, true);\n        observer.disconnect();\n\n        // Remove from stack. This re-arms the outer trap (if any) which\n        // recaptures focus into its container.\n        removeTrap(entry);\n        trapEntryRef.current = null;\n\n        if (!hadTabIndex) {\n          container.removeAttribute(\"tabindex\");\n        } else if (originalTabIndex !== null) {\n          container.setAttribute(\"tabindex\", originalTabIndex);\n        }\n\n        // Only restore focus to pre-trap target if there is no outer trap\n        // waiting. When an outer trap exists, resumeEntry() already moved\n        // focus back into the outer container.\n        if (restoreFocus && getTrapStack(ownerDocument).length === 0) {\n          restoreFocusTarget(restoreTarget);\n        }\n      },\n    };\n  });\n\n  useEffect(() => {\n    return () => {\n      const activeTrap = activeTrapRef.current;\n      if (!activeTrap) return;\n      activeTrapRef.current = null;\n      activeTrap.release();\n    };\n  }, []);\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -359,6 +359,23 @@
         "number": 9,
         "content": [
           {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Options for trapping Tab focus inside a container. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 10,
+        "content": [
+          {
             "text": "export",
             "color": "var(--code-keyword)"
           },
@@ -389,7 +406,28 @@
         ]
       },
       {
-        "number": 10,
+        "number": 11,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Element that receives focus when the trap activates. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 12,
         "content": [
           {
             "text": "  initialFocus",
@@ -438,7 +476,28 @@
         ]
       },
       {
-        "number": 11,
+        "number": 13,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Restore focus to the previously focused element when the trap releases. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 14,
         "content": [
           {
             "text": "  restoreFocus",
@@ -463,7 +522,28 @@
         ]
       },
       {
-        "number": 12,
+        "number": 15,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Whether the focus trap is active. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 16,
         "content": [
           {
             "text": "  enabled",
@@ -488,7 +568,7 @@
         ]
       },
       {
-        "number": 13,
+        "number": 17,
         "content": [
           {
             "text": "}",
@@ -497,11 +577,11 @@
         ]
       },
       {
-        "number": 14,
+        "number": 18,
         "content": []
       },
       {
-        "number": 15,
+        "number": 19,
         "content": [
           {
             "text": "interface",
@@ -526,7 +606,7 @@
         ]
       },
       {
-        "number": 16,
+        "number": 20,
         "content": [
           {
             "text": "  container",
@@ -551,7 +631,7 @@
         ]
       },
       {
-        "number": 17,
+        "number": 21,
         "content": [
           {
             "text": "  ownerDocument",
@@ -576,7 +656,7 @@
         ]
       },
       {
-        "number": 18,
+        "number": 22,
         "content": [
           {
             "text": "  initialFocus",
@@ -645,7 +725,7 @@
         ]
       },
       {
-        "number": 19,
+        "number": 23,
         "content": [
           {
             "text": "  lastFocused",
@@ -670,7 +750,7 @@
         ]
       },
       {
-        "number": 20,
+        "number": 24,
         "content": [
           {
             "text": "  ",
@@ -735,7 +815,7 @@
         ]
       },
       {
-        "number": 21,
+        "number": 25,
         "content": [
           {
             "text": "  ",
@@ -800,7 +880,7 @@
         ]
       },
       {
-        "number": 22,
+        "number": 26,
         "content": [
           {
             "text": "  observer",
@@ -825,7 +905,7 @@
         ]
       },
       {
-        "number": 23,
+        "number": 27,
         "content": [
           {
             "text": "  suspended",
@@ -850,7 +930,7 @@
         ]
       },
       {
-        "number": 24,
+        "number": 28,
         "content": [
           {
             "text": "}",
@@ -859,11 +939,11 @@
         ]
       },
       {
-        "number": 25,
+        "number": 29,
         "content": []
       },
       {
-        "number": 26,
+        "number": 30,
         "content": [
           {
             "text": "interface",
@@ -888,7 +968,7 @@
         ]
       },
       {
-        "number": 27,
+        "number": 31,
         "content": [
           {
             "text": "  container",
@@ -913,7 +993,7 @@
         ]
       },
       {
-        "number": 28,
+        "number": 32,
         "content": [
           {
             "text": "  restoreFocus",
@@ -938,7 +1018,7 @@
         ]
       },
       {
-        "number": 29,
+        "number": 33,
         "content": [
           {
             "text": "  ",
@@ -983,7 +1063,7 @@
         ]
       },
       {
-        "number": 30,
+        "number": 34,
         "content": [
           {
             "text": "}",
@@ -992,11 +1072,11 @@
         ]
       },
       {
-        "number": 31,
+        "number": 35,
         "content": []
       },
       {
-        "number": 32,
+        "number": 36,
         "content": [
           {
             "text": "//",
@@ -1009,7 +1089,7 @@
         ]
       },
       {
-        "number": 33,
+        "number": 37,
         "content": [
           {
             "text": "//",
@@ -1022,7 +1102,7 @@
         ]
       },
       {
-        "number": 34,
+        "number": 38,
         "content": [
           {
             "text": "//",
@@ -1035,7 +1115,7 @@
         ]
       },
       {
-        "number": 35,
+        "number": 39,
         "content": [
           {
             "text": "const",
@@ -1112,11 +1192,11 @@
         ]
       },
       {
-        "number": 36,
+        "number": 40,
         "content": []
       },
       {
-        "number": 37,
+        "number": 41,
         "content": [
           {
             "text": "function",
@@ -1173,7 +1253,7 @@
         ]
       },
       {
-        "number": 38,
+        "number": 42,
         "content": [
           {
             "text": "  ",
@@ -1218,7 +1298,7 @@
         ]
       },
       {
-        "number": 39,
+        "number": 43,
         "content": [
           {
             "text": "  ",
@@ -1247,7 +1327,7 @@
         ]
       },
       {
-        "number": 40,
+        "number": 44,
         "content": [
           {
             "text": "    stack ",
@@ -1268,7 +1348,7 @@
         ]
       },
       {
-        "number": 41,
+        "number": 45,
         "content": [
           {
             "text": "    ",
@@ -1305,7 +1385,7 @@
         ]
       },
       {
-        "number": 42,
+        "number": 46,
         "content": [
           {
             "text": "  ",
@@ -1318,7 +1398,7 @@
         ]
       },
       {
-        "number": 43,
+        "number": 47,
         "content": [
           {
             "text": "  ",
@@ -1339,7 +1419,7 @@
         ]
       },
       {
-        "number": 44,
+        "number": 48,
         "content": [
           {
             "text": "}",
@@ -1348,11 +1428,11 @@
         ]
       },
       {
-        "number": 45,
+        "number": 49,
         "content": []
       },
       {
-        "number": 46,
+        "number": 50,
         "content": [
           {
             "text": "function",
@@ -1409,7 +1489,7 @@
         ]
       },
       {
-        "number": 47,
+        "number": 51,
         "content": [
           {
             "text": "  ",
@@ -1446,7 +1526,7 @@
         ]
       },
       {
-        "number": 48,
+        "number": 52,
         "content": [
           {
             "text": "  ",
@@ -1531,7 +1611,7 @@
         ]
       },
       {
-        "number": 49,
+        "number": 53,
         "content": [
           {
             "text": "  ",
@@ -1616,7 +1696,7 @@
         ]
       },
       {
-        "number": 50,
+        "number": 54,
         "content": [
           {
             "text": "  ",
@@ -1653,7 +1733,7 @@
         ]
       },
       {
-        "number": 51,
+        "number": 55,
         "content": [
           {
             "text": "  ",
@@ -1690,7 +1770,7 @@
         ]
       },
       {
-        "number": 52,
+        "number": 56,
         "content": [
           {
             "text": "}",
@@ -1699,11 +1779,11 @@
         ]
       },
       {
-        "number": 53,
+        "number": 57,
         "content": []
       },
       {
-        "number": 54,
+        "number": 58,
         "content": [
           {
             "text": "function",
@@ -1760,7 +1840,7 @@
         ]
       },
       {
-        "number": 55,
+        "number": 59,
         "content": [
           {
             "text": "  ",
@@ -1801,7 +1881,7 @@
         ]
       },
       {
-        "number": 56,
+        "number": 60,
         "content": [
           {
             "text": "  ",
@@ -1886,7 +1966,7 @@
         ]
       },
       {
-        "number": 57,
+        "number": 61,
         "content": [
           {
             "text": "  ",
@@ -1971,7 +2051,7 @@
         ]
       },
       {
-        "number": 58,
+        "number": 62,
         "content": [
           {
             "text": "  ",
@@ -2028,7 +2108,7 @@
         ]
       },
       {
-        "number": 59,
+        "number": 63,
         "content": [
           {
             "text": "    childList",
@@ -2053,7 +2133,7 @@
         ]
       },
       {
-        "number": 60,
+        "number": 64,
         "content": [
           {
             "text": "    subtree",
@@ -2078,7 +2158,7 @@
         ]
       },
       {
-        "number": 61,
+        "number": 65,
         "content": [
           {
             "text": "    attributes",
@@ -2103,7 +2183,7 @@
         ]
       },
       {
-        "number": 62,
+        "number": 66,
         "content": [
           {
             "text": "    attributeFilter",
@@ -2220,7 +2300,7 @@
         ]
       },
       {
-        "number": 63,
+        "number": 67,
         "content": [
           {
             "text": "  ",
@@ -2241,7 +2321,7 @@
         ]
       },
       {
-        "number": 64,
+        "number": 68,
         "content": [
           {
             "text": "  ",
@@ -2278,7 +2358,7 @@
         ]
       },
       {
-        "number": 65,
+        "number": 69,
         "content": [
           {
             "text": "  //",
@@ -2291,7 +2371,7 @@
         ]
       },
       {
-        "number": 66,
+        "number": 70,
         "content": [
           {
             "text": "  ",
@@ -2320,7 +2400,7 @@
         ]
       },
       {
-        "number": 67,
+        "number": 71,
         "content": [
           {
             "text": "    ",
@@ -2369,7 +2449,7 @@
         ]
       },
       {
-        "number": 68,
+        "number": 72,
         "content": [
           {
             "text": "    ",
@@ -2402,7 +2482,7 @@
         ]
       },
       {
-        "number": 69,
+        "number": 73,
         "content": [
           {
             "text": "    ",
@@ -2431,7 +2511,7 @@
         ]
       },
       {
-        "number": 70,
+        "number": 74,
         "content": [
           {
             "text": "      ",
@@ -2460,7 +2540,7 @@
         ]
       },
       {
-        "number": 71,
+        "number": 75,
         "content": [
           {
             "text": "      ",
@@ -2521,7 +2601,7 @@
         ]
       },
       {
-        "number": 72,
+        "number": 76,
         "content": [
           {
             "text": "  ",
@@ -2550,7 +2630,7 @@
         ]
       },
       {
-        "number": 73,
+        "number": 77,
         "content": [
           {
             "text": "}",
@@ -2559,11 +2639,11 @@
         ]
       },
       {
-        "number": 74,
+        "number": 78,
         "content": []
       },
       {
-        "number": 75,
+        "number": 79,
         "content": [
           {
             "text": "function",
@@ -2620,7 +2700,7 @@
         ]
       },
       {
-        "number": 76,
+        "number": 80,
         "content": [
           {
             "text": "  ",
@@ -2677,7 +2757,7 @@
         ]
       },
       {
-        "number": 77,
+        "number": 81,
         "content": [
           {
             "text": "  ",
@@ -2742,7 +2822,7 @@
         ]
       },
       {
-        "number": 78,
+        "number": 82,
         "content": [
           {
             "text": "  ",
@@ -2771,7 +2851,7 @@
         ]
       },
       {
-        "number": 79,
+        "number": 83,
         "content": [
           {
             "text": "  ",
@@ -2800,7 +2880,7 @@
         ]
       },
       {
-        "number": 80,
+        "number": 84,
         "content": [
           {
             "text": "}",
@@ -2809,11 +2889,11 @@
         ]
       },
       {
-        "number": 81,
+        "number": 85,
         "content": []
       },
       {
-        "number": 82,
+        "number": 86,
         "content": [
           {
             "text": "function",
@@ -2870,7 +2950,7 @@
         ]
       },
       {
-        "number": 83,
+        "number": 87,
         "content": [
           {
             "text": "  ",
@@ -2927,7 +3007,7 @@
         ]
       },
       {
-        "number": 84,
+        "number": 88,
         "content": [
           {
             "text": "  ",
@@ -2980,7 +3060,7 @@
         ]
       },
       {
-        "number": 85,
+        "number": 89,
         "content": [
           {
             "text": "  ",
@@ -3021,7 +3101,7 @@
         ]
       },
       {
-        "number": 86,
+        "number": 90,
         "content": [
           {
             "text": "  ",
@@ -3094,7 +3174,7 @@
         ]
       },
       {
-        "number": 87,
+        "number": 91,
         "content": [
           {
             "text": "  ",
@@ -3139,7 +3219,7 @@
         ]
       },
       {
-        "number": 88,
+        "number": 92,
         "content": [
           {
             "text": "  ",
@@ -3160,7 +3240,7 @@
         ]
       },
       {
-        "number": 89,
+        "number": 93,
         "content": [
           {
             "text": "    ",
@@ -3225,7 +3305,7 @@
         ]
       },
       {
-        "number": 90,
+        "number": 94,
         "content": [
           {
             "text": "    ",
@@ -3254,7 +3334,7 @@
         ]
       },
       {
-        "number": 91,
+        "number": 95,
         "content": [
           {
             "text": "  ",
@@ -3267,7 +3347,7 @@
         ]
       },
       {
-        "number": 92,
+        "number": 96,
         "content": [
           {
             "text": "}",
@@ -3276,11 +3356,11 @@
         ]
       },
       {
-        "number": 93,
+        "number": 97,
         "content": []
       },
       {
-        "number": 94,
+        "number": 98,
         "content": [
           {
             "text": "function",
@@ -3301,7 +3381,7 @@
         ]
       },
       {
-        "number": 95,
+        "number": 99,
         "content": [
           {
             "text": "  container",
@@ -3326,7 +3406,7 @@
         ]
       },
       {
-        "number": 96,
+        "number": 100,
         "content": [
           {
             "text": "  initialFocus",
@@ -3395,7 +3475,7 @@
         ]
       },
       {
-        "number": 97,
+        "number": 101,
         "content": [
           {
             "text": "):",
@@ -3420,7 +3500,7 @@
         ]
       },
       {
-        "number": 98,
+        "number": 102,
         "content": [
           {
             "text": "  ",
@@ -3469,7 +3549,7 @@
         ]
       },
       {
-        "number": 99,
+        "number": 103,
         "content": [
           {
             "text": "  ",
@@ -3538,7 +3618,7 @@
         ]
       },
       {
-        "number": 100,
+        "number": 104,
         "content": [
           {
             "text": "  ",
@@ -3583,7 +3663,7 @@
         ]
       },
       {
-        "number": 101,
+        "number": 105,
         "content": [
           {
             "text": "}",
@@ -3592,11 +3672,11 @@
         ]
       },
       {
-        "number": 102,
+        "number": 106,
         "content": []
       },
       {
-        "number": 103,
+        "number": 107,
         "content": [
           {
             "text": "function",
@@ -3617,7 +3697,7 @@
         ]
       },
       {
-        "number": 104,
+        "number": 108,
         "content": [
           {
             "text": "  container",
@@ -3642,7 +3722,7 @@
         ]
       },
       {
-        "number": 105,
+        "number": 109,
         "content": [
           {
             "text": "  target",
@@ -3683,7 +3763,7 @@
         ]
       },
       {
-        "number": 106,
+        "number": 110,
         "content": [
           {
             "text": "):",
@@ -3716,7 +3796,7 @@
         ]
       },
       {
-        "number": 107,
+        "number": 111,
         "content": [
           {
             "text": "  ",
@@ -3761,7 +3841,7 @@
         ]
       },
       {
-        "number": 108,
+        "number": 112,
         "content": [
           {
             "text": "  ",
@@ -3822,7 +3902,7 @@
         ]
       },
       {
-        "number": 109,
+        "number": 113,
         "content": [
           {
             "text": "}",
@@ -3831,11 +3911,11 @@
         ]
       },
       {
-        "number": 110,
+        "number": 114,
         "content": []
       },
       {
-        "number": 111,
+        "number": 115,
         "content": [
           {
             "text": "//",
@@ -3848,7 +3928,7 @@
         ]
       },
       {
-        "number": 112,
+        "number": 116,
         "content": [
           {
             "text": "//",
@@ -3861,7 +3941,47 @@
         ]
       },
       {
-        "number": 113,
+        "number": 117,
+        "content": [
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 118,
+        "content": [
+          {
+            "text": " * Keeps Tab and Shift+Tab focus inside a container while active, with nested",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 119,
+        "content": [
+          {
+            "text": " * trap stacking and optional focus restoration on release.",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 120,
+        "content": [
+          {
+            "text": " ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 121,
         "content": [
           {
             "text": "export",
@@ -3890,7 +4010,7 @@
         ]
       },
       {
-        "number": 114,
+        "number": 122,
         "content": [
           {
             "text": "  containerRef",
@@ -3939,7 +4059,7 @@
         ]
       },
       {
-        "number": 115,
+        "number": 123,
         "content": [
           {
             "text": "  options",
@@ -3976,7 +4096,7 @@
         ]
       },
       {
-        "number": 116,
+        "number": 124,
         "content": [
           {
             "text": "):",
@@ -4001,7 +4121,7 @@
         ]
       },
       {
-        "number": 117,
+        "number": 125,
         "content": [
           {
             "text": "  ",
@@ -4110,7 +4230,7 @@
         ]
       },
       {
-        "number": 118,
+        "number": 126,
         "content": [
           {
             "text": "  ",
@@ -4191,7 +4311,7 @@
         ]
       },
       {
-        "number": 119,
+        "number": 127,
         "content": [
           {
             "text": "  ",
@@ -4272,7 +4392,7 @@
         ]
       },
       {
-        "number": 120,
+        "number": 128,
         "content": [
           {
             "text": "  //",
@@ -4285,7 +4405,7 @@
         ]
       },
       {
-        "number": 121,
+        "number": 129,
         "content": [
           {
             "text": "  //",
@@ -4298,7 +4418,7 @@
         ]
       },
       {
-        "number": 122,
+        "number": 130,
         "content": [
           {
             "text": "  //",
@@ -4311,7 +4431,7 @@
         ]
       },
       {
-        "number": 123,
+        "number": 131,
         "content": [
           {
             "text": "  //",
@@ -4324,7 +4444,7 @@
         ]
       },
       {
-        "number": 124,
+        "number": 132,
         "content": [
           {
             "text": "  //",
@@ -4337,7 +4457,7 @@
         ]
       },
       {
-        "number": 125,
+        "number": 133,
         "content": [
           {
             "text": "  //",
@@ -4350,7 +4470,7 @@
         ]
       },
       {
-        "number": 126,
+        "number": 134,
         "content": [
           {
             "text": "  ",
@@ -4411,7 +4531,7 @@
         ]
       },
       {
-        "number": 127,
+        "number": 135,
         "content": [
           {
             "text": "    enabled",
@@ -4432,7 +4552,7 @@
         ]
       },
       {
-        "number": 128,
+        "number": 136,
         "content": [
           {
             "text": "    restoreOnUnmount",
@@ -4457,7 +4577,7 @@
         ]
       },
       {
-        "number": 129,
+        "number": 137,
         "content": [
           {
             "text": "  ",
@@ -4478,11 +4598,11 @@
         ]
       },
       {
-        "number": 130,
+        "number": 138,
         "content": []
       },
       {
-        "number": 131,
+        "number": 139,
         "content": [
           {
             "text": "  //",
@@ -4495,20 +4615,7 @@
         ]
       },
       {
-        "number": 132,
-        "content": [
-          {
-            "text": "  //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " eslint-disable-next-line react-hooks/exhaustive-deps",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 133,
+        "number": 140,
         "content": [
           {
             "text": "  ",
@@ -4545,7 +4652,7 @@
         ]
       },
       {
-        "number": 134,
+        "number": 141,
         "content": [
           {
             "text": "    ",
@@ -4614,7 +4721,7 @@
         ]
       },
       {
-        "number": 135,
+        "number": 142,
         "content": [
           {
             "text": "    ",
@@ -4631,7 +4738,7 @@
         ]
       },
       {
-        "number": 136,
+        "number": 143,
         "content": [
           {
             "text": "      ",
@@ -4672,7 +4779,7 @@
         ]
       },
       {
-        "number": 137,
+        "number": 144,
         "content": [
           {
             "text": "      ",
@@ -4709,7 +4816,7 @@
         ]
       },
       {
-        "number": 138,
+        "number": 145,
         "content": [
           {
             "text": "    ) ",
@@ -4722,7 +4829,7 @@
         ]
       },
       {
-        "number": 139,
+        "number": 146,
         "content": [
           {
             "text": "      ",
@@ -4739,7 +4846,7 @@
         ]
       },
       {
-        "number": 140,
+        "number": 147,
         "content": [
           {
             "text": "    ",
@@ -4752,11 +4859,11 @@
         ]
       },
       {
-        "number": 141,
+        "number": 148,
         "content": []
       },
       {
-        "number": 142,
+        "number": 149,
         "content": [
           {
             "text": "    ",
@@ -4793,7 +4900,7 @@
         ]
       },
       {
-        "number": 143,
+        "number": 150,
         "content": [
           {
             "text": "    ",
@@ -4830,11 +4937,11 @@
         ]
       },
       {
-        "number": 144,
+        "number": 151,
         "content": []
       },
       {
-        "number": 145,
+        "number": 152,
         "content": [
           {
             "text": "    ",
@@ -4867,7 +4974,7 @@
         ]
       },
       {
-        "number": 146,
+        "number": 153,
         "content": [
           {
             "text": "    ",
@@ -4904,7 +5011,7 @@
         ]
       },
       {
-        "number": 147,
+        "number": 154,
         "content": [
           {
             "text": "    ",
@@ -4953,7 +5060,7 @@
         ]
       },
       {
-        "number": 148,
+        "number": 155,
         "content": [
           {
             "text": "    ",
@@ -4998,11 +5105,11 @@
         ]
       },
       {
-        "number": 149,
+        "number": 156,
         "content": []
       },
       {
-        "number": 150,
+        "number": 157,
         "content": [
           {
             "text": "    ",
@@ -5071,7 +5178,7 @@
         ]
       },
       {
-        "number": 151,
+        "number": 158,
         "content": [
           {
             "text": "    ",
@@ -5140,7 +5247,7 @@
         ]
       },
       {
-        "number": 152,
+        "number": 159,
         "content": [
           {
             "text": "    ",
@@ -5221,11 +5328,11 @@
         ]
       },
       {
-        "number": 153,
+        "number": 160,
         "content": []
       },
       {
-        "number": 154,
+        "number": 161,
         "content": [
           {
             "text": "    //",
@@ -5238,7 +5345,7 @@
         ]
       },
       {
-        "number": 155,
+        "number": 162,
         "content": [
           {
             "text": "    ",
@@ -5283,11 +5390,11 @@
         ]
       },
       {
-        "number": 156,
+        "number": 163,
         "content": []
       },
       {
-        "number": 157,
+        "number": 164,
         "content": [
           {
             "text": "    ",
@@ -5340,7 +5447,7 @@
         ]
       },
       {
-        "number": 158,
+        "number": 165,
         "content": [
           {
             "text": "      ",
@@ -5369,7 +5476,7 @@
         ]
       },
       {
-        "number": 159,
+        "number": 166,
         "content": [
           {
             "text": "        ",
@@ -5430,7 +5537,7 @@
         ]
       },
       {
-        "number": 160,
+        "number": 167,
         "content": [
           {
             "text": "          ",
@@ -5447,7 +5554,7 @@
         ]
       },
       {
-        "number": 161,
+        "number": 168,
         "content": [
           {
             "text": "          ",
@@ -5484,7 +5591,7 @@
         ]
       },
       {
-        "number": 162,
+        "number": 169,
         "content": [
           {
             "text": "      ",
@@ -5513,7 +5620,7 @@
         ]
       },
       {
-        "number": 163,
+        "number": 170,
         "content": [
           {
             "text": "    ",
@@ -5526,11 +5633,11 @@
         ]
       },
       {
-        "number": 164,
+        "number": 171,
         "content": []
       },
       {
-        "number": 165,
+        "number": 172,
         "content": [
           {
             "text": "    ",
@@ -5603,7 +5710,7 @@
         ]
       },
       {
-        "number": 166,
+        "number": 173,
         "content": [
           {
             "text": "      ",
@@ -5652,7 +5759,7 @@
         ]
       },
       {
-        "number": 167,
+        "number": 174,
         "content": [
           {
             "text": "      ",
@@ -5689,7 +5796,7 @@
         ]
       },
       {
-        "number": 168,
+        "number": 175,
         "content": [
           {
             "text": "        lastFocused ",
@@ -5710,7 +5817,7 @@
         ]
       },
       {
-        "number": 169,
+        "number": 176,
         "content": [
           {
             "text": "        //",
@@ -5723,7 +5830,7 @@
         ]
       },
       {
-        "number": 170,
+        "number": 177,
         "content": [
           {
             "text": "        ",
@@ -5784,7 +5891,7 @@
         ]
       },
       {
-        "number": 171,
+        "number": 178,
         "content": [
           {
             "text": "        ",
@@ -5801,7 +5908,7 @@
         ]
       },
       {
-        "number": 172,
+        "number": 179,
         "content": [
           {
             "text": "      ",
@@ -5814,7 +5921,7 @@
         ]
       },
       {
-        "number": 173,
+        "number": 180,
         "content": [
           {
             "text": "      ",
@@ -5835,7 +5942,7 @@
         ]
       },
       {
-        "number": 174,
+        "number": 181,
         "content": [
           {
             "text": "    ",
@@ -5848,11 +5955,11 @@
         ]
       },
       {
-        "number": 175,
+        "number": 182,
         "content": []
       },
       {
-        "number": 176,
+        "number": 183,
         "content": [
           {
             "text": "    ",
@@ -5925,7 +6032,7 @@
         ]
       },
       {
-        "number": 177,
+        "number": 184,
         "content": [
           {
             "text": "      ",
@@ -5986,11 +6093,11 @@
         ]
       },
       {
-        "number": 178,
+        "number": 185,
         "content": []
       },
       {
-        "number": 179,
+        "number": 186,
         "content": [
           {
             "text": "      ",
@@ -6035,7 +6142,7 @@
         ]
       },
       {
-        "number": 180,
+        "number": 187,
         "content": [
           {
             "text": "      ",
@@ -6088,7 +6195,7 @@
         ]
       },
       {
-        "number": 181,
+        "number": 188,
         "content": [
           {
             "text": "        ",
@@ -6117,7 +6224,7 @@
         ]
       },
       {
-        "number": 182,
+        "number": 189,
         "content": [
           {
             "text": "        ",
@@ -6174,7 +6281,7 @@
         ]
       },
       {
-        "number": 183,
+        "number": 190,
         "content": [
           {
             "text": "        ",
@@ -6191,7 +6298,7 @@
         ]
       },
       {
-        "number": 184,
+        "number": 191,
         "content": [
           {
             "text": "      ",
@@ -6204,11 +6311,11 @@
         ]
       },
       {
-        "number": 185,
+        "number": 192,
         "content": []
       },
       {
-        "number": 186,
+        "number": 193,
         "content": [
           {
             "text": "      ",
@@ -6253,7 +6360,7 @@
         ]
       },
       {
-        "number": 187,
+        "number": 194,
         "content": [
           {
             "text": "      ",
@@ -6322,7 +6429,7 @@
         ]
       },
       {
-        "number": 188,
+        "number": 195,
         "content": [
           {
             "text": "      ",
@@ -6371,11 +6478,11 @@
         ]
       },
       {
-        "number": 189,
+        "number": 196,
         "content": []
       },
       {
-        "number": 190,
+        "number": 197,
         "content": [
           {
             "text": "      ",
@@ -6416,7 +6523,7 @@
         ]
       },
       {
-        "number": 191,
+        "number": 198,
         "content": [
           {
             "text": "        ",
@@ -6445,7 +6552,7 @@
         ]
       },
       {
-        "number": 192,
+        "number": 199,
         "content": [
           {
             "text": "        (",
@@ -6498,7 +6605,7 @@
         ]
       },
       {
-        "number": 193,
+        "number": 200,
         "content": [
           {
             "text": "        ",
@@ -6515,7 +6622,7 @@
         ]
       },
       {
-        "number": 194,
+        "number": 201,
         "content": [
           {
             "text": "      ",
@@ -6528,11 +6635,11 @@
         ]
       },
       {
-        "number": 195,
+        "number": 202,
         "content": []
       },
       {
-        "number": 196,
+        "number": 203,
         "content": [
           {
             "text": "      ",
@@ -6589,7 +6696,7 @@
         ]
       },
       {
-        "number": 197,
+        "number": 204,
         "content": [
           {
             "text": "        ",
@@ -6618,7 +6725,7 @@
         ]
       },
       {
-        "number": 198,
+        "number": 205,
         "content": [
           {
             "text": "        (",
@@ -6671,7 +6778,7 @@
         ]
       },
       {
-        "number": 199,
+        "number": 206,
         "content": [
           {
             "text": "        ",
@@ -6688,7 +6795,7 @@
         ]
       },
       {
-        "number": 200,
+        "number": 207,
         "content": [
           {
             "text": "      ",
@@ -6701,11 +6808,11 @@
         ]
       },
       {
-        "number": 201,
+        "number": 208,
         "content": []
       },
       {
-        "number": 202,
+        "number": 209,
         "content": [
           {
             "text": "      ",
@@ -6738,7 +6845,7 @@
         ]
       },
       {
-        "number": 203,
+        "number": 210,
         "content": [
           {
             "text": "        ",
@@ -6767,7 +6874,7 @@
         ]
       },
       {
-        "number": 204,
+        "number": 211,
         "content": [
           {
             "text": "          ",
@@ -6796,7 +6903,7 @@
         ]
       },
       {
-        "number": 205,
+        "number": 212,
         "content": [
           {
             "text": "          ",
@@ -6825,7 +6932,7 @@
         ]
       },
       {
-        "number": 206,
+        "number": 213,
         "content": [
           {
             "text": "        ",
@@ -6838,7 +6945,7 @@
         ]
       },
       {
-        "number": 207,
+        "number": 214,
         "content": [
           {
             "text": "      ",
@@ -6867,7 +6974,7 @@
         ]
       },
       {
-        "number": 208,
+        "number": 215,
         "content": [
           {
             "text": "        ",
@@ -6896,7 +7003,7 @@
         ]
       },
       {
-        "number": 209,
+        "number": 216,
         "content": [
           {
             "text": "          ",
@@ -6925,7 +7032,7 @@
         ]
       },
       {
-        "number": 210,
+        "number": 217,
         "content": [
           {
             "text": "          ",
@@ -6954,7 +7061,7 @@
         ]
       },
       {
-        "number": 211,
+        "number": 218,
         "content": [
           {
             "text": "        ",
@@ -6967,7 +7074,7 @@
         ]
       },
       {
-        "number": 212,
+        "number": 219,
         "content": [
           {
             "text": "      ",
@@ -6980,7 +7087,7 @@
         ]
       },
       {
-        "number": 213,
+        "number": 220,
         "content": [
           {
             "text": "    ",
@@ -6993,11 +7100,11 @@
         ]
       },
       {
-        "number": 214,
+        "number": 221,
         "content": []
       },
       {
-        "number": 215,
+        "number": 222,
         "content": [
           {
             "text": "    ",
@@ -7066,7 +7173,7 @@
         ]
       },
       {
-        "number": 216,
+        "number": 223,
         "content": [
           {
             "text": "      ",
@@ -7135,7 +7242,7 @@
         ]
       },
       {
-        "number": 217,
+        "number": 224,
         "content": [
           {
             "text": "        ",
@@ -7152,7 +7259,7 @@
         ]
       },
       {
-        "number": 218,
+        "number": 225,
         "content": [
           {
             "text": "      ",
@@ -7173,7 +7280,7 @@
         ]
       },
       {
-        "number": 219,
+        "number": 226,
         "content": [
           {
             "text": "    ",
@@ -7194,11 +7301,11 @@
         ]
       },
       {
-        "number": 220,
+        "number": 227,
         "content": []
       },
       {
-        "number": 221,
+        "number": 228,
         "content": [
           {
             "text": "    //",
@@ -7211,7 +7318,7 @@
         ]
       },
       {
-        "number": 222,
+        "number": 229,
         "content": [
           {
             "text": "    //",
@@ -7224,7 +7331,7 @@
         ]
       },
       {
-        "number": 223,
+        "number": 230,
         "content": [
           {
             "text": "    //",
@@ -7237,7 +7344,7 @@
         ]
       },
       {
-        "number": 224,
+        "number": 231,
         "content": [
           {
             "text": "    ",
@@ -7286,7 +7393,7 @@
         ]
       },
       {
-        "number": 225,
+        "number": 232,
         "content": [
           {
             "text": "      container",
@@ -7299,7 +7406,7 @@
         ]
       },
       {
-        "number": 226,
+        "number": 233,
         "content": [
           {
             "text": "      ownerDocument",
@@ -7312,7 +7419,7 @@
         ]
       },
       {
-        "number": 227,
+        "number": 234,
         "content": [
           {
             "text": "      initialFocus",
@@ -7325,7 +7432,7 @@
         ]
       },
       {
-        "number": 228,
+        "number": 235,
         "content": [
           {
             "text": "      lastFocused",
@@ -7338,7 +7445,7 @@
         ]
       },
       {
-        "number": 229,
+        "number": 236,
         "content": [
           {
             "text": "      handleKeyDown",
@@ -7351,7 +7458,7 @@
         ]
       },
       {
-        "number": 230,
+        "number": 237,
         "content": [
           {
             "text": "      handleFocusIn",
@@ -7364,7 +7471,7 @@
         ]
       },
       {
-        "number": 231,
+        "number": 238,
         "content": [
           {
             "text": "      observer",
@@ -7377,7 +7484,7 @@
         ]
       },
       {
-        "number": 232,
+        "number": 239,
         "content": [
           {
             "text": "      suspended",
@@ -7402,7 +7509,7 @@
         ]
       },
       {
-        "number": 233,
+        "number": 240,
         "content": [
           {
             "text": "    ",
@@ -7415,7 +7522,7 @@
         ]
       },
       {
-        "number": 234,
+        "number": 241,
         "content": [
           {
             "text": "    ",
@@ -7448,7 +7555,7 @@
         ]
       },
       {
-        "number": 235,
+        "number": 242,
         "content": [
           {
             "text": "    ",
@@ -7469,11 +7576,11 @@
         ]
       },
       {
-        "number": 236,
+        "number": 243,
         "content": []
       },
       {
-        "number": 237,
+        "number": 244,
         "content": [
           {
             "text": "    //",
@@ -7486,7 +7593,7 @@
         ]
       },
       {
-        "number": 238,
+        "number": 245,
         "content": [
           {
             "text": "    ",
@@ -7551,7 +7658,7 @@
         ]
       },
       {
-        "number": 239,
+        "number": 246,
         "content": [
           {
             "text": "    ",
@@ -7616,7 +7723,7 @@
         ]
       },
       {
-        "number": 240,
+        "number": 247,
         "content": [
           {
             "text": "    ",
@@ -7653,7 +7760,7 @@
         ]
       },
       {
-        "number": 241,
+        "number": 248,
         "content": [
           {
             "text": "      childList",
@@ -7678,7 +7785,7 @@
         ]
       },
       {
-        "number": 242,
+        "number": 249,
         "content": [
           {
             "text": "      subtree",
@@ -7703,7 +7810,7 @@
         ]
       },
       {
-        "number": 243,
+        "number": 250,
         "content": [
           {
             "text": "      attributes",
@@ -7728,7 +7835,7 @@
         ]
       },
       {
-        "number": 244,
+        "number": 251,
         "content": [
           {
             "text": "      attributeFilter",
@@ -7845,7 +7952,7 @@
         ]
       },
       {
-        "number": 245,
+        "number": 252,
         "content": [
           {
             "text": "    ",
@@ -7866,11 +7973,11 @@
         ]
       },
       {
-        "number": 246,
+        "number": 253,
         "content": []
       },
       {
-        "number": 247,
+        "number": 254,
         "content": [
           {
             "text": "    ",
@@ -7923,7 +8030,7 @@
         ]
       },
       {
-        "number": 248,
+        "number": 255,
         "content": [
           {
             "text": "    ",
@@ -7952,7 +8059,7 @@
         ]
       },
       {
-        "number": 249,
+        "number": 256,
         "content": [
           {
             "text": "    lastFocused ",
@@ -7997,7 +8104,7 @@
         ]
       },
       {
-        "number": 250,
+        "number": 257,
         "content": [
           {
             "text": "      ",
@@ -8042,7 +8149,7 @@
         ]
       },
       {
-        "number": 251,
+        "number": 258,
         "content": [
           {
             "text": "      ",
@@ -8063,7 +8170,7 @@
         ]
       },
       {
-        "number": 252,
+        "number": 259,
         "content": [
           {
             "text": "    ",
@@ -8096,11 +8203,11 @@
         ]
       },
       {
-        "number": 253,
+        "number": 260,
         "content": []
       },
       {
-        "number": 254,
+        "number": 261,
         "content": [
           {
             "text": "    ",
@@ -8133,7 +8240,7 @@
         ]
       },
       {
-        "number": 255,
+        "number": 262,
         "content": [
           {
             "text": "      container",
@@ -8146,7 +8253,7 @@
         ]
       },
       {
-        "number": 256,
+        "number": 263,
         "content": [
           {
             "text": "      restoreFocus",
@@ -8159,7 +8266,7 @@
         ]
       },
       {
-        "number": 257,
+        "number": 264,
         "content": [
           {
             "text": "      ",
@@ -8200,7 +8307,7 @@
         ]
       },
       {
-        "number": 258,
+        "number": 265,
         "content": [
           {
             "text": "        //",
@@ -8213,7 +8320,7 @@
         ]
       },
       {
-        "number": 259,
+        "number": 266,
         "content": [
           {
             "text": "        //",
@@ -8226,7 +8333,7 @@
         ]
       },
       {
-        "number": 260,
+        "number": 267,
         "content": [
           {
             "text": "        //",
@@ -8239,7 +8346,7 @@
         ]
       },
       {
-        "number": 261,
+        "number": 268,
         "content": [
           {
             "text": "        //",
@@ -8252,7 +8359,7 @@
         ]
       },
       {
-        "number": 262,
+        "number": 269,
         "content": [
           {
             "text": "        ",
@@ -8317,7 +8424,7 @@
         ]
       },
       {
-        "number": 263,
+        "number": 270,
         "content": [
           {
             "text": "        ",
@@ -8382,7 +8489,7 @@
         ]
       },
       {
-        "number": 264,
+        "number": 271,
         "content": [
           {
             "text": "        ",
@@ -8411,11 +8518,11 @@
         ]
       },
       {
-        "number": 265,
+        "number": 272,
         "content": []
       },
       {
-        "number": 266,
+        "number": 273,
         "content": [
           {
             "text": "        //",
@@ -8428,7 +8535,7 @@
         ]
       },
       {
-        "number": 267,
+        "number": 274,
         "content": [
           {
             "text": "        //",
@@ -8441,7 +8548,7 @@
         ]
       },
       {
-        "number": 268,
+        "number": 275,
         "content": [
           {
             "text": "        ",
@@ -8462,7 +8569,7 @@
         ]
       },
       {
-        "number": 269,
+        "number": 276,
         "content": [
           {
             "text": "        ",
@@ -8499,11 +8606,11 @@
         ]
       },
       {
-        "number": 270,
+        "number": 277,
         "content": []
       },
       {
-        "number": 271,
+        "number": 278,
         "content": [
           {
             "text": "        ",
@@ -8532,7 +8639,7 @@
         ]
       },
       {
-        "number": 272,
+        "number": 279,
         "content": [
           {
             "text": "          ",
@@ -8577,7 +8684,7 @@
         ]
       },
       {
-        "number": 273,
+        "number": 280,
         "content": [
           {
             "text": "        ",
@@ -8630,7 +8737,7 @@
         ]
       },
       {
-        "number": 274,
+        "number": 281,
         "content": [
           {
             "text": "          ",
@@ -8679,7 +8786,7 @@
         ]
       },
       {
-        "number": 275,
+        "number": 282,
         "content": [
           {
             "text": "        ",
@@ -8692,11 +8799,11 @@
         ]
       },
       {
-        "number": 276,
+        "number": 283,
         "content": []
       },
       {
-        "number": 277,
+        "number": 284,
         "content": [
           {
             "text": "        //",
@@ -8709,7 +8816,7 @@
         ]
       },
       {
-        "number": 278,
+        "number": 285,
         "content": [
           {
             "text": "        //",
@@ -8722,7 +8829,7 @@
         ]
       },
       {
-        "number": 279,
+        "number": 286,
         "content": [
           {
             "text": "        //",
@@ -8735,7 +8842,7 @@
         ]
       },
       {
-        "number": 280,
+        "number": 287,
         "content": [
           {
             "text": "        ",
@@ -8800,7 +8907,7 @@
         ]
       },
       {
-        "number": 281,
+        "number": 288,
         "content": [
           {
             "text": "          ",
@@ -8821,7 +8928,7 @@
         ]
       },
       {
-        "number": 282,
+        "number": 289,
         "content": [
           {
             "text": "        ",
@@ -8834,7 +8941,7 @@
         ]
       },
       {
-        "number": 283,
+        "number": 290,
         "content": [
           {
             "text": "      ",
@@ -8847,7 +8954,7 @@
         ]
       },
       {
-        "number": 284,
+        "number": 291,
         "content": [
           {
             "text": "    ",
@@ -8860,7 +8967,7 @@
         ]
       },
       {
-        "number": 285,
+        "number": 292,
         "content": [
           {
             "text": "  ",
@@ -8881,11 +8988,11 @@
         ]
       },
       {
-        "number": 286,
+        "number": 293,
         "content": []
       },
       {
-        "number": 287,
+        "number": 294,
         "content": [
           {
             "text": "  ",
@@ -8922,7 +9029,7 @@
         ]
       },
       {
-        "number": 288,
+        "number": 295,
         "content": [
           {
             "text": "    ",
@@ -8959,7 +9066,7 @@
         ]
       },
       {
-        "number": 289,
+        "number": 296,
         "content": [
           {
             "text": "      ",
@@ -9008,7 +9115,7 @@
         ]
       },
       {
-        "number": 290,
+        "number": 297,
         "content": [
           {
             "text": "      ",
@@ -9041,7 +9148,7 @@
         ]
       },
       {
-        "number": 291,
+        "number": 298,
         "content": [
           {
             "text": "      ",
@@ -9078,7 +9185,7 @@
         ]
       },
       {
-        "number": 292,
+        "number": 299,
         "content": [
           {
             "text": "      ",
@@ -9107,7 +9214,7 @@
         ]
       },
       {
-        "number": 293,
+        "number": 300,
         "content": [
           {
             "text": "    ",
@@ -9120,7 +9227,7 @@
         ]
       },
       {
-        "number": 294,
+        "number": 301,
         "content": [
           {
             "text": "  ",
@@ -9141,7 +9248,7 @@
         ]
       },
       {
-        "number": 295,
+        "number": 302,
         "content": [
           {
             "text": "}",
@@ -9150,7 +9257,7 @@
         ]
       },
       {
-        "number": 296,
+        "number": 303,
         "content": []
       }
     ]

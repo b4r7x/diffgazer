@@ -82,7 +82,7 @@ export function parseRegistryDependencyRef(ref: string): ParsedRegistryDependenc
   return { kind: "local", raw, name: raw };
 }
 
-export function resolveRegistryDeps(
+function resolveRegistryDeps(
   names: string[],
   getItem: (name: string) => RegistryItem | undefined,
   itemLabel = "item",
@@ -122,7 +122,7 @@ export function resolveRegistryDeps(
   return [...resolved];
 }
 
-export function collectNpmDeps(
+function collectNpmDeps(
   names: string[],
   getItem: (name: string) => RegistryItem | undefined,
 ): string[] {
@@ -209,7 +209,9 @@ export function metaField<T extends string | number | boolean | string[]>(
   const val = item.meta?.[key];
   if (val === undefined) return fallback;
   if (Array.isArray(fallback)) {
-    return Array.isArray(val) ? (val as T) : fallback;
+    // Callers iterate the result as strings, so a non-string element must fall
+    // back rather than narrow to a lying `string[]`.
+    return Array.isArray(val) && val.every((v) => typeof v === "string") ? (val as T) : fallback;
   }
   switch (typeof fallback) {
     case "string":

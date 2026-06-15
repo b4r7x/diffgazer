@@ -47,6 +47,15 @@ function subscribe(callback: () => void): () => void {
   return () => subscribers.delete(callback);
 }
 
+/**
+ * Per-pathname state store backed by useSyncExternalStore.
+ *
+ * `defaultValue` MUST be a primitive (or a stably-identified reference). On a
+ * cache miss both snapshots return the argument verbatim, so a fresh non-primitive
+ * default (e.g. an inline `[]` or `{}`) yields a new snapshot identity every render
+ * — useSyncExternalStore's documented infinite-loop failure. Hoist non-primitive
+ * defaults to a module constant or memo before passing them here.
+ */
 export function useScopedRouteState<T>(key: string, defaultValue: T): [T, SetState<T>] {
   const { pathname } = useLocation();
   const storageKey = createStorageKey(key, pathname);

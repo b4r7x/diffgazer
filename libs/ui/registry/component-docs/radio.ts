@@ -27,6 +27,11 @@ export const radioDoc: ComponentDoc = {
         "Prefer importing RadioGroup and RadioGroupItem for shadcn-like code. RadioGroup.Item is the same item component exposed for Radix-like namespacing. Use either form inside RadioGroup, directly or through your own wrapper components. Every item value must be unique within a group because selection, highlighting, and form output are value-based.",
     },
     {
+      title: "Standalone vs RadioGroup",
+      content:
+        "Standalone same-name Radio components stay mutually exclusive via a document-level event, but they are form-submission-only: there is no arrow-key navigation and each radio is its own tab stop. For a keyboard-complete group (roving focus, arrow navigation, a single tab stop), use RadioGroup.",
+    },
+    {
       title: "Keyboard Navigation",
       content:
         'RadioGroup delegates roving focus to @diffgazer/keys navigation. All four arrow keys move focus and select items by default regardless of orientation (per WAI-ARIA APG radio group pattern). Home/End jump to first/last item. Space selects the focused item. Enter commit is a Diffgazer extension for preview/commit flows, not the APG baseline. Use activationMode="manual" with onNavigate/onChange when arrows should move focus and highlight without changing value, and onEnter when Enter should commit the focused item. Use autoFocus to focus the highlighted, selected, or first enabled item when the group becomes active. Use keyboardNavigation to suspend RadioGroup-managed key handling; when suspended, enabled items remain tabbable. Use onNavigationBoundaryReached(direction, event, key) to hand focus to adjacent controls and filter vertical-only handoffs by key when needed.',
@@ -45,8 +50,56 @@ export const radioDoc: ComponentDoc = {
   keyboard: {
     description:
       "All four arrow keys move focus and select items in automatic activation mode (per WAI-ARIA APG). Manual activation mode moves focus and emits onNavigate without changing value. Space selects the focused item. Enter commit via onEnter is a Diffgazer extension for preview/commit flows. Home/End jump to first/last item. Composite UIs can opt into initial focus with autoFocus, suspend RadioGroup-managed key handling with keyboardNavigation, and listen for onNavigationBoundaryReached(direction, event, key).",
+    keys: [
+      {
+        keys: "ArrowUp / ArrowLeft",
+        action: "Moves focus to the previous enabled radio; automatic mode also selects it.",
+      },
+      {
+        keys: "ArrowDown / ArrowRight",
+        action: "Moves focus to the next enabled radio; automatic mode also selects it.",
+      },
+      {
+        keys: "Home / End",
+        action: "Moves focus to the first or last enabled radio and selects it in automatic mode.",
+      },
+      { keys: "Space", action: "Selects the focused radio." },
+      { keys: "Enter", action: "Calls onEnter for preview/commit flows, or selects when wired." },
+    ],
     examples: [{ name: "radio-group-default", title: "Default" }],
   },
+  dataAttributes: [
+    {
+      attribute: "data-state",
+      appliesTo: "Radio / RadioGroupItem",
+      values: '"checked" | "unchecked"',
+      description: "Boolean visual state for styling the custom control.",
+    },
+    {
+      attribute: "data-disabled",
+      appliesTo: "Radio / RadioGroupItem",
+      values: "present when disabled",
+      description: "Marks disabled radios.",
+    },
+    {
+      attribute: "data-highlighted",
+      appliesTo: "Radio / RadioGroupItem",
+      values: "present when highlighted",
+      description: "Marks the current keyboard-highlighted group item.",
+    },
+    {
+      attribute: "data-value",
+      appliesTo: "Radio / RadioGroupItem",
+      values: "item value",
+      description: "Stable value used by group navigation and form submission wiring.",
+    },
+    {
+      attribute: "data-diffgazer-selectable-owner",
+      appliesTo: "RadioGroup",
+      values: '"radio"',
+      description: "Scopes nested selectable-item discovery for keyboard navigation.",
+    },
+  ],
   props: {
     Radio: {
       checked: {
@@ -210,6 +263,27 @@ export const radioDoc: ComponentDoc = {
         required: false,
         defaultValue: "false",
         description: "Requires one enabled item to be selected.",
+      },
+      label: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description:
+          "Visible group label. Also provides the accessible name when aria-label is omitted.",
+      },
+      "aria-label": {
+        type: "string",
+        required: false,
+        defaultValue: "label text",
+        description:
+          "Accessible name for the radiogroup. Overrides the label-derived fallback when supplied.",
+      },
+      "aria-labelledby": {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description:
+          "ID reference for an external label. Use when another element already names the radiogroup.",
       },
     },
     RadioGroupItem: {

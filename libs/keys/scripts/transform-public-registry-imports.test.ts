@@ -2,11 +2,11 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "n
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { RELATIVE_JS_IMPORT_RE } from "@diffgazer/registry";
 import { afterEach, describe, expect, it } from "vitest";
 import { requireValue } from "../src/testing/assertions.js";
 import {
   assertNoRelativeJsImports,
-  RELATIVE_JS_IMPORT,
   rewriteImportsForTargetLayout,
   transformKeysPublicRegistryImportContent,
 } from "./transform-public-registry-imports.js";
@@ -46,7 +46,7 @@ describe("public registry import rewriting", () => {
       it("has no relative .js imports in content", () => {
         for (const file of item.files) {
           if (typeof file.content !== "string") continue;
-          const jsImports = file.content.match(RELATIVE_JS_IMPORT);
+          const jsImports = file.content.match(RELATIVE_JS_IMPORT_RE);
           expect(
             jsImports,
             `${file.target ?? file.path} has .js imports: ${jsImports?.join(", ")}`,

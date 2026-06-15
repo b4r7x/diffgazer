@@ -12,7 +12,8 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, relative, resolve } from "node:path";
-import { registryItemToDistKey, resolveKeysHookFiles } from "@diffgazer/registry/cli";
+import { registryItemToDistKey, resolveKeysHookFiles } from "@diffgazer/registry/build-checks";
+import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
 import type { Registry, RegistryItem } from "./registry/types.js";
 
 const packageRoot = resolve(import.meta.dirname, "..");
@@ -128,6 +129,22 @@ function walkDeclarations(dir: string): string[] {
   return declarations;
 }
 
+// A `.css` side-effect import in a shipped d.ts resolves to nothing in the
+// tarball and breaks `skipLibCheck: false` consumers (TS2307). tsup strips the
+// same imports from runtime JS, so only the type surface can carry the dead
+// specifier; no publint/attw gate observes it. Fail the build if any survives.
+function assertNoCssImportsInDeclarations(dir: string): void {
+  const cssSpecifier = /(?:from|import)\s*\(?\s*["'][^"']+\.css["']/;
+  for (const declaration of walkDeclarations(dir)) {
+    if (cssSpecifier.test(readFileSync(declaration, "utf-8"))) {
+      throw new Error(
+        `Public declaration references a .css import specifier: ${relative(distRoot, declaration)}. ` +
+          "CSS side-effect imports must not leak into shipped d.ts files.",
+      );
+    }
+  }
+}
+
 function writePublicDeclaration(distKey: string, targetDeclaration: string): void {
   const publicDeclaration = resolve(distRoot, `${distKey}.d.ts`);
   mkdirSync(dirname(publicDeclaration), { recursive: true });
@@ -175,7 +192,7 @@ try {
   // `meta.hidden` is the single allowlist source (mirrors tsup.config.ts): hidden
   // items are internal and must not produce orphan dist declarations.
   for (const item of registry.items) {
-    if (item.type === "registry:theme" || item.meta?.hidden) continue;
+    if (item.type === REGISTRY_ITEM_TYPE.theme || item.meta?.hidden) continue;
 
     const sourcePath = registryItemToSourcePath(item);
     if (!sourcePath) {
@@ -204,6 +221,8 @@ try {
     "components/command-palette/highlight",
     resolve(declarationRoot, "registry/ui/command-palette/highlight.d.ts"),
   );
+
+  assertNoCssImportsInDeclarations(declarationRoot);
 } finally {
   rmSync(tempDir, { recursive: true, force: true });
 }

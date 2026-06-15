@@ -15,11 +15,9 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-// Reset config-guard-cache module state between tests via vi.resetModules() + re-import.
-// Every @diffgazer/@-aliased participant in the rendered tree is re-imported together so the
-// providers, the wizard, and the cache reader share one fresh module graph — vi.resetModules()
-// re-evaluates the transformed app graph, so a statically-held context object would mismatch.
-let getConfiguredGuardCache: typeof import("@/lib/config-guard-cache").getConfiguredGuardCache;
+// vi.resetModules() + re-import keeps the rendered tree on one fresh module graph: every
+// @diffgazer/@-aliased participant (providers and the wizard) is re-imported together so a
+// statically-held context object cannot mismatch its consumer after the graph is re-evaluated.
 let OnboardingWizard: typeof import("./wizard").OnboardingWizard;
 let ConfigProvider: typeof import("@/hooks/use-config").ConfigProvider;
 let KeyboardProvider: typeof import("@diffgazer/keys").KeyboardProvider;
@@ -161,7 +159,6 @@ async function walkToFinalStepWithDefaults(user: ReturnType<typeof userEvent.set
 describe("OnboardingWizard", () => {
   beforeEach(async () => {
     vi.resetModules();
-    ({ getConfiguredGuardCache } = await import("@/lib/config-guard-cache"));
     ({ ApiProvider } = await import("@diffgazer/core/api/hooks"));
     ({ FooterProvider } = await import("@diffgazer/core/footer"));
     ({ ConfigProvider } = await import("@/hooks/use-config"));
@@ -227,9 +224,12 @@ describe("OnboardingWizard", () => {
     );
   });
 
-  it("marks the app as configured after a successful completion", async () => {
+  it("refreshes config and navigates home after a successful completion", async () => {
     const user = userEvent.setup();
     renderWizard();
+
+    await waitFor(() => expect(mockLoadInit).toHaveBeenCalled());
+    const initCallsBeforeCompletion = mockLoadInit.mock.calls.length;
 
     await walkToFinalStepWithDefaults(user);
     await user.click(screen.getByRole("button", { name: /complete setup/i }));
@@ -243,7 +243,9 @@ describe("OnboardingWizard", () => {
       expect(mockSaveConfig).toHaveBeenCalledWith(
         expect.objectContaining({ provider: firstProvider.id }),
       );
-      expect(getConfiguredGuardCache(60_000)).toBe(true);
+      // Completion now invalidates the config queries (no hand-rolled guard cache),
+      // so the mounted init query refetches instead of patching a module global.
+      expect(mockLoadInit.mock.calls.length).toBeGreaterThan(initCallsBeforeCompletion);
       expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
     });
   });
@@ -321,6 +323,30 @@ describe("OnboardingWizard", () => {
     });
   }, 15_000);
 
+  it("shows a visible error when the OpenRouter early save fails", async () => {
+    const user = userEvent.setup();
+    mockSaveConfig.mockRejectedValue(new Error("STORAGE_NOT_CONFIGURED"));
+
+    renderWizard();
+
+    await expectStep(/secrets storage/i);
+    await user.click(getRadio(/file storage/i));
+    await clickNext(user);
+
+    await expectStep(/ai provider/i);
+    await user.click(getRadio(/openrouter/i));
+    await clickNext(user);
+
+    // OpenRouter with an env key triggers the early credential save on Next.
+    await expectStep(/api key/i);
+    await user.click(getRadio(/import from env/i));
+    await clickNext(user);
+
+    expect(await screen.findByText("STORAGE_NOT_CONFIGURED")).toBeVisible();
+    // The early-save failure keeps the user on the api-key step.
+    await expectStep(/api key/i);
+  });
+
   it("shows an inline error when completion fails and keeps the user on the wizard", async () => {
     const user = userEvent.setup();
     mockSaveConfig.mockRejectedValue(new Error("Save failed"));
@@ -331,7 +357,6 @@ describe("OnboardingWizard", () => {
 
     expect(await screen.findByText("Save failed")).toBeVisible();
     expect(mockNavigate).not.toHaveBeenCalled();
-    expect(getConfiguredGuardCache(60_000)).toBeNull();
     // Complete Setup remains available so the user can retry.
     expect(screen.getByRole("button", { name: /complete setup/i })).toBeEnabled();
   });

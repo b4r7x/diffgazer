@@ -1,7 +1,6 @@
 import type {
   AgentState,
   AgentStreamEvent,
-  EnrichEvent,
   StepEvent,
   StepId,
   StepState,
@@ -16,7 +15,7 @@ export interface FileProgress {
   completed: string[];
 }
 
-export type ReviewEvent = AgentStreamEvent | StepEvent | EnrichEvent;
+export type ReviewEvent = AgentStreamEvent | StepEvent;
 
 // Unified review state for web and CLI
 export interface ReviewState {
@@ -251,47 +250,29 @@ function handleFileEvent(
   };
 }
 
-function handleEnrichEvent(state: ReviewState, event: EnrichEvent): ReviewState {
-  return {
-    ...state,
-    events: appendEvent(state.events, event),
-  };
-}
-
-function handleToolEvent(
+function handleFileProgressEvent(
   state: ReviewState,
-  event: Extract<AgentStreamEvent, { type: "tool_call" | "tool_start" }>,
+  event: Extract<AgentStreamEvent, { type: "file_progress" }>,
 ): ReviewState {
-  if (event.tool === "readFileContext") {
-    const colonIndex = event.input.indexOf(":");
-    const filePath = colonIndex === -1 ? event.input : event.input.substring(0, colonIndex);
-    const newCompleted = state.fileProgress.completed.includes(filePath)
-      ? state.fileProgress.completed
-      : [...state.fileProgress.completed, filePath];
-    return {
-      ...state,
-      agents: updateAgents(state.agents, event),
-      fileProgress: {
-        ...state.fileProgress,
-        completed: newCompleted,
-        current: newCompleted.length,
-        currentFile: filePath,
-      },
-      events: appendEvent(state.events, event),
-    };
-  }
-
+  const newCompleted = state.fileProgress.completed.includes(event.file)
+    ? state.fileProgress.completed
+    : [...state.fileProgress.completed, event.file];
   return {
     ...state,
-    agents: updateAgents(state.agents, event),
-    issues: updateIssues(state.issues, event),
+    fileProgress: {
+      ...state.fileProgress,
+      total: Math.max(state.fileProgress.total, event.total),
+      completed: newCompleted,
+      current: event.completed,
+      currentFile: event.file,
+    },
     events: appendEvent(state.events, event),
   };
 }
 
-// Routes a review event to the handler that owns its sub-type. Step, file,
-// enrich, and tool events have dedicated handlers; the orchestrator-complete
-// total and all remaining agent/issue events fall through to the agent path.
+// Routes a review event to the handler that owns its sub-type. Step, file, and
+// file-progress events have dedicated handlers; the orchestrator-complete total
+// and all remaining agent/tool/issue events fall through to the agent path.
 function dispatchEvent(state: ReviewState, event: ReviewEvent): ReviewState {
   if (isStepEvent(event)) {
     return handleStepEvent(state, event);
@@ -301,12 +282,8 @@ function dispatchEvent(state: ReviewState, event: ReviewEvent): ReviewState {
     return handleFileEvent(state, event);
   }
 
-  if (event.type === "enrich_progress") {
-    return handleEnrichEvent(state, event);
-  }
-
-  if (event.type === "tool_call" || event.type === "tool_start") {
-    return handleToolEvent(state, event);
+  if (event.type === "file_progress") {
+    return handleFileProgressEvent(state, event);
   }
 
   if (event.type === "orchestrator_complete" && event.filesAnalyzed) {

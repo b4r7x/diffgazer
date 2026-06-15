@@ -1,6 +1,6 @@
 ---
 title: Hooks
-description: Per-hook API reference for the headless hooks that power @diffgazer/ui.
+description: Per-hook API reference for the headless hooks that power `@diffgazer/ui`.
 ---
 
 The headless hooks behind `@diffgazer/ui`. Each is standalone — it takes a ref or options, returns state or props, and carries no runtime dependencies (except [`listbox`](/ui/hooks/listbox), which reuses the keys navigation engine). Copy any of them with `dgadd add ui/<hook>`, or import from the package.
@@ -12,6 +12,7 @@ The headless hooks behind `@diffgazer/ui`. Each is standalone — it takes a ref
 | [`controllable-state`](/ui/hooks/controllable-state) | A control that supports both controlled and uncontrolled modes via `value`, `defaultValue`, and `onChange`. |
 | [`form-reset`](/ui/hooks/form-reset) | Resetting an uncontrolled custom control when its enclosing native `<form>` resets. |
 | [`presence`](/ui/hooks/presence) | Keeping an element mounted through its CSS exit animation, then unmounting after it ends. |
+| [`copy-to-clipboard`](/ui/hooks/copy-to-clipboard) | Copying text to the clipboard with copied/failed feedback that resets after a delay. |
 
 ## Positioning & overflow
 
@@ -27,12 +28,19 @@ The headless hooks behind `@diffgazer/ui`. Each is standalone — it takes a ref
 | Hook | Use it for |
 |------|------------|
 | [`listbox`](/ui/hooks/listbox) | Selection, highlight, ARIA, and keyboard navigation for listbox- or menu-pattern lists. |
-| [`outside-click`](/ui/hooks/outside-click) | Closing a dropdown, popover, or dialog when the user clicks outside a referenced element. |
+| [`useOutsideClick`](/ui/hooks/outside-click) | Closing a dropdown, popover, or dialog when the user clicks outside a referenced element; the same source file also exports `useEscapeKey` for Escape dismissal stacks. |
+
+## Refs
+
+| Hook | Use it for |
+|------|------------|
+| [`composed-refs`](/ui/hooks/composed-refs) | Merging internal and consumer refs into one stable callback ref. |
 
 ## Document
 
 | Hook | Use it for |
 |------|------------|
 | [`active-heading`](/ui/hooks/active-heading) | Tracking the active heading for a table of contents (top-line or viewport-center activation, with `scrollTo`). |
+| [`is-mobile`](/ui/hooks/is-mobile) | Reacting to viewport breakpoints with a matchMedia-backed boolean. |
 
 Need keyboard or focus behavior instead? See the [keys hooks](/keys/hooks) for navigation, focus trap, focus restore, and scope-aware variants.

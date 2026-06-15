@@ -157,8 +157,9 @@ function createKeysPeerFixture(packageJson: Record<string, unknown>) {
   return fixtureRoot;
 }
 
-// keys declared as a plain required peer (present, not flagged optional) — the
-// T-608/F-234 contract. The validator must accept this.
+// keys declared as a plain required peer (present, not flagged optional):
+// package-mode UI entries import @diffgazer/keys at runtime, so it must remain a
+// required peer. The validator must accept this.
 function createKeysRequiredPeerFixture() {
   return createKeysPeerFixture({
     peerDependencies: { "@diffgazer/keys": ">=0.2.0" },

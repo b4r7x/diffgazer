@@ -8,13 +8,13 @@ import {
   type Ref,
   useRef,
 } from "react";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
-import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
 
 const searchInputVariants = cva(
-  "flex items-center gap-2 bg-background border border-border font-mono shrink-0 transition-colors motion-reduce:transition-none focus-within:border-foreground has-[input[aria-invalid=true]]:border-destructive",
+  "flex items-center gap-2 bg-background border border-border font-mono shrink-0 transition-colors motion-reduce:transition-none focus-within:border-foreground has-[input[aria-invalid=true]]:border-error",
   {
     variants: {
       size: {
@@ -36,21 +36,34 @@ const defaultPrefix = (
   </span>
 );
 
+/** Props for search input. */
 export interface SearchInputProps
   extends Omit<
     InputHTMLAttributes<HTMLInputElement>,
     "value" | "defaultValue" | "onChange" | "type" | "size" | "prefix"
   > {
+  /** Controlled search value. */
   value?: string;
+  /** Initial search value for uncontrolled usage. */
   defaultValue?: string;
+  /** Called with the next search value when the native input changes. */
   onChange?: (value: string) => void;
+  /** Called when Escape is pressed and the event was not already handled. */
   onEscape?: () => void;
+  /** Called when Enter is pressed and the event was not already handled. */
   onEnter?: () => void;
+  /** Prefix content before the input. Pass null to hide it. */
   prefix?: ReactNode;
+  /** Padding/font size token for the search wrapper. */
   size?: "sm" | "md" | "lg";
+  /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLInputElement>;
 }
 
+/**
+ * Terminal-styled search input with / prefix and keyboard event callbacks. Supports controlled
+ * and uncontrolled modes.
+ */
 export function SearchInput({
   value,
   defaultValue,
@@ -68,6 +81,7 @@ export function SearchInput({
   ...rest
 }: SearchInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const composedRef = useComposedRefs(inputRef, ref);
   const [current, setValue] = useControllableState({
     value,
     defaultValue: defaultValue ?? "",
@@ -80,8 +94,16 @@ export function SearchInput({
     if (e.defaultPrevented) return;
 
     if (e.key === "Escape") {
-      e.preventDefault();
-      onEscape?.();
+      // Only consume Escape when it does something: clear a non-empty value, or
+      // call onEscape. An untouched Escape on an empty input must propagate so the
+      // native search clear and a wrapping <dialog> cancel still work.
+      if (current.length > 0) {
+        e.preventDefault();
+        setValue("");
+      } else if (onEscape) {
+        e.preventDefault();
+        onEscape();
+      }
     } else if (e.key === "Enter" && onEnter) {
       e.preventDefault();
       onEnter();
@@ -89,10 +111,14 @@ export function SearchInput({
   };
 
   return (
-    <div className={cn(searchInputVariants({ size, disabled }), className)}>
+    <div
+      data-slot="search-input"
+      className={cn(searchInputVariants({ size, disabled }), className)}
+    >
       {prefix}
       <input
-        ref={composeRefs(inputRef, ref)}
+        ref={composedRef}
+        data-slot="search-input-control"
         type="search"
         value={current}
         onChange={(e) => setValue(e.target.value)}
@@ -101,7 +127,7 @@ export function SearchInput({
         aria-label={ariaLabel ?? placeholder}
         disabled={disabled}
         {...rest}
-        className="flex-1 bg-transparent font-mono text-foreground placeholder:text-foreground/50 focus:outline-none disabled:cursor-not-allowed [&::-webkit-search-cancel-button]:appearance-none"
+        className="flex-1 bg-transparent font-mono text-foreground placeholder:text-foreground/55 focus:outline-none disabled:cursor-not-allowed [&::-webkit-search-cancel-button]:appearance-none"
       />
     </div>
   );

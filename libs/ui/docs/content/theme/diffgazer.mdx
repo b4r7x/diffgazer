@@ -1,28 +1,41 @@
 ---
 title: Diffgazer
-description: Local AI code review workflow, review lenses, and quick start.
+description: Minimal monochrome theme tokens for `@diffgazer/ui`.
 ---
 
 ## Preview
 
 <DiffgazerPreview />
 
-## Why Diffgazer
+## Character
 
-Diffgazer gives solo developers a local-first code review loop:
+The Diffgazer theme is a high-contrast monochrome theme with small, deliberate color accents for warnings, errors, links, and success states. It is designed for dense operational UI: clear borders, restrained surfaces, compact typography, and terminal-style focus treatment.
 
-- review requests send diff and prompt content to the provider you choose
-- independent review lenses focus on different failure modes
-- review history and issue drilldowns keep context in one place
+Dark mode maps `--background` to `--base-bg` (`#0a0a0a`) and most foreground/action states to `--base-fg` or `--base-highlight`. Light mode keeps the same semantic token names while swapping primitives to a pale surface, dark foreground, and stronger color accents.
 
-## Quick Start
+## Token model
 
-The public `diffgazer` package is published. Run `npm view diffgazer version engines --json` to verify the current published version and Node floor, then install it globally:
+The theme sets primitive `--base-*` tokens first, then maps them into the semantic tokens consumed by components:
 
-```bash
-npm install -g diffgazer
-cd your-project
-diffgazer
+| Primitive | Dark | Light | Primary semantic use |
+|-----------|------|-------|----------------------|
+| `--base-bg` | `#0a0a0a` | `#f7f8f5` | `--background` |
+| `--base-fg` | `#e5e5e5` | `#1f2328` | `--foreground` |
+| `--base-border` | `#606060` | `#aeb7c0` | `--border` |
+| `--base-selection` | `#333333` | `#e8edf3` | `--secondary`, dark `--card`, dark `--popover` |
+| `--base-info` | `#ccccff` | `#0b63ce` | `--info`, light `--ring` |
+| `--base-danger` | `#ff7b72` | `#c62828` | `--error` |
+
+See the [theme overview](/ui/theme) for the full token groups and the [colors reference](/ui/theme/colors) for all semantic, tone, code, and surface tokens.
+
+## Variants
+
+Use `data-theme="dark"` or `data-theme="light"` on a root element to select the variant. If no attribute is present, the shipped CSS defaults to the dark variant.
+
+```html
+<html data-theme="dark">
+  <body>...</body>
+</html>
 ```
 
-More details: [github.com/b4r7x/diffgazer](https://github.com/b4r7x/diffgazer)
+The theme imports `theme-base.css`, so component CSS only needs to consume semantic tokens such as `--background`, `--foreground`, `--border`, `--ring`, and tone tokens.

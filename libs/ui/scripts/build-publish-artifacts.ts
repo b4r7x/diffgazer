@@ -1,10 +1,12 @@
 import { resolve } from "node:path";
 import {
+  aggregateThemeStyles,
   buildRegistryArtifacts,
   createArtifactManifest,
   REGISTRY_ORIGIN,
 } from "@diffgazer/registry";
 import {
+  aggregateThemeStylesInPublicRegistry,
   isHiddenKeysShim,
   transformUiPublicRegistryItem,
   transformUiPublicRegistryKeysImportContent,
@@ -12,6 +14,8 @@ import {
 } from "./registry/rewrite-keys-imports.js";
 
 const ROOT = resolve(import.meta.dirname, "..");
+const SOURCE_REGISTRY_PATH = "registry/registry.json";
+const THEME_STYLES_PATH = "styles/styles.css";
 
 const INPUTS = [
   "docs/content",
@@ -59,13 +63,31 @@ function main(): void {
     ensurePublicRegistry: {
       fixCommand: "pnpm --filter @diffgazer/ui build:shadcn",
       label: "ui public registry index",
-      afterBuild: ({ outputDir }) => transformUiPublicRegistryKeysImports(outputDir),
+      afterBuild: ({ outputDir }) => {
+        transformUiPublicRegistryKeysImports(outputDir);
+        aggregateThemeStylesInPublicRegistry(outputDir, (seedContent) =>
+          aggregateThemeStyles({
+            rootDir: ROOT,
+            sourceRegistryPath: SOURCE_REGISTRY_PATH,
+            seedContent,
+          }),
+        );
+      },
       transformSourceItem: ({ item }) => transformUiPublicRegistryItem(item),
       shouldSkipSourceItem: ({ item }) => isHiddenKeysShim(item),
-      transformSourceContent: ({ content, itemName }) =>
-        transformUiPublicRegistryKeysImportContent(content, {
-          shimHookBasename: itemName.startsWith("use-") ? itemName : undefined,
-        }),
+      // The theme's styles.css ships aggregated (seed + every component CSS) so the
+      // shadcn install path carries component CSS; validation must compare the
+      // aggregated source against the aggregated public file.
+      transformSourceContent: ({ content, itemName, filePath }) =>
+        itemName === "theme" && filePath === THEME_STYLES_PATH
+          ? aggregateThemeStyles({
+              rootDir: ROOT,
+              sourceRegistryPath: SOURCE_REGISTRY_PATH,
+              seedContent: content,
+            })
+          : transformUiPublicRegistryKeysImportContent(content, {
+              shimHookBasename: itemName.startsWith("use-") ? itemName : undefined,
+            }),
     },
     requiredPaths: [
       { path: "public/r", label: "ui public registry" },

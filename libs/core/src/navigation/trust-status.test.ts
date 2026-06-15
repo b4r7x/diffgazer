@@ -20,7 +20,7 @@ describe("deriveTrustStatus", () => {
       projectId: "proj_1",
       repoRoot: "/repo",
     });
-    expect(result).toEqual({ needsTrust: true, isTrusted: false, status: "untrusted" });
+    expect(result).toEqual({ needsTrust: true, isTrusted: false });
   });
 
   it("reports trusted when read capability is granted", () => {
@@ -29,21 +29,21 @@ describe("deriveTrustStatus", () => {
       projectId: "proj_1",
       repoRoot: "/repo",
     });
-    expect(result).toEqual({ needsTrust: false, isTrusted: true, status: "trusted" });
+    expect(result).toEqual({ needsTrust: false, isTrusted: true });
   });
 
-  it("reports unknown when trust exists but read capability is denied", () => {
+  it("reports neither trusted nor needsTrust when read capability is denied", () => {
     const result = deriveTrustStatus({
       trust: makeTrust({ capabilities: { readFiles: false, runCommands: false } }),
       projectId: "proj_1",
       repoRoot: "/repo",
     });
-    expect(result).toEqual({ needsTrust: false, isTrusted: false, status: "unknown" });
+    expect(result).toEqual({ needsTrust: false, isTrusted: false });
   });
 
   it("does not flag needsTrust when project is not identified", () => {
     const result = deriveTrustStatus({ trust: null, projectId: null, repoRoot: null });
-    expect(result).toEqual({ needsTrust: false, isTrusted: false, status: "unknown" });
+    expect(result).toEqual({ needsTrust: false, isTrusted: false });
   });
 
   it("does not flag needsTrust when repoRoot is missing", () => {
@@ -61,6 +61,6 @@ describe("deriveTrustStatus", () => {
       projectId: undefined,
       repoRoot: undefined,
     });
-    expect(result).toEqual({ needsTrust: false, isTrusted: false, status: "unknown" });
+    expect(result).toEqual({ needsTrust: false, isTrusted: false });
   });
 });

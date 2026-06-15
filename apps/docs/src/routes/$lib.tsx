@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, notFound, Outlet, redirect, rootRouteId } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { DocsNotFoundBlock } from "@/components/docs-not-found";
 import {
@@ -27,10 +27,10 @@ export const Route = createFileRoute("/$lib")({
   staleTime: Infinity,
   beforeLoad: ({ params }) => {
     if (!isDocsLibraryId(params.lib)) {
-      throw redirect({
-        to: "/$lib",
-        params: { lib: PRIMARY_DOCS_LIBRARY_ID },
-      });
+      // Escalate to the root 404: the $lib shell's own notFoundComponent reads
+      // loader data this beforeLoad short-circuits, so an unknown library has no
+      // page tree to render against.
+      throw notFound({ routeId: rootRouteId });
     }
 
     if (!getDocsLibraryConfig(params.lib).enabled) {

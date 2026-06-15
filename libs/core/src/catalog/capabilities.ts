@@ -1,4 +1,4 @@
-import type { AIProvider } from "../schemas/config/index.js";
+import type { AIProvider } from "../schemas/config/providers.js";
 import { formatContextTokens } from "./format.js";
 import { PROVIDER_OVERLAY } from "./provider-overlay.js";
 import type { ModelsDevCatalog, ModelsDevModel } from "./schema.js";
@@ -58,11 +58,12 @@ export function deriveCapabilities(
   const tier = resolveTier(models, provider);
   const tierBadge: "FREE" | "PAID" = overlay.hasFreeTier ? "FREE" : "PAID";
 
-  const costDescription = overlay.freeTierNote
-    ? `${overlay.freeTierNote} Live pricing per model.`
-    : overlay.hasFreeTier
-      ? "Free and paid tiers vary by model; live pricing drives the per-model badge."
-      : "Paid usage; live pricing drives the per-model badge.";
+  let costDescription = "Paid usage; live pricing drives the per-model badge.";
+  if (overlay.freeTierNote) {
+    costDescription = `${overlay.freeTierNote} Live pricing per model.`;
+  } else if (overlay.hasFreeTier) {
+    costDescription = "Free and paid tiers vary by model; live pricing drives the per-model badge.";
+  }
 
   return {
     toolCalling: anyToolCall ? "Supported (tool / function calling)" : "Varies by model",

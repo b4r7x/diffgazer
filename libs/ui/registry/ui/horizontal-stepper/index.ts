@@ -1,10 +1,9 @@
 "use client";
 
-import "../shared/stepper.css";
-
 import { type HorizontalStepperProps, HorizontalStepperRoot } from "./horizontal-stepper";
 import { HorizontalStepperStep, type HorizontalStepperStepProps } from "./horizontal-stepper-step";
 
+/** Sibling primitive: compact horizontal step bar. */
 const HorizontalStepper = Object.assign(HorizontalStepperRoot, {
   Step: HorizontalStepperStep,
 });

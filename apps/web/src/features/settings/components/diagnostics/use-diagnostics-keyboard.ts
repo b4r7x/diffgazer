@@ -1,6 +1,10 @@
-import type { DiagnosticsData } from "@diffgazer/core/api/hooks";
+import {
+  type DiagnosticsData,
+  deriveDiagnosticsActions,
+  refreshAllDiagnostics,
+} from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
-import type { Shortcut } from "@diffgazer/core/schemas/presentation";
+import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
 import { useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
 import { useNavigate } from "@tanstack/react-router";
 import { type RefObject, useEffect, useRef, useState } from "react";
@@ -50,7 +54,7 @@ export function useDiagnosticsKeyboard({
     setRefreshError(null);
 
     try {
-      const results = await Promise.allSettled([retryServer(), refetchContext()]);
+      const results = await refreshAllDiagnostics({ retryServer, refetchContext });
       const failedCount = results.filter((result) => result.status === "rejected").length;
       setLastRefreshedAt(new Date().toISOString());
       if (failedCount > 0) setRefreshError("Refresh failed for some diagnostics sources.");
@@ -77,9 +81,12 @@ export function useDiagnosticsKeyboard({
     }
   };
 
-  const refreshAllDisabled = isRefreshingAll || isRefreshingContext;
-  const contextActionDisabled = !canRegenerate || isRefreshingContext || isRefreshingAll;
-  const { focusedIndex, inActions, getActionProps } = useActionRowNavigation({
+  const { refreshAllDisabled, contextActionDisabled } = deriveDiagnosticsActions({
+    canRegenerate,
+    isRefreshing: isRefreshingContext,
+    isRefreshingAll,
+  });
+  const { focusedIndex, inActions, getActionProps } = useActionRowNavigation<readonly unknown[]>({
     enabled: true,
     actionCount: BUTTON_COUNT,
     disabledActions: [refreshAllDisabled, contextActionDisabled],
@@ -110,21 +117,11 @@ export function useDiagnosticsKeyboard({
 
   usePageFooter({
     shortcuts: footerShortcuts,
-    rightShortcuts: [{ key: "Esc", label: "Back" }],
+    rightShortcuts: [BACK_SHORTCUT],
   });
 
   useKey(
-    "r",
-    () => {
-      void handleRefreshAll();
-    },
-    {
-      scope: SETTINGS_DIAGNOSTICS_SCOPE,
-      enabled: !refreshAllDisabled,
-    },
-  );
-  useKey(
-    "R",
+    ["r", "R"],
     () => {
       void handleRefreshAll();
     },

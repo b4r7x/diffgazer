@@ -1,5 +1,9 @@
 import type figlet from "figlet";
 
+/**
+ * Renders static text or caller-provided ASCII art without loading figlet from the default
+ * component export.
+ */
 export type FigletFont = "Big" | "Small";
 
 type FigletModule = typeof figlet;
@@ -42,6 +46,7 @@ function loadFont(figletModule: FigletModule, font: FigletFont): Promise<void> {
   return promise;
 }
 
+/** Returns figlet text. */
 export async function getFigletText(text: string, font: FigletFont = "Big"): Promise<string> {
   const figletModule = await loadFiglet();
   await loadFont(figletModule, font);

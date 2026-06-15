@@ -1,4 +1,3 @@
-import type { Logger } from "../logger.js";
 import type { ArtifactManifest } from "../manifest.js";
 
 export interface SyncLibraryConfig {
@@ -20,7 +19,6 @@ export interface SyncDocsOptions {
   outputPaths?: Partial<SyncOutputPathsConfig>;
   rootTitle?: string;
   extraRootPages?: string[];
-  logger?: Logger;
 }
 
 export interface AfterSyncContext {

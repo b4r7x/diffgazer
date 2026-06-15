@@ -11,10 +11,6 @@ export function isReviewStartAction(id: MenuAction): boolean {
   return REVIEW_START_ACTIONS.has(id);
 }
 
-export function isReviewAction(id: MenuAction): boolean {
-  return REVIEW_START_ACTIONS.has(id) || id === "resume-review";
-}
-
 export function isMenuActionDisabled(id: MenuAction, context: MenuDisablingContext): boolean {
   if (isReviewStartAction(id)) {
     return !context.isTrusted;

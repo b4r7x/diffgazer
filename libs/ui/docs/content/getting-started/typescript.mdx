@@ -1,11 +1,11 @@
 ---
 title: TypeScript
-description: Configure path aliases, strict mode, and the React version for @diffgazer/ui.
+description: Configure path aliases, strict mode, and the React version for `@diffgazer/ui`.
 ---
 
 `@diffgazer/ui` components are written in TypeScript and require path alias configuration.
 
-## Path Aliases
+## Path aliases
 
 Components import through the source alias recorded by `dgadd init`. Configure a root source alias such as `@/*` or `~/*` in `tsconfig.json`:
 
@@ -39,7 +39,7 @@ export default defineConfig({
 
 For Next App Router, configure the same source alias path in `tsconfig.json` or `jsconfig.json`. Keep global CSS imports in `app/layout.tsx` through your app CSS entrypoint; copied component files must not import global CSS directly.
 
-## Strict Mode
+## Strict mode
 
 Components are written with `strict: true`. We recommend enabling it:
 

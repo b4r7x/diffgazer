@@ -1,5 +1,6 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEFAULT_API_PORT } from "@diffgazer/core/env";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, "../../..");
@@ -20,7 +21,7 @@ export const config = {
     server: resolve(repoRoot, "cli/server"),
   },
   ports: {
-    api: 3000,
+    api: DEFAULT_API_PORT,
     web: 3001,
   },
   shutdown: {

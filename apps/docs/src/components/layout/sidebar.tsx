@@ -8,9 +8,9 @@ import { Spinner } from "@diffgazer/ui/components/spinner";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { Link, useLocation } from "@tanstack/react-router";
 import { type MouseEvent, useEffect, useRef } from "react";
+import { usePendingDocsRoute } from "@/hooks/use-pending-docs-route";
 import { DOCS_LIBRARY_IDS, type DocsLibraryId, routeSplatFromDocsPath } from "@/lib/library";
 import type { PageTree, PageTreeNode } from "@/lib/page-tree";
-import { usePendingDocsRoute } from "@/lib/use-pending-docs-route";
 import { TreeSidebarShell } from "./tree-sidebar-shell";
 
 interface DocsSidebarProps {
@@ -123,6 +123,13 @@ export function isPrimaryNavigationClick(event: MouseEvent): boolean {
   return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 }
 
+/**
+ * Inactive-link dimming for every chrome tree sidebar (Docs/Home/Legal), matching
+ * the deleted `#sidebar-nav` color-mix stops (foreground 52% / hover 4%).
+ */
+export const chromeSidebarItemClassName =
+  "text-foreground/52 transition-colors hover:bg-foreground/[0.04] hover:text-foreground data-[selected]:text-foreground";
+
 export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
   const pathname = useLocation({ select: (l) => l.pathname });
   const pendingPathname = usePendingDocsRoute();
@@ -154,7 +161,7 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
               </SidebarSectionTitle>
             ) : null}
 
-            <SidebarSectionContent>
+            <SidebarSectionContent className="border-border/75">
               {section.items.map((item) => {
                 const url = item.url ?? "";
                 const label = sidebarItemLabel(section.title, indexUrl, item);
@@ -174,6 +181,7 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
                   <SidebarItem
                     key={url}
                     active={pathname === url || isPending}
+                    className={chromeSidebarItemClassName}
                     onClick={(event) => {
                       if (!isPrimaryNavigationClick(event)) return;
                       onNavigate?.();

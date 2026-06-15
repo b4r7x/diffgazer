@@ -11,10 +11,10 @@ import {
   useRef,
   useState,
 } from "react";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { mergeIds, resolveAriaInvalid } from "@/lib/aria";
-import { composeRefs } from "@/lib/compose-refs";
 import {
   type SelectableSize,
   type SelectableVariant,
@@ -27,6 +27,7 @@ import {
 } from "@/lib/selectable-variants";
 import { cn } from "@/lib/utils";
 
+/** Allowed checkbox state values. */
 type CheckboxState = "indeterminate" | "checked" | "unchecked";
 
 function resolveCheckboxState(indeterminate: boolean, checked: boolean): CheckboxState {
@@ -35,10 +36,13 @@ function resolveCheckboxState(indeterminate: boolean, checked: boolean): Checkbo
   return "unchecked";
 }
 
+/** Allowed checkbox size values. */
 export type CheckboxSize = SelectableSize;
 
+/** Allowed checkbox variant values. */
 export type CheckboxVariant = SelectableVariant;
 
+/** Props for checkbox root. */
 type CheckboxRootProps = Omit<
   ComponentPropsWithRef<"div">,
   | "children"
@@ -57,6 +61,7 @@ type CheckboxRootProps = Omit<
   | "data-value"
 >;
 
+/** Props for checkbox. */
 export type CheckboxProps = CheckboxRootProps & {
   checked?: boolean | "indeterminate";
   defaultChecked?: boolean;
@@ -80,6 +85,7 @@ export type CheckboxProps = CheckboxRootProps & {
   ref?: Ref<HTMLDivElement>;
 };
 
+/** Standalone checkbox (controlled or uncontrolled) */
 export function Checkbox({
   checked: controlledChecked,
   defaultChecked = false,
@@ -113,6 +119,7 @@ export function Checkbox({
   const controlledBool = controlledChecked === undefined ? undefined : controlledChecked === true;
 
   const rootRef = useRef<HTMLDivElement>(null);
+  const composedRef = useComposedRefs(rootRef, ref);
   const [isChecked, setIsChecked] = useControllableState<boolean>({
     value: controlledBool,
     defaultValue: defaultChecked,
@@ -132,7 +139,15 @@ export function Checkbox({
     description ? descriptionId : undefined,
   );
 
-  useFormReset(rootRef, defaultChecked, setIsChecked, controlledBool === undefined);
+  useFormReset(
+    rootRef,
+    defaultChecked,
+    (value) => {
+      setNativeInvalid(false);
+      setIsChecked(value);
+    },
+    controlledBool === undefined,
+  );
 
   const toggle = () => {
     if (disabled) return;
@@ -163,6 +178,12 @@ export function Checkbox({
   };
 
   const indicator = selectableIndicators[variant][state];
+  let dataState = "unchecked";
+  if (isIndeterminate) {
+    dataState = "indeterminate";
+  } else if (isChecked) {
+    dataState = "checked";
+  }
 
   return (
     <>
@@ -190,10 +211,13 @@ export function Checkbox({
       {/* biome-ignore lint/a11y/useSemanticElements: this is the custom-styled checkbox control; a hidden native <input type="checkbox"> (rendered separately) owns form submission, so the visible control uses role="checkbox". */}
       <div
         {...rootProps}
-        ref={composeRefs(rootRef, ref)}
+        ref={composedRef}
         role="checkbox"
+        data-slot="checkbox"
         data-value={dataValue ?? value}
-        data-highlighted={highlighted ? "true" : undefined}
+        data-state={dataState}
+        data-disabled={disabled ? "" : undefined}
+        data-highlighted={highlighted ? "" : undefined}
         aria-checked={isIndeterminate ? "mixed" : isChecked}
         aria-disabled={disabled || undefined}
         aria-required={required || undefined}

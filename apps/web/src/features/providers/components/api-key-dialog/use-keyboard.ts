@@ -105,7 +105,7 @@ export function useApiKeyDialogKeyboard({
     methodOptionRefs.current.get(nextMethod)?.focus();
   };
 
-  const footerActionRow = useActionRowNavigation({
+  const footerActionRow = useActionRowNavigation<readonly unknown[]>({
     enabled: open && isZone("footer"),
     actionCount: 2,
     disabledActions: [false, !canSubmit],

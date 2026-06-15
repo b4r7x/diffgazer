@@ -3,7 +3,7 @@ import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { Button } from "@diffgazer/ui/components/button";
 import { cn } from "@diffgazer/ui/lib/utils";
-import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
+import { SEVERITY_CONFIG } from "@/components/shared/severity/constants";
 
 export interface IssuePreviewItemProps {
   title: string;
@@ -46,18 +46,18 @@ function IssuePreviewContent({
           <div
             className={cn(
               "text-sm font-bold transition-colors",
-              isClickable && "group-hover:text-tui-blue",
+              isClickable && "group-hover:text-info-text",
             )}
           >
             {title}
           </div>
-          <div className="text-xs text-tui-muted font-mono">
+          <div className="text-xs text-muted-foreground font-mono">
             {file}:{line}
           </div>
         </div>
       </div>
       <div className="flex items-center gap-4">
-        <span className="hidden sm:inline text-xs text-tui-muted">{category}</span>
+        <span className="hidden sm:inline text-xs text-muted-foreground">{category}</span>
         <Badge size="sm" className={cn("text-2xs uppercase", borderColor, color, "bg-transparent")}>
           {label}
         </Badge>
@@ -80,7 +80,7 @@ export function IssuePreviewItem({
   const contentProps = { title, file, line, category, icon, color, label, borderColor };
   const sharedClassName = cn(
     "flex items-center justify-between p-3 w-full text-left",
-    "bg-tui-bg border-b border-tui-border last:border-b-0",
+    "bg-background border-b border-border last:border-b-0",
     "group transition-colors",
     className,
   );
@@ -92,7 +92,7 @@ export function IssuePreviewItem({
         onClick={onClick}
         className={cn(
           sharedClassName,
-          "h-auto justify-between rounded-none hover:bg-tui-selection focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tui-blue",
+          "h-auto justify-between rounded-none hover:bg-secondary focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info",
         )}
       >
         <IssuePreviewContent {...contentProps} isClickable />

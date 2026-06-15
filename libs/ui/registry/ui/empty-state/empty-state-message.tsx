@@ -1,8 +1,10 @@
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
+/** Props for empty state message. */
 export type EmptyStateMessageProps = ComponentPropsWithRef<"div">;
 
+/** Primary empty-state copy. Font size adapts via context. */
 export function EmptyStateMessage({ className, ...props }: EmptyStateMessageProps) {
   return (
     <div

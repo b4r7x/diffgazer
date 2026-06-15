@@ -39,7 +39,12 @@ export const popoverDoc: ComponentDoc = {
     {
       title: "Click Mode",
       content:
-        "In click mode, the popover toggles on trigger click, dismisses on outside click or Escape key. Content is interactive (pointer-events enabled). Use for forms, menus, or rich content.",
+        "In click mode, the popover toggles on trigger click, dismisses on outside click, Escape, or focus leaving the trigger/content pair. Content is interactive (pointer-events enabled). Use for forms, menus, or rich content.",
+    },
+    {
+      title: "Popup Role Contract",
+      content:
+        'popupRole controls the trigger aria-haspopup value and accepts dialog, menu, listbox, tree, or grid. Hover mode content renders role="tooltip" automatically; tooltip is not a popupRole value. Consumers remain responsible for matching the role to the content pattern and supplying an accessible name for dialog-like content.',
     },
     {
       title: "Controlled",
@@ -57,12 +62,52 @@ export const popoverDoc: ComponentDoc = {
     { name: "popover-basic", title: "Basic" },
     { name: "popover-hover", title: "Hover Mode" },
     { name: "popover-placement", title: "Placement" },
+    { name: "popover-menu", title: "Menu composition" },
     { name: "popover-controlled", title: "Controlled" },
   ],
   keyboard: {
-    description: "In click mode, Escape closes the popover. Focus returns to the trigger element.",
+    description:
+      "Click-mode triggers toggle with pointer or keyboard activation. Escape closes open content and returns focus to the trigger. Dialog and menu content can auto-focus on open.",
+    keys: [
+      { keys: "Enter / Space", action: "Toggles the trigger in click mode." },
+      {
+        keys: "Escape",
+        action: "Closes open click-mode content and returns focus to the trigger.",
+      },
+      {
+        keys: "Tab / Shift+Tab",
+        action:
+          "Moves focus normally; click-mode content closes once focus leaves trigger and content.",
+      },
+    ],
     examples: [{ name: "popover-basic", title: "Basic" }],
   },
+  dataAttributes: [
+    {
+      attribute: "data-state",
+      appliesTo: "Popover.Content",
+      values: '"open" | "closed"',
+      description: "Presence state forwarded by FloatingPanel for enter/exit animation styling.",
+    },
+    {
+      attribute: "data-side",
+      appliesTo: "Popover.Content",
+      values: '"top" | "right" | "bottom" | "left"',
+      description: "Resolved side after collision handling.",
+    },
+    {
+      attribute: "data-align",
+      appliesTo: "Popover.Content",
+      values: '"start" | "center" | "end"',
+      description: "Resolved alignment after collision handling.",
+    },
+    {
+      attribute: "data-positioned",
+      appliesTo: "Popover.Content",
+      values: "present after first measurement",
+      description: "Marks content that has measured and can animate from its resolved origin.",
+    },
+  ],
   props: {
     Popover: {
       open: {
@@ -91,10 +136,11 @@ export const popoverDoc: ComponentDoc = {
           "Click toggles; hover opens on pointer/focus enter with a delay and closes on leave.",
       },
       popupRole: {
-        type: '"dialog" | "menu" | "listbox" | "tree" | "grid" | "tooltip"',
+        type: '"dialog" | "menu" | "listbox" | "tree" | "grid"',
         required: false,
         defaultValue: null,
-        description: "Overrides the auto-detected aria-haspopup value applied to the trigger.",
+        description:
+          "Overrides the aria-haspopup value applied to the trigger. Hover-mode tooltip content is selected by triggerMode, not popupRole.",
       },
       enabled: {
         type: "boolean",

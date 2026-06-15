@@ -1,12 +1,12 @@
-import { cleanup, render, renderHook, screen } from "@testing-library/react";
+import { render, renderHook, screen } from "@testing-library/react";
 import { createElement, useRef } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { useScrollLock } from "./use-scroll-lock.js";
 
 describe("useScrollLock", () => {
   afterEach(() => {
-    cleanup();
     document.body.style.overflow = "";
+    document.body.style.paddingRight = "";
   });
 
   it("sets and restores overflow", () => {
@@ -136,5 +136,85 @@ describe("useScrollLock", () => {
     expect(document.body.style.overflow).toBe("auto");
 
     trigger.remove();
+  });
+
+  it("marks the locked element with data-scroll-locked and removes it on release", () => {
+    const { unmount } = renderHook(() => useScrollLock());
+    expect(document.body.hasAttribute("data-scroll-locked")).toBe(true);
+
+    unmount();
+    expect(document.body.hasAttribute("data-scroll-locked")).toBe(false);
+  });
+
+  it("compensates for scrollbar width and restores the saved padding-right", () => {
+    document.body.style.paddingRight = "8px";
+
+    const docEl = document.documentElement;
+    const view = document.defaultView as Window & typeof globalThis;
+    const innerWidthSpy = vi.spyOn(view, "innerWidth", "get").mockReturnValue(1000);
+    const clientWidthSpy = vi.spyOn(docEl, "clientWidth", "get").mockReturnValue(985);
+    const computedStyleSpy = vi
+      .spyOn(view, "getComputedStyle")
+      .mockReturnValue({ paddingRight: "8px" } as CSSStyleDeclaration);
+
+    const { unmount } = renderHook(() => useScrollLock());
+
+    expect(document.body.style.paddingRight).toBe("23px");
+
+    unmount();
+    expect(document.body.style.paddingRight).toBe("8px");
+
+    innerWidthSpy.mockRestore();
+    clientWidthSpy.mockRestore();
+    computedStyleSpy.mockRestore();
+  });
+
+  it("applies scrollbar compensation once across nested locks and restores once", () => {
+    document.body.style.paddingRight = "4px";
+
+    const docEl = document.documentElement;
+    const view = document.defaultView as Window & typeof globalThis;
+    const innerWidthSpy = vi.spyOn(view, "innerWidth", "get").mockReturnValue(1000);
+    const clientWidthSpy = vi.spyOn(docEl, "clientWidth", "get").mockReturnValue(990);
+    const computedStyleSpy = vi
+      .spyOn(view, "getComputedStyle")
+      .mockReturnValue({ paddingRight: "4px" } as CSSStyleDeclaration);
+
+    const { unmount: unmountA } = renderHook(() => useScrollLock());
+    const { unmount: unmountB } = renderHook(() => useScrollLock());
+
+    expect(document.body.style.paddingRight).toBe("14px");
+
+    unmountB();
+    expect(document.body.style.paddingRight).toBe("14px");
+    expect(document.body.hasAttribute("data-scroll-locked")).toBe(true);
+
+    unmountA();
+    expect(document.body.style.paddingRight).toBe("4px");
+    expect(document.body.hasAttribute("data-scroll-locked")).toBe(false);
+
+    innerWidthSpy.mockRestore();
+    clientWidthSpy.mockRestore();
+    computedStyleSpy.mockRestore();
+  });
+
+  it("does not add padding when there is no scrollbar width", () => {
+    document.body.style.paddingRight = "12px";
+
+    const docEl = document.documentElement;
+    const view = document.defaultView as Window & typeof globalThis;
+    const innerWidthSpy = vi.spyOn(view, "innerWidth", "get").mockReturnValue(1000);
+    const clientWidthSpy = vi.spyOn(docEl, "clientWidth", "get").mockReturnValue(1000);
+
+    const { unmount } = renderHook(() => useScrollLock());
+
+    expect(document.body.style.paddingRight).toBe("12px");
+    expect(document.body.style.overflow).toBe("hidden");
+
+    unmount();
+    expect(document.body.style.paddingRight).toBe("12px");
+
+    innerWidthSpy.mockRestore();
+    clientWidthSpy.mockRestore();
   });
 });

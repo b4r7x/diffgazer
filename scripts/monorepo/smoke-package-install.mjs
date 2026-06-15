@@ -31,7 +31,7 @@ function assertSmoke(name, result, expect = /OK/) {
 }
 
 const packages = [
-  // Runs first so the keys required-peer signal (T-608/F-234) is proven before any
+  // Runs first so the keys required-peer signal is proven before any
   // keys-installing fixture; it does not depend on a built keys package. Asserts a
   // package consumer who skips the required @diffgazer/keys peer still gets keys-free
   // entries, and that keys-backed subpaths fail at load naming the missing peer.
@@ -122,6 +122,13 @@ const packages = [
   },
   {
     name: "diffgazer",
+    // `diffgazer --help` exits before touching dist/web, so a build that drops the
+    // embedded SPA would otherwise ship silently. Assert the tarball ships it.
+    assertTarball: (files) => {
+      if (!files.includes("dist/web/index.html")) {
+        throw new Error("diffgazer tarball is missing the embedded SPA entry dist/web/index.html");
+      }
+    },
     steps: [step("pnpm", "exec", "diffgazer", "--help")],
     expect: /Usage:|Diffgazer|diffgazer/i,
   },

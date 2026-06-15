@@ -4,7 +4,32 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AVAILABLE_PROVIDERS } from "../schemas/config/index.js";
-import { useWizardState } from "./use-wizard-state.js";
+import type { WizardData } from "./types.js";
+import { useWizardState, type WizardSaveCallbacks } from "./use-wizard-state.js";
+
+const OPENROUTER_DATA: WizardData = {
+  secretsStorage: "file",
+  provider: "openrouter",
+  apiKey: "test-key",
+  inputMethod: "paste",
+  model: null,
+  defaultLenses: ["security"],
+  agentExecution: "sequential",
+};
+
+function makeCallbacks(overrides: Partial<WizardSaveCallbacks> = {}): WizardSaveCallbacks {
+  return {
+    saveSettings: vi.fn().mockResolvedValue(undefined),
+    saveConfig: vi.fn().mockResolvedValue(undefined),
+    deleteCredentials: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
+function advanceToEarlySave(result: { current: ReturnType<typeof useWizardState> }) {
+  act(() => result.current.next()); // storage -> provider
+  act(() => result.current.next()); // provider -> api-key
+}
 
 describe("useWizardState", () => {
   it("starts on the first step with default data", () => {
@@ -29,13 +54,15 @@ describe("useWizardState", () => {
   it("refuses to advance past a blocking step", () => {
     const { result } = renderHook(() =>
       useWizardState({
-        secretsStorage: "file",
-        provider: null,
-        apiKey: "",
-        inputMethod: "paste",
-        model: null,
-        defaultLenses: ["security"],
-        agentExecution: "sequential",
+        initial: {
+          secretsStorage: "file",
+          provider: null,
+          apiKey: "",
+          inputMethod: "paste",
+          model: null,
+          defaultLenses: ["security"],
+          agentExecution: "sequential",
+        },
       }),
     );
 
@@ -83,123 +110,143 @@ describe("useWizardState", () => {
   it("setProvider sets model to null when the provider has an empty defaultModel", () => {
     // OpenRouter ships with `defaultModel: ""` because the user must pick a
     // model on the next step. The wizard must treat an empty default as
-    // "no default" and surface `null`, not `""`, so downstream validators
-    // (canProceed, save-wizard, server schemas) reject "no model" correctly.
+    // "no default" and surface `null`, not `""`.
     const target = AVAILABLE_PROVIDERS.find((p) => p.id === "openrouter");
     if (!target) throw new Error("expected openrouter provider in fixtures");
     expect(target.defaultModel).toBe("");
 
     const { result } = renderHook(() => useWizardState());
 
-    act(() =>
-      result.current.updateData({
-        // Seed a stale model so we can prove setProvider clears it.
-        model: "stale-model",
-      }),
-    );
+    act(() => result.current.updateData({ model: "stale-model" }));
     act(() => result.current.setProvider("openrouter"));
 
     expect(result.current.wizardData.provider).toBe("openrouter");
     expect(result.current.wizardData.model).toBeNull();
   });
 
-  it("updateData merges partial fields without dropping the rest", () => {
-    const { result } = renderHook(() => useWizardState());
+  it("persists the storage choice before credentials in the early save", async () => {
+    const callOrder: string[] = [];
+    const callbacks = makeCallbacks({
+      saveSettings: vi.fn(async () => {
+        callOrder.push("settings");
+      }),
+      saveConfig: vi.fn(async () => {
+        callOrder.push("config");
+      }),
+    });
 
-    act(() => result.current.updateData({ defaultLenses: ["security"] }));
+    const { result } = renderHook(() => useWizardState({ initial: OPENROUTER_DATA, callbacks }));
 
-    expect(result.current.wizardData.defaultLenses).toEqual(["security"]);
-    expect(result.current.wizardData.secretsStorage).toBe("file");
-  });
-
-  it("acknowledgeEarlySave prevents cleanupEarlySave from deleting credentials", async () => {
-    const deleteCredentials = vi.fn().mockResolvedValue(undefined);
-    const saveCredentials = vi.fn().mockResolvedValue(undefined);
-
-    const { result } = renderHook(() =>
-      useWizardState(
-        {
-          secretsStorage: "file",
-          provider: "openrouter",
-          apiKey: "test-key",
-          inputMethod: "paste",
-          model: null,
-          defaultLenses: ["security"],
-          agentExecution: "sequential",
-        },
-        { saveCredentials, deleteCredentials },
-      ),
-    );
-
-    // Advance to provider step, then to api-key, to trigger early save on next
-    act(() => result.current.next()); // storage -> provider
-    act(() => result.current.next()); // provider -> api-key
-
-    // Next should trigger early-save for openrouter before model step
+    advanceToEarlySave(result);
     await act(async () => result.current.next()); // api-key -> model (early save)
-    expect(saveCredentials).toHaveBeenCalled();
 
-    // Acknowledge = mark early save consumed (final save will overwrite)
-    act(() => result.current.acknowledgeEarlySave());
-
-    // Cleanup should be a no-op since we acknowledged
-    await act(async () => {
-      await result.current.cleanupEarlySave();
+    expect(callOrder).toEqual(["settings", "config"]);
+    expect(callbacks.saveSettings).toHaveBeenCalledWith({ secretsStorage: "file" });
+    expect(callbacks.saveConfig).toHaveBeenCalledWith({
+      provider: "openrouter",
+      apiKey: { kind: "literal", value: "test-key" },
     });
-    expect(deleteCredentials).not.toHaveBeenCalled();
+    expect(result.current.currentStep).toBe("model");
   });
 
-  it("cleanupEarlySave deletes credentials when not acknowledged", async () => {
-    const deleteCredentials = vi.fn().mockResolvedValue(undefined);
-    const saveCredentials = vi.fn().mockResolvedValue(undefined);
+  it("captures an early-save failure and clears it on step change", async () => {
+    const callbacks = makeCallbacks({
+      saveConfig: vi.fn().mockRejectedValue(new Error("STORAGE_NOT_CONFIGURED")),
+    });
+
+    const { result } = renderHook(() => useWizardState({ initial: OPENROUTER_DATA, callbacks }));
+
+    advanceToEarlySave(result);
+    await act(async () => result.current.next());
+
+    expect(result.current.earlySaveError).toBe("STORAGE_NOT_CONFIGURED");
+    expect(result.current.currentStep).toBe("api-key");
+
+    act(() => result.current.back());
+    expect(result.current.earlySaveError).toBeNull();
+  });
+
+  it("cleanupEarlySave deletes the early-saved credentials and reports failures terminally", async () => {
+    const onCleanupError = vi.fn();
+    const callbacks = makeCallbacks({
+      deleteCredentials: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("cleanup boom"))
+        .mockResolvedValueOnce(undefined),
+    });
 
     const { result } = renderHook(() =>
-      useWizardState(
-        {
-          secretsStorage: "file",
-          provider: "openrouter",
-          apiKey: "test-key",
-          inputMethod: "paste",
-          model: null,
-          defaultLenses: ["security"],
-          agentExecution: "sequential",
-        },
-        { saveCredentials, deleteCredentials },
-      ),
+      useWizardState({ initial: OPENROUTER_DATA, callbacks, onCleanupError }),
     );
 
-    act(() => result.current.next()); // storage -> provider
-    act(() => result.current.next()); // provider -> api-key
+    advanceToEarlySave(result);
+    await act(async () => result.current.next());
 
-    await act(async () => result.current.next()); // early save
-    expect(saveCredentials).toHaveBeenCalled();
-
-    // Without acknowledging, cleanup should delete
     await act(async () => {
       await result.current.cleanupEarlySave();
     });
-    expect(deleteCredentials).toHaveBeenCalledWith("openrouter");
+
+    expect(callbacks.deleteCredentials).toHaveBeenCalledWith("openrouter");
+    expect(onCleanupError).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to remove saved credentials"),
+    );
   });
 
-  it("reaches the last step and reports it", () => {
+  it("complete persists settings then config, runs onComplete, and resolves true", async () => {
+    const callOrder: string[] = [];
+    const onComplete = vi.fn();
+    const callbacks = makeCallbacks({
+      saveSettings: vi.fn(async () => {
+        callOrder.push("settings");
+      }),
+      saveConfig: vi.fn(async () => {
+        callOrder.push("config");
+      }),
+    });
+
     const { result } = renderHook(() =>
       useWizardState({
-        secretsStorage: "file",
-        provider: "gemini",
-        apiKey: "key",
-        inputMethod: "paste",
-        model: "gemini-2.5-pro",
-        defaultLenses: ["security"],
-        agentExecution: "sequential",
+        initial: {
+          ...OPENROUTER_DATA,
+          provider: "gemini",
+          model: "gemini-2.5-pro",
+        },
+        callbacks,
+        onComplete,
       }),
     );
 
-    for (let i = 0; i < 5; i++) act(() => result.current.next());
+    let success = false;
+    await act(async () => {
+      success = await result.current.complete();
+    });
 
-    expect(result.current.currentStep).toBe("execution");
-    expect(result.current.isLastStep).toBe(true);
+    expect(success).toBe(true);
+    expect(callOrder).toEqual(["settings", "config"]);
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
 
-    act(() => result.current.next());
-    expect(result.current.currentStep).toBe("execution");
+  it("complete reports a save failure in error state and resolves false", async () => {
+    const onComplete = vi.fn();
+    const callbacks = makeCallbacks({
+      saveSettings: vi.fn().mockRejectedValue(new Error("boom")),
+    });
+
+    const { result } = renderHook(() =>
+      useWizardState({
+        initial: { ...OPENROUTER_DATA, provider: "gemini", model: "gemini-2.5-pro" },
+        callbacks,
+        onComplete,
+      }),
+    );
+
+    let success = true;
+    await act(async () => {
+      success = await result.current.complete();
+    });
+
+    expect(success).toBe(false);
+    expect(result.current.error).toBe("boom");
+    expect(onComplete).not.toHaveBeenCalled();
   });
 });

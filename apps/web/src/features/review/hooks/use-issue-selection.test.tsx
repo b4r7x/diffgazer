@@ -1,7 +1,7 @@
+import { makeIssue } from "@diffgazer/core/testing/factories";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { makeIssue } from "@/testing/factories";
 import { useIssueSelection } from "./use-issue-selection";
 
 const firstIssue = makeIssue({ id: "issue-1", title: "First issue" });

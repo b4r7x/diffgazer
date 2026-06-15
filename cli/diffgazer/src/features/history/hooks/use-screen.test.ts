@@ -6,40 +6,35 @@ import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { useHistoryScreen } from "./use-screen.js";
 
-const useReviewsMock = vi.hoisted(() => vi.fn());
-const useReviewMock = vi.hoisted(() => vi.fn());
+const useHistoryScreenStateMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@diffgazer/core/api/hooks", () => ({
-  useReviews: useReviewsMock,
-  useReview: useReviewMock,
+// Boundary mock: @diffgazer/core/review owns the shared history data pipeline; this TUI adapter test provides its public hook output.
+vi.mock("@diffgazer/core/review", () => ({
+  useHistoryScreenState: useHistoryScreenStateMock,
 }));
 
 describe("useHistoryScreen", () => {
   it("opens a saved review by reviewId without starting a new unstaged review", () => {
     const onOpenReview = vi.fn();
-    useReviewsMock.mockReturnValue({
-      data: {
-        reviews: [
-          {
-            id: "history-review-1",
-            projectPath: "/proj",
-            createdAt: "2025-06-01T00:00:00.000Z",
-            mode: "staged",
-            branch: "main",
-            profile: null,
-            lenses: ["correctness"],
-            issueCount: 1,
-            blockerCount: 0,
-            highCount: 1,
-            mediumCount: 0,
-            lowCount: 0,
-            nitCount: 0,
-            fileCount: 1,
-          },
-        ],
-      },
+    useHistoryScreenStateMock.mockReturnValue({
+      reviewsQuery: { data: { reviews: [] }, isLoading: false, error: null },
+      reviews: [],
+      timelineItems: [],
+      selectedDateId: "all",
+      setSelectedDateId: vi.fn(),
+      searchQuery: "",
+      setSearchQuery: vi.fn(),
+      mappedRuns: [],
+      selectedRunId: "history-review-1",
+      setSelectedRunId: vi.fn(),
+      selectedRun: null,
+      severityCounts: null,
+      sortedIssues: [],
+      duration: "",
+      hasReviews: true,
+      hasSearchQuery: false,
+      emptyRunsMessage: "No runs yet",
     });
-    useReviewMock.mockReturnValue({ data: undefined });
 
     const { result } = renderHook(() => useHistoryScreen({ onOpenReview }));
 

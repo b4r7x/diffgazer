@@ -1,7 +1,9 @@
 import { useEffect, useReducer, useRef } from "react";
+import { getErrorMessage } from "../../errors.js";
 import { err, ok, type Result } from "../../result.js";
 import {
   createInitialReviewState,
+  isSessionTerminationCode,
   type ReviewAction,
   type ReviewEvent,
   type ReviewState,
@@ -13,14 +15,20 @@ import { useApi } from "./context.js";
 
 export interface ReviewStreamState extends ReviewState {
   reviewId: string | null;
+  /** Non-blocking server notices (e.g. the streamed event-cap warning). */
+  notices: string[];
 }
 
-type StreamAction = ReviewAction | { type: "SET_REVIEW_ID"; reviewId: string };
+type StreamAction =
+  | ReviewAction
+  | { type: "SET_REVIEW_ID"; reviewId: string }
+  | { type: "NOTICE"; notice: string };
 
 function createInitialStreamState(): ReviewStreamState {
   return {
     ...createInitialReviewState(),
     reviewId: null,
+    notices: [],
   };
 }
 
@@ -28,18 +36,20 @@ function streamReducer(state: ReviewStreamState, action: StreamAction): ReviewSt
   switch (action.type) {
     case "SET_REVIEW_ID":
       return { ...state, reviewId: action.reviewId };
+    case "NOTICE":
+      return { ...state, notices: [...state.notices, action.notice] };
     case "START":
     case "RESET":
-      return { ...reviewReducer(state, action), reviewId: null };
+      return { ...reviewReducer(state, action), reviewId: null, notices: [] };
   }
 
   if (action.type === "EVENT" && action.event.type === "review_started") {
     const newState = reviewReducer(state, action);
-    return { ...newState, reviewId: action.event.reviewId };
+    return { ...newState, reviewId: action.event.reviewId, notices: state.notices };
   }
 
   const next = reviewReducer(state, action);
-  return next === state ? state : { ...next, reviewId: state.reviewId };
+  return next === state ? state : { ...next, reviewId: state.reviewId, notices: state.notices };
 }
 
 export function useReviewStream() {
@@ -80,21 +90,13 @@ export function useReviewStream() {
     }
 
     try {
-      const result = await api.cancelReviewSession(reviewId);
-      if (result.cancelled) {
-        if (isCurrentCancel()) {
-          dispatch({ type: "COMPLETE" });
-        }
-        return null;
-      }
-      const message = "Failed to cancel the review session on the server.";
+      await api.cancelReviewSession(reviewId);
       if (isCurrentCancel()) {
-        dispatch({ type: "ERROR", error: message });
+        dispatch({ type: "COMPLETE" });
       }
-      return message;
+      return null;
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to cancel the review session.";
+      const message = getErrorMessage(error, "Failed to cancel the review session.");
       if (isCurrentCancel()) {
         dispatch({ type: "ERROR", error: message });
       }
@@ -123,13 +125,20 @@ export function useReviewStream() {
       dispatch({ type: "EVENT", event });
     };
 
+    const dispatchNotice = (notice: string) => {
+      if (!isCurrentResume()) {
+        return;
+      }
+      dispatch({ type: "NOTICE", notice });
+    };
+
     try {
       const result = await api.resumeReviewStream({
         reviewId,
         signal: abortController.signal,
         onAgentEvent: dispatchEvent,
         onStepEvent: dispatchEvent,
-        onEnrichEvent: dispatchEvent,
+        onChunk: dispatchNotice,
       });
 
       if (!isCurrentResume()) {
@@ -143,7 +152,7 @@ export function useReviewStream() {
       }
 
       if (
-        result.error.code === ReviewErrorCode.SESSION_STALE ||
+        isSessionTerminationCode(result.error.code) ||
         result.error.code === ReviewErrorCode.SESSION_NOT_FOUND
       ) {
         dispatch({ type: "RESET" });
@@ -156,7 +165,7 @@ export function useReviewStream() {
       if (!isCurrentResume()) {
         return err({ code: "STREAM_ERROR" as const, message: "aborted" });
       }
-      const message = e instanceof Error ? e.message : "Failed to resume";
+      const message = getErrorMessage(e, "Failed to resume");
       dispatch({ type: "ERROR", error: message });
       return err({ code: "STREAM_ERROR" as const, message });
     } finally {

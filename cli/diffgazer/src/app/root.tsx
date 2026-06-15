@@ -3,7 +3,7 @@ import { FooterProvider } from "@diffgazer/core/footer";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
-import { useContext, useEffect, useEffectEvent, useMemo } from "react";
+import { useContext, useEffect, useEffectEvent, useMemo, useState } from "react";
 import type { CliMode } from "../cli-options";
 import { GlobalLayout } from "../components/layout/global";
 import { Spinner } from "../components/ui/spinner";
@@ -15,19 +15,32 @@ import { createCliQueryClient } from "../lib/query-client";
 import { createServerFactories } from "../lib/servers/factories";
 import { TerminalKeyboardProvider } from "./providers/keyboard";
 import { NavigationProvider } from "./providers/navigation-provider";
-import { ServerProvider } from "./providers/server";
+import { ServerProvider, useServerControls } from "./providers/server";
 import { CliThemeProvider } from "./providers/theme";
 import { ScreenRouter } from "./router";
 import { useConfigGuard } from "./use-config-guard";
 
 const queryClient = createCliQueryClient();
 
-function HealthGate({ children }: { children: ReactNode }): ReactElement {
+interface HealthGateProps {
+  children: ReactNode;
+  startupFailure: string | null;
+  onClearStartupFailure: () => void;
+}
+
+function HealthGate({
+  children,
+  startupFailure,
+  onClearStartupFailure,
+}: HealthGateProps): ReactElement {
   const { state, retry } = useServerStatus();
+  const { restartServers } = useServerControls();
 
   useInput(
     (input) => {
       if (input === "r") {
+        onClearStartupFailure();
+        restartServers();
         retry().catch(() => {});
       }
     },
@@ -45,8 +58,8 @@ function HealthGate({ children }: { children: ReactNode }): ReactElement {
   if (state.status === "error") {
     return (
       <Box flexDirection="column" alignItems="center" justifyContent="center" padding={1}>
-        <Text color="red">Server Disconnected</Text>
-        <Text dimColor>{state.message}</Text>
+        <Text color="red">{startupFailure ? "Server Failed to Start" : "Server Disconnected"}</Text>
+        <Text dimColor>{startupFailure ?? state.message}</Text>
         <Text dimColor>Press r to retry</Text>
       </Box>
     );
@@ -146,8 +159,15 @@ interface AppProps {
 
 export function App({ mode, theme, openBrowser }: AppProps): ReactElement {
   const serverProviderKey = `${mode}:${openBrowser ? "open" : "closed"}`;
+  const [startupFailure, setStartupFailure] = useState<string | null>(null);
   const serverFactories = useMemo(
-    () => createServerFactories({ mode, openBrowser, includeWebServer: false }),
+    () =>
+      createServerFactories({
+        mode,
+        openBrowser,
+        includeWebServer: false,
+        onStartupFailure: setStartupFailure,
+      }),
     [mode, openBrowser],
   );
 
@@ -160,7 +180,10 @@ export function App({ mode, theme, openBrowser }: AppProps): ReactElement {
               <FooterProvider>
                 <ServerProvider key={serverProviderKey} servers={serverFactories}>
                   <GlobalShortcuts />
-                  <HealthGate>
+                  <HealthGate
+                    startupFailure={startupFailure}
+                    onClearStartupFailure={() => setStartupFailure(null)}
+                  >
                     <ConfigGate>
                       <GlobalLayout>
                         <ScreenRouter />

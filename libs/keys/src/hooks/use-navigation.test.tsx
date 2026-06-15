@@ -1,7 +1,7 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
-import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { testNavigationBehavior } from "../testing/navigation-behavior.js";
 import {
   type UseNavigationOptions,
@@ -71,10 +71,6 @@ async function focusListbox() {
 }
 
 describe("useNavigation", () => {
-  afterEach(() => {
-    cleanup();
-  });
-
   describe("vertical arrow / Home / End navigation matrix", () => {
     testNavigationBehavior({
       setup: () => {

@@ -3,10 +3,13 @@
   "pages": [
     "index",
     "active-heading",
+    "composed-refs",
     "controllable-state",
+    "copy-to-clipboard",
     "floating-indicator",
     "floating-position",
     "form-reset",
+    "is-mobile",
     "listbox",
     "outside-click",
     "overflow-detection",

@@ -29,9 +29,20 @@ describe("normalizeReviewStreamError", () => {
     });
   });
 
-  it("falls back to the default code when an abort error uses an unknown code", () => {
-    const abort = reviewAbort("custom message", "WEIRD_CODE", "diff");
-    expect(normalizeReviewStreamError(abort)).toEqual({
+  it("surfaces GIT_NOT_FOUND as itself instead of collapsing to GENERATION_FAILED", () => {
+    const abort = reviewAbort("git missing", ReviewErrorCode.GIT_NOT_FOUND, "diff");
+    expect(normalizeReviewStreamError(abort).code).toBe(ReviewErrorCode.GIT_NOT_FOUND);
+    expect(reviewStreamError(abort.message, abort.code)).toEqual({
+      type: "error",
+      error: { code: ReviewErrorCode.GIT_NOT_FOUND, message: "git missing" },
+    });
+  });
+
+  it("falls back to the default code when untrusted input carries an out-of-union code", () => {
+    // reviewAbort cannot produce an out-of-union code anymore (it is typed), so
+    // this models a raw/untrusted error object reaching normalizeReviewStreamError.
+    const untrusted = { kind: "review_abort", message: "custom message", code: "WEIRD_CODE" };
+    expect(normalizeReviewStreamError(untrusted)).toEqual({
       code: ReviewErrorCode.GENERATION_FAILED,
       message: "custom message",
     });
@@ -66,11 +77,10 @@ describe("reviewStreamError", () => {
     });
   });
 
-  it("falls back to GENERATION_FAILED for an unknown code", () => {
-    expect(reviewStreamError("msg", "nope")).toEqual({
-      type: "error",
-      error: { code: ReviewErrorCode.GENERATION_FAILED, message: "msg" },
-    });
+  it("rejects an out-of-union code at compile time (no silent collapse)", () => {
+    // @ts-expect-error — the code param is the typed review-error union, so an
+    // out-of-union code is a compile error instead of a runtime GENERATION_FAILED collapse.
+    reviewStreamError("msg", "nope");
   });
 });
 

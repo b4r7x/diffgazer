@@ -6,7 +6,7 @@
   "files": [
     {
       "path": "registry/lib/step-status.ts",
-      "content": "// disabled = gated by policy (locked); pending = not-yet-reached in order.\n// skipped = intentionally bypassed (not the same as completed).\nexport type StepStatus = \"completed\" | \"active\" | \"pending\" | \"error\" | \"skipped\" | \"disabled\";\n\nexport const STEP_STATUSES = [\n  \"pending\",\n  \"active\",\n  \"completed\",\n  \"error\",\n  \"skipped\",\n  \"disabled\",\n] as const satisfies readonly StepStatus[];\n\nexport function isStepInteractive(status: StepStatus): boolean {\n  return status !== \"disabled\";\n}\n",
+      "content": "/** Shared status vocabulary for stepper-style progress components. */\nexport type StepStatus = \"completed\" | \"active\" | \"pending\" | \"error\" | \"skipped\" | \"disabled\";\n\n/** All step statuses in their canonical variant-map order. */\nexport const STEP_STATUSES = [\n  \"pending\",\n  \"active\",\n  \"completed\",\n  \"error\",\n  \"skipped\",\n  \"disabled\",\n] as const satisfies readonly StepStatus[];\n\n/** Returns true when a step status may respond to user interaction. */\nexport function isStepInteractive(status: StepStatus): boolean {\n  return status !== \"disabled\";\n}\n",
       "type": "registry:lib"
     }
   ],

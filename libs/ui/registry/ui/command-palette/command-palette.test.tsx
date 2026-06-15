@@ -121,6 +121,30 @@ describe("CommandPalette", () => {
     expect(screen.getByText("No results found")).toBeInTheDocument();
   });
 
+  it("renders Empty as a presentational node with exactly one no-results announcer", async () => {
+    renderPalette();
+    const input = screen.getByRole("combobox");
+    await userEvent.type(input, "zzzzz");
+
+    const empty = screen.getByText("No results found");
+    expect(empty).toHaveAttribute("role", "presentation");
+
+    // Only the Content live region announces the no-results transition; the
+    // presentational Empty node is not a live region.
+    const liveRegions = screen
+      .getAllByText(/no results/i)
+      .filter((node) => node.getAttribute("aria-live") !== null);
+    expect(liveRegions).toHaveLength(1);
+    expect(empty).not.toHaveAttribute("aria-live");
+  });
+
+  it("keeps the listbox free of invalid live-region children when empty", async () => {
+    const { container } = renderPalette();
+    const input = screen.getByRole("combobox");
+    await userEvent.type(input, "zzzzz");
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
   it("uses a custom filter function", async () => {
     const customFilter = (_value: string, search: string) => search === "magic";
     renderPalette({ filter: customFilter });
@@ -662,6 +686,7 @@ describe("CommandPalette", () => {
     const paste = screen.getByRole("option", { name: /paste/i });
     expect(copy).toHaveAttribute("aria-selected", "true");
 
+    // fireEvent retained: hover movement changes active descendant without click/focus side effects.
     fireEvent.mouseMove(paste);
 
     expect(paste).toHaveAttribute("aria-selected", "true");
@@ -797,9 +822,11 @@ describe("CommandPalette", () => {
     const c = screen.getByRole("option", { name: "Charlie" });
     expect(a).toHaveAttribute("aria-selected", "true");
 
+    // fireEvent retained: hover movement establishes the mouse-highlighted row before keyboard navigation.
     fireEvent.mouseMove(b);
     expect(b).toHaveAttribute("aria-selected", "true");
 
+    // fireEvent retained: direct keydown asserts ArrowDown behavior after a pointer-only highlight.
     fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" });
     expect(c).toHaveAttribute("aria-selected", "true");
     expect(b).toHaveAttribute("aria-selected", "false");
@@ -861,7 +888,7 @@ describe("CommandPalette CSS contract", () => {
   // @layer (and does not support pseudo-element getComputedStyle), so these
   // tests assert the public CSS contract by parsing the source CSS for the
   // selectors and declarations that frame/viewfinder/terminal/disabled depend on.
-  const CSS_PATH = resolve(fileURLToPath(import.meta.url), "../../shared/command-palette.css");
+  const CSS_PATH = resolve(fileURLToPath(import.meta.url), "../command-palette.css");
   let css = "";
 
   beforeAll(() => {
@@ -884,7 +911,7 @@ describe("CommandPalette CSS contract", () => {
     );
     expect(body).not.toBeNull();
     expect(body).toContain("width: 2px");
-    expect(body).toContain("background: var(--cp-fg)");
+    expect(body).toContain("background: var(--command-palette-fg, var(--foreground))");
     expect(body).toContain('content: ""');
   });
 
@@ -904,15 +931,15 @@ describe("CommandPalette CSS contract", () => {
     );
     expect(body).not.toBeNull();
     expect(body).toContain("font-weight: 400");
-    expect(body).toContain("padding: 6px var(--cp-input-px) 2px");
+    expect(body).toContain("padding: 6px var(--command-palette-input-px) 2px");
   });
 
-  it("terminal-frame selected row re-tints the tone bar to --cp-bg", () => {
+  it("terminal-frame selected row re-tints the tone bar to --command-palette-bg", () => {
     const body = ruleBody(
       '[data-slot="command-palette-content"][data-frame="terminal"] [data-slot="command-palette-item"][aria-selected="true"][data-tone]:not([data-tone="neutral"])::before',
     );
     expect(body).not.toBeNull();
-    expect(body).toContain("background: var(--cp-bg)");
+    expect(body).toContain("background: var(--command-palette-bg, var(--background))");
   });
 
   it("disabled items hide the tone bar", () => {
@@ -925,7 +952,7 @@ describe("CommandPalette CSS contract", () => {
     const body = ruleBody('[data-slot="command-palette-content"][data-frame="card"]');
     expect(body).not.toBeNull();
     expect(body).toContain("border-radius: 8px");
-    expect(body).toContain("border: 1px solid var(--cp-border)");
+    expect(body).toContain("border: 1px solid var(--command-palette-border, var(--border))");
     expect(body).toContain("linear-gradient");
   });
 
@@ -934,14 +961,16 @@ describe("CommandPalette CSS contract", () => {
       '[data-slot="command-palette-content"][data-frame="card"] [data-slot="command-palette-item"]',
     );
     expect(itemBody).not.toBeNull();
-    expect(itemBody).toContain("margin: 0 var(--cp-list-p)");
+    expect(itemBody).toContain("margin: 0 var(--command-palette-list-p)");
     expect(itemBody).toContain("border-radius: 6px");
 
     const selectedBody = ruleBody(
       '[data-slot="command-palette-content"][data-frame="card"] [data-slot="command-palette-item"][aria-selected="true"]',
     );
     expect(selectedBody).not.toBeNull();
-    expect(selectedBody).toContain("background: color-mix(in oklab, var(--cp-fg) 8%, transparent)");
+    expect(selectedBody).toContain(
+      "background: color-mix(in oklab, var(--command-palette-fg, var(--foreground)) 8%, transparent)",
+    );
   });
 });
 

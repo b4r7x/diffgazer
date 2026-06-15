@@ -181,4 +181,37 @@ describe("parseSSEStream", () => {
 
     expect(events).toEqual([{ message: longMessage }]);
   });
+
+  it("decodes a multi-byte character split across the final chunk boundary", async () => {
+    // `é` (U+00E9) encodes to two bytes; split the SSE line so the second byte
+    // arrives in the final chunk. Without the post-`done` decoder flush the
+    // trailing byte is dropped and the JSON fails to parse.
+    const encoder = new TextEncoder();
+    const fullLine = encoder.encode('data: {"message":"é"}\n');
+    const splitAt = fullLine.indexOf(0xa9); // the second byte of `é`
+    const byteChunks = [fullLine.subarray(0, splitAt), fullLine.subarray(splitAt)];
+
+    let index = 0;
+    const reader: ReadableStreamDefaultReader<Uint8Array> = {
+      read: vi.fn(async () => {
+        const chunk = byteChunks[index++];
+        if (chunk === undefined) {
+          return { done: true as const, value: undefined };
+        }
+        return { done: false as const, value: chunk };
+      }),
+      cancel: vi.fn(),
+      releaseLock: vi.fn(),
+      closed: Promise.resolve(undefined),
+    };
+
+    const events: unknown[] = [];
+    const result = await parseSSEStream(reader, {
+      parseEvent: identity,
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(result.completed).toBe(true);
+    expect(events).toEqual([{ message: "é" }]);
+  });
 });

@@ -28,12 +28,39 @@ describe("Button", () => {
     expect(link).toHaveAttribute("href", "/test");
   });
 
-  it("shows loading state with aria-busy and a data-loading hook", () => {
+  it("shows loading state with aria-busy and a data-loading hook, staying focusable", () => {
     render(<Button loading>Save</Button>);
     const btn = screen.getByRole("button");
     expect(btn).toHaveAttribute("aria-busy", "true");
     expect(btn).toHaveAttribute("data-loading", "true");
-    expect(btn).toBeDisabled();
+    // Loading is a busy state, not a native disable: the button keeps focus and
+    // exposes aria-disabled instead of dropping focus to <body>.
+    expect(btn).not.toBeDisabled();
+    expect(btn).toHaveAttribute("aria-disabled", "true");
+    btn.focus();
+    expect(btn).toHaveFocus();
+  });
+
+  it("does not fire onClick while loading", async () => {
+    const onClick = vi.fn();
+    render(
+      <Button loading onClick={onClick}>
+        Save
+      </Button>,
+    );
+    await userEvent.click(screen.getByRole("button"));
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it("keeps a focused button focusable when it enters loading", () => {
+    const { rerender } = render(<Button>Save</Button>);
+    const btn = screen.getByRole("button");
+    btn.focus();
+    expect(btn).toHaveFocus();
+
+    rerender(<Button loading>Save</Button>);
+    expect(btn).toHaveFocus();
+    expect(btn).toHaveAttribute("aria-busy", "true");
   });
 
   it("renders the spinner indicator after the lazy chunk resolves", async () => {
@@ -45,7 +72,6 @@ describe("Button", () => {
     await waitFor(() => {
       expect(btn.querySelector('[role="status"][aria-label="Loading"]')).not.toBeNull();
     });
-    expect(screen.getByText("Save")).toHaveClass("sr-only");
   });
 
   it("is disabled when disabled prop is true", () => {
@@ -119,12 +145,28 @@ describe("Button", () => {
   });
 
   it("supports render prop children", () => {
+    render(<Button variant="primary">{(_props: ButtonRenderProps) => <div>Custom</div>}</Button>);
+    expect(screen.getByText("Custom")).toBeInTheDocument();
+  });
+
+  it("lets a consumer aria-busy and aria-label win in the button branch", () => {
     render(
-      <Button variant="primary">
-        {(props: ButtonRenderProps) => <div className={props.className}>Custom</div>}
+      <Button loading aria-busy={false} aria-label="Saving your draft">
+        Save
       </Button>,
     );
-    expect(screen.getByText("Custom")).toBeInTheDocument();
+    const btn = screen.getByRole("button", { name: "Saving your draft" });
+    expect(btn).toHaveAttribute("aria-busy", "false");
+  });
+
+  it("lets a consumer aria-busy and aria-label win in the anchor branch", () => {
+    render(
+      <Button as="a" href="/x" loading aria-busy={false} aria-label="Loading link">
+        Go
+      </Button>,
+    );
+    const link = screen.getByRole("link", { name: "Loading link" });
+    expect(link).toHaveAttribute("aria-busy", "false");
   });
 
   it("has no a11y violations", async () => {

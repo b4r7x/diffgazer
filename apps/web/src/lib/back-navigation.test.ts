@@ -1,23 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getBackTarget, resolveBackAction } from "./back-navigation";
-
-describe("getBackTarget", () => {
-  it("returns settings hub for settings subpages", () => {
-    expect(getBackTarget("/settings/theme")).toBe("/settings");
-    expect(getBackTarget("/settings/providers")).toBe("/settings");
-  });
-
-  it("returns main menu for settings root", () => {
-    expect(getBackTarget("/settings")).toBe("/");
-    expect(getBackTarget("/settings/")).toBe("/");
-  });
-
-  it("returns null outside settings routes", () => {
-    expect(getBackTarget("/")).toBeNull();
-    expect(getBackTarget("/history")).toBeNull();
-    expect(getBackTarget("/settings-legacy")).toBeNull();
-  });
-});
+import { resolveBackAction } from "./back-navigation";
 
 describe("resolveBackAction", () => {
   it("uses deterministic route mapping in settings flow", () => {

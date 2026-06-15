@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { legalPageSlugSchema } from "@/features/legal/lib/legal-pages";
+import { legalPageSlugSchema } from "./legal-slugs";
 
 const legalPageInputSchema = z.object({
   slug: legalPageSlugSchema,

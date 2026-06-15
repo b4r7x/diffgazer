@@ -1,9 +1,9 @@
 ---
 title: Keybindings
-description: The full keyboard reference for the terminal UI, grouped by screen.
+description: The main keyboard reference for the terminal UI, grouped by screen.
 ---
 
-The terminal UI is driven entirely from the keyboard. A few keys work everywhere, and each screen adds its own. This page lists them all. If you only want the basics, the [terminal UI overview](/app/tui/index) covers the handful you need to get moving.
+The terminal UI is driven entirely from the keyboard. A few keys work everywhere, and each main screen adds its own. If you only want the basics, the [terminal UI overview](/app/tui) covers the handful you need to get moving.
 
 ## Global keys
 
@@ -48,6 +48,33 @@ Inside a review the same letters do different work, because the screen owns the 
 
 > Note: The help screen and the review footer both advertise `1` - `4` for switching tabs, but those keys do nothing here. The handler exists in the code but is never wired up, so tabs only respond to the arrow keys.
 
+## History
+
+The history screen has search, date sections, saved runs, and an insights pane. Tab cycles the active zone, and each zone owns the keys below.
+
+| Key | Action |
+| --- | --- |
+| Tab | Switch focus between search, dates, runs, and insights |
+| ↑ / ↓ | Navigate date sections or saved runs |
+| Enter | Select a date, open the selected run, or open the first issue in insights |
+| `o` | Open the selected run from the runs pane |
+| `/` | Focus search |
+| ↓ | Move from search to date sections |
+| Esc | Go back; in search, clear the query and return focus to runs |
+
+## Settings
+
+The settings hub is a menu, and the individual settings screens split focus between an options list and action buttons.
+
+| Key | Action |
+| --- | --- |
+| ↑ / ↓ | Navigate the settings hub or the active options list |
+| Enter | Open a hub item, select an option, or activate the focused action |
+| Space | Select a theme or toggle a lens where that editor supports it |
+| Tab | Switch between options and action buttons |
+| ← / → | Move between action buttons |
+| Esc | Go back |
+
 ## Help screen
 
 The help screen prints its own shortcut list and acts as the in-app cheat sheet. Press `?` from anywhere to open it and Esc to leave.
@@ -69,6 +96,6 @@ The help screen prints its own shortcut list and acts as the in-app cheat sheet.
 
 ## Related
 
-- [Terminal UI overview](/app/tui/index) covers what the beta TUI is and how to start it.
+- [Terminal UI overview](/app/tui) covers what the beta TUI is and how to start it.
 - [Themes](/app/tui/themes) lists the palettes you can pass to `--theme`.
 - [CLI reference](/app/reference/cli) documents every command-line option for the `diffgazer` binary.

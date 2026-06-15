@@ -2,10 +2,9 @@
 
 import {
   Children,
-  type HTMLAttributes,
+  type ComponentProps,
   isValidElement,
   type ReactNode,
-  type Ref,
   useCallback,
   useMemo,
 } from "react";
@@ -14,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { CalloutContext, type CalloutTone } from "./callout-context";
 import { CalloutIcon } from "./callout-icon";
 
+/** Allowed callout frame values. */
 export type CalloutFrame = "inline" | "rail" | "bar";
 
 const TONE_LABEL: Record<CalloutTone, string> = {
@@ -41,30 +41,30 @@ function hasCalloutIcon(children: ReactNode): boolean {
   return found;
 }
 
-function gridClassName(frame: CalloutFrame, hasIcon: boolean): string {
-  if (frame === "bar") {
-    if (hasIcon) {
-      return "grid items-start gap-x-[10px] gap-y-1 grid-cols-[4px_16px_minmax(0,1fr)_auto]";
-    }
-    return "grid items-start gap-x-[10px] gap-y-1 grid-cols-[4px_minmax(0,1fr)_auto]";
-  }
-  if (hasIcon) {
-    return "grid items-start gap-x-[10px] gap-y-1 grid-cols-[16px_minmax(0,1fr)_auto]";
-  }
-  return "grid items-start gap-x-[10px] gap-y-1 grid-cols-[minmax(0,1fr)_auto]";
-}
-
-export interface CalloutProps extends HTMLAttributes<HTMLDivElement> {
+/** Props for callout. */
+export interface CalloutProps extends ComponentProps<"div"> {
+  /** Content rendered inside the component. */
   children: ReactNode;
+  /** Semantic tone - drives color and default icon. */
   tone?: CalloutTone;
+  /** Visual frame: inline border, inline-start rail, or marker bar. */
   frame?: CalloutFrame;
+  /** Controlled visibility state. Pair with onOpenChange. */
   open?: boolean;
+  /** Initial visibility state for uncontrolled usage. */
   defaultOpen?: boolean;
+  /** Called when Callout.Dismiss closes the callout or controlled state should change. */
   onOpenChange?: (open: boolean) => void;
+  /** Opt into role="status" (or role="alert" for tone="error") for live-region announcement. */
   live?: boolean;
-  ref?: Ref<HTMLDivElement>;
+  /** Screen-reader tone word announced before the content. Defaults to the tone name. */
+  toneLabel?: string;
 }
 
+/**
+ * Dismissible alert box with tone-driven coloring, frame variants (inline / rail / bar), and a
+ * compound API.
+ */
 export function Callout({
   className,
   tone = "info",
@@ -73,6 +73,7 @@ export function Callout({
   defaultOpen,
   onOpenChange,
   live = false,
+  toneLabel,
   ref,
   children,
   ...props
@@ -102,15 +103,15 @@ export function Callout({
         className={cn(className)}
         {...props}
       >
-        <div data-has-icon={String(hasIcon)} className={gridClassName(frame, hasIcon)}>
+        <div data-slot="callout-grid" data-has-icon={String(hasIcon)}>
           {frame === "bar" && (
             <span
               aria-hidden="true"
-              style={{ gridArea: "bar" }}
-              className="self-stretch w-1 rounded-[1px] bg-[color:var(--cal-tone)] forced-colors:bg-[CanvasText]"
+              data-slot="callout-bar"
+              className="self-stretch w-1 rounded-[1px] bg-[color:var(--callout-tone,var(--foreground))] forced-colors:bg-[CanvasText]"
             />
           )}
-          <span className="sr-only">{TONE_LABEL[tone]}</span>
+          <span className="sr-only">{toneLabel ?? TONE_LABEL[tone]}</span>
           {children}
         </div>
       </div>

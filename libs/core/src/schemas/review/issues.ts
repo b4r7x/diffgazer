@@ -21,24 +21,22 @@ export const REVIEW_CATEGORY = [
 export const ReviewCategorySchema = z.enum(REVIEW_CATEGORY);
 export type ReviewCategory = z.infer<typeof ReviewCategorySchema>;
 
-const LineNumberSchema = z.number().int().positive();
-
 const EVIDENCE_TYPE = ["code", "doc", "trace", "external"] as const;
 const EvidenceTypeSchema = z.enum(EVIDENCE_TYPE);
 
-export const EvidenceRefSchema = z.object({
+const EvidenceRefSchema = z.object({
   type: EvidenceTypeSchema,
   title: z.string(),
   sourceId: z.string(),
   file: z.string().optional(),
+  // Evidence ranges mirror the line-field tolerance above: 0.1.3-era reviews
+  // stored these as plain numbers and providers emit zero/negative/inverted
+  // values, so the positivity/ordering refines that voided whole records are
+  // deliberately absent. The write path emits valid ranges from diff extraction.
   range: z
     .object({
-      start: LineNumberSchema,
-      end: LineNumberSchema,
-    })
-    .refine((range) => range.end >= range.start, {
-      message: "range.end must be greater than or equal to range.start",
-      path: ["end"],
+      start: z.number(),
+      end: z.number(),
     })
     .optional(),
   excerpt: z.string(),
@@ -56,7 +54,7 @@ export const TraceRefSchema = z.object({
 });
 export type TraceRef = z.infer<typeof TraceRefSchema>;
 
-export const FixPlanStepSchema = z.object({
+const FixPlanStepSchema = z.object({
   step: z.number(),
   action: z.string(),
   files: z.array(z.string()).optional(),
@@ -64,63 +62,32 @@ export const FixPlanStepSchema = z.object({
 });
 export type FixPlanStep = z.infer<typeof FixPlanStepSchema>;
 
-export const GitBlameInfoSchema = z.object({
-  author: z.string(),
-  authorEmail: z.string(),
-  commit: z.string(),
-  commitDate: z.string(),
-  summary: z.string(),
+// Line numbers are provider-supplied and unenforceable at the JSON-schema layer:
+// no responseSchema translation expresses cross-field ordering, and models
+// routinely emit zero/float/inverted line numbers. They are read leniently here
+// (plain nullable numbers, no positivity/ordering refines) and corrected by
+// `normalizeIssueLineFields` on the write path; the refines that previously voided
+// whole paid reviews are deliberately absent.
+export const ReviewIssueSchema = z.object({
+  id: z.string(),
+  severity: ReviewSeveritySchema,
+  category: ReviewCategorySchema,
+  title: z.string(),
+  file: z.string(),
+  line_start: z.number().nullable(),
+  line_end: z.number().nullable(),
+  rationale: z.string(),
+  recommendation: z.string(),
+  suggested_patch: z.string().nullable(),
+  confidence: z.number().min(0).max(1),
+  symptom: z.string(),
+  whyItMatters: z.string(),
+  fixPlan: z.array(FixPlanStepSchema).optional(),
+  betterOptions: z.array(z.string()).optional(),
+  testsToAdd: z.array(z.string()).optional(),
+  evidence: z.array(EvidenceRefSchema),
+  trace: z.array(TraceRefSchema).optional(),
 });
-export type GitBlameInfo = z.infer<typeof GitBlameInfoSchema>;
-
-export const FileContextSchema = z.object({
-  beforeLines: z.array(z.string()),
-  afterLines: z.array(z.string()),
-  totalContext: z.number(),
-});
-export type FileContext = z.infer<typeof FileContextSchema>;
-
-export const EnrichmentDataSchema = z.object({
-  blame: GitBlameInfoSchema.nullable(),
-  context: FileContextSchema.nullable(),
-  enrichedAt: z.string(),
-});
-export type EnrichmentData = z.infer<typeof EnrichmentDataSchema>;
-
-export const ReviewIssueSchema = z
-  .object({
-    id: z.string(),
-    severity: ReviewSeveritySchema,
-    category: ReviewCategorySchema,
-    title: z.string(),
-    file: z.string(),
-    line_start: LineNumberSchema.nullable(),
-    line_end: LineNumberSchema.nullable(),
-    rationale: z.string(),
-    recommendation: z.string(),
-    suggested_patch: z.string().nullable(),
-    confidence: z.number().min(0).max(1),
-    symptom: z.string(),
-    whyItMatters: z.string(),
-    fixPlan: z.array(FixPlanStepSchema).optional(),
-    betterOptions: z.array(z.string()).optional(),
-    testsToAdd: z.array(z.string()).optional(),
-    evidence: z.array(EvidenceRefSchema),
-    trace: z.array(TraceRefSchema).optional(),
-    enrichment: EnrichmentDataSchema.optional(),
-  })
-  .refine((issue) => issue.line_end === null || issue.line_start !== null, {
-    message: "line_end requires line_start",
-    path: ["line_end"],
-  })
-  .refine(
-    (issue) =>
-      issue.line_start === null || issue.line_end === null || issue.line_end >= issue.line_start,
-    {
-      message: "line_end must be greater than or equal to line_start",
-      path: ["line_end"],
-    },
-  );
 export type ReviewIssue = z.infer<typeof ReviewIssueSchema>;
 
 export const ReviewResultSchema = z.object({
@@ -133,8 +100,14 @@ export const ReviewErrorCode = {
   NO_DIFF: "NO_DIFF",
   AI_ERROR: "AI_ERROR",
   GENERATION_FAILED: "GENERATION_FAILED",
+  GIT_NOT_FOUND: "GIT_NOT_FOUND",
+  INTERNAL_ERROR: "INTERNAL_ERROR",
+  CANCELLED: "CANCELLED",
   SESSION_NOT_FOUND: "SESSION_NOT_FOUND",
   SESSION_STALE: "SESSION_STALE",
+  SESSION_EVICTED: "SESSION_EVICTED",
+  SESSION_TIMEOUT: "SESSION_TIMEOUT",
+  SERVER_SHUTDOWN: "SERVER_SHUTDOWN",
 } as const;
 
 export type ReviewErrorCode = (typeof ReviewErrorCode)[keyof typeof ReviewErrorCode];
@@ -143,8 +116,14 @@ const REVIEW_SPECIFIC_CODES = [
   ReviewErrorCode.NO_DIFF,
   ReviewErrorCode.AI_ERROR,
   ReviewErrorCode.GENERATION_FAILED,
+  ReviewErrorCode.GIT_NOT_FOUND,
+  ReviewErrorCode.INTERNAL_ERROR,
+  ReviewErrorCode.CANCELLED,
   ReviewErrorCode.SESSION_NOT_FOUND,
   ReviewErrorCode.SESSION_STALE,
+  ReviewErrorCode.SESSION_EVICTED,
+  ReviewErrorCode.SESSION_TIMEOUT,
+  ReviewErrorCode.SERVER_SHUTDOWN,
 ] as const;
 
 export const ReviewErrorSchema = createDomainErrorSchema(REVIEW_SPECIFIC_CODES);
@@ -152,14 +131,9 @@ export const ReviewErrorSchema = createDomainErrorSchema(REVIEW_SPECIFIC_CODES);
 export type ReviewError = z.infer<typeof ReviewErrorSchema>;
 
 export const ReviewStreamEventSchema = z.discriminatedUnion("type", [
+  // `chunk` carries the server's event-cap warning to the client; it is the only
+  // free-text member with a no-op effect on UI step/agent state.
   z.object({ type: z.literal("chunk"), content: z.string() }),
-  z.object({
-    type: z.literal("lens_start"),
-    lens: z.string(),
-    index: z.number(),
-    total: z.number(),
-  }),
-  z.object({ type: z.literal("lens_complete"), lens: z.string() }),
   z.object({
     type: z.literal("complete"),
     result: ReviewResultSchema,

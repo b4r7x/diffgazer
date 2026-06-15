@@ -4,8 +4,10 @@ import type { ComponentPropsWithRef, ReactNode } from "react";
 import { type OverflowIndicatorRender, OverflowItems } from "./overflow-items";
 import { OverflowText } from "./overflow-text";
 
+/** Props for div root. */
 type DivRootProps = Omit<ComponentPropsWithRef<"div">, "children">;
 
+/** Props for overflow text. */
 type OverflowTextProps = DivRootProps & {
   mode?: "text";
   lines?: number;
@@ -15,6 +17,7 @@ type OverflowTextProps = DivRootProps & {
   children: string;
 };
 
+/** Props for overflow items. */
 type OverflowItemsProps = DivRootProps & {
   mode: "items";
   lines?: never;
@@ -24,8 +27,10 @@ type OverflowItemsProps = DivRootProps & {
   children: ReactNode;
 };
 
+/** Props for overflow. */
 export type OverflowProps = OverflowTextProps | OverflowItemsProps;
 
+/** Root - text mode by default; set mode="items" for fitting child items. */
 export function Overflow({ mode, children, ...rest }: OverflowProps) {
   if (mode === "items") {
     return <OverflowItems {...rest}>{children}</OverflowItems>;

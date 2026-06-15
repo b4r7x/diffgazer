@@ -1,6 +1,7 @@
 import { createError } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type { SecretsStorage } from "@diffgazer/core/schemas/config";
+import { log } from "../log.js";
 import {
   deleteKeyringSecret,
   isKeyringAvailable,
@@ -29,9 +30,10 @@ export function rollbackKeyringWrites(entries: readonly KeyringWriteRollback[]):
         ? deleteKeyringSecret(getApiKeyName(entry.providerId))
         : writeKeyringSecret(getApiKeyName(entry.providerId), entry.previousValue);
     if (!result.ok) {
-      console.warn(
-        `[diffgazer] Failed to rollback keyring write for '${entry.providerId}': ${result.error.message}`,
-      );
+      log("warn", "keyring_rollback_write_failed", {
+        providerId: entry.providerId,
+        error: result.error.message,
+      });
     }
   }
 }
@@ -42,8 +44,8 @@ export interface MigrationResult {
   /**
    * When true, the caller must delete the secrets file AFTER the new config
    * state (secretsStorage changed) has been durably persisted. If a crash
-   * occurs before deletion, the file still exists and the migration can be
-   * safely re-run on next start.
+   * occurs before deletion, the file still exists and `reconcileKeyringSecrets`
+   * completes the migration on the next store creation.
    */
   shouldDeleteSecretsFile: boolean;
   /**
@@ -51,7 +53,8 @@ export interface MigrationResult {
    * the secrets has been durably persisted. The caller is responsible for
    * invoking the keyring deletion only once `persistFileSecrets` has succeeded.
    * If a crash occurs between persist and keyring deletion the file already
-   * holds the secret and the migration can safely be re-run.
+   * holds the secret and the stale keyring entry is finalized at the next store
+   * creation via `findOrphanedKeyringEntries` + `finalizeKeyringDeletions`.
    */
   keyringDeletions: readonly string[];
   keyringWrites: readonly KeyringWriteRollback[];
@@ -123,11 +126,16 @@ export function migrateSecretsStorage(
     // File deletion is deferred to the caller -- the caller must persist the
     // updated config state (secretsStorage = "keyring") BEFORE deleting the
     // old secrets file. A crash between config persist and file deletion is
-    // safe: the file still exists and the migration can be re-run.
-    const shouldDelete = Object.keys(envEntries).length === 0;
+    // safe: the file still holds the literals and `reconcileKeyringSecrets`
+    // completes the migration on the next store creation.
+    const hasUnknownSecrets = Object.keys(secretsState.unknownSecrets ?? {}).length > 0;
+    const shouldDelete = Object.keys(envEntries).length === 0 && !hasUnknownSecrets;
 
     return ok({
-      nextSecrets: { providers: envEntries },
+      nextSecrets: {
+        providers: envEntries,
+        ...(secretsState.unknownSecrets ? { unknownSecrets: secretsState.unknownSecrets } : {}),
+      },
       removedFileSecrets: false,
       shouldDeleteSecretsFile: shouldDelete,
       keyringDeletions: [],
@@ -163,7 +171,10 @@ export function migrateSecretsStorage(
     }
 
     return ok({
-      nextSecrets: { providers: nextSecrets },
+      nextSecrets: {
+        providers: nextSecrets,
+        ...(secretsState.unknownSecrets ? { unknownSecrets: secretsState.unknownSecrets } : {}),
+      },
       removedFileSecrets: false,
       shouldDeleteSecretsFile: false,
       keyringDeletions: keyringMigrated,
@@ -188,9 +199,104 @@ export function finalizeKeyringDeletions(keyringDeletions: readonly string[]): v
   for (const providerId of keyringDeletions) {
     const deleteResult = deleteKeyringSecret(getApiKeyName(providerId));
     if (!deleteResult.ok) {
-      console.warn(
-        `[diffgazer] Failed to delete keyring secret for '${providerId}': ${deleteResult.error.message}`,
-      );
+      log("warn", "keyring_delete_failed", {
+        providerId,
+        error: deleteResult.error.message,
+      });
     }
   }
+}
+
+export interface KeyringReconciliation {
+  /** Secrets state with the literal entries that were moved into the keyring removed. */
+  nextSecrets: SecretsState;
+  /** Provider ids whose literal file entry was written to the keyring. */
+  migrated: string[];
+}
+
+/**
+ * Completes an interrupted file→keyring migration at startup (F-449): when the
+ * effective storage is "keyring" but secrets.json still holds literal (non-env)
+ * entries — left there by a crash between writing config and clearing the file —
+ * write each literal to the keyring (verify, with rollback on failure) and drop
+ * it from the returned secrets state. Env references stay in the file because
+ * they never live in the keyring. Returns `null` when there is nothing to
+ * reconcile so the caller can skip the rewrite.
+ */
+export function reconcileKeyringSecrets(
+  secretsState: SecretsState,
+): Result<KeyringReconciliation | null, SecretsStorageError> {
+  const literalEntries = Object.entries(secretsState.providers).filter(
+    ([, entry]) => typeof entry === "string",
+  );
+  if (literalEntries.length === 0) return ok(null);
+
+  const written: KeyringWriteRollback[] = [];
+  const nextProviders: SecretsState["providers"] = {};
+  for (const [providerId, entry] of Object.entries(secretsState.providers)) {
+    if (typeof entry !== "string") {
+      nextProviders[providerId] = entry;
+    }
+  }
+
+  const migrated: string[] = [];
+  for (const [providerId, entry] of literalEntries) {
+    const apiKey = entry as string;
+    const previousResult = readKeyringSecret(getApiKeyName(providerId));
+    if (!previousResult.ok) {
+      rollbackKeyringWrites(written);
+      return previousResult;
+    }
+
+    const writeResult = writeKeyringSecret(getApiKeyName(providerId), apiKey);
+    if (!writeResult.ok) {
+      rollbackKeyringWrites(written);
+      return writeResult;
+    }
+
+    const verifyResult = readKeyringSecret(getApiKeyName(providerId));
+    if (!verifyResult.ok || verifyResult.value !== apiKey) {
+      rollbackKeyringWrites(written);
+      return err(
+        createError<SecretsStorageErrorCode>(
+          "SECRETS_MIGRATION_FAILED",
+          `Keyring read-back verification failed for provider '${providerId}'`,
+        ),
+      );
+    }
+
+    written.push({ providerId, previousValue: previousResult.value });
+    migrated.push(providerId);
+  }
+
+  return ok({
+    nextSecrets: {
+      providers: nextProviders,
+      ...(secretsState.unknownSecrets ? { unknownSecrets: secretsState.unknownSecrets } : {}),
+    },
+    migrated,
+  });
+}
+
+/**
+ * Completes an interrupted keyring→file migration at startup (F-449): when the
+ * effective storage is "file" but the keyring still holds a provider's secret —
+ * left there by a crash between writing secrets.json and deleting the keyring
+ * entry — that entry is an orphan because the file is now the source of truth.
+ * Returns the provider ids whose stale keyring entry should be finalized so the
+ * caller can `finalizeKeyringDeletions` them. Only providers known to the config
+ * are probed, so this never prompts the OS keyring for providers it never used.
+ */
+export function findOrphanedKeyringEntries(
+  configState: ConfigState,
+): Result<readonly string[], SecretsStorageError> {
+  if (!isKeyringAvailable()) return ok([]);
+
+  const orphans: string[] = [];
+  for (const provider of configState.providers) {
+    const result = readKeyringSecret(getApiKeyName(provider.provider));
+    if (!result.ok) return result;
+    if (result.value !== null) orphans.push(provider.provider);
+  }
+  return ok(orphans);
 }

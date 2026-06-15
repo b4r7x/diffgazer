@@ -1,25 +1,19 @@
-import { matchQueryState, useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
+import { useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
-import { usePageFooter } from "@diffgazer/core/footer";
 import { deriveSaveState } from "@diffgazer/core/forms";
 import {
   AGENT_EXECUTION_OPTIONS,
   type AgentExecution,
   isAgentExecution,
 } from "@diffgazer/core/schemas/config";
-import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import {
-  toVerticalBoundaryDirection,
-  useActionRowNavigation,
-  useKey,
-  useScope,
-} from "@diffgazer/keys";
-import { Button } from "@diffgazer/ui/components/button";
+import { BACK_SHORTCUT, NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
+import { toVerticalBoundaryDirection, useKey, useScope } from "@diffgazer/keys";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
-import { CardLayout } from "@/components/ui/card-layout";
+import { useSettingsFormFooter } from "../../hooks/use-settings-form-footer";
+import { SettingsFormPage } from "../form-page";
 
 export function SettingsAgentExecutionPage() {
   const navigate = useNavigate();
@@ -32,7 +26,7 @@ export function SettingsAgentExecutionPage() {
   const isSaving = saveSettings.isPending;
 
   const settings = settingsQuery.data;
-  const { effective: effectiveMode } = deriveSaveState<AgentExecution>({
+  const { effective: effectiveMode, canSave: canSaveDerived } = deriveSaveState<AgentExecution>({
     persisted: settings?.agentExecution,
     choice: modeChoice,
     saving: isSaving,
@@ -43,10 +37,10 @@ export function SettingsAgentExecutionPage() {
   useScope("settings-agent-execution");
   useKey("Escape", () => navigate({ to: "/settings" }), { enabled: !isSaving });
 
-  // Until settings load, treat the page as not dirty so the save action stays
-  // disabled (the loading guard returns before render, but the footer hook runs).
-  const isDirty = settings ? settings.agentExecution !== effectiveMode : false;
-  const canSave = !isSaving && isDirty;
+  // Until settings load there is no persisted value to diff against, so keep the
+  // save action disabled (the loading guard returns before render, but the footer
+  // hook runs).
+  const canSave = settings !== undefined && canSaveDerived;
 
   const handleCancel = () => navigate({ to: "/settings" });
 
@@ -61,34 +55,14 @@ export function SettingsAgentExecutionPage() {
     }
   };
 
-  const footer = useActionRowNavigation({
-    enabled: true,
-    actionCount: 2,
+  const footer = useSettingsFormFooter({
     disabledActions: [isSaving, !canSave],
-    disabledFocusFallbackRef: focusFallbackRef,
-    onAction: (index) => {
-      if (index === 0) handleCancel();
-      else if (index === 1 && canSave) void handleSave();
-    },
-  });
-
-  const footerShortcuts: Shortcut[] = footer.inActions
-    ? [
-        { key: "←/→", label: "Move Action" },
-        {
-          key: "Enter/Space",
-          label: footer.focusedIndex === 0 ? "Cancel" : "Save",
-          disabled: footer.isFocusedActionDisabled,
-        },
-      ]
-    : [
-        { key: "↑/↓", label: "Navigate" },
-        { key: "Enter/Space", label: "Select Mode" },
-      ];
-
-  usePageFooter({
-    shortcuts: footerShortcuts,
-    rightShortcuts: [{ key: "Esc", label: "Back" }],
+    canSave,
+    onCancel: handleCancel,
+    onSave: () => void handleSave(),
+    contentShortcuts: [NAVIGATE_SHORTCUT, { key: "Enter/Space", label: "Select Mode" }],
+    rightShortcuts: [BACK_SHORTCUT],
+    focusFallbackRef,
   });
 
   const navigationEnabled = settings !== undefined && !footer.inActions && !isSaving;
@@ -102,55 +76,16 @@ export function SettingsAgentExecutionPage() {
   useKey(" ", () => onExecutionChange(effectiveFocusedMode), { enabled: navigationEnabled });
   useKey("Enter", () => onExecutionChange(effectiveFocusedMode), { enabled: navigationEnabled });
 
-  const pendingUI = matchQueryState(settingsQuery, {
-    loading: () => (
-      <CardLayout
-        title="Agent Execution Mode"
-        subtitle="Choose whether analysis agents run in sequence or in parallel."
-      >
-        <p className="text-tui-muted">Loading settings...</p>
-      </CardLayout>
-    ),
-    error: (err) => (
-      <CardLayout
-        title="Agent Execution Mode"
-        subtitle="Choose whether analysis agents run in sequence or in parallel."
-      >
-        <p className="text-tui-red text-sm">{err.message}</p>
-      </CardLayout>
-    ),
-    success: () => null,
-  });
-
-  if (pendingUI) return pendingUI;
-
   return (
-    <CardLayout
+    <SettingsFormPage
       title="Agent Execution Mode"
       subtitle="Choose whether analysis agents run in sequence or in parallel."
-      contentInactive={footer.inActions}
-      footer={
-        <>
-          <Button
-            {...footer.getActionProps(0)}
-            variant="ghost"
-            onClick={handleCancel}
-            disabled={isSaving}
-            highlighted={footer.inActions && footer.focusedIndex === 0 && !isSaving}
-          >
-            Cancel
-          </Button>
-          <Button
-            {...footer.getActionProps(1)}
-            variant="success"
-            onClick={handleSave}
-            disabled={!canSave}
-            highlighted={footer.inActions && footer.focusedIndex === 1 && canSave}
-          >
-            {isSaving ? "Saving..." : "Save"}
-          </Button>
-        </>
-      }
+      query={settingsQuery}
+      footer={footer}
+      isSaving={isSaving}
+      canSave={canSave}
+      onCancel={handleCancel}
+      onSave={() => void handleSave()}
     >
       <div ref={focusFallbackRef} tabIndex={-1} className="space-y-6 focus:outline-none">
         <RadioGroup
@@ -189,6 +124,6 @@ export function SettingsAgentExecutionPage() {
           </Callout>
         )}
       </div>
-    </CardLayout>
+    </SettingsFormPage>
   );
 }

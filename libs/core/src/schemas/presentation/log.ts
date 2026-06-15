@@ -18,7 +18,7 @@ export type LogEntryData = z.infer<typeof LogEntryDataSchema>;
 
 /** @see libs/ui/registry/ui/badge/badge.tsx for the component-library copy. */
 const BADGE_VARIANTS = ["success", "warning", "error", "info", "neutral"] as const;
-const BadgeVariantSchema = z.enum(BADGE_VARIANTS);
+export const BadgeVariantSchema = z.enum(BADGE_VARIANTS);
 export type BadgeVariant = z.infer<typeof BadgeVariantSchema>;
 
 export const TAG_BADGE_VARIANTS: Record<string, BadgeVariant> = {

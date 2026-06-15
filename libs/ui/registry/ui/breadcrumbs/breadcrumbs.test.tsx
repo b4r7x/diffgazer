@@ -124,4 +124,23 @@ describe("Breadcrumbs", () => {
     );
     expect(screen.getByText("Custom Home")).toBeInTheDocument();
   });
+
+  it("exposes sr-only 'More' on the ellipsis while keeping the glyph decorative", () => {
+    render(
+      <Breadcrumbs>
+        <Breadcrumbs.Item>
+          <Breadcrumbs.Link href="/">Home</Breadcrumbs.Link>
+        </Breadcrumbs.Item>
+        <Breadcrumbs.Item>
+          <Breadcrumbs.Ellipsis />
+        </Breadcrumbs.Item>
+        <Breadcrumbs.Item>
+          <Breadcrumbs.Link href="/now">Now</Breadcrumbs.Link>
+        </Breadcrumbs.Item>
+      </Breadcrumbs>,
+    );
+    const more = screen.getByText("More");
+    expect(more.closest('[aria-hidden="true"]')).toBeNull();
+    expect(screen.getByText("...")).toHaveAttribute("aria-hidden", "true");
+  });
 });

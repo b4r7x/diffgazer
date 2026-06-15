@@ -131,6 +131,7 @@ export function createConfigModule<
   TRaw extends Record<string, unknown>,
   TResolved,
   TMetadata extends Record<string, unknown> = Record<string, unknown>,
+  TManifestItem = unknown,
 >(opts: {
   configFileName: string;
   schema: z.ZodType<TRaw>;
@@ -157,12 +158,16 @@ export function createConfigModule<
     updateManifest({ configFileName, schema, manifestKey, cwd, add, remove, metadata });
   }
 
-  function getItems(cwd: string): Record<string, unknown> | undefined {
+  // The schema has already validated `result.config`, so the manifest value (an
+  // optional record keyed by item name) carries the shape the consumer's
+  // `TManifestItem` describes; the runtime guard only narrows the absent/invalid
+  // case to `undefined`.
+  function getItems(cwd: string): Record<string, TManifestItem> | undefined {
     const result = load(cwd);
     if (!result.ok) return undefined;
     const val = result.config[manifestKey];
     return val && typeof val === "object" && !Array.isArray(val)
-      ? (val as Record<string, unknown>)
+      ? (val as Record<string, TManifestItem>)
       : undefined;
   }
 

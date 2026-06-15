@@ -31,9 +31,7 @@ interface ConfigDataContextValue {
 }
 
 interface ConfigActionsContextValue {
-  isSaving: boolean;
-  error: string | null;
-  refresh: (invalidate?: boolean) => Promise<void>;
+  refresh: () => Promise<void>;
   activateProvider: (providerId: string, model?: string) => Promise<void>;
   saveCredentials: (
     provider: AIProvider,
@@ -52,24 +50,12 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const initQuery = useInit();
   const providersQuery = useProviderStatus();
-  const activateMutation = useActivateProvider();
-  const saveConfigMutation = useSaveConfig();
-  const deleteCredentialsMutation = useDeleteProviderCredentials();
-  const { mutateAsync: activateMutateAsync } = activateMutation;
-  const { mutateAsync: saveConfigMutateAsync } = saveConfigMutation;
-  const { mutateAsync: deleteCredentialsMutateAsync } = deleteCredentialsMutation;
+  const { mutateAsync: activateMutateAsync } = useActivateProvider();
+  const { mutateAsync: saveConfigMutateAsync } = useSaveConfig();
+  const { mutateAsync: deleteCredentialsMutateAsync } = useDeleteProviderCredentials();
 
   const initData = initQuery.data;
   const isLoading = initQuery.isLoading || providersQuery.isLoading;
-  const isSaving =
-    activateMutation.isPending ||
-    saveConfigMutation.isPending ||
-    deleteCredentialsMutation.isPending;
-
-  const queryError = initQuery.error ?? providersQuery.error;
-  const mutationError =
-    activateMutation.error ?? saveConfigMutation.error ?? deleteCredentialsMutation.error;
-  const error = mutationError?.message ?? queryError?.message ?? null;
 
   const provider = initData?.config?.provider;
   const model = initData?.config?.model;
@@ -139,14 +125,12 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 
   const actionsValue = useMemo<ConfigActionsContextValue>(
     () => ({
-      isSaving,
-      error,
       refresh,
       activateProvider,
       saveCredentials,
       deleteProviderCredentials,
     }),
-    [isSaving, error, refresh, activateProvider, saveCredentials, deleteProviderCredentials],
+    [refresh, activateProvider, saveCredentials, deleteProviderCredentials],
   );
 
   return (

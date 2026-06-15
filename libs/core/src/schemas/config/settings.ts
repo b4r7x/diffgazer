@@ -20,6 +20,16 @@ export const TrustConfigSchema = z.object({
 });
 export type TrustConfig = z.infer<typeof TrustConfigSchema>;
 
+// The server derives identity (projectId, repoRoot, trustedAt) from the request
+// and forces runCommands off, so the client only sends the readable capability
+// it controls and the trust mode.
+export const SaveTrustRequestSchema = TrustConfigSchema.pick({
+  trustMode: true,
+}).extend({
+  capabilities: TrustCapabilitiesSchema.pick({ readFiles: true }),
+});
+export type SaveTrustRequest = z.infer<typeof SaveTrustRequestSchema>;
+
 export const THEMES = ["auto", "dark", "light", "terminal"] as const;
 export const ThemeSchema = z.enum(THEMES);
 export type Theme = z.infer<typeof ThemeSchema>;

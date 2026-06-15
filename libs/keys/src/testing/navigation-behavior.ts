@@ -2,17 +2,27 @@ import type { RenderResult } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it } from "vitest";
 
+/** One keyboard navigation case for `testNavigationBehavior`. */
 export interface NavigationCase {
+  /** Keyboard input passed to `userEvent.keyboard`. */
   readonly key: string;
+  /** Expected active item index after the key is pressed. */
   readonly expectedActiveIndex: number;
+  /** Optional label used in the generated test name. */
   readonly label?: string;
 }
 
+/** Options for generating shared navigation behavior tests. */
 export interface TestNavigationBehaviorOptions {
+  /** Renders the component under test and returns its Testing Library result. */
   readonly setup: () => RenderResult;
+  /** Accessible item names in navigation order. */
   readonly items: readonly string[];
+  /** Initial active index documented by the caller; retained for table readability. */
   readonly initialActive?: number;
+  /** Keyboard cases to run. */
   readonly cases: readonly NavigationCase[];
+  /** Custom active-index resolver for components that do not expose focus directly. */
   readonly getActiveIndex?: (rendered: RenderResult) => number;
 }
 
@@ -58,6 +68,7 @@ interface PreparedCase extends NavigationCase {
 }
 
 // Must be called inside a describe() block -- it calls it.each directly.
+/** Defines one generated test per navigation case inside the current describe block. */
 export function testNavigationBehavior(options: TestNavigationBehaviorOptions): void {
   const { setup, items, cases, getActiveIndex } = options;
   const resolveActiveIndex =

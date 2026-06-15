@@ -1,22 +1,24 @@
 {
-  "name": "playground",
+  "name": "@diffgazer/keys-playground",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit",
+    "check": "biome check ."
   },
   "dependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "@diffgazer/keys": "workspace:*"
   },
   "devDependencies": {
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
+    "@types/react": "^19.2.13",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.3",
-    "typescript": "^5.7.0",
-    "vite": "^6.0.0"
+    "typescript": "^5.9.3",
+    "vite": "^7.3.2"
   }
 }

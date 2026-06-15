@@ -4,6 +4,7 @@ import { config } from "./config";
 import { createServerFactories as createModeServerFactories } from "./lib/servers/factories";
 import type { ServerController } from "./lib/servers/process";
 import { ensureShutdownToken } from "./lib/shutdown-token";
+import { stopWithTimeout } from "./lib/stop-with-timeout";
 
 interface WebLauncherOptions {
   mode: CliMode;
@@ -12,6 +13,7 @@ interface WebLauncherOptions {
 
 interface WebLauncherDependencies {
   createServerFactories?: typeof createModeServerFactories;
+  ensureShutdownToken?: typeof ensureShutdownToken;
   printBanner?: () => void;
 }
 
@@ -19,7 +21,8 @@ export function startWeb(
   options: WebLauncherOptions,
   dependencies: WebLauncherDependencies = {},
 ): () => Promise<void> {
-  ensureShutdownToken();
+  const initializeShutdownToken = dependencies.ensureShutdownToken ?? ensureShutdownToken;
+  initializeShutdownToken();
   let stopPromise: Promise<void> | null = null;
   let servers: ServerController[] = [];
 
@@ -69,11 +72,4 @@ export function startWeb(
 
 async function stopServers(servers: ServerController[]): Promise<void> {
   await Promise.allSettled(servers.map((server) => server.stop()));
-}
-
-async function stopWithTimeout(stop: () => Promise<void>, timeoutMs: number): Promise<void> {
-  const timeout = new Promise<"timeout">((resolve) => {
-    setTimeout(() => resolve("timeout"), timeoutMs);
-  });
-  await Promise.race([stop(), timeout]);
 }

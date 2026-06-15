@@ -1,9 +1,7 @@
+import type { ProviderDisplayStatus } from "@diffgazer/core/providers";
 import { Button } from "@diffgazer/ui/components/button";
 import { Logo } from "@diffgazer/ui/components/logo";
 import { cn } from "@diffgazer/ui/lib/utils";
-
-/** @see diffgazer/apps/cli/src/components/layout/header.tsx ProviderDisplayStatus (identical CLI variant) */
-type ProviderDisplayStatus = "active" | "idle";
 
 interface HeaderProps {
   providerName: string;
@@ -20,7 +18,7 @@ export function Header({ providerName, providerStatus, onBack }: HeaderProps) {
             variant="ghost"
             size="sm"
             onClick={onBack}
-            className="text-tui-muted hover:text-tui-fg"
+            className="text-muted-foreground hover:text-foreground"
           >
             ← Back
           </Button>
@@ -31,15 +29,15 @@ export function Header({ providerName, providerStatus, onBack }: HeaderProps) {
         className="absolute top-4 right-4 text-xs"
         aria-label={`Provider: ${providerName}, Status: ${providerStatus}`}
       >
-        <span className="text-tui-muted">●</span> {providerName}{" "}
-        <span className="text-tui-muted">•</span>{" "}
-        <span className="text-tui-muted capitalize">{providerStatus}</span>
+        <span className="text-muted-foreground">●</span> {providerName}{" "}
+        <span className="text-muted-foreground">•</span>{" "}
+        <span className="text-muted-foreground capitalize">{providerStatus}</span>
       </output>
 
       <div className="flex flex-col items-center pt-4 md:pt-6">
         <DiffgazerWordmark />
 
-        <div className="text-center text-tui-muted text-sm select-none">─ ✦ ─ ✧ ─</div>
+        <div className="text-center text-muted-foreground text-sm select-none">─ ✦ ─ ✧ ─</div>
       </div>
     </header>
   );
@@ -66,7 +64,7 @@ function DiffgazerWordmark() {
       text={WORDMARK_TEXT.toUpperCase()}
       asciiText={WORDMARK_ASCII}
       className={cn(
-        "text-tui-blue font-bold",
+        "text-info-text font-bold",
         "text-3xs md:text-2xs lg:text-xs",
         "[zoom:0.8] md:[zoom:1] lg:[zoom:1.2]",
       )}

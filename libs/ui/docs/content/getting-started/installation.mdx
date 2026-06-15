@@ -1,13 +1,13 @@
 ---
 title: Installation
-description: Initialize a project with dgadd and add @diffgazer/ui components as source.
+description: Initialize a project with dgadd and add `@diffgazer/ui` components as source.
 ---
 
 `@diffgazer/ui` components install as source files. `dgadd` copies components and optional `@diffgazer/keys` hooks into your app and tracks them for later updates.
 
 > **Installing via dgadd:** Components are namespaced (`ui/button`, `ui/dialog`). For the full command and flag reference — `init`, `add`, `list`, `diff`, `remove` — see the [dgadd CLI reference](/app/cli).
 
-> **Warning:** Temporary: packages publish-gated. `@diffgazer/add`, `@diffgazer/ui`, and `@diffgazer/keys` are external publish-gated as of June 6, 2026. The package-manager commands below work only after `npm view @diffgazer/add version`, `npm view @diffgazer/ui version`, and `npm view @diffgazer/keys version` succeed. Until then, use the [pre-publication local validation](#pre-publication-local-validation) flow.
+> **Warning:** `@diffgazer/add`, `@diffgazer/ui`, and `@diffgazer/keys` are publish-gated until the npm `view` checks in PACKAGE_GOVERNANCE.md pass. The package-manager commands below work only after `npm view @diffgazer/add version`, `npm view @diffgazer/ui version`, and `npm view @diffgazer/keys version` succeed. Until then, use the [pre-publication local validation](#pre-publication-local-validation) flow.
 
 ## Install (after publication)
 
@@ -23,9 +23,9 @@ npx @diffgazer/add init
 npx @diffgazer/add add ui/button
 ```
 
-Verify availability first with `npm view @diffgazer/add version`. Status as of June 6, 2026: not yet published — use the pre-publication flow below.
+Verify availability first with `npm view @diffgazer/add version`. If it is not published yet, use the pre-publication flow below.
 
-## Pre-Publication Local Validation
+## Pre-publication local validation
 
 Until the packages are published, validate `dgadd` from a locally packed tarball.
 
@@ -70,6 +70,18 @@ pnpm exec dgadd add ui/button
 
 <Steps>
 
+<Step title="Install Tailwind CSS">
+
+`@diffgazer/ui` source expects Tailwind CSS 4. Install and configure Tailwind before running `dgadd init`, then import the copied style entry after init writes it.
+
+```css
+@import "tailwindcss";
+```
+
+See [Tailwind Setup](/ui/getting-started/tailwind-setup) for framework-specific details.
+
+</Step>
+
 <Step title="Configure a source alias">
 
 `dgadd init` requires a TypeScript or Vite source alias such as `@/*` or `~/*`. It rejects projects without one unless `--allow-missing-alias` is passed for an app whose tooling already resolves source aliases.
@@ -102,7 +114,7 @@ export default defineConfig({
 })
 ```
 
-See [TypeScript](/ui/getting-started/typescript) and [Tailwind Setup](/ui/getting-started/tailwind-setup) for framework-specific details.
+See [TypeScript](/ui/getting-started/typescript) for framework-specific details.
 
 </Step>
 
@@ -142,7 +154,7 @@ pnpm exec dgadd add ui/dialog ui/tabs ui/menu
 
 </Steps>
 
-## Keyboard Hooks
+## Keyboard hooks
 
 Standalone hooks can be copied directly:
 
@@ -159,7 +171,7 @@ pnpm exec dgadd add ui/menu --integration keys
 
 `copy` installs local hook source. `keys` imports hooks from `@diffgazer/keys`.
 
-## Package Managers
+## Package managers
 
 Use these one-shot commands only after `@diffgazer/add` is published:
 
@@ -184,7 +196,7 @@ src/
         index.ts
   hooks/
     use-navigation.ts
-    internal/
+    utils/
       navigation-dispatch.ts
   lib/
     utils.ts

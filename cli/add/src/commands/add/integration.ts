@@ -11,7 +11,6 @@ export interface ResolvedIntegrationSelection {
 
 const KEYBOARD_NAVIGATION_INTEGRATION = "keyboard-navigation";
 const KEYS_REGISTRY_PREFIXES = ["@diffgazer-keys/", "@diffgazer/keys/"] as const;
-export const DEFAULT_KEYS_VERSION_SPEC = "^0.2.0";
 
 function hasKeysRegistryDependency(item: { registryDependencies?: string[] }): boolean {
   return (item.registryDependencies ?? []).some((dep) =>

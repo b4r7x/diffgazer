@@ -22,6 +22,8 @@ interface ApiKeyMethodSelectorProps {
   getMethodOptionProps?: (method: InputMethod) => {
     ref: RefCallback<HTMLDivElement>;
   };
+  invalid?: boolean;
+  errorId?: string;
 }
 
 function isInputMethod(value: string | null): value is InputMethod {
@@ -41,6 +43,8 @@ export function ApiKeyMethodSelector({
   onKeySubmit,
   onInputMethodKeyDown,
   getMethodOptionProps,
+  invalid = false,
+  errorId,
 }: ApiKeyMethodSelectorProps) {
   const pasteOptionProps = getMethodOptionProps?.("paste");
   const envOptionProps = getMethodOptionProps?.("env");
@@ -82,7 +86,7 @@ export function ApiKeyMethodSelector({
           }}
           label="Paste Key Now"
         />
-        <Field className="pl-9" disabled={method !== "paste"}>
+        <Field className="pl-9" disabled={method !== "paste"} invalid={invalid}>
           <Field.Label className="sr-only">{providerName} API Key</Field.Label>
           {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only convenience zone that forwards clicks on the padding to the keyboard-accessible InputGroup below; the input itself owns all keyboard interaction. */}
           {/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard users focus the wrapped InputGroup directly, so a duplicate key handler on this padding wrapper would be redundant. */}
@@ -108,13 +112,14 @@ export function ApiKeyMethodSelector({
                 }}
                 prefix="KEY:"
                 aria-label={`${providerName} API Key`}
+                aria-describedby={invalid ? errorId : undefined}
                 className={cn(
                   "px-3 py-2",
                   method === "paste"
-                    ? "bg-tui-input-bg border-tui-border"
-                    : "bg-tui-bg border-tui-border opacity-40",
+                    ? "bg-input-well border-border"
+                    : "bg-background border-border opacity-40",
                 )}
-                inputClassName="text-tui-fg tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+                inputClassName="text-foreground tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </Field.Control>
           </div>
@@ -144,8 +149,8 @@ export function ApiKeyMethodSelector({
               tabIndex={-1}
               prefix="$"
               aria-label={`${envVarName} environment variable`}
-              className="bg-tui-bg border-tui-border px-3 py-2 text-tui-muted"
-              inputClassName="text-tui-muted"
+              className="bg-background border-border px-3 py-2 text-muted-foreground"
+              inputClassName="text-muted-foreground"
             />
           </div>
         </div>

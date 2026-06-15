@@ -51,4 +51,13 @@ describe("HelpPage", () => {
     await user.keyboard("{Escape}");
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
   });
+
+  it("advertises the live web-only h and ? bindings and omits the nonexistent r/R rows", () => {
+    renderPage();
+
+    expect(screen.getByText("Open History")).toBeVisible();
+    expect(screen.getByText("Open Help")).toBeVisible();
+    expect(screen.queryByText("Review Unstaged Changes")).not.toBeInTheDocument();
+    expect(screen.queryByText("Review Staged Changes")).not.toBeInTheDocument();
+  });
 });

@@ -1,15 +1,9 @@
-import { rewriteKeysPackageImportsInContent } from "@diffgazer/registry";
+import { rewriteKeysPackageImportsInContent, stripRelativeJsExtensions } from "@diffgazer/registry";
 import type { ResolvedConfig } from "../context.js";
 import { SOURCE_ALIASES } from "../context.js";
 import { getKeysHookImportNames } from "./keys-copy-bundle.js";
 
 const IMPORT_PREFIX = String.raw`(from\s+|import\(\s*|require\(\s*)(["'])`;
-
-// Mirrors the validate-artifacts gate (collectBundleRelativeJsImportErrors): the
-// bare side-effect form `import "./x.js"` must be stripped too, or the gate would
-// flag a copied side-effect import with no transform able to fix it.
-const RELATIVE_JS_IMPORT_RE =
-  /(from\s+|import\(\s*|require\(\s*|import\s+(?=["']))(["'])(\.{1,2}\/[^"']+)\.js\2/g;
 
 // Kept local on purpose. `dgadd` publishes as a self-contained npm bundle, so
 // pulling a one-line regex-escape from a workspace package would drag that
@@ -139,7 +133,7 @@ export function transformImports(content: string, aliases: ResolvedConfig["alias
       return out.result;
     }
 
-    const openIdx = line.indexOf("/*");
+    const openIdx = findBlockCommentStart(line);
     if (openIdx !== -1) {
       const out = replaceWithBlockComment({ line, openIdx, aliases, regexes });
       inBlockComment = out.opensBlock;
@@ -173,6 +167,33 @@ function findLineCommentStart(line: string): number {
   return -1;
 }
 
+// Find the first real `/*` block-comment opener, skipping `/*` that appears
+// inside a string literal (so `const x = "/*"` does not flip the transformer
+// into comment mode and suppress alias rewriting for the rest of the file).
+// A `//` line comment encountered first wins: any `/*` after it is inside that
+// line comment, not a block opener.
+function findBlockCommentStart(line: string): number {
+  let inString: string | null = null;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inString) {
+      if (ch === "\\") {
+        i++;
+        continue;
+      }
+      if (ch === inString) inString = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") {
+      inString = ch;
+      continue;
+    }
+    if (ch === "/" && line[i + 1] === "/") return -1;
+    if (ch === "/" && line[i + 1] === "*") return i;
+  }
+  return -1;
+}
+
 export function handleRscDirective(content: string, isClient: boolean, rsc: boolean): string {
   const directive = /^\uFEFF?\s*["']use client["'];?\s*(\r?\n)*/;
   const hasDirective = directive.test(content);
@@ -181,11 +202,7 @@ export function handleRscDirective(content: string, isClient: boolean, rsc: bool
 }
 
 export function rewriteRelativeJsExtensionsForCopy(content: string): string {
-  return content.replace(
-    RELATIVE_JS_IMPORT_RE,
-    (_: string, prefix: string, quote: string, specifier: string) =>
-      `${prefix}${quote}${specifier}${quote}`,
-  );
+  return stripRelativeJsExtensions(content);
 }
 
 function renderImport(specifiers: string[], target: string, quote: string): string {

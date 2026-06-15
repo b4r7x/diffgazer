@@ -16,6 +16,10 @@ hook: "use-scoped-navigation"
 
 For a list embedded inside a self-contained component — a combobox popup, a dropdown — prefer [`useNavigation`](/keys/hooks/use-navigation); it avoids the provider dependency.
 
+## Typing `data-value` (`TValue`)
+
+`useScopedNavigation` re-exposes the same `TValue` generic as [`useNavigation`](/keys/hooks/use-navigation). It narrows `highlighted`, `onHighlightChange`, `onSelect`, and `onEnter` to a literal union for editor convenience, but it is a **type assertion, not runtime validation**: every value originates from the `data-value` DOM attribute and is asserted to `TValue` at the DOM boundary without being checked against the union. Keep your `data-value` attributes in sync with the union you instantiate, or validate the string inside your callback before relying on it.
+
 ## Installation
 
 <ConsumptionBlock />

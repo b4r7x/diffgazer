@@ -1,7 +1,7 @@
 import { Stepper } from "@/components/ui/stepper";
 
 // Tone is derived from `status` by the built-in variant dictionary:
-//   completed → success · active → foreground · error → destructive
+//   completed → success · active → foreground · error → error
 //   pending → muted · skipped → muted (line-through) · disabled → muted (dim)
 // No per-step color wiring required — the indicator glyph still carries
 // meaning (WCAG 1.4.1), color only reinforces it.

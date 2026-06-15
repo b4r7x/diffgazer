@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FloatingAlign, FloatingSide } from "@/hooks/use-floating-position";
@@ -148,6 +149,7 @@ describe("FloatingPanel presence", () => {
     expect(onExitComplete).not.toHaveBeenCalled();
 
     await act(async () => {
+      // fireEvent retained: animationEnd has no userEvent equivalent.
       fireEvent.animationEnd(panel);
     });
     expect(onExitComplete).toHaveBeenCalledTimes(1);
@@ -170,7 +172,7 @@ describe("FloatingPanel presence", () => {
             toggle
           </button>
           <FloatingPanel open={open} triggerRef={triggerRef} role="dialog" aria-label="bubble">
-            <span data-testid="inner">child</span>
+            <span>child</span>
           </FloatingPanel>
         </>
       );
@@ -178,9 +180,10 @@ describe("FloatingPanel presence", () => {
 
     render(<PanelWithAnimatedChild />);
     const panel = await screen.findByRole("dialog", { name: "bubble" });
-    const inner = screen.getByTestId("inner");
+    const inner = screen.getByText("child");
 
     await act(async () => {
+      // fireEvent retained: animationEnd has no userEvent equivalent.
       fireEvent.animationEnd(inner);
     });
 
@@ -225,16 +228,26 @@ describe("FloatingPanel positioning attributes", () => {
     ).toBe("");
   });
 
+  it("exposes finite available-size CSS variables for the resolved side", async () => {
+    render(<Harness initialOpen side="bottom" panelLabel="avail" />);
+    const panel = await screen.findByRole("dialog", { name: "avail" });
+
+    const height = panel.style.getPropertyValue("--floating-panel-available-height");
+    const width = panel.style.getPropertyValue("--floating-panel-available-width");
+    // Both vars are present with finite positive px derived from the viewport.
+    expect(height).toMatch(/^\d+(\.\d+)?px$/);
+    expect(width).toMatch(/^\d+(\.\d+)?px$/);
+    expect(Number.parseFloat(height)).toBeGreaterThan(0);
+    expect(Number.parseFloat(width)).toBeGreaterThan(0);
+  });
+
   it("exposes positioned/side/align to descendants via useFloatingPanelContext", async () => {
     function ContextProbe() {
       const { positioned, side, align } = useFloatingPanelContext();
       return (
-        <span
-          data-testid="probe"
-          data-positioned={positioned ? "true" : "false"}
-          data-side={side ?? ""}
-          data-align={align ?? ""}
-        />
+        <output aria-label="Floating panel context">
+          {positioned ? "positioned" : "unpositioned"} {side ?? "none"} {align ?? "none"}
+        </output>
       );
     }
 
@@ -268,10 +281,9 @@ describe("FloatingPanel positioning attributes", () => {
     }
 
     render(<ContextHarness />);
-    const probe = await screen.findByTestId("probe");
-    expect(probe).toHaveAttribute("data-positioned", "true");
-    expect(probe).toHaveAttribute("data-side", "top");
-    expect(probe).toHaveAttribute("data-align", "end");
+    expect(await screen.findByRole("status", { name: "Floating panel context" })).toHaveTextContent(
+      "positioned top end",
+    );
   });
 });
 
@@ -297,6 +309,7 @@ describe("FloatingPanel portal target", () => {
 
 describe("FloatingPanel prop forwarding", () => {
   it("forwards handlers, ref, and preserves role/aria-label/id/tabIndex on the panel element", async () => {
+    const user = userEvent.setup();
     const onKeyDown = vi.fn();
     const onMouseEnter = vi.fn();
     const onMouseLeave = vi.fn();
@@ -315,9 +328,10 @@ describe("FloatingPanel prop forwarding", () => {
     );
     const panel = await screen.findByRole("menu", { name: "forward" });
 
-    fireEvent.keyDown(panel, { key: "Escape" });
-    fireEvent.mouseEnter(panel);
-    fireEvent.mouseLeave(panel);
+    panel.focus();
+    await user.keyboard("{Escape}");
+    await user.hover(panel);
+    await user.unhover(panel);
 
     expect(onKeyDown).toHaveBeenCalledTimes(1);
     expect(onMouseEnter).toHaveBeenCalledTimes(1);
@@ -393,7 +407,6 @@ describe("FloatingPanel dev-mode a11y warning", () => {
           triggerRef={triggerRef}
           avoidCollisions={false}
           aria-labelledby={ariaLabelledBy}
-          data-testid="warn-panel"
         >
           body
         </FloatingPanel>
@@ -593,6 +606,7 @@ describe("FloatingPanel mount/remount cycle", () => {
     expect(initialPanel).toBeInTheDocument();
 
     await act(async () => {
+      // fireEvent retained: animationEnd has no userEvent equivalent.
       fireEvent.animationEnd(initialPanel);
     });
     expect(screen.queryByRole("dialog", { name: "cycle" })).not.toBeInTheDocument();

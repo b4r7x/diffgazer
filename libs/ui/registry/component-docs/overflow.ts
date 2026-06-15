@@ -14,7 +14,7 @@ export const overflowDoc: ComponentDoc = {
     {
       title: "Two Modes",
       content:
-        'Text mode is the default: CSS truncation with useOverflow hook detecting actual overflow + Tooltip that only appears when content is truly clipped. Items mode requires mode="items" and measures children against container width via ResizeObserver, showing what fits plus an overflow indicator.',
+        'Text mode is the default: CSS truncation with useOverflowDetection hook detecting actual overflow + Tooltip that only appears when content is truly clipped. Items mode requires mode="items" and measures children against container width via ResizeObserver, showing what fits plus an overflow indicator.',
     },
     {
       title: "Items Mode",
@@ -27,7 +27,7 @@ export const overflowDoc: ComponentDoc = {
         "Set lines={1} for single-line truncate or lines={2+} for multi-line clamping. Tooltip auto-derives content from string children. Set tooltip={false} to disable, or tooltip={<custom>} for custom content.",
     },
     {
-      title: "useOverflow Hook",
+      title: "useOverflowDetection Hook",
       content:
         "The overflow detection logic is available as a standalone hook (overflow-detection registry item). Use it independently for custom overflow UIs.",
     },

@@ -13,6 +13,7 @@ import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import { useOnboardingWizard } from "../hooks/use-wizard";
+import { apiKeyStepOwnsTab } from "../lib/api-key-tab";
 import { getStepShortcuts } from "../lib/step-shortcuts";
 import { AnalysisStep } from "./steps/analysis-step";
 import { ApiKeyStep } from "./steps/api-key-step";
@@ -58,6 +59,8 @@ function WizardStepBody({ step, wizard }: WizardStepBodyProps): ReactElement | n
           apiKey={wizard.wizardData.apiKey}
           onApiKeyChange={wizard.handleApiKeyChange}
           isActive={isStepFocused}
+          inputFocused={wizard.apiKeyInputFocused}
+          onInputFocusedChange={wizard.setApiKeyInputFocused}
         />
       );
     case "model":
@@ -108,6 +111,12 @@ export function OnboardingWizard(): ReactElement {
   useInput((_input, key) => {
     if (wizard.isSaving) return;
     if (key.tab) {
+      // The api-key step owns Tab while its body is focused (toggles the key
+      // input), so the wizard must not also toggle the step/nav focus area.
+      if (apiKeyStepOwnsTab(wizard.currentStep, wizard.focusArea)) {
+        wizard.toggleApiKeyInputFocus();
+        return;
+      }
       wizard.toggleFocusArea();
       return;
     }

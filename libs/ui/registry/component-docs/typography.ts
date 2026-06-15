@@ -51,11 +51,11 @@ export const typographyDoc: ComponentDoc = {
         description: "Font-weight token. Explicit value overrides the heading default.",
       },
       color: {
-        type: '"default" | "muted" | "foreground" | "accent"',
+        type: '"default" | "muted" | "accent"',
         required: false,
         defaultValue: '"default"',
         description:
-          "Text color token. Default and muted use muted-foreground, foreground uses the primary text color, accent uses the theme primary.",
+          "Text color token. default uses the primary text color, muted uses muted-foreground, accent uses the theme primary.",
       },
       lineClamp: {
         type: "1 | 2 | 3 | 4 | 5 | 6",

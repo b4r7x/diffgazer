@@ -1,9 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { requireAttribute } from "../../testing/assertions";
+import { expectFieldDescribedBy, expectFieldInvalid } from "../../testing/form-behavior";
+import { Checkbox } from "../checkbox/index";
 import { Input, InputGroup } from "../input/index";
 import { Select } from "../select/index";
 import { Textarea } from "../textarea/index";
@@ -25,8 +27,7 @@ describe("Field", () => {
     const input = screen.getByRole("textbox", { name: "Email" });
 
     expect(input).toBeRequired();
-    expect(input).toHaveAttribute("aria-invalid", "true");
-    expect(input).toHaveAccessibleDescription("Use your work email. Email is required.");
+    expectFieldInvalid(input, "Use your work email. Email is required.");
   });
 
   it("wires disabled state and custom control ids to the control", () => {
@@ -76,7 +77,8 @@ describe("Field", () => {
 
     const input = screen.getByRole("textbox", { name: "Email" });
 
-    expect(input).toHaveAttribute("aria-describedby", "email-help email-error");
+    expectFieldDescribedBy(input, "email-help");
+    expectFieldDescribedBy(input, "email-error");
     expect(input).toHaveAccessibleDescription("Use your work email. Email is required.");
   });
 
@@ -97,8 +99,7 @@ describe("Field", () => {
     expect(input).toHaveAttribute("id", "repository-path");
     expect(input).toBeRequired();
     expect(input).toBeDisabled();
-    expect(input).toHaveAttribute("aria-invalid", "true");
-    expect(input).toHaveAccessibleDescription("Relative config path. Repository path is required.");
+    expectFieldInvalid(input, "Relative config path. Repository path is required.");
     expect(screen.getByText("~/")).toBeInTheDocument();
     expect(screen.getByText(".json")).toBeInTheDocument();
     expect(screen.getByText("~/")).toHaveAttribute("aria-hidden", "true");
@@ -118,8 +119,7 @@ describe("Field", () => {
 
     const textarea = screen.getByRole("textbox", { name: "Review notes" });
 
-    expect(textarea).toHaveAttribute("aria-invalid", "true");
-    expect(textarea).toHaveAccessibleDescription("Notes are required.");
+    expectFieldInvalid(textarea, "Notes are required.");
   });
 
   it("merges external aria-labelledby with the field label id", () => {
@@ -138,6 +138,160 @@ describe("Field", () => {
 
     const fieldLabel = screen.getByText("Username");
     expect(labelledBy).toContain(fieldLabel.id);
+  });
+
+  it("keeps ARIA wiring when slots are wrapped in layout elements", () => {
+    render(
+      <Field invalid required>
+        <div>
+          <Field.Label>Email</Field.Label>
+        </div>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+        <div>
+          <Field.Description>Use your work email.</Field.Description>
+        </div>
+        <div>
+          <Field.Error>Email is required.</Field.Error>
+        </div>
+      </Field>,
+    );
+
+    const input = screen.getByRole("textbox", { name: "Email" });
+
+    expect(input).toBeRequired();
+    expectFieldInvalid(input, "Use your work email. Email is required.");
+  });
+
+  it("lets a control child's own id win and follows it from the label", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <Field controlId="field-default">
+        <Field.Label>Project name</Field.Label>
+        <Field.Control>
+          <Input id="custom" />
+        </Field.Control>
+      </Field>,
+    );
+
+    const input = screen.getByRole("textbox", { name: "Project name" });
+    expect(input).toHaveAttribute("id", "custom");
+
+    const label = screen.getByText("Project name");
+    expect(label).toHaveAttribute("for", "custom");
+
+    await user.click(label);
+    expect(input).toHaveFocus();
+  });
+
+  it("reverts the label htmlFor to the field default when the control child id is removed", () => {
+    const { rerender } = render(
+      <Field controlId="field-default">
+        <Field.Label>Project name</Field.Label>
+        <Field.Control>
+          <Input id="custom" />
+        </Field.Control>
+      </Field>,
+    );
+
+    expect(screen.getByText("Project name")).toHaveAttribute("for", "custom");
+
+    rerender(
+      <Field controlId="field-default">
+        <Field.Label>Project name</Field.Label>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+      </Field>,
+    );
+
+    const input = screen.getByRole("textbox", { name: "Project name" });
+    expect(input).toHaveAttribute("id", "field-default");
+    expect(screen.getByText("Project name")).toHaveAttribute("for", "field-default");
+  });
+
+  it("keeps a div-based Checkbox accessible name through a wrapper", () => {
+    render(
+      <Field>
+        <Field.Label>Accept terms</Field.Label>
+        <Field.Control>
+          <Checkbox />
+        </Field.Control>
+      </Field>,
+    );
+
+    expect(screen.getByRole("checkbox", { name: "Accept terms" })).toBeInTheDocument();
+  });
+
+  it("clicking a Field.Label toggles and focuses a div-based Checkbox", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <Field>
+        <Field.Label>Accept terms</Field.Label>
+        <Field.Control>
+          <Checkbox />
+        </Field.Control>
+      </Field>,
+    );
+
+    const checkbox = screen.getByRole("checkbox", { name: "Accept terms" });
+    expect(checkbox).toHaveAttribute("aria-checked", "false");
+
+    await user.click(screen.getByText("Accept terms"));
+
+    expect(checkbox).toHaveAttribute("aria-checked", "true");
+    expect(checkbox).toHaveFocus();
+  });
+
+  it("clicking a label for a native Input focuses it exactly once (no double activation)", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(
+      <Field>
+        <Field.Label>Project name</Field.Label>
+        <Field.Control>
+          <Input onChange={onChange} />
+        </Field.Control>
+      </Field>,
+    );
+
+    await user.click(screen.getByText("Project name"));
+
+    expect(screen.getByRole("textbox", { name: "Project name" })).toHaveFocus();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("renders Field.Error only while invalid and joins it into aria-describedby on transition", () => {
+    const { rerender } = render(
+      <Field>
+        <Field.Label>Email</Field.Label>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+        <Field.Error>Email is required.</Field.Error>
+      </Field>,
+    );
+
+    expect(screen.queryByText("Email is required.")).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Email" })).not.toHaveAttribute("aria-describedby");
+
+    rerender(
+      <Field invalid>
+        <Field.Label>Email</Field.Label>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+        <Field.Error>Email is required.</Field.Error>
+      </Field>,
+    );
+
+    const input = screen.getByRole("textbox", { name: "Email" });
+    expect(screen.getByText("Email is required.")).toBeInTheDocument();
+    expectFieldInvalid(input, "Email is required.");
   });
 
   it("composes form wiring with Select on the combobox trigger", () => {
@@ -162,12 +316,9 @@ describe("Field", () => {
 
     const combobox = screen.getByRole("combobox", { name: "Region" });
 
-    expect(combobox).toHaveAttribute("aria-invalid", "true");
+    expectFieldInvalid(combobox, "Choose where data is stored. Region is required.");
     expect(combobox).toHaveAttribute("aria-required", "true");
     expect(combobox).toBeDisabled();
-    expect(combobox).toHaveAccessibleDescription(
-      "Choose where data is stored. Region is required.",
-    );
     expect(combobox).toHaveAttribute("aria-labelledby");
     expect(combobox).not.toHaveAttribute("aria-label", "Select");
   });

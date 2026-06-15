@@ -22,7 +22,7 @@ export default function TabsControlled() {
           <div className="border border-border p-4 text-sm font-mono">Build completed in 2.3s</div>
         </TabsContent>
         <TabsContent value="errors">
-          <div className="border border-border p-4 text-sm text-destructive">No errors found.</div>
+          <div className="border border-border p-4 text-sm text-error">No errors found.</div>
         </TabsContent>
       </Tabs>
     </div>

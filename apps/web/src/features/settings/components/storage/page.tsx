@@ -1,16 +1,15 @@
-import { matchQueryState, useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
+import { useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
-import { usePageFooter } from "@diffgazer/core/footer";
 import { deriveSaveState } from "@diffgazer/core/forms";
 import type { SecretsStorage } from "@diffgazer/core/schemas/config";
-import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import { useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
-import { Button } from "@diffgazer/ui/components/button";
+import { BACK_SHORTCUT, NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
+import { useKey, useScope } from "@diffgazer/keys";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { StorageSelectorContent } from "@/components/shared/storage-selector-content";
-import { CardLayout } from "@/components/ui/card-layout";
+import { useSettingsFormFooter } from "../../hooks/use-settings-form-footer";
+import { SettingsFormPage } from "../form-page";
 
 export function SettingsStoragePage() {
   const navigate = useNavigate();
@@ -34,7 +33,6 @@ export function SettingsStoragePage() {
   useKey("Escape", () => navigate({ to: "/settings" }), { enabled: !isSaving });
 
   const canSave = !isSaving && !!effectiveStorage && isDirty;
-  const isSaveDisabled = !canSave;
 
   const handleCancel = () => navigate({ to: "/settings" });
 
@@ -49,85 +47,26 @@ export function SettingsStoragePage() {
     }
   };
 
-  const footer = useActionRowNavigation({
-    enabled: true,
-    actionCount: 2,
-    disabledActions: [isSaving, isSaveDisabled],
-    disabledFocusFallbackRef: focusFallbackRef,
-    onAction: (index) => {
-      if (index === 0) handleCancel();
-      else if (index === 1 && canSave) void handleSave();
-    },
+  const footer = useSettingsFormFooter({
+    disabledActions: [isSaving, !canSave],
+    canSave,
+    onCancel: handleCancel,
+    onSave: () => void handleSave(),
+    contentShortcuts: [NAVIGATE_SHORTCUT, { key: "Enter/Space", label: "Select Storage" }],
+    rightShortcuts: [BACK_SHORTCUT],
+    focusFallbackRef,
   });
-
-  const footerShortcuts: Shortcut[] = footer.inActions
-    ? [
-        { key: "←/→", label: "Move Action" },
-        {
-          key: "Enter/Space",
-          label: footer.focusedIndex === 0 ? "Cancel" : "Save",
-          disabled: footer.isFocusedActionDisabled,
-        },
-      ]
-    : [
-        { key: "↑/↓", label: "Navigate" },
-        { key: "Enter/Space", label: "Select Storage" },
-      ];
-
-  usePageFooter({
-    shortcuts: footerShortcuts,
-    rightShortcuts: [{ key: "Esc", label: "Back" }],
-  });
-
-  const guard = matchQueryState(settingsQuery, {
-    loading: () => (
-      <CardLayout
-        title="Configure Secrets Storage"
-        subtitle="Choose where API keys and sensitive data should be stored."
-      >
-        <p className="text-tui-muted">Loading settings...</p>
-      </CardLayout>
-    ),
-    error: (err) => (
-      <CardLayout
-        title="Configure Secrets Storage"
-        subtitle="Choose where API keys and sensitive data should be stored."
-      >
-        <p className="text-tui-red text-sm">{err.message}</p>
-      </CardLayout>
-    ),
-    success: () => null,
-  });
-
-  if (guard) return guard;
 
   return (
-    <CardLayout
+    <SettingsFormPage
       title="Configure Secrets Storage"
       subtitle="Choose where API keys and sensitive data should be stored."
-      contentInactive={footer.inActions}
-      footer={
-        <>
-          <Button
-            {...footer.getActionProps(0)}
-            variant="ghost"
-            onClick={handleCancel}
-            disabled={isSaving}
-            highlighted={footer.inActions && footer.focusedIndex === 0 && !isSaving}
-          >
-            Cancel
-          </Button>
-          <Button
-            {...footer.getActionProps(1)}
-            variant="success"
-            onClick={handleSave}
-            disabled={isSaving || !effectiveStorage || !isDirty}
-            highlighted={footer.inActions && footer.focusedIndex === 1 && canSave}
-          >
-            {isSaving ? "Saving..." : "Save"}
-          </Button>
-        </>
-      }
+      query={settingsQuery}
+      footer={footer}
+      isSaving={isSaving}
+      canSave={canSave}
+      onCancel={handleCancel}
+      onSave={() => void handleSave()}
     >
       <div ref={focusFallbackRef} tabIndex={-1} className="space-y-6 focus:outline-none">
         <StorageSelectorContent
@@ -153,6 +92,6 @@ export function SettingsStoragePage() {
           </Callout>
         )}
       </div>
-    </CardLayout>
+    </SettingsFormPage>
   );
 }

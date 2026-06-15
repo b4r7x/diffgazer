@@ -2,8 +2,15 @@
 
 import { type KeyboardEvent, type RefObject, useMemo } from "react";
 import { type ParsedDiff, type SplitCell, type SplitRow, toSplitRows } from "@/lib/diff";
-import { formatHunkHeader, LINE_PREFIX, LineContent, ROW_STATE, SR_LABEL } from "./diff-view-line";
+import {
+  formatHunkHeader,
+  LINE_PREFIX,
+  LineContent,
+  ROW_STATE,
+  resolveSrLabel,
+} from "./diff-view-line";
 
+/** Root <figure> with aria-roledescription="diff". */
 export function SplitView({
   parsed,
   showLineNumbers,
@@ -12,6 +19,11 @@ export function SplitView({
   activeHunk,
   onKeyDown,
   containerRef,
+  regionLabel = "Split diff",
+  oldSideLabel,
+  newSideLabel,
+  addedLineLabel,
+  removedLineLabel,
 }: {
   parsed: ParsedDiff;
   showLineNumbers: boolean;
@@ -20,6 +32,11 @@ export function SplitView({
   activeHunk: string | null;
   onKeyDown: (e: KeyboardEvent) => void;
   containerRef: RefObject<HTMLDivElement | null>;
+  regionLabel?: string;
+  oldSideLabel: string;
+  newSideLabel: string;
+  addedLineLabel: string;
+  removedLineLabel: string;
 }) {
   const rows: SplitRow[] = useMemo(
     () => toSplitRows(parsed.hunks, !disableWordDiff),
@@ -32,12 +49,12 @@ export function SplitView({
     // containerRef on the outer split (not on each SplitSide rows): useNavigation
     // queries by data-diffgazer-navigation-item, which only the left side registers,
     // so one shared ref covers both panes without double-counting hunks.
-    // biome-ignore lint/a11y/noStaticElementInteractions: the diff viewer is a custom keyboard-navigable composite; row navigation is handled here via onKeyDown with no native role that fits.
-    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-label/aria-keyshortcuts describe the focusable diff navigation region; no role with a native element equivalent applies to this composite.
+    // biome-ignore lint/a11y/useSemanticElements: role="region" makes the aria-label/aria-keyshortcuts valid on the focusable diff scroll container (the ScrollArea precedent); <section> would change the styled element and add a document landmark this composite is not.
     <div
       ref={containerRef}
       data-slot="diff-view-split"
-      aria-label="Split diff"
+      role="region"
+      aria-label={regionLabel}
       aria-keyshortcuts="j k Escape"
       // biome-ignore lint/a11y/noNoninteractiveTabindex: the container must be focusable (tabIndex=0) to receive j/k/Escape shortcuts that move between diff rows.
       tabIndex={0}
@@ -45,21 +62,27 @@ export function SplitView({
     >
       <SplitSide
         side="old"
+        label={oldSideLabel}
         rows={leftRows}
         showLineNumbers={showLineNumbers}
         disableWordDiff={disableWordDiff}
         isDense={isDense}
         activeHunk={activeHunk}
         registerNavigationItems
+        addedLineLabel={addedLineLabel}
+        removedLineLabel={removedLineLabel}
       />
       <SplitSide
         side="new"
+        label={newSideLabel}
         rows={rightRows}
         showLineNumbers={showLineNumbers}
         disableWordDiff={disableWordDiff}
         isDense={isDense}
         activeHunk={activeHunk}
         registerNavigationItems={false}
+        addedLineLabel={addedLineLabel}
+        removedLineLabel={removedLineLabel}
       />
     </div>
   );
@@ -93,20 +116,26 @@ function partitionSplitRows(rows: SplitRow[]): {
 
 function SplitSide({
   side,
+  label,
   rows,
   showLineNumbers,
   disableWordDiff,
   isDense,
   activeHunk,
   registerNavigationItems,
+  addedLineLabel,
+  removedLineLabel,
 }: {
   side: "old" | "new";
+  label: string;
   rows: SideEntry[];
   showLineNumbers: boolean;
   disableWordDiff: boolean;
   isDense: boolean;
   activeHunk: string | null;
   registerNavigationItems: boolean;
+  addedLineLabel: string;
+  removedLineLabel: string;
 }) {
   return (
     // biome-ignore lint/a11y/useSemanticElements: role="group" labels one side of the split diff; <fieldset> is for form controls and is not appropriate here.
@@ -115,7 +144,7 @@ function SplitSide({
       data-side={side}
       data-line-numbers={showLineNumbers ? "true" : "false"}
       role="group"
-      aria-label={side === "old" ? "Old" : "New"}
+      aria-label={label}
       className="scrollbar-thin"
     >
       {rows.map((entry, i) => {
@@ -130,7 +159,7 @@ function SplitSide({
               data-hunk
               data-diffgazer-navigation-item={registerNavigationItems ? "button" : undefined}
               data-value={registerNavigationItems ? String(hunkIndex) : undefined}
-              data-active={activeHunk === String(hunkIndex) ? "true" : undefined}
+              data-highlighted={activeHunk === String(hunkIndex) ? "" : undefined}
             >
               {showLineNumbers && (
                 <>
@@ -152,6 +181,8 @@ function SplitSide({
             showLineNumbers={showLineNumbers}
             disableWordDiff={disableWordDiff}
             isDense={isDense}
+            addedLineLabel={addedLineLabel}
+            removedLineLabel={removedLineLabel}
           />
         );
       })}
@@ -164,11 +195,15 @@ function SplitCellRow({
   showLineNumbers,
   disableWordDiff,
   isDense,
+  addedLineLabel,
+  removedLineLabel,
 }: {
   cell: SplitCell;
   showLineNumbers: boolean;
   disableWordDiff: boolean;
   isDense: boolean;
+  addedLineLabel: string;
+  removedLineLabel: string;
 }) {
   if (cell.type === "empty") {
     return (
@@ -185,6 +220,7 @@ function SplitCellRow({
     );
   }
 
+  const srLabel = resolveSrLabel(cell.type, addedLineLabel, removedLineLabel);
   return (
     <span data-row data-state={ROW_STATE[cell.type]}>
       {showLineNumbers && (
@@ -199,7 +235,7 @@ function SplitCellRow({
         {LINE_PREFIX[cell.type]}
       </span>
       <span className="diff-code">
-        {SR_LABEL[cell.type] && <span className="sr-only">{SR_LABEL[cell.type]}</span>}
+        {srLabel && <span className="sr-only">{srLabel}</span>}
         <LineContent
           content={cell.content}
           wordSegments={disableWordDiff ? undefined : cell.wordSegments}

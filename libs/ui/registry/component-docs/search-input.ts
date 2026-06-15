@@ -39,6 +39,19 @@ export const searchInputDoc: ComponentDoc = {
   keyboard: {
     description:
       "SearchInput provides onEscape and onEnter callback props. For arrow-key navigation in an adjacent list, use the onKeyDown prop or @diffgazer/keys's useNavigation hook. The search-input-keyboard example shows how to wire arrow keys via onKeyDown.",
+    keys: [
+      {
+        keys: "Escape",
+        action:
+          "Clears the current value when it is non-empty; otherwise calls onEscape when provided.",
+      },
+      { keys: "Enter", action: "Calls onEnter when provided." },
+      {
+        keys: "Arrow keys / other keys",
+        action:
+          "Forward through onKeyDown so a parent listbox, combobox, or custom search flow can own navigation.",
+      },
+    ],
     examples: [
       { name: "search-input-default", title: "Without keyboard (typing only)" },
       { name: "search-input-keyboard", title: "With keyboard navigation" },
@@ -82,11 +95,25 @@ export const searchInputDoc: ComponentDoc = {
         defaultValue: '"/"',
         description: "Prefix content before the input. Pass null to hide it.",
       },
+      placeholder: {
+        type: "string",
+        required: false,
+        defaultValue: '"Search..."',
+        description:
+          "Native placeholder. Also becomes the fallback aria-label unless aria-label is supplied.",
+      },
       size: {
         type: '"sm" | "md" | "lg"',
         required: false,
         defaultValue: '"md"',
         description: "Padding/font size token for the search wrapper.",
+      },
+      "aria-label": {
+        type: "string",
+        required: false,
+        defaultValue: "placeholder",
+        description:
+          "Accessible name forwarded to the native search input. Defaults to the placeholder text.",
       },
       "aria-invalid": {
         type: 'boolean | "true" | "false" | "grammar" | "spelling"',
@@ -94,6 +121,12 @@ export const searchInputDoc: ComponentDoc = {
         defaultValue: null,
         description:
           "Forwarded to the native search input and used by the wrapper for invalid styling.",
+      },
+      disabled: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Disables the native search input.",
       },
     },
   },

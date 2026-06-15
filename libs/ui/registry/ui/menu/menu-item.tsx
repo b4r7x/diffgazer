@@ -1,28 +1,52 @@
 "use client";
 
-import type { ComponentPropsWithRef, FocusEvent, MouseEvent, ReactNode, Ref } from "react";
+import {
+  type ComponentPropsWithRef,
+  type FocusEvent,
+  type MouseEvent,
+  type ReactNode,
+  type Ref,
+  useId,
+  useLayoutEffect,
+  useRef,
+} from "react";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
 import { useMenuContext } from "./menu-context";
-import { DefaultItemLayout, HubItemLayout } from "./menu-item-layouts";
+import { DefaultItemLayout, DetailItemLayout } from "./menu-item-layouts";
 import { getItemState, menuItemBase, menuItemValue } from "./menu-item-variants";
 
+/** Props for menu item. */
 export interface MenuItemProps<TId extends string = string>
   extends Omit<
     ComponentPropsWithRef<"div">,
     "id" | "children" | "role" | "aria-checked" | "aria-disabled" | "data-value" | "ref"
   > {
+  /** Stable identifier matched against selectedId/highlighted and passed to onSelect. */
   id: TId;
+  /** Disables activation while keeping the item in the navigation order with aria-disabled. */
   disabled?: boolean;
+  /** Danger applies destructive coloring for destructive actions. */
   variant?: "default" | "danger";
+  /** Decorative hotkey label rendered as [n]. Does not bind a key listener. */
   hotkey?: number | string;
+  /**
+   * Leading icon rendered in the indicator slot. Replaces the default ▐/> indicator when
+   * provided.
+   */
   icon?: ReactNode;
+  /** Detail variant only. Right-aligned value (badge, count, or status text). */
   value?: ReactNode;
+  /** Color treatment for the detail value. */
   valueVariant?: "default" | "success" | "success-badge" | "muted";
+  /** Item label. */
   children: ReactNode;
+  /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLDivElement>;
 }
 
+/** Selectable item with optional hotkey, value, variant. */
 export function MenuItem<TId extends string = string>({
   id,
   disabled = false,
@@ -47,13 +71,23 @@ export function MenuItem<TId extends string = string>({
     variant: menuVariant,
     idPrefix,
     itemRole,
+    registerItem,
+    unregisterItem,
   } = useMenuContext();
+  const registrationId = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const composedRef = useComposedRefs(rootRef, ref);
+
+  useLayoutEffect(() => {
+    registerItem(registrationId, id, disabled, rootRef.current);
+    return () => unregisterItem(registrationId);
+  }, [registerItem, unregisterItem, registrationId, id, disabled]);
 
   const isSelected = !disabled && selectedId === id;
   const isFocused = highlighted === id;
   const isActive = !disabled && (isFocused || isSelected);
   const isDanger = variant === "danger";
-  const isHub = menuVariant === "hub";
+  const isDetail = menuVariant === "detail";
   const state = getItemState({ disabled, isFocused, isSelected });
   const itemId = getEncodedListboxItemId(idPrefix, id);
 
@@ -81,24 +115,25 @@ export function MenuItem<TId extends string = string>({
     // biome-ignore lint/a11y/useKeyWithClickEvents: Enter/Space activation is handled centrally by the menu container, not per item.
     <div
       {...rootProps}
-      ref={ref}
+      ref={composedRef}
       id={itemId}
       role={itemRole}
       tabIndex={-1}
+      data-slot="menu-item"
       data-diffgazer-navigation-item="true"
       data-value={id}
-      data-active={isActive || undefined}
-      data-focus={isFocused || undefined}
+      data-highlighted={isFocused ? "" : undefined}
+      aria-keyshortcuts={hotkey !== undefined ? String(hotkey) : undefined}
       aria-checked={itemRole === "menuitemradio" ? isSelected : undefined}
       aria-disabled={disabled || undefined}
-      data-state={isSelected ? "selected" : "unselected"}
+      data-selected={isSelected ? "" : undefined}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
       onFocus={handleFocus}
       className={cn(menuItemBase({ menuVariant, state, colorVariant: variant }), className)}
     >
-      {isHub ? (
-        <HubItemLayout
+      {isDetail ? (
+        <DetailItemLayout
           isFocused={isFocused}
           isSelected={isSelected}
           value={value}
@@ -106,7 +141,7 @@ export function MenuItem<TId extends string = string>({
           icon={icon}
         >
           {children}
-        </HubItemLayout>
+        </DetailItemLayout>
       ) : (
         <DefaultItemLayout
           isFocused={isFocused}

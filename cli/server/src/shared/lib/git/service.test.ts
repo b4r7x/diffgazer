@@ -1,10 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockExecFileAsync, mockReadFile, mockRealpath, mockLstat } = vi.hoisted(() => ({
+const { mockExecFileAsync } = vi.hoisted(() => ({
   mockExecFileAsync: vi.fn(),
-  mockReadFile: vi.fn(),
-  mockRealpath: vi.fn(),
-  mockLstat: vi.fn(),
 }));
 
 // Boundary mock: node:child_process is the Node.js external-process boundary; createGitService spawns the `git` CLI, so tests stub execFile to provide canned stdout/stderr.
@@ -21,13 +18,6 @@ vi.mock("node:child_process", () => {
   return { execFile: execFileFn };
 });
 
-// Boundary mock: node:fs/promises for worktree file reads and path traversal checks
-vi.mock("node:fs/promises", () => ({
-  readFile: mockReadFile,
-  realpath: mockRealpath,
-  lstat: mockLstat,
-}));
-
 import { createGitService } from "./service.js";
 
 function setupExecResult(stdout: string) {
@@ -36,12 +26,6 @@ function setupExecResult(stdout: string) {
 
 function setupExecError(error: Error) {
   mockExecFileAsync.mockRejectedValue(error);
-}
-
-function setupWorktreeFileRead(_cwd: string, _filePath: string, content: string) {
-  mockRealpath.mockImplementation(async (p: string) => p);
-  mockLstat.mockResolvedValue({ isFile: () => true });
-  mockReadFile.mockResolvedValue(content);
 }
 
 describe("createGitService", () => {
@@ -245,6 +229,32 @@ describe("createGitService", () => {
       expect(result.value.files.staged).toEqual([]);
       expect(result.value.files.unstaged).toEqual([]);
     });
+
+    it("decodes a git-quoted non-ASCII porcelain path to the correct string", async () => {
+      // git quotes `żółć/plik.ts` as octal bytes under default core.quotepath.
+      const quoted = '"\\305\\274\\303\\263\\305\\202\\304\\207/plik.ts"';
+      setupExecResult(`## main\n M ${quoted}\n`);
+      const git = createGitService({ cwd: "/test" });
+
+      const result = await git.getStatus();
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.files.unstaged[0]?.path).toBe("żółć/plik.ts");
+    });
+
+    it("excludes a git-quoted .diffgazer non-ASCII path from status results", async () => {
+      const quoted = '".diffgazer/\\305\\274.json"';
+      setupExecResult(`## main\n M ${quoted}\n M src/app.ts\n`);
+      const git = createGitService({ cwd: "/test" });
+
+      const result = await git.getStatus();
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.files.unstaged).toHaveLength(1);
+      expect(result.value.files.unstaged[0]?.path).toBe("src/app.ts");
+    });
   });
 
   describe("isGitInstalled", () => {
@@ -287,10 +297,12 @@ describe("createGitService", () => {
 
       const result = await git.getDiff(mode);
 
-      expect(result).toBe(diffOutput);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value).toBe(diffOutput);
       expect(mockExecFileAsync).toHaveBeenCalledWith(
         "git",
-        expectedArgs,
+        expect.arrayContaining(expectedArgs),
         expect.objectContaining({ cwd: "/test" }),
       );
     });
@@ -301,172 +313,31 @@ describe("createGitService", () => {
 
       const result = await git.getDiff();
 
-      expect(result).toBe("");
-    });
-  });
-
-  describe("getBlame", () => {
-    it("returns author, commit, and summary from porcelain blame output", async () => {
-      const porcelainOutput = [
-        "abc1234 1 1 1",
-        "author John Doe",
-        "author-mail <john@example.com>",
-        "author-time 1700000000",
-        "author-tz +0000",
-        "committer John Doe",
-        "committer-mail <john@example.com>",
-        "committer-time 1700000000",
-        "committer-tz +0000",
-        "summary Fix the bug",
-        "filename src/file.ts",
-        "\tconst x = 1;",
-      ].join("\n");
-      setupExecResult(porcelainOutput);
-      const git = createGitService({ cwd: "/test" });
-
-      const blame = await git.getBlame("src/file.ts", 1);
-
-      expect(blame).not.toBeNull();
-      expect(blame?.author).toBe("John Doe");
-      expect(blame?.authorEmail).toBe("john@example.com");
-      expect(blame?.commit).toBe("abc1234");
-      expect(blame?.summary).toBe("Fix the bug");
-      expect(blame?.commitDate).toBe(new Date(1700000000 * 1000).toISOString());
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value).toBe("");
     });
 
-    it("passes the -- sentinel before the file path to prevent option injection", async () => {
-      setupExecResult(
-        "abc1234 1 1 1\nauthor Test\nauthor-mail <t@t.com>\nauthor-time 0\nsummary s\n",
-      );
+    it("returns an error result when the diff command fails", async () => {
+      setupExecError(new Error("fatal: not a git repository"));
       const git = createGitService({ cwd: "/test" });
 
-      await git.getBlame("--malicious-file.ts", 1);
+      const result = await git.getDiff();
 
-      expect(mockExecFileAsync).toHaveBeenCalledWith(
-        "git",
-        expect.arrayContaining(["--", "--malicious-file.ts"]),
-        expect.anything(),
-      );
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.message).toContain("not a git repository");
     });
 
-    it("returns null when the blame command fails", async () => {
-      setupExecError(new Error("fatal: no such path"));
+    it("hardens every diff invocation with fsmonitor and optional-lock overrides", async () => {
+      setupExecResult("diff --git a/f.ts b/f.ts\n");
       const git = createGitService({ cwd: "/test" });
 
-      const blame = await git.getBlame("nonexistent.ts", 1);
+      await git.getDiff("unstaged");
 
-      expect(blame).toBeNull();
-    });
-  });
-
-  describe("getFileLines", () => {
-    it("reads from the worktree by default", async () => {
-      const fileContent = "line1\nline2\nline3\nline4\nline5";
-      setupWorktreeFileRead("/test", "/test/src/file.ts", fileContent);
-      const git = createGitService({ cwd: "/test" });
-
-      const lines = await git.getFileLines("src/file.ts", 2, 4);
-
-      expect(lines).toEqual(["line2", "line3", "line4"]);
-      expect(mockReadFile).toHaveBeenCalledWith("/test/src/file.ts", "utf-8");
-      expect(mockExecFileAsync).not.toHaveBeenCalled();
-    });
-
-    it("reads from HEAD when source is explicitly HEAD", async () => {
-      const fileContent = "line1\nline2\nline3\nline4\nline5";
-      setupExecResult(fileContent);
-      const git = createGitService({ cwd: "/test" });
-
-      const lines = await git.getFileLines("src/file.ts", 2, 4, "HEAD");
-
-      expect(lines).toEqual(["line2", "line3", "line4"]);
-      expect(mockExecFileAsync).toHaveBeenCalledWith(
-        "git",
-        ["show", "HEAD:src/file.ts"],
-        expect.anything(),
-      );
-    });
-
-    it("returns an empty array when the requested range falls past the file end", async () => {
-      const fileContent = "line1\nline2";
-      setupExecResult(fileContent);
-      const git = createGitService({ cwd: "/test" });
-
-      const lines = await git.getFileLines("src/file.ts", 5, 10, "HEAD");
-
-      expect(lines).toEqual([]);
-    });
-
-    it("returns an empty array when the underlying command fails", async () => {
-      setupExecError(new Error("fatal: path not found"));
-      const git = createGitService({ cwd: "/test" });
-
-      const lines = await git.getFileLines("nonexistent.ts", 1, 5, "HEAD");
-
-      expect(lines).toEqual([]);
-    });
-
-    it("returns an empty array when worktree file read fails", async () => {
-      mockRealpath.mockImplementation(async (p: string) => p);
-      mockLstat.mockResolvedValue({ isFile: () => true });
-      mockReadFile.mockRejectedValue(new Error("ENOENT"));
-      const git = createGitService({ cwd: "/test" });
-
-      const lines = await git.getFileLines("nonexistent.ts", 1, 5);
-
-      expect(lines).toEqual([]);
-    });
-
-    it("returns empty for path traversal via ../../etc/passwd", async () => {
-      mockRealpath.mockImplementation(async (p: string) => {
-        if (p === "/test") return "/test";
-        if (p === "/etc/passwd") return "/etc/passwd";
-        return p;
-      });
-      const git = createGitService({ cwd: "/test" });
-
-      const lines = await git.getFileLines("../../etc/passwd", 1, 5);
-
-      expect(lines).toEqual([]);
-      expect(mockReadFile).not.toHaveBeenCalled();
-    });
-
-    it("returns empty for a symlink that resolves outside cwd", async () => {
-      mockRealpath.mockImplementation(async (p: string) => {
-        if (p === "/test") return "/test";
-        if (p === "/test/link.ts") return "/outside/secret.ts";
-        return p;
-      });
-      const git = createGitService({ cwd: "/test" });
-
-      const lines = await git.getFileLines("link.ts", 1, 5);
-
-      expect(lines).toEqual([]);
-      expect(mockReadFile).not.toHaveBeenCalled();
-    });
-
-    it("returns empty for a FIFO (non-regular file)", async () => {
-      mockRealpath.mockImplementation(async (p: string) => p);
-      mockLstat.mockResolvedValue({ isFile: () => false });
-      const git = createGitService({ cwd: "/test" });
-
-      const lines = await git.getFileLines("src/fifo", 1, 5);
-
-      expect(lines).toEqual([]);
-      expect(mockReadFile).not.toHaveBeenCalled();
-    });
-
-    it("returns empty when realpath of file fails and resolved path escapes cwd", async () => {
-      mockRealpath.mockImplementation(async (p: string) => {
-        if (p === "/test") return "/test";
-        throw new Error("ENOENT");
-      });
-      const git = createGitService({ cwd: "/test" });
-
-      const lines = await git.getFileLines("../../etc/shadow", 1, 5);
-
-      expect(lines).toEqual([]);
-      expect(mockReadFile).not.toHaveBeenCalled();
+      const args = mockExecFileAsync.mock.calls[0]?.[1] as string[];
+      expect(args).toContain("core.fsmonitor=false");
+      expect(args).toContain("--no-optional-locks");
     });
   });
 
@@ -506,7 +377,7 @@ describe("createGitService", () => {
   });
 
   describe("git environment hardening", () => {
-    it("clears GIT_EXTERNAL_DIFF from the environment", async () => {
+    it("unsets GIT_EXTERNAL_DIFF from the environment", async () => {
       process.env.GIT_EXTERNAL_DIFF = "/usr/bin/malicious-diff";
       setupExecResult("## main\n");
       const git = createGitService({ cwd: "/test" });
@@ -514,11 +385,12 @@ describe("createGitService", () => {
       await git.getStatus();
 
       const callEnv = mockExecFileAsync.mock.calls[0]?.[2]?.env;
-      expect(callEnv?.GIT_EXTERNAL_DIFF).toBe("");
+      expect(callEnv).toBeDefined();
+      expect("GIT_EXTERNAL_DIFF" in (callEnv ?? {})).toBe(false);
       delete process.env.GIT_EXTERNAL_DIFF;
     });
 
-    it("clears GIT_PAGER from the environment", async () => {
+    it("unsets GIT_PAGER from the environment", async () => {
       process.env.GIT_PAGER = "less";
       setupExecResult("diff --git a/f.ts b/f.ts\n");
       const git = createGitService({ cwd: "/test" });
@@ -526,29 +398,9 @@ describe("createGitService", () => {
       await git.getDiff();
 
       const callEnv = mockExecFileAsync.mock.calls[0]?.[2]?.env;
-      expect(callEnv?.GIT_PAGER).toBe("");
+      expect(callEnv).toBeDefined();
+      expect("GIT_PAGER" in (callEnv ?? {})).toBe(false);
       delete process.env.GIT_PAGER;
-    });
-
-    it("uses -- sentinel in blame to prevent option injection", async () => {
-      const porcelainOutput = [
-        "abc1234 1 1 1",
-        "author John",
-        "author-mail <j@x.com>",
-        "author-time 1700000000",
-        "summary Fix",
-        "\tcode",
-      ].join("\n");
-      setupExecResult(porcelainOutput);
-      const git = createGitService({ cwd: "/test" });
-
-      await git.getBlame("src/file.ts", 1);
-
-      const args = mockExecFileAsync.mock.calls[0]?.[1];
-      expect(args).toContain("--");
-      const dashDashIndex = args?.indexOf("--");
-      const fileIndex = args?.indexOf("src/file.ts");
-      expect(dashDashIndex).toBeLessThan(fileIndex);
     });
 
     it("passes --no-ext-diff --no-textconv --no-color for diff commands", async () => {
@@ -574,6 +426,35 @@ describe("createGitService", () => {
       expect(args).toContain("core.fsmonitor=false");
     });
 
+    it("hardens every index-touching git invocation, exempting only the --version probe", async () => {
+      // Exercise every public method that spawns git so each execFile("git", …)
+      // site is recorded, then assert the hardened base args are uniform — the
+      // only allowed exemption is the `git --version` install probe, which never
+      // reads the repo or refreshes the index (F-223).
+      setupExecResult(" M file.ts\n");
+      const git = createGitService({ cwd: "/test" });
+
+      await git.getStatus();
+      await git.getDiff("unstaged");
+      await git.getDiff("staged");
+      await git.getHeadCommit();
+      await git.getStatusHash();
+      await git.isGitInstalled();
+
+      const gitCalls = mockExecFileAsync.mock.calls.filter((call) => call[0] === "git");
+      expect(gitCalls.length).toBeGreaterThan(0);
+
+      for (const call of gitCalls) {
+        const args = call[1] as string[];
+        if (args.includes("--version")) {
+          expect(args).toEqual(["--version"]);
+          continue;
+        }
+        expect(args).toContain("core.fsmonitor=false");
+        expect(args).toContain("--no-optional-locks");
+      }
+    });
+
     it.each([
       "GIT_DIFF_OPTS",
       "GIT_DIR",
@@ -593,7 +474,7 @@ describe("createGitService", () => {
       "GIT_PROXY_COMMAND",
       "GIT_HOOKS_PATH",
       "GIT_TEMPLATE_DIR",
-    ])("clears %s from the environment to prevent parent pollution", async (envVar) => {
+    ])("unsets %s from the environment to prevent parent pollution", async (envVar) => {
       process.env[envVar] = "/some/polluted/value";
       setupExecResult("## main\n");
       const git = createGitService({ cwd: "/test" });
@@ -601,7 +482,10 @@ describe("createGitService", () => {
       await git.getStatus();
 
       const callEnv = mockExecFileAsync.mock.calls[0]?.[2]?.env;
-      expect(callEnv?.[envVar]).toBe("");
+      expect(callEnv).toBeDefined();
+      // The key must be absent (deleted), not blanked — an empty GIT_DIR makes git
+      // fail `fatal: not a git repository: ''` (F-001).
+      expect(envVar in (callEnv ?? {})).toBe(false);
       delete process.env[envVar];
     });
   });
@@ -648,40 +532,44 @@ describe("createGitService", () => {
   });
 
   describe("getStatusHash", () => {
-    it("returns a 16-char hex hash when the working tree has changes", async () => {
+    it("returns a full-kind 16-char hex hash when the working tree has changes", async () => {
       setupExecResult(" M file1.ts\n M file2.ts\n");
       const git = createGitService({ cwd: "/test" });
 
-      const hash = await git.getStatusHash();
+      const result = await git.getStatusHash();
 
-      expect(hash).toMatch(/^[0-9a-f]{16}$/);
+      expect(result.kind).toBe("full");
+      if (result.kind === "unavailable") return;
+      expect(result.hash).toMatch(/^[0-9a-f]{16}$/);
     });
 
-    it("returns an empty string when there are no changes", async () => {
+    it("returns a full-kind empty string when there are no changes", async () => {
       setupExecResult("");
       const git = createGitService({ cwd: "/test" });
 
-      const hash = await git.getStatusHash();
+      const result = await git.getStatusHash();
 
-      expect(hash).toBe("");
+      expect(result).toEqual({ kind: "full", hash: "" });
     });
 
     it("treats workspace-only .diffgazer changes as no changes", async () => {
       setupExecResult("?? .diffgazer/context.md\n?? .diffgazer/context.json\n");
       const git = createGitService({ cwd: "/test" });
 
-      const hash = await git.getStatusHash();
+      const result = await git.getStatusHash();
 
-      expect(hash).toBe("");
+      expect(result).toEqual({ kind: "full", hash: "" });
     });
 
     it("hashes user changes even when .diffgazer files are also present", async () => {
       setupExecResult(" M src/app.ts\n?? .diffgazer/context.md\n");
       const git = createGitService({ cwd: "/test" });
 
-      const hash = await git.getStatusHash();
+      const result = await git.getStatusHash();
 
-      expect(hash).toMatch(/^[0-9a-f]{16}$/);
+      expect(result.kind).toBe("full");
+      if (result.kind === "unavailable") return;
+      expect(result.hash).toMatch(/^[0-9a-f]{16}$/);
     });
 
     it.each([
@@ -694,18 +582,34 @@ describe("createGitService", () => {
       setupExecResult(output);
       const git = createGitService({ cwd: "/test" });
 
-      const hash = await git.getStatusHash();
+      const result = await git.getStatusHash();
 
-      expect(hash).toMatch(/^[0-9a-f]{16}$/);
+      expect(result.kind).toBe("full");
+      if (result.kind === "unavailable") return;
+      expect(result.hash).toMatch(/^[0-9a-f]{16}$/);
     });
 
-    it("returns null when the underlying command fails", async () => {
+    it("degrades to status-only when the inner diff read fails", async () => {
+      // First call (status) succeeds with changes; the diff reads reject.
+      mockExecFileAsync
+        .mockResolvedValueOnce({ stdout: " M file1.ts\n", stderr: "" })
+        .mockRejectedValue(new Error("stdout maxBuffer length exceeded"));
+      const git = createGitService({ cwd: "/test" });
+
+      const result = await git.getStatusHash();
+
+      expect(result.kind).toBe("status-only");
+      if (result.kind === "unavailable") return;
+      expect(result.hash).toMatch(/^[0-9a-f]{16}$/);
+    });
+
+    it("returns unavailable when the status command fails", async () => {
       setupExecError(new Error("git error"));
       const git = createGitService({ cwd: "/test" });
 
-      const hash = await git.getStatusHash();
+      const result = await git.getStatusHash();
 
-      expect(hash).toBeNull();
+      expect(result).toEqual({ kind: "unavailable" });
     });
   });
 });

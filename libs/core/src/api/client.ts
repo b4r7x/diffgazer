@@ -1,3 +1,5 @@
+import { getErrorMessage } from "../errors.js";
+import { ApiErrorEnvelopeSchema, ErrorCode } from "../schemas/errors.js";
 import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "./protocol.js";
 import type {
   ApiClient,
@@ -51,8 +53,8 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       try {
         return validate(body);
       } catch (cause) {
-        const message = cause instanceof Error ? cause.message : "Response validation failed";
-        throw createApiError(message, 422, "INVALID_RESPONSE");
+        const message = getErrorMessage(cause, "Response validation failed");
+        throw createApiError(message, 422, ErrorCode.INVALID_RESPONSE);
       }
     }
     return body as T;
@@ -85,13 +87,13 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     });
 
     if (!response.ok) {
-      const responseBody = (await response.json().catch(() => null)) as {
-        error?: { message?: string; code?: string };
-      } | null;
+      const rawBody = await response.json().catch(() => null);
+      const envelope = ApiErrorEnvelopeSchema.safeParse(rawBody);
+      const error = envelope.success ? envelope.data.error : undefined;
       throw createApiError(
-        responseBody?.error?.message ?? `HTTP ${response.status}`,
+        error?.message ?? `HTTP ${response.status}`,
         response.status,
-        responseBody?.error?.code,
+        error?.code,
       );
     }
 

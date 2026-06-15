@@ -1,4 +1,4 @@
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { type RefObject, useRef } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { queryTestElement, requireFrameDocument } from "../testing/assertions.js";
@@ -47,7 +47,6 @@ describe("useFocusTrap", () => {
   let container: HTMLDivElement;
 
   afterEach(() => {
-    cleanup();
     container?.remove();
   });
 

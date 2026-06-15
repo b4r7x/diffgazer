@@ -1,0 +1,15 @@
+---
+title: Changelog
+description: Release notes for `@diffgazer/keys`.
+---
+
+## 0.2.0
+
+### Minor changes
+
+- Removed pre-release keyboard alias props before public handoff: `targetRef` -> `containerRef`, `requireFocusWithin` -> `focusWithinOnly`, `onBoundaryReached` -> `onNavigationBoundaryReached`, and the old focus-zone helpers `ZoneProps`, `inZone`, `forZone`, and `zoneProps` -> `getZoneProps`.
+
+### Patch changes
+
+- Regenerated package artifacts from source during verification instead of tracking deterministic generated docs and CLI bundles.
+- Documented publish-gated install flows, local validation, shadcn namespace setup, keyboard integration, release governance, and package surface validation.

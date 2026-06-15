@@ -1,8 +1,10 @@
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
+/** Props for card header. */
 export type CardHeaderProps = ComponentPropsWithRef<"div">;
 
+/** Header region with grid layout and bottom border. */
 export function CardHeader({ className, ...props }: CardHeaderProps) {
   return (
     <div

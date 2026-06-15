@@ -73,6 +73,36 @@ describe("Tooltip keyboard", () => {
 
     expect(screen.getByRole("tooltip")).toHaveAttribute("data-state", "closed");
   });
+
+  it("makes a tooltip on plain text reachable with Tab and opens on focus", async () => {
+    render(
+      <Tooltip content="Tip text" delayMs={0}>
+        Passive text
+      </Tooltip>,
+    );
+
+    const trigger = screen.getByText("Passive text");
+    expect(trigger).toHaveAttribute("tabindex", "0");
+
+    await userEvent.tab();
+    expect(trigger).toHaveFocus();
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+  });
+
+  it("does not add a duplicate tab stop when wrapping a native button", async () => {
+    render(
+      <Tooltip content="Tip text" delayMs={0}>
+        <button type="button">Focus me</button>
+      </Tooltip>,
+    );
+
+    const button = screen.getByRole("button", { name: "Focus me" });
+    expect(button).not.toHaveAttribute("tabindex");
+
+    // A single Tab lands on the button itself — no wrapper span tab stop precedes it.
+    await userEvent.tab();
+    expect(button).toHaveFocus();
+  });
 });
 
 describe("Tooltip trigger semantics", () => {

@@ -3,13 +3,15 @@ import type { FullReviewStreamEvent, LensStat, StepId } from "@diffgazer/core/sc
 import type {
   LensId,
   ProfileId,
+  ReviewErrorCode,
   ReviewIssue,
   ReviewMode,
+  ReviewSeverity,
   SeverityFilter,
 } from "@diffgazer/core/schemas/review";
 import type { AIError } from "../../shared/lib/ai/types.js";
-import type { getProfile } from "../../shared/lib/review/profiles.js";
-import type { StoreError } from "../../shared/lib/storage/types.js";
+import type { getProfile } from "./engine/profiles.js";
+import type { StoreError } from "./storage/types.js";
 
 export type EmitFn = (event: FullReviewStreamEvent) => Promise<void>;
 
@@ -34,12 +36,15 @@ export interface ReviewOutcome {
   issues: ReviewIssue[];
   summary: string;
   lensStats?: LensStat[];
+  droppedDuplicates?: number;
+  droppedBelowThreshold?: number;
+  minSeverity?: ReviewSeverity;
 }
 
 export interface ReviewAbort {
   readonly kind: "review_abort";
   readonly message: string;
-  readonly code: string;
+  readonly code: ReviewErrorCode;
   readonly step?: StepId;
 }
 

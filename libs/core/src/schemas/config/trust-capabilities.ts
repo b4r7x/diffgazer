@@ -27,6 +27,19 @@ export const TRUST_CAPABILITY_OPTIONS = [
   disabled: boolean;
 }>;
 
+// Keep the "currently unavailable" state claim in lockstep with
+// TRUST_CAPABILITY_OPTIONS.runCommands.disabled — both change when run commands ship.
+export const TRUST_SECURITY_WARNING = {
+  title: "SECURITY WARNING",
+  body: "Run commands is currently unavailable. When enabled, it allows the AI to execute shell scripts. This grants significant access to your system.",
+} as const;
+
+export function getTrustButtonLabel(isSaving: boolean, hasRepoAccess: boolean): string {
+  if (isSaving) return "Saving...";
+  if (hasRepoAccess) return "Trust & Continue";
+  return "Continue Without Trust";
+}
+
 export function normalizeTrustCapabilities(
   value: TrustCapabilities | null | undefined,
 ): TrustCapabilities {

@@ -352,7 +352,7 @@ describe("Dialog", () => {
     expect(dialog).toHaveAttribute("aria-label", "Dialog");
   });
 
-  it("warns in dev when falling back to hardcoded dialog label", () => {
+  it("warns in dev when falling back to hardcoded dialog label", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     render(
       <Dialog defaultOpen>
@@ -362,7 +362,11 @@ describe("Dialog", () => {
       </Dialog>,
     );
 
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("No accessible name provided"));
+    // The warning is deferred a frame so a wrapper-registered Title can clear the
+    // fallback first; a genuinely titleless dialog still warns.
+    await waitFor(() =>
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("No accessible name provided")),
+    );
     warnSpy.mockRestore();
   });
 
@@ -413,6 +417,32 @@ describe("Dialog", () => {
     );
 
     expect(screen.getByRole("dialog", { name: "Wrapped title" })).toBeInTheDocument();
+  });
+
+  it("wires aria-labelledby for a Dialog.Title rendered by a consumer wrapper component", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    function CustomHeader({ title }: { title: string }) {
+      return <Dialog.Title>{title}</Dialog.Title>;
+    }
+
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <CustomHeader title="Component title" />
+          <Dialog.Body>Body content</Dialog.Body>
+        </Dialog.Content>
+      </Dialog>,
+    );
+
+    // The static child scan cannot see through CustomHeader; registration wires
+    // aria-labelledby instead of falling back to aria-label="Dialog" with a warn.
+    const dialog = screen.getByRole("dialog", { name: "Component title" });
+    expect(dialog).toHaveAttribute("aria-labelledby");
+    expect(dialog).not.toHaveAttribute("aria-label", "Dialog");
+    // Wait a frame: the deferred warning must NOT fire once the title registers.
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it("uses an explicit aria-label without pointing to a missing title", () => {
@@ -701,6 +731,16 @@ describe("Dialog", () => {
       }
     });
 
+    it("exposes the hint key names to assistive technology (not aria-hidden)", () => {
+      renderWithHints();
+      const dialog = screen.getByRole("dialog", { name: "Footer with hints" });
+      for (const hint of hints) {
+        const kbd = within(dialog).getByText(hint.key);
+        expect(kbd).not.toHaveAttribute("aria-hidden");
+        expect(kbd.closest("[aria-hidden='true']")).toBeNull();
+      }
+    });
+
     it("orders hints before actions inside the footer", () => {
       renderWithHints();
       const dialog = screen.getByRole("dialog", { name: "Footer with hints" });
@@ -724,8 +764,9 @@ describe("Dialog", () => {
 
       for (const hint of hints) {
         const kbd = screen.getByText(hint.key);
+        // Hint glyphs stay out of the tab order but remain exposed to AT (F-083).
         expect(kbd.tabIndex).toBe(-1);
-        expect(kbd.getAttribute("aria-hidden")).toBe("true");
+        expect(kbd).not.toHaveAttribute("aria-hidden");
       }
     });
 
@@ -767,15 +808,12 @@ describe("Dialog", () => {
       expect(dialog).toHaveAttribute("data-slot", "dialog-content");
       expect(dialog).toHaveAttribute("data-frame", "border");
       expect(dialog).toHaveAttribute("data-corners", "none");
-      // .dlg-corners is a purely decorative host with no ARIA role; its presence
-      // keyed to the `corners` prop is the only observable contract in jsdom.
-      expect(dialog.querySelector(".dlg-corners")).toBeNull();
     });
 
     const cornersValues = ["subtle", "standard", "bold", "outset"] as const;
 
     for (const corners of cornersValues) {
-      it(`corners="${corners}" sets data-corners and renders the .dlg-corners host`, () => {
+      it(`corners="${corners}" sets data-corners`, () => {
         render(
           <Dialog defaultOpen>
             <Dialog.Content corners={corners}>
@@ -785,13 +823,10 @@ describe("Dialog", () => {
         );
         const dialog = screen.getByRole("dialog", { name: `Corners ${corners}` });
         expect(dialog).toHaveAttribute("data-corners", corners);
-        const host = dialog.querySelector(".dlg-corners");
-        expect(host).not.toBeNull();
-        expect(host).toHaveAttribute("aria-hidden", "true");
       });
     }
 
-    it("corners='none' does not render the .dlg-corners host", () => {
+    it("corners='none' sets data-corners to none", () => {
       render(
         <Dialog defaultOpen>
           <Dialog.Content corners="none">
@@ -800,7 +835,7 @@ describe("Dialog", () => {
         </Dialog>,
       );
       const dialog = screen.getByRole("dialog", { name: "No corners" });
-      expect(dialog.querySelector(".dlg-corners")).toBeNull();
+      expect(dialog).toHaveAttribute("data-corners", "none");
     });
 
     it.each([
@@ -898,7 +933,7 @@ describe("Dialog", () => {
       expect(within(header as HTMLElement).getByText("Column description")).toBeInTheDocument();
     });
 
-    it("renders the meta tag with aria-hidden so it stays out of the accessible name", () => {
+    it("keeps the meta tag out of the accessible name while exposing it to AT", () => {
       render(
         <Dialog defaultOpen>
           <Dialog.Content>
@@ -906,9 +941,13 @@ describe("Dialog", () => {
           </Dialog.Content>
         </Dialog>,
       );
+      // The accessible name resolves to the title text alone, not "Apply patch CONFIRM".
       const dialog = screen.getByRole("dialog", { name: "Apply patch" });
       const meta = within(dialog).getByText("CONFIRM");
-      expect(meta).toHaveAttribute("aria-hidden", "true");
+      // Meta is visible to AT (page content): not aria-hidden, and not nested in
+      // an aria-hidden ancestor.
+      expect(meta).not.toHaveAttribute("aria-hidden");
+      expect(meta.closest("[aria-hidden='true']")).toBeNull();
     });
 
     it("omits the meta tag when not provided", () => {
@@ -1235,7 +1274,7 @@ describe("DialogContent corner CSS tokens (CSS-only)", () => {
   // dialog.css declares corner accent rules nested inside @layer components.
   // jsdom's CSSOM does not apply rules inside @layer, so every rule that
   // targets [data-corners] is extracted and injected at the top level.
-  // The tests then assert getComputedStyle resolves the expected --dlg-corner-*
+  // The tests then assert getComputedStyle resolves the expected --viewfinder-*
   // custom properties per corners value.
   const DIALOG_CSS_PATH = resolve(fileURLToPath(import.meta.url), "../../shared/dialog.css");
   let styleElement: HTMLStyleElement | null = null;
@@ -1264,7 +1303,11 @@ describe("DialogContent corner CSS tokens (CSS-only)", () => {
     styleElement = null;
   });
 
-  it("corners='standard' resolves to 18px / 2px / foreground / 0px", () => {
+  // Defaults (size 18px / weight 2px / color var(--foreground) / offset 0px) are
+  // now consumed via var() fallback at the corner use sites, not declared on the
+  // slot, so an ancestor override can reach them. Each test asserts the tokens the
+  // variant explicitly sets; tokens it leaves unset ("") fall back to the default.
+  it("corners='standard' sets no per-variant tokens (all corners fall back to defaults)", () => {
     render(
       <Dialog defaultOpen>
         <Dialog.Content corners="standard">
@@ -1274,13 +1317,13 @@ describe("DialogContent corner CSS tokens (CSS-only)", () => {
     );
     const dialog = screen.getByRole("dialog", { name: "Standard corners" });
     const styles = getComputedStyle(dialog);
-    expect(styles.getPropertyValue("--dlg-corner-size").trim()).toBe("18px");
-    expect(styles.getPropertyValue("--dlg-corner-weight").trim()).toBe("2px");
-    expect(styles.getPropertyValue("--dlg-corner-color").trim()).toBe("var(--foreground)");
-    expect(styles.getPropertyValue("--dlg-corner-offset").trim()).toBe("0px");
+    expect(styles.getPropertyValue("--viewfinder-size").trim()).toBe("");
+    expect(styles.getPropertyValue("--viewfinder-weight").trim()).toBe("");
+    expect(styles.getPropertyValue("--viewfinder-color").trim()).toBe("");
+    expect(styles.getPropertyValue("--viewfinder-offset").trim()).toBe("");
   });
 
-  it("corners='subtle' resolves to 12px / 1.5px / border / 0px", () => {
+  it("corners='subtle' overrides size/weight/color; offset falls back to 0px", () => {
     render(
       <Dialog defaultOpen>
         <Dialog.Content corners="subtle">
@@ -1290,13 +1333,13 @@ describe("DialogContent corner CSS tokens (CSS-only)", () => {
     );
     const dialog = screen.getByRole("dialog", { name: "Subtle corners" });
     const styles = getComputedStyle(dialog);
-    expect(styles.getPropertyValue("--dlg-corner-size").trim()).toBe("12px");
-    expect(styles.getPropertyValue("--dlg-corner-weight").trim()).toBe("1.5px");
-    expect(styles.getPropertyValue("--dlg-corner-color").trim()).toBe("var(--border)");
-    expect(styles.getPropertyValue("--dlg-corner-offset").trim()).toBe("0px");
+    expect(styles.getPropertyValue("--viewfinder-size").trim()).toBe("12px");
+    expect(styles.getPropertyValue("--viewfinder-weight").trim()).toBe("1.5px");
+    expect(styles.getPropertyValue("--viewfinder-color").trim()).toBe("var(--border)");
+    expect(styles.getPropertyValue("--viewfinder-offset").trim()).toBe("");
   });
 
-  it("corners='bold' resolves to 28px / 3px / foreground / 0px", () => {
+  it("corners='bold' overrides size/weight; color/offset fall back to defaults", () => {
     render(
       <Dialog defaultOpen>
         <Dialog.Content corners="bold">
@@ -1306,13 +1349,13 @@ describe("DialogContent corner CSS tokens (CSS-only)", () => {
     );
     const dialog = screen.getByRole("dialog", { name: "Bold corners" });
     const styles = getComputedStyle(dialog);
-    expect(styles.getPropertyValue("--dlg-corner-size").trim()).toBe("28px");
-    expect(styles.getPropertyValue("--dlg-corner-weight").trim()).toBe("3px");
-    expect(styles.getPropertyValue("--dlg-corner-color").trim()).toBe("var(--foreground)");
-    expect(styles.getPropertyValue("--dlg-corner-offset").trim()).toBe("0px");
+    expect(styles.getPropertyValue("--viewfinder-size").trim()).toBe("28px");
+    expect(styles.getPropertyValue("--viewfinder-weight").trim()).toBe("3px");
+    expect(styles.getPropertyValue("--viewfinder-color").trim()).toBe("");
+    expect(styles.getPropertyValue("--viewfinder-offset").trim()).toBe("");
   });
 
-  it("corners='outset' resolves to 18px / 2px / foreground / -3px offset", () => {
+  it("corners='outset' overrides offset to -3px; size/weight/color fall back to defaults", () => {
     render(
       <Dialog defaultOpen>
         <Dialog.Content corners="outset">
@@ -1322,13 +1365,13 @@ describe("DialogContent corner CSS tokens (CSS-only)", () => {
     );
     const dialog = screen.getByRole("dialog", { name: "Outset corners" });
     const styles = getComputedStyle(dialog);
-    expect(styles.getPropertyValue("--dlg-corner-size").trim()).toBe("18px");
-    expect(styles.getPropertyValue("--dlg-corner-weight").trim()).toBe("2px");
-    expect(styles.getPropertyValue("--dlg-corner-color").trim()).toBe("var(--foreground)");
-    expect(styles.getPropertyValue("--dlg-corner-offset").trim()).toBe("-3px");
+    expect(styles.getPropertyValue("--viewfinder-size").trim()).toBe("");
+    expect(styles.getPropertyValue("--viewfinder-weight").trim()).toBe("");
+    expect(styles.getPropertyValue("--viewfinder-color").trim()).toBe("");
+    expect(styles.getPropertyValue("--viewfinder-offset").trim()).toBe("-3px");
   });
 
-  it("corners='none' does not set any --dlg-corner-* custom properties", () => {
+  it("corners='none' does not set any --viewfinder-* custom properties", () => {
     render(
       <Dialog defaultOpen>
         <Dialog.Content corners="none">
@@ -1338,10 +1381,10 @@ describe("DialogContent corner CSS tokens (CSS-only)", () => {
     );
     const dialog = screen.getByRole("dialog", { name: "No corners" });
     const styles = getComputedStyle(dialog);
-    expect(styles.getPropertyValue("--dlg-corner-size").trim()).toBe("");
-    expect(styles.getPropertyValue("--dlg-corner-weight").trim()).toBe("");
-    expect(styles.getPropertyValue("--dlg-corner-color").trim()).toBe("");
-    expect(styles.getPropertyValue("--dlg-corner-offset").trim()).toBe("");
+    expect(styles.getPropertyValue("--viewfinder-size").trim()).toBe("");
+    expect(styles.getPropertyValue("--viewfinder-weight").trim()).toBe("");
+    expect(styles.getPropertyValue("--viewfinder-color").trim()).toBe("");
+    expect(styles.getPropertyValue("--viewfinder-offset").trim()).toBe("");
   });
 });
 

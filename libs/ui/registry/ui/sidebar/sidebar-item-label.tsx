@@ -1,15 +1,15 @@
 "use client";
 
-import type { HTMLAttributes, Ref } from "react";
+import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
-export interface SidebarItemLabelProps extends HTMLAttributes<HTMLSpanElement> {
-  ref?: Ref<HTMLSpanElement>;
-}
+/** Props for sidebar item label. */
+export interface SidebarItemLabelProps extends ComponentProps<"span"> {}
 
 // Hidden in rail mode so items collapse to icon-only rows. The accessible name
-// is preserved on the parent `<SidebarItem>` via the `title` attribute, which
-// also drives the native tooltip on hover.
+// is preserved automatically: SidebarItem renders an sr-only copy of its label
+// content that appears in the a11y tree only while the sidebar is in rail state.
+/** Truncated text label slot for SidebarItem. */
 export function SidebarItemLabel({ ref, children, className, ...rest }: SidebarItemLabelProps) {
   return (
     <span

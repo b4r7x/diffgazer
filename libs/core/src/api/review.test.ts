@@ -1,6 +1,22 @@
 import { describe, expect, it, vi } from "vitest";
-import { createReview, getActiveReviewSession, resumeReviewStream } from "./review.js";
+import {
+  type CreateReviewOptions,
+  createReview,
+  getActiveReviewSession,
+  resumeReviewStream,
+} from "./review.js";
 import { createMockClient as createClient } from "./test-helpers.js";
+
+// Compile-time contract: CreateReviewOptions.lenses/profile accept only the
+// domain enums, not arbitrary strings.
+const _validReviewOptions: CreateReviewOptions = { lenses: ["security"], profile: "quick" };
+// @ts-expect-error -- "not-a-lens" is not a LensId
+const _invalidLenses: CreateReviewOptions = { lenses: ["not-a-lens"] };
+// @ts-expect-error -- "not-a-profile" is not a ProfileId
+const _invalidProfile: CreateReviewOptions = { profile: "not-a-profile" };
+void _validReviewOptions;
+void _invalidLenses;
+void _invalidProfile;
 
 function streamResponse(events: unknown[]): Response {
   const encoder = new TextEncoder();
@@ -82,6 +98,28 @@ describe("resumeReviewStream", () => {
     expect(result.ok).toBe(true);
     expect(client.request).toHaveBeenCalledWith("GET", "/api/review/reviews/r1/stream", { signal });
   });
+
+  it("resolves to err(STREAM_ERROR) when the reader fails mid-stream instead of rejecting", async () => {
+    const client = createClient();
+    const failingBody = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode('data: {"type":"review_started","reviewId":"r1"}\n\n'),
+        );
+      },
+      pull() {
+        throw new Error("connection reset mid-stream");
+      },
+    });
+    vi.mocked(client.request).mockResolvedValue(new Response(failingBody, { status: 200 }));
+
+    const result = await resumeReviewStream(client, { reviewId: "r1" });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("STREAM_ERROR");
+    }
+  });
 });
 
 describe("createReview", () => {
@@ -97,12 +135,17 @@ describe("createReview", () => {
     });
 
     expect(result).toEqual({ reviewId: "new-review-id" });
-    expect(client.post).toHaveBeenCalledWith("/api/review/reviews", {
-      mode: "staged",
-      lenses: ["security"],
-      profile: "quick",
-      files: ["a.ts"],
-    });
+    expect(client.post).toHaveBeenCalledWith(
+      "/api/review/reviews",
+      {
+        mode: "staged",
+        lenses: ["security"],
+        profile: "quick",
+        files: ["a.ts"],
+      },
+      undefined,
+      expect.any(Function),
+    );
   });
 });
 
@@ -122,9 +165,11 @@ describe("getActiveReviewSession", () => {
     const withMode = await getActiveReviewSession(withModeClient, "staged");
 
     expect(withMode.session?.reviewId).toBe("r-1");
-    expect(withModeClient.get).toHaveBeenCalledWith("/api/review/sessions/active", {
-      mode: "staged",
-    });
+    expect(withModeClient.get).toHaveBeenCalledWith(
+      "/api/review/sessions/active",
+      { mode: "staged" },
+      expect.any(Function),
+    );
 
     const withoutModeClient = createClient();
     vi.mocked(withoutModeClient.get).mockResolvedValue({ session: null });
@@ -132,6 +177,21 @@ describe("getActiveReviewSession", () => {
     const withoutMode = await getActiveReviewSession(withoutModeClient);
 
     expect(withoutMode.session).toBeNull();
-    expect(withoutModeClient.get).toHaveBeenCalledWith("/api/review/sessions/active", undefined);
+    expect(withoutModeClient.get).toHaveBeenCalledWith(
+      "/api/review/sessions/active",
+      undefined,
+      expect.any(Function),
+    );
+  });
+
+  it("validates the response shape, rejecting a session payload that drifts from the contract", async () => {
+    const client = createClient();
+    vi.mocked(client.get).mockResolvedValue({ session: null });
+
+    await getActiveReviewSession(client);
+
+    const validate = vi.mocked(client.get).mock.calls[0]?.[2];
+    expect(validate).toBeDefined();
+    expect(() => validate?.({ session: { reviewId: "r-1" } })).toThrow();
   });
 });

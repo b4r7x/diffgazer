@@ -28,6 +28,7 @@ RUN pnpm --filter @diffgazer/registry build \
 FROM nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 AS runtime
 
 COPY --from=builder /app/apps/landing/dist /usr/share/nginx/html
+COPY deploy/nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY deploy/landing-nginx.conf /etc/nginx/conf.d/default.conf
 
 RUN chown -R nginx:nginx /usr/share/nginx/html \

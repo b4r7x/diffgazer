@@ -5,11 +5,15 @@ import { matchesSearch } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { type SelectOptionMetadata, useSelectContext } from "./select-context";
 
+/** Props for select empty. */
 export interface SelectEmptyProps {
+  /** Custom empty-state content. */
   children?: ReactNode;
+  /** Additional class names merged onto the rendered element. */
   className?: string;
 }
 
+/** Shows '> no results.' when no items match the search query. Accepts children. */
 export function SelectEmpty({ children, className }: SelectEmptyProps) {
   const { searchQuery, options } = useSelectContext("SelectEmpty");
 

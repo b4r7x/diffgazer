@@ -47,7 +47,7 @@ export async function parseSSEStream<T>(
     buffer += chunk;
 
     if (buffer.length > MAX_BUFFER_SIZE) {
-      reader.cancel();
+      await reader.cancel();
       onBufferOverflow?.();
       return { completed: false };
     }
@@ -62,6 +62,10 @@ export async function parseSSEStream<T>(
       }
     }
   }
+
+  // Flush any bytes the streaming decoder held back (a multi-byte character can
+  // straddle the final chunk boundary) so the trailing line decodes intact.
+  buffer += decoder.decode();
 
   if (buffer.trim()) {
     const parsed = parseSSELine(buffer);

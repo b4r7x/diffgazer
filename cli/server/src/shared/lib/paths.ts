@@ -2,8 +2,6 @@ import * as fs from "node:fs";
 import { homedir } from "node:os";
 import * as path from "node:path";
 
-export { PROJECT_ROOT_HEADER } from "@diffgazer/core/api";
-
 export const isPackaged = (): boolean => process.env.DIFFGAZER_PACKAGED === "1";
 
 const DEFAULT_GLOBAL_DIR = path.join(homedir(), ".diffgazer");
@@ -100,3 +98,13 @@ export const getProjectDiffgazerDir = (projectRoot: string): string =>
 
 export const getProjectInfoPath = (projectRoot: string): string =>
   path.join(getProjectDiffgazerDir(projectRoot), "project.json");
+
+export const isRepoRelativePath = (value: string): boolean => {
+  if (value.startsWith("/") || value.startsWith("\\") || /^[a-zA-Z]:/.test(value)) {
+    return false;
+  }
+  if (value.includes("\0")) {
+    return false;
+  }
+  return !value.split(/[\\/]/).includes("..");
+};

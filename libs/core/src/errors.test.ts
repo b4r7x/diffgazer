@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getErrorMessage, toError } from "./errors.js";
+import { getErrorMessage, getErrorStack, toError } from "./errors.js";
 
 describe("getErrorMessage", () => {
   it.each([
@@ -11,6 +11,16 @@ describe("getErrorMessage", () => {
     [123, undefined, "123"],
   ])("formats %j with fallback %j", (value, fallback, expected) => {
     expect(getErrorMessage(value, fallback)).toBe(expected);
+  });
+});
+
+describe("getErrorStack", () => {
+  it("returns the stack for Error values and undefined otherwise", () => {
+    const error = new Error("boom");
+
+    expect(getErrorStack(error)).toBe(error.stack);
+    expect(getErrorStack("plain string")).toBeUndefined();
+    expect(getErrorStack({ stack: "fake" })).toBeUndefined();
   });
 });
 

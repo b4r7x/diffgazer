@@ -6,7 +6,7 @@
   "files": [
     {
       "path": "registry/lib/search.ts",
-      "content": "export function matchesSearch(value: string, query: string): boolean {\n  return !query || value.toLocaleLowerCase().includes(query.toLocaleLowerCase());\n}\n",
+      "content": "/** Case-insensitive substring search using the host locale. */\nexport function matchesSearch(value: string, query: string): boolean {\n  return !query || value.toLocaleLowerCase().includes(query.toLocaleLowerCase());\n}\n",
       "type": "registry:lib"
     }
   ],

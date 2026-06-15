@@ -5,9 +5,10 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 const routerBoundary = vi.hoisted(() => ({
-  pathname: "/ui/components/button",
+  pathname: "/ui/hooks/composed-refs",
 }));
 
+// Boundary mock: TanStack Router is the external routing library; this test controls the current location and link href resolution.
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
     to,
@@ -32,25 +33,21 @@ vi.mock("@tanstack/react-router", () => ({
     select({ pathname: routerBoundary.pathname }),
 }));
 
-vi.mock("@/generated/sections-with-index", () => ({
-  SECTIONS_WITH_INDEX: new Set(["ui/components", "ui/components/button"]),
-}));
-
 import { Breadcrumbs } from "./breadcrumbs";
 
 describe("Breadcrumbs", () => {
   it("uses TanStack typed links for linkable breadcrumb segments", () => {
-    routerBoundary.pathname = "/ui/components/button";
+    routerBoundary.pathname = "/ui/hooks/composed-refs";
     render(<Breadcrumbs />);
 
-    const componentsLink = screen.getByRole("link", { name: "components" });
-    expect(componentsLink).toHaveAttribute("data-tanstack-link", "true");
-    expect(componentsLink).toHaveAttribute("href", "/ui/components");
-    expect(screen.queryByRole("link", { name: "button" })).not.toBeInTheDocument();
+    const hooksLink = screen.getByRole("link", { name: "hooks" });
+    expect(hooksLink).toHaveAttribute("data-tanstack-link", "true");
+    expect(hooksLink).toHaveAttribute("href", "/ui/hooks");
+    expect(screen.queryByRole("link", { name: "composed refs" })).not.toBeInTheDocument();
   });
 
   it("does not render nested interactive controls", () => {
-    routerBoundary.pathname = "/ui/components/button";
+    routerBoundary.pathname = "/ui/hooks/composed-refs";
     const { container } = render(<Breadcrumbs />);
 
     for (const link of container.querySelectorAll("a")) {

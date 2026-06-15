@@ -1,19 +1,27 @@
 "use client";
 
-import type { HTMLAttributes } from "react";
+import { type ComponentProps, useLayoutEffect } from "react";
 import { cn } from "@/lib/utils";
 import { usePanelContext } from "./panel-context";
 
-export interface PanelDescriptionProps extends HTMLAttributes<HTMLParagraphElement> {}
+/** Props for panel description. */
+export interface PanelDescriptionProps extends ComponentProps<"p"> {}
 
-export function PanelDescription({ className, ...props }: PanelDescriptionProps) {
-  const { descriptionId } = usePanelContext();
+/** Paragraph description. Auto-wires aria-describedby on the Panel root. */
+export function PanelDescription({ className, id, ...props }: PanelDescriptionProps) {
+  const { descriptionId, registerDescription, unregisterDescription } = usePanelContext();
+  const resolvedId = id ?? descriptionId;
+
+  useLayoutEffect(() => {
+    registerDescription(resolvedId);
+    return () => unregisterDescription(resolvedId);
+  }, [resolvedId, registerDescription, unregisterDescription]);
 
   return (
     <p
       {...props}
       data-slot="panel-description"
-      id={descriptionId}
+      id={resolvedId}
       className={cn("m-0 text-xs leading-normal text-foreground/70", className)}
     />
   );

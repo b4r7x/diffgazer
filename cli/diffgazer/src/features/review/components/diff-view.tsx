@@ -1,3 +1,4 @@
+import { sanitizeTerminalText } from "@diffgazer/core/review";
 import { Box, Text } from "ink";
 import { useTheme } from "../../../theme/provider";
 
@@ -8,7 +9,9 @@ export interface DiffViewProps {
 export function DiffView({ patch }: DiffViewProps) {
   const { tokens } = useTheme();
 
-  const lines = patch.split("\n");
+  // Defense-in-depth: the server already sanitizes suggested_patch, but strip any
+  // residual terminal-escape sequences before rendering into the raw terminal.
+  const lines = sanitizeTerminalText(patch).split("\n");
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor={tokens.border}>

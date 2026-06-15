@@ -8,12 +8,13 @@ import { SidebarPanelHeaderRow } from "./sidebar-panel-header";
 describe("SidebarPanelHeaderRow", () => {
   it("forwards native div attributes such as aria-busy to the DOM", () => {
     render(
-      <SidebarPanelHeaderRow aria-busy={true} data-testid="row">
+      <SidebarPanelHeaderRow role="group" aria-label="Panel row" aria-busy={true}>
         Row content
       </SidebarPanelHeaderRow>,
     );
 
-    expect(screen.getByTestId("row")).toHaveAttribute("aria-busy", "true");
-    expect(screen.getByTestId("row")).toHaveTextContent("Row content");
+    const row = screen.getByRole("group", { name: "Panel row" });
+    expect(row).toHaveAttribute("aria-busy", "true");
+    expect(row).toHaveTextContent("Row content");
   });
 });

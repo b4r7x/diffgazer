@@ -108,6 +108,29 @@ describe("ModelList", () => {
     expect(screen.queryByRole("radio", { name: /Model A/ })).not.toBeInTheDocument();
   });
 
+  it("keeps the live status region mounted across the results→empty transition", () => {
+    const props = {
+      focusedModelId: "model-a",
+      currentModelId: "model-a",
+      isFocused: false,
+      onSelect: vi.fn(),
+      onConfirm: vi.fn(),
+      onHighlightChange: vi.fn(),
+      onBoundaryReached: vi.fn(),
+    };
+
+    const { rerender } = render(<ModelList models={MODELS} {...props} />);
+
+    // Present (and empty of message) while results exist.
+    const liveRegion = screen.getByRole("status");
+    expect(liveRegion).toHaveTextContent("");
+
+    rerender(<ModelList models={[]} emptyLabel="No models match your search" {...props} />);
+
+    // Same persistent region now carries the announcement.
+    expect(screen.getByRole("status")).toHaveTextContent("No models match your search");
+  });
+
   it("hands off focus on vertical boundary keys", async () => {
     const user = userEvent.setup();
     const onBoundaryReached = vi.fn();

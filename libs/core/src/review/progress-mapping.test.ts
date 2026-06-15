@@ -59,14 +59,14 @@ describe("mapStepsToProgressData", () => {
   it("keeps non-review steps free of agent substeps and hides top-level errors from the progress UI", () => {
     const steps = [
       makeStep("context", "Project context", "error"),
-      makeStep("enrich", "Enrich context", "active"),
+      makeStep("report", "Save results", "active"),
     ];
 
     const result = mapStepsToProgressData(steps, [makeAgent()]);
 
     expect(result).toEqual([
       { id: "context", label: "Project context", status: "pending", substeps: undefined },
-      { id: "enrich", label: "Enrich context", status: "active", substeps: undefined },
+      { id: "report", label: "Save results", status: "active", substeps: undefined },
     ]);
   });
 });

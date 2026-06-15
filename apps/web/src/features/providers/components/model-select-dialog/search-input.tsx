@@ -52,7 +52,7 @@ export function ModelSearchInput({
           aria-label="Search models"
           placeholder="Search models..."
           size="sm"
-          className="flex-1 bg-tui-input-bg text-xs"
+          className="flex-1 bg-input-well text-xs"
         />
         {showCustomAction && (
           <Button
@@ -67,7 +67,7 @@ export function ModelSearchInput({
         )}
       </div>
       {showCustomAction && (
-        <div className="pt-2 text-2xs text-tui-muted">
+        <div className="pt-2 text-2xs text-muted-foreground">
           Tip: enter a custom model ID and press Enter
         </div>
       )}

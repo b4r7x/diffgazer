@@ -9,71 +9,117 @@ import type {
   ReactNode,
   Ref,
 } from "react";
-import { useId } from "react";
+import { isValidElement, useId } from "react";
 import { cn } from "@/lib/utils";
-import { useSidebarChrome } from "./sidebar-context";
+import { useOptionalSidebar, useSidebarChrome } from "./sidebar-context";
 import { resolveSidebarIntent, type SidebarIntent } from "./sidebar-intent";
 import { SIDEBAR_TREE_CONNECTOR } from "./sidebar-tree-glyphs";
 import { type SidebarVariant, sidebarItemVariants } from "./sidebar-variants";
 
+/** Props for sidebar item render. */
 export interface SidebarItemRenderProps {
+  /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLElement>;
+  /** Additional class names merged onto the rendered element. */
   className: string;
+  /** Disables the item. Adds aria-disabled and removes from tab order. */
   disabled?: boolean;
+  /** Called when click occurs. */
   onClick?: MouseEventHandler<HTMLElement>;
+  /** ARIA current state forwarded to the rendered element. */
   "aria-current"?: "page";
+  /** ARIA disabled state forwarded to the rendered element. */
   "aria-disabled"?: boolean;
-  "data-active"?: "true";
+  /** Present when the item is selected. */
+  "data-selected"?: "";
+  /** Intent exposed as a data attribute for styling. */
   "data-intent"?: SidebarIntent;
+  /** Navigation item marker consumed by keyboard navigation helpers. */
   "data-diffgazer-navigation-item"?: "button";
+  /** Value exposed as a data attribute for styling and selectors. */
   "data-value"?: string;
+  /** Present when the item is disabled. */
   "data-disabled"?: "";
+  /** Tab index applied to the rendered element. */
   tabIndex?: number;
   /** Tree connector / variant glyph prefix for custom link renderers. */
   itemPrefix?: ReactNode;
 }
 
+/** Props for sidebar item shared. */
 interface SidebarItemSharedProps {
+  /** Marks the item as active. */
   active?: boolean;
+  /** Controlled value. */
   value?: string;
+  /** intent used by sidebar item shared. */
   intent?: SidebarIntent;
+  /** Sidebar subparts (Header, Content, Footer, Trigger). */
   children: ReactNode | ((props: SidebarItemRenderProps) => ReactNode);
+  /** Additional class names merged onto the rendered element. */
   className?: string;
+  /** Disables interaction. */
   disabled?: boolean;
 }
 
+/** Props for sidebar item as anchor. */
 export interface SidebarItemAsAnchorProps
   extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "children" | "value">,
     SidebarItemSharedProps {
+  /**
+   * Rendered element. Items are navigation links by default; pass as="button" for
+   * non-navigation actions.
+   */
   as?: "a";
+  /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLAnchorElement>;
 }
 
+/** Props for sidebar item as button. */
 export interface SidebarItemAsButtonProps
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children" | "disabled" | "value">,
     SidebarItemSharedProps {
+  /**
+   * Rendered element. Items are navigation links by default; pass as="button" for
+   * non-navigation actions.
+   */
   as: "button";
+  /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLButtonElement>;
 }
 
+/** Props for sidebar item. */
 export type SidebarItemProps = SidebarItemAsAnchorProps | SidebarItemAsButtonProps;
 
+/** Class variants for sidebar intent dot. */
 export const sidebarIntentDotVariants = cva(
   "inline-block w-1.5 h-1.5 shrink-0 mr-1 group-data-[state=rail]/sidebar:hidden",
   {
     variants: {
       intent: {
         neutral: "bg-muted-foreground",
-        info: "bg-[var(--info,oklch(0.62_0.20_240))]",
-        success: "bg-[var(--success,oklch(0.62_0.20_145))]",
-        warning: "bg-[var(--warning,oklch(0.62_0.20_75))]",
-        danger: "bg-[var(--danger,oklch(0.62_0.20_25))]",
-        accent: "bg-[var(--accent,oklch(0.62_0.20_295))]",
+        info: "bg-info-strong",
+        success: "bg-success-strong",
+        warning: "bg-warning-strong",
+        danger: "bg-error-strong",
+        accent: "bg-action",
       },
     },
     defaultVariants: { intent: "neutral" },
   },
 );
+
+function flattenText(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(flattenText).filter(Boolean).join(" ");
+  if (isValidElement<{ children?: ReactNode; "aria-hidden"?: boolean | "true" | "false" }>(node)) {
+    const ariaHidden = node.props["aria-hidden"];
+    // Skip decorative subtrees so icon glyphs never leak into the rail name.
+    if (ariaHidden === true || ariaHidden === "true") return "";
+    return flattenText(node.props.children);
+  }
+  return "";
+}
 
 function VariantGlyph({ variant, active }: { variant: SidebarVariant; active: boolean }) {
   if (variant === "caret") {
@@ -139,9 +185,15 @@ function IntentDot({ intent }: { intent: SidebarIntent }) {
   );
 }
 
+/**
+ * Nav row. Renders as <a> by default; pass as="button" for actions. Render-prop variant
+ * supported.
+ */
 export function SidebarItem(props: SidebarItemProps): ReactNode {
   const generatedId = useId();
   const { variant, autoTone } = useSidebarChrome();
+  const sidebar = useOptionalSidebar();
+  const isRail = sidebar?.state === "rail";
 
   const active = props.active ?? false;
   const disabled = props.disabled ?? false;
@@ -166,7 +218,7 @@ export function SidebarItem(props: SidebarItemProps): ReactNode {
     ),
     "aria-current": active ? ("page" as const) : undefined,
     "aria-disabled": disabled || undefined,
-    "data-active": active ? ("true" as const) : undefined,
+    "data-selected": active ? ("" as const) : undefined,
     "data-intent": resolvedIntent,
     "data-diffgazer-navigation-item": "button" as const,
     "data-value": resolvedValue,
@@ -177,8 +229,16 @@ export function SidebarItem(props: SidebarItemProps): ReactNode {
   const glyph = <VariantGlyph variant={variant} active={active} />;
   const treeConnector = <TreeConnector variant={variant} />;
   const dot = resolvedIntent ? <IntentDot intent={resolvedIntent} /> : null;
+  // Rail mode display:none-hides the visible label/badge, leaving an icon-only
+  // row with no accessible name. In rail state, render an sr-only copy of the
+  // label so the name survives the collapse; render-prop items own their own
+  // markup and supply their own name.
+  const railName =
+    isRail && typeof props.children !== "function" ? flattenText(props.children) : "";
+  const railNameNode = railName ? <span className="sr-only">{railName}</span> : null;
   const itemPrefix = (
     <>
+      {railNameNode}
       {dot}
       {treeConnector}
       {glyph}

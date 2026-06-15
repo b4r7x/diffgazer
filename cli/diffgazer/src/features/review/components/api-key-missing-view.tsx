@@ -1,3 +1,4 @@
+import { getApiKeyMissingCopy } from "@diffgazer/core/review";
 import { Box } from "ink";
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
@@ -16,10 +17,7 @@ export function ApiKeyMissingView({
   onGoToSettings,
   onBack,
 }: ApiKeyMissingViewProps) {
-  const title = missingModel ? "Model Required" : "API Key Required";
-  const body = missingModel
-    ? `No model selected${provider ? ` for ${provider}` : ""}. Set up a model in Settings to start reviewing code.`
-    : `No API key configured${provider ? ` for ${provider}` : ""}. Add your API key in Settings to start reviewing code.`;
+  const { title, body } = getApiKeyMissingCopy({ provider, missingModel });
 
   return (
     <Panel>

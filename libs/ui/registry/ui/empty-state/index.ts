@@ -8,6 +8,7 @@ import { EmptyStateDescription } from "./empty-state-description";
 import { EmptyStateIcon } from "./empty-state-icon";
 import { EmptyStateMessage } from "./empty-state-message";
 
+/** Root wrapper - provides size context to all parts. Variant controls root layout only. */
 const EmptyState = Object.assign(EmptyStateRoot, {
   Icon: EmptyStateIcon,
   Message: EmptyStateMessage,

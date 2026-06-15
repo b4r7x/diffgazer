@@ -68,7 +68,7 @@ export const tocDoc: ComponentDoc = {
         required: false,
         defaultValue: "false",
         description:
-          'Marks the link as the current location. Adds aria-current="location" and data-active.',
+          'Marks the link as the current location. Adds aria-current="location" and data-selected.',
       },
       href: {
         type: "string",

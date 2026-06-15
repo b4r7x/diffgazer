@@ -37,3 +37,36 @@ export const SETTINGS_SHORTCUTS: Shortcut[] = [
   { key: "Enter", label: "Edit" },
   { key: "Esc", label: "Back" },
 ];
+
+// The two most common footer fragments, previously re-typed inline across both
+// surfaces. Both web and CLI consume these single constants.
+export const BACK_SHORTCUT: Shortcut = { key: "Esc", label: "Back" };
+export const NAVIGATE_SHORTCUT: Shortcut = { key: "↑/↓", label: "Navigate" };
+export const BACK_SHORTCUTS: Shortcut[] = [BACK_SHORTCUT];
+
+// Canonical help-screen shortcut table, consumed by both surfaces' Help screens.
+// Every entry has a live handler on at least one surface (web: q/s/h/shift+?,
+// list/menu navigation; TUI: q/s/?).
+export const HELP_SHORTCUTS: Shortcut[] = [
+  { key: "↑/↓", label: "Navigate Menus and Lists" },
+  { key: "Enter", label: "Select / Confirm" },
+  { key: "Esc", label: "Go Back" },
+  { key: "Tab", label: "Switch Pane" },
+  { key: "1-4", label: "Switch Tab (in Review)" },
+  { key: "j/k", label: "Scroll Content" },
+  { key: "s", label: "Open Settings" },
+  { key: "q", label: "Quit" },
+  { key: "?", label: "Open Help" },
+];
+
+// Trust-panel footer shortcuts consumed by both surfaces' home trust prompt.
+export const TRUST_FOOTER_SHORTCUTS: Shortcut[] = [
+  { key: "↑/↓", label: "Navigate Permissions" },
+  { key: "Enter/Space", label: "Toggle Permission" },
+  { key: "q", label: "Quit" },
+];
+
+export const TRUST_FOOTER_RIGHT_SHORTCUTS: Shortcut[] = [
+  { key: "s", label: "Settings" },
+  { key: "?", label: "Help" },
+];

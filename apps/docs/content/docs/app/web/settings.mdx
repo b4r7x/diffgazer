@@ -3,7 +3,7 @@ title: Settings
 description: Configure theme, providers, storage, agent execution, analysis, and trust from the web settings hub.
 ---
 
-Settings is where you change how diffgazer behaves before and during a review: which AI provider it uses, where it keeps your API keys, which agents run, and what the app is allowed to read. It opens from the main menu and lands on a hub that lists every settings area with its current value, so you can see your provider, theme, and storage choice at a glance before drilling in. This page assumes onboarding is done and the repository is trusted. If it is not, the provider and trust areas are where you finish that setup, and the rest of the hub will show "Not configured" or "Not trusted" until you do.
+Settings is where you change how Diffgazer behaves before and during a review: which AI provider it uses, where it keeps your API keys, which agents run, and what the app is allowed to read. It opens from the main menu and lands on a hub that lists every settings area with its current value, so you can see your provider, theme, and storage choice at a glance before drilling in. This page assumes onboarding is done and the repository is trusted. If it is not, the provider and trust areas are where you finish that setup, and the rest of the hub will show "Not configured" or "Not trusted" until you do.
 
 ## The settings hub
 
@@ -11,7 +11,7 @@ The hub is a single menu. Each row names a settings area and shows its current s
 
 | Area | What it controls |
 | --- | --- |
-| Trust & Permissions | Whether diffgazer may read files and git metadata in this directory |
+| Trust & Permissions | Whether Diffgazer may read files and git metadata in this directory |
 | Theme | The color theme of the web UI |
 | Provider | Which AI provider runs your reviews, and its API key and model |
 | Secrets Storage | Where API keys are stored on disk |
@@ -44,11 +44,11 @@ The Analysis area chooses which agents run during a review. You toggle agents on
 
 ## Trust and permissions
 
-Trust controls what diffgazer is allowed to do in the current directory. It is scoped per project, so trusting one repository does not trust another. The screen shows the target directory and the capabilities you can grant, with Save and Revoke actions. Saving writes the trust grant for this directory; Revoke removes it.
+Trust controls what Diffgazer is allowed to do in the current repository. It is scoped per repository, so trusting one repository does not trust another. The screen shows the target repository and the permissions you can grant, with Save and Revoke actions. Saving writes the trust grant for this repository; Revoke removes it.
 
-One capability is available today: repository access, which lets diffgazer read files and git metadata so reviews have something to analyze. The other listed capability, run commands (running tests or lint), is unavailable. The server forces it off on every save regardless of what the client sends, the option is disabled in the UI, and a security warning explains that, when it is eventually enabled, it would let the AI execute shell scripts. Treat run commands as off and not selectable for now.
+One permission is available today: repository access, which lets Diffgazer read files and git metadata so reviews have something to analyze. The other listed permission, run commands (running tests or lint), is unavailable. The server forces it off on every save regardless of what the client sends, the option is disabled in the UI, and a security warning explains that, when it is eventually enabled, it would let the AI execute shell scripts. Treat run commands as off and not selectable for now. On the wire these permissions are the `trust.capabilities` fields (`readFiles`, `runCommands`).
 
-> Warning: Trust grants real access. Repository access lets the review read every file and git detail in the trusted directory. Only trust directories whose contents you are comfortable sending to your configured AI provider.
+> Warning: Trust grants real access. Repository access lets the review read every file and git detail in the trusted repository. Only trust repositories whose contents you are comfortable sending to your configured AI provider.
 
 ## Related
 

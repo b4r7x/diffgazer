@@ -14,7 +14,7 @@ export default function SelectRadio() {
   return (
     <div className="w-64">
       <Select value={value} onChange={setValue}>
-        <SelectTrigger>
+        <SelectTrigger aria-label="Environment">
           <SelectValue placeholder="Select environment..." />
         </SelectTrigger>
         <SelectContent>

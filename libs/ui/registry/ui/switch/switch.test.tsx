@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
+import { expectResetClearsInvalid } from "../../testing/form-behavior";
 import { Switch } from "./index";
 
 function getForm(name = "Test form"): HTMLFormElement {
@@ -20,6 +21,17 @@ describe("Switch", () => {
   it("renders checked state when controlled", () => {
     render(<Switch checked aria-label="Toggle" />);
     expect(screen.getByRole("switch")).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("emits data-slot and data-state styling hooks", () => {
+    const { rerender } = render(<Switch checked={false} aria-label="Toggle" />);
+    const sw = screen.getByRole("switch");
+    expect(sw).toHaveAttribute("data-slot", "switch");
+    expect(sw).toHaveAttribute("data-state", "unchecked");
+    rerender(<Switch checked aria-label="Toggle" />);
+    expect(sw).toHaveAttribute("data-state", "checked");
+    rerender(<Switch checked disabled aria-label="Toggle" />);
+    expect(sw).toHaveAttribute("data-disabled", "");
   });
 
   it("toggles on click in controlled mode", async () => {
@@ -131,7 +143,7 @@ describe("Switch", () => {
 
     form.reset();
     await waitFor(() => expect(new FormData(form).get("toggle")).toBe("on"));
-    expect(screen.getByRole("switch")).toHaveAttribute("aria-checked", "true");
+    await waitFor(() => expect(screen.getByRole("switch")).toHaveAttribute("aria-checked", "true"));
   });
 
   it("focuses the switch when native required validation fails", async () => {
@@ -147,6 +159,23 @@ describe("Switch", () => {
     expect(form.reportValidity()).toBe(false);
     expect(sw).toHaveFocus();
     await waitFor(() => expect(sw).toHaveAttribute("aria-invalid", "true"));
+  });
+
+  it("clears aria-invalid on native form reset after a failed submit", async () => {
+    render(
+      <form aria-label="Test form">
+        <Switch name="accept" required aria-label="Accept" />
+      </form>,
+    );
+
+    await expectResetClearsInvalid(getForm(), screen.getByRole("switch", { name: /accept/i }));
+  });
+
+  it("keeps the hidden form-mirror input out of the a11y tree with no aria-label", () => {
+    const { container } = render(<Switch name="accept" required aria-label="Accept" />);
+    const mirror = container.querySelector('input[type="checkbox"]');
+    expect(mirror).toHaveAttribute("aria-hidden", "true");
+    expect(mirror).not.toHaveAttribute("aria-label");
   });
 
   it("clears the invalid state once the required switch is turned on", async () => {

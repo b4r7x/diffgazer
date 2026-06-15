@@ -41,6 +41,14 @@ function readAbsolute(path: string): string {
   return readFileSync(path, "utf8");
 }
 
+function hasConsumptionMetadata(source: string): boolean {
+  return (
+    source.includes("<ConsumptionBlock") ||
+    source.includes("<ComponentDocScaffold") ||
+    source.includes("<HookDocScaffold")
+  );
+}
+
 function basename(file: string): string {
   return (
     file
@@ -73,8 +81,10 @@ function collectCompanionExamples(): Map<string, string[]> {
   for (const file of listRepoFiles("libs/ui/registry/component-docs", ".ts")) {
     const source = readAbsolute(file);
     const block = source.match(/companionExamples:\s*\[([^\]]*)\]/);
-    if (!block) continue;
-    const items = [...block[1].matchAll(/"([a-z0-9-]+)"/g)].map((m) => m[1]);
+    if (!block?.[1]) continue;
+    const items = [...block[1].matchAll(/"([a-z0-9-]+)"/g)]
+      .map((m) => m[1])
+      .filter((value): value is string => Boolean(value));
     if (items.length > 0) companions.set(basename(file), items);
   }
   return companions;
@@ -95,12 +105,12 @@ function collectExampleRefsFromComponentDocs(): ExampleRef[] {
     const source = readAbsolute(file);
     const names = new Set<string>();
     for (const block of source.matchAll(/examples:\s*\[([\s\S]*?)\]/g)) {
-      for (const match of block[1].matchAll(/name: "([a-z0-9-]+)"/g)) {
-        names.add(match[1]);
+      for (const match of (block[1] ?? "").matchAll(/name: "([a-z0-9-]+)"/g)) {
+        if (match[1]) names.add(match[1]);
       }
     }
     for (const match of source.matchAll(/example: "([a-z0-9-]+)"/g)) {
-      names.add(match[1]);
+      if (match[1]) names.add(match[1]);
     }
     for (const name of names) {
       refs.push({ library: "ui", item, name });
@@ -125,8 +135,8 @@ function collectExampleRefsFromHookDocs(): ExampleRef[] {
       const item = basename(file);
       const source = readAbsolute(file);
       for (const block of source.matchAll(/examples:\s*\[([\s\S]*?)\]/g)) {
-        for (const match of block[1].matchAll(/name: "([a-z0-9-]+)"/g)) {
-          refs.push({ library, item, name: match[1] });
+        for (const match of (block[1] ?? "").matchAll(/name: "([a-z0-9-]+)"/g)) {
+          if (match[1]) refs.push({ library, item, name: match[1] });
         }
       }
     }
@@ -144,7 +154,7 @@ function collectHookDocExampleCounts(): Map<string, number> {
     const examplesBlock = source.match(/examples:\s*\[([\s\S]*?)\]/);
     counts.set(
       hook,
-      examplesBlock ? [...examplesBlock[1].matchAll(/name: "([a-z0-9-]+)"/g)].length : 0,
+      examplesBlock ? [...(examplesBlock[1] ?? "").matchAll(/name: "([a-z0-9-]+)"/g)].length : 0,
     );
   }
   return counts;
@@ -173,9 +183,9 @@ function collectHookPagesWithExamplesSection(): string[] {
 // guard fails loudly instead of skipping a broken page.
 function frontmatterComponent(source: string): string | null {
   const block = source.match(/^---\n([\s\S]*?)\n---/);
-  if (!block) return null;
+  if (!block?.[1]) return null;
   const field = block[1].match(/^component:\s*"?([a-z0-9-]+)"?\s*$/m);
-  return field ? field[1] : null;
+  return field?.[1] ?? null;
 }
 
 function collectMdxExampleRefs(): ExampleRef[] {
@@ -184,7 +194,7 @@ function collectMdxExampleRefs(): ExampleRef[] {
     const source = readAbsolute(file);
     const item = frontmatterComponent(source) ?? `${basename(file)} (no component frontmatter)`;
     for (const match of source.matchAll(/<Example\s+name="([^"]+)"/g)) {
-      refs.push({ library: "ui", item, name: match[1] });
+      if (match[1]) refs.push({ library: "ui", item, name: match[1] });
     }
   }
   return refs;
@@ -414,6 +424,7 @@ describe("docs-library source path mapping", () => {
   it("loads synced keys demos through the generated demo loader", async () => {
     const keysLoader = demoLoaders.keys;
     expect(keysLoader).toBeTypeOf("function");
+    if (!keysLoader) throw new Error("Missing keys demo loader");
 
     const { demos } = await keysLoader();
     const Demo = demos["use-navigation-basic"];
@@ -481,6 +492,11 @@ describe("docs-library source path mapping", () => {
         continue;
       }
 
+      if (path === "cli/diffgazer/README.md") {
+        expect(source, path).toContain("`diffgazer` is live on npm");
+        continue;
+      }
+
       expect(source, path).toMatch(
         /npm view|publish-gated|After Publication|after publication|after `@diffgazer\/add` is published|after its npm package is published/,
       );
@@ -496,8 +512,8 @@ describe("docs-library source path mapping", () => {
       const source = readAbsolute(file);
       const relPath = file.slice(repoRoot.length + 1);
       expect(
-        source.includes("<ConsumptionBlock"),
-        `${relPath} must include <ConsumptionBlock />`,
+        hasConsumptionMetadata(source),
+        `${relPath} must include <ConsumptionBlock /> or a docs scaffold that renders it`,
       ).toBe(true);
     }
   });
@@ -521,7 +537,7 @@ describe("docs-library source path mapping", () => {
     const exportedHookSlugs = [
       ...indexSource.matchAll(/export \{ (use[A-Z]\w+) \} from "\.\/hooks\//g),
     ]
-      .map((match) => camelToKebab(match[1]))
+      .map((match) => camelToKebab(match[1] ?? ""))
       .sort();
     const documentedHookSlugs = listRepoFiles("libs/keys/docs/content/hooks", ".mdx")
       .map((file) =>

@@ -1,14 +1,17 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
+import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { SearchProvider } from "@/lib/search-context";
+import { SearchProvider } from "@/hooks/search-context";
+import { ThemeProvider } from "@/hooks/theme-context";
 import { stubMatchMedia } from "@/testing/match-media";
 import { TuiShell } from "./tui-shell";
 import { TuiTwoPane } from "./tui-two-pane";
 
+// Boundary mock: TanStack Router is the external routing library used by the chrome bars.
 vi.mock("@tanstack/react-router", async () => {
   const { RouterLinkMock } = await import("@/testing/router-mock");
   return {
@@ -25,39 +28,31 @@ vi.mock("@tanstack/react-router", async () => {
 function chromeWrappers() {
   const statusBar = screen.getByRole("navigation", { name: "Primary" }).parentElement;
   const footerBar = screen.getByRole("contentinfo").parentElement;
-  const commandRow = screen.getByRole("button", { name: /^search docs/i }).closest("div.contents");
+  const searchButton = screen.getByRole("button", { name: /^search docs/i });
+  const commandRow = searchButton.parentElement?.parentElement ?? null;
+  if (statusBar === null || commandRow === null || footerBar === null) {
+    throw new Error("Expected shell chrome wrappers to render");
+  }
   return { statusBar, commandRow, footerBar };
 }
 
 describe("TuiShell", () => {
-  it("uses a dynamic viewport height root", () => {
-    stubMatchMedia({ isDesktop: false });
-    const { container } = render(
-      <SearchProvider>
-        <TuiShell>
-          <p>Body</p>
-        </TuiShell>
-      </SearchProvider>,
-    );
-
-    const root = container.querySelector(".tui-chrome");
-    expect(root).not.toBeNull();
-    expect(root?.className).toContain("h-dvh");
-    expect(root?.className).not.toContain("h-screen");
-  });
-
   it("inerts the chrome rows while the mobile drawer is open and releases them on close", async () => {
     stubMatchMedia({ isDesktop: false });
     const user = userEvent.setup();
 
     render(
-      <SearchProvider>
-        <TuiShell>
-          <TuiTwoPane sidebar={() => <a href="/ui">Sidebar item</a>}>
-            <p>Body</p>
-          </TuiTwoPane>
-        </TuiShell>
-      </SearchProvider>,
+      <ThemeProvider>
+        <KeyboardProvider>
+          <SearchProvider>
+            <TuiShell>
+              <TuiTwoPane sidebar={() => <a href="/ui">Sidebar item</a>}>
+                <p>Body</p>
+              </TuiTwoPane>
+            </TuiShell>
+          </SearchProvider>
+        </KeyboardProvider>
+      </ThemeProvider>,
     );
 
     const menuButton = screen.getByRole("button", { name: /open navigation menu/i });

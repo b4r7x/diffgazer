@@ -1,7 +1,6 @@
 import { createError } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
-import type { AgentStreamEvent } from "@diffgazer/core/schemas/events";
 import type {
   DrilldownResult,
   ReviewIssue,
@@ -10,37 +9,17 @@ import type {
   TraceRef,
 } from "@diffgazer/core/schemas/review";
 import type { AIClient, AIError } from "../../shared/lib/ai/types.js";
-import type { FileDiff, ParsedDiff } from "../../shared/lib/diff/types.js";
-import { buildDrilldownPrompt } from "../../shared/lib/review/prompts.js";
-import {
-  addDrilldownToReview,
-  getReview as getStoredReview,
-} from "../../shared/lib/storage/reviews.js";
+import type { ParsedDiff } from "./engine/diff/types.js";
+import { buildDrilldownPrompt } from "./engine/prompts.js";
 import type { DrilldownAIResponse } from "./schemas.js";
 import { DrilldownResponseSchema } from "./schemas.js";
+import { withReviewLock } from "./storage/review-lock.js";
+import { addDrilldownToReview, getReview as getStoredReview } from "./storage/reviews.js";
 import { recordTrace } from "./trace.js";
 import type { DrilldownError, HandleDrilldownError } from "./types.js";
 
-const reviewLocks = new Map<string, Promise<unknown>>();
-
-function withReviewLock<T>(reviewId: string, fn: () => Promise<T>): Promise<T> {
-  const prev = reviewLocks.get(reviewId) ?? Promise.resolve();
-  const next = prev.then(fn, fn);
-  reviewLocks.set(reviewId, next);
-  next.then(
-    () => {
-      if (reviewLocks.get(reviewId) === next) reviewLocks.delete(reviewId);
-    },
-    () => {
-      if (reviewLocks.get(reviewId) === next) reviewLocks.delete(reviewId);
-    },
-  );
-  return next;
-}
-
 interface DrilldownOptions {
   traceSteps?: TraceRef[];
-  onEvent?: (event: AgentStreamEvent) => void;
   signal?: AbortSignal;
 }
 
@@ -57,30 +36,6 @@ export async function drilldownIssue(
   options?: DrilldownOptions,
 ): Promise<Result<DrilldownResult, DrilldownError>> {
   const steps: TraceRef[] = options?.traceSteps ?? [];
-  const onEvent = options?.onEvent ?? (() => {});
-
-  const targetFile = diff.files.find((f: FileDiff) => f.filePath === issue.file);
-  if (targetFile) {
-    const lineCount = targetFile.rawDiff.split("\n").length;
-    const startLine = issue.line_start ?? targetFile.hunks[0]?.newStart ?? 1;
-    const endLine = issue.line_end ?? startLine;
-
-    onEvent({
-      type: "tool_call",
-      agent: "detective",
-      tool: "readFileContext",
-      input: `${targetFile.filePath}:${startLine}-${endLine}`,
-      timestamp: new Date().toISOString(),
-    });
-
-    onEvent({
-      type: "tool_result",
-      agent: "detective",
-      tool: "readFileContext",
-      summary: `Read ${lineCount} lines from ${targetFile.filePath}`,
-      timestamp: new Date().toISOString(),
-    });
-  }
 
   const prompt = buildDrilldownPrompt(issue, diff, allIssues);
 

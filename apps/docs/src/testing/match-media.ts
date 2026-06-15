@@ -1,3 +1,8 @@
+import {
+  stubControllableMatchMedia as stubCoreControllableMatchMedia,
+  stubMatchMedia as stubCoreMatchMedia,
+} from "@diffgazer/core/testing/match-media";
+
 interface StubMatchMediaOptions {
   isDesktop: boolean;
 }
@@ -13,53 +18,17 @@ function matchesFor(query: string, isDesktop: boolean) {
 }
 
 export function stubMatchMedia({ isDesktop }: StubMatchMediaOptions) {
-  Object.defineProperty(window, "matchMedia", {
-    configurable: true,
-    writable: true,
-    value: (query: string) => ({
-      matches: matchesFor(query, isDesktop),
-      media: query,
-      onchange: null,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      addListener: () => {},
-      removeListener: () => {},
-      dispatchEvent: () => false,
-    }),
-  });
+  stubCoreMatchMedia((query) => matchesFor(query, isDesktop));
 }
 
 export function stubControllableMatchMedia({ isDesktop }: StubMatchMediaOptions) {
-  const listeners = new Set<() => void>();
   let desktop = isDesktop;
-
-  Object.defineProperty(window, "matchMedia", {
-    configurable: true,
-    writable: true,
-    value: (query: string) => ({
-      get matches() {
-        return matchesFor(query, desktop);
-      },
-      media: query,
-      onchange: null,
-      addEventListener: (_event: string, listener: () => void) => {
-        listeners.add(listener);
-      },
-      removeEventListener: (_event: string, listener: () => void) => {
-        listeners.delete(listener);
-      },
-      addListener: () => {},
-      removeListener: () => {},
-      dispatchEvent: () => false,
-    }),
-  });
+  const controller = stubCoreControllableMatchMedia((query) => matchesFor(query, desktop));
 
   return {
     setDesktop(next: boolean) {
       desktop = next;
-      for (const listener of listeners) {
-        listener();
-      }
+      controller.setMatches((query) => matchesFor(query, desktop));
     },
   };
 }

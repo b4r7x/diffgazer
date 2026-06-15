@@ -1,11 +1,11 @@
 ---
 title: Utilities
-description: Standalone focus, navigation item, scroll locking, and key mapping utilities from @diffgazer/keys.
+description: Standalone focus, navigation item, scroll locking, and key mapping utilities from `@diffgazer/keys`.
 ---
 
 Standalone focus, navigation item, scroll locking, and key mapping utilities. Most work independently of `KeyboardProvider`; package-only utilities should be imported from `@diffgazer/keys`.
 
-> For the complete API reference, see the [@diffgazer/keys documentation](/keys/api).
+> For the complete API reference, see the [`@diffgazer/keys` documentation](/keys/api).
 
 ---
 
@@ -38,13 +38,13 @@ function Dialog({ open }: { open: boolean }) {
 }
 ```
 
-Used internally by @diffgazer/ui's `DialogContent` and `CommandPaletteContent` components.
+Used internally by `@diffgazer/ui`'s `DialogContent` and `CommandPaletteContent` components.
 
 ---
 
 ## useFocusRestore
 
-Captures the currently focused element before a temporary surface opens and restores it when that surface closes. This is used by @diffgazer/ui overlay primitives so nested dialogs and command palettes restore focus in close order.
+Captures the currently focused element before a temporary surface opens and restores it when that surface closes. This is used by `@diffgazer/ui` overlay primitives so nested dialogs and command palettes restore focus in close order.
 
 ```tsx
 import { useEffect, useRef, useState } from "react"
@@ -99,10 +99,10 @@ useScrollLock()
 
 // Lock a specific element, conditionally
 const panelRef = useRef<HTMLDivElement>(null)
-useScrollLock(panelRef, isOpen)
+useScrollLock({ target: panelRef, enabled: isOpen })
 ```
 
-Used internally by @diffgazer/ui's `DialogContent` component.
+Used internally by `@diffgazer/ui`'s `DialogContent` component.
 
 ---
 
@@ -132,7 +132,7 @@ Use `getNavigationItemProps(type, value)` instead of inventing a local selector 
 
 ## keys()
 
-Utility to map multiple hotkeys to the same handler. Requires the full @diffgazer/keys package (not available in copy mode).
+Utility to map multiple hotkeys to the same handler. Requires the full `@diffgazer/keys` package (not available in copy mode).
 
 ```tsx
 import { useKey, keys } from "@diffgazer/keys"

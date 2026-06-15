@@ -6,10 +6,10 @@ import { collectChildItems } from "../../lib/list-navigation";
 import type { CliColorTokens } from "../../theme/palettes";
 import { useTheme } from "../../theme/provider";
 
-export interface MenuProps {
-  highlightedId?: string | null;
-  onSelect?: (id: string) => void;
-  onHighlightChange?: (id: string) => void;
+export interface MenuProps<Id extends string = string> {
+  highlightedId?: Id | null;
+  onSelect?: (id: Id) => void;
+  onHighlightChange?: (id: Id) => void;
   onClose?: () => void;
   variant?: "default" | "hub";
   wrap?: boolean;
@@ -17,8 +17,8 @@ export interface MenuProps {
   children: ReactNode;
 }
 
-export interface MenuItemProps {
-  id: string;
+export interface MenuItemProps<Id extends string = string> {
+  id: Id;
   disabled?: boolean;
   variant?: "default" | "danger";
   hotkey?: string | number;
@@ -54,14 +54,14 @@ function extractMenuItem(element: ReactElement): CollectedItem | null {
   return { id: props.id, disabled: props.disabled ?? false, hotkey: props.hotkey };
 }
 
-function MenuItem({
+function MenuItem<Id extends string = string>({
   id,
   disabled = false,
   variant = "default",
   hotkey,
   value,
   children,
-}: MenuItemProps) {
+}: MenuItemProps<Id>) {
   const ctx = useMenuContext();
   const isHighlighted = ctx.highlightedId === id;
 
@@ -119,7 +119,7 @@ function MenuDivider() {
   );
 }
 
-function MenuRoot({
+function MenuRoot<Id extends string = string>({
   highlightedId: controlledHighlightedId = null,
   onSelect,
   onHighlightChange,
@@ -128,7 +128,7 @@ function MenuRoot({
   wrap = true,
   isActive = true,
   children,
-}: MenuProps) {
+}: MenuProps<Id>) {
   const { tokens } = useTheme();
   const items = collectChildItems(children, extractMenuItem);
   const selectableItems = items.filter((item) => !item.disabled);
@@ -144,13 +144,13 @@ function MenuRoot({
     const result = moveHighlight(items, currentHighlightedId, direction, wrap);
     if (!result) return;
     setInternalHighlightedId(result.id);
-    onHighlightChange?.(result.id);
+    onHighlightChange?.(result.id as Id);
   }
 
   function selectItem(id: string) {
     const item = items.find((i) => i.id === id);
     if (!item || item.disabled) return;
-    onSelect?.(id);
+    onSelect?.(id as Id);
   }
 
   useInput(

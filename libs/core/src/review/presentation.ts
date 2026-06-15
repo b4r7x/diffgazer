@@ -1,5 +1,6 @@
-import type { AgentStatus } from "../schemas/events/index.js";
+import type { AgentState, AgentStatus } from "../schemas/events/index.js";
 import type { ReviewMode } from "../schemas/review/index.js";
+import { pluralize } from "../strings.js";
 import type { DetailsEmptyKind } from "./details-empty.js";
 
 export interface ReviewEmptyCopy {
@@ -10,7 +11,7 @@ export interface ReviewEmptyCopy {
 export const DETAILS_EMPTY_COPY = {
   "no-issues": {
     title: "No issues in this review",
-    description: "This analysis passed without findings.",
+    description: "This analysis passed without issues.",
   },
   "filter-empty": {
     title: "No issues match this filter",
@@ -75,4 +76,53 @@ export function getAgentStatusMeta(status: AgentStatus): {
   variant: AgentStatusBadgeVariant;
 } {
   return AGENT_STATUS_META[status];
+}
+
+export interface PartialFailureWarning {
+  hasPartialFailure: boolean;
+  message: string;
+}
+
+/**
+ * Derives the post-review partial-failure warning shown when some agents failed
+ * but the run did not error out. Suppressed while an error is surfaced so the
+ * error takes precedence.
+ */
+export function getPartialFailureWarning(
+  agents: AgentState[],
+  error: string | null,
+): PartialFailureWarning {
+  const failedAgents = agents.filter((agent) => agent.status === "error");
+  const hasPartialFailure = failedAgents.length > 0 && !error;
+  const failedAgentNames = failedAgents.map((agent) => agent.meta.name).join(", ");
+  return {
+    hasPartialFailure,
+    message: `${pluralize(failedAgents.length, "agent")} failed (likely rate limited): ${failedAgentNames}. Results may be incomplete.`,
+  };
+}
+
+export interface ApiKeyMissingCopy {
+  title: string;
+  body: string;
+}
+
+/**
+ * Variant-aware copy for the missing-provider gate: a missing model vs a missing
+ * API key, each interpolating the active provider when known.
+ */
+export function getApiKeyMissingCopy(input: {
+  provider?: string;
+  missingModel: boolean;
+}): ApiKeyMissingCopy {
+  const forProvider = input.provider ? ` for ${input.provider}` : "";
+  if (input.missingModel) {
+    return {
+      title: "Model Required",
+      body: `No model selected${forProvider}. Set up a model in Settings to start reviewing code.`,
+    };
+  }
+  return {
+    title: "API Key Required",
+    body: `No API key configured${forProvider}. Add your API key in Settings to start reviewing code.`,
+  };
 }

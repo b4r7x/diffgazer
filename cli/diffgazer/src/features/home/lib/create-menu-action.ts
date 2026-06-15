@@ -1,4 +1,4 @@
-import { isMenuActionDisabled } from "@diffgazer/core/navigation";
+import { resolveHomeMenuActivation } from "@diffgazer/core/navigation";
 import type { MenuAction } from "@diffgazer/core/schemas/presentation";
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { Route } from "../../../lib/routes.js";
@@ -26,50 +26,39 @@ export function createHomeMenuAction({
   isTrusted = false,
   shutdown,
   onExit,
-}: HomeMenuActionOptions): (action: string) => void {
-  return (action: string) => {
-    const menuAction = action as MenuAction;
+}: HomeMenuActionOptions): (action: MenuAction) => void {
+  return (action: MenuAction) => {
+    const decision = resolveHomeMenuActivation(action, {
+      isTrusted,
+      hasResumableSession: hasActiveSession,
+    });
 
-    if (
-      isMenuActionDisabled(menuAction, {
-        isTrusted,
-        hasResumableSession: hasActiveSession,
-      })
-    ) {
-      return;
-    }
-
-    switch (menuAction) {
-      case "review-unstaged":
-        navigate({ screen: "review", mode: "unstaged" });
+    switch (decision.kind) {
+      case "start-review":
+        navigate({ screen: "review", mode: decision.mode });
         return;
-      case "review-staged":
-        navigate({ screen: "review", mode: "staged" });
-        return;
-      case "resume-review":
-        if (hasActiveSession && activeSession) {
+      case "resume":
+        if (activeSession) {
           navigate({
             screen: "review",
             reviewId: activeSession.reviewId,
             mode: activeSession.mode,
           });
-        } else if (hasActiveSession) {
+        } else {
           navigate({ screen: "review" });
         }
         return;
-      case "history":
-        navigate({ screen: "history" });
-        return;
-      case "settings":
-        navigate({ screen: "settings" });
-        return;
-      case "help":
-        navigate({ screen: "help" });
+      case "navigate":
+        navigate({ screen: decision.target });
         return;
       case "quit":
         shutdown.mutate(undefined, {
           onSettled: () => onExit(),
         });
+        return;
+      // The TUI renders blocked-untrusted as a no-op (the menu item is disabled).
+      case "blocked-untrusted":
+      case "noop":
         return;
     }
   };

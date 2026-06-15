@@ -6,9 +6,13 @@ import { restoreFocus as restoreFocusTarget } from "../dom/focus-restore.js";
 import { getFocusableElements, getTabbableElements, isFocusable } from "../dom/focusable.js";
 import { useFocusRestore } from "./use-focus-restore.js";
 
+/** Options for trapping Tab focus inside a container. */
 export interface UseFocusTrapOptions {
+  /** Element that receives focus when the trap activates. */
   initialFocus?: RefObject<HTMLElement | null>;
+  /** Restore focus to the previously focused element when the trap releases. */
   restoreFocus?: boolean;
+  /** Whether the focus trap is active. */
   enabled?: boolean;
 }
 
@@ -110,6 +114,10 @@ function isInsideContainer(
 
 // Effect-on-every-render is intentional: React does not re-fire effects when
 // containerRef.current mutates while the ref object stays stable.
+/**
+ * Keeps Tab and Shift+Tab focus inside a container while active, with nested
+ * trap stacking and optional focus restoration on release.
+ */
 export function useFocusTrap(
   containerRef: RefObject<HTMLElement | null>,
   options: UseFocusTrapOptions = {},
@@ -129,7 +137,6 @@ export function useFocusTrap(
   });
 
   // No dependency array on purpose; see hook-level comment above.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const nextContainer = enabled ? containerRef.current : null;
     if (

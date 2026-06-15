@@ -1,6 +1,6 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
-import { defaultLogger, type Logger } from "../logger.js";
+import { log } from "../logger.js";
 import { collectJsonFiles, ensureExists, resetDir, resolveInside } from "../utils/fs.js";
 import { writeJson } from "../utils/json.js";
 import { assertSafeLibraryId } from "./library-id-validation.js";
@@ -11,18 +11,12 @@ function resolveNamespaceDir(baseDir: string, id: string, label: string): string
   return resolveInside(baseDir, id, label);
 }
 
-function assertNoUnrewrittenOrigin(
-  dir: string,
-  targetOrigin: string,
-  sourceOrigin: string,
-  logger: Logger,
-): void {
+function assertNoUnrewrittenOrigin(dir: string, targetOrigin: string, sourceOrigin: string): void {
   if (targetOrigin === sourceOrigin) return;
 
   const offenders: string[] = [];
   for (const jsonFile of collectJsonFiles(dir)) {
     if (!existsSync(jsonFile)) {
-      logger.debug(`[docs-sync] Skipping origin check for missing file: ${jsonFile}`);
       continue;
     }
     let raw: string;
@@ -168,7 +162,7 @@ function syncLibraryDocs(
   cpSync(assetsDir, targetAssetsDir, { recursive: true, force: true });
 }
 
-function rewriteSecondaryDemoIndexImports(content: string, libraryId: string): string {
+export function rewriteSecondaryDemoIndexImports(content: string, libraryId: string): string {
   return content.replace(
     /import\("([^"]*?registry\/examples\/)([^"]+)"\)/g,
     (_match, _prefix, examplePath: string) => {
@@ -199,7 +193,6 @@ function syncRegistries(
   publicRegistryDir: string,
   origin: string,
   sourceOrigin: string,
-  logger: Logger,
 ): void {
   resetDir(publicRegistryDir);
 
@@ -220,14 +213,13 @@ function syncRegistries(
     cpSync(sourceDir, outputDir, { recursive: true, force: true });
   }
 
-  assertNoUnrewrittenOrigin(publicRegistryDir, origin, sourceOrigin, logger);
+  assertNoUnrewrittenOrigin(publicRegistryDir, origin, sourceOrigin);
 }
 
 function copyExamplesForLibrary(
   artifact: LoadedLibraryArtifacts,
   primaryId: string,
   registryDir: string,
-  logger: Logger,
 ): void {
   if (artifact.id === primaryId) return;
   if (!artifact.manifest.source?.registryDir) return;
@@ -250,7 +242,7 @@ function copyExamplesForLibrary(
   );
   mkdirSync(targetExamplesDir, { recursive: true });
   cpSync(artExamplesDir, targetExamplesDir, { recursive: true });
-  logger.info(`[docs-sync] Copied ${artifact.id} examples to registry/examples/${artifact.id}/`);
+  log.info(`[docs-sync] Copied ${artifact.id} examples to registry/examples/${artifact.id}/`);
 }
 
 // Precondition: every `artifact.id` (including `primaryArtifact.id`) must already
@@ -265,7 +257,6 @@ export function runDocsSyncPass(params: {
   afterSync?: (ctx: AfterSyncContext) => void;
   rootTitle?: string;
   extraRootPages?: string[];
-  logger?: Logger;
 }): void {
   const {
     artifacts,
@@ -276,7 +267,6 @@ export function runDocsSyncPass(params: {
     afterSync,
     rootTitle,
     extraRootPages,
-    logger = defaultLogger,
   } = params;
 
   for (const artifact of artifacts) {
@@ -297,7 +287,7 @@ export function runDocsSyncPass(params: {
       secondaryExampleNamespace: artifact.id === primaryArtifact.id ? undefined : artifact.id,
     });
 
-    copyExamplesForLibrary(artifact, primaryArtifact.id, paths.registryDir, logger);
+    copyExamplesForLibrary(artifact, primaryArtifact.id, paths.registryDir);
 
     afterSync?.({
       libraryId: artifact.id,
@@ -311,6 +301,6 @@ export function runDocsSyncPass(params: {
 
   writeRootMeta(artifacts, paths.contentDir, rootTitle, extraRootPages);
 
-  logger.info(`[docs-sync] Syncing registries (origin asserted: ${origin})...`);
-  syncRegistries(artifacts, paths.publicRegistryDir, origin, sourceOrigin, logger);
+  log.info(`[docs-sync] Syncing registries (origin asserted: ${origin})...`);
+  syncRegistries(artifacts, paths.publicRegistryDir, origin, sourceOrigin);
 }

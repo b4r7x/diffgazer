@@ -1,6 +1,6 @@
 ---
 title: dgadd add
-description: Add diffgazer registry items to your project.
+description: Add Diffgazer registry items to your project.
 ---
 
 ## Usage
@@ -28,10 +28,10 @@ pnpm exec dgadd add ui/dialog ui/tabs keys/navigation
 | `--dry-run` | Preview changes without writing files | `false` |
 | `--skip-install` | Write files without installing npm dependencies | `false` |
 | `--integration <mode>` | Keyboard integration mode: `ask \| none \| copy \| keys` | `ask` |
-| `--keys-version <version>` | Version/range used when `--integration keys` installs `@diffgazer/keys` | `^0.2.0` |
+| `--keys-version <version>` | Version/range used when `--integration keys` installs `@diffgazer/keys` | caret range of the bundled `@diffgazer/keys` release |
 | `--yes` | Skip confirmation prompts | `false` |
 
-## Keyboard Integration
+## Keyboard integration
 
 `copy` mode installs bundled hook source into your app.
 

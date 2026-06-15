@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 
+import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { MobileNavProvider } from "@/lib/mobile-nav-context";
+import { MobileNavProvider } from "@/hooks/mobile-nav-context";
+import { SearchProvider } from "@/hooks/search-context";
 import type { PageTree } from "@/lib/page-tree";
-import { SearchProvider } from "@/lib/search-context";
 import { stubMatchMedia } from "@/testing/match-media";
 import { CommandRow } from "./command-row";
 import { DocsContentLayout } from "./content-layout";
@@ -14,6 +15,7 @@ const routerBoundary = vi.hoisted(() => ({
   pathname: "/ui/components/button",
 }));
 
+// Boundary mock: @tanstack/react-router is the external route context boundary.
 vi.mock("@tanstack/react-router", async () => {
   const { RouterLinkMock } = await import("@/testing/router-mock");
   return {
@@ -36,6 +38,7 @@ vi.mock("@tanstack/react-router", async () => {
   };
 });
 
+// Boundary mock: @tanstack/react-start server functions are unavailable in jsdom.
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => ({
     inputValidator: () => ({
@@ -44,20 +47,10 @@ vi.mock("@tanstack/react-start", () => ({
   }),
 }));
 
-vi.mock("@/lib/use-pending-docs-route", () => ({
-  usePendingDocsRoute: () => null,
-}));
-
+// Boundary mock: generated build artifact (jsdom has no @/generated data)
 vi.mock("@/generated/sections-with-index", () => ({
   SECTIONS_WITH_INDEX: new Set(["ui/components"]),
 }));
-
-class TestResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-vi.stubGlobal("ResizeObserver", TestResizeObserver);
 
 const TREE: PageTree = {
   name: "ui",
@@ -71,14 +64,16 @@ describe("DocsContentLayout mobile sidebar", () => {
     const user = userEvent.setup();
 
     render(
-      <MobileNavProvider>
-        <SearchProvider>
-          <CommandRow />
-          <DocsContentLayout tree={TREE} library="ui">
-            <p>Docs body</p>
-          </DocsContentLayout>
-        </SearchProvider>
-      </MobileNavProvider>,
+      <KeyboardProvider>
+        <MobileNavProvider>
+          <SearchProvider>
+            <CommandRow />
+            <DocsContentLayout tree={TREE} library="ui">
+              <p>Docs body</p>
+            </DocsContentLayout>
+          </SearchProvider>
+        </MobileNavProvider>
+      </KeyboardProvider>,
     );
 
     const menuButton = screen.getByRole("button", { name: /open navigation menu/i });

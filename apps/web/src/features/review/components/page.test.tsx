@@ -1,11 +1,12 @@
 import { FooterProvider } from "@diffgazer/core/footer";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
+import { makeIssue } from "@diffgazer/core/testing/factories";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { Toaster, toast } from "@diffgazer/ui/components/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
+import { type ReactNode, StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
 
@@ -72,7 +73,6 @@ vi.mock("@diffgazer/core/api/hooks", () => ({
   useSaveConfig: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
 }));
 
-import { makeIssue } from "@/testing/factories";
 import { ReviewPage } from "./page";
 
 function reviewQuery(state: Partial<ReviewQueryState>): ReviewQueryState {
@@ -96,6 +96,7 @@ function makeStreamState() {
     issues: [],
     events: [],
     fileProgress: { total: 0, current: 0, currentFile: null, completed: [] },
+    notices: [],
     isStreaming: true,
     error: null,
     startedAt: null,
@@ -123,6 +124,34 @@ function renderPage() {
           </KeyboardProvider>
         </ConfigProvider>
       </QueryClientProvider>
+    );
+  }
+
+  return render(<ReviewPage />, { wrapper: Wrapper });
+}
+
+function renderPageStrict() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <ConfigProvider>
+            <KeyboardProvider>
+              <FooterProvider>
+                {children}
+                <Toaster />
+              </FooterProvider>
+            </KeyboardProvider>
+          </ConfigProvider>
+        </QueryClientProvider>
+      </StrictMode>
     );
   }
 
@@ -183,7 +212,7 @@ describe("ReviewPage saved review loading", () => {
 
     renderPage();
 
-    expect(await screen.findByText("Analysis #review-saved")).toBeInTheDocument();
+    expect(await screen.findByText("Review #review-saved")).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /saved result issue/i })).toHaveAttribute(
       "aria-selected",
       "true",
@@ -281,6 +310,29 @@ describe("ReviewPage saved review loading", () => {
       expect.objectContaining({ to: "/review/{-$reviewId}" }),
     );
   });
+
+  it("reports a saved review error exactly once when the report effect re-runs", async () => {
+    routeState.params = { reviewId: "broken-review" };
+    routeState.search = { mode: "staged" };
+    // A fresh error object every render makes the report effect's dependency change
+    // identity, so without the fired-once ref guard handleApiError (toast + home
+    // redirect) would re-fire on each re-render (F-304).
+    mockUseReview.mockImplementation(() => reviewQuery({ isError: true, error: apiError(500) }));
+
+    const { rerender } = renderPageStrict();
+
+    const errorToast = await screen.findByRole("alert");
+    expect(errorToast).toHaveTextContent(/error loading review/i);
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
+    });
+
+    rerender(<ReviewPage />);
+    rerender(<ReviewPage />);
+
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(mockNavigate.mock.calls.filter(([arg]) => arg?.to === "/")).toHaveLength(1);
+  });
 });
 
 describe("ReviewPage no-reviewId redirect", () => {
@@ -359,7 +411,7 @@ describe("ReviewPage stale live session falls back to saved review", () => {
     });
 
     // Falls back to saved review results
-    expect(await screen.findByText(`Analysis #${STALE_REVIEW_ID}`)).toBeInTheDocument();
+    expect(await screen.findByText(`Review #${STALE_REVIEW_ID}`)).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /saved fallback issue/i })).toBeInTheDocument();
     expect(mockNavigate).not.toHaveBeenCalledWith({ to: "/" });
   });
@@ -457,7 +509,7 @@ describe("ReviewPage reviewId changes", () => {
     await act(() => {
       capturedOnComplete?.();
     });
-    expect(await screen.findByText(`Analysis Complete #${FIRST_REVIEW_ID}`)).toBeInTheDocument();
+    expect(await screen.findByText(`Review Complete #${FIRST_REVIEW_ID}`)).toBeInTheDocument();
 
     routeState.params = { reviewId: SECOND_REVIEW_ID };
     mockUseReviewLifecycleBase.mockReturnValue({
@@ -480,7 +532,7 @@ describe("ReviewPage reviewId changes", () => {
     harness.rerender(<Harness />);
 
     expect(screen.getByText("Progress Overview")).toBeInTheDocument();
-    expect(screen.queryByText(`Analysis Complete #${FIRST_REVIEW_ID}`)).not.toBeInTheDocument();
+    expect(screen.queryByText(`Review Complete #${FIRST_REVIEW_ID}`)).not.toBeInTheDocument();
     expect(screen.queryByText("First review issue")).not.toBeInTheDocument();
   });
 });
@@ -539,8 +591,8 @@ describe("ReviewPage live review phase transitions", () => {
       capturedOnComplete?.();
     });
 
-    expect(await screen.findByText(`Analysis Complete #${LIVE_REVIEW_ID}`)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /enter review/i })).toBeInTheDocument();
+    expect(await screen.findByText(`Review Complete #${LIVE_REVIEW_ID}`)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /view results/i })).toBeInTheDocument();
   });
 
   it("transitions from summary to results when Enter Review is clicked", async () => {
@@ -552,11 +604,11 @@ describe("ReviewPage live review phase transitions", () => {
       capturedOnComplete?.();
     });
 
-    expect(await screen.findByText(`Analysis Complete #${LIVE_REVIEW_ID}`)).toBeInTheDocument();
+    expect(await screen.findByText(`Review Complete #${LIVE_REVIEW_ID}`)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /enter review/i }));
+    await user.click(screen.getByRole("button", { name: /view results/i }));
 
-    expect(await screen.findByText(`Analysis #${LIVE_REVIEW_ID}`)).toBeInTheDocument();
-    expect(screen.queryByText(`Analysis Complete #${LIVE_REVIEW_ID}`)).not.toBeInTheDocument();
+    expect(await screen.findByText(`Review #${LIVE_REVIEW_ID}`)).toBeInTheDocument();
+    expect(screen.queryByText(`Review Complete #${LIVE_REVIEW_ID}`)).not.toBeInTheDocument();
   });
 });

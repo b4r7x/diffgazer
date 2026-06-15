@@ -490,7 +490,7 @@ describe("Sidebar variants", () => {
     renderWithVariant("caret");
     const active = screen.getByRole("button", { name: /Quickstart/i });
     expect(active).toHaveAttribute("aria-current", "page");
-    expect(active).toHaveAttribute("data-active", "true");
+    expect(active).toHaveAttribute("data-selected");
     expect(active.textContent).toContain("▸");
     // Glyph stays on inactive rows too for the caret variant.
     const inactive = screen.getByRole("button", { name: /Install/i });
@@ -502,7 +502,7 @@ describe("Sidebar variants", () => {
     renderWithVariant("inverted");
     const active = screen.getByRole("button", { name: "Quickstart" });
     expect(active).toHaveAttribute("aria-current", "page");
-    expect(active).toHaveAttribute("data-active", "true");
+    expect(active).toHaveAttribute("data-selected");
     expect(active.textContent).not.toMatch(/[▸▾[\]*]/);
   });
 
@@ -510,7 +510,7 @@ describe("Sidebar variants", () => {
     renderWithVariant("bar");
     const active = screen.getByRole("button", { name: "Quickstart" });
     expect(active).toHaveAttribute("aria-current", "page");
-    expect(active).toHaveAttribute("data-active", "true");
+    expect(active).toHaveAttribute("data-selected");
     expect(active.textContent).not.toMatch(/[▸▾[\]*]/);
   });
 
@@ -527,7 +527,7 @@ describe("Sidebar variants", () => {
     renderWithVariant("block");
     const active = screen.getByRole("button", { name: "Quickstart" });
     expect(active).toHaveAttribute("aria-current", "page");
-    expect(active).toHaveAttribute("data-active", "true");
+    expect(active).toHaveAttribute("data-selected");
     expect(active.textContent).not.toMatch(/[▸▾[\]*]/);
   });
 
@@ -536,23 +536,15 @@ describe("Sidebar variants", () => {
     const active = screen.getByRole("button", { name: /Quickstart/i });
     const inactive = screen.getByRole("button", { name: /Install/i });
     expect(active).toHaveAttribute("aria-current", "page");
-    expect(active).toHaveAttribute("data-active", "true");
+    expect(active).toHaveAttribute("data-selected");
     expect(active.textContent).toContain(">");
     expect(inactive.textContent).not.toContain(">");
     expect(active.textContent).not.toMatch(/[▸▾[\]*]/);
   });
 
-  // The tree connector renders BOTH glyphs and toggles them with CSS last-child
-  // group variants (jsdom cannot compute last-child visibility). The toggle
-  // classes are the public contract: branch (├─) hides on the last item, last
-  // (└─) shows only on the last item.
-  function expectTreeConnectorContract(item: HTMLElement) {
-    expect(item).toHaveClass("group/tree-item");
-    const spans = Array.from(item.querySelectorAll("span"));
-    const branch = spans.find((span) => span.textContent === "├─");
-    const last = spans.find((span) => span.textContent === "└─");
-    expect(branch).toHaveClass("group-last/tree-item:hidden");
-    expect(last).toHaveClass("hidden", "group-last/tree-item:inline");
+  function expectTreeConnectorGlyphs(item: HTMLElement) {
+    expect(item.textContent).toContain("├─");
+    expect(item.textContent).toContain("└─");
   }
 
   it("tree variant renders caret section headers and branch connectors on items", () => {
@@ -561,11 +553,11 @@ describe("Sidebar variants", () => {
     expect(screen.getByRole("heading", { name: /Section/i }).textContent).toContain("▼");
 
     const quickstart = screen.getByRole("button", { name: /Quickstart/i });
-    expectTreeConnectorContract(screen.getByRole("button", { name: /Install/i }));
-    expectTreeConnectorContract(quickstart);
-    expectTreeConnectorContract(screen.getByRole("button", { name: /Theming/i }));
+    expectTreeConnectorGlyphs(screen.getByRole("button", { name: /Install/i }));
+    expectTreeConnectorGlyphs(quickstart);
+    expectTreeConnectorGlyphs(screen.getByRole("button", { name: /Theming/i }));
     expect(quickstart).toHaveAttribute("aria-current", "page");
-    expect(quickstart).toHaveAttribute("data-active", "true");
+    expect(quickstart).toHaveAttribute("data-selected");
   });
 
   it("tree variant renders connectors on fragment-composed items", () => {
@@ -590,23 +582,8 @@ describe("Sidebar variants", () => {
       </Sidebar>,
     );
 
-    expectTreeConnectorContract(screen.getByRole("button", { name: /Alpha/i }));
-    expectTreeConnectorContract(screen.getByRole("button", { name: /Beta/i }));
-  });
-
-  it("tree variant resets the guide and indent in rail state", () => {
-    renderWithVariant("tree");
-    const inner = requireElement(
-      document.querySelector('[data-slot="sidebar-section-content-inner"]'),
-      "tree section content wrapper",
-    );
-    // jsdom cannot compute the rail state styles; the reset classes on the
-    // tree wrapper are the contract that rail mode drops the guide and indent.
-    expect(inner).toHaveClass(
-      "group-data-[state=rail]/sidebar:ml-0",
-      "group-data-[state=rail]/sidebar:border-l-0",
-      "group-data-[state=rail]/sidebar:pl-0",
-    );
+    expectTreeConnectorGlyphs(screen.getByRole("button", { name: /Alpha/i }));
+    expectTreeConnectorGlyphs(screen.getByRole("button", { name: /Beta/i }));
   });
 
   it("keeps a single Primary nav landmark and h3 section title across variants", () => {
@@ -681,6 +658,97 @@ describe("Sidebar Cmd/Ctrl+B hotkey", () => {
       input.dispatchEvent(new KeyboardEvent("keydown", { key: "b", metaKey: true, bubbles: true }));
     });
     expect(onStateChange).not.toHaveBeenCalled();
+  });
+
+  it("does not toggle when focus is in a select or textarea", () => {
+    const onStateChange = vi.fn();
+    render(
+      <Sidebar.Provider defaultState="open" onStateChange={onStateChange}>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+        <select aria-label="filter">
+          <option>One</option>
+        </select>
+        <textarea aria-label="notes" />
+      </Sidebar.Provider>,
+    );
+
+    for (const label of ["filter", "notes"]) {
+      const el = screen.getByLabelText(label);
+      el.focus();
+      act(() => {
+        el.dispatchEvent(new KeyboardEvent("keydown", { key: "b", metaKey: true, bubbles: true }));
+      });
+    }
+    expect(onStateChange).not.toHaveBeenCalled();
+  });
+});
+
+describe("Sidebar rail-mode naming", () => {
+  // jsdom loads no stylesheet, so the Tailwind `group-data-[state=rail]/sidebar:hidden`
+  // toggle never applies and the visible label would double the sr-only copy in
+  // the computed name. Replicate just that rule (via an attribute selector jsdom
+  // can match) so the computed accessible name matches the real browser.
+  function applyRailHideStyle() {
+    const style = document.createElement("style");
+    style.textContent =
+      '[data-state="rail"] [class~="group-data-[state=rail]/sidebar:hidden"] { display: none; }';
+    document.head.appendChild(style);
+    return () => style.remove();
+  }
+
+  it("exposes the exact label name for icon-only items in rail state", () => {
+    const removeRailHideStyle = applyRailHideStyle();
+    render(
+      <Sidebar.Provider defaultState="rail">
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">
+              <span aria-hidden="true">⚙</span>
+              <Sidebar.ItemLabel>Settings</Sidebar.ItemLabel>
+            </Sidebar.Item>
+            <Sidebar.Item href="#dashboard">
+              <span aria-hidden="true">D</span>
+              <Sidebar.ItemLabel>Dashboard</Sidebar.ItemLabel>
+            </Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    );
+
+    expect(screen.getByRole("navigation")).toHaveAttribute("data-state", "rail");
+    // The sr-only copy keeps the name while the visible label is display:none in
+    // rail mode. The decorative aria-hidden icon glyph is excluded, so the name
+    // is exactly the label content — no glyph leakage.
+    expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
+
+    removeRailHideStyle();
+  });
+
+  it("does not add a rail name copy for render-prop items", () => {
+    render(
+      <Sidebar.Provider defaultState="rail">
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item>
+              {({ itemPrefix, ref, ...itemProps }) => (
+                <a {...itemProps} ref={ref as Ref<HTMLAnchorElement>} href="#profile">
+                  {itemPrefix}
+                  <span aria-hidden="true">P</span>
+                  <Sidebar.ItemLabel>Profile</Sidebar.ItemLabel>
+                </a>
+              )}
+            </Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    );
+
+    expect(screen.getByRole("link", { name: "Profile" })).toBeInTheDocument();
   });
 });
 

@@ -1,6 +1,8 @@
 import { isHTMLElement } from "./element-guards.js";
 
+/** Options shared by the imperative focus-restore utilities. */
 export interface RestoreFocusOptions {
+  /** Passes `preventScroll` to the focus call when restoring focus. */
   preventScroll?: boolean;
 }
 
@@ -8,6 +10,10 @@ function getDocument(): Document | null {
   return typeof document === "undefined" ? null : document;
 }
 
+/**
+ * Returns the current restorable focus target, ignoring body, documentElement,
+ * disconnected nodes, and missing DOM.
+ */
 export function getRestorableFocusTarget(ownerDocument?: Document): HTMLElement | null {
   const doc = ownerDocument ?? getDocument();
   if (!doc) return null;
@@ -20,6 +26,10 @@ export function getRestorableFocusTarget(ownerDocument?: Document): HTMLElement 
   return activeElement;
 }
 
+/**
+ * Focuses a connected target and returns whether the document's active element
+ * moved to it.
+ */
 export function restoreFocus(
   target: HTMLElement | null,
   options: RestoreFocusOptions = {},

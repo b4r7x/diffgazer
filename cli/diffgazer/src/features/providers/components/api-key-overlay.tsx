@@ -1,4 +1,6 @@
 import { useSaveConfig } from "@diffgazer/core/api/hooks";
+import type { InputMethod } from "@diffgazer/core/onboarding";
+import { useApiKeyEntry } from "@diffgazer/core/providers";
 import type { AIProvider, CredentialRef } from "@diffgazer/core/schemas/config";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
@@ -8,11 +10,12 @@ import { Button } from "../../../components/ui/button";
 import { Dialog } from "../../../components/ui/dialog";
 import { Spinner } from "../../../components/ui/spinner";
 import { useTheme } from "../../../theme/provider";
+import { isOverlayFooterNavActive } from "../lib/overlay-footer-gate";
 
 interface ApiKeyOverlayProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  providerId: string;
+  providerId: AIProvider;
   onSaved?: () => void;
 }
 
@@ -24,19 +27,26 @@ export function ApiKeyOverlay({
 }: ApiKeyOverlayProps): ReactElement | null {
   const { tokens } = useTheme();
   const saveConfig = useSaveConfig();
-  const [method, setMethod] = useState<"paste" | "env">("paste");
-  const [apiKey, setApiKey] = useState("");
-  const [envVar, setEnvVar] = useState("");
   const [footerIndex, setFooterIndex] = useState(0);
+  const [inputFocused, setInputFocused] = useState(false);
 
+  const entry = useApiKeyEntry({
+    onSubmit: async (method, value) => {
+      const credentialRef: CredentialRef =
+        method === "env" ? { kind: "env", varName: value } : { kind: "literal", value };
+      await saveConfig.mutateAsync({ provider: providerId, apiKey: credentialRef });
+      onSaved?.();
+      onOpenChange(false);
+    },
+  });
+
+  const { method, value, setMethod, setValue, canSubmit, error } = entry;
   const saving = saveConfig.isPending;
-  const error = saveConfig.error?.message ?? null;
 
   const resetSecrets = useEffectEvent(() => {
-    setMethod("paste");
-    setApiKey("");
-    setEnvVar("");
+    entry.reset();
     setFooterIndex(0);
+    setInputFocused(false);
     saveConfig.reset();
   });
 
@@ -50,32 +60,26 @@ export function ApiKeyOverlay({
   }
 
   function handleSave() {
-    const value = method === "paste" ? apiKey : envVar;
-    if (!value || saving) return;
-
-    const credentialRef: CredentialRef =
-      method === "env" ? { kind: "env", varName: value } : { kind: "literal", value };
-
-    saveConfig.mutate(
-      { provider: providerId as AIProvider, apiKey: credentialRef },
-      {
-        onSuccess: () => {
-          onSaved?.();
-          handleClose();
-        },
-      },
-    );
+    if (!canSubmit || saving) return;
+    void entry.submit();
   }
 
-  function handleMethodChange(m: string) {
-    if (m === "paste" || m === "env") {
-      setMethod(m);
-    }
+  function handleMethodChange(m: InputMethod) {
+    setMethod(m);
   }
 
+  // Single Tab owner for the overlay: toggle the key input focus, which also
+  // gates the footer arrows below (F-347b).
   useInput(
     (_input, key) => {
-      if (saving) return;
+      if (key.tab) setInputFocused((focused) => !focused);
+    },
+    { isActive: open && !saving },
+  );
+
+  const footerNavActive = isOverlayFooterNavActive({ open, saving, inputFocused });
+  useInput(
+    (_input, key) => {
       if (key.leftArrow) {
         setFooterIndex((index) => Math.max(0, index - 1));
         return;
@@ -84,7 +88,7 @@ export function ApiKeyOverlay({
         setFooterIndex((index) => Math.min(1, index + 1));
       }
     },
-    { isActive: open && !saving },
+    { isActive: footerNavActive },
   );
 
   return (
@@ -99,11 +103,13 @@ export function ApiKeyOverlay({
             <ApiKeyMethodSelector
               method={method}
               onMethodChange={handleMethodChange}
-              apiKey={apiKey}
-              onApiKeyChange={setApiKey}
-              envVar={envVar}
-              onEnvVarChange={setEnvVar}
+              apiKey={value}
+              onApiKeyChange={setValue}
+              envVar={value}
+              onEnvVarChange={setValue}
               isActive={open && !saving}
+              inputFocused={inputFocused}
+              onInputFocusedChange={setInputFocused}
             />
             {error != null ? <Text color={tokens.error}>{error}</Text> : null}
           </Box>

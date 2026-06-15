@@ -1,9 +1,7 @@
 ---
 title: Scopes
-description: Scopes guide for @diffgazer/keys hooks and patterns.
+description: Isolate keyboard handlers with the `@diffgazer/keys` scope stack.
 ---
-
-# Scopes
 
 > Try the [Scoped Dialog demo](https://github.com/b4r7x/diffgazer/tree/main/libs/keys/examples/playground) to see scopes in action.
 
@@ -17,7 +15,9 @@ KeyboardProvider maintains an internal stack. It starts with one entry:
 [ global ]
 ```
 
-Declarative scopes pushed with `useScope` follow React tree order. In practice, a nested confirmation dialog can mount in the same commit as its parent modal and still become the active scope. Imperative `pushScope` calls sit above declarative scopes until popped.
+The scope with the highest React `useId` order-segments wins. Precedence is a depth-major comparison of the parsed `useId` of each `useScope` call: segments are compared left to right, and the larger segment at the first difference takes priority. On the client, React assigns those ids in registration order, so this resolves to "the most recently mounted declarative scope wins" — a nested confirmation dialog that mounts in the same commit as its parent modal becomes active because it mounts after it. Imperative `pushScope` calls outrank all declarative scopes until popped.
+
+> Under SSR/hydration, React bit-packs each id's tree position into a single value, so a more deeply nested scope in an earlier branch can produce a larger segment and outrank a shallower scope in a later branch — i.e. on the server the same comparison can resolve to deepest-wins. Keep mutually exclusive scopes (e.g. modal vs. its confirm dialog) in a parent→child nesting relationship rather than relying on sibling-branch ordering.
 
 ```
 [ global ]                    -> "global" is active
@@ -166,7 +166,7 @@ Use the `scope` option on `useFocusZone` when the zone represents a distinct lay
 
 ## defaultPrevented skipping
 
-KeyboardProvider checks `event.defaultPrevented` at the very top of its keydown handler. If some other listener already called `event.preventDefault()`, @diffgazer/keys skips the event entirely.
+KeyboardProvider checks `event.defaultPrevented` at the very top of its keydown handler. If some other listener already called `event.preventDefault()`, `@diffgazer/keys` skips the event entirely.
 
 This matters when you have local `onKeyDown` handlers on elements:
 
@@ -181,9 +181,9 @@ This matters when you have local `onKeyDown` handlers on elements:
 />
 ```
 
-With this, pressing Escape in the input will clear it but **not** trigger any @diffgazer/keys handler for Escape. The React synthetic event's `preventDefault()` sets `defaultPrevented` on the native event, and @diffgazer/keys respects that.
+With this, pressing Escape in the input will clear it but **not** trigger any `@diffgazer/keys` handler for Escape. The React synthetic event's `preventDefault()` sets `defaultPrevented` on the native event, and `@diffgazer/keys` respects that.
 
-This is by design. If a component handles a key locally, @diffgazer/keys stays out of the way.
+This is by design. If a component handles a key locally, `@diffgazer/keys` stays out of the way.
 
 ## Error handling
 
@@ -193,7 +193,7 @@ Handler errors are caught and logged. They don't crash the app or break other ha
 [@diffgazer/keys] Handler error for "Escape": TypeError: Cannot read property...
 ```
 
-If a handler throws, @diffgazer/keys logs the error via `console.error` and returns. Other hotkeys in the same scope continue to work normally.
+If a handler throws, `@diffgazer/keys` logs the error via `console.error` and returns. Other hotkeys in the same scope continue to work normally.
 
 ## Common mistakes
 
@@ -243,4 +243,4 @@ This is usually what you want -- each component's handlers go in the scope that'
 
 **Handlers not firing because a lower component called preventDefault:**
 
-If a child element's `onKeyDown` calls `preventDefault()`, @diffgazer/keys won't see the event. Check for local handlers on inputs, textareas, or custom components that might be intercepting keys before they reach the window listener.
+If a child element's `onKeyDown` calls `preventDefault()`, `@diffgazer/keys` won't see the event. Check for local handlers on inputs, textareas, or custom components that might be intercepting keys before they reach the window listener.

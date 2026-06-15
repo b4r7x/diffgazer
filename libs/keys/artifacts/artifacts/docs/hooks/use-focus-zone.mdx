@@ -51,6 +51,8 @@ When the `focus` option is set, changing zones moves DOM focus to the zone's tar
 - **Shared page scope.** When several zones share one provider scope, pass `containerRef` + `focusWithinOnly` so transitions only fire while focus is inside the layout.
 - **`focus` with `{ container, target }`.** The pair form skips focus repair while focus is already inside `container`, which avoids yanking focus away from a control the user is interacting with.
 
+> **Hazard: `tabCycle` can swallow Tab document-wide.** `tabCycle` registers window-level `Tab`/`Shift+Tab` handlers. The cycle is only scoped to the layout when the hook can resolve a containing element — either every cycled zone supplies a `focus.targets` container, or you pass an explicit `containerRef`. With containment resolvable, Tab only cycles (and only calls `preventDefault`) while focus is inside one of those containers; outside them it declines so native Tab keeps reaching the skip link, header controls, toasts, and other tabbable elements. If you configure `tabCycle` with **no** `focus.targets` containers and **no** `containerRef`, Tab is intercepted across the whole document for as long as the zone is mounted — a WCAG 2.1.1 hazard. Always anchor every cycled zone to a container.
+
 ## Related
 
 - [`useActionRowNavigation`](/keys/hooks/use-action-row-navigation) — a two-zone row built on `useFocusZone`.

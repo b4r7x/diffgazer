@@ -2,6 +2,7 @@ import { setImmediate as waitImmediate } from "node:timers/promises";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { openMock } = vi.hoisted(() => ({ openMock: vi.fn(() => Promise.resolve()) }));
+// Boundary mock: OS browser opener.
 vi.mock("open", () => ({ default: openMock }));
 
 import { createReadyHandler, openBrowserAddress } from "./browser-launch";

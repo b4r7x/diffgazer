@@ -1,9 +1,7 @@
 "use client";
 
 import {
-  Children,
   type ComponentPropsWithRef,
-  isValidElement,
   type KeyboardEvent,
   type ReactNode,
   useCallback,
@@ -11,84 +9,67 @@ import {
   useMemo,
   useRef,
 } from "react";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { getEncodedListboxItemId, type ListboxMetadataItem, useListbox } from "@/hooks/use-listbox";
-import { composeRefs } from "@/lib/compose-refs";
+import { useSelectableCollection } from "@/lib/selectable-collection";
 import { cn } from "@/lib/utils";
+import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";
 import {
   type GroupHeaderRegistration,
   NavigationListContext,
   type NavigationListIndicator,
 } from "./navigation-list-context";
-import { NavigationListGroup } from "./navigation-list-group";
-import { NavigationListItem } from "./navigation-list-item";
 
-function collectNavigationListItems(children: ReactNode): ListboxMetadataItem[] {
-  const items: ListboxMetadataItem[] = [];
-
-  Children.forEach(children, (child) => {
-    if (
-      !isValidElement<{
-        id?: string;
-        disabled?: boolean;
-        children?: ReactNode;
-        variant?: string;
-        headerId?: string;
-        label?: string;
-      }>(child)
-    )
-      return;
-
-    if (child.type === NavigationListItem && typeof child.props.id === "string") {
-      items.push({ id: child.props.id, disabled: child.props.disabled });
-      return;
-    }
-
-    if (child.type === NavigationListGroup) {
-      const variant = child.props.variant ?? "section";
-      if (variant === "tree" && typeof child.props.headerId === "string") {
-        items.push({ id: child.props.headerId });
-      }
-      if (variant === "section" && typeof child.props.label === "string") {
-        const headerId = child.props.headerId ?? `__section_${child.props.label}`;
-        items.push({ id: headerId });
-      }
-    }
-
-    // Always collect items from groups regardless of expanded state.
-    // Collapsed groups hide children from the DOM, so useNavigation's
-    // DOM queries naturally exclude them from keyboard navigation.
-    // The metadata list is only used for active-descendant resolution
-    // and initial highlight — both safe with a superset.
-    if (child.props.children) {
-      items.push(...collectNavigationListItems(child.props.children));
-    }
-  });
-
-  return items;
-}
-
+/** Props for navigation list. */
 export interface NavigationListProps
   extends Omit<ComponentPropsWithRef<"div">, "children" | "onKeyDown" | "onSelect"> {
+  /** Controlled selected item id. */
   selectedId?: string | null;
+  /** Initial selected id for uncontrolled mode. */
   defaultSelectedId?: string | null;
+  /** Controlled highlighted (focused) item id. */
   highlighted?: string | null;
+  /** Initial highlighted id for uncontrolled mode. */
   defaultHighlighted?: string | null;
+  /** Fired when an item is activated by click or Enter. */
   onSelect?: (id: string) => void;
+  /**
+   * Fired when Enter activates an item. Receives the raw keyboard event for modifier-key
+   * handling.
+   */
   onEnter?: (id: string, event: globalThis.KeyboardEvent) => void;
+  /** Fired when the highlighted item changes. */
   onHighlightChange?: (id: string | null) => void;
+  /**
+   * Fired when arrow navigation reaches the first/last item with wrap disabled, enabling
+   * cross-list navigation.
+   */
   onNavigationBoundaryReached?: (
     direction: "previous" | "next",
     event: globalThis.KeyboardEvent,
     key: string,
   ) => void;
+  /** Visual indicator style for the active/selected item. */
   indicator?: NavigationListIndicator;
+  /**
+   * When false, removes the active visual treatment from the selected/highlighted item (useful
+   * when focus is elsewhere).
+   */
   focused?: boolean;
+  /** When true, arrow navigation wraps at list boundaries. */
   wrap?: boolean;
+  /** Auto-focus the list on mount. */
   autoFocus?: boolean;
+  /** NavigationList.Item children. */
   children: ReactNode;
+  /** Called when key down occurs. */
   onKeyDown?: (event: KeyboardEvent) => void;
 }
 
+/**
+ * Terminal-styled navigation sidebar list with selection, keyboard navigation, and composable
+ * item parts.
+ */
 export function NavigationList({
   selectedId: controlledSelectedId,
   defaultSelectedId = null,
@@ -111,8 +92,17 @@ export function NavigationList({
 }: NavigationListProps) {
   const idPrefix = useId();
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const composedRef = useComposedRefs(containerRef, ref);
   const groupHeadersRef = useRef<Map<string, GroupHeaderRegistration>>(new Map());
-  const items = useMemo(() => collectNavigationListItems(children), [children]);
+  const {
+    items: registeredItems,
+    registerItem,
+    unregisterItem,
+  } = useSelectableCollection(containerRef);
+  const items = useMemo<ListboxMetadataItem[]>(
+    () => registeredItems.map((item) => ({ id: item.value, disabled: item.disabled })),
+    [registeredItems],
+  );
 
   const handleGroupKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -176,7 +166,20 @@ export function NavigationList({
       typeahead: true,
       items,
       getItemId: getEncodedListboxItemId,
+      ref: composedRef,
     });
+
+  const wrappedActivate = useCallback(
+    (id: string) => {
+      warnUnregisteredValue(
+        "NavigationList",
+        id,
+        items.map((item) => item.id),
+      );
+      handleItemActivate(id);
+    },
+    [handleItemActivate, items],
+  );
 
   const registerGroupHeader = useCallback((id: string, registration: GroupHeaderRegistration) => {
     groupHeadersRef.current.set(id, registration);
@@ -190,12 +193,14 @@ export function NavigationList({
     () => ({
       selectedId,
       highlighted,
-      activate: handleItemActivate,
+      activate: wrappedActivate,
       highlight: handleItemHighlight,
       focusContainer: () => containerRef.current?.focus(),
       focused,
       idPrefix,
       indicator,
+      registerItem,
+      unregisterItem,
       registerGroupHeader,
       unregisterGroupHeader,
       groupHeaders: groupHeadersRef.current,
@@ -203,11 +208,13 @@ export function NavigationList({
     [
       selectedId,
       highlighted,
-      handleItemActivate,
+      wrappedActivate,
       handleItemHighlight,
       focused,
       idPrefix,
       indicator,
+      registerItem,
+      unregisterItem,
       registerGroupHeader,
       unregisterGroupHeader,
     ],
@@ -218,7 +225,8 @@ export function NavigationList({
       {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: getContainerProps applies role="listbox" dynamically, which Biome cannot resolve; aria-label and aria-orientation are valid for the listbox role. */}
       <div
         {...rootProps}
-        {...getContainerProps(composeRefs(containerRef, ref))}
+        {...getContainerProps()}
+        data-slot="navigation-list"
         aria-label={ariaLabel}
         aria-orientation="vertical"
         className={cn("w-full outline-none", className)}

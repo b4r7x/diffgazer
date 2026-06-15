@@ -26,7 +26,7 @@ export default function DialogCustomTrigger() {
           <DialogTitle>Custom Trigger</DialogTitle>
         </DialogHeader>
         <DialogBody>
-          <p className="text-sm text-gray-300 leading-relaxed">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             This dialog was opened from a{" "}
             <span className="font-mono text-foreground">&lt;Button&gt;</span> using the render-prop
             pattern, avoiding{" "}

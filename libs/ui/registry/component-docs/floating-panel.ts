@@ -41,6 +41,48 @@ export const floatingPanelDoc: ComponentDoc = {
     { name: "floating-panel-custom-menu", title: "Custom menu" },
   ],
   keyboard: null,
+  dataAttributes: [
+    {
+      attribute: "data-state",
+      appliesTo: "FloatingPanel",
+      values: '"open" | "closed"',
+      description: "Presence state for enter and exit animation selectors.",
+    },
+    {
+      attribute: "data-side",
+      appliesTo: "FloatingPanel",
+      values: '"top" | "right" | "bottom" | "left"',
+      description: "Resolved side after collision handling.",
+    },
+    {
+      attribute: "data-align",
+      appliesTo: "FloatingPanel",
+      values: '"start" | "center" | "end"',
+      description: "Resolved alignment after collision handling.",
+    },
+    {
+      attribute: "data-positioned",
+      appliesTo: "FloatingPanel",
+      values: "present after first measurement",
+      description:
+        "Marks a measured panel so adapters can defer effects until positioning is stable.",
+    },
+  ],
+  cssVariables: [
+    {
+      name: "--ui-content-transform-origin",
+      description: "Computed transform origin matching the resolved side and alignment.",
+    },
+    {
+      name: "--ui-floating-trigger-width",
+      description: "Trigger width in pixels when matchTriggerWidth is true.",
+    },
+    {
+      name: "--ui-floating-z",
+      description: "Layer token read by .ui-floating-panel for z-index.",
+      defaultValue: "var(--z-popover)",
+    },
+  ],
   props: {
     FloatingPanel: {
       open: {

@@ -86,6 +86,7 @@ const homeRoute = createRoute({
   component: HomePage,
   validateSearch: HomeSearchSchema,
   beforeLoad: requireConfigured,
+  head: () => ({ meta: [{ title: "Home — Diffgazer" }] }),
 });
 
 const reviewRoute = createRoute({
@@ -102,6 +103,7 @@ const reviewRoute = createRoute({
       throw redirect({ to: "/", search: { error: "invalid-review-id" } });
     }
   },
+  head: () => ({ meta: [{ title: "Review — Diffgazer" }] }),
 });
 
 const historyRoute = createRoute({
@@ -109,6 +111,7 @@ const historyRoute = createRoute({
   path: "/history",
   component: HistoryPage,
   beforeLoad: requireConfigured,
+  head: () => ({ meta: [{ title: "History — Diffgazer" }] }),
 });
 
 const helpRoute = createRoute({
@@ -116,6 +119,7 @@ const helpRoute = createRoute({
   path: "/help",
   component: HelpPage,
   beforeLoad: requireConfigured,
+  head: () => ({ meta: [{ title: "Help — Diffgazer" }] }),
 });
 
 const onboardingRoute = createRoute({
@@ -123,6 +127,7 @@ const onboardingRoute = createRoute({
   path: "/onboarding",
   component: OnboardingPage,
   beforeLoad: requireNotConfigured,
+  head: () => ({ meta: [{ title: "Setup — Diffgazer" }] }),
 });
 
 const settingsRoute = createRoute({
@@ -136,48 +141,56 @@ const settingsIndexRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: "/",
   component: SettingsHubPage,
+  head: () => ({ meta: [{ title: "Settings — Diffgazer" }] }),
 });
 
 const settingsThemeRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: "/theme",
   component: SettingsThemePage,
+  head: () => ({ meta: [{ title: "Theme — Diffgazer" }] }),
 });
 
 const settingsProvidersRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: "/providers",
   component: ProviderSettingsPage,
+  head: () => ({ meta: [{ title: "Providers — Diffgazer" }] }),
 });
 
 const settingsStorageRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: "/storage",
   component: SettingsStoragePage,
+  head: () => ({ meta: [{ title: "Storage — Diffgazer" }] }),
 });
 
 const settingsAgentExecutionRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: "/agent-execution",
   component: SettingsAgentExecutionPage,
+  head: () => ({ meta: [{ title: "Agent Execution — Diffgazer" }] }),
 });
 
 const settingsAnalysisRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: "/analysis",
   component: SettingsAnalysisPage,
+  head: () => ({ meta: [{ title: "Analysis — Diffgazer" }] }),
 });
 
 const settingsDiagnosticsRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: "/diagnostics",
   component: SettingsDiagnosticsPage,
+  head: () => ({ meta: [{ title: "Diagnostics — Diffgazer" }] }),
 });
 
 const settingsTrustPermissionsRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: "/trust-permissions",
   component: TrustPermissionsPage,
+  head: () => ({ meta: [{ title: "Trust & Permissions — Diffgazer" }] }),
 });
 
 const routeTree = rootRoute.addChildren([

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isMenuActionDisabled, isReviewAction, isReviewStartAction } from "./menu-disabling.js";
+import { isMenuActionDisabled, isReviewStartAction } from "./menu-disabling.js";
 
 describe("isReviewStartAction", () => {
   it("matches the two review-start ids only", () => {
@@ -8,15 +8,6 @@ describe("isReviewStartAction", () => {
     expect(isReviewStartAction("resume-review")).toBe(false);
     expect(isReviewStartAction("history")).toBe(false);
     expect(isReviewStartAction("quit")).toBe(false);
-  });
-});
-
-describe("isReviewAction", () => {
-  it("includes resume-review alongside the start actions", () => {
-    expect(isReviewAction("review-unstaged")).toBe(true);
-    expect(isReviewAction("review-staged")).toBe(true);
-    expect(isReviewAction("resume-review")).toBe(true);
-    expect(isReviewAction("settings")).toBe(false);
   });
 });
 

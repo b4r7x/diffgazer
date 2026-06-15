@@ -72,8 +72,8 @@ export function ProviderDetails({
   if (!provider) {
     return (
       <div className="flex-1 flex flex-col overflow-y-auto">
-        <div className="p-3 border-b border-tui-border bg-tui-selection/30 flex justify-between items-center">
-          <SectionHeader as="h2" className="mb-0 text-tui-fg">
+        <div className="p-3 border-b border-border bg-secondary/30 flex justify-between items-center">
+          <SectionHeader as="h2" className="mb-0 text-foreground">
             Provider Details
           </SectionHeader>
         </div>
@@ -86,8 +86,8 @@ export function ProviderDetails({
   if (!capabilities) {
     return (
       <div className="flex-1 flex flex-col overflow-y-auto">
-        <div className="p-3 border-b border-tui-border bg-tui-selection/30 flex justify-between items-center">
-          <SectionHeader as="h2" className="mb-0 text-tui-fg">
+        <div className="p-3 border-b border-border bg-secondary/30 flex justify-between items-center">
+          <SectionHeader as="h2" className="mb-0 text-foreground">
             Provider Details: {provider.name}
           </SectionHeader>
         </div>
@@ -100,24 +100,20 @@ export function ProviderDetails({
 
   return (
     <div className="flex-1 flex flex-col overflow-y-auto">
-      <div className="p-3 border-b border-tui-border bg-tui-selection/30 flex justify-between items-center">
-        <SectionHeader as="h2" className="mb-0 text-tui-fg">
+      <div className="p-3 border-b border-border bg-secondary/30 flex justify-between items-center">
+        <SectionHeader as="h2" className="mb-0 text-foreground">
           Provider Details: {provider.name}
         </SectionHeader>
         {provider.displayStatus === "active" && (
-          <span className="text-2xs text-tui-green font-mono flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-tui-green"></span> Active
+          <span className="text-2xs text-success-text font-mono flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-success"></span> Active
           </span>
         )}
       </div>
 
       <div className="p-6">
         <section className="mb-6">
-          <SectionHeader
-            variant="muted"
-            bordered
-            className="mb-4 border-tui-border text-tui-violet"
-          >
+          <SectionHeader variant="muted" bordered className="mb-4 border-border text-accent">
             Capabilities
           </SectionHeader>
           <div className="grid grid-cols-2 gap-4">
@@ -129,24 +125,18 @@ export function ProviderDetails({
         </section>
 
         <section className="mb-6">
-          <SectionHeader
-            variant="muted"
-            bordered
-            className="mb-4 border-tui-border text-tui-violet"
-          >
+          <SectionHeader variant="muted" bordered className="mb-4 border-border text-accent">
             Cost Tier
           </SectionHeader>
-          <div className="border-l-2 border-tui-green pl-4">
-            <p className="text-xs text-tui-muted leading-relaxed">{capabilities.costDescription}</p>
+          <div className="border-l-2 border-success pl-4">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {capabilities.costDescription}
+            </p>
           </div>
         </section>
 
         <section className="mb-6">
-          <SectionHeader
-            variant="muted"
-            bordered
-            className="mb-4 border-tui-border text-tui-violet"
-          >
+          <SectionHeader variant="muted" bordered className="mb-4 border-border text-accent">
             Status
           </SectionHeader>
           <KeyValue>
@@ -156,7 +146,7 @@ export function ProviderDetails({
                 provider.hasApiKey ? (
                   <Badge variant="info">[ STORED ]</Badge>
                 ) : (
-                  <span className="text-tui-muted">Not configured</span>
+                  <span className="text-muted-foreground">Not configured</span>
                 )
               }
               bordered
@@ -165,9 +155,11 @@ export function ProviderDetails({
               label="Selected Model"
               value={
                 provider.model ? (
-                  <span className="text-tui-fg">{provider.model}</span>
+                  <span className="text-foreground">{provider.model}</span>
                 ) : (
-                  <span className="text-tui-muted">{getEmptyModelPlaceholder(provider)}</span>
+                  <span className="text-muted-foreground">
+                    {getEmptyModelPlaceholder(provider)}
+                  </span>
                 )
               }
               bordered
@@ -187,7 +179,7 @@ export function ProviderDetails({
                 disabled={btn.disabled}
                 className={
                   isFocused && focusedButtonIndex === index && !btn.disabled
-                    ? "ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg"
+                    ? "ring-2 ring-info ring-offset-1 ring-offset-background"
                     : ""
                 }
               >

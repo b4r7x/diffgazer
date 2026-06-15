@@ -8,8 +8,11 @@ import {
   usePortalContainer,
 } from "./portal-context";
 
+/** Props for portal. */
 export interface PortalProps {
+  /** Content rendered inside the component. */
   children: ReactNode;
+  /** Portal container element. */
   container?: PortalContainerValue | null;
 }
 
@@ -32,18 +35,19 @@ export interface PortalProps {
  */
 export function Portal({ children, container }: PortalProps) {
   const scopedContainer = usePortalContainer();
-  const fallback =
-    scopedContainer !== undefined && !isPendingPortalContainer(scopedContainer)
-      ? scopedContainer.ownerDocument.body
-      : typeof document !== "undefined"
-        ? document.body
-        : null;
-  const target =
-    container !== undefined
-      ? container
-      : scopedContainer !== undefined
-        ? scopedContainer
-        : fallback;
+  let fallback: Element | null = null;
+  if (scopedContainer !== undefined && !isPendingPortalContainer(scopedContainer)) {
+    fallback = scopedContainer.ownerDocument.body;
+  } else if (typeof document !== "undefined") {
+    fallback = document.body;
+  }
+
+  let target: PortalContainerValue | null = fallback;
+  if (container !== undefined) {
+    target = container;
+  } else if (scopedContainer !== undefined) {
+    target = scopedContainer;
+  }
 
   if (!target || isPendingPortalContainer(target)) return null;
   return createPortal(children, target);

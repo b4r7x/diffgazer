@@ -10,7 +10,7 @@
  *   - STATUS_TOKEN_KEYS    — pipeline/run status slots.
  *
  * Source of truth derived from `cli/diffgazer/src/theme/palettes.ts`
- * (CliColorTokens) and the matching `--tui-*` / `--severity-*` / `--status-*`
+ * (CliColorTokens) and the matching `--base-*` / `--severity-*` / `--status-*`
  * CSS variables in `apps/web/src/styles/theme-overrides.css`. Vocabulary
  * already aligns 1:1; this module locks the alignment as a type contract.
  */

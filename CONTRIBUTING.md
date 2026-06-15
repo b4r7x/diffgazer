@@ -14,6 +14,7 @@ User-facing changes to published packages require a [changeset](https://github.c
   - Full gate: `DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run test`.
 - [ ] Changeset added when shipping a user-visible change to a published package.
   - `pnpm changeset` — required for `diffgazer`, `@diffgazer/add`, `@diffgazer/ui`, `@diffgazer/keys`. See [PACKAGE_GOVERNANCE.md](./PACKAGE_GOVERNANCE.md#versioning).
+  - The PR-side "Changeset status" CI check is intended to be a required branch-protection check on `main` (a maintainer enables it in repository settings); the `changeset-release/main` Version PR is exempt.
 - [ ] Public registry, docs, and example consumers updated together with any public API change.
   - Regenerate and validate: `pnpm run prepare:artifacts` then `pnpm run validate:artifacts:check`.
 - [ ] No commented-out code, dead files, or unrelated drive-by edits.

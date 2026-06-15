@@ -5,24 +5,24 @@ description: Local-first AI code review for your working changes, in the browser
 
 <DiffgazerPreview />
 
-diffgazer is a local binary that reviews your uncommitted changes with AI. Run it inside any repository and it reads what you have changed, then hands back a structured review. Web mode is the default and opens in your browser; the terminal UI is opt-in and still in beta.
+Diffgazer is a local binary that reviews your uncommitted changes with AI. Run it inside any repository and it reads what you have changed, then hands back a structured review. Web mode is the default and opens in your browser; the terminal UI is opt-in and still in beta.
 
 ## How review works
 
-diffgazer takes the diff of your working changes, gathers the surrounding code as context, and sends both to five review agents. Each looks at the change through one lens: correctness, security, performance, simplicity, and tests. Their findings come back as one report you read inline against the diff. For the full pipeline, see [how it works](/app/concepts/how-it-works).
+Diffgazer takes the diff of your working changes, gathers the surrounding code as context, and sends both to five review agents. Each looks at the change through one lens: correctness, security, performance, simplicity, and tests. Their issues come back as one report you read inline against the diff. For the full pipeline, see [how it works](/app/concepts/how-it-works).
 
 ## Two ways to review
 
-By default `diffgazer` starts a local web environment and opens it in your browser. That is the path most people should use. The same review also runs in a keyboard-first terminal UI behind the `--tui` flag, but that mode is an incomplete beta and not recommended yet. See [web mode](/app/web/index) and the [terminal UI](/app/tui/index) for the details of each.
+By default `diffgazer` starts a local web environment and opens it in your browser. That is the path most people should use. The same review also runs in a keyboard-first terminal UI behind the `--tui` flag, but that mode is an incomplete beta and not recommended yet. See [web mode](/app/web) and the [terminal UI](/app/tui) for the details of each.
 
 ## Local and private
 
-diffgazer runs on your machine. There is no remote Diffgazer service to deploy, and nothing about your diff is uploaded to a dashboard you do not control. Credentials are stored locally or read from your environment; when you start a review, the diff and prompt content go to the model provider you chose under that provider's policy. See [privacy](/app/concepts/privacy) for what is sent and what is not.
+Diffgazer runs on your machine. There is no remote Diffgazer service to deploy, and nothing about your diff is uploaded to a dashboard you do not control. Credentials are stored locally or read from your environment; when you start a review, the diff and prompt content go to the model provider you chose under that provider's policy. See [privacy](/app/concepts/privacy) for what is sent and what is not.
 
 ## Where to go next
 
 - [Installation](/app/getting-started/installation): requirements and the global install
-- [Your first review](/app/getting-started/first-review): run diffgazer and read the result
+- [Your first review](/app/getting-started/first-review): run Diffgazer and read the result
 - [How it works](/app/concepts/how-it-works): the diff-to-report pipeline in detail
 - [Privacy](/app/concepts/privacy): what stays local and what is sent
 - [CLI reference](/app/reference/cli): every command-line option

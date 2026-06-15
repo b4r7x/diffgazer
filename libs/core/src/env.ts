@@ -1,3 +1,9 @@
+export const DEFAULT_API_PORT = 3000;
+
+export function buildLocalhostOrigin(port: number): string {
+  return `http://127.0.0.1:${port}`;
+}
+
 export function parsePortEnv(
   value: string | undefined,
   fallback: number,

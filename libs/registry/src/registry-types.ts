@@ -1,5 +1,26 @@
 import { z } from "zod";
 
+// Registry item/file `type` values used across the handoff pipelines. The zod
+// fields below stay `z.string()` so foreign shadcn JSON still round-trips; these
+// typed constants replace the freeform string-literal comparisons so a typo
+// fails the compiler instead of silently mis-filtering.
+export type RegistryItemType =
+  | "registry:ui"
+  | "registry:hook"
+  | "registry:lib"
+  | "registry:style"
+  | "registry:theme"
+  | "registry:file";
+
+export const REGISTRY_ITEM_TYPE = {
+  ui: "registry:ui",
+  hook: "registry:hook",
+  lib: "registry:lib",
+  style: "registry:style",
+  theme: "registry:theme",
+  file: "registry:file",
+} as const satisfies Record<string, RegistryItemType>;
+
 export const RegistryFileSchema = z.object({
   path: z.string(),
   content: z.string().optional(),

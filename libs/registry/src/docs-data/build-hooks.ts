@@ -1,14 +1,12 @@
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
-import type { Logger } from "../logger.js";
-import type { Registry, RegistryItem } from "../registry-types.js";
-import { cleanDir } from "../utils/fs.js";
+import { log } from "../logger.js";
+import { REGISTRY_ITEM_TYPE, type Registry, type RegistryItem } from "../registry-types.js";
 import { writeJson } from "../utils/json.js";
 import { DOCS_CODE_THEME_NAME } from "./code-theme.js";
 import type { DocsHighlighter } from "./highlight.js";
 import type { HookRegistryItem } from "./hooks-source.js";
 import { generateEnrichedHookData, generateHooksSource } from "./hooks-source.js";
-import { toYamlString } from "./naming.js";
 import type { EnrichedHookData } from "./types.js";
 
 export interface HooksConfig {
@@ -22,7 +20,7 @@ export interface HooksConfig {
 }
 
 function defaultHookFilter(item: RegistryItem): boolean {
-  return item.type === "registry:hook" && !item.meta?.hidden;
+  return item.type === REGISTRY_ITEM_TYPE.hook && !item.meta?.hidden;
 }
 
 export async function buildHooksData(params: {
@@ -32,24 +30,13 @@ export async function buildHooksData(params: {
   examplesDir: string;
   outputDir: string;
   highlighter: DocsHighlighter;
-  skipMdxGeneration?: boolean;
-  logger: Logger;
 }): Promise<{
   hooksCount: number;
   allHooks: HookRegistryItem[];
   registryHooks: HookRegistryItem[];
   errors: string[];
 }> {
-  const {
-    registry,
-    hooksConfig,
-    rootDir,
-    examplesDir,
-    outputDir,
-    highlighter,
-    skipMdxGeneration,
-    logger,
-  } = params;
+  const { registry, hooksConfig, rootDir, examplesDir, outputDir, highlighter } = params;
   const errors: string[] = [];
 
   const hookFilter = hooksConfig.filter ?? defaultHookFilter;
@@ -70,7 +57,7 @@ export async function buildHooksData(params: {
     return { hooksCount: 0, allHooks, registryHooks, errors };
   }
 
-  logger.info(
+  log.info(
     `Found ${allHooks.length} hooks (${registryHooks.length} registry + ${(hooksConfig.extraItems ?? []).length} extra)`,
   );
 
@@ -83,7 +70,6 @@ export async function buildHooksData(params: {
       themeName: DOCS_CODE_THEME_NAME,
       loadHookDoc: hooksConfig.loadHookDoc,
       examplesDir,
-      logger,
     });
   } catch (err) {
     errors.push(String(err instanceof Error ? err.message : err));
@@ -104,28 +90,15 @@ export async function buildHooksData(params: {
     }
   }
   const hooksCount = Object.keys(enrichedData).length;
-  logger.info(`Wrote ${hooksCount} per-hook JSON files`);
+  log.info(`Wrote ${hooksCount} per-hook JSON files`);
 
   const hookList = Object.values(enrichedData)
     .map((h) => ({ name: h.name, title: h.title }))
     .sort((a, b) => a.name.localeCompare(b.name));
   writeJson(resolve(outputDir, "hook-list.json"), hookList);
-  logger.info(`Wrote hook-list.json (${hookList.length} entries)`);
+  log.info(`Wrote hook-list.json (${hookList.length} entries)`);
 
   mkdirSync(hooksConfig.contentDir, { recursive: true });
-
-  if (!skipMdxGeneration) {
-    cleanDir(hooksConfig.contentDir, ".mdx");
-    for (const hookData of Object.values(enrichedData)) {
-      const description = hookData.docs?.description ?? hookData.description ?? "";
-      writeFileSync(
-        resolve(hooksConfig.contentDir, `${hookData.name}.mdx`),
-        `---\ntitle: ${toYamlString(hookData.title)}\ndescription: ${toYamlString(description)}\nhook: ${toYamlString(hookData.name)}\n---\n\n<HookDocPage />\n`,
-      );
-    }
-  } else {
-    logger.info(`Skipped hook MDX generation (${hooksCount} hooks, hand-authored MDX)`);
-  }
 
   const hookPages = Object.values(enrichedData)
     .sort((a, b) => a.name.localeCompare(b.name))
@@ -133,7 +106,7 @@ export async function buildHooksData(params: {
   const hasIndexPage = existsSync(resolve(hooksConfig.contentDir, "index.mdx"));
   const metaPages = hasIndexPage ? ["index", ...hookPages] : hookPages;
   writeJson(resolve(hooksConfig.contentDir, "meta.json"), { title: "Hooks", pages: metaPages });
-  logger.info(`Wrote ${hooksCount} hook MDX pages + meta.json`);
+  log.info(`Wrote ${hooksCount} hook MDX pages + meta.json`);
 
   if (hooksConfig.backwardCompatFile) {
     const compatItems = hooksConfig.backwardCompatItems ?? registryHooks;
@@ -142,10 +115,9 @@ export async function buildHooksData(params: {
       rootDir,
       highlighter,
       themeName: DOCS_CODE_THEME_NAME,
-      logger,
     });
     writeJson(resolve(outputDir, hooksConfig.backwardCompatFile), basicData);
-    logger.info(`Wrote ${hooksConfig.backwardCompatFile} (${Object.keys(basicData).length} hooks)`);
+    log.info(`Wrote ${hooksConfig.backwardCompatFile} (${Object.keys(basicData).length} hooks)`);
   }
 
   return { hooksCount, allHooks, registryHooks, errors };

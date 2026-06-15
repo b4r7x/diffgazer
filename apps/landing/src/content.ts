@@ -1,4 +1,4 @@
-export const PRODUCT_NAME = "diffgazer";
+export const PRODUCT_NAME = "Diffgazer";
 
 export const TAGLINE =
   "AI code review that runs on your machine. Local web workspace, local control.";
@@ -55,7 +55,7 @@ Ready. Press Ctrl+C to stop.`;
 export const INSTALL_HEADING = "Install";
 
 export const INSTALL_CAPTION =
-  "Node 20+. Install the published CLI, then run diffgazer from inside a repository with changes.";
+  "Node 22+. Install the published CLI, then run diffgazer from inside a repository with changes.";
 
 // A short, self-explanatory unified diff rendered by <DiffView>. It tells a
 // tiny story on its own: a scoring helper gains a `weights` argument and folds

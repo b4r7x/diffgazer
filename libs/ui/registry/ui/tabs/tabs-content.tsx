@@ -1,15 +1,17 @@
 "use client";
 
-import type { HTMLAttributes, Ref } from "react";
+import { type ComponentProps, useId, useLayoutEffect, useRef } from "react";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { cn } from "@/lib/utils";
 import { getTabPanelId, getTabTriggerId, useTabsContext } from "./tabs-context";
 
-export interface TabsContentProps<TValue extends string = string>
-  extends HTMLAttributes<HTMLDivElement> {
+/** Props for tabs content. */
+export interface TabsContentProps<TValue extends string = string> extends ComponentProps<"div"> {
+  /** Stable identifier paired with the matching Tabs.Trigger. */
   value: TValue;
-  ref?: Ref<HTMLDivElement>;
 }
 
+/** Panel shown when tab is active. */
 export function TabsContent<TValue extends string = string>({
   value,
   children,
@@ -17,13 +19,28 @@ export function TabsContent<TValue extends string = string>({
   ref,
   ...rest
 }: TabsContentProps<TValue>) {
-  const { tabsId, value: selectedValue, orientation, triggerValues } = useTabsContext();
+  const {
+    tabsId,
+    value: selectedValue,
+    orientation,
+    triggerValues,
+    registerPanel,
+    unregisterPanel,
+  } = useTabsContext();
+  const registrationId = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const composedRef = useComposedRefs(rootRef, ref);
   const isActive = selectedValue === value;
   const triggerId = triggerValues.includes(value) ? getTabTriggerId(tabsId, value) : undefined;
 
+  useLayoutEffect(() => {
+    registerPanel(registrationId, value, false, rootRef.current);
+    return () => unregisterPanel(registrationId);
+  }, [registerPanel, unregisterPanel, registrationId, value]);
+
   return (
     <div
-      ref={ref}
+      ref={composedRef}
       role="tabpanel"
       id={getTabPanelId(tabsId, value)}
       aria-labelledby={triggerId}

@@ -1,8 +1,10 @@
 import { StatusIndicator } from "@diffgazer/ui/components/status-indicator";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { Link, useRouterState } from "@tanstack/react-router";
+import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 import { DOCS_CHROME_VERSION } from "@/lib/docs-chrome";
 import { type DocsLibraryId, getDocsLibraryConfig } from "@/lib/library";
+import { ThemeToggle } from "./theme-toggle";
 
 const focusRingClassName =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
@@ -42,7 +44,10 @@ export function StatusBar() {
   return (
     <nav
       aria-label="Primary"
-      className="flex shrink-0 items-center justify-between border-b border-border bg-[var(--tui-chrome-status-bg)] px-4 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+      className={cn(
+        "flex shrink-0 items-center justify-between border-b border-border bg-background px-4 py-1",
+        CHROME_LABEL_CLASS,
+      )}
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <Link
@@ -70,10 +75,13 @@ export function StatusBar() {
           GitHub
         </a>
       </div>
-      <div className="hidden items-center gap-4 md:flex">
-        <StatusIndicator className="text-[10px]">ONLINE</StatusIndicator>
-        <span>USER: GUEST</span>
-        <span>{DOCS_CHROME_VERSION}</span>
+      <div className="flex items-center gap-4">
+        <ThemeToggle />
+        <span className="hidden items-center md:inline-flex">
+          <StatusIndicator className="text-2xs">ONLINE</StatusIndicator>
+        </span>
+        <span className="hidden md:inline">USER: GUEST</span>
+        <span className="hidden md:inline">{DOCS_CHROME_VERSION}</span>
       </div>
     </nav>
   );

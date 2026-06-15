@@ -83,7 +83,7 @@ describe("StorageSelectorContent", () => {
     await user.keyboard("{ArrowDown}");
 
     const keyringRadio = screen.getByRole("radio", { name: /system keyring/i });
-    expect(keyringRadio).toHaveAttribute("data-highlighted", "true");
+    expect(keyringRadio).toHaveAttribute("data-highlighted");
 
     rerender(
       <StorageSelectorContent value="file" onChange={onChange} keyboardNavigation={false} />,

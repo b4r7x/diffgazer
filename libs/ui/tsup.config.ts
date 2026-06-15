@@ -16,7 +16,7 @@
 
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { registryItemToDistKey, resolveKeysHookFiles } from "@diffgazer/registry/cli";
+import { registryItemToDistKey, resolveKeysHookFiles } from "@diffgazer/registry/build-checks";
 import type { Plugin } from "esbuild";
 import { defineConfig } from "tsup";
 import type { Registry } from "./scripts/registry/types.js";

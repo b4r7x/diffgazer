@@ -31,7 +31,7 @@ export const tooltipDoc: ComponentDoc = {
     {
       title: "Conditional Display",
       content:
-        "Use the `enabled` prop to conditionally disable the tooltip without unmounting. Pairs well with useOverflow — only show tooltip when content is actually truncated.",
+        "Use the `enabled` prop to conditionally disable the tooltip without unmounting. Pairs well with useOverflowDetection — only show tooltip when content is actually truncated.",
     },
     {
       title: "Delay",

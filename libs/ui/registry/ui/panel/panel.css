@@ -1,0 +1,329 @@
+/*
+ * Panel primitive styles. Three orthogonal axes drive visual chrome via
+ * data-attribute selectors on [data-slot="panel"]:
+ *   [data-frame]   = hairline | rail | viewfinder | surface
+ *   [data-tone]    = info | success | warning | error | accent
+ *   [data-density] = default | compact
+ *
+ * Frame chrome (border, rail, viewfinder corners, surface) is selected by
+ * [data-frame]. Tone tints --panel-tone (inherited by the header marker bar)
+ * and the frame's color signal (border-color, rail color, corner color, or
+ * surface header tint). Density propagates to header/content/footer padding.
+ *
+ * Adjacent panel-row siblings get an automatic top border for tabular layouts
+ * (the rule consumers most commonly hand-rolled).
+ */
+@layer components {
+  /*
+   * Default component-token values are consumed via var() fallback (not
+   * declared on the slot) so an ancestor-scoped override can reach them.
+   * Defaults: --panel-bg → var(--background); --panel-fg → var(--foreground);
+   * --panel-hairline → color-mix(in oklab, var(--border) 60%, transparent);
+   * --panel-tone → var(--foreground). Tone variants below still win.
+   */
+  [data-slot="panel"] {
+    position: relative;
+    background: var(--panel-bg, var(--background));
+    color: var(--panel-fg, var(--foreground));
+    border-radius: var(--radius);
+  }
+
+  /* Density rhythm — single source of truth. */
+  [data-slot="panel"][data-density="default"] [data-slot="panel-header"] {
+    padding: 14px 20px 12px;
+  }
+  [data-slot="panel"][data-density="default"] [data-slot="panel-content"] {
+    padding: 14px 20px;
+  }
+  [data-slot="panel"][data-density="default"] [data-slot="panel-footer"] {
+    padding: 10px 20px;
+  }
+  [data-slot="panel"][data-density="compact"] [data-slot="panel-header"] {
+    padding: 10px 14px 8px;
+  }
+  [data-slot="panel"][data-density="compact"] [data-slot="panel-content"] {
+    padding: 10px 14px;
+  }
+  [data-slot="panel"][data-density="compact"] [data-slot="panel-footer"] {
+    padding: 8px 14px;
+  }
+
+  /* Header. align-items: center so action chips sit on the title's vertical
+     center; the marker bar uses align-self: stretch to span full header height. */
+  [data-slot="panel-header"] {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  [data-slot="panel-header"][data-marker="bar"]::before {
+    content: "";
+    flex: none;
+    align-self: stretch;
+    width: 4px;
+    background: var(--panel-tone, var(--foreground));
+    border-radius: 1px;
+  }
+  [data-slot="panel-header"] > [data-slot="panel-header-body"] {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  [data-slot="panel-header"] > [data-slot="panel-header-end"] {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  /* Footer — flex row with space-between for primary text + meta badge. */
+  [data-slot="panel-footer"] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  /* Row primitive — adjacent siblings get the auto-divider. */
+  [data-slot="panel-row"] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-block: 6px;
+  }
+  [data-slot="panel-row"] + [data-slot="panel-row"] {
+    border-block-start: 1px solid
+      var(--panel-hairline, color-mix(in oklab, var(--border) 60%, transparent));
+  }
+
+  /* ============================================================
+     Frame: hairline (default)
+     ============================================================ */
+  [data-slot="panel"][data-frame="hairline"] {
+    border: 1px solid var(--panel-hairline, color-mix(in oklab, var(--border) 60%, transparent));
+  }
+  [data-slot="panel"][data-frame="hairline"] [data-slot="panel-header"] {
+    border-block-end: 1px solid
+      var(--panel-hairline, color-mix(in oklab, var(--border) 60%, transparent));
+  }
+  [data-slot="panel"][data-frame="hairline"] [data-slot="panel-footer"] {
+    border-block-start: 1px solid
+      var(--panel-hairline, color-mix(in oklab, var(--border) 60%, transparent));
+  }
+
+  /* ============================================================
+     Frame: rail — inline-start rail, hairline under header only.
+     The rail IS the marker, so suppress the header bar.
+     ============================================================ */
+  [data-slot="panel"][data-frame="rail"] {
+    border: 0;
+    border-inline-start: 2px solid var(--border);
+    border-radius: 0;
+    padding-block: 2px;
+  }
+  [data-slot="panel"][data-frame="rail"] [data-slot="panel-header"] {
+    border-block-end: 1px solid
+      var(--panel-hairline, color-mix(in oklab, var(--border) 60%, transparent));
+    padding-inline-start: 14px;
+  }
+  [data-slot="panel"][data-frame="rail"] [data-slot="panel-header"][data-marker="bar"]::before {
+    display: none;
+  }
+  [data-slot="panel"][data-frame="rail"] [data-slot="panel-content"],
+  [data-slot="panel"][data-frame="rail"] [data-slot="panel-footer"] {
+    padding-inline-start: 14px;
+  }
+  [data-slot="panel"][data-frame="rail"] [data-slot="panel-footer"] {
+    border: 0;
+  }
+
+  /* ============================================================
+     Frame: viewfinder — four corner brackets. Shares the viewfinder
+     visual language with diff-view via the same contract:
+       - CSS vars: --viewfinder-size, --viewfinder-weight, --viewfinder-color, --viewfinder-offset
+       - Corner element classes: .vf-tl / .vf-tr / .vf-bl / .vf-br
+     Dialog uses a separate `.dlg-corners` + [data-corners] pattern
+     for its own (in-flow vs. modal) reasons, so there is no literal
+     `.viewfinder` class to share across all three components today.
+     ============================================================ */
+  [data-slot="panel"][data-frame="viewfinder"] {
+    --viewfinder-size: 20px;
+    --viewfinder-weight: 2px;
+    --viewfinder-color: var(--foreground);
+    --viewfinder-offset: 0px;
+    padding: 8px;
+  }
+  [data-slot="panel"][data-frame="viewfinder"] [data-slot="panel-corners"] > span {
+    position: absolute;
+    pointer-events: none;
+    width: var(--viewfinder-size);
+    height: var(--viewfinder-size);
+    border: 0 solid var(--viewfinder-color);
+  }
+  [data-slot="panel"][data-frame="viewfinder"] [data-slot="panel-corners"] > .vf-tl {
+    top: var(--viewfinder-offset);
+    left: var(--viewfinder-offset);
+    border-top-width: var(--viewfinder-weight);
+    border-left-width: var(--viewfinder-weight);
+  }
+  [data-slot="panel"][data-frame="viewfinder"] [data-slot="panel-corners"] > .vf-tr {
+    top: var(--viewfinder-offset);
+    right: var(--viewfinder-offset);
+    border-top-width: var(--viewfinder-weight);
+    border-right-width: var(--viewfinder-weight);
+  }
+  [data-slot="panel"][data-frame="viewfinder"] [data-slot="panel-corners"] > .vf-bl {
+    bottom: var(--viewfinder-offset);
+    left: var(--viewfinder-offset);
+    border-bottom-width: var(--viewfinder-weight);
+    border-left-width: var(--viewfinder-weight);
+  }
+  [data-slot="panel"][data-frame="viewfinder"] [data-slot="panel-corners"] > .vf-br {
+    bottom: var(--viewfinder-offset);
+    right: var(--viewfinder-offset);
+    border-bottom-width: var(--viewfinder-weight);
+    border-right-width: var(--viewfinder-weight);
+  }
+  [data-slot="panel"][data-frame="viewfinder"] [data-slot="panel-header"] {
+    border-block-end: 1px solid
+      var(--panel-hairline, color-mix(in oklab, var(--border) 60%, transparent));
+  }
+  [data-slot="panel"][data-frame="viewfinder"] [data-slot="panel-footer"] {
+    border-block-start: 1px solid
+      var(--panel-hairline, color-mix(in oklab, var(--border) 60%, transparent));
+  }
+
+  /* ============================================================
+     Frame: surface — elevated --surface-1 background, transparent
+     border (forced-colors fallback), inner top highlight.
+     ============================================================ */
+  [data-slot="panel"][data-frame="surface"] {
+    background: var(--surface-1);
+    border: 1px solid transparent;
+    box-shadow: inset 0 1px 0 color-mix(in oklab, var(--foreground) 4%, transparent);
+  }
+  [data-slot="panel"][data-frame="surface"] [data-slot="panel-header"] {
+    border-block-end: 1px solid
+      var(--panel-hairline, color-mix(in oklab, var(--border) 60%, transparent));
+  }
+  [data-slot="panel"][data-frame="surface"] [data-slot="panel-footer"] {
+    border-block-start: 1px solid
+      var(--panel-hairline, color-mix(in oklab, var(--border) 60%, transparent));
+  }
+
+  /* ============================================================
+     Tone — paints --panel-tone (the header marker bar) and the
+     frame's color signal. Tone is a pure visual cue; semantic
+     status messaging belongs in Callout (see callout.css).
+     ============================================================ */
+  [data-slot="panel"][data-tone="info"] {
+    --panel-tone: var(--info-text);
+  }
+  [data-slot="panel"][data-tone="success"] {
+    --panel-tone: var(--success-text);
+  }
+  [data-slot="panel"][data-tone="warning"] {
+    --panel-tone: var(--warning-text);
+  }
+  [data-slot="panel"][data-tone="error"] {
+    --panel-tone: var(--error-text);
+  }
+  [data-slot="panel"][data-tone="accent"] {
+    --panel-tone: var(--action);
+  }
+
+  /* Hairline frame: border + bar adopt the tone color. */
+  [data-slot="panel"][data-frame="hairline"][data-tone="info"] {
+    border-color: var(--info-border);
+  }
+  [data-slot="panel"][data-frame="hairline"][data-tone="success"] {
+    border-color: var(--success-border);
+  }
+  [data-slot="panel"][data-frame="hairline"][data-tone="warning"] {
+    border-color: var(--warning-border);
+  }
+  [data-slot="panel"][data-frame="hairline"][data-tone="error"] {
+    border-color: var(--error-border);
+  }
+  [data-slot="panel"][data-frame="hairline"][data-tone="accent"] {
+    border-color: var(--action);
+  }
+
+  /* Rail frame: rail color. */
+  [data-slot="panel"][data-frame="rail"][data-tone="info"] {
+    border-inline-start-color: var(--info-border);
+  }
+  [data-slot="panel"][data-frame="rail"][data-tone="success"] {
+    border-inline-start-color: var(--success-border);
+  }
+  [data-slot="panel"][data-frame="rail"][data-tone="warning"] {
+    border-inline-start-color: var(--warning-border);
+  }
+  [data-slot="panel"][data-frame="rail"][data-tone="error"] {
+    border-inline-start-color: var(--error-border);
+  }
+  [data-slot="panel"][data-frame="rail"][data-tone="accent"] {
+    border-inline-start-color: var(--action);
+  }
+
+  /* Viewfinder frame: corner color. */
+  [data-slot="panel"][data-frame="viewfinder"][data-tone="info"] {
+    --viewfinder-color: var(--info-text);
+  }
+  [data-slot="panel"][data-frame="viewfinder"][data-tone="success"] {
+    --viewfinder-color: var(--success-text);
+  }
+  [data-slot="panel"][data-frame="viewfinder"][data-tone="warning"] {
+    --viewfinder-color: var(--warning-text);
+  }
+  [data-slot="panel"][data-frame="viewfinder"][data-tone="error"] {
+    --viewfinder-color: var(--error-text);
+  }
+  [data-slot="panel"][data-frame="viewfinder"][data-tone="accent"] {
+    --viewfinder-color: var(--action);
+  }
+
+  /* Surface frame: subtle header tint + colored bottom-border on header. */
+  [data-slot="panel"][data-frame="surface"][data-tone="info"] [data-slot="panel-header"] {
+    background: color-mix(in oklab, var(--info-text) 6%, transparent);
+    border-block-end-color: var(--info-border);
+  }
+  [data-slot="panel"][data-frame="surface"][data-tone="success"] [data-slot="panel-header"] {
+    background: color-mix(in oklab, var(--success-text) 6%, transparent);
+    border-block-end-color: var(--success-border);
+  }
+  [data-slot="panel"][data-frame="surface"][data-tone="warning"] [data-slot="panel-header"] {
+    background: color-mix(in oklab, var(--warning-text) 8%, transparent);
+    border-block-end-color: var(--warning-border);
+  }
+  [data-slot="panel"][data-frame="surface"][data-tone="error"] [data-slot="panel-header"] {
+    background: color-mix(in oklab, var(--error-text) 8%, transparent);
+    border-block-end-color: var(--error-border);
+  }
+  [data-slot="panel"][data-frame="surface"][data-tone="accent"] [data-slot="panel-header"] {
+    background: color-mix(in oklab, var(--action) 6%, transparent);
+    border-block-end-color: var(--action);
+  }
+}
+
+/* ============================================================
+   Forced-colors: keep panel boundaries legible in Windows HCM.
+   Rail and surface frames need an explicit perimeter cue.
+   ============================================================ */
+@media (forced-colors: active) {
+  [data-slot="panel"][data-frame="hairline"],
+  [data-slot="panel"][data-frame="surface"] {
+    border-color: CanvasText;
+  }
+  [data-slot="panel"][data-frame="rail"] {
+    border-inline-start-color: CanvasText;
+  }
+  [data-slot="panel"][data-frame="viewfinder"] [data-slot="panel-corners"] > span {
+    border-color: CanvasText;
+  }
+  [data-slot="panel-header"][data-marker="bar"]::before {
+    background: CanvasText;
+  }
+}

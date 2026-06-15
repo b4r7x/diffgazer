@@ -10,6 +10,7 @@ const keyring = vi.hoisted(() => ({
   readKeyringSecret: vi.fn(() => ({ ok: true, value: null })),
   writeKeyringSecret: vi.fn(() => ({ ok: true, value: undefined })),
 }));
+// Boundary mock: keyring wraps the OS keychain via @napi-rs/keyring; tests provide canned secret read/write results.
 vi.mock("../config/keyring.js", () => keyring);
 
 let diffgazerHome: string;
@@ -35,7 +36,6 @@ describe("createLanguageModel real openai-compatible adapters", () => {
     if (result.ok) {
       expect(result.value.provider).toBe(provider);
       expect(typeof result.value.generate).toBe("function");
-      expect(typeof result.value.generateStream).toBe("function");
     }
   });
 });

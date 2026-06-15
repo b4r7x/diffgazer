@@ -1,8 +1,8 @@
 import { useRouter } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef } from "react";
+import { usePendingDocsRoute } from "@/hooks/use-pending-docs-route";
 import type { DocsLibraryId } from "@/lib/library";
 import type { PageTree } from "@/lib/page-tree";
-import { usePendingDocsRoute } from "@/lib/use-pending-docs-route";
 import { DocsSidebar } from "./sidebar";
 import { SidebarChrome } from "./sidebar-chrome";
 import { TuiTwoPane } from "./tui-two-pane";

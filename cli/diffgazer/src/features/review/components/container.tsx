@@ -1,4 +1,3 @@
-import { useReviewContext } from "@diffgazer/core/api/hooks";
 import { convertAgentEventsToLogEntries, mapStepsToProgressData } from "@diffgazer/core/review";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { Box } from "ink";
@@ -31,14 +30,6 @@ export function ReviewContainer({ mode, reviewId }: ReviewContainerProps): React
     goBack();
   }
 
-  const contextStep = state.steps.find((s) => s.id === "context");
-  const contextReady = contextStep?.status === "completed" && !!state.reviewId;
-  const { data: contextData } = useReviewContext({
-    enabled: contextReady,
-    reviewId: state.reviewId,
-  });
-  const contextSnapshot = contextReady ? (contextData ?? null) : null;
-
   const hasStarted = useRef(false);
 
   useEffect(() => {
@@ -48,15 +39,15 @@ export function ReviewContainer({ mode, reviewId }: ReviewContainerProps): React
     }
   }, [mode, reviewId, start]);
 
-  if (state.loadingMessage) {
+  if (state.gate === "loading") {
     return (
       <Box>
-        <Spinner label={state.loadingMessage} />
+        <Spinner label={state.loadingMessage ?? "Loading review..."} />
       </Box>
     );
   }
 
-  if (!state.isConfigured && !state.loadingMessage) {
+  if (state.gate === "unconfigured") {
     return (
       <ApiKeyMissingView
         provider={state.provider ?? undefined}
@@ -70,7 +61,7 @@ export function ReviewContainer({ mode, reviewId }: ReviewContainerProps): React
     );
   }
 
-  if (state.isNoDiffError) {
+  if (state.gate === "no-diff") {
     const currentMode = state.mode;
     const otherMode = currentMode === "staged" ? "unstaged" : "staged";
     return (
@@ -119,6 +110,7 @@ export function ReviewContainer({ mode, reviewId }: ReviewContainerProps): React
           fileProgress={state.fileProgress}
           isStreaming={state.phase === "streaming"}
           error={state.error}
+          notices={state.notices}
           onCancel={() => {
             void cancel().then((error) => {
               if (error) {
@@ -131,7 +123,7 @@ export function ReviewContainer({ mode, reviewId }: ReviewContainerProps): React
           issuesFound={state.issues.length}
           startedAt={state.startedAt}
           reviewId={state.reviewId}
-          contextSnapshot={contextSnapshot}
+          contextSnapshot={state.contextSnapshot}
           onViewResults={goToSummary}
         />
       );

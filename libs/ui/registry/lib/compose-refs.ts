@@ -9,6 +9,7 @@ function assignRef<T>(ref: Ref<T>, element: T | null): void {
   (ref as RefObject<T | null>).current = element;
 }
 
+/** Composes object refs and callback refs into one callback ref with React 19 cleanup support. */
 export function composeRefs<T>(...refs: Array<Ref<T> | null | undefined>): RefCallback<T> {
   return (element: T | null) => {
     const cleanups: Array<() => void> = [];

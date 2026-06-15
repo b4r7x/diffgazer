@@ -1,30 +1,41 @@
 "use client";
 
 import {
-  type HTMLAttributes,
+  type ComponentProps,
   type MouseEvent,
   type ReactNode,
   type Ref,
   type RefObject,
   type SyntheticEvent,
+  useCallback,
   useLayoutEffect,
   useRef,
   useState,
 } from "react";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { usePresence } from "@/hooks/use-presence";
 import { isHTMLDialogElement } from "@/lib/aria";
-import { composeRefs } from "@/lib/compose-refs";
 
-export interface DialogShellProps extends HTMLAttributes<HTMLDialogElement> {
+/** Props for dialog shell. */
+export interface DialogShellProps extends ComponentProps<"dialog"> {
+  /** Controlled open state. */
   open: boolean;
+  /** Called when backdrop click occurs. */
   onBackdropClick?: (e: MouseEvent<HTMLDialogElement>) => void;
+  /** Called when cancel occurs. */
   onCancel?: (e: SyntheticEvent<HTMLDialogElement>) => void;
+  /** Called when before show modal occurs. */
   onBeforeShowModal?: (ownerDocument: Document) => void;
+  /** Called when after show modal occurs. */
   onAfterShowModal?: () => void;
+  /** Called when close occurs. */
   onClose?: () => void;
+  /** Content rendered inside the component. */
   children: ReactNode;
+  /** Ref for the dialog element. */
   dialogRef?: Ref<HTMLDialogElement>;
+  /** Element that receives focus when the overlay opens. */
   initialFocus?: RefObject<HTMLElement | null>;
 }
 
@@ -87,6 +98,7 @@ function isClickOutsideDialogRect(
   );
 }
 
+/** Renders the dialog shell component. */
 export function DialogShell({
   open,
   onBackdropClick,
@@ -160,15 +172,16 @@ export function DialogShell({
     }
   }, [onAfterShowModal, onBeforeShowModal, open, present]);
 
+  const setShellRef = useCallback((node: HTMLElement | null) => {
+    shellRef.current = node;
+  }, []);
+  const dialogRef: Ref<HTMLDialogElement> = useComposedRefs(
+    setShellRef as Ref<HTMLElement>,
+    externalDialogRef,
+  );
+
   if (!present) return null;
 
-  const setShellRef = (node: HTMLElement | null) => {
-    shellRef.current = node;
-  };
-
-  const dialogRef: Ref<HTMLDialogElement> = externalDialogRef
-    ? composeRefs(setShellRef, externalDialogRef)
-    : setShellRef;
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: this onClick only detects backdrop (outside-rect) clicks to dismiss; keyboard dismissal is handled by the dialog's Escape behavior, so there is no keyboard equivalent for a backdrop click.
     <dialog

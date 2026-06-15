@@ -12,6 +12,7 @@ import { Typography } from "@diffgazer/ui/components/typography";
 import { type ComponentType, type LazyExoticComponent, Suspense } from "react";
 import { CopyButton } from "@/components/copy-button";
 import { InsetPreviewPane } from "@/components/preview-inset-pane";
+import { useTheme } from "@/hooks/theme-context";
 import type { PreviewFrame } from "@/lib/example-frames";
 
 interface DemoPreviewProps {
@@ -39,9 +40,15 @@ function DemoNode({ demo: Demo }: { demo: LazyExoticComponent<ComponentType> | n
   );
 }
 
-function DefaultPreviewPane({ demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
+function DefaultPreviewPane({
+  demo,
+  theme,
+}: {
+  demo: LazyExoticComponent<ComponentType> | null;
+  theme: string;
+}) {
   return (
-    <div data-demo-preview className="border border-border bg-secondary/10">
+    <div data-demo-preview data-theme={theme} className="border border-border bg-secondary/10">
       <div className="min-h-[200px] flex items-center justify-center px-8 py-12">
         <DemoNode demo={demo} />
       </div>
@@ -49,9 +56,15 @@ function DefaultPreviewPane({ demo }: { demo: LazyExoticComponent<ComponentType>
   );
 }
 
-function FillPreviewPane({ demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
+function FillPreviewPane({
+  demo,
+  theme,
+}: {
+  demo: LazyExoticComponent<ComponentType> | null;
+  theme: string;
+}) {
   return (
-    <div data-demo-preview className="border border-border bg-background">
+    <div data-demo-preview data-theme={theme} className="border border-border bg-background">
       <div className="w-full [&>*]:w-full">
         <DemoNode demo={demo} />
       </div>
@@ -66,15 +79,16 @@ function PreviewPane({
   demo: LazyExoticComponent<ComponentType> | null;
   frame: PreviewFrame;
 }) {
+  const { theme } = useTheme();
   if (frame === "inset") {
     return (
-      <div data-demo-preview>
+      <div data-demo-preview data-theme={theme}>
         <InsetPreviewPane demo={demo} />
       </div>
     );
   }
-  if (frame === "fill") return <FillPreviewPane demo={demo} />;
-  if (frame === "default") return <DefaultPreviewPane demo={demo} />;
+  if (frame === "fill") return <FillPreviewPane demo={demo} theme={theme} />;
+  if (frame === "default") return <DefaultPreviewPane demo={demo} theme={theme} />;
   frame satisfies never;
   return null;
 }

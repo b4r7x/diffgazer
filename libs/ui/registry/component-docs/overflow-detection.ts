@@ -21,7 +21,7 @@ export const overflowDetectionDoc: ComponentDoc = {
     },
   ],
   usage: {
-    code: `const { ref, isOverflowing } = useOverflow("horizontal");
+    code: `const { ref, isOverflowing } = useOverflowDetection("horizontal");
 
 return (
   <div ref={ref} className="truncate">

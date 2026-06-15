@@ -14,9 +14,7 @@
     "artifacts"
   ],
   "scripts": {
-    "build": "node scripts/copy-artifacts.mjs",
-    "test:types": "node -e \"console.log('artifact-only package: no TypeScript tests')\"",
-    "prepublishOnly": "test -f artifacts/artifact-manifest.json && test -f artifacts/fingerprint.sha256"
+    "build": "node scripts/copy-artifacts.mjs"
   },
   "devDependencies": {
     "@diffgazer/registry": "workspace:*",

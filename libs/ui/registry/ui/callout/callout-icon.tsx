@@ -1,6 +1,6 @@
 "use client";
 
-import type { HTMLAttributes, ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { type CalloutTone, useCalloutContext } from "./callout-context";
 
@@ -31,19 +31,22 @@ const DEFAULT_ICON: Record<CalloutTone, ReactNode> = {
   ),
 };
 
-export interface CalloutIconProps extends HTMLAttributes<HTMLSpanElement> {
+/** Props for callout icon. */
+export interface CalloutIconProps extends ComponentProps<"span"> {
+  /** Custom icon content. The icon is decorative and aria-hidden. */
   children?: ReactNode;
 }
 
-export function CalloutIcon({ children, className, style, ...props }: CalloutIconProps) {
+/** Tone icon - outlined 14px SVG (overridable via children) */
+export function CalloutIcon({ children, className, ...props }: CalloutIconProps) {
   const { tone } = useCalloutContext();
 
   return (
     <span
       aria-hidden="true"
-      style={{ gridArea: "icon", ...style }}
+      data-slot="callout-icon"
       className={cn(
-        "inline-flex items-center justify-center self-center w-4 h-4 text-[color:var(--cal-tone)] [&>svg]:w-[14px] [&>svg]:h-[14px]",
+        "inline-flex items-center justify-center self-center w-4 h-4 text-[color:var(--callout-tone,var(--foreground))] [&>svg]:w-[14px] [&>svg]:h-[14px]",
         className,
       )}
       {...props}

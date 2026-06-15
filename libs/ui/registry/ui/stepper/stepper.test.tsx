@@ -329,6 +329,36 @@ describe("Stepper", () => {
     expect(status).toHaveAttribute("aria-live", "polite");
     expect(status).toHaveTextContent("Step 2 of 3: Step 2");
   });
+
+  it("resolves the active step and its label through a consumer wrapper component", () => {
+    function WrappedStep({
+      stepId,
+      status,
+      label,
+    }: {
+      stepId: string;
+      status: "completed" | "active" | "pending";
+      label: string;
+    }) {
+      return (
+        <Stepper.Step stepId={stepId} status={status}>
+          <Stepper.Trigger>{label}</Stepper.Trigger>
+        </Stepper.Step>
+      );
+    }
+
+    render(
+      <Stepper>
+        <WrappedStep stepId="s1" status="completed" label="Step 1" />
+        <WrappedStep stepId="s2" status="active" label="Step 2" />
+        <WrappedStep stepId="s3" status="pending" label="Step 3" />
+      </Stepper>,
+    );
+
+    // The static child walk cannot see through WrappedStep; registration keeps the
+    // live-region position and label correct.
+    expect(screen.getByRole("status")).toHaveTextContent("Step 2 of 3: Step 2");
+  });
 });
 
 // ============================================================================
@@ -455,7 +485,6 @@ describe("Stepper prefers-reduced-motion", () => {
   it("suppresses the grid-row transition on the animated wrapper", () => {
     renderStepper({ defaultExpandedIds: ["s1"] });
     const region = screen.getByRole("region", { name: /Step 1/ });
-    expect(region.className).toMatch(/motion-reduce:transition-none/);
     expect(getComputedStyle(region).transitionProperty).toBe("none");
   });
 
@@ -473,8 +502,6 @@ describe("Stepper prefers-reduced-motion", () => {
 
     const substep = screen.getByText("Working").parentElement;
     if (!substep) throw new Error("Expected substep label to have a parent element");
-    expect(substep.className).toMatch(/motion-safe:animate-pulse/);
-    expect(substep.className).not.toMatch(/(?:^|\s)animate-pulse(?:\s|$)/);
     expect(getComputedStyle(substep).animation).toBe("none");
   });
 });

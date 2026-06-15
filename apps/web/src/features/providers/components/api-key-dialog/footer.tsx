@@ -1,3 +1,4 @@
+import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import {
   DialogAction,
   DialogClose,
@@ -22,7 +23,7 @@ interface ApiKeyFooterProps {
 }
 
 const HINTS: KeyboardHint[] = [
-  { key: "↑/↓", label: "Navigate" },
+  NAVIGATE_SHORTCUT,
   { key: "Enter/Space", label: "Select" },
   { key: "Esc", label: "Cancel" },
   { key: "Enter", label: "Confirm" },

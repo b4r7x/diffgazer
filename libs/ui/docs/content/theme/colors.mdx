@@ -1,8 +1,37 @@
 ---
 title: Colors
-description: The @diffgazer/ui color palette with CSS variable names.
+description: The `@diffgazer/ui` color palette with CSS variable names.
 ---
 
-The @diffgazer/ui color palette. Click any swatch to copy the CSS variable name.
+The `@diffgazer/ui` color palette. Click any swatch to copy the CSS variable name.
 
 <ColorGrid />
+
+## Tone families
+
+Each status role (`success`, `warning`, `error`, `info`, `neutral`) ships a small family of derived tokens so components never hand-roll tints:
+
+| Token | Role |
+|-------|------|
+| `--<tone>` | The solid tone fill (e.g. a filled Badge or Button). |
+| `--<tone>-foreground` | **On-solid** text — the readable color placed _on top of_ the solid `--<tone>` fill. |
+| `--<tone>-text` | **On-surface** text — the tone's own readable color placed _on the page background_ (e.g. a Callout title, Badge label). |
+| `--<tone>-border` | Perimeter color for inline/rail tone frames. |
+| `--<tone>-subtle` | Subtle tinted background for surfaces (see derivation below). |
+| `--<tone>-strong` / `--<tone>-strong-foreground` | The strongest tone fill and its on-solid text. |
+
+### On-solid (`-foreground`) vs on-surface (`-text`)
+
+`--<tone>-foreground` and `--<tone>-text` are deliberately different: `-foreground` is text drawn **on a solid tone fill** (it contrasts against `--<tone>`), while `-text` is the tone color used **as text on the page surface** (it contrasts against `--background`). Use `text-success-foreground` inside a filled success surface; use `text-success-text` for a success label on the page. The red role has a single family: `error` (the Button `destructive` variant and command-palette `destructive` tone read the `error` tokens).
+
+### Subtle derivation
+
+The `--<tone>-subtle` backgrounds are derived from their primitive with `color-mix`, so overriding a single primitive re-tints every subtle surface:
+
+```css
+--success-subtle: color-mix(in oklab, var(--base-success) 10%, transparent);
+/* warning 5% (dark) / 8% (light); error 10%; info 10%;
+   neutral anchors to --base-border (10% dark / 8% light). */
+```
+
+This is why "override the primitives to reskin every component at once" holds for Badge and Callout tints, not just the solid fills.

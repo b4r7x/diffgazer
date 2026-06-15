@@ -1,13 +1,15 @@
 "use client";
 
-import "../shared/callout.css";
-
 import { type CalloutFrame, type CalloutProps, Callout as CalloutRoot } from "./callout";
 import { CalloutContent, type CalloutContentProps } from "./callout-content";
 import { CalloutDismiss, type CalloutDismissProps } from "./callout-dismiss";
 import { CalloutIcon, type CalloutIconProps } from "./callout-icon";
 import { CalloutTitle, type CalloutTitleProps } from "./callout-title";
 
+/**
+ * Dismissible alert box with tone-driven coloring, frame variants (inline / rail / bar), and a
+ * compound API.
+ */
 const Callout = Object.assign(CalloutRoot, {
   Icon: CalloutIcon,
   Title: CalloutTitle,

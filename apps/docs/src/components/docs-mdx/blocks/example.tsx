@@ -1,6 +1,6 @@
 import { DemoPreview } from "@/components/demo-preview";
+import { useDemos } from "@/hooks/use-demos";
 import { resolvePreviewFrame } from "@/lib/example-frames";
-import { useDemos } from "@/lib/use-demos";
 import { useDocData } from "../doc-data-context";
 import { useCurrentLibrary } from "./use-current-library";
 

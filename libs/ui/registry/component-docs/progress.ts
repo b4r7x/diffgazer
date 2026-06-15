@@ -29,6 +29,14 @@ export const progressDoc: ComponentDoc = {
   ],
   usage: { example: "progress-default" },
   examples: [{ name: "progress-default", title: "Default" }],
+  dataAttributes: [
+    {
+      attribute: "data-state",
+      appliesTo: "Progress",
+      values: '"loaded" | "indeterminate"',
+      description: "Determinate/indeterminate state for track and indicator styling.",
+    },
+  ],
   props: {
     Progress: {
       value: {

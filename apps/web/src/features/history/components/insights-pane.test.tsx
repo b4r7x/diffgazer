@@ -1,8 +1,8 @@
 import type { SeverityCounts } from "@diffgazer/core/schemas/presentation";
+import { makeIssue } from "@diffgazer/core/testing/factories";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { makeIssue } from "@/testing/factories";
 import { HistoryInsightsPane } from "./insights-pane";
 
 describe("HistoryInsightsPane", () => {

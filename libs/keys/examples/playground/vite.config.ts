@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@diffgazer/keys": path.resolve(__dirname, "../../src/index.ts"),
+      "@diffgazer/keys": path.resolve(import.meta.dirname, "../../src/index.ts"),
     },
   },
 });

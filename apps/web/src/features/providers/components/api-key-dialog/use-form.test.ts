@@ -99,19 +99,6 @@ describe("useApiKeyForm", () => {
     expect(result.current.isSubmitting).toBe(false);
   });
 
-  it("removes the API key and closes the dialog on handleRemove", async () => {
-    const onRemoveKey = vi.fn().mockResolvedValue(undefined);
-    const onOpenChange = vi.fn();
-    const { result } = renderHook(() => useApiKeyForm(defaultProps({ onRemoveKey, onOpenChange })));
-
-    await act(async () => {
-      await result.current.handleRemove();
-    });
-
-    expect(onRemoveKey).toHaveBeenCalledOnce();
-    expect(onOpenChange).toHaveBeenCalledWith(false);
-  });
-
   it("exposes the failure message when handleSubmit rejects", async () => {
     const onSubmit = vi.fn().mockRejectedValue(new Error("Network error"));
     const { result } = renderHook(() => useApiKeyForm(defaultProps({ onSubmit })));

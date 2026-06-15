@@ -2,13 +2,19 @@ import { collectEditPairs } from "./pairs";
 import type { ChangeType, DiffHunk } from "./parse";
 import { computeWordSegments, createWordDiffBudget, type WordSegment } from "./word";
 
+/** Cell used by side-by-side diff rows. */
 export interface SplitCell {
+  /** Line state for the cell. */
   type: ChangeType | "empty";
+  /** Cell text content. */
   content: string;
+  /** Display line number, or null for empty paired cells. */
   lineNumber: number | null;
+  /** Optional intra-line word-diff segments. */
   wordSegments?: WordSegment[];
 }
 
+/** Side-by-side diff row, either a change row or a hunk separator row. */
 export type SplitRow =
   | { kind: "change"; left: SplitCell; right: SplitCell }
   | {
@@ -20,6 +26,7 @@ export type SplitRow =
       heading: string;
     };
 
+/** Converts parsed hunks to side-by-side rows, optionally adding word-level segments. */
 export function toSplitRows(hunks: DiffHunk[], wordDiff: boolean): SplitRow[] {
   const rows: SplitRow[] = [];
   const wordDiffBudget = createWordDiffBudget();

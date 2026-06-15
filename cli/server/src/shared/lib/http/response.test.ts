@@ -38,9 +38,30 @@ describe("errorResponse", () => {
 
   it("emits each declared error status, including 413 payload-too-large", async () => {
     for (const status of [400, 401, 403, 404, 409, 413, 422, 429, 500, 503] as const) {
-      const { response } = await requestError((ctx) => errorResponse(ctx, "err", "CODE", status));
+      const { response } = await requestError((ctx) =>
+        errorResponse(ctx, "err", ErrorCode.INTERNAL_ERROR, status),
+      );
       expect(response.status).toBe(status);
     }
+  });
+
+  it("carries the four formerly-escaped codes as part of the wire vocabulary", async () => {
+    const codes = [
+      ErrorCode.PROJECT_ERROR,
+      ErrorCode.PAYLOAD_TOO_LARGE,
+      ErrorCode.PROVIDER_NOT_FOUND,
+      ErrorCode.INVALID_RESPONSE,
+    ];
+    for (const code of codes) {
+      const { body } = await requestError((ctx) => errorResponse(ctx, "err", code, 400));
+      expect(body.error.code).toBe(code);
+    }
+  });
+
+  it("rejects an out-of-vocabulary code at compile time", () => {
+    const ctx = { json: () => new Response() } as unknown as Parameters<typeof errorResponse>[0];
+    // @ts-expect-error -- "NOT_A_CODE" is not a member of the WireErrorCode union
+    errorResponse(ctx, "err", "NOT_A_CODE", 500);
   });
 });
 

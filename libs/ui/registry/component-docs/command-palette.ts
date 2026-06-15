@@ -32,7 +32,7 @@ export const commandPaletteDoc: ComponentDoc = {
     {
       title: "Variants & Density",
       content:
-        'CommandPaletteContent exposes two orthogonal axes. `frame` picks the shell chrome — "border" (1px hairline, default), "viewfinder" (no border, four corner brackets + 2px left accent bar on selection), "terminal" (top + bottom 2px rules, inverted selection, prefix glyph becomes $), "card" (rounded 8px shell with a subtle gradient surface and floating rounded selection — Linear-ish), or "none" (bare shell for embedding). `density` picks the typographic & spacing surface — "compact" (default), "comfortable", or "dense". Both are plain TypeScript types (CommandPaletteFrame, CommandPaletteDensity) whose visual styling is driven by [data-frame] / [data-density] selectors in shared/command-palette.css, so consumers can override token values per-instance via CSS custom properties.',
+        'CommandPaletteContent exposes two orthogonal axes. `frame` picks the shell chrome — "border" (1px hairline, default), "viewfinder" (no border, four corner brackets + 2px left accent bar on selection), "terminal" (top + bottom 2px rules, inverted selection, prefix glyph becomes $), "card" (rounded 8px shell with a subtle gradient surface and floating rounded selection — Linear-ish), or "none" (bare shell for embedding). `density` picks the typographic & spacing surface — "compact" (default), "comfortable", or "dense". Both are plain TypeScript types (CommandPaletteFrame, CommandPaletteDensity) whose visual styling is driven by [data-frame] / [data-density] selectors in command-palette/command-palette.css, so consumers can override token values per-instance via CSS custom properties.',
     },
     {
       title: "Optional auto-coloring",
@@ -79,8 +79,46 @@ export const commandPaletteDoc: ComponentDoc = {
   keyboard: {
     description:
       "Arrow keys navigate items (with wrapping), Enter activates the highlighted item. Escape clears search first, then closes the palette. Hovering (mousemove) over an item also moves the highlight, so mouse and keyboard share a single selection model. Navigation is handled internally via @diffgazer/keys's useNavigation hook.",
+    keys: [
+      { keys: "ArrowUp / ArrowDown", action: "Moves highlight through enabled visible items." },
+      { keys: "Home / End", action: "Moves highlight to the first or last enabled visible item." },
+      { keys: "Enter", action: "Activates the highlighted item." },
+      { keys: "Escape", action: "Clears the search query first, then closes the palette." },
+    ],
     examples: [{ name: "command-palette-demo", title: "Keyboard navigation" }],
   },
+  dataAttributes: [
+    {
+      attribute: "data-state",
+      appliesTo: "CommandPaletteContent",
+      values: '"open" | "closed"',
+      description: "Native dialog open state mirrored by the shared shell.",
+    },
+    {
+      attribute: "data-frame",
+      appliesTo: "CommandPaletteContent",
+      values: '"border" | "viewfinder" | "terminal" | "card" | "none"',
+      description: "Shell chrome variant.",
+    },
+    {
+      attribute: "data-density",
+      appliesTo: "CommandPaletteContent",
+      values: '"compact" | "comfortable" | "dense"',
+      description: "Typographic and spacing density.",
+    },
+    {
+      attribute: "data-value",
+      appliesTo: "CommandPaletteItem",
+      values: "item id",
+      description: "Stable id used for filtering, highlight, and activation.",
+    },
+    {
+      attribute: "data-tone",
+      appliesTo: "CommandPaletteItem",
+      values: '"neutral" | "nav" | "action" | "settings" | "destructive" | "ai"',
+      description: "Semantic tone for the optional accent bar and icon tint.",
+    },
+  ],
   props: {
     CommandPalette: {
       open: {
@@ -161,7 +199,7 @@ export const commandPaletteDoc: ComponentDoc = {
         required: false,
         defaultValue: '"compact"',
         description:
-          'Typographic and spacing surface. Switches a token block (--cp-row-h, --cp-input-py, --cp-list-p, --cp-text-size, etc.) consumed by every inner slot via [data-density] selectors in shared/command-palette.css. "compact" matches the V1 refined-mono target, "comfortable" is Linear-ish breathing room, "dense" is VSCode-tight.',
+          'Typographic and spacing surface. Switches a token block (--command-palette-row-h, --command-palette-input-py, --command-palette-list-p, --command-palette-text-size, etc.) consumed by every inner slot via [data-density] selectors in command-palette/command-palette.css. "compact" matches the V1 refined-mono target, "comfortable" is Linear-ish breathing room, "dense" is VSCode-tight.',
       },
       label: {
         type: "string",
@@ -235,7 +273,7 @@ export const commandPaletteDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description:
-          'Optional leading content. When omitted, a CSS-driven glyph from --cp-prefix-content is rendered (default ">"; terminal frame swaps to "$").',
+          'Optional leading content. When omitted, a CSS-driven glyph from --command-palette-prefix-content is rendered (default ">"; terminal frame swaps to "$").',
       },
       suffix: {
         type: "ReactNode",

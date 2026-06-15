@@ -3,7 +3,7 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import {
   Children,
-  type HTMLAttributes,
+  type ComponentProps,
   isValidElement,
   type ReactNode,
   type RefObject,
@@ -22,8 +22,14 @@ import { useDialogContext } from "./dialog-context";
 import { DialogDescription } from "./dialog-description";
 import { DialogTitle } from "./dialog-title";
 
+/**
+ * Modal dialog with compound component architecture. Built on the native dialog element with
+ * two orthogonal visual axes: frame (border or none) and corners (none, subtle, standard, bold,
+ * or outset), and an optional header marker bar spanning the title and description.
+ */
 export type DialogCorners = "none" | "subtle" | "standard" | "bold" | "outset";
 
+/** Class variants for dialog content. */
 export const dialogContentVariants = cva(
   "relative w-full max-h-[90vh] flex flex-col bg-background text-foreground shadow-2xl m-auto",
   {
@@ -48,16 +54,34 @@ export const dialogContentVariants = cva(
 
 const FALLBACK_DIALOG_LABEL = "Dialog";
 
+/** Props for dialog content. */
 export interface DialogContentProps
   extends VariantProps<typeof dialogContentVariants>,
-    Omit<HTMLAttributes<HTMLDialogElement>, "children" | "className"> {
+    Omit<ComponentProps<"dialog">, "children" | "className"> {
+  /** Content rendered inside the component. */
   children: ReactNode;
+  /** Additional class names merged onto the rendered element. */
   className?: string;
+  /**
+   * Corner accent marks drawn at the dialog corners. "none" skips them. "subtle" uses border
+   * color and tighter 12px arms. "standard" uses foreground color 18px arms. "bold" uses
+   * foreground color 28px arms. "outset" is standard shifted 3px outside the dialog edge.
+   * Combine with frame="none" for a pure viewfinder look or frame="border" for a
+   * bracketed-frame look.
+   */
   corners?: DialogCorners | null;
+  /**
+   * Set role="alertdialog" for destructive confirmations. Per WAI-ARIA APG, alert dialogs
+   * should not close on outside interaction.
+   */
   role?: "dialog" | "alertdialog";
+  /** When false, clicking the backdrop does not close the dialog (recommended for alertdialog). */
   closeOnBackdropClick?: boolean;
+  /** Element that receives focus when the overlay opens. */
   initialFocus?: RefObject<HTMLElement | null>;
+  /** Native cancel handler. Defaults to closing the dialog. */
   onCancel?: (e: SyntheticEvent<HTMLDialogElement>) => void;
+  /** Intercept Escape. Call e.preventDefault() to keep the dialog open during async operations. */
   onEscapeKeyDown?: (e: SyntheticEvent<HTMLDialogElement>) => void;
 }
 
@@ -127,16 +151,31 @@ export function DialogContent({
   "aria-describedby": ariaDescribedBy,
   ...rest
 }: DialogContentProps) {
-  const { open, onOpenChange, contentId, titleId, descriptionId, triggerRef } = useDialogContext();
+  const {
+    open,
+    onOpenChange,
+    contentId,
+    titleId,
+    descriptionId,
+    triggerRef,
+    hasRegisteredTitle,
+    hasRegisteredDescription,
+  } = useDialogContext();
   const close = () => onOpenChange(false);
   const shellRef = useRef<HTMLDialogElement>(null);
   const [container, setContainer] = useState<Element | null>(null);
-  const focusRestore = useFocusRestore({
-    fallback: triggerRef.current,
-    restoreOnUnmount: false,
-  });
-  const hasRenderableTitle = containsDialogTitleElement(children);
-  const hasRenderableDescription = containsDialogDescriptionElement(children);
+  const focusRestore = useFocusRestore({ restoreOnUnmount: false });
+  // Restore focus to the captured opener; fall back to the trigger ref read at
+  // restore time (not during render) so a programmatically-opened dialog still
+  // returns focus somewhere sensible.
+  const handleClose = useCallback(() => {
+    if (!focusRestore.restore()) triggerRef.current?.focus();
+  }, [focusRestore, triggerRef]);
+  // Registration covers parts rendered through consumer wrapper components; the
+  // static child scan seeds the first render before the registration effects run.
+  const hasRenderableTitle = hasRegisteredTitle || containsDialogTitleElement(children);
+  const hasRenderableDescription =
+    hasRegisteredDescription || containsDialogDescriptionElement(children);
   const resolvedFrame = frame ?? "border";
   const resolvedCorners = corners ?? "none";
   const accessibleName = resolveAccessibleName({
@@ -149,12 +188,20 @@ export function DialogContent({
   const isFallbackName = accessibleName["aria-label"] === FALLBACK_DIALOG_LABEL;
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== "production" && isFallbackName) {
-      console.warn(
-        "Dialog: No accessible name provided. Add a <Dialog.Title>, aria-label, or aria-labelledby prop.",
-      );
-    }
-  }, [isFallbackName]);
+    if (process.env.NODE_ENV === "production" || !isFallbackName) return;
+    // Defer to the next frame so a Title registered by a wrapper component (its
+    // registration runs in a layout effect, after this render's fallback was
+    // computed) clears the fallback before we warn — avoiding a false warning.
+    const view = shellRef.current?.ownerDocument.defaultView ?? globalThis;
+    const frame = view.requestAnimationFrame(() => {
+      if (accessibleName["aria-label"] === FALLBACK_DIALOG_LABEL) {
+        console.warn(
+          "Dialog: No accessible name provided. Add a <Dialog.Title>, aria-label, or aria-labelledby prop.",
+        );
+      }
+    });
+    return () => view.cancelAnimationFrame(frame);
+  }, [isFallbackName, accessibleName]);
 
   const resolvedDescribedBy = mergeIds(
     ariaDescribedBy,
@@ -181,7 +228,7 @@ export function DialogContent({
         if (!e.defaultPrevented) close();
       }}
       onBeforeShowModal={focusRestore.capture}
-      onClose={focusRestore.restore}
+      onClose={handleClose}
       onAnimationEnd={onAnimationEnd}
       className={cn(dialogContentVariants({ size, frame }), className)}
       data-slot="dialog-content"

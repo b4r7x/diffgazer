@@ -4,11 +4,11 @@ Composable, scoped keyboard navigation hooks for React `>=19.2.0`.
 
 ## Consumption Paths Summary
 
-All npm package names are external publish-gated as of May 2026. Public npm commands are valid only after `npm view @diffgazer/keys version` succeeds. Local tarballs are the package-mode validation path before publication. `@diffgazer/keys` requires no CSS or Tailwind setup.
+`@diffgazer/keys` is publish-gated until `npm view @diffgazer/keys version` succeeds. Local tarballs are the package-mode validation path before publication. `@diffgazer/keys` requires no CSS or Tailwind setup. See [Hosted Registry Status](https://github.com/b4r7x/diffgazer/blob/main/PACKAGE_GOVERNANCE.md#hosted-registry-status).
 
 | Path | Standalone hooks | Provider-backed APIs |
 |------|-----------------|---------------------|
-| Manual copy / shadcn (future) | `npx shadcn add https://r.b4r7.dev/r/keys/navigation.json` (hosted registry not yet live — see [Hosted Registry Status](../../PACKAGE_GOVERNANCE.md#hosted-registry-status)) | Not available |
+| Manual copy / shadcn (future) | `npx shadcn add https://r.b4r7.dev/r/keys/navigation.json` (hosted registry not yet live; see [Hosted Registry Status](https://github.com/b4r7x/diffgazer/blob/main/PACKAGE_GOVERNANCE.md#hosted-registry-status)) | Not available |
 | `dgadd` CLI | `pnpm exec dgadd add keys/navigation` | Not available |
 | npm package | `npm install @diffgazer/keys` | `npm install @diffgazer/keys` |
 
@@ -16,7 +16,7 @@ Provider-backed APIs (`KeyboardProvider`, `useKey`, `useScope`, `useScopedNaviga
 
 ## Install
 
-`@diffgazer/keys` is external publish-gated as of May 6, 2026. Use the public npm command only after `npm view @diffgazer/keys version` succeeds. Before publication, validate with a locally packed workspace tarball.
+Use the public npm command only after `npm view @diffgazer/keys version` succeeds. Before publication, validate with a locally packed workspace tarball.
 
 ```bash
 npm install @diffgazer/keys
@@ -81,7 +81,8 @@ Package-only hooks require `KeyboardProvider` and are not available through copy
 
 ## Exports
 
-- `@diffgazer/keys` → default entry point (`dist/index.*`). Root-only, no subpath exports.
+- `@diffgazer/keys` -> default entry point (`dist/index.*`).
+- `@diffgazer/keys/testing/navigation-behavior` -> shared keyboard-navigation test helper.
 
 ## Repository metadata
 

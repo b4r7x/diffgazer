@@ -32,7 +32,7 @@ export const selectDoc: ComponentDoc = {
     {
       name: "SelectSearch",
       indent: 2,
-      note: "Filter input. Use position='top' to place at the top of the list (flips border direction)",
+      note: "Filter input. position='bottom' (default) renders it below the option list; position='top' renders it above.",
     },
     {
       name: "SelectItem",
@@ -79,7 +79,7 @@ export const selectDoc: ComponentDoc = {
     {
       title: "Search Position",
       content:
-        "SelectSearch can go anywhere inside SelectContent. Use position='top' to place it at the top (border-b instead of border-t). Use position='bottom' (default) for the classic search-at-bottom pattern.",
+        "SelectSearch can go anywhere inside SelectContent — its position prop, not its JSX order, decides where it renders. position='bottom' (default) renders the search row below the option list with a top border; position='top' renders it above the list with a bottom border.",
     },
     {
       title: "Searchable APG semantics",
@@ -94,12 +94,12 @@ export const selectDoc: ComponentDoc = {
     {
       title: "Keyboard Navigation",
       content:
-        "SelectContent includes built-in keyboard navigation via useNavigation: ArrowUp/Down to move, Enter/Space to select, Home/End to jump, Escape to close. Highlight state is exposed via highlighted/onHighlightChange props on Select for external integration.",
+        "SelectContent includes built-in keyboard navigation via useNavigation: ArrowUp/Down to move, Enter/Space to select, Home/End to jump, Tab commits the highlighted single-select option and closes, and Escape closes. Highlight state is exposed via highlighted/onHighlightChange props on Select for external integration.",
     },
     {
       title: "Custom Trigger Content",
       content:
-        "For advanced customization, pass a render function as children to SelectValue: <SelectValue>{({ selected, labels }) => ...}</SelectValue>. Use the public Select parts for custom trigger and value layouts.",
+        "For advanced customization, pass a render function as children to SelectValue: <SelectValue>{({ selected, labels }) => selected.map((value) => labels.get(value) ?? value).join(', ')}</SelectValue>. Use the public Select parts for custom trigger and value layouts.",
     },
   ],
   usage: { example: "select-default" },
@@ -117,12 +117,80 @@ export const selectDoc: ComponentDoc = {
   ],
   keyboard: {
     description:
-      "SelectContent handles keyboard navigation automatically: ArrowUp/Down moves highlight, Enter/Space selects, Home/End jumps to first/last, Escape closes and returns focus to trigger.",
+      "SelectTrigger follows the closed combobox key map. SelectContent handles listbox navigation and restores focus to the trigger on Escape and Tab.",
+    keys: [
+      {
+        keys: "Enter / Space",
+        action:
+          "On the trigger, toggles the listbox. In the listbox, selects the highlighted option.",
+      },
+      {
+        keys: "ArrowDown / ArrowUp",
+        action: "Opens the listbox from the trigger, then moves highlight through enabled options.",
+      },
+      {
+        keys: "Home / End",
+        action:
+          "On a closed non-searchable trigger, opens and highlights the first or last enabled option. In the listbox, jumps to the first or last enabled option.",
+      },
+      {
+        keys: "Printable character",
+        action:
+          "On a closed non-searchable trigger, opens and typeaheads to the matching option. In an open non-searchable listbox, typeahead updates the highlight.",
+      },
+      {
+        keys: "Tab",
+        action:
+          "Closes the open listbox and synchronously restores focus to the trigger; single-select commits the highlighted option first.",
+      },
+      { keys: "Escape", action: "Closes the open listbox and returns focus to the trigger." },
+      {
+        keys: "Search input ArrowDown / ArrowUp",
+        action:
+          "Moves the active descendant through filtered enabled options when SelectSearch is focused.",
+      },
+      {
+        keys: "Search input Enter",
+        action: "Selects the active filtered option when one is visible.",
+      },
+    ],
     examples: [
       { name: "select-default", title: "Default with keyboard navigation" },
       { name: "select-searchable", title: "Searchable with keyboard navigation" },
     ],
   },
+  dataAttributes: [
+    {
+      attribute: "data-state",
+      appliesTo: "SelectTrigger and SelectContent/FloatingPanel listbox",
+      values: '"open" | "closed"',
+      description: "Reflects the listbox open state for trigger and floating panel styling.",
+    },
+    {
+      attribute: "data-disabled",
+      appliesTo: "SelectTrigger",
+      values: "present when disabled",
+      description: "Marks a disabled trigger for styling hooks.",
+    },
+    {
+      attribute: "data-highlighted",
+      appliesTo: "SelectItem",
+      values: "present when highlighted",
+      description: "Marks the option referenced by aria-activedescendant.",
+    },
+    {
+      attribute: "data-value",
+      appliesTo: "SelectItem",
+      values: "item value",
+      description: "Exposes the option value used by selection and typeahead.",
+    },
+    {
+      attribute: "data-label",
+      appliesTo: "SelectItem",
+      values: "resolved label text",
+      description: "Exposes the option label used by SelectValue and search/typeahead.",
+    },
+  ],
   props: {
     Select: {
       value: {
@@ -225,6 +293,20 @@ export const selectDoc: ComponentDoc = {
         defaultValue: "Chevron",
         description: "Custom trigger handle. Pass null to hide the default chevron.",
       },
+      "aria-label": {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description:
+          "Accessible name for the trigger. When present, it takes precedence over aria-labelledby.",
+      },
+      "aria-labelledby": {
+        type: "string",
+        required: false,
+        defaultValue: "Field label id when composed with Field",
+        description:
+          "ID reference for the trigger label. Field.Control supplies this automatically when SelectTrigger is wrapped in Field.",
+      },
     },
     SelectValue: {
       placeholder: {
@@ -247,10 +329,11 @@ export const selectDoc: ComponentDoc = {
         description: 'Number of items shown before "+N more" when display="truncate".',
       },
       children: {
-        type: "(state: { selected: string[]; labels: string[] }) => ReactNode",
+        type: "(state: { selected: string[]; labels: ReadonlyMap<string, string> }) => ReactNode",
         required: false,
         defaultValue: null,
-        description: "Render function for fully custom selection display.",
+        description:
+          "Render function for fully custom selection display. Example: selected.map((value) => labels.get(value) ?? value).join(', ').",
       },
     },
     SelectTags: {
@@ -267,7 +350,7 @@ export const selectDoc: ComponentDoc = {
         required: false,
         defaultValue: '"bottom"',
         description:
-          'Where the search input sits in SelectContent. "top" flips the border direction.',
+          'Where the search row renders relative to the option list. "bottom" (default) renders it below the list with a top border; "top" renders it above with a bottom border.',
       },
     },
     SelectItem: {

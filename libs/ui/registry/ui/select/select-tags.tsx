@@ -8,18 +8,22 @@ import { toSelectedArray } from "./selection";
 const selectTagsPlaceholderVariants = cva("", {
   variants: {
     variant: {
-      default: "text-foreground/50",
-      card: "text-accent-foreground/50",
+      default: "text-foreground/55",
+      card: "text-accent-foreground/55",
     },
   },
   defaultVariants: { variant: "default" },
 });
 
+/** Props for select tags. */
 export interface SelectTagsProps {
+  /** Rendered when nothing is selected. Only available in multi-select mode. */
   placeholder?: string;
+  /** Additional class names merged onto the rendered element. */
   className?: string;
 }
 
+/** Displays selected items as outlined chips (multiple select) */
 export function SelectTags({ placeholder = "Select...", className }: SelectTagsProps) {
   const { value, multiple, options, variant } = useSelectContext("SelectTags");
 

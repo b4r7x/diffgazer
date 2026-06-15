@@ -2,10 +2,10 @@
 
 import "@testing-library/jest-dom/vitest";
 import { toast } from "@diffgazer/ui/components/toast";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MobileNavProvider, useMobileNav } from "@/lib/mobile-nav-context";
+import { MobileNavProvider, useMobileNav } from "@/hooks/mobile-nav-context";
 import { stubMatchMedia } from "@/testing/match-media";
 import { SidebarChrome } from "./sidebar-chrome";
 
@@ -15,16 +15,27 @@ const routerBoundary = vi.hoisted(() => ({
   resolveSwitchPath: vi.fn(),
 }));
 
+// Boundary mock: @tanstack/react-router is the external route context boundary.
 vi.mock("@tanstack/react-router", async () => {
   const { RouterLinkMock } = await import("@/testing/router-mock");
   return {
     Link: RouterLinkMock,
     useLocation: ({ select }: { select: (location: { pathname: string }) => unknown }) =>
       select({ pathname: routerBoundary.pathname }),
+    useRouterState: ({
+      select,
+    }: {
+      select: (state: { location: { pathname: string }; status: "idle" }) => unknown;
+    }) =>
+      select({
+        location: { pathname: routerBoundary.pathname },
+        status: "idle",
+      }),
     useNavigate: () => routerBoundary.navigate,
   };
 });
 
+// Boundary mock: @tanstack/react-start server functions are unavailable in jsdom.
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => ({
     inputValidator: () => ({
@@ -33,24 +44,15 @@ vi.mock("@tanstack/react-start", () => ({
   }),
 }));
 
-vi.mock("@/lib/use-pending-docs-route", () => ({
-  usePendingDocsRoute: () => null,
-}));
-
+// Boundary mock: @diffgazer/ui toast is an external notification side-effect.
 vi.mock("@diffgazer/ui/components/toast", () => ({
   toast: { error: vi.fn(), success: vi.fn() },
 }));
 
+// Boundary mock: generated build artifact (jsdom has no @/generated data)
 vi.mock("@/generated/sections-with-index", () => ({
   SECTIONS_WITH_INDEX: new Set(["ui/components"]),
 }));
-
-class TestResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-vi.stubGlobal("ResizeObserver", TestResizeObserver);
 
 function DrawerProbe() {
   const { open, setOpen } = useMobileNav();
@@ -59,7 +61,7 @@ function DrawerProbe() {
       <button type="button" onClick={() => setOpen(true)}>
         Open drawer
       </button>
-      <span data-testid="drawer-state">{open ? "open" : "closed"}</span>
+      <output aria-label="Drawer state">{open ? "open" : "closed"}</output>
     </>
   );
 }
@@ -142,10 +144,10 @@ describe("SidebarChrome breadcrumbs", () => {
     renderSidebarChrome();
 
     await user.click(screen.getByRole("button", { name: "Open drawer" }));
-    expect(screen.getByTestId("drawer-state")).toHaveTextContent("open");
+    expect(screen.getByRole("status", { name: "Drawer state" })).toHaveTextContent("open");
 
     await user.click(screen.getByRole("link", { name: "components" }));
-    expect(screen.getByTestId("drawer-state")).toHaveTextContent("closed");
+    expect(screen.getByRole("status", { name: "Drawer state" })).toHaveTextContent("closed");
   });
 
   it("keeps the drawer open on modifier-clicks", async () => {
@@ -155,8 +157,11 @@ describe("SidebarChrome breadcrumbs", () => {
     renderSidebarChrome();
 
     await user.click(screen.getByRole("button", { name: "Open drawer" }));
-    fireEvent.click(screen.getByRole("link", { name: "components" }), { ctrlKey: true });
+    const link = screen.getByRole("link", { name: "components" });
+    await user.keyboard("{Control>}");
+    await user.click(link);
+    await user.keyboard("{/Control}");
 
-    expect(screen.getByTestId("drawer-state")).toHaveTextContent("open");
+    expect(screen.getByRole("status", { name: "Drawer state" })).toHaveTextContent("open");
   });
 });

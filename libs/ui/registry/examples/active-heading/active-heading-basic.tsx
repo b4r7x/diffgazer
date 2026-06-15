@@ -22,8 +22,8 @@ export default function ActiveHeadingBasic() {
             type="button"
             className={`px-3 py-1 text-left text-sm transition-colors ${
               activeId === section.id
-                ? "border-l-2 border-green-500 text-neutral-100"
-                : "border-l-2 border-transparent text-neutral-500 hover:text-neutral-300"
+                ? "border-l-2 border-success-border text-foreground"
+                : "border-l-2 border-transparent text-muted-foreground hover:text-foreground"
             }`}
             onClick={() => scrollTo(section.id)}
           >
@@ -35,10 +35,10 @@ export default function ActiveHeadingBasic() {
       <div className="flex flex-col gap-16">
         {sections.map((section) => (
           <section key={section.id}>
-            <h2 id={section.id} className="mb-4 text-lg font-medium text-neutral-100">
+            <h2 id={section.id} className="mb-4 text-lg font-medium text-foreground">
               {section.title}
             </h2>
-            <p className="text-sm text-neutral-400">
+            <p className="text-sm text-muted-foreground">
               Content for the {section.title.toLowerCase()} section. Scroll to see the active
               heading update in the sidebar navigation.
             </p>

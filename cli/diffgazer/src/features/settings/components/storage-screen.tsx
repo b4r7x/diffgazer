@@ -1,6 +1,8 @@
 import { guardQueryState, useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import { usePageFooter } from "@diffgazer/core/footer";
 import type { SecretsStorage } from "@diffgazer/core/schemas/config";
+import { BACK_SHORTCUT, NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
@@ -12,15 +14,13 @@ import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useNavigation } from "../../../hooks/use-navigation";
-import { useScope } from "../../../hooks/use-scope";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
-import { deriveStorageSaveState } from "../derive-storage-save-state.js";
 import { useSettingsZone } from "../hooks/use-settings-zone.js";
+import { deriveStorageSaveState } from "../lib/derive-storage-save-state.js";
 
 export function StorageScreen(): ReactElement {
   const { columns } = useTerminalDimensions();
   const { goBack } = useNavigation();
-  useScope("settings-storage");
   useBackHandler();
 
   const settingsQuery = useSettings();
@@ -45,10 +45,10 @@ export function StorageScreen(): ReactElement {
   usePageFooter({
     shortcuts: [
       { key: "Tab", label: "Switch Zone" },
-      { key: "↑/↓", label: "Navigate" },
+      NAVIGATE_SHORTCUT,
       { key: "Enter", label: "Select" },
     ],
-    rightShortcuts: [{ key: "Esc", label: "Back" }],
+    rightShortcuts: [BACK_SHORTCUT],
   });
 
   function handleSave() {
@@ -61,7 +61,7 @@ export function StorageScreen(): ReactElement {
           goBack();
         },
         onError: (err) => {
-          setSaveError(err instanceof Error ? err.message : "Failed to save settings");
+          setSaveError(getErrorMessage(err, "Failed to save settings"));
         },
       },
     );

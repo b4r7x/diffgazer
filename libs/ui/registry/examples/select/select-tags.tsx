@@ -14,7 +14,7 @@ export default function SelectTagsExample() {
 
   return (
     <Select multiple width="lg" value={value} onChange={setValue}>
-      <SelectTrigger>
+      <SelectTrigger aria-label="Languages">
         <SelectTags placeholder="Select languages..." />
       </SelectTrigger>
       <SelectContent>

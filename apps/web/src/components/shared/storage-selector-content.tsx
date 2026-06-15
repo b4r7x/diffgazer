@@ -45,7 +45,7 @@ export function StorageSelectorContent({
 
   return (
     <div className="space-y-3">
-      <div id={labelId} className="text-sm font-mono text-tui-fg/60">
+      <div id={labelId} className="text-sm font-mono text-foreground/60">
         Select Storage Method:
       </div>
       <RadioGroup

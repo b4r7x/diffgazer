@@ -53,15 +53,26 @@ function MenuItemIconSlot({
   );
 }
 
+/** Props for default item layout. */
 interface DefaultItemLayoutProps {
+  /** Whether default item layout is focused. */
   isFocused: boolean;
+  /** Whether default item layout is selected. */
   isSelected: boolean;
+  /** Whether default item layout is danger. */
   isDanger: boolean;
+  /** Keyboard shortcut that focuses the region. */
   hotkey?: number | string;
+  /** Icon content rendered by the component. */
   icon?: ReactNode;
+  /** MenuItem and MenuDivider children. */
   children: ReactNode;
 }
 
+/**
+ * Terminal-styled selection list with keyboard navigation, highlighting and optional hotkey
+ * indicators.
+ */
 export function DefaultItemLayout({
   isFocused,
   isSelected,
@@ -70,7 +81,7 @@ export function DefaultItemLayout({
   icon,
   children,
 }: DefaultItemLayoutProps) {
-  const idleColor = isDanger ? "text-destructive" : "text-foreground";
+  const idleColor = isDanger ? "text-error" : "text-foreground";
   const isEmphasized = isFocused || isSelected;
 
   return (
@@ -87,6 +98,9 @@ export function DefaultItemLayout({
         }
       />
       {hotkey !== undefined && (
+        // The bracketed glyphs stay aria-hidden so they do not pollute the item's
+        // name or typeahead; MenuItem exposes the shortcut to AT via
+        // aria-keyshortcuts instead (F-083).
         <span
           aria-hidden="true"
           className={
@@ -107,23 +121,34 @@ export function DefaultItemLayout({
   );
 }
 
-interface HubItemLayoutProps {
+/** Props for detail item layout. */
+interface DetailItemLayoutProps {
+  /** Whether detail item layout is focused. */
   isFocused: boolean;
+  /** Whether detail item layout is selected. */
   isSelected: boolean;
+  /** Controlled value. */
   value?: ReactNode;
+  /** value class name used by detail item layout. */
   valueClassName: string;
+  /** Icon content rendered by the component. */
   icon?: ReactNode;
+  /** MenuItem and MenuDivider children. */
   children: ReactNode;
 }
 
-export function HubItemLayout({
+/**
+ * Terminal-styled selection list with keyboard navigation, highlighting and optional hotkey
+ * indicators.
+ */
+export function DetailItemLayout({
   isFocused,
   isSelected,
   value,
   valueClassName,
   icon,
   children,
-}: HubItemLayoutProps) {
+}: DetailItemLayoutProps) {
   const isEmphasized = isFocused || isSelected;
 
   return (

@@ -12,7 +12,7 @@ export default function FormResetInputExample() {
 
   return (
     <form className="flex max-w-sm flex-col gap-3">
-      <label className="flex flex-col gap-1.5 text-sm text-neutral-200">
+      <label className="flex flex-col gap-1.5 text-sm text-muted-foreground">
         Display name
         <input
           ref={inputRef}

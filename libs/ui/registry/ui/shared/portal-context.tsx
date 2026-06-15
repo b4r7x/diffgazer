@@ -2,20 +2,25 @@
 
 import { createContext, type ReactNode, useContext } from "react";
 
+/** pending portal container component API. */
 export const PENDING_PORTAL_CONTAINER = Symbol("PENDING_PORTAL_CONTAINER");
 
+/** portal container value API. */
 export type PortalContainerValue = Element | typeof PENDING_PORTAL_CONTAINER;
 
 const PortalContainerContext = createContext<PortalContainerValue | undefined>(undefined);
 
+/** Provides portal container behavior. */
 export function usePortalContainer() {
   return useContext(PortalContainerContext);
 }
 
+/** Returns whether pending portal container. */
 export function isPendingPortalContainer(value: unknown): value is typeof PENDING_PORTAL_CONTAINER {
   return value === PENDING_PORTAL_CONTAINER;
 }
 
+/** Renders the portal container provider component. */
 export function PortalContainerProvider({
   container,
   children,

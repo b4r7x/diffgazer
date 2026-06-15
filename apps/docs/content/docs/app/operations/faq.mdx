@@ -1,21 +1,21 @@
 ---
 title: FAQ
-description: Short answers to the questions that come up most about running diffgazer.
+description: Short answers to the questions that come up most about running Diffgazer.
 ---
 
 These are the questions people ask most often, with a link to the page that covers each one in full.
 
 ### Does my code leave my machine?
 
-No. diffgazer runs an embedded server on your own machine and reviews your code locally, so your source and your API keys never reach a service we run. The only thing that ever crosses the network is the review request you send to your own model provider, under your own account, when you ask for a review. See [Privacy and security](/app/concepts/privacy) for how that holds up layer by layer.
+No. Diffgazer runs an embedded server on your own machine and reviews your code locally, so your source and your API keys never reach a service we run. The only thing that ever crosses the network is the review request you send to your own model provider, under your own account, when you ask for a review. See [Privacy and security](/app/concepts/privacy) for how that holds up layer by layer.
 
 ### Which providers can I use?
 
-Six are enabled and selectable: Google Gemini, Z.ai, Z.ai Coding Plan, OpenRouter, Groq, and Cerebras. You bring your own key for whichever one you pick, either stored by diffgazer or read from an environment variable you name. The [Providers reference](/app/reference/providers) lists the env var, default model, and base URL for each one.
+Six are enabled and selectable: Google Gemini, Z.ai, Z.ai Coding Plan, OpenRouter, Groq, and Cerebras. You bring your own key for whichever one you pick, either stored by Diffgazer or read from an environment variable you name. The [Providers reference](/app/reference/providers) lists the env var, default model, and base URL for each one.
 
-### Can I run diffgazer in Docker or on a server?
+### Can I run Diffgazer in Docker or on a server?
 
-No. diffgazer is a local binary that opens a browser tab on your own machine, so there is no headless server mode to deploy. The repo does ship Dockerfiles and reverse-proxy notes for the project's own sites (the docs, landing, and registry), but those are not the review CLI. Install the published CLI where you work and run `diffgazer` from inside a repository.
+No. Diffgazer is a local binary that opens a browser tab on your own machine, so there is no headless server mode to deploy. The repo does ship Dockerfiles and reverse-proxy notes for the project's own sites (the docs, landing, and registry), but those are not the review CLI. Install the published CLI where you work and run `diffgazer` from inside a repository.
 
 ### How do I change the port?
 
@@ -23,7 +23,7 @@ Set the `PORT` environment variable before you launch. It defaults to `3000` for
 
 ### Is the terminal UI ready?
 
-Not yet. The terminal UI is a beta and still incomplete, so web mode is the default and the full-featured way to review. Try the TUI with `diffgazer --tui` if you want to, but expect gaps until it leaves beta. See [Terminal UI](/app/tui/index) for what works today.
+Not yet. The terminal UI is a beta and still incomplete, so web mode is the default and the full-featured way to review. Try the TUI with `diffgazer --tui` if you want to, but expect gaps until it leaves beta. See [Terminal UI](/app/tui) for what works today.
 
 ### Where is my config stored?
 

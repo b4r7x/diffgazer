@@ -18,8 +18,11 @@ interface HastRoot {
   children: HastNode[];
 }
 
+/** Root <figure>. */
 export interface LowlightInstance {
+  /** Highlights an item in lowlight instance. */
   highlight(language: string, value: string): HastRoot;
+  /** highlight auto used by lowlight instance. */
   highlightAuto(value: string): HastRoot;
 }
 
@@ -28,6 +31,7 @@ const MISSING_DEPENDENCY_MESSAGE =
 
 let lowlightPromise: Promise<LowlightInstance> | null = null;
 
+/** Root <figure>. */
 export function createDefaultLowlight(): Promise<LowlightInstance> {
   if (!lowlightPromise) {
     lowlightPromise = import("lowlight")
@@ -39,10 +43,21 @@ export function createDefaultLowlight(): Promise<LowlightInstance> {
   return lowlightPromise;
 }
 
+/** Props for code block highlight. */
 export interface CodeBlockHighlightProps extends Omit<CodeBlockContentProps, "children"> {
+  /** Source code to highlight. Each newline becomes a separate row. */
   code: string;
+  /**
+   * Language identifier consumed by lowlight (e.g. "ts", "tsx", "bash", "json"). Omit to use
+   * lowlight's auto-detection.
+   */
   language?: string;
+  /**
+   * Optional per-line state map keyed by 1-based line number. Applied to the underlying
+   * CodeBlock.Line for each row.
+   */
   lineStates?: Record<number, CodeBlockLineState>;
+  /** lowlight used by code block highlight. */
   lowlight?: LowlightInstance;
 }
 
@@ -83,6 +98,7 @@ function highlightLine(
   }
 }
 
+/** Optional auto-colored content (subpath import; uses lowlight) */
 export function CodeBlockHighlight({
   code,
   language,

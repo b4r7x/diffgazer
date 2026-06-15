@@ -13,6 +13,7 @@ import { resolve } from "node:path";
 import {
   networkAllowed,
   packageNameFromSpec,
+  packWorkspacePackage,
   pnpmAddFlags,
   resolveAndCollectMissing,
   skipMissingSmokeDeps,
@@ -131,49 +132,24 @@ export function shouldRunPackageSmoke(root, item) {
   return !skipMissingSmokeDeps(item.label ?? item.name, missing);
 }
 
-function parsePackOutput(raw) {
-  const starts = [...raw.matchAll(/[[{]/g)].map((match) => match.index ?? 0);
-  const ends = [...raw.matchAll(/[\]}]/g)].map((match) => match.index ?? 0).reverse();
-
-  for (const start of starts) {
-    for (const end of ends) {
-      if (end <= start) continue;
-      const candidate = raw.slice(start, end + 1);
-      try {
-        const parsed = JSON.parse(candidate);
-        const packInfo = Array.isArray(parsed) ? parsed[0] : parsed;
-        if (packInfo?.filename) return parsed;
-      } catch {
-        // pnpm lifecycle logs can be mixed into stdout; keep scanning.
-      }
-    }
-  }
-
-  throw new Error(`Could not parse pnpm pack --json output:\n${raw.slice(0, 1000)}`);
-}
-
-function packWorkspacePackage(root, workspacePackage, packDir) {
-  const packOutput = execFileSync(
-    "pnpm",
-    ["--dir", root, "--filter", workspacePackage, "pack", "--pack-destination", packDir, "--json"],
-    {
-      cwd: root,
-      encoding: "utf-8",
-      stdio: ["ignore", "pipe", "pipe"],
-    },
-  ).trim();
-
-  const parsedPack = parsePackOutput(packOutput);
-  const packInfo = Array.isArray(parsedPack) ? parsedPack[0] : parsedPack;
-  return resolve(packDir, packInfo.filename);
-}
-
 function execFile(command, args, options = {}) {
   return execFileSync(command, args, {
     cwd: options.cwd,
     encoding: "utf-8",
     stdio: ["ignore", "pipe", "pipe"],
   });
+}
+
+// List the file paths inside a packed .tgz (stripping the leading "package/"
+// prefix npm adds) so a smoke can assert the tarball actually ships what its
+// build is supposed to produce.
+function listTarballFiles(tgzPath) {
+  const output = execFile("tar", ["-tzf", tgzPath]);
+  return output
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((entry) => entry.replace(/^package\//, ""));
 }
 
 function runSmokeStep(step, projectDir) {
@@ -215,16 +191,19 @@ export function withTempPackageProject(root, workspacePackage, smoke) {
     execFile("npm", ["init", "-y"], { cwd: projectDir });
     execFile("npm", ["pkg", "set", "type=module"], { cwd: projectDir });
 
-    tgzPaths.push(packWorkspacePackage(root, workspacePackage, packDir));
+    const mainTgz = packWorkspacePackage(root, workspacePackage, packDir);
+    tgzPaths.push(mainTgz);
+    smoke.assertTarball?.(listTarballFiles(mainTgz));
     for (const dep of smoke.workspaceDeps ?? []) {
       tgzPaths.push(packWorkspacePackage(root, dep, packDir));
     }
     const installDeps = networkAllowed()
       ? (smoke.installDeps ?? [])
       : [...writeOfflineOverrides(root, projectDir, workspacePackage, smoke).values()];
-    // The keys-absent fixture (T-608/F-234) deliberately installs @diffgazer/ui
-    // WITHOUT its required @diffgazer/keys peer to prove the load-time missing-peer
-    // signal. pnpm's default auto-install-peers would try to resolve that required
+    // The keys-absent fixture deliberately installs @diffgazer/ui WITHOUT its
+    // required @diffgazer/keys peer to prove the load-time missing-peer signal
+    // (package-mode UI entries import @diffgazer/keys at runtime, so keys must
+    // remain a required peer). pnpm's default auto-install-peers would try to resolve that required
     // peer from the registry, which fails offline because keys is publish-gated.
     // Disable peer auto-install/strictness for this fixture so the install models a
     // consumer who skipped the required peer; the runtime step then asserts the

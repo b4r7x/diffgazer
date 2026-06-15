@@ -1,10 +1,10 @@
+import { toggleSeverity } from "@diffgazer/core/review";
 import {
   SEVERITY_LABELS,
   SEVERITY_ORDER,
   type SeverityCounts,
   type UISeverityFilter,
 } from "@diffgazer/core/schemas/presentation";
-import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { Box, Text, useInput } from "ink";
 import { useState } from "react";
 import { useTheme } from "../../../theme/provider";
@@ -33,13 +33,6 @@ export function SeverityFilterGroup({
   // stored index is clamped for display until the next keyboard write.
   const focusedIndex = Math.min(rawFocusedIndex, maxIndex);
 
-  const toggleSeverity = (severity: ReviewSeverity) => {
-    const next = new Set(currentFilter);
-    if (next.has(severity)) next.delete(severity);
-    else next.add(severity);
-    onFilterChange(next);
-  };
-
   useInput(
     (input, key) => {
       if (key.leftArrow) {
@@ -57,7 +50,7 @@ export function SeverityFilterGroup({
           return;
         }
         const severity = SEVERITY_ORDER[focusedIndex];
-        if (severity) toggleSeverity(severity);
+        if (severity) onFilterChange(toggleSeverity(currentFilter, severity));
         return;
       }
       if (input === "r" && isFilterActive) {

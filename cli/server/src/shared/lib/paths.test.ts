@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   getGlobalDiffgazerDir,
   getGlobalModelsDevCatalogPath,
+  isRepoRelativePath,
   resolveProjectRoot,
 } from "./paths.js";
 
@@ -96,5 +97,26 @@ describe("getGlobalModelsDevCatalogPath", () => {
     expect(getGlobalModelsDevCatalogPath()).toBe(
       path.join(homedir(), ".diffgazer", "models-dev.json"),
     );
+  });
+});
+
+describe("isRepoRelativePath", () => {
+  it.each([
+    "src/main.ts",
+    "src/foo..bar.ts",
+    "src/foo..bar/baz.ts",
+  ])("accepts repo-relative path %s", (relativePath) => {
+    expect(isRepoRelativePath(relativePath)).toBe(true);
+  });
+
+  it.each([
+    "../escape.ts",
+    "src/../escape.ts",
+    "/abs/path.ts",
+    "\\abs\\path.ts",
+    "C:\\win.ts",
+    "a\0b",
+  ])("rejects unsafe path %s", (relativePath) => {
+    expect(isRepoRelativePath(relativePath)).toBe(false);
   });
 });

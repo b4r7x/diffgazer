@@ -19,16 +19,34 @@ interface ModeServerFactoryOptions extends ServerFactoryOptions {
   onStartupFailure?: (message: string) => void;
 }
 
+interface ServerFactoryDependencies {
+  createApiServer?: typeof createApiServer;
+  createEmbeddedServer?: typeof createEmbeddedServer;
+  createReadyHandler?: typeof createReadyHandler;
+  createWebServer?: typeof createWebServer;
+  findGitRoot?: typeof findGitRoot;
+  getCwd?: () => string;
+}
+
 export function createServerFactories(
   options: ModeServerFactoryOptions,
+  dependencies: ServerFactoryDependencies = {},
 ): Array<() => ServerController> {
-  const projectRoot = findGitRoot(process.cwd());
+  const {
+    createApiServer: makeApiServer = createApiServer,
+    createEmbeddedServer: makeEmbeddedServer = createEmbeddedServer,
+    createReadyHandler: makeReadyHandler = createReadyHandler,
+    createWebServer: makeWebServer = createWebServer,
+    findGitRoot: resolveGitRoot = findGitRoot,
+    getCwd = process.cwd,
+  } = dependencies;
+  const projectRoot = resolveGitRoot(getCwd());
 
   if (options.mode === "dev") {
     const apiPort = parsePortEnv(process.env.PORT, config.ports.api);
     const factories: Array<() => ServerController> = [
       () =>
-        createApiServer({
+        makeApiServer({
           cwd: config.paths.server,
           port: apiPort,
           projectRoot,
@@ -36,9 +54,9 @@ export function createServerFactories(
     ];
 
     if (options.includeWebServer !== false) {
-      const onReady = createReadyHandler(options.openBrowser);
+      const onReady = makeReadyHandler(options.openBrowser);
       factories.push(() =>
-        createWebServer({
+        makeWebServer({
           cwd: config.paths.web,
           port: config.ports.web,
           onReady,
@@ -51,10 +69,10 @@ export function createServerFactories(
 
   return [
     () =>
-      createEmbeddedServer({
+      makeEmbeddedServer({
         port: parsePortEnv(process.env.PORT, config.ports.api),
         projectRoot,
-        onReady: createReadyHandler(options.openBrowser),
+        onReady: makeReadyHandler(options.openBrowser),
         onFailure: options.onStartupFailure,
       }),
   ];

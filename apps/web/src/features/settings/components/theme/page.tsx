@@ -1,8 +1,8 @@
-import { usePageFooter } from "@diffgazer/core/footer";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import { deriveSaveState } from "@diffgazer/core/forms";
 import { isSelectableTheme, SELECTABLE_THEME_OPTIONS } from "@diffgazer/core/schemas/config";
-import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import { useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
+import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
+import { useKey, useScope } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Panel } from "@diffgazer/ui/components/panel";
@@ -11,6 +11,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTheme } from "@/hooks/use-theme";
 import type { ResolvedTheme, WebTheme } from "@/types/theme";
+import { useSettingsFormFooter } from "../../hooks/use-settings-form-footer";
 import { ThemePreviewCard } from "./preview-card";
 import { ThemeSelectorContent } from "./selector-content";
 
@@ -58,46 +59,33 @@ function SettingsThemeEditor({ savedTheme, systemResolved, setTheme }: SettingsT
 
   const handleCancel = () => navigate({ to: "/settings" });
 
-  const handleSave = async () => {
-    if (!canSave) return;
+  const saveAndExit = async (theme: WebTheme) => {
     setSaveError(null);
     try {
-      await setTheme(selectedTheme);
+      await setTheme(theme);
       navigate({ to: "/settings" });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not persist theme settings.";
+      const message = getErrorMessage(error, "Could not persist theme settings.");
       setSaveError(message);
       toast.error("Failed to Save Theme", { message });
     }
   };
 
-  const footer = useActionRowNavigation({
-    enabled: true,
-    actionCount: 2,
+  const handleSave = () => {
+    if (!canSave) return;
+    void saveAndExit(selectedTheme);
+  };
+
+  const footer = useSettingsFormFooter({
     disabledActions: [false, isSaveDisabled],
-    onAction: (index) => {
-      if (index === 0) handleCancel();
-      else if (index === 1 && canSave) void handleSave();
-    },
-  });
-
-  const footerShortcuts: Shortcut[] = footer.inActions
-    ? [
-        { key: "←/→", label: "Move Action" },
-        {
-          key: "Enter/Space",
-          label: footer.focusedIndex === 0 ? "Cancel" : "Save",
-          disabled: footer.isFocusedActionDisabled,
-        },
-      ]
-    : [
-        { key: "↑/↓", label: "Navigate" },
-        { key: "Space", label: "Select Theme" },
-        { key: "Enter", label: "Save & Exit" },
-      ];
-
-  usePageFooter({
-    shortcuts: footerShortcuts,
+    canSave,
+    onCancel: handleCancel,
+    onSave: handleSave,
+    contentShortcuts: [
+      NAVIGATE_SHORTCUT,
+      { key: "Space", label: "Select Theme" },
+      { key: "Enter", label: "Save & Exit" },
+    ],
     rightShortcuts: [{ key: "Esc", label: "Cancel" }],
   });
 
@@ -110,18 +98,10 @@ function SettingsThemeEditor({ savedTheme, systemResolved, setTheme }: SettingsT
     if (isSelectableTheme(value)) selectTheme(value);
   };
 
-  const handleEnterOnList = async (value: string) => {
+  const handleEnterOnList = (value: string) => {
     if (!isSelectableTheme(value)) return;
     selectTheme(value);
-    setSaveError(null);
-    try {
-      await setTheme(value);
-      navigate({ to: "/settings" });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not persist theme settings.";
-      setSaveError(message);
-      toast.error("Failed to Save Theme", { message });
-    }
+    void saveAndExit(value);
   };
 
   const themeOptions = SELECTABLE_THEME_OPTIONS.map((option) => option.value);

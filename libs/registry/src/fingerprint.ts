@@ -1,26 +1,30 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
-import { defaultLogger, type Logger } from "./logger.js";
+import { log } from "./logger.js";
 import { collectAllFiles, relativePath } from "./utils/fs.js";
 
-export function computeInputsFingerprint(
-  rootDir: string,
-  inputs: string[],
-  logger: Logger = defaultLogger,
-): string {
+// Locale-independent code-unit comparison so the committed fingerprint hashes
+// files in the same order on every machine (see libs/core catalog transform).
+function compareCodeUnits(a: string, b: string): number {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+}
+
+export function computeInputsFingerprint(rootDir: string, inputs: string[]): string {
   const hash = createHash("sha256");
 
   for (const inputRel of inputs) {
     const inputAbs = resolve(rootDir, inputRel);
     if (!existsSync(inputAbs)) {
-      logger.warn(`Fingerprint input not found, skipping: ${inputAbs}`);
+      log.warn(`Fingerprint input not found, skipping: ${inputAbs}`);
       continue;
     }
     const stats = statSync(inputAbs);
 
     if (stats.isDirectory()) {
-      const files = collectAllFiles(inputAbs).sort((a, b) => a.localeCompare(b));
+      const files = collectAllFiles(inputAbs).sort(compareCodeUnits);
       for (const filePath of files) {
         hash.update(relativePath(rootDir, filePath));
         hash.update("\n");
@@ -43,9 +47,8 @@ export function computeArtifactFingerprint(
   rootDir: string,
   inputs: string[],
   origin: string,
-  logger: Logger = defaultLogger,
 ): string {
-  const inputsFingerprint = computeInputsFingerprint(rootDir, inputs, logger);
+  const inputsFingerprint = computeInputsFingerprint(rootDir, inputs);
   const hash = createHash("sha256");
   hash.update(`origin:${origin}\n`);
   hash.update(inputsFingerprint);

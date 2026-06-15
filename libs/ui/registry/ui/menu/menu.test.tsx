@@ -1,8 +1,8 @@
+import { testNavigationBehavior } from "@diffgazer/keys/testing/navigation-behavior";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
-import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior";
 import { axe } from "../../../testing/axe";
 import { requireAttribute, requireValue } from "../../testing/assertions";
 import { Menu, type MenuItemProps, MenuLabel, type MenuProps } from "./index";
@@ -46,6 +46,26 @@ describe("Menu", () => {
 
     expect(onSelect).toHaveBeenCalledWith("two");
     expect(screen.getByRole("separator")).toBeInTheDocument();
+  });
+
+  it("keeps aria-activedescendant in sync for items rendered by a consumer wrapper", async () => {
+    function WrappedItem({ id, label }: { id: string; label: string }) {
+      return <Menu.Item id={id}>{label}</Menu.Item>;
+    }
+
+    render(
+      <Menu aria-label="Test menu" defaultHighlighted="one">
+        <WrappedItem id="one" label="One" />
+        <WrappedItem id="two" label="Two" />
+      </Menu>,
+    );
+
+    const menu = screen.getByRole("menu");
+    menu.focus();
+    // Without registration the static walk cannot see WrappedItem, so the second
+    // item would never become the active descendant.
+    await userEvent.keyboard("{ArrowDown}");
+    expect(menu).toHaveAttribute("aria-activedescendant", getMenuItem("Two").id);
   });
 
   it("passes native root props and composes key handling with menu navigation", async () => {
@@ -106,17 +126,17 @@ describe("Menu", () => {
     expect(menu).toHaveAttribute("aria-activedescendant", oneItem.id);
   });
 
-  it("marks highlighted and selected items active with data-active", () => {
+  it("marks selected items with data-selected", () => {
     renderMenu({ defaultSelectedId: "two" });
     const oneItem = getMenuItemRadio("One");
     const twoItem = getMenuItemRadio("Two");
 
-    expect(twoItem).toHaveAttribute("data-active", "true");
+    expect(twoItem).toHaveAttribute("data-selected");
     expect(twoItem).toHaveAttribute("aria-checked", "true");
-    expect(oneItem).not.toHaveAttribute("data-active");
+    expect(oneItem).not.toHaveAttribute("data-selected");
   });
 
-  it("does not keep selected state for plain command menus", async () => {
+  it("marks the keyboard-highlighted item with data-highlighted", async () => {
     renderMenu({ defaultHighlighted: "one" });
     const menu = screen.getByRole("menu");
     const oneItem = getMenuItem("One");
@@ -125,14 +145,14 @@ describe("Menu", () => {
     menu.focus();
     await userEvent.keyboard("{Enter}{ArrowDown}");
 
-    expect(oneItem).not.toHaveAttribute("data-active");
-    expect(twoItem).toHaveAttribute("data-active", "true");
+    expect(oneItem).not.toHaveAttribute("data-highlighted");
+    expect(twoItem).toHaveAttribute("data-highlighted");
     expect(menu).toHaveAttribute("aria-activedescendant", twoItem.id);
   });
 
-  it("marks selected hub items and renders their values", () => {
+  it("marks selected detail items and renders their values", () => {
     const { rerender } = render(
-      <Menu aria-label="Hub menu" variant="hub" defaultSelectedId="provider">
+      <Menu aria-label="Detail menu" variant="detail" defaultSelectedId="provider">
         <Menu.Item id="provider" value="ready" valueVariant="success-badge">
           Provider
         </Menu.Item>
@@ -147,7 +167,7 @@ describe("Menu", () => {
     expect(screen.getByText("ready")).toBeInTheDocument();
 
     rerender(
-      <Menu aria-label="Hub menu" variant="hub" highlighted="delete">
+      <Menu aria-label="Detail menu" variant="detail" highlighted="delete">
         <Menu.Item id="provider" value="ready" valueVariant="success-badge">
           Provider
         </Menu.Item>
@@ -324,9 +344,9 @@ describe("Menu", () => {
     expect(document.getElementById(item.id)).toBe(item);
   });
 
-  it("renders falsy hub item values that are explicit React nodes", () => {
+  it("renders falsy detail item values that are explicit React nodes", () => {
     render(
-      <Menu aria-label="Test menu" variant="hub">
+      <Menu aria-label="Test menu" variant="detail">
         <Menu.Item id="zero" value={0}>
           Zero
         </Menu.Item>
@@ -363,7 +383,7 @@ describe("Menu", () => {
     const disabledItem = getMenuItemRadio("Two");
     expect(disabledItem).toHaveAttribute("aria-disabled", "true");
     expect(disabledItem).not.toHaveAttribute("aria-checked", "true");
-    expect(disabledItem).not.toHaveAttribute("data-active", "true");
+    expect(disabledItem).not.toHaveAttribute("data-selected");
   });
 
   it("disabled highlighted menu item is the active descendant with focus indication but not selected", () => {
@@ -381,8 +401,8 @@ describe("Menu", () => {
     const disabledItem = getMenuItem("Two");
 
     expect(menu).toHaveAttribute("aria-activedescendant", disabledItem.id);
-    expect(disabledItem).not.toHaveAttribute("data-active", "true");
-    expect(disabledItem).toHaveAttribute("data-focus", "true");
+    expect(disabledItem).not.toHaveAttribute("data-selected");
+    expect(disabledItem).toHaveAttribute("data-highlighted");
     expect(disabledItem).not.toHaveAttribute("aria-checked", "true");
   });
 
@@ -501,6 +521,23 @@ describe("Menu keyboard navigation", () => {
   });
 });
 
+describe("MenuItem hotkey prop", () => {
+  it("exposes the hotkey to AT via aria-keyshortcuts while the glyph stays decorative", () => {
+    render(
+      <Menu aria-label="Test menu">
+        <Menu.Item id="one" hotkey="N">
+          New File
+        </Menu.Item>
+      </Menu>,
+    );
+    const item = getMenuItem("New File");
+    expect(item).toHaveAttribute("aria-keyshortcuts", "N");
+    // The bracketed glyph is decorative and does not pollute the item name.
+    expect(item).toHaveAccessibleName("New File");
+    expect(screen.getByText("[N]")).toHaveAttribute("aria-hidden", "true");
+  });
+});
+
 describe("MenuItem icon prop", () => {
   it("renders icon content when icon is provided", () => {
     render(
@@ -558,9 +595,9 @@ describe("MenuItem icon prop", () => {
     expect(onSelect).toHaveBeenCalledWith("two");
   });
 
-  it("renders icon in hub variant", () => {
+  it("renders icon in detail variant", () => {
     render(
-      <Menu aria-label="Hub menu" variant="hub" defaultSelectedId="provider">
+      <Menu aria-label="Detail menu" variant="detail" defaultSelectedId="provider">
         <Menu.Item id="provider" icon={<span>*</span>} value="ready">
           Provider
         </Menu.Item>
@@ -929,6 +966,141 @@ describe("MenuSub", () => {
 
     const trigger = getMenuItem("Edit");
     expect(trigger).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("SubTrigger pins role to menuitem and never renders aria-checked in a selection menu", () => {
+    render(
+      <Menu aria-label="Sort" selectedId="name">
+        <Menu.ItemRadio id="name" value="name">
+          Name
+        </Menu.ItemRadio>
+        <Menu.Sub>
+          <Menu.SubTrigger id="more">More</Menu.SubTrigger>
+          <Menu.SubContent>
+            <Menu.Item id="zoom">Zoom</Menu.Item>
+          </Menu.SubContent>
+        </Menu.Sub>
+      </Menu>,
+    );
+
+    const trigger = screen.getByRole("menuitem", { name: "More" });
+    expect(trigger).not.toHaveAttribute("aria-checked");
+  });
+
+  it("labels the submenu by its trigger via aria-labelledby", async () => {
+    renderSubmenu();
+    const menu = screen.getByRole("menu");
+    menu.focus();
+
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{ArrowRight}");
+
+    const submenu = await waitFor(() => {
+      const found = screen.getAllByRole("menu").find((candidate) => candidate !== menu);
+      if (!found) throw new Error("submenu not open");
+      return found;
+    });
+
+    expect(submenu).toHaveAccessibleName("Edit");
+  });
+
+  it("respects a consumer aria-label on SubContent over the trigger label", async () => {
+    render(
+      <Menu aria-label="Test menu" defaultHighlighted="edit">
+        <Menu.Sub>
+          <Menu.SubTrigger id="edit">Edit</Menu.SubTrigger>
+          <Menu.SubContent aria-label="Edit options">
+            <Menu.Item id="undo">Undo</Menu.Item>
+          </Menu.SubContent>
+        </Menu.Sub>
+      </Menu>,
+    );
+    const menu = screen.getByRole("menu");
+    menu.focus();
+    await userEvent.keyboard("{ArrowRight}");
+
+    const submenu = await waitFor(() => {
+      const found = screen.getAllByRole("menu").find((candidate) => candidate !== menu);
+      if (!found) throw new Error("submenu not open");
+      return found;
+    });
+
+    expect(submenu).toHaveAccessibleName("Edit options");
+  });
+
+  it("closes an open submenu on an outside pointerdown", async () => {
+    render(
+      <>
+        <Menu aria-label="Test menu" defaultHighlighted="edit">
+          <Menu.Sub>
+            <Menu.SubTrigger id="edit">Edit</Menu.SubTrigger>
+            <Menu.SubContent>
+              <Menu.Item id="undo">Undo</Menu.Item>
+            </Menu.SubContent>
+          </Menu.Sub>
+        </Menu>
+        <button type="button">Outside</button>
+      </>,
+    );
+    const trigger = getMenuItem("Edit");
+    await userEvent.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+
+    await userEvent.click(screen.getByRole("button", { name: "Outside" }));
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("closes an open submenu when the parent highlight moves off its trigger", async () => {
+    renderSubmenu();
+    const menu = screen.getByRole("menu");
+    menu.focus();
+
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{ArrowRight}");
+    const edit = getMenuItem("Edit");
+    await waitFor(() => expect(edit).toHaveAttribute("aria-expanded", "true"));
+
+    // Move the parent highlight off the submenu trigger.
+    menu.focus();
+    await userEvent.keyboard("{ArrowDown}");
+    await waitFor(() => expect(edit).toHaveAttribute("aria-expanded", "false"));
+  });
+
+  it("keeps only one submenu open per level (moving to a sibling closes the first)", async () => {
+    render(
+      <Menu aria-label="Test menu" defaultHighlighted="edit">
+        <Menu.Sub>
+          <Menu.SubTrigger id="edit">Edit</Menu.SubTrigger>
+          <Menu.SubContent>
+            <Menu.Item id="undo">Undo</Menu.Item>
+          </Menu.SubContent>
+        </Menu.Sub>
+        <Menu.Sub>
+          <Menu.SubTrigger id="view">View</Menu.SubTrigger>
+          <Menu.SubContent>
+            <Menu.Item id="zoom">Zoom</Menu.Item>
+          </Menu.SubContent>
+        </Menu.Sub>
+      </Menu>,
+    );
+
+    const menu = screen.getByRole("menu");
+    const editTrigger = getMenuItem("Edit");
+    const viewTrigger = getMenuItem("View");
+
+    menu.focus();
+    await userEvent.click(editTrigger);
+    expect(editTrigger).toHaveAttribute("aria-expanded", "true");
+
+    // Arrowing the parent highlight onto the sibling trigger closes the first
+    // submenu (one open per level); opening the sibling keeps only it open.
+    menu.focus();
+    await userEvent.keyboard("{ArrowDown}");
+    await waitFor(() => expect(editTrigger).toHaveAttribute("aria-expanded", "false"));
+
+    await userEvent.click(viewTrigger);
+    await waitFor(() => expect(viewTrigger).toHaveAttribute("aria-expanded", "true"));
+    expect(editTrigger).toHaveAttribute("aria-expanded", "false");
   });
 
   it("axe() accessibility audit passes", async () => {

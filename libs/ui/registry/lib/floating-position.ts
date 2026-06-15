@@ -6,6 +6,7 @@ import {
   type Viewport,
 } from "./floating-position-constants";
 
+/** Computes viewport coordinates for floating content from trigger/content rectangles. */
 export function computePosition(
   triggerRect: DOMRect,
   contentRect: DOMRect,
@@ -63,6 +64,7 @@ export function computePosition(
   return { x, y };
 }
 
+/** Returns true when a content rectangle at x/y would cross the padded viewport bounds. */
 export function wouldOverflow(
   x: number,
   y: number,
@@ -78,6 +80,7 @@ export function wouldOverflow(
   );
 }
 
+/** Clamps floating coordinates inside the padded viewport bounds. */
 export function shift(
   x: number,
   y: number,
@@ -91,6 +94,50 @@ export function shift(
   };
 }
 
+// Space the panel can occupy along each axis for the resolved side, viewport
+// minus the trigger edge it anchors to (plus sideOffset) minus collision padding.
+// Lets a panel cap its size and scroll instead of overflowing the viewport.
+/**
+ * Computes the max content size available from the trigger edge to the viewport edge.
+ *
+ * Panels use this to cap height or width and scroll internally instead of overflowing.
+ */
+export function computeAvailableSize(
+  triggerRect: DOMRect,
+  side: FloatingSide,
+  sideOffset: number,
+  collisionPadding: number,
+  vp: Viewport,
+): { availableHeight: number; availableWidth: number } {
+  let availableHeight: number;
+  let availableWidth: number;
+
+  switch (side) {
+    case "top":
+      availableHeight = triggerRect.top - sideOffset - collisionPadding;
+      availableWidth = vp.width - 2 * collisionPadding;
+      break;
+    case "bottom":
+      availableHeight = vp.height - triggerRect.bottom - sideOffset - collisionPadding;
+      availableWidth = vp.width - 2 * collisionPadding;
+      break;
+    case "left":
+      availableWidth = triggerRect.left - sideOffset - collisionPadding;
+      availableHeight = vp.height - 2 * collisionPadding;
+      break;
+    case "right":
+      availableWidth = vp.width - triggerRect.right - sideOffset - collisionPadding;
+      availableHeight = vp.height - 2 * collisionPadding;
+      break;
+  }
+
+  return {
+    availableHeight: Math.max(0, availableHeight),
+    availableWidth: Math.max(0, availableWidth),
+  };
+}
+
+/** Picks the first placement that fits, trying preferred, opposite, then cross-axis sides. */
 export function resolveCollisionPosition(
   triggerRect: DOMRect,
   contentRect: DOMRect,

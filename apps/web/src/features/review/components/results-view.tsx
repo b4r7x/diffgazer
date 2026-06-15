@@ -15,7 +15,7 @@ export function ReviewResultsView({ issues, reviewId, initialIssueId }: ReviewRe
     filteredIssues,
     selectedIssue,
     selectedIssueId,
-    setSelectedIssueId,
+    selectIssueAndFocusList,
     selectIssue,
     handleListBoundary,
     activeTab,
@@ -35,17 +35,19 @@ export function ReviewResultsView({ issues, reviewId, initialIssueId }: ReviewRe
     detailsScrollRef,
     completedSteps,
     handleToggleStep,
+    focusedStepIndex,
   } = useReviewResultsKeyboard({ issues, initialIssueId });
   const detailsEmptyKind = selectDetailsEmptyKind(issues.length, filteredIssues.length);
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden px-4 pb-2 font-mono">
       <div className="flex items-center gap-4 py-2 mb-2 shrink-0">
-        <span className="text-sm font-medium text-tui-violet">
-          Analysis #{reviewId ?? "unknown"}
-        </span>
+        <span className="text-sm font-medium text-accent">Review #{reviewId ?? "unknown"}</span>
       </div>
-      <div data-row="review" className="flex flex-1 overflow-hidden">
+      {/* The issue list + details split is a genuinely two-dimensional layout
+          (WCAG 1.4.10 exception), so this region keeps a minimum width while the
+          shell reflows; text/form screens have no shell-level width lock. */}
+      <div data-row="review" className="flex flex-1 overflow-hidden min-w-[768px]">
         <IssueListPane
           listState={{
             issues: filteredIssues,
@@ -54,7 +56,7 @@ export function ReviewResultsView({ issues, reviewId, initialIssueId }: ReviewRe
             highlightedIssueId,
           }}
           callbacks={{
-            onSelectIssue: setSelectedIssueId,
+            onSelectIssue: selectIssueAndFocusList,
             onHighlightIssue: selectIssue,
             onListBoundaryReached: handleListBoundary,
             onListFocus: handleListFocus,
@@ -78,6 +80,7 @@ export function ReviewResultsView({ issues, reviewId, initialIssueId }: ReviewRe
           onTabChange={setActiveTab}
           completedSteps={completedSteps}
           onToggleStep={handleToggleStep}
+          focusedStepIndex={focusedStepIndex}
           scrollAreaRef={detailsScrollRef}
           isFocused={focusZone === "details"}
           emptyKind={detailsEmptyKind}

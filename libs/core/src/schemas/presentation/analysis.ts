@@ -5,7 +5,7 @@ const AnalysisStatsSchema = z.object({
   runId: z.string(),
   totalIssues: z.number(),
   filesAnalyzed: z.number(),
-  criticalCount: z.number(),
+  blockerCount: z.number(),
 });
 export type AnalysisStats = z.infer<typeof AnalysisStatsSchema>;
 

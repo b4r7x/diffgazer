@@ -12,11 +12,11 @@ import {
   useRef,
   useState,
 } from "react";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { useNavigation } from "@/hooks/use-navigation";
 import { isHTMLElementForContainer, resolveAriaInvalid } from "@/lib/aria";
-import { composeRefs } from "@/lib/compose-refs";
 import {
   getEnabledSelectableCollectionItems,
   getSelectableCollectionItemValue,
@@ -26,9 +26,11 @@ import {
 } from "@/lib/selectable-collection";
 import type { SelectableVariant } from "@/lib/selectable-variants";
 import { cn } from "@/lib/utils";
+import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";
 import type { RadioSize } from "./radio";
 import { RadioGroupContext, type RadioGroupContextValue } from "./radio-group-context";
 
+/** Props for radio group root. */
 type RadioGroupRootProps = Omit<
   ComponentPropsWithRef<"div">,
   | "children"
@@ -45,41 +47,79 @@ type RadioGroupRootProps = Omit<
   | "aria-disabled"
 >;
 
+/**
+ * @typeParam TValue - Convenience assertion for the value union surfaced through
+ * `value`/`onChange`/`onNavigate`/`onEnter`. Values originate from the rendered
+ * items' `data-value` strings and are asserted to `TValue`, not validated; in
+ * development an unregistered value warns (see `warnUnregisteredValue`).
+ */
 export interface RadioGroupProps<TValue extends string = string> extends RadioGroupRootProps {
+  /** Controlled selected value. */
   value?: TValue;
+  /** Initial selected value for uncontrolled usage. */
   defaultValue?: TValue;
+  /** Called when the selected value changes. */
   onChange?: (value: TValue) => void;
+  /** Called when arrow, Home, or End navigation moves to an item. */
   onNavigate?: (value: TValue, direction: RadioGroupNavigationDirection) => void;
+  /** Called when Enter commits the focused item. */
   onEnter?: (value: TValue, event: ReactKeyboardEvent<HTMLDivElement>) => void;
+  /** Called when keyboard navigation highlights a new item or clears highlight. */
   onHighlightChange?: (value: TValue | null) => void;
+  /** Called after the built-in radiogroup key handling runs. */
   onKeyDown?: (event: ReactKeyboardEvent) => void;
+  /** Controlled highlighted item value for keyboard navigation. */
   highlighted?: TValue | null;
+  /** Layout orientation. All four arrow keys still navigate per APG radio behavior. */
   orientation?: "vertical" | "horizontal";
+  /** Whether arrow-key navigation wraps at the first and last item. */
   wrap?: boolean;
+  /** Enable built-in arrow-key navigation. */
   keyboardNavigation?: boolean;
+  /**
+   * Automatic selects on arrow navigation; manual moves focus/highlight until Space or Enter
+   * commits.
+   */
   activationMode?: RadioGroupActivationMode;
+  /** Called when non-wrapping navigation reaches the first or last item. */
   onNavigationBoundaryReached?: (
     direction: RadioGroupBoundaryDirection,
     event: globalThis.KeyboardEvent,
     key: string,
   ) => void;
+  /** Disables the custom control and hidden input. */
   disabled?: boolean;
+  /** Focuses the highlighted, selected, or first enabled item when the group becomes active. */
   autoFocus?: boolean;
+  /** Selectable control size token. */
   size?: RadioSize;
+  /** Indicator style. */
   variant?: SelectableVariant;
+  /** Shared hidden native input name for grouped form submission. */
   name?: string;
+  /** Requires one enabled item to be selected. */
   required?: boolean;
+  /** Visible label associated with the custom radio. */
   label?: string;
+  /** Accessible name when no visible label is supplied. */
   "aria-label"?: string;
+  /** ID of the element that labels this component. */
   "aria-labelledby"?: string;
+  /** ARIA invalid state forwarded to the rendered control. */
   "aria-invalid"?: AriaAttributes["aria-invalid"];
+  /** Additional class names merged onto the rendered element. */
   className?: string;
+  /** Content rendered inside the component. */
   children: ReactNode;
+  /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLDivElement>;
 }
 
+/** Whether arrow navigation immediately selects or only highlights until commit. */
 export type RadioGroupActivationMode = "automatic" | "manual";
+/** Boundary reached by non-wrapping radio navigation. */
 export type RadioGroupBoundaryDirection = "previous" | "next";
+/** Direction emitted by radiogroup navigation callbacks. */
 export type RadioGroupNavigationDirection = "previous" | "next" | "first" | "last";
 
 const RADIO_PREVIOUS_KEYS = ["ArrowUp", "ArrowLeft"] as const;
@@ -93,6 +133,7 @@ function getRadioNavigationDirection(key: string): RadioGroupNavigationDirection
   return null;
 }
 
+/** Group root with context, selection state, and keyboard navigation. */
 export function RadioGroup<TValue extends string = string>(props: RadioGroupProps<TValue>) {
   const {
     value: controlledValue,
@@ -124,6 +165,7 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
     ...rootProps
   } = props;
   const containerRef = useRef<HTMLDivElement>(null);
+  const composedRef = useComposedRefs(containerRef, ref);
   const hasAutoFocusedRef = useRef(false);
   const navigationEventRef = useRef<ReactKeyboardEvent<HTMLDivElement> | null>(null);
   const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
@@ -136,7 +178,13 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
     controlled: "value" in props,
     defaultValue,
     onChange: (next) => {
-      if (next !== undefined) onChange?.(next as TValue);
+      if (next === undefined) return;
+      warnUnregisteredValue(
+        "RadioGroup",
+        next,
+        items.map((item) => item.value),
+      );
+      onChange?.(next as TValue);
     },
   });
   useFormReset(containerRef, defaultValue, setValue, !("value" in props));
@@ -200,7 +248,14 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
     setRequiredInvalid(false);
 
     const direction = getRadioNavigationDirection(navigationEventRef.current?.key ?? "");
-    if (direction !== null) onNavigate?.(next as TValue, direction);
+    if (direction !== null) {
+      warnUnregisteredValue(
+        "RadioGroup",
+        next,
+        items.map((item) => item.value),
+      );
+      onNavigate?.(next as TValue, direction);
+    }
 
     if (activationMode === "automatic") setValue(next);
   };
@@ -211,6 +266,11 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
 
     setHighlightedValue(next);
     handleValueChange(next);
+    warnUnregisteredValue(
+      "RadioGroup",
+      next,
+      items.map((item) => item.value),
+    );
     onEnter?.(next as TValue, event);
   };
 
@@ -303,7 +363,7 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
       )}
       <div
         {...rootProps}
-        ref={composeRefs(containerRef, ref)}
+        ref={composedRef}
         role="radiogroup"
         data-diffgazer-selectable-owner="radio"
         aria-label={ariaLabel ?? label}

@@ -1,9 +1,9 @@
 ---
 title: How it works
-description: What diffgazer does between the command and the review.
+description: What Diffgazer does between the command and the review.
 ---
 
-You run one command, and a moment later a review opens in your browser. In between, **diffgazer starts an embedded local server and a UI on your own machine; nothing leaves it until you start a review.** No account, no upload, no dashboard you do not control. This page walks through what that command actually sets in motion.
+You run one command, and a moment later a review opens in your browser. In between, **Diffgazer starts an embedded local server and a UI on your own machine; nothing leaves it until you start a review.** No account, no upload, no dashboard you do not control. This page walks through what that command actually sets in motion.
 
 ## The pieces
 
@@ -15,23 +15,22 @@ The **embedded server** is a [Hono](https://hono.dev) backend that runs the revi
 
 The **web SPA** is the review interface. The same embedded server serves it, so the UI and the API share one origin on localhost. If you prefer to stay in the terminal, there is an Ink **terminal UI** instead. More on choosing between them below.
 
-Your **provider** is the model you bring. diffgazer is provider-agnostic, so the AI work happens against the model and keys you supply. See [Providers and models](/app/concepts/providers-and-models) for how that is configured.
+Your **provider** is the model you bring. Diffgazer is provider-agnostic, so the AI work happens against the model and keys you supply. See [Providers and models](/app/concepts/providers-and-models) for how that is configured.
 
 ## The review pipeline
 
-Once the UI is up and you start a review, the work runs as five steps, in order:
+Once the UI is up and you start a review, the work runs as four steps, in order:
 
 ```text
-diff  ->  context  ->  review  ->  enrich  ->  report
+Collect diff  ->  Project context  ->  Review issues  ->  Generate report
 ```
 
 Here is what each step does:
 
-- **diff** — gathering code changes.
-- **context** — building the repo graph and summary.
-- **review** — analyzing with lenses.
-- **enrich** — adding git blame and context.
-- **report** — synthesizing the final report.
+- **Collect diff** — gathering code changes.
+- **Project context** — building the repo graph and summary.
+- **Review issues** — analyzing with lenses.
+- **Generate report** — synthesizing the final report.
 
 The UI reports progress as each step starts and completes, so you can watch the review move through the pipeline. For a deeper look at what happens inside each step, see [The review pipeline](/app/concepts/review-pipeline).
 
@@ -49,6 +48,6 @@ Everything you have read about so far runs on your machine: the CLI, the embedde
 
 ## Related
 
-- [The review pipeline](/app/concepts/review-pipeline) — what each of the five steps does in depth.
+- [The review pipeline](/app/concepts/review-pipeline) — what each of the four steps does in depth.
 - [Providers and models](/app/concepts/providers-and-models) — bringing your own model and keys.
 - [Privacy](/app/concepts/privacy) — what stays on your machine.

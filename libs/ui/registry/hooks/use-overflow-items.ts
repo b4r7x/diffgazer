@@ -9,17 +9,25 @@ import {
   useState,
 } from "react";
 
+/** Options for measuring how many child items fit in a single overflow row. */
 export interface UseOverflowItemsOptions {
+  /** Number of items to lay out. The first itemCount children are measured as items. */
   itemCount: number;
+  /** Called when the visible count changes. */
   onVisibleCountChange?: (count: number) => void;
 }
 
+/** Reactive measurement result for an overflow-items container. */
 export interface UseOverflowItemsReturn {
+  /** Attach to the container element that owns item children followed by the overflow indicator. */
   ref: RefObject<HTMLDivElement | null>;
+  /** Number of items that fit within the container width. */
   visibleCount: number;
+  /** Number of items that do not fit. */
   overflowCount: number;
 }
 
+/** Computes how many item widths fit in the container while reserving room for the overflow indicator. */
 export function computeVisibleCount(
   itemWidths: number[],
   containerWidth: number,
@@ -48,6 +56,7 @@ function clampCount(count: number, itemCount: number): number {
   return Math.min(Math.max(0, Math.floor(count)), safeItemCount);
 }
 
+/** Measures visible and overflow item counts for a flex row with a trailing indicator child. */
 export function useOverflowItems({
   itemCount,
   onVisibleCountChange,

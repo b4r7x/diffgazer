@@ -1,16 +1,28 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import type { Logger } from "../logger.js";
+import { log } from "../logger.js";
+import { type RegistryFile, RegistryItemSchema } from "../registry-types.js";
 import { findExamples } from "./examples.js";
 import { type DocsHighlighter, type HighlightLanguage, highlightCode } from "./highlight.js";
 import type { CodeBlockLine, EnrichedHookData, HookDoc, HookSourceData } from "./types.js";
 
 export interface HookRegistryItem {
   name: string;
+  registryName?: string;
   title?: string;
   description?: string;
   files: Array<{ path: string }>;
 }
+
+interface HookSourceFileData {
+  path: string;
+  raw: string;
+  highlighted: CodeBlockLine[];
+}
+
+type HookSourceDataWithFiles = HookSourceData & {
+  files: HookSourceFileData[];
+};
 
 export interface GenerateHooksSourceOptions {
   items: HookRegistryItem[];
@@ -18,7 +30,6 @@ export interface GenerateHooksSourceOptions {
   highlighter: DocsHighlighter;
   themeName: string;
   lang?: HighlightLanguage;
-  logger?: Logger;
 }
 
 export interface GenerateEnrichedHookDataOptions extends GenerateHooksSourceOptions {
@@ -26,34 +37,97 @@ export interface GenerateEnrichedHookDataOptions extends GenerateHooksSourceOpti
   examplesDir?: string;
 }
 
+function toConsumerFilePath(path: string): string {
+  if (path.startsWith("registry/ui/"))
+    return `src/components/ui/${path.slice("registry/ui/".length)}`;
+  if (path.startsWith("registry/hooks/"))
+    return `src/hooks/${path.slice("registry/hooks/".length)}`;
+  if (path.startsWith("registry/lib/")) return `src/lib/${path.slice("registry/lib/".length)}`;
+  if (path.startsWith("styles/")) return `src/styles/${path.slice("styles/".length)}`;
+  return path;
+}
+
+function getDisplayPath(file: RegistryFile): string {
+  return file.target ?? toConsumerFilePath(file.path);
+}
+
+function readPublicRegistryFiles(options: {
+  item: HookRegistryItem;
+  rootDir: string;
+  highlighter: DocsHighlighter;
+  themeName: string;
+  lang: HighlightLanguage;
+}): HookSourceFileData[] | null {
+  const { item, rootDir, highlighter, themeName, lang } = options;
+  const publicName = item.registryName ?? item.name;
+  const itemPath = resolve(rootDir, "public/r", `${publicName}.json`);
+  if (!existsSync(itemPath)) return null;
+
+  const registryItem = RegistryItemSchema.parse(JSON.parse(readFileSync(itemPath, "utf-8")));
+  const files = registryItem.files
+    .filter((file): file is RegistryFile & { content: string } => typeof file.content === "string")
+    .map((file) => ({
+      path: getDisplayPath(file),
+      raw: file.content,
+      highlighted: highlightCode(highlighter, file.content, lang, themeName),
+    }));
+
+  return files.length > 0 ? files : null;
+}
+
+function readSourceFile(options: {
+  item: HookRegistryItem;
+  rootDir: string;
+  highlighter: DocsHighlighter;
+  themeName: string;
+  lang: HighlightLanguage;
+}): HookSourceFileData | null {
+  const { item, rootDir, highlighter, themeName, lang } = options;
+  const file = item.files[0];
+  if (!file?.path) {
+    log.warn(`Hook "${item.name}": no file path, skipping`);
+    return null;
+  }
+  const hookPath = resolve(rootDir, file.path);
+  if (!existsSync(hookPath)) {
+    log.warn(`Hook "${item.name}": file not found at ${hookPath}, skipping`);
+    return null;
+  }
+
+  const raw = readFileSync(hookPath, "utf-8");
+  return {
+    path: file.path,
+    raw,
+    highlighted: highlightCode(highlighter, raw, lang, themeName),
+  };
+}
+
 export function generateHooksSource(
   options: GenerateHooksSourceOptions,
 ): Record<string, HookSourceData> {
-  const { items, rootDir, highlighter, themeName, lang = "typescript", logger } = options;
+  const { items, rootDir, highlighter, themeName, lang = "typescript" } = options;
   const data: Record<string, HookSourceData> = {};
 
   for (const item of items) {
-    const file = item.files[0];
-    if (!file?.path) {
-      logger?.warn?.(`Hook "${item.name}": no file path, skipping`);
-      continue;
-    }
-    const hookPath = resolve(rootDir, file.path);
-    if (!existsSync(hookPath)) {
-      logger?.warn?.(`Hook "${item.name}": file not found at ${hookPath}, skipping`);
-      continue;
-    }
+    const files =
+      readPublicRegistryFiles({ item, rootDir, highlighter, themeName, lang }) ??
+      [readSourceFile({ item, rootDir, highlighter, themeName, lang })].filter(
+        (file): file is HookSourceFileData => file !== null,
+      );
+    const firstFile = files[0];
+    if (!firstFile) continue;
 
-    const raw = readFileSync(hookPath, "utf-8");
-    data[item.name] = {
+    const entry: HookSourceDataWithFiles = {
       name: item.name,
       title: item.title ?? item.name,
       description: item.description ?? "",
       source: {
-        raw,
-        highlighted: highlightCode(highlighter, raw, lang, themeName),
+        raw: firstFile.raw,
+        highlighted: firstFile.highlighted,
       },
+      files,
     };
+    data[item.name] = entry;
   }
 
   return data;
@@ -70,7 +144,6 @@ export async function generateEnrichedHookData(
     lang = "typescript",
     loadHookDoc,
     examplesDir,
-    logger,
   } = options;
 
   const data: Record<string, EnrichedHookData> = {};
@@ -78,12 +151,12 @@ export async function generateEnrichedHookData(
   for (const item of items) {
     const file = item.files[0];
     if (!file?.path) {
-      logger?.warn?.(`Hook "${item.name}": no file path, skipping`);
+      log.warn(`Hook "${item.name}": no file path, skipping`);
       continue;
     }
     const hookPath = resolve(rootDir, file.path);
     if (!existsSync(hookPath)) {
-      logger?.warn?.(`Hook "${item.name}": file not found at ${hookPath}, skipping`);
+      log.warn(`Hook "${item.name}": file not found at ${hookPath}, skipping`);
       continue;
     }
 

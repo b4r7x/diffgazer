@@ -11,19 +11,15 @@ import { err, ok, type Result } from "@diffgazer/core/result";
 import type { AIProvider, ProviderModelsResponse } from "@diffgazer/core/schemas/config";
 import { z } from "zod";
 import { quarantineCorruptFile, readJsonFileSyncSafe } from "../fs.js";
+import { log } from "../log.js";
 import { getGlobalModelsDevCatalogPath } from "../paths.js";
 import { type DiskCacheState, isEntryFresh, persistDiskCache } from "./disk-cache.js";
+import { readJsonResponseWithLimit } from "./http-json.js";
 
 const MODELS_DEV_URL = "https://models.dev/api.json";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 /** Reject a live payload smaller than this fraction of the known baseline. */
 const SHRINK_GUARD_RATIO = 0.5;
-/**
- * Upper bound on the buffered models.dev response. The real catalog is ~2 MB; a
- * compromised upstream/proxy returning a multi-hundred-MB body must be rejected
- * before `response.json()` reads it all into the in-process CLI server's memory.
- */
-const MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
 
 /** Exported as a test seam: colocated tests round-trip the on-disk cache shape. */
 export const ModelsDevCatalogCacheSchema = z.object({
@@ -126,54 +122,6 @@ const isOffline = (): boolean => {
   return flag !== undefined && flag !== "" && flag !== "0" && flag.toLowerCase() !== "false";
 };
 
-const readJsonResponseWithLimit = async (
-  response: Response,
-): Promise<Result<unknown, { message: string }>> => {
-  const declaredLength = Number(response.headers?.get?.("content-length"));
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_RESPONSE_BYTES) {
-    return err({ message: `models.dev catalog response too large: ${declaredLength} bytes` });
-  }
-
-  if (!response.body) {
-    try {
-      return ok((await response.json()) as unknown);
-    } catch (error) {
-      return err({ message: getErrorMessage(error, "models.dev catalog response was not JSON") });
-    }
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let receivedBytes = 0;
-  let text = "";
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (!value) continue;
-
-      receivedBytes += value.byteLength;
-      if (receivedBytes > MAX_RESPONSE_BYTES) {
-        await reader.cancel("models.dev catalog response exceeded the size limit");
-        return err({ message: `models.dev catalog response too large: ${receivedBytes} bytes` });
-      }
-
-      text += decoder.decode(value, { stream: true });
-    }
-
-    text += decoder.decode();
-  } catch (error) {
-    return err({ message: getErrorMessage(error, "Failed to read models.dev catalog response") });
-  }
-
-  try {
-    return ok(JSON.parse(text) as unknown);
-  } catch (error) {
-    return err({ message: getErrorMessage(error, "models.dev catalog response was not JSON") });
-  }
-};
-
 /**
  * The single live-fetch + parse + shrink/corruption-guard step. Exported as a
  * deliberate test seam so the guards can be exercised directly; production reaches
@@ -197,7 +145,7 @@ export const fetchModelsDevCatalog = async (options?: {
   if (!response.ok)
     return err({ message: `models.dev catalog request failed: ${response.status}` });
 
-  const payloadResult = await readJsonResponseWithLimit(response);
+  const payloadResult = await readJsonResponseWithLimit(response, "models.dev catalog");
   if (!payloadResult.ok) return payloadResult;
 
   const payload = payloadResult.value;
@@ -281,11 +229,9 @@ export const getProviderModels = async (providerId: AIProvider): Promise<Provide
   if (cacheState.status === "corrupt") {
     try {
       const backupPath = quarantineCorruptFile(path);
-      console.warn(`[models-dev-catalog] quarantined unloadable cache to ${backupPath}`);
+      log("warn", "models_dev_catalog_quarantined", { backupPath });
     } catch (error) {
-      console.warn(
-        `[models-dev-catalog] failed to quarantine unloadable cache: ${getErrorMessage(error)}`,
-      );
+      log("warn", "models_dev_catalog_quarantine_failed", { error: getErrorMessage(error) });
     }
   }
   const cache = cacheState.status === "ok" ? cacheState.entry : null;
@@ -304,9 +250,10 @@ export const getProviderModels = async (providerId: AIProvider): Promise<Provide
       // carries, and this log makes the stale offline serve observable server-side.
       const stale = resultIfNonEmpty(cache.catalog, providerId, cache.fetchedAt, "cache");
       if (stale) {
-        console.info(
-          `[models-dev-catalog] offline: serving stale cache (fetchedAt=${cache.fetchedAt}) for ${providerId}`,
-        );
+        log("info", "models_dev_catalog_offline_stale_serve", {
+          fetchedAt: cache.fetchedAt,
+          providerId,
+        });
         return stale;
       }
     }
@@ -316,11 +263,12 @@ export const getProviderModels = async (providerId: AIProvider): Promise<Provide
   // Shrink-guard against the prior trusted cache when we have one. When the cache
   // exists but could not be loaded, fall back to the bundled snapshot count as an
   // emergency baseline rather than running the fetch with no shrink protection.
-  const baselineModelCount = cache
-    ? countModels(cache.catalog)
-    : cacheState.status === "corrupt"
-      ? countModels(CATALOG_SNAPSHOT)
-      : 0;
+  let baselineModelCount = 0;
+  if (cache) {
+    baselineModelCount = countModels(cache.catalog);
+  } else if (cacheState.status === "corrupt") {
+    baselineModelCount = countModels(CATALOG_SNAPSHOT);
+  }
   const fetchResult = await fetchModelsDevCatalog({ baselineModelCount });
 
   if (fetchResult.ok) {
@@ -359,9 +307,7 @@ const persistIfNotDroppingProviders = (
     const after = populatedEnabledSourceIds(catalog);
     for (const sourceId of before) {
       if (!after.has(sourceId)) {
-        console.warn(
-          `[models-dev-catalog] refusing to persist live catalog: enabled source ${sourceId} was dropped`,
-        );
+        log("warn", "models_dev_catalog_persist_refused", { droppedSource: sourceId });
         return;
       }
     }
@@ -373,6 +319,6 @@ const persistIfNotDroppingProviders = (
     // immediate follow-up request reuses it instead of re-validating from disk.
     parsedCacheMemo = entry;
   } catch (error) {
-    console.warn(`[models-dev-catalog] failed to persist catalog cache: ${getErrorMessage(error)}`);
+    log("warn", "models_dev_catalog_persist_failed", { error: getErrorMessage(error) });
   }
 };

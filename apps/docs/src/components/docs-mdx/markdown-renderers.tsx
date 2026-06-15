@@ -6,6 +6,7 @@ import {
   CodeBlockLabel,
   InlineCode,
 } from "@diffgazer/ui/components/code-block";
+import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { Typography } from "@diffgazer/ui/components/typography";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { MDXComponents } from "mdx/types";
@@ -119,13 +120,17 @@ export const markdownMdxComponents: MDXComponents = {
     );
   },
   table: ({ children }) => (
-    <div className="overflow-x-auto overflow-y-hidden mt-4 mb-4 rounded-sm first:mt-0">
+    <ScrollArea
+      orientation="horizontal"
+      aria-label="Scrollable table"
+      className="mt-4 mb-4 rounded-sm first:mt-0"
+    >
       <table className="w-full text-sm border-collapse border border-border">{children}</table>
-    </div>
+    </ScrollArea>
   ),
   thead: ({ children }) => <thead className="bg-border/10">{children}</thead>,
   th: ({ children }) => (
-    <th className="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border">
+    <th className="text-left px-6 py-3 text-2xs font-bold uppercase tracking-widest text-muted-foreground border-b border-border">
       {children}
     </th>
   ),
@@ -146,12 +151,22 @@ export const markdownMdxComponents: MDXComponents = {
     );
   },
   ul: ({ children }) => (
-    <ul className="list-none space-y-1 mt-4 mb-4 ml-4 text-sm text-foreground/90 first:mt-0 [&>li]:before:content-['-']">
+    // biome-ignore lint/a11y/useSemanticElements: this already is a <ul>; the explicit role="list" below restores list semantics that list-style:none strips, and Biome should not suggest swapping the element.
+    <ul
+      // biome-ignore lint/a11y/noRedundantRoles: list-style:none drops list semantics in Safari/VoiceOver; role="list" restores them.
+      role="list"
+      className="docs-md-list-bullet list-none space-y-1 mt-4 mb-4 ml-4 text-sm text-foreground/90 first:mt-0"
+    >
       {children}
     </ul>
   ),
   ol: ({ children }) => (
-    <ol className="list-none space-y-1 mt-4 mb-4 ml-4 text-sm text-foreground/90 first:mt-0 [counter-reset:list-counter] [&>li]:before:content-[counter(list-counter,decimal)_'._'] [&>li]:[counter-increment:list-counter]">
+    // biome-ignore lint/a11y/useSemanticElements: this already is an <ol>; the explicit role="list" below restores list semantics that list-style:none strips, and Biome should not suggest swapping the element.
+    <ol
+      // biome-ignore lint/a11y/noRedundantRoles: list-style:none drops list semantics in Safari/VoiceOver; role="list" restores them.
+      role="list"
+      className="docs-md-list-ordered list-none space-y-1 mt-4 mb-4 ml-4 text-sm text-foreground/90 first:mt-0 [counter-reset:list-counter]"
+    >
       {children}
     </ol>
   ),

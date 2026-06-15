@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { relative, resolve } from "node:path";
+import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
 import { validatePublicComponentProps, validatePublicExportShape } from "./registry/exports.js";
 import {
   extractLocalImports,
@@ -40,9 +41,9 @@ function itemExportPath(item: RegistryItem): string | null {
 }
 
 function publicItemExportPath(item: RegistryItem): string | null {
-  if (item.type === "registry:ui") return `./components/${item.name}`;
-  if (item.type === "registry:hook") return `./hooks/${item.name}`;
-  if (item.type === "registry:lib") return `./lib/${item.name}`;
+  if (item.type === REGISTRY_ITEM_TYPE.ui) return `./components/${item.name}`;
+  if (item.type === REGISTRY_ITEM_TYPE.hook) return `./hooks/${item.name}`;
+  if (item.type === REGISTRY_ITEM_TYPE.lib) return `./lib/${item.name}`;
   return null;
 }
 
@@ -157,11 +158,10 @@ function validateNoPublicKeysImports(): string[] {
 
 const KEYS_PEER_NAME = "@diffgazer/keys";
 
-// T-608 / F-234: keep package.json's @diffgazer/keys peer in sync with the
-// registry. Shipped package exports (accordion.tsx, popover/use-auto-focus.ts,
-// and other keyboard-backed entries) statically import @diffgazer/keys at module
-// top, so `npm install @diffgazer/ui` without keys throws ERR_MODULE_NOT_FOUND.
-// keys is therefore a REQUIRED peer for package mode: it must be present in
+// Package-mode UI entries (accordion.tsx, popover/use-auto-focus.ts, and other
+// keyboard-backed exports) statically import @diffgazer/keys at module top, so
+// `npm install @diffgazer/ui` without keys throws ERR_MODULE_NOT_FOUND. keys is
+// therefore a REQUIRED peer for package mode: it must be present in
 // peerDependencies and must NOT be flagged optional in peerDependenciesMeta.
 function validateKeysRequiredPeer(packageJson: PackageJson, items: RegistryItem[]): string[] {
   const hasPublicKeysItem = items.some(
@@ -173,13 +173,13 @@ function validateKeysRequiredPeer(packageJson: PackageJson, items: RegistryItem[
 
   if (packageJson.peerDependencies?.[KEYS_PEER_NAME] === undefined) {
     errors.push(
-      `public registry items statically import keys hooks, so package.json peerDependencies must declare "${KEYS_PEER_NAME}" (T-608/F-234: keys is a required peer for package mode)`,
+      `public registry items statically import keys hooks, so package.json peerDependencies must declare "${KEYS_PEER_NAME}" (package-mode UI entries import @diffgazer/keys at runtime, so keys is a required peer)`,
     );
   }
 
   if (packageJson.peerDependenciesMeta?.[KEYS_PEER_NAME]?.optional === true) {
     errors.push(
-      `public registry items statically import keys hooks, so package.json peerDependenciesMeta["${KEYS_PEER_NAME}"].optional must not be true (T-608/F-234: shipped exports static-import keys, so it is a required peer)`,
+      `public registry items statically import keys hooks, so package.json peerDependenciesMeta["${KEYS_PEER_NAME}"].optional must not be true (package-mode UI entries import @diffgazer/keys at runtime, so keys is a required peer)`,
     );
   }
 

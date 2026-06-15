@@ -1,7 +1,8 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import type { HTMLAttributes, Ref } from "react";
+import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
+/** Class variants for divider. */
 export const dividerVariants = cva("flex opacity-40", {
   variants: {
     variant: {
@@ -20,14 +21,20 @@ export const dividerVariants = cva("flex opacity-40", {
   defaultVariants: { variant: "default", orientation: "horizontal" },
 });
 
+/** Props for divider. */
 export interface DividerProps
-  extends HTMLAttributes<HTMLDivElement>,
+  extends ComponentProps<"div">,
     Omit<VariantProps<typeof dividerVariants>, "orientation"> {
-  ref?: Ref<HTMLDivElement>;
+  /**
+   * Renders with role="none" and aria-hidden when true. Set to false for meaningful section
+   * boundaries; renders role="separator" with aria-orientation.
+   */
   decorative?: boolean;
+  /** Layout axis. Vertical requires the parent to define a height. */
   orientation?: "horizontal" | "vertical";
 }
 
+/** Line separator with horizontal and vertical orientation, default and spaced variants. */
 export function Divider({
   ref,
   className,
@@ -43,6 +50,7 @@ export function Divider({
       ref={ref}
       {...props}
       role={decorative ? "none" : "separator"}
+      data-slot="divider"
       aria-hidden={decorative ? true : undefined}
       aria-orientation={decorative ? undefined : orientation}
       className={cn(dividerVariants({ variant, orientation }), className)}

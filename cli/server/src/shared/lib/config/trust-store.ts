@@ -2,8 +2,9 @@ import { err, ok, type Result } from "@diffgazer/core/result";
 import type { TrustConfig } from "@diffgazer/core/schemas/config";
 import { getFileMtimeMs } from "../fs.js";
 import { getGlobalTrustPath } from "../paths.js";
-import { loadTrust, persistTrustAsync } from "./persistence.js";
+import { loadTrust, persistTrustRecordAsync, persistTrustRemovalAsync } from "./persistence.js";
 import { persistError } from "./secrets-store.js";
+import { createMutex, runConfigTransaction } from "./transaction.js";
 import type { SecretsStorageError, TrustState } from "./types.js";
 
 export interface TrustStore {
@@ -23,6 +24,8 @@ export function createTrustStore(): TrustStore {
   const sessionTrust: Record<string, TrustConfig> = {};
   let trustMtimeMs: number | null = getFileMtimeMs(getGlobalTrustPath());
 
+  const mutex = createMutex();
+
   const cloneTrustState = (state: TrustState): TrustState => ({
     projects: Object.fromEntries(
       Object.entries(state.projects).map(([projectId, trust]) => [projectId, { ...trust }]),
@@ -36,14 +39,28 @@ export function createTrustStore(): TrustStore {
     trustMtimeMs = currentMtime;
   };
 
-  const persistTrust = async (): Promise<Result<void, SecretsStorageError>> => {
+  // Record-granular persist: re-reads trust.json and merges the single mutated
+  // record before the atomic write, so a record another instance wrote during
+  // this window is never erased (F-359).
+  const persistTrustWith = async (
+    write: () => Promise<void>,
+  ): Promise<Result<void, SecretsStorageError>> => {
     try {
-      await persistTrustAsync(trustState);
+      await write();
+      trustState = loadTrust();
       trustMtimeMs = getFileMtimeMs(getGlobalTrustPath());
       return ok(undefined);
     } catch (cause) {
       return err(persistError("trust", cause));
     }
+  };
+
+  const transactionDeps = {
+    refresh: refreshTrustState,
+    snapshot: () => cloneTrustState(trustState),
+    restore: (backup: TrustState) => {
+      trustState = backup;
+    },
   };
 
   const getTrust = (projectId: string): TrustConfig | null => {
@@ -56,45 +73,48 @@ export function createTrustStore(): TrustStore {
     return Object.values({ ...trustState.projects, ...sessionTrust });
   };
 
-  const saveTrust = async (
-    config: TrustConfig,
-  ): Promise<Result<TrustConfig, SecretsStorageError>> => {
+  const saveTrust = (config: TrustConfig): Promise<Result<TrustConfig, SecretsStorageError>> => {
     if (config.trustMode === "session") {
       sessionTrust[config.projectId] = config;
-      return ok(config);
+      return Promise.resolve(ok(config));
     }
-    refreshTrustState();
-    const backup = cloneTrustState(trustState);
-    trustState.projects[config.projectId] = config;
-    refreshTrustState();
-    trustState.projects[config.projectId] = config;
-    const result = await persistTrust();
-    if (!result.ok) {
-      trustState = backup;
-      return result;
-    }
-    return ok(config);
+    return mutex.run(() =>
+      runConfigTransaction(
+        {
+          ...transactionDeps,
+          persist: () => persistTrustWith(() => persistTrustRecordAsync(config)),
+        },
+        () => {
+          trustState.projects[config.projectId] = config;
+          return ok(config);
+        },
+      ),
+    );
   };
 
-  const removeTrust = async (projectId: string): Promise<Result<boolean, SecretsStorageError>> => {
-    refreshTrustState();
-    const inSession = projectId in sessionTrust;
-    const inPersistent = projectId in trustState.projects;
-    if (!inSession && !inPersistent) return ok(false);
-    if (inSession) delete sessionTrust[projectId];
-    if (inPersistent) {
-      const backup = cloneTrustState(trustState);
-      delete trustState.projects[projectId];
+  const removeTrust = (projectId: string): Promise<Result<boolean, SecretsStorageError>> =>
+    mutex.run(() => {
+      // Session trust is purely in-memory, so its removal needs no disk refresh.
+      const removedSession = projectId in sessionTrust;
+      if (removedSession) delete sessionTrust[projectId];
+      // Refresh once, then decide persistent membership against that single
+      // freshly-read state; only the persistent path enters the transaction (which
+      // reuses the same state without refreshing again), so there is no redundant
+      // double refresh on the removal path.
       refreshTrustState();
-      delete trustState.projects[projectId];
-      const result = await persistTrust();
-      if (!result.ok) {
-        trustState = backup;
-        return result;
-      }
-    }
-    return ok(true);
-  };
+      if (!(projectId in trustState.projects)) return Promise.resolve(ok(removedSession));
+      return runConfigTransaction(
+        {
+          ...transactionDeps,
+          refresh: () => {},
+          persist: () => persistTrustWith(() => persistTrustRemovalAsync(projectId)),
+        },
+        () => {
+          delete trustState.projects[projectId];
+          return ok(true);
+        },
+      );
+    });
 
   return { getTrust, listTrustedProjects, saveTrust, removeTrust };
 }

@@ -1,6 +1,6 @@
 import { Box, Text, useInput } from "ink";
 import type { ReactNode } from "react";
-import { Children, useRef, useState } from "react";
+import { Children, useState } from "react";
 import { useTheme } from "../../theme/provider";
 
 export interface ScrollAreaProps {
@@ -18,8 +18,8 @@ export function ScrollArea({
 }: ScrollAreaProps) {
   const { tokens } = useTheme();
   const [scrollOffset, setScrollOffset] = useState(0);
-  const prevTotalRef = useRef(0);
-  const userScrolledRef = useRef(false);
+  const [prevTotal, setPrevTotal] = useState(0);
+  const [userScrolled, setUserScrolled] = useState(false);
 
   const childArray = Children.toArray(children);
   const totalItems = childArray.length;
@@ -30,36 +30,34 @@ export function ScrollArea({
     setScrollOffset(clampedOffset);
   }
 
-  if (autoTail && totalItems > prevTotalRef.current && !userScrolledRef.current) {
-    setScrollOffset(maxOffset);
+  if (totalItems !== prevTotal) {
+    setPrevTotal(totalItems);
+    if (autoTail && totalItems > prevTotal && !userScrolled) {
+      setScrollOffset(maxOffset);
+    }
   }
-  prevTotalRef.current = totalItems;
 
   useInput(
     (_input, key) => {
       if (key.upArrow) {
-        userScrolledRef.current = true;
-        setScrollOffset((prev) => Math.max(0, prev - 1));
+        setUserScrolled(true);
+        setScrollOffset(Math.max(0, clampedOffset - 1));
       } else if (key.downArrow) {
-        setScrollOffset((prev) => {
-          const next = Math.min(maxOffset, prev + 1);
-          if (next >= maxOffset) userScrolledRef.current = false;
-          return next;
-        });
+        const next = Math.min(maxOffset, clampedOffset + 1);
+        setUserScrolled(next < maxOffset);
+        setScrollOffset(next);
       } else if (key.pageUp) {
-        userScrolledRef.current = true;
-        setScrollOffset((prev) => Math.max(0, prev - height));
+        setUserScrolled(true);
+        setScrollOffset(Math.max(0, clampedOffset - height));
       } else if (key.pageDown) {
-        setScrollOffset((prev) => {
-          const next = Math.min(maxOffset, prev + height);
-          if (next >= maxOffset) userScrolledRef.current = false;
-          return next;
-        });
+        const next = Math.min(maxOffset, clampedOffset + height);
+        setUserScrolled(next < maxOffset);
+        setScrollOffset(next);
       } else if (key.home) {
-        userScrolledRef.current = true;
+        setUserScrolled(true);
         setScrollOffset(0);
       } else if (key.end) {
-        userScrolledRef.current = false;
+        setUserScrolled(false);
         setScrollOffset(maxOffset);
       }
     },

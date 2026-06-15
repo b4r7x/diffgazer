@@ -1,10 +1,14 @@
 import type { DiffChange } from "./parse";
 
+/** Adjacent remove/add groups that should render as one edit pair. */
 export interface EditPairGroup {
+  /** Removed lines in the group. */
   removes: DiffChange[];
+  /** Added lines in the group. */
   adds: DiffChange[];
 }
 
+/** Groups adjacent remove/add changes while yielding context changes unchanged. */
 export function* collectEditPairs(changes: DiffChange[]): Generator<DiffChange | EditPairGroup> {
   let i = 0;
   while (i < changes.length) {

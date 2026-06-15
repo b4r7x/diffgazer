@@ -1,21 +1,22 @@
-import { matchQueryState, useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
+import { useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
-import { usePageFooter } from "@diffgazer/core/footer";
 import { buildLensOptions } from "@diffgazer/core/schemas/events";
-import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import type { LensId } from "@diffgazer/core/schemas/review";
-import { useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
-import { Button } from "@diffgazer/ui/components/button";
+import { BACK_SHORTCUT, NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
+import {
+  ANALYSIS_SETTINGS_SUBTITLE,
+  isLensId,
+  isLensSelectionDirty,
+  type LensId,
+  resolveEffectiveLenses,
+} from "@diffgazer/core/schemas/review";
+import { useKey, useScope } from "@diffgazer/keys";
 import { useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
-import { CardLayout } from "@/components/ui/card-layout";
+import { useSettingsFormFooter } from "../../hooks/use-settings-form-footer";
+import { SettingsFormPage } from "../form-page";
 import { AnalysisSelectorContent } from "./selector-content";
 
 const lensOptions = buildLensOptions();
-
-function isLensId(value: string): value is LensId {
-  return lensOptions.some((lens) => lens.id === value);
-}
 
 export function SettingsAnalysisPage() {
   const navigate = useNavigate();
@@ -31,16 +32,10 @@ export function SettingsAnalysisPage() {
   const persistedLenses = defaultLenses.filter((lens): lens is LensId => isLensId(lens));
   const fallbackLenses = lensOptions.map((lens) => lens.id);
   const currentLenses = persistedLenses.length > 0 ? persistedLenses : fallbackLenses;
-  const effectiveLenses = selectedLenses ?? currentLenses;
+  const effectiveLenses = resolveEffectiveLenses(persistedLenses, selectedLenses, fallbackLenses);
   const hasLensSelection = effectiveLenses.length > 0;
 
-  const isDirty = (() => {
-    if (!settings || selectedLenses === null) return false;
-    return (
-      currentLenses.length !== selectedLenses.length ||
-      currentLenses.some((lens) => !selectedLenses.includes(lens))
-    );
-  })();
+  const isDirty = settings ? isLensSelectionDirty(currentLenses, selectedLenses) : false;
 
   useScope("settings-analysis");
   useKey("Escape", () => navigate({ to: "/settings" }), { enabled: !isSaving });
@@ -60,79 +55,26 @@ export function SettingsAnalysisPage() {
     }
   };
 
-  const footer = useActionRowNavigation({
-    enabled: true,
-    actionCount: 2,
+  const footer = useSettingsFormFooter({
     disabledActions: [isSaving, !canSave],
-    disabledFocusFallbackRef: focusFallbackRef,
-    onAction: (index) => {
-      if (index === 0) handleCancel();
-      else if (index === 1 && canSave) void handleSave();
-    },
+    canSave,
+    onCancel: handleCancel,
+    onSave: () => void handleSave(),
+    contentShortcuts: [NAVIGATE_SHORTCUT, { key: "Enter/Space", label: "Toggle Lens" }],
+    rightShortcuts: [BACK_SHORTCUT],
+    focusFallbackRef,
   });
-
-  const footerShortcuts: Shortcut[] = footer.inActions
-    ? [
-        { key: "←/→", label: "Move Action" },
-        {
-          key: "Enter/Space",
-          label: footer.focusedIndex === 0 ? "Cancel" : "Save",
-          disabled: footer.isFocusedActionDisabled,
-        },
-      ]
-    : [
-        { key: "↑/↓", label: "Navigate" },
-        { key: "Enter/Space", label: "Toggle Lens" },
-      ];
-
-  usePageFooter({
-    shortcuts: footerShortcuts,
-    rightShortcuts: [{ key: "Esc", label: "Back" }],
-  });
-
-  const pendingUI = matchQueryState(settingsQuery, {
-    loading: () => (
-      <CardLayout title="Analysis Settings" subtitle="Choose which agents run during reviews.">
-        <p className="text-tui-muted">Loading settings...</p>
-      </CardLayout>
-    ),
-    error: (err) => (
-      <CardLayout title="Analysis Settings" subtitle="Choose which agents run during reviews.">
-        <p className="text-tui-red text-sm">{err.message}</p>
-      </CardLayout>
-    ),
-    success: () => null,
-  });
-
-  if (pendingUI) return pendingUI;
 
   return (
-    <CardLayout
+    <SettingsFormPage
       title="Analysis Settings"
-      subtitle="Choose which agents run during reviews."
-      contentInactive={footer.inActions}
-      footer={
-        <>
-          <Button
-            {...footer.getActionProps(0)}
-            variant="ghost"
-            onClick={handleCancel}
-            disabled={isSaving}
-            highlighted={footer.inActions && footer.focusedIndex === 0 && !isSaving}
-          >
-            Cancel
-          </Button>
-          <Button
-            {...footer.getActionProps(1)}
-            variant="success"
-            onClick={handleSave}
-            disabled={!canSave}
-            highlighted={footer.inActions && footer.focusedIndex === 1 && canSave}
-          >
-            {isSaving ? "Saving..." : "Save"}
-          </Button>
-        </>
-      }
+      subtitle={ANALYSIS_SETTINGS_SUBTITLE}
+      query={settingsQuery}
+      footer={footer}
+      isSaving={isSaving}
+      canSave={canSave}
+      onCancel={handleCancel}
+      onSave={() => void handleSave()}
     >
       <div ref={focusFallbackRef} tabIndex={-1} className="space-y-3 focus:outline-none">
         <AnalysisSelectorContent
@@ -148,9 +90,9 @@ export function SettingsAnalysisPage() {
             }
           }}
         />
-        {!hasLensSelection && <p className="text-tui-red text-xs">Select at least one agent.</p>}
+        {!hasLensSelection && <p className="text-error-text text-xs">Select at least one lens.</p>}
       </div>
-      {error && <p className="text-tui-red text-sm">{error}</p>}
-    </CardLayout>
+      {error && <p className="text-error-text text-sm">{error}</p>}
+    </SettingsFormPage>
   );
 }

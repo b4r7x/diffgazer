@@ -20,11 +20,29 @@ export const ErrorCode = {
   TRUST_REQUIRED: "TRUST_REQUIRED",
   SETUP_REQUIRED: "SETUP_REQUIRED",
   CREDENTIAL_INVALID: "CREDENTIAL_INVALID",
+  PROJECT_ERROR: "PROJECT_ERROR",
+  PAYLOAD_TOO_LARGE: "PAYLOAD_TOO_LARGE",
+  PROVIDER_NOT_FOUND: "PROVIDER_NOT_FOUND",
+  INVALID_RESPONSE: "INVALID_RESPONSE",
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
-export const SHARED_ERROR_CODES = ["INTERNAL_ERROR", "API_KEY_MISSING", "RATE_LIMITED"] as const;
+/**
+ * The `{ error: { message, code? } }` envelope every server error response
+ * carries. `code` stays a plain string because the server emits domain-specific
+ * vocabularies the client does not model; clients narrow against `ErrorCode`
+ * where they switch on known members.
+ */
+export const ApiErrorEnvelopeSchema = z.object({
+  error: z.object({
+    message: z.string(),
+    code: z.string().optional(),
+  }),
+});
+export type ApiErrorEnvelope = z.infer<typeof ApiErrorEnvelopeSchema>;
+
+const SHARED_ERROR_CODES = ["INTERNAL_ERROR", "API_KEY_MISSING", "RATE_LIMITED"] as const;
 
 export type SharedErrorCode = (typeof SHARED_ERROR_CODES)[number];
 

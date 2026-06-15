@@ -3,6 +3,7 @@
 import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { CopyButton } from "../copy-button";
 import { SourceViewer } from "./source-viewer";
 
 const files = [
@@ -14,7 +15,7 @@ const files = [
 ];
 
 const multipleFiles = [
-  files[0],
+  ...files,
   {
     path: "registry/ui/button/button.css",
     raw: ".button {}",
@@ -61,12 +62,17 @@ describe("SourceViewer", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the merged-source copy button only when merged source is provided", () => {
+  it("renders a consumer-provided copy button in the Source heading", () => {
     const { rerender } = render(<SourceViewer files={files} />);
 
     expect(screen.queryByText("[Copy Full Source]")).toBeNull();
 
-    rerender(<SourceViewer files={files} mergedSource="export function Button() {}" />);
+    rerender(
+      <SourceViewer
+        files={files}
+        copyButton={<CopyButton text="export function Button() {}" label="Copy Full Source" />}
+      />,
+    );
 
     expect(screen.getByText("[Copy Full Source]")).toBeInTheDocument();
   });
@@ -84,5 +90,11 @@ describe("SourceViewer", () => {
       "id",
       "source",
     );
+  });
+
+  it("exposes the source accordion trigger with heading semantics", () => {
+    render(<SourceViewer files={files} />);
+
+    expect(screen.getByRole("heading", { name: /View component source/i })).toBeInTheDocument();
   });
 });

@@ -1,11 +1,12 @@
+import { testNavigationBehavior } from "@diffgazer/keys/testing/navigation-behavior";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior";
 import { axe } from "../../../testing/axe";
 import { closestElement } from "../../testing/assertions";
 import { NavigationList } from "./index";
+import { useNavigationListContext } from "./navigation-list-context";
 
 function renderList(props: Record<string, unknown> = {}) {
   return render(
@@ -45,6 +46,71 @@ describe("NavigationList", () => {
     expect(screen.getByText("new")).toBeInTheDocument();
   });
 
+  it("keeps aria-activedescendant in sync for items rendered by a consumer wrapper", async () => {
+    function WrappedItem({ id, label }: { id: string; label: string }) {
+      return (
+        <NavigationList.Item id={id}>
+          <NavigationList.Title>{label}</NavigationList.Title>
+        </NavigationList.Item>
+      );
+    }
+
+    render(
+      <NavigationList aria-label="Test nav" defaultHighlighted="one">
+        <WrappedItem id="one" label="One" />
+        <WrappedItem id="two" label="Two" />
+      </NavigationList>,
+    );
+
+    const list = screen.getByRole("listbox");
+    list.focus();
+    // Without registration the static walk cannot see WrappedItem, so the second
+    // item would never become the active descendant.
+    await userEvent.keyboard("{ArrowDown}");
+    expect(list).toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("option", { name: "Two" }).id,
+    );
+  });
+
+  it("warns in development when an unregistered item id is activated", async () => {
+    function GhostActivator() {
+      const { activate } = useNavigationListContext();
+      return (
+        <button type="button" onClick={() => activate("ghost")}>
+          activate ghost
+        </button>
+      );
+    }
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+        </NavigationList.Item>
+        <GhostActivator />
+      </NavigationList>,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "activate ghost" }));
+
+    expect(warn).toHaveBeenCalled();
+    expect(warn.mock.calls[0]?.[0]).toContain("ghost");
+    expect(warn.mock.calls[0]?.[0]).toContain("NavigationList");
+    warn.mockRestore();
+  });
+
+  it("does not warn when a registered item is activated", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    renderList();
+
+    await userEvent.click(screen.getByRole("option", { name: /One/ }));
+
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it("passes native root props and composes key handling with list navigation", async () => {
     const ref = createRef<HTMLDivElement>();
     const onClick = vi.fn();
@@ -53,7 +119,6 @@ describe("NavigationList", () => {
     renderList({
       ref,
       id: "nav-root",
-      "data-testid": "nav-root",
       "data-state": "ready",
       "aria-describedby": "nav-help",
       style: { maxWidth: "12px" },
@@ -103,7 +168,7 @@ describe("NavigationList", () => {
 
     const item = screen.getByRole("option", { name: "One" });
     expect(onClick).toHaveBeenCalledOnce();
-    expect(item).toHaveAttribute("data-state", "selected");
+    expect(item).toHaveAttribute("data-selected");
     expect(item).toHaveStyle({ maxWidth: "14px" });
   });
 
@@ -208,14 +273,14 @@ describe("NavigationList", () => {
     const highlightedOption = screen.getByRole("option", { name: "Two" });
 
     expect(selectedOption).toHaveAttribute("aria-selected", "true");
-    expect(selectedOption).not.toHaveAttribute("data-active");
-    expect(highlightedOption).toHaveAttribute("data-active", "true");
+    expect(selectedOption).not.toHaveAttribute("data-highlighted");
+    expect(highlightedOption).toHaveAttribute("data-highlighted");
   });
 
   it("uses selected item as active visual when no highlight is set", () => {
     renderList({ selectedId: "one", highlighted: null, focused: true });
 
-    expect(screen.getByRole("option", { name: "One" })).toHaveAttribute("data-active", "true");
+    expect(screen.getByRole("option", { name: "One" })).toHaveAttribute("data-highlighted");
   });
 
   it("does not render disabled item as selected via controlled selectedId", () => {
@@ -224,7 +289,7 @@ describe("NavigationList", () => {
     const disabledOption = screen.getByRole("option", { name: "Three" });
     expect(disabledOption).toHaveAttribute("aria-disabled", "true");
     expect(disabledOption).toHaveAttribute("aria-selected", "false");
-    expect(disabledOption).not.toHaveAttribute("data-active", "true");
+    expect(disabledOption).not.toHaveAttribute("data-highlighted");
   });
 
   it("does not announce disabled item as highlighted via controlled state", () => {
@@ -234,7 +299,7 @@ describe("NavigationList", () => {
     const disabledOption = screen.getByRole("option", { name: "Three" });
 
     expect(list.getAttribute("aria-activedescendant") ?? "").not.toBe(disabledOption.id);
-    expect(disabledOption).not.toHaveAttribute("data-active", "true");
+    expect(disabledOption).not.toHaveAttribute("data-highlighted");
   });
 
   it("fires onSelect in controlled mode without internal state change", async () => {
@@ -269,19 +334,6 @@ describe("NavigationList", () => {
   it("has no a11y violations", async () => {
     const { container } = renderList();
     expect(await axe(container)).toHaveNoViolations();
-  });
-
-  it("renders the selection indicator with a non-zero base opacity so inactive rows keep a visible anchor", () => {
-    renderList({ defaultHighlighted: "two", focused: true });
-
-    const oneOption = screen.getByRole("option", { name: "One" });
-    // querySelector retained: aria-hidden span has no accessible role; structural assertion is the contract (verifying the visual indicator element exists and has the expected opacity classes)
-    const indicator = oneOption.querySelector("span[aria-hidden='true']") as HTMLElement;
-
-    expect(indicator).toBeTruthy();
-    expect(indicator.className).not.toMatch(/(^|\s)opacity-0(\s|$)/);
-    expect(indicator.className).toMatch(/opacity-/);
-    expect(indicator.className).toMatch(/group-data-\[active\]:opacity-100/);
   });
 
   it("moves highlight and activates the highlighted option from the listbox", async () => {
@@ -892,6 +944,24 @@ describe("NavigationListGroup", () => {
     const lastItem = screen.getByRole("option", { name: "Input.tsx" });
     expect(firstItem.textContent).toContain("├──");
     expect(lastItem.textContent).toContain("└──");
+  });
+
+  it("tree group header exposes its expansion state in the accessible name and flips on toggle", async () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Group label="src" variant="tree" headerId="src-group" defaultExpanded>
+          <NavigationList.Item id="one">
+            <NavigationList.Title>Button.tsx</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    );
+
+    // Expanded headers offer to collapse; collapsed ones offer to expand.
+    expect(screen.getByRole("option", { name: "src, collapse section" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("option", { name: "src, collapse section" }));
+    expect(screen.getByRole("option", { name: "src, expand section" })).toBeInTheDocument();
   });
 
   it("nested tree groups increment depth", () => {

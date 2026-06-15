@@ -8,19 +8,19 @@ import {
   parseEnumOption,
   readPackageJson,
 } from "@diffgazer/registry/cli";
+import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
 import type { ResolvedConfig } from "../../context.js";
-import { ctx } from "../../context.js";
+import { ctx, getDefaultKeysVersionSpec } from "../../context.js";
 import { planComponentCss } from "../../utils/css-chunks.js";
 import { resolveKeysHooksFromRegistry } from "../../utils/keys-copy-bundle.js";
 import {
   publicAvailableNames,
   splitInstallNames,
-  validateInstallNames,
+  validateInstallableNames,
 } from "../../utils/namespaces.js";
 import { buildComponentFileOps, buildKeysFileOps } from "./file-ops.js";
 import {
   applyIntegrationDeps,
-  DEFAULT_KEYS_VERSION_SPEC,
   type ResolvedIntegrationSelection,
   resolveIntegrations,
 } from "./integration.js";
@@ -98,11 +98,11 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
       ...publicAvailableNames(),
       ...ctx.registry
         .getAllItems()
-        .filter((item) => item.meta?.hidden === true && item.type !== "registry:hook")
+        .filter((item) => item.meta?.hidden === true && item.type !== REGISTRY_ITEM_TYPE.hook)
         .map((item) => `ui/${item.name}`),
     ]),
   ],
-  validateRequestedNames: validateInstallNames,
+  validateRequestedNames: validateInstallableNames,
   extraOptions: [
     {
       flags: "--integration <mode>",
@@ -112,12 +112,14 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
     {
       flags: "--keys-version <version>",
       description: "Version/range of @diffgazer/keys used for package mode",
-      default: DEFAULT_KEYS_VERSION_SPEC,
     },
   ],
   buildPlan: async ({ cwd, config, names, opts }) => {
     const namesByNamespace = splitInstallNames(names);
-    const keysVersionSpec = normalizeVersionSpec(opts.keysVersion, "@diffgazer/keys");
+    const keysVersionSpec = normalizeVersionSpec(
+      opts.keysVersion ?? getDefaultKeysVersionSpec(),
+      "@diffgazer/keys",
+    );
     const integrationMode = parseEnumOption(
       String(opts.integration ?? "ask").toLowerCase(),
       ["ask", "none", "copy", "@diffgazer/keys", "keys"] as const,
@@ -175,5 +177,17 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
 });
 
 addBaseCommand.description("Add ui/* components or keys/* hooks to your project");
+
+// Surface the derived --keys-version default in --help without eager-reading the
+// generated keys-version.json at import time (that would crash every subcommand
+// when the file is absent). addHelpText runs only when help is rendered, and the
+// read is guarded so a missing generated file still prints help.
+addBaseCommand.addHelpText("after", () => {
+  try {
+    return `\nDefault --keys-version: ${getDefaultKeysVersionSpec()} (caret range of the bundled @diffgazer/keys release)`;
+  } catch {
+    return "";
+  }
+});
 
 export const addCommand = addBaseCommand;

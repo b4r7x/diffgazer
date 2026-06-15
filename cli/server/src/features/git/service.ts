@@ -2,18 +2,10 @@ import { realpath } from "node:fs/promises";
 import { join, sep } from "node:path";
 import type { AppError } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
+import type { ErrorCode as ErrorCodeType } from "@diffgazer/core/schemas/errors";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import { createGitService } from "../../shared/lib/git/service.js";
-
-const isRelativePath = (value: string): boolean => {
-  if (value.startsWith("/") || value.startsWith("\\") || /^[a-zA-Z]:/.test(value)) {
-    return false;
-  }
-  if (value.includes("..") || value.includes("\0")) {
-    return false;
-  }
-  return true;
-};
+import { isRepoRelativePath } from "../../shared/lib/paths.js";
 
 type GitService = ReturnType<typeof createGitService>;
 
@@ -24,10 +16,10 @@ interface ResolveGitServiceOptions {
 
 export const resolveGitService = async (
   options: ResolveGitServiceOptions,
-): Promise<Result<GitService, AppError>> => {
+): Promise<Result<GitService, AppError<ErrorCodeType>>> => {
   const { basePath, relativePath } = options;
 
-  if (relativePath && !isRelativePath(relativePath)) {
+  if (relativePath && !isRepoRelativePath(relativePath)) {
     return err({ code: ErrorCode.INVALID_PATH, message: "Invalid path" });
   }
 

@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, posix, resolve } from "node:path";
-import { RELATIVE_JS_IMPORT } from "./transform-public-registry-imports.js";
+import { RELATIVE_JS_IMPORT_RE } from "@diffgazer/registry";
 
 interface RegistryFile {
   path: string;
@@ -253,8 +253,8 @@ function validateNoJsImportsInPublicContent(publicDir: string) {
     for (const file of item.files) {
       if (typeof file.content !== "string") continue;
 
-      RELATIVE_JS_IMPORT.lastIndex = 0;
-      const match = RELATIVE_JS_IMPORT.exec(file.content);
+      RELATIVE_JS_IMPORT_RE.lastIndex = 0;
+      const match = RELATIVE_JS_IMPORT_RE.exec(file.content);
       if (match) {
         addError(
           "PUBLIC_JS_IMPORT",

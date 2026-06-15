@@ -5,10 +5,3 @@
 
 @source "../components";
 @source "../features";
-
-html,
-body {
-  font-family: "JetBrains Mono", monospace;
-  background-color: var(--tui-bg);
-  color: var(--tui-fg);
-}

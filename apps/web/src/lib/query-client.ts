@@ -1,5 +1,3 @@
 import { createQueryClientBase } from "@diffgazer/core/api";
 
-export function createWebQueryClient() {
-  return createQueryClientBase();
-}
+export const queryClient = createQueryClientBase();

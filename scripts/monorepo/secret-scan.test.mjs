@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
 import { collectSecretFindings, formatSecretFindings } from "./secret-scan.mjs";
 
 function scanSource(source) {
@@ -59,11 +58,24 @@ test("secret scan detects generic high-entropy secret assignments", () => {
 });
 
 test("secret scan includes committed public registry contracts", () => {
-  const source = readFileSync(
-    fileURLToPath(new URL("./secret-scan.mjs", import.meta.url)),
-    "utf-8",
-  );
+  const dir = mkdtempSync(join(tmpdir(), "dg-secret-public-r-"));
+  const relPath = "libs/ui/public/r/planted.json";
+  const filePath = join(dir, relPath);
+  const fakeToken = `ghp_${"B".repeat(36)}`;
+  const cwd = process.cwd();
 
-  assert.doesNotMatch(source, /libs\/ui\/public\/r\//);
-  assert.doesNotMatch(source, /libs\/keys\/public\/r\//);
+  try {
+    mkdirSync(dirname(filePath), { recursive: true });
+    writeFileSync(filePath, `{"token":"${fakeToken}"}\n`);
+    process.chdir(dir);
+
+    const findings = collectSecretFindings([relPath]);
+
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].path, relPath);
+    assert.equal(findings[0].pattern, "github-token");
+  } finally {
+    process.chdir(cwd);
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

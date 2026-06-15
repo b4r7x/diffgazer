@@ -6,6 +6,7 @@ import { type TabsContextValue, useTabsContext } from "./tabs-context";
 import { TabsList, type TabsListProps } from "./tabs-list";
 import { TabsTrigger, type TabsTriggerProps } from "./tabs-trigger";
 
+/** Terminal-styled tabbed interface with horizontal and vertical orientation support. */
 const Tabs = Object.assign(TabsRoot, {
   List: TabsList,
   Trigger: TabsTrigger,

@@ -1,16 +1,30 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-
-const createApiServer = vi.hoisted(() => vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })));
-const createWebServer = vi.hoisted(() => vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })));
-const createEmbeddedServer = vi.hoisted(() => vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })));
-
-vi.mock("./api", () => ({ createApiServer }));
-vi.mock("./web", () => ({ createWebServer }));
-vi.mock("./embedded", () => ({ createEmbeddedServer }));
-vi.mock("./git-root", () => ({ findGitRoot: () => "/repo" }));
-
 import { config } from "../../config";
 import { createServerFactories } from "./factories";
+import type { ServerController } from "./process";
+
+const createApiServer = vi.fn(() => createTestServer());
+const createWebServer = vi.fn(() => createTestServer());
+const createEmbeddedServer = vi.fn(() => createTestServer());
+const readyHandler = vi.fn();
+
+function createTestServer(): ServerController {
+  return {
+    start: vi.fn(),
+    stop: vi.fn(async () => {}),
+  };
+}
+
+function createFactories(options: Parameters<typeof createServerFactories>[0]) {
+  return createServerFactories(options, {
+    createApiServer,
+    createEmbeddedServer,
+    createReadyHandler: () => readyHandler,
+    createWebServer,
+    findGitRoot: () => "/repo",
+    getCwd: () => "/repo/subdir",
+  });
+}
 
 describe("createServerFactories", () => {
   afterEach(() => {
@@ -21,7 +35,7 @@ describe("createServerFactories", () => {
   it("passes the configured API port from PORT into the dev API child", () => {
     vi.stubEnv("PORT", "4321");
 
-    const factories = createServerFactories({ mode: "dev", openBrowser: false });
+    const factories = createFactories({ mode: "dev", openBrowser: false });
     factories[0]?.();
 
     expect(createApiServer).toHaveBeenCalledWith(
@@ -30,14 +44,14 @@ describe("createServerFactories", () => {
   });
 
   it("passes the canonical git root into the dev API child", () => {
-    const factories = createServerFactories({ mode: "dev", openBrowser: false });
+    const factories = createFactories({ mode: "dev", openBrowser: false });
     factories[0]?.();
 
     expect(createApiServer).toHaveBeenCalledWith(expect.objectContaining({ projectRoot: "/repo" }));
   });
 
   it("does not create a Vite child for dev TUI when includeWebServer is false", () => {
-    const factories = createServerFactories({
+    const factories = createFactories({
       mode: "dev",
       openBrowser: false,
       includeWebServer: false,
@@ -50,7 +64,7 @@ describe("createServerFactories", () => {
   });
 
   it("creates API and Vite children for dev web mode by default", () => {
-    const factories = createServerFactories({ mode: "dev", openBrowser: true });
+    const factories = createFactories({ mode: "dev", openBrowser: true });
 
     expect(factories).toHaveLength(2);
     factories[0]?.();
@@ -62,7 +76,7 @@ describe("createServerFactories", () => {
   it("wires embedded startup failures to onStartupFailure in prod mode", () => {
     const onStartupFailure = vi.fn();
 
-    const factories = createServerFactories({
+    const factories = createFactories({
       mode: "prod",
       openBrowser: false,
       onStartupFailure,

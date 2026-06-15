@@ -16,6 +16,6 @@ export function inkKeyToHotkey(input: string, key: Key): string | null {
   return null;
 }
 
-export function isLetterKey(hotkey: string): boolean {
+export function isTypeableShortcutKey(hotkey: string): boolean {
   return hotkey.length === 1 && /^[a-zA-Z0-9?/]$/.test(hotkey);
 }

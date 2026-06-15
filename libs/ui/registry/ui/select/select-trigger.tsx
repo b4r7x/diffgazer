@@ -2,13 +2,15 @@
 
 import { cva } from "class-variance-authority";
 import type { ComponentPropsWithRef, KeyboardEvent, ReactNode } from "react";
-import { resolveAriaInvalid } from "@/lib/aria";
-import { composeRefs } from "@/lib/compose-refs";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
+import { mergeIds, resolveAriaInvalid } from "@/lib/aria";
 import { matchesSearch } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { Chevron } from "../icons/chevron";
 import { useSelectContext } from "./select-context";
 import { isActiveOptionVisible, toOptionId } from "./selection";
+import { useSelectTypeahead } from "./use-typeahead";
+import { getVisibleEnabledOptions } from "./visible-options";
 
 const selectTriggerVariants = cva(
   "flex items-center justify-between w-full px-3 py-2 text-sm font-mono cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
@@ -23,12 +25,16 @@ const selectTriggerVariants = cva(
   },
 );
 
+/** Props for select trigger. */
 export interface SelectTriggerProps
   extends Omit<ComponentPropsWithRef<"button">, "children" | "type" | "disabled" | "id"> {
+  /** Trigger label. Use SelectValue or SelectTags for selection display. */
   children: ReactNode;
+  /** Custom trigger handle. Pass null to hide the default chevron. */
   handle?: ReactNode | null;
 }
 
+/** Button that opens/closes the dropdown. */
 export function SelectTrigger({
   children,
   className,
@@ -59,15 +65,26 @@ export function SelectTrigger({
     options,
     highlighted,
     searchQuery,
+    setHighlighted,
   } = useSelectContext("SelectTrigger");
+  const composedRef = useComposedRefs(triggerRef, ref);
+  const handleTypeahead = useSelectTypeahead({ options, searchQuery, highlighted, setHighlighted });
   const resolvedAriaInvalid = resolveAriaInvalid(ariaInvalid ?? triggerAriaInvalid);
   const activeDescendant =
     open && !searchable && isActiveOptionVisible(options, highlighted, searchQuery, matchesSearch)
       ? toOptionId(listboxId, highlighted)
       : undefined;
-  const composedDescribedBy =
-    [ariaDescribedByProp, ariaDescribedBy].filter(Boolean).join(" ") || undefined;
+  const composedDescribedBy = mergeIds(ariaDescribedByProp, ariaDescribedBy);
   const composedLabelledBy = ariaLabelledByProp ?? ariaLabelledBy;
+
+  // APG closed-combobox table. The open listbox owns navigation/typeahead, so
+  // these only apply while closed; the searchable trigger is a plain toggle (its
+  // search input is the combobox), so Home/End/typeahead are skipped there.
+  const highlightFirstOrLast = (edge: "first" | "last") => {
+    const visible = getVisibleEnabledOptions(options, searchQuery);
+    const target = edge === "first" ? visible[0] : visible.at(-1);
+    if (target !== undefined) setHighlighted(target);
+  };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
     onKeyDown?.(e);
@@ -77,12 +94,26 @@ export function SelectTrigger({
       case " ":
         e.preventDefault();
         onOpenChange(!open);
-        break;
+        return;
       case "ArrowDown":
       case "ArrowUp":
         e.preventDefault();
         if (!open) onOpenChange(true);
-        break;
+        return;
+    }
+
+    if (open || searchable) return;
+
+    if (e.key === "Home" || e.key === "End") {
+      e.preventDefault();
+      onOpenChange(true);
+      highlightFirstOrLast(e.key === "Home" ? "first" : "last");
+      return;
+    }
+
+    if (e.key.length === 1 && e.key !== " " && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      onOpenChange(true);
+      handleTypeahead(e.key);
     }
   };
 
@@ -90,13 +121,16 @@ export function SelectTrigger({
     // biome-ignore lint/a11y/useAriaPropsSupportedByRole: role is conditionally "combobox" (Biome cannot resolve the ternary); aria-activedescendant is applied in that same branch and is valid for the combobox role.
     <button
       {...props}
-      ref={composeRefs(triggerRef, ref)}
+      ref={composedRef}
       id={triggerId}
       type="button"
       role={searchable ? undefined : "combobox"}
+      data-slot="select-trigger"
+      data-state={open ? "open" : "closed"}
+      data-disabled={disabled ? "" : undefined}
       disabled={disabled}
-      aria-label={ariaLabel ?? (composedLabelledBy ? undefined : "Select")}
-      aria-labelledby={ariaLabel || !composedLabelledBy ? undefined : composedLabelledBy}
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabel ? undefined : composedLabelledBy}
       aria-haspopup="listbox"
       aria-expanded={open}
       aria-controls={open && !searchable ? listboxId : undefined}

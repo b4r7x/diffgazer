@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AIProvider } from "../schemas/config/index.js";
+import type { AIProvider } from "../schemas/config/providers.js";
 import { requireValue } from "../testing/assertions.js";
 import { CATALOG_SNAPSHOT } from "./catalog-snapshot.js";
 import { PROVIDER_OVERLAY } from "./provider-overlay.js";

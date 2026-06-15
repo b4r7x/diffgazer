@@ -8,8 +8,8 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { resolve } from "node:path";
-import { ENV } from "./artifacts/env.mjs";
+import { basename, isAbsolute, join, resolve } from "node:path";
+import { ENV } from "./lib/env.mjs";
 
 export function quoteArgs(args) {
   return args.map((arg) => JSON.stringify(arg)).join(" ");
@@ -354,7 +354,7 @@ export function assertBuiltCss(fixture, options = {}) {
   const {
     outputDir = "dist",
     label = "built",
-    expected = [".bg-primary", ".w-64", "--tui-bg", "dialog::backdrop"],
+    expected = [".bg-primary", ".w-64", "--base-bg", "dialog::backdrop"],
   } = options;
   const css = readBuiltCss(fixture, outputDir);
 
@@ -386,4 +386,46 @@ export function runArgv(command, args, cwdOrOptions = {}) {
     }
     throw error;
   }
+}
+
+export function parsePackOutput(raw) {
+  const starts = [...raw.matchAll(/[[{]/g)].map((match) => match.index ?? 0);
+  const ends = [...raw.matchAll(/[\]}]/g)].map((match) => match.index ?? 0).reverse();
+
+  for (const start of starts) {
+    for (const end of ends) {
+      if (end <= start) continue;
+      const candidate = raw.slice(start, end + 1);
+      try {
+        const parsed = JSON.parse(candidate);
+        const packInfo = Array.isArray(parsed) ? parsed[0] : parsed;
+        if (packInfo?.filename) return parsed;
+      } catch {
+        // pnpm lifecycle logs can be mixed into stdout; keep scanning.
+      }
+    }
+  }
+
+  throw new Error(`Could not parse pnpm pack --json output:\n${raw.slice(0, 1000)}`);
+}
+
+// pnpm pack --json reports `filename` as either an absolute path or a bare
+// filename depending on version/destination; resolve both forms against packDir
+// so callers always get the real tarball path.
+export function packWorkspacePackage(root, workspacePackage, packDir) {
+  const packOutput = execFileSync(
+    "pnpm",
+    ["--dir", root, "--filter", workspacePackage, "pack", "--pack-destination", packDir, "--json"],
+    {
+      cwd: root,
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  ).trim();
+
+  const parsedPack = parsePackOutput(packOutput);
+  const packInfo = Array.isArray(parsedPack) ? parsedPack[0] : parsedPack;
+  return isAbsolute(packInfo.filename)
+    ? packInfo.filename
+    : join(packDir, basename(packInfo.filename));
 }

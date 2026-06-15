@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
-import { defaultLogger, type Logger } from "../logger.js";
+import { log } from "../logger.js";
 import type { Registry } from "../registry-types.js";
 import { RegistrySchema } from "../registry-types.js";
 import { writeJson } from "../utils/json.js";
@@ -35,8 +35,6 @@ export interface BuildDocsDataConfig {
   demoIndex: DemoIndexConfig;
   components?: ComponentsConfig;
   libs?: LibsConfig;
-  skipMdxGeneration?: boolean;
-  logger?: Logger;
 }
 
 export interface BuildDocsDataResult {
@@ -64,9 +62,8 @@ function buildLibsData(params: {
   rootDir: string;
   outputDir: string;
   highlighter: import("./highlight.js").DocsHighlighter;
-  logger: Logger;
 }): { libsCount: number } {
-  const { registry, libsConfig, rootDir, outputDir, highlighter, logger } = params;
+  const { registry, libsConfig, rootDir, outputDir, highlighter } = params;
 
   const libItems = registry.items.filter(libsConfig.filter);
   if (libItems.length === 0) return { libsCount: 0 };
@@ -76,11 +73,10 @@ function buildLibsData(params: {
     rootDir,
     highlighter,
     themeName: DOCS_CODE_THEME_NAME,
-    logger,
   });
   writeJson(resolve(outputDir, libsConfig.outputFile), libsData);
   const libsCount = Object.keys(libsData).length;
-  logger.info(`Wrote ${libsConfig.outputFile} (${libsCount} libs)`);
+  log.info(`Wrote ${libsConfig.outputFile} (${libsCount} libs)`);
 
   return { libsCount };
 }
@@ -92,10 +88,8 @@ function buildDemoIndex(params: {
   allHooks: HookRegistryItem[];
   examplesDir: string;
   outputDir: string;
-  logger: Logger;
 }): void {
-  const { registry, componentsConfig, demoIndexConfig, allHooks, examplesDir, outputDir, logger } =
-    params;
+  const { registry, componentsConfig, demoIndexConfig, allHooks, examplesDir, outputDir } = params;
 
   const demoItems = demoIndexConfig.items ?? [
     ...(componentsConfig
@@ -109,10 +103,9 @@ function buildDemoIndex(params: {
     examplesDir,
     importPathPrefix: demoIndexConfig.importPathPrefix,
     findExamplesFn: findExamples,
-    logger,
   });
   writeFileSync(resolve(outputDir, "demo-index.ts"), demoIndexContent);
-  logger.info("Wrote demo-index.ts");
+  log.info("Wrote demo-index.ts");
 }
 
 export async function buildDocsData(config: BuildDocsDataConfig): Promise<BuildDocsDataResult> {
@@ -126,8 +119,6 @@ export async function buildDocsData(config: BuildDocsDataConfig): Promise<BuildD
     demoIndex: demoIndexConfig,
     components: componentsConfig,
     libs: libsConfig,
-    skipMdxGeneration,
-    logger = defaultLogger,
   } = config;
 
   const errors: string[] = [];
@@ -150,8 +141,6 @@ export async function buildDocsData(config: BuildDocsDataConfig): Promise<BuildD
         componentsConfig,
         outputDir,
         highlighter,
-        skipMdxGeneration,
-        logger,
       });
       componentsCount = result.componentsCount;
       errors.push(...result.errors);
@@ -164,8 +153,6 @@ export async function buildDocsData(config: BuildDocsDataConfig): Promise<BuildD
       examplesDir,
       outputDir,
       highlighter,
-      skipMdxGeneration,
-      logger,
     });
     hooksCount = hooksResult.hooksCount;
     errors.push(...hooksResult.errors);
@@ -181,7 +168,6 @@ export async function buildDocsData(config: BuildDocsDataConfig): Promise<BuildD
         rootDir,
         outputDir,
         highlighter,
-        logger,
       });
       libsCount = result.libsCount;
     }
@@ -193,15 +179,14 @@ export async function buildDocsData(config: BuildDocsDataConfig): Promise<BuildD
       allHooks: hooksResult.allHooks,
       examplesDir,
       outputDir,
-      logger,
     });
 
-    logger.info(`\n--- Build Summary (${libraryId}) ---`);
-    if (componentsCount > 0) logger.info(`Components: ${componentsCount}`);
-    if (hooksCount > 0) logger.info(`Hooks: ${hooksCount}`);
-    if (libsCount > 0) logger.info(`Libs: ${libsCount}`);
-    logger.info("Errors: 0");
-    logger.info("Build completed successfully.");
+    log.info(`\n--- Build Summary (${libraryId}) ---`);
+    if (componentsCount > 0) log.info(`Components: ${componentsCount}`);
+    if (hooksCount > 0) log.info(`Hooks: ${hooksCount}`);
+    if (libsCount > 0) log.info(`Libs: ${libsCount}`);
+    log.info("Errors: 0");
+    log.info("Build completed successfully.");
   } finally {
     highlighter.dispose();
   }

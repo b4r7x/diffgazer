@@ -1,38 +1,34 @@
-import { guardQueryState, useDeleteTrust, useInit, useSaveTrust } from "@diffgazer/core/api/hooks";
-import { getErrorMessage } from "@diffgazer/core/errors";
-import { usePageFooter } from "@diffgazer/core/footer";
-import type { TrustCapabilities, TrustDraft } from "@diffgazer/core/schemas/config";
 import {
-  buildSavePayload,
-  getInitialDraft,
-  NO_TRUST_CAPABILITIES,
-  resolveEditorView,
-} from "@diffgazer/core/schemas/config";
+  guardQueryState,
+  TRUST_EDITOR_MESSAGES,
+  useInit,
+  useTrustEditor,
+} from "@diffgazer/core/api/hooks";
+import { usePageFooter } from "@diffgazer/core/footer";
+import { BACK_SHORTCUT, NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { TrustPermissionsContent } from "../../../components/shared/trust-permissions-content";
 import { Button } from "../../../components/ui/button";
 import { Panel } from "../../../components/ui/panel";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
-import { useScope } from "../../../hooks/use-scope";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import { useSettingsZone } from "../hooks/use-settings-zone.js";
 
 const TRUST_FORM_SHORTCUTS = [
-  { key: "↑/↓", label: "Navigate" },
+  NAVIGATE_SHORTCUT,
   { key: "Tab", label: "Switch Zone" },
   { key: "Space", label: "Toggle" },
   { key: "Enter", label: "Activate" },
 ];
 
-const TRUST_FORM_RIGHT_SHORTCUTS = [{ key: "Esc", label: "Back" }];
+const TRUST_FORM_RIGHT_SHORTCUTS = [BACK_SHORTCUT];
 
 export function TrustPermissionsScreen(): ReactElement {
   const { columns } = useTerminalDimensions();
-  useScope("trust-form");
   usePageFooter({
     shortcuts: TRUST_FORM_SHORTCUTS,
     rightShortcuts: TRUST_FORM_RIGHT_SHORTCUTS,
@@ -40,9 +36,6 @@ export function TrustPermissionsScreen(): ReactElement {
   useBackHandler();
 
   const initQuery = useInit();
-  const saveTrust = useSaveTrust();
-  const deleteTrust = useDeleteTrust();
-
   const project = initQuery.data?.project ?? null;
   const trust = project?.trust ?? null;
   const editorInput = {
@@ -69,92 +62,42 @@ export function TrustPermissionsScreen(): ReactElement {
   });
   if (guard) return guard;
 
-  return (
-    <LoadedTrustPermissionsScreen
-      columns={columns}
-      editorInput={editorInput}
-      saveTrust={saveTrust}
-      deleteTrust={deleteTrust}
-    />
-  );
+  return <LoadedTrustPermissionsScreen columns={columns} editorInput={editorInput} />;
 }
 
 interface LoadedTrustPermissionsScreenProps {
   columns: number;
-  editorInput: Parameters<typeof getInitialDraft>[0];
-  saveTrust: ReturnType<typeof useSaveTrust>;
-  deleteTrust: ReturnType<typeof useDeleteTrust>;
+  editorInput: Parameters<typeof useTrustEditor>[0];
 }
 
 function LoadedTrustPermissionsScreen({
   columns,
   editorInput,
-  saveTrust,
-  deleteTrust,
 }: LoadedTrustPermissionsScreenProps): ReactElement {
-  const [draft, setDraft] = useState<TrustDraft>(() => getInitialDraft(editorInput));
   const [statusMessage, setStatusMessage] = useState<{
     tone: "success" | "error";
     text: string;
   } | null>(null);
 
-  const view = resolveEditorView(draft, editorInput);
-  useEffect(() => {
-    if (draft.editorKey === view.editorKey) return;
-    setDraft({ editorKey: view.editorKey, capabilities: view.capabilities });
-  }, [draft.editorKey, view.editorKey, view.capabilities]);
+  const {
+    capabilities,
+    isTrusted,
+    isLoading,
+    isSaving,
+    isRevoking,
+    handleCapabilitiesChange,
+    handleSave,
+    handleRevoke,
+  } = useTrustEditor(editorInput, {
+    onSaved: () => setStatusMessage({ tone: "success", text: TRUST_EDITOR_MESSAGES.saved }),
+    onRevoked: () => setStatusMessage({ tone: "success", text: TRUST_EDITOR_MESSAGES.revoked }),
+    onError: (text) => setStatusMessage({ tone: "error", text }),
+  });
 
-  const isLoading = saveTrust.isPending || deleteTrust.isPending;
   const { isListActive, isButtonActive } = useSettingsZone({
     buttonCount: 2,
     disabled: isLoading,
   });
-
-  function handleCapabilitiesChange(next: TrustCapabilities) {
-    setDraft({ editorKey: view.editorKey, capabilities: next });
-  }
-
-  function handleSave() {
-    if (isLoading) return;
-    const result = buildSavePayload({
-      ...editorInput,
-      capabilities: view.capabilities,
-      now: () => new Date(),
-    });
-    if (result.kind === "blocked") {
-      setStatusMessage({ tone: "error", text: "Project information not available" });
-      return;
-    }
-    setStatusMessage(null);
-    saveTrust.mutate(result.payload, {
-      onSuccess: () => {
-        setStatusMessage({ tone: "success", text: "Trust permissions updated" });
-      },
-      onError: (error: Error) => {
-        setStatusMessage({
-          tone: "error",
-          text: getErrorMessage(error, "Failed to save trust settings"),
-        });
-      },
-    });
-  }
-
-  function handleRevoke() {
-    if (isLoading || !editorInput.projectId) return;
-    setStatusMessage(null);
-    deleteTrust.mutate(editorInput.projectId, {
-      onSuccess: () => {
-        setDraft({ editorKey: view.editorKey, capabilities: NO_TRUST_CAPABILITIES });
-        setStatusMessage({ tone: "success", text: "Trust has been revoked for this directory" });
-      },
-      onError: (error: Error) => {
-        setStatusMessage({
-          tone: "error",
-          text: getErrorMessage(error, "Failed to revoke trust"),
-        });
-      },
-    });
-  }
 
   return (
     <Box justifyContent="center" flexGrow={1}>
@@ -165,9 +108,9 @@ function LoadedTrustPermissionsScreen({
               <SectionHeader>Trust &amp; Permissions</SectionHeader>
               <TrustPermissionsContent
                 directory={editorInput.repoRoot ?? "Loading..."}
-                value={view.capabilities}
+                value={capabilities}
                 onChange={handleCapabilitiesChange}
-                isTrusted={view.isTrusted}
+                isTrusted={isTrusted}
                 isActive={isListActive}
               />
               <Box justifyContent="flex-end" gap={1}>
@@ -177,7 +120,7 @@ function LoadedTrustPermissionsScreen({
                   disabled={isLoading}
                   isActive={isButtonActive(0)}
                 >
-                  {saveTrust.isPending ? "[ Saving... ]" : "[ Save Changes ]"}
+                  {isSaving ? "[ Saving... ]" : "[ Save Changes ]"}
                 </Button>
                 <Button
                   variant="destructive"
@@ -185,7 +128,7 @@ function LoadedTrustPermissionsScreen({
                   disabled={isLoading}
                   isActive={isButtonActive(1)}
                 >
-                  {deleteTrust.isPending ? "[ Revoking... ]" : "[ Revoke Trust ]"}
+                  {isRevoking ? "[ Revoking... ]" : "[ Revoke Trust ]"}
                 </Button>
               </Box>
               {statusMessage && (

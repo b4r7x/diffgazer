@@ -15,16 +15,15 @@ If a provider or model is not set up, the screen tells you what is missing and l
 
 ## Watch progress
 
-The progress screen has two panes. On the left is a progress overview of the five pipeline phases; on the right is a live activity log. Both update as the run sends events over a server-sent events stream (`GET /api/review/reviews/:id/stream`). The stream is the mechanism behind everything you see move on this screen, so if it stops, the screen stops updating.
+The progress screen has two panes. On the left is a progress overview of the four pipeline phases; on the right is a live activity log. Both update as the run sends events over a server-sent events stream (`GET /api/review/reviews/:id/stream`). The stream is the mechanism behind everything you see move on this screen, so if it stops, the screen stops updating.
 
-The five phases run in order:
+The four phases run in order:
 
 | Phase | What it does |
 | --- | --- |
 | Collect diff | Gathers the code changes for the chosen mode |
 | Project context | Builds the repo graph and summary |
 | Review issues | Analyzes the diff with your lenses |
-| Enrich context | Adds git blame and surrounding context |
 | Generate report | Synthesizes the final report |
 
 Below the phase list is the agent board. Each analysis agent gets a row showing its name, a status badge (waiting, running, done, or failed), its current action, and a progress bar. The board fills in and the bars advance as agent events arrive on the stream. If one or more agents fail, often from rate limiting, the activity pane shows a partial-analysis notice naming the agents that dropped out, and the run keeps going with what it could finish.
@@ -33,7 +32,7 @@ You can filter the activity log by agent to focus on a single one, or leave it o
 
 ## When it finishes
 
-When the report phase completes, the View Results action turns on (press `Enter`) and takes you to the [results](/app/web/results) screen, where the findings are laid out by severity and category.
+When the report phase completes, the View Results action turns on (press `Enter`) and takes you to the [results](/app/web/results) screen, where the issues are laid out by severity and category.
 
 > Tip: Pressing Ctrl+C in the terminal where you launched `diffgazer` stops the local server and ends the session. Closing the browser tab alone does not shut the server down.
 

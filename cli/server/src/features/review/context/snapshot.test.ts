@@ -1,6 +1,6 @@
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { ok } from "@diffgazer/core/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,6 +8,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../../shared/lib/git/service.js", () => ({
   createGitService: vi.fn(),
 }));
+
+const writeOrder: string[] = [];
+// Boundary mock: filesystem helper wraps atomic writes; tests delegate to the real implementation while recording commit order.
+vi.mock("../../../shared/lib/fs.js", async () => {
+  const actual = await vi.importActual<typeof import("../../../shared/lib/fs.js")>(
+    "../../../shared/lib/fs.js",
+  );
+  return {
+    ...actual,
+    atomicWriteFile: async (filePath: string, content: string, mode?: number) => {
+      writeOrder.push(basename(filePath));
+      return actual.atomicWriteFile(filePath, content, mode);
+    },
+  };
+});
 
 import { createGitService } from "../../../shared/lib/git/service.js";
 import { buildProjectContextSnapshot, loadContextSnapshot } from "./snapshot.js";
@@ -31,12 +46,10 @@ function makeGitService(overrides: Partial<GitService> = {}): GitService {
         conflicted: [],
       }),
     ),
-    getDiff: vi.fn(async () => ""),
+    getDiff: vi.fn(async () => ok("")),
     isGitInstalled: vi.fn(async () => true),
-    getBlame: vi.fn(async () => null),
-    getFileLines: vi.fn(async () => []),
     getHeadCommit: vi.fn(async () => ok("HEAD")),
-    getStatusHash: vi.fn(async () => statusHash),
+    getStatusHash: vi.fn(async () => ({ kind: "full" as const, hash: statusHash })),
     ...overrides,
   };
 }
@@ -308,5 +321,106 @@ describe("buildProjectContextSnapshot", () => {
 
     // Cleanup sibling
     await rm(siblingDir, { recursive: true, force: true });
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "creates the context directory with 0o700 mode under a permissive umask",
+    async () => {
+      const previousUmask = process.umask(0o022);
+      try {
+        await writeProjectFile("package.json", JSON.stringify({ name: "perm", version: "1.0.0" }));
+        await buildProjectContextSnapshot(projectRoot, { force: true });
+
+        const dirStat = await stat(join(projectRoot, ".diffgazer"));
+        expect(dirStat.mode & 0o777).toBe(0o700);
+      } finally {
+        process.umask(previousUmask);
+      }
+    },
+  );
+
+  it("truncates oversized context markdown on a boundary without replacement characters", async () => {
+    // A multi-byte character (ż = 2 bytes) repeated past the byte cap would split
+    // mid-character at a raw byte offset, appending U+FFFD garbage.
+    const multiByteContent = "ż".repeat(40_000);
+    await writeProjectFile("package.json", JSON.stringify({ name: "wide", version: "1.0.0" }));
+    await writeProjectFile("README.md", multiByteContent);
+
+    const result = await buildProjectContextSnapshot(projectRoot, { force: true });
+
+    expect(Buffer.byteLength(result.markdown, "utf-8")).toBeLessThanOrEqual(50_000 + 50);
+    expect(result.markdown).toContain("Context truncated to fit size limit");
+    expect(result.markdown).not.toContain("�");
+  });
+
+  it("serializes concurrent builds per project root, never interleaving their writes", async () => {
+    await writeProjectFile("package.json", JSON.stringify({ name: "race", version: "1.0.0" }));
+
+    // Park the first build at its very first await (getStatusHash, which runs
+    // before any trio write). If the builds are NOT serialized, the second
+    // build's getStatusHash fires while the first is still parked. The lock must
+    // hold the second build off entirely until the first fully completes.
+    const order: string[] = [];
+    let releaseFirstHash: () => void = () => {};
+    const firstHashGate = new Promise<void>((resolve) => {
+      releaseFirstHash = resolve;
+    });
+    let signalFirstParked: () => void = () => {};
+    const firstParked = new Promise<void>((resolve) => {
+      signalFirstParked = resolve;
+    });
+    let hashCalls = 0;
+
+    vi.mocked(createGitService).mockImplementation(() => {
+      const callIndex = ++hashCalls;
+      return makeGitService({
+        getStatusHash: vi.fn(async () => {
+          order.push(`hash-start-${callIndex}`);
+          if (callIndex === 1) {
+            signalFirstParked();
+            await firstHashGate;
+          }
+          order.push(`hash-end-${callIndex}`);
+          return { kind: "full" as const, hash: `hash-${callIndex}` };
+        }),
+      });
+    });
+
+    const first = buildProjectContextSnapshot(projectRoot, { force: true });
+    const second = buildProjectContextSnapshot(projectRoot, { force: true });
+
+    // Wait until the first build is parked inside getStatusHash, then let the
+    // loop drain: a non-serialized second build would reach its own
+    // getStatusHash by now while the first is still gated.
+    await firstParked;
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(order).toEqual(["hash-start-1"]);
+
+    releaseFirstHash();
+    await Promise.all([first, second]);
+
+    // Second build's git work only began after the first build's hash settled,
+    // proving full serialization (no interleaved trio writes).
+    expect(order).toEqual(["hash-start-1", "hash-end-1", "hash-start-2", "hash-end-2"]);
+
+    const contextDir = join(projectRoot, ".diffgazer");
+    const markdown = await readFile(join(contextDir, "context.md"), "utf-8");
+    const meta = await readJson<{ statusHash: string; charCount: number }>(
+      join(contextDir, "context.meta.json"),
+    );
+    // The persisted trio is single-generation: meta describes the markdown beside it.
+    expect(meta.charCount).toBe(markdown.length);
+    expect(meta.statusHash).toBe("hash-2");
+  });
+
+  it("writes context.meta.json last so a reader never sees newer meta with older content", async () => {
+    await writeProjectFile("package.json", JSON.stringify({ name: "order", version: "1.0.0" }));
+
+    // The trio is committed through atomicWriteFile; record the order it is
+    // called in to prove meta lands after the markdown/json it describes.
+    writeOrder.length = 0;
+    await buildProjectContextSnapshot(projectRoot, { force: true });
+
+    expect(writeOrder).toEqual(["context.json", "context.md", "context.meta.json"]);
   });
 });

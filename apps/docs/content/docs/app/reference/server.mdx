@@ -1,9 +1,9 @@
 ---
 title: Server lifecycle and ports
-description: How the diffgazer web server picks a port, what it binds to, and how it shuts down.
+description: How the Diffgazer web server picks a port, what it binds to, and how it shuts down.
 ---
 
-When you run diffgazer in web mode, it starts a small local server, serves the app behind it, and opens your browser. The whole thing lives on your machine and listens on localhost only. This page covers the port it uses, the address it binds, how it stops, and what to do when the port is already taken.
+When you run Diffgazer in web mode, it starts a small local server, serves the app behind it, and opens your browser. The whole thing lives on your machine and listens on localhost only. This page covers the port it uses, the address it binds, how it stops, and what to do when the port is already taken.
 
 ## Port
 
@@ -23,11 +23,11 @@ There is a second guard on top of the bind address: every request whose `Host` h
 
 ## Shutdown
 
-The server shuts down gracefully on `SIGINT` (Ctrl+C in the terminal) or `SIGTERM`. When either signal arrives, diffgazer stops the running servers, then calls `process.exit(0)`. Stopping first aborts any in-flight review and closes open event streams so the HTTP server can drain its connections instead of hanging on a live stream.
+The server shuts down gracefully on `SIGINT` (Ctrl+C in the terminal) or `SIGTERM`. When either signal arrives, Diffgazer stops the running servers, then calls `process.exit(0)`. Stopping first aborts any in-flight review and closes open event streams so the HTTP server can drain its connections instead of hanging on a live stream.
 
-There is a grace window so a stuck server does not block your terminal forever. The default is 3 seconds. If a child process has not exited by then, diffgazer stops waiting and exits anyway. You can widen the window for slow environments (CI, for example) by setting `DIFFGAZER_FORCE_KILL_DELAY_MS` to a larger value in milliseconds; the grace window tracks that delay plus one second.
+There is a grace window so a stuck server does not block your terminal forever. The default is 3 seconds. If a child process has not exited by then, Diffgazer stops waiting and exits anyway. You can widen the window for slow environments (CI, for example) by setting `DIFFGAZER_FORCE_KILL_DELAY_MS` to a larger value in milliseconds; the grace window tracks that delay plus one second.
 
-The app can also ask the server to stop itself. On startup diffgazer generates a random 32-byte hex shutdown token and hands it to the embedded app. Every request under `/api` (except the health check) must present that token in the `x-diffgazer-shutdown-token` header, or it gets a `401 Unauthorized`. The app uses it to call `POST /api/shutdown`, which schedules the CLI process to receive `SIGTERM` shortly after, and that flows through the same graceful path above. In the packaged binary this check always fails closed, so a request without the token never gets through.
+The app can also ask the server to stop itself. On startup Diffgazer generates a random 32-byte hex shutdown token and hands it to the embedded app. Every request under `/api` (except the health check) must present that token in the `x-diffgazer-shutdown-token` header, or it gets a `401 Unauthorized`. The app uses it to call `POST /api/shutdown`, which schedules the CLI process to receive `SIGTERM` shortly after, and that flows through the same graceful path above. In the packaged binary this check always fails closed, so a request without the token never gets through.
 
 > Note: `POST /api/shutdown` only works when the server knows which process to stop. If that information is missing, the endpoint returns `503` with `Shutdown is not available in this environment.` rather than killing anything. Ctrl+C in the terminal always works.
 
@@ -37,7 +37,7 @@ If something else is already listening on the port, the server fails to bind and
 
 | Error | What it means | Fix |
 | --- | --- | --- |
-| `EADDRINUSE` | The port is already in use by another process. The message reads `Port <port> is already in use. Close the other process or set a different PORT.` | Close whatever is using the port, or start diffgazer with a different `PORT`. |
+| `EADDRINUSE` | The port is already in use by another process. The message reads `Port <port> is already in use. Close the other process or set a different PORT.` | Close whatever is using the port, or start Diffgazer with a different `PORT`. |
 | `EACCES` | The OS refused to let you bind that port. The message reads `Permission denied binding to port <port>. Try a port above 1024.` | Ports below 1024 are privileged on most systems. Pick a port above 1024 via `PORT`. |
 
 Setting a free port usually clears both:
@@ -50,6 +50,6 @@ If the same port keeps coming back as in use after you have closed the app, see 
 
 ## Related
 
-- [Environment variables](/app/reference/environment-variables): every variable diffgazer reads, including `PORT` and `DIFFGAZER_FORCE_KILL_DELAY_MS`.
+- [Environment variables](/app/reference/environment-variables): every variable Diffgazer reads, including `PORT` and `DIFFGAZER_FORCE_KILL_DELAY_MS`.
 - [Troubleshooting](/app/operations/troubleshooting): fixes for stuck ports, processes that will not stop, and startup failures.
 - [How it works](/app/concepts/how-it-works): where the local server fits in the overall flow.

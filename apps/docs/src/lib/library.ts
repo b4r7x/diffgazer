@@ -1,4 +1,4 @@
-import type rawConfig from "../../config/docs-libraries.json";
+import rawConfig from "../../config/docs-libraries.json";
 import {
   type ArtifactSourceConfig,
   type DocsLibraryConfigData,
@@ -7,11 +7,14 @@ import {
 
 export type DocsLibraryId = (typeof rawConfig.libraries)[number]["id"];
 
-const KNOWN_LIBRARY_IDS = docsLibrariesConfig.libraries.map(
-  (l) => l.id,
-) as readonly DocsLibraryId[];
+// DocsLibrariesConfigSchema validates rawConfig at module load and refines
+// primaryLibraryId ∈ libraries[].id, so these JSON-derived id literals are the
+// validated boundary type — no cast or defensive re-check is needed downstream.
+const KNOWN_LIBRARY_IDS: readonly DocsLibraryId[] = rawConfig.libraries.map(
+  (library) => library.id,
+);
 export const DOCS_LIBRARY_IDS: readonly DocsLibraryId[] = KNOWN_LIBRARY_IDS;
-export const PRIMARY_DOCS_LIBRARY_ID = docsLibrariesConfig.primaryLibraryId as DocsLibraryId;
+export const PRIMARY_DOCS_LIBRARY_ID: DocsLibraryId = rawConfig.primaryLibraryId;
 export const LOCAL_DGADD_PREREQUISITE =
   "Before publication, install a locally packed @diffgazer/add tarball in this app; pnpm exec dgadd resolves only after that local install.";
 
@@ -83,10 +86,7 @@ export function parseDocsLibrary(value: string | null | undefined): DocsLibraryI
   if (value && isDocsLibraryId(value)) {
     return value;
   }
-  if (isDocsLibraryId(PRIMARY_DOCS_LIBRARY_ID)) {
-    return PRIMARY_DOCS_LIBRARY_ID;
-  }
-  return DOCS_LIBRARY_IDS[0] ?? PRIMARY_DOCS_LIBRARY_ID;
+  return PRIMARY_DOCS_LIBRARY_ID;
 }
 
 export function getDocsLibraryFromPathname(pathname: string): DocsLibraryId | null {
@@ -120,11 +120,12 @@ export function isDocsPath(pathname?: string | null): boolean {
 }
 
 export function docsPath(library: DocsLibraryId, slugs?: string[] | string): string {
-  const normalized = Array.isArray(slugs)
-    ? normalizeRouteSlugs(slugs)
-    : typeof slugs === "string"
-      ? normalizeRouteSlugs(slugs.split("/"))
-      : [];
+  let normalized: string[] = [];
+  if (Array.isArray(slugs)) {
+    normalized = normalizeRouteSlugs(slugs);
+  } else if (typeof slugs === "string") {
+    normalized = normalizeRouteSlugs(slugs.split("/"));
+  }
 
   if (normalized.length === 0) {
     return `/${library}`;
@@ -142,7 +143,7 @@ export function sourceSlugsForLibrary(library: DocsLibraryId, routeSlugs: string
   const normalized = normalizeRouteSlugs(routeSlugs);
 
   if (normalized.length === 0) {
-    return [library, ...LIBRARY_CONFIG[library].defaultRouteSlugs];
+    return [library, ...getDocsLibraryConfig(library).defaultRouteSlugs];
   }
 
   return [library, ...normalized];

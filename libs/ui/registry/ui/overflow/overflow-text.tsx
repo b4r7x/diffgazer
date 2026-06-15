@@ -1,8 +1,8 @@
 "use client";
 
-import type { ComponentPropsWithRef, CSSProperties, ReactNode } from "react";
-import { useOverflow } from "@/hooks/use-overflow";
-import { composeRefs } from "@/lib/compose-refs";
+import type { ComponentPropsWithRef, CSSProperties, ReactNode, Ref } from "react";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
+import { useOverflowDetection } from "@/hooks/use-overflow-detection";
 import { cn } from "@/lib/utils";
 import {
   type PopoverTriggerRenderProps,
@@ -20,9 +20,16 @@ function resolveTooltipContent(
   return children;
 }
 
+/** Props for overflow text. */
 export interface OverflowTextProps extends Omit<ComponentPropsWithRef<"div">, "children"> {
+  /** String to clamp (text mode) or items to measure (items mode). */
   children: string;
+  /** Text mode only. 1 truncates; 2+ uses CSS line-clamp. */
   lines?: number;
+  /**
+   * Text mode only. true/ReactNode renders a Tooltip when content is actually clipped
+   * (auto-derived from children when true). false disables the tooltip.
+   */
   tooltip?: ReactNode | boolean;
 }
 
@@ -36,6 +43,51 @@ function clampStyle(lines: number): CSSProperties | undefined {
   };
 }
 
+/** Props for overflow tooltip trigger. */
+interface OverflowTooltipTriggerProps extends PopoverTriggerRenderProps {
+  /** Ref for the container element. */
+  containerRef: Ref<HTMLDivElement>;
+  /** Text mode only. 1 truncates; 2+ uses CSS line-clamp. */
+  lines: number;
+  /** Additional class names merged onto the rendered element. */
+  className?: string;
+  /** Inline styles applied to the rendered element. */
+  style: CSSProperties | undefined;
+  /** Props forwarded to the container element. */
+  containerProps: Omit<ComponentPropsWithRef<"div">, "children">;
+  /** String to clamp (text mode) or items to measure (items mode). */
+  children: string;
+}
+
+function OverflowTooltipTrigger({
+  ref: triggerRef,
+  className: triggerClassName,
+  role,
+  containerRef,
+  lines,
+  className,
+  style,
+  containerProps,
+  children,
+  ...restTrigger
+}: OverflowTooltipTriggerProps) {
+  const composedRef = useComposedRefs(containerRef, triggerRef);
+  return (
+    <div
+      ref={composedRef}
+      role={role}
+      data-slot="overflow"
+      className={cn(lines === 1 && "truncate", className, triggerClassName)}
+      style={style}
+      {...containerProps}
+      {...restTrigger}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Root - text mode by default; set mode="items" for fitting child items. */
 export function OverflowText({
   children,
   lines = 1,
@@ -44,13 +96,17 @@ export function OverflowText({
   ref: forwardedRef,
   ...props
 }: OverflowTextProps) {
-  const { ref, isOverflowing } = useOverflow<HTMLDivElement>(lines > 1 ? "vertical" : "horizontal");
+  const { ref, isOverflowing } = useOverflowDetection<HTMLDivElement>(
+    lines > 1 ? "vertical" : "horizontal",
+  );
+  const composedRef = useComposedRefs(ref, forwardedRef);
 
   const resolvedTooltip = resolveTooltipContent(tooltip, children);
   const style = clampStyle(lines);
   const content = (
     <div
-      ref={composeRefs(ref, forwardedRef)}
+      ref={composedRef}
+      data-slot="overflow"
       className={cn(lines === 1 && "truncate", className)}
       style={style}
       {...props}
@@ -67,22 +123,17 @@ export function OverflowText({
     return (
       <Tooltip enabled={isOverflowing}>
         <TooltipTrigger>
-          {({
-            ref: triggerRef,
-            className: triggerCn,
-            role,
-            ...restTrigger
-          }: PopoverTriggerRenderProps) => (
-            <div
-              ref={composeRefs(ref, forwardedRef, triggerRef)}
-              role={role}
-              className={cn(lines === 1 && "truncate", className, triggerCn)}
+          {(triggerProps: PopoverTriggerRenderProps) => (
+            <OverflowTooltipTrigger
+              {...triggerProps}
+              containerRef={composedRef}
+              lines={lines}
+              className={className}
               style={style}
-              {...props}
-              {...restTrigger}
+              containerProps={props}
             >
               {children}
-            </div>
+            </OverflowTooltipTrigger>
           )}
         </TooltipTrigger>
         <TooltipContent>{resolvedTooltip}</TooltipContent>

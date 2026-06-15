@@ -2,10 +2,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import type { ResolvedConfig } from "../context.js";
-import { planComponentCss } from "./css-chunks.js";
+import { getRegistry, type ResolvedConfig } from "../context.js";
+import { buildExpectedChunkContentsForItem, planComponentCss } from "./css-chunks.js";
 
 let root: string;
+
+const TAILWIND_CSS_IMPORT_RE =
+  /@import\s+(?:(?:url\(\s*)?["']tailwindcss(?:\/[^"']*)?["']\s*\)?|tailwindcss(?:\/[^\s;)]+)?(?:\s*;|\s|$))/;
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), "dgadd-css-chunks-"));
@@ -61,5 +64,25 @@ describe("planComponentCss", () => {
     expect(plan.fileOp).not.toBeNull();
     expect(plan.fileOp?.content).toMatch(/dgadd:css/);
     expect((plan.chunksByItem.get("ui/dialog-shell") ?? []).length).toBeGreaterThan(0);
+  });
+
+  test("shipped styles seed and CSS chunks do not import Tailwind", () => {
+    const registry = getRegistry();
+    const cssPayloads = [
+      { label: "styles.css seed", content: registry.styles },
+      ...registry.items.flatMap((item) =>
+        [...buildExpectedChunkContentsForItem(item.name)].map(([hash, content]) => ({
+          label: `${item.name} CSS chunk ${hash}`,
+          content,
+        })),
+      ),
+    ];
+
+    expect(cssPayloads.length).toBeGreaterThan(1);
+    expect(
+      cssPayloads
+        .filter(({ content }) => TAILWIND_CSS_IMPORT_RE.test(content))
+        .map(({ label }) => label),
+    ).toEqual([]);
   });
 });

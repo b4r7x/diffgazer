@@ -64,7 +64,7 @@ export function ActivityLog({
           />
         ))}
         {showCursor && (
-          <span className="inline-block h-4 w-2 bg-tui-fg cursor-blink" aria-hidden="true" />
+          <span className="inline-block h-4 w-2 bg-foreground cursor-blink" aria-hidden="true" />
         )}
       </div>
     </ScrollArea>

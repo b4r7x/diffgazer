@@ -1,6 +1,10 @@
 import { readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { REGISTRY_ORIGIN, rewriteKeysPackageImportsInContent } from "@diffgazer/registry";
+import {
+  REGISTRY_ORIGIN,
+  rewriteKeysPackageImportsInContent,
+  stripRelativeJsExtensions,
+} from "@diffgazer/registry";
 
 function renderImport(specifiers: string[], target: string, quote: string, indent: string): string {
   return `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`;
@@ -10,14 +14,6 @@ function rewriteKeysPackageImportLine(line: string): string {
   return rewriteKeysPackageImportsInContent(`${line}\n`, {
     renderImport,
   }).trimEnd();
-}
-
-function stripRelativeJsExtensions(content: string): string {
-  return content.replace(
-    /(\bfrom\s+|\bimport\s+|\bimport\(\s*|\brequire\(\s*)(["'])(\.{1,2}\/[^"']+)\.js\2/g,
-    (_: string, prefix: string, quote: string, specifier: string) =>
-      `${prefix}${quote}${specifier}${quote}`,
-  );
 }
 
 function stripCssSideEffectImports(content: string): string {
@@ -141,6 +137,28 @@ export function transformUiPublicRegistryKeysImports(outputDir: string): void {
       writeFileSync(itemPath, `${JSON.stringify(item, null, 2)}\n`);
     }
   }
+}
+
+// Replace the public theme item's styles.css content with the aggregated form
+// (seed + every component CSS) so `npx shadcn add` of the theme carries the
+// component CSS the per-item `~/styles/<name>.css` files never import. Mirrors the
+// tsup styles.css aggregation; `computeAggregated` receives the current seed.
+export function aggregateThemeStylesInPublicRegistry(
+  outputDir: string,
+  computeAggregated: (seedContent: string) => string,
+): void {
+  const themePath = join(outputDir, "theme.json");
+  const theme = JSON.parse(readFileSync(themePath, "utf-8")) as {
+    files?: Array<{ target?: string; content?: string }>;
+  };
+
+  const stylesFile = theme.files?.find((file) => file.target === "~/styles/styles.css");
+  if (!stylesFile || typeof stylesFile.content !== "string") {
+    throw new Error("theme.json is missing the styles.css file entry to aggregate");
+  }
+
+  stylesFile.content = computeAggregated(stylesFile.content);
+  writeFileSync(themePath, `${JSON.stringify(theme, null, 2)}\n`);
 }
 
 // Kept for tests that exercise single-line rewrite behavior.

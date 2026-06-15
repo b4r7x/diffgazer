@@ -1,6 +1,11 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import { filterIssuesBySeverity, selectDetailsEmptyKind } from "@diffgazer/core/review";
+import {
+  filterIssuesBySeverity,
+  selectDetailsEmptyKind,
+  useIssueDetailsState,
+} from "@diffgazer/core/review";
 import type { Shortcut, UISeverityFilter } from "@diffgazer/core/schemas/presentation";
+import { BACK_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
 import { type ReactElement, useState } from "react";
@@ -23,7 +28,7 @@ const RESULTS_SHORTCUTS_LEFT: Shortcut[] = [
   { key: "Tab", label: "Switch Pane" },
   { key: "1-4", label: "Tabs" },
 ];
-const RESULTS_SHORTCUTS_RIGHT: Shortcut[] = [{ key: "Esc", label: "Back" }];
+const RESULTS_SHORTCUTS_RIGHT: Shortcut[] = [BACK_SHORTCUT];
 
 export function ReviewResultsView({
   issues,
@@ -36,8 +41,6 @@ export function ReviewResultsView({
   const [selectedIssueId, setSelectedIssueId] = useState<string | undefined>(issues[0]?.id);
   const [activeZone, setActiveZone] = useState<Zone>("list");
   const [listSubZone, setListSubZone] = useState<IssueListSubZone>("issues");
-  const [completedSteps, setCompletedSteps] = useState<Set<number>>(() => new Set());
-  const [lastIssueId, setLastIssueId] = useState<string | undefined>(issues[0]?.id);
 
   usePageFooter({
     shortcuts: RESULTS_SHORTCUTS_LEFT,
@@ -45,11 +48,9 @@ export function ReviewResultsView({
   });
 
   const filteredIssues = filterIssuesBySeverity(issues, severityFilter);
-
-  if (selectedIssueId !== lastIssueId) {
-    setLastIssueId(selectedIssueId);
-    setCompletedSteps(new Set());
-  }
+  const selectedIssue = filteredIssues.find((i) => i.id === selectedIssueId);
+  const { activeTab, setActiveTab, completedSteps, toggleStep } =
+    useIssueDetailsState(selectedIssue);
 
   useReviewKeyboard({
     onIssueNav(direction) {
@@ -72,16 +73,6 @@ export function ReviewResultsView({
     },
   });
 
-  const handleToggleStep = (step: number) => {
-    setCompletedSteps((prev) => {
-      const next = new Set(prev);
-      if (next.has(step)) next.delete(step);
-      else next.add(step);
-      return next;
-    });
-  };
-
-  const selectedIssue = filteredIssues.find((i) => i.id === selectedIssueId);
   const detailsEmptyKind = selectDetailsEmptyKind(issues.length, filteredIssues.length);
   const listWidth = isMedium
     ? Math.max(Math.floor(columns * 0.35), 26)
@@ -94,7 +85,7 @@ export function ReviewResultsView({
     <Box flexDirection="column">
       <Box paddingX={1}>
         <Text color={tokens.accent} bold>
-          {`Analysis #${reviewId ?? "unknown"}`}
+          {`Review #${reviewId ?? "unknown"}`}
         </Text>
       </Box>
       <Box flexDirection={isNarrow ? "column" : "row"} marginTop={1}>
@@ -127,8 +118,10 @@ export function ReviewResultsView({
             isActive={activeZone === "details"}
             scrollHeight={detailScrollHeight}
             emptyKind={detailsEmptyKind}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
             completedSteps={completedSteps}
-            onToggleStep={handleToggleStep}
+            onToggleStep={toggleStep}
           />
         </Box>
       </Box>

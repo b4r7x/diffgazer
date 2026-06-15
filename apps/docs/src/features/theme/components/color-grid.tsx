@@ -1,10 +1,12 @@
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
+import { useCopyToClipboard } from "@diffgazer/ui/hooks/copy-to-clipboard";
 import { THEME_DOCS_COLOR_GROUPS, type ThemeDocsToken } from "@diffgazer/ui/theme";
-import { useCopyFeedback } from "@/lib/use-copy-feedback";
+import { useTheme } from "@/hooks/theme-context";
 
 export function ColorGrid() {
+  const { theme } = useTheme();
   return (
-    <div data-demo-preview className="space-y-8">
+    <div data-demo-preview data-theme={theme} className="space-y-8">
       {THEME_DOCS_COLOR_GROUPS.map((group) => (
         <SwatchGroup key={group.title} title={group.title} swatches={group.tokens} />
       ))}
@@ -28,15 +30,10 @@ function SwatchGroup({ title, swatches }: { title: string; swatches: readonly Th
 }
 
 function SwatchCard({ swatch }: { swatch: ThemeDocsToken }) {
-  const { copied, failed, showCopied, showFailed } = useCopyFeedback();
+  const { copied, failed, copy } = useCopyToClipboard();
 
-  const handleClick = async () => {
-    try {
-      await navigator.clipboard.writeText(`var(${swatch.name})`);
-      showCopied();
-    } catch {
-      showFailed();
-    }
+  const handleClick = () => {
+    void copy(`var(${swatch.name})`);
   };
 
   const valueLabel =
@@ -44,11 +41,19 @@ function SwatchCard({ swatch }: { swatch: ThemeDocsToken }) {
       ? swatch.darkValue
       : `${swatch.darkValue} / ${swatch.lightValue}`;
 
-  const statusLabel = copied
-    ? "Copied"
-    : failed
-      ? "Copy failed"
-      : `Copy ${swatch.name} CSS variable`;
+  let statusLabel = `Copy ${swatch.name} CSS variable`;
+  if (copied) {
+    statusLabel = "Copied";
+  } else if (failed) {
+    statusLabel = "Copy failed";
+  }
+
+  let displayValue = valueLabel;
+  if (copied) {
+    displayValue = "Copied!";
+  } else if (failed) {
+    displayValue = "Copy failed";
+  }
 
   return (
     <button
@@ -62,12 +67,12 @@ function SwatchCard({ swatch }: { swatch: ThemeDocsToken }) {
         style={{ backgroundColor: `var(${swatch.name})` }}
       />
       <div className="p-2">
-        <div className="text-[11px] font-mono text-foreground truncate">{swatch.name}</div>
+        <div className="text-2xs font-mono text-foreground truncate">{swatch.name}</div>
         <div
-          className="text-[10px] font-mono text-muted-foreground truncate"
+          className="text-2xs font-mono text-muted-foreground truncate"
           aria-live={copied || failed ? "polite" : undefined}
         >
-          {copied ? "Copied!" : failed ? "Copy failed" : valueLabel}
+          {displayValue}
         </div>
       </div>
     </button>

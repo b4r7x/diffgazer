@@ -13,6 +13,7 @@ import { SourceViewerBlock as SourceViewer } from "@/components/docs-mdx/blocks/
 import { Step, Steps } from "@/components/docs-mdx/blocks/steps";
 import { UsageSnippet } from "@/components/docs-mdx/blocks/usage-snippet";
 import { markdownMdxComponents } from "@/components/docs-mdx/markdown-renderers";
+import { ComponentDocScaffold, HookDocScaffold } from "@/components/docs-mdx/scaffolds";
 import { HookSource, LibraryHookSource } from "@/components/hook-source";
 import { ColorGrid } from "@/features/theme/components/color-grid";
 import { DiffgazerPreview } from "@/features/theme/components/diffgazer-preview";
@@ -41,6 +42,8 @@ const mdxComponents: MDXComponents = {
   Notes,
   ConsumptionBlock,
   APIReference,
+  ComponentDocScaffold,
+  HookDocScaffold,
 };
 
 export function useMDXComponents(): MDXComponents {

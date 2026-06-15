@@ -1,9 +1,11 @@
-import { render } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { isHTMLDialogElement } from "@/lib/aria";
 import { DialogShell } from "./dialog-shell";
+
+// axe skipped: internal overlay infrastructure with no standalone accessible UI; consumer dialogs run axe.
 
 function requireFrameDocument(frame: HTMLIFrameElement): Document {
   const frameDocument = frame.contentDocument;
@@ -53,7 +55,7 @@ describe("DialogShell", () => {
     polyfillDialogElement(frameDocument);
 
     render(
-      <DialogShell open className="host-shell">
+      <DialogShell open aria-label="Host shell">
         <button type="button" id="host-first">
           Host first
         </button>
@@ -70,7 +72,7 @@ describe("DialogShell", () => {
       const root = createRoot(frameContainer);
       frameRoots.push(root);
       root.render(
-        <DialogShell open className="frame-shell">
+        <DialogShell open aria-label="Frame shell">
           <button type="button" id="frame-first">
             Frame first
           </button>
@@ -81,10 +83,8 @@ describe("DialogShell", () => {
       );
     });
 
-    const hostDialog = document.querySelector(".host-shell");
-    const frameDialog = frameDocument.querySelector(".frame-shell");
-    expect(hostDialog).toBeTruthy();
-    expect(frameDialog).toBeTruthy();
+    const hostDialog = screen.getByRole("dialog", { name: "Host shell" });
+    const frameDialog = within(frameDocument.body).getByRole("dialog", { name: "Frame shell" });
     expect(isHTMLDialogElement(hostDialog)).toBe(true);
     expect(isHTMLDialogElement(frameDialog)).toBe(true);
 
@@ -124,13 +124,13 @@ describe("DialogShell", () => {
       const root = createRoot(frameContainer);
       frameRoots.push(root);
       root.render(
-        <DialogShell open className="frame-shell" onBeforeShowModal={onBeforeShowModal}>
+        <DialogShell open aria-label="Frame shell" onBeforeShowModal={onBeforeShowModal}>
           <button type="button">Frame action</button>
         </DialogShell>,
       );
     });
 
-    const frameDialog = frameDocument.querySelector(".frame-shell");
+    const frameDialog = within(frameDocument.body).getByRole("dialog", { name: "Frame shell" });
     expect(isHTMLDialogElement(frameDialog)).toBe(true);
     expect(frameDialog).toHaveAttribute("open");
     expect(onBeforeShowModal).toHaveBeenCalledWith(frameDocument);

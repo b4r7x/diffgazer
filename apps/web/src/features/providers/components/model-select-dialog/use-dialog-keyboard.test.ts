@@ -162,7 +162,6 @@ function TestModelFooterKeyboard({
         type: "button",
         ref: cancelProps.ref,
         onFocus: cancelProps.onFocus,
-        onClick: () => keyboard.handleCancel(),
       },
       "Cancel",
     ),
@@ -433,6 +432,44 @@ describe("useModelDialogKeyboard", () => {
 
     expect(onSelect).not.toHaveBeenCalled();
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("does not repair list focus on a parent rerender with identical filtered results", async () => {
+    const visibleModel = makeModel("visible-model");
+    const { rerenderFooterSubject } = renderFooterSubject([visibleModel]);
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "visible-model" })).toHaveFocus();
+    });
+
+    // Focus drifts off the list without leaving the list zone.
+    (document.activeElement as HTMLElement | null)?.blur();
+    expect(document.body).toHaveFocus();
+
+    // Re-render with the SAME filtered ids: the focus-repair effect must not re-fire.
+    rerenderFooterSubject([visibleModel]);
+
+    expect(document.body).toHaveFocus();
+    expect(screen.getByRole("radio", { name: "visible-model" })).not.toHaveFocus();
+  });
+
+  it("repairs list focus when the filtered id set changes", async () => {
+    const visibleModel = makeModel("visible-model");
+    const { rerenderFooterSubject } = renderFooterSubject([visibleModel]);
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "visible-model" })).toHaveFocus();
+    });
+
+    (document.activeElement as HTMLElement | null)?.blur();
+    expect(document.body).toHaveFocus();
+
+    // A different filtered id set re-fires the repair effect and re-establishes list focus.
+    rerenderFooterSubject([makeModel("other-model")]);
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "other-model" })).toHaveFocus();
+    });
   });
 
   it("confirms the first filtered model when checked and focused models are stale", async () => {

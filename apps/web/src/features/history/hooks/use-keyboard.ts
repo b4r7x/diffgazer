@@ -1,4 +1,5 @@
 import { usePageFooter } from "@diffgazer/core/footer";
+import { BACK_SHORTCUT, NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { useFocusZone, useKey, useScopedNavigation } from "@diffgazer/keys";
 import { useNavigate } from "@tanstack/react-router";
 import type { RefObject } from "react";
@@ -14,6 +15,7 @@ interface UseHistoryKeyboardOptions {
   activeRunId: string | null;
   hasRuns: boolean;
   searchInputRef: RefObject<HTMLInputElement | null>;
+  timelineRef: RefObject<HTMLElement | null>;
   runsListRef: RefObject<HTMLDivElement | null>;
   insightsListRef: RefObject<HTMLDivElement | null>;
   highlightedIssueId: string | null;
@@ -39,11 +41,11 @@ export function getHistoryFooter(focusZone: HistoryFocusZone) {
     return {
       shortcuts: [
         { key: "Tab", label: "Switch Focus" },
-        { key: "↑/↓", label: "Navigate" },
+        NAVIGATE_SHORTCUT,
         { key: "Enter/Space", label: "Select Date" },
         { key: "/", label: "Search" },
       ],
-      rightShortcuts: [{ key: "Esc", label: "Back" }],
+      rightShortcuts: [BACK_SHORTCUT],
     };
   }
 
@@ -51,23 +53,23 @@ export function getHistoryFooter(focusZone: HistoryFocusZone) {
     return {
       shortcuts: [
         { key: "Tab", label: "Switch Focus" },
-        { key: "↑/↓", label: "Navigate" },
+        NAVIGATE_SHORTCUT,
         { key: "Enter/Space", label: "Open Issue" },
-        { key: "←", label: "Review Runs" },
+        { key: "←", label: "Runs" },
         { key: "/", label: "Search" },
       ],
-      rightShortcuts: [{ key: "Esc", label: "Back" }],
+      rightShortcuts: [BACK_SHORTCUT],
     };
   }
 
   return {
     shortcuts: [
       { key: "Tab", label: "Switch Focus" },
-      { key: "↑/↓", label: "Navigate" },
+      NAVIGATE_SHORTCUT,
       { key: "Enter/Space", label: "Open Review" },
       { key: "/", label: "Search" },
     ],
-    rightShortcuts: [{ key: "Esc", label: "Back" }],
+    rightShortcuts: [BACK_SHORTCUT],
   };
 }
 
@@ -77,6 +79,7 @@ export function useHistoryKeyboard({
   activeRunId,
   hasRuns,
   searchInputRef,
+  timelineRef,
   runsListRef,
   insightsListRef,
   highlightedIssueId,
@@ -97,6 +100,7 @@ export function useHistoryKeyboard({
       autoFocus: true,
       targets: {
         search: searchInputRef,
+        timeline: timelineRef,
         runs: runsListRef,
         insights: insightsListRef,
       },

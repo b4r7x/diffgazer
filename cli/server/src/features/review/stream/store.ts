@@ -1,11 +1,26 @@
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
+import { log } from "../../../shared/lib/log.js";
+import {
+  registerSession,
+  type SessionCancelOptions,
+  unregisterSession,
+} from "../../../shared/lib/session-registry.js";
+
+/**
+ * Discriminant for a session's stored `statusHash` provenance. A content-blind
+ * `status-only` hash (the worktree diff exceeded the read limit) must never be
+ * compared against a `full` hash, and an `unavailable` session was created
+ * without a verifiable hash, so dedupe/stale-cancel comparisons skip it.
+ */
+export type StatusHashKind = "full" | "status-only" | "unavailable";
 
 export interface ActiveSession {
   reviewId: string;
   projectPath: string;
   headCommit: string;
   statusHash: string;
+  statusHashKind: StatusHashKind;
   mode: ReviewMode;
   scopeKey: string;
   reviewConfigKey: string;
@@ -70,9 +85,9 @@ function isTerminalEvent(event: FullReviewStreamEvent): boolean {
  * Builds the non-terminal notice replayed/streamed to the client when the
  * per-session event cap is hit and progress events start being dropped. It is a
  * `chunk` event because that is the only union member with a free-text payload
- * and a no-op effect on UI step/agent state (it maps to the optional `onChunk`
- * client callback). This signals partial progress to the client instead of
- * dropping events silently.
+ * and a no-op effect on UI step/agent state. The client forwards it through the
+ * `onChunk` option (libs/core api/review.ts → use-review-stream.ts) and surfaces
+ * it as a user-visible notice, so the truncation is observable instead of silent.
  */
 const CAP_WARNING_CONTENT = `[diffgazer] Event cap (${MAX_EVENTS_PER_SESSION}) reached; subsequent progress events may be incomplete.`;
 
@@ -102,9 +117,10 @@ function storeSessionEvent(session: ActiveSession, event: FullReviewStreamEvent)
   const firstDrop = !session.capWarningEmitted;
   if (firstDrop) {
     session.capWarningEmitted = true;
-    console.warn(
-      `[sessions] Event cap (${MAX_EVENTS_PER_SESSION}) reached for session ${session.reviewId}`,
-    );
+    log("warn", "session_event_cap_reached", {
+      cap: MAX_EVENTS_PER_SESSION,
+      reviewId: session.reviewId,
+    });
   }
 
   if (!isTerminalEvent(event)) {
@@ -125,7 +141,7 @@ function storeSessionEvent(session: ActiveSession, event: FullReviewStreamEvent)
 }
 
 function notifySubscribers(session: ActiveSession, event: FullReviewStreamEvent): void {
-  const handleError = (e: unknown) => console.error("Subscriber callback error:", e);
+  const handleError = (e: unknown) => log("error", "subscriber_callback_error", { error: e });
   session.subscribers.forEach((cb) => {
     try {
       Promise.resolve(cb(event)).catch(handleError);
@@ -140,7 +156,7 @@ function notifyCompletion(session: ActiveSession): void {
     try {
       cb();
     } catch (e) {
-      console.error("Completion listener error:", e);
+      log("error", "completion_listener_error", { error: e });
     }
   });
   session.completionListeners.clear();
@@ -160,7 +176,7 @@ function evictOldestSession(): void {
       const evictionEvent: FullReviewStreamEvent = {
         type: "error",
         error: {
-          code: ReviewErrorCode.SESSION_STALE,
+          code: ReviewErrorCode.SESSION_EVICTED,
           message: "Review session evicted due to session limit.",
         },
       };
@@ -171,10 +187,17 @@ function evictOldestSession(): void {
       notifyCompletion(session);
     }
     activeSessions.delete(oldest.id);
+    unregisterSession(oldest.id);
   }
 }
 
-function cleanupStaleSessions(): void {
+/**
+ * Terminates sessions idle past {@link SESSION_TIMEOUT_MS}, emitting a
+ * SESSION_TIMEOUT error on each one's SSE stream. Runs on the 5-minute cleanup
+ * interval; exported so the timeout-emission path is drivable in tests (the
+ * module-eval interval itself is not intercepted by vitest fake timers).
+ */
+export function cleanupStaleSessions(): void {
   const now = Date.now();
   for (const [id, session] of activeSessions) {
     if (!session.isComplete && now - session.startedAt.getTime() > SESSION_TIMEOUT_MS) {
@@ -182,7 +205,7 @@ function cleanupStaleSessions(): void {
       const timeoutEvent: FullReviewStreamEvent = {
         type: "error",
         error: {
-          code: ReviewErrorCode.SESSION_STALE,
+          code: ReviewErrorCode.SESSION_TIMEOUT,
           message: "Review session timed out.",
         },
       };
@@ -192,6 +215,7 @@ function cleanupStaleSessions(): void {
       session.subscribers.clear();
       notifyCompletion(session);
       activeSessions.delete(id);
+      unregisterSession(id);
     }
   }
 }
@@ -220,7 +244,7 @@ export function shutdownSessions(): void {
       const shutdownEvent: FullReviewStreamEvent = {
         type: "error",
         error: {
-          code: ReviewErrorCode.SESSION_STALE,
+          code: ReviewErrorCode.SERVER_SHUTDOWN,
           message: "Review session aborted because the server is shutting down.",
         },
       };
@@ -232,6 +256,7 @@ export function shutdownSessions(): void {
     session.subscribers.clear();
     session.completionListeners.clear();
     activeSessions.delete(id);
+    unregisterSession(id);
   }
 }
 
@@ -241,6 +266,7 @@ export function createSession(
     projectPath: string;
     headCommit: string;
     statusHash: string;
+    statusHashKind: StatusHashKind;
     mode: ReviewMode;
     scopeKey?: string;
     reviewConfigKey?: string;
@@ -256,6 +282,7 @@ export function createSession(
     projectPath: options.projectPath,
     headCommit: options.headCommit,
     statusHash: options.statusHash,
+    statusHashKind: options.statusHashKind,
     mode: options.mode,
     scopeKey: options.scopeKey ?? "",
     reviewConfigKey: options.reviewConfigKey ?? "",
@@ -270,6 +297,14 @@ export function createSession(
     controller: new AbortController(),
   };
   activeSessions.set(reviewId, session);
+  registerSession(reviewId, {
+    projectKey: session.projectPath,
+    cancel: (options?: SessionCancelOptions) => {
+      if (session.isComplete) return;
+      if (options?.provider && session.provider !== options.provider) return;
+      cancelSession(reviewId, { message: options?.message, reason: options?.reason });
+    },
+  });
   return session;
 }
 
@@ -307,7 +342,13 @@ export function markComplete(reviewId: string): void {
     session.isComplete = true;
     session.subscribers.clear();
     notifyCompletion(session);
-    setTimeout(() => activeSessions.delete(reviewId), 5 * 60 * 1000);
+    setTimeout(
+      () => {
+        activeSessions.delete(reviewId);
+        unregisterSession(reviewId);
+      },
+      5 * 60 * 1000,
+    ).unref();
   }
 }
 
@@ -332,7 +373,13 @@ export function cancelSession(
   notifySubscribers(session, cancelEvent);
   session.subscribers.clear();
   notifyCompletion(session);
-  setTimeout(() => activeSessions.delete(reviewId), 2 * 60 * 1000);
+  setTimeout(
+    () => {
+      activeSessions.delete(reviewId);
+      unregisterSession(reviewId);
+    },
+    2 * 60 * 1000,
+  ).unref();
 }
 
 export function cancelStaleSessionsForProjectMode(
@@ -340,9 +387,12 @@ export function cancelStaleSessionsForProjectMode(
   mode: ReviewMode,
   headCommit: string,
   statusHash: string,
+  statusHashKind: StatusHashKind,
   reviewConfigKey = "",
 ): void {
-  if (!headCommit || !statusHash) {
+  // Without a verifiable head commit and status hash we cannot prove any session
+  // is stale, so never cancel — an unavailable read must not abort live reviews.
+  if (!headCommit || statusHashKind === "unavailable") {
     return;
   }
 
@@ -350,6 +400,9 @@ export function cancelStaleSessionsForProjectMode(
     if (session.isComplete) continue;
     if (session.projectPath !== projectPath) continue;
     if (session.mode !== mode) continue;
+    // Only same-kind hashes are comparable; a content-blind hash cannot prove a
+    // content-full session changed, so leave cross-kind sessions untouched.
+    if (session.statusHashKind !== statusHashKind) continue;
     if (
       session.headCommit === headCommit &&
       session.statusHash === statusHash &&
@@ -358,25 +411,6 @@ export function cancelStaleSessionsForProjectMode(
       continue;
     }
     cancelSession(reviewId);
-  }
-}
-
-export function cancelSessionsForProject(
-  projectPath: string,
-  options?: {
-    provider?: string;
-    message?: string;
-    reason?: string;
-  },
-): void {
-  for (const [reviewId, session] of activeSessions) {
-    if (session.isComplete) continue;
-    if (session.projectPath !== projectPath) continue;
-    if (options?.provider && session.provider !== options.provider) continue;
-    cancelSession(reviewId, {
-      message: options?.message,
-      reason: options?.reason,
-    });
   }
 }
 
@@ -408,19 +442,27 @@ export function getActiveSessionForProject(
   options: {
     headCommit: string;
     statusHash: string;
+    statusHashKind: StatusHashKind;
     mode: ReviewMode;
     scopeKey?: string;
     reviewConfigKey?: string;
   },
 ): ActiveSession | undefined {
-  const scopeKey = options.scopeKey ?? "";
+  // An unverifiable hash cannot safely dedupe onto an existing session.
+  if (options.statusHashKind === "unavailable") {
+    return undefined;
+  }
   for (const session of activeSessions.values()) {
     if (
       session.projectPath === projectPath &&
       session.headCommit === options.headCommit &&
       session.statusHash === options.statusHash &&
+      session.statusHashKind === options.statusHashKind &&
       session.mode === options.mode &&
-      session.scopeKey === scopeKey &&
+      // scopeKey is exact-matched for dedupe, but the active-session lookup omits
+      // it so a client reloading during a files/lenses/profile-scoped review can
+      // still discover and resume it.
+      (options.scopeKey === undefined || session.scopeKey === options.scopeKey) &&
       (options.reviewConfigKey === undefined ||
         session.reviewConfigKey === options.reviewConfigKey) &&
       !session.isComplete &&
@@ -438,4 +480,5 @@ export function getSession(reviewId: string): ActiveSession | undefined {
 
 export function deleteSession(reviewId: string): void {
   activeSessions.delete(reviewId);
+  unregisterSession(reviewId);
 }

@@ -6,10 +6,9 @@
 // propagates. Do not swap the throws for process.exit() — that would bypass the
 // finally cleanup and leak fixture directories.
 
-import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, isAbsolute, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import {
   assertBuiltCss,
   CommandFailedError,
@@ -17,6 +16,7 @@ import {
   joinLines,
   networkAllowed,
   packageNameFromSpec,
+  packWorkspacePackage,
   pnpmAddFlags,
   resolveAndCollectMissing,
   resolveLocalDependency as resolveWorkspaceDependency,
@@ -54,45 +54,6 @@ function runFailureArgv(command, args, cwd = root) {
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function parsePackOutput(raw) {
-  const starts = [...raw.matchAll(/[[{]/g)].map((match) => match.index ?? 0);
-  const ends = [...raw.matchAll(/[\]}]/g)].map((match) => match.index ?? 0).reverse();
-
-  for (const start of starts) {
-    for (const end of ends) {
-      if (end <= start) continue;
-      const candidate = raw.slice(start, end + 1);
-      try {
-        const parsed = JSON.parse(candidate);
-        const packInfo = Array.isArray(parsed) ? parsed[0] : parsed;
-        if (packInfo?.filename) return parsed;
-      } catch {
-        // pnpm lifecycle logs can be mixed into stdout; keep scanning.
-      }
-    }
-  }
-
-  throw new Error(`Could not parse pnpm pack --json output:\n${raw.slice(0, 1000)}`);
-}
-
-function packWorkspacePackage(workspacePackage, packDir) {
-  const packOutput = execFileSync(
-    "pnpm",
-    ["--dir", root, "--filter", workspacePackage, "pack", "--pack-destination", packDir, "--json"],
-    {
-      cwd: root,
-      encoding: "utf-8",
-      stdio: ["ignore", "pipe", "pipe"],
-    },
-  ).trim();
-
-  const parsedPack = parsePackOutput(packOutput);
-  const packInfo = Array.isArray(parsedPack) ? parsedPack[0] : parsedPack;
-  return isAbsolute(packInfo.filename)
-    ? packInfo.filename
-    : join(packDir, basename(packInfo.filename));
 }
 
 function missingLocalDeps(deps) {
@@ -479,7 +440,7 @@ function runKeysPackageIntegrationSmoke() {
     const packageJsonPath = join(fixture, "package.json");
     const packDir = join(fixture, "packs");
     mkdirSync(packDir, { recursive: true });
-    const keysPackPath = packWorkspacePackage("@diffgazer/keys", packDir);
+    const keysPackPath = packWorkspacePackage(root, "@diffgazer/keys", packDir);
     const keysFixturePkg = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
     keysFixturePkg.pnpm = {
       ...(keysFixturePkg.pnpm ?? {}),
@@ -504,7 +465,11 @@ function runKeysPackageIntegrationSmoke() {
       "--skip-install",
     ]);
 
-    runArgv("pnpm", ["add", ...pnpmAddFlags(), keysPackPath], fixture);
+    runArgv(
+      "pnpm",
+      ["add", ...pnpmAddFlags(), "--config.auto-install-peers=false", keysPackPath],
+      fixture,
+    );
     const installedKeysPkg = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
     installedKeysPkg.dependencies = {
       ...installedKeysPkg.dependencies,

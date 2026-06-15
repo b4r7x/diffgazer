@@ -1,10 +1,10 @@
 "use client";
 
 import {
+  type ComponentProps,
   type CSSProperties,
   type KeyboardEvent,
   type ReactNode,
-  type Ref,
   type RefObject,
   useId,
   useMemo,
@@ -16,36 +16,100 @@ import {
   type DiffInputCompare,
   type DiffInputParsed,
   type DiffInputPatch,
+  type ParsedDiff,
   parsedDiffIdentity,
   resolveDiffInput,
 } from "@/lib/diff";
 import { SplitView } from "./diff-view-split";
 import { UnifiedView } from "./diff-view-unified";
 
+/** Allowed diff view variant values. */
 export type DiffViewVariant = "hairline" | "bare" | "dense" | "viewfinder" | "statusbar";
 
+/** Allowed diff view density values. */
 export type DiffViewDensity = "compact" | "default" | "comfortable";
+/** Allowed diff view palette values. */
 export type DiffViewPalette = "default" | "okabe-ito";
 
-interface DiffViewBaseProps {
+/** Props for diff view base. */
+interface DiffViewBaseProps extends Omit<ComponentProps<"figure">, "children"> {
+  /** Inline unified view or side-by-side split panes (Old / New). */
   mode?: "unified" | "split";
+  /** Renders line-number gutters. Surfaces as data-line-numbers on the rows container. */
   showLineNumbers?: boolean;
+  /** Disables intra-line word-level highlighting on added/removed rows. */
   disableWordDiff?: boolean;
+  /**
+   * Accessible name applied as aria-label when no figcaption renders (variant="bare" or a patch
+   * without paths).
+   */
   label?: string;
-  className?: string;
+  /**
+   * Accessible name for the focusable inner rows region (the element screen-reader region
+   * navigation lands on). Defaults to "Unified diff" in unified mode and "Split diff" in split
+   * mode.
+   */
+  regionLabel?: string;
+  /** Accessible name for the split-mode old side group. Defaults to "Old". */
+  oldSideLabel?: string;
+  /** Accessible name for the split-mode new side group. Defaults to "New". */
+  newSideLabel?: string;
+  /** Text for the role="status" empty state. Defaults to "No changes". */
+  emptyLabel?: string;
+  /** Screen-reader prefix for an added line. Defaults to "Added: ". */
+  addedLineLabel?: string;
+  /** Screen-reader prefix for a removed line. Defaults to "Removed: ". */
+  removedLineLabel?: string;
+  /**
+   * Visual variant. "hairline" (default) is the dashboard-safe bordered look. "bare" removes
+   * chrome and renders a 2px left rule; the figcaption is suppressed. "dense" tightens
+   * typography and adds visible number-column dividers. "viewfinder" renders four bracketed
+   * corners. "statusbar" reveals the bottom statusBar slot.
+   */
   variant?: DiffViewVariant;
+  /**
+   * Vertical density. Surfaces as data-density on the figure. Orthogonal to variant;
+   * variant="dense" defaults this to "compact" unless overridden.
+   */
   density?: DiffViewDensity;
+  /**
+   * Color palette for added/removed rows. "okabe-ito" overrides
+   * --diff-color-add/--diff-color-remove with a colorblind-safe pair. Surfaces as
+   * data-diff-palette on the figure.
+   */
   palette?: DiffViewPalette;
+  /**
+   * CSS length applied to an opt-in vertical scroll wrapper. When set, the rows container gets
+   * a fixed max-height and a y-axis scrollbar via the --diff-view-max-h CSS variable.
+   */
   maxHeight?: string;
+  /**
+   * Headless bottom slot rendered when variant="statusbar". Fill with whatever your app needs
+   * (diff stats, Kbd hints, actions). Omit to suppress the slot entirely.
+   */
   statusBar?: ReactNode;
-  ref?: Ref<HTMLElement>;
 }
 
+/** Props for diff view. */
 export type DiffViewProps = (DiffInputPatch | DiffInputCompare | DiffInputParsed) &
   DiffViewBaseProps;
 
+// The public union keeps diff inputs mutually exclusive; this flattened shape
+// lets the body destructure every key (including the diff discriminants) so the
+// remaining `...rest` carries only genuine <figure> attributes to spread.
+/** Props for diff view resolved. */
+type DiffViewResolvedProps = DiffViewBaseProps & {
+  patch?: string;
+  before?: string;
+  after?: string;
+  diff?: ParsedDiff;
+};
+
+/** Root <figure> with aria-roledescription="diff". */
 interface ActiveHunkState {
+  /** parsed identity used by active hunk. */
   parsedIdentity: string;
+  /** Controlled value. */
   value: string;
 }
 
@@ -69,25 +133,37 @@ function getFileLabel(oldPath: string | null, newPath: string | null): string | 
   return oldPath ?? newPath;
 }
 
+/** Root <figure> with aria-roledescription="diff". */
 export function DiffView(props: DiffViewProps) {
   const {
+    patch,
+    before,
+    after,
+    diff,
     mode = "unified",
     showLineNumbers = false,
     disableWordDiff = false,
     label,
+    regionLabel,
+    oldSideLabel = "Old",
+    newSideLabel = "New",
+    emptyLabel = "No changes",
+    addedLineLabel = "Added: ",
+    removedLineLabel = "Removed: ",
     className,
+    style: styleProp,
     variant = "hairline",
     density,
     palette = "default",
     maxHeight,
     statusBar,
     ref,
-  } = props;
+    "aria-label": ariaLabelProp,
+    "aria-labelledby": ariaLabelledByProp,
+    "aria-roledescription": ariaRoleDescriptionProp,
+    ...rest
+  } = props as DiffViewResolvedProps;
 
-  const patch = "patch" in props ? props.patch : undefined;
-  const before = "before" in props ? props.before : undefined;
-  const after = "after" in props ? props.after : undefined;
-  const diff = "diff" in props ? props.diff : undefined;
   const parsed = useMemo(() => {
     if (diff != null) return resolveDiffInput({ diff });
     if (patch != null) return resolveDiffInput({ patch });
@@ -115,7 +191,16 @@ export function DiffView(props: DiffViewProps) {
 
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Escape") {
-      setActiveHunkState(null);
+      // Only consume the keypress when an active selection was actually
+      // cleared — symmetric with the j/k path's preventDefault default — so a
+      // bare Escape (no active hunk) still reaches an outer keys-style scope
+      // (e.g. the review-results back binding), but clearing a hunk does not
+      // also navigate the user off the screen.
+      if (activeHunk !== null) {
+        e.preventDefault();
+        e.stopPropagation();
+        setActiveHunkState(null);
+      }
       return;
     }
     navKeyDown(e);
@@ -133,16 +218,33 @@ export function DiffView(props: DiffViewProps) {
   const showFigCaption = variant !== "bare" && fileLabel !== null;
 
   const captionId = useId();
-  const ariaLabel = showFigCaption ? undefined : (label ?? "Diff output");
-  const ariaLabelledBy = showFigCaption ? captionId : undefined;
+  // Consumer ARIA wins over the internal defaults (the merge-external-ARIA rule),
+  // but the figcaption labelledby still takes precedence when one renders so the
+  // accessible name stays the file path unless the consumer overrides it.
+  const ariaLabelledBy = ariaLabelledByProp ?? (showFigCaption ? captionId : undefined);
+  const ariaLabel = ariaLabelProp ?? (ariaLabelledBy ? undefined : (label ?? "Diff output"));
 
-  const style = maxHeight ? ({ "--dv-max-h": maxHeight } as CSSProperties) : undefined;
+  const style =
+    maxHeight || styleProp
+      ? ({
+          ...styleProp,
+          ...(maxHeight ? { "--diff-view-max-h": maxHeight } : {}),
+        } as CSSProperties)
+      : undefined;
 
   const isDense = variant === "dense";
   const hasHunks = parsed.hunks.length > 0;
 
-  const body = hasHunks ? (
-    mode === "split" ? (
+  let body: ReactNode;
+  if (!hasHunks) {
+    body = (
+      // biome-ignore lint/a11y/useSemanticElements: role="status" announces the empty diff state; <output> carries form-association semantics that do not fit here.
+      <div data-slot="diff-view-empty" role="status">
+        {emptyLabel}
+      </div>
+    );
+  } else if (mode === "split") {
+    body = (
       <SplitView
         parsed={parsed}
         showLineNumbers={showLineNumbers}
@@ -151,8 +253,15 @@ export function DiffView(props: DiffViewProps) {
         activeHunk={activeHunk}
         onKeyDown={onKeyDown}
         containerRef={containerRef}
+        regionLabel={regionLabel}
+        oldSideLabel={oldSideLabel}
+        newSideLabel={newSideLabel}
+        addedLineLabel={addedLineLabel}
+        removedLineLabel={removedLineLabel}
       />
-    ) : (
+    );
+  } else {
+    body = (
       <UnifiedView
         parsed={parsed}
         showLineNumbers={showLineNumbers}
@@ -161,17 +270,16 @@ export function DiffView(props: DiffViewProps) {
         activeHunk={activeHunk}
         onKeyDown={onKeyDown}
         containerRef={containerRef}
+        regionLabel={regionLabel}
+        addedLineLabel={addedLineLabel}
+        removedLineLabel={removedLineLabel}
       />
-    )
-  ) : (
-    // biome-ignore lint/a11y/useSemanticElements: role="status" announces the empty diff state; <output> carries form-association semantics that do not fit here.
-    <div data-slot="diff-view-empty" role="status">
-      No changes
-    </div>
-  );
+    );
+  }
 
   return (
     <figure
+      {...rest}
       ref={ref}
       data-slot="diff-view"
       data-variant={variant}
@@ -179,7 +287,7 @@ export function DiffView(props: DiffViewProps) {
       data-diff-palette={palette}
       data-mode={mode}
       data-max-h={maxHeight ? "true" : undefined}
-      aria-roledescription="diff"
+      aria-roledescription={ariaRoleDescriptionProp ?? "diff"}
       aria-label={ariaLabel}
       aria-labelledby={ariaLabelledBy}
       className={className}

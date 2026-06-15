@@ -22,15 +22,15 @@ export default function ActiveHeadingModes() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
-        <span className="text-xs text-neutral-400">Activation mode:</span>
+        <span className="text-xs text-muted-foreground">Activation mode:</span>
         {(["top-line", "viewport-center"] as const).map((m) => (
           <button
             key={m}
             type="button"
             className={`border px-2 py-1 text-xs transition-colors ${
               mode === m
-                ? "border-green-500 bg-green-500/10 text-green-400"
-                : "border-neutral-700 text-neutral-500 hover:text-neutral-300"
+                ? "border-success-border bg-success-subtle text-success-text"
+                : "border-border text-muted-foreground hover:text-foreground"
             }`}
             onClick={() => setMode(m)}
           >
@@ -47,8 +47,8 @@ export default function ActiveHeadingModes() {
               type="button"
               className={`px-3 py-1 text-left text-sm transition-colors ${
                 activeId === section.id
-                  ? "border-l-2 border-green-500 text-neutral-100"
-                  : "border-l-2 border-transparent text-neutral-500 hover:text-neutral-300"
+                  ? "border-l-2 border-success-border text-foreground"
+                  : "border-l-2 border-transparent text-muted-foreground hover:text-foreground"
               }`}
               onClick={() => scrollTo(section.id)}
             >
@@ -60,10 +60,10 @@ export default function ActiveHeadingModes() {
         <div className="flex flex-col gap-16">
           {sections.map((section) => (
             <section key={section.id}>
-              <h2 id={section.id} className="mb-4 text-lg font-medium text-neutral-100">
+              <h2 id={section.id} className="mb-4 text-lg font-medium text-foreground">
                 {section.title}
               </h2>
-              <p className="text-sm text-neutral-400">
+              <p className="text-sm text-muted-foreground">
                 Content for {section.title.toLowerCase()}. Switch between top-line and
                 viewport-center modes to see how the active heading detection changes.
               </p>

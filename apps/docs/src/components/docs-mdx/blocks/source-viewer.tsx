@@ -1,17 +1,5 @@
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@diffgazer/ui/components/accordion";
-import {
-  CodeBlock,
-  CodeBlockContent,
-  CodeBlockLine,
-  InlineCode,
-} from "@diffgazer/ui/components/code-block";
+import { InlineCode } from "@diffgazer/ui/components/code-block";
 import { CopyButton } from "@/components/copy-button";
-import { SourceHeading } from "@/components/docs-mdx/source-heading";
 import { SourceViewer } from "@/components/docs-mdx/source-viewer";
 import { type CrossDepSourceFile, resolveCrossDepFiles } from "@/lib/cross-deps-data";
 import { type DocsLibraryId, getInstallCommand } from "@/lib/library";
@@ -53,17 +41,26 @@ function ComponentSourceViewer({ data, library }: { data: ComponentData; library
   }
 
   const externalDeps = data.crossDeps?.filter((d) => d.library !== library);
-  const integrationNote = externalDeps?.length ? (
+  const firstExternalDep = externalDeps?.[0];
+  const integrationNote = firstExternalDep ? (
     <>
       Keyboard hooks are included as standalone copies. For the full experience, use{" "}
-      <InlineCode>--integration {externalDeps[0].library}</InlineCode>.
+      <InlineCode>--integration {firstExternalDep.library}</InlineCode>.
     </>
   ) : undefined;
 
   return (
     <SourceViewer
       files={sourceFiles}
-      mergedSource={data.mergedSource}
+      copyButton={
+        data.mergedSource ? (
+          <CopyButton
+            text={data.mergedSource}
+            label="Copy Full Source"
+            title="Copies all component files, hooks, and utilities merged into a single standalone file"
+          />
+        ) : undefined
+      }
       installCommand={installCommand}
       integrationNote={integrationNote}
     />
@@ -71,25 +68,12 @@ function ComponentSourceViewer({ data, library }: { data: ComponentData; library
 }
 
 function HookSourceViewer({ data }: { data: HookData }) {
+  const fileName = data.name.startsWith("use-") ? `${data.name}.ts` : `use-${data.name}.ts`;
   return (
-    <div className="mb-8">
-      <SourceHeading>
-        <CopyButton text={data.source.raw} label={`Copy ${data.title}`} />
-      </SourceHeading>
-      <Accordion collapsible className="divide-y-0">
-        <AccordionItem value="source" className="py-0">
-          <AccordionTrigger variant="source">View hook source</AccordionTrigger>
-          <AccordionContent>
-            <CodeBlock>
-              <CodeBlockContent>
-                {data.source.highlighted.map((line) => (
-                  <CodeBlockLine key={line.number} {...line} />
-                ))}
-              </CodeBlockContent>
-            </CodeBlock>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-    </div>
+    <SourceViewer
+      files={[{ path: fileName, raw: data.source.raw, highlighted: data.source.highlighted }]}
+      triggerLabel="View hook source"
+      copyButton={<CopyButton text={data.source.raw} label={`Copy ${data.title}`} />}
+    />
   );
 }

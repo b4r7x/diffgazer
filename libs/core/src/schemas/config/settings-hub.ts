@@ -1,3 +1,4 @@
+import { pluralize } from "../../strings.js";
 import type { SettingsAction } from "../presentation/navigation.js";
 import type { AIProvider } from "./providers.js";
 import type { AgentExecution, SecretsStorage, Theme } from "./settings.js";
@@ -30,7 +31,9 @@ export function buildHubValues({
   const themeLabel = (theme ?? "auto").toUpperCase();
   const storageLabel = secretsStorage ? secretsStorage.toUpperCase() : "Not set";
   const analysisLabel =
-    selectedLensCount && selectedLensCount > 0 ? `${selectedLensCount} agents` : "Default";
+    selectedLensCount && selectedLensCount > 0
+      ? pluralize(selectedLensCount, "lens", "lenses")
+      : "Default";
 
   return {
     trust: isTrusted ? "Trusted" : "Not trusted",

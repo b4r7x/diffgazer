@@ -1,10 +1,6 @@
-import {
-  getCompatibilityLabel,
-  useModelFilter,
-  useOpenRouterModelsMapped,
-  useProviderModelsMapped,
-} from "@diffgazer/core/providers";
-import { type AIProvider, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
+import { getCompatibilityLabel, useModelFilter, useModelSource } from "@diffgazer/core/providers";
+import type { AIProvider } from "@diffgazer/core/schemas/config";
+import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import {
   Dialog,
   DialogAction,
@@ -32,7 +28,7 @@ interface ModelSelectDialogProps {
 }
 
 const FOOTER_HINTS: KeyboardHint[] = [
-  { key: "↑/↓", label: "Navigate" },
+  NAVIGATE_SHORTCUT,
   { key: "j/k", label: "Navigate" },
   { key: "/", label: "Search" },
   { key: "f", label: "Filter" },
@@ -46,13 +42,9 @@ export function ModelSelectDialog({
   onSelect,
   isSaving = false,
 }: ModelSelectDialogProps) {
-  const openRouter = useOpenRouterModelsMapped(open, provider);
-  const catalog = useProviderModelsMapped(open, provider);
+  const { models, loading, error, isOpenRouter, openRouter } = useModelSource(open, provider);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
-
-  const isOpenRouter = provider === OPENROUTER_PROVIDER_ID;
-  const models = isOpenRouter ? openRouter.models : catalog.models;
 
   const {
     searchQuery,
@@ -99,24 +91,22 @@ export function ModelSelectDialog({
     onOpenChange,
   });
 
-  const catalogError = isOpenRouter ? openRouter.error : catalog.error;
-  const emptyLabel = catalogError ?? "No models match your search";
-  const isLoading = isOpenRouter ? openRouter.loading : catalog.loading;
+  const emptyLabel = error ?? "No models match your search";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl overflow-hidden border border-tui-border shadow-2xl">
+      <DialogContent className="max-w-2xl overflow-hidden border border-border shadow-2xl">
         <DialogHeader
           marker="none"
-          className="flex-row items-center justify-between gap-3 bg-tui-selection/50 px-4 py-3"
+          className="flex-row items-center justify-between gap-3 bg-secondary/50 px-4 py-3"
         >
-          <DialogTitle className="min-w-0 flex-1 w-auto text-tui-blue tracking-wide">
+          <DialogTitle className="min-w-0 flex-1 w-auto text-info-text tracking-wide">
             Select Model
           </DialogTitle>
           <DialogClose
             {...getCloseButtonProps()}
             size="sm"
-            className="h-auto shrink-0 px-2 py-1 text-tui-muted hover:text-tui-fg font-bold"
+            className="h-auto shrink-0 px-2 py-1 text-muted-foreground hover:text-foreground font-bold"
           />
         </DialogHeader>
 
@@ -146,7 +136,7 @@ export function ModelSelectDialog({
             }}
           />
           {isOpenRouter && (
-            <div className="px-4 pb-2 text-2xs text-tui-muted">
+            <div className="px-4 pb-2 text-2xs text-muted-foreground">
               {getCompatibilityLabel(openRouter)} You can enter a custom model ID at your own risk.
             </div>
           )}
@@ -161,7 +151,7 @@ export function ModelSelectDialog({
             onConfirm={handleConfirm}
             onHighlightChange={handleListHighlightChange}
             onBoundaryReached={handleListBoundaryReached}
-            isLoading={isLoading}
+            isLoading={loading}
             isSaving={isSaving}
             emptyLabel={emptyLabel}
           />

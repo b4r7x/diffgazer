@@ -1,6 +1,6 @@
-import { act, cleanup, render, renderHook } from "@testing-library/react";
+import { act, render, renderHook } from "@testing-library/react";
 import { useEffect } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { KeyHandler } from "../core/normalize-key-input.js";
 import { useKeyboardContext } from "../providers/keyboard-context.js";
 import {
@@ -12,10 +12,6 @@ import { useKey } from "./use-key.js";
 import { useScope } from "./use-scope.js";
 
 describe("useScope", () => {
-  afterEach(() => {
-    cleanup();
-  });
-
   it("scope push/pop lifecycle: active scope receives events, previous scope resumes on unmount", () => {
     const globalHandler = vi.fn();
     const modalHandler = vi.fn();

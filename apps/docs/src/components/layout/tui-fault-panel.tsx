@@ -1,6 +1,7 @@
 import { KeyValue } from "@diffgazer/ui/components/key-value";
 import { Panel } from "@diffgazer/ui/components/panel";
 import type { ReactNode } from "react";
+import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 
 export interface TuiFaultPanelProps {
   statusCode: string;
@@ -26,15 +27,13 @@ export function TuiFaultPanel({
       <Panel frame="hairline" className="w-full max-w-3xl">
         <div className="flex flex-col gap-6 p-6 lg:flex-row">
           <div className="min-w-0 flex-1">
-            <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              {statusCode}
-            </p>
+            <p className={`mb-2 ${CHROME_LABEL_CLASS}`}>{statusCode}</p>
             <h1 className="font-mono text-xl font-bold text-foreground">{title}</h1>
             <p className="mt-3 font-mono text-sm leading-relaxed text-muted-foreground">
               {description}
             </p>
             {detail ? (
-              <pre className="mt-4 overflow-x-auto border border-border bg-[var(--tui-chrome-band-bg)] p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-muted-foreground">
+              <pre className="mt-4 overflow-x-auto border border-border bg-background p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-muted-foreground">
                 {detail}
               </pre>
             ) : null}

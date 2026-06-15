@@ -1,8 +1,11 @@
 import { cva } from "class-variance-authority";
 
+/** Visual style shared by segmented controls such as Tabs and ToggleGroup. */
 export type SegmentedVariant = "default" | "bracket" | "pill" | "underline";
+/** Segmented-control density. */
 export type SegmentedSize = "sm" | "md";
 
+/** Container variants for segmented controls. */
 export const segmentedContainerVariants = cva("inline-flex font-mono", {
   variants: {
     variant: {
@@ -27,13 +30,16 @@ export const segmentedContainerVariants = cva("inline-flex font-mono", {
 
 // JBMono is monospaced so bold-on-active doesn't shift glyph widths.
 // If a proportional font is ever used, active items will need explicit min-width.
+/** Item variants for segmented controls, including active/on data-state styling. */
 export const segmentedItemVariants = cva(
   [
     "relative inline-flex items-center justify-center whitespace-nowrap font-mono",
     "cursor-pointer select-none bg-transparent transition-colors motion-reduce:transition-none",
     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
     "disabled:cursor-not-allowed disabled:opacity-50",
-    "data-[active=true]:font-bold",
+    // Tabs emit data-state="active"; ToggleGroup emits data-state="on" — one
+    // shared selected-state style reads both per the data-attribute vocabulary.
+    "data-[state=active]:font-bold data-[state=on]:font-bold",
   ].join(" "),
   {
     variants: {
@@ -41,23 +47,24 @@ export const segmentedItemVariants = cva(
         default: [
           "border border-border text-foreground",
           "hover:bg-secondary",
-          "data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:border-primary",
-          "data-[active=true]:hover:bg-primary",
+          "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary",
+          "data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary",
+          "data-[state=active]:hover:bg-primary data-[state=on]:hover:bg-primary",
         ].join(" "),
         bracket: [
           "border border-transparent text-muted-foreground",
           "hover:text-foreground",
-          "data-[active=true]:text-foreground",
+          "data-[state=active]:text-foreground data-[state=on]:text-foreground",
         ].join(" "),
         pill: [
           "z-[1] border-0 text-muted-foreground",
           "hover:text-foreground",
-          "data-[active=true]:text-primary-foreground",
+          "data-[state=active]:text-primary-foreground data-[state=on]:text-primary-foreground",
         ].join(" "),
         underline: [
           "border-0 text-muted-foreground",
           "hover:text-foreground",
-          "data-[active=true]:text-foreground",
+          "data-[state=active]:text-foreground data-[state=on]:text-foreground",
         ].join(" "),
       },
       size: {
@@ -95,8 +102,10 @@ export const segmentedItemVariants = cva(
   },
 );
 
+/** Absolute indicator class used by pill segmented controls. */
 export const segmentedPillIndicatorClass =
   "pointer-events-none absolute top-[3px] bottom-[3px] z-0 bg-primary motion-safe:transition-[left,width] motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.2,0,0,1)]";
 
+/** Absolute indicator class used by underline segmented controls. */
 export const segmentedUnderlineIndicatorClass =
   "pointer-events-none absolute bg-foreground motion-safe:transition-[left,width,top,height] motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.2,0,0,1)]";

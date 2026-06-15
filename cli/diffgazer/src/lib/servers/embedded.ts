@@ -2,6 +2,8 @@ import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { SHUTDOWN_TOKEN_GLOBAL } from "@diffgazer/core/api/protocol";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import type { Context } from "hono";
@@ -25,7 +27,7 @@ export function buildHtmlShell(html: string, token: string): { body: string; csp
   // Escape angle brackets so the serialized value can never terminate the
   // inline <script> element (a </script> or <!-- sequence in the token).
   const serializedToken = JSON.stringify(token).replace(/</g, "\\u003c").replace(/>/g, "\\u003e");
-  const script = `<script nonce="${nonce}">window.__DIFFGAZER_SHUTDOWN_TOKEN__=${serializedToken};</script>`;
+  const script = `<script nonce="${nonce}">window.${SHUTDOWN_TOKEN_GLOBAL}=${serializedToken};</script>`;
   const csp = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}'`,
@@ -79,7 +81,7 @@ export function createEmbeddedServer(config: EmbeddedServerConfig): ServerContro
     state = "starting";
     void startServer().catch((err: unknown) => {
       state = "idle";
-      const message = err instanceof Error ? err.message : String(err);
+      const message = getErrorMessage(err);
       console.error(err);
       config.onFailure?.(message);
     });
@@ -151,7 +153,7 @@ export function createEmbeddedServer(config: EmbeddedServerConfig): ServerContro
       });
     } catch (err) {
       state = "idle";
-      const message = err instanceof Error ? err.message : String(err);
+      const message = getErrorMessage(err);
       console.error(err);
       config.onFailure?.(message);
     }

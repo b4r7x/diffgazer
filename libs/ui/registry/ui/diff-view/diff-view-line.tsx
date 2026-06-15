@@ -2,19 +2,28 @@
 
 import type { ChangeType, WordSegment } from "@/lib/diff";
 
+/** Allowed diff row state values. */
 export type DiffRowState = "added" | "removed" | "context" | "hunk" | "empty";
 
+/** Root <figure> with aria-roledescription="diff". */
 export const ROW_STATE: Record<ChangeType, DiffRowState> = {
   add: "added",
   remove: "removed",
   context: "context",
 };
 
-export const SR_LABEL: Partial<Record<ChangeType, string>> = {
-  add: "Added: ",
-  remove: "Removed: ",
-};
+/** Resolves sr label. */
+export function resolveSrLabel(
+  type: ChangeType,
+  addedLineLabel: string,
+  removedLineLabel: string,
+): string | undefined {
+  if (type === "add") return addedLineLabel;
+  if (type === "remove") return removedLineLabel;
+  return undefined;
+}
 
+/** Root <figure> with aria-roledescription="diff". */
 export const LINE_PREFIX: Record<ChangeType, string> = {
   add: "+",
   // U+2212 MINUS SIGN — visually balanced with "+", and copy-paste keeps
@@ -23,6 +32,7 @@ export const LINE_PREFIX: Record<ChangeType, string> = {
   context: " ",
 };
 
+/** Root <figure> with aria-roledescription="diff". */
 export function formatHunkHeader(hunk: {
   oldStart: number;
   oldCount: number;
@@ -33,6 +43,7 @@ export function formatHunkHeader(hunk: {
   return `@@ -${hunk.oldStart},${hunk.oldCount} +${hunk.newStart},${hunk.newCount} @@${hunk.heading ? ` ${hunk.heading}` : ""}`;
 }
 
+/** Root <figure> with aria-roledescription="diff". */
 export function LineContent({
   content,
   wordSegments,

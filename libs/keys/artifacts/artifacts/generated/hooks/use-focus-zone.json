@@ -3,7 +3,7 @@
   "title": "useFocusZone",
   "description": "Manage focus across multiple zones with arrow key and Tab transitions. Supports controlled and uncontrolled zone state.",
   "source": {
-    "raw": "\"use client\";\n\nimport { type RefObject, useCallback, useEffect, useRef, useState } from \"react\";\nimport { DECLINE } from \"../core/normalize-key-input.js\";\nimport { isHTMLElement } from \"../dom/element-guards.js\";\nimport { containsActiveElement, getFirstFocusableElement, isFocusable } from \"../dom/focusable.js\";\nimport type { UseKeyOptions } from \"./use-key.js\";\nimport { useKey } from \"./use-key.js\";\nimport { useScope } from \"./use-scope.js\";\n\ntype ZoneTransition<T extends string> = (params: {\n  zone: T;\n  key: \"ArrowLeft\" | \"ArrowRight\" | \"ArrowUp\" | \"ArrowDown\";\n}) => T | null;\n\nexport interface UseFocusZoneOptions<T extends string> {\n  initial: T;\n  zones: readonly [T, ...T[]];\n  zone?: T;\n  onZoneChange?: (zone: T) => void;\n  onLeaveZone?: (zone: T) => void;\n  onEnterZone?: (zone: T) => void;\n  transitions?: ZoneTransition<T>;\n  tabCycle?: readonly T[];\n  scope?: string | null;\n  containerRef?: UseKeyOptions[\"containerRef\"];\n  focusWithinOnly?: boolean;\n  allowInInput?: boolean;\n  preventDefault?: boolean;\n  enabled?: boolean;\n  focus?: UseFocusZoneFocusOptions<T>;\n}\n\nexport interface FocusZoneProps {\n  \"data-focused\": true | undefined;\n}\n\nexport type FocusZoneTargetRef = RefObject<HTMLElement | null> | (() => HTMLElement | null);\n\nexport type FocusZoneTarget =\n  | FocusZoneTargetRef\n  | {\n      container: FocusZoneTargetRef;\n      target?: FocusZoneTargetRef;\n    };\n\nexport interface UseFocusZoneFocusOptions<T extends string> {\n  targets: Partial<Record<T, FocusZoneTarget>>;\n  autoFocus?: boolean;\n  preventScroll?: boolean;\n}\n\nexport interface UseFocusZoneReturn<T extends string> {\n  zone: T;\n  setZone: (zone: T) => void;\n  isZone: (...zones: T[]) => boolean;\n  getKeyOptions: (zone: T, extra?: UseKeyOptions) => UseKeyOptions;\n  getZoneProps: (zone: T) => FocusZoneProps;\n}\n\nconst ARROW_KEYS = [\"ArrowLeft\", \"ArrowRight\", \"ArrowUp\", \"ArrowDown\"] as const;\n\nfunction resolveFocusTargetRef(ref: FocusZoneTargetRef | undefined): HTMLElement | null {\n  if (!ref) return null;\n  if (typeof ref === \"function\") return ref();\n  return ref.current;\n}\n\nfunction resolveFocusTarget(entry: FocusZoneTarget | undefined): {\n  container: HTMLElement | null;\n  target: HTMLElement | null;\n} {\n  if (!entry) return { container: null, target: null };\n  if (typeof entry === \"object\" && \"container\" in entry) {\n    const container = resolveFocusTargetRef(entry.container);\n    return {\n      container,\n      target: resolveFocusTargetRef(entry.target) ?? container,\n    };\n  }\n\n  const target = resolveFocusTargetRef(entry);\n  return { container: target, target };\n}\n\nfunction resolveFocusableTarget(target: HTMLElement): HTMLElement | null {\n  if (isFocusable(target)) return target;\n  return getFirstFocusableElement(target);\n}\n\nexport function useFocusZone<T extends string>(\n  options: UseFocusZoneOptions<T>,\n): UseFocusZoneReturn<T> {\n  const { initial, zones, enabled = true } = options;\n  const {\n    zone: controlledZone,\n    onZoneChange,\n    onLeaveZone,\n    onEnterZone,\n    transitions,\n    tabCycle,\n    scope,\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n    preventDefault,\n    focus,\n  } = options;\n\n  const [internalZone, setInternalZone] = useState<T>(initial);\n\n  const currentZone: T = controlledZone ?? internalZone;\n  const lastFocusedZoneRef = useRef<T | null>(null);\n\n  const validatedTabCycle = tabCycle?.filter((entry) => zones.includes(entry));\n\n  const canCycleTabs = enabled && validatedTabCycle != null && validatedTabCycle.length > 1;\n\n  const setZoneValue = useCallback(\n    (next: T) => {\n      if (next === currentZone) return;\n      if (!zones.includes(next)) return;\n      onLeaveZone?.(currentZone);\n      onEnterZone?.(next);\n      if (controlledZone === undefined) setInternalZone(next);\n      onZoneChange?.(next);\n    },\n    [controlledZone, currentZone, onEnterZone, onLeaveZone, onZoneChange, zones],\n  );\n\n  const stableTransitions = useCallback(\n    (key: \"ArrowLeft\" | \"ArrowRight\" | \"ArrowUp\" | \"ArrowDown\") => {\n      const next = transitions?.({ zone: currentZone, key });\n      if (next != null && zones.includes(next)) {\n        setZoneValue(next);\n        return;\n      }\n      return DECLINE;\n    },\n    [currentZone, setZoneValue, transitions, zones],\n  );\n\n  const cycleZone = useCallback(\n    (delta: 1 | -1) => {\n      if (!validatedTabCycle || validatedTabCycle.length === 0) return;\n      const cycle = validatedTabCycle;\n      const idx = cycle.indexOf(currentZone);\n      if (idx === -1) {\n        // Current zone is not part of the cycle; Tab enters the cycle from either end.\n        const next = delta > 0 ? cycle[0] : cycle[cycle.length - 1];\n        if (next) setZoneValue(next);\n        return;\n      }\n      const next = cycle[(idx + delta + cycle.length) % cycle.length] ?? cycle[0];\n      if (!next) return;\n      setZoneValue(next);\n    },\n    [currentZone, setZoneValue, validatedTabCycle],\n  );\n\n  useKey(ARROW_KEYS, (e) => stableTransitions(e.key as (typeof ARROW_KEYS)[number]), {\n    enabled: enabled && transitions != null,\n    scope,\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n    preventDefault,\n  });\n\n  useKey(\"Tab\", () => cycleZone(1), {\n    enabled: canCycleTabs,\n    preventDefault: true,\n    scope,\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n  });\n\n  useKey(\"shift+Tab\", () => cycleZone(-1), {\n    enabled: canCycleTabs,\n    preventDefault: true,\n    scope,\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n  });\n\n  const hasExplicitScope = \"scope\" in options;\n  useScope(hasExplicitScope ? (scope ?? null) : null, {\n    enabled: enabled && hasExplicitScope && scope != null,\n  });\n\n  useEffect(() => {\n    if (!enabled || !focus) return;\n    const targets = focus.targets;\n    const docs = new Set<Document>();\n\n    for (const zone of zones as readonly T[]) {\n      const { container } = resolveFocusTarget(targets[zone]);\n      if (container) docs.add(container.ownerDocument);\n    }\n\n    if (docs.size === 0 && typeof document !== \"undefined\") {\n      docs.add(document);\n    }\n\n    function handleFocusIn(event: FocusEvent) {\n      const target = event.target;\n      if (!isHTMLElement(target)) return;\n      for (const zone of zones as readonly T[]) {\n        const { container } = resolveFocusTarget(targets[zone]);\n        if (container?.contains(target)) {\n          setZoneValue(zone);\n          return;\n        }\n      }\n    }\n\n    for (const doc of docs) doc.addEventListener(\"focusin\", handleFocusIn);\n    return () => {\n      for (const doc of docs) doc.removeEventListener(\"focusin\", handleFocusIn);\n    };\n  }, [enabled, focus, zones, setZoneValue]);\n\n  const safeZone = zones.includes(currentZone) ? currentZone : zones[0];\n\n  useEffect(() => {\n    const previousZone = lastFocusedZoneRef.current;\n    if (!enabled || !focus) return;\n    if (previousZone === safeZone) return;\n    if (previousZone === null && !focus.autoFocus) {\n      lastFocusedZoneRef.current = safeZone;\n      return;\n    }\n\n    const { container, target } = resolveFocusTarget(focus.targets[safeZone]);\n    if (!target) {\n      lastFocusedZoneRef.current = safeZone;\n      return;\n    }\n    if (container && containsActiveElement(container)) {\n      lastFocusedZoneRef.current = safeZone;\n      return;\n    }\n\n    const focusTarget = resolveFocusableTarget(target);\n    if (!focusTarget) {\n      lastFocusedZoneRef.current = safeZone;\n      return;\n    }\n\n    focusTarget.focus({ preventScroll: focus.preventScroll ?? true });\n    lastFocusedZoneRef.current = safeZone;\n  }, [enabled, focus, safeZone]);\n\n  const isZone = (...zones: T[]) => zones.includes(safeZone);\n  const getKeyOptions = (zone: T, extra?: UseKeyOptions): UseKeyOptions => ({\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n    preventDefault,\n    ...extra,\n    scope: extra?.scope ?? scope,\n    enabled: enabled && safeZone === zone && (extra?.enabled ?? true),\n  });\n  const getZoneProps = (zone: T): FocusZoneProps => ({\n    \"data-focused\": safeZone === zone || undefined,\n  });\n\n  return {\n    zone: safeZone,\n    setZone: setZoneValue,\n    isZone,\n    getKeyOptions,\n    getZoneProps,\n  };\n}\n",
+    "raw": "\"use client\";\n\nimport { type RefObject, useCallback, useEffect, useEffectEvent, useRef, useState } from \"react\";\nimport { DECLINE } from \"../core/normalize-key-input.js\";\nimport { isHTMLElement } from \"../dom/element-guards.js\";\nimport { containsActiveElement, getFirstFocusableElement, isFocusable } from \"../dom/focusable.js\";\nimport type { UseKeyOptions } from \"./use-key.js\";\nimport { useKey } from \"./use-key.js\";\nimport { useScope } from \"./use-scope.js\";\n\ntype ZoneTransition<T extends string> = (params: {\n  zone: T;\n  key: \"ArrowLeft\" | \"ArrowRight\" | \"ArrowUp\" | \"ArrowDown\";\n}) => T | null;\n\n/** Options for multi-zone focus management and inter-zone keyboard transitions. */\nexport interface UseFocusZoneOptions<T extends string> {\n  /** The initial active zone when in uncontrolled mode. */\n  initial: T;\n  /** All available zone identifiers. */\n  zones: readonly [T, ...T[]];\n  /** Controlled zone value. When provided, the hook operates in controlled mode. */\n  zone?: T;\n  /** Called whenever the active zone changes. */\n  onZoneChange?: (zone: T) => void;\n  /** Called before focus leaves a zone. */\n  onLeaveZone?: (zone: T) => void;\n  /** Called when focus enters a zone. */\n  onEnterZone?: (zone: T) => void;\n  /** Custom arrow-key transition function; return a target zone or null to block. */\n  transitions?: ZoneTransition<T>;\n  /** Zone order for Tab/Shift+Tab cycling; omitted means native Tab behavior. */\n  tabCycle?: readonly T[];\n  /** Keyboard scope name to push while the focus zone is active; null skips registration. */\n  scope?: string | null;\n  /** Optional DOM subtree used to scope registered focus-zone keys. */\n  containerRef?: UseKeyOptions[\"containerRef\"];\n  /** When true, focus-zone keys only run while focus is inside containerRef. */\n  focusWithinOnly?: boolean;\n  /** Whether focus-zone keys may run when an input-like element has focus. */\n  allowInInput?: boolean;\n  /** Default preventDefault behavior inherited by transition keys and key helpers. */\n  preventDefault?: boolean;\n  /** Whether the focus zone hook is active. */\n  enabled?: boolean;\n  /** Optional DOM focus targets for zone changes. */\n  focus?: UseFocusZoneFocusOptions<T>;\n}\n\n/** DOM attributes for a zone container. */\nexport interface FocusZoneProps {\n  /** Present when the zone is active. */\n  \"data-focused\": true | undefined;\n}\n\n/** Ref-like value that resolves to a zone container or target element. */\nexport type FocusZoneTargetRef = RefObject<HTMLElement | null> | (() => HTMLElement | null);\n\n/**\n * Focus target for a zone: a single ref/getter, or a container plus optional\n * inner target that avoids focus repair while focus remains inside the container.\n */\nexport type FocusZoneTarget =\n  | FocusZoneTargetRef\n  | {\n      /** Container used for containment checks and focus-zone synchronization. */\n      container: FocusZoneTargetRef;\n      /** Specific element to focus when the zone becomes active. */\n      target?: FocusZoneTargetRef;\n    };\n\n/** DOM focus behavior for `useFocusZone`. */\nexport interface UseFocusZoneFocusOptions<T extends string> {\n  /** Focus target configuration keyed by zone name. */\n  targets: Partial<Record<T, FocusZoneTarget>>;\n  /** Whether the initial zone should receive focus on mount. */\n  autoFocus?: boolean;\n  /** Pass `preventScroll` when moving focus to a zone target. */\n  preventScroll?: boolean;\n}\n\n/** Return value from `useFocusZone`. */\nexport interface UseFocusZoneReturn<T extends string> {\n  /** The currently active zone. */\n  zone: T;\n  /** Imperatively set the active zone. */\n  setZone: (zone: T) => void;\n  /** Returns true if the current zone matches any provided zone. */\n  isZone: (...zones: T[]) => boolean;\n  /** Returns `UseKeyOptions` scoped to one zone, merged with optional extras. */\n  getKeyOptions: (zone: T, extra?: UseKeyOptions) => UseKeyOptions;\n  /** Returns DOM attributes for a zone's container element. */\n  getZoneProps: (zone: T) => FocusZoneProps;\n}\n\nconst ARROW_KEYS = [\"ArrowLeft\", \"ArrowRight\", \"ArrowUp\", \"ArrowDown\"] as const;\n\nfunction resolveFocusTargetRef(ref: FocusZoneTargetRef | undefined): HTMLElement | null {\n  if (!ref) return null;\n  if (typeof ref === \"function\") return ref();\n  return ref.current;\n}\n\nfunction resolveFocusTarget(entry: FocusZoneTarget | undefined): {\n  container: HTMLElement | null;\n  target: HTMLElement | null;\n} {\n  if (!entry) return { container: null, target: null };\n  if (typeof entry === \"object\" && \"container\" in entry) {\n    const container = resolveFocusTargetRef(entry.container);\n    return {\n      container,\n      target: resolveFocusTargetRef(entry.target) ?? container,\n    };\n  }\n\n  const target = resolveFocusTargetRef(entry);\n  return { container: target, target };\n}\n\nfunction resolveFocusableTarget(target: HTMLElement): HTMLElement | null {\n  if (isFocusable(target)) return target;\n  return getFirstFocusableElement(target);\n}\n\n/**\n * Models a layout as named zones, routes arrow or Tab transitions between them,\n * and optionally moves DOM focus to the active zone target.\n */\nexport function useFocusZone<T extends string>(\n  options: UseFocusZoneOptions<T>,\n): UseFocusZoneReturn<T> {\n  const { initial, zones, enabled = true } = options;\n  const {\n    zone: controlledZone,\n    onZoneChange,\n    onLeaveZone,\n    onEnterZone,\n    transitions,\n    tabCycle,\n    scope,\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n    preventDefault,\n    focus,\n  } = options;\n\n  const [internalZone, setInternalZone] = useState<T>(initial);\n\n  const currentZone: T = controlledZone ?? internalZone;\n  const lastFocusedZoneRef = useRef<T | null>(null);\n\n  const validatedTabCycle = tabCycle?.filter((entry) => zones.includes(entry));\n\n  const canCycleTabs = enabled && validatedTabCycle != null && validatedTabCycle.length > 1;\n\n  const setZoneValue = useCallback(\n    (next: T) => {\n      if (next === currentZone) return;\n      if (!zones.includes(next)) return;\n      onLeaveZone?.(currentZone);\n      onEnterZone?.(next);\n      if (controlledZone === undefined) setInternalZone(next);\n      onZoneChange?.(next);\n    },\n    [controlledZone, currentZone, onEnterZone, onLeaveZone, onZoneChange, zones],\n  );\n\n  const stableTransitions = useCallback(\n    (key: \"ArrowLeft\" | \"ArrowRight\" | \"ArrowUp\" | \"ArrowDown\") => {\n      const next = transitions?.({ zone: currentZone, key });\n      if (next != null && zones.includes(next)) {\n        setZoneValue(next);\n        return;\n      }\n      return DECLINE;\n    },\n    [currentZone, setZoneValue, transitions, zones],\n  );\n\n  const cycleZone = useCallback(\n    (delta: 1 | -1) => {\n      if (!validatedTabCycle || validatedTabCycle.length === 0) return;\n      const cycle = validatedTabCycle;\n      const idx = cycle.indexOf(currentZone);\n      if (idx === -1) {\n        // Current zone is not part of the cycle; Tab enters the cycle from either end.\n        const next = delta > 0 ? cycle[0] : cycle[cycle.length - 1];\n        if (next) setZoneValue(next);\n        return;\n      }\n      const next = cycle[(idx + delta + cycle.length) % cycle.length] ?? cycle[0];\n      if (!next) return;\n      setZoneValue(next);\n    },\n    [currentZone, setZoneValue, validatedTabCycle],\n  );\n\n  useKey(ARROW_KEYS, (e) => stableTransitions(e.key as (typeof ARROW_KEYS)[number]), {\n    enabled: enabled && transitions != null,\n    scope,\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n    preventDefault,\n  });\n\n  // Resolve every container that anchors this focus zone (per-zone focus targets\n  // plus an explicit containerRef). Returns null when no containment is\n  // resolvable, in which case Tab keeps its legacy document-wide cycle.\n  const getTabContainers = useEffectEvent((): HTMLElement[] | null => {\n    const containers: HTMLElement[] = [];\n    if (focus) {\n      for (const zone of zones) {\n        const { container } = resolveFocusTarget(focus.targets[zone]);\n        if (container) containers.push(container);\n      }\n    }\n    const explicit = containerRef?.current;\n    if (explicit) containers.push(explicit);\n    return containers.length > 0 ? containers : null;\n  });\n\n  const handleTabCycle = useEffectEvent((delta: 1 | -1, event: KeyboardEvent) => {\n    const containers = getTabContainers();\n    if (containers) {\n      const target = event.target;\n      const inside = containers.some(\n        (container) =>\n          (isHTMLElement(target) && container.contains(target)) || containsActiveElement(container),\n      );\n      // Outside every container: decline so native Tab proceeds (no preventDefault).\n      if (!inside) return DECLINE;\n    }\n    event.preventDefault();\n    cycleZone(delta);\n    return undefined;\n  });\n\n  useKey(\"Tab\", (event) => handleTabCycle(1, event), {\n    enabled: canCycleTabs,\n    scope,\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n  });\n\n  useKey(\"shift+Tab\", (event) => handleTabCycle(-1, event), {\n    enabled: canCycleTabs,\n    scope,\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n  });\n\n  const hasExplicitScope = \"scope\" in options;\n  useScope(hasExplicitScope ? (scope ?? null) : null, {\n    enabled: enabled && hasExplicitScope && scope != null,\n  });\n\n  const hasFocusTargets = focus != null;\n\n  const syncZoneFromFocusTarget = useEffectEvent((target: HTMLElement) => {\n    if (!focus) return;\n    for (const zone of zones) {\n      const { container } = resolveFocusTarget(focus.targets[zone]);\n      if (container?.contains(target)) {\n        setZoneValue(zone);\n        return;\n      }\n    }\n  });\n\n  const attachedFocusinDocsRef = useRef(new Map<Document, (event: FocusEvent) => void>());\n\n  // The listener set is reconciled when the resolvable document set actually\n  // changes (e.g. a cross-document target mounts late). A keystroke never changes\n  // that set, so the listener is not churned per keypress; per-event container\n  // resolution lives in `syncZoneFromFocusTarget`.\n  const reconcileFocusinListeners = useEffectEvent(() => {\n    const attached = attachedFocusinDocsRef.current;\n    if (!enabled || !focus) {\n      for (const [doc, handler] of attached) doc.removeEventListener(\"focusin\", handler);\n      attached.clear();\n      return;\n    }\n\n    const docs = new Set<Document>();\n    for (const zone of zones) {\n      const { container } = resolveFocusTarget(focus.targets[zone]);\n      if (container) docs.add(container.ownerDocument);\n    }\n    if (docs.size === 0 && typeof document !== \"undefined\") {\n      docs.add(document);\n    }\n\n    for (const [doc, handler] of attached) {\n      if (!docs.has(doc)) {\n        doc.removeEventListener(\"focusin\", handler);\n        attached.delete(doc);\n      }\n    }\n    for (const doc of docs) {\n      if (attached.has(doc)) continue;\n      const handler = (event: FocusEvent) => {\n        const target = event.target;\n        if (!isHTMLElement(target)) return;\n        syncZoneFromFocusTarget(target);\n      };\n      doc.addEventListener(\"focusin\", handler);\n      attached.set(doc, handler);\n    }\n  });\n\n  useEffect(() => {\n    reconcileFocusinListeners();\n  });\n\n  useEffect(() => {\n    const attached = attachedFocusinDocsRef.current;\n    return () => {\n      for (const [doc, handler] of attached) doc.removeEventListener(\"focusin\", handler);\n      attached.clear();\n    };\n  }, []);\n\n  const safeZone = zones.includes(currentZone) ? currentZone : zones[0];\n\n  const repairZoneFocus = useEffectEvent((zone: T) => {\n    if (!focus) return;\n    const { container, target } = resolveFocusTarget(focus.targets[zone]);\n    if (!target) return;\n    if (container && containsActiveElement(container)) return;\n\n    const focusTarget = resolveFocusableTarget(target);\n    if (!focusTarget) return;\n\n    focusTarget.focus({ preventScroll: focus.preventScroll ?? true });\n  });\n\n  const shouldAutoFocusInitial = useEffectEvent(() => focus?.autoFocus ?? false);\n\n  useEffect(() => {\n    const previousZone = lastFocusedZoneRef.current;\n    if (!enabled || !hasFocusTargets) return;\n    if (previousZone === safeZone) return;\n    if (previousZone === null && !shouldAutoFocusInitial()) {\n      lastFocusedZoneRef.current = safeZone;\n      return;\n    }\n\n    repairZoneFocus(safeZone);\n    lastFocusedZoneRef.current = safeZone;\n  }, [enabled, hasFocusTargets, safeZone]);\n\n  const isZone = (...zones: T[]) => zones.includes(safeZone);\n  const getKeyOptions = (zone: T, extra?: UseKeyOptions): UseKeyOptions => ({\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n    preventDefault,\n    ...extra,\n    scope: extra?.scope ?? scope,\n    enabled: enabled && safeZone === zone && (extra?.enabled ?? true),\n  });\n  const getZoneProps = (zone: T): FocusZoneProps => ({\n    \"data-focused\": safeZone === zone || undefined,\n  });\n\n  return {\n    zone: safeZone,\n    setZone: setZoneValue,\n    isZone,\n    getKeyOptions,\n    getZoneProps,\n  };\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -71,6 +71,14 @@
           },
           {
             "text": " useEffect",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " useEffectEvent",
             "color": "var(--code-variable)"
           },
           {
@@ -729,6 +737,23 @@
         "number": 16,
         "content": [
           {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Options for multi-zone focus management and inter-zone keyboard transitions. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 17,
+        "content": [
+          {
             "text": "export",
             "color": "var(--code-keyword)"
           },
@@ -787,7 +812,28 @@
         ]
       },
       {
-        "number": 17,
+        "number": 18,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " The initial active zone when in uncontrolled mode. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 19,
         "content": [
           {
             "text": "  initial",
@@ -812,7 +858,28 @@
         ]
       },
       {
-        "number": 18,
+        "number": 20,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " All available zone identifiers. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 21,
         "content": [
           {
             "text": "  zones",
@@ -865,7 +932,28 @@
         ]
       },
       {
-        "number": 19,
+        "number": 22,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Controlled zone value. When provided, the hook operates in controlled mode. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 23,
         "content": [
           {
             "text": "  zone",
@@ -890,7 +978,28 @@
         ]
       },
       {
-        "number": 20,
+        "number": 24,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Called whenever the active zone changes. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 25,
         "content": [
           {
             "text": "  ",
@@ -955,7 +1064,28 @@
         ]
       },
       {
-        "number": 21,
+        "number": 26,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Called before focus leaves a zone. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 27,
         "content": [
           {
             "text": "  ",
@@ -1020,7 +1150,28 @@
         ]
       },
       {
-        "number": 22,
+        "number": 28,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Called when focus enters a zone. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 29,
         "content": [
           {
             "text": "  ",
@@ -1085,7 +1236,28 @@
         ]
       },
       {
-        "number": 23,
+        "number": 30,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Custom arrow-key transition function; return a target zone or null to block. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 31,
         "content": [
           {
             "text": "  transitions",
@@ -1118,7 +1290,28 @@
         ]
       },
       {
-        "number": 24,
+        "number": 32,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Zone order for Tab/Shift+Tab cycling; omitted means native Tab behavior. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 33,
         "content": [
           {
             "text": "  tabCycle",
@@ -1155,7 +1348,28 @@
         ]
       },
       {
-        "number": 25,
+        "number": 34,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Keyboard scope name to push while the focus zone is active; null skips registration. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 35,
         "content": [
           {
             "text": "  scope",
@@ -1196,7 +1410,28 @@
         ]
       },
       {
-        "number": 26,
+        "number": 36,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Optional DOM subtree used to scope registered focus-zone keys. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 37,
         "content": [
           {
             "text": "  containerRef",
@@ -1241,7 +1476,28 @@
         ]
       },
       {
-        "number": 27,
+        "number": 38,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " When true, focus-zone keys only run while focus is inside containerRef. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 39,
         "content": [
           {
             "text": "  focusWithinOnly",
@@ -1266,7 +1522,28 @@
         ]
       },
       {
-        "number": 28,
+        "number": 40,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Whether focus-zone keys may run when an input-like element has focus. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 41,
         "content": [
           {
             "text": "  allowInInput",
@@ -1291,7 +1568,28 @@
         ]
       },
       {
-        "number": 29,
+        "number": 42,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Default preventDefault behavior inherited by transition keys and key helpers. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 43,
         "content": [
           {
             "text": "  preventDefault",
@@ -1316,7 +1614,28 @@
         ]
       },
       {
-        "number": 30,
+        "number": 44,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Whether the focus zone hook is active. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 45,
         "content": [
           {
             "text": "  enabled",
@@ -1341,7 +1660,28 @@
         ]
       },
       {
-        "number": 31,
+        "number": 46,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Optional DOM focus targets for zone changes. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 47,
         "content": [
           {
             "text": "  focus",
@@ -1374,7 +1714,7 @@
         ]
       },
       {
-        "number": 32,
+        "number": 48,
         "content": [
           {
             "text": "}",
@@ -1383,11 +1723,28 @@
         ]
       },
       {
-        "number": 33,
+        "number": 49,
         "content": []
       },
       {
-        "number": 34,
+        "number": 50,
+        "content": [
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " DOM attributes for a zone container. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 51,
         "content": [
           {
             "text": "export",
@@ -1420,7 +1777,28 @@
         ]
       },
       {
-        "number": 35,
+        "number": 52,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Present when the zone is active. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 53,
         "content": [
           {
             "text": "  ",
@@ -1473,7 +1851,7 @@
         ]
       },
       {
-        "number": 36,
+        "number": 54,
         "content": [
           {
             "text": "}",
@@ -1482,11 +1860,28 @@
         ]
       },
       {
-        "number": 37,
+        "number": 55,
         "content": []
       },
       {
-        "number": 38,
+        "number": 56,
+        "content": [
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Ref-like value that resolves to a zone container or target element. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 57,
         "content": [
           {
             "text": "export",
@@ -1611,11 +2006,51 @@
         ]
       },
       {
-        "number": 39,
+        "number": 58,
         "content": []
       },
       {
-        "number": 40,
+        "number": 59,
+        "content": [
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 60,
+        "content": [
+          {
+            "text": " * Focus target for a zone: a single ref/getter, or a container plus optional",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 61,
+        "content": [
+          {
+            "text": " * inner target that avoids focus repair while focus remains inside the container.",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 62,
+        "content": [
+          {
+            "text": " ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 63,
         "content": [
           {
             "text": "export",
@@ -1648,7 +2083,7 @@
         ]
       },
       {
-        "number": 41,
+        "number": 64,
         "content": [
           {
             "text": "  ",
@@ -1669,7 +2104,7 @@
         ]
       },
       {
-        "number": 42,
+        "number": 65,
         "content": [
           {
             "text": "  ",
@@ -1690,7 +2125,28 @@
         ]
       },
       {
-        "number": 43,
+        "number": 66,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Container used for containment checks and focus-zone synchronization. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 67,
         "content": [
           {
             "text": "      container",
@@ -1715,7 +2171,28 @@
         ]
       },
       {
-        "number": 44,
+        "number": 68,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Specific element to focus when the zone becomes active. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 69,
         "content": [
           {
             "text": "      target",
@@ -1740,7 +2217,7 @@
         ]
       },
       {
-        "number": 45,
+        "number": 70,
         "content": [
           {
             "text": "    ",
@@ -1753,11 +2230,28 @@
         ]
       },
       {
-        "number": 46,
+        "number": 71,
         "content": []
       },
       {
-        "number": 47,
+        "number": 72,
+        "content": [
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " DOM focus behavior for `useFocusZone`. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 73,
         "content": [
           {
             "text": "export",
@@ -1818,7 +2312,28 @@
         ]
       },
       {
-        "number": 48,
+        "number": 74,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Focus target configuration keyed by zone name. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 75,
         "content": [
           {
             "text": "  targets",
@@ -1871,7 +2386,28 @@
         ]
       },
       {
-        "number": 49,
+        "number": 76,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Whether the initial zone should receive focus on mount. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 77,
         "content": [
           {
             "text": "  autoFocus",
@@ -1896,7 +2432,28 @@
         ]
       },
       {
-        "number": 50,
+        "number": 78,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Pass `preventScroll` when moving focus to a zone target. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 79,
         "content": [
           {
             "text": "  preventScroll",
@@ -1921,7 +2478,7 @@
         ]
       },
       {
-        "number": 51,
+        "number": 80,
         "content": [
           {
             "text": "}",
@@ -1930,11 +2487,28 @@
         ]
       },
       {
-        "number": 52,
+        "number": 81,
         "content": []
       },
       {
-        "number": 53,
+        "number": 82,
+        "content": [
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Return value from `useFocusZone`. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 83,
         "content": [
           {
             "text": "export",
@@ -1995,7 +2569,28 @@
         ]
       },
       {
-        "number": 54,
+        "number": 84,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " The currently active zone. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 85,
         "content": [
           {
             "text": "  zone",
@@ -2020,7 +2615,28 @@
         ]
       },
       {
-        "number": 55,
+        "number": 86,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Imperatively set the active zone. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 87,
         "content": [
           {
             "text": "  ",
@@ -2085,7 +2701,28 @@
         ]
       },
       {
-        "number": 56,
+        "number": 88,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Returns true if the current zone matches any provided zone. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 89,
         "content": [
           {
             "text": "  ",
@@ -2154,7 +2791,28 @@
         ]
       },
       {
-        "number": 57,
+        "number": 90,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Returns `UseKeyOptions` scoped to one zone, merged with optional extras. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 91,
         "content": [
           {
             "text": "  ",
@@ -2239,7 +2897,28 @@
         ]
       },
       {
-        "number": 58,
+        "number": 92,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Returns DOM attributes for a zone's container element. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 93,
         "content": [
           {
             "text": "  ",
@@ -2304,7 +2983,7 @@
         ]
       },
       {
-        "number": 59,
+        "number": 94,
         "content": [
           {
             "text": "}",
@@ -2313,11 +2992,11 @@
         ]
       },
       {
-        "number": 60,
+        "number": 95,
         "content": []
       },
       {
-        "number": 61,
+        "number": 96,
         "content": [
           {
             "text": "const",
@@ -2438,11 +3117,11 @@
         ]
       },
       {
-        "number": 62,
+        "number": 97,
         "content": []
       },
       {
-        "number": 63,
+        "number": 98,
         "content": [
           {
             "text": "function",
@@ -2531,7 +3210,7 @@
         ]
       },
       {
-        "number": 64,
+        "number": 99,
         "content": [
           {
             "text": "  ",
@@ -2572,7 +3251,7 @@
         ]
       },
       {
-        "number": 65,
+        "number": 100,
         "content": [
           {
             "text": "  ",
@@ -2641,7 +3320,7 @@
         ]
       },
       {
-        "number": 66,
+        "number": 101,
         "content": [
           {
             "text": "  ",
@@ -2674,7 +3353,7 @@
         ]
       },
       {
-        "number": 67,
+        "number": 102,
         "content": [
           {
             "text": "}",
@@ -2683,11 +3362,11 @@
         ]
       },
       {
-        "number": 68,
+        "number": 103,
         "content": []
       },
       {
-        "number": 69,
+        "number": 104,
         "content": [
           {
             "text": "function",
@@ -2752,7 +3431,7 @@
         ]
       },
       {
-        "number": 70,
+        "number": 105,
         "content": [
           {
             "text": "  container",
@@ -2793,7 +3472,7 @@
         ]
       },
       {
-        "number": 71,
+        "number": 106,
         "content": [
           {
             "text": "  target",
@@ -2834,7 +3513,7 @@
         ]
       },
       {
-        "number": 72,
+        "number": 107,
         "content": [
           {
             "text": "}",
@@ -2851,7 +3530,7 @@
         ]
       },
       {
-        "number": 73,
+        "number": 108,
         "content": [
           {
             "text": "  ",
@@ -2932,7 +3611,7 @@
         ]
       },
       {
-        "number": 74,
+        "number": 109,
         "content": [
           {
             "text": "  ",
@@ -3017,7 +3696,7 @@
         ]
       },
       {
-        "number": 75,
+        "number": 110,
         "content": [
           {
             "text": "    ",
@@ -3074,7 +3753,7 @@
         ]
       },
       {
-        "number": 76,
+        "number": 111,
         "content": [
           {
             "text": "    ",
@@ -3095,7 +3774,7 @@
         ]
       },
       {
-        "number": 77,
+        "number": 112,
         "content": [
           {
             "text": "      container",
@@ -3108,7 +3787,7 @@
         ]
       },
       {
-        "number": 78,
+        "number": 113,
         "content": [
           {
             "text": "      target",
@@ -3157,7 +3836,7 @@
         ]
       },
       {
-        "number": 79,
+        "number": 114,
         "content": [
           {
             "text": "    ",
@@ -3170,7 +3849,7 @@
         ]
       },
       {
-        "number": 80,
+        "number": 115,
         "content": [
           {
             "text": "  ",
@@ -3183,11 +3862,11 @@
         ]
       },
       {
-        "number": 81,
+        "number": 116,
         "content": []
       },
       {
-        "number": 82,
+        "number": 117,
         "content": [
           {
             "text": "  ",
@@ -3232,7 +3911,7 @@
         ]
       },
       {
-        "number": 83,
+        "number": 118,
         "content": [
           {
             "text": "  ",
@@ -3277,7 +3956,7 @@
         ]
       },
       {
-        "number": 84,
+        "number": 119,
         "content": [
           {
             "text": "}",
@@ -3286,11 +3965,11 @@
         ]
       },
       {
-        "number": 85,
+        "number": 120,
         "content": []
       },
       {
-        "number": 86,
+        "number": 121,
         "content": [
           {
             "text": "function",
@@ -3363,7 +4042,7 @@
         ]
       },
       {
-        "number": 87,
+        "number": 122,
         "content": [
           {
             "text": "  ",
@@ -3400,7 +4079,7 @@
         ]
       },
       {
-        "number": 88,
+        "number": 123,
         "content": [
           {
             "text": "  ",
@@ -3429,7 +4108,7 @@
         ]
       },
       {
-        "number": 89,
+        "number": 124,
         "content": [
           {
             "text": "}",
@@ -3438,11 +4117,51 @@
         ]
       },
       {
-        "number": 90,
+        "number": 125,
         "content": []
       },
       {
-        "number": 91,
+        "number": 126,
+        "content": [
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 127,
+        "content": [
+          {
+            "text": " * Models a layout as named zones, routes arrow or Tab transitions between them,",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 128,
+        "content": [
+          {
+            "text": " * and optionally moves DOM focus to the active zone target.",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 129,
+        "content": [
+          {
+            "text": " ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 130,
         "content": [
           {
             "text": "export",
@@ -3495,7 +4214,7 @@
         ]
       },
       {
-        "number": 92,
+        "number": 131,
         "content": [
           {
             "text": "  options",
@@ -3528,7 +4247,7 @@
         ]
       },
       {
-        "number": 93,
+        "number": 132,
         "content": [
           {
             "text": "):",
@@ -3565,7 +4284,7 @@
         ]
       },
       {
-        "number": 94,
+        "number": 133,
         "content": [
           {
             "text": "  ",
@@ -3658,7 +4377,7 @@
         ]
       },
       {
-        "number": 95,
+        "number": 134,
         "content": [
           {
             "text": "  ",
@@ -3679,7 +4398,7 @@
         ]
       },
       {
-        "number": 96,
+        "number": 135,
         "content": [
           {
             "text": "    zone",
@@ -3704,7 +4423,7 @@
         ]
       },
       {
-        "number": 97,
+        "number": 136,
         "content": [
           {
             "text": "    ",
@@ -3721,7 +4440,7 @@
         ]
       },
       {
-        "number": 98,
+        "number": 137,
         "content": [
           {
             "text": "    ",
@@ -3738,7 +4457,7 @@
         ]
       },
       {
-        "number": 99,
+        "number": 138,
         "content": [
           {
             "text": "    ",
@@ -3755,7 +4474,7 @@
         ]
       },
       {
-        "number": 100,
+        "number": 139,
         "content": [
           {
             "text": "    ",
@@ -3772,7 +4491,7 @@
         ]
       },
       {
-        "number": 101,
+        "number": 140,
         "content": [
           {
             "text": "    ",
@@ -3789,7 +4508,7 @@
         ]
       },
       {
-        "number": 102,
+        "number": 141,
         "content": [
           {
             "text": "    ",
@@ -3806,7 +4525,7 @@
         ]
       },
       {
-        "number": 103,
+        "number": 142,
         "content": [
           {
             "text": "    ",
@@ -3823,7 +4542,7 @@
         ]
       },
       {
-        "number": 104,
+        "number": 143,
         "content": [
           {
             "text": "    ",
@@ -3840,7 +4559,7 @@
         ]
       },
       {
-        "number": 105,
+        "number": 144,
         "content": [
           {
             "text": "    ",
@@ -3857,7 +4576,7 @@
         ]
       },
       {
-        "number": 106,
+        "number": 145,
         "content": [
           {
             "text": "    ",
@@ -3874,7 +4593,7 @@
         ]
       },
       {
-        "number": 107,
+        "number": 146,
         "content": [
           {
             "text": "    ",
@@ -3891,7 +4610,7 @@
         ]
       },
       {
-        "number": 108,
+        "number": 147,
         "content": [
           {
             "text": "  ",
@@ -3920,11 +4639,11 @@
         ]
       },
       {
-        "number": 109,
+        "number": 148,
         "content": []
       },
       {
-        "number": 110,
+        "number": 149,
         "content": [
           {
             "text": "  ",
@@ -4001,11 +4720,11 @@
         ]
       },
       {
-        "number": 111,
+        "number": 150,
         "content": []
       },
       {
-        "number": 112,
+        "number": 151,
         "content": [
           {
             "text": "  ",
@@ -4062,7 +4781,7 @@
         ]
       },
       {
-        "number": 113,
+        "number": 152,
         "content": [
           {
             "text": "  ",
@@ -4143,11 +4862,11 @@
         ]
       },
       {
-        "number": 114,
+        "number": 153,
         "content": []
       },
       {
-        "number": 115,
+        "number": 154,
         "content": [
           {
             "text": "  ",
@@ -4240,11 +4959,11 @@
         ]
       },
       {
-        "number": 116,
+        "number": 155,
         "content": []
       },
       {
-        "number": 117,
+        "number": 156,
         "content": [
           {
             "text": "  ",
@@ -4341,11 +5060,11 @@
         ]
       },
       {
-        "number": 118,
+        "number": 157,
         "content": []
       },
       {
-        "number": 119,
+        "number": 158,
         "content": [
           {
             "text": "  ",
@@ -4386,7 +5105,7 @@
         ]
       },
       {
-        "number": 120,
+        "number": 159,
         "content": [
           {
             "text": "    ",
@@ -4435,7 +5154,7 @@
         ]
       },
       {
-        "number": 121,
+        "number": 160,
         "content": [
           {
             "text": "      ",
@@ -4468,7 +5187,7 @@
         ]
       },
       {
-        "number": 122,
+        "number": 161,
         "content": [
           {
             "text": "      ",
@@ -4513,7 +5232,7 @@
         ]
       },
       {
-        "number": 123,
+        "number": 162,
         "content": [
           {
             "text": "      ",
@@ -4538,7 +5257,7 @@
         ]
       },
       {
-        "number": 124,
+        "number": 163,
         "content": [
           {
             "text": "      ",
@@ -4563,7 +5282,7 @@
         ]
       },
       {
-        "number": 125,
+        "number": 164,
         "content": [
           {
             "text": "      ",
@@ -4608,7 +5327,7 @@
         ]
       },
       {
-        "number": 126,
+        "number": 165,
         "content": [
           {
             "text": "      ",
@@ -4633,7 +5352,7 @@
         ]
       },
       {
-        "number": 127,
+        "number": 166,
         "content": [
           {
             "text": "    ",
@@ -4646,7 +5365,7 @@
         ]
       },
       {
-        "number": 128,
+        "number": 167,
         "content": [
           {
             "text": "    [controlledZone",
@@ -4699,7 +5418,7 @@
         ]
       },
       {
-        "number": 129,
+        "number": 168,
         "content": [
           {
             "text": "  )",
@@ -4712,11 +5431,11 @@
         ]
       },
       {
-        "number": 130,
+        "number": 169,
         "content": []
       },
       {
-        "number": 131,
+        "number": 170,
         "content": [
           {
             "text": "  ",
@@ -4757,7 +5476,7 @@
         ]
       },
       {
-        "number": 132,
+        "number": 171,
         "content": [
           {
             "text": "    ",
@@ -4886,7 +5605,7 @@
         ]
       },
       {
-        "number": 133,
+        "number": 172,
         "content": [
           {
             "text": "      ",
@@ -4967,7 +5686,7 @@
         ]
       },
       {
-        "number": 134,
+        "number": 173,
         "content": [
           {
             "text": "      ",
@@ -5028,7 +5747,7 @@
         ]
       },
       {
-        "number": 135,
+        "number": 174,
         "content": [
           {
             "text": "        ",
@@ -5049,7 +5768,7 @@
         ]
       },
       {
-        "number": 136,
+        "number": 175,
         "content": [
           {
             "text": "        ",
@@ -5066,7 +5785,7 @@
         ]
       },
       {
-        "number": 137,
+        "number": 176,
         "content": [
           {
             "text": "      ",
@@ -5079,7 +5798,7 @@
         ]
       },
       {
-        "number": 138,
+        "number": 177,
         "content": [
           {
             "text": "      ",
@@ -5104,7 +5823,7 @@
         ]
       },
       {
-        "number": 139,
+        "number": 178,
         "content": [
           {
             "text": "    ",
@@ -5117,7 +5836,7 @@
         ]
       },
       {
-        "number": 140,
+        "number": 179,
         "content": [
           {
             "text": "    [currentZone",
@@ -5154,7 +5873,7 @@
         ]
       },
       {
-        "number": 141,
+        "number": 180,
         "content": [
           {
             "text": "  )",
@@ -5167,11 +5886,11 @@
         ]
       },
       {
-        "number": 142,
+        "number": 181,
         "content": []
       },
       {
-        "number": 143,
+        "number": 182,
         "content": [
           {
             "text": "  ",
@@ -5212,7 +5931,7 @@
         ]
       },
       {
-        "number": 144,
+        "number": 183,
         "content": [
           {
             "text": "    ",
@@ -5277,7 +5996,7 @@
         ]
       },
       {
-        "number": 145,
+        "number": 184,
         "content": [
           {
             "text": "      ",
@@ -5350,7 +6069,7 @@
         ]
       },
       {
-        "number": 146,
+        "number": 185,
         "content": [
           {
             "text": "      ",
@@ -5387,7 +6106,7 @@
         ]
       },
       {
-        "number": 147,
+        "number": 186,
         "content": [
           {
             "text": "      ",
@@ -5440,7 +6159,7 @@
         ]
       },
       {
-        "number": 148,
+        "number": 187,
         "content": [
           {
             "text": "      ",
@@ -5481,7 +6200,7 @@
         ]
       },
       {
-        "number": 149,
+        "number": 188,
         "content": [
           {
             "text": "        //",
@@ -5494,7 +6213,7 @@
         ]
       },
       {
-        "number": 150,
+        "number": 189,
         "content": [
           {
             "text": "        ",
@@ -5603,7 +6322,7 @@
         ]
       },
       {
-        "number": 151,
+        "number": 190,
         "content": [
           {
             "text": "        ",
@@ -5632,7 +6351,7 @@
         ]
       },
       {
-        "number": 152,
+        "number": 191,
         "content": [
           {
             "text": "        ",
@@ -5649,7 +6368,7 @@
         ]
       },
       {
-        "number": 153,
+        "number": 192,
         "content": [
           {
             "text": "      ",
@@ -5662,7 +6381,7 @@
         ]
       },
       {
-        "number": 154,
+        "number": 193,
         "content": [
           {
             "text": "      ",
@@ -5771,7 +6490,7 @@
         ]
       },
       {
-        "number": 155,
+        "number": 194,
         "content": [
           {
             "text": "      ",
@@ -5804,7 +6523,7 @@
         ]
       },
       {
-        "number": 156,
+        "number": 195,
         "content": [
           {
             "text": "      ",
@@ -5825,7 +6544,7 @@
         ]
       },
       {
-        "number": 157,
+        "number": 196,
         "content": [
           {
             "text": "    ",
@@ -5838,7 +6557,7 @@
         ]
       },
       {
-        "number": 158,
+        "number": 197,
         "content": [
           {
             "text": "    [currentZone",
@@ -5867,7 +6586,7 @@
         ]
       },
       {
-        "number": 159,
+        "number": 198,
         "content": [
           {
             "text": "  )",
@@ -5880,11 +6599,11 @@
         ]
       },
       {
-        "number": 160,
+        "number": 199,
         "content": []
       },
       {
-        "number": 161,
+        "number": 200,
         "content": [
           {
             "text": "  ",
@@ -6001,7 +6720,7 @@
         ]
       },
       {
-        "number": 162,
+        "number": 201,
         "content": [
           {
             "text": "    enabled",
@@ -6042,7 +6761,7 @@
         ]
       },
       {
-        "number": 163,
+        "number": 202,
         "content": [
           {
             "text": "    scope",
@@ -6055,7 +6774,7 @@
         ]
       },
       {
-        "number": 164,
+        "number": 203,
         "content": [
           {
             "text": "    containerRef",
@@ -6068,7 +6787,7 @@
         ]
       },
       {
-        "number": 165,
+        "number": 204,
         "content": [
           {
             "text": "    focusWithinOnly",
@@ -6081,7 +6800,7 @@
         ]
       },
       {
-        "number": 166,
+        "number": 205,
         "content": [
           {
             "text": "    allowInInput",
@@ -6094,7 +6813,7 @@
         ]
       },
       {
-        "number": 167,
+        "number": 206,
         "content": [
           {
             "text": "    preventDefault",
@@ -6107,7 +6826,7 @@
         ]
       },
       {
-        "number": 168,
+        "number": 207,
         "content": [
           {
             "text": "  ",
@@ -6128,11 +6847,1121 @@
         ]
       },
       {
-        "number": 169,
+        "number": 208,
         "content": []
       },
       {
-        "number": 170,
+        "number": 209,
+        "content": [
+          {
+            "text": "  //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Resolve every container that anchors this focus zone (per-zone focus targets",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 210,
+        "content": [
+          {
+            "text": "  //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " plus an explicit containerRef). Returns null when no containment is",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 211,
+        "content": [
+          {
+            "text": "  //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " resolvable, in which case Tab keeps its legacy document-wide cycle.",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 212,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "getTabContainers",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useEffectEvent",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "():",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "HTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "[] ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "|",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 213,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "containers",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "HTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "[] ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " []",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 214,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (focus) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 215,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "for",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "zone",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "of",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " zones) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 216,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "container",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "resolveFocusTarget",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "focus",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "targets[zone])",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 217,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (container) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "containers",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "push",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(container)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 218,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 219,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 220,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "explicit",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "containerRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 221,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (explicit) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "containers",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "push",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(explicit)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 222,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "containers",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "length",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ">",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "?",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " containers ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 223,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 224,
+        "content": []
+      },
+      {
+        "number": 225,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "handleTabCycle",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useEffectEvent",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "delta",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "1",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "|",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " -",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "1",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " event",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "KeyboardEvent",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 226,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "containers",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "getTabContainers",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 227,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (containers) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 228,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "target",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "event",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "target",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 229,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "inside",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "containers",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "some",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          }
+        ]
+      },
+      {
+        "number": 230,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "container",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          }
+        ]
+      },
+      {
+        "number": 231,
+        "content": [
+          {
+            "text": "          (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "isHTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(target) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "&&",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "container",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "contains",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(target)) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "||",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "containsActiveElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(container)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 232,
+        "content": [
+          {
+            "text": "      )",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 233,
+        "content": [
+          {
+            "text": "      //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Outside every container: decline so native Tab proceeds (no preventDefault).",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 234,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "inside) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "DECLINE",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 235,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 236,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "event",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "preventDefault",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 237,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "cycleZone",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(delta)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 238,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "undefined",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 239,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 240,
+        "content": []
+      },
+      {
+        "number": 241,
         "content": [
           {
             "text": "  ",
@@ -6167,7 +7996,15 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "()",
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "event",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ")",
             "color": "var(--code-operator)"
           },
           {
@@ -6183,7 +8020,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "cycleZone",
+            "text": "handleTabCycle",
             "color": "var(--code-function)"
           },
           {
@@ -6195,7 +8032,11 @@
             "color": "var(--code-number)"
           },
           {
-            "text": ")",
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " event)",
             "color": "var(--code-variable)"
           },
           {
@@ -6213,7 +8054,7 @@
         ]
       },
       {
-        "number": 171,
+        "number": 242,
         "content": [
           {
             "text": "    enabled",
@@ -6234,32 +8075,7 @@
         ]
       },
       {
-        "number": 172,
-        "content": [
-          {
-            "text": "    preventDefault",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "true",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 173,
+        "number": 243,
         "content": [
           {
             "text": "    scope",
@@ -6272,7 +8088,7 @@
         ]
       },
       {
-        "number": 174,
+        "number": 244,
         "content": [
           {
             "text": "    containerRef",
@@ -6285,7 +8101,7 @@
         ]
       },
       {
-        "number": 175,
+        "number": 245,
         "content": [
           {
             "text": "    focusWithinOnly",
@@ -6298,7 +8114,7 @@
         ]
       },
       {
-        "number": 176,
+        "number": 246,
         "content": [
           {
             "text": "    allowInInput",
@@ -6311,7 +8127,7 @@
         ]
       },
       {
-        "number": 177,
+        "number": 247,
         "content": [
           {
             "text": "  ",
@@ -6332,11 +8148,11 @@
         ]
       },
       {
-        "number": 178,
+        "number": 248,
         "content": []
       },
       {
-        "number": 179,
+        "number": 249,
         "content": [
           {
             "text": "  ",
@@ -6371,7 +8187,15 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "()",
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "event",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ")",
             "color": "var(--code-operator)"
           },
           {
@@ -6387,7 +8211,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "cycleZone",
+            "text": "handleTabCycle",
             "color": "var(--code-function)"
           },
           {
@@ -6403,7 +8227,11 @@
             "color": "var(--code-number)"
           },
           {
-            "text": ")",
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " event)",
             "color": "var(--code-variable)"
           },
           {
@@ -6421,7 +8249,7 @@
         ]
       },
       {
-        "number": 180,
+        "number": 250,
         "content": [
           {
             "text": "    enabled",
@@ -6442,32 +8270,7 @@
         ]
       },
       {
-        "number": 181,
-        "content": [
-          {
-            "text": "    preventDefault",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "true",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 182,
+        "number": 251,
         "content": [
           {
             "text": "    scope",
@@ -6480,7 +8283,7 @@
         ]
       },
       {
-        "number": 183,
+        "number": 252,
         "content": [
           {
             "text": "    containerRef",
@@ -6493,7 +8296,7 @@
         ]
       },
       {
-        "number": 184,
+        "number": 253,
         "content": [
           {
             "text": "    focusWithinOnly",
@@ -6506,7 +8309,7 @@
         ]
       },
       {
-        "number": 185,
+        "number": 254,
         "content": [
           {
             "text": "    allowInInput",
@@ -6519,7 +8322,7 @@
         ]
       },
       {
-        "number": 186,
+        "number": 255,
         "content": [
           {
             "text": "  ",
@@ -6540,11 +8343,11 @@
         ]
       },
       {
-        "number": 187,
+        "number": 256,
         "content": []
       },
       {
-        "number": 188,
+        "number": 257,
         "content": [
           {
             "text": "  ",
@@ -6605,7 +8408,7 @@
         ]
       },
       {
-        "number": 189,
+        "number": 258,
         "content": [
           {
             "text": "  ",
@@ -6670,7 +8473,7 @@
         ]
       },
       {
-        "number": 190,
+        "number": 259,
         "content": [
           {
             "text": "    enabled",
@@ -6719,7 +8522,7 @@
         ]
       },
       {
-        "number": 191,
+        "number": 260,
         "content": [
           {
             "text": "  ",
@@ -6740,18 +8543,630 @@
         ]
       },
       {
-        "number": 192,
+        "number": 261,
         "content": []
       },
       {
-        "number": 193,
+        "number": 262,
         "content": [
           {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "useEffect",
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "hasFocusTargets",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " focus ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 263,
+        "content": []
+      },
+      {
+        "number": 264,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "syncZoneFromFocusTarget",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useEffectEvent",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "target",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "HTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 265,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "focus) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 266,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "for",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "zone",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "of",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " zones) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 267,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "container",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "resolveFocusTarget",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "focus",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "targets[zone])",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 268,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "container",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "contains",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(target)) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 269,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "setZoneValue",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(zone)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 270,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 271,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 272,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 273,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 274,
+        "content": []
+      },
+      {
+        "number": 275,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "attachedFocusinDocsRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useRef",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "new",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "Map",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "Document",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "event",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "FocusEvent",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "void",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ">",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "())",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 276,
+        "content": []
+      },
+      {
+        "number": 277,
+        "content": [
+          {
+            "text": "  //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " The listener set is reconciled when the resolvable document set actually",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 278,
+        "content": [
+          {
+            "text": "  //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " changes (e.g. a cross-document target mounts late). A keystroke never changes",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 279,
+        "content": [
+          {
+            "text": "  //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " that set, so the listener is not churned per keypress; per-event container",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 280,
+        "content": [
+          {
+            "text": "  //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " resolution lives in `syncZoneFromFocusTarget`.",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 281,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "reconcileFocusinListeners",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useEffectEvent",
             "color": "var(--code-function)"
           },
           {
@@ -6781,7 +9196,56 @@
         ]
       },
       {
-        "number": 194,
+        "number": 282,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "attached",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "attachedFocusinDocsRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 283,
         "content": [
           {
             "text": "    ",
@@ -6820,20 +9284,24 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "return",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": ";",
+            "text": "{",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 195,
+        "number": 284,
         "content": [
           {
-            "text": "    ",
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "for",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
             "color": "var(--code-variable)"
           },
           {
@@ -6845,15 +9313,15 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "targets",
+            "text": "[",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "doc",
             "color": "var(--code-number)"
           },
           {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
+            "text": ",",
             "color": "var(--code-operator)"
           },
           {
@@ -6861,7 +9329,27 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "focus",
+            "text": "handler",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "]",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "of",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " attached) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "doc",
             "color": "var(--code-number)"
           },
           {
@@ -6869,7 +9357,31 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "targets",
+            "text": "removeEventListener",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "focusin",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " handler)",
             "color": "var(--code-variable)"
           },
           {
@@ -6879,7 +9391,70 @@
         ]
       },
       {
-        "number": 196,
+        "number": 285,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "attached",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "clear",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 286,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 287,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 288,
+        "content": []
+      },
+      {
+        "number": 289,
         "content": [
           {
             "text": "    ",
@@ -6944,11 +9519,7 @@
         ]
       },
       {
-        "number": 197,
-        "content": []
-      },
-      {
-        "number": 198,
+        "number": 290,
         "content": [
           {
             "text": "    ",
@@ -6983,31 +9554,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " zones ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "as",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "readonly",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "T",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "[]) ",
+            "text": " zones) ",
             "color": "var(--code-variable)"
           },
           {
@@ -7017,7 +9564,7 @@
         ]
       },
       {
-        "number": 199,
+        "number": 291,
         "content": [
           {
             "text": "      ",
@@ -7068,7 +9615,19 @@
             "color": "var(--code-function)"
           },
           {
-            "text": "(targets[zone])",
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "focus",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "targets[zone])",
             "color": "var(--code-variable)"
           },
           {
@@ -7078,7 +9637,7 @@
         ]
       },
       {
-        "number": 200,
+        "number": 292,
         "content": [
           {
             "text": "      ",
@@ -7127,7 +9686,7 @@
         ]
       },
       {
-        "number": 201,
+        "number": 293,
         "content": [
           {
             "text": "    ",
@@ -7140,11 +9699,7 @@
         ]
       },
       {
-        "number": 202,
-        "content": []
-      },
-      {
-        "number": 203,
+        "number": 294,
         "content": [
           {
             "text": "    ",
@@ -7233,7 +9788,7 @@
         ]
       },
       {
-        "number": 204,
+        "number": 295,
         "content": [
           {
             "text": "      ",
@@ -7262,7 +9817,7 @@
         ]
       },
       {
-        "number": 205,
+        "number": 296,
         "content": [
           {
             "text": "    ",
@@ -7275,153 +9830,14 @@
         ]
       },
       {
-        "number": 206,
+        "number": 297,
         "content": []
       },
       {
-        "number": 207,
+        "number": 298,
         "content": [
           {
             "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "function",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "handleFocusIn",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "event",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "FocusEvent",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 208,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "target",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "event",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "target",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 209,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "if",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " (",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "!",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "isHTMLElement",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(target)) ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "return",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 210,
-        "content": [
-          {
-            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
@@ -7441,8 +9857,28 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "zone",
+            "text": "[",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "doc",
             "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "handler",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "]",
+            "color": "var(--code-operator)"
           },
           {
             "text": " ",
@@ -7453,31 +9889,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " zones ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "as",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "readonly",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "T",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "[]) ",
+            "text": " attached) ",
             "color": "var(--code-variable)"
           },
           {
@@ -7487,71 +9899,10 @@
         ]
       },
       {
-        "number": 211,
+        "number": 299,
         "content": [
           {
-            "text": "        ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "container",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "resolveFocusTarget",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(targets[zone])",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 212,
-        "content": [
-          {
-            "text": "        ",
+            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
@@ -7563,19 +9914,23 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "container",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": "?.",
+            "text": "!",
             "color": "var(--code-operator)"
           },
           {
-            "text": "contains",
+            "text": "docs",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "has",
             "color": "var(--code-function)"
           },
           {
-            "text": "(target)) ",
+            "text": "(doc)) ",
             "color": "var(--code-variable)"
           },
           {
@@ -7585,58 +9940,85 @@
         ]
       },
       {
-        "number": 213,
-        "content": [
-          {
-            "text": "          ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "setZoneValue",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(zone)",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 214,
-        "content": [
-          {
-            "text": "          ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "return",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 215,
+        "number": 300,
         "content": [
           {
             "text": "        ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "}",
+            "text": "doc",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "removeEventListener",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "focusin",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " handler)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 216,
+        "number": 301,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "attached",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "delete",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(doc)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 302,
         "content": [
           {
             "text": "      ",
@@ -7649,7 +10031,7 @@
         ]
       },
       {
-        "number": 217,
+        "number": 303,
         "content": [
           {
             "text": "    ",
@@ -7662,11 +10044,7 @@
         ]
       },
       {
-        "number": 218,
-        "content": []
-      },
-      {
-        "number": 219,
+        "number": 304,
         "content": [
           {
             "text": "    ",
@@ -7705,6 +10083,253 @@
             "color": "var(--code-variable)"
           },
           {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 305,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "attached",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "has",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(doc)) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "continue",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 306,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "handler",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "event",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "FocusEvent",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 307,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "target",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "event",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "target",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 308,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "isHTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(target)) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 309,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "syncZoneFromFocusTarget",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(target)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 310,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "};",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 311,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
             "text": "doc",
             "color": "var(--code-number)"
           },
@@ -7737,7 +10362,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " handleFocusIn)",
+            "text": " handler)",
             "color": "var(--code-variable)"
           },
           {
@@ -7747,7 +10372,251 @@
         ]
       },
       {
-        "number": 220,
+        "number": 312,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "attached",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "set",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(doc",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " handler)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 313,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 314,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 315,
+        "content": []
+      },
+      {
+        "number": 316,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useEffect",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 317,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "reconcileFocusinListeners",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 318,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 319,
+        "content": []
+      },
+      {
+        "number": 320,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useEffect",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 321,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "attached",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "attachedFocusinDocsRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 322,
         "content": [
           {
             "text": "    ",
@@ -7784,7 +10653,7 @@
         ]
       },
       {
-        "number": 221,
+        "number": 323,
         "content": [
           {
             "text": "      ",
@@ -7807,8 +10676,28 @@
             "color": "var(--code-variable)"
           },
           {
+            "text": "[",
+            "color": "var(--code-operator)"
+          },
+          {
             "text": "doc",
             "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "handler",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "]",
+            "color": "var(--code-operator)"
           },
           {
             "text": " ",
@@ -7819,7 +10708,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " docs) ",
+            "text": " attached) ",
             "color": "var(--code-variable)"
           },
           {
@@ -7855,7 +10744,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " handleFocusIn)",
+            "text": " handler)",
             "color": "var(--code-variable)"
           },
           {
@@ -7865,7 +10754,36 @@
         ]
       },
       {
-        "number": 222,
+        "number": 324,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "attached",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "clear",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 325,
         "content": [
           {
             "text": "    ",
@@ -7878,7 +10796,7 @@
         ]
       },
       {
-        "number": 223,
+        "number": 326,
         "content": [
           {
             "text": "  ",
@@ -7889,31 +10807,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " [enabled",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " focus",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " zones",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " setZoneValue])",
+            "text": " [])",
             "color": "var(--code-variable)"
           },
           {
@@ -7923,11 +10817,11 @@
         ]
       },
       {
-        "number": 224,
+        "number": 327,
         "content": []
       },
       {
-        "number": 225,
+        "number": 328,
         "content": [
           {
             "text": "  ",
@@ -8004,18 +10898,42 @@
         ]
       },
       {
-        "number": 226,
+        "number": 329,
         "content": []
       },
       {
-        "number": 227,
+        "number": 330,
         "content": [
           {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "useEffect",
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "repairZoneFocus",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useEffectEvent",
             "color": "var(--code-function)"
           },
           {
@@ -8023,7 +10941,27 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "()",
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "zone",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "T",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ")",
             "color": "var(--code-operator)"
           },
           {
@@ -8045,56 +10983,7 @@
         ]
       },
       {
-        "number": 228,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "previousZone",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "lastFocusedZoneRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 229,
+        "number": 331,
         "content": [
           {
             "text": "    ",
@@ -8106,22 +10995,6 @@
           },
           {
             "text": " (",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "!",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "enabled ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "||",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
             "color": "var(--code-variable)"
           },
           {
@@ -8143,168 +11016,7 @@
         ]
       },
       {
-        "number": 230,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "if",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " (previousZone ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "===",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " safeZone) ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "return",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 231,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "if",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " (previousZone ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "===",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "null",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "&&",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "!",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "focus",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "autoFocus) ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 232,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "lastFocusedZoneRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " safeZone",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 233,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "return",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 234,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 235,
-        "content": []
-      },
-      {
-        "number": 236,
+        "number": 332,
         "content": [
           {
             "text": "    ",
@@ -8379,7 +11091,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "targets[safeZone])",
+            "text": "targets[zone])",
             "color": "var(--code-variable)"
           },
           {
@@ -8389,7 +11101,7 @@
         ]
       },
       {
-        "number": 237,
+        "number": 333,
         "content": [
           {
             "text": "    ",
@@ -8412,52 +11124,6 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 238,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "lastFocusedZoneRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " safeZone",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 239,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
             "text": "return",
             "color": "var(--code-keyword)"
           },
@@ -8468,20 +11134,7 @@
         ]
       },
       {
-        "number": 240,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 241,
+        "number": 334,
         "content": [
           {
             "text": "    ",
@@ -8512,52 +11165,6 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 242,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "lastFocusedZoneRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " safeZone",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 243,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
             "text": "return",
             "color": "var(--code-keyword)"
           },
@@ -8568,24 +11175,11 @@
         ]
       },
       {
-        "number": 244,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 245,
+        "number": 335,
         "content": []
       },
       {
-        "number": 246,
+        "number": 336,
         "content": [
           {
             "text": "    ",
@@ -8630,7 +11224,7 @@
         ]
       },
       {
-        "number": 247,
+        "number": 337,
         "content": [
           {
             "text": "    ",
@@ -8653,52 +11247,6 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 248,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "lastFocusedZoneRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " safeZone",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 249,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
             "text": "return",
             "color": "var(--code-keyword)"
           },
@@ -8709,24 +11257,11 @@
         ]
       },
       {
-        "number": 250,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 251,
+        "number": 338,
         "content": []
       },
       {
-        "number": 252,
+        "number": 339,
         "content": [
           {
             "text": "    ",
@@ -8807,7 +11342,438 @@
         ]
       },
       {
-        "number": 253,
+        "number": 340,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 341,
+        "content": []
+      },
+      {
+        "number": 342,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "shouldAutoFocusInitial",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useEffectEvent",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "focus",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "autoFocus ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "??",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "false",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 343,
+        "content": []
+      },
+      {
+        "number": 344,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useEffect",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 345,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "previousZone",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "lastFocusedZoneRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 346,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "enabled ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "||",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "hasFocusTargets) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 347,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (previousZone ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " safeZone) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 348,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (previousZone ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "&&",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "shouldAutoFocusInitial",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 349,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "lastFocusedZoneRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " safeZone",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 350,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 351,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 352,
+        "content": []
+      },
+      {
+        "number": 353,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "repairZoneFocus",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(safeZone)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 354,
         "content": [
           {
             "text": "    ",
@@ -8840,7 +11806,7 @@
         ]
       },
       {
-        "number": 254,
+        "number": 355,
         "content": [
           {
             "text": "  ",
@@ -8859,7 +11825,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " focus",
+            "text": " hasFocusTargets",
             "color": "var(--code-variable)"
           },
           {
@@ -8877,11 +11843,11 @@
         ]
       },
       {
-        "number": 255,
+        "number": 356,
         "content": []
       },
       {
-        "number": 256,
+        "number": 357,
         "content": [
           {
             "text": "  ",
@@ -8974,7 +11940,7 @@
         ]
       },
       {
-        "number": 257,
+        "number": 358,
         "content": [
           {
             "text": "  ",
@@ -9075,7 +12041,7 @@
         ]
       },
       {
-        "number": 258,
+        "number": 359,
         "content": [
           {
             "text": "    containerRef",
@@ -9088,7 +12054,7 @@
         ]
       },
       {
-        "number": 259,
+        "number": 360,
         "content": [
           {
             "text": "    focusWithinOnly",
@@ -9101,7 +12067,7 @@
         ]
       },
       {
-        "number": 260,
+        "number": 361,
         "content": [
           {
             "text": "    allowInInput",
@@ -9114,7 +12080,7 @@
         ]
       },
       {
-        "number": 261,
+        "number": 362,
         "content": [
           {
             "text": "    preventDefault",
@@ -9127,7 +12093,7 @@
         ]
       },
       {
-        "number": 262,
+        "number": 363,
         "content": [
           {
             "text": "    ",
@@ -9148,7 +12114,7 @@
         ]
       },
       {
-        "number": 263,
+        "number": 364,
         "content": [
           {
             "text": "    scope",
@@ -9189,7 +12155,7 @@
         ]
       },
       {
-        "number": 264,
+        "number": 365,
         "content": [
           {
             "text": "    enabled",
@@ -9262,7 +12228,7 @@
         ]
       },
       {
-        "number": 265,
+        "number": 366,
         "content": [
           {
             "text": "  ",
@@ -9283,7 +12249,7 @@
         ]
       },
       {
-        "number": 266,
+        "number": 367,
         "content": [
           {
             "text": "  ",
@@ -9364,7 +12330,7 @@
         ]
       },
       {
-        "number": 267,
+        "number": 368,
         "content": [
           {
             "text": "    ",
@@ -9417,7 +12383,7 @@
         ]
       },
       {
-        "number": 268,
+        "number": 369,
         "content": [
           {
             "text": "  ",
@@ -9438,11 +12404,11 @@
         ]
       },
       {
-        "number": 269,
+        "number": 370,
         "content": []
       },
       {
-        "number": 270,
+        "number": 371,
         "content": [
           {
             "text": "  ",
@@ -9463,7 +12429,7 @@
         ]
       },
       {
-        "number": 271,
+        "number": 372,
         "content": [
           {
             "text": "    zone",
@@ -9484,7 +12450,7 @@
         ]
       },
       {
-        "number": 272,
+        "number": 373,
         "content": [
           {
             "text": "    setZone",
@@ -9505,7 +12471,7 @@
         ]
       },
       {
-        "number": 273,
+        "number": 374,
         "content": [
           {
             "text": "    isZone",
@@ -9518,7 +12484,7 @@
         ]
       },
       {
-        "number": 274,
+        "number": 375,
         "content": [
           {
             "text": "    getKeyOptions",
@@ -9531,7 +12497,7 @@
         ]
       },
       {
-        "number": 275,
+        "number": 376,
         "content": [
           {
             "text": "    getZoneProps",
@@ -9544,7 +12510,7 @@
         ]
       },
       {
-        "number": 276,
+        "number": 377,
         "content": [
           {
             "text": "  ",
@@ -9557,7 +12523,7 @@
         ]
       },
       {
-        "number": 277,
+        "number": 378,
         "content": [
           {
             "text": "}",
@@ -9566,7 +12532,7 @@
         ]
       },
       {
-        "number": 278,
+        "number": 379,
         "content": []
       }
     ]

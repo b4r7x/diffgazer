@@ -11,8 +11,14 @@ const keyring = vi.hoisted(() => ({
 // Boundary mock: keyring wraps the OS keychain via @napi-rs/keyring; tests provide canned secret read/write/delete results.
 vi.mock("./keyring.js", () => keyring);
 
-const { migrateSecretsStorage, finalizeKeyringDeletions, getApiKeyName, rollbackKeyringWrites } =
-  await import("./secrets-migration.js");
+const {
+  migrateSecretsStorage,
+  reconcileKeyringSecrets,
+  finalizeKeyringDeletions,
+  findOrphanedKeyringEntries,
+  getApiKeyName,
+  rollbackKeyringWrites,
+} = await import("./secrets-migration.js");
 
 function makeConfigState(): ConfigState {
   return {
@@ -246,6 +252,27 @@ describe("migrateSecretsStorage", () => {
     }
   });
 
+  it("findOrphanedKeyringEntries reports providers whose keyring entry survives in file mode", () => {
+    keyring.readKeyringSecret.mockImplementation((key: string) =>
+      key === "api_key_gemini" ? { ok: true, value: "stale" } : { ok: true, value: null },
+    );
+
+    const result = findOrphanedKeyringEntries(makeConfigState());
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value).toEqual(["gemini"]);
+  });
+
+  it("findOrphanedKeyringEntries returns nothing when the keyring is unavailable", () => {
+    keyring.isKeyringAvailable.mockReturnValue(false);
+
+    const result = findOrphanedKeyringEntries(makeConfigState());
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value).toEqual([]);
+    expect(keyring.readKeyringSecret).not.toHaveBeenCalled();
+  });
+
   it("restores previous keyring values when rolling back a migration", () => {
     rollbackKeyringWrites([
       { providerId: "gemini", previousValue: "old-key" },
@@ -254,5 +281,90 @@ describe("migrateSecretsStorage", () => {
 
     expect(keyring.writeKeyringSecret).toHaveBeenCalledWith("api_key_gemini", "old-key");
     expect(keyring.deleteKeyringSecret).toHaveBeenCalledWith("api_key_openrouter");
+  });
+
+  it("carries unknown ref-kind entries through a file->keyring migration and keeps the file (T-03)", () => {
+    keyring.readKeyringSecret.mockReturnValue({ ok: true, value: "g-key" });
+
+    const result = migrateSecretsStorage(
+      makeConfigState(),
+      {
+        providers: { gemini: "g-key" },
+        unknownSecrets: { zai: { kind: "vault", ref: "secret/zai" } },
+      },
+      "file",
+      "keyring",
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.nextSecrets.unknownSecrets).toEqual({
+        zai: { kind: "vault", ref: "secret/zai" },
+      });
+      // An unknown entry still lives in the file, so it must NOT be deleted.
+      expect(result.value.shouldDeleteSecretsFile).toBe(false);
+    }
+  });
+
+  it("carries unknown ref-kind entries through a keyring->file migration (T-03)", () => {
+    keyring.readKeyringSecret.mockReturnValue({ ok: true, value: "key-from-keyring" });
+
+    const result = migrateSecretsStorage(
+      makeConfigState(),
+      { providers: {}, unknownSecrets: { zai: { kind: "vault", ref: "secret/zai" } } },
+      "keyring",
+      "file",
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.nextSecrets.providers).toEqual({ gemini: "key-from-keyring" });
+      expect(result.value.nextSecrets.unknownSecrets).toEqual({
+        zai: { kind: "vault", ref: "secret/zai" },
+      });
+    }
+  });
+});
+
+describe("reconcileKeyringSecrets", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    keyring.isKeyringAvailable.mockReturnValue(true);
+    keyring.writeKeyringSecret.mockReturnValue({ ok: true, value: undefined });
+    keyring.readKeyringSecret.mockReturnValue({ ok: true, value: null });
+    keyring.deleteKeyringSecret.mockReturnValue({ ok: true, value: true });
+  });
+
+  it("moves stranded literals into the keyring while round-tripping unknown ref-kind entries (T-03)", () => {
+    keyring.readKeyringSecret
+      .mockReturnValueOnce({ ok: true, value: null })
+      .mockReturnValueOnce({ ok: true, value: "stranded" });
+
+    const result = reconcileKeyringSecrets({
+      providers: { gemini: "stranded" },
+      unknownSecrets: { zai: { kind: "vault", ref: "secret/zai" } },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok && result.value) {
+      expect(result.value.migrated).toEqual(["gemini"]);
+      // The literal was dropped from the returned state...
+      expect(result.value.nextSecrets.providers).toEqual({});
+      // ...but the opaque unknown entry survives so the file is not emptied/deleted.
+      expect(result.value.nextSecrets.unknownSecrets).toEqual({
+        zai: { kind: "vault", ref: "secret/zai" },
+      });
+    }
+    expect(keyring.writeKeyringSecret).toHaveBeenCalledWith("api_key_gemini", "stranded");
+  });
+
+  it("returns null when there is nothing to reconcile", () => {
+    const result = reconcileKeyringSecrets({
+      providers: { gemini: { kind: "env", varName: "GEMINI_API_KEY" } },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value).toBeNull();
+    expect(keyring.writeKeyringSecret).not.toHaveBeenCalled();
   });
 });

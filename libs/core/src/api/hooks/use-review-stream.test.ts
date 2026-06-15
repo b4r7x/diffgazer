@@ -3,16 +3,15 @@
  */
 
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { createElement, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { Result } from "../../result.js";
 import { err, ok } from "../../result.js";
 import type { StreamReviewError } from "../../review/index.js";
 import { ReviewErrorCode } from "../../schemas/review/index.js";
 import { requirePromise, requireValue } from "../../testing/assertions.js";
+import { createTestQueryWrapper } from "../../testing/query-wrapper.js";
 import type { BoundApi } from "../bound.js";
 import type { ResumeReviewResult } from "../review.js";
-import { ApiProvider } from "./context.js";
 import { useReviewStream } from "./use-review-stream.js";
 
 function fakeResumeResult(reviewId = "r"): ResumeReviewResult {
@@ -28,9 +27,7 @@ function createApi(overrides: Partial<BoundApi> = {}): BoundApi {
 }
 
 function createWrapper(api: BoundApi) {
-  return function Wrapper({ children }: { children: ReactNode }) {
-    return createElement(ApiProvider, { value: api }, children);
-  };
+  return createTestQueryWrapper({ api }).Wrapper;
 }
 
 function createDeferred<T>(): {
@@ -254,14 +251,16 @@ describe("useReviewStream", () => {
     });
   });
 
-  it("cancel() surfaces server cancellation failure as state.error", async () => {
+  it("treats a terminal/absent session cancel as success without an error", async () => {
     let resolveResume: (result: Result<ResumeReviewResult, StreamReviewError>) => void = () => {};
     const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>().mockReturnValue(
       new Promise((resolve) => {
         resolveResume = resolve;
       }),
     );
-    const cancelReviewSession = vi.fn().mockResolvedValue({ cancelled: false });
+    const cancelReviewSession = vi
+      .fn()
+      .mockResolvedValue({ cancelled: true, reason: "already-complete" });
     const api = createApi({ resumeReviewStream, cancelReviewSession });
 
     const { result } = renderHook(() => useReviewStream(), {
@@ -270,27 +269,29 @@ describe("useReviewStream", () => {
 
     let resumePromise: Promise<Result<void, StreamReviewError>> | undefined;
     act(() => {
-      resumePromise = result.current.resume("cancel-failed-review");
+      resumePromise = result.current.resume("cancel-terminal-review");
     });
 
     await waitFor(() => expect(result.current.state.isStreaming).toBe(true));
 
+    let cancelError: string | null | undefined;
     await act(async () => {
-      await result.current.cancel("cancel-failed-review");
+      cancelError = await result.current.cancel("cancel-terminal-review");
     });
 
-    expect(result.current.state.error).toBe("Failed to cancel the review session on the server.");
+    expect(cancelError).toBeNull();
+    expect(result.current.state.error).toBeNull();
 
     await act(async () => {
-      resolveResume(ok(fakeResumeResult("cancel-failed-review")));
-      await requirePromise(resumePromise, "cancel failed resume promise");
+      resolveResume(ok(fakeResumeResult("cancel-terminal-review")));
+      await requirePromise(resumePromise, "cancel terminal resume promise");
     });
   });
 
   it("does not let a stale cancel failure overwrite a newer resumed stream", async () => {
     const firstResume = createDeferred<Result<ResumeReviewResult, StreamReviewError>>();
     const secondResume = createDeferred<Result<ResumeReviewResult, StreamReviewError>>();
-    const cancelResult = createDeferred<{ cancelled: boolean }>();
+    const cancelResult = createDeferred<never>();
     const resumeReviewStream = vi
       .fn<BoundApi["resumeReviewStream"]>()
       .mockReturnValueOnce(firstResume.promise)
@@ -322,7 +323,7 @@ describe("useReviewStream", () => {
     await waitFor(() => expect(result.current.state.reviewId).toBe("second-review"));
 
     await act(async () => {
-      cancelResult.resolve({ cancelled: false });
+      cancelResult.reject(new Error("cancel endpoint down"));
       await requirePromise(cancelPromise, "stale cancel promise");
     });
 
@@ -414,5 +415,32 @@ describe("useReviewStream", () => {
     if (!resumeResult.ok) {
       expect(resumeResult.error.code).toBe(ReviewErrorCode.SESSION_STALE);
     }
+  });
+
+  it("surfaces a streamed cap-warning chunk as a user-visible notice", async () => {
+    let onChunk: ((content: string) => void) | undefined;
+    const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>().mockImplementation(
+      (options) =>
+        new Promise((resolve) => {
+          onChunk = options.onChunk;
+          // Emit the cap warning mid-stream, then complete.
+          options.onChunk?.("Event cap reached; some progress events were dropped.");
+          resolve(ok(fakeResumeResult("noticed-review")));
+        }),
+    );
+    const api = createApi({ resumeReviewStream });
+
+    const { result } = renderHook(() => useReviewStream(), {
+      wrapper: createWrapper(api),
+    });
+
+    await act(async () => {
+      await result.current.resume("noticed-review");
+    });
+
+    expect(onChunk).toBeDefined();
+    expect(result.current.state.notices).toContain(
+      "Event cap reached; some progress events were dropped.",
+    );
   });
 });

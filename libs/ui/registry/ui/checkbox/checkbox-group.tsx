@@ -12,11 +12,11 @@ import {
   useRef,
   useState,
 } from "react";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { useNavigation } from "@/hooks/use-navigation";
 import { isHTMLElementForContainer, resolveAriaInvalid } from "@/lib/aria";
-import { composeRefs } from "@/lib/compose-refs";
 import {
   getEnabledSelectableCollectionItems,
   resolveSelectableCollectionItem,
@@ -24,9 +24,11 @@ import {
 } from "@/lib/selectable-collection";
 import type { SelectableVariant } from "@/lib/selectable-variants";
 import { cn } from "@/lib/utils";
+import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";
 import type { CheckboxSize } from "./checkbox";
 import { CheckboxGroupContext } from "./checkbox-group-context";
 
+/** Props for checkbox group root. */
 type CheckboxGroupRootProps = Omit<
   ComponentPropsWithRef<"div">,
   | "children"
@@ -41,36 +43,66 @@ type CheckboxGroupRootProps = Omit<
   | "aria-invalid"
 >;
 
+/**
+ * @typeParam T - Convenience assertion for the value union surfaced through
+ * `value`/`onChange`. Values originate from the rendered items' `data-value`
+ * strings and are asserted to `T`, not validated; in development an unregistered
+ * value warns (see `warnUnregisteredValue`).
+ */
 export type CheckboxGroupProps<T extends string = string> = CheckboxGroupRootProps & {
+  /** Controlled selected item values. */
   value?: T[];
+  /** Initial selected values for uncontrolled usage. */
   defaultValue?: T[];
+  /** Called when the selected values change. */
   onChange?: (value: T[]) => void;
+  /** Called when keyboard navigation highlights a new item or clears highlight. */
   onHighlightChange?: (value: string | null) => void;
+  /** Called after the built-in group key handling runs. */
   onKeyDown?: (event: ReactKeyboardEvent) => void;
+  /** Controlled highlighted item value for keyboard navigation. */
   highlighted?: string | null;
+  /** Whether arrow-key navigation wraps at the first and last item. */
   wrap?: boolean;
+  /** Enable built-in arrow-key navigation. */
   keyboardNavigation?: boolean;
+  /** Called when non-wrapping navigation reaches the first or last item. */
   onNavigationBoundaryReached?: (
     direction: "previous" | "next",
     event: globalThis.KeyboardEvent,
     key: string,
   ) => void;
+  /** Disables the group and all items. */
   disabled?: boolean;
+  /** Focuses the highlighted, selected, or first enabled item when the group becomes active. */
   autoFocus?: boolean;
+  /** Selectable control size token. */
   size?: CheckboxSize;
+  /** Indicator style. */
   variant?: SelectableVariant;
+  /** Applies muted line-through styling to checked item labels. */
   strikethrough?: boolean;
+  /** Shared hidden native input name for grouped form submission. */
   name?: string;
+  /** Requires at least one enabled item to be selected. */
   required?: boolean;
+  /** Additional class names merged onto the rendered element. */
   className?: string;
+  /** Visible group label. Also provides the accessible name when aria-label is omitted. */
   label?: string;
+  /** Accessible name for the group. Overrides the label-derived fallback when supplied. */
   "aria-label"?: string;
+  /** ID reference for an external label. Use when another element already names the group. */
   "aria-labelledby"?: string;
+  /** ARIA invalid state forwarded to the rendered control. */
   "aria-invalid"?: AriaAttributes["aria-invalid"];
+  /** Checkbox item children rendered inside the group. */
   children: ReactNode;
+  /** Ref forwarded to the underlying group element. */
   ref?: Ref<HTMLDivElement>;
 };
 
+/** Multi-select group with context and keyboard navigation. */
 export function CheckboxGroup<T extends string = string>(props: CheckboxGroupProps<T>) {
   const {
     value: controlledValue,
@@ -99,8 +131,13 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
     ...rootProps
   } = props;
   const containerRef = useRef<HTMLDivElement>(null);
+  const composedRef = useComposedRefs(containerRef, ref);
   const hasAutoFocusedRef = useRef(false);
   const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
+  // Read through a ref so the dev-mode unregistered-value guard does not pull
+  // `items` into the stable `toggle` callback's deps.
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
   const [value, setValue] = useControllableState<T[]>({
     value: "value" in props ? (controlledValue ?? []) : undefined,
     controlled: "value" in props,
@@ -108,7 +145,15 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
     onChange,
   });
   const [nativeInvalid, setNativeInvalid] = useState(false);
-  useFormReset(containerRef, defaultValue, setValue, !("value" in props));
+  useFormReset(
+    containerRef,
+    defaultValue,
+    (value) => {
+      setNativeInvalid(false);
+      setValue(value);
+    },
+    !("value" in props),
+  );
 
   const enabledItemValues = new Set(
     getEnabledSelectableCollectionItems(items, disabled).map((item) => item.value),
@@ -163,6 +208,11 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
   const toggle = useCallback(
     (itemValue: string) => {
       if (disabled) return;
+      warnUnregisteredValue(
+        "CheckboxGroup",
+        itemValue,
+        itemsRef.current.map((item) => item.value),
+      );
       setNativeInvalid(false);
       setValue((cur) => {
         const nextValue = itemValue as T;
@@ -217,7 +267,7 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
       {/* biome-ignore lint/a11y/useSemanticElements: role="group" labels the set of related checkboxes; <fieldset> would impose default form styling/structure and break the group layout. */}
       <div
         {...rootProps}
-        ref={composeRefs(containerRef, ref)}
+        ref={composedRef}
         role="group"
         data-diffgazer-selectable-owner="checkbox"
         aria-label={ariaLabel ?? label}

@@ -1,8 +1,9 @@
-import { filterProviders, type ProviderFilter } from "@diffgazer/core/providers";
+import { resolveSelectedId } from "@diffgazer/core/review";
 import { useRef, useState } from "react";
 import { useProvidersKeyboard } from "@/features/providers/hooks/use-keyboard";
 import { useProviderManagement } from "@/features/providers/hooks/use-provider-management";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
+import { filterProviders, type ProviderFilter } from "../lib/filter.js";
 
 export function useProvidersPageState() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -28,9 +29,7 @@ export function useProvidersPageState() {
 
   const filteredProviders = filterProviders(providers, filter, searchQuery);
 
-  const effectiveSelectedId = filteredProviders.some((provider) => provider.id === selectedId)
-    ? selectedId
-    : (filteredProviders[0]?.id ?? null);
+  const effectiveSelectedId = resolveSelectedId(selectedId, filteredProviders);
 
   const selectedProvider = effectiveSelectedId
     ? (filteredProviders.find((p) => p.id === effectiveSelectedId) ?? null)

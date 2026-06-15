@@ -4,7 +4,7 @@
   "compilerOptions": {
     "rootDir": ".",
     "jsx": "react-jsx",
-    "types": ["node", "vitest/globals", "react"]
+    "types": ["node", "react"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
   "exclude": ["node_modules", "dist"]

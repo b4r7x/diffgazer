@@ -92,7 +92,7 @@ export interface CreateReviewSessionResult {
 export async function createReviewSession(
   aiClient: AIClient,
   options: StreamReviewParams,
-): Promise<Result<CreateReviewSessionResult, { code: string; message: string }>> {
+): Promise<Result<CreateReviewSessionResult, { code: ReviewErrorCode; message: string }>> {
   const {
     mode = "unstaged",
     files,
@@ -116,7 +116,8 @@ export async function createReviewSession(
   }
 
   const headCommit = headCommitResult.value;
-  const statusHash = statusHashResult ?? "";
+  const statusHashKind = statusHashResult.kind;
+  const statusHash = statusHashResult.kind === "unavailable" ? "" : statusHashResult.hash;
   const scopeKey = buildScopeKey({ files, lenses: lensIds, profile: profileId });
   const reviewDefaults = resolveReviewDefaults({ lensIds, profileId });
   const reviewConfigKey = buildReviewConfigKey({
@@ -125,10 +126,11 @@ export async function createReviewSession(
     minSeverity: reviewDefaults.severityFilter?.minSeverity,
   });
 
-  if (headCommit && statusHashResult !== null) {
+  if (headCommit && statusHashKind !== "unavailable") {
     const existingSession = getActiveSessionForProject(projectPath, {
       headCommit,
       statusHash,
+      statusHashKind,
       mode,
       scopeKey,
       reviewConfigKey,
@@ -138,13 +140,21 @@ export async function createReviewSession(
     }
   }
 
-  cancelStaleSessionsForProjectMode(projectPath, mode, headCommit, statusHash, reviewConfigKey);
+  cancelStaleSessionsForProjectMode(
+    projectPath,
+    mode,
+    headCommit,
+    statusHash,
+    statusHashKind,
+    reviewConfigKey,
+  );
 
   const reviewId = randomUUID();
   const session = createSession(reviewId, {
     projectPath,
     headCommit,
     statusHash,
+    statusHashKind,
     mode,
     scopeKey,
     reviewConfigKey,
@@ -218,7 +228,6 @@ async function runReviewSession(
       parsed,
       profileId: config.effectiveProfileId ?? profileId,
       activeLenses: config.activeLenses,
-      severityFilter: config.severityFilter,
       startTime,
       signal,
       headCommit,

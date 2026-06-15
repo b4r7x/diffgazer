@@ -2,15 +2,14 @@ import type { DisplayStatus } from "../schemas/config/index.js";
 import type { BadgeVariant } from "../schemas/presentation/index.js";
 
 interface DisplayStatusConfig {
-  label: string;
   badgeLabel: string;
   badgeVariant: BadgeVariant;
 }
 
 const DISPLAY_STATUS_CONFIG: Record<DisplayStatus, DisplayStatusConfig> = {
-  active: { label: "Active", badgeLabel: "active", badgeVariant: "success" },
-  configured: { label: "Configured", badgeLabel: "configured", badgeVariant: "info" },
-  "needs-key": { label: "Needs Key", badgeLabel: "needs key", badgeVariant: "neutral" },
+  active: { badgeLabel: "active", badgeVariant: "success" },
+  configured: { badgeLabel: "configured", badgeVariant: "info" },
+  "needs-key": { badgeLabel: "needs key", badgeVariant: "neutral" },
 } as const;
 
 export function getDisplayStatusBadge(status: DisplayStatus): {

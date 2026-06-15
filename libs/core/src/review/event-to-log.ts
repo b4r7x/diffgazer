@@ -1,4 +1,4 @@
-import type { AgentId, AgentStreamEvent, EnrichEvent, StepEvent } from "../schemas/events/index.js";
+import type { AgentId, AgentStreamEvent, StepEvent } from "../schemas/events/index.js";
 import { AGENT_METADATA, STEP_METADATA } from "../schemas/events/index.js";
 import type { LogEntryData } from "../schemas/presentation/index.js";
 import { pluralize, truncate } from "../strings.js";
@@ -9,7 +9,7 @@ function getAgent(agentId: AgentId): { label: string; name: string } {
 }
 
 function convertEventToLogEntry(
-  event: AgentStreamEvent | StepEvent | EnrichEvent,
+  event: AgentStreamEvent | StepEvent,
   index: number,
 ): LogEntryData | null {
   const id = `${event.type}-${index}`;
@@ -59,16 +59,6 @@ function convertEventToLogEntry(
     };
   }
 
-  if (event.type === "enrich_progress") {
-    return {
-      id,
-      timestamp,
-      tag: "ENRICH",
-      tagType: "system",
-      message: `${event.enrichmentType} ${event.status}: ${event.issueId}`,
-    };
-  }
-
   switch (event.type) {
     case "orchestrator_start":
       return {
@@ -105,6 +95,16 @@ function convertEventToLogEntry(
         tagType: "system",
         message: `${event.file} complete`,
       };
+
+    case "file_progress":
+      return {
+        id,
+        timestamp,
+        tag: "FILE",
+        tagType: "system",
+        message: `${event.file} (${event.completed}/${event.total})`,
+      };
+
     case "agent_start":
       return {
         id,
@@ -220,7 +220,7 @@ function convertEventToLogEntry(
 }
 
 export function convertAgentEventsToLogEntries(
-  events: (AgentStreamEvent | StepEvent | EnrichEvent)[],
+  events: (AgentStreamEvent | StepEvent)[],
 ): LogEntryData[] {
   return events
     .map(convertEventToLogEntry)

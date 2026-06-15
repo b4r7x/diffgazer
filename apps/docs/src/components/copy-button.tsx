@@ -1,6 +1,6 @@
 import { Button } from "@diffgazer/ui/components/button";
 import { toast } from "@diffgazer/ui/components/toast";
-import { useCopyFeedback } from "@/lib/use-copy-feedback";
+import { useCopyToClipboard } from "@diffgazer/ui/hooks/copy-to-clipboard";
 
 interface CopyButtonProps {
   text: string;
@@ -32,22 +32,23 @@ async function writeToClipboard(text: string): Promise<void> {
 }
 
 export function CopyButton({ text, className, label, title, successMessage }: CopyButtonProps) {
-  const { copied, showCopied } = useCopyFeedback();
-
-  const handleCopy = async () => {
-    try {
-      await writeToClipboard(text);
-      showCopied();
-      toast.success(successMessage ?? "Copied to clipboard");
-    } catch (error) {
+  const { copied, copy } = useCopyToClipboard({
+    write: writeToClipboard,
+    onCopy: () => toast.success(successMessage ?? "Copied to clipboard"),
+    onError: (error) => {
       if (import.meta.env.DEV) {
         console.error("CopyButton: failed to write to clipboard", error);
       }
       toast.error("Couldn't copy to clipboard");
-    }
+    },
+  });
+
+  const handleCopy = () => {
+    void copy(text);
   };
 
-  const buttonLabel = copied ? "[ok]" : label ? `[${label}]` : "[cp]";
+  const buttonLabel = label ? `[${label}]` : "[cp]";
+  const displayLabel = copied ? "[ok]" : buttonLabel;
 
   return (
     <Button
@@ -58,7 +59,7 @@ export function CopyButton({ text, className, label, title, successMessage }: Co
       title={title}
       aria-label={copied ? "Copied" : "Copy to clipboard"}
     >
-      <span className="text-xs font-mono">{buttonLabel}</span>
+      <span className="text-xs font-mono">{displayLabel}</span>
     </Button>
   );
 }

@@ -1,8 +1,4 @@
-import {
-  getDisplayStatusBadge,
-  PROVIDER_FILTER_LABELS,
-  type ProviderFilter,
-} from "@diffgazer/core/providers";
+import { getDisplayStatusBadge } from "@diffgazer/core/providers";
 import type { ProviderWithStatus } from "@diffgazer/core/schemas/config";
 import { PROVIDER_CAPABILITIES } from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
@@ -21,6 +17,7 @@ import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { KeyboardEvent as ReactKeyboardEvent, RefCallback } from "react";
+import { PROVIDER_FILTER_LABELS, type ProviderFilter } from "../lib/filter.js";
 
 interface ProviderListProps {
   providers: ProviderWithStatus[];
@@ -78,13 +75,13 @@ export function ProviderList({
 }: ProviderListProps) {
   return (
     <div className="flex flex-col h-full">
-      <div className="p-3 border-b border-tui-border bg-tui-selection/30">
-        <SectionHeader as="h2" className="mb-0 text-tui-fg">
+      <div className="p-3 border-b border-border bg-secondary/30">
+        <SectionHeader as="h2" className="mb-0 text-foreground">
           Providers
         </SectionHeader>
       </div>
 
-      <div className="p-3 border-b border-tui-border">
+      <div className="p-3 border-b border-border">
         <SearchInput
           ref={inputRef}
           size="sm"
@@ -122,7 +119,7 @@ export function ProviderList({
             : (PROVIDER_FILTER_LABELS[focusedFilterIndex]?.value ?? null)
         }
         onKeyDown={onFilterKeyDown}
-        className="px-3 py-2 border-b border-tui-border"
+        className="px-3 py-2 border-b border-border"
         label="Provider filter"
       >
         {PROVIDER_FILTER_LABELS.map((f, index) => {
@@ -180,7 +177,7 @@ export function ProviderList({
                   id={provider.id}
                   className={cn(
                     "border-l-2 border-l-transparent",
-                    !isFocused && selectedId === provider.id && "border-l-tui-blue/60 text-tui-fg",
+                    !isFocused && selectedId === provider.id && "border-l-info/60 text-foreground",
                   )}
                 >
                   <NavigationListTitle>{provider.name}</NavigationListTitle>

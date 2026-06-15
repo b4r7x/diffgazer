@@ -25,7 +25,7 @@ function actionLabel(library: HomeLibrary): string {
 export function ModulesIndexTable({ libraries }: { libraries: HomeLibrary[] }) {
   return (
     <Panel frame="hairline" className="flex flex-col lg:min-h-0 lg:flex-1">
-      <div className="flex shrink-0 border-b border-border bg-secondary px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+      <div className="flex shrink-0 border-b border-border bg-secondary px-4 py-2 font-mono text-2xs font-bold uppercase tracking-widest text-muted-foreground">
         <div className="w-1/2 sm:w-1/3">Package / Scope</div>
         <div className="hidden w-1/4 sm:block">Description</div>
         <div className="w-1/4 text-right sm:w-1/6">Items</div>
@@ -39,7 +39,7 @@ export function ModulesIndexTable({ libraries }: { libraries: HomeLibrary[] }) {
           <Link
             key={library.id}
             to="/$lib/$"
-            params={{ lib: library.id, _splat: library.sections[0].splat }}
+            params={{ lib: library.id, _splat: library.sections[0]?.splat ?? "" }}
             className="group flex items-center border border-transparent px-2 py-3 font-mono text-sm transition-colors hover:border-border hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <div className="flex w-1/2 min-w-0 items-center sm:w-1/3">
@@ -55,14 +55,14 @@ export function ModulesIndexTable({ libraries }: { libraries: HomeLibrary[] }) {
               {LIBRARY_DESCRIPTIONS[library.id]}
             </div>
             <div className="w-1/4 text-right text-foreground sm:w-1/6">{itemsLabel(library)}</div>
-            <div className="w-1/4 text-right text-[11px] uppercase tracking-widest text-muted-foreground transition-colors group-hover:text-foreground">
+            <div className="w-1/4 text-right text-2xs uppercase tracking-widest text-muted-foreground transition-colors group-hover:text-foreground">
               {actionLabel(library)}
             </div>
           </Link>
         ))}
         <div
           aria-hidden="true"
-          className="mt-4 flex items-center gap-4 px-2 py-3 font-mono text-[11px] uppercase tracking-widest text-muted-foreground opacity-50"
+          className="mt-4 flex items-center gap-4 px-2 py-3 font-mono text-2xs uppercase tracking-widest text-muted-foreground opacity-50"
         >
           <span className="grow border-b border-dashed border-border" />
           <span>END OF DIRECTORY</span>

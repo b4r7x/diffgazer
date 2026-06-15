@@ -2,6 +2,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type { CSSProperties, Ref, SVGProps } from "react";
 import { cn } from "@/lib/utils";
 
+/** Class variants for chevron. */
 export const chevronVariants = cva(
   "shrink-0 motion-safe:transition-transform motion-safe:duration-200",
   {
@@ -27,14 +28,19 @@ const baseDeg: Record<ChevronDirection, number> = {
   up: 270,
 };
 
+/** Props for chevron. */
 export interface ChevronProps
   extends Omit<SVGProps<SVGSVGElement>, "ref">,
     VariantProps<typeof chevronVariants> {
+  /** Base direction the chevron points before any rotation. */
   direction?: ChevronDirection;
+  /** Rotates 90 degrees clockwise from the base direction. Use for expand/collapse toggles. */
   open?: boolean;
+  /** Ref forwarded to the underlying element. */
   ref?: Ref<SVGSVGElement>;
 }
 
+/** Directional SVG icon with rotation animation and size variants. */
 export function Chevron({
   direction = "right",
   open,

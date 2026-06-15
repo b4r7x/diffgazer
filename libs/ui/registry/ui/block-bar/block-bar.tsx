@@ -2,7 +2,7 @@
 
 import {
   Children,
-  type HTMLAttributes,
+  type ComponentProps,
   isValidElement,
   type ReactElement,
   type ReactNode,
@@ -14,15 +14,20 @@ import { BlockBarSegment, type SegmentVariant } from "./block-bar-segment";
 
 const MAX_BAR_WIDTH = 200;
 
+/** Customizable colored segment with optional children content. */
 export interface BlockBarSegmentData {
+  /** Segment value in the same units as BlockBar max. */
   value: number;
+  /** Segment color token. */
   variant?: SegmentVariant;
+  /** Override the filled character for this segment only. */
   char?: string;
 }
 
+/** Props for block bar. */
 export interface BlockBarProps
   extends Omit<
-    HTMLAttributes<HTMLDivElement>,
+    ComponentProps<"div">,
     | "aria-label"
     | "aria-labelledby"
     | "aria-valuemax"
@@ -31,17 +36,47 @@ export interface BlockBarProps
     | "aria-valuetext"
     | "role"
   > {
+  /**
+   * Current value. Required unless segments are provided or BlockBar.Segment children are
+   * passed (in which case the value is derived from their sum).
+   */
   value?: number;
+  /** Maximum value the bar represents. Used for aria-valuemax and fill ratio. */
   max: number;
+  /** Width of the bar in character cells. Clamped to 0-200. */
   barWidth?: number;
+  /** Character used for the filled portion of the bar. */
   filledChar?: string;
+  /** Character used for the empty portion of the bar. */
   emptyChar?: string;
+  /**
+   * Visible label rendered to the left of the bar in simple mode. Also used as accessible name
+   * when aria-label is omitted.
+   */
   label?: string;
+  /**
+   * Accessible name. When set (or label is set), the bar exposes role="meter" with
+   * aria-valuemin/max/now/text.
+   */
   "aria-label"?: string;
+  /** ID of an element labelling the bar. Alternative to aria-label. */
   "aria-labelledby"?: string;
+  /** Override for aria-valuetext. */
   valueText?: string;
+  /**
+   * Color token applied to the implicit single segment when no segments or children are
+   * provided.
+   */
   variant?: SegmentVariant;
+  /**
+   * Multi-segment stack. When provided, takes precedence over children and derives value from
+   * the sum.
+   */
   segments?: BlockBarSegmentData[];
+  /**
+   * BlockBar.Segment children for fully custom rendering. Throws when neither value nor
+   * segments are provided and children are not BlockBar.Segment elements.
+   */
   children?: ReactNode;
 }
 
@@ -66,6 +101,7 @@ function deriveValueFromSegmentChildren(children: ReactNode): number | null {
   return total;
 }
 
+/** Root meter element with ARIA attributes. */
 function BlockBarRoot({
   value,
   max,
@@ -124,6 +160,7 @@ function BlockBarRoot({
       <div
         {...props}
         role={hasAccessibleName ? "meter" : undefined}
+        data-slot="block-bar"
         aria-valuemin={hasAccessibleName ? 0 : undefined}
         aria-valuemax={hasAccessibleName ? safeMax : undefined}
         aria-valuenow={hasAccessibleName ? displayValue : undefined}

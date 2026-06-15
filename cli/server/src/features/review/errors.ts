@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import { type ErrorStatus, errorResponse } from "../../shared/lib/http/response.js";
-import type { StoreError, StoreErrorCode } from "../../shared/lib/storage/types.js";
+import type { StoreError, StoreErrorCode } from "./storage/types.js";
 
 const errorCodeToStatus = (code: StoreErrorCode): ErrorStatus => {
   switch (code) {

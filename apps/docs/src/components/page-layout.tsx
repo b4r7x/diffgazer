@@ -47,7 +47,7 @@ export function DocsPageHeader({ title, description, tags, className }: DocsPage
           {tags?.map((tag) => (
             <span
               key={tag}
-              className="px-2 py-1 border border-border font-mono text-[10px] uppercase tracking-wider text-muted-foreground"
+              className="px-2 py-1 border border-border font-mono text-2xs uppercase tracking-widest text-muted-foreground"
             >
               {tag}
             </span>

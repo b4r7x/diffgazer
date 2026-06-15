@@ -10,47 +10,82 @@ import {
   type Ref,
   useMemo,
 } from "react";
-import { composeRefs } from "@/lib/compose-refs";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { cn } from "@/lib/utils";
 import { SelectContext, type SelectOptionMetadata } from "./select-context";
 import { SelectItem, type SelectItemProps } from "./select-item";
 import { SelectSearch } from "./select-search";
+import { getNodeText } from "./selection";
 import { type UseSelectStateOptions, useSelectState } from "./use-state-machine";
 
+/** Props for select base. */
 interface SelectBaseProps<TValue extends string = string>
   extends Omit<ComponentPropsWithoutRef<"div">, "defaultValue" | "onChange" | "id"> {
+  /** Controlled open state. Pair with onOpenChange. */
   open?: boolean;
+  /** Called when open state changes. */
   onOpenChange?: (open: boolean) => void;
+  /**
+   * Initial open state for uncontrolled usage. Useful with variant="card" for a settings-panel
+   * layout that renders its list immediately.
+   */
   defaultOpen?: boolean;
+  /** Controlled highlighted item id. Pair with onHighlightChange. */
   highlighted?: TValue | null;
+  /** Called when the highlighted item changes via keyboard or search. */
   onHighlightChange?: (value: TValue | null) => void;
+  /** Disable the trigger and prevent open. */
   disabled?: boolean;
+  /**
+   * Visual treatment. "card" renders the inline settings-panel layout (combine with
+   * defaultOpen).
+   */
   variant?: "default" | "card";
+  /** Width preset for the Select container. "full" fills the parent. */
   width?: "sm" | "md" | "lg" | "full";
+  /** Name for the hidden form input that participates in native form submission. */
   name?: string;
+  /** Mark the select as required for native form validation. */
   required?: boolean;
+  /** ARIA invalid state forwarded to the rendered control. */
   "aria-invalid"?: AriaAttributes["aria-invalid"];
+  /** ID applied to the rendered element. */
   id?: string;
+  /** ID of the element that describes this component. */
   "aria-describedby"?: string;
+  /** ID of the element that labels this component. */
   "aria-labelledby"?: string;
+  /** Content rendered inside the component. */
   children: ReactNode;
+  /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLDivElement>;
 }
 
+/** Props for select in single-selection mode. */
 interface SelectSingleProps<TValue extends string = string> extends SelectBaseProps<TValue> {
+  /** Enable multi-select. value/onChange become string[]. */
   multiple?: false;
+  /** Controlled selected value. string[] when multiple, string in single mode. */
   value?: TValue;
+  /** Called when the selection changes. */
   onChange?: (value: TValue) => void;
+  /** Initial selected value for uncontrolled usage. */
   defaultValue?: TValue;
 }
 
+/** Props for select in multiple-selection mode. */
 interface SelectMultipleProps<TValue extends string = string> extends SelectBaseProps<TValue> {
+  /** Enable multi-select. value/onChange become string[]. */
   multiple: true;
+  /** Controlled selected value. string[] when multiple, string in single mode. */
   value?: TValue[];
+  /** Called when the selection changes. */
   onChange?: (value: TValue[]) => void;
+  /** Initial selected value for uncontrolled usage. */
   defaultValue?: TValue[];
 }
 
+/** Props for select. */
 export type SelectProps<TValue extends string = string> =
   | SelectSingleProps<TValue>
   | SelectMultipleProps<TValue>;
@@ -71,12 +106,18 @@ const selectRootVariants = cva("relative", {
   defaultVariants: { variant: "default" },
 });
 
+/** Options for derived select state. */
 interface DerivedSelectStateOptions {
+  /** open controlled used by derived select state. */
   openControlled: boolean;
+  /** value controlled used by derived select state. */
   valueControlled: boolean;
+  /** highlighted controlled used by derived select state. */
   highlightedControlled: boolean;
+  /** searchable used by derived select state. */
   searchable: boolean;
-  options: ReadonlyMap<string, SelectOptionMetadata>;
+  /** seed options used by derived select state. */
+  seedOptions: ReadonlyMap<string, SelectOptionMetadata>;
 }
 
 // Single typed boundary for the public TValue -> internal string narrowing.
@@ -104,7 +145,7 @@ function buildSelectStateOptions<TValue extends string>(
     ariaLabelledBy: props["aria-labelledby"],
     triggerIdProp: props.id,
     required: props.required,
-    options: derived.options,
+    seedOptions: derived.seedOptions,
   };
 
   if (props.multiple) {
@@ -125,6 +166,10 @@ function buildSelectStateOptions<TValue extends string>(
   };
 }
 
+/**
+ * Dropdown select with search, multiple selection, card variant, and controlled keyboard
+ * integration points. 8 composable parts.
+ */
 export function Select<TValue extends string = string>(props: SelectProps<TValue>) {
   const {
     children,
@@ -152,24 +197,29 @@ export function Select<TValue extends string = string>(props: SelectProps<TValue
     "aria-labelledby": _ariaLabelledBy,
     ...rootProps
   } = props;
-  const options = useMemo(() => collectSelectOptions(children), [children]);
-  const searchable = useMemo(() => containsSelectSearchElement(children), [children]);
+  const searchable = containsSelectSearchElement(children);
+  // Seed labels for direct-child items so the trigger/value display works while
+  // the (portaled) dropdown is closed and its items are unmounted. Registration
+  // is authoritative whenever items are mounted (open) and is the only path that
+  // resolves wrapper-rendered or dynamically composed items.
+  const seedOptions = useMemo(() => collectSeedOptions(children), [children]);
 
   const stateOptions = buildSelectStateOptions(props, {
     openControlled: "open" in props,
     valueControlled: "value" in props,
     highlightedControlled: "highlighted" in props,
     searchable,
-    options,
+    seedOptions,
   });
 
   const { contextValue, wrapperRef } = useSelectState(stateOptions);
+  const composedRef = useComposedRefs(wrapperRef, ref);
 
   return (
     <SelectContext value={contextValue}>
       <div
         {...rootProps}
-        ref={composeRefs(wrapperRef, ref)}
+        ref={composedRef}
         className={cn(selectRootVariants({ variant, width: width ?? undefined }), className)}
       >
         {children}
@@ -184,7 +234,6 @@ export function Select<TValue extends string = string>(props: SelectProps<TValue
                 disabled={disabled}
                 tabIndex={-1}
                 aria-hidden={true}
-                aria-label={typeof name === "string" ? name : undefined}
                 className="sr-only"
                 // Value is driven by the custom select; the no-op keeps this
                 // hidden form mirror controlled without React's warning.
@@ -208,7 +257,6 @@ export function Select<TValue extends string = string>(props: SelectProps<TValue
                   disabled={disabled}
                   tabIndex={-1}
                   aria-hidden={true}
-                  aria-label={typeof name === "string" ? `${name} required` : undefined}
                   readOnly
                   className="sr-only"
                   onInvalid={(event) => {
@@ -226,7 +274,6 @@ export function Select<TValue extends string = string>(props: SelectProps<TValue
               disabled={disabled}
               tabIndex={-1}
               aria-hidden={true}
-              aria-label={typeof name === "string" ? name : undefined}
               className="sr-only"
               // Value is driven by the custom select; the no-op keeps this
               // hidden form mirror controlled without React's warning.
@@ -247,42 +294,37 @@ export function Select<TValue extends string = string>(props: SelectProps<TValue
   );
 }
 
-function collectSelectOptions(children: ReactNode): ReadonlyMap<string, SelectOptionMetadata> {
-  const options = new Map<string, SelectOptionMetadata>();
-
-  Children.forEach(children, (child) => {
-    if (!isValidElement<{ children?: ReactNode }>(child)) return;
-
-    if (child.type === SelectItem) {
-      const props = child.props as SelectItemProps;
-      options.set(props.value, {
-        label: props.textValue ?? getNodeText(props.children) ?? props.value,
-        disabled: props.disabled ?? false,
-      });
-      return;
-    }
-
-    const nested = collectSelectOptions(child.props.children);
-    for (const [value, metadata] of nested) options.set(value, metadata);
-  });
-
-  return options;
-}
-
-function getNodeText(node: ReactNode): string | undefined {
-  if (typeof node === "string" || typeof node === "number") return String(node);
-  if (Array.isArray(node)) {
-    const text = node.map(getNodeText).filter(Boolean).join("");
-    return text || undefined;
-  }
-  if (isValidElement<{ children?: ReactNode }>(node)) return getNodeText(node.props.children);
-  return undefined;
-}
-
 function containsSelectSearchElement(children: ReactNode): boolean {
   return Children.toArray(children).some((child) => {
     if (!isValidElement<{ children?: ReactNode }>(child)) return false;
     if (child.type === SelectSearch) return true;
     return containsSelectSearchElement(child.props.children);
   });
+}
+
+// Static seed for direct-child SelectItems. Used only to display the selected
+// label while the dropdown is closed (items unmounted). It deliberately does NOT
+// gate selectability — mounted items register through context, which is the only
+// path that resolves wrapper-rendered or dynamic items.
+function collectSeedOptions(children: ReactNode): ReadonlyMap<string, SelectOptionMetadata> {
+  const seed = new Map<string, SelectOptionMetadata>();
+
+  Children.forEach(children, (child) => {
+    if (!isValidElement<{ children?: ReactNode }>(child)) return;
+
+    if (child.type === SelectItem) {
+      const itemProps = child.props as SelectItemProps;
+      seed.set(itemProps.value, {
+        label: itemProps.textValue ?? getNodeText(itemProps.children) ?? itemProps.value,
+        disabled: itemProps.disabled ?? false,
+      });
+      return;
+    }
+
+    for (const [value, metadata] of collectSeedOptions(child.props.children)) {
+      seed.set(value, metadata);
+    }
+  });
+
+  return seed;
 }

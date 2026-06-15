@@ -1,11 +1,11 @@
 ---
 title: Typography
-description: JetBrains Mono font configuration and sizing used across @diffgazer/ui components.
+description: JetBrains Mono font configuration and sizing used across `@diffgazer/ui` components.
 ---
 
-@diffgazer/ui uses JetBrains Mono for all text. Monospace is not just for code -- it IS the design.
+`@diffgazer/ui` uses JetBrains Mono for all text. Monospace is not just for code -- it IS the design.
 
-## Font Configuration
+## Font configuration
 
 In docs, the font is loaded from Google Fonts in the app `<head>`:
 
@@ -18,15 +18,15 @@ In docs, the font is loaded from Google Fonts in the app `<head>`:
 />
 ```
 
-If you use @diffgazer/ui outside this docs app, add the same links in your app layout/head.
+If you use `@diffgazer/ui` outside this docs app, add the same links in your app layout/head.
 
-Apply the base font via the `tui-base` class or the CSS variable:
+Apply the base font via the `ui-base` class or the CSS variable:
 
 ```css
-font-family: var(--tui-font-mono);
+font-family: var(--base-font-mono);
 ```
 
-## Font Stack
+## Font stack
 
 ```
 "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono",
@@ -35,22 +35,26 @@ Menlo, Consolas, "Liberation Mono", monospace
 
 The fallback chain ensures monospace rendering even if JetBrains Mono fails to load.
 
-## Sizes Used in @diffgazer/ui
+## Sizes used in `@diffgazer/ui`
 
-| Size | Tailwind Class | Used For |
-|------|---------------|----------|
-| 10px | `text-[10px]` | Toast dismiss button, tiny labels |
-| 12px | `text-xs` | Code blocks, props tables, badges, inline code |
-| 14px | `text-sm` | Body text, menu items, input text |
-| 16px | `text-base` | Section headers, larger labels |
+The two microtype steps below the Tailwind default scale ship as theme tokens — use the token utilities (`text-2xs`/`text-3xs`), never a raw arbitrary-pixel value like `text-[Npx]`.
+
+| Size | Tailwind Class | Token | Used For |
+|------|---------------|-------|----------|
+| 9px | `text-3xs` | `--text-3xs` (`0.5625rem`) | Densest chrome microcopy |
+| 10px | `text-2xs` | `--text-2xs` (`0.625rem`) | Tiny labels and compact metadata |
+| 12px | `text-xs` | — | Code blocks, props tables, badges, inline code |
+| 14px | `text-sm` | — | Body text, menu items, input text |
+| 16px | `text-base` | — | Section headers, larger labels |
 
 ## Weights
 
 | Weight | Tailwind Class | Used For |
 |--------|---------------|----------|
 | 400 | `font-normal` | Body text, code |
+| 500 | `font-medium` | Controls and compact labels |
 | 700 | `font-bold` | Headers, labels, emphasis |
 
-## No Variable Sizing
+## No variable sizing
 
-@diffgazer/ui does not use `rem`-based fluid typography or responsive font scaling. Sizes are fixed. This is intentional: terminals use fixed-size fonts.
+`@diffgazer/ui` does not use `rem`-based fluid typography or responsive font scaling. Sizes are fixed. This is intentional: terminals use fixed-size fonts.

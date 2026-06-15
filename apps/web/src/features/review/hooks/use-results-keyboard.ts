@@ -1,6 +1,6 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
+import { BACK_SHORTCUT, SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import {
   findNavigationItemByValue,
@@ -34,6 +34,7 @@ function getReviewResultsFooter(
   hasSelectedIssue: boolean,
   canUsePatchTab: boolean,
   isFilterActive: boolean,
+  hasFixPlanSteps: boolean,
 ): { shortcuts: Shortcut[]; rightShortcuts: Shortcut[] } {
   if (focusZone === "filters") {
     const shortcuts: Shortcut[] = [
@@ -44,7 +45,7 @@ function getReviewResultsFooter(
     shortcuts.push({ key: "j", label: "Issue List" });
     return {
       shortcuts,
-      rightShortcuts: [{ key: "Esc", label: "Back" }],
+      rightShortcuts: [BACK_SHORTCUT],
     };
   }
 
@@ -52,16 +53,21 @@ function getReviewResultsFooter(
     if (!hasSelectedIssue) {
       return {
         shortcuts: [{ key: "←", label: "Issue List" }],
-        rightShortcuts: [{ key: "Esc", label: "Back" }],
+        rightShortcuts: [BACK_SHORTCUT],
       };
     }
 
+    const shortcuts: Shortcut[] = [{ key: canUsePatchTab ? "1-4" : "1-3", label: "Switch Tab" }];
+    if (hasFixPlanSteps) {
+      shortcuts.push(
+        { key: "j/k", label: "Move Step" },
+        { key: "Enter/Space", label: "Toggle Step" },
+      );
+    }
+    shortcuts.push({ key: "←", label: "Issue List" });
     return {
-      shortcuts: [
-        { key: canUsePatchTab ? "1-4" : "1-3", label: "Switch Tab" },
-        { key: "←", label: "Issue List" },
-      ],
-      rightShortcuts: [{ key: "Esc", label: "Back" }],
+      shortcuts,
+      rightShortcuts: [BACK_SHORTCUT],
     };
   }
 
@@ -70,7 +76,7 @@ function getReviewResultsFooter(
       { key: "j/k", label: "Select Issue" },
       { key: "→", label: "Issue Details" },
     ],
-    rightShortcuts: [{ key: "Esc", label: "Back" }],
+    rightShortcuts: [BACK_SHORTCUT],
   };
 }
 
@@ -123,14 +129,15 @@ export function useReviewResultsKeyboard({
   const focusTargetValueForIndex = (index: number): string =>
     index === resetIndex ? RESET_FILTER_VALUE : (SEVERITY_ORDER[index] ?? SEVERITY_ORDER[0]);
 
-  useFocusZone({
-    initial: "list" as FocusZone,
+  useFocusZone<FocusZone>({
+    initial: "list",
     zones: ZONES,
     zone: focusZone,
     onZoneChange: setFocusZone,
     scope: REVIEW_SCOPE,
     tabCycle: ["filters", "list", "details"],
     focus: {
+      autoFocus: true,
       targets: {
         filters: {
           container: filterRef,
@@ -157,7 +164,7 @@ export function useReviewResultsKeyboard({
     },
   });
 
-  const focusAndSelectIssue = (id: string) => {
+  const selectIssueAndFocusList = (id: string) => {
     setFocusZone("list");
     setSelectedIssueId(id);
   };
@@ -205,11 +212,6 @@ export function useReviewResultsKeyboard({
     }
   };
 
-  useKey(["ArrowUp", "k"], () => setFocusZone("filters"), {
-    scope: REVIEW_SCOPE,
-    enabled: focusZone === "list" && filteredIssues.length === 0,
-  });
-
   useKey(
     "Escape",
     () => {
@@ -251,21 +253,27 @@ export function useReviewResultsKeyboard({
     enterDetails: () => setFocusZone("details"),
   });
 
-  useReviewDetailsTabKeyboard({
+  const { focusedStepIndex } = useReviewDetailsTabKeyboard({
     scope: REVIEW_SCOPE,
     enabled: focusZone === "details",
     selectedIssue,
+    activeTab,
     moveTab,
     scrollDetails,
     setActiveTab,
     enterList: () => setFocusZone("list"),
+    onToggleStep: handleToggleStep,
   });
+
+  const hasFixPlanSteps =
+    focusZone === "details" && activeTab === "details" && (selectedIssue?.fixPlan?.length ?? 0) > 0;
 
   const footer = getReviewResultsFooter(
     focusZone,
     selectedIssue !== null,
     Boolean(selectedIssue?.suggested_patch),
     isFilterActive,
+    hasFixPlanSteps,
   );
 
   usePageFooter({ shortcuts: footer.shortcuts, rightShortcuts: footer.rightShortcuts });
@@ -274,7 +282,7 @@ export function useReviewResultsKeyboard({
     filteredIssues,
     selectedIssue,
     selectedIssueId,
-    setSelectedIssueId: focusAndSelectIssue,
+    selectIssueAndFocusList,
     selectIssue,
     handleListBoundary,
     activeTab,
@@ -294,5 +302,6 @@ export function useReviewResultsKeyboard({
     detailsScrollRef,
     completedSteps,
     handleToggleStep,
+    focusedStepIndex,
   };
 }

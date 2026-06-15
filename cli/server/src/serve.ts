@@ -3,6 +3,7 @@ import { getErrorMessage } from "@diffgazer/core/errors";
 import { createApp } from "./app.js";
 import { shutdownSessions } from "./features/review/stream/store.js";
 import { DEFAULT_DEV_SERVER_PORT, startDevServer } from "./http-server.js";
+import { log } from "./shared/lib/log.js";
 
 try {
   const app = createApp();
@@ -23,6 +24,6 @@ try {
   process.once("SIGTERM", shutdown);
   process.once("SIGINT", shutdown);
 } catch (error) {
-  console.error(getErrorMessage(error));
+  log("error", "dev_server_start_failed", { error: getErrorMessage(error) });
   process.exitCode = 1;
 }

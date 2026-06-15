@@ -1,4 +1,4 @@
-import type { AIProvider } from "../schemas/config/index.js";
+import type { AIProvider } from "../schemas/config/providers.js";
 
 /** Which PRICED models a provider's free quota covers. `'all'` = whole provider. */
 type FreeTierSelector = "all" | { ids?: string[]; families?: string[] };
@@ -95,6 +95,15 @@ export const PROVIDER_OVERLAY: Record<AIProvider, ProviderOverlay> = {
     enabled: true,
   },
 };
+
+/**
+ * Narrow a route/permissive provider id to the closed AIProvider enum. The enum
+ * members are exactly the keys of the exhaustive PROVIDER_OVERLAY record, so a
+ * surfaced (non-enum) id is rejected before it can reach AIProvider-typed APIs.
+ */
+export function isAIProvider(providerId: string): providerId is AIProvider {
+  return Object.hasOwn(PROVIDER_OVERLAY, providerId);
+}
 
 /**
  * Catalog-data-only providers. These are NOT AIProvider enum members (the enum

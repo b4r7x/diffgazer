@@ -1,19 +1,19 @@
 ---
-title: shadcn Namespace
-description: Configure shadcn registry aliases for @diffgazer/ui and @diffgazer/keys.
+title: shadcn namespace
+description: Configure shadcn registry aliases for `@diffgazer/ui` and `@diffgazer/keys`.
 ---
 
 The shadcn CLI can install registry items by direct URL or by namespace after `components.json` maps each namespace to a registry URL.
 
-Public Diffgazer registry hosts are future, non-blocking release work until deployment and endpoint smoke tests verify them. Until those hosts are live, use a local preview server or an environment-specific URL that serves the generated `public/r/{name}.json` files.
+Public Diffgazer registry hosts are future, non-blocking release work until deployment and endpoint smoke tests verify them. Until those hosts are live, use a local preview server or an environment-specific URL that serves the generated `public/r/ui/{name}.json` and `public/r/keys/{name}.json` files.
 
 Public direct-URL item JSON carries absolute URLs for transitive Diffgazer registry dependencies. Configure both namespaces when you want shorthand for top-level UI and keys installs:
 
 ```json
 {
   "registries": {
-    "@ui": "https://<ui-registry-host>/r/{name}.json",
-    "@diffgazer-keys": "https://<keys-registry-host>/r/{name}.json"
+    "@ui": "https://<registry-host>/r/ui/{name}.json",
+    "@diffgazer-keys": "https://<registry-host>/r/keys/{name}.json"
   }
 }
 ```
@@ -30,16 +30,16 @@ npx shadcn@latest add "@ui/compose-refs"
 
 When a UI source item depends on keys behavior, the published public JSON resolves that dependency through the corresponding keys registry URL.
 
-## CSS Wiring
+## CSS wiring
 
-Namespaced shadcn installs copy component source and dependencies, but they do not make a CSS-dependent component complete by themselves. Import the canonical aggregated component CSS in the target app CSS entrypoint:
+Installing the theme item writes an aggregated `~/styles/styles.css` that already contains the shared theme seed plus every registry component's CSS (dialog backdrop and body-lock rules, command-palette, code-block, and the rest). Import it in the target app CSS entrypoint:
 
 ```css
 @import "tailwindcss";
 @import "./styles/styles.css";
 ```
 
-That `styles.css` entry must be materialized from the shared theme seed plus registry component CSS such as dialog backdrop and body-lock rules. If you install directly from a served shadcn registry, verify the app receives the same aggregated CSS entry before treating components such as Dialog, CommandPalette, Select, Popover, or Tooltip as fully wired.
+No per-component CSS import is required: the component CSS ships inside that aggregated `styles.css`, so components such as Dialog, CommandPalette, Select, Popover, and Tooltip are fully wired once it is imported.
 
 ## Validation
 

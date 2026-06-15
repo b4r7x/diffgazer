@@ -1,4 +1,5 @@
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
+import { truncate } from "@diffgazer/core/strings";
 import { Box, Text } from "ink";
 import { Badge } from "../../../components/ui/badge";
 import { useTheme } from "../../../theme/provider";
@@ -16,12 +17,6 @@ function getPrefix(isSelected: boolean, isHighlighted: boolean): string {
   return "  ";
 }
 
-function truncateDescription(description: string | undefined, maxLen: number): string | undefined {
-  if (!description) return undefined;
-  if (description.length <= maxLen) return description;
-  return `${description.slice(0, Math.max(0, maxLen - 1))}\u2026`;
-}
-
 export function ModelListItem({ model, isHighlighted, isSelected, maxWidth }: ModelListItemProps) {
   const { tokens } = useTheme();
 
@@ -30,7 +25,7 @@ export function ModelListItem({ model, isHighlighted, isSelected, maxWidth }: Mo
 
   // Reserve space for prefix(2) + check(3) + gaps(3) + badge(~6) = ~14 chars
   const descMaxLen = Math.max(0, maxWidth - model.name.length - 18);
-  const desc = truncateDescription(model.description, descMaxLen);
+  const desc = model.description ? truncate(model.description, descMaxLen, "\u2026") : undefined;
 
   return (
     <Box>

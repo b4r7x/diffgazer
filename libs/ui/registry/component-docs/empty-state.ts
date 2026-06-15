@@ -44,7 +44,7 @@ export const emptyStateDoc: ComponentDoc = {
     {
       title: "Accessibility",
       content:
-        'For empty states that appear dynamically (e.g., after filtering returns no results), set live on the root. This adds role="status" and aria-live="polite" so screen readers announce the change.',
+        'For empty states that appear dynamically (e.g., after filtering returns no results), set live on the root. This adds role="status" and aria-live="polite" so screen readers announce the change. A live EmptyState must stay mounted across the results→empty transition: render it unconditionally (empty while results exist) and swap its children, instead of conditionally mounting it already containing its message — many screen-reader/browser pairs do not announce a live region inserted with content already inside it.',
     },
   ],
   usage: { example: "empty-state-default" },
@@ -75,7 +75,7 @@ export const emptyStateDoc: ComponentDoc = {
         required: false,
         defaultValue: "false",
         description:
-          'When true, adds role="status" and aria-live="polite" so screen readers announce the empty state.',
+          'When true, adds role="status" and aria-live="polite" so screen readers announce the empty state. Keep a live EmptyState mounted across the results→empty transition (render it unconditionally, empty while results exist, and swap its children) rather than conditionally mounting it with its message already inside.',
       },
       children: {
         type: "ReactNode",

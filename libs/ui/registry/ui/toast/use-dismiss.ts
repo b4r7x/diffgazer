@@ -8,6 +8,7 @@ import { useEffect, useRef } from "react";
 // unmount. Matches the exit-animation budget (slide-out 0.15s + fade-out 0.15s).
 const DISMISS_FALLBACK_MS = 200;
 
+/** Provides toast dismiss behavior. */
 export function useToastDismiss(dismissing: boolean, id: string, onRemove: (id: string) => void) {
   const removedRef = useRef(false);
 

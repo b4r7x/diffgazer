@@ -1,7 +1,8 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import type { ComponentPropsWithRef } from "react";
+import type { ComponentPropsWithRef, ElementType } from "react";
 import { cn } from "@/lib/utils";
 
+/** Class variants for card. */
 export const cardVariants = cva("w-full relative bg-background", {
   variants: {
     surface: {
@@ -57,9 +58,11 @@ export const cardVariants = cva("w-full relative bg-background", {
   defaultVariants: { surface: "flat", size: "default", interactive: false },
 });
 
+/** Props for card own. */
 type CardOwnProps = VariantProps<typeof cardVariants>;
-type CardElement = "div" | "article" | "section" | "aside";
+type CardElement = "div" | "article" | "section" | "aside" | "a" | "button";
 
+/** Props for card. */
 export type CardProps<T extends CardElement = "div"> = Omit<
   ComponentPropsWithRef<T>,
   keyof CardOwnProps | "as"
@@ -68,10 +71,14 @@ export type CardProps<T extends CardElement = "div"> = Omit<
     as?: T;
   };
 
+/** Main card surface with surface, size, interactive, and as props. */
 export function Card<T extends CardElement = "div">(props: CardProps<T>) {
   const { as, ref, className, surface, size, interactive, ...rest } =
     props as CardProps<CardElement>;
-  const Tag = as ?? "div";
+  // The host element is only known at the call site, so the JSX tag is typed as
+  // a permissive ElementType; per-element prop validation happens at the call
+  // site through CardProps<T>.
+  const Tag = (as ?? "div") as ElementType;
   return (
     <Tag
       data-slot="card"

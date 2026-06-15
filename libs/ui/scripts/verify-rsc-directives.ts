@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { assertRscClientDirectives } from "@diffgazer/registry/cli";
+import { assertRscClientDirectives } from "@diffgazer/registry/build-checks";
 
 const ROOT = resolve(import.meta.dirname, "..");
 

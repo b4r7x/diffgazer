@@ -41,6 +41,10 @@ describe("landing UI-only boundary", () => {
       ...Object.keys(packageJson.devDependencies ?? {}),
     ].filter((name) => name.startsWith("@diffgazer/"));
 
+    // @diffgazer/ui requires @diffgazer/keys as a peer. Landing is private and
+    // imports only display primitives that do not import keys, so the peer is
+    // satisfied by the workspace link instead of a declared landing dependency.
+    // Revisit this if landing adopts keyboard-backed UI components.
     expect(declared).toEqual(["@diffgazer/ui"]);
   });
 

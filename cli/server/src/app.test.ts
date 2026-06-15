@@ -1,7 +1,23 @@
-import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api/protocol";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "./app.js";
 import { resetShutdownStateForTests } from "./features/shutdown/service.js";
+import { setReviewRekeyHandler } from "./shared/lib/config/store.js";
+import { log } from "./shared/lib/log.js";
+import { makeIssue } from "./shared/lib/testing/factories.js";
+
+// Boundary mock: logging writes process-visible diagnostics; app tests keep output quiet.
+vi.mock("./shared/lib/log.js", () => ({ log: vi.fn() }));
+// Boundary mock: keyring is the OS keychain wrapper; report it unavailable so the re-key test avoids the native binding.
+vi.mock("./shared/lib/config/keyring.js", () => ({
+  isKeyringAvailable: vi.fn(() => false),
+  readKeyringSecret: vi.fn(() => ({ ok: true, value: null })),
+  writeKeyringSecret: vi.fn(() => ({ ok: true, value: undefined })),
+  deleteKeyringSecret: vi.fn(() => ({ ok: true, value: true })),
+}));
 
 describe("host validation middleware", () => {
   it.each([
@@ -415,6 +431,63 @@ describe("API token gate scoping (standalone dev vs packaged)", () => {
   });
 });
 
+describe("split-dev token gate startup warning", () => {
+  let originalToken: string | undefined;
+  let originalPackaged: string | undefined;
+
+  beforeEach(() => {
+    originalToken = process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    originalPackaged = process.env.DIFFGAZER_PACKAGED;
+    vi.mocked(log).mockClear();
+  });
+
+  afterEach(() => {
+    if (originalToken === undefined) {
+      delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    } else {
+      process.env.DIFFGAZER_SHUTDOWN_TOKEN = originalToken;
+    }
+    if (originalPackaged === undefined) {
+      delete process.env.DIFFGAZER_PACKAGED;
+    } else {
+      process.env.DIFFGAZER_PACKAGED = originalPackaged;
+    }
+  });
+
+  it("warns once at startup when running tokenless and unpackaged", () => {
+    delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    delete process.env.DIFFGAZER_PACKAGED;
+
+    createApp();
+
+    expect(log).toHaveBeenCalledWith(
+      "warn",
+      "api_token_gate_disabled",
+      expect.objectContaining({
+        message: expect.stringContaining("DIFFGAZER_SHUTDOWN_TOKEN"),
+      }),
+    );
+  });
+
+  it("does not warn when packaged (gate stays enforced)", () => {
+    delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    process.env.DIFFGAZER_PACKAGED = "1";
+
+    createApp();
+
+    expect(log).not.toHaveBeenCalledWith("warn", "api_token_gate_disabled", expect.anything());
+  });
+
+  it("does not warn when a token is configured", () => {
+    process.env.DIFFGAZER_SHUTDOWN_TOKEN = "configured-token";
+    delete process.env.DIFFGAZER_PACKAGED;
+
+    createApp();
+
+    expect(log).not.toHaveBeenCalledWith("warn", "api_token_gate_disabled", expect.anything());
+  });
+});
+
 describe("CORS origin rejection", () => {
   let originalToken: string | undefined;
 
@@ -490,6 +563,7 @@ describe("shutdown route", () => {
     originalCliPid = process.env.DIFFGAZER_CLI_PID;
     originalShutdownToken = process.env.DIFFGAZER_SHUTDOWN_TOKEN;
     process.env.DIFFGAZER_SHUTDOWN_TOKEN = "test-shutdown-token";
+    vi.mocked(log).mockClear();
   });
 
   afterEach(() => {
@@ -605,7 +679,6 @@ describe("shutdown route", () => {
     const killSpy = vi.spyOn(process, "kill").mockImplementation(() => {
       throw killError;
     });
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const res = await app.request("/api/shutdown", {
       method: "POST",
@@ -618,10 +691,9 @@ describe("shutdown route", () => {
 
     vi.runOnlyPendingTimers();
     expect(killSpy).toHaveBeenCalledWith(4321, "SIGTERM");
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "Failed to terminate CLI process via /api/shutdown:",
-      killError,
-    );
+    expect(log).toHaveBeenCalledWith("error", "shutdown_cli_terminate_failed", {
+      error: killError,
+    });
   });
 
   it("is idempotent while shutdown is already scheduled", async () => {
@@ -665,5 +737,95 @@ describe("request observability", () => {
 
     expect(res.status).toBe(403);
     expect(res.headers.get("X-Request-Id")).toMatch(/[0-9a-f-]{36}/);
+  });
+});
+
+describe("review re-key wiring", () => {
+  let diffgazerHome: string;
+  let originalHome: string | undefined;
+
+  const reviewId = "550e8400-e29b-41d4-a716-446655440000";
+
+  beforeEach(() => {
+    originalHome = process.env.DIFFGAZER_HOME;
+    diffgazerHome = mkdtempSync(join(tmpdir(), "diffgazer-app-rekey-"));
+    process.env.DIFFGAZER_HOME = diffgazerHome;
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    setReviewRekeyHandler(() => {});
+    if (originalHome === undefined) {
+      delete process.env.DIFFGAZER_HOME;
+    } else {
+      process.env.DIFFGAZER_HOME = originalHome;
+    }
+    rmSync(diffgazerHome, { recursive: true, force: true });
+  });
+
+  it("re-keys a moved project's review listing through the createApp-registered handler", async () => {
+    // Import after vi.resetModules so createApp, the config store, and the review
+    // storage share one module instance (the rekey handler is module-level state).
+    const { createApp: freshCreateApp } = await import("./app.js");
+    const { saveReview, listReviews } = await import("./features/review/storage/reviews.js");
+    const { createConfigStore } = await import("./shared/lib/config/store.js");
+
+    const originalRoot = join(diffgazerHome, "original");
+    const movedRoot = join(diffgazerHome, "moved");
+    mkdirSync(join(movedRoot, ".diffgazer"), { recursive: true });
+    // A .git dir makes the path an allowed project root.
+    mkdirSync(join(movedRoot, ".git"), { recursive: true });
+    // project.json still points at the original (pre-move) repoRoot.
+    writeFileSync(
+      join(movedRoot, ".diffgazer", "project.json"),
+      JSON.stringify({
+        projectId: "stable-id",
+        repoRoot: originalRoot,
+        createdAt: "2024-01-01T00:00:00.000Z",
+      }),
+    );
+
+    // A review stored under the original path.
+    const saved = await saveReview({
+      reviewId,
+      projectPath: originalRoot,
+      mode: "unstaged",
+      branch: "main",
+      commit: "abc123",
+      lenses: ["correctness"],
+      diff: {
+        totalStats: { filesChanged: 1, additions: 1, deletions: 0, totalSizeBytes: 100 },
+        files: [],
+      },
+      result: {
+        summary: "Review",
+        issues: [makeIssue({ id: "i1", title: "Bug", severity: "high", file: "a.ts" })],
+      },
+    });
+    expect(saved.ok).toBe(true);
+
+    // createApp wires the production rekey handler.
+    freshCreateApp();
+
+    // Resolving the moved project triggers the move path, which fires the handler.
+    const store = createConfigStore();
+    const info = store.getProjectInfo(movedRoot);
+    expect(info.projectId).toBe("stable-id");
+
+    // The handler is fire-and-forget; wait for the listing to move to the new path.
+    await vi.waitFor(
+      async () => {
+        const underNew = await listReviews(movedRoot);
+        if (!underNew.ok || underNew.value.items.length !== 1) {
+          throw new Error("listing not yet re-keyed");
+        }
+        expect(underNew.value.items[0]?.id).toBe(reviewId);
+      },
+      { timeout: 3000, interval: 20 },
+    );
+
+    const underOld = await listReviews(originalRoot);
+    expect(underOld.ok).toBe(true);
+    if (underOld.ok) expect(underOld.value.items).toEqual([]);
   });
 });

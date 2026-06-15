@@ -1,11 +1,12 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
-import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { testNavigationBehavior } from "../testing/navigation-behavior.js";
 import { KeyboardWrapper } from "../testing/test-utils.js";
 import {
   type UseActionRowNavigationOptions,
+  type UseActionRowNavigationReturn,
   useActionRowNavigation,
 } from "./use-action-row-navigation.js";
 
@@ -104,8 +105,6 @@ function getButton(name: string) {
 function expectFocused(el: HTMLElement) {
   expect(document.activeElement).toBe(el);
 }
-
-afterEach(cleanup);
 
 describe("useActionRowNavigation", () => {
   describe("arrow navigation within the actions zone", () => {
@@ -344,6 +343,37 @@ describe("useActionRowNavigation", () => {
       expectTypeOf<NonNullable<UseActionRowNavigationOptions["disabledActions"]>>().toEqualTypeOf<
         readonly boolean[]
       >();
+    });
+
+    it("narrows the return value index parameters for tuple instantiations", () => {
+      type ThreeActions = readonly [() => void, () => void, () => void];
+      type Return = UseActionRowNavigationReturn<ThreeActions>;
+
+      // focusedIndex is narrowed to the tuple's valid indices, not bare number.
+      expectTypeOf<Return["focusedIndex"]>().toEqualTypeOf<0 | 1 | 2>();
+      expectTypeOf<Return["getActionProps"]>().parameter(0).toEqualTypeOf<0 | 1 | 2>();
+      expectTypeOf<Return["enterActions"]>().parameter(0).toEqualTypeOf<0 | 1 | 2 | undefined>();
+
+      // Type-only: never executed, so the out-of-range calls only need to fail
+      // type-checking (the @ts-expect-error comments assert that).
+      function _typeAssertions(row: Return) {
+        row.getActionProps(0);
+        row.getActionProps(2);
+        // @ts-expect-error getActionProps rejects out-of-range tuple indices.
+        row.getActionProps(7);
+        // @ts-expect-error enterActions rejects out-of-range tuple indices.
+        row.enterActions(7);
+        // @ts-expect-error reset rejects out-of-range tuple indices.
+        row.reset(7);
+      }
+      void _typeAssertions;
+    });
+
+    it("keeps return index parameters as number for array instantiations", () => {
+      expectTypeOf<UseActionRowNavigationReturn["focusedIndex"]>().toEqualTypeOf<number>();
+      expectTypeOf<UseActionRowNavigationReturn["getActionProps"]>()
+        .parameter(0)
+        .toEqualTypeOf<number>();
     });
   });
 });

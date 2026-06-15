@@ -2,6 +2,7 @@
   "name": "@diffgazer/server",
   "version": "0.1.0",
   "private": true,
+  "license": "Apache-2.0",
   "type": "module",
   "exports": {
     ".": {
@@ -16,7 +17,6 @@
     "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "check": "biome check .",
     "test": "vitest run",
-    "test:types": "tsc --noEmit -p tsconfig.test.json",
     "test:watch": "vitest"
   },
   "dependencies": {

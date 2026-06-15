@@ -10,7 +10,6 @@ import { useKey, useScope } from "@diffgazer/keys";
 import { Menu, MenuItem } from "@diffgazer/ui/components/menu";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { useNavigate } from "@tanstack/react-router";
-import { HubCornerLabel } from "@/components/shared/hub-corner-label";
 import { useConfigData } from "@/hooks/use-config";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
@@ -57,10 +56,11 @@ export function SettingsHubPage() {
     }
   };
 
+  const isTrusted = Boolean(trust?.capabilities.readFiles);
   const values = buildHubValues({
     provider,
     isConfigured,
-    isTrusted: Boolean(trust?.capabilities.readFiles),
+    isTrusted,
     theme,
     secretsStorage: settings?.secretsStorage,
     agentExecution: settings?.agentExecution,
@@ -73,7 +73,7 @@ export function SettingsHubPage() {
   > = {
     trust: {
       value: values.trust,
-      valueVariant: values.trust === "Trusted" ? "success-badge" : "muted",
+      valueVariant: isTrusted ? "success-badge" : "muted",
     },
     theme: {
       value: values.theme,
@@ -108,15 +108,21 @@ export function SettingsHubPage() {
           frame="hairline"
           density="compact"
           aria-label="Settings Hub"
-          className="mt-4 bg-tui-bg shadow-2xl"
+          className="mt-4 bg-background shadow-2xl"
         >
-          <HubCornerLabel>Settings Hub</HubCornerLabel>
+          <Panel.Label variant="border" aria-hidden="true">
+            Settings Hub
+          </Panel.Label>
+          {/* Menu-of-actions over a links list is deliberate (F-231): the hub keeps
+              TUI-parity keyboard navigation, and the app runs as a local single-window
+              product where new-tab/middle-click link semantics do not apply. */}
           <Menu
             highlighted={effectiveHighlighted}
             onHighlightChange={setHighlighted}
             onSelect={handleActivate}
-            variant="hub"
+            variant="detail"
             className="flex flex-col text-sm"
+            aria-label="Settings"
             autoFocus
           >
             {SETTINGS_MENU_ITEMS.map((item) => {

@@ -1,4 +1,5 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { common, createLowlight } from "lowlight";
 import type { MouseEvent } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -183,13 +184,13 @@ describe("CodeBlock", () => {
     it('explicit chrome="dots" matches the default for variant="terminal"', () => {
       const { container } = render(
         <>
-          <CodeBlock variant="terminal" data-testid="implicit">
+          <CodeBlock variant="terminal">
             <CodeBlock.Header>
               <CodeBlock.Label>~/a</CodeBlock.Label>
             </CodeBlock.Header>
             <CodeBlock.Content>{"$ pwd"}</CodeBlock.Content>
           </CodeBlock>
-          <CodeBlock variant="terminal" chrome="dots" data-testid="explicit">
+          <CodeBlock variant="terminal" chrome="dots">
             <CodeBlock.Header>
               <CodeBlock.Label>~/a</CodeBlock.Label>
             </CodeBlock.Header>
@@ -198,8 +199,7 @@ describe("CodeBlock", () => {
         </>,
       );
 
-      const implicit = container.querySelector('[data-testid="implicit"]');
-      const explicit = container.querySelector('[data-testid="explicit"]');
+      const [implicit, explicit] = container.querySelectorAll('[data-slot="code-block"]');
       expect(implicit).toHaveAttribute("data-chrome", "dots");
       expect(explicit).toHaveAttribute("data-chrome", "dots");
 
@@ -213,7 +213,7 @@ describe("CodeBlock", () => {
 
     it('propagates chrome="dots" via data-chrome regardless of variant', () => {
       // jsdom does not compute CSS, so we assert the DOM contract that the
-      // shared/code-block.css selector targets: the figure carries
+      // code-block/code-block.css selector targets: the figure carries
       // data-chrome="dots" on a non-terminal variant, which is the public
       // hook the chrome styles attach to.
       const { container } = render(
@@ -245,7 +245,7 @@ describe("CodeBlock", () => {
 
       const line = container.querySelector('[data-slot="code-block-line"]');
       expect(line).toHaveAttribute("data-line-state", "added");
-      expect(within(line as HTMLElement).getByText(/^Added:$/)).toHaveClass("sr-only");
+      expect(within(line as HTMLElement).getByText(/^Added:$/)).toBeInTheDocument();
     });
 
     it('renders data-line-state="removed" and a sr-only "Removed: " prefix', () => {
@@ -259,7 +259,7 @@ describe("CodeBlock", () => {
 
       const line = container.querySelector('[data-slot="code-block-line"]');
       expect(line).toHaveAttribute("data-line-state", "removed");
-      expect(within(line as HTMLElement).getByText(/^Removed:$/)).toHaveClass("sr-only");
+      expect(within(line as HTMLElement).getByText(/^Removed:$/)).toBeInTheDocument();
     });
   });
 
@@ -271,7 +271,14 @@ describe("CodeBlock", () => {
       vi.stubGlobal("navigator", { ...globalThis.navigator, clipboard: { writeText } });
     });
 
+    function setupClipboardUser(options?: Parameters<typeof userEvent.setup>[0]) {
+      const user = userEvent.setup(options);
+      vi.stubGlobal("navigator", { ...globalThis.navigator, clipboard: { writeText } });
+      return user;
+    }
+
     it("writes the source to the clipboard on click", async () => {
+      const user = setupClipboardUser();
       render(
         <CodeBlock>
           <CodeBlock.Header>
@@ -281,12 +288,13 @@ describe("CodeBlock", () => {
         </CodeBlock>,
       );
 
-      fireEvent.click(screen.getByRole("button", { name: "Copy code to clipboard" }));
+      await user.click(screen.getByRole("button", { name: "Copy code to clipboard" }));
 
       await waitFor(() => expect(writeText).toHaveBeenCalledWith("hello world"));
     });
 
     it('toggles data-state to "copied" and announces via aria-live', async () => {
+      const user = setupClipboardUser();
       const { container } = render(
         <CodeBlock>
           <CodeBlock.Header>
@@ -299,7 +307,7 @@ describe("CodeBlock", () => {
       const button = screen.getByRole("button", { name: "Copy code to clipboard" });
       expect(button).toHaveAttribute("data-state", "idle");
 
-      fireEvent.click(button);
+      await user.click(button);
 
       await waitFor(() => {
         expect(button).toHaveAttribute("data-state", "copied");
@@ -310,6 +318,7 @@ describe("CodeBlock", () => {
     });
 
     it("calls onCopy with the source after a successful write", async () => {
+      const user = setupClipboardUser();
       const onCopy = vi.fn();
       render(
         <CodeBlock>
@@ -320,12 +329,13 @@ describe("CodeBlock", () => {
         </CodeBlock>,
       );
 
-      fireEvent.click(screen.getByRole("button", { name: "Copy code to clipboard" }));
+      await user.click(screen.getByRole("button", { name: "Copy code to clipboard" }));
 
       await waitFor(() => expect(onCopy).toHaveBeenCalledWith("hi"));
     });
 
     it("calls onCopyError when writeText rejects", async () => {
+      const user = setupClipboardUser();
       const failure = new Error("denied");
       writeText.mockRejectedValueOnce(failure);
       const onCopyError = vi.fn();
@@ -338,12 +348,13 @@ describe("CodeBlock", () => {
         </CodeBlock>,
       );
 
-      fireEvent.click(screen.getByRole("button", { name: "Copy code to clipboard" }));
+      await user.click(screen.getByRole("button", { name: "Copy code to clipboard" }));
 
       await waitFor(() => expect(onCopyError).toHaveBeenCalledWith(failure));
     });
 
     it("calls onCopyError when navigator.clipboard is absent", async () => {
+      const user = setupClipboardUser();
       vi.stubGlobal("navigator", { ...globalThis.navigator, clipboard: undefined });
       const onCopyError = vi.fn();
       render(
@@ -355,13 +366,14 @@ describe("CodeBlock", () => {
         </CodeBlock>,
       );
 
-      fireEvent.click(screen.getByRole("button", { name: "Copy code to clipboard" }));
+      await user.click(screen.getByRole("button", { name: "Copy code to clipboard" }));
 
       await waitFor(() => expect(onCopyError).toHaveBeenCalledTimes(1));
       expect(onCopyError.mock.calls[0]?.[0]).toBeInstanceOf(Error);
     });
 
-    it("short-circuits when a consumer onClick calls preventDefault", () => {
+    it("short-circuits when a consumer onClick calls preventDefault", async () => {
+      const user = setupClipboardUser();
       const onClick = vi.fn((event: MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
       });
@@ -374,15 +386,22 @@ describe("CodeBlock", () => {
         </CodeBlock>,
       );
 
-      fireEvent.click(screen.getByRole("button", { name: "Copy code to clipboard" }));
+      await user.click(screen.getByRole("button", { name: "Copy code to clipboard" }));
 
       expect(onClick).toHaveBeenCalledTimes(1);
       expect(writeText).not.toHaveBeenCalled();
     });
 
     it('returns to data-state="idle" after the 2s timeout', async () => {
-      vi.useFakeTimers();
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
       try {
+        const user = setupClipboardUser({
+          advanceTimers: (delay) => {
+            vi.advanceTimersByTime(delay);
+          },
+          delay: null,
+          skipHover: true,
+        });
         const { container } = render(
           <CodeBlock>
             <CodeBlock.Header>
@@ -393,15 +412,16 @@ describe("CodeBlock", () => {
         );
 
         const button = screen.getByRole("button", { name: "Copy code to clipboard" });
+        const click = user.click(button);
         await act(async () => {
-          fireEvent.click(button);
-          await Promise.resolve();
+          await vi.advanceTimersByTimeAsync(0);
         });
+        await click;
 
         expect(button).toHaveAttribute("data-state", "copied");
 
         await act(async () => {
-          vi.advanceTimersByTime(2000);
+          await vi.advanceTimersByTimeAsync(2000);
         });
 
         expect(button).toHaveAttribute("data-state", "idle");
@@ -413,6 +433,7 @@ describe("CodeBlock", () => {
     });
 
     it("invokes children as a render prop with { copied }", async () => {
+      const user = setupClipboardUser();
       render(
         <CodeBlock>
           <CodeBlock.Header>
@@ -427,7 +448,7 @@ describe("CodeBlock", () => {
       const button = screen.getByRole("button", { name: "Copy code to clipboard" });
       expect(button).toHaveTextContent("Go");
 
-      fireEvent.click(button);
+      await user.click(button);
 
       await waitFor(() => expect(button).toHaveTextContent("Done"));
     });

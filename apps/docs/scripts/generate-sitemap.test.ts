@@ -1,12 +1,5 @@
-import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { formatLastMod, getPreRenderPages, SITEMAP_FALLBACK_LASTMOD } from "./generate-sitemap.ts";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const docsRoot = resolve(__dirname, "..");
+import { getPreRenderPages } from "./generate-sitemap.ts";
 
 describe("getPreRenderPages", () => {
   it("emits unique page paths so sitemap entries are not duplicated", () => {
@@ -25,6 +18,17 @@ describe("getPreRenderPages", () => {
     const pages = getPreRenderPages();
     expect(pages.some((page) => page.path === "/privacy")).toBe(true);
     expect(pages.some((page) => page.path === "/terms")).toBe(true);
+  });
+
+  it("includes source paths for authored pages", () => {
+    const pages = getPreRenderPages();
+
+    expect(pages.find((page) => page.path === "/privacy")?.source).toMatch(
+      /content\/legal\/privacy\.mdx$/,
+    );
+    expect(pages.find((page) => page.path === "/app/getting-started")?.source).toMatch(
+      /content\/docs\/app\/getting-started\/index\.mdx$/,
+    );
   });
 
   it("omits the library roots that redirect to their first page", () => {
@@ -74,8 +78,6 @@ describe("getPreRenderPages", () => {
 
     expect(uiHooksIndex).toHaveLength(1);
     expect(keysHooksIndex).toHaveLength(1);
-    expect(uiHooksIndex[0]?.source).toContain(`${docsRoot}/content/docs/ui/hooks/index.mdx`);
-    expect(keysHooksIndex[0]?.source).toContain(`${docsRoot}/content/docs/keys/hooks/index.mdx`);
   });
 
   it("still includes generated hook item routes alongside the hook index", () => {
@@ -94,37 +96,17 @@ describe("getPreRenderPages", () => {
 
     expect(new Set(componentPaths).size).toBe(componentPaths.length);
     expect(componentPaths.length).toBeGreaterThan(0);
-  });
-
-  it("resolves a source MDX file for the first-page targets so lastmod can use mtime", () => {
-    const pages = getPreRenderPages();
-    const uiFirstPage = pages.find((page) => page.path === "/ui/getting-started");
-
-    expect(uiFirstPage).toBeDefined();
-    expect(uiFirstPage?.source).not.toBeNull();
-    expect(uiFirstPage?.source).toContain(`${docsRoot}/content/docs/ui/getting-started/index.mdx`);
-  });
-});
-
-describe("formatLastMod", () => {
-  it("uses a fixed timestamp so Docker checkout mtimes cannot change sitemap output", () => {
-    const dir = join(tmpdir(), `diffgazer-sitemap-${Date.now()}`);
-    mkdirSync(dir, { recursive: true });
-    const source = join(dir, "page.mdx");
-    writeFileSync(source, "# test\n");
-
-    const first = formatLastMod(source);
-    utimesSync(source, new Date("2030-01-01T00:00:00.000Z"), new Date("2030-01-01T00:00:00.000Z"));
-    const second = formatLastMod(source);
-
-    expect(first).toBe(SITEMAP_FALLBACK_LASTMOD);
-    expect(second).toBe(SITEMAP_FALLBACK_LASTMOD);
-  });
-
-  it("falls back to a fixed timestamp when no source file exists", () => {
-    expect(formatLastMod(null)).toBe(SITEMAP_FALLBACK_LASTMOD);
-    expect(formatLastMod(join(tmpdir(), "missing-sitemap-source.mdx"))).toBe(
-      SITEMAP_FALLBACK_LASTMOD,
+    expect(pages.find((page) => page.path === "/ui/components/button")?.source).toMatch(
+      /content\/docs\/ui\/components\/button\.mdx$/,
     );
+  });
+
+  it("includes the first-page redirect target for each enabled library", () => {
+    const pages = getPreRenderPages();
+    const paths = pages.map((page) => page.path);
+
+    expect(paths).toContain("/ui/getting-started");
+    expect(paths).toContain("/keys/getting-started");
+    expect(paths).toContain("/app/getting-started");
   });
 });

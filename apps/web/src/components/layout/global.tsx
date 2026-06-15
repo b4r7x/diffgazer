@@ -48,7 +48,7 @@ interface GlobalLayoutProps {
 
 export function GlobalLayout({ children }: GlobalLayoutProps) {
   return (
-    <div className="tui-base h-screen min-w-[768px] flex flex-col overflow-hidden selection:bg-tui-blue selection:text-black">
+    <div className="h-screen flex flex-col overflow-hidden selection:bg-info selection:text-info-foreground">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:p-2 focus:bg-background focus:text-foreground focus:border focus:border-border"

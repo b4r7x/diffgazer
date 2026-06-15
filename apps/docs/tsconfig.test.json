@@ -5,7 +5,7 @@
     "noEmit": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "types": ["node", "vite/client", "vitest/globals", "@testing-library/jest-dom"],
+    "types": ["node", "vite/client", "@testing-library/jest-dom"],
     "allowJs": true,
     "checkJs": false
   },

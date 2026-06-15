@@ -41,7 +41,6 @@ interface ModelDialogKeyboardReturn {
   focusZone: FocusZone;
   focusedModelId: string | null;
   checkedModelId: string | undefined;
-  setCheckedModelId: (id: string | undefined) => void;
   filterIndex: number;
   setFilterIndex: (index: number | ((prev: number) => number)) => void;
   footerButtonIndex: number;
@@ -60,7 +59,6 @@ interface ModelDialogKeyboardReturn {
   setFocusZone: (zone: FocusZone) => void;
   handleFilterKeyDown: (event: ReactKeyboardEvent) => void;
   handleConfirm: (modelId?: string) => void;
-  handleCancel: () => void;
   handleUseCustom: () => void;
   handleSearchEscape: () => void;
   handleSearchArrowDown: () => void;
@@ -131,7 +129,7 @@ export function useModelDialogKeyboard({
     onSelect(nextModelId);
   };
 
-  const footerActionRow = useActionRowNavigation({
+  const footerActionRow = useActionRowNavigation<readonly unknown[]>({
     enabled: open && isZone("footer") && !isSaving,
     actionCount: 2,
     disabledActions: [isSaving, !canConfirm],
@@ -311,10 +309,13 @@ export function useModelDialogKeyboard({
     resetDialogState();
   }, [open]);
 
+  const filteredIdsKey = filteredModels.map((m) => m.id).join("\0");
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filteredIdsKey is the serialized form of filteredModels (ids joined); depending on the array identity would re-run this effect on every commit while the dialog is open, so the filteredModels read inside repairListFocus is covered by filteredIdsKey.
   useEffect(() => {
     if (!open || focusZone !== "list" || filteredModels.length === 0) return;
     repairListFocus();
-  }, [open, focusZone, filteredModels]);
+  }, [open, focusZone, filteredIdsKey]);
 
   useEffect(() => {
     if (focusZone !== "footer") setTabFocusedFooterIndex(null);
@@ -343,7 +344,6 @@ export function useModelDialogKeyboard({
     focusZone,
     focusedModelId,
     checkedModelId,
-    setCheckedModelId,
     filterIndex,
     setFilterIndex,
     footerButtonIndex,
@@ -353,7 +353,6 @@ export function useModelDialogKeyboard({
     setFocusZone,
     handleFilterKeyDown: filters.handleFilterKeyDown,
     handleConfirm,
-    handleCancel,
     handleUseCustom,
     handleSearchEscape: search.handleSearchEscape,
     handleSearchArrowDown: search.handleSearchArrowDown,

@@ -37,4 +37,11 @@ describe("pluralize", () => {
   ])("pluralizes %s %j as %j", (count, word, expected) => {
     expect(pluralize(count, word)).toBe(expected);
   });
+
+  it.each([
+    [1, "lens", "lenses", "1 lens"],
+    [2, "lens", "lenses", "2 lenses"],
+  ])("uses the explicit plural for irregular nouns", (count, word, plural, expected) => {
+    expect(pluralize(count, word, plural)).toBe(expected);
+  });
 });

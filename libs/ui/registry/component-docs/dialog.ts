@@ -85,11 +85,40 @@ export const dialogDoc: ComponentDoc = {
   keyboard: {
     description:
       "Dialog uses the native <dialog> element for modal behavior. Escape closes the dialog and focus is automatically restored to the trigger. Tab cycles focus between focusable elements within the dialog (native inert background). Enter activates the focused button (DialogAction or DialogClose).",
+    keys: [
+      { keys: "Escape", action: "Closes the dialog unless onEscapeKeyDown prevents it." },
+      {
+        keys: "Tab / Shift+Tab",
+        action:
+          "Moves through focusable dialog content while the native modal keeps background inert.",
+      },
+      { keys: "Enter / Space", action: "Activates the focused button, action, or close control." },
+    ],
     examples: [
       { name: "dialog-default", title: "Default with keyboard" },
       { name: "dialog-keyboard", title: "Keyboard hints" },
     ],
   },
+  dataAttributes: [
+    {
+      attribute: "data-state",
+      appliesTo: "DialogContent",
+      values: '"open" | "closed"',
+      description: "Native dialog open state mirrored by the shared shell.",
+    },
+    {
+      attribute: "data-frame",
+      appliesTo: "DialogContent",
+      values: '"border" | "none"',
+      description: "Border frame style.",
+    },
+    {
+      attribute: "data-corners",
+      appliesTo: "DialogContent",
+      values: '"none" | "subtle" | "standard" | "bold" | "outset"',
+      description: "Corner accent treatment.",
+    },
+  ],
   props: {
     Dialog: {
       open: {

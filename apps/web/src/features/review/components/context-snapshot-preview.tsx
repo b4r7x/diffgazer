@@ -20,9 +20,14 @@ export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps
       <SectionHeader variant="muted" bordered>
         Context Snapshot
       </SectionHeader>
-      <div className="text-xs text-tui-muted">{snapshot.meta.charCount.toLocaleString()} chars</div>
+      <div className="text-xs text-muted-foreground">
+        {snapshot.meta.charCount.toLocaleString()} chars
+      </div>
       <CodeBlock label="Context snapshot preview" className="mt-3">
-        <CodeBlock.Content showLineNumbers={false} className="max-h-28 text-2xs text-tui-muted">
+        <CodeBlock.Content
+          showLineNumbers={false}
+          className="max-h-28 text-2xs text-muted-foreground"
+        >
           {contextPreview.preview}
           {contextPreview.truncated ? "\n... (preview)" : ""}
         </CodeBlock.Content>

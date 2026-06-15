@@ -1,28 +1,22 @@
 /**
  * @vitest-environment jsdom
  */
-import { renderHook } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
+import { createElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
+import { NavigationProvider, useNavigation } from "../hooks/use-navigation";
 
 const useConfigCheckMock = vi.hoisted(() => vi.fn());
-const navigateMock = vi.hoisted(() => vi.fn());
 
+// Boundary mock: network - core api hooks wrap fetch-backed API calls.
 vi.mock("@diffgazer/core/api/hooks", () => ({
   useConfigCheck: useConfigCheckMock,
-}));
-
-vi.mock("../hooks/use-navigation", () => ({
-  useNavigation: () => ({
-    navigate: navigateMock,
-    route: { screen: "home" },
-  }),
 }));
 
 import { useConfigGuard } from "./use-config-guard";
 
 describe("useConfigGuard", () => {
   beforeEach(() => {
-    navigateMock.mockReset();
     useConfigCheckMock.mockReset();
   });
 
@@ -33,22 +27,34 @@ describe("useConfigGuard", () => {
       error: new Error("network down"),
     });
 
-    const { result } = renderHook(() => useConfigGuard());
+    const { result } = renderHook(() => useGuardAndRoute(), { wrapper: TestNavigationProvider });
 
-    expect(result.current).toBe("api-error");
-    expect(navigateMock).not.toHaveBeenCalled();
+    expect(result.current.state).toBe("api-error");
+    expect(result.current.route.screen).toBe("home");
   });
 
-  test("redirects to onboarding only when the API reports not configured", () => {
+  test("redirects to onboarding only when the API reports not configured", async () => {
     useConfigCheckMock.mockReturnValue({
       data: { configured: false },
       isLoading: false,
       error: null,
     });
 
-    const { result } = renderHook(() => useConfigGuard());
+    const { result } = renderHook(() => useGuardAndRoute(), { wrapper: TestNavigationProvider });
 
-    expect(result.current).toBe("not-configured");
-    expect(navigateMock).toHaveBeenCalledWith({ screen: "onboarding" });
+    expect(result.current.state).toBe("not-configured");
+    await waitFor(() => {
+      expect(result.current.route.screen).toBe("onboarding");
+    });
   });
 });
+
+function TestNavigationProvider({ children }: { children: ReactNode }) {
+  return createElement(NavigationProvider, { initialRoute: { screen: "home" }, children });
+}
+
+function useGuardAndRoute() {
+  const state = useConfigGuard();
+  const { route } = useNavigation();
+  return { state, route };
+}

@@ -19,19 +19,14 @@ export default function DialogViewfinder() {
           <DialogTitle meta="CONFIRM">Apply Patch</DialogTitle>
         </DialogHeader>
         <DialogBody>
-          <p className="text-sm text-gray-300 leading-relaxed">
-            This will modify <span className="text-white font-bold">2 files</span> in{" "}
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            This will modify <span className="text-foreground font-bold">2 files</span> in{" "}
             <span className="text-foreground font-mono">src/auth/</span>.
             <br />
             Continue?
           </p>
         </DialogBody>
-        <DialogFooter
-          hints={[
-            { key: "Esc", label: "Close" },
-            { key: "Enter", label: "Confirm" },
-          ]}
-        >
+        <DialogFooter hints={[{ key: "Esc", label: "Close" }]}>
           <DialogClose bracket variant="ghost">
             Cancel
           </DialogClose>

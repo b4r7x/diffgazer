@@ -1,18 +1,17 @@
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
 import { usePageFooter } from "@diffgazer/core/footer";
-import type { FileProgress } from "@diffgazer/core/review";
+import { type FileProgress, getPartialFailureWarning } from "@diffgazer/core/review";
 import type { AgentState } from "@diffgazer/core/schemas/events";
 import type {
   LogEntryData,
   ProgressStepData,
   Shortcut,
 } from "@diffgazer/core/schemas/presentation";
-import { pluralize } from "@diffgazer/core/strings";
 import { Box, Text } from "ink";
 import { type ReactElement, useState } from "react";
+import { ProgressList } from "../../../components/shared/progress/list";
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
-import { ProgressList } from "../../../components/ui/progress/list";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions";
 import { useTheme } from "../../../theme/provider";
@@ -29,6 +28,7 @@ export interface ReviewProgressViewProps {
   fileProgress: FileProgress;
   isStreaming: boolean;
   error: string | null;
+  notices: string[];
   onCancel?: () => void;
   onViewResults?: () => void;
   issuesFound: number;
@@ -57,6 +57,7 @@ export function ReviewProgressView({
   fileProgress,
   isStreaming,
   error,
+  notices,
   onCancel,
   onViewResults,
   issuesFound,
@@ -93,9 +94,7 @@ export function ReviewProgressView({
     badgeVariant: agent.meta.badgeVariant,
   }));
 
-  const failedAgents = agents.filter((agent) => agent.status === "error");
-  const failedAgentNames = failedAgents.map((a) => a.meta.name).join(", ");
-  const hasPartialFailure = failedAgents.length > 0 && !error;
+  const partialFailure = getPartialFailureWarning(agents, error);
 
   const filteredEntries = agentFilter
     ? logEntries.filter((entry) => entry.source === agentFilter)
@@ -151,14 +150,22 @@ export function ReviewProgressView({
         </Box>
       ) : null}
 
-      {hasPartialFailure ? (
+      {partialFailure.hasPartialFailure ? (
         <Box paddingTop={1}>
           <Callout variant="warning">
             <Callout.Title>Partial Analysis</Callout.Title>
-            <Callout.Content>
-              {`${pluralize(failedAgents.length, "agent")} failed (likely rate limited): ${failedAgentNames}. Results may be incomplete.`}
-            </Callout.Content>
+            <Callout.Content>{partialFailure.message}</Callout.Content>
           </Callout>
+        </Box>
+      ) : null}
+
+      {notices.length > 0 ? (
+        <Box flexDirection="column" paddingTop={1}>
+          {notices.map((notice) => (
+            <Text key={notice} color={tokens.warning}>
+              {notice}
+            </Text>
+          ))}
         </Box>
       ) : null}
 

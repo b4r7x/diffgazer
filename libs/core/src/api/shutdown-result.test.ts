@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  mapShutdownResponseToResult,
   SHUTDOWN_CLOSE_BLOCKED_MESSAGE,
   SHUTDOWN_FAILED_MESSAGE,
   shutdownCloseBlockedResult,
@@ -9,22 +8,6 @@ import {
 } from "./shutdown-result.js";
 
 describe("shutdown result mapping", () => {
-  describe("mapShutdownResponseToResult", () => {
-    it("returns null when response is ok (caller proceeds to close)", () => {
-      expect(mapShutdownResponseToResult({ ok: true })).toBeNull();
-    });
-
-    it("returns error with provided message when response is not ok", () => {
-      const result = mapShutdownResponseToResult({ ok: false, message: "denied" });
-      expect(result).toEqual({ status: "error", message: "denied" });
-    });
-
-    it("falls back to the default failed message when response message is missing", () => {
-      const result = mapShutdownResponseToResult({ ok: false });
-      expect(result).toEqual({ status: "error", message: SHUTDOWN_FAILED_MESSAGE });
-    });
-  });
-
   describe("result factories", () => {
     it("shutdownNetworkError returns an error result with the default failed message", () => {
       expect(shutdownNetworkError()).toEqual({ status: "error", message: SHUTDOWN_FAILED_MESSAGE });

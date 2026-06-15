@@ -1,8 +1,10 @@
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
+/** Props for empty state icon. */
 export type EmptyStateIconProps = ComponentPropsWithRef<"div">;
 
+/** Optional visual marker. Size adapts via context. */
 export function EmptyStateIcon({ className, ...props }: EmptyStateIconProps) {
   return (
     <div

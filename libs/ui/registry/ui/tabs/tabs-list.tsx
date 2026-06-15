@@ -1,9 +1,9 @@
 "use client";
 
-import { type FocusEvent, type HTMLAttributes, type KeyboardEvent, type Ref, useRef } from "react";
+import { type ComponentProps, type FocusEvent, type KeyboardEvent, useRef } from "react";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useFloatingIndicator } from "@/hooks/use-floating-indicator";
 import { useNavigation } from "@/hooks/use-navigation";
-import { composeRefs } from "@/lib/compose-refs";
 import {
   segmentedContainerVariants,
   segmentedPillIndicatorClass,
@@ -12,11 +12,13 @@ import {
 import { cn } from "@/lib/utils";
 import { useTabsContext } from "./tabs-context";
 
-export interface TabsListProps extends HTMLAttributes<HTMLDivElement> {
+/** Props for tabs list. */
+export interface TabsListProps extends ComponentProps<"div"> {
+  /** When true, arrow navigation wraps from last to first trigger and vice versa. */
   loop?: boolean;
-  ref?: Ref<HTMLDivElement>;
 }
 
+/** Container for tab triggers. */
 export function TabsList({
   children,
   className,
@@ -30,6 +32,7 @@ export function TabsList({
     useTabsContext();
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const composedRef = useComposedRefs(containerRef, ref);
 
   const handleHighlightChange = (next: string | null) => {
     if (next === null) return;
@@ -81,7 +84,7 @@ export function TabsList({
 
   return (
     <div
-      ref={composeRefs(containerRef, ref)}
+      ref={composedRef}
       role="tablist"
       data-variant={variant}
       data-orientation={orientation}

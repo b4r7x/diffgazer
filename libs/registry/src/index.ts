@@ -24,6 +24,18 @@ export type {
   PropInfo,
   UsageSection,
 } from "./docs-data/types.js";
+export {
+  type ArtifactLibrary,
+  type ArtifactSyncValidationParams,
+  assertArtifactSyncOutputs,
+  collectArtifactSyncValidationErrors,
+  collectMissingWorkspaceArtifactFiles,
+  type DocsLibrariesConfig,
+  getArtifactLibraries,
+  readDocsLibrariesConfig,
+  resolveArtifactSyncMode,
+  rewriteDemoIndexForViteGlob,
+} from "./docs-sync/artifact-sync.js";
 export { syncDocsFromArtifacts } from "./docs-sync/sync.js";
 export {
   type RewriteKeysImportOptions,
@@ -32,5 +44,6 @@ export {
 export { KEYS_PACKAGE_IMPORT_TARGETS } from "./keys-imports.js";
 export { createArtifactManifest } from "./manifest.js";
 export { normalizeOrigin } from "./origin.js";
-export { buildShadcnRegistryWithOrigin } from "./shadcn/build.js";
+export { RELATIVE_JS_IMPORT_RE, stripRelativeJsExtensions } from "./relative-js-imports.js";
+export { aggregateThemeStyles, buildShadcnRegistryWithOrigin } from "./shadcn/build.js";
 export { assertRegistrySourceFilePath, isRelativeSubpath } from "./utils/fs.js";

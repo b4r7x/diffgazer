@@ -13,7 +13,7 @@ Installer CLI for adding Diffgazer UI components and keys hooks to your React pr
 
 ## Before Publication
 
-`@diffgazer/add` is external publish-gated as of June 6, 2026. Public `npx`/global install commands are valid only after `npm view @diffgazer/add version` succeeds.
+`@diffgazer/add` is publish-gated until `npm view @diffgazer/add version` succeeds. Public `npx` and global install commands are valid only after that check passes.
 
 Before publication, pack the CLI from this workspace and install the tarball into the target app:
 
@@ -103,7 +103,7 @@ pnpm exec dgadd ui/button
 | `--dry-run` | Preview changes without writing files | `false` |
 | `--skip-install` | Write files without installing npm dependencies | `false` |
 | `--integration <mode>` | Keyboard integration mode: `ask \| none \| copy \| keys` | `ask` |
-| `--keys-version <version>` | Version/range used by `@diffgazer/keys` package mode | `^0.2.0` |
+| `--keys-version <version>` | Version/range used by `@diffgazer/keys` package mode | caret range of the bundled `@diffgazer/keys` release |
 | `-y, --yes` | Skip confirmation prompts | `false` |
 
 `copy` mode installs bundled offline hook source. `keys` mode rewrites local hook imports to `@diffgazer/keys` and installs the package dependency, so use it only after `@diffgazer/keys` is published or available through a local tarball. `--yes` uses `copy` mode for components that require keyboard hooks; `none` is rejected for those components because it would leave unresolved local hook imports.
@@ -173,10 +173,10 @@ Running `dgadd init` creates a `diffgazer.json` file in your project root:
 
 ## Requirements
 
-- Node.js >= 20
+- Node.js >= 22
 - React `>=19.2.0`
 - Tailwind CSS v4
 
 ## License
 
-[MIT](./LICENSE)
+MIT

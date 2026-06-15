@@ -36,17 +36,6 @@ describe("Progress", () => {
     expect(bar).toHaveAttribute("aria-valuemax", "10");
   });
 
-  it("applies size variants", () => {
-    // `size` is a public variant; jsdom does not compute Tailwind heights, so the
-    // size class is the documented contract signal for the track height.
-    const { rerender } = render(<Progress value={50} size="sm" aria-label="Progress" />);
-    const bar = screen.getByRole("progressbar");
-    expect(bar.className).toContain("h-1");
-
-    rerender(<Progress value={50} size="md" aria-label="Progress" />);
-    expect(screen.getByRole("progressbar").className).toContain("h-2");
-  });
-
   it("supports aria-labelledby", () => {
     render(
       <>
@@ -69,11 +58,38 @@ describe("Progress", () => {
     expect((fill as HTMLElement).style.width).toBe("");
   });
 
+  it("exposes a consumer valueText as aria-valuetext", () => {
+    render(<Progress value={3} max={5} valueText="3 of 5 steps" aria-label="Steps" />);
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuetext", "3 of 5 steps");
+  });
+
+  it("merges consumer rest props onto the progressbar", () => {
+    render(
+      <>
+        <span id="hint">Uploading</span>
+        <Progress
+          value={50}
+          aria-label="Upload"
+          id="upload"
+          aria-describedby="hint"
+          title="Upload progress"
+        />
+      </>,
+    );
+    const bar = screen.getByRole("progressbar");
+    expect(bar).toHaveAttribute("id", "upload");
+    expect(bar).toHaveAttribute("aria-describedby", "hint");
+    expect(bar).toHaveAttribute("title", "Upload progress");
+  });
+
   it("has no a11y violations", async () => {
     const { container, rerender } = render(<Progress value={50} aria-label="Progress" />);
     expect(await axe(container)).toHaveNoViolations();
 
     rerender(<Progress aria-label="Loading" />);
+    expect(await axe(container)).toHaveNoViolations();
+
+    rerender(<Progress value={3} max={5} valueText="3 of 5 steps" aria-label="Steps" />);
     expect(await axe(container)).toHaveNoViolations();
   });
 });

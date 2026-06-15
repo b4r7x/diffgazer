@@ -30,7 +30,8 @@ export const toastDoc: ComponentDoc = {
     },
     {
       title: "Keyboard",
-      content: "Press Escape to dismiss the most recent toast.",
+      content:
+        "Press Escape to dismiss the most recent toast. Press the focus hotkey (F8 by default, configurable via the Toaster `hotkey` prop) to move focus into the toast region so action and close buttons stay reachable before a timed toast disappears; the hotkey is ignored while an editable element has focus.",
     },
     {
       title: "Pause Behavior (WCAG 2.2.1)",
@@ -56,7 +57,8 @@ export const toastDoc: ComponentDoc = {
     { name: "toast-loading", title: "Loading" },
   ],
   keyboard: {
-    description: "Press Escape to dismiss the most recent toast.",
+    description:
+      "Press Escape to dismiss the most recent toast. Press the focus hotkey (F8 by default, configurable via the Toaster `hotkey` prop) to move focus into the toast region.",
     examples: [],
   },
   props: {
@@ -67,6 +69,13 @@ export const toastDoc: ComponentDoc = {
         defaultValue: '"bottom-right"',
         description:
           "Corner where toasts stack. Drives positioning classes and slide-in direction.",
+      },
+      hotkey: {
+        type: "string",
+        required: false,
+        defaultValue: '"F8"',
+        description:
+          "Key (matched against KeyboardEvent.key) that moves focus into the toast region so action and close buttons stay reachable. Ignored while an editable element has focus.",
       },
     },
     "toast (function)": {

@@ -34,7 +34,7 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
             />
           ) : (
             <KeyValue
-              label="Not Trusted"
+              label="Not trusted"
               value={
                 <Box flexDirection="column">
                   <Text color={tokens.warning}>{projectPath ?? "—"}</Text>

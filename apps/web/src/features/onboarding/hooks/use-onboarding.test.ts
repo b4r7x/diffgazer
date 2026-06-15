@@ -1,15 +1,24 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import type { InitResponse, SettingsConfig } from "@diffgazer/core/schemas/config";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
-// Reset config-guard-cache module state between tests via vi.resetModules() + re-import.
-// useOnboarding (which writes the cache on completion) and every @diffgazer/@-aliased
-// participant in the rendered tree are re-imported together so they share one fresh module
-// graph — vi.resetModules() re-evaluates the transformed app graph, so a statically-held
-// context object (ApiProvider/ConfigProvider) would mismatch its consumer.
+const toastError = vi.fn();
+
+// Boundary mock: @diffgazer/ui toast is an external notification side-effect; cleanup failures report through it instead of component state.
+vi.mock("@diffgazer/ui/components/toast", () => ({
+  toast: {
+    success: vi.fn(),
+    error: (...args: unknown[]) => toastError(...args),
+  },
+}));
+
+// vi.resetModules() + re-import keeps the rendered tree on one fresh module graph:
+// useOnboarding and every @diffgazer/@-aliased participant are re-imported together so a
+// statically-held context object (ApiProvider/ConfigProvider) cannot mismatch its consumer
+// after the graph is re-evaluated.
 let useOnboarding: typeof import("./use-onboarding").useOnboarding;
 let useSettings: typeof import("@diffgazer/core/api/hooks").useSettings;
 let ApiProvider: typeof import("@diffgazer/core/api/hooks").ApiProvider;
@@ -50,12 +59,8 @@ let mockSaveConfig: Mock<BoundApi["saveConfig"]>;
 let mockDeleteProviderCredentials: Mock<BoundApi["deleteProviderCredentials"]>;
 let mockLoadInit: Mock<BoundApi["loadInit"]>;
 let mockGetProviderStatus: Mock<BoundApi["getProviderStatus"]>;
-let queryClient: QueryClient;
 
 function createWrapper() {
-  queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
   const api = {
     ...createApi({ baseUrl: "http://localhost" }),
     getSettings: mockGetSettings,
@@ -65,13 +70,10 @@ function createWrapper() {
     loadInit: mockLoadInit,
     getProviderStatus: mockGetProviderStatus,
   } satisfies BoundApi;
+  const { Wrapper } = createTestQueryWrapper({ api, ApiProvider });
 
   return ({ children }: { children: ReactNode }) =>
-    createElement(
-      QueryClientProvider,
-      { client: queryClient },
-      createElement(ApiProvider, { value: api }, createElement(ConfigProvider, null, children)),
-    );
+    createElement(Wrapper, null, createElement(ConfigProvider, null, children));
 }
 
 describe("onboarding/settings synchronization", () => {
@@ -120,11 +122,7 @@ describe("onboarding/settings synchronization", () => {
     });
   });
 
-  it("uses canonical early-save refs and keeps cleanup retryable after deletion failure", async () => {
-    mockDeleteProviderCredentials
-      .mockRejectedValueOnce(new Error("cleanup failed"))
-      .mockResolvedValueOnce({ deleted: true, provider: "openrouter" });
-
+  it("persists storage before credentials in the canonical early save", async () => {
     const wrapper = createWrapper();
     const onboardingHook = renderHook(() => useOnboarding(), { wrapper });
 
@@ -142,29 +140,46 @@ describe("onboarding/settings synchronization", () => {
       onboardingHook.result.current.next();
     });
 
+    expect(mockSaveSettings.mock.invocationCallOrder[0]).toBeLessThan(
+      mockSaveConfig.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
+    );
+    expect(mockSaveSettings).toHaveBeenCalledWith({ secretsStorage: "file" });
     expect(mockSaveConfig).toHaveBeenCalledWith({
       provider: "openrouter",
       apiKey: { kind: "env", varName: "OPENROUTER_API_KEY" },
     });
+  });
 
-    let cleanupError: unknown;
+  it("reports an abandon-cleanup failure through a toast without rethrowing", async () => {
+    mockDeleteProviderCredentials.mockRejectedValueOnce(new Error("cleanup failed"));
+
+    const wrapper = createWrapper();
+    const onboardingHook = renderHook(() => useOnboarding(), { wrapper });
+
+    act(() => onboardingHook.result.current.next());
+    act(() => onboardingHook.result.current.setProvider("openrouter"));
+    act(() => onboardingHook.result.current.next());
+    act(() => onboardingHook.result.current.updateData({ inputMethod: "env", apiKey: "ignored" }));
+
+    await act(async () => {
+      onboardingHook.result.current.next();
+    });
+
+    let threw = false;
     await act(async () => {
       try {
         await onboardingHook.result.current.cleanupEarlySave();
-      } catch (error) {
-        cleanupError = error;
+      } catch {
+        threw = true;
       }
     });
 
-    expect(cleanupError).toBeInstanceOf(Error);
-    expect((cleanupError as Error).message).toBe("cleanup failed");
-    expect(onboardingHook.result.current.error).toContain("Failed to remove saved credentials");
-
-    await act(async () => {
-      await onboardingHook.result.current.cleanupEarlySave();
-    });
-
-    expect(mockDeleteProviderCredentials).toHaveBeenCalledTimes(2);
-    expect(onboardingHook.result.current.error).toBeNull();
+    expect(threw).toBe(false);
+    expect(toastError).toHaveBeenCalledWith(
+      "Cleanup Failed",
+      expect.objectContaining({
+        message: expect.stringContaining("Failed to remove saved credentials"),
+      }),
+    );
   });
 });

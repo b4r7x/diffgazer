@@ -1,31 +1,27 @@
+import { err, ok } from "@diffgazer/core/result";
 import type { SettingsConfig } from "@diffgazer/core/schemas/config";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { describe, expect, it } from "vitest";
-import type { ParsedDiff } from "../../shared/lib/diff/types.js";
+import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { createGitService } from "../../shared/lib/git/service.js";
+import { makeFileDiff, makeIssue, makeParsedDiff } from "../../shared/lib/testing/factories.js";
 import { filterDiffByFiles, resolveGitDiff } from "./diff.js";
-import { resolveReviewDefaults } from "./pipeline.js";
+
+const saveReview = vi.fn();
+// Boundary mock: filesystem storage - saveReview is the durable-write boundary finalizeReview gates the report step on.
+vi.mock("./storage/reviews.js", () => ({
+  saveReview: (...args: unknown[]) => saveReview(...args),
+}));
+
+import { finalizeReview, resolveReviewDefaults } from "./pipeline.js";
 import { generateExecutiveSummary, generateReport } from "./summary.js";
 
-const makeFile = (filePath: string, additions = 1, deletions = 0) => ({
-  filePath,
-  previousPath: null,
-  operation: "modify" as const,
-  hunks: [],
-  rawDiff: "",
-  stats: { additions, deletions, sizeBytes: 100 },
-  fileMode: "modified" as const,
-});
-
-const makeParsedDiff = (files: ReturnType<typeof makeFile>[]): ParsedDiff => ({
-  files,
-  totalStats: {
-    filesChanged: files.length,
-    additions: files.reduce((s, f) => s + f.stats.additions, 0),
-    deletions: files.reduce((s, f) => s + f.stats.deletions, 0),
-    totalSizeBytes: files.reduce((s, f) => s + f.stats.sizeBytes, 0),
-  },
-});
+function makePipelineFile(filePath: string, additions = 1, deletions = 0) {
+  return makeFileDiff({
+    filePath,
+    rawDiff: "",
+    stats: { additions, deletions, sizeBytes: 100 },
+  });
+}
 
 const TWO_FILE_DIFF = [
   "diff --git a/src/index.ts b/src/index.ts",
@@ -47,31 +43,27 @@ const TWO_FILE_DIFF = [
 
 function makeGitService(diff: string): ReturnType<typeof createGitService> {
   return {
-    getDiff: async () => diff,
+    getDiff: async () => ok(diff),
   } as ReturnType<typeof createGitService>;
 }
 
-const makeIssue = (
+const makePipelineIssue = (
   id: string,
   file: string,
   severity: "blocker" | "high" | "medium" | "low" | "nit",
-): ReviewIssue =>
-  ({
+) =>
+  makeIssue({
     id,
     file,
     severity,
-    category: "correctness",
     title: `Issue ${id}`,
     rationale: "test",
     recommendation: "fix",
-    suggested_patch: null,
-    confidence: 0.9,
     symptom: "broken",
     whyItMatters: "matters",
-    evidence: [],
     line_start: 1,
     line_end: 5,
-  }) as ReviewIssue;
+  });
 
 describe("resolveReviewDefaults", () => {
   const baseSettings: SettingsConfig = {
@@ -103,9 +95,9 @@ describe("resolveReviewDefaults", () => {
 
 describe("filterDiffByFiles", () => {
   const parsed = makeParsedDiff([
-    makeFile("src/index.ts"),
-    makeFile("src/utils.ts"),
-    makeFile("README.md"),
+    makePipelineFile("src/index.ts"),
+    makePipelineFile("src/utils.ts"),
+    makePipelineFile("README.md"),
   ]);
 
   it("returns all files when no filter is provided", () => {
@@ -175,20 +167,31 @@ describe("resolveGitDiff", () => {
 describe("generateExecutiveSummary", () => {
   it("formats issue counts, file counts, severity breakdown, and orchestration summary", () => {
     const issues = [
-      makeIssue("1", "a.ts", "high"),
-      makeIssue("2", "a.ts", "high"),
-      makeIssue("3", "b.ts", "low"),
+      makePipelineIssue("1", "a.ts", "high"),
+      makePipelineIssue("2", "a.ts", "high"),
+      makePipelineIssue("3", "b.ts", "low"),
     ];
     const summary = generateExecutiveSummary(issues, "All lenses passed.");
 
     expect(summary).toContain("Found 3 issues across 2 files.");
-    expect(summary).toContain("- high: 2");
-    expect(summary).toContain("- low: 1");
     expect(summary).toContain("All lenses passed.");
+    // The breakdown lists every severity in REVIEW_SEVERITY order (most to least
+    // severe), including zero counts — locking the iteration order after dropping
+    // the Object.entries+sort+cast path.
+    expect(summary).toContain(
+      [
+        "Severity breakdown:",
+        "- blocker: 0",
+        "- high: 2",
+        "- medium: 0",
+        "- low: 1",
+        "- nit: 0",
+      ].join("\n"),
+    );
   });
 
   it("uses singular wording without adding empty orchestration spacing", () => {
-    const issues = [makeIssue("1", "a.ts", "high")];
+    const issues = [makePipelineIssue("1", "a.ts", "high")];
     const summary = generateExecutiveSummary(issues, "");
 
     expect(summary).toContain("Found 1 issue across 1 file.");
@@ -198,10 +201,90 @@ describe("generateExecutiveSummary", () => {
 
 describe("generateReport", () => {
   it("returns generated summary and original issues", () => {
-    const issues = [makeIssue("1", "a.ts", "high")];
+    const issues = [makePipelineIssue("1", "a.ts", "high")];
     const report = generateReport(issues, "summary text");
 
     expect(report.issues).toBe(issues);
     expect(report.summary).toContain("Found 1 issue");
+  });
+});
+
+describe("finalizeReview", () => {
+  afterEach(() => {
+    saveReview.mockReset();
+  });
+
+  function makeFinalizeGitService(): ReturnType<typeof createGitService> {
+    return {
+      getStatus: async () =>
+        ok({
+          isGitRepo: true,
+          branch: "main",
+          remoteBranch: null,
+          ahead: 0,
+          behind: 0,
+          files: { staged: [], unstaged: [], untracked: [] },
+          hasChanges: false,
+          conflicted: [],
+        }),
+    } as unknown as ReturnType<typeof createGitService>;
+  }
+
+  function runFinalize(events: FullReviewStreamEvent[]) {
+    return finalizeReview({
+      outcome: { issues: [makePipelineIssue("1", "a.ts", "high")], summary: "one issue" },
+      gitService: makeFinalizeGitService(),
+      emit: async (event) => {
+        events.push(event);
+      },
+      reviewId: "review-1",
+      projectPath: "/project",
+      mode: "unstaged",
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      activeLenses: ["correctness"],
+      startTime: Date.now(),
+    });
+  }
+
+  function stepNames(events: FullReviewStreamEvent[], type: string): string[] {
+    return events
+      .filter(
+        (e): e is Extract<FullReviewStreamEvent, { type: "step_start" | "step_complete" }> =>
+          e.type === type && "step" in e,
+      )
+      .map((e) => e.step);
+  }
+
+  it("aborts with INTERNAL_ERROR and emits no report-complete when the save fails", async () => {
+    saveReview.mockResolvedValue(err({ code: "WRITE_ERROR", message: "disk full" }));
+    const events: FullReviewStreamEvent[] = [];
+
+    const result = await runFinalize(events);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toMatchObject({ kind: "review_abort", code: "INTERNAL_ERROR" });
+    // The report step starts, but a save failure must never complete it — so the
+    // client's View Results gate (and the absence of a terminal complete) holds.
+    expect(stepNames(events, "step_start")).toContain("report");
+    expect(stepNames(events, "step_complete")).not.toContain("report");
+  });
+
+  it("completes the report step only after a successful save", async () => {
+    let savedBeforeReportComplete = false;
+    saveReview.mockImplementation(async () => {
+      // At save time the report step has started but must not yet be complete.
+      savedBeforeReportComplete = capturedEvents.every(
+        (e) => !(e.type === "step_complete" && "step" in e && e.step === "report"),
+      );
+      return ok({ id: "review-1" });
+    });
+    const capturedEvents: FullReviewStreamEvent[] = [];
+
+    const result = await runFinalize(capturedEvents);
+
+    expect(result.ok).toBe(true);
+    expect(savedBeforeReportComplete).toBe(true);
+    expect(stepNames(capturedEvents, "step_complete")).toContain("report");
   });
 });

@@ -1,21 +1,21 @@
 ---
 title: Theme
-description: The @diffgazer/ui two-layer CSS variable system — primitives, semantic tokens, cascade layers, surface elevation, z-index, color, typography, and dark mode.
+description: The `@diffgazer/ui` two-layer CSS variable system — primitives, semantic tokens, cascade layers, surface elevation, z-index, color, typography, and dark mode.
 ---
 
-@diffgazer/ui themes through a two-layer CSS variable system. Primitives (`--tui-bg`, `--tui-fg`, `--tui-blue`, …) define the raw palette. Semantic tokens (`--background`, `--foreground`, `--primary`, …) reference those primitives for functional meaning, and every component reads only the semantic layer.
+`@diffgazer/ui` themes through a two-layer CSS variable system. Primitives (`--base-bg`, `--base-fg`, `--base-info`, …) define the raw palette. Semantic tokens (`--background`, `--foreground`, `--primary`, …) reference those primitives for functional meaning, and every component reads only the semantic layer.
 
-Override the primitives to reskin every component at once. Override semantic tokens for fine-grained control.
+Override the primitives to reskin every component at once — subtle tone backgrounds and component-scoped tokens both derive from the primitives, so a single override re-tints everything. Override semantic tokens for fine-grained control. Component-scoped tokens (e.g. `--panel-hairline`) are consumed with `var()` fallbacks, so an ancestor-scoped override now reaches them while a chosen variant's own value still wins.
 
-## Variable Architecture
+## Variable architecture
 
 <VariableDiagram />
 
-## Theme Playground
+## Theme playground
 
 <ThemePlayground />
 
-## Cascade Layers
+## Cascade layers
 
 `@diffgazer/ui/styles/theme-base.css` declares the cascade layer order on its first non-comment line:
 
@@ -34,15 +34,15 @@ Tailwind v4 emits its own utilities and components into the matching layer names
 
 When you add custom CSS, place it inside the appropriate `@layer` block to opt into the documented precedence. Unlayered CSS still loads, but it always wins over any `@layer` rule and therefore breaks the contract — keep that for one-off overrides you want to "always apply."
 
-## Surface Elevation
+## Surface elevation
 
-Surface tokens describe stepwise elevation above the page background (`--tui-bg`). They are declared on `:root` and the `[data-theme="light"]` override block in `theme.css`.
+Surface tokens describe stepwise elevation above the page background (`--base-bg`). They are declared on `:root` and the `[data-theme="light"]` override block in `theme.css`.
 
 | Token         | Dark default | Light default | Used by                                                                 |
 |---------------|--------------|---------------|-------------------------------------------------------------------------|
 | `--surface-1` | `#111111`    | `#ffffff`     | `Panel frame="surface"` for Linear/Raycast-style elevated card surfaces |
 
-`--surface-1` is one step above `--tui-bg` in the dark theme and the elevated card surface in the light theme. Override it on `:root` (or any ancestor) to tint every elevated panel without forking the component:
+`--surface-1` is one step above `--base-bg` in the dark theme and the elevated card surface in the light theme. Override it on `:root` (or any ancestor) to tint every elevated panel without forking the component:
 
 ```css
 :root {
@@ -50,7 +50,7 @@ Surface tokens describe stepwise elevation above the page background (`--tui-bg`
 }
 ```
 
-## Z-Index Scale
+## Z-index scale
 
 Five tokens cover every overlay surface in the library. They live in the `@theme` block of `theme-base.css` and are exposed as CSS variables:
 
@@ -76,13 +76,23 @@ Override a token in your own theme by redeclaring it on `:root` (or any ancestor
 }
 ```
 
+### Scrim
+
+Modal backdrops share one token, `--scrim` (default `rgb(0 0 0 / 0.6)` in both themes), declared on `:root` and the `[data-theme="light"]` block. The native Dialog backdrop consumes it (`dialog::backdrop { background: var(--scrim) }`), and overlay surfaces in consuming apps can reuse the same value. Override it once to retint every modal dim layer:
+
+```css
+:root {
+  --scrim: rgb(0 0 0 / 0.75);
+}
+```
+
 ### Native top-layer caveat
 
 Native `<dialog>.showModal()` and the HTML Popover API render in the browser's [top layer](https://developer.mozilla.org/en-US/docs/Glossary/Top_layer), which sits above every painted z-index value. The z-index scale does **not** control whether a Toast paints over a native modal Dialog; the Dialog's top-layer placement does.
 
 Concretely:
 
-- A toast with `--z-toast: 400` is **not** visible above an open `<dialog>` opened with `.showModal()` unless the toast itself is promoted to the top layer (see `T-TOAST-OVER-DIALOG`).
+- A toast with `--z-toast: 400` is **not** visible above an open `<dialog>` opened with `.showModal()` unless the toast itself is promoted to the top layer.
 - Two top-layer surfaces stack in open order — the most recently opened one wins, regardless of z-index.
 - Increasing `--z-toast` to an arbitrarily large number does not change this behavior.
 
@@ -104,7 +114,7 @@ Use the z-index scale to order surfaces that all sit in the normal stacking cont
 
 Under `prefers-reduced-motion: reduce`, all eight directional tokens collapse to the fade-only keyframes. Opacity transitions still run; directional motion does not. Override per instance to opt back in.
 
-See the [`FloatingPanel` page](../components/floating-panel#css-variables) for override examples.
+See the [`FloatingPanel` page](/ui/components/floating-panel#css-variables) for override examples.
 
 ## In this section
 

@@ -8,15 +8,15 @@ import { initializeAIClient } from "../../shared/lib/ai/client.js";
 import { createGitService } from "../../shared/lib/git/service.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { type ErrorStatus, errorResponse } from "../../shared/lib/http/response.js";
+import { handleDrilldownRequest } from "./drilldown.js";
+import { handleStoreError } from "./errors.js";
+import type { CreateReviewBody, DrilldownRequest } from "./schemas.js";
+import { createReviewSession } from "./service.js";
 import {
   deleteReview as deleteStoredReview,
   getReview as getStoredReview,
   listReviews as listStoredReviews,
-} from "../../shared/lib/storage/reviews.js";
-import { isValidProjectPath, resolvesToSameProject } from "../../shared/lib/validation.js";
-import { handleDrilldownRequest } from "./drilldown.js";
-import { handleStoreError } from "./errors.js";
-import { createReviewSession } from "./service.js";
+} from "./storage/reviews.js";
 import {
   cancelSession,
   deleteSession,
@@ -24,8 +24,9 @@ import {
   getSession,
 } from "./stream/store.js";
 import type { HandleDrilldownError } from "./types.js";
+import { isValidProjectPath, resolvesToSameProject } from "./validation.js";
 
-export async function getReviewForProject(id: string, projectPath: string) {
+async function getReviewForProject(id: string, projectPath: string) {
   const result = await getStoredReview(id);
   if (!result.ok) return result;
   if (result.value.metadata.projectPath !== projectPath) {
@@ -36,7 +37,7 @@ export async function getReviewForProject(id: string, projectPath: string) {
 
 type RequestedProjectPath = { ok: true; projectPath: string } | { ok: false; response: Response };
 
-export async function getRequestedProjectPath(c: Context): Promise<RequestedProjectPath> {
+async function getRequestedProjectPath(c: Context): Promise<RequestedProjectPath> {
   const projectPath = getProjectRoot(c);
   const queryProjectPath = c.req.query("projectPath");
   if (!queryProjectPath) return { ok: true, projectPath };
@@ -69,15 +70,7 @@ export async function getRequestedProjectPath(c: Context): Promise<RequestedProj
   return { ok: true, projectPath };
 }
 
-export async function createReviewHandler(
-  c: Context,
-  body: {
-    mode?: ReviewMode;
-    profile?: import("@diffgazer/core/schemas/review").ProfileId;
-    lenses?: import("@diffgazer/core/schemas/review").LensId[];
-    files?: string[];
-  },
-): Promise<Response> {
+export async function createReviewHandler(c: Context, body: CreateReviewBody): Promise<Response> {
   const clientResult = initializeAIClient();
   if (!clientResult.ok) {
     return errorResponse(c, clientResult.error.message, clientResult.error.code, 500);
@@ -114,12 +107,15 @@ export async function getActiveSessionHandler(
     return errorResponse(c, "Failed to inspect repository state", ErrorCode.INTERNAL_ERROR, 500);
   }
 
-  if (statusHashResult === null) {
+  if (statusHashResult.kind === "unavailable") {
     return c.json({ session: null });
   }
+  // Match regardless of scopeKey so a client reloading during a scoped
+  // (files/lenses/profile) review can resume it — only mode is constrained.
   const session = getActiveSessionForProject(projectPath, {
     headCommit: headCommitResult.value,
-    statusHash: statusHashResult,
+    statusHash: statusHashResult.hash,
+    statusHashKind: statusHashResult.kind,
     mode: query.mode,
   });
   if (!session) {
@@ -179,23 +175,20 @@ export async function deleteReviewHandler(c: Context, id: string): Promise<Respo
 
 export async function cancelSessionHandler(c: Context, id: string): Promise<Response> {
   const session = getSession(id);
-  if (!session) {
-    return c.json({ cancelled: false });
-  }
-  if (session.projectPath !== getProjectRoot(c)) {
-    return c.json({ cancelled: false });
+  if (!session || session.projectPath !== getProjectRoot(c)) {
+    return c.json({ cancelled: true, reason: "not-found" });
   }
   if (session.isComplete) {
-    return c.json({ cancelled: false });
+    return c.json({ cancelled: true, reason: "already-complete" });
   }
   cancelSession(id);
-  return c.json({ cancelled: true });
+  return c.json({ cancelled: true, reason: "cancelled" });
 }
 
 export async function drilldownHandler(
   c: Context,
   id: string,
-  body: { issueId: string },
+  body: DrilldownRequest,
 ): Promise<Response> {
   const projectPath = getProjectRoot(c);
   const reviewResult = await getReviewForProject(id, projectPath);

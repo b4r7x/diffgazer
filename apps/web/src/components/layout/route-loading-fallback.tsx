@@ -1,9 +1,5 @@
-import { Spinner } from "@diffgazer/ui/components/spinner";
+import { CenteredStatus } from "@/components/shared/centered-status";
 
 export function RouteLoadingFallback() {
-  return (
-    <div className="flex flex-1 items-center justify-center bg-tui-bg text-tui-fg font-mono">
-      <Spinner className="text-tui-muted">Loading...</Spinner>
-    </div>
-  );
+  return <CenteredStatus>Loading...</CenteredStatus>;
 }

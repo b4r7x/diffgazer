@@ -2,25 +2,7 @@ import type { NavItem } from "../schemas/presentation/navigation.js";
 
 export type MenuGroup = NavItem["group"];
 
-export interface GroupedMenuItems {
-  review: NavItem[];
-  navigation: NavItem[];
-  system: NavItem[];
-}
-
-export const MENU_GROUP_ORDER: readonly MenuGroup[] = ["review", "navigation", "system"] as const;
-
-export function groupMenuItems(items: readonly NavItem[]): GroupedMenuItems {
-  const groups: GroupedMenuItems = {
-    review: [],
-    navigation: [],
-    system: [],
-  };
-  for (const item of items) {
-    groups[item.group].push(item);
-  }
-  return groups;
-}
+const MENU_GROUP_ORDER: readonly MenuGroup[] = ["review", "navigation", "system"] as const;
 
 export interface MenuItemWithDivider {
   item: NavItem;

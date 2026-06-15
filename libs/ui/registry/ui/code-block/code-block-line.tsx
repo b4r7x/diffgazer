@@ -1,18 +1,42 @@
 import type { ComponentProps, ReactNode } from "react";
 
+/** Root <figure>. */
 export interface CodeBlockToken {
+  /** Text content. */
   text: string;
+  /** Color token. */
   color?: string;
+  /** Additional class names merged onto the rendered element. */
   className?: string;
 }
 
+/** Allowed code block line state values. */
 export type CodeBlockLineState = "highlight" | "added" | "removed";
 
+/** Props for code block line. */
 export interface CodeBlockLineProps extends Omit<ComponentProps<"span">, "content" | "children"> {
+  /** Line number rendered in the gutter. Omit to hide the gutter for this line. */
   number?: number;
+  /**
+   * Line content. Either a plain string or an array of tokens for syntax coloring. Ignored when
+   * `children` is provided.
+   */
   content?: string | CodeBlockToken[];
+  /**
+   * Pre-rendered line body (e.g. highlighted React elements). Takes precedence over `content`
+   * and renders inside the <code> element.
+   */
   children?: ReactNode;
+  /**
+   * Per-line visual state. "highlight" tints the row; "added"/"removed" render gutter sign
+   * characters (+/−), color tint, and an sr-only "Added: "/"Removed: " prefix for assistive
+   * tech.
+   */
   state?: CodeBlockLineState;
+  /** Screen-reader prefix for an added diff line. Defaults to "Added: ". */
+  addedLineLabel?: string;
+  /** Screen-reader prefix for a removed diff line. Defaults to "Removed: ". */
+  removedLineLabel?: string;
 }
 
 const NON_BREAKING_SPACE = " ";
@@ -34,12 +58,15 @@ function renderContent(content: string | CodeBlockToken[] | undefined): ReactNod
   ));
 }
 
+/** Single line with optional gutter, diff state, and token coloring. */
 export function CodeBlockLine({
   number,
   content,
   children,
   state,
   className,
+  addedLineLabel = "Added: ",
+  removedLineLabel = "Removed: ",
   ref,
   ...props
 }: CodeBlockLineProps) {
@@ -61,7 +88,7 @@ export function CodeBlockLine({
         {signCharacter(state)}
       </span>
       {isDiffLine ? (
-        <span className="sr-only">{state === "added" ? "Added: " : "Removed: "}</span>
+        <span className="sr-only">{state === "added" ? addedLineLabel : removedLineLabel}</span>
       ) : null}
       <code>{children ?? renderContent(content)}</code>
     </span>

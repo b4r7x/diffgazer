@@ -61,10 +61,61 @@ export const navigationListDoc: ComponentDoc = {
   keyboard: {
     description:
       "Arrow keys navigate between items with wrapping. Enter activates the highlighted item. Home and End jump to the first and last items.",
+    keys: [
+      {
+        keys: "ArrowUp / ArrowDown",
+        action: "Moves highlight to the previous or next enabled item.",
+      },
+      { keys: "Home / End", action: "Moves highlight to the first or last enabled item." },
+      { keys: "Enter", action: "Activates the highlighted item via onEnter or onSelect." },
+      {
+        keys: "Boundary arrow",
+        action:
+          "Calls onNavigationBoundaryReached when wrap is false and focus attempts to leave the list.",
+      },
+    ],
     examples: [
       { name: "navigation-list-interactive", title: "External @diffgazer/keys navigation" },
     ],
   },
+  dataAttributes: [
+    {
+      attribute: "data-highlighted",
+      appliesTo: "NavigationList.Item",
+      values: "present when highlighted",
+      description: "Marks the active descendant for keyboard and pointer styling.",
+    },
+    {
+      attribute: "data-selected",
+      appliesTo: "NavigationList.Item",
+      values: "present when selected",
+      description: "Marks the currently selected item.",
+    },
+    {
+      attribute: "data-value",
+      appliesTo: "NavigationList.Item",
+      values: "item id",
+      description: "Stable item id used by keyboard navigation.",
+    },
+    {
+      attribute: "data-density",
+      appliesTo: "NavigationList.Item",
+      values: '"compact" | "default" | "comfortable"',
+      description: "Per-item density setting.",
+    },
+    {
+      attribute: "data-indicator",
+      appliesTo: "NavigationList.Item",
+      values: '"bar" | "bar-thick" | "arrow" | "bracket"',
+      description: "Active indicator visual treatment.",
+    },
+    {
+      attribute: "data-expanded",
+      appliesTo: "NavigationList.Group",
+      values: '"true" | "false"',
+      description: "Mouse-managed group disclosure state.",
+    },
+  ],
   props: {
     NavigationList: {
       selectedId: {

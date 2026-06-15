@@ -9,9 +9,9 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import type { z } from "zod";
 import type { AIClient } from "../../shared/lib/ai/types.js";
 import type { createGitService as createGitServiceType } from "../../shared/lib/git/service.js";
-import type { SSEWriter } from "../../shared/lib/http/types.js";
 import { makeIssue } from "../../shared/lib/testing/factories.js";
 import { requireValue } from "../../testing/assertions.js";
+import type { SSEWriter } from "./stream/sse.js";
 
 // Boundary mock: git/service wraps the `git` CLI subprocess (external-process boundary); tests provide canned status/diff responses so review session lifecycle can be exercised without a real repository.
 vi.mock("../../shared/lib/git/service.js", () => ({
@@ -143,23 +143,11 @@ function makeGitService(
         hasChanges: false,
         conflicted: [],
       }),
-    getDiff: async () => diff,
+    getDiff: async () => ok(diff),
     isGitInstalled: async () => true,
-    getBlame: async () => ({
-      author: "Test Author",
-      authorEmail: "author@example.com",
-      commit: "abc123",
-      commitDate: "2026-05-11T00:00:00.000Z",
-      summary: "Fixture commit",
-    }),
-    getFileLines: async () => [
-      "export function add(a: number, b: number) {",
-      "  return a + b;",
-      "}",
-    ],
     getHeadCommit: async () =>
       headCommitError ? err({ message: headCommitError }) : ok(headCommit),
-    getStatusHash: async () => statusHash,
+    getStatusHash: async () => ({ kind: "full" as const, hash: statusHash }),
   };
 }
 
@@ -178,7 +166,6 @@ function makeAIClient(
   return {
     provider: "openrouter",
     generate,
-    generateStream: async () => {},
   };
 }
 
@@ -255,6 +242,7 @@ describe("createReviewSession", () => {
       projectPath: projectRoot,
       headCommit: "abc123",
       statusHash: "hash123",
+      statusHashKind: "full" as const,
       mode: "unstaged",
       reviewConfigKey: buildReviewConfigKey({
         lenses: ["security"],
@@ -280,6 +268,7 @@ describe("createReviewSession", () => {
       projectPath: projectRoot,
       headCommit: "abc123",
       statusHash: "hash123",
+      statusHashKind: "full" as const,
       mode: "unstaged",
       reviewConfigKey: buildReviewConfigKey({
         lenses: ["correctness"],
@@ -315,7 +304,7 @@ describe("createReviewSession", () => {
     expect(result.error.message).toContain("HEAD unavailable");
   });
 
-  it("makes a scoped review discoverable by active-session lookup using the same scope", async () => {
+  it("makes a scoped review discoverable by a mode-only active-session lookup", async () => {
     const result = await createReviewSession(makeAIClient(), {
       mode: "unstaged",
       profile: "strict",
@@ -329,13 +318,15 @@ describe("createReviewSession", () => {
     const lookup = {
       headCommit: "abc123",
       statusHash: "hash123",
+      statusHashKind: "full" as const,
       mode: "unstaged" as const,
     };
 
-    // A mode-only lookup (empty scope key) must NOT find the scoped session.
-    expect(getActiveSessionForProject(projectRoot, lookup)).toBeUndefined();
+    // A mode-only lookup (no scope key) resolves the scoped session so a reload
+    // during a scoped review can resume it (F-163).
+    expect(getActiveSessionForProject(projectRoot, lookup)?.reviewId).toBe(result.value.reviewId);
 
-    // The matching scope key resolves the session created through the API.
+    // The matching scope key also resolves the session created through the API.
     const scopeKey = buildScopeKey({ profile: "strict" });
     expect(getActiveSessionForProject(projectRoot, { ...lookup, scopeKey })?.reviewId).toBe(
       result.value.reviewId,
@@ -347,6 +338,7 @@ describe("createReviewSession", () => {
       projectPath: projectRoot,
       headCommit: "old-head",
       statusHash: "old-hash",
+      statusHashKind: "full" as const,
       mode: "unstaged",
     });
     trackSession(stale.reviewId);
@@ -372,6 +364,7 @@ describe("streamActiveSessionToSSE", () => {
       projectPath: projectRoot,
       headCommit: "abc123",
       statusHash: "hash123",
+      statusHashKind: "full" as const,
       mode: "unstaged",
     });
     trackSession(session.reviewId);
@@ -398,6 +391,7 @@ describe("streamActiveSessionToSSE", () => {
       projectPath: projectRoot,
       headCommit: "abc123",
       statusHash: "hash123",
+      statusHashKind: "full" as const,
       mode: "unstaged",
     });
     trackSession(session.reviewId);
@@ -421,6 +415,7 @@ describe("streamActiveSessionToSSE", () => {
       projectPath: projectRoot,
       headCommit: "abc123",
       statusHash: "hash123",
+      statusHashKind: "full" as const,
       mode: "unstaged",
     });
     trackSession(session.reviewId);
@@ -439,6 +434,7 @@ describe("streamActiveSessionToSSE", () => {
       projectPath: projectRoot,
       headCommit: "abc123",
       statusHash: "hash123",
+      statusHashKind: "full" as const,
       mode: "unstaged",
     });
     const controller = new AbortController();
@@ -458,6 +454,7 @@ describe("streamActiveSessionToSSE", () => {
       projectPath: projectRoot,
       headCommit: "abc123",
       statusHash: "hash123",
+      statusHashKind: "full" as const,
       mode: "unstaged",
     });
     trackSession(session.reviewId);
@@ -484,6 +481,7 @@ describe("streamActiveSessionToSSE", () => {
       projectPath: projectRoot,
       headCommit: "abc123",
       statusHash: "hash123",
+      statusHashKind: "full" as const,
       mode: "unstaged",
     });
     trackSession(session.reviewId);
@@ -503,6 +501,7 @@ describe("streamActiveSessionToSSE", () => {
       projectPath: projectRoot,
       headCommit: "abc123",
       statusHash: "hash123",
+      statusHashKind: "full" as const,
       mode: "unstaged",
     });
     trackSession(session.reviewId);

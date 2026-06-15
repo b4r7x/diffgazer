@@ -3,6 +3,7 @@
 import { getFirstFocusableElement } from "@diffgazer/keys";
 import { type RefObject, useEffect } from "react";
 
+/** Provides auto focus behavior. */
 export function useAutoFocus(
   ref: RefObject<HTMLElement | null>,
   enabled: boolean,

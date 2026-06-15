@@ -59,11 +59,25 @@ export const RAW_CATALOG: Record<string, unknown> = {
         last_updated: "2025-11-18",
       },
       // No `cost` => pricingTier 'unknown' (must NOT collapse to 'paid').
+      // `limit.output: 1` marks it as an embedding model the review picker filters out.
       "gemini-embedding-001": {
         id: "gemini-embedding-001",
         name: "Gemini Embedding 001",
         family: "gemini-embedding",
-        limit: { context: 2048 },
+        limit: { context: 2048, output: 1 },
+        modalities: { input: ["text"], output: ["text"] },
+        release_date: "2025-05-01",
+        last_updated: "2025-05-01",
+      },
+      // Audio output (TTS): a usable output limit but no text output, so the
+      // review picker filters it via `modalities.output`, not the floor.
+      "gemini-2.5-flash-preview-tts": {
+        id: "gemini-2.5-flash-preview-tts",
+        name: "Gemini 2.5 Flash Preview TTS",
+        family: "gemini-flash",
+        cost: { input: 0.5, output: 10 },
+        limit: { context: 8192, output: 16384 },
+        modalities: { input: ["text"], output: ["audio"] },
         release_date: "2025-05-01",
         last_updated: "2025-05-01",
       },

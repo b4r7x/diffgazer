@@ -19,6 +19,11 @@ import {
 } from "./command-palette-item";
 import { CommandPaletteList, type CommandPaletteListProps } from "./command-palette-list";
 
+/**
+ * Terminal-styled command palette with built-in search filtering, grouped items, and keyboard
+ * navigation. Uses native dialog element with backdrop blur. Two orthogonal visual axes on
+ * Content (frame and density) keep visual chrome configurable without touching internals.
+ */
 const CommandPalette = Object.assign(CommandPaletteRoot, {
   Content: CommandPaletteContent,
   Input: CommandPaletteInput,

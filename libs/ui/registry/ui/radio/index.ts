@@ -10,6 +10,7 @@ import {
 } from "./radio-group";
 import { RadioGroupItem, type RadioGroupItemProps } from "./radio-group-item";
 
+/** Group root with context, selection state, and keyboard navigation. */
 const RadioGroup = Object.assign(RadioGroupRoot, {
   Item: RadioGroupItem,
 });

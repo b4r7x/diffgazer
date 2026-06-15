@@ -17,7 +17,7 @@ export const logoDoc: ComponentDoc = {
     {
       title: "Sizing",
       content:
-        "ASCII output can be large. Use small text sizes (text-[6px] to text-[10px]) and responsive sizing to fit it in your layout.",
+        "ASCII output can be large. Use small text sizes (text-[6px] to text-2xs) and responsive sizing to fit it in your layout.",
     },
   ],
   usage: { example: "logo-default" },

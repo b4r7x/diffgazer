@@ -25,7 +25,6 @@ export {
   readPackageJson,
   readPackageVersion,
 } from "./detect.js";
-export { registryItemToDistKey, resolveKeysHookFiles } from "./dist-keys.js";
 export type { FileOp } from "./file-write-rollback.js";
 export {
   atomicWriteFile,
@@ -60,7 +59,5 @@ export {
   RegistryItemSchema,
 } from "./registry.js";
 export { heading, info, promptSelect, warn } from "./terminal.js";
-export { assertDistEsmRelativeImports } from "./verify-dist-esm.js";
-export { assertRscClientDirectives, assertSourceRscClientDirectives } from "./verify-rsc.js";
 export { type InitWorkflowOptions, runInitWorkflow } from "./workflows/init.js";
 export { findOrphanedNpmDeps } from "./workflows/remove.js";

@@ -18,6 +18,10 @@ import {
   menuSubTriggerBase,
 } from "./menu-sub";
 
+/**
+ * Terminal-styled selection list with keyboard navigation, highlighting and optional hotkey
+ * indicators.
+ */
 const Menu = Object.assign(MenuRoot, {
   Item: MenuItem,
   ItemCheckbox: MenuItemCheckbox,

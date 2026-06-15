@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
+import { KeyboardProvider } from "@diffgazer/keys";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { MobileNavProvider, useMobileNav } from "@/lib/mobile-nav-context";
+import { MobileNavProvider, useMobileNav } from "@/hooks/mobile-nav-context";
 import { stubControllableMatchMedia } from "@/testing/match-media";
 import { TuiTwoPane } from "./tui-two-pane";
 
@@ -19,12 +20,14 @@ function MenuButton() {
 
 function renderTwoPane() {
   return render(
-    <MobileNavProvider>
-      <MenuButton />
-      <TuiTwoPane sidebar={() => <a href="/ui">Sidebar item</a>}>
-        <p>Body</p>
-      </TuiTwoPane>
-    </MobileNavProvider>,
+    <KeyboardProvider>
+      <MobileNavProvider>
+        <MenuButton />
+        <TuiTwoPane sidebar={() => <a href="/ui">Sidebar item</a>}>
+          <p>Body</p>
+        </TuiTwoPane>
+      </MobileNavProvider>
+    </KeyboardProvider>,
   );
 }
 

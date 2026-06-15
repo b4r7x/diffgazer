@@ -4,6 +4,7 @@
   "pages": [
     "---Getting Started---",
     "...getting-started",
+    "changelog",
     "---Hooks---",
     "...hooks",
     "---API---",

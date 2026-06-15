@@ -6,15 +6,16 @@ import {
   OpenRouterModelCacheSchema,
   OpenRouterModelSchema,
 } from "@diffgazer/core/schemas/config";
+import { log } from "../log.js";
 import { getGlobalOpenRouterModelsPath } from "../paths.js";
 import { withTtlAndFallback } from "./disk-cache.js";
+import { readJsonResponseWithLimit } from "./http-json.js";
 
 const hashApiKey = (apiKey: string): string =>
   createHash("sha256").update(apiKey).digest("hex").slice(0, 16);
 
 const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
 
 const parseCost = (value: unknown): number => {
   if (typeof value === "number") return value;
@@ -46,11 +47,12 @@ const mapOpenRouterModel = (raw: unknown): OpenRouterModel | null => {
     topProvider?.contextLength;
   const contextLength = Number.isFinite(Number(contextLengthRaw)) ? Number(contextLengthRaw) : 0;
 
-  const supportedParametersRaw = Array.isArray(r.supported_parameters)
-    ? r.supported_parameters
-    : Array.isArray(r.supportedParameters)
-      ? r.supportedParameters
-      : undefined;
+  let supportedParametersRaw: unknown[] | undefined;
+  if (Array.isArray(r.supported_parameters)) {
+    supportedParametersRaw = r.supported_parameters;
+  } else if (Array.isArray(r.supportedParameters)) {
+    supportedParametersRaw = r.supportedParameters;
+  }
 
   const pricingRaw = (r.pricing && typeof r.pricing === "object" ? r.pricing : {}) as Record<
     string,
@@ -82,54 +84,6 @@ const mapOpenRouterModel = (raw: unknown): OpenRouterModel | null => {
 const countWithParams = (models: OpenRouterModel[]): number =>
   models.filter((model) => (model.supportedParameters?.length ?? 0) > 0).length;
 
-const readJsonResponseWithLimit = async (
-  response: Response,
-): Promise<Result<unknown, { message: string }>> => {
-  const declaredLength = Number(response.headers?.get?.("content-length"));
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_RESPONSE_BYTES) {
-    return err({ message: `OpenRouter models response too large: ${declaredLength} bytes` });
-  }
-
-  if (!response.body) {
-    try {
-      return ok((await response.json()) as unknown);
-    } catch (error) {
-      return err({ message: getErrorMessage(error, "OpenRouter models response was not JSON") });
-    }
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let receivedBytes = 0;
-  let text = "";
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (!value) continue;
-
-      receivedBytes += value.byteLength;
-      if (receivedBytes > MAX_RESPONSE_BYTES) {
-        await reader.cancel("OpenRouter models response exceeded the size limit");
-        return err({ message: `OpenRouter models response too large: ${receivedBytes} bytes` });
-      }
-
-      text += decoder.decode(value, { stream: true });
-    }
-
-    text += decoder.decode();
-  } catch (error) {
-    return err({ message: getErrorMessage(error, "Failed to read OpenRouter models response") });
-  }
-
-  try {
-    return ok(JSON.parse(text) as unknown);
-  } catch (error) {
-    return err({ message: getErrorMessage(error, "OpenRouter models response was not JSON") });
-  }
-};
-
 export const fetchOpenRouterModels = async (
   apiKey: string,
 ): Promise<Result<OpenRouterModel[], { message: string }>> => {
@@ -150,15 +104,16 @@ export const fetchOpenRouterModels = async (
     return err({ message: `OpenRouter models request failed: ${response.status}` });
   }
 
-  const payloadResult = await readJsonResponseWithLimit(response);
+  const payloadResult = await readJsonResponseWithLimit(response, "OpenRouter models");
   if (!payloadResult.ok) return payloadResult;
 
   const payload = payloadResult.value;
-  const rawModels = Array.isArray(payload)
-    ? payload
-    : payload && typeof payload === "object" && "data" in payload
-      ? (payload as { data: unknown }).data
-      : [];
+  let rawModels: unknown = [];
+  if (Array.isArray(payload)) {
+    rawModels = payload;
+  } else if (payload && typeof payload === "object" && "data" in payload) {
+    rawModels = (payload as { data: unknown }).data;
+  }
   if (!Array.isArray(rawModels)) {
     return err({ message: "OpenRouter models response is not an array" });
   }
@@ -204,13 +159,14 @@ export const getOpenRouterModelsWithCache = async (
   if (!resolution.ok) return err({ message: resolution.error.message });
 
   const { entry, cached, cacheWasFresh } = resolution.value;
-  const stats = `models=${entry.models.length} withParams=${countWithParams(entry.models)}`;
+  const models = entry.models.length;
+  const withParams = countWithParams(entry.models);
   if (!cached) {
-    console.info(`[openrouter-models] fetched: ${stats} cacheWasFresh=${cacheWasFresh}`);
+    log("info", "openrouter_models_fetched", { models, withParams, cacheWasFresh });
   } else if (cacheWasFresh) {
-    console.info(`[openrouter-models] cache hit: ${stats}`);
+    log("info", "openrouter_models_cache_hit", { models, withParams });
   } else {
-    console.info(`[openrouter-models] fetch failed, using cache: ${stats}`);
+    log("info", "openrouter_models_fetch_failed_using_cache", { models, withParams });
   }
 
   return ok({ models: entry.models, fetchedAt: entry.fetchedAt, cached });

@@ -5,12 +5,17 @@ import { cn } from "@/lib/utils";
 import { useAvatarContext } from "./avatar-context";
 import { useImageStatus } from "./use-image-status";
 
+/** Props for avatar fallback. */
 export interface AvatarFallbackProps {
+  /** Cascading fallback image. Tried before rendering children. */
   src?: string;
+  /** Initials or icon shown when no fallback image is available. */
   children?: ReactNode;
+  /** Additional class names merged onto the rendered element. */
   className?: string;
 }
 
+/** Square avatar with src/fallback/size. Shows image or monospace initials. */
 export function AvatarFallback({ src, children, className }: AvatarFallbackProps) {
   const { imageStatus } = useAvatarContext();
   const fallbackImage = useImageStatus(src);

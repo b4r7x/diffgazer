@@ -1,45 +1,78 @@
+/** Change kind for a parsed unified diff line. */
 export type ChangeType = "add" | "remove" | "context";
 
+/** One parsed line from a diff hunk. */
 export interface DiffChange {
+  /** Whether the line was added, removed, or kept as context. */
   type: ChangeType;
+  /** Line content without the unified diff prefix. */
   content: string;
+  /** Old-file line number, or null for added lines. */
   oldLine: number | null;
+  /** New-file line number, or null for removed lines. */
   newLine: number | null;
 }
 
+/** Parsed hunk metadata and changes from a unified diff. */
 export interface DiffHunk {
+  /** Starting line in the old file. */
   oldStart: number;
+  /** Number of old-file lines covered by the hunk. */
   oldCount: number;
+  /** Starting line in the new file. */
   newStart: number;
+  /** Number of new-file lines covered by the hunk. */
   newCount: number;
+  /** Optional hunk heading after the @@ range marker. */
   heading: string;
+  /** Parsed changes contained by the hunk. */
   changes: DiffChange[];
 }
 
+/** Parsed diff for one file. */
 export interface ParsedDiff {
+  /** Old file path when present in the patch header. */
   oldPath: string | null;
+  /** New file path when present in the patch header. */
   newPath: string | null;
+  /** Hunks parsed for this file. */
   hunks: DiffHunk[];
 }
 
+/** Diff input supplied as a unified patch string. */
 export interface DiffInputPatch {
+  /** Unified diff string. */
   patch: string;
+  /** Mutually exclusive with patch input. */
   diff?: never;
+  /** Mutually exclusive with patch input. */
   before?: never;
+  /** Mutually exclusive with patch input. */
   after?: never;
 }
+/** Diff input supplied as before/after text. */
 export interface DiffInputCompare {
+  /** Old text. */
   before: string;
+  /** New text. */
   after: string;
+  /** Mutually exclusive with before/after input. */
   patch?: never;
+  /** Mutually exclusive with before/after input. */
   diff?: never;
 }
+/** Diff input supplied as already parsed data. */
 export interface DiffInputParsed {
+  /** Pre-parsed diff data. */
   diff: ParsedDiff;
+  /** Mutually exclusive with parsed diff input. */
   patch?: never;
+  /** Mutually exclusive with parsed diff input. */
   before?: never;
+  /** Mutually exclusive with parsed diff input. */
   after?: never;
 }
+/** Accepted diff input shapes for DiffView and diff utilities. */
 export type DiffInput = DiffInputPatch | DiffInputCompare | DiffInputParsed;
 
 const HUNK_RE = /^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@(.*)$/;
@@ -47,6 +80,7 @@ const HUNK_RE = /^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@(.*)$/;
 const SKIP_RE =
   /^(index |new file mode|deleted file mode|old mode|new mode|similarity index|rename from|rename to|Binary files|copy from|copy to)/;
 
+/** Parses a unified diff string into per-file diff objects. */
 export function parseDiff(patch: string): ParsedDiff[] {
   const lines = patch.split("\n");
   const files: ParsedDiff[] = [];

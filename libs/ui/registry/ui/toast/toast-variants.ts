@@ -1,9 +1,20 @@
 import { cva } from "class-variance-authority";
-import type { ToastPosition } from "./toast-store";
 
+/** Allowed toast position values. */
+export type ToastPosition =
+  | "top-left"
+  | "top-center"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-center"
+  | "bottom-right";
+
+/** Allowed toast tone values. */
 export type ToastTone = "success" | "error" | "warning" | "info" | "loading";
+/** Allowed toast variant values. */
 export type ToastVariant = "hud" | "card" | "viewfinder" | "countdown";
 
+/** Individual toast notification with position-aware animation. */
 export const toastToneBorder = cva("", {
   variants: {
     tone: {
@@ -17,45 +28,49 @@ export const toastToneBorder = cva("", {
   defaultVariants: { tone: "info" },
 });
 
+/** Individual toast notification with position-aware animation. */
 export const toastToneText = cva("", {
   variants: {
     tone: {
-      success: "text-success-fg",
-      error: "text-error-fg",
-      warning: "text-warning-fg",
-      info: "text-info-fg",
-      loading: "text-info-fg",
+      success: "text-success-text",
+      error: "text-error-text",
+      warning: "text-warning-text",
+      info: "text-info-text",
+      loading: "text-info-text",
     },
   },
   defaultVariants: { tone: "info" },
 });
 
+/** Individual toast notification with position-aware animation. */
 export const toastToneBg = cva("", {
   variants: {
     tone: {
-      success: "bg-success-fg",
-      error: "bg-error-fg",
-      warning: "bg-warning-fg",
-      info: "bg-info-fg",
-      loading: "bg-info-fg",
+      success: "bg-success-text",
+      error: "bg-error-text",
+      warning: "bg-warning-text",
+      info: "bg-info-text",
+      loading: "bg-info-text",
     },
   },
   defaultVariants: { tone: "info" },
 });
 
+/** Individual toast notification with position-aware animation. */
 export const toastToneCornerBorder = cva("", {
   variants: {
     tone: {
-      success: "border-success-fg",
-      error: "border-error-fg",
-      warning: "border-warning-fg",
-      info: "border-info-fg",
-      loading: "border-info-fg",
+      success: "border-success-text",
+      error: "border-error-text",
+      warning: "border-warning-text",
+      info: "border-info-text",
+      loading: "border-info-text",
     },
   },
   defaultVariants: { tone: "info" },
 });
 
+/** Class variants for toast shell. */
 export const toastShellVariants = cva("font-mono", {
   variants: {
     variant: {
@@ -68,6 +83,7 @@ export const toastShellVariants = cva("font-mono", {
   defaultVariants: { variant: "card" },
 });
 
+/** Individual toast notification with position-aware animation. */
 export const icons: Record<Exclude<ToastTone, "loading">, string> = {
   success: "✓",
   error: "✕",
@@ -75,8 +91,10 @@ export const icons: Record<Exclude<ToastTone, "loading">, string> = {
   info: "i",
 };
 
+/** Individual toast notification with position-aware animation. */
 export type ToastSide = "left" | "right" | "top" | "bottom";
 
+/** Class variants for toast slide in. */
 export const toastSlideInVariants = cva("motion-reduce:animate-[fade-in_0.15s_ease-out]", {
   variants: {
     side: {
@@ -89,6 +107,7 @@ export const toastSlideInVariants = cva("motion-reduce:animate-[fade-in_0.15s_ea
   defaultVariants: { side: "right" },
 });
 
+/** Class variants for toast slide out. */
 export const toastSlideOutVariants = cva(
   "motion-reduce:animate-[fade-out_0.15s_ease-in_forwards]",
   {
@@ -104,6 +123,7 @@ export const toastSlideOutVariants = cva(
   },
 );
 
+/** Individual toast notification with position-aware animation. */
 export const positionToSide: Record<ToastPosition, ToastSide> = {
   "top-left": "left",
   "top-center": "top",
@@ -113,6 +133,7 @@ export const positionToSide: Record<ToastPosition, ToastSide> = {
   "bottom-right": "right",
 };
 
+/** Class variants for toast position. */
 export const toastPositionVariants = cva("", {
   variants: {
     position: {

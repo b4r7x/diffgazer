@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AgentStreamEvent, EnrichEvent, StepEvent } from "../schemas/events/index.js";
+import type { AgentStreamEvent, StepEvent } from "../schemas/events/index.js";
 import type { ReviewIssue } from "../schemas/review/index.js";
 import { convertAgentEventsToLogEntries } from "./event-to-log.js";
 
@@ -48,7 +48,7 @@ describe("convertAgentEventsToLogEntries", () => {
   it.each<
     [
       string,
-      AgentStreamEvent | StepEvent | EnrichEvent,
+      AgentStreamEvent | StepEvent,
       {
         tag?: string;
         tagType?: string;
@@ -71,7 +71,7 @@ describe("convertAgentEventsToLogEntries", () => {
     ],
     [
       "step_error",
-      { type: "step_error", step: "enrich", error: "Timeout reached", timestamp },
+      { type: "step_error", step: "report", error: "Timeout reached", timestamp },
       { tag: "FAIL", tagType: "error", isWarning: true, messageIncludes: ["Timeout reached"] },
     ],
     [
@@ -83,17 +83,6 @@ describe("convertAgentEventsToLogEntries", () => {
       "review_started singular",
       { type: "review_started", reviewId: "r1", filesTotal: 1, timestamp },
       { tag: "START", messageIncludes: ["1 file "] },
-    ],
-    [
-      "enrich_progress",
-      {
-        type: "enrich_progress",
-        issueId: "issue-1",
-        enrichmentType: "blame",
-        status: "complete",
-        timestamp,
-      },
-      { tag: "ENRICH", tagType: "system", messageIncludes: ["blame", "complete", "issue-1"] },
     ],
     [
       "orchestrator_start",

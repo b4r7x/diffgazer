@@ -1,12 +1,13 @@
-import { useOpenRouterModelsMapped, useProviderModelsMapped } from "@diffgazer/core/providers";
+import { useModelSource } from "@diffgazer/core/providers";
 import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
-import { resolveAvailableValue } from "@diffgazer/core/select";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { Input } from "@diffgazer/ui/components/input";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
+import { Spinner } from "@diffgazer/ui/components/spinner";
 import { type ReactNode, useState } from "react";
+import { resolveAvailableValue } from "../../lib/select.js";
 
 interface ModelStepProps {
   provider: AIProvider;
@@ -86,7 +87,7 @@ function ModelInfoList({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-tui-muted font-mono">{subtitle}</p>
+      <p className="text-sm text-muted-foreground font-mono">{subtitle}</p>
       <ModelRadioGroup
         modelIds={modelIds}
         value={value}
@@ -125,138 +126,6 @@ function ModelInfoList({
   );
 }
 
-function CatalogModelList({
-  provider,
-  value,
-  onChange,
-  onCommit,
-  enabled = true,
-  onBoundaryReached,
-}: ModelStepProps) {
-  const { models, loading, error } = useProviderModelsMapped(true, provider);
-  const providerInfo = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-tui-muted font-mono">Loading models...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-tui-red font-mono">Failed to load models: {error}</p>
-        <p className="text-sm text-tui-muted font-mono">Enter a model ID manually:</p>
-        <Input
-          type="text"
-          aria-label="Model ID"
-          value={value ?? ""}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={providerInfo?.defaultModel ?? "model-id"}
-        />
-      </div>
-    );
-  }
-
-  if (models.length === 0) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-tui-muted font-mono">
-          No models available. Enter a model ID manually:
-        </p>
-        <Input
-          type="text"
-          aria-label="Model ID"
-          value={value ?? ""}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={providerInfo?.defaultModel ?? "model-id"}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <ModelInfoList
-      subtitle={`Select a model for ${providerInfo?.name ?? provider}.`}
-      models={models}
-      value={value}
-      onChange={onChange}
-      onCommit={onCommit}
-      enabled={enabled}
-      onBoundaryReached={onBoundaryReached}
-    />
-  );
-}
-
-function OpenRouterModelList({
-  value,
-  onChange,
-  onCommit,
-  enabled = true,
-  onBoundaryReached,
-}: Omit<ModelStepProps, "provider">) {
-  const { models, loading, error } = useOpenRouterModelsMapped(true, "openrouter");
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-tui-muted font-mono">Loading OpenRouter models...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-tui-red font-mono">Failed to load models: {error}</p>
-        <p className="text-sm text-tui-muted font-mono">
-          Enter a model ID manually (e.g. openai/gpt-4o):
-        </p>
-        <Input
-          type="text"
-          aria-label="OpenRouter model ID"
-          value={value ?? ""}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="openai/gpt-4o"
-        />
-      </div>
-    );
-  }
-
-  if (models.length === 0) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-tui-muted font-mono">
-          No models available. Enter a model ID manually (e.g. openai/gpt-4o):
-        </p>
-        <Input
-          type="text"
-          aria-label="OpenRouter model ID"
-          value={value ?? ""}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="openai/gpt-4o"
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="max-h-64 overflow-y-auto scrollbar-hide">
-      <ModelInfoList
-        subtitle="Select a model from OpenRouter."
-        models={models}
-        value={value}
-        onChange={onChange}
-        onCommit={onCommit}
-        enabled={enabled}
-        onBoundaryReached={onBoundaryReached}
-      />
-    </div>
-  );
-}
-
 export function ModelStep({
   provider,
   value,
@@ -265,20 +134,67 @@ export function ModelStep({
   enabled = true,
   onBoundaryReached,
 }: ModelStepProps) {
-  if (provider === "openrouter") {
+  const { models, loading, error, isOpenRouter } = useModelSource(true, provider);
+  const providerInfo = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
+  const manualEntryPlaceholder = isOpenRouter
+    ? "openai/gpt-4o"
+    : (providerInfo?.defaultModel ?? "model-id");
+  const manualEntryHint = isOpenRouter
+    ? "Enter a model ID manually (e.g. openai/gpt-4o):"
+    : "Enter a model ID manually:";
+  const ariaLabel = isOpenRouter ? "OpenRouter model ID" : "Model ID";
+
+  if (loading) {
     return (
-      <OpenRouterModelList
-        value={value}
-        onChange={onChange}
-        onCommit={onCommit}
-        enabled={enabled}
-        onBoundaryReached={onBoundaryReached}
-      />
+      <div className="space-y-4">
+        <Spinner className="text-muted-foreground">
+          {isOpenRouter ? "Loading OpenRouter models..." : "Loading models..."}
+        </Spinner>
+      </div>
     );
   }
-  return (
-    <CatalogModelList
-      provider={provider}
+
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-error-text font-mono">Failed to load models: {error}</p>
+        <p className="text-sm text-muted-foreground font-mono">{manualEntryHint}</p>
+        <Input
+          type="text"
+          aria-label={ariaLabel}
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={manualEntryPlaceholder}
+        />
+      </div>
+    );
+  }
+
+  if (models.length === 0) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground font-mono">
+          No models available. {manualEntryHint}
+        </p>
+        <Input
+          type="text"
+          aria-label={ariaLabel}
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={manualEntryPlaceholder}
+        />
+      </div>
+    );
+  }
+
+  const list = (
+    <ModelInfoList
+      subtitle={
+        isOpenRouter
+          ? "Select a model from OpenRouter."
+          : `Select a model for ${providerInfo?.name ?? provider}.`
+      }
+      models={models}
       value={value}
       onChange={onChange}
       onCommit={onCommit}
@@ -286,4 +202,9 @@ export function ModelStep({
       onBoundaryReached={onBoundaryReached}
     />
   );
+
+  if (isOpenRouter) {
+    return <div className="max-h-64 overflow-y-auto scrollbar-hide">{list}</div>;
+  }
+  return list;
 }

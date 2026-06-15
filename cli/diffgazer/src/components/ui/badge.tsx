@@ -1,8 +1,9 @@
+import type { BadgeVariant } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import { useTheme } from "../../theme/provider";
 
 export interface BadgeProps {
-  variant?: "success" | "warning" | "error" | "info" | "neutral";
+  variant?: BadgeVariant;
   size?: "sm" | "md" | "lg";
   dot?: boolean;
   children: string;

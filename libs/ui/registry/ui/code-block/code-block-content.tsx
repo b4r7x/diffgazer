@@ -5,11 +5,15 @@ import { ScrollArea } from "../scroll-area/scroll-area";
 import { useRequiredCodeBlockContext } from "./code-block-context";
 import { CodeBlockLine } from "./code-block-line";
 
+/** Props for code block content. */
 export interface CodeBlockContentProps extends ComponentProps<"div"> {
+  /** Auto-split mode only. Renders a line-number gutter for string children. */
   showLineNumbers?: boolean;
+  /** line count used by code block content. */
   lineCount?: number;
 }
 
+/** Scrollable <pre> body (auto-split or composed) */
 export function CodeBlockContent({
   showLineNumbers = true,
   lineCount: lineCountProp,
@@ -26,11 +30,12 @@ export function CodeBlockContent({
   // otherwise the aria-labelledby would point at a non-existent element.
   const resolvedLabelledBy =
     ariaLabelledBy ?? (hasExplicitName || !context.hasLabel ? undefined : context.labelId);
-  const resolvedLabel = hasExplicitName
-    ? ariaLabel
-    : context.hasLabel
-      ? undefined
-      : context.fallbackName;
+  let resolvedLabel: string | undefined = context.fallbackName;
+  if (hasExplicitName) {
+    resolvedLabel = ariaLabel;
+  } else if (context.hasLabel) {
+    resolvedLabel = undefined;
+  }
 
   const isString = typeof children === "string";
   const lines = isString ? (children as string).split("\n") : null;
@@ -49,7 +54,7 @@ export function CodeBlockContent({
     >
       <pre
         data-slot="code-block-content"
-        style={{ "--cb-line-number-w": `${gutterWidth}ch` } as React.CSSProperties}
+        style={{ "--code-block-line-number-w": `${gutterWidth}ch` } as React.CSSProperties}
       >
         {lines
           ? lines.map((line, i) => (

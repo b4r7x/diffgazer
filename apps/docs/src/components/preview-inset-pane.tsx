@@ -32,7 +32,7 @@ function InsetToolbar() {
   return (
     <div
       aria-hidden="true"
-      className="flex items-center justify-between h-8 px-3 border-b border-border bg-secondary/40 text-[10px] uppercase tracking-[0.10em] text-muted-foreground"
+      className="flex items-center justify-between h-8 px-3 border-b border-border bg-secondary/40 text-2xs uppercase tracking-widest text-muted-foreground"
     >
       <span className="inline-flex gap-1.5">
         <span className="w-2 h-2 border border-border" />
@@ -49,9 +49,9 @@ function FauxDocsTopbar() {
   return (
     <div
       aria-hidden="true"
-      className="sticky top-0 z-10 h-10 px-4 flex items-center justify-between border-b border-border/60 bg-background/90 backdrop-blur text-[11px] text-muted-foreground"
+      className="sticky top-0 z-10 h-10 px-4 flex items-center justify-between border-b border-border/60 bg-background/90 backdrop-blur text-xs text-muted-foreground"
     >
-      <span className="inline-flex items-center gap-2 text-foreground font-bold uppercase tracking-[0.08em]">
+      <span className="inline-flex items-center gap-2 text-foreground font-bold uppercase tracking-widest">
         <span className="w-2.5 h-2.5 bg-foreground" />
         Diffgazer
       </span>
@@ -73,11 +73,11 @@ function FauxDocsBody({ children }: { children: ReactNode }) {
     <div aria-hidden="true" className="@container/inset px-6 py-6 min-w-0">
       <div className="grid grid-cols-1 @[520px]/inset:grid-cols-[1fr_140px] gap-6 items-start">
         <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground mb-3">
+          <p className="text-2xs uppercase tracking-widest text-muted-foreground mb-3">
             Docs / Components / <span className="text-foreground">Sidebar</span>
           </p>
-          <h1 className="text-[22px] font-bold text-foreground leading-tight mb-2.5">Sidebar</h1>
-          <p className="text-muted-foreground text-[13px] leading-relaxed max-w-[56ch] mb-3.5">
+          <h1 className="text-xl font-bold text-foreground leading-tight mb-2.5">Sidebar</h1>
+          <p className="text-muted-foreground text-xs leading-relaxed max-w-[56ch] mb-3.5">
             A composable navigation surface for product layouts. Section titles, items, badges, and
             a sticky footer.
           </p>
@@ -89,8 +89,8 @@ function FauxDocsBody({ children }: { children: ReactNode }) {
           </div>
           {children}
         </div>
-        <aside className="hidden @[520px]/inset:block sticky top-10 pl-3 border-l border-border/60 text-muted-foreground text-[11px]">
-          <p className="uppercase tracking-[0.14em] text-[10px] mb-2.5">On this page</p>
+        <aside className="hidden @[520px]/inset:block sticky top-10 pl-3 border-l border-border/60 text-muted-foreground text-xs">
+          <p className="uppercase tracking-widest text-2xs mb-2.5">On this page</p>
           <ul className="space-y-1">
             <li className="text-foreground">Overview</li>
             <li className="text-muted-foreground/80">Anatomy</li>
@@ -113,7 +113,7 @@ export function InsetPreviewPane({ demo }: { demo: LazyExoticComponent<Component
         <div className="flex flex-col min-w-0 bg-background relative">
           <FauxDocsTopbar />
           <FauxDocsBody>
-            <p className="text-muted-foreground text-[12.5px] leading-7 max-w-[60ch]">
+            <p className="text-muted-foreground text-xs leading-7 max-w-[60ch]">
               Compose with <span className="text-foreground font-bold">SidebarHeader</span>,
               <span className="text-foreground font-bold"> SidebarContent</span>, and
               <span className="text-foreground font-bold"> SidebarFooter</span>. Items support

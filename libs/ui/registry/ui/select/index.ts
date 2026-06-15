@@ -14,6 +14,10 @@ import {
   type SelectValueRenderProps,
 } from "./select-value";
 
+/**
+ * Dropdown select with search, multiple selection, card variant, and controlled keyboard
+ * integration points. 8 composable parts.
+ */
 const Select = Object.assign(SelectRoot, {
   Trigger: SelectTrigger,
   Content: SelectContent,

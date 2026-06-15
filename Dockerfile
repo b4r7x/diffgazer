@@ -20,9 +20,6 @@ ENV REGISTRY_ORIGIN=${REGISTRY_ORIGIN}
 ARG VITE_PUBLIC_ORIGIN=https://docs.b4r7.dev
 ENV VITE_PUBLIC_ORIGIN=${VITE_PUBLIC_ORIGIN}
 
-ARG VITE_REGISTRY_ORIGIN=https://r.b4r7.dev
-ENV VITE_REGISTRY_ORIGIN=${VITE_REGISTRY_ORIGIN}
-
 RUN pnpm --filter @diffgazer/registry build
 RUN pnpm --filter @diffgazer/core build
 RUN pnpm --filter @diffgazer/keys build
@@ -32,6 +29,9 @@ RUN pnpm --filter @diffgazer/ui build
 # Without it, artifact sync auto-detects workspace vs package mode.
 ARG DIFFGAZER_DEV
 ENV DIFFGAZER_DEV=${DIFFGAZER_DEV}
+
+ENV DIFFGAZER_SKIP_ARTIFACT_PREPARE=1
+RUN pnpm --filter @diffgazer/docs prepare:generated
 
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN pnpm --filter @diffgazer/docs build
@@ -49,5 +49,8 @@ ENV NODE_ENV=production
 ENV PORT=3000
 
 EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3000/ || exit 1
 
 CMD ["node", ".output/server/index.mjs"]

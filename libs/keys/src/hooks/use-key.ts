@@ -1,31 +1,47 @@
 "use client";
 
-import type { RefObject } from "react";
 import { useEffectEvent, useId, useLayoutEffect } from "react";
 import type { KeyHandler } from "../core/normalize-key-input.js";
 import { normalizeKeyInput } from "../core/normalize-key-input.js";
+import type { ValidateHotkey } from "../dom/hotkey.js";
 import type { HandlerOptions } from "../providers/keyboard.js";
 import { useOptionalKeyboardRegistryContext } from "../providers/keyboard-context.js";
 
-export interface UseKeyOptions {
+/** Options for registering one or more hotkeys with `useKey`. */
+export interface UseKeyOptions extends HandlerOptions {
+  /** Whether the binding is active. */
   enabled?: boolean;
+  /**
+   * Explicit keyboard scope to register under. Pass null to skip registration.
+   * Defaults to the nearest active provider scope for this hook's declaration order.
+   */
   scope?: string | null;
-  allowInInput?: boolean;
-  containerRef?: RefObject<HTMLElement | null>;
-  focusWithinOnly?: boolean;
-  preventDefault?: boolean;
 }
 
-export function useKey(hotkey: string, handler: KeyHandler, options?: UseKeyOptions): void;
-
-export function useKey(
-  hotkeys: readonly string[],
+/**
+ * Registers a single hotkey with the nearest `KeyboardProvider`.
+ * Without a provider this hook is a no-op.
+ */
+export function useKey<S extends string>(
+  hotkey: ValidateHotkey<S>,
   handler: KeyHandler,
   options?: UseKeyOptions,
 ): void;
 
+/**
+ * Registers several hotkeys with one handler through the nearest
+ * `KeyboardProvider`.
+ */
+export function useKey<const Hotkeys extends readonly string[]>(
+  hotkeys: { [K in keyof Hotkeys]: ValidateHotkey<Hotkeys[K]> },
+  handler: KeyHandler,
+  options?: UseKeyOptions,
+): void;
+
+/** Registers a map of hotkeys to handlers through the nearest `KeyboardProvider`. */
 export function useKey(handlers: Record<string, KeyHandler>, options?: UseKeyOptions): void;
 
+/** Implementation for the `useKey` overloads. */
 export function useKey(
   first: string | readonly string[] | Record<string, KeyHandler>,
   second?: KeyHandler | UseKeyOptions,

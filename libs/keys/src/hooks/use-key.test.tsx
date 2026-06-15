@@ -1,16 +1,12 @@
-import { act, cleanup, render, renderHook, screen } from "@testing-library/react";
+import { act, render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { fireKey, KeyboardWrapper, StrictKeyboardWrapper } from "../testing/test-utils.js";
 import { useKey } from "./use-key.js";
 import { useScope } from "./use-scope.js";
 
 describe("useKey", () => {
-  afterEach(() => {
-    cleanup();
-  });
-
   it("hook lifecycle: registers, fires matching keys, respects enabled, and cleans up", () => {
     const handler = vi.fn();
     let enabled = false;
@@ -372,5 +368,30 @@ describe("useKey", () => {
       const preventedEvent = fireKey("Escape");
       expect(preventedEvent.defaultPrevented).toBe(true);
     });
+  });
+});
+
+describe("hotkey literal validation (types)", () => {
+  // The hotkey literals are checked inside a never-rendered component body so
+  // TypeScript validates the overloads without the hooks running at runtime.
+  function HotkeyValidation() {
+    const handler = () => {};
+    const dynamicHotkey: string = "ctl+s";
+
+    // @ts-expect-error "ctl" is not a known modifier
+    useKey("ctl+s", handler);
+    // @ts-expect-error "cmd" is not a known modifier
+    useKey("cmd+k", handler);
+
+    useKey("mod+k", handler);
+    useKey("shift+Tab", handler);
+    useKey("ctrl+alt+ArrowUp", handler);
+    useKey(["mod+k", "Escape"], handler);
+    useKey(dynamicHotkey, handler);
+    return null;
+  }
+
+  it("accepts canonical hotkeys and rejects typo'd modifiers", () => {
+    expectTypeOf(HotkeyValidation).toBeFunction();
   });
 });

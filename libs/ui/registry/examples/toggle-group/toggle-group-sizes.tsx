@@ -12,7 +12,7 @@ export default function ToggleGroupSizes() {
         <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
           Small (sm)
         </span>
-        <ToggleGroup value={value} onChange={setValue} size="sm">
+        <ToggleGroup label="File filter (small)" value={value} onChange={setValue} size="sm">
           <ToggleGroup.Item value="all">All</ToggleGroup.Item>
           <ToggleGroup.Item value="added">Added</ToggleGroup.Item>
           <ToggleGroup.Item value="modified">Modified</ToggleGroup.Item>
@@ -24,7 +24,7 @@ export default function ToggleGroupSizes() {
         <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
           Medium (md)
         </span>
-        <ToggleGroup value={value} onChange={setValue} size="md">
+        <ToggleGroup label="File filter (medium)" value={value} onChange={setValue} size="md">
           <ToggleGroup.Item value="all">All</ToggleGroup.Item>
           <ToggleGroup.Item value="added">Added</ToggleGroup.Item>
           <ToggleGroup.Item value="modified">Modified</ToggleGroup.Item>

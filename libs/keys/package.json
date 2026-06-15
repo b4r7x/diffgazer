@@ -19,21 +19,25 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./testing/navigation-behavior": {
+      "types": "./dist/testing/navigation-behavior.d.ts",
+      "import": "./dist/testing/navigation-behavior.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
     "dist",
     "!dist/artifacts",
     "!dist/artifacts/**",
-    "!dist/testing",
-    "!dist/testing/**",
+    "!dist/**/*.map",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE",
     "SECURITY.md",
     "SUPPORT.md"
   ],
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   },
   "bugs": {
     "url": "https://github.com/b4r7x/diffgazer/issues"

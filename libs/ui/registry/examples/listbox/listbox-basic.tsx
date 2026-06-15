@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { getEncodedListboxItemId, useListbox } from "@/hooks/use-listbox";
 
 const options = [
@@ -9,8 +8,9 @@ const options = [
   { id: "gamma", label: "Gamma" },
 ];
 
+const items = options.map((option) => ({ id: option.id }));
+
 export default function ListboxBasicExample() {
-  const items = useMemo(() => options.map((option) => ({ id: option.id })), []);
   const {
     selectedId,
     highlighted: highlightedItemId,

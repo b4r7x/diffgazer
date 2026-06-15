@@ -21,6 +21,7 @@ export interface IssueDetailsPaneProps {
   onTabChange: (tab: TabId) => void;
   completedSteps: Set<number>;
   onToggleStep: (step: number) => void;
+  focusedStepIndex?: number | null;
   scrollAreaRef?: Ref<HTMLDivElement>;
   isFocused: boolean;
   emptyKind?: DetailsEmptyKind;
@@ -33,12 +34,14 @@ export function IssueDetailsPane({
   onTabChange,
   completedSteps,
   onToggleStep,
+  focusedStepIndex,
   scrollAreaRef,
   isFocused,
   emptyKind,
   className,
 }: IssueDetailsPaneProps) {
   const hasPatch = !!issue?.suggested_patch;
+  const hasTrace = !!issue?.trace?.length;
   const empty = getDetailsEmptyCopy(emptyKind ?? "no-selection");
   const handleTabChange = (value: string) => {
     if (isIssueTab(value)) onTabChange(value);
@@ -52,7 +55,7 @@ export function IssueDetailsPane({
         data-pane="details"
         data-focused={isFocused || undefined}
         className={cn(
-          "w-3/5 flex flex-col min-h-0 overflow-hidden border border-tui-border data-[focused]:border-tui-blue",
+          "w-3/5 flex flex-col min-h-0 overflow-hidden border border-border data-[focused]:border-info",
           className,
         )}
       >
@@ -68,7 +71,7 @@ export function IssueDetailsPane({
               <div className="space-y-2">
                 <div>{empty.title}</div>
                 {empty.description && (
-                  <div className="text-xs text-tui-muted">{empty.description}</div>
+                  <div className="text-xs text-muted-foreground">{empty.description}</div>
                 )}
               </div>
             </EmptyState>
@@ -85,16 +88,16 @@ export function IssueDetailsPane({
       data-pane="details"
       data-focused={isFocused || undefined}
       className={cn(
-        "w-3/5 flex flex-col min-h-0 overflow-hidden border border-tui-border data-[focused]:border-tui-blue",
+        "w-3/5 flex flex-col min-h-0 overflow-hidden border border-border data-[focused]:border-info",
         className,
       )}
     >
       <div className="flex flex-1 min-h-0 flex-col px-3">
         <Tabs value={activeTab} onChange={handleTabChange} className="flex flex-1 min-h-0 flex-col">
-          <TabsList className="border-b border-tui-border pb-2 pt-2 mb-4">
+          <TabsList className="border-b border-border pb-2 pt-2 mb-4">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="explain">Explain</TabsTrigger>
-            <TabsTrigger value="trace">Trace</TabsTrigger>
+            {hasTrace && <TabsTrigger value="trace">Trace</TabsTrigger>}
             {hasPatch && <TabsTrigger value="patch">Patch</TabsTrigger>}
           </TabsList>
 
@@ -117,19 +120,22 @@ export function IssueDetailsPane({
                 issue={issue}
                 completedSteps={completedSteps}
                 onToggleStep={onToggleStep}
+                focusedStepIndex={focusedStepIndex}
               />
             </TabsContent>
 
             <TabsContent value="explain" className="mt-0">
-              <div className="text-sm text-tui-fg/80">
+              <div className="text-sm text-foreground/80">
                 <p className="mb-4">{issue.rationale}</p>
                 <p>{issue.recommendation}</p>
               </div>
             </TabsContent>
 
-            <TabsContent value="trace" className="mt-0">
-              <TraceTabContent issue={issue} />
-            </TabsContent>
+            {hasTrace && (
+              <TabsContent value="trace" className="mt-0">
+                <TraceTabContent issue={issue} />
+              </TabsContent>
+            )}
 
             {hasPatch && issue.suggested_patch && (
               <TabsContent value="patch" className="mt-0">
@@ -181,10 +187,12 @@ function DetailsTabContent({
   issue,
   completedSteps,
   onToggleStep,
+  focusedStepIndex,
 }: {
   issue: ReviewIssue;
   completedSteps: Set<number>;
   onToggleStep: (step: number) => void;
+  focusedStepIndex?: number | null;
 }) {
   const evidenceLines = issue.evidence
     .filter((e) => e.type === "code" && e.excerpt)
@@ -198,7 +206,7 @@ function DetailsTabContent({
     <>
       <div className="mb-6">
         <SectionHeader>SYMPTOM</SectionHeader>
-        <p className="text-sm leading-relaxed text-tui-fg/80">{issue.symptom}</p>
+        <p className="text-sm leading-relaxed text-foreground/80">{issue.symptom}</p>
         {evidenceLines.length > 0 && (
           <div className="mt-2">
             <CodeBlock label="Evidence">
@@ -219,7 +227,7 @@ function DetailsTabContent({
 
       <div className="mb-6">
         <SectionHeader>WHY IT MATTERS</SectionHeader>
-        <p className="text-sm leading-relaxed text-tui-fg/80">{issue.whyItMatters}</p>
+        <p className="text-sm leading-relaxed text-foreground/80">{issue.whyItMatters}</p>
       </div>
 
       {issue.fixPlan && issue.fixPlan.length > 0 && (
@@ -229,6 +237,7 @@ function DetailsTabContent({
             steps={issue.fixPlan}
             completedSteps={completedSteps}
             onToggle={onToggleStep}
+            focusedStepIndex={focusedStepIndex}
           />
         </div>
       )}
@@ -238,7 +247,7 @@ function DetailsTabContent({
           <SectionHeader>BETTER OPTIONS</SectionHeader>
           <ul className="list-disc pl-4 space-y-1">
             {issue.betterOptions.map((opt) => (
-              <li key={opt} className="text-sm leading-relaxed text-tui-fg/80">
+              <li key={opt} className="text-sm leading-relaxed text-foreground/80">
                 {opt}
               </li>
             ))}
@@ -251,7 +260,7 @@ function DetailsTabContent({
           <SectionHeader>TESTS TO ADD</SectionHeader>
           <ul className="list-disc pl-4 space-y-1">
             {issue.testsToAdd.map((test) => (
-              <li key={test} className="text-sm leading-relaxed text-tui-fg/80">
+              <li key={test} className="text-sm leading-relaxed text-foreground/80">
                 {test}
               </li>
             ))}
@@ -270,11 +279,11 @@ function TraceTabContent({ issue }: { issue: ReviewIssue }) {
   return (
     <div className="space-y-2">
       {issue.trace.map((t) => (
-        <div key={t.step} className="border-l-2 border-tui-border pl-2">
-          <div className="text-tui-fg text-sm">
+        <div key={t.step} className="border-l-2 border-border pl-2">
+          <div className="text-foreground text-sm">
             Step {t.step}: {t.tool}
           </div>
-          <div className="text-tui-muted text-xs">{t.outputSummary}</div>
+          <div className="text-muted-foreground text-xs">{t.outputSummary}</div>
         </div>
       ))}
     </div>

@@ -14,12 +14,12 @@ export interface InfoFieldProps {
 }
 
 const labelColors: Record<InfoFieldColor, string> = {
-  blue: "text-tui-blue",
-  violet: "text-tui-violet",
-  green: "text-tui-green",
-  yellow: "text-tui-yellow",
-  red: "text-tui-red",
-  muted: "text-tui-muted",
+  blue: "text-info-text",
+  violet: "text-accent",
+  green: "text-success-text",
+  yellow: "text-warning-text",
+  red: "text-error-text",
+  muted: "text-muted-foreground",
 };
 
 export function InfoField({
@@ -33,7 +33,7 @@ export function InfoField({
   const content = (
     <>
       <div className={cn("text-xs uppercase mb-1 font-bold", labelColors[color])}>{label}</div>
-      <div className="text-tui-fg opacity-90">{children}</div>
+      <div className="text-foreground opacity-90">{children}</div>
     </>
   );
 

@@ -1,6 +1,7 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import { getNoChangesCopy } from "@diffgazer/core/review";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
+import { BACK_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
@@ -31,11 +32,7 @@ export function NoChangesView({ mode, onBack, onSwitchMode }: NoChangesViewProps
 
   useKey("Escape", onBack);
 
-  const focusedLabel = onSwitchMode
-    ? footer.focusedIndex === 0
-      ? switchLabel
-      : "Back to Home"
-    : "Back to Home";
+  const focusedLabel = onSwitchMode && footer.focusedIndex === 0 ? switchLabel : "Back to Home";
 
   const footerShortcuts: Shortcut[] =
     actionCount > 1
@@ -47,7 +44,7 @@ export function NoChangesView({ mode, onBack, onSwitchMode }: NoChangesViewProps
 
   usePageFooter({
     shortcuts: footerShortcuts,
-    rightShortcuts: [{ key: "Esc", label: "Back" }],
+    rightShortcuts: [BACK_SHORTCUT],
   });
 
   return (
@@ -57,8 +54,8 @@ export function NoChangesView({ mode, onBack, onSwitchMode }: NoChangesViewProps
         tabIndex={-1}
         className="text-center max-w-md p-6 focus:outline-none"
       >
-        <div className="text-tui-yellow text-lg font-bold mb-4">{title}</div>
-        <p className="text-tui-muted font-mono text-sm mb-6">{message}</p>
+        <div className="text-warning-text text-lg font-bold mb-4">{title}</div>
+        <p className="text-muted-foreground font-mono text-sm mb-6">{message}</p>
         <div className="flex gap-4 justify-center">
           {onSwitchMode && (
             <Button

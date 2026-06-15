@@ -1,4 +1,5 @@
 import type { TimelineItem } from "@diffgazer/core/schemas/presentation";
+import { pluralize } from "@diffgazer/core/strings";
 import { isListNavigationKey, toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 
@@ -26,7 +27,7 @@ export function TimelineList({
     onSelect(id);
   };
 
-  const getCountDescription = (count: number) => `${count} ${count === 1 ? "review" : "reviews"}`;
+  const getCountDescription = (count: number) => pluralize(count, "run");
 
   return (
     <NavigationList
@@ -54,7 +55,7 @@ export function TimelineList({
           key={item.id}
           id={item.id}
           density="compact"
-          className="border-b border-tui-border last:border-b-0"
+          className="border-b border-border last:border-b-0"
         >
           <NavigationList.Title>{item.label}</NavigationList.Title>
           <NavigationList.Status>{item.count}</NavigationList.Status>

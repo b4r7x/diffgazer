@@ -1,8 +1,40 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { resolveAndRewriteOrigin } from "../origin.js";
+import { REGISTRY_ITEM_TYPE, RegistrySchema } from "../registry-types.js";
+import { readJson } from "../utils/json.js";
 import { resolveLocalShadcnBin, runShadcnRegistryBuild } from "./runner.js";
 import { validatePublicRegistryFresh } from "./validate.js";
+
+// Mirror the tsup styles.css aggregation (libs/ui/tsup.config.ts): start from the
+// seed styles.css, then append every non-`registry:theme` registry CSS file in
+// source-registry order. Theme CSS is already imported by the seed and is not
+// re-appended. The shadcn direct-URL/namespace path ships only this aggregated
+// styles.css, so a `npx shadcn add` of the theme item carries the component CSS
+// (dialog backdrop/body-lock, etc.) that per-item `~/styles/<name>.css` files do
+// not import — keeping all three install paths (copy/package/shadcn) at parity.
+export function aggregateThemeStyles(params: {
+  rootDir: string;
+  sourceRegistryPath: string;
+  seedContent: string;
+}): string {
+  const { rootDir, sourceRegistryPath, seedContent } = params;
+  const registry = readJson(resolve(rootDir, sourceRegistryPath), RegistrySchema);
+
+  let aggregated = seedContent;
+  for (const item of registry.items) {
+    if (item.type === REGISTRY_ITEM_TYPE.theme) continue;
+    for (const file of item.files) {
+      if (!file.path.endsWith(".css")) continue;
+      const cssPath = resolve(rootDir, file.path);
+      if (!existsSync(cssPath)) {
+        throw new Error(`Registry CSS file is missing: ${file.path}`);
+      }
+      aggregated += `\n${readFileSync(cssPath, "utf-8")}`;
+    }
+  }
+  return aggregated;
+}
 
 export interface EnsurePublicRegistryReadyOptions {
   rootDir: string;

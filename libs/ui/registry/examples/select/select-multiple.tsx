@@ -14,7 +14,7 @@ export default function SelectMultiple() {
   return (
     <div className="w-64">
       <Select multiple variant="card" value={value} onChange={setValue}>
-        <SelectTrigger>
+        <SelectTrigger aria-label="Languages">
           <SelectValue placeholder="Select languages..." />
         </SelectTrigger>
         <SelectContent>

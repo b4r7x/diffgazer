@@ -1,3 +1,5 @@
+import { log } from "../../shared/lib/log.js";
+
 const SHUTDOWN_DELAY_MS = 75;
 const SHUTDOWN_SIGNAL: NodeJS.Signals = "SIGTERM";
 const SHUTDOWN_UNAVAILABLE_MESSAGE = "Shutdown is not available in this environment.";
@@ -12,7 +14,7 @@ const scheduleCliTermination = (cliPid: number): void => {
     try {
       process.kill(cliPid, SHUTDOWN_SIGNAL);
     } catch (error) {
-      console.error("Failed to terminate CLI process via /api/shutdown:", error);
+      log("error", "shutdown_cli_terminate_failed", { error });
     } finally {
       shutdownScheduled = false;
     }

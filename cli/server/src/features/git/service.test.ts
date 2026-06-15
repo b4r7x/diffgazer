@@ -88,6 +88,19 @@ describe("resolveGitService (path traversal prevention)", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("accepts embedded dots inside a relative path segment", async () => {
+    mockRealpath
+      .mockResolvedValueOnce("/projects/myapp")
+      .mockResolvedValueOnce("/projects/myapp/src/foo..bar.ts");
+
+    const result = await resolveGitService({
+      basePath: "/projects/myapp",
+      relativePath: "src/foo..bar.ts",
+    });
+
+    expect(result.ok).toBe(true);
+  });
+
   it("accepts a basePath alone with no relativePath", async () => {
     mockRealpath.mockResolvedValue("/projects/myapp");
 

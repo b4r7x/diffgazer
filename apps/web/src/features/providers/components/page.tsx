@@ -1,7 +1,8 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import type { CredentialRef } from "@diffgazer/core/schemas/config";
 import { PROVIDER_ENV_VARS } from "@diffgazer/core/schemas/config";
-import type { Shortcut } from "@diffgazer/core/schemas/presentation";
+import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
+import { CenteredStatus } from "@/components/shared/centered-status";
 import { ApiKeyDialog } from "@/features/providers/components/api-key-dialog/dialog";
 import { ProviderDetails } from "@/features/providers/components/details";
 import { ProviderList } from "@/features/providers/components/list";
@@ -30,7 +31,7 @@ function getProvidersFooter(
         { key: "↑/↓", label: "Switch Zone" },
         { key: "/", label: "Search" },
       ],
-      rightShortcuts: [{ key: "Esc", label: "Back" }],
+      rightShortcuts: [BACK_SHORTCUT],
     };
   }
 
@@ -41,7 +42,7 @@ function getProvidersFooter(
         { key: "Enter/Space", label: "Activate Action" },
         { key: "/", label: "Search" },
       ],
-      rightShortcuts: [{ key: "Esc", label: "Back" }],
+      rightShortcuts: [BACK_SHORTCUT],
     };
   }
 
@@ -56,7 +57,7 @@ function getProvidersFooter(
         : []),
       { key: "/", label: "Search" },
     ],
-    rightShortcuts: [{ key: "Esc", label: "Back" }],
+    rightShortcuts: [BACK_SHORTCUT],
   };
 }
 
@@ -105,18 +106,12 @@ export function ProvidersPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <output className="text-tui-muted" aria-live="polite">
-          Loading providers...
-        </output>
-      </div>
-    );
+    return <CenteredStatus>Loading providers...</CenteredStatus>;
   }
 
   return (
     <div className="flex-1 flex overflow-hidden">
-      <div className="w-2/5 flex flex-col border-r border-tui-border">
+      <div className="w-2/5 flex flex-col border-r border-border">
         <ProviderList
           ref={keyboard.listContainerRef}
           providers={filteredProviders}
@@ -146,7 +141,7 @@ export function ProvidersPage() {
           onBoundaryReached={keyboard.handleListBoundary}
         />
       </div>
-      <div className="w-3/5 flex flex-col bg-tui-bg">
+      <div className="w-3/5 flex flex-col bg-background">
         <ProviderDetails
           provider={selectedProvider}
           actions={actions}

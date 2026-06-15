@@ -1,6 +1,10 @@
 import { isApiError } from "@diffgazer/core/api";
 import { useReview } from "@diffgazer/core/api/hooks";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import {
+  type ReviewScreenPhase,
+  resolveSavedReviewOutcome,
+  type SavedReviewQueryState,
+} from "@diffgazer/core/review";
 import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -9,22 +13,11 @@ import { type ReviewCompleteData, ReviewContainer, ReviewLoadingMessage } from "
 import { ReviewResultsView } from "./results-view";
 import { ReviewSummaryView } from "./summary-view";
 
-interface ReviewData {
-  issues: ReviewIssue[];
-  reviewId: string | null;
-}
+type ReviewData = ReviewCompleteData;
 
 type LiveReviewState =
-  | { phase: "streaming"; reviewId: string }
-  | { phase: "summary"; reviewData: ReviewData }
-  | { phase: "results"; reviewData: ReviewData };
-
-type SavedReviewOutcome =
-  | { kind: "results"; data: ReviewData }
-  | { kind: "fallback-to-stream" }
-  | { kind: "report-error"; error: unknown }
-  | { kind: "loading" }
-  | { kind: "not-found" };
+  | { phase: Extract<ReviewScreenPhase, "streaming">; reviewId: string }
+  | { phase: Extract<ReviewScreenPhase, "summary" | "results">; reviewData: ReviewData };
 
 const REVIEW_ROUTE = "/review/{-$reviewId}" as const;
 
@@ -34,35 +27,22 @@ function getLiveReviewId(state: LiveReviewState | null): string | null {
   return state.reviewData.reviewId;
 }
 
-function getSavedReviewOutcome(
+function toSavedReviewQueryState(
   savedReviewQuery: ReturnType<typeof useReview>,
-  streamNotFound: boolean,
-): SavedReviewOutcome {
+): SavedReviewQueryState {
+  let status: SavedReviewQueryState["status"] = "pending";
   if (savedReviewQuery.isSuccess) {
-    const savedReview = savedReviewQuery.data?.review;
-    if (savedReview?.result) {
-      return {
-        kind: "results",
-        data: { issues: savedReview.result.issues, reviewId: savedReview.metadata.id },
-      };
-    }
-    // Saved review exists but has no result. If we already tried the stream
-    // and it 404'd, there is nothing to show -- report not-found instead of
-    // looping back to the dead stream.
-    if (streamNotFound) return { kind: "not-found" };
-    return { kind: "fallback-to-stream" };
+    status = "success";
+  } else if (savedReviewQuery.isError) {
+    status = "error";
   }
 
-  if (savedReviewQuery.isError) {
-    if (isApiError(savedReviewQuery.error) && savedReviewQuery.error.status === 404) {
-      // Same loop guard: stream already 404'd, saved also 404'd.
-      if (streamNotFound) return { kind: "not-found" };
-      return { kind: "fallback-to-stream" };
-    }
-    return { kind: "report-error", error: savedReviewQuery.error };
-  }
-
-  return { kind: "loading" };
+  return {
+    status,
+    review: savedReviewQuery.data?.review ?? null,
+    error: savedReviewQuery.error,
+    notFound: isApiError(savedReviewQuery.error) && savedReviewQuery.error.status === 404,
+  };
 }
 
 export function ReviewPage() {
@@ -77,6 +57,20 @@ export function ReviewPage() {
   );
   const [streamNotFound, setStreamNotFound] = useState(false);
   const notFoundReportedRef = useRef(false);
+  const reportErrorReportedRef = useRef(false);
+
+  // Reset the screen state when the route's review identity changes, during
+  // render (no derived-state effect): a new reviewId/live navigation starts a
+  // fresh streaming/idle screen rather than reusing the previous review's state.
+  const [routeKey, setRouteKey] = useState(`${reviewId ?? ""}:${isLiveNavigation}`);
+  const nextRouteKey = `${reviewId ?? ""}:${isLiveNavigation}`;
+  if (routeKey !== nextRouteKey) {
+    setRouteKey(nextRouteKey);
+    setLiveState(reviewId && isLiveNavigation ? { phase: "streaming", reviewId } : null);
+    setStreamNotFound(false);
+    notFoundReportedRef.current = false;
+    reportErrorReportedRef.current = false;
+  }
 
   const router = useRouter();
   const navigate = useNavigate();
@@ -87,7 +81,7 @@ export function ReviewPage() {
   const shouldLoadSavedReview = Boolean(reviewId && !isLiveReviewRoute && !liveState);
   const savedReviewQuery = useReview(shouldLoadSavedReview ? (reviewId ?? "") : "");
   const savedOutcome = shouldLoadSavedReview
-    ? getSavedReviewOutcome(savedReviewQuery, streamNotFound)
+    ? resolveSavedReviewOutcome(toSavedReviewQueryState(savedReviewQuery), streamNotFound)
     : null;
   const savedOutcomeKind = savedOutcome?.kind ?? null;
   const savedErrorForReport = savedOutcome?.kind === "report-error" ? savedOutcome.error : null;
@@ -102,13 +96,8 @@ export function ReviewPage() {
   };
 
   useEffect(() => {
-    setLiveState(reviewId && isLiveNavigation ? { phase: "streaming", reviewId } : null);
-    setStreamNotFound(false);
-    notFoundReportedRef.current = false;
-  }, [reviewId, isLiveNavigation]);
-
-  useEffect(() => {
-    if (savedOutcomeKind === "report-error") {
+    if (savedOutcomeKind === "report-error" && !reportErrorReportedRef.current) {
+      reportErrorReportedRef.current = true;
       handleApiError(savedErrorForReport);
     }
   }, [savedOutcomeKind, savedErrorForReport, handleApiError]);
@@ -161,6 +150,9 @@ export function ReviewPage() {
         <ReviewSummaryView
           issues={currentLiveState.reviewData.issues}
           reviewId={currentLiveState.reviewData.reviewId}
+          lensStats={currentLiveState.reviewData.lensStats}
+          droppedBelowThreshold={currentLiveState.reviewData.droppedBelowThreshold}
+          minSeverity={currentLiveState.reviewData.minSeverity}
           onEnterReview={() =>
             setLiveState({ phase: "results", reviewData: currentLiveState.reviewData })
           }

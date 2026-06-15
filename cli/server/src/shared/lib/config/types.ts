@@ -4,6 +4,14 @@ import type { ProviderStatus, SettingsConfig, TrustConfig } from "@diffgazer/cor
 export interface ConfigState {
   settings: SettingsConfig;
   providers: ProviderStatus[];
+  /**
+   * Provider entries from a newer binary that did not validate against the
+   * current schema. Carried opaquely so they round-trip on persist instead of
+   * being destroyed (F-445).
+   */
+  unknownProviders?: unknown[];
+  /** Settings fields this binary does not recognize, preserved for round-trip (F-445). */
+  unknownSettings?: Record<string, unknown>;
 }
 
 /** An env-var credential reference stored in the secrets file instead of a literal key. */
@@ -17,6 +25,12 @@ export type SecretEntry = string | EnvCredentialRef;
 
 export interface SecretsState {
   providers: Record<string, SecretEntry>;
+  /**
+   * Secret entries whose ref kind this binary does not recognize (e.g. a newer
+   * reference type). Carried opaquely so they round-trip on persist instead of
+   * failing the whole file (F-445).
+   */
+  unknownSecrets?: Record<string, unknown>;
 }
 
 export interface TrustState {

@@ -1,107 +1,113 @@
-/* @diffgazer/ui TUI Theme - Diffgazer (Minimal Monochrome) */
+/* @diffgazer/ui Theme - Diffgazer (Minimal Monochrome) */
 
 @import "./theme-base.css";
 
 :root,
 [data-theme="dark"] {
-  /* Primitive TUI Colors - Diffgazer Theme */
-  --tui-bg: #0a0a0a;
-  --tui-fg: #e5e5e5;
-  --tui-dim: #9c9c9c;
-  --tui-border: #606060;
-  --tui-highlight: #ffffff;
-  --tui-highlight-fg: #000000;
-  --tui-input-bg: #0a0a0a;
-  --tui-muted: #787878;
-  --tui-selection: #333333;
+  /* Primitive base colors - Diffgazer Theme */
+  --base-bg: #0a0a0a;
+  --base-fg: #e5e5e5;
+  --base-dim: #9c9c9c;
+  --base-border: #606060;
+  --base-highlight: #ffffff;
+  --base-highlight-foreground: #000000;
+  --base-input-bg: #0a0a0a;
+  --base-muted: #808080; /* ≥4.5:1 on #0a0a0a (was #787878, 4.48:1) */
+  --base-selection: #333333;
 
   /* Accent colors - simplified for minimal theme */
-  --tui-blue: #ccccff; /* light for links */
-  --tui-violet: #787878;
-  --tui-green: #e5e5e5; /* white for success in minimal */
-  --tui-red: #ff7b72; /* keep for error */
-  --tui-yellow: #d29922; /* keep for warning */
+  --base-info: #ccccff; /* light for links */
+  --base-accent: #808080; /* ≥4.5:1 on #0a0a0a (was #787878, 4.48:1) */
+  --base-success: #e5e5e5; /* white for success in minimal */
+  --base-danger: #ff7b72; /* keep for error */
+  --base-warning: #d29922; /* keep for warning */
 
   /* Code syntax palette (shared by Fumadocs + generated snippets) */
-  --code-comment: var(--tui-dim);
-  --code-string: var(--tui-violet);
-  --code-number: var(--tui-violet);
-  --code-keyword: var(--tui-blue);
-  --code-function: var(--tui-green);
-  --code-tag: var(--tui-green);
-  --code-attr: var(--tui-blue);
-  --code-parameter: var(--tui-yellow);
-  --code-operator: var(--tui-red);
-  --code-variable: var(--tui-fg);
-  --code-type: var(--tui-blue);
+  --code-comment: var(--base-dim);
+  --code-string: var(--base-accent);
+  --code-number: var(--base-accent);
+  --code-keyword: var(--base-info);
+  --code-function: var(--base-success);
+  --code-tag: var(--base-success);
+  --code-attr: var(--base-info);
+  --code-parameter: var(--base-warning);
+  --code-operator: var(--base-danger);
+  --code-variable: var(--base-fg);
+  --code-type: var(--base-info);
 
-  --tui-font-mono:
+  --base-font-mono:
     "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
     monospace;
 
   /* Semantic mappings */
-  --background: var(--tui-bg);
-  --foreground: var(--tui-fg);
-  --primary: var(--tui-fg);
-  --primary-foreground: var(--tui-bg);
-  --secondary: var(--tui-selection);
-  --secondary-foreground: var(--tui-fg);
-  --muted: var(--tui-muted);
-  --muted-foreground: var(--tui-dim);
-  --border: var(--tui-border);
-  --input: var(--tui-selection);
-  --destructive: var(--tui-red);
-  --destructive-foreground: var(--tui-bg);
-  --accent: var(--tui-highlight);
-  --accent-foreground: var(--tui-highlight-fg);
-  --card: var(--tui-selection);
-  --card-foreground: var(--tui-fg);
-  --popover: var(--tui-selection);
-  --popover-foreground: var(--tui-fg);
-  --ring: var(--tui-fg);
-  --success: var(--tui-green);
-  --success-foreground: var(--tui-bg);
-  --warning: var(--tui-yellow);
-  --warning-foreground: var(--tui-bg);
-  --info: var(--tui-blue);
-  --info-foreground: var(--tui-bg);
-  --error: var(--tui-red);
-  --error-foreground: var(--tui-bg);
+  --background: var(--base-bg);
+  --foreground: var(--base-fg);
+  --primary: var(--base-fg);
+  --primary-foreground: var(--base-bg);
+  --secondary: var(--base-selection);
+  --secondary-foreground: var(--base-fg);
+  --muted: var(--base-muted);
+  --muted-foreground: var(--base-dim);
+  --border: var(--base-border);
+  --input: var(--base-selection);
+  --accent: var(--base-highlight);
+  --accent-foreground: var(--base-highlight-foreground);
+  --card: var(--base-selection);
+  --card-foreground: var(--base-fg);
+  --popover: var(--base-selection);
+  --popover-foreground: var(--base-fg);
+  --ring: var(--base-fg);
+  --success: var(--base-success);
+  --success-foreground: var(--base-bg);
+  --warning: var(--base-warning);
+  --warning-foreground: var(--base-bg);
+  --info: var(--base-info);
+  --info-foreground: var(--base-bg);
+  --error: var(--base-danger);
+  --error-foreground: var(--base-bg);
 
-  --success-subtle: #e5e5e51a;
-  --success-fg: var(--tui-green);
-  --success-border: var(--tui-green);
-  --success-strong: var(--tui-green);
-  --success-strong-foreground: var(--tui-bg);
+  /*
+   * Subtle tone backgrounds derive from their primitive via color-mix so a
+   * single primitive override re-tints every subtle surface (Badge/Callout).
+   * Percentages preserve the historical alpha; neutral anchors to --base-border.
+   */
+  --success-subtle: color-mix(in oklab, var(--base-success) 10%, transparent);
+  --success-text: var(--base-success);
+  --success-border: var(--base-success);
+  --success-strong: var(--base-success);
+  --success-strong-foreground: var(--base-bg);
 
-  --warning-subtle: #d299220d;
-  --warning-fg: var(--tui-yellow);
-  --warning-border: var(--tui-yellow);
-  --warning-strong: var(--tui-yellow);
-  --warning-strong-foreground: var(--tui-bg);
+  --warning-subtle: color-mix(in oklab, var(--base-warning) 5%, transparent);
+  --warning-text: var(--base-warning);
+  --warning-border: var(--base-warning);
+  --warning-strong: var(--base-warning);
+  --warning-strong-foreground: var(--base-bg);
 
-  --error-subtle: #ff7b721a;
-  --error-fg: var(--tui-red);
-  --error-border: var(--tui-red);
-  --error-strong: var(--tui-red);
-  --error-strong-foreground: var(--tui-bg);
+  --error-subtle: color-mix(in oklab, var(--base-danger) 10%, transparent);
+  --error-text: var(--base-danger);
+  --error-border: var(--base-danger);
+  --error-strong: var(--base-danger);
+  --error-strong-foreground: var(--base-bg);
 
-  --info-subtle: #ccccff1a;
-  --info-fg: var(--tui-blue);
-  --info-border: var(--tui-blue);
-  --info-strong: var(--tui-blue);
-  --info-strong-foreground: var(--tui-bg);
+  --info-subtle: color-mix(in oklab, var(--base-info) 10%, transparent);
+  --info-text: var(--base-info);
+  --info-border: var(--base-info);
+  --info-strong: var(--base-info);
+  --info-strong-foreground: var(--base-bg);
 
-  --neutral-subtle: #6666661a;
-  --neutral-border: var(--tui-border);
-  --neutral-fg: var(--tui-muted);
-  --neutral-strong: var(--tui-muted);
-  --neutral-strong-foreground: var(--tui-bg);
+  --neutral-subtle: color-mix(in oklab, var(--base-border) 10%, transparent);
+  --neutral-border: var(--base-border);
+  --neutral-text: var(--base-muted);
+  --neutral-strong: var(--base-muted);
+  --neutral-strong-foreground: var(--base-bg);
 
-  --action: var(--tui-highlight);
-  --action-foreground: var(--tui-highlight-fg);
+  --action: var(--base-highlight);
+  --action-foreground: var(--base-highlight-foreground);
 
-  /* Surface elevation steps. --surface-1 is one step lighter than --tui-bg
+  /* Shared scrim for modal backdrops (same value across themes). */
+  --scrim: rgb(0 0 0 / 0.6);
+
+  /* Surface elevation steps. --surface-1 is one step lighter than --base-bg
      for Linear/Raycast-style elevated panels (Panel frame="surface"). */
   --surface-1: #111111;
 
@@ -111,100 +117,101 @@
 
 /* Light theme — available for package consumers via data-theme="light" */
 [data-theme="light"] {
-  /* Primitive TUI Colors - Diffgazer Light Theme */
-  --tui-bg: #f7f8f5;
-  --tui-fg: #1f2328;
-  --tui-dim: #5f6872;
-  --tui-border: #aeb7c0;
-  --tui-highlight: #1f2328;
-  --tui-highlight-fg: #ffffff;
-  --tui-input-bg: #ffffff;
-  --tui-muted: #69717a;
-  --tui-selection: #e8edf3;
+  /* Primitive base colors - Diffgazer Light Theme */
+  --base-bg: #f7f8f5;
+  --base-fg: #1f2328;
+  --base-dim: #5f6872;
+  --base-border: #aeb7c0;
+  --base-highlight: #1f2328;
+  --base-highlight-foreground: #ffffff;
+  --base-input-bg: #ffffff;
+  --base-muted: #69717a;
+  --base-selection: #e8edf3;
 
   /* Accent colors */
-  --tui-blue: #0b63ce;
-  --tui-violet: #6f42c1;
-  --tui-green: #0f7a4f;
-  --tui-red: #c62828;
-  --tui-yellow: #8a5a00;
+  --base-info: #0b63ce;
+  --base-accent: #6f42c1;
+  --base-success: #0f7a4f;
+  --base-danger: #c62828;
+  --base-warning: #8a5a00;
 
   /* Code syntax palette (shared by Fumadocs + generated snippets) */
-  --code-comment: var(--tui-dim);
-  --code-string: var(--tui-violet);
-  --code-number: var(--tui-violet);
-  --code-keyword: var(--tui-blue);
-  --code-function: var(--tui-green);
-  --code-tag: var(--tui-green);
-  --code-attr: var(--tui-blue);
-  --code-parameter: var(--tui-yellow);
-  --code-operator: var(--tui-red);
-  --code-variable: var(--tui-fg);
-  --code-type: var(--tui-blue);
+  --code-comment: var(--base-dim);
+  --code-string: var(--base-accent);
+  --code-number: var(--base-accent);
+  --code-keyword: var(--base-info);
+  --code-function: var(--base-success);
+  --code-tag: var(--base-success);
+  --code-attr: var(--base-info);
+  --code-parameter: var(--base-warning);
+  --code-operator: var(--base-danger);
+  --code-variable: var(--base-fg);
+  --code-type: var(--base-info);
 
   /* Semantic mappings */
-  --background: var(--tui-bg);
-  --foreground: var(--tui-fg);
-  --primary: var(--tui-highlight);
-  --primary-foreground: var(--tui-highlight-fg);
-  --secondary: var(--tui-selection);
-  --secondary-foreground: var(--tui-fg);
-  --muted: var(--tui-muted);
-  --muted-foreground: var(--tui-dim);
-  --border: var(--tui-border);
-  --input: var(--tui-input-bg);
-  --destructive: var(--tui-red);
-  --destructive-foreground: #ffffff;
-  --accent: var(--tui-violet);
-  --accent-foreground: var(--tui-highlight-fg);
-  --card: var(--tui-input-bg);
-  --card-foreground: var(--tui-fg);
-  --popover: var(--tui-input-bg);
-  --popover-foreground: var(--tui-fg);
-  --ring: var(--tui-blue);
-  --success: var(--tui-green);
+  --background: var(--base-bg);
+  --foreground: var(--base-fg);
+  --primary: var(--base-highlight);
+  --primary-foreground: var(--base-highlight-foreground);
+  --secondary: var(--base-selection);
+  --secondary-foreground: var(--base-fg);
+  --muted: var(--base-muted);
+  --muted-foreground: var(--base-dim);
+  --border: var(--base-border);
+  --input: var(--base-input-bg);
+  --accent: var(--base-accent);
+  --accent-foreground: var(--base-highlight-foreground);
+  --card: var(--base-input-bg);
+  --card-foreground: var(--base-fg);
+  --popover: var(--base-input-bg);
+  --popover-foreground: var(--base-fg);
+  --ring: var(--base-info);
+  --success: var(--base-success);
   --success-foreground: #ffffff;
-  --warning: var(--tui-yellow);
+  --warning: var(--base-warning);
   --warning-foreground: #ffffff;
-  --info: var(--tui-blue);
+  --info: var(--base-info);
   --info-foreground: #ffffff;
-  --error: var(--tui-red);
+  --error: var(--base-danger);
   --error-foreground: #ffffff;
 
-  --success-subtle: #0f7a4f1f;
-  --success-fg: var(--tui-green);
-  --success-border: var(--tui-green);
-  --success-strong: var(--tui-green);
+  --success-subtle: color-mix(in oklab, var(--base-success) 12%, transparent);
+  --success-text: var(--base-success);
+  --success-border: var(--base-success);
+  --success-strong: var(--base-success);
   --success-strong-foreground: #ffffff;
 
-  --warning-subtle: #8a5a0014;
-  --warning-fg: var(--tui-yellow);
-  --warning-border: var(--tui-yellow);
-  --warning-strong: var(--tui-yellow);
+  --warning-subtle: color-mix(in oklab, var(--base-warning) 8%, transparent);
+  --warning-text: var(--base-warning);
+  --warning-border: var(--base-warning);
+  --warning-strong: var(--base-warning);
   --warning-strong-foreground: #ffffff;
 
-  --error-subtle: #c628281a;
-  --error-fg: var(--tui-red);
-  --error-border: var(--tui-red);
-  --error-strong: var(--tui-red);
+  --error-subtle: color-mix(in oklab, var(--base-danger) 10%, transparent);
+  --error-text: var(--base-danger);
+  --error-border: var(--base-danger);
+  --error-strong: var(--base-danger);
   --error-strong-foreground: #ffffff;
 
-  --info-subtle: #0b63ce1a;
-  --info-fg: var(--tui-blue);
-  --info-border: var(--tui-blue);
-  --info-strong: var(--tui-blue);
+  --info-subtle: color-mix(in oklab, var(--base-info) 10%, transparent);
+  --info-text: var(--base-info);
+  --info-border: var(--base-info);
+  --info-strong: var(--base-info);
   --info-strong-foreground: #ffffff;
 
-  --neutral-subtle: #aeb7c014;
-  --neutral-border: var(--tui-border);
-  --neutral-fg: var(--tui-muted);
-  --neutral-strong: var(--tui-muted);
+  --neutral-subtle: color-mix(in oklab, var(--base-border) 8%, transparent);
+  --neutral-border: var(--base-border);
+  --neutral-text: var(--base-muted);
+  --neutral-strong: var(--base-muted);
   --neutral-strong-foreground: #ffffff;
 
-  --action: var(--tui-violet);
+  --action: var(--base-accent);
   --action-foreground: #ffffff;
 
+  /* Shared scrim for modal backdrops (same value across themes). */
+  --scrim: rgb(0 0 0 / 0.6);
+
   /* Surface elevation steps. --surface-1 is the elevated surface vs
-     --tui-bg (Linear-style cards / Panel frame="surface"). */
+     --base-bg (Linear-style cards / Panel frame="surface"). */
   --surface-1: #ffffff;
 }

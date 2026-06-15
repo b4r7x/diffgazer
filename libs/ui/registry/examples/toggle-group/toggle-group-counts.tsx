@@ -7,7 +7,13 @@ export default function ToggleGroupCounts() {
   const [filter, setFilter] = useState<string | null>("error");
   return (
     <div className="flex flex-col gap-4">
-      <ToggleGroup value={filter} onChange={setFilter} allowDeselect size="sm">
+      <ToggleGroup
+        label="Severity filter (small)"
+        value={filter}
+        onChange={setFilter}
+        allowDeselect
+        size="sm"
+      >
         <ToggleGroup.Item value="error" count={3}>
           Error
         </ToggleGroup.Item>
@@ -18,7 +24,13 @@ export default function ToggleGroupCounts() {
           Info
         </ToggleGroup.Item>
       </ToggleGroup>
-      <ToggleGroup value={filter} onChange={setFilter} allowDeselect size="md">
+      <ToggleGroup
+        label="Severity filter (medium)"
+        value={filter}
+        onChange={setFilter}
+        allowDeselect
+        size="md"
+      >
         <ToggleGroup.Item value="error" count={3}>
           Error
         </ToggleGroup.Item>

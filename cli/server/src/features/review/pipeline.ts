@@ -1,28 +1,26 @@
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type { SettingsConfig } from "@diffgazer/core/schemas/config";
-import { ErrorCode } from "@diffgazer/core/schemas/errors";
-import type { EnrichProgressEvent } from "@diffgazer/core/schemas/events";
 import { severityRank } from "@diffgazer/core/schemas/presentation";
-import type {
-  LensId,
-  ProfileId,
-  ReviewMode,
-  ReviewResult,
-  ReviewSeverity,
-  SeverityFilter,
+import {
+  type LensId,
+  type ProfileId,
+  ReviewErrorCode,
+  type ReviewMode,
+  type ReviewResult,
+  type ReviewSeverity,
+  type SeverityFilter,
 } from "@diffgazer/core/schemas/review";
 import type { AIClient } from "../../shared/lib/ai/types.js";
 import { getStore } from "../../shared/lib/config/store.js";
-import type { ParsedDiff } from "../../shared/lib/diff/types.js";
 import type { createGitService } from "../../shared/lib/git/service.js";
-import { filterIssuesByMinSeverity } from "../../shared/lib/review/issues.js";
-import { orchestrateReview } from "../../shared/lib/review/orchestrate.js";
-import { getProfile } from "../../shared/lib/review/profiles.js";
-import { saveReview } from "../../shared/lib/storage/reviews.js";
+import { log } from "../../shared/lib/log.js";
 import { reviewAbort } from "./abort.js";
 import { buildProjectContextSnapshot } from "./context/snapshot.js";
-import { enrichIssues } from "./enrichment.js";
+import type { ParsedDiff } from "./engine/diff/types.js";
+import { orchestrateReview } from "./engine/orchestrate.js";
+import { getProfile } from "./engine/profiles.js";
+import { saveReview } from "./storage/reviews.js";
 import { stepComplete, stepError, stepStart } from "./stream/steps.js";
 import { generateReport } from "./summary.js";
 import type { EmitFn, ResolvedConfig, ReviewAbort, ReviewOutcome } from "./types.js";
@@ -96,7 +94,7 @@ export async function resolveReviewConfig(params: {
     projectContext = contextSnapshot.markdown;
     await emit(stepComplete("context"));
   } catch (error) {
-    console.warn("[review] project context snapshot failed:", getErrorMessage(error));
+    log("warn", "review_context_snapshot_failed", { error: getErrorMessage(error) });
     projectContext = "";
     await emit(stepError("context", `Context build failed: ${getErrorMessage(error)}`));
   }
@@ -135,7 +133,7 @@ export async function executeReview(params: {
   );
 
   if (!result.ok) {
-    return err(reviewAbort(result.error.message, "AI_ERROR", "review"));
+    return err(reviewAbort(result.error.message, ReviewErrorCode.AI_ERROR, "review"));
   }
 
   await emit(stepComplete("review"));
@@ -144,6 +142,9 @@ export async function executeReview(params: {
     issues: result.value.issues,
     summary: result.value.summary,
     lensStats: result.value.lensStats,
+    droppedDuplicates: result.value.droppedDuplicates,
+    droppedBelowThreshold: result.value.droppedBelowThreshold,
+    minSeverity: result.value.minSeverity,
   });
 }
 
@@ -157,7 +158,6 @@ export async function finalizeReview(params: {
   parsed: ParsedDiff;
   profileId?: ProfileId;
   activeLenses: LensId[];
-  severityFilter?: SeverityFilter;
   startTime: number;
   signal?: AbortSignal;
   headCommit?: string;
@@ -172,33 +172,16 @@ export async function finalizeReview(params: {
     parsed,
     profileId,
     activeLenses,
-    severityFilter,
     startTime,
     signal,
     headCommit,
   } = params;
 
-  await emit(stepStart("enrich"));
-
-  const reviewedFiles = new Set(parsed.files.map((f) => f.filePath));
-  const enrichedIssues = await enrichIssues(
-    outcome.issues,
-    gitService,
-    async (event: EnrichProgressEvent) => {
-      await emit(event);
-    },
-    signal,
-    reviewedFiles,
-  );
-  const finalIssues = filterIssuesByMinSeverity(enrichedIssues, severityFilter);
-
-  await emit(stepComplete("enrich"));
-
   await emit(stepStart("report"));
 
-  const finalResult = generateReport(finalIssues, outcome.summary);
-
-  await emit(stepComplete("report"));
+  // outcome.issues are already deduplicated, severity-filtered, and
+  // completeness-validated inside orchestrateReview; no second filter pass.
+  const finalResult = generateReport(outcome.issues, outcome.summary);
 
   const statusResult = await gitService.getStatus().catch(() => null);
   signal?.throwIfAborted();
@@ -216,11 +199,19 @@ export async function finalizeReview(params: {
     lenses: activeLenses,
     durationMs: Date.now() - startTime,
     lensStats: outcome.lensStats,
+    droppedDuplicates: outcome.droppedDuplicates,
+    droppedBelowThreshold: outcome.droppedBelowThreshold,
+    minSeverity: outcome.minSeverity,
   });
 
   if (!saveResult.ok) {
-    return err(reviewAbort(saveResult.error.message, ErrorCode.INTERNAL_ERROR));
+    return err(reviewAbort(saveResult.error.message, ReviewErrorCode.INTERNAL_ERROR));
   }
+
+  // Complete the report step only after the durable save — so a save failure
+  // never emits report=completed, and the client's View Results gate stays
+  // truthful (the terminal `complete` signal is the equivalent guard).
+  await emit(stepComplete("report"));
 
   return ok(finalResult);
 }

@@ -8,9 +8,12 @@ import { DialogShell } from "../shared/dialog-shell";
 import { PortalContainerProvider } from "../shared/portal-context";
 import { useCommandPaletteContext } from "./command-palette-context";
 
+/** Allowed command palette frame values. */
 export type CommandPaletteFrame = "border" | "viewfinder" | "terminal" | "card" | "none";
+/** Allowed command palette density values. */
 export type CommandPaletteDensity = "compact" | "comfortable" | "dense";
 
+/** Class variants for command palette content. */
 export const commandPaletteContentVariants = cva(
   "relative flex flex-col max-h-[80vh] m-auto w-full font-mono",
   {
@@ -27,15 +30,35 @@ function getLiveText(search: string, itemCount: number): string {
   return `${itemCount} result${itemCount === 1 ? "" : "s"} available`;
 }
 
+/** Props for command palette content. */
 export interface CommandPaletteContentProps
   extends VariantProps<typeof commandPaletteContentVariants> {
+  /** Content rendered inside the component. */
   children: ReactNode;
+  /** Additional class names merged onto the rendered element. */
   className?: string;
+  /** Accessible name for the modal dialog. */
   label?: string;
+  /**
+   * Shell chrome style. "border" renders a 1px hairline. "viewfinder" renders four corner
+   * brackets with no border plus a 2px left accent bar on the selected row. "terminal" renders
+   * top + bottom 2px rules with inverted selection and swaps the default prefix glyph from > to
+   * $. "card" renders an 8px rounded shell with a subtle gradient surface and a floating
+   * rounded selection (compose with a search-icon `prefix` for the Linear look). "none" is a
+   * bare shell for embedding.
+   */
   frame?: CommandPaletteFrame | null;
+  /**
+   * Typographic and spacing surface. Switches a token block (--command-palette-row-h,
+   * --command-palette-input-py, --command-palette-list-p, --command-palette-text-size, etc.)
+   * consumed by every inner slot via [data-density] selectors in
+   * command-palette/command-palette.css. "compact" matches the V1 refined-mono target,
+   * "comfortable" is Linear-ish breathing room, "dense" is VSCode-tight.
+   */
   density?: CommandPaletteDensity | null;
 }
 
+/** Native dialog modal container with frame + density variants. */
 export function CommandPaletteContent({
   children,
   className,

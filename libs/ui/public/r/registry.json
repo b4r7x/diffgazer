@@ -15,7 +15,8 @@
         "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/icons.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
       "meta": {
         "client": true,
@@ -163,7 +164,8 @@
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/input-variants.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
       "meta": {
         "client": true
@@ -192,7 +194,7 @@
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/aria.json",
-        "https://r.b4r7.dev/r/ui/compose-refs.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json",
         "https://r.b4r7.dev/r/ui/utils.json"
       ],
       "meta": {
@@ -278,7 +280,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/shared/callout.css",
+          "path": "registry/ui/callout/callout.css",
           "type": "registry:style",
           "target": "~/styles/callout.css"
         }
@@ -299,7 +301,9 @@
         "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/selectable-collection.json",
         "https://r.b4r7.dev/r/ui/selectable-variants.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json",
+        "https://r.b4r7.dev/r/ui/warn-unregistered-value.json"
       ],
       "meta": {
         "client": true,
@@ -367,7 +371,9 @@
         "https://r.b4r7.dev/r/keys/navigation.json",
         "https://r.b4r7.dev/r/ui/selectable-collection.json",
         "https://r.b4r7.dev/r/ui/selectable-variants.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json",
+        "https://r.b4r7.dev/r/ui/warn-unregistered-value.json"
       ],
       "meta": {
         "client": true,
@@ -452,7 +458,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/shared/panel.css",
+          "path": "registry/ui/panel/panel.css",
           "type": "registry:style",
           "target": "~/styles/panel.css"
         }
@@ -722,8 +728,8 @@
         "https://r.b4r7.dev/r/ui/tooltip.json",
         "https://r.b4r7.dev/r/ui/overflow-detection.json",
         "https://r.b4r7.dev/r/ui/overflow-items.json",
-        "https://r.b4r7.dev/r/ui/compose-refs.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
       "meta": {
         "client": true
@@ -788,11 +794,11 @@
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/keys/focus-restore.json",
         "https://r.b4r7.dev/r/ui/dialog-shell.json",
-        "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/portal.json",
         "https://r.b4r7.dev/r/ui/kbd.json",
         "https://r.b4r7.dev/r/ui/aria.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
       "meta": {
         "client": true,
@@ -922,7 +928,10 @@
         "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/floating-indicator.json",
         "https://r.b4r7.dev/r/ui/segmented-variants.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/selectable-collection.json",
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json",
+        "https://r.b4r7.dev/r/ui/warn-unregistered-value.json"
       ],
       "meta": {
         "client": true,
@@ -964,8 +973,11 @@
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/listbox.json",
+        "https://r.b4r7.dev/r/ui/selectable-collection.json",
+        "https://r.b4r7.dev/r/ui/outside-click.json",
         "https://r.b4r7.dev/r/ui/utils.json",
-        "https://r.b4r7.dev/r/ui/floating-panel.json"
+        "https://r.b4r7.dev/r/ui/floating-panel.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
       "meta": {
         "client": true,
@@ -1031,9 +1043,13 @@
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/listbox.json",
+        "https://r.b4r7.dev/r/ui/selectable-collection.json",
         "https://r.b4r7.dev/r/ui/badge.json",
         "https://r.b4r7.dev/r/ui/utils.json",
-        "https://r.b4r7.dev/r/ui/icons.json"
+        "https://r.b4r7.dev/r/ui/icons.json",
+        "https://r.b4r7.dev/r/ui/aria.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json",
+        "https://r.b4r7.dev/r/ui/warn-unregistered-value.json"
       ],
       "meta": {
         "client": true,
@@ -1104,10 +1120,12 @@
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/outside-click.json",
         "https://r.b4r7.dev/r/ui/spinner.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/keys/navigation.json"
       ],
       "meta": {
-        "client": true
+        "client": true,
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -1153,9 +1171,12 @@
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/badge.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
+        "https://r.b4r7.dev/r/ui/selectable-collection.json",
+        "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/step-status.json",
         "https://r.b4r7.dev/r/ui/stepper-variants.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
       "files": [
         {
@@ -1208,7 +1229,8 @@
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/ui/form-reset.json",
         "https://r.b4r7.dev/r/ui/compose-refs.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
       "meta": {
         "client": true
@@ -1239,7 +1261,8 @@
         "https://r.b4r7.dev/r/ui/floating-indicator.json",
         "https://r.b4r7.dev/r/ui/selectable-collection.json",
         "https://r.b4r7.dev/r/ui/segmented-variants.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
       "meta": {
         "client": true,
@@ -1273,7 +1296,8 @@
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/scroll-area.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/copy-to-clipboard.json"
       ],
       "meta": {
         "client": true
@@ -1316,7 +1340,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/shared/code-block.css",
+          "path": "registry/ui/code-block/code-block.css",
           "type": "registry:style",
           "target": "~/styles/code-block.css"
         }
@@ -1359,7 +1383,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/shared/diff-view.css",
+          "path": "registry/ui/diff-view/diff-view.css",
           "type": "registry:style",
           "target": "~/styles/diff-view.css"
         }
@@ -1371,8 +1395,7 @@
       "title": "Horizontal Stepper",
       "description": "Horizontal step-by-step progress indicator",
       "meta": {
-        "client": true,
-        "docsPage": false
+        "client": true
       },
       "dependencies": ["class-variance-authority"],
       "registryDependencies": [
@@ -1422,7 +1445,8 @@
         "https://r.b4r7.dev/r/ui/search.json",
         "https://r.b4r7.dev/r/ui/selectable-collection.json",
         "https://r.b4r7.dev/r/ui/kbd.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
       "meta": {
         "client": true,
@@ -1482,7 +1506,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/shared/command-palette.css",
+          "path": "registry/ui/command-palette/command-palette.css",
           "type": "registry:style",
           "target": "~/styles/command-palette.css"
         }
@@ -1508,7 +1532,8 @@
         "https://r.b4r7.dev/r/ui/search.json",
         "https://r.b4r7.dev/r/ui/typeahead.json",
         "https://r.b4r7.dev/r/ui/typeahead-buffer.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
       "meta": {
         "client": true,
@@ -1624,8 +1649,9 @@
         "https://r.b4r7.dev/r/ui/dialog.json",
         "https://r.b4r7.dev/r/ui/sidebar-variants.json",
         "https://r.b4r7.dev/r/ui/sidebar-intent.json",
-        "https://r.b4r7.dev/r/ui/use-is-mobile.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/is-mobile.json",
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
       "meta": {
         "client": true,
@@ -1697,7 +1723,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/shared/sidebar.css",
+          "path": "registry/ui/sidebar/sidebar.css",
           "type": "registry:style",
           "target": "~/styles/sidebar.css"
         }
@@ -1931,7 +1957,7 @@
       },
       "files": [
         {
-          "path": "registry/hooks/use-overflow.ts",
+          "path": "registry/hooks/use-overflow-detection.ts",
           "type": "registry:hook"
         }
       ]
@@ -2028,6 +2054,38 @@
       ]
     },
     {
+      "name": "composed-refs",
+      "type": "registry:hook",
+      "title": "useComposedRefs",
+      "description": "Cached companion to composeRefs: returns a stable RefCallback so React does not detach/re-attach the composed refs every commit. Use at component call sites instead of calling composeRefs inline during render.",
+      "registryDependencies": ["https://r.b4r7.dev/r/ui/compose-refs.json"],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/hooks/use-composed-refs.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "copy-to-clipboard",
+      "type": "registry:hook",
+      "title": "useCopyToClipboard",
+      "description": "Copy-to-clipboard state machine: writes text to the clipboard and exposes an idle → copied | failed status that resets after a delay (default 2000ms), with timer cleanup on unmount.",
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/hooks/use-copy-to-clipboard.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
       "name": "utils",
       "type": "registry:lib",
       "title": "Utilities",
@@ -2061,15 +2119,14 @@
       ]
     },
     {
-      "name": "use-is-mobile",
+      "name": "is-mobile",
       "type": "registry:hook",
       "title": "useIsMobile",
       "description": "matchMedia-backed hook that returns true when the viewport is narrower than a breakpoint (default 1024px).",
       "dependencies": [],
       "registryDependencies": [],
       "meta": {
-        "client": true,
-        "docsPage": false
+        "client": true
       },
       "files": [
         {
@@ -2115,7 +2172,8 @@
         "https://r.b4r7.dev/r/ui/presence.json",
         "https://r.b4r7.dev/r/ui/floating-position.json",
         "https://r.b4r7.dev/r/ui/compose-refs.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
       "meta": {
         "client": true
@@ -2141,6 +2199,7 @@
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
         "https://r.b4r7.dev/r/ui/compose-refs.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json",
         "https://r.b4r7.dev/r/ui/typeahead.json",
         "https://r.b4r7.dev/r/ui/typeahead-buffer.json"
       ],
@@ -2171,12 +2230,12 @@
       "dependencies": [],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
-        "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/ui/floating-panel.json",
         "https://r.b4r7.dev/r/ui/outside-click.json",
         "https://r.b4r7.dev/r/keys/focusable.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
       "meta": {
         "client": true,
@@ -2225,7 +2284,8 @@
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/ui/form-reset.json",
         "https://r.b4r7.dev/r/ui/compose-refs.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
       "meta": {
         "client": true

@@ -8,6 +8,7 @@ import { FooterBar } from "./footer-bar";
 
 const navigateMock = vi.hoisted(() => vi.fn());
 
+// Boundary mock: TanStack Router is the external routing library; F2 navigation is asserted without a full route tree.
 vi.mock("@tanstack/react-router", async () => {
   const { RouterLinkMock } = await import("@/testing/router-mock");
   return {

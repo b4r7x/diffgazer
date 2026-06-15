@@ -3,7 +3,7 @@
   "title": "useScrollLock",
   "description": "Prevent body or element scrolling with reference counting. Multiple locks on the same element stack.",
   "source": {
-    "raw": "\"use client\";\n\nimport { type RefObject, useEffect, useRef } from \"react\";\n\nconst lockCounts = new WeakMap<Element, number>();\nconst savedOverflow = new WeakMap<Element, string>();\n\nexport interface UseScrollLockOptions {\n  target?: RefObject<HTMLElement | null>;\n  enabled?: boolean;\n}\n\nfunction lockElement(el: HTMLElement): () => void {\n  const count = lockCounts.get(el) ?? 0;\n\n  if (count === 0) {\n    savedOverflow.set(el, el.style.overflow);\n    el.style.overflow = \"hidden\";\n  }\n  lockCounts.set(el, count + 1);\n\n  return () => {\n    const current = lockCounts.get(el) ?? 1;\n    const next = current - 1;\n    if (next <= 0) {\n      lockCounts.delete(el);\n      el.style.overflow = savedOverflow.get(el) ?? \"\";\n      savedOverflow.delete(el);\n    } else {\n      lockCounts.set(el, next);\n    }\n  };\n}\n\n// Effect-on-every-render is intentional: React does not re-fire effects when\n// target.current mutates while the ref object stays stable.\nexport function useScrollLock(options: UseScrollLockOptions = {}): void {\n  const { target, enabled = true } = options;\n  const lockedElementRef = useRef<HTMLElement | null>(null);\n  const releaseRef = useRef<(() => void) | null>(null);\n\n  // No dependency array on purpose; see hook-level comment above.\n  // eslint-disable-next-line react-hooks/exhaustive-deps\n  useEffect(() => {\n    const nextElement = enabled ? (target?.current ?? document.body) : null;\n    if (lockedElementRef.current === nextElement) return;\n\n    releaseRef.current?.();\n    releaseRef.current = null;\n    lockedElementRef.current = null;\n\n    if (!nextElement) return;\n\n    releaseRef.current = lockElement(nextElement);\n    lockedElementRef.current = nextElement;\n  });\n\n  useEffect(() => {\n    return () => {\n      releaseRef.current?.();\n      releaseRef.current = null;\n      lockedElementRef.current = null;\n    };\n  }, []);\n}\n",
+    "raw": "\"use client\";\n\nimport { type RefObject, useEffect, useRef } from \"react\";\n\nconst lockCounts = new WeakMap<Element, number>();\nconst savedOverflow = new WeakMap<Element, string>();\nconst savedPaddingRight = new WeakMap<Element, string>();\n\n/** Options for preventing body or element scrolling. */\nexport interface UseScrollLockOptions {\n  /** Ref to the element to lock. Defaults to `document.body` when omitted. */\n  target?: RefObject<HTMLElement | null>;\n  /** Whether the scroll lock is active. */\n  enabled?: boolean;\n}\n\nfunction measureScrollbarWidth(el: HTMLElement): number {\n  const ownerDocument = el.ownerDocument;\n  const isViewport = el === ownerDocument.body || el === ownerDocument.scrollingElement;\n  if (isViewport) {\n    const view = ownerDocument.defaultView;\n    if (!view) return 0;\n    return view.innerWidth - ownerDocument.documentElement.clientWidth;\n  }\n  return el.offsetWidth - el.clientWidth;\n}\n\nfunction lockElement(el: HTMLElement): () => void {\n  const count = lockCounts.get(el) ?? 0;\n\n  if (count === 0) {\n    savedOverflow.set(el, el.style.overflow);\n    savedPaddingRight.set(el, el.style.paddingRight);\n\n    const scrollbarWidth = measureScrollbarWidth(el);\n    if (scrollbarWidth > 0) {\n      const view = el.ownerDocument.defaultView;\n      const currentPaddingRight = view\n        ? Number.parseFloat(view.getComputedStyle(el).paddingRight) || 0\n        : 0;\n      el.style.paddingRight = `${currentPaddingRight + scrollbarWidth}px`;\n    }\n\n    el.style.overflow = \"hidden\";\n    el.setAttribute(\"data-scroll-locked\", \"\");\n  }\n  lockCounts.set(el, count + 1);\n\n  return () => {\n    const current = lockCounts.get(el) ?? 1;\n    const next = current - 1;\n    if (next <= 0) {\n      lockCounts.delete(el);\n      el.style.overflow = savedOverflow.get(el) ?? \"\";\n      el.style.paddingRight = savedPaddingRight.get(el) ?? \"\";\n      el.removeAttribute(\"data-scroll-locked\");\n      savedOverflow.delete(el);\n      savedPaddingRight.delete(el);\n    } else {\n      lockCounts.set(el, next);\n    }\n  };\n}\n\n// Effect-on-every-render is intentional: React does not re-fire effects when\n// target.current mutates while the ref object stays stable.\n/**\n * Locks scrolling on the target element with shared reference counting and\n * scrollbar-width padding compensation.\n */\nexport function useScrollLock(options: UseScrollLockOptions = {}): void {\n  const { target, enabled = true } = options;\n  const lockedElementRef = useRef<HTMLElement | null>(null);\n  const releaseRef = useRef<(() => void) | null>(null);\n\n  // No dependency array on purpose; see hook-level comment above.\n  useEffect(() => {\n    const nextElement = enabled ? (target?.current ?? document.body) : null;\n    if (lockedElementRef.current === nextElement) return;\n\n    releaseRef.current?.();\n    releaseRef.current = null;\n    lockedElementRef.current = null;\n\n    if (!nextElement) return;\n\n    releaseRef.current = lockElement(nextElement);\n    lockedElementRef.current = nextElement;\n  });\n\n  useEffect(() => {\n    return () => {\n      releaseRef.current?.();\n      releaseRef.current = null;\n      lockedElementRef.current = null;\n    };\n  }, []);\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -259,10 +259,100 @@
       },
       {
         "number": 7,
-        "content": []
+        "content": [
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "savedPaddingRight",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "new",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "WeakMap",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "Element",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "string",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ">",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
       },
       {
         "number": 8,
+        "content": []
+      },
+      {
+        "number": 9,
+        "content": [
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Options for preventing body or element scrolling. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 10,
         "content": [
           {
             "text": "export",
@@ -295,7 +385,28 @@
         ]
       },
       {
-        "number": 9,
+        "number": 11,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Ref to the element to lock. Defaults to `document.body` when omitted. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 12,
         "content": [
           {
             "text": "  target",
@@ -344,7 +455,28 @@
         ]
       },
       {
-        "number": 10,
+        "number": 13,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Whether the scroll lock is active. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 14,
         "content": [
           {
             "text": "  enabled",
@@ -369,7 +501,7 @@
         ]
       },
       {
-        "number": 11,
+        "number": 15,
         "content": [
           {
             "text": "}",
@@ -378,11 +510,453 @@
         ]
       },
       {
-        "number": 12,
+        "number": 16,
         "content": []
       },
       {
-        "number": 13,
+        "number": 17,
+        "content": [
+          {
+            "text": "function",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "measureScrollbarWidth",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "el",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "HTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "):",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "number",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 18,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "ownerDocument",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "el",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "ownerDocument",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 19,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "isViewport",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " el ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "ownerDocument",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "body ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "||",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " el ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "ownerDocument",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "scrollingElement",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 20,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (isViewport) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 21,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "view",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "ownerDocument",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "defaultView",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 22,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "view) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 23,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "view",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "innerWidth ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "-",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "ownerDocument",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "documentElement",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "clientWidth",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 24,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 25,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "el",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "offsetWidth ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "-",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "el",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "clientWidth",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 26,
+        "content": [
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 27,
+        "content": []
+      },
+      {
+        "number": 28,
         "content": [
           {
             "text": "function",
@@ -455,7 +1029,7 @@
         ]
       },
       {
-        "number": 14,
+        "number": 29,
         "content": [
           {
             "text": "  ",
@@ -520,11 +1094,11 @@
         ]
       },
       {
-        "number": 15,
+        "number": 30,
         "content": []
       },
       {
-        "number": 16,
+        "number": 31,
         "content": [
           {
             "text": "  ",
@@ -561,7 +1135,7 @@
         ]
       },
       {
-        "number": 17,
+        "number": 32,
         "content": [
           {
             "text": "    ",
@@ -618,7 +1192,424 @@
         ]
       },
       {
-        "number": 18,
+        "number": 33,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "savedPaddingRight",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "set",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(el",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "el",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "style",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "paddingRight)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 34,
+        "content": []
+      },
+      {
+        "number": 35,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "scrollbarWidth",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "measureScrollbarWidth",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(el)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 36,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (scrollbarWidth ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ">",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ") ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 37,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "view",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "el",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "ownerDocument",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "defaultView",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 38,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "currentPaddingRight",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " view",
+            "color": "var(--code-variable)"
+          }
+        ]
+      },
+      {
+        "number": 39,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "?",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "Number",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "parseFloat",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "view",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "getComputedStyle",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(el)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "paddingRight) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "||",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          }
+        ]
+      },
+      {
+        "number": 40,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 41,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "el",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "style",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "paddingRight ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "`",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "${",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "currentPaddingRight ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "+",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " scrollbarWidth",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "px",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "`",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 42,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 43,
+        "content": []
+      },
+      {
+        "number": 44,
         "content": [
           {
             "text": "    ",
@@ -671,7 +1662,64 @@
         ]
       },
       {
-        "number": 19,
+        "number": 45,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "el",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "setAttribute",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "data-scroll-locked",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 46,
         "content": [
           {
             "text": "  ",
@@ -684,7 +1732,7 @@
         ]
       },
       {
-        "number": 20,
+        "number": 47,
         "content": [
           {
             "text": "  ",
@@ -737,11 +1785,11 @@
         ]
       },
       {
-        "number": 21,
+        "number": 48,
         "content": []
       },
       {
-        "number": 22,
+        "number": 49,
         "content": [
           {
             "text": "  ",
@@ -778,7 +1826,7 @@
         ]
       },
       {
-        "number": 23,
+        "number": 50,
         "content": [
           {
             "text": "    ",
@@ -843,7 +1891,7 @@
         ]
       },
       {
-        "number": 24,
+        "number": 51,
         "content": [
           {
             "text": "    ",
@@ -892,7 +1940,7 @@
         ]
       },
       {
-        "number": 25,
+        "number": 52,
         "content": [
           {
             "text": "    ",
@@ -929,7 +1977,7 @@
         ]
       },
       {
-        "number": 26,
+        "number": 53,
         "content": [
           {
             "text": "      ",
@@ -958,7 +2006,7 @@
         ]
       },
       {
-        "number": 27,
+        "number": 54,
         "content": [
           {
             "text": "      ",
@@ -1027,7 +2075,121 @@
         ]
       },
       {
-        "number": 28,
+        "number": 55,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "el",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "style",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "paddingRight ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "savedPaddingRight",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "get",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(el) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "??",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 56,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "el",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "removeAttribute",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "data-scroll-locked",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 57,
         "content": [
           {
             "text": "      ",
@@ -1056,7 +2218,36 @@
         ]
       },
       {
-        "number": 29,
+        "number": 58,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "savedPaddingRight",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "delete",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(el)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 59,
         "content": [
           {
             "text": "    ",
@@ -1085,7 +2276,7 @@
         ]
       },
       {
-        "number": 30,
+        "number": 60,
         "content": [
           {
             "text": "      ",
@@ -1122,7 +2313,7 @@
         ]
       },
       {
-        "number": 31,
+        "number": 61,
         "content": [
           {
             "text": "    ",
@@ -1135,7 +2326,7 @@
         ]
       },
       {
-        "number": 32,
+        "number": 62,
         "content": [
           {
             "text": "  ",
@@ -1148,7 +2339,7 @@
         ]
       },
       {
-        "number": 33,
+        "number": 63,
         "content": [
           {
             "text": "}",
@@ -1157,11 +2348,11 @@
         ]
       },
       {
-        "number": 34,
+        "number": 64,
         "content": []
       },
       {
-        "number": 35,
+        "number": 65,
         "content": [
           {
             "text": "//",
@@ -1174,7 +2365,7 @@
         ]
       },
       {
-        "number": 36,
+        "number": 66,
         "content": [
           {
             "text": "//",
@@ -1187,7 +2378,47 @@
         ]
       },
       {
-        "number": 37,
+        "number": 67,
+        "content": [
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 68,
+        "content": [
+          {
+            "text": " * Locks scrolling on the target element with shared reference counting and",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 69,
+        "content": [
+          {
+            "text": " * scrollbar-width padding compensation.",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 70,
+        "content": [
+          {
+            "text": " ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 71,
         "content": [
           {
             "text": "export",
@@ -1264,7 +2495,7 @@
         ]
       },
       {
-        "number": 38,
+        "number": 72,
         "content": [
           {
             "text": "  ",
@@ -1345,7 +2576,7 @@
         ]
       },
       {
-        "number": 39,
+        "number": 73,
         "content": [
           {
             "text": "  ",
@@ -1426,7 +2657,7 @@
         ]
       },
       {
-        "number": 40,
+        "number": 74,
         "content": [
           {
             "text": "  ",
@@ -1527,11 +2758,11 @@
         ]
       },
       {
-        "number": 41,
+        "number": 75,
         "content": []
       },
       {
-        "number": 42,
+        "number": 76,
         "content": [
           {
             "text": "  //",
@@ -1544,20 +2775,7 @@
         ]
       },
       {
-        "number": 43,
-        "content": [
-          {
-            "text": "  //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " eslint-disable-next-line react-hooks/exhaustive-deps",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 44,
+        "number": 77,
         "content": [
           {
             "text": "  ",
@@ -1594,7 +2812,7 @@
         ]
       },
       {
-        "number": 45,
+        "number": 78,
         "content": [
           {
             "text": "    ",
@@ -1683,7 +2901,7 @@
         ]
       },
       {
-        "number": 46,
+        "number": 79,
         "content": [
           {
             "text": "    ",
@@ -1728,11 +2946,11 @@
         ]
       },
       {
-        "number": 47,
+        "number": 80,
         "content": []
       },
       {
-        "number": 48,
+        "number": 81,
         "content": [
           {
             "text": "    ",
@@ -1765,7 +2983,7 @@
         ]
       },
       {
-        "number": 49,
+        "number": 82,
         "content": [
           {
             "text": "    ",
@@ -1802,7 +3020,7 @@
         ]
       },
       {
-        "number": 50,
+        "number": 83,
         "content": [
           {
             "text": "    ",
@@ -1839,11 +3057,11 @@
         ]
       },
       {
-        "number": 51,
+        "number": 84,
         "content": []
       },
       {
-        "number": 52,
+        "number": 85,
         "content": [
           {
             "text": "    ",
@@ -1876,11 +3094,11 @@
         ]
       },
       {
-        "number": 53,
+        "number": 86,
         "content": []
       },
       {
-        "number": 54,
+        "number": 87,
         "content": [
           {
             "text": "    ",
@@ -1921,7 +3139,7 @@
         ]
       },
       {
-        "number": 55,
+        "number": 88,
         "content": [
           {
             "text": "    ",
@@ -1954,7 +3172,7 @@
         ]
       },
       {
-        "number": 56,
+        "number": 89,
         "content": [
           {
             "text": "  ",
@@ -1975,11 +3193,11 @@
         ]
       },
       {
-        "number": 57,
+        "number": 90,
         "content": []
       },
       {
-        "number": 58,
+        "number": 91,
         "content": [
           {
             "text": "  ",
@@ -2016,7 +3234,7 @@
         ]
       },
       {
-        "number": 59,
+        "number": 92,
         "content": [
           {
             "text": "    ",
@@ -2053,7 +3271,7 @@
         ]
       },
       {
-        "number": 60,
+        "number": 93,
         "content": [
           {
             "text": "      ",
@@ -2086,7 +3304,7 @@
         ]
       },
       {
-        "number": 61,
+        "number": 94,
         "content": [
           {
             "text": "      ",
@@ -2123,7 +3341,7 @@
         ]
       },
       {
-        "number": 62,
+        "number": 95,
         "content": [
           {
             "text": "      ",
@@ -2160,7 +3378,7 @@
         ]
       },
       {
-        "number": 63,
+        "number": 96,
         "content": [
           {
             "text": "    ",
@@ -2173,7 +3391,7 @@
         ]
       },
       {
-        "number": 64,
+        "number": 97,
         "content": [
           {
             "text": "  ",
@@ -2194,7 +3412,7 @@
         ]
       },
       {
-        "number": 65,
+        "number": 98,
         "content": [
           {
             "text": "}",
@@ -2203,7 +3421,7 @@
         ]
       },
       {
-        "number": 66,
+        "number": 99,
         "content": []
       }
     ]

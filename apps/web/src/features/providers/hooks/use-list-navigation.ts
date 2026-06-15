@@ -1,4 +1,3 @@
-import { PROVIDER_FILTERS, type ProviderFilter } from "@diffgazer/core/providers";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { useKey } from "@diffgazer/keys";
 import {
@@ -8,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { PROVIDER_FILTERS, type ProviderFilter } from "../lib/filter.js";
 
 type FocusZone = "input" | "filters" | "list" | "buttons";
 

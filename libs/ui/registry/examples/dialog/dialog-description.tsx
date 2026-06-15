@@ -23,19 +23,14 @@ export default function DialogDescriptionExample() {
           </DialogDescription>
         </DialogHeader>
         <DialogBody>
-          <p className="text-sm text-gray-300 leading-relaxed">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             Your current config in{" "}
             <span className="text-foreground font-mono">.diffgazer/config.json</span> will be
             overwritten. A backup will be saved as{" "}
             <span className="text-foreground font-mono">config.json.bak</span>.
           </p>
         </DialogBody>
-        <DialogFooter
-          hints={[
-            { key: "Esc", label: "Close" },
-            { key: "Enter", label: "Confirm" },
-          ]}
-        >
+        <DialogFooter hints={[{ key: "Esc", label: "Close" }]}>
           <DialogClose bracket variant="ghost">
             Cancel
           </DialogClose>

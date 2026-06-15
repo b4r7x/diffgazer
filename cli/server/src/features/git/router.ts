@@ -53,21 +53,11 @@ gitRouter.get(
     const { mode: modeParam } = c.req.valid("query");
     const mode = modeParam ?? "unstaged";
 
-    const statusResult = await result.service.getStatus();
-    if (!statusResult.ok) {
-      return errorResponse(c, statusResult.error.message, ErrorCode.COMMAND_FAILED, 500);
+    const diffResult = await result.service.getDiff(mode);
+    if (!diffResult.ok) {
+      return errorResponse(c, diffResult.error.message, ErrorCode.COMMAND_FAILED, 500);
     }
-    if (!statusResult.value.isGitRepo) {
-      return errorResponse(c, "Not a git repository", ErrorCode.NOT_GIT_REPO, 400);
-    }
-
-    try {
-      const diff = await result.service.getDiff(mode);
-      return c.json({ diff, mode });
-    } catch (error) {
-      console.error("[diffgazer] git diff error:", error);
-      return errorResponse(c, "Failed to retrieve git diff", ErrorCode.COMMAND_FAILED, 500);
-    }
+    return c.json({ diff: diffResult.value, mode });
   },
 );
 

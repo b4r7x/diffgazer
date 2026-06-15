@@ -91,20 +91,6 @@ describe("SettingsHubPage", () => {
     mockGetSettings = vi.fn<BoundApi["getSettings"]>().mockResolvedValue(SETTINGS_FIXTURE);
     mockLoadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse());
     localStorage.clear();
-    Object.defineProperty(window, "matchMedia", {
-      writable: true,
-      configurable: true,
-      value: (query: string) => ({
-        matches: false,
-        media: query,
-        onchange: null,
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      }),
-    });
   });
 
   it("exposes the panel as a region named Settings Hub without double-announcing the corner label", async () => {
@@ -131,11 +117,38 @@ describe("SettingsHubPage", () => {
     expect(screen.queryByText("local settings")).not.toBeInTheDocument();
   });
 
+  it("names the persistent settings menu so it is not an unlabeled role=menu", () => {
+    renderPage();
+    expect(screen.getByRole("menu", { name: /settings/i })).toBeInTheDocument();
+  });
+
   it("navigates to the selected settings section", async () => {
     const user = userEvent.setup();
     renderPage();
 
     await user.click(await screen.findByRole("menuitem", { name: /trust & permissions/i }));
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings/trust-permissions" });
+  });
+
+  it("shows the trusted state when the repository grants repository access", async () => {
+    const trustedInit = makeInitResponse();
+    trustedInit.project = {
+      ...trustedInit.project,
+      trust: {
+        projectId: "proj-1",
+        repoRoot: "/tmp/repo",
+        trustedAt: "2026-01-01T00:00:00.000Z",
+        trustMode: "persistent",
+        capabilities: { readFiles: true, runCommands: false },
+      },
+    };
+    mockLoadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(trustedInit);
+    renderPage();
+
+    const trustRow = await screen.findByRole("menuitem", { name: /trust & permissions/i });
+    await waitFor(() => {
+      expect(trustRow).toHaveTextContent("Trusted");
+      expect(trustRow).not.toHaveTextContent("Not trusted");
+    });
   });
 });

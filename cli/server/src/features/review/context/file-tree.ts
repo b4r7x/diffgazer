@@ -13,9 +13,28 @@ const CONTEXT_EXCLUDE_DIRS = new Set([
   "coverage",
   "out",
   ".turbo",
+  ".venv",
+  "venv",
+  "__pycache__",
+  ".tox",
+  ".mypy_cache",
+  ".pytest_cache",
+  ".ruff_cache",
+  "target",
+  "vendor",
+  ".gradle",
+  ".idea",
+  "Pods",
+  "DerivedData",
 ]);
 
 export const MAX_TREE_NODES = 1000;
+
+interface PendingDir {
+  dirPath: string;
+  depth: number;
+  node: FileTreeNode;
+}
 
 export async function buildFileTree(
   root: string,
@@ -26,21 +45,53 @@ export async function buildFileTree(
     counter?: { count: number; truncated: boolean };
   },
 ): Promise<FileTreeNode[]> {
-  const { depth } = options;
-  if (depth < 0) return [];
+  if (options.depth < 0) return [];
 
   const baseRoot = options.baseRoot ?? root;
   const visited = options.visited ?? new Set<string>();
   const counter = options.counter ?? { count: 0, truncated: false };
 
+  const rootNodes: FileTreeNode[] = [];
+  const queue: PendingDir[] = [];
+
+  // Breadth-first: expand the whole tree level by level so every top-level
+  // directory is represented before any single subtree exhausts the node
+  // budget (a deep dependency dir can no longer consume the cap depth-first).
+  await expandDirectory(root, options.depth, baseRoot, visited, counter, rootNodes, queue);
+  while (queue.length > 0) {
+    const pending = queue.shift();
+    if (!pending) break;
+    pending.node.children = [];
+    await expandDirectory(
+      pending.dirPath,
+      pending.depth,
+      baseRoot,
+      visited,
+      counter,
+      pending.node.children,
+      queue,
+    );
+  }
+
+  return rootNodes;
+}
+
+async function expandDirectory(
+  dirPath: string,
+  depth: number,
+  baseRoot: string,
+  visited: Set<string>,
+  counter: { count: number; truncated: boolean },
+  out: FileTreeNode[],
+  queue: PendingDir[],
+): Promise<void> {
   // Prevent symlink cycles by tracking visited real paths
-  const real = await realpath(root).catch(() => root);
-  if (visited.has(real)) return [];
+  const real = await realpath(dirPath).catch(() => dirPath);
+  if (visited.has(real)) return;
   visited.add(real);
 
-  const entries = await readFileDirectory(root);
+  const entries = await readFileDirectory(dirPath);
   entries.sort((a, b) => a.name.localeCompare(b.name));
-  const nodes: FileTreeNode[] = [];
 
   for (const entry of entries) {
     if (counter.count >= MAX_TREE_NODES) {
@@ -48,26 +99,19 @@ export async function buildFileTree(
       break;
     }
     if (CONTEXT_EXCLUDE_DIRS.has(entry.name)) continue;
-    const fullPath = path.join(root, entry.name);
+    const fullPath = path.join(dirPath, entry.name);
     const relativePath = path.relative(baseRoot, fullPath);
     counter.count += 1;
     if (entry.isDirectory) {
-      const children =
-        depth > 0
-          ? await buildFileTree(fullPath, { depth: depth - 1, baseRoot, visited, counter })
-          : undefined;
-      nodes.push({
-        name: entry.name,
-        path: relativePath,
-        type: "dir",
-        children,
-      });
+      const node: FileTreeNode = { name: entry.name, path: relativePath, type: "dir" };
+      out.push(node);
+      if (depth > 0) {
+        queue.push({ dirPath: fullPath, depth: depth - 1, node });
+      }
     } else {
-      nodes.push({ name: entry.name, path: relativePath, type: "file" });
+      out.push({ name: entry.name, path: relativePath, type: "file" });
     }
   }
-
-  return nodes;
 }
 
 export function formatFileTree(nodes: FileTreeNode[], indent = 0): string[] {

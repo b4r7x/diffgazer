@@ -1,7 +1,9 @@
 import { cva } from "class-variance-authority";
 
+/** Allowed item state values. */
 export type ItemState = "normal" | "focused" | "selected" | "disabled" | "disabledFocused";
 
+/** Returns item state. */
 export function getItemState(options: {
   disabled: boolean;
   isFocused: boolean;
@@ -15,11 +17,13 @@ export function getItemState(options: {
   return "normal";
 }
 
+/** menu item base API. */
 export const menuItemBase = cva("cursor-pointer w-full transition-colors", {
   variants: {
     menuVariant: {
       default: "px-4 py-3 flex items-center font-mono duration-75",
-      hub: "px-4 py-4 flex justify-between items-center text-sm border-b border-border last:border-b-0",
+      detail:
+        "px-4 py-4 flex justify-between items-center text-sm border-b border-border last:border-b-0",
     },
     state: {
       normal: "hover:bg-secondary group",
@@ -34,30 +38,31 @@ export const menuItemBase = cva("cursor-pointer w-full transition-colors", {
     },
   },
   compoundVariants: [
-    { state: "focused", menuVariant: "hub", class: "shadow-[inset_0_0_15px_rgba(0,0,0,0.1)]" },
+    { state: "focused", menuVariant: "detail", class: "shadow-[inset_0_0_15px_rgba(0,0,0,0.1)]" },
     { state: "disabled", menuVariant: "default", class: "hover:bg-transparent" },
     {
       state: "disabledFocused",
-      menuVariant: "hub",
+      menuVariant: "detail",
       class: "shadow-[inset_0_0_15px_rgba(0,0,0,0.1)]",
     },
     {
       colorVariant: "danger",
       state: "focused",
-      class: "bg-destructive text-destructive-foreground",
+      class: "bg-error text-error-foreground",
     },
     { colorVariant: "default", state: "focused", class: "bg-primary text-primary-foreground" },
     {
       colorVariant: "danger",
       state: "selected",
-      class: "bg-destructive text-destructive-foreground",
+      class: "bg-error text-error-foreground",
     },
     { colorVariant: "default", state: "selected", class: "bg-primary text-primary-foreground" },
-    { colorVariant: "danger", state: "normal", menuVariant: "default", class: "text-destructive" },
+    { colorVariant: "danger", state: "normal", menuVariant: "default", class: "text-error" },
   ],
   defaultVariants: { menuVariant: "default", state: "normal", colorVariant: "default" },
 });
 
+/** menu item indicator API. */
 export const menuItemIndicator = cva(
   "pr-4 shrink-0 inline-flex items-center justify-center self-center leading-none font-mono text-xs",
   {
@@ -71,6 +76,7 @@ export const menuItemIndicator = cva(
   },
 );
 
+/** menu item label API. */
 export const menuItemLabel = cva("tracking-wide", {
   variants: {
     idle: {
@@ -81,6 +87,7 @@ export const menuItemLabel = cva("tracking-wide", {
   defaultVariants: { idle: false },
 });
 
+/** menu item value API. */
 export const menuItemValue = cva("font-mono text-xs", {
   variants: {
     valueVariant: {

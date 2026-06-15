@@ -5,6 +5,7 @@ import type {
   CredentialRef,
   ProjectInfo,
   ProviderStatus,
+  SecretsStorage,
   SettingsConfig,
   TrustConfig,
 } from "@diffgazer/core/schemas/config";
@@ -16,7 +17,7 @@ import {
   createProjectFile,
   loadConfig,
   loadSecrets,
-  persistConfigAsync,
+  persistConfigMergedAsync,
   persistSecretsAsync,
   readProjectFile,
   removeSecretsFile,
@@ -35,11 +36,14 @@ import {
 } from "./providers-store.js";
 import {
   finalizeKeyringDeletions,
+  findOrphanedKeyringEntries,
   getApiKeyName,
   migrateSecretsStorage,
+  reconcileKeyringSecrets,
   rollbackKeyringWrites,
 } from "./secrets-migration.js";
 import { persistError, resolveSecretEntry, toSecretEntry } from "./secrets-store.js";
+import { createMutex, runConfigTransaction } from "./transaction.js";
 import { createTrustStore, type TrustStore } from "./trust-store.js";
 import type {
   ConfigState,
@@ -47,6 +51,20 @@ import type {
   SecretsStorageError,
   SecretsStorageErrorCode,
 } from "./types.js";
+
+/**
+ * Re-keys persisted review history from one project path to another when a
+ * trusted repository directory is moved (F-447). The real implementation lives
+ * in the review storage feature; `shared/` must not import `features/`, so the
+ * feature registers it here at startup. Defaults to a no-op so the config store
+ * works in isolation (and in tests that do not exercise review re-keying).
+ */
+type ReviewRekeyHandler = (oldProjectPath: string, newProjectPath: string) => void;
+let reviewRekeyHandler: ReviewRekeyHandler = () => {};
+
+export function setReviewRekeyHandler(handler: ReviewRekeyHandler): void {
+  reviewRekeyHandler = handler;
+}
 
 export interface ConfigStore {
   getSettings(): SettingsConfig;
@@ -98,6 +116,11 @@ export function createConfigStore(): ConfigStore {
   let configMtimeMs: number | null = getFileMtimeMs(getGlobalConfigPath());
   let secretsMtimeMs: number | null = getFileMtimeMs(getGlobalSecretsPath());
 
+  // Serializes config/secrets mutations so two concurrent API calls never
+  // interleave at their await points (F-167) and each one observes the settled
+  // state of the previous mutation.
+  const mutex = createMutex();
+
   const initialStorage = effectiveStorage(configState);
   if (initialStorage !== null) {
     configState.providers = syncProvidersWithSecrets(
@@ -110,6 +133,8 @@ export function createConfigStore(): ConfigStore {
   const cloneConfigState = (state: ConfigState): ConfigState => ({
     settings: { ...state.settings },
     providers: state.providers.map((provider) => ({ ...provider })),
+    ...(state.unknownProviders ? { unknownProviders: state.unknownProviders } : {}),
+    ...(state.unknownSettings ? { unknownSettings: state.unknownSettings } : {}),
   });
 
   const cloneSecretsState = (state: SecretsState): SecretsState => ({
@@ -119,6 +144,7 @@ export function createConfigStore(): ConfigStore {
         typeof entry === "string" ? entry : { ...entry },
       ]),
     ),
+    ...(state.unknownSecrets ? { unknownSecrets: state.unknownSecrets } : {}),
   });
 
   const syncLoadedProviders = (): void => {
@@ -143,9 +169,21 @@ export function createConfigStore(): ConfigStore {
     syncLoadedProviders();
   };
 
+  // The provider entries and settings as they stood before the current mutation,
+  // captured at transaction snapshot time. persistConfig diffs against these to
+  // tell which providers/settings fields THIS instance changed (overwrite disk)
+  // from those it left untouched (yield to a concurrent instance's disk write) —
+  // F-359.
+  let providersBeforeMutation: ProviderStatus[] = configState.providers.map((p) => ({ ...p }));
+  let settingsBeforeMutation: SettingsConfig = { ...configState.settings };
+
   const persistConfig = async (): Promise<Result<void, SecretsStorageError>> => {
     try {
-      await persistConfigAsync(configState);
+      // Merge at write time at per-provider and per-settings-field granularity so
+      // a change another instance persisted during this window — a known provider,
+      // an id only it knows, or a different settings field — is not erased by this
+      // instance's full provider array or stale settings object.
+      await persistConfigMergedAsync(configState, providersBeforeMutation, settingsBeforeMutation);
       configMtimeMs = getFileMtimeMs(getGlobalConfigPath());
       return ok(undefined);
     } catch (cause) {
@@ -155,7 +193,8 @@ export function createConfigStore(): ConfigStore {
 
   const persistFileSecrets = async (): Promise<Result<void, SecretsStorageError>> => {
     try {
-      if (Object.keys(secretsState.providers).length === 0) {
+      const hasUnknownSecrets = Object.keys(secretsState.unknownSecrets ?? {}).length > 0;
+      if (Object.keys(secretsState.providers).length === 0 && !hasUnknownSecrets) {
         removeSecretsFile();
         secretsMtimeMs = getFileMtimeMs(getGlobalSecretsPath());
         return ok(undefined);
@@ -190,110 +229,176 @@ export function createConfigStore(): ConfigStore {
     }
   };
 
+  // Records the pre-mutation provider entries and settings so the next
+  // persistConfig can merge at per-provider and per-settings-field granularity
+  // (F-359). Called at each mutation's snapshot point, after the disk refresh and
+  // before configState is mutated.
+  const markConfigBeforeMutation = (): void => {
+    providersBeforeMutation = configState.providers.map((p) => ({ ...p }));
+    settingsBeforeMutation = { ...configState.settings };
+  };
+
+  // Transaction discipline for config-only mutations (settings, provider
+  // activation): refresh from disk → snapshot for rollback → mutate → persist
+  // config → restore the snapshot if the disk write fails.
+  const configTransactionDeps = {
+    refresh: refreshConfigState,
+    snapshot: () => {
+      markConfigBeforeMutation();
+      return cloneConfigState(configState);
+    },
+    restore: (backup: ConfigState) => {
+      configState = backup;
+    },
+    persist: persistConfig,
+  };
+
+  // Complete an interrupted secrets-storage migration left by a crash between the
+  // config write and the file/keyring cleanup (F-449). In keyring mode, move any
+  // literal entries still in secrets.json into the keyring and rewrite the file
+  // without them so the keyring becomes the single credential source as the docs
+  // promise. In file mode, delete any orphaned keyring entries left when the
+  // keyring→file copy persisted but the keyring deletion never ran, so the file
+  // stays the single credential source. Best-effort: a keyring failure leaves the
+  // existing state intact and readable.
+  const startupStorage = effectiveStorage(configState);
+  if (startupStorage === "keyring") {
+    const reconciled = reconcileKeyringSecrets(secretsState);
+    if (!reconciled.ok) {
+      log("warn", "secrets_reconcile_failed", { error: reconciled.error.message });
+    } else if (reconciled.value) {
+      secretsState = reconciled.value.nextSecrets;
+      void persistFileSecrets().then((result) => {
+        if (!result.ok) {
+          log("warn", "secrets_reconcile_persist_failed", { error: result.error.message });
+        }
+      });
+      log("info", "secrets_reconciled", { migrated: reconciled.value.migrated.join(",") });
+    }
+  } else if (startupStorage === "file") {
+    const orphans = findOrphanedKeyringEntries(configState);
+    if (!orphans.ok) {
+      log("warn", "keyring_reconcile_failed", { error: orphans.error.message });
+    } else if (orphans.value.length > 0) {
+      finalizeKeyringDeletions(orphans.value);
+      log("info", "keyring_reconciled", { deleted: orphans.value.join(",") });
+    }
+  }
+
   const getSettings = (): SettingsConfig => {
     refreshConfigState();
     return { ...configState.settings };
   };
 
-  const updateSettings = async (
-    patch: Partial<SettingsConfig>,
+  const migrateStorage = async (
+    nextSettings: SettingsConfig,
+    currentStorage: SecretsStorage,
+    nextStorage: SecretsStorage,
   ): Promise<Result<SettingsConfig, SecretsStorageError>> => {
-    refreshConfigState();
     refreshSecretsState();
+    const migrateResult = migrateSecretsStorage(
+      configState,
+      secretsState,
+      currentStorage,
+      nextStorage,
+    );
+    if (!migrateResult.ok) return migrateResult;
 
-    const nextSettings: SettingsConfig = {
-      ...configState.settings,
-      ...patch,
-    };
+    markConfigBeforeMutation();
+    const configBackup = cloneConfigState(configState);
+    const secretsBackup = cloneSecretsState(secretsState);
 
-    const currentStorage = effectiveStorage(configState);
-    const nextStorage = nextSettings.secretsStorage;
+    if (nextStorage === "keyring") {
+      configState = {
+        ...configState,
+        settings: nextSettings,
+      };
+      const configResult = await persistConfig();
+      if (!configResult.ok) {
+        configState = configBackup;
+        rollbackKeyringWrites(migrateResult.value.keyringWrites);
+        return configResult;
+      }
 
-    if (currentStorage !== null && nextStorage !== null && currentStorage !== nextStorage) {
-      const migrateResult = migrateSecretsStorage(
-        configState,
+      secretsState = cloneSecretsState(migrateResult.value.nextSecrets);
+      const secretsResult = await persistFileSecrets();
+      if (!secretsResult.ok) {
+        configState = configBackup;
+        const rollbackConfigResult = await persistConfig();
+        if (!rollbackConfigResult.ok) {
+          log("warn", "config_rollback_failed", { error: rollbackConfigResult.error.message });
+        }
+        await restoreSecretsState(secretsBackup);
+        rollbackKeyringWrites(migrateResult.value.keyringWrites);
+        return secretsResult;
+      }
+    } else {
+      secretsState = cloneSecretsState(migrateResult.value.nextSecrets);
+      const secretsResult = await persistFileSecrets();
+      if (!secretsResult.ok) {
+        secretsState = secretsBackup;
+        return secretsResult;
+      }
+
+      configState = {
+        ...configState,
+        settings: nextSettings,
+      };
+      configState.providers = syncProvidersWithSecrets(
+        configState.providers,
         secretsState,
-        currentStorage,
         nextStorage,
       );
-      if (!migrateResult.ok) return migrateResult;
 
-      const configBackup = cloneConfigState(configState);
-      const secretsBackup = cloneSecretsState(secretsState);
-
-      if (nextStorage === "keyring") {
-        configState = {
-          ...configState,
-          settings: nextSettings,
-        };
-        const configResult = await persistConfig();
-        if (!configResult.ok) {
-          configState = configBackup;
-          rollbackKeyringWrites(migrateResult.value.keyringWrites);
-          return configResult;
-        }
-
-        secretsState = cloneSecretsState(migrateResult.value.nextSecrets);
-        const secretsResult = await persistFileSecrets();
-        if (!secretsResult.ok) {
-          configState = configBackup;
-          const rollbackConfigResult = await persistConfig();
-          if (!rollbackConfigResult.ok) {
-            log("warn", "config_rollback_failed", { error: rollbackConfigResult.error.message });
-          }
-          await restoreSecretsState(secretsBackup);
-          rollbackKeyringWrites(migrateResult.value.keyringWrites);
-          return secretsResult;
-        }
-      } else {
-        secretsState = cloneSecretsState(migrateResult.value.nextSecrets);
-        const secretsResult = await persistFileSecrets();
-        if (!secretsResult.ok) {
-          secretsState = secretsBackup;
-          return secretsResult;
-        }
-
-        configState = {
-          ...configState,
-          settings: nextSettings,
-        };
-        configState.providers = syncProvidersWithSecrets(
-          configState.providers,
-          secretsState,
-          nextStorage,
-        );
-
-        const configResult = await persistConfig();
-        if (!configResult.ok) {
-          configState = configBackup;
-          await restoreSecretsState(secretsBackup);
-          return configResult;
-        }
-
-        if (migrateResult.value.keyringDeletions.length > 0) {
-          finalizeKeyringDeletions(migrateResult.value.keyringDeletions);
-        }
+      const configResult = await persistConfig();
+      if (!configResult.ok) {
+        configState = configBackup;
+        await restoreSecretsState(secretsBackup);
+        return configResult;
       }
 
-      if (migrateResult.value.shouldDeleteSecretsFile) {
-        try {
-          removeSecretsFile();
-          secretsMtimeMs = getFileMtimeMs(getGlobalSecretsPath());
-        } catch (error) {
-          log("warn", "secrets_file_cleanup_failed", { error: getErrorMessage(error) });
-        }
+      if (migrateResult.value.keyringDeletions.length > 0) {
+        finalizeKeyringDeletions(migrateResult.value.keyringDeletions);
       }
-
-      syncLoadedProviders();
-
-      return ok(getSettings());
     }
 
-    configState.settings = nextSettings;
-    const result = await persistConfig();
-    if (!result.ok) return result;
-    return ok(getSettings());
+    if (migrateResult.value.shouldDeleteSecretsFile) {
+      try {
+        removeSecretsFile();
+        secretsMtimeMs = getFileMtimeMs(getGlobalSecretsPath());
+      } catch (error) {
+        log("warn", "secrets_file_cleanup_failed", { error: getErrorMessage(error) });
+      }
+    }
+
+    syncLoadedProviders();
+
+    return ok({ ...configState.settings });
   };
+
+  const updateSettings = (
+    patch: Partial<SettingsConfig>,
+  ): Promise<Result<SettingsConfig, SecretsStorageError>> =>
+    mutex.run(async () => {
+      refreshConfigState();
+
+      const nextSettings: SettingsConfig = {
+        ...configState.settings,
+        ...patch,
+      };
+
+      const currentStorage = effectiveStorage(configState);
+      const nextStorage = nextSettings.secretsStorage;
+
+      if (currentStorage !== null && nextStorage !== null && currentStorage !== nextStorage) {
+        return migrateStorage(nextSettings, currentStorage, nextStorage);
+      }
+
+      return runConfigTransaction(configTransactionDeps, () => {
+        configState.settings = nextSettings;
+        return ok({ ...configState.settings });
+      });
+    });
 
   const getProviders = (): ProviderStatus[] => {
     refreshConfigState();
@@ -332,9 +437,13 @@ export function createConfigStore(): ConfigStore {
       cwd: process.cwd(),
     });
 
+  const onProjectMove = (oldRepoRoot: string, newRepoRoot: string): void => {
+    reviewRekeyHandler(oldRepoRoot, newRepoRoot);
+  };
+
   const getProjectInfo = (projectRoot?: string): ProjectInfo => {
     const resolvedRoot = resolveRoot(projectRoot);
-    const projectFile = readProjectFile(resolvedRoot);
+    const projectFile = readProjectFile(resolvedRoot, { onMove: onProjectMove });
 
     return {
       path: resolvedRoot,
@@ -345,7 +454,7 @@ export function createConfigStore(): ConfigStore {
 
   const ensureProjectFile = (projectRoot: string): ProjectInfo => {
     const resolvedRoot = resolveRoot(projectRoot);
-    const projectFile = createProjectFile(resolvedRoot);
+    const projectFile = createProjectFile(resolvedRoot, { onMove: onProjectMove });
 
     return {
       path: resolvedRoot,
@@ -354,36 +463,30 @@ export function createConfigStore(): ConfigStore {
     };
   };
 
-  const saveProviderCredentials = async (input: {
+  const saveProviderCredentials = (input: {
     provider: AIProvider;
     apiKey: string | CredentialRef;
     model?: string;
-  }): Promise<Result<ProviderStatus, SecretsStorageError>> => {
-    refreshConfigState();
-    refreshSecretsState();
-    if (!isStorageConfigured(configState)) {
-      return err({
-        code: "STORAGE_NOT_CONFIGURED" as SecretsStorageErrorCode,
-        message: "Secrets storage backend must be configured before saving credentials",
-      });
-    }
-
-    const { provider, apiKey, model } = input;
-    const { entry, resolvedValue } = toSecretEntry(apiKey, provider);
-    const configBackup = cloneConfigState(configState);
-    const secretsBackup = cloneSecretsState(secretsState);
-    let previousKeyringValue: string | null = null;
-    let touchedKeyring = false;
-
-    if (isFileStorage(configState)) {
-      secretsState.providers[provider] = entry;
-      const secretsResult = await persistFileSecrets();
-      if (!secretsResult.ok) {
-        secretsState = secretsBackup;
-        return secretsResult;
+  }): Promise<Result<ProviderStatus, SecretsStorageError>> =>
+    mutex.run(async () => {
+      refreshConfigState();
+      refreshSecretsState();
+      if (!isStorageConfigured(configState)) {
+        return err({
+          code: "STORAGE_NOT_CONFIGURED" as SecretsStorageErrorCode,
+          message: "Secrets storage backend must be configured before saving credentials",
+        });
       }
-    } else {
-      if (typeof entry !== "string" && entry.kind === "env") {
+
+      const { provider, apiKey, model } = input;
+      const { entry, resolvedValue } = toSecretEntry(apiKey, provider);
+      markConfigBeforeMutation();
+      const configBackup = cloneConfigState(configState);
+      const secretsBackup = cloneSecretsState(secretsState);
+      let previousKeyringValue: string | null = null;
+      let touchedKeyring = false;
+
+      if (isFileStorage(configState)) {
         secretsState.providers[provider] = entry;
         const secretsResult = await persistFileSecrets();
         if (!secretsResult.ok) {
@@ -391,138 +494,148 @@ export function createConfigStore(): ConfigStore {
           return secretsResult;
         }
       } else {
-        const previousKeyringResult = readKeyringSecret(getApiKeyName(provider));
-        if (!previousKeyringResult.ok) return previousKeyringResult;
-        previousKeyringValue = previousKeyringResult.value;
-        const keyValue = resolvedValue ?? (typeof entry === "string" ? entry : "");
-        const writeResult = writeKeyringSecret(getApiKeyName(provider), keyValue);
-        if (!writeResult.ok) return writeResult;
-        touchedKeyring = true;
-        if (fileHasSecret(secretsState, provider)) {
-          delete secretsState.providers[provider];
+        if (typeof entry !== "string" && entry.kind === "env") {
+          secretsState.providers[provider] = entry;
           const secretsResult = await persistFileSecrets();
           if (!secretsResult.ok) {
-            restoreKeyringSecret(provider, previousKeyringValue);
+            secretsState = secretsBackup;
+            return secretsResult;
+          }
+        } else {
+          const previousKeyringResult = readKeyringSecret(getApiKeyName(provider));
+          if (!previousKeyringResult.ok) return previousKeyringResult;
+          previousKeyringValue = previousKeyringResult.value;
+          const keyValue = resolvedValue ?? (typeof entry === "string" ? entry : "");
+          const writeResult = writeKeyringSecret(getApiKeyName(provider), keyValue);
+          if (!writeResult.ok) return writeResult;
+          touchedKeyring = true;
+          if (fileHasSecret(secretsState, provider)) {
+            delete secretsState.providers[provider];
+            const secretsResult = await persistFileSecrets();
+            if (!secretsResult.ok) {
+              restoreKeyringSecret(provider, previousKeyringValue);
+              await restoreSecretsState(secretsBackup);
+              return secretsResult;
+            }
+          }
+        }
+      }
+
+      const ensured = ensureProviderEntry(configState.providers, provider, true);
+      configState.providers = ensured.providers;
+
+      if (!model) {
+        configState.providers = applyCredentialsWithoutModel(configState.providers, provider);
+      } else {
+        configState.providers = applyActiveProvider(configState.providers, {
+          providerId: provider,
+          model,
+          hasApiKey: true,
+        });
+      }
+
+      const configResult = await persistConfig();
+      if (!configResult.ok) {
+        configState = configBackup;
+        await restoreSecretsState(secretsBackup);
+        if (touchedKeyring) {
+          restoreKeyringSecret(provider, previousKeyringValue);
+        }
+        return configResult;
+      }
+
+      const savedProvider = configState.providers.find((item) => item.provider === provider);
+      return ok(savedProvider ? { ...savedProvider } : { ...ensured.entry, hasApiKey: true });
+    });
+
+  const activateProvider = (input: {
+    provider: AIProvider;
+    model?: string;
+  }): Promise<Result<ProviderStatus | null, SecretsStorageError>> =>
+    mutex.run(() =>
+      runConfigTransaction(configTransactionDeps, () => {
+        const { provider, model } = input;
+        const existing = configState.providers.find((item) => item.provider === provider);
+        if (!existing) return ok(null);
+        if (!model && !existing.model) return ok(null);
+
+        configState.providers = applyActiveProvider(configState.providers, {
+          providerId: provider,
+          model,
+          preserveModel: true,
+        });
+
+        return ok(activeProvider(configState));
+      }),
+    );
+
+  const deleteProviderCredentials = (
+    providerId: AIProvider,
+  ): Promise<Result<boolean, SecretsStorageError>> =>
+    mutex.run(async () => {
+      refreshConfigState();
+      refreshSecretsState();
+      if (!isStorageConfigured(configState)) {
+        return err({
+          code: "STORAGE_NOT_CONFIGURED" as SecretsStorageErrorCode,
+          message: "Secrets storage backend must be configured before deleting credentials",
+        });
+      }
+
+      const providerExists = configState.providers.some((item) => item.provider === providerId);
+      markConfigBeforeMutation();
+      const configBackup = cloneConfigState(configState);
+      const secretsBackup = cloneSecretsState(secretsState);
+      let hadSecret = false;
+      let previousKeyringValue: string | null = null;
+      let touchedKeyring = false;
+
+      if (isFileStorage(configState)) {
+        hadSecret = fileHasSecret(secretsState, providerId);
+        if (hadSecret) {
+          delete secretsState.providers[providerId];
+        }
+        const secretsResult = await persistFileSecrets();
+        if (!secretsResult.ok) {
+          secretsState = secretsBackup;
+          return secretsResult;
+        }
+      } else {
+        const previousKeyringResult = readKeyringSecret(getApiKeyName(providerId));
+        if (!previousKeyringResult.ok) return previousKeyringResult;
+        previousKeyringValue = previousKeyringResult.value;
+        if (previousKeyringValue !== null) {
+          const deleteResult = deleteKeyringSecret(getApiKeyName(providerId));
+          if (!deleteResult.ok) return deleteResult;
+          hadSecret = deleteResult.value;
+          touchedKeyring = deleteResult.value;
+        }
+        if (fileHasSecret(secretsState, providerId)) {
+          delete secretsState.providers[providerId];
+          const secretsResult = await persistFileSecrets();
+          if (!secretsResult.ok) {
+            if (touchedKeyring) {
+              restoreKeyringSecret(providerId, previousKeyringValue);
+            }
             await restoreSecretsState(secretsBackup);
             return secretsResult;
           }
+          hadSecret = true;
         }
       }
-    }
 
-    const ensured = ensureProviderEntry(configState.providers, provider, true);
-    configState.providers = ensured.providers;
-
-    if (!model) {
-      configState.providers = applyCredentialsWithoutModel(configState.providers, provider);
-    } else {
-      configState.providers = applyActiveProvider(configState.providers, {
-        providerId: provider,
-        model,
-        hasApiKey: true,
-      });
-    }
-
-    const configResult = await persistConfig();
-    if (!configResult.ok) {
-      configState = configBackup;
-      await restoreSecretsState(secretsBackup);
-      if (touchedKeyring) {
-        restoreKeyringSecret(provider, previousKeyringValue);
+      configState.providers = clearProviderCredentials(configState.providers, providerId);
+      const configResult = await persistConfig();
+      if (!configResult.ok) {
+        configState = configBackup;
+        await restoreSecretsState(secretsBackup);
+        if (touchedKeyring) {
+          restoreKeyringSecret(providerId, previousKeyringValue);
+        }
+        return configResult;
       }
-      return configResult;
-    }
-
-    const savedProvider = configState.providers.find((item) => item.provider === provider);
-    return ok(savedProvider ? { ...savedProvider } : { ...ensured.entry, hasApiKey: true });
-  };
-
-  const activateProvider = async (input: {
-    provider: AIProvider;
-    model?: string;
-  }): Promise<Result<ProviderStatus | null, SecretsStorageError>> => {
-    refreshConfigState();
-    const { provider, model } = input;
-    const existing = configState.providers.find((item) => item.provider === provider);
-    if (!existing) return ok(null);
-    if (!model && !existing.model) return ok(null);
-
-    configState.providers = applyActiveProvider(configState.providers, {
-      providerId: provider,
-      model,
-      preserveModel: true,
+      return ok(providerExists || hadSecret);
     });
-
-    const result = await persistConfig();
-    if (!result.ok) return result;
-    return ok(getActiveProvider());
-  };
-
-  const deleteProviderCredentials = async (
-    providerId: AIProvider,
-  ): Promise<Result<boolean, SecretsStorageError>> => {
-    refreshConfigState();
-    refreshSecretsState();
-    if (!isStorageConfigured(configState)) {
-      return err({
-        code: "STORAGE_NOT_CONFIGURED" as SecretsStorageErrorCode,
-        message: "Secrets storage backend must be configured before deleting credentials",
-      });
-    }
-
-    const providerExists = configState.providers.some((item) => item.provider === providerId);
-    const configBackup = cloneConfigState(configState);
-    const secretsBackup = cloneSecretsState(secretsState);
-    let hadSecret = false;
-    let previousKeyringValue: string | null = null;
-    let touchedKeyring = false;
-
-    if (isFileStorage(configState)) {
-      hadSecret = fileHasSecret(secretsState, providerId);
-      if (hadSecret) {
-        delete secretsState.providers[providerId];
-      }
-      const secretsResult = await persistFileSecrets();
-      if (!secretsResult.ok) {
-        secretsState = secretsBackup;
-        return secretsResult;
-      }
-    } else {
-      const previousKeyringResult = readKeyringSecret(getApiKeyName(providerId));
-      if (!previousKeyringResult.ok) return previousKeyringResult;
-      previousKeyringValue = previousKeyringResult.value;
-      if (previousKeyringValue !== null) {
-        const deleteResult = deleteKeyringSecret(getApiKeyName(providerId));
-        if (!deleteResult.ok) return deleteResult;
-        hadSecret = deleteResult.value;
-        touchedKeyring = deleteResult.value;
-      }
-      if (fileHasSecret(secretsState, providerId)) {
-        delete secretsState.providers[providerId];
-        const secretsResult = await persistFileSecrets();
-        if (!secretsResult.ok) {
-          if (touchedKeyring) {
-            restoreKeyringSecret(providerId, previousKeyringValue);
-          }
-          await restoreSecretsState(secretsBackup);
-          return secretsResult;
-        }
-        hadSecret = true;
-      }
-    }
-
-    configState.providers = clearProviderCredentials(configState.providers, providerId);
-    const configResult = await persistConfig();
-    if (!configResult.ok) {
-      configState = configBackup;
-      await restoreSecretsState(secretsBackup);
-      if (touchedKeyring) {
-        restoreKeyringSecret(providerId, previousKeyringValue);
-      }
-      return configResult;
-    }
-    return ok(providerExists || hadSecret);
-  };
 
   return {
     getSettings,

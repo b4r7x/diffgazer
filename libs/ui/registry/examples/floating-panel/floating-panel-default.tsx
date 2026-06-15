@@ -23,7 +23,6 @@ export default function FloatingPanelDefaultExample() {
         triggerRef={triggerRef}
         role="dialog"
         aria-label="Quick info"
-        onExitComplete={() => undefined}
         className="border border-border bg-background p-3 font-mono text-xs text-foreground shadow-md"
       >
         Anchored panel content.

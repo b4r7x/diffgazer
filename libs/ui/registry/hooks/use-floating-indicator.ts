@@ -2,10 +2,15 @@
 
 import { type RefObject, useLayoutEffect, useState } from "react";
 
+/** Container-relative rectangle for the active indicator target. */
 export interface FloatingIndicatorRect {
+  /** Left offset from the container's left edge. */
   left: number;
+  /** Measured target width. */
   width: number;
+  /** Top offset from the container's top edge. */
   top: number;
+  /** Measured target height. */
   height: number;
 }
 

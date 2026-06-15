@@ -2,6 +2,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
+/** Class variants for panel content. */
 export const panelContentVariants = cva("text-sm text-foreground", {
   variants: {
     spacing: {
@@ -13,9 +14,11 @@ export const panelContentVariants = cva("text-sm text-foreground", {
   defaultVariants: { spacing: "md" },
 });
 
+/** Props for panel content. */
 export type PanelContentProps = ComponentPropsWithRef<"div"> &
   VariantProps<typeof panelContentVariants>;
 
+/** Padded content area with configurable inner spacing. */
 export function PanelContent({ className, spacing, ...props }: PanelContentProps) {
   return (
     <div

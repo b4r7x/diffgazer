@@ -19,7 +19,7 @@ export function ModelListItem({ model, onDoubleClick }: ModelListItemProps) {
           <Badge
             variant={model.tier === "free" ? "success" : "neutral"}
             size="sm"
-            className="uppercase border border-tui-border px-1.5 py-0.5"
+            className="uppercase border border-border px-1.5 py-0.5"
           >
             {model.tier}
           </Badge>

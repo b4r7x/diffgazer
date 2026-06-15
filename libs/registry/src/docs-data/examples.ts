@@ -1,5 +1,6 @@
 import { existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { log } from "../logger.js";
 
 export function findExamples(examplesDir: string, itemName: string): string[] {
   const itemDir = resolve(examplesDir, itemName);
@@ -16,9 +17,8 @@ export function generateDemoIndex(config: {
   examplesDir: string;
   importPathPrefix: string;
   findExamplesFn?: (examplesDir: string, itemName: string) => string[];
-  logger?: { warn?: (message: string) => void };
 }): string {
-  const { items, examplesDir, importPathPrefix, findExamplesFn = findExamples, logger } = config;
+  const { items, examplesDir, importPathPrefix, findExamplesFn = findExamples } = config;
 
   const seenKeys = new Map<string, string>();
   const demoImports: string[] = [];
@@ -27,7 +27,7 @@ export function generateDemoIndex(config: {
     for (const exampleName of examples) {
       const existing = seenKeys.get(exampleName);
       if (existing) {
-        logger?.warn?.(
+        log.warn(
           `Demo index key collision: "${exampleName}" from "${item.name}" overwrites "${existing}"`,
         );
       }

@@ -84,7 +84,7 @@ describe("mapPageTreeForLibrary", () => {
         { type: "separator", name: "Hooks" },
         { type: "page", name: "useKey", url: "/docs/keys/hooks/use-key" },
         { type: "separator", name: "Getting Started" },
-        { type: "page", name: "Quickstart", url: "/docs/app/getting-started" },
+        { type: "page", name: "First review", url: "/docs/app/getting-started" },
         { type: "separator", name: "Concepts" },
         { type: "page", name: "Reviews", url: "/docs/app/concepts/reviews" },
       ],
@@ -262,7 +262,7 @@ describe("firstNavigablePage", () => {
         { type: "separator", name: "Getting Started" },
         { type: "page", name: "Intro", url: "/docs/keys/getting-started" },
         { type: "separator", name: "Getting Started" },
-        { type: "page", name: "Quickstart", url: "/docs/app/getting-started" },
+        { type: "page", name: "First review", url: "/docs/app/getting-started" },
       ],
     };
 

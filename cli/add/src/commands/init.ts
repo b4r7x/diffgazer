@@ -7,6 +7,7 @@ import {
   warn,
   writeFileSafe,
 } from "@diffgazer/registry/cli";
+import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
 import { z } from "zod";
 import { ctx, getRegistry, VERSION } from "../context.js";
 import { detectProject } from "../utils/detect.js";
@@ -120,7 +121,7 @@ function componentCssContent(registry: ReturnType<typeof getRegistry>): string {
   const chunks: string[] = [];
 
   for (const item of registry.items) {
-    if (item.type === "registry:theme") continue;
+    if (item.type === REGISTRY_ITEM_TYPE.theme) continue;
 
     for (const file of item.files) {
       if (!file.path.endsWith(".css") || seen.has(file.path)) continue;

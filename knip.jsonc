@@ -9,6 +9,7 @@
   "ignoreExportsUsedInFile": true,
   "ignoreBinaries": ["depcruise", "biome", "turbo", "playwright", "lhci", "dev"],
   "ignoreDependencies": [
+    "@arethetypeswrong/cli",
     "@diffgazer/.+",
     "@clack/prompts",
     "@types/diff",
@@ -22,6 +23,7 @@
     "next",
     "picocolors",
     "postcss",
+    "publint",
     "shadcn",
     "tsup",
     "vitest"
@@ -30,10 +32,21 @@
     "libs/keys/artifacts/artifacts/source/registry/examples/**",
     "libs/keys/docs/hook-docs/**",
     "libs/keys/examples/playground/**",
+    // Public registry CSS entries are discovered through registry.json file
+    // metadata, not TS imports; the artifact validator owns their presence.
+    "libs/ui/registry/ui/callout/callout.css",
+    "libs/ui/registry/ui/code-block/code-block.css",
+    "libs/ui/registry/ui/command-palette/command-palette.css",
+    "libs/ui/registry/ui/diff-view/diff-view.css",
+    "libs/ui/registry/ui/panel/panel.css",
+    "libs/ui/registry/ui/sidebar/sidebar.css",
     "libs/ui/registry/ui/shared/*.css",
     "libs/ui/styles/*.css"
   ],
   "ignoreIssues": {
+    // Public history alias retained for the run-selection API; tests assert the
+    // alias remains live while source can share the generic resolver.
+    "libs/core/src/review/history.ts": ["duplicates"],
     "libs/registry/src/manifest.ts": ["types"],
     "libs/ui/theme/index.ts": ["exports"]
   },
@@ -54,7 +67,7 @@
       "entry": ["scripts/monorepo/**/*.mjs", "scripts/monorepo/**/*.test.mjs"]
     },
     "apps/web": {
-      "entry": ["src/main.tsx", "src/routes/**/*.tsx"]
+      "entry": ["src/main.tsx", "src/app/routes/**/*.tsx"]
     },
     "apps/landing": {
       "entry": ["src/main.tsx", "index.html"]
@@ -99,7 +112,7 @@
       "entry": ["src/index.ts", "src/schemas.ts", "src/cli/index.ts", "vitest.config.ts"]
     },
     "libs/keys/artifacts": {
-      "entry": ["src/**/*.ts"]
+      "entry": ["scripts/**/*.mjs"]
     }
   }
 }

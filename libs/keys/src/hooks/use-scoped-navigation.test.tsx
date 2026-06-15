@@ -1,7 +1,7 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
-import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { KeyboardWrapper } from "../testing/test-utils.js";
 import { useScope } from "./use-scope.js";
 import {
@@ -67,10 +67,6 @@ function expectActiveOptionText(text: string, label = "Items") {
 }
 
 describe("useScopedNavigation", () => {
-  afterEach(() => {
-    cleanup();
-  });
-
   it("routes navigation and activation through KeyboardProvider", async () => {
     const user = userEvent.setup();
     const onSelect = vi.fn();

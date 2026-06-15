@@ -3,7 +3,7 @@
   "title": "useActionRowNavigation",
   "description": "Provider-backed two-zone keyboard navigation for rows with inline actions. Moves between row content and action buttons while preserving disabled-action behavior.",
   "source": {
-    "raw": "\"use client\";\n\nimport { type RefCallback, type RefObject, useCallback, useEffect, useRef, useState } from \"react\";\nimport { containsActiveElement } from \"../dom/focusable.js\";\nimport { useFocusZone } from \"./use-focus-zone.js\";\nimport { useKey } from \"./use-key.js\";\n\ntype ActionRowZone = \"content\" | \"actions\";\nconst ACTION_ROW_ZONES = [\"content\", \"actions\"] as const;\nconst EMPTY_DISABLED: readonly boolean[] = [];\n\n// Tuple-aware index narrowing. For a tuple like [a, b] this yields `0 | 1`;\n// for `readonly unknown[]` (default) it stays `number`.\ntype ActionRowIndex<Actions extends readonly unknown[]> = number extends Actions[\"length\"]\n  ? number\n  : {\n      [K in keyof Actions]: K extends `${infer N extends number}` ? N : never;\n    }[number];\n\n// Tuple-aware disabled-flags shape. For a tuple it preserves length and\n// per-position position; for arrays it stays `readonly boolean[]`.\ntype ActionRowDisabledFlags<Actions extends readonly unknown[]> = number extends Actions[\"length\"]\n  ? readonly boolean[]\n  : { readonly [K in keyof Actions]: boolean };\n\nexport interface UseActionRowNavigationOptions<\n  Actions extends readonly unknown[] = readonly unknown[],\n> {\n  enabled: boolean;\n  actionCount: Actions[\"length\"];\n  onAction: (index: ActionRowIndex<Actions>) => void;\n  disabledActions?: ActionRowDisabledFlags<Actions>;\n  disabledFocusFallbackRef?: RefObject<HTMLElement | null>;\n  containerRef?: RefObject<HTMLElement | null>;\n  allowInInput?: boolean;\n  wrap?: boolean;\n  defaultZone?: ActionRowZone;\n  defaultIndex?: ActionRowIndex<Actions>;\n  canExitActions?: boolean;\n  onNavigate?: (index: ActionRowIndex<Actions>) => void;\n  onNavigationBoundaryReached?: (direction: \"previous\" | \"next\") => void;\n}\n\nfunction getDisabledKey(actionCount: number, disabledActions: readonly boolean[]): string {\n  let key = \"\";\n  for (let i = 0; i < actionCount; i += 1) {\n    key += disabledActions[i] ? \"1\" : \"0\";\n  }\n  return key;\n}\n\nfunction isIndexEnabled(index: number, actionCount: number, disabledKey: string): boolean {\n  return index >= 0 && index < actionCount && disabledKey[index] !== \"1\";\n}\n\nfunction getFirstEnabled(actionCount: number, disabledKey: string): number | null {\n  for (let i = 0; i < actionCount; i += 1) {\n    if (isIndexEnabled(i, actionCount, disabledKey)) return i;\n  }\n  return null;\n}\n\nfunction getNextIndex(\n  current: number,\n  direction: -1 | 1,\n  actionCount: number,\n  wrap: boolean,\n  disabledKey: string,\n): number | null {\n  if (actionCount <= 0) return null;\n\n  let next = current + direction;\n  for (let attempts = 0; attempts < actionCount; attempts += 1) {\n    if (next < 0 || next >= actionCount) {\n      if (!wrap) return isIndexEnabled(current, actionCount, disabledKey) ? current : null;\n      next = direction < 0 ? actionCount - 1 : 0;\n    }\n    if (isIndexEnabled(next, actionCount, disabledKey)) return next;\n    next += direction;\n  }\n\n  return isIndexEnabled(current, actionCount, disabledKey) ? current : null;\n}\n\nexport interface UseActionRowNavigationReturn {\n  inActions: boolean;\n  focusedIndex: number;\n  isFocusedActionDisabled: boolean;\n  enterActions: (index?: number) => number | null;\n  exitActions: () => void;\n  reset: (initialIndex?: number) => void;\n  getActionProps: (index: number) => {\n    ref: RefCallback<HTMLElement>;\n    \"data-action-index\": number;\n    onFocus: () => void;\n  };\n}\n\nexport function useActionRowNavigation<Actions extends readonly unknown[] = readonly unknown[]>({\n  enabled,\n  actionCount,\n  onAction,\n  disabledActions = EMPTY_DISABLED as ActionRowDisabledFlags<Actions>,\n  disabledFocusFallbackRef,\n  containerRef,\n  allowInInput = false,\n  wrap = false,\n  defaultZone = \"content\",\n  defaultIndex = 0 as ActionRowIndex<Actions>,\n  canExitActions = true,\n  onNavigate,\n  onNavigationBoundaryReached,\n}: UseActionRowNavigationOptions<Actions>): UseActionRowNavigationReturn {\n  const [focusedIndex, setFocusedIndex] = useState<number>(defaultIndex);\n  const actionRefs = useRef(new Map<number, HTMLElement>());\n  const hasFocusedDefaultRef = useRef(false);\n  const disabledKey = getDisabledKey(actionCount, disabledActions);\n\n  const focusZone = useFocusZone<ActionRowZone>({\n    initial: defaultZone,\n    zones: ACTION_ROW_ZONES,\n    enabled,\n    containerRef,\n    focusWithinOnly: Boolean(containerRef),\n    allowInInput,\n  });\n  const inActions = focusZone.isZone(\"actions\");\n  const setZone = focusZone.setZone;\n\n  const getEnabledTargetIndex = useCallback(\n    (index: number) => {\n      return isIndexEnabled(index, actionCount, disabledKey)\n        ? index\n        : getFirstEnabled(actionCount, disabledKey);\n    },\n    [actionCount, disabledKey],\n  );\n\n  const focusAction = useCallback(\n    (index: number) => {\n      const targetIndex = getEnabledTargetIndex(index);\n      if (targetIndex === null) return null;\n\n      setFocusedIndex(targetIndex);\n      actionRefs.current.get(targetIndex)?.focus();\n      return targetIndex;\n    },\n    [getEnabledTargetIndex],\n  );\n\n  const focusDisabledFallback = useCallback(() => {\n    const fallback = disabledFocusFallbackRef?.current;\n    if (fallback) {\n      fallback.focus({ preventScroll: true });\n      return;\n    }\n    const focusedAction = actionRefs.current.get(focusedIndex);\n    if (focusedAction && containsActiveElement(focusedAction)) focusedAction.blur();\n  }, [disabledFocusFallbackRef, focusedIndex]);\n\n  const isRegisteredActionFocused = useCallback(() => {\n    const el = actionRefs.current.get(focusedIndex);\n    return el ? containsActiveElement(el) : false;\n  }, [focusedIndex]);\n\n  useEffect(() => {\n    if (!enabled || defaultZone !== \"actions\" || !inActions || hasFocusedDefaultRef.current) return;\n    const targetIndex = getEnabledTargetIndex(defaultIndex);\n    if (targetIndex === null) {\n      setZone(\"content\");\n      focusDisabledFallback();\n      hasFocusedDefaultRef.current = true;\n      return;\n    }\n    if (!actionRefs.current.has(targetIndex)) return;\n\n    focusAction(targetIndex);\n    hasFocusedDefaultRef.current = true;\n  }, [\n    defaultIndex,\n    defaultZone,\n    enabled,\n    focusAction,\n    focusDisabledFallback,\n    getEnabledTargetIndex,\n    inActions,\n    setZone,\n  ]);\n\n  useEffect(() => {\n    if (!enabled || !inActions) return;\n    if (isIndexEnabled(focusedIndex, actionCount, disabledKey)) {\n      if (!isRegisteredActionFocused()) focusAction(focusedIndex);\n      return;\n    }\n    const targetIndex = getFirstEnabled(actionCount, disabledKey);\n    if (targetIndex === null) {\n      setZone(\"content\");\n      focusDisabledFallback();\n      return;\n    }\n    focusAction(targetIndex);\n  }, [\n    actionCount,\n    disabledKey,\n    enabled,\n    focusAction,\n    focusDisabledFallback,\n    focusedIndex,\n    inActions,\n    isRegisteredActionFocused,\n    setZone,\n  ]);\n\n  const reset = (initialIndex: number = 0) => {\n    setZone(\"content\");\n    setFocusedIndex(initialIndex);\n  };\n\n  const enterActions = (index: number = 0) => {\n    const targetIndex = getEnabledTargetIndex(index);\n    if (targetIndex === null) {\n      setZone(\"content\");\n      focusDisabledFallback();\n      return null;\n    }\n\n    setZone(\"actions\");\n    focusAction(targetIndex);\n    // targetIndex is bounded to 0..actionCount-1 by getEnabledTargetIndex,\n    // so it is always a valid Actions index when Actions is a tuple.\n    onNavigate?.(targetIndex as ActionRowIndex<Actions>);\n    return targetIndex;\n  };\n\n  const exitActions = () => {\n    if (!canExitActions) return;\n    setZone(\"content\");\n    setFocusedIndex(0);\n    onNavigationBoundaryReached?.(\"previous\");\n  };\n\n  const keyOptions = focusZone.getKeyOptions(\"actions\");\n  const enterOptions = focusZone.getKeyOptions(\"content\");\n\n  const activateFocusedAction = (event: KeyboardEvent) => {\n    if (!isIndexEnabled(focusedIndex, actionCount, disabledKey)) return;\n    event.preventDefault();\n    // focusedIndex is guarded by isIndexEnabled (0..actionCount-1).\n    onAction(focusedIndex as ActionRowIndex<Actions>);\n  };\n\n  useKey(\n    \"ArrowLeft\",\n    () => {\n      const nextIndex = getNextIndex(focusedIndex, -1, actionCount, wrap, disabledKey);\n      if (nextIndex !== null && nextIndex !== focusedIndex) {\n        focusAction(nextIndex);\n        onNavigate?.(nextIndex as ActionRowIndex<Actions>);\n      } else if (nextIndex === focusedIndex) {\n        onNavigationBoundaryReached?.(\"previous\");\n      }\n    },\n    keyOptions,\n  );\n\n  useKey(\n    \"ArrowRight\",\n    () => {\n      const nextIndex = getNextIndex(focusedIndex, 1, actionCount, wrap, disabledKey);\n      if (nextIndex !== null && nextIndex !== focusedIndex) {\n        focusAction(nextIndex);\n        onNavigate?.(nextIndex as ActionRowIndex<Actions>);\n      } else if (nextIndex === focusedIndex) {\n        onNavigationBoundaryReached?.(\"next\");\n      }\n    },\n    keyOptions,\n  );\n\n  useKey(\"ArrowDown\", () => enterActions(0), enterOptions);\n  useKey(\"ArrowUp\", exitActions, keyOptions);\n  useKey(\"Enter\", activateFocusedAction, keyOptions);\n  useKey(\" \", activateFocusedAction, keyOptions);\n\n  const getActionProps = (index: number) => ({\n    ref: ((node: HTMLElement | null) => {\n      if (node) actionRefs.current.set(index, node);\n      else actionRefs.current.delete(index);\n    }) as RefCallback<HTMLElement>,\n    \"data-action-index\": index,\n    onFocus: () => {\n      if (!isIndexEnabled(index, actionCount, disabledKey)) return;\n      setZone(\"actions\");\n      setFocusedIndex(index);\n    },\n  });\n\n  return {\n    inActions,\n    focusedIndex,\n    isFocusedActionDisabled: !isIndexEnabled(focusedIndex, actionCount, disabledKey),\n    enterActions,\n    exitActions,\n    reset,\n    getActionProps,\n  };\n}\n",
+    "raw": "\"use client\";\n\nimport { type RefCallback, type RefObject, useCallback, useEffect, useRef, useState } from \"react\";\nimport { containsActiveElement } from \"../dom/focusable.js\";\nimport { useFocusZone } from \"./use-focus-zone.js\";\nimport { useKey } from \"./use-key.js\";\n\ntype ActionRowZone = \"content\" | \"actions\";\nconst ACTION_ROW_ZONES = [\"content\", \"actions\"] as const;\nconst EMPTY_DISABLED: readonly boolean[] = [];\n\n// Tuple-aware index narrowing. For a tuple like [a, b] this yields `0 | 1`;\n// for `readonly unknown[]` (default) it stays `number`.\ntype ActionRowIndex<Actions extends readonly unknown[]> = number extends Actions[\"length\"]\n  ? number\n  : {\n      [K in keyof Actions]: K extends `${infer N extends number}` ? N : never;\n    }[number];\n\n// Tuple-aware disabled-flags shape. For a tuple it preserves length and\n// per-position position; for arrays it stays `readonly boolean[]`.\ntype ActionRowDisabledFlags<Actions extends readonly unknown[]> = number extends Actions[\"length\"]\n  ? readonly boolean[]\n  : { readonly [K in keyof Actions]: boolean };\n\n/** Options for two-zone keyboard navigation across row content and inline actions. */\nexport interface UseActionRowNavigationOptions<\n  Actions extends readonly unknown[] = readonly unknown[],\n> {\n  /** Enables row keyboard handling. Pass the row's active or selected state. */\n  enabled: boolean;\n  /** Number of action controls managed by the row. */\n  actionCount: Actions[\"length\"];\n  /** Called when Enter or Space activates the focused action. */\n  onAction: (index: ActionRowIndex<Actions>) => void;\n  /** Per-index disabled flags; disabled actions are skipped and ignored on activation. */\n  disabledActions?: ActionRowDisabledFlags<Actions>;\n  /** Receives focus when entering actions but no action is enabled. */\n  disabledFocusFallbackRef?: RefObject<HTMLElement | null>;\n  /** Limits zone handling to one row subtree. */\n  containerRef?: RefObject<HTMLElement | null>;\n  /** Allow row shortcuts to run when an editable element is focused. */\n  allowInInput?: boolean;\n  /** Wrap ArrowLeft/ArrowRight movement across the action ends. */\n  wrap?: boolean;\n  /** Initial zone; `\"actions\"` focuses the default action on mount. */\n  defaultZone?: ActionRowZone;\n  /** Initial action index focused when entering the actions zone. */\n  defaultIndex?: ActionRowIndex<Actions>;\n  /** Allow ArrowUp to leave the actions zone back to content. */\n  canExitActions?: boolean;\n  /** Called when navigation lands on an action index. */\n  onNavigate?: (index: ActionRowIndex<Actions>) => void;\n  /** Called when navigation cannot move further in a direction. */\n  onNavigationBoundaryReached?: (direction: \"previous\" | \"next\") => void;\n}\n\nfunction getDisabledKey(actionCount: number, disabledActions: readonly boolean[]): string {\n  let key = \"\";\n  for (let i = 0; i < actionCount; i += 1) {\n    key += disabledActions[i] ? \"1\" : \"0\";\n  }\n  return key;\n}\n\nfunction isIndexEnabled(index: number, actionCount: number, disabledKey: string): boolean {\n  return index >= 0 && index < actionCount && disabledKey[index] !== \"1\";\n}\n\nfunction getFirstEnabled(actionCount: number, disabledKey: string): number | null {\n  for (let i = 0; i < actionCount; i += 1) {\n    if (isIndexEnabled(i, actionCount, disabledKey)) return i;\n  }\n  return null;\n}\n\nfunction getNextIndex(\n  current: number,\n  direction: -1 | 1,\n  actionCount: number,\n  wrap: boolean,\n  disabledKey: string,\n): number | null {\n  if (actionCount <= 0) return null;\n\n  let next = current + direction;\n  for (let attempts = 0; attempts < actionCount; attempts += 1) {\n    if (next < 0 || next >= actionCount) {\n      if (!wrap) return isIndexEnabled(current, actionCount, disabledKey) ? current : null;\n      next = direction < 0 ? actionCount - 1 : 0;\n    }\n    if (isIndexEnabled(next, actionCount, disabledKey)) return next;\n    next += direction;\n  }\n\n  return isIndexEnabled(current, actionCount, disabledKey) ? current : null;\n}\n\n/** Return value from `useActionRowNavigation`. */\nexport interface UseActionRowNavigationReturn<\n  Actions extends readonly unknown[] = readonly unknown[],\n> {\n  /** Whether the row is currently in the actions zone. */\n  inActions: boolean;\n  /** Current focused action index. */\n  focusedIndex: ActionRowIndex<Actions>;\n  /** Whether the current action index is disabled. */\n  isFocusedActionDisabled: boolean;\n  /**\n   * Moves into the actions zone and focuses the requested or first enabled\n   * action. Returns the focused index, or null when no action is enabled.\n   */\n  enterActions: (index?: ActionRowIndex<Actions>) => number | null;\n  /** Returns to the content zone when `canExitActions` is true. */\n  exitActions: () => void;\n  /** Returns to content and resets the focused action index. */\n  reset: (initialIndex?: ActionRowIndex<Actions>) => void;\n  /** Props to spread onto each action element so the hook can focus and track it. */\n  getActionProps: (index: ActionRowIndex<Actions>) => {\n    /** Ref callback that registers the action element at this index. */\n    ref: RefCallback<HTMLElement>;\n    /** Numeric action index exposed for debugging and tests. */\n    \"data-action-index\": number;\n    /** Focus handler that marks this action as the active action-zone item. */\n    onFocus: () => void;\n  };\n}\n\n/**\n * Coordinates a row's main content with a strip of inline action buttons using\n * provider-backed two-zone keyboard navigation.\n */\nexport function useActionRowNavigation<Actions extends readonly unknown[] = readonly unknown[]>({\n  enabled,\n  actionCount,\n  onAction,\n  disabledActions = EMPTY_DISABLED as ActionRowDisabledFlags<Actions>,\n  disabledFocusFallbackRef,\n  containerRef,\n  allowInInput = false,\n  wrap = false,\n  defaultZone = \"content\",\n  defaultIndex = 0 as ActionRowIndex<Actions>,\n  canExitActions = true,\n  onNavigate,\n  onNavigationBoundaryReached,\n}: UseActionRowNavigationOptions<Actions>): UseActionRowNavigationReturn<Actions> {\n  const [focusedIndex, setFocusedIndex] = useState<number>(defaultIndex);\n  const actionRefs = useRef(new Map<number, HTMLElement>());\n  const hasFocusedDefaultRef = useRef(false);\n  const disabledKey = getDisabledKey(actionCount, disabledActions);\n\n  const focusZone = useFocusZone<ActionRowZone>({\n    initial: defaultZone,\n    zones: ACTION_ROW_ZONES,\n    enabled,\n    containerRef,\n    focusWithinOnly: Boolean(containerRef),\n    allowInInput,\n  });\n  const inActions = focusZone.isZone(\"actions\");\n  const setZone = focusZone.setZone;\n\n  const getEnabledTargetIndex = useCallback(\n    (index: number) => {\n      return isIndexEnabled(index, actionCount, disabledKey)\n        ? index\n        : getFirstEnabled(actionCount, disabledKey);\n    },\n    [actionCount, disabledKey],\n  );\n\n  const focusAction = useCallback(\n    (index: number) => {\n      const targetIndex = getEnabledTargetIndex(index);\n      if (targetIndex === null) return null;\n\n      setFocusedIndex(targetIndex);\n      actionRefs.current.get(targetIndex)?.focus();\n      return targetIndex;\n    },\n    [getEnabledTargetIndex],\n  );\n\n  const focusDisabledFallback = useCallback(() => {\n    const fallback = disabledFocusFallbackRef?.current;\n    if (fallback) {\n      fallback.focus({ preventScroll: true });\n      return;\n    }\n    const focusedAction = actionRefs.current.get(focusedIndex);\n    if (focusedAction && containsActiveElement(focusedAction)) focusedAction.blur();\n  }, [disabledFocusFallbackRef, focusedIndex]);\n\n  const isRegisteredActionFocused = useCallback(() => {\n    const el = actionRefs.current.get(focusedIndex);\n    return el ? containsActiveElement(el) : false;\n  }, [focusedIndex]);\n\n  useEffect(() => {\n    if (!enabled || defaultZone !== \"actions\" || !inActions || hasFocusedDefaultRef.current) return;\n    const targetIndex = getEnabledTargetIndex(defaultIndex);\n    if (targetIndex === null) {\n      setZone(\"content\");\n      focusDisabledFallback();\n      hasFocusedDefaultRef.current = true;\n      return;\n    }\n    if (!actionRefs.current.has(targetIndex)) return;\n\n    focusAction(targetIndex);\n    hasFocusedDefaultRef.current = true;\n  }, [\n    defaultIndex,\n    defaultZone,\n    enabled,\n    focusAction,\n    focusDisabledFallback,\n    getEnabledTargetIndex,\n    inActions,\n    setZone,\n  ]);\n\n  useEffect(() => {\n    if (!enabled || !inActions) return;\n    if (isIndexEnabled(focusedIndex, actionCount, disabledKey)) {\n      if (!isRegisteredActionFocused()) focusAction(focusedIndex);\n      return;\n    }\n    const targetIndex = getFirstEnabled(actionCount, disabledKey);\n    if (targetIndex === null) {\n      setZone(\"content\");\n      focusDisabledFallback();\n      return;\n    }\n    focusAction(targetIndex);\n  }, [\n    actionCount,\n    disabledKey,\n    enabled,\n    focusAction,\n    focusDisabledFallback,\n    focusedIndex,\n    inActions,\n    isRegisteredActionFocused,\n    setZone,\n  ]);\n\n  const reset = (initialIndex: number = 0) => {\n    setZone(\"content\");\n    setFocusedIndex(initialIndex);\n  };\n\n  const enterActions = (index: number = 0) => {\n    const targetIndex = getEnabledTargetIndex(index);\n    if (targetIndex === null) {\n      setZone(\"content\");\n      focusDisabledFallback();\n      return null;\n    }\n\n    setZone(\"actions\");\n    focusAction(targetIndex);\n    // targetIndex is bounded to 0..actionCount-1 by getEnabledTargetIndex,\n    // so it is always a valid Actions index when Actions is a tuple.\n    onNavigate?.(targetIndex as ActionRowIndex<Actions>);\n    return targetIndex;\n  };\n\n  const exitActions = () => {\n    if (!canExitActions) return;\n    setZone(\"content\");\n    setFocusedIndex(0);\n    onNavigationBoundaryReached?.(\"previous\");\n  };\n\n  const keyOptions = focusZone.getKeyOptions(\"actions\");\n  const enterOptions = focusZone.getKeyOptions(\"content\");\n\n  const activateFocusedAction = (event: KeyboardEvent) => {\n    if (!isIndexEnabled(focusedIndex, actionCount, disabledKey)) return;\n    event.preventDefault();\n    // focusedIndex is guarded by isIndexEnabled (0..actionCount-1).\n    onAction(focusedIndex as ActionRowIndex<Actions>);\n  };\n\n  useKey(\n    \"ArrowLeft\",\n    () => {\n      const nextIndex = getNextIndex(focusedIndex, -1, actionCount, wrap, disabledKey);\n      if (nextIndex !== null && nextIndex !== focusedIndex) {\n        focusAction(nextIndex);\n        onNavigate?.(nextIndex as ActionRowIndex<Actions>);\n      } else if (nextIndex === focusedIndex) {\n        onNavigationBoundaryReached?.(\"previous\");\n      }\n    },\n    keyOptions,\n  );\n\n  useKey(\n    \"ArrowRight\",\n    () => {\n      const nextIndex = getNextIndex(focusedIndex, 1, actionCount, wrap, disabledKey);\n      if (nextIndex !== null && nextIndex !== focusedIndex) {\n        focusAction(nextIndex);\n        onNavigate?.(nextIndex as ActionRowIndex<Actions>);\n      } else if (nextIndex === focusedIndex) {\n        onNavigationBoundaryReached?.(\"next\");\n      }\n    },\n    keyOptions,\n  );\n\n  useKey(\"ArrowDown\", () => enterActions(0), enterOptions);\n  useKey(\"ArrowUp\", exitActions, keyOptions);\n  useKey(\"Enter\", activateFocusedAction, keyOptions);\n  useKey(\" \", activateFocusedAction, keyOptions);\n\n  const getActionProps = (index: number) => ({\n    ref: ((node: HTMLElement | null) => {\n      if (node) actionRefs.current.set(index, node);\n      else actionRefs.current.delete(index);\n    }) as RefCallback<HTMLElement>,\n    \"data-action-index\": index,\n    onFocus: () => {\n      if (!isIndexEnabled(index, actionCount, disabledKey)) return;\n      setZone(\"actions\");\n      setFocusedIndex(index);\n    },\n  });\n\n  return {\n    inActions,\n    // focusedIndex is bounded to 0..actionCount-1 by the navigation logic, so it\n    // is always a valid Actions index when Actions is a tuple.\n    focusedIndex: focusedIndex as ActionRowIndex<Actions>,\n    isFocusedActionDisabled: !isIndexEnabled(focusedIndex, actionCount, disabledKey),\n    enterActions,\n    exitActions,\n    reset,\n    getActionProps,\n  };\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -1125,6 +1125,23 @@
         "number": 26,
         "content": [
           {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Options for two-zone keyboard navigation across row content and inline actions. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 27,
+        "content": [
+          {
             "text": "export",
             "color": "var(--code-keyword)"
           },
@@ -1151,7 +1168,7 @@
         ]
       },
       {
-        "number": 27,
+        "number": 28,
         "content": [
           {
             "text": "  ",
@@ -1220,7 +1237,7 @@
         ]
       },
       {
-        "number": 28,
+        "number": 29,
         "content": [
           {
             "text": ">",
@@ -1237,7 +1254,28 @@
         ]
       },
       {
-        "number": 29,
+        "number": 30,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Enables row keyboard handling. Pass the row's active or selected state. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 31,
         "content": [
           {
             "text": "  enabled",
@@ -1262,7 +1300,28 @@
         ]
       },
       {
-        "number": 30,
+        "number": 32,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Number of action controls managed by the row. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 33,
         "content": [
           {
             "text": "  actionCount",
@@ -1307,7 +1366,28 @@
         ]
       },
       {
-        "number": 31,
+        "number": 34,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Called when Enter or Space activates the focused action. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 35,
         "content": [
           {
             "text": "  ",
@@ -1380,7 +1460,28 @@
         ]
       },
       {
-        "number": 32,
+        "number": 36,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Per-index disabled flags; disabled actions are skipped and ignored on activation. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 37,
         "content": [
           {
             "text": "  disabledActions",
@@ -1413,7 +1514,28 @@
         ]
       },
       {
-        "number": 33,
+        "number": 38,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Receives focus when entering actions but no action is enabled. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 39,
         "content": [
           {
             "text": "  disabledFocusFallbackRef",
@@ -1462,7 +1584,28 @@
         ]
       },
       {
-        "number": 34,
+        "number": 40,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Limits zone handling to one row subtree. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 41,
         "content": [
           {
             "text": "  containerRef",
@@ -1511,7 +1654,28 @@
         ]
       },
       {
-        "number": 35,
+        "number": 42,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Allow row shortcuts to run when an editable element is focused. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 43,
         "content": [
           {
             "text": "  allowInInput",
@@ -1536,7 +1700,28 @@
         ]
       },
       {
-        "number": 36,
+        "number": 44,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Wrap ArrowLeft/ArrowRight movement across the action ends. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 45,
         "content": [
           {
             "text": "  wrap",
@@ -1561,7 +1746,28 @@
         ]
       },
       {
-        "number": 37,
+        "number": 46,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Initial zone; `\"actions\"` focuses the default action on mount. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 47,
         "content": [
           {
             "text": "  defaultZone",
@@ -1586,7 +1792,28 @@
         ]
       },
       {
-        "number": 38,
+        "number": 48,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Initial action index focused when entering the actions zone. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 49,
         "content": [
           {
             "text": "  defaultIndex",
@@ -1619,7 +1846,28 @@
         ]
       },
       {
-        "number": 39,
+        "number": 50,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Allow ArrowUp to leave the actions zone back to content. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 51,
         "content": [
           {
             "text": "  canExitActions",
@@ -1644,7 +1892,28 @@
         ]
       },
       {
-        "number": 40,
+        "number": 52,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Called when navigation lands on an action index. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 53,
         "content": [
           {
             "text": "  ",
@@ -1717,7 +1986,28 @@
         ]
       },
       {
-        "number": 41,
+        "number": 54,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Called when navigation cannot move further in a direction. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 55,
         "content": [
           {
             "text": "  ",
@@ -1814,7 +2104,7 @@
         ]
       },
       {
-        "number": 42,
+        "number": 56,
         "content": [
           {
             "text": "}",
@@ -1823,11 +2113,11 @@
         ]
       },
       {
-        "number": 43,
+        "number": 57,
         "content": []
       },
       {
-        "number": 44,
+        "number": 58,
         "content": [
           {
             "text": "function",
@@ -1916,7 +2206,7 @@
         ]
       },
       {
-        "number": 45,
+        "number": 59,
         "content": [
           {
             "text": "  ",
@@ -1949,7 +2239,7 @@
         ]
       },
       {
-        "number": 46,
+        "number": 60,
         "content": [
           {
             "text": "  ",
@@ -2030,7 +2320,7 @@
         ]
       },
       {
-        "number": 47,
+        "number": 61,
         "content": [
           {
             "text": "    key ",
@@ -2095,7 +2385,7 @@
         ]
       },
       {
-        "number": 48,
+        "number": 62,
         "content": [
           {
             "text": "  ",
@@ -2108,7 +2398,7 @@
         ]
       },
       {
-        "number": 49,
+        "number": 63,
         "content": [
           {
             "text": "  ",
@@ -2129,7 +2419,7 @@
         ]
       },
       {
-        "number": 50,
+        "number": 64,
         "content": [
           {
             "text": "}",
@@ -2138,11 +2428,11 @@
         ]
       },
       {
-        "number": 51,
+        "number": 65,
         "content": []
       },
       {
-        "number": 52,
+        "number": 66,
         "content": [
           {
             "text": "function",
@@ -2239,7 +2529,7 @@
         ]
       },
       {
-        "number": 53,
+        "number": 67,
         "content": [
           {
             "text": "  ",
@@ -2320,7 +2610,7 @@
         ]
       },
       {
-        "number": 54,
+        "number": 68,
         "content": [
           {
             "text": "}",
@@ -2329,11 +2619,11 @@
         ]
       },
       {
-        "number": 55,
+        "number": 69,
         "content": []
       },
       {
-        "number": 56,
+        "number": 70,
         "content": [
           {
             "text": "function",
@@ -2426,7 +2716,7 @@
         ]
       },
       {
-        "number": 57,
+        "number": 71,
         "content": [
           {
             "text": "  ",
@@ -2507,7 +2797,7 @@
         ]
       },
       {
-        "number": 58,
+        "number": 72,
         "content": [
           {
             "text": "    ",
@@ -2560,7 +2850,7 @@
         ]
       },
       {
-        "number": 59,
+        "number": 73,
         "content": [
           {
             "text": "  ",
@@ -2573,7 +2863,7 @@
         ]
       },
       {
-        "number": 60,
+        "number": 74,
         "content": [
           {
             "text": "  ",
@@ -2598,7 +2888,7 @@
         ]
       },
       {
-        "number": 61,
+        "number": 75,
         "content": [
           {
             "text": "}",
@@ -2607,11 +2897,11 @@
         ]
       },
       {
-        "number": 62,
+        "number": 76,
         "content": []
       },
       {
-        "number": 63,
+        "number": 77,
         "content": [
           {
             "text": "function",
@@ -2632,7 +2922,7 @@
         ]
       },
       {
-        "number": 64,
+        "number": 78,
         "content": [
           {
             "text": "  current",
@@ -2657,7 +2947,7 @@
         ]
       },
       {
-        "number": 65,
+        "number": 79,
         "content": [
           {
             "text": "  direction",
@@ -2698,7 +2988,7 @@
         ]
       },
       {
-        "number": 66,
+        "number": 80,
         "content": [
           {
             "text": "  actionCount",
@@ -2723,7 +3013,7 @@
         ]
       },
       {
-        "number": 67,
+        "number": 81,
         "content": [
           {
             "text": "  wrap",
@@ -2748,7 +3038,7 @@
         ]
       },
       {
-        "number": 68,
+        "number": 82,
         "content": [
           {
             "text": "  disabledKey",
@@ -2773,7 +3063,7 @@
         ]
       },
       {
-        "number": 69,
+        "number": 83,
         "content": [
           {
             "text": "):",
@@ -2814,7 +3104,7 @@
         ]
       },
       {
-        "number": 70,
+        "number": 84,
         "content": [
           {
             "text": "  ",
@@ -2863,11 +3153,11 @@
         ]
       },
       {
-        "number": 71,
+        "number": 85,
         "content": []
       },
       {
-        "number": 72,
+        "number": 86,
         "content": [
           {
             "text": "  ",
@@ -2904,7 +3194,7 @@
         ]
       },
       {
-        "number": 73,
+        "number": 87,
         "content": [
           {
             "text": "  ",
@@ -2985,7 +3275,7 @@
         ]
       },
       {
-        "number": 74,
+        "number": 88,
         "content": [
           {
             "text": "    ",
@@ -3038,7 +3328,7 @@
         ]
       },
       {
-        "number": 75,
+        "number": 89,
         "content": [
           {
             "text": "      ",
@@ -3119,7 +3409,7 @@
         ]
       },
       {
-        "number": 76,
+        "number": 90,
         "content": [
           {
             "text": "      next ",
@@ -3192,7 +3482,7 @@
         ]
       },
       {
-        "number": 77,
+        "number": 91,
         "content": [
           {
             "text": "    ",
@@ -3205,7 +3495,7 @@
         ]
       },
       {
-        "number": 78,
+        "number": 92,
         "content": [
           {
             "text": "    ",
@@ -3258,7 +3548,7 @@
         ]
       },
       {
-        "number": 79,
+        "number": 93,
         "content": [
           {
             "text": "    next ",
@@ -3279,7 +3569,7 @@
         ]
       },
       {
-        "number": 80,
+        "number": 94,
         "content": [
           {
             "text": "  ",
@@ -3292,11 +3582,11 @@
         ]
       },
       {
-        "number": 81,
+        "number": 95,
         "content": []
       },
       {
-        "number": 82,
+        "number": 96,
         "content": [
           {
             "text": "  ",
@@ -3361,7 +3651,7 @@
         ]
       },
       {
-        "number": 83,
+        "number": 97,
         "content": [
           {
             "text": "}",
@@ -3370,11 +3660,28 @@
         ]
       },
       {
-        "number": 84,
+        "number": 98,
         "content": []
       },
       {
-        "number": 85,
+        "number": 99,
+        "content": [
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Return value from `useActionRowNavigation`. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 100,
         "content": [
           {
             "text": "export",
@@ -3397,6 +3704,88 @@
             "color": "var(--code-function)"
           },
           {
+            "text": "<",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 101,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "Actions",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "extends",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "readonly",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "unknown",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "[] ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "readonly",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "unknown",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "[]",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 102,
+        "content": [
+          {
+            "text": ">",
+            "color": "var(--code-operator)"
+          },
+          {
             "text": " ",
             "color": "var(--code-variable)"
           },
@@ -3407,7 +3796,28 @@
         ]
       },
       {
-        "number": 86,
+        "number": 103,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Whether the row is currently in the actions zone. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 104,
         "content": [
           {
             "text": "  inActions",
@@ -3432,7 +3842,28 @@
         ]
       },
       {
-        "number": 87,
+        "number": 105,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Current focused action index. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 106,
         "content": [
           {
             "text": "  focusedIndex",
@@ -3447,17 +3878,46 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "number",
-            "color": "var(--code-number)"
+            "text": "ActionRowIndex",
+            "color": "var(--code-function)"
           },
           {
-            "text": ";",
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "Actions",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ">;",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 88,
+        "number": 107,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Whether the current action index is disabled. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 108,
         "content": [
           {
             "text": "  isFocusedActionDisabled",
@@ -3482,7 +3942,51 @@
         ]
       },
       {
-        "number": 89,
+        "number": 109,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 110,
+        "content": [
+          {
+            "text": "   * Moves into the actions zone and focuses the requested or first enabled",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 111,
+        "content": [
+          {
+            "text": "   * action. Returns the focused index, or null when no action is enabled.",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 112,
+        "content": [
+          {
+            "text": "   ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 113,
         "content": [
           {
             "text": "  ",
@@ -3517,11 +4021,19 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "number",
-            "color": "var(--code-number)"
+            "text": "ActionRowIndex",
+            "color": "var(--code-function)"
           },
           {
-            "text": ")",
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "Actions",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ">)",
             "color": "var(--code-operator)"
           },
           {
@@ -3563,7 +4075,28 @@
         ]
       },
       {
-        "number": 90,
+        "number": 114,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Returns to the content zone when `canExitActions` is true. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 115,
         "content": [
           {
             "text": "  ",
@@ -3608,7 +4141,28 @@
         ]
       },
       {
-        "number": 91,
+        "number": 116,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Returns to content and resets the focused action index. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 117,
         "content": [
           {
             "text": "  ",
@@ -3643,11 +4197,19 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "number",
-            "color": "var(--code-number)"
+            "text": "ActionRowIndex",
+            "color": "var(--code-function)"
           },
           {
-            "text": ")",
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "Actions",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ">)",
             "color": "var(--code-operator)"
           },
           {
@@ -3673,7 +4235,28 @@
         ]
       },
       {
-        "number": 92,
+        "number": 118,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Props to spread onto each action element so the hook can focus and track it. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 119,
         "content": [
           {
             "text": "  ",
@@ -3708,11 +4291,19 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "number",
-            "color": "var(--code-number)"
+            "text": "ActionRowIndex",
+            "color": "var(--code-function)"
           },
           {
-            "text": ")",
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "Actions",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ">)",
             "color": "var(--code-operator)"
           },
           {
@@ -3734,7 +4325,28 @@
         ]
       },
       {
-        "number": 93,
+        "number": 120,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Ref callback that registers the action element at this index. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 121,
         "content": [
           {
             "text": "    ref",
@@ -3767,7 +4379,28 @@
         ]
       },
       {
-        "number": 94,
+        "number": 122,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Numeric action index exposed for debugging and tests. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 123,
         "content": [
           {
             "text": "    ",
@@ -3804,7 +4437,28 @@
         ]
       },
       {
-        "number": 95,
+        "number": 124,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Focus handler that marks this action as the active action-zone item. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 125,
         "content": [
           {
             "text": "    ",
@@ -3849,7 +4503,7 @@
         ]
       },
       {
-        "number": 96,
+        "number": 126,
         "content": [
           {
             "text": "  ",
@@ -3862,7 +4516,7 @@
         ]
       },
       {
-        "number": 97,
+        "number": 127,
         "content": [
           {
             "text": "}",
@@ -3871,11 +4525,51 @@
         ]
       },
       {
-        "number": 98,
+        "number": 128,
         "content": []
       },
       {
-        "number": 99,
+        "number": 129,
+        "content": [
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 130,
+        "content": [
+          {
+            "text": " * Coordinates a row's main content with a strip of inline action buttons using",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 131,
+        "content": [
+          {
+            "text": " * provider-backed two-zone keyboard navigation.",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 132,
+        "content": [
+          {
+            "text": " ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 133,
         "content": [
           {
             "text": "export",
@@ -3964,7 +4658,7 @@
         ]
       },
       {
-        "number": 100,
+        "number": 134,
         "content": [
           {
             "text": "  enabled",
@@ -3977,7 +4671,7 @@
         ]
       },
       {
-        "number": 101,
+        "number": 135,
         "content": [
           {
             "text": "  actionCount",
@@ -3990,7 +4684,7 @@
         ]
       },
       {
-        "number": 102,
+        "number": 136,
         "content": [
           {
             "text": "  onAction",
@@ -4003,7 +4697,7 @@
         ]
       },
       {
-        "number": 103,
+        "number": 137,
         "content": [
           {
             "text": "  disabledActions ",
@@ -4052,7 +4746,7 @@
         ]
       },
       {
-        "number": 104,
+        "number": 138,
         "content": [
           {
             "text": "  disabledFocusFallbackRef",
@@ -4065,7 +4759,7 @@
         ]
       },
       {
-        "number": 105,
+        "number": 139,
         "content": [
           {
             "text": "  containerRef",
@@ -4078,7 +4772,7 @@
         ]
       },
       {
-        "number": 106,
+        "number": 140,
         "content": [
           {
             "text": "  allowInInput ",
@@ -4103,7 +4797,7 @@
         ]
       },
       {
-        "number": 107,
+        "number": 141,
         "content": [
           {
             "text": "  wrap ",
@@ -4128,7 +4822,7 @@
         ]
       },
       {
-        "number": 108,
+        "number": 142,
         "content": [
           {
             "text": "  defaultZone ",
@@ -4161,7 +4855,7 @@
         ]
       },
       {
-        "number": 109,
+        "number": 143,
         "content": [
           {
             "text": "  defaultIndex ",
@@ -4210,7 +4904,7 @@
         ]
       },
       {
-        "number": 110,
+        "number": 144,
         "content": [
           {
             "text": "  canExitActions ",
@@ -4235,7 +4929,7 @@
         ]
       },
       {
-        "number": 111,
+        "number": 145,
         "content": [
           {
             "text": "  onNavigate",
@@ -4248,7 +4942,7 @@
         ]
       },
       {
-        "number": 112,
+        "number": 146,
         "content": [
           {
             "text": "  onNavigationBoundaryReached",
@@ -4261,7 +4955,7 @@
         ]
       },
       {
-        "number": 113,
+        "number": 147,
         "content": [
           {
             "text": "}:",
@@ -4296,6 +4990,18 @@
             "color": "var(--code-function)"
           },
           {
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "Actions",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ">",
+            "color": "var(--code-operator)"
+          },
+          {
             "text": " ",
             "color": "var(--code-variable)"
           },
@@ -4306,7 +5012,7 @@
         ]
       },
       {
-        "number": 114,
+        "number": 148,
         "content": [
           {
             "text": "  ",
@@ -4383,7 +5089,7 @@
         ]
       },
       {
-        "number": 115,
+        "number": 149,
         "content": [
           {
             "text": "  ",
@@ -4468,7 +5174,7 @@
         ]
       },
       {
-        "number": 116,
+        "number": 150,
         "content": [
           {
             "text": "  ",
@@ -4521,7 +5227,7 @@
         ]
       },
       {
-        "number": 117,
+        "number": 151,
         "content": [
           {
             "text": "  ",
@@ -4574,11 +5280,11 @@
         ]
       },
       {
-        "number": 118,
+        "number": 152,
         "content": []
       },
       {
-        "number": 119,
+        "number": 153,
         "content": [
           {
             "text": "  ",
@@ -4635,7 +5341,7 @@
         ]
       },
       {
-        "number": 120,
+        "number": 154,
         "content": [
           {
             "text": "    initial",
@@ -4656,7 +5362,7 @@
         ]
       },
       {
-        "number": 121,
+        "number": 155,
         "content": [
           {
             "text": "    zones",
@@ -4681,7 +5387,7 @@
         ]
       },
       {
-        "number": 122,
+        "number": 156,
         "content": [
           {
             "text": "    enabled",
@@ -4694,7 +5400,7 @@
         ]
       },
       {
-        "number": 123,
+        "number": 157,
         "content": [
           {
             "text": "    containerRef",
@@ -4707,7 +5413,7 @@
         ]
       },
       {
-        "number": 124,
+        "number": 158,
         "content": [
           {
             "text": "    focusWithinOnly",
@@ -4736,7 +5442,7 @@
         ]
       },
       {
-        "number": 125,
+        "number": 159,
         "content": [
           {
             "text": "    allowInInput",
@@ -4749,7 +5455,7 @@
         ]
       },
       {
-        "number": 126,
+        "number": 160,
         "content": [
           {
             "text": "  ",
@@ -4770,7 +5476,7 @@
         ]
       },
       {
-        "number": 127,
+        "number": 161,
         "content": [
           {
             "text": "  ",
@@ -4839,7 +5545,7 @@
         ]
       },
       {
-        "number": 128,
+        "number": 162,
         "content": [
           {
             "text": "  ",
@@ -4888,11 +5594,11 @@
         ]
       },
       {
-        "number": 129,
+        "number": 163,
         "content": []
       },
       {
-        "number": 130,
+        "number": 164,
         "content": [
           {
             "text": "  ",
@@ -4933,7 +5639,7 @@
         ]
       },
       {
-        "number": 131,
+        "number": 165,
         "content": [
           {
             "text": "    ",
@@ -4982,7 +5688,7 @@
         ]
       },
       {
-        "number": 132,
+        "number": 166,
         "content": [
           {
             "text": "      ",
@@ -5023,7 +5729,7 @@
         ]
       },
       {
-        "number": 133,
+        "number": 167,
         "content": [
           {
             "text": "        ",
@@ -5040,7 +5746,7 @@
         ]
       },
       {
-        "number": 134,
+        "number": 168,
         "content": [
           {
             "text": "        ",
@@ -5077,7 +5783,7 @@
         ]
       },
       {
-        "number": 135,
+        "number": 169,
         "content": [
           {
             "text": "    ",
@@ -5090,7 +5796,7 @@
         ]
       },
       {
-        "number": 136,
+        "number": 170,
         "content": [
           {
             "text": "    [actionCount",
@@ -5111,7 +5817,7 @@
         ]
       },
       {
-        "number": 137,
+        "number": 171,
         "content": [
           {
             "text": "  )",
@@ -5124,11 +5830,11 @@
         ]
       },
       {
-        "number": 138,
+        "number": 172,
         "content": []
       },
       {
-        "number": 139,
+        "number": 173,
         "content": [
           {
             "text": "  ",
@@ -5169,7 +5875,7 @@
         ]
       },
       {
-        "number": 140,
+        "number": 174,
         "content": [
           {
             "text": "    ",
@@ -5218,7 +5924,7 @@
         ]
       },
       {
-        "number": 141,
+        "number": 175,
         "content": [
           {
             "text": "      ",
@@ -5263,7 +5969,7 @@
         ]
       },
       {
-        "number": 142,
+        "number": 176,
         "content": [
           {
             "text": "      ",
@@ -5312,11 +6018,11 @@
         ]
       },
       {
-        "number": 143,
+        "number": 177,
         "content": []
       },
       {
-        "number": 144,
+        "number": 178,
         "content": [
           {
             "text": "      ",
@@ -5337,7 +6043,7 @@
         ]
       },
       {
-        "number": 145,
+        "number": 179,
         "content": [
           {
             "text": "      ",
@@ -5386,7 +6092,7 @@
         ]
       },
       {
-        "number": 146,
+        "number": 180,
         "content": [
           {
             "text": "      ",
@@ -5407,7 +6113,7 @@
         ]
       },
       {
-        "number": 147,
+        "number": 181,
         "content": [
           {
             "text": "    ",
@@ -5420,7 +6126,7 @@
         ]
       },
       {
-        "number": 148,
+        "number": 182,
         "content": [
           {
             "text": "    [getEnabledTargetIndex]",
@@ -5433,7 +6139,7 @@
         ]
       },
       {
-        "number": 149,
+        "number": 183,
         "content": [
           {
             "text": "  )",
@@ -5446,11 +6152,11 @@
         ]
       },
       {
-        "number": 150,
+        "number": 184,
         "content": []
       },
       {
-        "number": 151,
+        "number": 185,
         "content": [
           {
             "text": "  ",
@@ -5511,7 +6217,7 @@
         ]
       },
       {
-        "number": 152,
+        "number": 186,
         "content": [
           {
             "text": "    ",
@@ -5560,7 +6266,7 @@
         ]
       },
       {
-        "number": 153,
+        "number": 187,
         "content": [
           {
             "text": "    ",
@@ -5581,7 +6287,7 @@
         ]
       },
       {
-        "number": 154,
+        "number": 188,
         "content": [
           {
             "text": "      ",
@@ -5642,7 +6348,7 @@
         ]
       },
       {
-        "number": 155,
+        "number": 189,
         "content": [
           {
             "text": "      ",
@@ -5659,7 +6365,7 @@
         ]
       },
       {
-        "number": 156,
+        "number": 190,
         "content": [
           {
             "text": "    ",
@@ -5672,7 +6378,7 @@
         ]
       },
       {
-        "number": 157,
+        "number": 191,
         "content": [
           {
             "text": "    ",
@@ -5733,7 +6439,7 @@
         ]
       },
       {
-        "number": 158,
+        "number": 192,
         "content": [
           {
             "text": "    ",
@@ -5786,7 +6492,7 @@
         ]
       },
       {
-        "number": 159,
+        "number": 193,
         "content": [
           {
             "text": "  ",
@@ -5815,11 +6521,11 @@
         ]
       },
       {
-        "number": 160,
+        "number": 194,
         "content": []
       },
       {
-        "number": 161,
+        "number": 195,
         "content": [
           {
             "text": "  ",
@@ -5880,7 +6586,7 @@
         ]
       },
       {
-        "number": 162,
+        "number": 196,
         "content": [
           {
             "text": "    ",
@@ -5941,7 +6647,7 @@
         ]
       },
       {
-        "number": 163,
+        "number": 197,
         "content": [
           {
             "text": "    ",
@@ -5990,7 +6696,7 @@
         ]
       },
       {
-        "number": 164,
+        "number": 198,
         "content": [
           {
             "text": "  ",
@@ -6011,11 +6717,11 @@
         ]
       },
       {
-        "number": 165,
+        "number": 199,
         "content": []
       },
       {
-        "number": 166,
+        "number": 200,
         "content": [
           {
             "text": "  ",
@@ -6052,7 +6758,7 @@
         ]
       },
       {
-        "number": 167,
+        "number": 201,
         "content": [
           {
             "text": "    ",
@@ -6153,7 +6859,7 @@
         ]
       },
       {
-        "number": 168,
+        "number": 202,
         "content": [
           {
             "text": "    ",
@@ -6198,7 +6904,7 @@
         ]
       },
       {
-        "number": 169,
+        "number": 203,
         "content": [
           {
             "text": "    ",
@@ -6235,7 +6941,7 @@
         ]
       },
       {
-        "number": 170,
+        "number": 204,
         "content": [
           {
             "text": "      ",
@@ -6272,7 +6978,7 @@
         ]
       },
       {
-        "number": 171,
+        "number": 205,
         "content": [
           {
             "text": "      ",
@@ -6293,7 +6999,7 @@
         ]
       },
       {
-        "number": 172,
+        "number": 206,
         "content": [
           {
             "text": "      ",
@@ -6330,7 +7036,7 @@
         ]
       },
       {
-        "number": 173,
+        "number": 207,
         "content": [
           {
             "text": "      ",
@@ -6347,7 +7053,7 @@
         ]
       },
       {
-        "number": 174,
+        "number": 208,
         "content": [
           {
             "text": "    ",
@@ -6360,7 +7066,7 @@
         ]
       },
       {
-        "number": 175,
+        "number": 209,
         "content": [
           {
             "text": "    ",
@@ -6413,11 +7119,11 @@
         ]
       },
       {
-        "number": 176,
+        "number": 210,
         "content": []
       },
       {
-        "number": 177,
+        "number": 211,
         "content": [
           {
             "text": "    ",
@@ -6438,7 +7144,7 @@
         ]
       },
       {
-        "number": 178,
+        "number": 212,
         "content": [
           {
             "text": "    ",
@@ -6475,7 +7181,7 @@
         ]
       },
       {
-        "number": 179,
+        "number": 213,
         "content": [
           {
             "text": "  ",
@@ -6492,7 +7198,7 @@
         ]
       },
       {
-        "number": 180,
+        "number": 214,
         "content": [
           {
             "text": "    defaultIndex",
@@ -6505,7 +7211,7 @@
         ]
       },
       {
-        "number": 181,
+        "number": 215,
         "content": [
           {
             "text": "    defaultZone",
@@ -6518,7 +7224,7 @@
         ]
       },
       {
-        "number": 182,
+        "number": 216,
         "content": [
           {
             "text": "    enabled",
@@ -6531,7 +7237,7 @@
         ]
       },
       {
-        "number": 183,
+        "number": 217,
         "content": [
           {
             "text": "    focusAction",
@@ -6544,7 +7250,7 @@
         ]
       },
       {
-        "number": 184,
+        "number": 218,
         "content": [
           {
             "text": "    focusDisabledFallback",
@@ -6557,7 +7263,7 @@
         ]
       },
       {
-        "number": 185,
+        "number": 219,
         "content": [
           {
             "text": "    getEnabledTargetIndex",
@@ -6570,7 +7276,7 @@
         ]
       },
       {
-        "number": 186,
+        "number": 220,
         "content": [
           {
             "text": "    inActions",
@@ -6583,7 +7289,7 @@
         ]
       },
       {
-        "number": 187,
+        "number": 221,
         "content": [
           {
             "text": "    setZone",
@@ -6596,7 +7302,7 @@
         ]
       },
       {
-        "number": 188,
+        "number": 222,
         "content": [
           {
             "text": "  ])",
@@ -6609,11 +7315,11 @@
         ]
       },
       {
-        "number": 189,
+        "number": 223,
         "content": []
       },
       {
-        "number": 190,
+        "number": 224,
         "content": [
           {
             "text": "  ",
@@ -6650,7 +7356,7 @@
         ]
       },
       {
-        "number": 191,
+        "number": 225,
         "content": [
           {
             "text": "    ",
@@ -6699,7 +7405,7 @@
         ]
       },
       {
-        "number": 192,
+        "number": 226,
         "content": [
           {
             "text": "    ",
@@ -6744,7 +7450,7 @@
         ]
       },
       {
-        "number": 193,
+        "number": 227,
         "content": [
           {
             "text": "      ",
@@ -6785,7 +7491,7 @@
         ]
       },
       {
-        "number": 194,
+        "number": 228,
         "content": [
           {
             "text": "      ",
@@ -6802,7 +7508,7 @@
         ]
       },
       {
-        "number": 195,
+        "number": 229,
         "content": [
           {
             "text": "    ",
@@ -6815,7 +7521,7 @@
         ]
       },
       {
-        "number": 196,
+        "number": 230,
         "content": [
           {
             "text": "    ",
@@ -6868,7 +7574,7 @@
         ]
       },
       {
-        "number": 197,
+        "number": 231,
         "content": [
           {
             "text": "    ",
@@ -6905,7 +7611,7 @@
         ]
       },
       {
-        "number": 198,
+        "number": 232,
         "content": [
           {
             "text": "      ",
@@ -6942,7 +7648,7 @@
         ]
       },
       {
-        "number": 199,
+        "number": 233,
         "content": [
           {
             "text": "      ",
@@ -6963,7 +7669,7 @@
         ]
       },
       {
-        "number": 200,
+        "number": 234,
         "content": [
           {
             "text": "      ",
@@ -6980,7 +7686,7 @@
         ]
       },
       {
-        "number": 201,
+        "number": 235,
         "content": [
           {
             "text": "    ",
@@ -6993,7 +7699,7 @@
         ]
       },
       {
-        "number": 202,
+        "number": 236,
         "content": [
           {
             "text": "    ",
@@ -7014,7 +7720,7 @@
         ]
       },
       {
-        "number": 203,
+        "number": 237,
         "content": [
           {
             "text": "  ",
@@ -7031,7 +7737,7 @@
         ]
       },
       {
-        "number": 204,
+        "number": 238,
         "content": [
           {
             "text": "    actionCount",
@@ -7044,7 +7750,7 @@
         ]
       },
       {
-        "number": 205,
+        "number": 239,
         "content": [
           {
             "text": "    disabledKey",
@@ -7057,7 +7763,7 @@
         ]
       },
       {
-        "number": 206,
+        "number": 240,
         "content": [
           {
             "text": "    enabled",
@@ -7070,7 +7776,7 @@
         ]
       },
       {
-        "number": 207,
+        "number": 241,
         "content": [
           {
             "text": "    focusAction",
@@ -7083,7 +7789,7 @@
         ]
       },
       {
-        "number": 208,
+        "number": 242,
         "content": [
           {
             "text": "    focusDisabledFallback",
@@ -7096,7 +7802,7 @@
         ]
       },
       {
-        "number": 209,
+        "number": 243,
         "content": [
           {
             "text": "    focusedIndex",
@@ -7109,7 +7815,7 @@
         ]
       },
       {
-        "number": 210,
+        "number": 244,
         "content": [
           {
             "text": "    inActions",
@@ -7122,7 +7828,7 @@
         ]
       },
       {
-        "number": 211,
+        "number": 245,
         "content": [
           {
             "text": "    isRegisteredActionFocused",
@@ -7135,7 +7841,7 @@
         ]
       },
       {
-        "number": 212,
+        "number": 246,
         "content": [
           {
             "text": "    setZone",
@@ -7148,7 +7854,7 @@
         ]
       },
       {
-        "number": 213,
+        "number": 247,
         "content": [
           {
             "text": "  ])",
@@ -7161,11 +7867,11 @@
         ]
       },
       {
-        "number": 214,
+        "number": 248,
         "content": []
       },
       {
-        "number": 215,
+        "number": 249,
         "content": [
           {
             "text": "  ",
@@ -7254,7 +7960,7 @@
         ]
       },
       {
-        "number": 216,
+        "number": 250,
         "content": [
           {
             "text": "    ",
@@ -7291,7 +7997,7 @@
         ]
       },
       {
-        "number": 217,
+        "number": 251,
         "content": [
           {
             "text": "    ",
@@ -7312,7 +8018,7 @@
         ]
       },
       {
-        "number": 218,
+        "number": 252,
         "content": [
           {
             "text": "  ",
@@ -7325,11 +8031,11 @@
         ]
       },
       {
-        "number": 219,
+        "number": 253,
         "content": []
       },
       {
-        "number": 220,
+        "number": 254,
         "content": [
           {
             "text": "  ",
@@ -7418,7 +8124,7 @@
         ]
       },
       {
-        "number": 221,
+        "number": 255,
         "content": [
           {
             "text": "    ",
@@ -7463,7 +8169,7 @@
         ]
       },
       {
-        "number": 222,
+        "number": 256,
         "content": [
           {
             "text": "    ",
@@ -7500,7 +8206,7 @@
         ]
       },
       {
-        "number": 223,
+        "number": 257,
         "content": [
           {
             "text": "      ",
@@ -7537,7 +8243,7 @@
         ]
       },
       {
-        "number": 224,
+        "number": 258,
         "content": [
           {
             "text": "      ",
@@ -7558,7 +8264,7 @@
         ]
       },
       {
-        "number": 225,
+        "number": 259,
         "content": [
           {
             "text": "      ",
@@ -7583,7 +8289,7 @@
         ]
       },
       {
-        "number": 226,
+        "number": 260,
         "content": [
           {
             "text": "    ",
@@ -7596,11 +8302,11 @@
         ]
       },
       {
-        "number": 227,
+        "number": 261,
         "content": []
       },
       {
-        "number": 228,
+        "number": 262,
         "content": [
           {
             "text": "    ",
@@ -7637,7 +8343,7 @@
         ]
       },
       {
-        "number": 229,
+        "number": 263,
         "content": [
           {
             "text": "    ",
@@ -7658,7 +8364,7 @@
         ]
       },
       {
-        "number": 230,
+        "number": 264,
         "content": [
           {
             "text": "    //",
@@ -7671,7 +8377,7 @@
         ]
       },
       {
-        "number": 231,
+        "number": 265,
         "content": [
           {
             "text": "    //",
@@ -7684,7 +8390,7 @@
         ]
       },
       {
-        "number": 232,
+        "number": 266,
         "content": [
           {
             "text": "    ",
@@ -7737,7 +8443,7 @@
         ]
       },
       {
-        "number": 233,
+        "number": 267,
         "content": [
           {
             "text": "    ",
@@ -7758,7 +8464,7 @@
         ]
       },
       {
-        "number": 234,
+        "number": 268,
         "content": [
           {
             "text": "  ",
@@ -7771,11 +8477,11 @@
         ]
       },
       {
-        "number": 235,
+        "number": 269,
         "content": []
       },
       {
-        "number": 236,
+        "number": 270,
         "content": [
           {
             "text": "  ",
@@ -7828,7 +8534,7 @@
         ]
       },
       {
-        "number": 237,
+        "number": 271,
         "content": [
           {
             "text": "    ",
@@ -7861,7 +8567,7 @@
         ]
       },
       {
-        "number": 238,
+        "number": 272,
         "content": [
           {
             "text": "    ",
@@ -7898,7 +8604,7 @@
         ]
       },
       {
-        "number": 239,
+        "number": 273,
         "content": [
           {
             "text": "    ",
@@ -7927,7 +8633,7 @@
         ]
       },
       {
-        "number": 240,
+        "number": 274,
         "content": [
           {
             "text": "    ",
@@ -7968,7 +8674,7 @@
         ]
       },
       {
-        "number": 241,
+        "number": 275,
         "content": [
           {
             "text": "  ",
@@ -7981,11 +8687,11 @@
         ]
       },
       {
-        "number": 242,
+        "number": 276,
         "content": []
       },
       {
-        "number": 243,
+        "number": 277,
         "content": [
           {
             "text": "  ",
@@ -8054,7 +8760,7 @@
         ]
       },
       {
-        "number": 244,
+        "number": 278,
         "content": [
           {
             "text": "  ",
@@ -8123,11 +8829,11 @@
         ]
       },
       {
-        "number": 245,
+        "number": 279,
         "content": []
       },
       {
-        "number": 246,
+        "number": 280,
         "content": [
           {
             "text": "  ",
@@ -8200,7 +8906,7 @@
         ]
       },
       {
-        "number": 247,
+        "number": 281,
         "content": [
           {
             "text": "    ",
@@ -8253,7 +8959,7 @@
         ]
       },
       {
-        "number": 248,
+        "number": 282,
         "content": [
           {
             "text": "    ",
@@ -8282,7 +8988,7 @@
         ]
       },
       {
-        "number": 249,
+        "number": 283,
         "content": [
           {
             "text": "    //",
@@ -8295,7 +9001,7 @@
         ]
       },
       {
-        "number": 250,
+        "number": 284,
         "content": [
           {
             "text": "    ",
@@ -8344,7 +9050,7 @@
         ]
       },
       {
-        "number": 251,
+        "number": 285,
         "content": [
           {
             "text": "  ",
@@ -8357,11 +9063,11 @@
         ]
       },
       {
-        "number": 252,
+        "number": 286,
         "content": []
       },
       {
-        "number": 253,
+        "number": 287,
         "content": [
           {
             "text": "  ",
@@ -8378,7 +9084,7 @@
         ]
       },
       {
-        "number": 254,
+        "number": 288,
         "content": [
           {
             "text": "    ",
@@ -8403,7 +9109,7 @@
         ]
       },
       {
-        "number": 255,
+        "number": 289,
         "content": [
           {
             "text": "    ",
@@ -8432,7 +9138,7 @@
         ]
       },
       {
-        "number": 256,
+        "number": 290,
         "content": [
           {
             "text": "      ",
@@ -8517,7 +9223,7 @@
         ]
       },
       {
-        "number": 257,
+        "number": 291,
         "content": [
           {
             "text": "      ",
@@ -8570,7 +9276,7 @@
         ]
       },
       {
-        "number": 258,
+        "number": 292,
         "content": [
           {
             "text": "        ",
@@ -8591,7 +9297,7 @@
         ]
       },
       {
-        "number": 259,
+        "number": 293,
         "content": [
           {
             "text": "        ",
@@ -8644,7 +9350,7 @@
         ]
       },
       {
-        "number": 260,
+        "number": 294,
         "content": [
           {
             "text": "      ",
@@ -8689,7 +9395,7 @@
         ]
       },
       {
-        "number": 261,
+        "number": 295,
         "content": [
           {
             "text": "        ",
@@ -8730,7 +9436,7 @@
         ]
       },
       {
-        "number": 262,
+        "number": 296,
         "content": [
           {
             "text": "      ",
@@ -8743,7 +9449,7 @@
         ]
       },
       {
-        "number": 263,
+        "number": 297,
         "content": [
           {
             "text": "    ",
@@ -8756,7 +9462,7 @@
         ]
       },
       {
-        "number": 264,
+        "number": 298,
         "content": [
           {
             "text": "    keyOptions",
@@ -8769,7 +9475,7 @@
         ]
       },
       {
-        "number": 265,
+        "number": 299,
         "content": [
           {
             "text": "  )",
@@ -8782,11 +9488,11 @@
         ]
       },
       {
-        "number": 266,
+        "number": 300,
         "content": []
       },
       {
-        "number": 267,
+        "number": 301,
         "content": [
           {
             "text": "  ",
@@ -8803,7 +9509,7 @@
         ]
       },
       {
-        "number": 268,
+        "number": 302,
         "content": [
           {
             "text": "    ",
@@ -8828,7 +9534,7 @@
         ]
       },
       {
-        "number": 269,
+        "number": 303,
         "content": [
           {
             "text": "    ",
@@ -8857,7 +9563,7 @@
         ]
       },
       {
-        "number": 270,
+        "number": 304,
         "content": [
           {
             "text": "      ",
@@ -8938,7 +9644,7 @@
         ]
       },
       {
-        "number": 271,
+        "number": 305,
         "content": [
           {
             "text": "      ",
@@ -8991,7 +9697,7 @@
         ]
       },
       {
-        "number": 272,
+        "number": 306,
         "content": [
           {
             "text": "        ",
@@ -9012,7 +9718,7 @@
         ]
       },
       {
-        "number": 273,
+        "number": 307,
         "content": [
           {
             "text": "        ",
@@ -9065,7 +9771,7 @@
         ]
       },
       {
-        "number": 274,
+        "number": 308,
         "content": [
           {
             "text": "      ",
@@ -9110,7 +9816,7 @@
         ]
       },
       {
-        "number": 275,
+        "number": 309,
         "content": [
           {
             "text": "        ",
@@ -9151,7 +9857,7 @@
         ]
       },
       {
-        "number": 276,
+        "number": 310,
         "content": [
           {
             "text": "      ",
@@ -9164,7 +9870,7 @@
         ]
       },
       {
-        "number": 277,
+        "number": 311,
         "content": [
           {
             "text": "    ",
@@ -9177,7 +9883,7 @@
         ]
       },
       {
-        "number": 278,
+        "number": 312,
         "content": [
           {
             "text": "    keyOptions",
@@ -9190,7 +9896,7 @@
         ]
       },
       {
-        "number": 279,
+        "number": 313,
         "content": [
           {
             "text": "  )",
@@ -9203,11 +9909,11 @@
         ]
       },
       {
-        "number": 280,
+        "number": 314,
         "content": []
       },
       {
-        "number": 281,
+        "number": 315,
         "content": [
           {
             "text": "  ",
@@ -9288,7 +9994,7 @@
         ]
       },
       {
-        "number": 282,
+        "number": 316,
         "content": [
           {
             "text": "  ",
@@ -9337,7 +10043,7 @@
         ]
       },
       {
-        "number": 283,
+        "number": 317,
         "content": [
           {
             "text": "  ",
@@ -9386,7 +10092,7 @@
         ]
       },
       {
-        "number": 284,
+        "number": 318,
         "content": [
           {
             "text": "  ",
@@ -9435,11 +10141,11 @@
         ]
       },
       {
-        "number": 285,
+        "number": 319,
         "content": []
       },
       {
-        "number": 286,
+        "number": 320,
         "content": [
           {
             "text": "  ",
@@ -9512,7 +10218,7 @@
         ]
       },
       {
-        "number": 287,
+        "number": 321,
         "content": [
           {
             "text": "    ref",
@@ -9585,7 +10291,7 @@
         ]
       },
       {
-        "number": 288,
+        "number": 322,
         "content": [
           {
             "text": "      ",
@@ -9638,7 +10344,7 @@
         ]
       },
       {
-        "number": 289,
+        "number": 323,
         "content": [
           {
             "text": "      ",
@@ -9683,7 +10389,7 @@
         ]
       },
       {
-        "number": 290,
+        "number": 324,
         "content": [
           {
             "text": "    ",
@@ -9724,7 +10430,7 @@
         ]
       },
       {
-        "number": 291,
+        "number": 325,
         "content": [
           {
             "text": "    ",
@@ -9757,7 +10463,7 @@
         ]
       },
       {
-        "number": 292,
+        "number": 326,
         "content": [
           {
             "text": "    ",
@@ -9798,7 +10504,7 @@
         ]
       },
       {
-        "number": 293,
+        "number": 327,
         "content": [
           {
             "text": "      ",
@@ -9851,7 +10557,7 @@
         ]
       },
       {
-        "number": 294,
+        "number": 328,
         "content": [
           {
             "text": "      ",
@@ -9888,7 +10594,7 @@
         ]
       },
       {
-        "number": 295,
+        "number": 329,
         "content": [
           {
             "text": "      ",
@@ -9909,7 +10615,7 @@
         ]
       },
       {
-        "number": 296,
+        "number": 330,
         "content": [
           {
             "text": "    ",
@@ -9922,7 +10628,7 @@
         ]
       },
       {
-        "number": 297,
+        "number": 331,
         "content": [
           {
             "text": "  ",
@@ -9943,11 +10649,11 @@
         ]
       },
       {
-        "number": 298,
+        "number": 332,
         "content": []
       },
       {
-        "number": 299,
+        "number": 333,
         "content": [
           {
             "text": "  ",
@@ -9968,7 +10674,7 @@
         ]
       },
       {
-        "number": 300,
+        "number": 334,
         "content": [
           {
             "text": "    inActions",
@@ -9981,20 +10687,74 @@
         ]
       },
       {
-        "number": 301,
+        "number": 335,
+        "content": [
+          {
+            "text": "    //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " focusedIndex is bounded to 0..actionCount-1 by the navigation logic, so it",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 336,
+        "content": [
+          {
+            "text": "    //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " is always a valid Actions index when Actions is a tuple.",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 337,
         "content": [
           {
             "text": "    focusedIndex",
             "color": "var(--code-variable)"
           },
           {
-            "text": ",",
+            "text": ":",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " focusedIndex ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "as",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "ActionRowIndex",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "Actions",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ">,",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 302,
+        "number": 338,
         "content": [
           {
             "text": "    isFocusedActionDisabled",
@@ -10043,7 +10803,7 @@
         ]
       },
       {
-        "number": 303,
+        "number": 339,
         "content": [
           {
             "text": "    enterActions",
@@ -10056,7 +10816,7 @@
         ]
       },
       {
-        "number": 304,
+        "number": 340,
         "content": [
           {
             "text": "    exitActions",
@@ -10069,7 +10829,7 @@
         ]
       },
       {
-        "number": 305,
+        "number": 341,
         "content": [
           {
             "text": "    reset",
@@ -10082,7 +10842,7 @@
         ]
       },
       {
-        "number": 306,
+        "number": 342,
         "content": [
           {
             "text": "    getActionProps",
@@ -10095,7 +10855,7 @@
         ]
       },
       {
-        "number": 307,
+        "number": 343,
         "content": [
           {
             "text": "  ",
@@ -10108,7 +10868,7 @@
         ]
       },
       {
-        "number": 308,
+        "number": 344,
         "content": [
           {
             "text": "}",
@@ -10117,7 +10877,7 @@
         ]
       },
       {
-        "number": 309,
+        "number": 345,
         "content": []
       }
     ]
@@ -10461,7 +11221,7 @@
   ],
   "exampleSource": {
     "use-action-row-navigation-basic": {
-      "raw": "\"use client\";\n\nimport { KeyboardProvider, useActionRowNavigation } from \"@diffgazer/keys\";\nimport { useRef } from \"react\";\n\nconst actions = [\"Approve\", \"Request changes\", \"Skip\"];\n// \"Request changes\" is disabled, so it is skipped during navigation.\nconst disabledActions = [false, true, false] as const;\n\nfunction ReviewRow() {\n  const rowRef = useRef<HTMLDivElement>(null);\n  const titleRef = useRef<HTMLButtonElement>(null);\n\n  const row = useActionRowNavigation({\n    enabled: true,\n    actionCount: 3,\n    disabledActions,\n    containerRef: rowRef,\n    disabledFocusFallbackRef: titleRef,\n    onAction: (index) => alert(`Action: ${actions[index]}`),\n  });\n\n  return (\n    <div\n      ref={rowRef}\n      style={{\n        display: \"flex\",\n        alignItems: \"center\",\n        gap: 12,\n        padding: 8,\n        border: \"1px solid currentColor\",\n      }}\n    >\n      <button\n        ref={titleRef}\n        type=\"button\"\n        style={{ flex: 1, textAlign: \"left\", fontWeight: !row.inActions ? 700 : 400 }}\n      >\n        Pull request #128 — Add focus zone docs\n      </button>\n\n      <div role=\"toolbar\" aria-label=\"Review actions\" style={{ display: \"flex\", gap: 6 }}>\n        {actions.map((label, index) => (\n          <button\n            key={label}\n            type=\"button\"\n            disabled={disabledActions[index]}\n            {...row.getActionProps(index)}\n            style={{\n              padding: \"2px 8px\",\n              fontWeight: row.inActions && row.focusedIndex === index ? 700 : 400,\n              opacity: disabledActions[index] ? 0.4 : 1,\n            }}\n          >\n            {label}\n          </button>\n        ))}\n      </div>\n    </div>\n  );\n}\n\nexport default function UseActionRowNavigationBasic() {\n  return (\n    <KeyboardProvider>\n      <div>\n        <p>\n          Focus the row title, then ArrowDown enters the actions. ArrowLeft/ArrowRight move between\n          enabled actions (Request changes is skipped), Enter or Space activates, ArrowUp returns to\n          the title.\n        </p>\n        <ReviewRow />\n      </div>\n    </KeyboardProvider>\n  );\n}\n",
+      "raw": "\"use client\";\n\nimport { KeyboardProvider, useActionRowNavigation } from \"@diffgazer/keys\";\nimport { useRef } from \"react\";\n\nconst actions = [\"Approve\", \"Request changes\", \"Skip\"];\n// \"Request changes\" is disabled, so it is skipped during navigation. Kept as a\n// plain boolean[] so the row indexes by array position (number); pass an\n// `as const` tuple to get tuple-narrowed 0 | 1 | 2 indices instead.\nconst disabledActions = [false, true, false];\n\nfunction ReviewRow() {\n  const rowRef = useRef<HTMLDivElement>(null);\n  const titleRef = useRef<HTMLButtonElement>(null);\n\n  const row = useActionRowNavigation({\n    enabled: true,\n    actionCount: 3,\n    disabledActions,\n    containerRef: rowRef,\n    disabledFocusFallbackRef: titleRef,\n    onAction: (index) => alert(`Action: ${actions[index]}`),\n  });\n\n  return (\n    <div\n      ref={rowRef}\n      style={{\n        display: \"flex\",\n        alignItems: \"center\",\n        gap: 12,\n        padding: 8,\n        border: \"1px solid currentColor\",\n      }}\n    >\n      <button\n        ref={titleRef}\n        type=\"button\"\n        style={{ flex: 1, textAlign: \"left\", fontWeight: !row.inActions ? 700 : 400 }}\n      >\n        Pull request #128 — Add focus zone docs\n      </button>\n\n      <div role=\"toolbar\" aria-label=\"Review actions\" style={{ display: \"flex\", gap: 6 }}>\n        {actions.map((label, index) => (\n          <button\n            key={label}\n            type=\"button\"\n            disabled={disabledActions[index]}\n            {...row.getActionProps(index)}\n            style={{\n              padding: \"2px 8px\",\n              fontWeight: row.inActions && row.focusedIndex === index ? 700 : 400,\n              opacity: disabledActions[index] ? 0.4 : 1,\n            }}\n          >\n            {label}\n          </button>\n        ))}\n      </div>\n    </div>\n  );\n}\n\nexport default function UseActionRowNavigationBasic() {\n  return (\n    <KeyboardProvider>\n      <div>\n        <p>\n          Focus the row title, then ArrowDown enters the actions. ArrowLeft/ArrowRight move between\n          enabled actions (Request changes is skipped), Enter or Space activates, ArrowUp returns to\n          the title.\n        </p>\n        <ReviewRow />\n      </div>\n    </KeyboardProvider>\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -10703,13 +11463,39 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " \"Request changes\" is disabled, so it is skipped during navigation.",
+              "text": " \"Request changes\" is disabled, so it is skipped during navigation. Kept as a",
               "color": "var(--code-comment)"
             }
           ]
         },
         {
           "number": 8,
+          "content": [
+            {
+              "text": "//",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " plain boolean[] so the row indexes by array position (number); pass an",
+              "color": "var(--code-comment)"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "content": [
+            {
+              "text": "//",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " `as const` tuple to get tuple-narrowed 0 | 1 | 2 indices instead.",
+              "color": "var(--code-comment)"
+            }
+          ]
+        },
+        {
+          "number": 10,
           "content": [
             {
               "text": "const",
@@ -10764,20 +11550,8 @@
               "color": "var(--code-number)"
             },
             {
-              "text": "] ",
+              "text": "]",
               "color": "var(--code-variable)"
-            },
-            {
-              "text": "as",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "const",
-              "color": "var(--code-keyword)"
             },
             {
               "text": ";",
@@ -10786,11 +11560,11 @@
           ]
         },
         {
-          "number": 9,
+          "number": 11,
           "content": []
         },
         {
-          "number": 10,
+          "number": 12,
           "content": [
             {
               "text": "function",
@@ -10819,7 +11593,7 @@
           ]
         },
         {
-          "number": 11,
+          "number": 13,
           "content": [
             {
               "text": "  ",
@@ -10884,7 +11658,7 @@
           ]
         },
         {
-          "number": 12,
+          "number": 14,
           "content": [
             {
               "text": "  ",
@@ -10949,11 +11723,11 @@
           ]
         },
         {
-          "number": 13,
+          "number": 15,
           "content": []
         },
         {
-          "number": 14,
+          "number": 16,
           "content": [
             {
               "text": "  ",
@@ -10998,7 +11772,7 @@
           ]
         },
         {
-          "number": 15,
+          "number": 17,
           "content": [
             {
               "text": "    enabled",
@@ -11023,7 +11797,7 @@
           ]
         },
         {
-          "number": 16,
+          "number": 18,
           "content": [
             {
               "text": "    actionCount",
@@ -11048,7 +11822,7 @@
           ]
         },
         {
-          "number": 17,
+          "number": 19,
           "content": [
             {
               "text": "    disabledActions",
@@ -11061,7 +11835,7 @@
           ]
         },
         {
-          "number": 18,
+          "number": 20,
           "content": [
             {
               "text": "    containerRef",
@@ -11082,7 +11856,7 @@
           ]
         },
         {
-          "number": 19,
+          "number": 21,
           "content": [
             {
               "text": "    disabledFocusFallbackRef",
@@ -11103,7 +11877,7 @@
           ]
         },
         {
-          "number": 20,
+          "number": 22,
           "content": [
             {
               "text": "    ",
@@ -11188,7 +11962,7 @@
           ]
         },
         {
-          "number": 21,
+          "number": 23,
           "content": [
             {
               "text": "  ",
@@ -11209,11 +11983,11 @@
           ]
         },
         {
-          "number": 22,
+          "number": 24,
           "content": []
         },
         {
-          "number": 23,
+          "number": 25,
           "content": [
             {
               "text": "  ",
@@ -11230,7 +12004,7 @@
           ]
         },
         {
-          "number": 24,
+          "number": 26,
           "content": [
             {
               "text": "    ",
@@ -11247,7 +12021,7 @@
           ]
         },
         {
-          "number": 25,
+          "number": 27,
           "content": [
             {
               "text": "      ",
@@ -11272,7 +12046,7 @@
           ]
         },
         {
-          "number": 26,
+          "number": 28,
           "content": [
             {
               "text": "      ",
@@ -11289,7 +12063,7 @@
           ]
         },
         {
-          "number": 27,
+          "number": 29,
           "content": [
             {
               "text": "        display",
@@ -11322,7 +12096,7 @@
           ]
         },
         {
-          "number": 28,
+          "number": 30,
           "content": [
             {
               "text": "        alignItems",
@@ -11355,7 +12129,7 @@
           ]
         },
         {
-          "number": 29,
+          "number": 31,
           "content": [
             {
               "text": "        gap",
@@ -11380,7 +12154,7 @@
           ]
         },
         {
-          "number": 30,
+          "number": 32,
           "content": [
             {
               "text": "        padding",
@@ -11405,7 +12179,7 @@
           ]
         },
         {
-          "number": 31,
+          "number": 33,
           "content": [
             {
               "text": "        border",
@@ -11438,7 +12212,7 @@
           ]
         },
         {
-          "number": 32,
+          "number": 34,
           "content": [
             {
               "text": "      ",
@@ -11451,7 +12225,7 @@
           ]
         },
         {
-          "number": 33,
+          "number": 35,
           "content": [
             {
               "text": "    ",
@@ -11464,7 +12238,7 @@
           ]
         },
         {
-          "number": 34,
+          "number": 36,
           "content": [
             {
               "text": "      ",
@@ -11481,7 +12255,7 @@
           ]
         },
         {
-          "number": 35,
+          "number": 37,
           "content": [
             {
               "text": "        ",
@@ -11506,7 +12280,7 @@
           ]
         },
         {
-          "number": 36,
+          "number": 38,
           "content": [
             {
               "text": "        ",
@@ -11535,7 +12309,7 @@
           ]
         },
         {
-          "number": 37,
+          "number": 39,
           "content": [
             {
               "text": "        ",
@@ -11664,7 +12438,7 @@
           ]
         },
         {
-          "number": 38,
+          "number": 40,
           "content": [
             {
               "text": "      ",
@@ -11677,7 +12451,7 @@
           ]
         },
         {
-          "number": 39,
+          "number": 41,
           "content": [
             {
               "text": "        Pull request #128 — Add focus zone docs",
@@ -11686,7 +12460,7 @@
           ]
         },
         {
-          "number": 40,
+          "number": 42,
           "content": [
             {
               "text": "      ",
@@ -11707,11 +12481,11 @@
           ]
         },
         {
-          "number": 41,
+          "number": 43,
           "content": []
         },
         {
-          "number": 42,
+          "number": 44,
           "content": [
             {
               "text": "      ",
@@ -11840,7 +12614,7 @@
           ]
         },
         {
-          "number": 43,
+          "number": 45,
           "content": [
             {
               "text": "        ",
@@ -11901,7 +12675,7 @@
           ]
         },
         {
-          "number": 44,
+          "number": 46,
           "content": [
             {
               "text": "          ",
@@ -11918,7 +12692,7 @@
           ]
         },
         {
-          "number": 45,
+          "number": 47,
           "content": [
             {
               "text": "            ",
@@ -11943,7 +12717,7 @@
           ]
         },
         {
-          "number": 46,
+          "number": 48,
           "content": [
             {
               "text": "            ",
@@ -11972,7 +12746,7 @@
           ]
         },
         {
-          "number": 47,
+          "number": 49,
           "content": [
             {
               "text": "            ",
@@ -11997,7 +12771,7 @@
           ]
         },
         {
-          "number": 48,
+          "number": 50,
           "content": [
             {
               "text": "            ",
@@ -12030,7 +12804,7 @@
           ]
         },
         {
-          "number": 49,
+          "number": 51,
           "content": [
             {
               "text": "            ",
@@ -12047,7 +12821,7 @@
           ]
         },
         {
-          "number": 50,
+          "number": 52,
           "content": [
             {
               "text": "              padding",
@@ -12080,7 +12854,7 @@
           ]
         },
         {
-          "number": 51,
+          "number": 53,
           "content": [
             {
               "text": "              fontWeight",
@@ -12169,7 +12943,7 @@
           ]
         },
         {
-          "number": 52,
+          "number": 54,
           "content": [
             {
               "text": "              opacity",
@@ -12218,7 +12992,7 @@
           ]
         },
         {
-          "number": 53,
+          "number": 55,
           "content": [
             {
               "text": "            ",
@@ -12231,7 +13005,7 @@
           ]
         },
         {
-          "number": 54,
+          "number": 56,
           "content": [
             {
               "text": "          ",
@@ -12244,7 +13018,7 @@
           ]
         },
         {
-          "number": 55,
+          "number": 57,
           "content": [
             {
               "text": "            ",
@@ -12265,7 +13039,7 @@
           ]
         },
         {
-          "number": 56,
+          "number": 58,
           "content": [
             {
               "text": "          ",
@@ -12286,7 +13060,7 @@
           ]
         },
         {
-          "number": 57,
+          "number": 59,
           "content": [
             {
               "text": "        ))",
@@ -12299,7 +13073,7 @@
           ]
         },
         {
-          "number": 58,
+          "number": 60,
           "content": [
             {
               "text": "      ",
@@ -12320,7 +13094,7 @@
           ]
         },
         {
-          "number": 59,
+          "number": 61,
           "content": [
             {
               "text": "    ",
@@ -12341,7 +13115,7 @@
           ]
         },
         {
-          "number": 60,
+          "number": 62,
           "content": [
             {
               "text": "  )",
@@ -12354,7 +13128,7 @@
           ]
         },
         {
-          "number": 61,
+          "number": 63,
           "content": [
             {
               "text": "}",
@@ -12363,11 +13137,11 @@
           ]
         },
         {
-          "number": 62,
+          "number": 64,
           "content": []
         },
         {
-          "number": 63,
+          "number": 65,
           "content": [
             {
               "text": "export",
@@ -12412,7 +13186,7 @@
           ]
         },
         {
-          "number": 64,
+          "number": 66,
           "content": [
             {
               "text": "  ",
@@ -12429,7 +13203,7 @@
           ]
         },
         {
-          "number": 65,
+          "number": 67,
           "content": [
             {
               "text": "    ",
@@ -12450,7 +13224,7 @@
           ]
         },
         {
-          "number": 66,
+          "number": 68,
           "content": [
             {
               "text": "      ",
@@ -12471,7 +13245,7 @@
           ]
         },
         {
-          "number": 67,
+          "number": 69,
           "content": [
             {
               "text": "        ",
@@ -12492,7 +13266,7 @@
           ]
         },
         {
-          "number": 68,
+          "number": 70,
           "content": [
             {
               "text": "          Focus the row title, then ArrowDown enters the actions. ArrowLeft/ArrowRight move between",
@@ -12501,7 +13275,7 @@
           ]
         },
         {
-          "number": 69,
+          "number": 71,
           "content": [
             {
               "text": "          enabled actions (Request changes is skipped), Enter or Space activates, ArrowUp returns to",
@@ -12510,7 +13284,7 @@
           ]
         },
         {
-          "number": 70,
+          "number": 72,
           "content": [
             {
               "text": "          the title.",
@@ -12519,7 +13293,7 @@
           ]
         },
         {
-          "number": 71,
+          "number": 73,
           "content": [
             {
               "text": "        ",
@@ -12540,7 +13314,7 @@
           ]
         },
         {
-          "number": 72,
+          "number": 74,
           "content": [
             {
               "text": "        ",
@@ -12565,7 +13339,7 @@
           ]
         },
         {
-          "number": 73,
+          "number": 75,
           "content": [
             {
               "text": "      ",
@@ -12586,7 +13360,7 @@
           ]
         },
         {
-          "number": 74,
+          "number": 76,
           "content": [
             {
               "text": "    ",
@@ -12607,7 +13381,7 @@
           ]
         },
         {
-          "number": 75,
+          "number": 77,
           "content": [
             {
               "text": "  )",
@@ -12620,7 +13394,7 @@
           ]
         },
         {
-          "number": 76,
+          "number": 78,
           "content": [
             {
               "text": "}",
@@ -12629,7 +13403,7 @@
           ]
         },
         {
-          "number": 77,
+          "number": 79,
           "content": []
         }
       ]

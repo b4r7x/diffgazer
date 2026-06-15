@@ -1,11 +1,11 @@
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
-import { loadArtifactsFromPackage } from "../artifact-loader.js";
 import { ARTIFACT_MANIFEST_REL_PATH } from "../constants.js";
 import { computeArtifactFingerprint } from "../fingerprint.js";
 import type { ArtifactManifest } from "../manifest.js";
 import { loadValidatedManifest } from "../manifest.js";
 import { ensureExists, resolveInside } from "../utils/fs.js";
+import { loadArtifactsFromPackage } from "./artifact-loader.js";
 import type { LoadedLibraryArtifacts, SyncLibraryConfig } from "./types.js";
 
 function getManifestGeneratedFiles(manifest: ArtifactManifest): string[] {

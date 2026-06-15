@@ -16,7 +16,7 @@ export default function SelectSearchTop() {
 
   return (
     <Select width="md" value={value} onChange={setValue}>
-      <SelectTrigger>
+      <SelectTrigger aria-label="Command">
         <SelectValue placeholder="Select a command..." />
       </SelectTrigger>
       <SelectContent>

@@ -1,4 +1,4 @@
-import { createQueryClientBase } from "@diffgazer/core/api";
+import { createQueryClientBase, createQueryRetry } from "@diffgazer/core/api";
 
 export function createCliQueryClient() {
   return createQueryClientBase({
@@ -7,7 +7,7 @@ export function createCliQueryClient() {
         networkMode: "always",
         refetchOnWindowFocus: false,
         refetchOnReconnect: false,
-        retry: 1,
+        retry: createQueryRetry(1),
         staleTime: 30_000,
       },
       mutations: {

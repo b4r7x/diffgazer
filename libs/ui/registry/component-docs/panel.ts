@@ -55,7 +55,7 @@ export const panelDoc: ComponentDoc = {
     {
       title: "Density",
       content:
-        '`density="default"` uses 14/20 padding rhythm; `density="compact"` uses 10/14. Header, Content, and Footer read padding from the root\'s data-density attribute via shared/panel.css.',
+        '`density="default"` uses 14/20 padding rhythm; `density="compact"` uses 10/14. Header, Content, and Footer read padding from the root\'s data-density attribute via panel/panel.css.',
     },
     {
       title: "Header marker",

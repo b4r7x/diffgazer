@@ -1,10 +1,10 @@
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { AVAILABLE_PROVIDERS, PROVIDER_CAPABILITIES } from "@diffgazer/core/schemas/config";
-import { resolveAvailableValue } from "@diffgazer/core/select";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { useState } from "react";
+import { resolveAvailableValue } from "../../lib/select.js";
 
 const PROVIDER_IDS = AVAILABLE_PROVIDERS.map((provider) => provider.id);
 
@@ -42,7 +42,9 @@ export function ProviderStep({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-tui-muted font-mono">Select an AI provider for code reviews.</p>
+      <p className="text-sm text-muted-foreground font-mono">
+        Select an AI provider for code reviews.
+      </p>
       <RadioGroup
         aria-label="Select AI provider"
         value={value ?? undefined}
@@ -58,7 +60,7 @@ export function ProviderStep({
         autoFocus={enabled}
         activationMode="manual"
         wrap={false}
-        className="space-y-1 border border-tui-border p-1"
+        className="space-y-1 border border-border p-1"
       >
         {AVAILABLE_PROVIDERS.map((provider) => {
           const capabilities = PROVIDER_CAPABILITIES[provider.id];

@@ -1,9 +1,9 @@
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api/protocol";
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PROJECT_ROOT_HEADER } from "../../shared/lib/paths.js";
 import { resetRateLimitsForTests } from "../../shared/middlewares/rate-limit.js";
 import { requireValue } from "../../testing/assertions.js";
 
@@ -93,6 +93,7 @@ describe("provider/config deletion aborts active sessions", () => {
       projectPath: projectRoot,
       headCommit: "abc123",
       statusHash: "hash123",
+      statusHashKind: "full" as const,
       mode: "unstaged",
       provider: "gemini",
     });
@@ -125,6 +126,7 @@ describe("provider/config deletion aborts active sessions", () => {
       projectPath: projectRoot,
       headCommit: "abc123",
       statusHash: "hash123",
+      statusHashKind: "full" as const,
       mode: "unstaged",
       provider: "openrouter",
     });

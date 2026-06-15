@@ -3,7 +3,7 @@ title: Diagnostics and context
 description: Check the health of your setup and rebuild the project context snapshot.
 ---
 
-Diagnostics is a status screen for the current directory. It tells you whether the local server is reachable, whether setup is complete, which provider is active, and whether diffgazer has a project context snapshot to work from, all in one place. It also gives you a button to rebuild that snapshot when the repo has moved on. Reach for this screen when a review will not start, when results look stale, or when you just want to confirm everything is wired up. It assumes onboarding is done and the repository is trusted; until then the setup and provider rows will report what is still missing rather than show a clean bill of health. You open it from the [settings](/app/web/settings) hub.
+Diagnostics is a status screen for the current directory. It tells you whether the local server is reachable, whether setup is complete, which provider is active, and whether Diffgazer has a project context snapshot to work from, all in one place. It also gives you a button to rebuild that snapshot when the repo has moved on. Reach for this screen when a review will not start, when results look stale, or when you just want to confirm everything is wired up. It assumes onboarding is done and the repository is trusted; until then the setup and provider rows will report what is still missing rather than show a clean bill of health. You open it from the [settings](/app/web/settings) hub.
 
 ## Diagnostics screen
 
@@ -24,7 +24,7 @@ Two actions sit below the list. "Refresh Diagnostics" re-runs the checks and upd
 
 ## Refresh project context
 
-Project context is a snapshot of your repository (its graph and summary) that diffgazer builds so a review has structure to reason about beyond the raw diff. The context snapshot line and the second button on this screen both reflect that snapshot's state, which is one of four values: loading while it is being fetched, ready when a snapshot exists, missing when there is none yet, or error when it could not be loaded.
+Project context is a snapshot of your repository (its graph and summary) that Diffgazer builds so a review has structure to reason about beyond the raw diff. The context snapshot line and the second button on this screen both reflect that snapshot's state, which is one of four values: loading while it is being fetched, ready when a snapshot exists, missing when there is none yet, or error when it could not be loaded.
 
 The button label follows that state. It reads "Generate Context" when no snapshot exists, "Regenerate Context" when one is already in place, and "Working..." while the rebuild runs. The action is available when the snapshot is ready or missing, and it is held disabled while context is still loading or in an error state, or while either refresh is already running. Activating it rebuilds the snapshot from the current repository and sends a forced refresh to `POST /api/review/context/refresh`; when it succeeds, the snapshot status and its generated time update in place.
 

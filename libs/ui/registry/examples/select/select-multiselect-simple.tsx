@@ -14,7 +14,7 @@ export default function SelectMultiselectSimple() {
   return (
     <div className="w-64">
       <Select multiple value={value} onChange={setValue}>
-        <SelectTrigger>
+        <SelectTrigger aria-label="Tags">
           <SelectValue placeholder="Select tags..." display="list" />
         </SelectTrigger>
         <SelectContent>

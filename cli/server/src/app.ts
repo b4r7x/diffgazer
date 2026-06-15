@@ -1,4 +1,5 @@
-import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api";
+import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api/protocol";
+import { getErrorMessage, getErrorStack } from "@diffgazer/core/errors";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { Context } from "hono";
 import { Hono } from "hono";
@@ -7,8 +8,10 @@ import { configRouter } from "./features/config/router.js";
 import { gitRouter } from "./features/git/router.js";
 import { healthRouter } from "./features/health.js";
 import { reviewRouter } from "./features/review/router.js";
+import { rekeyProjectReviews } from "./features/review/storage/reviews.js";
 import { settingsRouter } from "./features/settings/router.js";
 import { shutdownRouter } from "./features/shutdown/router.js";
+import { setReviewRekeyHandler } from "./shared/lib/config/store.js";
 import { safeTokenMatch } from "./shared/lib/crypto.js";
 import { errorResponse } from "./shared/lib/http/response.js";
 import { log } from "./shared/lib/log.js";
@@ -51,6 +54,25 @@ export type AppEnv = RequestLoggerEnv;
 
 export const createApp = (): Hono<AppEnv> => {
   const app = new Hono<AppEnv>();
+
+  // Wire the config store's move hook to the review-storage re-key helper so a
+  // moved repo's review history follows the move (F-447). `shared/` cannot import
+  // `features/`, so the composition root registers it here. Fire-and-forget: a
+  // re-key failure must not break the request that triggered the move.
+  setReviewRekeyHandler((oldPath, newPath) => {
+    rekeyProjectReviews(oldPath, newPath).catch((error) => {
+      log("warn", "review_rekey_failed", { error: getErrorMessage(error) });
+    });
+  });
+
+  // Split dev (not packaged, no configured token) intentionally leaves the
+  // /api/* token gate open; the residual exposure is a hostile localhost origin
+  // in dev only. Make that an explicit, observable decision at startup.
+  if (!isPackaged() && !process.env.DIFFGAZER_SHUTDOWN_TOKEN?.trim()) {
+    log("warn", "api_token_gate_disabled", {
+      message: "API token gate disabled (split dev); set DIFFGAZER_SHUTDOWN_TOKEN to enable",
+    });
+  }
 
   app.use("*", requestLogger);
 
@@ -143,8 +165,8 @@ export const createApp = (): Hono<AppEnv> => {
     // crash diagnostic the tail cannot provide.
     log("error", "unhandled_error", {
       requestId: c.get("requestId"),
-      error: err instanceof Error ? err.message : String(err),
-      stack: err instanceof Error ? err.stack : undefined,
+      error: getErrorMessage(err),
+      stack: getErrorStack(err),
     });
     return errorResponse(c, "Internal Server Error", ErrorCode.INTERNAL_ERROR, 500);
   });

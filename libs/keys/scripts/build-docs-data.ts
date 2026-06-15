@@ -55,13 +55,13 @@ buildDocsData({
   registryPath: resolve(ROOT, "registry/registry.json"),
   examplesDir: resolve(ROOT, "registry/examples"),
   outputDir: resolve(ROOT, "docs/generated"),
-  skipMdxGeneration: true,
   hooks: {
     contentDir: resolve(ROOT, "docs/content/hooks"),
     extraItems: PROVIDER_HOOKS,
     filter: (item) => item.type === "registry:hook" && !item.meta?.hidden,
     mapItem: (item: RegistryItem): HookRegistryItem => ({
       name: toHookDirName(item.name),
+      registryName: item.name,
       title: kebabToCamelCase(toHookDirName(item.name)),
       description: item.description ?? "",
       files: item.files,

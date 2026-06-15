@@ -16,11 +16,12 @@ const fsHooks = vi.hoisted(() => ({
   writeJsonFileHook: null as
     | ((filePath: string, data: unknown, mode?: number) => Promise<void>)
     | null,
+  getFileMtimeMsHook: null as ((filePath: string) => number | null) | null,
 }));
 
 // Boundary mock: keyring wraps the OS keychain via @napi-rs/keyring; tests provide canned secret read/write results so store behavior can be exercised without a real keychain.
 vi.mock("./keyring.js", () => keyring);
-// Partial mock: intercept writeJsonFileSync so individual tests can inject write failures.
+// Boundary mock: filesystem helper wraps JSON persistence; tests delegate to the real implementation except for injected write/mtime failures.
 vi.mock("../fs.js", async (importOriginal) => {
   const real = await importOriginal<typeof import("../fs.js")>();
   return {
@@ -36,6 +37,12 @@ vi.mock("../fs.js", async (importOriginal) => {
         return fsHooks.writeJsonFileHook(filePath, data, mode);
       }
       return real.writeJsonFile(filePath, data, mode);
+    },
+    getFileMtimeMs: (filePath: string) => {
+      if (fsHooks.getFileMtimeMsHook) {
+        return fsHooks.getFileMtimeMsHook(filePath);
+      }
+      return real.getFileMtimeMs(filePath);
     },
   };
 });
@@ -102,7 +109,7 @@ describe("config store", () => {
     diffgazerHome = mkdtempSync(join(tmpdir(), "diffgazer-store-"));
     process.env.DIFFGAZER_HOME = diffgazerHome;
     // Suppress fire-and-forget persistence warnings emitted after teardown removes the temp dir.
-    // The store dispatches persistConfigAsync/persistSecretsAsync/persistTrustAsync without awaiting,
+    // The store dispatches its async config/secrets/trust persists without awaiting,
     // so a pending write can land after rmSync; production keeps this UX-friendly fire-and-forget pattern.
     warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.resetModules();
@@ -116,6 +123,7 @@ describe("config store", () => {
   afterEach(() => {
     fsHooks.writeJsonFileSyncHook = null;
     fsHooks.writeJsonFileHook = null;
+    fsHooks.getFileMtimeMsHook = null;
     delete process.env.DIFFGAZER_HOME;
     rmSync(diffgazerHome, { recursive: true, force: true });
     warnSpy.mockRestore();
@@ -442,6 +450,52 @@ describe("config store", () => {
     });
   });
 
+  it("preserves another instance's activation of a known provider when a stale store persists", async () => {
+    // Both providers are known ids that every load materializes, so the merge
+    // cannot rely on absent-id appends — it must reconcile per provider (F-359).
+    writeJson(configPath(), {
+      settings: { secretsStorage: "file" },
+      providers: [
+        { provider: "gemini", hasApiKey: true, isActive: false, model: "gemini-2.5-flash" },
+        { provider: "openrouter", hasApiKey: true, isActive: false, model: "or/model" },
+      ],
+    });
+    const createStore = await loadStoreFactory();
+    // Pin config.json's observed mtime to a constant so store A's mtime-gated
+    // refresh treats its in-memory copy as current and never reloads — modeling a
+    // genuinely stale instance that never observes the concurrent write, the
+    // F-359 lost-update case. Set before creation so A captures the same constant.
+    fsHooks.getFileMtimeMsHook = (filePath) => (filePath.endsWith("config.json") ? 1 : null);
+    // Store A loads the seed; openrouter is inactive in its in-memory view.
+    const storeA = createStore();
+
+    // Another instance activates openrouter on disk inside store A's window.
+    writeJson(configPath(), {
+      settings: { secretsStorage: "file" },
+      providers: [
+        { provider: "gemini", hasApiKey: true, isActive: false, model: "gemini-2.5-flash" },
+        { provider: "openrouter", hasApiKey: true, isActive: true, model: "or/model" },
+      ],
+    });
+
+    // Store A activates gemini from its stale state and persists its full provider
+    // array — which marks openrouter inactive in A's view, though A never changed it.
+    await storeA.activateProvider({ provider: "gemini" });
+
+    const persisted = readJson<{
+      providers: Array<{ provider: string; isActive: boolean }>;
+    }>(configPath());
+    // The concurrent openrouter activation — a KNOWN provider A did not change —
+    // survives A's stale write instead of being silently overwritten.
+    expect(persisted.providers.find((p) => p.provider === "openrouter")).toMatchObject({
+      isActive: true,
+    });
+    // A's own activation still lands.
+    expect(persisted.providers.find((p) => p.provider === "gemini")).toMatchObject({
+      isActive: true,
+    });
+  });
+
   it("migrates file secrets to keyring and removes the file secrets store", async () => {
     writeJson(configPath(), {
       settings: { secretsStorage: "file" },
@@ -543,5 +597,288 @@ describe("config store", () => {
       error: { code: "KEYRING_UNAVAILABLE" },
     });
     expect(existsSync(secretsPath())).toBe(true);
+  });
+
+  it("rolls back updateSettings when config persistence fails", async () => {
+    writeJson(configPath(), { settings: { theme: "auto" }, providers: [] });
+    const store = await loadStore();
+    fsHooks.writeJsonFileHook = async (filePath) => {
+      if (filePath.endsWith("config.json")) {
+        throw new Error("Injected config.json write failure");
+      }
+    };
+
+    const result = await store.updateSettings({ theme: "dark" });
+
+    expect(result).toMatchObject({ ok: false, error: { code: "PERSIST_FAILED" } });
+    // The in-memory store still serves the pre-mutation value after the failed write.
+    expect(store.getSettings().theme).toBe("auto");
+  });
+
+  it("rolls back activateProvider when config persistence fails", async () => {
+    writeJson(configPath(), {
+      settings: {},
+      providers: [
+        { provider: "gemini", hasApiKey: true, isActive: false, model: "gemini-2.5-flash" },
+      ],
+    });
+    const store = await loadStore();
+    fsHooks.writeJsonFileHook = async (filePath) => {
+      if (filePath.endsWith("config.json")) {
+        throw new Error("Injected config.json write failure");
+      }
+    };
+
+    const result = await store.activateProvider({ provider: "gemini", model: "gemini-2.5-pro" });
+
+    expect(result).toMatchObject({ ok: false, error: { code: "PERSIST_FAILED" } });
+    // The provider stays inactive with its original model after the failed write.
+    expect(store.getProviders().find((p) => p.provider === "gemini")).toMatchObject({
+      isActive: false,
+      model: "gemini-2.5-flash",
+    });
+    expect(store.getActiveProvider()).toBeNull();
+  });
+
+  it("rolls back saveTrust when trust persistence fails", async () => {
+    const store = await loadStore();
+    fsHooks.writeJsonFileHook = async (filePath) => {
+      if (filePath.endsWith("trust.json")) {
+        throw new Error("Injected trust.json write failure");
+      }
+    };
+
+    const result = await store.saveTrust(trustConfig());
+
+    expect(result).toMatchObject({ ok: false, error: { code: "PERSIST_FAILED" } });
+    // The in-memory store still serves no trust for the project after the failed write.
+    expect(store.getTrust("proj-1")).toBeNull();
+  });
+
+  it("serializes concurrent mutators so the second sees the first's settled state", async () => {
+    writeJson(configPath(), { settings: { theme: "auto" }, providers: [] });
+    const store = await loadStore();
+
+    const order: string[] = [];
+    let releaseFirstWrite: () => void = () => {};
+    const firstWriteHeld = new Promise<void>((resolve) => {
+      releaseFirstWrite = resolve;
+    });
+
+    let writeCount = 0;
+    fsHooks.writeJsonFileHook = async (filePath, data) => {
+      writeCount += 1;
+      order.push(`write:${writeCount}`);
+      // Hold only the first config write open to prove the second mutation queues.
+      if (writeCount === 1) await firstWriteHeld;
+      writeJson(filePath, data);
+    };
+
+    const first = store.updateSettings({ theme: "dark" });
+    const second = store.updateSettings({ severityThreshold: "high" });
+
+    // Let microtasks flush; the second mutation must not have started its write.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(order).toEqual(["write:1"]);
+
+    releaseFirstWrite();
+    await first;
+    await second;
+
+    expect(order).toEqual(["write:1", "write:2"]);
+    // The second mutation observed the first's settled theme change.
+    expect(store.getSettings()).toMatchObject({ theme: "dark", severityThreshold: "high" });
+  });
+
+  it("completes an interrupted file->keyring migration at startup (keyring reconciliation)", async () => {
+    // config says keyring, but a literal key was left in secrets.json by a crash
+    // between the config flip and the file cleanup.
+    writeJson(configPath(), {
+      settings: { secretsStorage: "keyring" },
+      providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
+    });
+    writeJson(secretsPath(), { providers: { gemini: "stranded-literal-key" } });
+    keyring.readKeyringSecret.mockImplementation((key: string) => {
+      if (key === "api_key_gemini") return { ok: true, value: "stranded-literal-key" };
+      return { ok: true, value: null };
+    });
+
+    const store = await loadStore();
+
+    // The key now resolves through the keyring path, not the file sidecar.
+    expect(keyring.writeKeyringSecret).toHaveBeenCalledWith(
+      "api_key_gemini",
+      "stranded-literal-key",
+    );
+    expect(store.getProviderApiKey("gemini")).toEqual({ ok: true, value: "stranded-literal-key" });
+    // secrets.json no longer contains the literal entry.
+    await expectFileMissingEventually(secretsPath());
+  });
+
+  it("finalizes orphaned keyring entries at startup when in file mode (keyring->file reconciliation)", async () => {
+    // config says file and the secret already lives in secrets.json, but a stale
+    // keyring entry was left by a crash between the file copy and the keyring
+    // deletion during a keyring->file migration.
+    writeJson(configPath(), {
+      settings: { secretsStorage: "file" },
+      providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
+    });
+    writeJson(secretsPath(), { providers: { gemini: "file-key" } });
+    keyring.readKeyringSecret.mockImplementation((key: string) => {
+      if (key === "api_key_gemini") return { ok: true, value: "stale-keyring-key" };
+      return { ok: true, value: null };
+    });
+
+    await loadStore();
+
+    // The orphaned keyring entry is deleted so the file stays the single source.
+    expect(keyring.deleteKeyringSecret).toHaveBeenCalledWith("api_key_gemini");
+  });
+
+  it("preserves an unknown-ref-kind secret and keeps secrets.json during keyring-mode reconciliation (T-03)", async () => {
+    // config says keyring; secrets.json holds a stranded literal (crash leftover)
+    // AND an entry whose ref kind this binary does not recognize. Reconciliation
+    // moves the literal into the keyring, but the unknown entry has no home there
+    // and must round-trip in the file -- it must NOT be deleted.
+    writeJson(configPath(), {
+      settings: { secretsStorage: "keyring" },
+      providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
+    });
+    writeJson(secretsPath(), {
+      providers: {
+        gemini: "stranded-literal-key",
+        zai: { kind: "vault", ref: "secret/data/zai#key" },
+      },
+    });
+    keyring.readKeyringSecret.mockImplementation((key: string) => {
+      if (key === "api_key_gemini") return { ok: true, value: "stranded-literal-key" };
+      return { ok: true, value: null };
+    });
+
+    await loadStore();
+
+    // The literal moved into the keyring.
+    expect(keyring.writeKeyringSecret).toHaveBeenCalledWith(
+      "api_key_gemini",
+      "stranded-literal-key",
+    );
+    // The reconcile rewrite is fire-and-forget; wait until the stranded literal
+    // has been dropped from the file (moved into the keyring).
+    const persisted = await vi.waitFor(
+      () => {
+        const data = readJson<{ providers: Record<string, unknown> }>(secretsPath());
+        if (data.providers.gemini !== undefined) {
+          throw new Error("reconcile rewrite has not removed the literal yet");
+        }
+        return data;
+      },
+      { timeout: 1000, interval: 10 },
+    );
+    // secrets.json survives and still carries the opaque unknown ref verbatim.
+    expect(persisted.providers.zai).toEqual({ kind: "vault", ref: "secret/data/zai#key" });
+    expect(existsSync(secretsPath())).toBe(true);
+  });
+
+  it("preserves an unknown-ref-kind secret across a file->keyring storage migration (T-03)", async () => {
+    writeJson(configPath(), {
+      settings: { secretsStorage: "file" },
+      providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
+    });
+    writeJson(secretsPath(), {
+      providers: {
+        gemini: "file-key",
+        zai: { kind: "vault", ref: "secret/data/zai#key" },
+      },
+    });
+    keyring.readKeyringSecret.mockReturnValue({ ok: true, value: "file-key" });
+    const store = await loadStore();
+
+    const result = await store.updateSettings({ secretsStorage: "keyring" });
+
+    expect(result).toMatchObject({ ok: true });
+    expect(keyring.writeKeyringSecret).toHaveBeenCalledWith("api_key_gemini", "file-key");
+    // The literal moved to the keyring, but the unknown ref keeps the file alive.
+    const persisted = await readJsonEventually<{ providers: Record<string, unknown> }>(
+      secretsPath(),
+    );
+    expect(persisted.providers.zai).toEqual({ kind: "vault", ref: "secret/data/zai#key" });
+    expect(persisted.providers.gemini).toBeUndefined();
+  });
+
+  it("preserves an unknown-ref-kind secret across a keyring->file storage migration (T-03)", async () => {
+    writeJson(configPath(), {
+      settings: { secretsStorage: "keyring" },
+      providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
+    });
+    writeJson(secretsPath(), {
+      providers: { zai: { kind: "vault", ref: "secret/data/zai#key" } },
+    });
+    keyring.readKeyringSecret.mockReturnValue({ ok: true, value: "keyring-key" });
+    const store = await loadStore();
+
+    const result = await store.updateSettings({ secretsStorage: "file" });
+
+    expect(result).toMatchObject({ ok: true });
+    // The keyring secret was copied into the file AND the unknown ref survives.
+    const persisted = await readJsonEventually<{ providers: Record<string, unknown> }>(
+      secretsPath(),
+    );
+    expect(persisted.providers.gemini).toBe("keyring-key");
+    expect(persisted.providers.zai).toEqual({ kind: "vault", ref: "secret/data/zai#key" });
+  });
+
+  it("re-keys review history when a trusted project directory is moved", async () => {
+    const { setReviewRekeyHandler, createConfigStore } = await import("./store.js");
+    const rekeys: Array<[string, string]> = [];
+    setReviewRekeyHandler((oldPath, newPath) => rekeys.push([oldPath, newPath]));
+
+    const originalRoot = join(diffgazerHome, "original");
+    const movedRoot = join(diffgazerHome, "moved");
+    mkdirSync(join(movedRoot, ".diffgazer"), { recursive: true });
+    // A .git dir makes the path an allowed project root.
+    mkdirSync(join(movedRoot, ".git"), { recursive: true });
+    writeFileSync(
+      join(movedRoot, ".diffgazer", "project.json"),
+      JSON.stringify({
+        projectId: "stable-id",
+        repoRoot: originalRoot,
+        createdAt: "2024-01-01T00:00:00.000Z",
+      }),
+    );
+
+    try {
+      const store = createConfigStore();
+      const info = store.getProjectInfo(movedRoot);
+
+      // projectId preserved; the re-key handler is told old -> new path.
+      expect(info.projectId).toBe("stable-id");
+      expect(rekeys.length).toBe(1);
+      expect(rekeys[0]?.[1]).toContain("moved");
+    } finally {
+      setReviewRekeyHandler(() => {});
+    }
+  });
+
+  it("keeps exactly one trust record for a moved project's preserved projectId", async () => {
+    const movedRoot = join(diffgazerHome, "moved-trust");
+    mkdirSync(join(movedRoot, ".diffgazer"), { recursive: true });
+    mkdirSync(join(movedRoot, ".git"), { recursive: true });
+    writeFileSync(
+      join(movedRoot, ".diffgazer", "project.json"),
+      JSON.stringify({
+        projectId: "stable-trust-id",
+        repoRoot: join(diffgazerHome, "gone"),
+        createdAt: "2024-01-01T00:00:00.000Z",
+      }),
+    );
+    const store = await loadStore();
+
+    const info = store.ensureProjectFile(movedRoot);
+    await store.saveTrust(trustConfig({ projectId: info.projectId ?? "", repoRoot: movedRoot }));
+    // A second re-trust under the same projectId overwrites, never minting a duplicate.
+    await store.saveTrust(trustConfig({ projectId: info.projectId ?? "", repoRoot: movedRoot }));
+
+    const records = readJson<{ projects: Record<string, unknown> }>(trustPath()).projects;
+    expect(Object.keys(records)).toEqual([info.projectId]);
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { type MouseEvent, useState, useTransition } from "react";
+import { type FormEvent, useState, useTransition } from "react";
 import {
   Dialog,
   DialogAction,
@@ -36,8 +36,7 @@ export default function DialogForm() {
     if (!nextOpen) resetForm();
   };
 
-  const handleCreate = (event: MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
+  const submit = () => {
     if (!name.trim() || submitting) return;
 
     startCreate(async () => {
@@ -45,6 +44,11 @@ export default function DialogForm() {
       setName("");
       setOpen(false);
     });
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    submit();
   };
 
   return (
@@ -60,35 +64,40 @@ export default function DialogForm() {
         <DialogHeader>
           <DialogTitle>Create Project</DialogTitle>
         </DialogHeader>
-        <DialogBody>
-          <div className="space-y-4">
-            <Label label="Project Name">
-              <Input
-                autoFocus
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="my-project"
-              />
-            </Label>
-          </div>
-        </DialogBody>
-        <DialogFooter
-          hints={[
-            { key: "Esc", label: "Close" },
-            { key: "Enter", label: "Submit" },
-          ]}
-        >
-          <DialogClose bracket variant="ghost" disabled={submitting}>
-            Cancel
-          </DialogClose>
-          <DialogAction
-            disabled={!name.trim() || submitting}
-            loading={submitting}
-            onClick={handleCreate}
+        <form onSubmit={handleSubmit}>
+          <DialogBody>
+            <div className="space-y-4">
+              <Label label="Project Name">
+                <Input
+                  autoFocus
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="my-project"
+                />
+              </Label>
+            </div>
+          </DialogBody>
+          <DialogFooter
+            hints={[
+              { key: "Esc", label: "Close" },
+              { key: "Enter", label: "Submit" },
+            ]}
           >
-            {submitting ? "Creating..." : "Create"}
-          </DialogAction>
-        </DialogFooter>
+            <DialogClose bracket variant="ghost" disabled={submitting}>
+              Cancel
+            </DialogClose>
+            <DialogAction
+              disabled={!name.trim() || submitting}
+              loading={submitting}
+              onClick={(event) => {
+                event.preventDefault();
+                submit();
+              }}
+            >
+              {submitting ? "Creating..." : "Create"}
+            </DialogAction>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

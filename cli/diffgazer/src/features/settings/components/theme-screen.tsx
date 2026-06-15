@@ -1,6 +1,7 @@
 import { guardQueryState, useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { type Theme, toSelectableTheme } from "@diffgazer/core/schemas/config";
+import { BACK_SHORTCUT, NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
@@ -10,7 +11,6 @@ import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useNavigation } from "../../../hooks/use-navigation";
-import { useScope } from "../../../hooks/use-scope";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import type { CliColorTokens } from "../../../theme/palettes";
 import { useTheme } from "../../../theme/provider";
@@ -117,14 +117,14 @@ function SettingsThemeEditor({ savedTheme }: SettingsThemeEditorProps): ReactEle
               disabled: isButtonActive(1) && !canSave,
             },
             { key: "Tab", label: "Switch Zone" },
-            { key: "Esc", label: "Back" },
+            BACK_SHORTCUT,
           ]
         : [
-            { key: "↑/↓", label: "Navigate" },
+            NAVIGATE_SHORTCUT,
             { key: "Space", label: "Select Theme" },
             { key: "Enter", label: "Save & Exit" },
             { key: "Tab", label: "Switch Zone" },
-            { key: "Esc", label: "Back" },
+            BACK_SHORTCUT,
           ],
   });
 
@@ -187,7 +187,6 @@ function SettingsThemeEditor({ savedTheme }: SettingsThemeEditorProps): ReactEle
 }
 
 export function ThemeScreen(): ReactElement {
-  useScope("settings-theme");
   useBackHandler();
 
   const settingsQuery = useSettings();

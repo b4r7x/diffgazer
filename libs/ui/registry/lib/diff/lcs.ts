@@ -1,5 +1,6 @@
 const MAX_LCS_CELLS = 250_000;
 
+/** Builds an LCS table, returning null when the input would exceed the cell budget. */
 export function buildLcsTable(a: string[], b: string[]): number[][] | null {
   if (a.length * b.length > MAX_LCS_CELLS) {
     return null;

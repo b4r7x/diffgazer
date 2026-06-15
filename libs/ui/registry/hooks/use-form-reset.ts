@@ -7,6 +7,7 @@ interface FormSubscription {
   listener: (event: Event) => void;
 }
 
+/** Registers a native form-reset listener that restores custom uncontrolled state. */
 export function useFormReset<T>(
   ref: RefObject<HTMLElement | null>,
   resetValue: T,

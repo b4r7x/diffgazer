@@ -2,12 +2,12 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ENV } from "./artifacts/env.mjs";
+import { ENV } from "./lib/env.mjs";
 import {
   assertCatalogProviders,
   enabledSnapshotProviders,
   findSnapshotInBundle,
-} from "./artifacts/smoke-modelsdev.mjs";
+} from "./lib/smoke-modelsdev.mjs";
 import { networkAllowed } from "./smoke-shared.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");

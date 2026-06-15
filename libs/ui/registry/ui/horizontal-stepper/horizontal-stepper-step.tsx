@@ -22,12 +22,17 @@ const SR_LABEL: Record<HorizontalStepStatus, string> = {
   pending: "Upcoming: ",
 };
 
+/** Props for horizontal stepper step. */
 export interface HorizontalStepperStepProps {
+  /** Step id matched against the parent value to derive status. */
   value: string;
+  /** Step label. */
   children: ReactNode;
+  /** Additional class names merged onto the rendered element. */
   className?: string;
 }
 
+/** Single horizontal step (derives status from parent value) */
 export function HorizontalStepperStep({ value, children, className }: HorizontalStepperStepProps) {
   const { variant } = useStepperContext();
   const { status, index } = useStepInfo(value);

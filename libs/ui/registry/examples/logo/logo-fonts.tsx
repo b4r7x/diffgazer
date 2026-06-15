@@ -11,7 +11,7 @@ export default function LogoFonts() {
       <Logo
         text="UI"
         asciiText={" _   _ ___ \n| | | |_ _|\n| | | || | \n| |_| || | \n \\___/|___|"}
-        className="text-success text-[10px]"
+        className="text-success text-2xs"
       />
     </div>
   );

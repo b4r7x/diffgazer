@@ -7,10 +7,17 @@ import {
   createWordDiffBudget,
   type ParsedDiff,
 } from "@/lib/diff";
-import { formatHunkHeader, LINE_PREFIX, LineContent, ROW_STATE, SR_LABEL } from "./diff-view-line";
+import {
+  formatHunkHeader,
+  LINE_PREFIX,
+  LineContent,
+  ROW_STATE,
+  resolveSrLabel,
+} from "./diff-view-line";
 
 type UnifiedHunk = { hunk: ParsedDiff["hunks"][number]; changes: AnnotatedChange[] };
 
+/** Root <figure> with aria-roledescription="diff". */
 export function UnifiedView({
   parsed,
   showLineNumbers,
@@ -19,6 +26,9 @@ export function UnifiedView({
   activeHunk,
   onKeyDown,
   containerRef,
+  regionLabel = "Unified diff",
+  addedLineLabel,
+  removedLineLabel,
 }: {
   parsed: ParsedDiff;
   showLineNumbers: boolean;
@@ -27,6 +37,9 @@ export function UnifiedView({
   activeHunk: string | null;
   onKeyDown: (e: KeyboardEvent) => void;
   containerRef: RefObject<HTMLDivElement | null>;
+  regionLabel?: string;
+  addedLineLabel: string;
+  removedLineLabel: string;
 }) {
   const hunks: UnifiedHunk[] = useMemo(() => {
     const budget = createWordDiffBudget();
@@ -37,13 +50,13 @@ export function UnifiedView({
   }, [disableWordDiff, parsed.hunks]);
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: the diff viewer is a custom keyboard-navigable composite; row navigation is handled here via onKeyDown with no native role that fits.
-    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-label/aria-keyshortcuts describe the focusable diff navigation region; no role with a native element equivalent applies to this composite.
+    // biome-ignore lint/a11y/useSemanticElements: role="region" makes the aria-label/aria-keyshortcuts valid on the focusable diff scroll container (the ScrollArea precedent); <section> would change the styled element and add a document landmark this composite is not.
     <div
       ref={containerRef}
       data-slot="diff-view-rows"
       data-line-numbers={showLineNumbers ? "true" : "false"}
-      aria-label="Unified diff"
+      role="region"
+      aria-label={regionLabel}
       aria-keyshortcuts="j k Escape"
       // biome-ignore lint/a11y/noNoninteractiveTabindex: the container must be focusable (tabIndex=0) to receive j/k/Escape shortcuts that move between diff rows.
       tabIndex={0}
@@ -60,6 +73,8 @@ export function UnifiedView({
           showLineNumbers={showLineNumbers}
           isDense={isDense}
           isActive={activeHunk === String(hi)}
+          addedLineLabel={addedLineLabel}
+          removedLineLabel={removedLineLabel}
         />
       ))}
     </div>
@@ -73,6 +88,8 @@ function UnifiedHunkBlock({
   showLineNumbers,
   isDense,
   isActive,
+  addedLineLabel,
+  removedLineLabel,
 }: {
   hunk: ParsedDiff["hunks"][number];
   changes: AnnotatedChange[];
@@ -80,6 +97,8 @@ function UnifiedHunkBlock({
   showLineNumbers: boolean;
   isDense: boolean;
   isActive: boolean;
+  addedLineLabel: string;
+  removedLineLabel: string;
 }) {
   return (
     <>
@@ -89,7 +108,7 @@ function UnifiedHunkBlock({
         data-hunk
         data-diffgazer-navigation-item="button"
         data-value={String(hunkIndex)}
-        data-active={isActive ? "true" : undefined}
+        data-highlighted={isActive ? "" : undefined}
       >
         {showLineNumbers && (
           <>
@@ -102,40 +121,43 @@ function UnifiedHunkBlock({
         <span className="diff-marker" aria-hidden="true" />
         <span className="diff-code">{formatHunkHeader(hunk)}</span>
       </span>
-      {changes.map((change, ci) => (
-        <span
-          // biome-ignore lint/suspicious/noArrayIndexKey: diff change rows render in fixed order within an immutable hunk and are never reordered; the change index is the stable identity.
-          key={ci}
-          data-row
-          data-state={ROW_STATE[change.type]}
-          data-line-old={change.oldLine ?? undefined}
-          data-line-new={change.newLine ?? undefined}
-        >
-          {showLineNumbers && (
-            <>
-              <span className="diff-num" aria-hidden="true">
-                {change.type !== "add" ? change.oldLine : ""}
-              </span>
-              {isDense && <span className="diff-num-divider" aria-hidden="true" />}
-              <span className="diff-num" aria-hidden="true">
-                {change.type !== "remove" ? change.newLine : ""}
-              </span>
-              {isDense && <span className="diff-num-divider" aria-hidden="true" />}
-            </>
-          )}
-          <span className="diff-marker" aria-hidden="true">
-            {LINE_PREFIX[change.type]}
+      {changes.map((change, ci) => {
+        const srLabel = resolveSrLabel(change.type, addedLineLabel, removedLineLabel);
+        return (
+          <span
+            // biome-ignore lint/suspicious/noArrayIndexKey: diff change rows render in fixed order within an immutable hunk and are never reordered; the change index is the stable identity.
+            key={ci}
+            data-row
+            data-state={ROW_STATE[change.type]}
+            data-line-old={change.oldLine ?? undefined}
+            data-line-new={change.newLine ?? undefined}
+          >
+            {showLineNumbers && (
+              <>
+                <span className="diff-num" aria-hidden="true">
+                  {change.type !== "add" ? change.oldLine : ""}
+                </span>
+                {isDense && <span className="diff-num-divider" aria-hidden="true" />}
+                <span className="diff-num" aria-hidden="true">
+                  {change.type !== "remove" ? change.newLine : ""}
+                </span>
+                {isDense && <span className="diff-num-divider" aria-hidden="true" />}
+              </>
+            )}
+            <span className="diff-marker" aria-hidden="true">
+              {LINE_PREFIX[change.type]}
+            </span>
+            <span className="diff-code">
+              {srLabel && <span className="sr-only">{srLabel}</span>}
+              <LineContent
+                content={change.content}
+                wordSegments={change.wordSegments}
+                type={change.type}
+              />
+            </span>
           </span>
-          <span className="diff-code">
-            {SR_LABEL[change.type] && <span className="sr-only">{SR_LABEL[change.type]}</span>}
-            <LineContent
-              content={change.content}
-              wordSegments={change.wordSegments}
-              type={change.type}
-            />
-          </span>
-        </span>
-      ))}
+        );
+      })}
     </>
   );
 }

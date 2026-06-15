@@ -30,6 +30,7 @@ import {
 import { SidebarTrigger, type SidebarTriggerProps } from "./sidebar-trigger";
 import type { SidebarVariant } from "./sidebar-variants";
 
+/** Root nav element (standalone or within SidebarProvider). Owns variant + autoTone. */
 const Sidebar = Object.assign(SidebarRoot, {
   Provider: SidebarProvider,
   Trigger: SidebarTrigger,

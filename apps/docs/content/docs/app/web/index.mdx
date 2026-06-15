@@ -3,17 +3,17 @@ title: Web mode
 description: The default browser environment for running and reading reviews.
 ---
 
-Web mode is what you get when you run `diffgazer` with no flags. The CLI starts a local server, serves the review app, and opens it in your browser. Everything you do with diffgazer day to day lives here: starting a review, watching it run, reading the issues it finds, and getting back to past runs. This page is the map. It covers the parts of the screen that stay put, how to move between screens, and how to quit, then points you to the page for each task. Before any of it works you need to finish [onboarding](/app/web/onboarding) once: a provider with a saved key, a model, and trust granted for the repo you opened diffgazer in. Until that is done the app sends you straight to the onboarding wizard.
+Web mode is what you get when you run `diffgazer` with no flags. The CLI starts a local server, serves the review app, and opens it in your browser. Everything you do with Diffgazer day to day lives here: starting a review, watching it run, reading the issues it finds, and getting back to past runs. This page is the map. It covers the parts of the screen that stay put, how to move between screens, and how to quit, then points you to the page for each task. Before any of it works you need to finish [onboarding](/app/web/onboarding) once: a provider with a saved key, a model, and trust granted for the repo you opened `diffgazer` in. Until that is done the app sends you straight to the onboarding wizard.
 
 ## The shell
 
-Every screen sits inside the same frame. A header runs across the top with the diffgazer wordmark, and in its corner an indicator shows the active provider and model with a status dot that reads active or idle. When a screen has somewhere to go back to, a Back control appears in the top-left of the header. A footer pinned to the bottom lists the keyboard shortcuts available on the current screen, so you can usually tell what a screen does without clicking into it. The area between header and footer is where each screen renders.
+Every screen sits inside the same frame. A header runs across the top with the Diffgazer wordmark, and in its corner an indicator shows the active provider and model with a status dot that reads active or idle. When a screen has somewhere to go back to, a Back control appears in the top-left of the header. A footer pinned to the bottom lists the keyboard shortcuts available on the current screen, so you can usually tell what a screen does without clicking into it. The area between header and footer is where each screen renders.
 
 Two states replace the whole shell rather than render inside it. While the app is reaching the local server it shows a brief connecting state, and if the server cannot be reached it shows a disconnected screen with a Retry control. If you hit the disconnected screen, the usual cause is that the `diffgazer` process in your terminal has stopped; start it again and retry.
 
-## Desktop-only layout
+## Layout and reflow
 
-The app is built for a desktop-width window. Its layout sets a minimum width of 768 pixels and fills the height of the window, with the header and footer fixed and the middle scrolling. There is no separate phone or tablet layout. Run it in a normal browser window on a desktop or laptop and give it room; a very narrow window will not reflow into a mobile view.
+The app is built for a desktop-width window, but the shell no longer forces a fixed minimum width. It fills the height of the window, with the header and footer fixed and the middle scrolling. The text and form screens — home, help, settings, onboarding — reflow down to a narrow viewport (roughly 320 CSS pixels, the width a low-vision user sees at high browser zoom) without two-dimensional panning. The genuinely two-dimensional review screens are the exception: the results split panes and diff keep a minimum width and may pan horizontally, as a side-by-side review layout is inherently two-dimensional. There is still no dedicated phone or tablet layout; this is about zoom and reflow, not a separate mobile design.
 
 ## Screen map
 
@@ -27,18 +27,19 @@ The web app is a handful of routes. Most of them have a dedicated page in this s
 | [History](/app/web/history) | Past reviews, listed so you can reopen any saved run. |
 | [Settings](/app/web/settings) | Theme, provider, lenses and analysis, agent execution, secrets storage, and trust. |
 | [Diagnostics](/app/web/diagnostics) | System health checks and a way to rebuild project context. |
+| Help | The shortcut reference and short product description available from the home menu. |
 
-The home screen is the hub. Its menu has Review Unstaged and Review Staged to start a fresh run, Resume Last Review to rejoin a run still in progress, and entries for History and Settings. Starting a review hands you off to the [reviewing](/app/web/reviewing) screen; when the run finishes you land on [results](/app/web/results).
+The home screen is the hub. Its menu has Review Unstaged and Review Staged to start a fresh run, Resume Last Review to rejoin a run still in progress, and entries for History, Settings, and Help. Starting a review hands you off to the [reviewing](/app/web/reviewing) screen; when the run finishes you land on [results](/app/web/results).
 
 ## Quitting
 
-Web mode runs against a local server that the `diffgazer` process owns. To end a session, go back to the terminal where you started diffgazer and press Ctrl+C. That stops the server and shuts everything down. Closing the browser tab on its own leaves the server running.
+Web mode runs against a local server that the `diffgazer` process owns. To end a session, go back to the terminal where you started `diffgazer` and press Ctrl+C. That stops the server and shuts everything down. Closing the browser tab on its own leaves the server running.
 
 > Tip: The header status dot is a quick read on your setup. If it shows idle and a review will not start, open [settings](/app/web/settings) and confirm a provider, key, and model are in place.
 
 ## Want the terminal instead?
 
-There is a second mode. Passing `--tui` launches a keyboard-first terminal UI that reviews without leaving the shell. It is an incomplete beta and not the recommended path yet; web mode is the full experience. See the [terminal UI](/app/tui/index) page for what it can do today.
+There is a second mode. Passing `--tui` launches a keyboard-first terminal UI that reviews without leaving the shell. It is an incomplete beta and not the recommended path yet; web mode is the full experience. See the [terminal UI](/app/tui) page for what it can do today.
 
 ## Related
 

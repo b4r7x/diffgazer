@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useOverflow } from "@/hooks/use-overflow";
+import { useOverflowDetection } from "@/hooks/use-overflow-detection";
 
 export default function OverflowDetectionBasicExample() {
   const [width, setWidth] = useState(200);
-  const { ref, isOverflowing } = useOverflow<HTMLDivElement>();
+  const { ref, isOverflowing } = useOverflowDetection<HTMLDivElement>();
 
   const text = "This text will overflow when the container is too narrow to fit it all.";
 
@@ -35,7 +35,7 @@ export default function OverflowDetectionBasicExample() {
 
       <span className="font-mono text-xs">
         isOverflowing:{" "}
-        <span className={isOverflowing ? "text-red-400" : "text-green-400"}>
+        <span className={isOverflowing ? "text-error-text" : "text-success-text"}>
           {String(isOverflowing)}
         </span>
       </span>

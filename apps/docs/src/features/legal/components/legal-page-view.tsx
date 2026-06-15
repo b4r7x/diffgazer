@@ -2,6 +2,7 @@ import browserCollections from "fumadocs-mdx:collections/browser";
 import { Suspense } from "react";
 import { ContentSpinner } from "@/components/content-spinner";
 import { DocsPageBody, DocsPageHeader } from "@/components/page-layout";
+import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 import type { LegalPageLoaderData } from "@/features/legal/lib/load-legal-page";
 import { useMDXComponents } from "@/mdx-components";
 import { LegalPageLayout } from "./legal-page-layout";
@@ -42,9 +43,7 @@ function LegalMdxContent({ path, lastUpdated }: { path: string; lastUpdated?: st
   return (
     <>
       {lastUpdated ? (
-        <p className="mb-6 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-          Last updated: {lastUpdated}
-        </p>
+        <p className={`mb-6 ${CHROME_LABEL_CLASS}`}>Last updated: {lastUpdated}</p>
       ) : null}
       {legalClientLoader.useContent(path)}
     </>

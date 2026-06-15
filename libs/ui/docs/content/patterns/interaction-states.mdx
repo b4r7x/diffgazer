@@ -5,27 +5,27 @@ description: The three-state interaction model for TUI-style components — hove
 
 ## Three-State Model
 
-@diffgazer/ui components use three distinct, independent interaction states inspired by terminal UIs:
+`@diffgazer/ui` components use three distinct, independent interaction states inspired by terminal UIs:
 
 | State | Trigger | Visual Weight | CSS Implementation |
 |---|---|---|---|
 | **Hover** | Mouse `:hover` | Lightest | `hover:bg-secondary` (CSS pseudo-class) |
-| **Highlight** | Keyboard arrows (@diffgazer/keys) | Strongest | `bg-primary text-primary-foreground font-bold` |
+| **Highlight** | Keyboard arrows (`@diffgazer/keys`) | Strongest | `bg-primary text-primary-foreground font-bold` |
 | **Selected** | Persistent choice (Enter/click) | Strongest when enabled | `bg-primary text-primary-foreground font-bold` |
 
 These states are independent because in TUI applications, the keyboard cursor is fundamentally different from mouse hover. The cursor shows where keyboard actions will apply -- it is the user's active position. Hover is transient mouse feedback that disappears when the pointer moves away. Selected is the user's persistent choice that survives both hover and highlight changes.
 
 Keeping them separate means a user can hover over one item while the keyboard cursor sits on another, and a third item can be the current selection. No state clobbers another.
 
-## State Precedence
+## State precedence
 
 ```
 disabled focused > disabled > highlight (focused) > selected > normal
 ```
 
-This comes from `getItemState()` in `menu-item.tsx`. A disabled item that owns the menu highlight renders `disabledFocused`, so APG-style disabled menu items can still be the keyboard cursor without looking enabled. Otherwise, disabled wins over selection. A highlighted enabled item always shows highlight visuals even if it is also the selected item. This ensures the keyboard cursor is always visible.
+This comes from `getItemState()` in `menu-item-variants.ts`. A disabled item that owns the menu highlight renders `disabledFocused`, so APG-style disabled menu items can still be the keyboard cursor without looking enabled. Otherwise, disabled wins over selection. A highlighted enabled item always shows highlight visuals even if it is also the selected item. This ensures the keyboard cursor is always visible.
 
-## Visual Mapping (CVA Variants)
+## Visual mapping (CVA variants)
 
 The `menuItemBase` CVA maps each state to Tailwind classes:
 
@@ -35,9 +35,9 @@ The `menuItemBase` CVA maps each state to Tailwind classes:
 | `"focused"` | `font-bold` + compound variant `bg-primary text-primary-foreground` | Semantic active bar for keyboard cursor |
 | `"selected"` | `font-bold group` + compound variant `bg-primary text-primary-foreground` | Persistent selected item when selection is enabled |
 | `"disabled"` | `opacity-50 cursor-not-allowed` | Greyed out, no pointer interaction |
-| `"disabledFocused"` | `opacity-50 cursor-not-allowed` + focused compound variant | Disabled item that still owns keyboard cursor in menu patterns |
+| `"disabledFocused"` | `opacity-60 cursor-not-allowed bg-secondary text-foreground` + detail-menu inset shadow | Disabled item that still owns keyboard cursor in menu patterns without looking enabled |
 
-Danger items use `bg-destructive text-destructive-foreground` for both focused and selected states.
+Danger items use `bg-error text-error-foreground` for both focused and selected states.
 
 ## Sync on Click
 
@@ -63,7 +63,7 @@ import { Menu, MenuItem } from "@/components/ui/menu"
 </Menu>
 ```
 
-## Navigation Direction
+## Navigation direction
 
 Diffgazer web persists menu highlight state across route changes as an app-level pattern. The direction of navigation determines whether the highlight resets or restores:
 
@@ -71,13 +71,35 @@ Diffgazer web persists menu highlight state across route changes as an app-level
 - **Back (child → parent)**: Parent's highlight is restored automatically from the persistent store.
 
 ```tsx
-import { useScopedRouteState, clearScopedRouteState } from "@/hooks/use-scoped-route-state"
+import { useEffect, useState } from "react"
+
+function scopedRouteStateKey(route: string, key: string) {
+  return `route-state:${route}:${key}`
+}
+
+function readScopedRouteState<T>(route: string, key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback
+  const raw = window.sessionStorage.getItem(scopedRouteStateKey(route, key))
+  return raw ? (JSON.parse(raw) as T) : fallback
+}
+
+function writeScopedRouteState(route: string, key: string, value: unknown) {
+  window.sessionStorage.setItem(scopedRouteStateKey(route, key), JSON.stringify(value))
+}
+
+function clearScopedRouteState(route: string, key: string) {
+  window.sessionStorage.removeItem(scopedRouteStateKey(route, key))
+}
 
 // Persist highlight — restores when returning from a child route
-const [highlighted, setHighlighted] = useScopedRouteState<string | null>(
-  "highlighted",
-  items[0]?.id ?? null
+const currentRoute = "/settings"
+const [highlighted, setHighlighted] = useState<string | null>(() =>
+  readScopedRouteState(currentRoute, "highlighted", items[0]?.id ?? null)
 )
+
+useEffect(() => {
+  writeScopedRouteState(currentRoute, "highlighted", highlighted)
+}, [highlighted])
 
 // When navigating forward, clear the child's highlight so it starts fresh
 const handleActivate = (id: string) => {
@@ -96,7 +118,7 @@ This gives TUI-like behavior: entering a menu always starts from the top, but re
 The interaction state model maps directly to ARIA semantics:
 
 - **Container**: `role="menu"`, `tabIndex={0}`, `aria-activedescendant` pointing to the highlighted item
-- **Items**: `role="menuitem"`, `data-value={id}`, `data-active` for visual active state, `aria-disabled` for disabled items
+- **Items**: `role="menuitem"`, `data-value={id}`, `data-highlighted` for keyboard/virtual focus and `data-selected` for selection, `aria-disabled` for disabled items
 - **Selectable menu items**: `role="menuitemradio"` with `aria-checked` for the selected item
 - **Screen readers**: announce the active descendant as the user arrows through items -- the highlight state drives `aria-activedescendant`
 - **Follows WAI-ARIA Menu Pattern (APG)**

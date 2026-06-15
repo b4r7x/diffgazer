@@ -2,11 +2,18 @@
 
 import { useEffect, useState } from "react";
 
+/** Options for use spinner animation. */
 interface UseSpinnerAnimationOptions {
+  /** total frames used by use spinner animation. */
   totalFrames: number;
+  /**
+   * Frame interval in milliseconds. Overrides the variant default (snake 100, braille 80, dots
+   * 300, pulse 80).
+   */
   speed: number;
 }
 
+/** Provides spinner animation behavior. */
 export function useSpinnerAnimation({ totalFrames, speed }: UseSpinnerAnimationOptions): number {
   const [frame, setFrame] = useState(0);
 

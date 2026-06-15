@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import type { UserEvent } from "@testing-library/user-event";
 import { expect } from "vitest";
 
@@ -68,6 +68,34 @@ function findSiblingErrorText(field: HTMLElement): string | null {
     }
   }
   return null;
+}
+
+/**
+ * Assert that a native form reset clears the post-submit invalid presentation.
+ * Triggers native validation (form.reportValidity), asserts the control reports
+ * aria-invalid, resets the form, then waits for aria-invalid to be cleared —
+ * matching native :user-invalid semantics where reset clears the interacted flag.
+ */
+export async function expectResetClearsInvalid(
+  form: HTMLFormElement,
+  control: HTMLElement,
+): Promise<void> {
+  expect(form.reportValidity(), "form should report invalid before reset").toBe(false);
+  await waitFor(() =>
+    expect(
+      control,
+      'control should report aria-invalid="true" after failed validation',
+    ).toHaveAttribute("aria-invalid", "true"),
+  );
+
+  form.reset();
+
+  await waitFor(() =>
+    expect(control, "form reset should clear aria-invalid").not.toHaveAttribute(
+      "aria-invalid",
+      "true",
+    ),
+  );
 }
 
 /**

@@ -184,8 +184,8 @@ export function writeUiCommonImportSmoke(root, projectDir) {
 
 /**
  * Models a package-mode consumer who installs @diffgazer/ui but forgets the
- * REQUIRED @diffgazer/keys peer (T-608/F-234: keyboard-backed exports static-import
- * keys, so it is a required peer for package mode). Two contracts are asserted:
+ * REQUIRED @diffgazer/keys peer (package-mode UI entries import @diffgazer/keys at
+ * runtime, so keys is a required peer for package mode). Two contracts are asserted:
  *   1. A keys-free component (Button) still imports and SSR-renders, so the missing
  *      peer only affects keyboard-backed entries — not the whole package.
  *   2. A keys-backed subpath (select) fails at import with a native

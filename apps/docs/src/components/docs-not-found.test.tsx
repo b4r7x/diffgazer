@@ -1,17 +1,50 @@
 // @vitest-environment jsdom
 
+import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MobileNavProvider } from "@/hooks/mobile-nav-context";
 import type { PageTree } from "@/lib/page-tree";
+import { stubMatchMedia } from "@/testing/match-media";
 import { DocsNotFoundBlock } from "./docs-not-found";
 
+const routerBoundary = vi.hoisted(() => ({
+  navigate: vi.fn(),
+  pathname: "/ui/missing-page",
+}));
+
+// Boundary mock: TanStack Router is the external routing library; links need deterministic hrefs in this component test.
 vi.mock("@tanstack/react-router", async () => {
   const { RouterLinkMock } = await import("@/testing/router-mock");
-  return { Link: RouterLinkMock };
+  return {
+    Link: RouterLinkMock,
+    useLocation: ({ select }: { select?: (location: { pathname: string }) => unknown } = {}) =>
+      select
+        ? select({ pathname: routerBoundary.pathname })
+        : { pathname: routerBoundary.pathname },
+    useNavigate: () => routerBoundary.navigate,
+    useRouter: () => ({ subscribe: () => () => {} }),
+    useRouterState: ({
+      select,
+    }: {
+      select: (state: { location: { pathname: string }; status: "idle" }) => unknown;
+    }) =>
+      select({
+        location: { pathname: routerBoundary.pathname },
+        status: "idle",
+      }),
+  };
 });
 
-vi.mock("@/components/layout/content-layout", () => ({
-  DocsContentLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+// Boundary mock: TanStack Start server functions cross the server/client boundary.
+vi.mock("@tanstack/react-start", () => ({
+  createServerFn: () => {
+    const chain = {
+      inputValidator: () => chain,
+      handler: () => async () => ({ library: "ui", slugs: [] }),
+    };
+    return chain;
+  },
 }));
 
 const TREE: PageTree = {
@@ -19,9 +52,26 @@ const TREE: PageTree = {
   children: [{ type: "page", name: "Button", url: "/ui/components/button" }],
 };
 
+beforeEach(() => {
+  routerBoundary.navigate.mockReset();
+  routerBoundary.pathname = "/ui/missing-page";
+  stubMatchMedia({ isDesktop: true });
+  Element.prototype.scrollIntoView = () => {};
+});
+
+function renderBlock() {
+  return render(
+    <KeyboardProvider>
+      <MobileNavProvider>
+        <DocsNotFoundBlock tree={TREE} library="ui" />
+      </MobileNavProvider>
+    </KeyboardProvider>,
+  );
+}
+
 describe("DocsNotFoundBlock", () => {
   it("does not nest buttons inside links for recovery actions", () => {
-    const { container } = render(<DocsNotFoundBlock tree={TREE} library="ui" />);
+    const { container } = renderBlock();
 
     expect(screen.getByRole("link", { name: "Go to docs home" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Go home" })).toBeInTheDocument();

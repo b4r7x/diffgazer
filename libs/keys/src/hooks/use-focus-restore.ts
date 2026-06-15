@@ -7,15 +7,23 @@ import {
   restoreFocus,
 } from "../dom/focus-restore.js";
 
+/** Options for capturing and restoring focus around temporary UI. */
 export interface UseFocusRestoreOptions extends RestoreFocusOptions {
+  /** Whether capture and restore are active. */
   enabled?: boolean;
+  /** Restore focus during cleanup if capture was called and restore was not called manually. */
   restoreOnUnmount?: boolean;
+  /** Fallback element to focus when the captured target is unavailable. */
   fallback?: HTMLElement | null;
 }
 
+/** Return value from `useFocusRestore`. */
 export interface UseFocusRestoreReturn {
+  /** Stores the current focus target for the provided document. */
   capture: (ownerDocument?: Document) => HTMLElement | null;
+  /** Focuses the captured or fallback target and returns whether focus moved. */
   restore: () => boolean;
+  /** The last captured focus target, or null when nothing is captured. */
   target: HTMLElement | null;
 }
 
@@ -71,6 +79,10 @@ function releaseEntry(
   );
 }
 
+/**
+ * Captures the current focus target and restores it later, with per-document
+ * stack ordering for nested overlays.
+ */
 export function useFocusRestore(options: UseFocusRestoreOptions = {}): UseFocusRestoreReturn {
   const resolvedOptions = resolveOptions(options);
   const optionsRef = useRef(resolvedOptions);

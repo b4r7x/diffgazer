@@ -3,11 +3,11 @@ title: The review pipeline
 description: How a review goes from a diff to ranked issues.
 ---
 
-A review in diffgazer is a fixed sequence of steps that turns your git diff into a ranked list of issues. The work that finds those issues is split across review **lenses**: focused perspectives like correctness, security, or performance. Each lens is driven by its own **agent**, a named reviewer that knows how to look for one kind of problem. You pick which lenses run, the pipeline runs their agents over your changes, and what comes back is a deduplicated, severity-sorted report.
+A review in Diffgazer is a fixed sequence of steps that turns your git diff into a ranked list of issues. The work that finds those issues is split across review **lenses**: focused perspectives like correctness, security, or performance. Each lens is driven by its own **agent**, a named reviewer that knows how to look for one kind of problem. You pick which lenses run, the pipeline runs their agents over your changes, and what comes back is a deduplicated, severity-sorted report.
 
 ## Steps
 
-Every review moves through the same five steps in order. The labels below are the exact ones the UI shows as the review progresses.
+Every review moves through the same four steps in order. The labels below are the exact ones the UI shows as the review progresses.
 
 ### Collect diff
 
@@ -15,25 +15,21 @@ The pipeline reads your changes from git. By default that means unstaged changes
 
 ### Project context
 
-Before any agent runs, diffgazer builds a short snapshot of the repository: a small graph and summary that gives the agents something to reason against beyond the raw patch. This step is best-effort. If the snapshot fails to build, the review keeps going with empty context rather than aborting.
+Before any agent runs, Diffgazer builds a short snapshot of the repository: a small graph and summary that gives the agents something to reason against beyond the raw patch. This step is best-effort. If the snapshot fails to build, the review keeps going with empty context rather than aborting.
 
 ### Review issues
 
-This is where the agents do their work. The active lenses run over the diff, each agent reporting the issues it finds for its lens. Results from every lens are merged, near-duplicate findings are collapsed, anything below your severity threshold is filtered out, incomplete findings are dropped, and the survivors are sorted by severity. If a lens fails, the others still finish and the report notes the partial result.
-
-### Enrich context
-
-Each surviving issue gets extra detail attached: git blame for the lines it points at, plus surrounding context from the changed files. This is what lets a finding say who last touched a line and show the code around it rather than just a line number.
+This is where the agents do their work. The active lenses run over the diff, each agent reporting the issues it finds for its lens. Results from every lens are merged, near-duplicate issues are collapsed, anything below your severity threshold is filtered out, incomplete issues are dropped, and the survivors are sorted by severity. If a lens fails, the others still finish and the report notes the partial result.
 
 ### Generate report
 
-The enriched issues and the combined summary are assembled into the final report, which is then persisted to disk along with the branch, commit, profile, lenses, and how long the run took. Once this step completes, the review is saved and available in your history.
+The surviving issues and the combined summary are assembled into the final report, which is then persisted to disk along with the branch, commit, profile, lenses, and how long the run took. Once this step completes, the review is saved and available in your history.
 
 > Note: A single review caps the total diff at 512KB. Past that, the run stops and asks you to review fewer files or use file filtering. The limit is on the combined byte size of all changed files in the diff, not on any single file.
 
 ## Lenses and agents
 
-Five lenses ship with diffgazer, and each maps to exactly one agent. The lens is the perspective you choose; the agent is the reviewer that applies it.
+Five lenses ship with Diffgazer, and each maps to exactly one agent. The lens is the perspective you choose; the agent is the reviewer that applies it.
 
 | Lens | Agent | What it looks for |
 | --- | --- | --- |

@@ -7,7 +7,7 @@ import {
 import { useActionRowNavigation, useScope } from "@diffgazer/keys";
 import { useNavigate } from "@tanstack/react-router";
 import type { RefObject } from "react";
-import { getStepShortcuts } from "../shortcuts";
+import { getStepShortcuts } from "../lib/shortcuts";
 
 interface UseOnboardingKeyboardOptions {
   currentStep: OnboardingStep;
@@ -19,7 +19,7 @@ interface UseOnboardingKeyboardOptions {
   isEarlySaving: boolean;
   next: () => void;
   back: () => void;
-  complete: () => Promise<void>;
+  complete: () => Promise<boolean>;
   focusFallbackRef: RefObject<HTMLDivElement | null>;
 }
 
@@ -76,11 +76,9 @@ export function useOnboardingKeyboard({
   };
 
   const handleComplete = async () => {
-    try {
-      await complete();
+    // complete() reports failures through the wizard error state; only navigate on success.
+    if (await complete()) {
       navigate({ to: "/" });
-    } catch {
-      // Error already displayed by useOnboarding's error state
     }
   };
 

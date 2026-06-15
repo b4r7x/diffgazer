@@ -4,6 +4,7 @@ import {
   getInitialFocusedCapability,
   isFocusableCapability,
   TRUST_CAPABILITY_OPTIONS,
+  TRUST_SECURITY_WARNING,
   toSelectedCapabilityIds,
 } from "@diffgazer/core/schemas/config";
 import { focusNavigationItem } from "@diffgazer/keys";
@@ -134,10 +135,12 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
       onFocus={handleContentFocus}
       onBlur={handleContentBlur}
     >
-      <div className="border-b border-tui-border pb-3">
-        <div className="text-tui-muted text-xs mb-2 uppercase tracking-wide">Target Directory</div>
+      <div className="border-b border-border pb-3">
+        <div className="text-muted-foreground text-xs mb-2 uppercase tracking-wide">
+          Target Repository
+        </div>
         <div className="flex items-center justify-between">
-          <span className="text-lg text-tui-blue font-bold truncate pr-4">{directory}</span>
+          <span className="text-lg text-info-text font-bold truncate pr-4">{directory}</span>
           {isTrusted && <Badge variant="success">TRUSTED</Badge>}
         </div>
       </div>
@@ -174,11 +177,8 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
 
       <Callout tone="warning">
         <Callout.Icon />
-        <Callout.Title>SECURITY WARNING</Callout.Title>
-        <Callout.Content>
-          Run commands is currently unavailable. When enabled, it allows the AI to execute shell
-          scripts. This grants significant access to your system.
-        </Callout.Content>
+        <Callout.Title>{TRUST_SECURITY_WARNING.title}</Callout.Title>
+        <Callout.Content>{TRUST_SECURITY_WARNING.body}</Callout.Content>
       </Callout>
 
       {showActions && (

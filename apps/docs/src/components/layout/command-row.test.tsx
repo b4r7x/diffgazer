@@ -3,14 +3,14 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { MobileNavProvider, useMobileNav } from "@/lib/mobile-nav-context";
-import { SearchProvider, useSearchOpen } from "@/lib/search-context";
+import { MobileNavProvider, useMobileNav } from "@/hooks/mobile-nav-context";
+import { SearchProvider, useSearchOpen } from "@/hooks/search-context";
 import { stubMatchMedia } from "@/testing/match-media";
 import { CommandRow } from "./command-row";
 
 function SearchProbe() {
   const { open } = useSearchOpen();
-  return <span data-testid="search-state">{open ? "open" : "closed"}</span>;
+  return <output aria-label="Search state">{open ? "open" : "closed"}</output>;
 }
 
 function RegisterSidebarProbe() {
@@ -35,14 +35,14 @@ describe("CommandRow", () => {
       </MobileNavProvider>,
     );
 
-    expect(screen.getByTestId("search-state")).toHaveTextContent("closed");
+    expect(screen.getByRole("status", { name: "Search state" })).toHaveTextContent("closed");
     await user.click(screen.getByRole("button", { name: /^search docs, components, hooks/i }));
-    expect(screen.getByTestId("search-state")).toHaveTextContent("open");
+    expect(screen.getByRole("status", { name: "Search state" })).toHaveTextContent("open");
   });
 
   it("names the search button from its visible prompt and shows the / binding", () => {
     stubMatchMedia({ isDesktop: true });
-    const { container } = render(
+    render(
       <MobileNavProvider>
         <SearchProvider>
           <CommandRow />
@@ -51,13 +51,11 @@ describe("CommandRow", () => {
     );
 
     const button = screen.getByRole("button", { name: /^search docs, components, hooks/i });
-    expect(button.querySelectorAll(".truncate")).toHaveLength(1);
-    expect(button.querySelector(".truncate")).toHaveTextContent("search docs, components, hooks…");
+    expect(button).toHaveTextContent("search docs, components, hooks…");
     expect(button).toHaveTextContent("/");
     expect(button.textContent).not.toContain("⌘");
 
     expect(screen.getByText("[MODE: CMD]")).toHaveAttribute("aria-hidden", "true");
-    expect(container.textContent).not.toContain("⌘");
   });
 
   it("shows the mobile menu toggle only after a sidebar registers", async () => {

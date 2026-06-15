@@ -3,8 +3,9 @@ import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { Context } from "hono";
 import { getProjectRoot } from "../../../shared/lib/http/request.js";
 import { errorResponse } from "../../../shared/lib/http/response.js";
+import { log } from "../../../shared/lib/log.js";
 import { getProjectDiffgazerDir } from "../../../shared/lib/paths.js";
-import { isValidProjectPath } from "../../../shared/lib/validation.js";
+import { isValidProjectPath } from "../validation.js";
 import { buildProjectContextSnapshot, loadContextSnapshot } from "./snapshot.js";
 
 export async function getContextHandler(c: Context): Promise<Response> {
@@ -50,7 +51,7 @@ export async function refreshContextHandler(
       meta: snapshot.meta,
     });
   } catch (error) {
-    console.error("[context] Failed to refresh project context:", getErrorMessage(error));
+    log("error", "context_refresh_failed", { error: getErrorMessage(error) });
     return errorResponse(c, "Failed to refresh project context", ErrorCode.INTERNAL_ERROR, 500);
   }
 }

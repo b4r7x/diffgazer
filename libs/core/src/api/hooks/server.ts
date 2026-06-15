@@ -7,9 +7,16 @@ export type ServerState =
   | { status: "connected" }
   | { status: "error"; message: string };
 
-function deriveServerState(isLoading: boolean, error: Error | null): ServerState {
+function deriveServerState(
+  isLoading: boolean,
+  error: Error | null,
+  hasHealthData: boolean,
+): ServerState {
   if (isLoading) return { status: "checking" };
-  if (error) return { status: "error", message: error.message };
+  // A failed poll after a prior success must not tear down the gated tree:
+  // keep "connected" while cached health data exists, only surface "error"
+  // when there is no successful health result to fall back on.
+  if (error && !hasHealthData) return { status: "error", message: error.message };
   return { status: "connected" };
 }
 
@@ -18,7 +25,7 @@ export function useServerStatus(): { state: ServerState; retry: () => Promise<un
   const query = useQuery(serverQueries.health(api));
 
   return {
-    state: deriveServerState(query.isLoading, query.error),
+    state: deriveServerState(query.isLoading, query.error, query.data !== undefined),
     retry: () => query.refetch({ throwOnError: true }),
   };
 }

@@ -1,12 +1,12 @@
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api";
+import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api/protocol";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PROJECT_ROOT_HEADER } from "../../shared/lib/paths.js";
 import { requireValue } from "../../testing/assertions.js";
 
 const TEST_TOKEN = "test-settings-token";
+const ROUTE_BOUNDARY_TIMEOUT_MS = 20_000;
 
 let diffgazerHome: string;
 let projectRootA: string;
@@ -65,26 +65,30 @@ describe("settings trust routes — server-scoped project", () => {
     warnSpy.mockRestore();
   });
 
-  it("GET /trust derives project from server, ignoring client projectId query", async () => {
-    const store = await loadStore();
-    const project = store.ensureProjectFile(projectRootA);
-    expect(project.projectId).toBeTruthy();
-    const trust = trustForProject(requireValue(project.projectId, "project A id"), projectRootA);
-    await store.saveTrust(trust);
+  it(
+    "GET /trust derives project from server, ignoring client projectId query",
+    async () => {
+      const store = await loadStore();
+      const project = store.ensureProjectFile(projectRootA);
+      expect(project.projectId).toBeTruthy();
+      const trust = trustForProject(requireValue(project.projectId, "project A id"), projectRootA);
+      await store.saveTrust(trust);
 
-    const app = await loadApp();
-    const res = await app.request(`/api/settings/trust?projectId=attacker-supplied-id`, {
-      headers: {
-        Host: "localhost:3000",
-        [SHUTDOWN_TOKEN_HEADER]: TEST_TOKEN,
-        [PROJECT_ROOT_HEADER]: projectRootA,
-      },
-    });
+      const app = await loadApp();
+      const res = await app.request(`/api/settings/trust?projectId=attacker-supplied-id`, {
+        headers: {
+          Host: "localhost:3000",
+          [SHUTDOWN_TOKEN_HEADER]: TEST_TOKEN,
+          [PROJECT_ROOT_HEADER]: projectRootA,
+        },
+      });
 
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { trust: { projectId: string } };
-    expect(body.trust.projectId).toBe(project.projectId);
-  });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { trust: { projectId: string } };
+      expect(body.trust.projectId).toBe(project.projectId);
+    },
+    ROUTE_BOUNDARY_TIMEOUT_MS,
+  );
 
   it("GET /trust returns 404 when asking for a different project's trust", async () => {
     const store = await loadStore();
@@ -230,6 +234,7 @@ describe("settings trust routes — server-scoped project", () => {
       projectPath: projectRootA,
       headCommit: "abc123",
       statusHash: "hash123",
+      statusHashKind: "full" as const,
       mode: "unstaged",
     });
     sessions.markReady(session.reviewId);

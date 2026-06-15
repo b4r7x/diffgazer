@@ -2,14 +2,16 @@
 
 import { cva } from "class-variance-authority";
 import { type AriaAttributes, type ComponentPropsWithRef, type Ref, useRef, useState } from "react";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { resolveAriaInvalid } from "@/lib/aria";
-import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
 
+/** Allowed switch size values. */
 export type SwitchSize = "sm" | "md";
 
+/** Props for switch root. */
 type SwitchRootProps = Omit<
   ComponentPropsWithRef<"button">,
   | "children"
@@ -27,6 +29,7 @@ type SwitchRootProps = Omit<
   | "ref"
 >;
 
+/** Props for switch. */
 export type SwitchProps = SwitchRootProps & {
   checked?: boolean;
   defaultChecked?: boolean;
@@ -55,7 +58,9 @@ const trackVariants = cva(
   {
     variants: {
       size: {
-        sm: "h-5 w-9 text-xs",
+        // sm keeps a 20px visual track but extends a transparent ≥24px pointer
+        // hit area (WCAG 2.5.8 AA) via a pseudo-element with negative vertical inset.
+        sm: "h-5 w-9 text-xs before:absolute before:inset-x-0 before:-inset-y-0.5 before:content-['']",
         md: "h-6 w-11 text-sm",
       },
       checked: {
@@ -84,7 +89,7 @@ const thumbVariants = cva(
   {
     variants: {
       size: {
-        sm: "h-3.5 w-3.5 text-[10px]",
+        sm: "h-3.5 w-3.5 text-2xs",
         md: "h-4 w-4 text-xs",
       },
       checked: {
@@ -105,6 +110,7 @@ const thumbVariants = cva(
   },
 );
 
+/** Binary toggle (controlled or uncontrolled) */
 export function Switch({
   checked: controlledChecked,
   defaultChecked = false,
@@ -124,6 +130,7 @@ export function Switch({
   ...rootProps
 }: SwitchProps) {
   const rootRef = useRef<HTMLButtonElement>(null);
+  const composedRef = useComposedRefs(rootRef, ref);
   const [isChecked, setIsChecked] = useControllableState<boolean>({
     value: controlledChecked,
     defaultValue: defaultChecked,
@@ -135,7 +142,15 @@ export function Switch({
     nativeInvalid && required && !isChecked,
   );
 
-  useFormReset(rootRef, defaultChecked, setIsChecked, controlledChecked === undefined);
+  useFormReset(
+    rootRef,
+    defaultChecked,
+    (value) => {
+      setNativeInvalid(false);
+      setIsChecked(value);
+    },
+    controlledChecked === undefined,
+  );
 
   const toggle = () => {
     if (disabled) return;
@@ -166,7 +181,6 @@ export function Switch({
           tabIndex={-1}
           readOnly
           aria-hidden={true}
-          aria-label={ariaLabel ?? name}
           onInvalid={(event) => {
             event.preventDefault();
             setNativeInvalid(true);
@@ -176,9 +190,12 @@ export function Switch({
       )}
       <button
         {...rootProps}
-        ref={composeRefs(rootRef, ref)}
+        ref={composedRef}
         type="button"
         role="switch"
+        data-slot="switch"
+        data-state={isChecked ? "checked" : "unchecked"}
+        data-disabled={disabled ? "" : undefined}
         aria-checked={isChecked}
         aria-disabled={disabled || undefined}
         aria-required={required || undefined}
@@ -190,7 +207,11 @@ export function Switch({
         onClick={handleClick}
         className={cn(trackVariants({ size, checked: isChecked, disabled }), className)}
       >
-        <span aria-hidden="true" className={thumbVariants({ size, checked: isChecked })} />
+        <span
+          aria-hidden="true"
+          data-slot="switch-thumb"
+          className={thumbVariants({ size, checked: isChecked })}
+        />
       </button>
     </>
   );

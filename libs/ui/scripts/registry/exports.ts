@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
 import type { RegistryItem } from "./fs.js";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -49,7 +50,7 @@ export function validatePublicComponentProps(root: string, items: RegistryItem[]
   const errors: string[] = [];
 
   for (const item of items) {
-    if (item.type !== "registry:ui" || item.meta?.hidden) continue;
+    if (item.type !== REGISTRY_ITEM_TYPE.ui || item.meta?.hidden) continue;
 
     const dataPath = resolve(root, "docs/generated/components", `${item.name}.json`);
     // Skip when generated docs JSON is absent (clean checkouts before prepare:artifacts).

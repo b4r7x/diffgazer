@@ -1,21 +1,21 @@
 ---
 title: Providers and models
-description: Bring your own model; how diffgazer talks to providers.
+description: Bring your own model; how Diffgazer talks to providers.
 ---
 
-diffgazer does not run a model of its own. It is provider-agnostic: you supply an API key for a provider you already use, pick a model from that provider, and diffgazer talks to it directly from your machine. Switching to a different provider or model is just a settings change, not a reinstall. Your key and your code never pass through a diffgazer-hosted service. See [Privacy](/app/concepts/privacy) for where keys and source actually go.
+Diffgazer does not run a model of its own. It is provider-agnostic: you supply an API key for a provider you already use, pick a model from that provider, and Diffgazer talks to it directly from your machine. Switching to a different provider or model is just a settings change, not a reinstall. Your key and your code never pass through a Diffgazer-hosted service. See [Privacy](/app/concepts/privacy) for where keys and source actually go.
 
 ## Supported providers
 
 The provider picker offers six providers: Google Gemini, Z.AI, Z.AI Coding Plan, OpenRouter, Groq, and Cerebras. Each one needs its own API key, which you add during [onboarding](/app/web/onboarding).
 
-Most of these have a free tier you can review with before paying for anything. Five of the six advertise a free tier in the picker; the exception is the Z.AI Coding Plan, which is a paid plan. Free-tier terms are set by each provider, not by diffgazer, so treat the badge as a hint and check the provider's own pricing for the current limits. The one quota diffgazer spells out in its UI is Cerebras, whose free tier is roughly 1M tokens per day.
+Most of these have a free tier you can review with before paying for anything. Five of the six advertise a free tier in the picker; the exception is the Z.AI Coding Plan, which is a paid plan. Free-tier terms are set by each provider, not by Diffgazer, so treat the badge as a hint and check the provider's own pricing for the current limits. The one quota Diffgazer spells out in its UI is Cerebras, whose free tier is roughly 1M tokens per day.
 
-> Note: diffgazer's catalog data also describes Mistral, Hugging Face, and GitHub Models, but those are catalog-only and disabled. They do not appear in the picker and cannot be selected, so do not plan on using them.
+> Note: Diffgazer's catalog data also describes Mistral, Hugging Face, and GitHub Models, but those are catalog-only and disabled. They do not appear in the picker and cannot be selected, so do not plan on using them.
 
 ## How models are listed
 
-You do not type model names by hand. When you open the model picker, the list comes live from the provider's own catalog, so it reflects the models that provider currently offers rather than a list baked into diffgazer. OpenRouter is the one provider that does not use the shared catalog; it sources its model list from its own live route instead. If diffgazer cannot reach a catalog, it falls back to a bundled snapshot so the picker is never empty, which means a stale or offline list may lag behind what the provider has just shipped.
+You do not type model names by hand. When you open the model picker, the list comes live from the provider's own catalog, so it reflects the models that provider currently offers rather than a list baked into Diffgazer. OpenRouter is the one provider that does not use the shared catalog; it sources its model list from its own live route instead. If Diffgazer cannot reach a catalog, it falls back to a bundled snapshot so the picker is never empty, which means a stale or offline list may lag behind what the provider has just shipped.
 
 ## Choosing a model
 

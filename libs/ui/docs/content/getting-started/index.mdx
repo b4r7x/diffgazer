@@ -1,26 +1,13 @@
 ---
 title: Getting Started
-description: Install @diffgazer/ui, wire up your app, and configure the theme.
+description: Install `@diffgazer/ui`, wire up your app, and configure the theme.
 ---
 
 `@diffgazer/ui` components install as source. You own the files; `dgadd` copies them in and tracks updates. Work through the four steps below.
 
 <Steps>
 
-<Step title="Installation">
-
-Initialize a project and add your first component with `dgadd`.
-
-```bash
-pnpm exec dgadd init
-pnpm exec dgadd add ui/button
-```
-
-[Installation](/ui/getting-started/installation) covers the publish gate, local validation, required app wiring, and keyboard hooks.
-
-</Step>
-
-<Step title="Consumption Modes">
+<Step title="Consumption modes">
 
 Choose copy-first source you own and edit, or versioned runtime package imports.
 
@@ -28,7 +15,7 @@ Choose copy-first source you own and edit, or versioned runtime package imports.
 
 </Step>
 
-<Step title="Tailwind Setup">
+<Step title="Tailwind setup">
 
 `@diffgazer/ui` needs Tailwind CSS 4 and the theme CSS for its tokens.
 
@@ -46,6 +33,19 @@ Choose copy-first source you own and edit, or versioned runtime package imports.
 Components import through a source alias such as `@/*`. Configure it before building copied source.
 
 [TypeScript](/ui/getting-started/typescript) covers path aliases, strict mode, and the React version.
+
+</Step>
+
+<Step title="Installation">
+
+Initialize a project and add your first component with `dgadd` after Tailwind and the source alias are configured.
+
+```bash
+pnpm exec dgadd init
+pnpm exec dgadd add ui/button
+```
+
+[Installation](/ui/getting-started/installation) covers the publish gate, local validation, required app wiring, and keyboard hooks.
 
 </Step>
 

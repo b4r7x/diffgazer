@@ -6,6 +6,8 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { useMobileNav } from "@/hooks/mobile-nav-context";
+import { usePendingDocsRoute } from "@/hooks/use-pending-docs-route";
 import {
   DOCS_LIBRARY_IDS,
   type DocsLibraryId,
@@ -15,9 +17,7 @@ import {
   routeSlugsFromSourcePath,
   sourceSlugsForLibrary,
 } from "@/lib/library";
-import { useMobileNav } from "@/lib/mobile-nav-context";
 import { parseLibrarySwitchInput } from "@/lib/server-inputs";
-import { usePendingDocsRoute } from "@/lib/use-pending-docs-route";
 import {
   SidebarPanelHeader,
   SidebarPanelHeaderDivider,
@@ -99,7 +99,7 @@ export function SidebarChrome({ library }: { library: DocsLibraryId }) {
             handle={
               <span
                 aria-hidden="true"
-                className="shrink-0 font-mono text-[10px] text-muted-foreground"
+                className="shrink-0 font-mono text-2xs text-muted-foreground"
               >
                 ▼
               </span>
@@ -113,7 +113,7 @@ export function SidebarChrome({ library }: { library: DocsLibraryId }) {
             {isHeaderBusy ? <Spinner size="sm" className="shrink-0 text-muted-foreground" /> : null}
           </SelectTrigger>
           <SelectContent
-            className="sidebar-scope-menu tui-chrome min-w-[12rem] rounded-none border border-border bg-background p-0 shadow-none"
+            className="min-w-[12rem] rounded-none border border-border bg-background p-0 shadow-none"
             sideOffset={0}
             align="start"
           >
@@ -125,7 +125,7 @@ export function SidebarChrome({ library }: { library: DocsLibraryId }) {
                   value={id}
                   disabled={!config.enabled}
                   indicator="radio"
-                  className="px-3 py-1.5 text-xs"
+                  className="rounded-none bg-background px-3 py-1.5 text-xs text-foreground/55 aria-selected:bg-foreground/[0.08] aria-selected:font-semibold aria-selected:text-foreground data-[highlighted]:bg-foreground/[0.06] data-[highlighted]:text-foreground"
                 >
                   {config.enabled ? config.displayName : `${config.displayName} (coming soon)`}
                 </SelectItem>
@@ -141,7 +141,7 @@ export function SidebarChrome({ library }: { library: DocsLibraryId }) {
           <SidebarPanelHeaderRow className="min-h-0 gap-2 py-1.5">
             <SidebarPanelHeaderLabel>Path</SidebarPanelHeaderLabel>
             <Breadcrumbs
-              className="min-w-0 flex-1 font-mono text-[10px] uppercase tracking-wide"
+              className="min-w-0 flex-1 font-mono text-2xs uppercase tracking-widest"
               separator="›"
               onNavigate={() => setMobileNavOpen(false)}
             />

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AgentStreamEvent, EnrichEvent, StepEvent } from "../schemas/events/index.js";
+import type { AgentStreamEvent, StepEvent } from "../schemas/events/index.js";
 import {
   createInitialReviewState,
   type ReviewAction,
@@ -236,7 +236,7 @@ describe("review-state", () => {
     expect(state.agents[0]?.currentAction).toBeUndefined();
   });
 
-  it("tracks file progress, readFileContext paths, deduplication, and issues", () => {
+  it("tracks file progress from file_progress events, deduplication, and issues", () => {
     const state = reduce(
       [
         {
@@ -273,20 +273,22 @@ describe("review-state", () => {
         {
           type: "EVENT",
           event: {
-            type: "tool_call",
+            type: "file_progress",
             agent: "detective",
-            tool: "readFileContext",
-            input: "src/index.ts",
+            file: "src/index.ts",
+            completed: 1,
+            total: 12,
             timestamp: ts,
           },
         },
         {
           type: "EVENT",
           event: {
-            type: "tool_call",
+            type: "file_progress",
             agent: "detective",
-            tool: "readFileContext",
-            input: "src/app.ts:10-50",
+            file: "src/app.ts",
+            completed: 2,
+            total: 12,
             timestamp: ts,
           },
         },
@@ -345,14 +347,7 @@ describe("review-state", () => {
     expect(state.fileProgress.completed).toEqual([]);
   });
 
-  it("updates steps and enrich event history", () => {
-    const enrichEvent: EnrichEvent = {
-      type: "enrich_progress",
-      issueId: "i1",
-      enrichmentType: "blame",
-      status: "started",
-      timestamp: ts,
-    };
+  it("updates steps and stops streaming on a fatal step error", () => {
     const state = reduce(
       [
         {
@@ -363,7 +358,6 @@ describe("review-state", () => {
           type: "EVENT",
           event: { type: "step_complete", step: "diff", timestamp: ts } satisfies StepEvent,
         },
-        { type: "EVENT", event: enrichEvent },
         {
           type: "EVENT",
           event: { type: "step_error", step: "review", error: "AI provider down", timestamp: ts },
@@ -376,7 +370,47 @@ describe("review-state", () => {
     expect(state.steps.find((step) => step.id === "review")?.status).toBe("error");
     expect(state.error).toBe("AI provider down");
     expect(state.isStreaming).toBe(false);
-    expect(state.events.filter((event) => event.type === "enrich_progress")).toEqual([enrichEvent]);
+  });
+
+  it("marks context step errors without stopping the review stream", () => {
+    const state = reviewReducer(startedState(), {
+      type: "EVENT",
+      event: {
+        type: "step_error",
+        step: "context",
+        error: "Context unavailable",
+        timestamp: ts,
+      },
+    });
+
+    expect(state.steps.find((step) => step.id === "context")?.status).toBe("error");
+    expect(state.error).toBeNull();
+    expect(state.isStreaming).toBe(true);
+  });
+
+  it("keeps the newest 5000 streamed events and drops the oldest", () => {
+    const eventAt = (index: number): AgentStreamEvent => ({
+      type: "agent_thinking",
+      agent: "detective",
+      thought: `event-${index}`,
+      timestamp: `${ts}#${index}`,
+    });
+    const streaming = reviewReducer(createInitialReviewState(), { type: "START" });
+    const state = reduce(
+      Array.from(
+        { length: 5001 },
+        (_, index): ReviewAction => ({
+          type: "EVENT",
+          event: eventAt(index),
+        }),
+      ),
+      streaming,
+    );
+
+    expect(state.events).toHaveLength(5000);
+    expect(state.events[0]).toEqual(eventAt(1));
+    expect(state.events.at(-1)).toEqual(eventAt(5000));
+    expect(state.events).not.toContainEqual(eventAt(0));
   });
 
   it("tracks multiple concurrent agents independently", () => {
@@ -423,23 +457,6 @@ describe("review-state", () => {
 
       expect(state.fileProgress.currentFile).toBe("src/app.ts");
       expect(state.agents).toEqual([]);
-    });
-
-    it("routes enrich events to history only", () => {
-      const enrichEvent: EnrichEvent = {
-        type: "enrich_progress",
-        issueId: "i1",
-        enrichmentType: "blame",
-        status: "started",
-        timestamp: ts,
-      };
-      const before = startedState();
-      const state = reviewReducer(before, { type: "EVENT", event: enrichEvent });
-
-      expect(state.events.at(-1)).toEqual(enrichEvent);
-      expect(state.agents).toBe(before.agents);
-      expect(state.steps).toBe(before.steps);
-      expect(state.fileProgress).toBe(before.fileProgress);
     });
 
     it("routes tool events to the originating agent action", () => {

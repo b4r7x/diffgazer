@@ -49,9 +49,10 @@ describe("buildHubValues", () => {
     expect(buildHubValues(makeInput({ isTrusted: false })).trust).toBe("Not trusted");
   });
 
-  test("analysis shows agent count or default", () => {
+  test("analysis shows the selected lens count or default", () => {
     expect(buildHubValues(makeInput({ selectedLensCount: 0 })).analysis).toBe("Default");
-    expect(buildHubValues(makeInput({ selectedLensCount: 2 })).analysis).toBe("2 agents");
+    expect(buildHubValues(makeInput({ selectedLensCount: 1 })).analysis).toBe("1 lens");
+    expect(buildHubValues(makeInput({ selectedLensCount: 2 })).analysis).toBe("2 lenses");
   });
 
   test("diagnostics stays constant", () => {

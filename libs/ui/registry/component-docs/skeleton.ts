@@ -21,6 +21,11 @@ export const skeletonDoc: ComponentDoc = {
       content:
         "The pulse animation uses motion-safe:animate-pulse, so it is automatically disabled when the user prefers reduced motion.",
     },
+    {
+      title: "Loading Announcements",
+      content:
+        "Skeleton itself is decorative and aria-hidden. Put aria-busy on the region being loaded, or pair the loading state with a nearby status/live region when users need progress announced.",
+    },
   ],
   usage: { example: "skeleton-default" },
   examples: [{ name: "skeleton-default", title: "Default" }],

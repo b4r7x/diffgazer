@@ -1,6 +1,8 @@
+import { getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type { z } from "zod";
 import { readJsonFileSync, writeJsonFileSync } from "../fs.js";
+import { log } from "../log.js";
 
 interface DatedEntry {
   fetchedAt: string;
@@ -71,7 +73,14 @@ export const withTtlAndFallback = async <T extends DatedEntry>(
 
   const fetchResult = await fetcher();
   if (fetchResult.ok) {
-    persistDiskCache(path, fetchResult.value);
+    // Best-effort persist: a cache-write failure (EACCES/ENOSPC) must never fail a
+    // request whose data is already in hand — the same contract the models.dev path
+    // documents and implements.
+    try {
+      persistDiskCache(path, fetchResult.value);
+    } catch (error) {
+      log("warn", "disk_cache_persist_failed", { path, error: getErrorMessage(error) });
+    }
     return ok({ entry: fetchResult.value, cached: false, cacheWasFresh });
   }
 

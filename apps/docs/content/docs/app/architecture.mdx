@@ -1,9 +1,9 @@
 ---
 title: Architecture
-description: How the diffgazer monorepo is split across the CLI, local server, apps, and libraries.
+description: How the Diffgazer monorepo is split across the CLI, local server, apps, and libraries.
 ---
 
-diffgazer is a monorepo with one local product and several public project surfaces. The review product runs on the user's machine. The deployable web surfaces are the docs, landing page, and registry-related handoff.
+Diffgazer is a monorepo with one local product and several public project surfaces. The review product runs on the user's machine. The deployable web surfaces are the docs, landing page, and registry-related handoff.
 
 ## Runtime shape
 
@@ -20,7 +20,7 @@ The terminal UI is also launched by `cli/diffgazer`, but it is opt-in with `--tu
 | `cli/diffgazer` | The public `diffgazer` binary, web-mode launcher, TUI launcher, CLI options, and thin runtime wiring. |
 | `cli/server` | The embedded Hono backend used by the CLI: config, git, review pipeline, settings, shutdown, middleware, and local security guards. |
 | `apps/web` | The product-specific browser UI served by the embedded server. |
-| `apps/docs` | The public documentation site for diffgazer, `@diffgazer/ui`, and `@diffgazer/keys`. |
+| `apps/docs` | The public documentation site for Diffgazer, `@diffgazer/ui`, and `@diffgazer/keys`. |
 | `apps/landing` | The marketing landing page. |
 | `libs/core` | Shared schemas, types, provider metadata, review contracts, utilities, and private business logic shared by apps and CLIs. |
 | `libs/keys` | Reusable keyboard, focus, scope, focus-zone, and navigation primitives. |
@@ -35,10 +35,10 @@ The important rule is direction: apps and CLIs can consume libraries, but librar
 A review starts in the web UI or TUI and runs through the embedded server.
 
 ```text
-git diff -> context -> provider request -> enrich -> report
+Collect diff -> Project context -> Review issues -> Generate report
 ```
 
-The server reads repository state, builds context, calls the configured model provider, enriches the response, and stores review history locally. The pipeline is described in more detail in [The review pipeline](/app/concepts/review-pipeline).
+The server reads repository state, builds context, calls the configured model provider, and stores review history locally. The pipeline is described in more detail in [The review pipeline](/app/concepts/review-pipeline).
 
 ## Local API boundary
 

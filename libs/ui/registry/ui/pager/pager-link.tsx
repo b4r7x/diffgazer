@@ -8,6 +8,7 @@ const DIRECTION_CONFIG = {
   next: { rel: "next" },
 } as const;
 
+/** Props for pager link render. */
 export type PagerLinkRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
   ref: Ref<HTMLAnchorElement>;
   className: string;
@@ -15,11 +16,18 @@ export type PagerLinkRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
   direction: "previous" | "next";
 };
 
+/** Props for pager link. */
 export interface PagerLinkProps extends Omit<ComponentPropsWithRef<"a">, "children"> {
+  /**
+   * Link label, or a render function that receives ref, className, rel, direction, and
+   * remaining anchor props for framework Link integration.
+   */
   children: ReactNode | ((props: PagerLinkRenderProps) => ReactNode);
+  /** Selects the arrow glyph, rel attribute (prev/next), and alignment. */
   direction: "previous" | "next";
 }
 
+/** direction="next" - right-aligned with → arrow. */
 export function PagerLink({ className, ref, children, direction, ...props }: PagerLinkProps) {
   const { rel } = DIRECTION_CONFIG[direction];
   const resolvedClassName = cn(

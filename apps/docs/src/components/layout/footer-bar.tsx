@@ -1,6 +1,8 @@
 import { useKey } from "@diffgazer/keys";
 import { Kbd } from "@diffgazer/ui/components/kbd";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 
 export function FooterBar() {
   const navigate = useNavigate();
@@ -10,7 +12,12 @@ export function FooterBar() {
   });
 
   return (
-    <footer className="flex shrink-0 items-center justify-between border-t border-border bg-[var(--tui-chrome-band-bg)] px-4 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+    <footer
+      className={cn(
+        "flex shrink-0 items-center justify-between border-t border-border bg-background px-4 py-1",
+        CHROME_LABEL_CLASS,
+      )}
+    >
       <div className="flex items-center gap-6">
         <Link
           to="/$lib/$"
@@ -34,7 +41,7 @@ export function FooterBar() {
         >
           Terms
         </Link>
-        <span>© DIFFGAZER_LABS</span>
+        <span>© 2026 diffgazer</span>
       </div>
     </footer>
   );

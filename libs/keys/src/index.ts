@@ -30,6 +30,7 @@ export {
   getTabbableElements,
   isFocusable,
 } from "./dom/focusable.js";
+export type { HotkeyModifier, ValidateHotkey } from "./dom/hotkey.js";
 export { canonicalizeHotkey } from "./dom/hotkey.js";
 export type { NavigationItemQuery, NavigationItemType } from "./dom/navigation-items.js";
 export {

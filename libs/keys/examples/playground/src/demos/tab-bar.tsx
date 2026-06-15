@@ -44,8 +44,8 @@ const verticalTabs = [
 ];
 
 export function TabBarDemo() {
-  const [activeHTab, setActiveHTab] = useState("dashboard");
-  const [activeVTab, setActiveVTab] = useState("general");
+  const [activeHTab, setActiveHTab] = useState<string | null>("dashboard");
+  const [activeVTab, setActiveVTab] = useState<string | null>("general");
 
   const hTabListRef = useRef<HTMLDivElement>(null);
   const vTabListRef = useRef<HTMLDivElement>(null);

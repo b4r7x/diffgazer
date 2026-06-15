@@ -3,7 +3,7 @@ import { FooterProvider } from "@diffgazer/core/footer";
 import { Button } from "@diffgazer/ui/components/button";
 import { Toaster } from "@diffgazer/ui/components/toast";
 import { Typography } from "@diffgazer/ui/components/typography";
-import { Outlet } from "@tanstack/react-router";
+import { HeadContent, Outlet } from "@tanstack/react-router";
 import React from "react";
 import { GlobalLayout } from "@/components/layout/global";
 import { RouteLoadingFallback } from "@/components/layout/route-loading-fallback";
@@ -25,10 +25,10 @@ class RouteErrorBoundary extends React.Component<
   override render() {
     if (this.state.error) {
       return (
-        <div className="flex h-screen items-center justify-center bg-tui-bg text-tui-fg font-mono">
+        <div className="flex h-screen items-center justify-center bg-background text-foreground font-mono">
           <div className="text-center">
-            <p className="text-tui-red mb-2">Something went wrong</p>
-            <p className="text-tui-muted text-sm">{this.state.error.message}</p>
+            <p className="text-error-text mb-2">Something went wrong</p>
+            <p className="text-muted-foreground text-sm">{this.state.error.message}</p>
             <Button
               variant="secondary"
               className="mt-4"
@@ -60,20 +60,27 @@ export function RootLayout() {
 
   if (state.status === "error") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-tui-bg text-tui-fg space-y-4">
-        <Typography as="h1" size="2xl" className="text-tui-red">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground space-y-4">
+        <Typography as="h1" size="2xl" className="text-error-text">
           Server Disconnected
         </Typography>
-        <p className="text-tui-fg opacity-60">
+        <p className="text-foreground opacity-60">
           {state.message || "Could not connect to Diffgazer server."}
         </p>
-        <Button onClick={retry}>Retry Connection</Button>
+        <Button
+          onClick={() => {
+            void retry().catch(() => {});
+          }}
+        >
+          Retry Connection
+        </Button>
       </div>
     );
   }
 
   return (
     <FooterProvider>
+      <HeadContent />
       <GlobalLayout>
         <RouteErrorBoundary>
           <div className="flex flex-1 flex-col min-h-0">

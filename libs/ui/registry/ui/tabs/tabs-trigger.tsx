@@ -1,6 +1,16 @@
 "use client";
 
-import type { ButtonHTMLAttributes, FocusEvent, MouseEvent, ReactNode, Ref } from "react";
+import {
+  type ButtonHTMLAttributes,
+  type FocusEvent,
+  type MouseEvent,
+  type ReactNode,
+  type Ref,
+  useId,
+  useLayoutEffect,
+  useRef,
+} from "react";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { segmentedItemVariants } from "@/lib/segmented-variants";
 import { cn } from "@/lib/utils";
 import { getTabPanelId, getTabTriggerId, useTabsContext } from "./tabs-context";
@@ -10,14 +20,14 @@ function BracketMarkers({ children }: { children: ReactNode }) {
     <>
       <span
         aria-hidden="true"
-        className="mr-1 text-foreground opacity-0 group-data-[active=true]/segmented-item:opacity-100"
+        className="mr-1 text-foreground opacity-0 group-data-[state=active]/segmented-item:opacity-100"
       >
         [
       </span>
       {children}
       <span
         aria-hidden="true"
-        className="ml-1 text-foreground opacity-0 group-data-[active=true]/segmented-item:opacity-100"
+        className="ml-1 text-foreground opacity-0 group-data-[state=active]/segmented-item:opacity-100"
       >
         ]
       </span>
@@ -25,13 +35,18 @@ function BracketMarkers({ children }: { children: ReactNode }) {
   );
 }
 
+/** Props for tabs trigger. */
 export interface TabsTriggerProps<TValue extends string = string>
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "value" | "disabled"> {
+  /** Stable identifier matched against Tabs value and the paired Tabs.Content. */
   value: TValue;
+  /** Disables activation and removes the trigger from arrow navigation. */
   disabled?: boolean;
+  /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLButtonElement>;
 }
 
+/** Clickable tab button. */
 export function TabsTrigger<TValue extends string = string>({
   value,
   children,
@@ -52,10 +67,20 @@ export function TabsTrigger<TValue extends string = string>({
     variant,
     size,
     orientation,
+    registerTrigger,
+    unregisterTrigger,
   } = useTabsContext();
+  const registrationId = useId();
+  const rootRef = useRef<HTMLButtonElement>(null);
+  const composedRef = useComposedRefs(rootRef, ref);
   const isActive = selectedValue === value;
   const isTabbable = tabbableValue === value;
   const panelId = panelValues.includes(value) ? getTabPanelId(tabsId, value) : undefined;
+
+  useLayoutEffect(() => {
+    registerTrigger(registrationId, value, disabled === true, rootRef.current);
+    return () => unregisterTrigger(registrationId);
+  }, [registerTrigger, unregisterTrigger, registrationId, value, disabled]);
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     if (disabled) {
@@ -75,7 +100,7 @@ export function TabsTrigger<TValue extends string = string>({
   return (
     <button
       {...rest}
-      ref={ref}
+      ref={composedRef}
       type="button"
       id={getTabTriggerId(tabsId, value)}
       role="tab"
@@ -87,13 +112,12 @@ export function TabsTrigger<TValue extends string = string>({
       data-diffgazer-navigation-item="tab"
       data-value={value}
       data-state={isActive ? "active" : "inactive"}
-      data-active={isActive || undefined}
       data-orientation={orientation}
       onClick={handleClick}
       onFocus={handleFocus}
       className={cn(
         // group/segmented-item lets the bracket markers (and any future
-        // decoration) react to data-active without a separate context read.
+        // decoration) react to data-state without a separate context read.
         "group/segmented-item",
         segmentedItemVariants({ variant, size }),
         className,

@@ -1,7 +1,6 @@
 import { err, ok, type Result } from "../result.js";
 import type {
   AgentStreamEvent,
-  EnrichEvent,
   FullReviewStreamEvent,
   StepEvent,
 } from "../schemas/events/index.js";
@@ -26,10 +25,7 @@ interface StreamReviewRequest {
 export interface StreamReviewOptions extends StreamReviewRequest {
   onAgentEvent?: (event: AgentStreamEvent) => void;
   onStepEvent?: (event: StepEvent) => void;
-  onEnrichEvent?: (event: EnrichEvent) => void;
   onChunk?: (content: string) => void;
-  onLensStart?: (lens: string, index: number, total: number) => void;
-  onLensComplete?: (lens: string) => void;
 }
 
 interface StreamReviewResult {
@@ -44,8 +40,7 @@ export async function processReviewStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   options: Omit<StreamReviewOptions, keyof StreamReviewRequest>,
 ): Promise<Result<StreamReviewResult, StreamReviewError>> {
-  const { onAgentEvent, onStepEvent, onEnrichEvent, onChunk, onLensStart, onLensComplete } =
-    options;
+  const { onAgentEvent, onStepEvent, onChunk } = options;
 
   const agentEvents: AgentStreamEvent[] = [];
   let reviewResult: ReviewResult | null = null;
@@ -84,22 +79,13 @@ export async function processReviewStream(
         case "orchestrator_complete":
         case "file_start":
         case "file_complete":
+        case "file_progress":
           agentEvents.push(event);
           onAgentEvent?.(event);
           break;
 
-        case "enrich_progress":
-          onEnrichEvent?.(event);
-          break;
-
         case "chunk":
           onChunk?.(event.content);
-          break;
-        case "lens_start":
-          onLensStart?.(event.lens, event.index, event.total);
-          break;
-        case "lens_complete":
-          onLensComplete?.(event.lens);
           break;
         case "complete":
           reviewResult = event.result;
@@ -108,6 +94,12 @@ export async function processReviewStream(
         case "error":
           reviewError = event.error;
           break;
+        default: {
+          // Exhaustiveness guard: a new FullReviewStreamEvent variant must be
+          // handled here, mirroring the event-to-log.ts idiom.
+          const _exhaustive: never = event;
+          return _exhaustive;
+        }
       }
     },
   });

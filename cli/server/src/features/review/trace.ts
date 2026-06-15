@@ -1,4 +1,9 @@
+import type { Result } from "@diffgazer/core/result";
 import type { TraceRef } from "@diffgazer/core/schemas/review";
+
+function isResult(value: unknown): value is Result<unknown, unknown> {
+  return typeof value === "object" && value !== null && "ok" in value;
+}
 
 export function summarizeOutput(value: unknown): string {
   if (value === null || value === undefined) {
@@ -35,11 +40,17 @@ export async function recordTrace<T>(
   const step = steps.length + 1;
   const timestamp = new Date().toISOString();
   const result = await fn();
+  // Summarize the real value/error, not the `{ ok, value }` Result wrapper —
+  // otherwise every trace step reads "Object{ok, value}".
+  let summarized: unknown = result;
+  if (isResult(result)) {
+    summarized = result.ok ? result.value : result.error;
+  }
   steps.push({
     step,
     tool: toolName,
     inputSummary,
-    outputSummary: summarizeOutput(result),
+    outputSummary: summarizeOutput(summarized),
     timestamp,
   });
   return result;

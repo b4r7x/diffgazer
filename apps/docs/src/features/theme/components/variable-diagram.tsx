@@ -1,12 +1,14 @@
 import { cn } from "@diffgazer/ui/lib/utils";
 import { THEME_DOCS_MAPPED_PRIMITIVES } from "@diffgazer/ui/theme";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useTheme } from "@/hooks/theme-context";
 
 interface VariableDiagramProps {
   className?: string;
 }
 
 export function VariableDiagram({ className }: VariableDiagramProps) {
+  const { theme } = useTheme();
   const [highlighted, setHighlighted] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [lines, setLines] = useState<
@@ -17,7 +19,7 @@ export function VariableDiagram({ className }: VariableDiagramProps) {
   const semanticRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // useEffectEvent (stable in React 19.2): the resize handler reads the latest
-  // refs/state but must not re-subscribe the listener on every render.
+  // refs/state/active theme but must not re-subscribe the listener on every render.
   const computeLines = useEffectEvent(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -26,14 +28,16 @@ export function VariableDiagram({ className }: VariableDiagramProps) {
     const newLines: typeof lines = [];
 
     for (let i = 0; i < THEME_DOCS_MAPPED_PRIMITIVES.length; i++) {
+      const primitive = THEME_DOCS_MAPPED_PRIMITIVES[i];
       const primEl = primitiveRefs.current.get(i);
-      if (!primEl) continue;
+      if (!primitive || !primEl) continue;
 
       const primRect = primEl.getBoundingClientRect();
       const x1 = primRect.right - rect.left;
       const y1 = primRect.top + primRect.height / 2 - rect.top;
 
-      for (let j = 0; j < THEME_DOCS_MAPPED_PRIMITIVES[i].semanticTokens.length; j++) {
+      const edges = primitive.semanticTokens[theme];
+      for (let j = 0; j < edges.length; j++) {
         const semEl = semanticRefs.current.get(`${i}-${j}`);
         if (!semEl) continue;
 
@@ -48,23 +52,26 @@ export function VariableDiagram({ className }: VariableDiagramProps) {
     setLines(newLines);
   });
 
+  // Recompute on mount, on resize, and whenever the active theme switches the
+  // rendered primitive→semantic edges.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: computeLines is a useEffectEvent; theme is an intentional trigger that must re-run the line measurement when the rendered edges change.
   useEffect(() => {
     computeLines();
     window.addEventListener("resize", computeLines);
     return () => window.removeEventListener("resize", computeLines);
-  }, []);
+  }, [theme]);
 
   return (
     <div
       ref={containerRef}
       role="img"
-      aria-label="Diagram mapping TUI primitive color variables to the semantic theme tokens they feed."
+      aria-label={`Diagram mapping primitive color variables to the semantic theme tokens they feed in the ${theme} theme.`}
       className={cn("relative border border-border bg-background p-6", className)}
     >
       <div className="flex justify-between gap-8">
         <div className="flex flex-col gap-2 shrink-0">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
-            Primitives
+          <span className="text-2xs uppercase tracking-widest text-muted-foreground mb-1">
+            Primitives ({theme})
           </span>
           {THEME_DOCS_MAPPED_PRIMITIVES.map((primitive, i) => (
             <div
@@ -93,11 +100,11 @@ export function VariableDiagram({ className }: VariableDiagramProps) {
         </div>
 
         <div className="flex flex-col gap-2 shrink-0">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+          <span className="text-2xs uppercase tracking-widest text-muted-foreground mb-1">
             Semantic Tokens
           </span>
           {THEME_DOCS_MAPPED_PRIMITIVES.map((primitive, i) =>
-            primitive.semanticTokens.map((semanticToken, j) => (
+            primitive.semanticTokens[theme].map((semanticToken, j) => (
               <div
                 key={semanticToken}
                 aria-hidden="true"

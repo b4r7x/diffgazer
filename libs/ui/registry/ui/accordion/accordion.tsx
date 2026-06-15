@@ -1,48 +1,19 @@
 "use client";
 
 import { getNavigationItems } from "@diffgazer/keys";
-import {
-  type KeyboardEvent as ReactKeyboardEvent,
-  type ReactNode,
-  type Ref,
-  useMemo,
-  useRef,
-} from "react";
-import { composeRefs } from "@/lib/compose-refs";
+import { type KeyboardEvent as ReactKeyboardEvent, useMemo, useRef } from "react";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { cn } from "@/lib/utils";
 import { AccordionContext } from "./accordion-context";
-import { useAccordionState } from "./use-state";
+import { type AccordionProps, useAccordionState } from "./use-state";
+
+export type {
+  AccordionMultipleProps,
+  AccordionProps,
+  AccordionSingleProps,
+} from "./use-state";
 
 const ACCORDION_ROOT_ATTRIBUTE = "data-diffgazer-accordion-root";
-
-export interface AccordionSingleProps {
-  type?: "single";
-  value?: string;
-  onChange?: (value: string | null) => void;
-  defaultValue?: string;
-  collapsible?: boolean;
-  children: ReactNode;
-  className?: string;
-  "aria-label"?: string;
-  "aria-labelledby"?: string;
-  ref?: Ref<HTMLDivElement>;
-  onKeyDown?: (event: ReactKeyboardEvent) => void;
-}
-
-export interface AccordionMultipleProps {
-  type: "multiple";
-  value?: string[];
-  onChange?: (value: string[]) => void;
-  defaultValue?: string[];
-  children: ReactNode;
-  className?: string;
-  "aria-label"?: string;
-  "aria-labelledby"?: string;
-  ref?: Ref<HTMLDivElement>;
-  onKeyDown?: (event: ReactKeyboardEvent) => void;
-}
-
-export type AccordionProps = AccordionSingleProps | AccordionMultipleProps;
 
 function getNavigableTriggers(container: HTMLElement | null): HTMLElement[] {
   // Use skipDisabled: false because aria-disabled non-collapsible triggers
@@ -66,6 +37,10 @@ function containsActiveElement(el: HTMLElement): boolean {
   return Boolean(View && activeElement instanceof View.HTMLElement && el.contains(activeElement));
 }
 
+/**
+ * Collapsible content sections with single or multiple open items. Supports controlled and
+ * uncontrolled modes.
+ */
 function AccordionRoot(props: AccordionProps) {
   const {
     ref,
@@ -75,6 +50,7 @@ function AccordionRoot(props: AccordionProps) {
   } = props;
   const { openValues, onToggle, collapsible } = useAccordionState(props);
   const containerRef = useRef<HTMLDivElement>(null);
+  const composedRef = useComposedRefs(containerRef, ref);
 
   const focusTrigger = (index: number) => {
     const triggers = getNavigableTriggers(containerRef.current);
@@ -124,8 +100,9 @@ function AccordionRoot(props: AccordionProps) {
     <AccordionContext value={contextValue}>
       {/* biome-ignore lint/a11y/useSemanticElements: role="group" labels the related set of accordion panels; <fieldset> is for form controls and is not appropriate here. */}
       <div
-        ref={composeRefs(containerRef, ref)}
+        ref={composedRef}
         role="group"
+        data-slot="accordion"
         aria-label={ariaLabel}
         aria-labelledby={ariaLabelledBy}
         className={cn("divide-y divide-border", props.className)}

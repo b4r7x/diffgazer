@@ -8,7 +8,7 @@
   "files": [
     {
       "path": "registry/lib/corner-label-variants.ts",
-      "content": "import { cva } from \"class-variance-authority\";\n\nexport const cornerLabelVariants = cva(\n  \"absolute -top-3 left-4 z-[var(--z-base)] bg-background px-2 text-xs font-bold uppercase tracking-wider text-muted-foreground\",\n  {\n    variants: {\n      variant: {\n        border: \"border border-border\",\n        gap: \"\",\n      },\n    },\n    defaultVariants: { variant: \"border\" },\n  },\n);\n",
+      "content": "import { cva } from \"class-variance-authority\";\n\n/** Variants for the small absolute label used on framed panels. */\nexport const cornerLabelVariants = cva(\n  \"absolute -top-3 left-4 z-[var(--z-base)] bg-background px-2 text-xs font-bold uppercase tracking-wider text-muted-foreground\",\n  {\n    variants: {\n      variant: {\n        border: \"border border-border\",\n        gap: \"\",\n      },\n    },\n    defaultVariants: { variant: \"border\" },\n  },\n);\n",
       "type": "registry:lib"
     }
   ],

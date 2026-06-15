@@ -1,6 +1,6 @@
 "use client";
 
-import { Children, isValidElement, type ReactNode, useId, useMemo, useRef } from "react";
+import { Children, isValidElement, type ReactNode, useId, useRef } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { PopoverContent } from "./popover-content";
 import {
@@ -11,18 +11,29 @@ import {
 } from "./popover-context";
 import { usePopoverBehavior } from "./use-behavior";
 
+/** Props for popover. */
 export interface PopoverProps {
+  /** Popover.Trigger and Popover.Content subparts. */
   children: ReactNode;
+  /** Controlled open state. Pair with onOpenChange. */
   open?: boolean;
+  /** Initial open state for uncontrolled mode. */
   defaultOpen?: boolean;
+  /** Fired when the open state changes. */
   onOpenChange?: (open: boolean) => void;
+  /** Click toggles; hover opens on pointer/focus enter with a delay and closes on leave. */
   triggerMode?: PopoverTriggerMode;
+  /** Overrides the auto-detected aria-haspopup value applied to the trigger. */
   popupRole?: PopoverPopupRole;
+  /** When false, the popover never opens and trigger handlers are no-ops. */
   enabled?: boolean;
+  /** Hover mode only. Delay before opening on hover or focus. */
   delayMs?: number;
+  /** Delay before closing after hover/focus leaves the trigger or content. */
   closeDelayMs?: number;
 }
 
+/** Root - manages open state, trigger mode (click/hover), delay. */
 export function PopoverRoot({
   children,
   open: controlledOpen,
@@ -55,32 +66,26 @@ export function PopoverRoot({
   });
   const contentPopupRole = triggerMode === "click" ? getContentPopupRole(children) : undefined;
 
-  const ctx: PopoverContextValue = useMemo(
-    () => ({
-      open: openState && enabled,
-      triggerRef,
-      popoverId,
-      triggerMode,
-      popupRole: popupRoleProp ?? contentPopupRole,
-      onOpenChange: setOpenState,
-      onTriggerEnter: behavior.onTriggerEnter,
-      onTriggerLeave: behavior.onTriggerLeave,
-      onTriggerClick: behavior.onTriggerClick,
-      onContentEnter: behavior.onContentEnter,
-      onContentLeave: behavior.onContentLeave,
-      enabled,
-    }),
-    [
-      openState,
-      enabled,
-      popoverId,
-      triggerMode,
-      popupRoleProp,
-      contentPopupRole,
-      setOpenState,
-      behavior,
-    ],
-  );
+  // usePopoverBehavior returns fresh handlers every render (they close over the
+  // current open/enabled state), so a useMemo here could never hit — building
+  // the context value inline is honest about that.
+  const ctx: PopoverContextValue = {
+    open: openState && enabled,
+    triggerRef,
+    popoverId,
+    triggerMode,
+    popupRole: popupRoleProp ?? contentPopupRole,
+    onOpenChange: setOpenState,
+    onTriggerEnter: behavior.onTriggerEnter,
+    onTriggerFocus: behavior.onTriggerFocus,
+    onTriggerLeave: behavior.onTriggerLeave,
+    onTriggerClick: behavior.onTriggerClick,
+    onTriggerPointerDown: behavior.onTriggerPointerDown,
+    markDismissed: behavior.markDismissed,
+    onContentEnter: behavior.onContentEnter,
+    onContentLeave: behavior.onContentLeave,
+    enabled,
+  };
 
   return <PopoverContext value={ctx}>{children}</PopoverContext>;
 }

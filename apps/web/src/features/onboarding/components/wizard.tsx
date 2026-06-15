@@ -1,3 +1,4 @@
+import { STEP_LABELS, STEP_TITLES } from "@diffgazer/core/onboarding";
 import type { AgentExecution } from "@diffgazer/core/schemas/config";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
@@ -7,7 +8,6 @@ import { useEffect, useEffectEvent, useRef } from "react";
 import { CardLayout } from "@/components/ui/card-layout";
 import { useOnboardingKeyboard } from "../hooks/use-keyboard";
 import { useOnboarding } from "../hooks/use-onboarding";
-import { STEP_LABELS, STEP_TITLES } from "../shortcuts";
 import { AnalysisStep } from "./steps/analysis-step";
 import { ApiKeyStep } from "./steps/api-key-step";
 import { ExecutionStep } from "./steps/execution-step";
@@ -27,6 +27,7 @@ export function OnboardingWizard() {
     isSubmitting,
     isEarlySaving,
     error,
+    earlySaveError,
     next,
     back,
     updateData,
@@ -149,7 +150,7 @@ export function OnboardingWizard() {
               onClick={handleBack}
               disabled={isBusy}
               className={cn(
-                footer.inActions && footer.focusedIndex === 0 && !isBusy && "ring-2 ring-tui-blue",
+                footer.inActions && footer.focusedIndex === 0 && !isBusy && "ring-2 ring-info",
               )}
             >
               Back
@@ -166,7 +167,7 @@ export function OnboardingWizard() {
                 footer.inActions &&
                   footer.focusedIndex === primaryButtonIndex &&
                   canActivatePrimary &&
-                  "ring-2 ring-tui-blue",
+                  "ring-2 ring-info",
               )}
             >
               {isBusy ? "Saving..." : "Complete Setup"}
@@ -181,7 +182,7 @@ export function OnboardingWizard() {
                 footer.inActions &&
                   footer.focusedIndex === primaryButtonIndex &&
                   canActivatePrimary &&
-                  "ring-2 ring-tui-blue",
+                  "ring-2 ring-info",
               )}
             >
               Next
@@ -198,9 +199,9 @@ export function OnboardingWizard() {
             </HorizontalStepper.Step>
           ))}
         </HorizontalStepper>
-        {error && (
+        {(error ?? earlySaveError) && (
           <Callout tone="error" live>
-            <Callout.Content>{error}</Callout.Content>
+            <Callout.Content>{error ?? earlySaveError}</Callout.Content>
           </Callout>
         )}
         {renderStep()}

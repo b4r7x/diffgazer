@@ -3,14 +3,16 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
+/** Allowed progress variant values. */
 type ProgressVariant = "block" | "bar";
 
+/** Class variants for progress color. */
 export const progressColorVariants = cva("", {
   variants: {
     color: {
       success: "text-success",
       warning: "text-warning",
-      error: "text-destructive",
+      error: "text-error",
       muted: "text-muted-foreground",
     },
   },
@@ -19,12 +21,19 @@ export const progressColorVariants = cva("", {
 
 type ProgressColor = "auto" | NonNullable<VariantProps<typeof progressColorVariants>["color"]>;
 
+/** Props for navigation list progress. */
 export interface NavigationListProgressProps {
+  /** Progress percentage (0-100). */
   value: number;
+  /** Bar style. "block" uses █░ characters, "bar" uses [==-] characters. */
   variant?: ProgressVariant;
+  /** Number of characters for the progress bar. */
   width?: number;
+  /** Color token. Auto selects color based on value thresholds. */
   color?: ProgressColor;
+  /** Shows percentage text after the bar. */
   showLabel?: boolean;
+  /** Additional class names merged onto the rendered element. */
   className?: string;
 }
 
@@ -43,6 +52,7 @@ function buildBar(variant: ProgressVariant, filled: number, empty: number): stri
   return `${"█".repeat(filled)}${"░".repeat(empty)}`;
 }
 
+/** ASCII progress bar (in Meta) */
 export function NavigationListProgress({
   value: rawValue,
   variant = "block",
@@ -67,9 +77,9 @@ export function NavigationListProgress({
       aria-label={`${value}% complete`}
       data-color={colorKey}
       className={cn(
-        "font-mono text-[10px] whitespace-pre leading-none",
+        "font-mono text-2xs whitespace-pre leading-none",
         progressColorVariants({ color: colorKey }),
-        "group-data-[active]:text-primary-foreground/70",
+        "group-data-[highlighted]:text-primary-foreground/70",
         className,
       )}
     >

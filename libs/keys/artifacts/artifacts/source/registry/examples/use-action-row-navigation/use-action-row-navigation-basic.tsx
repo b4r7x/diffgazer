@@ -4,8 +4,10 @@ import { KeyboardProvider, useActionRowNavigation } from "@diffgazer/keys";
 import { useRef } from "react";
 
 const actions = ["Approve", "Request changes", "Skip"];
-// "Request changes" is disabled, so it is skipped during navigation.
-const disabledActions = [false, true, false] as const;
+// "Request changes" is disabled, so it is skipped during navigation. Kept as a
+// plain boolean[] so the row indexes by array position (number); pass an
+// `as const` tuple to get tuple-narrowed 0 | 1 | 2 indices instead.
+const disabledActions = [false, true, false];
 
 function ReviewRow() {
   const rowRef = useRef<HTMLDivElement>(null);

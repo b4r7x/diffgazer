@@ -1,11 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("./lib/shutdown-token", () => ({
-  ensureShutdownToken: vi.fn(),
-}));
-
 import type { ServerController } from "./lib/servers/process";
 import { startWeb } from "./web-launcher";
+
+const ensureShutdownToken = vi.fn();
 
 function createMockServer(): ServerController & { startCalls: number; stopCalls: number } {
   const server = {
@@ -25,6 +22,7 @@ function createMockServer(): ServerController & { startCalls: number; stopCalls:
 describe("startWeb", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    ensureShutdownToken.mockReset();
   });
 
   it("calls start on every created server", () => {
@@ -36,6 +34,7 @@ describe("startWeb", () => {
       { mode: "prod", openBrowser: false },
       {
         createServerFactories: () => [() => serverA, () => serverB],
+        ensureShutdownToken,
         printBanner,
       },
     );
@@ -53,6 +52,7 @@ describe("startWeb", () => {
       { mode: "prod", openBrowser: false },
       {
         createServerFactories: () => [() => serverA, () => serverB],
+        ensureShutdownToken,
         printBanner: vi.fn(),
       },
     );
@@ -70,6 +70,7 @@ describe("startWeb", () => {
       { mode: "prod", openBrowser: false },
       {
         createServerFactories: () => [() => server],
+        ensureShutdownToken,
         printBanner: vi.fn(),
       },
     );
@@ -87,6 +88,7 @@ describe("startWeb", () => {
       { mode: "prod", openBrowser: false },
       {
         createServerFactories: () => [],
+        ensureShutdownToken,
         printBanner: vi.fn(),
       },
     );
@@ -101,6 +103,7 @@ describe("startWeb", () => {
     startWeb(
       { mode: "prod", openBrowser: false },
       {
+        ensureShutdownToken,
         printBanner: vi.fn(),
         createServerFactories: ({ onStartupFailure }) => [
           () => ({
@@ -125,6 +128,7 @@ describe("startWeb", () => {
     const stop = startWeb(
       { mode: "prod", openBrowser: false },
       {
+        ensureShutdownToken,
         printBanner: () => events.push("banner"),
         createServerFactories: () => [
           () => ({

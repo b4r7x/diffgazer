@@ -3,6 +3,7 @@ import type { DiffChange, DiffHunk, ParsedDiff } from "./parse";
 
 const CONTEXT = 3;
 
+/** Computes a single-file parsed diff from before/after text. */
 export function computeDiff(before: string, after: string): ParsedDiff {
   const oldLines = splitDiffLines(before);
   const newLines = splitDiffLines(after);

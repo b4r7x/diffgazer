@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { createEvent, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
@@ -26,7 +26,7 @@ describe("SearchInput", () => {
     expect(onChange).toHaveBeenCalledWith("a");
   });
 
-  it("calls onEscape when Escape is pressed", async () => {
+  it("calls onEscape when Escape is pressed on an empty input", async () => {
     const user = userEvent.setup();
     const onEscape = vi.fn();
     renderSearchInput({ onEscape });
@@ -34,6 +34,36 @@ describe("SearchInput", () => {
     input.focus();
     await user.keyboard("{Escape}");
     expect(onEscape).toHaveBeenCalledOnce();
+  });
+
+  it("clears a non-empty value on Escape and prevents default", async () => {
+    const user = userEvent.setup();
+    const onEscape = vi.fn();
+    renderSearchInput({ onEscape });
+    const input = screen.getByRole("searchbox");
+    await user.type(input, "hello");
+    input.focus();
+
+    const escapeEvent = createEvent.keyDown(input, { key: "Escape" });
+    // fireEvent retained: custom KeyboardEvent instance exposes defaultPrevented after dispatch.
+    fireEvent(input, escapeEvent);
+
+    expect(escapeEvent.defaultPrevented).toBe(true);
+    expect(input).toHaveValue("");
+    // Clearing takes precedence over onEscape.
+    expect(onEscape).not.toHaveBeenCalled();
+  });
+
+  it("leaves Escape untouched on an empty input with no onEscape so a dialog can cancel", () => {
+    renderSearchInput();
+    const input = screen.getByRole("searchbox");
+    input.focus();
+
+    const escapeEvent = createEvent.keyDown(input, { key: "Escape" });
+    // fireEvent retained: custom KeyboardEvent instance exposes defaultPrevented after dispatch.
+    fireEvent(input, escapeEvent);
+
+    expect(escapeEvent.defaultPrevented).toBe(false);
   });
 
   it("calls onEnter when Enter is pressed", async () => {

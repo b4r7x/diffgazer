@@ -1,10 +1,12 @@
 "use client";
 
-import type { HTMLAttributes } from "react";
+import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
-export interface DialogBodyProps extends HTMLAttributes<HTMLDivElement> {}
+/** Props for dialog body. */
+export interface DialogBodyProps extends ComponentProps<"div"> {}
 
+/** Scrollable content. */
 export function DialogBody({ className, ...props }: DialogBodyProps) {
   return (
     <div

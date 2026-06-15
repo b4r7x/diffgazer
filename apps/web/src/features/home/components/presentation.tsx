@@ -1,26 +1,44 @@
 import { isApiError, type ShutdownResult } from "@diffgazer/core/api";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { isReviewStartAction } from "@diffgazer/core/navigation";
-import type { ContextInfo, MenuAction, Shortcut } from "@diffgazer/core/schemas/presentation";
-import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@diffgazer/core/schemas/presentation";
+import type { NavigableMenuAction } from "@diffgazer/core/navigation";
+import { resolveHomeMenuActivation } from "@diffgazer/core/navigation";
+import type { ContextInfo, MenuAction } from "@diffgazer/core/schemas/presentation";
+import {
+  MAIN_MENU_SHORTCUTS,
+  MENU_ITEMS,
+  TRUST_FOOTER_RIGHT_SHORTCUTS,
+} from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { useKey, useScope } from "@diffgazer/keys";
 import { toast } from "@diffgazer/ui/components/toast";
 import type { useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { TrustPanel } from "@/components/shared/trust-panel";
+import { useEffect, useRef, useState } from "react";
+import { TRUST_PANEL_FOOTER_SHORTCUTS, TrustPanel } from "@/components/shared/trust-panel";
 import { ContextSidebar } from "@/features/home/components/context-sidebar";
 import { HomeMenu } from "@/features/home/components/menu";
 
 type Navigate = ReturnType<typeof useNavigate>;
 type CreateReview = (input: { mode: ReviewMode }) => Promise<{ reviewId: string }>;
-type GetActiveReviewSession = (
-  mode: ReviewMode,
-) => Promise<{ session: { reviewId: string; mode: ReviewMode } | null }>;
+type ResumableSession = { reviewId: string; mode: ReviewMode };
 
 type RouteConfig = { to: string; search?: Record<string, string> };
-const MAIN_MENU_ITEMS = MENU_ITEMS.filter((item) => item.id !== "help");
-const MAIN_MENU_ITEM_IDS = new Set<string>(MAIN_MENU_ITEMS.map((item) => item.id));
+const MENU_ITEM_IDS = new Set<string>(MENU_ITEMS.map((item) => item.id));
+
+const MENU_ROUTES: Record<NavigableMenuAction, RouteConfig> = {
+  history: { to: "/history" },
+  settings: { to: "/settings" },
+  help: { to: "/help" },
+};
+
+// The scoped-route-state keys each target page actually stores, so navigating
+// there from the menu resets that page's selection instead of clearing keys it
+// never writes (history keeps "run"/"date"; settings keeps "highlighted"; help
+// stores nothing).
+const MENU_ROUTE_SCOPED_KEYS: Record<NavigableMenuAction, readonly string[]> = {
+  history: ["run", "date"],
+  settings: ["highlighted"],
+  help: [],
+};
 
 function describeReviewStartError(error: unknown): { title: string; message: string } {
   if (isApiError(error)) {
@@ -49,30 +67,18 @@ function describeReviewStartError(error: unknown): { title: string; message: str
   };
 }
 
-const REVIEW_MODES: Partial<Record<MenuAction, ReviewMode>> = {
-  "review-unstaged": "unstaged",
-  "review-staged": "staged",
-};
-
-const MENU_ROUTES: Partial<Record<MenuAction, RouteConfig>> = {
-  history: { to: "/history" },
-  settings: { to: "/settings" },
-  help: { to: "/help" },
-};
-
 export interface HomePagePresentationProps {
   context: ContextInfo;
   isTrusted: boolean;
   needsTrust: boolean;
   projectId: string | null;
   repoRoot: string | null;
-  hasResumableSession: boolean;
+  resumableSession: ResumableSession | null;
   highlighted: string | null;
   searchError: string | undefined;
   onHighlightChange: (id: string | null) => void;
   navigate: Navigate;
   createReview: CreateReview;
-  getActiveReviewSession: GetActiveReviewSession;
   clearScopedRouteState: (scope: string, key: string) => void;
   shutdown: () => Promise<ShutdownResult>;
 }
@@ -83,28 +89,30 @@ export function HomePagePresentation({
   needsTrust,
   projectId,
   repoRoot,
-  hasResumableSession,
+  resumableSession,
   highlighted,
   searchError,
   onHighlightChange,
   navigate,
   createReview,
-  getActiveReviewSession,
   clearScopedRouteState,
   shutdown,
 }: HomePagePresentationProps) {
   const [isStartingReview, setIsStartingReview] = useState(false);
+  const hasResumableSession = resumableSession != null;
+  const invalidIdReportedRef = useRef(false);
 
   useEffect(() => {
-    if (searchError !== "invalid-review-id") return;
+    if (searchError !== "invalid-review-id" || invalidIdReportedRef.current) return;
+    invalidIdReportedRef.current = true;
     toast.error("Invalid Review ID", { message: "The review ID format is invalid." });
     navigate({ to: "/", replace: true });
   }, [searchError, navigate]);
 
   const effectiveHighlighted = (() => {
     if (!highlighted) return highlighted;
-    if (MAIN_MENU_ITEM_IDS.has(highlighted)) return highlighted;
-    return MAIN_MENU_ITEMS[0]?.id ?? null;
+    if (MENU_ITEM_IDS.has(highlighted)) return highlighted;
+    return MENU_ITEMS[0]?.id ?? null;
   })();
 
   const handleQuit = async () => {
@@ -138,77 +146,58 @@ export function HomePagePresentation({
     }
   };
 
-  const resumeReview = async () => {
-    if (isStartingReview) return;
-    setIsStartingReview(true);
-    try {
-      const active = await getActiveReviewSession("unstaged");
-      if (active.session) {
-        navigateToReview(active.session.reviewId, active.session.mode);
-        return;
-      }
-      const stagedActive = await getActiveReviewSession("staged");
-      if (stagedActive.session) {
-        navigateToReview(stagedActive.session.reviewId, stagedActive.session.mode);
-        return;
-      }
+  const resumeReview = () => {
+    if (!resumableSession) {
       toast.warning("No Active Review", { message: "Start a new review from the menu." });
-    } catch {
-      toast.error("Failed to Resume Review", { message: "Could not find an active session." });
-    } finally {
-      setIsStartingReview(false);
+      return;
     }
+    navigateToReview(resumableSession.reviewId, resumableSession.mode);
+  };
+
+  const navigateToMenuTarget = (target: NavigableMenuAction) => {
+    const route = MENU_ROUTES[target];
+    for (const key of MENU_ROUTE_SCOPED_KEYS[target]) {
+      clearScopedRouteState(route.to, key);
+    }
+    navigate({ to: route.to, search: route.search });
   };
 
   const handleActivate = (id: string) => {
-    if (!MAIN_MENU_ITEM_IDS.has(id) && id !== "help") return;
-    const action = id as MenuAction;
+    if (!MENU_ITEM_IDS.has(id)) return;
 
-    if (action === "quit") {
-      void handleQuit();
-      return;
-    }
+    const decision = resolveHomeMenuActivation(id as MenuAction, {
+      isTrusted,
+      hasResumableSession,
+    });
 
-    if (isReviewStartAction(action) && !isTrusted) {
-      toast.error("Directory Not Trusted", {
-        message: "Grant permissions in Settings → Trust & Permissions first.",
-      });
-      return;
-    }
-
-    const reviewMode = REVIEW_MODES[action];
-    if (reviewMode) {
-      void startReview(reviewMode);
-      return;
-    }
-
-    if (action === "resume-review") {
-      if (!hasResumableSession) return;
-      void resumeReview();
-      return;
-    }
-
-    const route = MENU_ROUTES[action];
-    if (route) {
-      clearScopedRouteState(route.to, "highlighted");
-      navigate({ to: route.to, search: route.search });
+    switch (decision.kind) {
+      case "start-review":
+        void startReview(decision.mode);
+        return;
+      case "resume":
+        resumeReview();
+        return;
+      case "navigate":
+        navigateToMenuTarget(decision.target);
+        return;
+      case "quit":
+        void handleQuit();
+        return;
+      case "blocked-untrusted":
+        toast.error("Repository Not Trusted", {
+          message: "Grant permissions in Settings → Trust & Permissions first.",
+        });
+        return;
+      case "noop":
+        return;
     }
   };
 
-  const trustFooterShortcuts: Shortcut[] = [
-    { key: "↑/↓", label: "Navigate Permissions" },
-    { key: "Enter/Space", label: "Toggle Permission" },
-    { key: "q", label: "Quit" },
-  ];
-
   usePageFooter({
-    shortcuts: needsTrust ? trustFooterShortcuts : MAIN_MENU_SHORTCUTS,
-    rightShortcuts: needsTrust
-      ? [
-          { key: "s", label: "Settings" },
-          { key: "?", label: "Help" },
-        ]
-      : [],
+    shortcuts: needsTrust
+      ? [...TRUST_PANEL_FOOTER_SHORTCUTS, { key: "q", label: "Quit" }]
+      : MAIN_MENU_SHORTCUTS,
+    rightShortcuts: needsTrust ? TRUST_FOOTER_RIGHT_SHORTCUTS : [],
   });
   useScope("home");
   useKey("q", () => {
@@ -220,7 +209,7 @@ export function HomePagePresentation({
   useKey("shift+?", () => handleActivate("help"));
 
   if (needsTrust && projectId && repoRoot) {
-    return <TrustPanel directory={repoRoot} projectId={projectId} />;
+    return <TrustPanel directory={repoRoot} />;
   }
 
   return (
@@ -230,9 +219,10 @@ export function HomePagePresentation({
         highlighted={effectiveHighlighted}
         onHighlightChange={onHighlightChange}
         onSelect={handleActivate}
-        items={MAIN_MENU_ITEMS}
+        items={MENU_ITEMS}
         isTrusted={isTrusted}
         hasResumableSession={hasResumableSession}
+        pending={isStartingReview}
       />
     </div>
   );

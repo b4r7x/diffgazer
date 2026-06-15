@@ -1,4 +1,5 @@
 import { formatTimestamp } from "@diffgazer/core/format";
+import { sanitizeTerminalText } from "@diffgazer/core/review";
 import { type LogEntryData, TAG_BADGE_VARIANTS } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import { Badge } from "../../../components/ui/badge";
@@ -33,7 +34,7 @@ export function ActivityLog({ entries, height = 10, isActive = false }: Activity
             {entry.tag}
           </Badge>
           {entry.source ? <Text color={tokens.muted}>[{entry.source}]</Text> : null}
-          <Text color={getLogEntryColor(entry, tokens)}>{entry.message}</Text>
+          <Text color={getLogEntryColor(entry, tokens)}>{sanitizeTerminalText(entry.message)}</Text>
         </Box>
       ))}
     </ScrollArea>

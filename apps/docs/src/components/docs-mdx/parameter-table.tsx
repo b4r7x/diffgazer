@@ -10,7 +10,7 @@ interface Parameter {
 
 export function ParameterTable({ params }: { params: Parameter[] }) {
   const badgeClass =
-    "px-1.5 py-0.5 border border-border text-[10px] text-muted-foreground rounded bg-background font-mono";
+    "px-1.5 py-0.5 border border-border text-2xs text-muted-foreground rounded bg-background font-mono";
 
   return (
     <div>

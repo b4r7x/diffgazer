@@ -4,7 +4,7 @@ import {
   useKey,
   useScopedNavigation,
 } from "@diffgazer/keys";
-import { useCallback, useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 
 export type TrustFormFocusZone = "list" | "buttons";
 export type TrustFormAction = "save" | "revoke";
@@ -67,40 +67,34 @@ export function useTrustFormKeyboard({
   });
   const focusedAction = isTrustFormAction(highlighted) ? highlighted : "save";
 
-  const enterListZone = useCallback(() => {
+  const enterListZone = () => {
     setZone("list");
     onListFocusRequest?.();
-  }, [onListFocusRequest, setZone]);
+  };
 
-  const handlePermissionFocus = useCallback(() => {
+  const handlePermissionFocus = () => {
     setZone("list");
-  }, [setZone]);
+  };
 
-  const focusActionButton = useCallback(
-    (action: TrustFormAction = focusedAction) => {
-      if (actionsDisabled) return;
-      setZone("buttons");
-      highlight(action);
-      getActionButton(actionRowRef.current, action)?.focus();
-    },
-    [actionsDisabled, focusedAction, highlight, setZone],
-  );
+  const focusActionButton = (action: TrustFormAction = focusedAction) => {
+    if (actionsDisabled) return;
+    setZone("buttons");
+    highlight(action);
+    getActionButton(actionRowRef.current, action)?.focus();
+  };
 
-  const handleActionFocus = useCallback(
-    (action: TrustFormAction) => {
-      if (actionsDisabled) return;
-      setZone("buttons");
-      highlight(action);
-    },
-    [actionsDisabled, highlight, setZone],
-  );
+  const handleActionFocus = (action: TrustFormAction) => {
+    if (actionsDisabled) return;
+    setZone("buttons");
+    highlight(action);
+  };
 
-  const activateCurrentAction = useCallback(() => {
+  const activateCurrentAction = () => {
     if (actionsDisabled) return;
     const action = getFocusedAction(actionRowRef.current) ?? focusedAction;
     if (action === "save") onSave?.();
     else onRevoke?.();
-  }, [actionsDisabled, focusedAction, onSave, onRevoke]);
+  };
 
   useLayoutEffect(() => {
     if (!enabled || !actionsDisabled || zone !== "buttons") return;

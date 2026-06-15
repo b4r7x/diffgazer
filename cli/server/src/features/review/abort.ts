@@ -1,8 +1,9 @@
+import type { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import type { ReviewAbort } from "./types.js";
 
 export function reviewAbort(
   message: string,
-  code: string,
+  code: ReviewErrorCode,
   step?: ReviewAbort["step"],
 ): ReviewAbort {
   return { kind: "review_abort", message, code, step };

@@ -1,5 +1,5 @@
 import { useInput } from "ink";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 type SettingsZone = "list" | "buttons";
 
@@ -59,36 +59,33 @@ export function useSettingsZone({
     findFirstEnabledButton(buttonCount, disabledButtons),
   );
 
-  useEffect(() => {
-    setButtonIndex((current) => {
-      if (!disabledButtons?.includes(current)) return current;
-      return findFirstEnabledButton(buttonCount, disabledButtons);
-    });
-  }, [buttonCount, disabledButtons]);
+  // Derive the effective button index during render so a disabled button never
+  // stays focused when disabledButtons changes (no state-sync effect).
+  const effectiveButtonIndex = disabledButtons?.includes(buttonIndex)
+    ? findFirstEnabledButton(buttonCount, disabledButtons)
+    : buttonIndex;
 
   useInput(
     (_input, key) => {
       if (key.tab) {
-        setZone((current) => {
-          const next = current === "list" ? "buttons" : "list";
-          if (next === "buttons") {
-            setButtonIndex(findFirstEnabledButton(buttonCount, disabledButtons));
-          }
-          return next;
-        });
+        const next = zone === "list" ? "buttons" : "list";
+        if (next === "buttons") {
+          setButtonIndex(findFirstEnabledButton(buttonCount, disabledButtons));
+        }
+        setZone(next);
         return;
       }
 
       if (zone === "buttons") {
         if (key.leftArrow) {
-          setButtonIndex((current) =>
-            findNextEnabledButton(current, -1, buttonCount, disabledButtons),
+          setButtonIndex(
+            findNextEnabledButton(effectiveButtonIndex, -1, buttonCount, disabledButtons),
           );
           return;
         }
         if (key.rightArrow) {
-          setButtonIndex((current) =>
-            findNextEnabledButton(current, 1, buttonCount, disabledButtons),
+          setButtonIndex(
+            findNextEnabledButton(effectiveButtonIndex, 1, buttonCount, disabledButtons),
           );
           return;
         }
@@ -102,9 +99,12 @@ export function useSettingsZone({
 
   return {
     zone,
-    buttonIndex,
+    buttonIndex: effectiveButtonIndex,
     isListActive: zone === "list" && !disabled,
     isButtonActive: (index: number) =>
-      zone === "buttons" && buttonIndex === index && !disabled && !disabledButtons?.includes(index),
+      zone === "buttons" &&
+      effectiveButtonIndex === index &&
+      !disabled &&
+      !disabledButtons?.includes(index),
   };
 }

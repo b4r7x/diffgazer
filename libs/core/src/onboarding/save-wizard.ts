@@ -42,7 +42,7 @@ export function buildConfigPayload(data: WizardData): SaveConfigRequest {
 }
 
 export interface SaveWizardCallbacks {
-  saveSettings: (payload: SettingsPayload) => Promise<unknown>;
+  saveSettings: (payload: Partial<SettingsConfig>) => Promise<unknown>;
   saveConfig: (payload: SaveConfigRequest) => Promise<unknown>;
 }
 

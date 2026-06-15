@@ -24,11 +24,10 @@ export function detectNpmImports(content: string, options?: DetectNpmImportsOpti
     if (!pkg || aliasPrefixes.some((p) => pkg.startsWith(p))) continue;
 
     const parts = pkg.split("/");
-    const pkgName = pkg.startsWith("@")
-      ? parts[0] && parts[1]
-        ? `${parts[0]}/${parts[1]}`
-        : pkg
-      : (parts[0] ?? pkg);
+    let pkgName = parts[0] ?? pkg;
+    if (pkg.startsWith("@")) {
+      pkgName = parts[0] && parts[1] ? `${parts[0]}/${parts[1]}` : pkg;
+    }
     if (!peerDeps.has(pkgName)) imports.push(pkgName);
   }
 

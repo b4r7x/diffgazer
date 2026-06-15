@@ -1,4 +1,4 @@
-import type { TrustCapabilities, TrustConfig } from "./settings.js";
+import type { SaveTrustRequest, TrustCapabilities, TrustConfig } from "./settings.js";
 import { normalizeTrustCapabilities } from "./trust-capabilities.js";
 
 export interface TrustDraft {
@@ -18,7 +18,7 @@ export interface TrustEditorView {
   isTrusted: boolean;
 }
 
-export function getTrustEditorKey({ projectId, repoRoot, trust }: TrustEditorInput): string {
+function getTrustEditorKey({ projectId, repoRoot, trust }: TrustEditorInput): string {
   if (trust) return `${trust.projectId}:${trust.trustedAt}`;
   return `${projectId ?? "loading"}:${repoRoot ?? "loading"}:untrusted`;
 }
@@ -48,11 +48,10 @@ export interface SavePayloadInput {
   repoRoot: string | null;
   trust: TrustConfig | null;
   capabilities: TrustCapabilities;
-  now: () => Date;
 }
 
 export type SavePayloadResult =
-  | { kind: "ready"; payload: TrustConfig }
+  | { kind: "ready"; payload: SaveTrustRequest }
   | { kind: "blocked"; reason: "project-missing" };
 
 export function buildSavePayload({
@@ -60,17 +59,15 @@ export function buildSavePayload({
   repoRoot,
   trust,
   capabilities,
-  now,
 }: SavePayloadInput): SavePayloadResult {
+  // The UI guard still requires resolved project identity before a save; the
+  // server derives projectId/repoRoot/trustedAt from the request itself.
   if (!projectId || !repoRoot) return { kind: "blocked", reason: "project-missing" };
   return {
     kind: "ready",
     payload: {
-      projectId,
-      repoRoot,
-      capabilities,
+      capabilities: { readFiles: capabilities.readFiles },
       trustMode: trust?.trustMode ?? "persistent",
-      trustedAt: now().toISOString(),
     },
   };
 }

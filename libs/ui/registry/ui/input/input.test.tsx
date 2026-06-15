@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
+import { fillField } from "../../testing/form-behavior";
 import { Input, InputGroup } from "./index";
 
 describe("Input", () => {
@@ -10,7 +11,7 @@ describe("Input", () => {
 
     render(<Input aria-label="Email" />);
 
-    await user.type(screen.getByRole("textbox", { name: "Email" }), "a@example.com");
+    await fillField(user, "Email", "a@example.com");
 
     expect(screen.getByRole("textbox", { name: "Email" })).toHaveValue("a@example.com");
   });
@@ -62,7 +63,7 @@ describe("Input", () => {
 
     render(<InputGroup aria-label="Path" prefix="~/" suffix=".json" />);
 
-    await user.type(screen.getByRole("textbox", { name: "Path" }), "config");
+    await fillField(user, "Path", "config");
 
     expect(screen.getByText("~/")).toBeInTheDocument();
     expect(screen.getByText(".json")).toBeInTheDocument();
@@ -76,15 +77,9 @@ describe("Input", () => {
   });
 
   it("lets consumers hide a decorative non-string affix from assistive tech", () => {
-    render(
-      <InputGroup
-        aria-label="Amount"
-        prefix={<span data-testid="currency">USD</span>}
-        prefixAriaHidden
-      />,
-    );
+    render(<InputGroup aria-label="Amount" prefix={<span>USD</span>} prefixAriaHidden />);
 
-    const prefix = screen.getByTestId("currency").parentElement;
+    const prefix = screen.getByText("USD").parentElement;
     expect(prefix).toHaveAttribute("aria-hidden", "true");
   });
 
@@ -92,6 +87,37 @@ describe("Input", () => {
     render(<InputGroup aria-label="Path" aria-invalid />);
 
     expect(screen.getByRole("textbox", { name: "Path" })).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("focuses the input when a dead pointer zone (prefix) is clicked", async () => {
+    const user = userEvent.setup();
+
+    render(<InputGroup aria-label="Path" prefix="~/" suffix=".json" />);
+
+    await user.click(screen.getByText("~/"));
+
+    expect(screen.getByRole("textbox", { name: "Path" })).toHaveFocus();
+  });
+
+  it("does not steal focus from an interactive suffix button", async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+
+    render(
+      <InputGroup
+        aria-label="Path"
+        suffix={
+          <button type="button" onClick={onClick}>
+            Browse
+          </button>
+        }
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Browse" }));
+
+    expect(onClick).toHaveBeenCalledOnce();
+    expect(screen.getByRole("textbox", { name: "Path" })).not.toHaveFocus();
   });
 
   it("has no a11y violations across Input and InputGroup states", async () => {

@@ -1,29 +1,16 @@
-# Stage 1: Build registry artifacts
-FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 AS builder
-
-RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
-RUN apk add --no-cache git
-
-WORKDIR /app
-
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json ./
-COPY libs/ libs/
-COPY scripts/ scripts/
-COPY cli/add/ cli/add/
-
-RUN pnpm install --frozen-lockfile
-
-RUN pnpm --filter @diffgazer/registry build \
- && pnpm --filter @diffgazer/core build \
- && pnpm --filter @diffgazer/keys build \
- && pnpm --filter @diffgazer/ui build
-
-# Stage 2: Serve static JSON
+# Serve the committed public registry JSON.
+#
+# libs/{ui,keys}/public/r are the reviewable handoff contract (AGENTS.md): they
+# are committed with the production REGISTRY_ORIGIN already baked in and are
+# byte-verified against a fresh build by the release-readiness "Public registry
+# is up to date" gate at the same SHA. Rebuilding them here would only reproduce
+# the identical bytes, so we COPY the committed trees directly — no build stage.
 FROM nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 AS runtime
 
-COPY --from=builder /app/libs/ui/public/r/ /usr/share/nginx/html/r/ui/
-COPY --from=builder /app/libs/keys/public/r/ /usr/share/nginx/html/r/keys/
+COPY libs/ui/public/r/ /usr/share/nginx/html/r/ui/
+COPY libs/keys/public/r/ /usr/share/nginx/html/r/keys/
 COPY apps/docs/public/schema/ /usr/share/nginx/html/schema/
+COPY deploy/nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY deploy/registry-nginx.conf /etc/nginx/conf.d/default.conf
 
 # Security: remove default nginx page, run as non-root

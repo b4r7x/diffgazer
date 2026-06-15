@@ -9,11 +9,18 @@ import {
   useRef,
   useState,
 } from "react";
+import type { KeyHandler } from "../core/normalize-key-input.js";
 import { DECLINE } from "../core/normalize-key-input.js";
 import { getOwnerView, isEditableElement, isNode } from "../dom/element-guards.js";
-import { canonicalizeHotkey, matchesHotkey } from "../dom/hotkey.js";
 import {
-  type Handler,
+  eventMatchesParsedHotkey,
+  type ParsedHotkey,
+  parseHotkey,
+  serializeParsedHotkey,
+  type ValidateHotkey,
+  warnUnknownModifier,
+} from "../dom/hotkey.js";
+import {
   type HandlerOptions,
   KeyboardRegistryContext,
   type KeyboardRegistryContextValue,
@@ -25,7 +32,8 @@ export type { HandlerOptions } from "./keyboard-context.js";
 
 interface HandlerEntry {
   id: number;
-  handler: Handler;
+  handler: KeyHandler;
+  parsed: ParsedHotkey;
   options?: HandlerOptions;
 }
 
@@ -77,7 +85,16 @@ function isEventWithinContainer(
   return container.contains(eventTarget);
 }
 
-export function KeyboardProvider({ children }: { children: ReactNode }) {
+/**
+ * Context provider that enables scoped keyboard handling for @diffgazer/keys
+ * hooks. It listens for keydown events on the provider document's window.
+ */
+export function KeyboardProvider({
+  children,
+}: {
+  /** Child elements rendered under the keyboard provider. */
+  children: ReactNode;
+}) {
   const [scopeStack, setScopeStack] = useState<ScopeStackEntry[]>(() => [
     { name: "global", id: 0, order: "" },
   ]);
@@ -135,7 +152,8 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
     const isEditable = isEditableElement(event.target);
 
     for (const [canonicalKey, entries] of scopeHandlers) {
-      if (!matchesHotkey(event, canonicalKey)) continue;
+      const firstEntry = entries[0];
+      if (!firstEntry || !eventMatchesParsedHotkey(event, firstEntry.parsed)) continue;
 
       for (let idx = entries.length - 1; idx >= 0; idx -= 1) {
         const entry = entries[idx];
@@ -170,8 +188,17 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback(
-    (scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => {
-      const canonical = canonicalizeHotkey(hotkey);
+    <S extends string>(
+      scope: string,
+      hotkey: ValidateHotkey<S>,
+      handler: KeyHandler,
+      options?: HandlerOptions,
+    ) => {
+      const parsed = parseHotkey(hotkey as string);
+      if (parsed.unknownModifier) {
+        warnUnknownModifier("register", hotkey as string);
+      }
+      const canonical = serializeParsedHotkey(parsed);
       let scopeHandlers = handlers.current.get(scope);
       if (!scopeHandlers) {
         scopeHandlers = new Map<string, HandlerEntry[]>();
@@ -182,6 +209,7 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
       const entry: HandlerEntry = {
         id: nextHandlerId.current,
         handler,
+        parsed,
         options,
       };
       nextHandlerId.current += 1;

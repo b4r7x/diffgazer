@@ -2,6 +2,7 @@
 
 import { type RefObject, useCallback, useLayoutEffect, useRef, useState } from "react";
 import {
+  computeAvailableSize,
   computePosition,
   resolveCollisionPosition,
   shift,
@@ -17,27 +18,49 @@ import type {
 export { computePosition, resolveCollisionPosition, shift, wouldOverflow };
 export type { FloatingAlign, FloatingPlacement, FloatingSide };
 
+/** Options for positioning floating content relative to a trigger element. */
 export interface UseFloatingPositionOptions {
+  /** Ref to the trigger element that the floating content is positioned relative to. */
   triggerRef: RefObject<HTMLElement | null>;
+  /** Whether the floating content is open. Position is computed when true and reset to null when false. */
   open: boolean;
+  /** Preferred side for positioning. Auto-flips if there is not enough space. @default "top" */
   side?: FloatingSide;
+  /** Alignment along the cross axis. @default "center" */
   align?: FloatingAlign;
+  /** Distance in pixels between the trigger and floating content along the side axis. @default 6 */
   sideOffset?: number;
+  /** Offset in pixels along the alignment axis. @default 0 */
   alignOffset?: number;
+  /** Minimum distance in pixels from viewport edges when avoiding collisions. @default 8 */
   collisionPadding?: number;
+  /** Whether to automatically flip sides and shift position to stay within viewport. @default true */
   avoidCollisions?: boolean;
 }
 
+/** Computed floating-content geometry for the current layout pass. */
 export interface FloatingPosition {
+  /** Viewport-relative x coordinate. */
   x: number;
+  /** Viewport-relative y coordinate. */
   y: number;
+  /** Resolved side after collision handling. */
   side: FloatingSide;
+  /** Alignment used along the cross axis. */
   align: FloatingAlign;
+  /** Current trigger element width. */
   triggerWidth: number;
+  /** Available height along the resolved side after collision padding. */
+  availableHeight: number;
+  /** Available width along the resolved side after collision padding. */
+  availableWidth: number;
 }
 
+/** Computed position plus the ref that must be attached to the floating content element. */
 export interface UseFloatingPositionReturn {
+  /** Computed position with x/y coordinates and resolved side. Null when closed. */
   position: FloatingPosition | null;
+  /** Ref to attach to the floating content element so it can be measured. */
   contentRef: RefObject<HTMLDivElement | null>;
 }
 
@@ -103,6 +126,7 @@ function getOverflowAncestors(node: Node): Element[] {
   return [ancestor, ...getOverflowAncestors(ancestor)];
 }
 
+/** Position floating content relative to a trigger element. */
 export function useFloatingPosition({
   triggerRef,
   open,
@@ -158,12 +182,22 @@ export function useFloatingPosition({
       ? shift(resolvedX, resolvedY, contentRect, collisionPadding, vp)
       : { x: resolvedX, y: resolvedY };
 
+    const { availableHeight, availableWidth } = computeAvailableSize(
+      triggerRect,
+      finalSide,
+      sideOffset,
+      collisionPadding,
+      vp,
+    );
+
     setPosition({
       x: pos.x,
       y: pos.y,
       side: finalSide,
       align: preferredAlign,
       triggerWidth: triggerRect.width,
+      availableHeight,
+      availableWidth,
     });
   }, [
     alignOffset,

@@ -3,6 +3,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// Boundary mock: TanStack Router is the external routing library; home links need deterministic hrefs/current path.
 vi.mock("@tanstack/react-router", async () => {
   const { RouterLinkMock } = await import("@/testing/router-mock");
   return {
@@ -12,7 +13,7 @@ vi.mock("@tanstack/react-router", async () => {
   };
 });
 
-import { MobileNavProvider } from "@/lib/mobile-nav-context";
+import { MobileNavProvider } from "@/hooks/mobile-nav-context";
 import { stubMatchMedia } from "@/testing/match-media";
 import type { HomeLibrary } from "../data";
 import { HomeView } from "./view";
@@ -85,7 +86,7 @@ describe("HomeView", () => {
   it("renders the SYS_INFO status block", () => {
     renderHome();
     expect(screen.getByText("STATUS:")).toBeInTheDocument();
-    expect(screen.getByText("OPERATIONAL")).toBeInTheDocument();
+    expect(screen.getByText("ONLINE")).toBeInTheDocument();
     expect(screen.getByText(/REGISTRY:/)).toBeInTheDocument();
   });
 
@@ -142,13 +143,5 @@ describe("HomeView", () => {
     expect(main).toHaveAttribute("id", "main-content");
     main.focus();
     expect(main).toHaveFocus();
-  });
-
-  it("lets the main column scroll below lg while keeping the fixed layout at lg", () => {
-    renderHome();
-
-    const main = screen.getByRole("main");
-    expect(main.className).toContain("overflow-y-auto");
-    expect(main.className).toContain("lg:overflow-hidden");
   });
 });

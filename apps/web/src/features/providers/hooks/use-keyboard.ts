@@ -1,8 +1,8 @@
-import type { ProviderFilter } from "@diffgazer/core/providers";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { useFocusZone, useKey } from "@diffgazer/keys";
 import { useNavigate } from "@tanstack/react-router";
 import type { KeyboardEvent as ReactKeyboardEvent, RefCallback, RefObject } from "react";
+import type { ProviderFilter } from "../lib/filter.js";
 import { useProvidersActionButtons } from "./use-action-buttons";
 import { useProvidersDialogKeyboard } from "./use-dialog-keyboard";
 import { useProvidersListNavigation } from "./use-list-navigation";

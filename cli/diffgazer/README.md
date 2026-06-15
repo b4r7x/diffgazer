@@ -4,7 +4,7 @@ CLI tool that starts the Diffgazer web environment.
 
 Source: https://github.com/b4r7x/diffgazer/tree/main/cli/diffgazer
 
-Requires Node.js >= 20.
+Requires Node.js >= 22.
 
 ## What it does
 
@@ -33,13 +33,17 @@ pnpm --filter diffgazer start
 
 ## Global Install (npm)
 
-`diffgazer` is external publish-gated as of May 2026; public `npm install -g diffgazer` / `npx diffgazer` commands are valid only after `npm view diffgazer version` succeeds. Use the workspace dev/start commands above until then.
-
-After publication, the public commands are:
+`diffgazer` is live on npm:
 
 ```bash
 npm install -g diffgazer
 diffgazer        # Run from anywhere
+```
+
+You can also run it without a global install:
+
+```bash
+npx diffgazer
 ```
 
 ## Exit
@@ -59,17 +63,15 @@ src/
   banner.ts                 # ASCII banner output
   config.ts                 # Ports and workspace paths
   app/
-    index.tsx               # TUI provider shell and router
+    root.tsx                # TUI provider shell
     providers/              # TUI runtime providers
-    screens/                # TUI screens
     router.tsx              # TUI screen routing
   components/               # Ink layout and UI components
-  features/                 # TUI feature modules
+  features/                 # TUI feature modules and screens
   hooks/                    # TUI hooks
   lib/
     api.ts                  # API client binding
     query-client.ts         # Query client setup
     servers/                # API, web, embedded, and factory launch helpers
   theme/                    # TUI color palettes and theme context
-  types/                    # Shared CLI types
 ```

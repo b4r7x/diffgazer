@@ -87,9 +87,14 @@ export const sidebarDoc: ComponentDoc = {
         "SidebarSection accepts collapsible. SidebarSectionTitle renders an ARIA disclosure (h3 wrapping a button with aria-expanded/aria-controls). SidebarSectionContent panels the collapsed area; it uses the section context to set hidden when closed. Supports controlled open/onOpenChange or uncontrolled defaultOpen.",
     },
     {
+      title: "Rail mode naming",
+      content:
+        "In rail state the visible label and badge collapse to display:none, leaving an icon-only row. SidebarItem automatically preserves the accessible name by rendering an sr-only copy of its label content that appears in the accessibility tree only while the sidebar is in rail state, so icon-only links and buttons keep a non-empty name. Render-prop items own their own markup, so supply an aria-label (or sr-only text) for the rail state yourself.",
+    },
+    {
       title: "Item render props",
       content:
-        "SidebarItem supports a render-prop children for custom elements (e.g. framework Link components). The render function receives ref, className, disabled, aria-current, aria-disabled, data-active, data-intent, data-value, onClick, tabIndex, and itemPrefix — a ReactNode carrying the intent dot, tree connector, and variant glyph. Destructure itemPrefix and render it as the element's leading content; never spread it onto the element.",
+        "SidebarItem supports a render-prop children for custom elements (e.g. framework Link components). The render function receives ref, className, disabled, aria-current, aria-disabled, data-selected, data-intent, data-value, onClick, tabIndex, and itemPrefix — a ReactNode carrying the intent dot, tree connector, and variant glyph. Destructure itemPrefix and render it as the element's leading content; never spread it onto the element.",
     },
     {
       title: "SSR persistence",
@@ -112,7 +117,83 @@ export const sidebarDoc: ComponentDoc = {
     { name: "sidebar-auto-tone", title: "Auto-tone intent dots" },
     { name: "sidebar-render-prop", title: "Render-prop items" },
   ],
-  keyboard: null,
+  keyboard: {
+    description:
+      "Sidebar.Content owns roving arrow navigation for visible items. SidebarProvider also binds the global Cmd/Ctrl+B shortcut by default and skips editable targets.",
+    keys: [
+      {
+        keys: "ArrowUp / ArrowDown",
+        action: "Moves focus to the previous or next visible Sidebar.Item.",
+      },
+      { keys: "Home / End", action: "Moves focus to the first or last visible item." },
+      {
+        keys: "Enter / Space",
+        action: "Activates a focused button item; links use their native activation behavior.",
+      },
+      {
+        keys: "Cmd/Ctrl+B",
+        action: "Cycles desktop sidebar state between open and rail.",
+      },
+      {
+        keys: "Shift+Cmd/Ctrl+B",
+        action: "Toggles the hidden/mobile-sheet state.",
+      },
+    ],
+    examples: [
+      { name: "sidebar-default", title: "Default" },
+      { name: "sidebar-collapsible", title: "Collapsible sections" },
+    ],
+  },
+  dataAttributes: [
+    {
+      attribute: "data-state",
+      appliesTo: "Sidebar / Sidebar.Content / Sidebar.Trigger",
+      values: '"open" | "rail" | "hidden"',
+      description: "Current provider visibility state used for root, content, and trigger styling.",
+    },
+    {
+      attribute: "data-state",
+      appliesTo: "Sidebar.Section / Sidebar.SectionContent",
+      values: '"open" | "closed"',
+      description: "Collapsible section disclosure state.",
+    },
+    {
+      attribute: "data-variant",
+      appliesTo: "Sidebar",
+      values: '"caret" | "inverted" | "bar" | "bracket" | "block" | "terminal" | "tree"',
+      description: "Active-marker variant applied to the nav root and consumed by descendants.",
+    },
+    {
+      attribute: "data-selected",
+      appliesTo: "Sidebar.Item",
+      values: "present when active",
+      description: "Marks the current page/action row.",
+    },
+    {
+      attribute: "data-intent",
+      appliesTo: "Sidebar.Item",
+      values: '"neutral" | "info" | "success" | "warning" | "danger" | "accent"',
+      description: "Optional or auto-derived tone for the decorative intent dot.",
+    },
+    {
+      attribute: "data-value",
+      appliesTo: "Sidebar.Item",
+      values: "item value",
+      description: "Stable navigation and auto-tone lookup value.",
+    },
+    {
+      attribute: "data-auto-tone",
+      appliesTo: "Sidebar",
+      values: "present when enabled",
+      description: "Marks roots that derive item intent from values.",
+    },
+    {
+      attribute: "data-mobile",
+      appliesTo: "Sidebar mobile sheet",
+      values: '"true"',
+      description: "Marks the off-canvas mobile sheet instance.",
+    },
+  ],
   props: {
     Sidebar: {
       variant: {
@@ -292,7 +373,7 @@ export const sidebarDoc: ComponentDoc = {
         required: false,
         defaultValue: "false",
         description:
-          'Marks the item as the current page. Adds aria-current="page", data-active="true", and the variant\'s active styling.',
+          'Marks the item as the current page. Adds aria-current="page", data-selected, and the variant\'s active styling.',
       },
       value: {
         type: "string",
@@ -306,7 +387,7 @@ export const sidebarDoc: ComponentDoc = {
         required: false,
         defaultValue: "undefined (or auto from value when autoTone is enabled)",
         description:
-          "Item intent. Renders as data-intent. When autoTone is enabled on Sidebar and intent is omitted, it is inferred from value via the built-in dictionary. Color is decoration only — pair with a text/glyph cue.",
+          "Item intent. Renders as data-intent and tints the auto-tone dot from semantic tokens: neutral → --muted-foreground, info → --info-strong, success → --success-strong, warning → --warning-strong, danger → --error-strong, accent → --action. When autoTone is enabled on Sidebar and intent is omitted, it is inferred from value via the built-in dictionary. Color is decoration only — pair with a text/glyph cue.",
       },
       disabled: {
         type: "boolean",
@@ -319,7 +400,7 @@ export const sidebarDoc: ComponentDoc = {
         required: true,
         defaultValue: null,
         description:
-          "Item content or a render function (for framework Link components) that receives ref, className, disabled, aria-current, aria-disabled, data-active, data-intent, data-value, onClick, tabIndex, and itemPrefix. itemPrefix is a ReactNode (intent dot, tree connector, variant glyph) that must be rendered as the element's leading content, never spread onto the element.",
+          "Item content or a render function (for framework Link components) that receives ref, className, disabled, aria-current, aria-disabled, data-selected, data-intent, data-value, onClick, tabIndex, and itemPrefix. itemPrefix is a ReactNode (intent dot, tree connector, variant glyph) that must be rendered as the element's leading content, never spread onto the element.",
       },
     },
     "Sidebar.ItemLabel": {

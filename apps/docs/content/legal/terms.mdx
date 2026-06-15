@@ -28,11 +28,17 @@ The root MIT license also applies to non-package source, documentation, and tool
 
 ### Apache-2.0
 
-Apache-2.0 covers `cli/diffgazer`, the end-user CLI binary. The license includes an explicit patent grant and attribution requirements suited to a distributable binary entry point.
+Apache-2.0 covers `cli/diffgazer`, the end-user CLI binary, together with `cli/server` and `libs/core`, which are bundled into that binary via tsup `noExternal`. The license includes an explicit patent grant and attribution requirements suited to a distributable binary entry point.
 
 - [cli/diffgazer LICENSE (Apache-2.0)](https://github.com/b4r7x/diffgazer/blob/main/cli/diffgazer/LICENSE)
+- [cli/server LICENSE (Apache-2.0)](https://github.com/b4r7x/diffgazer/blob/main/cli/server/LICENSE)
+- [libs/core LICENSE (Apache-2.0)](https://github.com/b4r7x/diffgazer/blob/main/libs/core/LICENSE)
 
-Every published package directory contains its own `LICENSE` file so the license travels with both npm tarballs and direct registry copies.
+### Bundled notices
+
+The `diffgazer` binary also bundles MIT-licensed first-party code (`@diffgazer/keys` directly, and `@diffgazer/ui` through the embedded web SPA) and the SPA's third-party MIT dependencies (React, React DOM, TanStack libraries, and others). MIT requires notice retention, so the full license texts ship in the `THIRD_PARTY_NOTICES` file inside the `diffgazer` npm tarball.
+
+Each published npm package ships its own `LICENSE` file in its tarball, and the `diffgazer` tarball additionally ships `THIRD_PARTY_NOTICES` for the bundled code it inlines.
 
 ## Contributions
 

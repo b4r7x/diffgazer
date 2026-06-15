@@ -1,37 +1,19 @@
-import {
-  CATALOG_SNAPSHOT,
-  deriveCapabilities,
-  PROVIDER_OVERLAY,
-  type ProviderCapabilities,
-  type ProviderOverlay,
-} from "../../catalog/index.js";
+import type { ProviderCapabilities } from "../../catalog/capabilities.js";
+import { PROVIDER_DERIVED } from "../../catalog/provider-derived.js";
+import { PROVIDER_OVERLAY, type ProviderOverlay } from "../../catalog/provider-overlay.js";
 import type { AIProvider, ProviderInfo } from "./providers.js";
 
 export const OPENROUTER_PROVIDER_ID: AIProvider = "openrouter";
 
 /**
- * Title-case a provider id ("zai-coding" -> "Zai Coding"). Safety-only
- * last-resort fallback: every enabled provider resolves a name from its overlay
- * or the snapshot, so this is only reached if both are ever absent.
- */
-function humanize(id: string): string {
-  return id
-    .split(/[-_]/)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-/**
  * Resolve a provider's human display name. PRIMARY source is the models.dev
- * provider `name` (from CATALOG_SNAPSHOT for the overlay's primary modelsDevId);
- * `overlay.displayName` is a curated OVERRIDE (today only gemini); humanize(id)
- * is the last-resort fallback.
+ * provider `name` (precomputed into PROVIDER_DERIVED at snapshot generation for
+ * the overlay's primary modelsDevId); `overlay.displayName` is a curated
+ * OVERRIDE (today only gemini); humanize(id) is the last-resort fallback. The
+ * precedence is applied once at generation time and frozen into PROVIDER_DERIVED.
  */
-export function resolveProviderDisplayName(provider: AIProvider): string {
-  const overlay = PROVIDER_OVERLAY[provider];
-  const primaryModelsDevId = overlay.modelsDevIds[0];
-  const modelsDevName = primaryModelsDevId ? CATALOG_SNAPSHOT[primaryModelsDevId]?.name : undefined;
-  return overlay.displayName ?? modelsDevName ?? humanize(provider);
+function resolveProviderDisplayName(provider: AIProvider): string {
+  return PROVIDER_DERIVED[provider].displayName;
 }
 
 const ENABLED_PROVIDER_IDS = (Object.entries(PROVIDER_OVERLAY) as [AIProvider, ProviderOverlay][])
@@ -45,14 +27,14 @@ export const AVAILABLE_PROVIDERS: ProviderInfo[] = ENABLED_PROVIDER_IDS.map((id)
 }));
 
 // Capability prose (tool calling, JSON mode, context window, tier) is stable per
-// provider, so it is derived once from the bundled CATALOG_SNAPSHOT rather than
-// the live route — only the per-provider model LIST is served live via
-// `GET /provider/:id/models`. Keyed over every overlay id (not just enabled) so
-// the record stays exhaustive over AIProvider as a provider is enabled/disabled.
+// provider, so it is derived once at snapshot-generation time into
+// PROVIDER_DERIVED rather than the live route — only the per-provider model LIST
+// is served live via `GET /provider/:id/models`. Keyed over every overlay id (not
+// just enabled) so the record stays exhaustive over AIProvider.
 export const PROVIDER_CAPABILITIES = Object.fromEntries(
   (Object.keys(PROVIDER_OVERLAY) as AIProvider[]).map((id) => [
     id,
-    deriveCapabilities(CATALOG_SNAPSHOT, id),
+    PROVIDER_DERIVED[id].capabilities,
   ]),
 ) as Record<AIProvider, ProviderCapabilities>;
 

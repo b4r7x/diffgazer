@@ -1,3 +1,4 @@
+import { getErrorMessage } from "../errors.js";
 import type { Result } from "../result.js";
 import { err, ok } from "../result.js";
 import {
@@ -5,34 +6,45 @@ import {
   processReviewStream,
   type StreamReviewError,
 } from "../review/index.js";
-import { ReviewErrorCode, type ReviewMode } from "../schemas/review/index.js";
-import type {
-  ActiveReviewSessionResponse,
-  ApiClient,
-  DrilldownResponse,
-  ReviewContextResponse,
-  ReviewResponse,
-  ReviewsResponse,
-} from "./types.js";
+import {
+  type ActiveReviewSessionResponse,
+  ActiveReviewSessionResponseSchema,
+  type CreateReviewResponse,
+  CreateReviewResponseSchema,
+  type LensId,
+  type ProfileId,
+  ReviewErrorCode,
+  type ReviewMode,
+  type ReviewResponse,
+  ReviewResponseSchema,
+  type ReviewsResponse,
+  ReviewsResponseSchema,
+} from "../schemas/review/index.js";
+import type { ApiClient, ReviewContextResponse } from "./types.js";
 
 export type { StreamReviewError };
 
 export interface CreateReviewOptions {
   mode?: ReviewMode;
-  lenses?: string[];
-  profile?: string;
+  lenses?: LensId[];
+  profile?: ProfileId;
   files?: string[];
 }
 
-export interface CreateReviewResponse {
-  reviewId: string;
+export type CancelReason = "cancelled" | "not-found" | "already-complete";
+
+export interface CancelReviewSessionResponse {
+  cancelled: true;
+  reason: CancelReason;
 }
 
 export async function createReview(
   client: ApiClient,
   options: CreateReviewOptions = {},
 ): Promise<CreateReviewResponse> {
-  return client.post<CreateReviewResponse>("/api/review/reviews", options);
+  return client.post<CreateReviewResponse>("/api/review/reviews", options, undefined, (body) =>
+    CreateReviewResponseSchema.parse(body),
+  );
 }
 
 export interface ResumeReviewOptions {
@@ -40,7 +52,7 @@ export interface ResumeReviewOptions {
   signal?: AbortSignal;
   onAgentEvent?: CoreStreamReviewOptions["onAgentEvent"];
   onStepEvent?: CoreStreamReviewOptions["onStepEvent"];
-  onEnrichEvent?: CoreStreamReviewOptions["onEnrichEvent"];
+  onChunk?: CoreStreamReviewOptions["onChunk"];
 }
 
 export interface ResumeReviewResult {
@@ -62,7 +74,7 @@ export async function resumeReviewStream(
       error instanceof Error && "status" in error
         ? (error as { status: number }).status
         : undefined;
-    const message = error instanceof Error ? error.message : String(error);
+    const message = getErrorMessage(error);
     if (status === 404) {
       return err({
         code: ReviewErrorCode.SESSION_NOT_FOUND,
@@ -84,7 +96,17 @@ export async function resumeReviewStream(
     return err({ code: "STREAM_ERROR", message: "No response body" });
   }
 
-  const streamResult = await processReviewStream(reader, handlers);
+  let streamResult: Awaited<ReturnType<typeof processReviewStream>>;
+  try {
+    // A mid-stream reader failure rejects; honor the Result contract instead of
+    // letting the rejection escape the typed Promise.
+    streamResult = await processReviewStream(reader, handlers);
+  } catch (error) {
+    return err({
+      code: "STREAM_ERROR",
+      message: getErrorMessage(error) || "Review stream failed",
+    });
+  }
 
   if (!streamResult.ok) {
     return err(streamResult.error);
@@ -101,11 +123,15 @@ export async function getReviews(
   projectPath?: string,
 ): Promise<ReviewsResponse> {
   const params = projectPath ? { projectPath } : undefined;
-  return client.get<ReviewsResponse>("/api/review/reviews", params);
+  return client.get<ReviewsResponse>("/api/review/reviews", params, (body) =>
+    ReviewsResponseSchema.parse(body),
+  );
 }
 
 export async function getReview(client: ApiClient, id: string): Promise<ReviewResponse> {
-  return client.get<ReviewResponse>(`/api/review/reviews/${id}`);
+  return client.get<ReviewResponse>(`/api/review/reviews/${id}`, undefined, (body) =>
+    ReviewResponseSchema.parse(body),
+  );
 }
 
 export async function getActiveReviewSession(
@@ -115,6 +141,7 @@ export async function getActiveReviewSession(
   return client.get<ActiveReviewSessionResponse>(
     "/api/review/sessions/active",
     mode ? { mode } : undefined,
+    (body) => ActiveReviewSessionResponseSchema.parse(body),
   );
 }
 
@@ -136,18 +163,8 @@ export async function deleteReview(client: ApiClient, id: string): Promise<{ exi
 export async function cancelReviewSession(
   client: ApiClient,
   reviewId: string,
-): Promise<{ cancelled: boolean }> {
-  return client.delete<{ cancelled: boolean }>(`/api/review/sessions/${reviewId}`);
-}
-
-export async function runReviewDrilldown(
-  client: ApiClient,
-  reviewId: string,
-  issueId: string,
-): Promise<DrilldownResponse> {
-  return client.post<DrilldownResponse>(`/api/review/reviews/${reviewId}/drilldown`, {
-    issueId,
-  });
+): Promise<CancelReviewSessionResponse> {
+  return client.delete<CancelReviewSessionResponse>(`/api/review/sessions/${reviewId}`);
 }
 
 export const bindReview = (client: ApiClient) => ({
@@ -160,6 +177,4 @@ export const bindReview = (client: ApiClient) => ({
   refreshReviewContext: (options?: { force?: boolean }) => refreshReviewContext(client, options),
   deleteReview: (id: string) => deleteReview(client, id),
   cancelReviewSession: (reviewId: string) => cancelReviewSession(client, reviewId),
-  runReviewDrilldown: (reviewId: string, issueId: string) =>
-    runReviewDrilldown(client, reviewId, issueId),
 });

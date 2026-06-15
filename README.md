@@ -8,7 +8,7 @@
 
 Local AI code review. Run one command, get a review from AI agents, and keep the app on your machine.
 
-![Diffgazer demo](docs/assets/diffgazer-demo.gif)
+![Diffgazer demo](https://raw.githubusercontent.com/b4r7x/diffgazer/8119889d53f4a1457f0156d658e0bf08429e7f00/docs/assets/diffgazer-demo.gif)
 
 ## Why
 

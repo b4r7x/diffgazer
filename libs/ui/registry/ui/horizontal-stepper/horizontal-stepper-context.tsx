@@ -6,16 +6,26 @@ import type { HorizontalStepperVariant } from "@/lib/stepper-variants";
 
 export type { StepStatus };
 
+/** Allowed horizontal step status values. */
 export type HorizontalStepStatus = Extract<StepStatus, "active" | "completed" | "pending">;
 
+/** Context value shared by stepper. */
 interface StepperContextValue {
+  /** Id of the active step. */
   value: string;
+  /**
+   * Ordered step ids. Used to compute status (completed/active/pending) for each step relative
+   * to value.
+   */
   steps: string[];
+  /** Visual variant. Controls the indicator glyph and connector treatment across every step. */
   variant: HorizontalStepperVariant;
 }
 
+/** React context backing horizontal stepper. */
 export const HorizontalStepperContext = createContext<StepperContextValue | undefined>(undefined);
 
+/** Reads the stepper context. */
 export function useStepperContext() {
   const ctx = useContext(HorizontalStepperContext);
   if (ctx === undefined) {
@@ -24,6 +34,7 @@ export function useStepperContext() {
   return ctx;
 }
 
+/** Provides step info behavior. */
 export function useStepInfo(value: string): { status: HorizontalStepStatus; index: number } {
   const { value: currentValue, steps } = useStepperContext();
   const stepIndex = steps.indexOf(value);

@@ -4,9 +4,10 @@ import { CardContent, type CardContentProps } from "./card-content";
 import { CardDescription, type CardDescriptionProps } from "./card-description";
 import { CardFooter, type CardFooterProps } from "./card-footer";
 import { CardHeader, type CardHeaderProps } from "./card-header";
-import { CardLabel, type CardLabelProps, cardLabelVariants } from "./card-label";
+import { CardLabel, type CardLabelProps } from "./card-label";
 import { CardTitle, type CardTitleProps } from "./card-title";
 
+/** Main card surface with surface, size, interactive, and as props. */
 const Card = Object.assign(CardRoot, {
   Action: CardAction,
   Header: CardHeader,
@@ -20,7 +21,7 @@ const Card = Object.assign(CardRoot, {
 export { Card, cardVariants, type CardProps };
 export { CardAction, type CardActionProps };
 export { CardHeader, type CardHeaderProps };
-export { CardLabel, cardLabelVariants, type CardLabelProps };
+export { CardLabel, type CardLabelProps };
 export { CardTitle, type CardTitleProps };
 export { CardDescription, type CardDescriptionProps };
 export { CardContent, type CardContentProps };

@@ -1,0 +1,162 @@
+/*
+ * Callout primitive styles. Two orthogonal axes drive visual chrome via
+ * data-attribute selectors on the callout root:
+ *   [data-frame] = inline | rail | bar
+ *   [data-tone]  = info | success | warning | error
+ *
+ * Tone cascades three CSS vars consumed by the icon, title, border, and
+ * background:
+ *   --callout-tone   foreground / icon / title color signal
+ *   --callout-border perimeter color (used by inline + rail frames)
+ *   --callout-subtle subtle background tint (used by inline + rail frames)
+ *
+ * Frame chrome (border, rail, bar background) is selected by [data-frame].
+ * Grid layout (grid-template-areas) is driven by [data-frame] combined
+ * with [data-has-icon] on the inner grid element. The icon column is
+ * collapsed when no <Callout.Icon> child is present.
+ *
+ * For architectural parity with Panel (panel/panel.css), all chrome and
+ * forced-colors fallbacks live in this file; the React component only emits
+ * data-attributes.
+ */
+@layer components {
+  /*
+   * Default tone values are consumed via var() fallback (not declared on the
+   * slot) so an ancestor-scoped override reaches them. Defaults: --callout-tone →
+   * var(--foreground); --callout-border → var(--border); --callout-subtle → transparent.
+   * The [data-tone] variants below still win.
+   */
+  [data-slot="callout"] {
+    position: relative;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--foreground);
+    border-radius: var(--radius);
+  }
+
+  /* ============================================================
+     Tone cascade — paints --callout-tone / --callout-border / --callout-subtle.
+     ============================================================ */
+  [data-slot="callout"][data-tone="info"] {
+    --callout-tone: var(--info-text);
+    --callout-border: var(--info-border);
+    --callout-subtle: var(--info-subtle);
+  }
+  [data-slot="callout"][data-tone="success"] {
+    --callout-tone: var(--success-text);
+    --callout-border: var(--success-border);
+    --callout-subtle: var(--success-subtle);
+  }
+  [data-slot="callout"][data-tone="warning"] {
+    --callout-tone: var(--warning-text);
+    --callout-border: var(--warning-border);
+    --callout-subtle: var(--warning-subtle);
+  }
+  [data-slot="callout"][data-tone="error"] {
+    --callout-tone: var(--error-text);
+    --callout-border: var(--error-border);
+    --callout-subtle: var(--error-subtle);
+  }
+
+  /* ============================================================
+     Frame: inline (default) — full hairline border at tone color +
+     subtle tone background.
+     ============================================================ */
+  [data-slot="callout"][data-frame="inline"] {
+    border: 1px solid var(--callout-border, var(--border));
+    background: var(--callout-subtle, transparent);
+    padding: 12px 14px;
+  }
+
+  /* ============================================================
+     Frame: rail — 2px inline-start rail at tone color, no perimeter,
+     square corners, subtle tone background.
+     ============================================================ */
+  [data-slot="callout"][data-frame="rail"] {
+    border: 0;
+    border-inline-start: 2px solid var(--callout-border, var(--border));
+    background: var(--callout-subtle, transparent);
+    border-radius: 0;
+    padding: 10px 14px;
+  }
+
+  /* ============================================================
+     Frame: bar — neutral border + a 4px tone marker bar inside the
+     grid (placed in the bar grid-area via the [data-slot="callout-bar"]
+     rule below). Background is a 2% foreground wash for subtle elevation
+     against the page.
+     ============================================================ */
+  [data-slot="callout"][data-frame="bar"] {
+    border: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
+    background: color-mix(in oklab, var(--foreground) 2%, transparent);
+    padding: 12px 14px;
+  }
+}
+
+/* ============================================================
+   Grid layout: the inner [data-slot="callout-grid"] element owns the
+   grid, with columns + template areas driven by [data-frame] and its
+   own [data-has-icon]. Each child takes its cell from its data-slot
+   (the React components emit data-attributes only).
+   ============================================================ */
+@layer components {
+  [data-slot="callout-grid"] {
+    display: grid;
+    align-items: start;
+    column-gap: 10px;
+    row-gap: 4px;
+  }
+
+  /* inline / rail columns. */
+  [data-slot="callout-grid"][data-has-icon="false"] {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "title dismiss" "body .";
+  }
+  [data-slot="callout-grid"][data-has-icon="true"] {
+    grid-template-columns: 16px minmax(0, 1fr) auto;
+    grid-template-areas: "icon title dismiss" ". body .";
+  }
+
+  /* bar frame prepends a 4px marker column. */
+  [data-slot="callout"][data-frame="bar"] > [data-slot="callout-grid"][data-has-icon="false"] {
+    grid-template-columns: 4px minmax(0, 1fr) auto;
+    grid-template-areas: "bar title dismiss" "bar body .";
+  }
+  [data-slot="callout"][data-frame="bar"] > [data-slot="callout-grid"][data-has-icon="true"] {
+    grid-template-columns: 4px 16px minmax(0, 1fr) auto;
+    grid-template-areas: "bar icon title dismiss" "bar . body .";
+  }
+
+  /* Cell placement per child. */
+  [data-slot="callout-bar"] {
+    grid-area: bar;
+  }
+  [data-slot="callout-icon"] {
+    grid-area: icon;
+  }
+  [data-slot="callout-title"] {
+    grid-area: title;
+  }
+  [data-slot="callout-content"] {
+    grid-area: body;
+  }
+  [data-slot="callout-dismiss"] {
+    grid-area: dismiss;
+  }
+}
+
+/* ============================================================
+   Forced-colors: keep callout boundaries legible in Windows HCM.
+   Mirrors Panel's forced-colors block in panel/panel.css.
+   ============================================================ */
+@media (forced-colors: active) {
+  [data-slot="callout"][data-frame="inline"] {
+    border-color: CanvasText;
+  }
+  [data-slot="callout"][data-frame="rail"] {
+    border-inline-start-color: CanvasText;
+  }
+  [data-slot="callout"][data-frame="bar"] {
+    border-color: CanvasText;
+  }
+}

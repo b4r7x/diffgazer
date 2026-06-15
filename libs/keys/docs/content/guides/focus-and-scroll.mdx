@@ -1,9 +1,7 @@
 ---
-title: Focus And Scroll
-description: Focus And Scroll guide for @diffgazer/keys hooks and patterns.
+title: Focus and scroll
+description: Manage focus traps, focus restoration, and scroll locking with `@diffgazer/keys`.
 ---
-
-# Focus and Scroll
 
 > Try the [Focus Trap demo](https://github.com/b4r7x/diffgazer/tree/main/libs/keys/examples/playground) to see focus trapping in action.
 
@@ -51,7 +49,7 @@ interface UseFocusTrapOptions {
 `useFocusTrap` attaches its keydown listener directly on the **container element**, not on `window`. It doesn't use `KeyboardContext` at all. This means:
 
 - It works without `KeyboardProvider` in the tree
-- It doesn't interfere with @diffgazer/keys's scope system
+- It doesn't interfere with `@diffgazer/keys`'s scope system
 - It doesn't care about the active scope
 
 This separation is intentional. Focus trapping is a DOM concern. Keyboard shortcuts are an application concern. They shouldn't be coupled.

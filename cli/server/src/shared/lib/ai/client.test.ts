@@ -3,8 +3,6 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { AI_PROVIDERS } from "@diffgazer/core/schemas/config";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { requireValue } from "../../../testing/assertions.js";
-import type { StreamMetadata } from "./types.js";
 
 const keyring = vi.hoisted(() => ({
   deleteKeyringSecret: vi.fn(),
@@ -16,10 +14,10 @@ const keyring = vi.hoisted(() => ({
 // Boundary mock: keyring wraps the OS keychain via @napi-rs/keyring; tests provide canned secret read/write results.
 vi.mock("../config/keyring.js", () => keyring);
 
-// Boundary mock: `ai` is the Vercel AI SDK external HTTP client; tests provide canned generateObject/streamText responses.
-vi.mock("ai", () => ({
+// Boundary mock: `ai` is the Vercel AI SDK external HTTP client; tests provide canned generateObject output.
+vi.mock("ai", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("ai")>()),
   generateObject: vi.fn(),
-  streamText: vi.fn(),
 }));
 
 // Boundary mock: @ai-sdk/google is the Google Generative AI external HTTP client; tests provide a no-op model factory.
@@ -259,133 +257,155 @@ describe("classifyError (via generate)", () => {
   });
 });
 
-describe("generateStream", () => {
+describe("generate output budget", () => {
   beforeEach(setupTempHome);
   afterEach(teardownTempHome);
 
-  it("emits each chunk and reports accumulated text on completion", async () => {
-    const { streamText } = await import("ai");
-    const chunks = ["Hello", " ", "world"];
-    vi.mocked(streamText).mockReturnValue({
-      textStream: (async function* () {
-        for (const chunk of chunks) yield chunk;
-      })(),
-      finishReason: Promise.resolve("stop"),
-    } as unknown as ReturnType<typeof streamText>);
+  it("clamps maxOutputTokens to the model's documented output limit", async () => {
+    const { generateObject } = await import("ai");
+    vi.mocked(generateObject).mockResolvedValue({ object: { x: "ok" } } as never);
 
     const { createAIClient } = await loadClient();
-    const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
+    const clientResult = createAIClient({
+      apiKey: "key",
+      provider: "groq",
+      model: "some-model",
+      outputLimit: 8192,
+    });
+    if (!clientResult.ok) return;
+
+    const { z } = await import("zod");
+    await clientResult.value.generate("test", z.object({ x: z.string() }));
+
+    expect(generateObject).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 8192 }));
+  });
+
+  it("initializeAIClient threads the active model's snapshot limit into the request", async () => {
+    const { generateObject } = await import("ai");
+    vi.mocked(generateObject).mockResolvedValue({ object: { x: "ok" } } as never);
+
+    writeJson(join(diffgazerHome, "config.json"), {
+      settings: { secretsStorage: "file" },
+      providers: [
+        {
+          provider: "groq",
+          hasApiKey: true,
+          isActive: true,
+          model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        },
+      ],
+    });
+    writeJson(join(diffgazerHome, "secrets.json"), { providers: { groq: "test-key" } });
+
+    const { initializeAIClient } = await loadClient();
+    const clientResult = initializeAIClient();
     expect(clientResult.ok).toBe(true);
     if (!clientResult.ok) return;
 
-    const receivedChunks: string[] = [];
-    let completedText = "";
-    let completedMeta: StreamMetadata | null = null;
+    const { z } = await import("zod");
+    await clientResult.value.generate("test", z.object({ x: z.string() }));
 
-    await clientResult.value.generateStream("test prompt", {
-      onChunk: (chunk) => {
-        receivedChunks.push(chunk);
-      },
-      onComplete: (text, meta) => {
-        completedText = text;
-        completedMeta = meta;
-      },
-      onError: () => {},
-    });
-
-    expect(receivedChunks).toEqual(["Hello", " ", "world"]);
-    expect(completedText).toBe("Hello world");
-    const meta = requireValue<StreamMetadata>(completedMeta, "completion metadata");
-    expect(meta.truncated).toBe(false);
-    expect(meta.finishReason).toBe("stop");
+    // The groq scout model's snapshot output limit is 8192, well below the 65536 default.
+    expect(generateObject).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 8192 }));
   });
 
-  it("reports the thrown error via onError when the stream fails mid-flight", async () => {
-    const { streamText } = await import("ai");
-    vi.mocked(streamText).mockReturnValue({
-      textStream: (async function* () {
-        yield "partial";
-        throw new Error("stream broke");
-      })(),
-      finishReason: Promise.resolve("error"),
-    } as unknown as ReturnType<typeof streamText>);
+  it("refuses a prompt that exceeds the model's context window with a named-limit message", async () => {
+    const { generateObject } = await import("ai");
+
+    const { createAIClient } = await loadClient();
+    const clientResult = createAIClient({
+      apiKey: "key",
+      provider: "groq",
+      model: "tiny-context-model",
+      outputLimit: 4096,
+      contextLimit: 8192,
+    });
+    if (!clientResult.ok) return;
+
+    const { z } = await import("zod");
+    // A prompt of ~5000 tokens plus the 4096 output budget exceeds the 8192 context window.
+    const result = await clientResult.value.generate(
+      "x".repeat(20_000),
+      z.object({ x: z.string() }),
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("MODEL_ERROR");
+      expect(result.error.message).toContain("tiny-context-model");
+      expect(result.error.message).toContain("8192");
+    }
+    expect(generateObject).not.toHaveBeenCalled();
+  });
+});
+
+describe("generate response recovery", () => {
+  beforeEach(setupTempHome);
+  afterEach(teardownTempHome);
+
+  const reviewSchema = (z: typeof import("zod").z) =>
+    z.object({
+      summary: z.string(),
+      issues: z.array(z.object({ id: z.string(), line: z.number().int().positive() })),
+    });
+
+  it("salvages valid issues when one issue fails strict validation", async () => {
+    const { generateObject, NoObjectGeneratedError } = await import("ai");
+    const rawText = JSON.stringify({
+      summary: "ok",
+      issues: [
+        { id: "a", line: 10 },
+        { id: "b", line: -1 },
+        { id: "c", line: 20 },
+      ],
+    });
+    vi.mocked(generateObject).mockRejectedValue(
+      new NoObjectGeneratedError({
+        message: "No object generated: response did not match schema.",
+        text: rawText,
+        response: {} as never,
+        usage: {} as never,
+        finishReason: "stop",
+      }),
+    );
 
     const { createAIClient } = await loadClient();
     const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
     if (!clientResult.ok) return;
 
-    let capturedError: Error | null = null;
+    const { z } = await import("zod");
+    const result = await clientResult.value.generate("test", reviewSchema(z));
 
-    await clientResult.value.generateStream("test", {
-      onChunk: () => {},
-      onComplete: () => {},
-      onError: (error) => {
-        capturedError = error;
-      },
-    });
-
-    const error = requireValue<Error>(capturedError, "stream error");
-    expect(error.message).toBe("stream broke");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.issues.map((i) => i.id)).toEqual(["a", "c"]);
+    }
   });
 
-  it("flags truncation in completion metadata when finishReason is length", async () => {
-    const { streamText } = await import("ai");
-    vi.mocked(streamText).mockReturnValue({
-      textStream: (async function* () {
-        yield "truncated content";
-      })(),
-      finishReason: Promise.resolve("length"),
-    } as unknown as ReturnType<typeof streamText>);
+  it("reports the output limit when the response was truncated (finishReason length)", async () => {
+    const { generateObject, NoObjectGeneratedError } = await import("ai");
+    vi.mocked(generateObject).mockRejectedValue(
+      new NoObjectGeneratedError({
+        message: "No object generated: could not parse the response.",
+        text: '{"summary":"partial","issues":[{"id":"a","li',
+        response: {} as never,
+        usage: {} as never,
+        finishReason: "length",
+      }),
+    );
 
     const { createAIClient } = await loadClient();
     const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
     if (!clientResult.ok) return;
 
-    let completedMeta: StreamMetadata | null = null;
+    const { z } = await import("zod");
+    const result = await clientResult.value.generate("test", reviewSchema(z));
 
-    await clientResult.value.generateStream("test", {
-      onChunk: () => {},
-      onComplete: (_text, meta) => {
-        completedMeta = meta;
-      },
-      onError: () => {},
-    });
-
-    const meta = requireValue<StreamMetadata>(completedMeta, "completion metadata");
-    expect(meta.truncated).toBe(true);
-    expect(meta.finishReason).toBe("length");
-  });
-
-  it("drops empty chunks from the consumer stream", async () => {
-    const { streamText } = await import("ai");
-    vi.mocked(streamText).mockReturnValue({
-      textStream: (async function* () {
-        yield "hello";
-        yield "";
-        yield "world";
-      })(),
-      finishReason: Promise.resolve("stop"),
-    } as unknown as ReturnType<typeof streamText>);
-
-    const { createAIClient } = await loadClient();
-    const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
-    if (!clientResult.ok) return;
-
-    const receivedChunks: string[] = [];
-    let completedText = "";
-
-    await clientResult.value.generateStream("test", {
-      onChunk: (chunk) => {
-        receivedChunks.push(chunk);
-      },
-      onComplete: (text) => {
-        completedText = text;
-      },
-      onError: () => {},
-    });
-
-    expect(receivedChunks).toEqual(["hello", "world"]);
-    expect(completedText).toBe("helloworld");
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("MODEL_ERROR");
+      expect(result.error.message).toMatch(/cut off|output limit/i);
+    }
   });
 });
 

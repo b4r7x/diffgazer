@@ -1,6 +1,17 @@
 import { guardQueryState, useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
-import type { LensId } from "@diffgazer/core/schemas/review";
+import {
+  BACK_SHORTCUT,
+  NAVIGATE_SHORTCUT,
+  type Shortcut,
+} from "@diffgazer/core/schemas/presentation";
+import {
+  ANALYSIS_SETTINGS_SUBTITLE,
+  isLensId,
+  isLensSelectionDirty,
+  type LensId,
+  resolveEffectiveLenses,
+} from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
@@ -11,32 +22,25 @@ import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useNavigation } from "../../../hooks/use-navigation";
-import { useScope } from "../../../hooks/use-scope";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import { useSettingsZone } from "../hooks/use-settings-zone.js";
-import { isLensSelectionDirty, resolveEffectiveLenses } from "../lens-selection.js";
 
-const LIST_SHORTCUTS = [
-  { key: "Esc", label: "Back" },
+const LIST_SHORTCUTS: Shortcut[] = [
+  BACK_SHORTCUT,
   { key: "Tab", label: "Switch Zone" },
-  { key: "↑/↓", label: "Navigate" },
+  NAVIGATE_SHORTCUT,
   { key: "Space", label: "Toggle Lens" },
-] as const;
+];
 
-const BUTTON_SHORTCUTS = [
-  { key: "Esc", label: "Back" },
+const BUTTON_SHORTCUTS: Shortcut[] = [
+  BACK_SHORTCUT,
   { key: "Tab", label: "Switch Zone" },
   { key: "←/→", label: "Move Action" },
   { key: "Enter", label: "Activate" },
-] as const;
-
-function isLensId(value: string): value is LensId {
-  return lensOptions.some((lens) => lens.id === value);
-}
+];
 
 export function AnalysisScreen(): ReactElement {
   const { columns } = useTerminalDimensions();
-  useScope("settings-analysis");
   useBackHandler();
 
   const { goBack } = useNavigation();
@@ -107,14 +111,14 @@ export function AnalysisScreen(): ReactElement {
           <Panel.Content>
             <Box flexDirection="column" gap={1}>
               <SectionHeader>Analysis Settings</SectionHeader>
-              <Text dimColor>Choose which agents run during reviews.</Text>
+              <Text dimColor>{ANALYSIS_SETTINGS_SUBTITLE}</Text>
               <AnalysisSelector
                 selectedLenses={effectiveLenses}
                 onChange={setSelectedLenses}
                 isActive={isListActive}
                 disabled={isSaving}
               />
-              {!hasLensSelection && <Text color="red">Select at least one agent.</Text>}
+              {!hasLensSelection && <Text color="red">Select at least one lens.</Text>}
               <Box gap={1}>
                 <Button
                   variant="ghost"

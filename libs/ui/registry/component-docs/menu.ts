@@ -30,7 +30,7 @@ export const menuDoc: ComponentDoc = {
   usage: { example: "menu-default" },
   examples: [
     { name: "menu-default", title: "Default" },
-    { name: "menu-nested", title: "Hub Variant" },
+    { name: "menu-nested", title: "Detail Variant" },
     { name: "menu-grouped", title: "Grouped with Labels" },
     { name: "menu-checkbox-radio", title: "Checkbox and Radio Items" },
     { name: "menu-icons", title: "Custom Icons" },
@@ -39,8 +39,55 @@ export const menuDoc: ComponentDoc = {
   keyboard: {
     description:
       "Keyboard navigation is built-in. The menu-keyboard example demonstrates controlled mode with explicit state management. Arrow keys move focus, Enter activates selection.",
+    keys: [
+      {
+        keys: "ArrowUp / ArrowDown",
+        action: "Moves highlight to the previous or next enabled item.",
+      },
+      { keys: "Home / End", action: "Moves highlight to the first or last enabled item." },
+      {
+        keys: "Enter / Space",
+        action: "Activates the highlighted item or toggles checkbox/radio items.",
+      },
+      {
+        keys: "Printable character",
+        action: "Moves highlight with typeahead search when enabled by useListbox.",
+      },
+      { keys: "Escape / Tab", action: "Calls onClose on the root menu." },
+      { keys: "ArrowRight", action: "Opens a submenu from MenuSubTrigger." },
+      {
+        keys: "ArrowLeft / Escape",
+        action: "Closes submenu content and returns focus to its trigger.",
+      },
+    ],
     examples: [{ name: "menu-keyboard", title: "Controlled keyboard navigation" }],
   },
+  dataAttributes: [
+    {
+      attribute: "data-highlighted",
+      appliesTo: "MenuItem / MenuItemCheckbox / MenuItemRadio / MenuSubTrigger",
+      values: "present when highlighted",
+      description: "Marks the active descendant for keyboard and pointer highlight styling.",
+    },
+    {
+      attribute: "data-selected",
+      appliesTo: "MenuItem / MenuItemRadio",
+      values: "present when selected",
+      description: "Marks the selected item in selection/radio menu modes.",
+    },
+    {
+      attribute: "data-value",
+      appliesTo: "MenuItem / MenuItemCheckbox / MenuItemRadio / MenuSubTrigger",
+      values: "item id",
+      description: "Stable item id used by keyboard navigation and typeahead.",
+    },
+    {
+      attribute: "data-diffgazer-navigation-item",
+      appliesTo: "Menu items",
+      values: '"true"',
+      description: "Marks descendants discoverable by @diffgazer/keys navigation utilities.",
+    },
+  ],
   props: {
     Menu: {
       selectedId: {
@@ -88,11 +135,11 @@ export const menuDoc: ComponentDoc = {
         description: "Fired when Escape or Tab is pressed.",
       },
       variant: {
-        type: '"default" | "hub"',
+        type: '"default" | "detail"',
         required: false,
         defaultValue: '"default"',
         description:
-          "Visual layout. Hub uses larger rows with right-aligned values for hub-style menus.",
+          "Visual layout. `detail` renders taller, divider-separated rows with a right-aligned value column, for menus where each item carries a status or summary value.",
       },
       wrap: {
         type: "boolean",
@@ -151,13 +198,13 @@ export const menuDoc: ComponentDoc = {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: "Hub variant only. Right-aligned value (badge, count, or status text).",
+        description: "Detail variant only. Right-aligned value (badge, count, or status text).",
       },
       valueVariant: {
         type: '"default" | "success" | "success-badge" | "muted"',
         required: false,
         defaultValue: '"default"',
-        description: "Color treatment for the hub value.",
+        description: "Color treatment for the detail value.",
       },
       icon: {
         type: "ReactNode",

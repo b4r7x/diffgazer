@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
+import { expectFieldInvalid, expectResetClearsInvalid } from "../../testing/form-behavior";
 import { Field } from "../field/index";
 import { Radio, RadioGroup, type RadioGroupItemProps } from "./index";
 import type { RadioGroupProps } from "./radio-group";
@@ -19,6 +20,17 @@ describe("Radio", () => {
     render(<Radio onChange={onChange} label="Option A" />);
     await userEvent.click(screen.getByRole("radio"));
     expect(onChange).toHaveBeenCalledWith(true);
+  });
+
+  it("emits data-slot and data-state styling hooks", () => {
+    const { rerender } = render(<Radio checked={false} label="A" />);
+    const control = screen.getByRole("radio");
+    expect(control).toHaveAttribute("data-slot", "radio");
+    expect(control).toHaveAttribute("data-state", "unchecked");
+    rerender(<Radio checked label="A" />);
+    expect(control).toHaveAttribute("data-state", "checked");
+    rerender(<Radio checked disabled label="A" />);
+    expect(control).toHaveAttribute("data-disabled", "");
   });
 
   it("does not toggle off on second click (radio stays selected)", async () => {
@@ -80,8 +92,7 @@ describe("Radio", () => {
     );
 
     const radio = screen.getByRole("radio", { name: /payment method.*card/i });
-    expect(radio).toHaveAccessibleDescription(/field help.*field error.*local help/i);
-    expect(radio).toHaveAttribute("aria-invalid", "true");
+    expectFieldInvalid(radio, /field help.*field error.*local help/i);
   });
 
   it("submits a meaningful default value and resets uncontrolled state", async () => {
@@ -133,7 +144,24 @@ describe("Radio", () => {
 
     expect(form.reportValidity()).toBe(false);
     expect(radio).toHaveFocus();
-    await waitFor(() => expect(radio).toHaveAttribute("aria-invalid", "true"));
+    await waitFor(() => expectFieldInvalid(radio));
+  });
+
+  it("clears aria-invalid on native form reset after a failed submit", async () => {
+    render(
+      <form aria-label="Test form">
+        <Radio name="choice" required label="Option A" />
+      </form>,
+    );
+
+    await expectResetClearsInvalid(getForm(), screen.getByRole("radio", { name: /option a/i }));
+  });
+
+  it("keeps the hidden form-mirror input out of the a11y tree with no aria-label", () => {
+    const { container } = render(<Radio name="choice" required label="Option A" />);
+    const mirror = container.querySelector('input[type="radio"]');
+    expect(mirror).toHaveAttribute("aria-hidden", "true");
+    expect(mirror).not.toHaveAttribute("aria-label");
   });
 
   it("validates required unnamed radios without contributing FormData", async () => {
@@ -148,7 +176,7 @@ describe("Radio", () => {
 
     expect(form.reportValidity()).toBe(false);
     expect(radio).toHaveFocus();
-    await waitFor(() => expect(radio).toHaveAttribute("aria-invalid", "true"));
+    await waitFor(() => expectFieldInvalid(radio));
     expect(new FormData(form).entries().next().done).toBe(true);
 
     await userEvent.click(radio);
@@ -289,6 +317,19 @@ describe("Radio", () => {
 });
 
 describe("RadioGroup", () => {
+  it("does not dev-warn when selecting a registered item", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    render(
+      <RadioGroup label="Colors" onChange={vi.fn()}>
+        <RadioGroup.Item value="red" label="Red" />
+        <RadioGroup.Item value="blue" label="Blue" />
+      </RadioGroup>,
+    );
+    await userEvent.click(screen.getByRole("radio", { name: /blue/i }));
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it("supports direct namespaced items with custom label UI", async () => {
     const onChange = vi.fn();
     render(
@@ -330,8 +371,7 @@ describe("RadioGroup", () => {
     );
 
     const group = screen.getByRole("radiogroup", { name: "Colors" });
-    expect(group).toHaveAttribute("aria-invalid", "true");
-    expect(group).toHaveAccessibleDescription("Select a color.");
+    expectFieldInvalid(group, "Select a color.");
   });
 
   it("does not select disabled items", async () => {
@@ -358,7 +398,7 @@ describe("RadioGroup", () => {
     await userEvent.hover(screen.getByRole("radio", { name: /blue/i }));
 
     expect(onHighlight).not.toHaveBeenCalled();
-    expect(screen.getByRole("radio", { name: /red/i })).toHaveAttribute("data-highlighted", "true");
+    expect(screen.getByRole("radio", { name: /red/i })).toHaveAttribute("data-highlighted");
     expect(screen.getByRole("radio", { name: /blue/i })).not.toHaveAttribute("data-highlighted");
   });
 
@@ -520,7 +560,7 @@ describe("RadioGroup", () => {
     expect(red).toHaveAttribute("aria-checked", "true");
     expect(red).toHaveAttribute("tabindex", "-1");
     expect(blue).toHaveAttribute("tabindex", "0");
-    expect(blue).toHaveAttribute("data-highlighted", "true");
+    expect(blue).toHaveAttribute("data-highlighted");
   });
 
   it("respects controlled value", async () => {
@@ -744,9 +784,7 @@ describe("RadioGroup", () => {
     const form = getForm();
     expect(form.reportValidity()).toBe(false);
     expect(screen.getByRole("radio", { name: /red/i })).toHaveFocus();
-    await waitFor(() =>
-      expect(screen.getByRole("radiogroup")).toHaveAttribute("aria-invalid", "true"),
-    );
+    await waitFor(() => expectFieldInvalid(screen.getByRole("radiogroup")));
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio).not.toHaveAttribute("aria-invalid");
     }
@@ -773,9 +811,7 @@ describe("RadioGroup", () => {
 
     expect(form.reportValidity()).toBe(false);
     expect(screen.getByRole("radio", { name: /red/i })).toHaveFocus();
-    await waitFor(() =>
-      expect(screen.getByRole("radiogroup")).toHaveAttribute("aria-invalid", "true"),
-    );
+    await waitFor(() => expectFieldInvalid(screen.getByRole("radiogroup")));
   });
 
   it("validates required groups with items rendered through wrapper components", () => {
@@ -809,9 +845,7 @@ describe("RadioGroup", () => {
     const form = getForm();
     expect(form.reportValidity()).toBe(false);
     expect(screen.getByRole("radio", { name: /red/i })).toHaveFocus();
-    await waitFor(() =>
-      expect(screen.getByRole("radiogroup")).toHaveAttribute("aria-invalid", "true"),
-    );
+    await waitFor(() => expectFieldInvalid(screen.getByRole("radiogroup")));
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio).not.toHaveAttribute("aria-invalid");
     }

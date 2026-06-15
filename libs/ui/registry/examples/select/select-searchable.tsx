@@ -16,7 +16,7 @@ export default function SelectSearchable() {
   return (
     <div className="w-64">
       <Select value={value} onChange={setValue}>
-        <SelectTrigger>
+        <SelectTrigger aria-label="Command">
           <SelectValue placeholder="Search commands..." />
         </SelectTrigger>
         <SelectContent>

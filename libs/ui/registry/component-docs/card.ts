@@ -34,7 +34,7 @@ export const cardDoc: ComponentDoc = {
     {
       title: "Interactive",
       content:
-        "Add the interactive prop to enable hover and focus-visible states. Each surface has a unique hover treatment: flat brightens the border, stacked deepens the shadow, inset intensifies the inset shadow, dotted solidifies the border, and glow amplifies the luminance.",
+        "Add the interactive prop to enable hover and focus-visible states. Each surface has a unique hover treatment: flat brightens the border, stacked deepens the shadow, inset intensifies the inset shadow, dotted solidifies the border, and glow amplifies the luminance. The interactive prop only styles the surface — it does not make a div focusable. Render an interactive card on a focusable host (as='a' with href, or as='button' with onClick) or wrap its content in a link/button so keyboard users can reach it and the focus-visible treatment is reachable. See the Interactive example.",
     },
     {
       title: "Floating Border Labels",
@@ -80,11 +80,11 @@ export const cardDoc: ComponentDoc = {
   props: {
     Card: {
       as: {
-        type: '"div" | "article" | "section" | "aside"',
+        type: '"div" | "article" | "section" | "aside" | "a" | "button"',
         required: false,
         defaultValue: '"div"',
         description:
-          "Rendered HTML element. Use article/section/aside when the card is a self-contained content region.",
+          "Rendered HTML element. Use article/section/aside when the card is a self-contained content region, or a/button to make an interactive card keyboard-focusable.",
       },
       surface: {
         type: '"flat" | "stacked" | "inset" | "dotted" | "glow"',
@@ -97,7 +97,8 @@ export const cardDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: "Enables hover and focus-visible states with surface-specific treatments.",
+        description:
+          "Enables hover and focus-visible states with surface-specific treatments. Pair with a focusable host (as='a' or as='button') so keyboard users can reach the card.",
       },
       size: {
         type: '"default" | "sm" | "md" | "lg"',

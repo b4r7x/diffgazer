@@ -34,9 +34,9 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
-import { pathToFileURL } from "node:url";
-import { checkSlo, summarizeStatuses } from "./artifacts/benchmark-slo.mjs";
-import { ENV } from "./artifacts/env.mjs";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { checkSlo, summarizeStatuses } from "./lib/benchmark-slo.mjs";
+import { ENV } from "./lib/env.mjs";
 
 const root = process.cwd();
 
@@ -44,28 +44,11 @@ const root = process.cwd();
 // resolve it through the server package rather than the root module graph.
 const serverRequire = createRequire(resolve(root, "cli/server/package.json"));
 
-// The embedded server reads these BEFORE its config-store singleton initializes,
-// so they must be set prior to importing the built server modules below.
-const fixtureHome = mkdtempSync(join(tmpdir(), "diffgazer-bench-home-"));
-const fixtureProject = realpathSync(mkdtempSync(join(tmpdir(), "diffgazer-bench-project-")));
-const shutdownToken = "benchmark-shutdown-token";
-
-// The server's project-root resolver only admits paths under the OS home or that
-// contain a `.git` directory; a marker dir is enough (it never shells out to git).
-mkdirSync(join(fixtureProject, ".git"), { recursive: true });
-
-process.env.DIFFGAZER_HOME = fixtureHome;
-// The server resolves the project root from this env var (the packaged-mode
-// path), so requests need no project-root header and bypass the header-only
-// allowed-path check that would reject a temp directory.
-process.env.DIFFGAZER_PROJECT_ROOT = fixtureProject;
-process.env.DIFFGAZER_SHUTDOWN_TOKEN = shutdownToken;
-// Bench latency should measure the request path, not thousands of stdout writes
-// from the standalone server's default per-request info logger. Match the
-// packaged/default quietness unless the caller explicitly asked for another
-// level.
-if (!process.env.DIFFGAZER_LOG_LEVEL) {
-  process.env.DIFFGAZER_LOG_LEVEL = "warn";
+export function applyBenchmarkEnvDefaults(env = process.env) {
+  if (!env.DIFFGAZER_LOG_LEVEL) {
+    env.DIFFGAZER_LOG_LEVEL = "warn";
+  }
+  return env;
 }
 
 // Service Level Objectives. Conservative starting targets for a local,
@@ -163,82 +146,93 @@ async function main() {
     );
   }
 
-  const { createApp } = await import(pathToFileURL(SERVER_DIST).href);
-  const { createAdaptorServer } = await import(
-    pathToFileURL(serverRequire.resolve("@hono/node-server")).href
-  );
-  // Workspace packages are not linked under scripts/, and core's subpath exports
-  // are import-only (no CJS require condition), so import the built dist directly.
-  const { SHUTDOWN_TOKEN_HEADER } = await import(
-    pathToFileURL(resolve(root, "libs/core/dist/api/index.js")).href
-  );
+  const fixtureHome = mkdtempSync(join(tmpdir(), "diffgazer-bench-home-"));
+  const fixtureProject = realpathSync(mkdtempSync(join(tmpdir(), "diffgazer-bench-project-")));
+  const shutdownToken = "benchmark-shutdown-token";
 
-  const authHeaders = {
-    [SHUTDOWN_TOKEN_HEADER]: shutdownToken,
-    host: "127.0.0.1",
-  };
+  mkdirSync(join(fixtureProject, ".git"), { recursive: true });
 
-  const app = createApp();
-  const server = createAdaptorServer({ fetch: app.fetch, hostname: "127.0.0.1" });
-  const functionalFailures = [];
-  const latencyBreaches = [];
-  const collectors = { functionalFailures, latencyBreaches };
+  process.env.DIFFGAZER_HOME = fixtureHome;
+  process.env.DIFFGAZER_PROJECT_ROOT = fixtureProject;
+  process.env.DIFFGAZER_SHUTDOWN_TOKEN = shutdownToken;
+  applyBenchmarkEnvDefaults(process.env);
 
   try {
-    const baseUrl = await listen(server);
+    const { createApp } = await import(pathToFileURL(SERVER_DIST).href);
+    const { createAdaptorServer } = await import(
+      pathToFileURL(serverRequire.resolve("@hono/node-server")).href
+    );
+    // Workspace packages are not linked under scripts/, and core's subpath exports
+    // are import-only (no CJS require condition), so import the built dist directly.
+    const { SHUTDOWN_TOKEN_HEADER } = await import(
+      pathToFileURL(resolve(root, "libs/core/dist/api/index.js")).href
+    );
 
-    // Warm up so JIT / first-request costs do not skew the percentiles.
-    await runScenario(baseUrl, { path: "/health", totalRequests: 50, concurrency: 5 });
-    await runScenario(baseUrl, {
-      path: "/api/config/init",
-      headers: authHeaders,
-      totalRequests: 50,
-      concurrency: 5,
-    });
+    const authHeaders = {
+      [SHUTDOWN_TOKEN_HEADER]: shutdownToken,
+      host: "127.0.0.1",
+    };
 
-    const health = await runScenario(baseUrl, {
-      path: "/health",
-      totalRequests: 2000,
-      concurrency: 50,
-    });
-    report("GET /health", health);
-    checkSlo(collectors, "GET /health", health, SLO.health);
+    const app = createApp();
+    const server = createAdaptorServer({ fetch: app.fetch, hostname: "127.0.0.1" });
+    const functionalFailures = [];
+    const latencyBreaches = [];
+    const collectors = { functionalFailures, latencyBreaches };
 
-    const configInit = await runScenario(baseUrl, {
-      path: "/api/config/init",
-      headers: authHeaders,
-      totalRequests: 1000,
-      concurrency: 40,
-    });
-    report("GET /api/config/init", configInit);
-    checkSlo(collectors, "GET /api/config/init", configInit, SLO.configInit);
+    try {
+      const baseUrl = await listen(server);
+
+      // Warm up so JIT / first-request costs do not skew the percentiles.
+      await runScenario(baseUrl, { path: "/health", totalRequests: 50, concurrency: 5 });
+      await runScenario(baseUrl, {
+        path: "/api/config/init",
+        headers: authHeaders,
+        totalRequests: 50,
+        concurrency: 5,
+      });
+
+      const health = await runScenario(baseUrl, {
+        path: "/health",
+        totalRequests: 2000,
+        concurrency: 50,
+      });
+      report("GET /health", health);
+      checkSlo(collectors, "GET /health", health, SLO.health);
+
+      const configInit = await runScenario(baseUrl, {
+        path: "/api/config/init",
+        headers: authHeaders,
+        totalRequests: 1000,
+        concurrency: 40,
+      });
+      report("GET /api/config/init", configInit);
+      checkSlo(collectors, "GET /api/config/init", configInit, SLO.configInit);
+    } finally {
+      await new Promise((resolveClose) => server.close(() => resolveClose()));
+    }
+
+    // Functional regressions always gate. Latency breaches gate only in strict
+    // mode; otherwise warn so machine-dependent timings do not fail CI by default.
+    const strict = process.env[ENV.smokeStrictSkips] === "1";
+    if (latencyBreaches.length > 0) {
+      const heading = strict
+        ? "Benchmark SLO breach (strict):"
+        : "WARN: benchmark latency below SLO (not gating):";
+      (strict ? console.error : console.warn)([heading, ...latencyBreaches].join("\n"));
+    }
+    const gating = [...functionalFailures, ...(strict ? latencyBreaches : [])];
+    if (gating.length > 0) {
+      console.error(["Benchmark failed:", ...gating].join("\n"));
+      process.exit(1);
+    }
+
+    console.log("OK: server benchmark functional checks passed");
   } finally {
-    await new Promise((resolveClose) => server.close(() => resolveClose()));
+    rmSync(fixtureHome, { recursive: true, force: true });
+    rmSync(fixtureProject, { recursive: true, force: true });
   }
-
-  // Functional regressions always gate. Latency breaches gate only in strict
-  // mode; otherwise warn so machine-dependent timings do not fail CI by default.
-  const strict = process.env[ENV.smokeStrictSkips] === "1";
-  if (latencyBreaches.length > 0) {
-    const heading = strict
-      ? "Benchmark SLO breach (strict):"
-      : "WARN: benchmark latency below SLO (not gating):";
-    (strict ? console.error : console.warn)([heading, ...latencyBreaches].join("\n"));
-  }
-  const gating = [...functionalFailures, ...(strict ? latencyBreaches : [])];
-  if (gating.length > 0) {
-    console.error(["Benchmark failed:", ...gating].join("\n"));
-    process.exit(1);
-  }
-
-  console.log("OK: server benchmark functional checks passed");
 }
 
-// The fixtures are created at module load, so clean them up here to cover
-// failures that occur before main() enters its own try (e.g. import errors).
-try {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   await main();
-} finally {
-  rmSync(fixtureHome, { recursive: true, force: true });
-  rmSync(fixtureProject, { recursive: true, force: true });
 }

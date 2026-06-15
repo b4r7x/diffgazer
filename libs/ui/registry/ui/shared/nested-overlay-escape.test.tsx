@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Dialog } from "../dialog/index";
+import { Menu } from "../menu/index";
 import { Popover } from "../popover/index";
 
 // axe skipped: nested-overlay escape behavior test; dialog/popover primitive tests own a11y assertions.
@@ -47,6 +48,84 @@ describe("Nested overlay: Popover inside Dialog", () => {
     expect(dialog).toHaveAttribute("data-state", "open");
     expect(popoverTrigger).toHaveAttribute("aria-expanded", "false");
     expect(popover).toHaveAttribute("data-state", "closed");
+  });
+});
+
+describe("Nested overlay: Menu inside Dialog", () => {
+  it("Escape on a menu with onClose closes only the menu (keydown defaultPrevented), not the dialog", async () => {
+    const onDialogChange = vi.fn();
+    const onMenuClose = vi.fn();
+
+    render(
+      <Dialog defaultOpen onOpenChange={onDialogChange}>
+        <Dialog.Content>
+          <Dialog.Title>Menu dialog</Dialog.Title>
+          <Menu aria-label="Actions" autoFocus defaultHighlighted="one" onClose={onMenuClose}>
+            <Menu.Item id="one">One</Menu.Item>
+            <Menu.Item id="two">Two</Menu.Item>
+          </Menu>
+        </Dialog.Content>
+      </Dialog>,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Menu dialog" });
+    const menu = screen.getByRole("menu", { name: "Actions" });
+    await waitFor(() => expect(menu).toHaveFocus());
+
+    const keydown = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+    });
+    menu.dispatchEvent(keydown);
+
+    // The menu consumes the Escape so the surrounding <dialog> cancel does not fire.
+    expect(keydown.defaultPrevented).toBe(true);
+    expect(onMenuClose).toHaveBeenCalled();
+    expect(onDialogChange).not.toHaveBeenCalled();
+    expect(dialog).toHaveAttribute("data-state", "open");
+  });
+
+  it("Escape on a submenu closes only the submenu (keydown defaultPrevented), not the dialog", async () => {
+    const onDialogChange = vi.fn();
+
+    render(
+      <Dialog defaultOpen onOpenChange={onDialogChange}>
+        <Dialog.Content>
+          <Dialog.Title>Submenu dialog</Dialog.Title>
+          <Menu aria-label="Actions" autoFocus defaultHighlighted="edit">
+            <Menu.Sub>
+              <Menu.SubTrigger id="edit">Edit</Menu.SubTrigger>
+              <Menu.SubContent>
+                <Menu.Item id="undo">Undo</Menu.Item>
+              </Menu.SubContent>
+            </Menu.Sub>
+          </Menu>
+        </Dialog.Content>
+      </Dialog>,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Submenu dialog" });
+    const parentMenu = screen.getByRole("menu", { name: "Actions" });
+    await waitFor(() => expect(parentMenu).toHaveFocus());
+    await userEvent.keyboard("{ArrowRight}");
+
+    const submenu = await waitFor(() => {
+      const found = screen.getAllByRole("menu").find((candidate) => candidate !== parentMenu);
+      if (!found) throw new Error("submenu not open");
+      return found;
+    });
+
+    const keydown = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+    });
+    submenu.dispatchEvent(keydown);
+
+    expect(keydown.defaultPrevented).toBe(true);
+    expect(onDialogChange).not.toHaveBeenCalled();
+    expect(dialog).toHaveAttribute("data-state", "open");
   });
 });
 

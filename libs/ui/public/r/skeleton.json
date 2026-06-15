@@ -16,7 +16,7 @@
     },
     {
       "path": "registry/ui/skeleton/skeleton.tsx",
-      "content": "import type { HTMLAttributes, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport interface SkeletonProps extends HTMLAttributes<HTMLDivElement> {\n  className?: string;\n  ref?: Ref<HTMLDivElement>;\n}\n\nexport function Skeleton({ className, ref, ...props }: SkeletonProps) {\n  return (\n    <div\n      ref={ref}\n      aria-hidden=\"true\"\n      className={cn(\"rounded-sm bg-secondary motion-safe:animate-pulse\", className)}\n      {...props}\n    />\n  );\n}\n",
+      "content": "import type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for skeleton. */\nexport type SkeletonProps = ComponentProps<\"div\">;\n\n/** Decorative placeholder div. Use className to set width and height. */\nexport function Skeleton({ className, ref, ...props }: SkeletonProps) {\n  return (\n    <div\n      ref={ref}\n      data-slot=\"skeleton\"\n      aria-hidden=\"true\"\n      className={cn(\"rounded-sm bg-secondary motion-safe:animate-pulse\", className)}\n      {...props}\n    />\n  );\n}\n",
       "type": "registry:ui"
     }
   ],

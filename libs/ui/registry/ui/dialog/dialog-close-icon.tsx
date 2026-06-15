@@ -1,15 +1,22 @@
 "use client";
 
-import type { HTMLAttributes, Ref } from "react";
+import type { ComponentProps, Ref } from "react";
 import { cn } from "@/lib/utils";
 import { useDialogDismiss } from "./dialog-context";
 
+/** Props for dialog close icon. */
 export interface DialogCloseIconProps
-  extends Omit<HTMLAttributes<HTMLButtonElement>, "type" | "children" | "aria-label"> {
+  extends Omit<ComponentProps<"button">, "type" | "children" | "aria-label" | "ref"> {
+  /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLButtonElement>;
+  /** Accessible name for the close button. Override for localization or alternative phrasing. */
   "aria-label"?: string;
 }
 
+/**
+ * Optional top-right close button - render LAST inside DialogContent so DOM/Tab order is
+ * correct (it absolute-positions itself)
+ */
 export function DialogCloseIcon({
   ref,
   className,
@@ -26,7 +33,7 @@ export function DialogCloseIcon({
       data-slot="dialog-close-icon"
       aria-label={ariaLabel}
       className={cn(
-        "absolute top-[var(--dlg-close-btn-inset)] right-[var(--dlg-close-btn-inset)] z-10",
+        "absolute top-[var(--dialog-close-btn-inset)] right-[var(--dialog-close-btn-inset)] z-10",
         "inline-flex items-center justify-center w-7 h-7 rounded-sm font-mono text-base leading-none",
         "text-muted-foreground hover:text-foreground transition-colors cursor-pointer",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",

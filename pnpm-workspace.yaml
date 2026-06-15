@@ -3,3 +3,4 @@ packages:
   - "cli/*"
   - "libs/*"
   - "libs/keys/artifacts"
+  - "libs/keys/examples/*"

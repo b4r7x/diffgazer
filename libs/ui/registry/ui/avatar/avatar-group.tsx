@@ -1,12 +1,13 @@
 "use client";
 
 import { cva, type VariantProps } from "class-variance-authority";
-import { Children, type ReactNode, useMemo } from "react";
+import { Children, type ComponentProps, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Overflow } from "../overflow/overflow";
 import { AvatarGroupContext } from "./avatar-context";
 import { AvatarIndicator } from "./avatar-indicator";
 
+/** Class variants for avatar group spacing. */
 export const avatarGroupSpacingVariants = cva("", {
   variants: {
     spacing: {
@@ -17,15 +18,20 @@ export const avatarGroupSpacingVariants = cva("", {
   defaultVariants: { spacing: "overlap" },
 });
 
-export interface AvatarGroupProps {
+/** Props for avatar group. */
+export interface AvatarGroupProps extends Omit<ComponentProps<"div">, "role"> {
+  /**
+   * Hard cap on visible avatars. Extras render as an AvatarIndicator. When omitted, AvatarGroup
+   * measures overflow with Overflow.
+   */
   max?: number;
+  /** Overlap stacks avatars; gap spaces them apart. */
   spacing?: NonNullable<VariantProps<typeof avatarGroupSpacingVariants>["spacing"]>;
-  children: ReactNode;
+  /** Default size applied to descendant Avatars that do not set their own size. */
   size?: "sm" | "md" | "lg" | null;
-  className?: string;
-  "aria-label"?: string;
 }
 
+/** Overlapping stack of avatars with max overflow (+N indicator). */
 export function AvatarGroup({
   max,
   spacing = "overlap",
@@ -33,6 +39,7 @@ export function AvatarGroup({
   size = "md",
   className,
   "aria-label": ariaLabel = "Avatars",
+  ...props
 }: AvatarGroupProps) {
   const allItems = Children.toArray(children);
   const groupContextValue = useMemo(() => ({ size }), [size]);
@@ -45,6 +52,7 @@ export function AvatarGroup({
       <AvatarGroupContext value={groupContextValue}>
         {/* biome-ignore lint/a11y/useSemanticElements: role="group" labels the related set of avatars; <fieldset> is for form controls and is not appropriate here. */}
         <div
+          {...props}
           role="group"
           aria-label={ariaLabel}
           className={cn(
@@ -63,7 +71,7 @@ export function AvatarGroup({
   return (
     <AvatarGroupContext value={groupContextValue}>
       {/* biome-ignore lint/a11y/useSemanticElements: role="group" labels the related set of avatars; <fieldset> is for form controls and is not appropriate here. */}
-      <div role="group" aria-label={ariaLabel}>
+      <div {...props} role="group" aria-label={ariaLabel}>
         <Overflow
           mode="items"
           gap={avatarGroupSpacingVariants({ spacing })}

@@ -1,4 +1,4 @@
-import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api";
+import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api/protocol";
 import type { Context } from "hono";
 import { isPackaged, resolveProjectRoot } from "../paths.js";
 

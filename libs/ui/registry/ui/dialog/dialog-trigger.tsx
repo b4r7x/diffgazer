@@ -10,33 +10,56 @@ import {
   type Ref,
   type RefCallback,
 } from "react";
-import { composeRefs } from "@/lib/compose-refs";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { cn } from "@/lib/utils";
 import { useDialogContext } from "./dialog-context";
 
+/** Props for dialog trigger render. */
 export interface DialogTriggerRenderProps {
+  /** Ref forwarded to the underlying element. */
   ref: RefCallback<HTMLElement>;
+  /** Additional class names merged onto the rendered element. */
   className?: string;
+  /** ARIA popup type forwarded to the rendered element. */
   "aria-haspopup": "dialog";
+  /** ARIA expanded state forwarded to the rendered element. */
   "aria-expanded": boolean;
+  /** ID of the element controlled by the rendered element. */
   "aria-controls": string;
+  /** Called when click occurs. */
   onClick: MouseEventHandler<HTMLElement>;
 }
 
+/** Props for dialog trigger. */
 export interface DialogTriggerProps {
+  /**
+   * Trigger button or render function. The render form receives ref, className,
+   * aria-haspopup/expanded/controls, and onClick.
+   */
   children: ReactNode | ((props: DialogTriggerRenderProps) => ReactNode);
+  /** Additional class names merged onto the rendered element. */
   className?: string;
+  /** Called when click occurs. */
   onClick?: MouseEventHandler<HTMLElement>;
+  /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLElement>;
 }
 
+/** Props for dialog trigger element. */
 interface DialogTriggerElementProps {
+  /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLElement>;
+  /** Additional class names merged onto the rendered element. */
   className?: string;
+  /** Selection mode. */
   type?: string;
+  /** ARIA popup type forwarded to the rendered element. */
   "aria-haspopup"?: "dialog";
+  /** ARIA expanded state forwarded to the rendered element. */
   "aria-expanded"?: boolean;
+  /** ID of the element controlled by the rendered element. */
   "aria-controls"?: string;
+  /** Called when click occurs. */
   onClick?: MouseEventHandler<HTMLElement>;
 }
 
@@ -63,9 +86,13 @@ function mergeClickHandlers(
   };
 }
 
+/** Opens the dialog. */
 export function DialogTrigger({ children, className, onClick, ref }: DialogTriggerProps) {
   const { open, onOpenChange, contentId, triggerRef } = useDialogContext();
-  const composedRef = composeRefs(triggerRef, ref);
+  const childRef = isValidElement<DialogTriggerElementProps>(children)
+    ? children.props.ref
+    : undefined;
+  const composedRef = useComposedRefs(triggerRef, ref, childRef);
 
   const handleClick: MouseEventHandler<HTMLElement> = (e) => {
     onClick?.(e);
@@ -90,7 +117,7 @@ export function DialogTrigger({ children, className, onClick, ref }: DialogTrigg
 
       return cloneElement(child, {
         ...buttonType,
-        ref: composeRefs(composedRef, child.props.ref),
+        ref: composedRef,
         className: cn(child.props.className, className),
         "aria-haspopup": triggerProps["aria-haspopup"],
         "aria-expanded": triggerProps["aria-expanded"],

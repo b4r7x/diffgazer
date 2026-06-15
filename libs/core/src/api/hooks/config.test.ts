@@ -1,13 +1,11 @@
 /** @vitest-environment jsdom */
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
-import { createElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProviderModelsResponse } from "../../schemas/config/index.js";
+import { createTestQueryWrapper } from "../../testing/query-wrapper.js";
 import type { BoundApi } from "../bound.js";
 import { useProviderModels } from "./config.js";
-import { ApiProvider } from "./context.js";
 
 function makeResponse(id: string): ProviderModelsResponse {
   return {
@@ -19,13 +17,7 @@ function makeResponse(id: string): ProviderModelsResponse {
 }
 
 function makeWrapper(api: BoundApi) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return ({ children }: { children: ReactNode }) =>
-    createElement(
-      QueryClientProvider,
-      { client: queryClient },
-      createElement(ApiProvider, { value: api }, children),
-    );
+  return createTestQueryWrapper({ api }).Wrapper;
 }
 
 describe("useProviderModels", () => {

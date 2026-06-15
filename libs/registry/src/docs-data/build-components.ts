@@ -1,11 +1,10 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-import type { Logger } from "../logger.js";
+import { log } from "../logger.js";
 import type { Registry, RegistryItem } from "../registry-types.js";
 import { cleanDir } from "../utils/fs.js";
 import { writeJson } from "../utils/json.js";
 import type { DocsHighlighter } from "./highlight.js";
-import { toYamlString } from "./naming.js";
 
 export interface ComponentsConfig {
   contentDir: string;
@@ -29,10 +28,8 @@ export async function buildComponentsData(params: {
   componentsConfig: ComponentsConfig;
   outputDir: string;
   highlighter: DocsHighlighter;
-  skipMdxGeneration?: boolean;
-  logger: Logger;
 }): Promise<{ componentsCount: number; errors: string[] }> {
-  const { registry, componentsConfig, outputDir, highlighter, skipMdxGeneration, logger } = params;
+  const { registry, componentsConfig, outputDir, highlighter } = params;
   const errors: string[] = [];
 
   const componentItems = registry.items.filter(componentsConfig.filter);
@@ -45,7 +42,7 @@ export async function buildComponentsData(params: {
   const componentDataMap: Record<string, Record<string, unknown>> = {};
 
   for (const item of componentItems) {
-    logger.info(`Processing: ${item.name}`);
+    log.info(`Processing: ${item.name}`);
     try {
       const data = await componentsConfig.processComponent(item, highlighter, registry);
       if (data) {
@@ -60,7 +57,7 @@ export async function buildComponentsData(params: {
     writeJson(resolve(componentsDir, `${name}.json`), data);
   }
   const componentsCount = Object.keys(componentDataMap).length;
-  logger.info(`Wrote ${componentsCount} per-component JSON files`);
+  log.info(`Wrote ${componentsCount} per-component JSON files`);
 
   const componentList = sortedItems
     .filter((item) => componentDataMap[item.name])
@@ -70,7 +67,7 @@ export async function buildComponentsData(params: {
       description: getDescription(componentDataMap[item.name], item),
     }));
   writeJson(resolve(outputDir, "component-list.json"), componentList);
-  logger.info(`Wrote component-list.json (${componentList.length} entries)`);
+  log.info(`Wrote component-list.json (${componentList.length} entries)`);
 
   mkdirSync(componentsConfig.contentDir, { recursive: true });
 
@@ -81,23 +78,6 @@ export async function buildComponentsData(params: {
     title: "Components",
     pages: componentPages,
   });
-
-  if (!skipMdxGeneration) {
-    cleanDir(componentsConfig.contentDir, ".mdx");
-    for (const item of sortedItems) {
-      if (!componentDataMap[item.name]) continue;
-      const desc = getDescription(componentDataMap[item.name], item);
-      writeFileSync(
-        resolve(componentsConfig.contentDir, `${item.name}.mdx`),
-        `---\ntitle: ${toYamlString(item.title ?? item.name)}\ndescription: ${toYamlString(desc)}\ncomponent: ${toYamlString(item.name)}\n---\n\n<ComponentDocPage name="${item.name}" />\n`,
-      );
-    }
-    logger.info(`Wrote ${componentPages.length} component MDX pages`);
-  } else {
-    logger.info(
-      `Skipped component MDX generation (${componentPages.length} components, hand-authored MDX)`,
-    );
-  }
 
   return { componentsCount, errors };
 }

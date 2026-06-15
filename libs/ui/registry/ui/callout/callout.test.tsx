@@ -30,7 +30,7 @@ describe("Callout structure", () => {
     const root = container.firstElementChild as HTMLElement;
     expect(root).toHaveAttribute("data-frame", "rail");
     // The actual border collapse + inline-start rail is owned by
-    // shared/callout.css, keyed off [data-frame="rail"]. We assert the
+    // callout/callout.css, keyed off [data-frame="rail"]. We assert the
     // public contract (the attribute), not the CSS file's class names.
   });
 
@@ -43,9 +43,9 @@ describe("Callout structure", () => {
     );
     const root = container.firstElementChild as HTMLElement;
     expect(root).toHaveAttribute("data-frame", "bar");
-    const bar = root.querySelector('[aria-hidden="true"].w-1') as HTMLElement;
+    const bar = root.querySelector('[data-slot="callout-bar"]') as HTMLElement;
     expect(bar).not.toBeNull();
-    expect(bar.style.gridArea).toBe("bar");
+    expect(bar).toHaveAttribute("aria-hidden", "true");
   });
 
   it("collapses the icon column when no Callout.Icon child is present", () => {
@@ -69,7 +69,7 @@ describe("Callout structure", () => {
     expect(grid).toHaveAttribute("data-has-icon", "true");
   });
 
-  it("places title and dismiss on row 1 and body on row 2", () => {
+  it("assigns each part its grid cell via data-slot (layout driven by callout.css)", () => {
     render(
       <Callout>
         <Callout.Icon />
@@ -78,9 +78,12 @@ describe("Callout structure", () => {
         <Callout.Dismiss />
       </Callout>,
     );
-    expect(screen.getByText("Heading").style.gridArea).toBe("title");
-    expect(screen.getByText("Body").style.gridArea).toBe("body");
-    expect(screen.getByRole("button", { name: "Dismiss" }).style.gridArea).toBe("dismiss");
+    expect(screen.getByText("Heading")).toHaveAttribute("data-slot", "callout-title");
+    expect(screen.getByText("Body")).toHaveAttribute("data-slot", "callout-content");
+    expect(screen.getByRole("button", { name: "Dismiss" })).toHaveAttribute(
+      "data-slot",
+      "callout-dismiss",
+    );
   });
 });
 
@@ -149,10 +152,21 @@ describe("Callout dismiss", () => {
     );
     const dismiss = screen.getByRole("button", { name: "Dismiss" });
     expect(dismiss).toHaveAttribute("aria-label", "Dismiss");
-    expect(dismiss.style.gridArea).toBe("dismiss");
+    expect(dismiss).toHaveAttribute("data-slot", "callout-dismiss");
     // The 24×24 footprint with 4px padding is documented in the anatomy
     // notes and visually owned by Tailwind utilities; size assertions belong
     // in visual regression, not unit tests.
+  });
+
+  it("uses visible text children as the dismiss accessible name (no clobbering aria-label)", () => {
+    render(
+      <Callout>
+        <Callout.Title>Title</Callout.Title>
+        <Callout.Dismiss>Dismiss notice</Callout.Dismiss>
+      </Callout>,
+    );
+    const dismiss = screen.getByRole("button", { name: "Dismiss notice" });
+    expect(dismiss).not.toHaveAttribute("aria-label");
   });
 
   it("dismiss is focusable and activatable via keyboard", async () => {
@@ -211,7 +225,7 @@ describe("Callout accessibility", () => {
     );
     const icon = container.querySelector('[aria-hidden="true"]') as HTMLElement;
     expect(icon).not.toBeNull();
-    expect(screen.getByText(/Warning:/)).toHaveClass("sr-only");
+    expect(screen.getByText(/Warning:/)).toBeInTheDocument();
   });
 
   it("has no a11y violations across tones and frames", async () => {

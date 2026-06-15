@@ -20,7 +20,7 @@ function CustomInput({
 
   return (
     <input
-      className="border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-100"
+      className="border border-border bg-background px-3 py-1.5 text-sm text-foreground"
       value={current}
       onChange={(e) => setCurrent(e.target.value)}
     />
@@ -33,12 +33,12 @@ export default function ControllableStateBasic() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs text-neutral-400">Uncontrolled</span>
+        <span className="text-xs text-muted-foreground">Uncontrolled</span>
         <CustomInput defaultValue="type here…" />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs text-neutral-400">Controlled: {controlled}</span>
+        <span className="text-xs text-muted-foreground">Controlled: {controlled}</span>
         <CustomInput value={controlled} onChange={setControlled} />
       </div>
     </div>

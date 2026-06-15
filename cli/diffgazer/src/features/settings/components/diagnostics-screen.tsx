@@ -1,8 +1,17 @@
-import { useDiagnosticsData } from "@diffgazer/core/api/hooks";
+import {
+  deriveDiagnosticsActions,
+  getContextActionLabel,
+  getContextPresentation,
+  getServerStatusPresentation,
+  getSetupPresentation,
+  refreshAllDiagnostics,
+  useDiagnosticsData,
+} from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { formatTimestampOrNA } from "@diffgazer/core/format";
+import { BACK_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
-import type { ReactElement } from "react";
+import { type ReactElement, useState } from "react";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { KeyValue } from "../../../components/ui/key-value";
@@ -10,25 +19,11 @@ import { Panel } from "../../../components/ui/panel";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
-import { useScope } from "../../../hooks/use-scope";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
-import {
-  deriveDiagnosticsActions,
-  triggerDiagnosticsRefreshAll,
-} from "../diagnostics/derive-actions.js";
-import {
-  getContextLabel,
-  getContextVariant,
-  getServerBadgeVariant,
-  getServerLabel,
-  getSetupLabel,
-  getSetupVariant,
-} from "../diagnostics/derive-display.js";
 import { useSettingsZone } from "../hooks/use-settings-zone.js";
 
 export function DiagnosticsScreen(): ReactElement {
   const { columns } = useTerminalDimensions();
-  useScope("settings-diagnostics");
   useBackHandler();
 
   const {
@@ -46,6 +41,8 @@ export function DiagnosticsScreen(): ReactElement {
     refetchContext,
   } = useDiagnosticsData();
 
+  const [isRefreshingAll, setIsRefreshingAll] = useState(false);
+
   const { isButtonActive } = useSettingsZone({
     buttonCount: 2,
     disabled: isRefreshing,
@@ -57,30 +54,29 @@ export function DiagnosticsScreen(): ReactElement {
       { key: "←/→", label: "Move Action" },
       { key: "Enter", label: "Activate" },
     ],
-    rightShortcuts: [{ key: "Esc", label: "Back" }],
+    rightShortcuts: [BACK_SHORTCUT],
+  });
+
+  const { refreshAllDisabled, contextActionDisabled } = deriveDiagnosticsActions({
+    canRegenerate,
+    isRefreshing,
+    isRefreshingAll,
   });
 
   const handleRefreshAll = () => {
-    void triggerDiagnosticsRefreshAll({ retryServer, refetchContext });
+    if (refreshAllDisabled) return;
+    setIsRefreshingAll(true);
+    void refreshAllDiagnostics({ retryServer, refetchContext }).finally(() => {
+      setIsRefreshingAll(false);
+    });
   };
 
-  const { contextActionLabel, contextActionDisabled } = deriveDiagnosticsActions({
-    canRegenerate,
-    isRefreshing,
-    contextStatus,
-  });
-
-  const serverStatus = serverState.status;
-  const serverError = serverState.status === "error" ? serverState.message : null;
+  const contextActionLabel = getContextActionLabel(isRefreshing, contextStatus);
   const nodeVersion = process.version;
 
-  const setupInput = { isLoading: initLoading, error: initError, setupStatus };
-  const serverBadgeVariant = getServerBadgeVariant(serverStatus);
-  const serverLabel = getServerLabel(serverStatus, serverError);
-  const setupLabel = getSetupLabel(setupInput);
-  const setupVariant = getSetupVariant(setupInput);
-  const contextLabel = getContextLabel(contextStatus, contextError);
-  const contextVariant = getContextVariant(contextStatus);
+  const server = getServerStatusPresentation(serverState);
+  const setup = getSetupPresentation({ isLoading: initLoading, error: initError, setupStatus });
+  const context = getContextPresentation(contextStatus, contextError);
 
   return (
     <Box justifyContent="center" flexGrow={1}>
@@ -92,8 +88,8 @@ export function DiagnosticsScreen(): ReactElement {
               <KeyValue
                 label="Server"
                 value={
-                  <Badge variant={serverBadgeVariant} dot>
-                    {serverLabel}
+                  <Badge variant={server.variant} dot>
+                    {server.label}
                   </Badge>
                 }
                 labelWidth={14}
@@ -101,8 +97,8 @@ export function DiagnosticsScreen(): ReactElement {
               <KeyValue
                 label="Setup"
                 value={
-                  <Badge variant={setupVariant} dot>
-                    {setupLabel}
+                  <Badge variant={setup.variant} dot>
+                    {setup.label}
                   </Badge>
                 }
                 labelWidth={14}
@@ -110,8 +106,8 @@ export function DiagnosticsScreen(): ReactElement {
               <KeyValue
                 label="Context"
                 value={
-                  <Badge variant={contextVariant} dot>
-                    {contextLabel}
+                  <Badge variant={context.variant} dot>
+                    {context.label}
                   </Badge>
                 }
                 labelWidth={14}
@@ -125,8 +121,13 @@ export function DiagnosticsScreen(): ReactElement {
               )}
               <KeyValue label="Node version" value={nodeVersion} labelWidth={14} />
               <Box gap={1} marginTop={1}>
-                <Button variant="secondary" onPress={handleRefreshAll} isActive={isButtonActive(0)}>
-                  Refresh Diagnostics
+                <Button
+                  variant="secondary"
+                  onPress={handleRefreshAll}
+                  disabled={refreshAllDisabled}
+                  isActive={isButtonActive(0)}
+                >
+                  {isRefreshingAll ? "Refreshing..." : "Refresh Diagnostics"}
                 </Button>
                 <Button
                   variant="primary"

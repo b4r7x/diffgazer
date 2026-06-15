@@ -1,15 +1,9 @@
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, posix, resolve } from "node:path";
-
-export const RELATIVE_JS_IMPORT =
-  /((?:\bfrom\s+|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)(["']))(\.{1,2}\/[^"']+)\.js\2/g;
+import { RELATIVE_JS_IMPORT_RE, stripRelativeJsExtensions } from "@diffgazer/registry";
 
 export function transformKeysPublicRegistryImportContent(content: string): string {
-  return content.replace(
-    RELATIVE_JS_IMPORT,
-    (_match: string, prefix: string, quote: string, specifier: string) =>
-      `${prefix}${specifier}${quote}`,
-  );
+  return stripRelativeJsExtensions(content);
 }
 
 export const RELATIVE_IMPORT =
@@ -114,7 +108,7 @@ export function assertNoRelativeJsImports(outputDir: string): void {
     ) as PublicRegistryItemJson;
     for (const file of item.files ?? []) {
       if (typeof file.content !== "string") continue;
-      const matches = file.content.match(new RegExp(RELATIVE_JS_IMPORT.source, "g"));
+      const matches = file.content.match(new RegExp(RELATIVE_JS_IMPORT_RE.source, "g"));
       if (matches) {
         offenders.push(`${entry} (${file.target ?? file.path}): ${matches.join(", ")}`);
       }

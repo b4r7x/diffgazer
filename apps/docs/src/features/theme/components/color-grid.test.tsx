@@ -4,7 +4,16 @@ import { THEME_DOCS_COLOR_GROUPS } from "@diffgazer/ui/theme";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ThemeProvider } from "@/hooks/theme-context";
 import { ColorGrid } from "./color-grid";
+
+function renderColorGrid() {
+  return render(
+    <ThemeProvider>
+      <ColorGrid />
+    </ThemeProvider>,
+  );
+}
 
 const sampleSwatch = THEME_DOCS_COLOR_GROUPS[0]?.tokens[0];
 if (!sampleSwatch) {
@@ -20,7 +29,7 @@ describe("ColorGrid", () => {
     const user = userEvent.setup();
     const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
 
-    render(<ColorGrid />);
+    renderColorGrid();
 
     const swatchButton = screen.getByRole("button", {
       name: `Copy ${sampleSwatch.name} CSS variable`,
@@ -35,7 +44,7 @@ describe("ColorGrid", () => {
     const user = userEvent.setup();
     vi.spyOn(navigator.clipboard, "writeText").mockRejectedValue(new Error("denied"));
 
-    render(<ColorGrid />);
+    renderColorGrid();
 
     const swatchButton = screen.getByRole("button", {
       name: `Copy ${sampleSwatch.name} CSS variable`,

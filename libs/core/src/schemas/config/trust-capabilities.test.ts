@@ -3,10 +3,12 @@ import type { TrustCapabilities } from "./settings.js";
 import {
   fromSelectedCapabilityIds,
   getInitialFocusedCapability,
+  getTrustButtonLabel,
   isFocusableCapability,
   NO_TRUST_CAPABILITIES,
   normalizeTrustCapabilities,
   TRUST_CAPABILITY_OPTIONS,
+  TRUST_SECURITY_WARNING,
   toSelectedCapabilityIds,
 } from "./trust-capabilities.js";
 
@@ -103,6 +105,29 @@ describe("trust capabilities model", () => {
       const runCommands = TRUST_CAPABILITY_OPTIONS.find((option) => option.id === "runCommands");
       expect(readFiles?.disabled).toBe(false);
       expect(runCommands?.disabled).toBe(true);
+    });
+  });
+
+  describe("getTrustButtonLabel", () => {
+    it("reports the saving state", () => {
+      expect(getTrustButtonLabel(true, true)).toBe("Saving...");
+      expect(getTrustButtonLabel(true, false)).toBe("Saving...");
+    });
+
+    it("offers Trust & Continue when repository access is granted", () => {
+      expect(getTrustButtonLabel(false, true)).toBe("Trust & Continue");
+    });
+
+    it("offers Continue Without Trust when repository access is withheld", () => {
+      expect(getTrustButtonLabel(false, false)).toBe("Continue Without Trust");
+    });
+  });
+
+  describe("TRUST_SECURITY_WARNING", () => {
+    it("keeps the unavailable state claim in lockstep with runCommands.disabled", () => {
+      const runCommands = TRUST_CAPABILITY_OPTIONS.find((option) => option.id === "runCommands");
+      expect(runCommands?.disabled).toBe(true);
+      expect(TRUST_SECURITY_WARNING.body).toContain("currently unavailable");
     });
   });
 });

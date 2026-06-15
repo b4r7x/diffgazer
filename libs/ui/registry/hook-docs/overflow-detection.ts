@@ -4,7 +4,7 @@ export const overflowDetectionDoc: HookDoc = {
   description:
     "Detects whether an element's content overflows its container using ResizeObserver. Returns a ref to attach and a reactive boolean — no polling, no manual recalculation.",
   usage: {
-    code: `const { ref, isOverflowing } = useOverflow("horizontal");
+    code: `const { ref, isOverflowing } = useOverflowDetection("horizontal");
 
 return (
   <div ref={ref} className="truncate">

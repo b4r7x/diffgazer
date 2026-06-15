@@ -8,7 +8,7 @@ export default function SelectCard() {
   return (
     <div className="w-72">
       <Select multiple variant="card" defaultOpen value={value} onChange={setValue}>
-        <SelectTrigger>
+        <SelectTrigger aria-label="Framework">
           <span>Choose Framework</span>
         </SelectTrigger>
         <SelectContent>

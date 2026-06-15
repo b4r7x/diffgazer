@@ -1,4 +1,4 @@
-import { getFigletText } from "@diffgazer/core/get-figlet";
+import { getFigletText } from "./lib/get-figlet.js";
 
 const BANNER_TEXT = "DIFFGAZER";
 

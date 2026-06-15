@@ -1,5 +1,6 @@
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
-import { describe, expect, it, vi } from "vitest";
+import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildHtmlShell, createEmbeddedServer, isSpaNavigationRequest } from "./embedded";
 
 const MINIMAL_HTML = "<!DOCTYPE html><html><head></head><body></body></html>";
@@ -115,6 +116,74 @@ describe("createEmbeddedServer startup failures", () => {
   });
 });
 
+describe("createEmbeddedServer restart after a failed listen", () => {
+  afterEach(() => {
+    vi.resetModules();
+    vi.restoreAllMocks();
+    vi.doUnmock("node:fs");
+    vi.doUnmock("@hono/node-server");
+    vi.doUnmock("@hono/node-server/serve-static");
+    vi.doUnmock("@diffgazer/server");
+  });
+
+  it("re-invokes listen on a second start() after the first bind fails", async () => {
+    // The top-level static import already cached ./embedded with real modules;
+    // reset so the dynamic import below resolves against the mocks set here.
+    vi.resetModules();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const captured: {
+      errorHandler: ((err: NodeJS.ErrnoException) => void) | null;
+      readyCallback: ((info: { port: number }) => void) | null;
+    } = { errorHandler: null, readyCallback: null };
+
+    const serve = vi.fn((_options: unknown, callback?: (info: { port: number }) => void) => {
+      captured.readyCallback = callback ?? null;
+      return {
+        on: (event: string, handler: (err: NodeJS.ErrnoException) => void) => {
+          if (event === "error") captured.errorHandler = handler;
+        },
+        close: (cb?: () => void) => cb?.(),
+      };
+    });
+
+    vi.doMock("node:fs", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("node:fs")>();
+      return { ...actual, existsSync: () => true, readFileSync: () => MINIMAL_HTML };
+    });
+    vi.doMock("@hono/node-server", () => ({ serve }));
+    vi.doMock("@hono/node-server/serve-static", () => ({ serveStatic: () => () => undefined }));
+    vi.doMock("@diffgazer/server", () => ({
+      createApp: () => ({ get: () => undefined, use: () => undefined, fetch: () => undefined }),
+      shutdownSessions: () => undefined,
+    }));
+
+    const { createEmbeddedServer: createServer } = await import("./embedded");
+    const onFailure = vi.fn();
+    const onReady = vi.fn();
+    const server = createServer({ port: 3000, onFailure, onReady });
+
+    server.start();
+    await vi.waitFor(() => expect(serve).toHaveBeenCalledTimes(1));
+
+    // Simulate the bind failure the first listen attempt hits (EADDRINUSE).
+    expect(captured.errorHandler).not.toBeNull();
+    captured.errorHandler?.({
+      code: "EADDRINUSE",
+      message: "address in use",
+    } as NodeJS.ErrnoException);
+    expect(onFailure).toHaveBeenCalledWith(expect.stringContaining("already in use"));
+
+    // The port is now free: a second start() must attempt to listen again.
+    server.start();
+    await vi.waitFor(() => expect(serve).toHaveBeenCalledTimes(2));
+
+    // Once the second listen succeeds, the controller reports ready.
+    captured.readyCallback?.({ port: 3000 });
+    expect(onReady).toHaveBeenCalledWith("http://localhost:3000");
+  });
+});
+
 describe("createEmbeddedServer stop", () => {
   it("aborts an active review session and clears its subscriber on shutdown", async () => {
     const sessions = await loadSessions();
@@ -136,7 +205,7 @@ describe("createEmbeddedServer stop", () => {
     expect(received).toContainEqual(
       expect.objectContaining({
         type: "error",
-        error: expect.objectContaining({ code: "SESSION_STALE" }),
+        error: expect.objectContaining({ code: ReviewErrorCode.SERVER_SHUTDOWN }),
       }),
     );
     expect(sessions.getSession(reviewId)).toBeUndefined();

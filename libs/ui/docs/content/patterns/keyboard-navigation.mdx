@@ -1,23 +1,23 @@
 ---
 title: Keyboard Navigation
-description: How @diffgazer/ui's headless-friendly component philosophy works with keyboard handling.
+description: How `@diffgazer/ui`'s headless-friendly component philosophy works with keyboard handling.
 ---
 
 ## Philosophy
 
-@diffgazer/ui components are **headless-friendly primitives**. They render the UI layer and expose controlled props/events/ARIA hooks so keyboard behavior can be composed at the app level.
+`@diffgazer/ui` components are **headless-friendly primitives**. They render the UI layer and expose controlled props/events/ARIA hooks so keyboard behavior can be composed at the app level.
 
 Some components include local keyboard behavior, and some package-mode entries import hooks from `@diffgazer/keys`. Others expose control points such as highlighted state, selection state, and `onKeyDown`. Check each component's dependency metadata before choosing copy mode or package mode.
 
-## Why This Approach
+## Why this approach
 
 - **Simple and predictable** -- state and interactions stay explicit
 - **Declared navigation policy** -- built-in keyboard behavior and external hooks are documented per component
 - **No conflicts** -- component behavior doesn't fight app-level shortcuts
 - **Full control** -- you decide which keys do what, in which contexts
-- **Composes with @diffgazer/keys** -- same primitives work with your own handlers or keys recipes
+- **Composes with `@diffgazer/keys`** -- same primitives work with your own handlers or keys recipes
 
-## Without Keyboard Support
+## Without keyboard support
 
 Not every context needs full keyboard navigation. A menu in a toolbar might only need click support, but verify the component's own behavior before removing keyboard handlers:
 
@@ -40,7 +40,7 @@ function BasicMenu() {
 
 Items are clickable and selectable. Components with built-in navigation can still respond to keys; components without it need an `onKeyDown` handler if keyboard navigation is required.
 
-## Controlling Keyboard State
+## Controlling keyboard state
 
 Menu includes local arrow-key, Home/End, Enter/Space, and typeahead behavior. Control `highlighted` only when the app needs to coordinate highlight state outside the menu:
 
@@ -99,4 +99,4 @@ The following components expose keyboard integration points:
 
 Components ship with proper ARIA attributes regardless of whether you add keyboard handling. Roles, labels, and states are built in.
 
-For components without built-in keyboard behavior, compose `onKeyDown` or @diffgazer/keys hooks so users can navigate and activate items without a mouse.
+For components without built-in keyboard behavior, compose `onKeyDown` or `@diffgazer/keys` hooks so users can navigate and activate items without a mouse.

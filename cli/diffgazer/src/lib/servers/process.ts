@@ -53,6 +53,22 @@ function formatProcessError(error: unknown): string {
   return String(error);
 }
 
+function signalChild(child: ResultPromise, signal: "SIGTERM" | "SIGKILL"): void {
+  // Detached children lead their own group; signal the group (negative pid) so a
+  // wrapper-spawned grandchild dies too. Fall back to the direct child on Windows,
+  // when no pid is available, or if the group is already gone.
+  const { pid } = child;
+  if (process.platform !== "win32" && pid !== undefined) {
+    try {
+      process.kill(-pid, signal);
+      return;
+    } catch {
+      // Group already exited (ESRCH) or could not be signaled; fall through.
+    }
+  }
+  child.kill(signal);
+}
+
 export function createProcessServer(config: ProcessServerConfig): ServerController {
   let serverProcess: ResultPromise | null = null;
   let signaledReady = false;
@@ -87,6 +103,10 @@ export function createProcessServer(config: ProcessServerConfig): ServerControll
       env,
       stdout: "pipe",
       stderr: "pipe",
+      // Lead a new process group on POSIX so stop() can signal the whole tree:
+      // the wrapper binary (pnpm exec vite / npx tsx) cannot forward SIGKILL to a
+      // hung grandchild still bound to the port, so we kill the group instead.
+      detached: process.platform !== "win32",
     });
 
     serverProcess = childProcess;
@@ -132,10 +152,10 @@ export function createProcessServer(config: ProcessServerConfig): ServerControll
 
       const child = serverProcess;
       serverProcess = null;
-      child.kill("SIGTERM");
+      signalChild(child, "SIGTERM");
 
       const forceKillTimer = setTimeout(() => {
-        child.kill("SIGKILL");
+        signalChild(child, "SIGKILL");
       }, appConfig.shutdown.forceKillMs);
 
       try {

@@ -5,54 +5,28 @@ import {
   useShutdown,
 } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { deriveTrustStatus } from "@diffgazer/core/navigation";
+import { deriveTrustStatus, selectResumableSession } from "@diffgazer/core/navigation";
 import type { ContextInfo, Shortcut } from "@diffgazer/core/schemas/presentation";
-import { MAIN_MENU_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
+import {
+  buildHomeContextInfo,
+  MAIN_MENU_SHORTCUTS,
+  TRUST_FOOTER_RIGHT_SHORTCUTS,
+  TRUST_FOOTER_SHORTCUTS,
+} from "@diffgazer/core/schemas/presentation";
 import { Box } from "ink";
 import type { ReactElement } from "react";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useExit } from "../../../hooks/use-exit";
 import { useNavigation } from "../../../hooks/use-navigation";
-import { useScope } from "../../../hooks/use-scope";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions";
 import { createHomeMenuAction } from "../lib/create-menu-action.js";
 import { ContextSidebar } from "./context-sidebar.js";
 import { HomeMenu } from "./menu.js";
 import { TrustPanel } from "./trust-panel.js";
 
-const TRUST_FOOTER_SHORTCUTS: Shortcut[] = [
-  { key: "↑/↓", label: "Navigate Permissions" },
-  { key: "Enter/Space", label: "Toggle Permission" },
-  { key: "q", label: "Quit" },
-];
-
-const TRUST_FOOTER_RIGHT_SHORTCUTS: Shortcut[] = [
-  { key: "s", label: "Settings" },
-  { key: "h", label: "Help" },
-];
-
 const EMPTY_SHORTCUTS: Shortcut[] = [];
 
-type ResumableSession = {
-  reviewId: string;
-  mode: "unstaged" | "staged";
-};
-
-export function selectResumableSession(
-  unstagedSession: { reviewId: string; mode: string } | null | undefined,
-  stagedSession: { reviewId: string; mode: string } | null | undefined,
-): ResumableSession | null {
-  const preferred = unstagedSession ?? stagedSession;
-  if (!preferred) {
-    return null;
-  }
-  return preferred.mode === "unstaged" || preferred.mode === "staged"
-    ? { reviewId: preferred.reviewId, mode: preferred.mode }
-    : null;
-}
-
 export function HomeScreen(): ReactElement {
-  useScope("home");
   useBackHandler();
 
   const { columns } = useResponsive();
@@ -86,13 +60,15 @@ export function HomeScreen(): ReactElement {
     rightShortcuts: needsTrust ? TRUST_FOOTER_RIGHT_SHORTCUTS : EMPTY_SHORTCUTS,
   });
 
-  const context: ContextInfo = {
-    providerName: initData?.config?.provider ?? undefined,
-    providerMode: initData?.config?.model ?? undefined,
-    lastRunId: mostRecent?.id,
-    lastRunIssueCount: mostRecent?.issueCount,
-    trustedDir: isTrusted ? trustConfig?.repoRoot : undefined,
-  };
+  const context: ContextInfo = buildHomeContextInfo(
+    {
+      provider: initData?.config?.provider,
+      model: initData?.config?.model,
+      trustedRepoRoot: trustConfig?.repoRoot,
+    },
+    mostRecent,
+    isTrusted,
+  );
 
   function handleTrustAccept() {
     refreshInit();

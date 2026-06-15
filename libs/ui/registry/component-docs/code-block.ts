@@ -7,7 +7,7 @@ export const codeBlockDoc: ComponentDoc = {
     {
       title: "Variants",
       content:
-        'variant="hairline" (default) renders a 1px soft border with a header row for filename + actions. variant="bare" removes all chrome and renders a 2px left rule that turns accent on hover; the header is suppressed. variant="terminal" centers the title in the header and renders three desaturated dots by default (chrome="dots"). Pass chrome="none" for a terminal pane without window dots. All chrome is driven by [data-variant] and [data-chrome] selectors in shared/code-block.css; consumers do not need to apply any classes manually.',
+        'variant="hairline" (default) renders a 1px soft border with a header row for filename + actions. variant="bare" removes all chrome and renders a 2px left rule that turns accent on hover; the header is suppressed. variant="terminal" centers the title in the header and renders three desaturated dots by default (chrome="dots"). Pass chrome="none" for a terminal pane without window dots. All chrome is driven by [data-variant] and [data-chrome] selectors in code-block/code-block.css; consumers do not need to apply any classes manually.',
     },
     {
       title: "Compound API",
@@ -78,7 +78,57 @@ export const codeBlockDoc: ComponentDoc = {
     { name: "code-block-highlights", title: "Diff & Highlight states" },
     { name: "code-block-highlighted", title: "Syntax highlighting" },
   ],
-  keyboard: null,
+  keyboard: {
+    description:
+      "CodeBlock.Content uses ScrollArea for the inner region. When content overflows, users can Tab to the code region and scroll it with keyboard keys.",
+    keys: [
+      { keys: "Tab", action: "Moves focus to the scrollable code region or copy button." },
+      {
+        keys: "Arrow / Page / Home / End",
+        action: "Scrolls the focused code region through ScrollArea keyboard handling.",
+      },
+      { keys: "Enter / Space", action: "Activates CodeBlock.CopyButton when focused." },
+    ],
+    examples: [{ name: "code-block-default", title: "Default" }],
+  },
+  dataAttributes: [
+    {
+      attribute: "data-variant",
+      appliesTo: "CodeBlock",
+      values: '"hairline" | "bare" | "terminal"',
+      description: "Visual chrome variant on the root figure.",
+    },
+    {
+      attribute: "data-chrome",
+      appliesTo: "CodeBlock",
+      values: '"dots" | "none"',
+      description: "Decorative header chrome mode.",
+    },
+    {
+      attribute: "data-language",
+      appliesTo: "CodeBlock",
+      values: "language id",
+      description: "Language identifier used by labels and syntax-highlighting selectors.",
+    },
+    {
+      attribute: "data-line-state",
+      appliesTo: "CodeBlock.Line",
+      values: '"highlight" | "added" | "removed"',
+      description: "Per-line visual state for highlights and diff rows.",
+    },
+    {
+      attribute: "data-state",
+      appliesTo: "CodeBlock.CopyButton",
+      values: '"idle" | "copied"',
+      description: "Copy feedback state used for the button label and styling.",
+    },
+    {
+      attribute: "data-tone",
+      appliesTo: "CodeBlock.Content",
+      values: '"default" | "diff"',
+      description: "Content tone for plain code or diff-like rows.",
+    },
+  ],
   props: {
     CodeBlock: {
       variant: {

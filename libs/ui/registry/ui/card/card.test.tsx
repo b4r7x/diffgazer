@@ -94,6 +94,32 @@ describe("Card", () => {
     expect(card).toHaveAttribute("data-slot", "card");
   });
 
+  it("renders an interactive card as a focusable button", () => {
+    render(
+      <Card as="button" type="button" interactive>
+        Open
+      </Card>,
+    );
+
+    const card = screen.getByRole("button", { name: "Open" });
+    card.focus();
+    expect(card).toHaveFocus();
+    expect(card).toHaveAttribute("data-interactive");
+  });
+
+  it("renders an interactive card as a focusable link", () => {
+    render(
+      <Card as="a" href="#details" interactive>
+        Details
+      </Card>,
+    );
+
+    const card = screen.getByRole("link", { name: "Details" });
+    card.focus();
+    expect(card).toHaveFocus();
+    expect(card).toHaveAttribute("href", "#details");
+  });
+
   it("has no a11y violations", async () => {
     const { container } = render(
       <Card as="section" aria-label="Details">

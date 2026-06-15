@@ -1,18 +1,17 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
+import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MobileNavProvider } from "@/hooks/mobile-nav-context";
 import { stubMatchMedia } from "@/testing/match-media";
 import { LegalPageLayout } from "./legal-page-layout";
 import { LegalSidebar } from "./legal-sidebar";
 
-vi.mock("@/components/layout/tui-two-pane", () => ({
-  TuiTwoPane: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
-
+// Boundary mock: TanStack Router is the external routing library; legal links/current path are controlled here.
 vi.mock("@tanstack/react-router", async () => {
   const { RouterLinkMock } = await import("@/testing/router-mock");
   return {
@@ -27,9 +26,17 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = () => {};
 });
 
+function renderLegalLayout(children: ReactNode) {
+  return render(
+    <KeyboardProvider>
+      <MobileNavProvider>{children}</MobileNavProvider>
+    </KeyboardProvider>,
+  );
+}
+
 describe("LegalPageLayout", () => {
   it("renders the panel label and child content", () => {
-    render(
+    renderLegalLayout(
       <LegalPageLayout panelLabel="PRIVACY">
         <h1>Privacy policy</h1>
       </LegalPageLayout>,
@@ -41,7 +48,7 @@ describe("LegalPageLayout", () => {
   });
 
   it("makes the main content region programmatically focusable", () => {
-    render(
+    renderLegalLayout(
       <LegalPageLayout panelLabel="PRIVACY">
         <p>Body</p>
       </LegalPageLayout>,

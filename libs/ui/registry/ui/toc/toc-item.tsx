@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 const INDENT_BASE_PX = 12;
 const INDENT_PER_LEVEL_PX = 12;
 
+/** Class variants for toc item. */
 export const tocItemVariants = cva(
   "block py-1 text-xs font-mono transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
   {
@@ -28,19 +29,26 @@ export const tocItemVariants = cva(
   },
 );
 
+/** Props for toc item render. */
 export type TocItemRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
   ref: Ref<HTMLAnchorElement>;
   className: string;
   style: CSSProperties;
-  "data-active"?: true;
+  "data-slot": "toc-item";
+  "data-selected"?: true;
 };
 
+/** Props for toc item. */
 export interface TocItemProps extends Omit<ComponentPropsWithRef<"a">, "children"> {
+  /** Link label, or a render function for framework Link integration. */
   children: ReactNode | ((props: TocItemRenderProps) => ReactNode);
+  /** Marks the link as the current location. Adds aria-current="location" and data-selected. */
   active?: boolean;
+  /** Heading depth (2 = h2). Drives left padding; values below 2 are treated as 2. */
   depth?: number;
 }
 
+/** Individual TOC entry with depth/active styling. */
 export function TocItem({
   children,
   depth = 2,
@@ -55,7 +63,8 @@ export function TocItem({
   const renderProps: TocItemRenderProps = {
     ref: ref ?? null,
     "aria-current": active ? "location" : undefined,
-    "data-active": active || undefined,
+    "data-slot": "toc-item",
+    "data-selected": active || undefined,
     className: cn(tocItemVariants({ active }), className),
     style: { paddingLeft: `${indent}px`, ...style },
     ...props,

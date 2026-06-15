@@ -37,6 +37,7 @@
     "rules": {
       "recommended": true,
       "style": {
+        "noNestedTernary": "error",
         "useFilenamingConvention": {
           "level": "error",
           "options": {
@@ -90,7 +91,7 @@
       }
     },
     {
-      "includes": ["libs/core/**", "!libs/core/**/registry/examples/**"],
+      "includes": ["libs/core/**"],
       "linter": {
         "rules": {
           "style": {

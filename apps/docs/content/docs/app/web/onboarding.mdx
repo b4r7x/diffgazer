@@ -3,13 +3,13 @@ title: Onboarding
 description: First-run setup, step by step, before your first review.
 ---
 
-The first time you open diffgazer in web mode it has no provider, no key, and no model to work with, so it shows a setup wizard instead of a review screen. You only see this once: it walks you through six steps and saves a working config at the end. After that, diffgazer goes straight to the review screen, and you change any of these choices later from [Settings](/app/web/settings). This page covers each step in order. For the bigger picture of what web mode looks like once setup is done, see the [web overview](/app/web/index).
+The first time you open Diffgazer in web mode it has no provider, no key, and no model to work with, so it shows a setup wizard instead of a review screen. You only see this once: it walks you through six steps and saves a working config at the end. After that, Diffgazer goes straight to the review screen, and you change any of these choices later from [Settings](/app/web/settings). This page covers each step in order. For the bigger picture of what web mode looks like once setup is done, see the [web overview](/app/web).
 
 The wizard always runs in the same order: storage, then provider, then API key, then model, then analysis, then execution. A stepper across the top shows where you are. Use Next to move forward and Back to revisit a step; the Next button stays disabled until the current step has a valid choice.
 
 ## Pick where secrets are stored
 
-The first step asks where diffgazer keeps your API keys. There are two options:
+The first step asks where Diffgazer keeps your API keys. There are two options:
 
 - **File storage (local)** writes secrets to a local file with restrictive OS permissions (mode `0600`). It is simple and portable.
 - **System keyring** hands secrets to your operating system's keychain instead. It is better protected and integrated with the OS.
@@ -18,20 +18,20 @@ Pick one to continue. Nothing is written yet at this point; the choice is saved 
 
 ## Choose a provider and add a key
 
-The provider step lists the AI providers diffgazer can talk to, each with a badge showing whether it has a free tier. diffgazer does not ship a model of its own, so you bring a provider you already have an account with. Selecting a provider also preselects that provider's default model for the model step. For the full list of providers and how model choice affects a review, see [providers and models](/app/concepts/providers-and-models) and the [providers reference](/app/reference/providers).
+The provider step lists the AI providers Diffgazer can talk to, each with a badge showing whether it has a free tier. Diffgazer does not ship a model of its own, so you bring a provider you already have an account with. Selecting a provider also preselects that provider's default model for the model step. For the full list of providers and how model choice affects a review, see [providers and models](/app/concepts/providers-and-models) and the [providers reference](/app/reference/providers).
 
 The next step is the key for that provider. You have two ways to supply it:
 
 - **Paste key now** types the key directly into a masked field. The Next button stays disabled until you enter something.
-- **Import from env** reads the key from an environment variable instead. The step shows the exact variable name diffgazer will read for the provider you chose, and you can proceed without typing a key because the value comes from your environment at run time.
+- **Import from env** reads the key from an environment variable instead. The step shows the exact variable name Diffgazer will read for the provider you chose, and you can proceed without typing a key because the value comes from your environment at run time.
 
 > Note: switching providers resets the key field and the input method back to paste, so re-enter the key if you change your mind about which provider to use.
 
 ## Select a model
 
-Once a key is in place, diffgazer loads the model list for your provider and shows it as a pick list, with the provider's default already selected. The list is fetched live, so it reflects what the provider currently offers rather than a fixed set baked into diffgazer. If the list cannot be loaded, the step falls back to a text field where you can enter a model ID by hand.
+Once a key is in place, Diffgazer loads the model list for your provider and shows it as a pick list, with the provider's default already selected. The list is fetched live, so it reflects what the provider currently offers rather than a fixed set baked into Diffgazer. If the list cannot be loaded, the step falls back to a text field where you can enter a model ID by hand.
 
-One provider behaves a little differently here. For OpenRouter, diffgazer saves your credentials as soon as you leave the key step and move to the model step, because it needs them to fetch OpenRouter's model list. If you close the wizard before finishing setup, those early-saved OpenRouter credentials are removed again, so abandoning the wizard does not leave a key behind. Finishing the wizard saves the full config normally.
+One provider behaves a little differently here. For OpenRouter, Diffgazer saves your credentials as soon as you leave the key step and move to the model step, because it needs them to fetch OpenRouter's model list. If you close the wizard before finishing setup, those early-saved OpenRouter credentials are removed again, so abandoning the wizard does not leave a key behind. Finishing the wizard saves the full config normally.
 
 ## Set analysis and execution
 
@@ -42,13 +42,13 @@ The execution step is the last choice and controls how those agents run:
 - **Sequential** runs the agents one after another. It works with every provider and tier.
 - **Parallel** runs them all at once. It is faster but can hit rate limits on free tiers.
 
-On this final step the button reads Complete Setup. Activating it saves your storage choice, provider, key, model, lenses, and execution mode, then drops you into the review screen. From here on, diffgazer skips the wizard and you can start a review right away.
+On this final step the button reads Complete Setup. Activating it saves your storage choice, provider, key, model, lenses, and execution mode, then drops you into the review screen. From here on, Diffgazer skips the wizard and you can start a review right away.
 
 > Tip: every step is keyboard-driven. Use the arrow keys to move through options, Space to select the highlighted one, and Enter to select and advance in a single keystroke.
 
 ## Related
 
-- [Web overview](/app/web/index) — what web mode shows after setup
+- [Web overview](/app/web) — what web mode shows after setup
 - [Run a review](/app/web/reviewing) — start your first review once setup is done
 - [Providers and models](/app/concepts/providers-and-models) — choosing a provider and model
 - [Providers reference](/app/reference/providers) — the full per-provider table

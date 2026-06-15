@@ -24,6 +24,10 @@ Three things must hold for item discovery to work:
 2. Child elements with a matching `role` attribute.
 3. Each child carries a `data-value` attribute — the value the hook reports as `highlighted` and passes to `onSelect` / `onEnter`.
 
+### Typing `data-value` (`TValue`)
+
+The `TValue` generic narrows `highlighted`, `onHighlightChange`, `onSelect`, and `onEnter` to a literal union for editor convenience — but it is a **type assertion, not runtime validation**. Every value originates from the `data-value` DOM attribute and is asserted to `TValue` at the DOM boundary; the hook never checks that the attribute actually belongs to your union. Instantiating with `useNavigation<"a" | "b">` makes TypeScript treat the values as `"a" | "b"`, yet a stray `data-value="c"` is still delivered with full type confidence. Keep your `data-value` attributes in sync with the union you instantiate, or validate the string inside your callback before relying on it.
+
 ## Installation
 
 <ConsumptionBlock />

@@ -8,9 +8,14 @@ import {
   isValidElement,
   type MouseEvent,
   type ReactNode,
+  useId,
+  useLayoutEffect,
   useMemo,
+  useRef,
 } from "react";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { getEncodedListboxItemId } from "@/hooks/use-listbox";
+import { mergeIds } from "@/lib/aria";
 import { cn } from "@/lib/utils";
 import { useNavigationListContext } from "./navigation-list-context";
 import {
@@ -56,6 +61,7 @@ const contentVariants = cva("flex-1 grid grid-cols-[1fr_auto] auto-rows-auto gap
   },
 });
 
+/** Allowed density values. */
 type Density = NonNullable<VariantProps<typeof contentVariants>["density"]>;
 
 function hasDescriptionChild(
@@ -69,6 +75,7 @@ function hasDescriptionChild(
   });
 }
 
+/** Props for navigation list item. */
 export interface NavigationListItemProps
   extends Omit<
     ComponentPropsWithRef<"div">,
@@ -80,12 +87,17 @@ export interface NavigationListItemProps
     | "aria-labelledby"
     | "aria-describedby"
   > {
+  /** Stable identifier matched against selectedId/highlighted. */
   id: string;
+  /** Padding scale for the item content. */
   density?: Density;
+  /** Disables activation; item is rendered with aria-disabled. */
   disabled?: boolean;
+  /** Item subparts (Title, Status, Meta, Badge, Subtitle). */
   children: ReactNode;
 }
 
+/** Selectable list item container. */
 export function NavigationListItem({
   id,
   disabled = false,
@@ -107,9 +119,14 @@ export function NavigationListItem({
     focused,
     idPrefix,
     indicator,
+    registerItem,
+    unregisterItem,
   } = useNavigationListContext();
   const groupContext = useNavigationListGroupContext();
   const positionContext = useNavigationListGroupPositionContext();
+  const registrationId = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const composedRef = useComposedRefs(rootRef, ref);
   const isTree = groupContext.variant === "tree" && groupContext.depth > 0;
   const isSelected = !disabled && selectedId === id;
   const isHighlighted = !disabled && highlighted === id;
@@ -118,13 +135,10 @@ export function NavigationListItem({
   const itemId = getEncodedListboxItemId(idPrefix, id);
   const labelId = `${itemId}-label`;
   const descId = `${itemId}-desc`;
-  const describedBy =
-    [
-      hasDescriptionChild(children, NavigationListMeta) ? `${descId}-meta` : null,
-      hasDescriptionChild(children, NavigationListSubtitle) ? `${descId}-sub` : null,
-    ]
-      .filter(Boolean)
-      .join(" ") || undefined;
+  const describedBy = mergeIds(
+    hasDescriptionChild(children, NavigationListMeta) ? `${descId}-meta` : undefined,
+    hasDescriptionChild(children, NavigationListSubtitle) ? `${descId}-sub` : undefined,
+  );
 
   const activeBarColorClass =
     indicator === "bar" ? "bg-primary-foreground/40" : "bg-primary-foreground";
@@ -152,20 +166,25 @@ export function NavigationListItem({
 
   const itemContextValue = useMemo(() => ({ labelId, descId, isTree }), [labelId, descId, isTree]);
 
+  useLayoutEffect(() => {
+    registerItem(registrationId, id, disabled, rootRef.current);
+    return () => unregisterItem(registrationId);
+  }, [registerItem, unregisterItem, registrationId, id, disabled]);
+
   return (
     <NavigationListItemContext value={itemContextValue}>
       {/* biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — option stays non-focusable while the navigation list container holds focus and aria-activedescendant tracks the active option. */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: Enter/Space activation is handled centrally by the navigation list container, not per option. */}
       <div
         {...rootProps}
-        ref={ref}
+        ref={composedRef}
         id={itemId}
         role="option"
         aria-labelledby={labelId}
         aria-describedby={describedBy}
         data-value={id}
-        data-active={isActive || undefined}
-        data-state={isSelected ? "selected" : "unselected"}
+        data-highlighted={isActive ? "" : undefined}
+        data-selected={isSelected ? "" : undefined}
         aria-selected={isSelected}
         aria-disabled={disabled || undefined}
         onMouseDown={handleMouseDown}

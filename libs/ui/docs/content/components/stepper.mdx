@@ -64,36 +64,7 @@ matters.
 
 <Example name="stepper-state-matrix" />
 
-## Horizontal variants
-
-`HorizontalStepper` is a separate primitive for compact CI bars, wizard
-headers, and breadcrumb-style path bars where vertical space is precious. It
-shares the same variant vocabulary in spirit but exposes a different API:
-pass an ordered `steps` array and a single `value` (the active step id);
-each `HorizontalStepper.Step` derives `completed` / `active` / `pending`
-from its position relative to `value`.
-
-<Example name="horizontal-stepper-default" />
-
-### Horizontal — ASCII
-
-Inline `[x] Init ─── [~] Build ─── [ ] Deploy` with solid 1px connectors.
-
-<Example name="horizontal-stepper-variant-ascii" />
-
-### Horizontal — Numbered
-
-Material-flavoured numbered square above a continuous 1px line with
-uppercase labels below. Use for formal wizards (checkout, multi-step forms).
-
-<Example name="horizontal-stepper-variant-numbered" />
-
-### Horizontal — Breadcrumb
-
-`init / build › deploy / verify` slash separators with a caret on the active
-step. Closest match to a classic path bar.
-
-<Example name="horizontal-stepper-variant-breadcrumb" />
+For compact CI bars, wizard headers, and breadcrumb-style paths, use the separate [Horizontal Stepper](/ui/components/horizontal-stepper) primitive.
 
 ## More examples
 

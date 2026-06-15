@@ -1,4 +1,9 @@
-import { PROVIDER_OVERLAY, type ProviderOverlay, SURFACED_OVERLAYS } from "@diffgazer/core/catalog";
+import {
+  isAIProvider,
+  PROVIDER_OVERLAY,
+  type ProviderOverlay,
+  SURFACED_OVERLAYS,
+} from "@diffgazer/core/catalog";
 import type { AppError } from "@diffgazer/core/errors";
 import { createError, getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
@@ -29,6 +34,10 @@ import { getOpenRouterModelsWithCache } from "../../shared/lib/ai/openrouter-mod
 import { getSetupStatus } from "../../shared/lib/config/setup-status.js";
 import { getStore } from "../../shared/lib/config/store.js";
 import type { SecretsStorageError } from "../../shared/lib/config/types.js";
+import type {
+  ConfigServiceErrorCode,
+  ProviderModelsErrorCode,
+} from "../../shared/lib/http/error-codes.js";
 
 export { getSetupStatus };
 
@@ -62,7 +71,7 @@ export const getInitState = (projectRoot?: string): InitResponse => {
 function validateCredential(
   provider: AIProvider,
   apiKey: string | CredentialRef,
-): Result<void, { message: string; code: string }> {
+): Result<void, { message: string; code: ConfigServiceErrorCode }> {
   if (typeof apiKey === "string") {
     if (apiKey.trim().length === 0) {
       return err(
@@ -96,7 +105,7 @@ function validateCredential(
 async function validateProviderModelSelection(
   provider: AIProvider,
   model: string | undefined,
-): Promise<Result<void, { message: string; code: string }>> {
+): Promise<Result<void, { message: string; code: ConfigServiceErrorCode }>> {
   if (!model) {
     return ok(undefined);
   }
@@ -117,7 +126,9 @@ async function validateProviderModelSelection(
 
 export const saveConfig = async (
   input: SaveConfigRequest,
-): Promise<Result<ProviderStatus, SecretsStorageError | { message: string; code: string }>> => {
+): Promise<
+  Result<ProviderStatus, SecretsStorageError | { message: string; code: ConfigServiceErrorCode }>
+> => {
   const credentialValidation = validateCredential(input.provider, input.apiKey);
   if (!credentialValidation.ok) return credentialValidation;
 
@@ -156,14 +167,19 @@ export const checkConfig = (): Result<ConfigCheckResponse, SecretsStorageError> 
 export const activateProvider = async (input: {
   provider: AIProvider;
   model?: string;
-}): Promise<Result<ActivateProviderResponse, { message: string; code: string }>> => {
+}): Promise<
+  Result<
+    ActivateProviderResponse,
+    SecretsStorageError | { message: string; code: ConfigServiceErrorCode }
+  >
+> => {
   const { provider, model } = input;
 
   const existing = getStore()
     .getProviders()
     .find((p) => p.provider === provider);
   if (!existing) {
-    return err(createError("PROVIDER_NOT_FOUND", "Provider not found"));
+    return err(createError(ErrorCode.PROVIDER_NOT_FOUND, "Provider not found"));
   }
 
   if (!model && !existing.model) {
@@ -189,7 +205,7 @@ export const activateProvider = async (input: {
   const result = await getStore().activateProvider(input);
   if (!result.ok) return result;
   if (!result.value) {
-    return err(createError("PROVIDER_NOT_FOUND", "Provider not found"));
+    return err(createError(ErrorCode.PROVIDER_NOT_FOUND, "Provider not found"));
   }
 
   return ok({ provider: result.value.provider, model: result.value.model });
@@ -222,7 +238,10 @@ export const deleteConfig = async (): Promise<
 };
 
 export const getOpenRouterModels = async (): Promise<
-  Result<OpenRouterModelsResponse, { message: string; code: string }>
+  Result<
+    OpenRouterModelsResponse,
+    SecretsStorageError | { message: string; code: ConfigServiceErrorCode }
+  >
 > => {
   const apiKeyResult = getStore().getProviderApiKey("openrouter");
   if (!apiKeyResult.ok) return err(apiKeyResult.error);
@@ -248,12 +267,6 @@ function resolveProviderOverlay(providerId: string): ProviderOverlay | null {
   );
 }
 
-/**
- * Error codes getProviderModels can return, so the router can map them to HTTP
- * statuses exhaustively instead of bucketing everything into 500.
- */
-export type ProviderModelsErrorCode = CatalogErrorCode | typeof ErrorCode.VALIDATION_ERROR;
-
 export const getProviderModels = async (
   providerId: string,
 ): Promise<Result<ProviderModelsResponse, { message: string; code: ProviderModelsErrorCode }>> => {
@@ -272,8 +285,15 @@ export const getProviderModels = async (
       ),
     );
   }
+  // The catalog call is typed for AIProvider enum members only. A surfaced
+  // (non-enum) overlay flipped to enabled would otherwise be cast through here;
+  // narrow honestly so such ids return the proper error instead of reaching the
+  // AIProvider-typed catalog.
+  if (!isAIProvider(providerId)) {
+    return err(createError(ErrorCode.VALIDATION_ERROR, `Unknown provider: ${providerId}`));
+  }
   try {
-    const payload = await getProviderModelsFromCatalog(providerId as AIProvider);
+    const payload = await getProviderModelsFromCatalog(providerId);
     return ok(ProviderModelsResponseSchema.parse(payload));
   } catch (error) {
     return err(

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const UuidSchema = z.string().uuid();
+export const UuidSchema = z.uuid();
 
 export const timestampFields = {
   createdAt: z.string().datetime(),

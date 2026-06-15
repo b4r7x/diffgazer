@@ -16,9 +16,10 @@ import {
 // In rail mode (48px), each item collapses to an icon-only row centered in the
 // rail. `<SidebarItemLabel>` is hidden via the nav's `data-state="rail"`
 // group; the icon stand-in (any first child that is not a label/badge) stays
-// visible. Section titles and the variant glyph (▸) also hide. The `title`
-// attribute on `<SidebarItem>` preserves the accessible name and drives the
-// native tooltip on hover.
+// visible. Section titles and the variant glyph (▸) also hide. SidebarItem
+// auto-preserves the accessible name by rendering an sr-only copy of the label
+// content while collapsed, so no manual wiring is needed. The `title` attribute
+// is optional and only drives the native tooltip on hover.
 export default function SidebarRail() {
   return (
     <SidebarProvider defaultState="rail">

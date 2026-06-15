@@ -18,7 +18,7 @@ import {
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { ENV } from "./artifacts/env.mjs";
+import { ENV } from "./lib/env.mjs";
 import { collectMissingClosure } from "./registry-closure.mjs";
 import {
   assertBuiltCss,
@@ -119,10 +119,40 @@ function loadRegistryItem(registryDir, name) {
   return JSON.parse(readFileSync(path, "utf-8"));
 }
 
+// Every item name listed in a public registry.json index — the full set used as
+// closure roots so items outside the representative install fixtures (radio,
+// toggle-group, scroll-lock, ...) are still closure-validated.
+function allRegistryIndexNames(registryDir) {
+  const index = JSON.parse(readFileSync(join(registryDir, "registry.json"), "utf-8"));
+  return (index.items ?? []).map((item) => item.name);
+}
+
 function assertRegistryItemsExist(registryDir, names, label) {
   for (const name of names) {
     if (!loadRegistryItem(registryDir, name)) {
       throw new Error(`${label} registry item "${name}" not found at ${registryDir}/${name}.json`);
+    }
+  }
+}
+
+// Every `r/keys` URL registryDependency must point at a keys item that actually
+// exists in libs/keys/public/r — the cross-registry target-existence check no
+// other gate performs (bundle validates only local deps; metadata validates only
+// URL shape).
+function assertCrossRegistryTargetsExist(registryDir, names, keysRegistryDir, label) {
+  for (const name of names) {
+    const item = loadRegistryItem(registryDir, name);
+    for (const dep of item.registryDependencies ?? []) {
+      const route = registryRouteFromUrl(dep);
+      if (!route) continue;
+      const [, namespace, fileName] = route.split("/");
+      if (namespace !== "keys") continue;
+      const targetName = fileName.replace(/\.json$/, "");
+      if (!loadRegistryItem(keysRegistryDir, targetName)) {
+        throw new Error(
+          `${label} item "${name}" registry dependency "${dep}" points at a keys item that does not exist in ${keysRegistryDir}`,
+        );
+      }
     }
   }
 }
@@ -309,20 +339,6 @@ function assertFileContains(fixture, relativePath, patterns) {
   }
 }
 
-function importInstalledStyle(fixture, relativePath) {
-  const cssPath = join(fixture, "src/index.css");
-  const css = readFileSync(cssPath, "utf-8");
-  const importLine = `@import "../${relativePath}";`;
-  if (css.includes(importLine)) return;
-
-  const baseImport = '@import "../styles/styles.css";';
-  if (!css.includes(baseImport)) {
-    throw new Error("Could not find base styles import in shadcn smoke fixture");
-  }
-
-  writeFileSync(cssPath, css.replace(baseImport, `${baseImport}\n${importLine}`));
-}
-
 export function rewriteRegistryUrls(value, baseUrl) {
   if (typeof value === "string") {
     const route = registryRouteFromUrl(value);
@@ -428,7 +444,7 @@ function assertInstalledRegistryTree(fixture) {
   ]);
   assertFileContains(fixture, "src/components/ui/diff-view/diff-view.tsx", [
     "@/hooks/use-navigation",
-    'aria-roledescription="diff"',
+    'aria-roledescription={ariaRoleDescriptionProp ?? "diff"}',
   ]);
   assertFileContains(fixture, "src/components/ui/popover/popover-content.tsx", [
     "@/hooks/use-outside-click",
@@ -439,7 +455,7 @@ function assertInstalledRegistryTree(fixture) {
     "ui-floating-panel",
     "data-positioned",
     "--ui-content-transform-origin",
-    "@/lib/compose-refs",
+    "@/hooks/use-composed-refs",
     "../shared/portal",
     "@/hooks/use-presence",
     "@/hooks/use-floating-position",
@@ -454,7 +470,6 @@ function assertInstalledRegistryTree(fixture) {
 }
 
 function assertFixtureBuilds(fixture, label) {
-  importInstalledStyle(fixture, "styles/dialog.css");
   writeSmokeApp(fixture);
   runArgv("pnpm", ["run", "typecheck"], fixture);
   runArgv("pnpm", ["run", "build"], fixture);
@@ -506,25 +521,31 @@ assertRegistryItemsExist(keysRegistryDir, keysItems, "Keys");
 assertRegistryItemsExist(uiRegistryDir, uiItems, "UI");
 console.log("OK: all representative registry items exist");
 
-assertKeysTargets(keysRegistryDir, keysItems);
+const allUiNames = allRegistryIndexNames(uiRegistryDir);
+const allKeysNames = allRegistryIndexNames(keysRegistryDir);
+
+assertKeysTargets(keysRegistryDir, allKeysNames);
 console.log("OK: keys items have target fields on all files");
 
-assertNoJsImportSpecifiers(keysRegistryDir, keysItems);
+assertNoJsImportSpecifiers(keysRegistryDir, allKeysNames);
 console.log("OK: keys public registry has no .js import specifiers");
 
 assertDirectRegistryDependencies(uiRegistryDir, uiItems, "UI");
 console.log("OK: UI public registry dependencies are direct URL ready");
+
+assertCrossRegistryTargetsExist(uiRegistryDir, allUiNames, keysRegistryDir, "UI");
+console.log("OK: UI registry keys URL dependencies point at existing keys items");
 
 const registryDirs = new Map([
   ["ui", uiRegistryDir],
   ["keys", keysRegistryDir],
 ]);
 const closureRoots = [
-  ...uiItems.map((name) => `https://r.b4r7.dev/r/ui/${name}.json`),
-  ...keysItems.map((name) => `https://r.b4r7.dev/r/keys/${name}.json`),
+  ...allUiNames.map((name) => `https://r.b4r7.dev/r/ui/${name}.json`),
+  ...allKeysNames.map((name) => `https://r.b4r7.dev/r/keys/${name}.json`),
 ];
 assertRegistryClosure(registryDirs, closureRoots, "public");
-console.log("OK: representative registry items resolve their full dependency closure");
+console.log("OK: all public registry items resolve their full dependency closure");
 
 const registryServer = await startRegistryServer(uiRegistryDir, keysRegistryDir);
 const directFixture = mkdtempSync(join(tmpdir(), "shadcn-smoke-direct-"));
@@ -584,7 +605,7 @@ try {
   assertBuiltCss(soloFixture, {
     label: "Built solo button shadcn",
     // Dialog isn't part of solo install — only assert theme tokens reach final CSS.
-    expected: [".bg-primary", "--tui-bg"],
+    expected: [".bg-primary", "--base-bg"],
   });
   console.log("OK: solo button install type-checks and builds with auto-installed theme");
 } finally {

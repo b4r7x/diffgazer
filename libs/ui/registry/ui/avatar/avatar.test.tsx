@@ -176,7 +176,7 @@ describe("Avatar", () => {
       </Card>,
     );
 
-    // No alt -> the image is decorative and the avatar root is presentational.
+    // fireEvent retained: native img load has no userEvent equivalent and reveals the decorative alt state.
     fireEvent.load(getAvatarImage(container));
 
     const card = screen.getByRole("article", { name: "Jane Doe" });
@@ -207,5 +207,34 @@ describe("Avatar", () => {
       </Avatar.Group>,
     );
     expect(screen.getByLabelText("Team members")).toBeInTheDocument();
+  });
+
+  it("merges consumer rest props onto the AvatarGroup container", () => {
+    render(
+      <Avatar.Group size="md" aria-label="Team" id="team-avatars">
+        <Avatar fallback="A" alt="Alice" />
+        <Avatar fallback="B" alt="Bob" />
+      </Avatar.Group>,
+    );
+    const group = screen.getByLabelText("Team");
+    expect(group).toHaveAttribute("id", "team-avatars");
+    expect(group).toHaveAccessibleName("Team");
+  });
+
+  it("defaults the AvatarIndicator name to '{count} more'", () => {
+    render(
+      <Avatar.Group size="md" max={1}>
+        <Avatar fallback="A" alt="Alice" />
+        <Avatar fallback="B" alt="Bob" />
+        <Avatar fallback="C" alt="Charlie" />
+      </Avatar.Group>,
+    );
+    expect(screen.getByLabelText("2 more")).toBeInTheDocument();
+  });
+
+  it("lets a consumer override the AvatarIndicator accessible name via getLabel", () => {
+    render(<Avatar.Indicator count={3} getLabel={(count) => `and ${count} others`} />);
+    expect(screen.getByLabelText("and 3 others")).toBeInTheDocument();
+    expect(screen.queryByLabelText("3 more")).not.toBeInTheDocument();
   });
 });

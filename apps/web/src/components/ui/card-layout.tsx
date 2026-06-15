@@ -6,11 +6,8 @@ import type { ReactNode } from "react";
 export interface CardLayoutProps {
   title?: string;
   subtitle?: string;
-  header?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
-  size?: "sm" | "md" | "lg";
-  className?: string;
   contentInactive?: boolean;
 }
 
@@ -21,25 +18,21 @@ export interface CardLayoutProps {
 export function CardLayout({
   title,
   subtitle,
-  header,
   children,
   footer,
-  size = "lg",
-  className,
   contentInactive = false,
 }: CardLayoutProps) {
   return (
-    <div className={cn("flex-1 flex flex-col items-center justify-center px-4", className)}>
-      <Card surface="stacked" size={size} className="border-tui-border bg-tui-bg">
-        {header ??
-          (title && (
-            <Card.Header className="border-tui-border bg-tui-selection/30 px-6 py-4">
-              <Typography as="h1" size="xl" className="text-tui-blue tracking-wide">
-                {title}
-              </Typography>
-              {subtitle && <p className="text-sm text-tui-muted mt-1">{subtitle}</p>}
-            </Card.Header>
-          ))}
+    <div className="flex-1 flex flex-col items-center justify-center px-4">
+      <Card surface="stacked" size="lg" className="border-border bg-background">
+        {title && (
+          <Card.Header className="border-border bg-secondary/30 px-6 py-4">
+            <Typography as="h1" size="xl" className="text-info-text tracking-wide">
+              {title}
+            </Typography>
+            {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+          </Card.Header>
+        )}
 
         <Card.Content
           className={cn(
@@ -51,7 +44,7 @@ export function CardLayout({
         </Card.Content>
 
         {footer && (
-          <Card.Footer className="border-tui-border px-6 py-4 flex justify-end gap-3 bg-tui-bg/50">
+          <Card.Footer className="border-border px-6 py-4 flex justify-end gap-3 bg-background/50">
             {footer}
           </Card.Footer>
         )}

@@ -1,4 +1,8 @@
-import type { Shortcut } from "@diffgazer/core/schemas/presentation";
+import {
+  BACK_SHORTCUTS,
+  NAVIGATE_SHORTCUT,
+  type Shortcut,
+} from "@diffgazer/core/schemas/presentation";
 import type { HistoryFocusZone } from "../types";
 
 export interface HistoryFooter {
@@ -6,7 +10,6 @@ export interface HistoryFooter {
   rightShortcuts: Shortcut[];
 }
 
-const BACK: Shortcut[] = [{ key: "Esc", label: "Back" }];
 const CLEAR: Shortcut[] = [{ key: "Esc", label: "Clear Search" }];
 
 export function getHistoryFooter(focusZone: HistoryFocusZone): HistoryFooter {
@@ -21,11 +24,11 @@ export function getHistoryFooter(focusZone: HistoryFocusZone): HistoryFooter {
     return {
       shortcuts: [
         { key: "Tab", label: "Switch Focus" },
-        { key: "↑/↓", label: "Navigate" },
+        NAVIGATE_SHORTCUT,
         { key: "Enter", label: "Select Date" },
         { key: "/", label: "Search" },
       ],
-      rightShortcuts: BACK,
+      rightShortcuts: BACK_SHORTCUTS,
     };
   }
 
@@ -36,18 +39,18 @@ export function getHistoryFooter(focusZone: HistoryFocusZone): HistoryFooter {
         { key: "Enter", label: "Open Review" },
         { key: "/", label: "Search" },
       ],
-      rightShortcuts: BACK,
+      rightShortcuts: BACK_SHORTCUTS,
     };
   }
 
   return {
     shortcuts: [
       { key: "Tab", label: "Switch Focus" },
-      { key: "↑/↓", label: "Navigate" },
+      NAVIGATE_SHORTCUT,
       { key: "Enter", label: "Open Review" },
       { key: "o", label: "Open Review" },
       { key: "/", label: "Search" },
     ],
-    rightShortcuts: BACK,
+    rightShortcuts: BACK_SHORTCUTS,
   };
 }

@@ -6,13 +6,15 @@ import {
   type KeyboardEvent,
   type ReactNode,
   type Ref,
+  type RefObject,
   useCallback,
+  useEffectEvent,
   useLayoutEffect,
   useRef,
 } from "react";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import type { FloatingAlign, FloatingSide } from "@/hooks/use-floating-position";
 import { useNavigation } from "@/hooks/use-navigation";
-import { composeRefs } from "@/lib/compose-refs";
 import { matchesSearch } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { FloatingPanel } from "../floating-panel";
@@ -24,20 +26,37 @@ import { isActiveOptionVisible, toOptionId } from "./selection";
 import { useSelectTypeahead } from "./use-typeahead";
 import { getVisibleEnabledOptions } from "./visible-options";
 
+function containsRefElement(ref: RefObject<HTMLElement | null>, target: Node | null): boolean {
+  return target !== null && (ref.current?.contains(target) ?? false);
+}
+
+/** Props for select content. */
 export interface SelectContentProps {
+  /** Content rendered inside the component. */
   children: ReactNode;
+  /** Additional class names merged onto the rendered element. */
   className?: string;
+  /** Called when key down occurs. */
   onKeyDown?: (event: KeyboardEvent) => void;
+  /** Side where the element appears. */
   side?: FloatingSide;
+  /** Alignment relative to the anchor. */
   align?: FloatingAlign;
+  /** side offset used by select content. */
   sideOffset?: number;
+  /** collision padding used by select content. */
   collisionPadding?: number;
+  /** portal container used by select content. */
   portalContainer?: Element | null;
+  /** Live-region results-count text for searchable selects. Defaults to `${count} results`. */
+  getResultsLabel?: (count: number) => string;
+  /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLDivElement>;
 }
 
 const SEARCH_INPUT_NAV_KEYS = new Set(["ArrowUp", "ArrowDown", "Enter"]);
 
+/** Dropdown listbox with keyboard navigation. */
 export function SelectContent({
   children,
   className,
@@ -49,6 +68,7 @@ export function SelectContent({
   sideOffset = 4,
   collisionPadding = 8,
   portalContainer,
+  getResultsLabel,
   ref,
 }: SelectContentProps) {
   const {
@@ -73,6 +93,9 @@ export function SelectContent({
   const containerRef = useRef<HTMLDivElement>(null);
   const isDropdown = variant !== "card";
   const hasSearch = containsSelectSearchElement(children);
+  const searchComposedRef = useComposedRefs(selectContentRef, ref);
+  const fullComposedRef = useComposedRefs(containerRef, selectContentRef, ref);
+  const composedRef = hasSearch ? searchComposedRef : fullComposedRef;
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
@@ -85,22 +108,48 @@ export function SelectContent({
     scopeToContainer: true,
   });
 
-  const handleTypeahead = useSelectTypeahead({ options, searchQuery, highlighted, setHighlighted });
+  // Bring a newly highlighted option into view for the non-arrow paths
+  // (typeahead, searchable arrow nav). The arrow path inside useNavigation
+  // already scrolls; these two end at setHighlighted, so without this an
+  // off-screen active descendant stays invisible (the activedescendant
+  // analogue of WCAG 2.4.11), mirroring use-listbox's typeahead scroll.
+  const scrollOptionIntoView = useCallback(
+    (optionValue: string) => {
+      const node = containerRef.current?.ownerDocument.getElementById(
+        toOptionId(listboxId, optionValue),
+      );
+      node?.scrollIntoView?.({ block: "nearest" });
+    },
+    [listboxId],
+  );
+
+  const setHighlightedAndScroll = useCallback(
+    (optionValue: string) => {
+      setHighlighted(optionValue);
+      scrollOptionIntoView(optionValue);
+    },
+    [setHighlighted, scrollOptionIntoView],
+  );
+
+  const handleTypeahead = useSelectTypeahead({
+    options,
+    searchQuery,
+    highlighted,
+    setHighlighted: setHighlightedAndScroll,
+  });
 
   function moveSearchHighlight(direction: 1 | -1): void {
     const visibleOptions = getVisibleEnabledOptions(options, searchQuery);
     if (visibleOptions.length === 0) return;
 
     const currentIndex = highlighted === null ? -1 : visibleOptions.indexOf(highlighted);
-    const nextIndex =
-      currentIndex < 0
-        ? direction > 0
-          ? 0
-          : visibleOptions.length - 1
-        : (currentIndex + direction + visibleOptions.length) % visibleOptions.length;
+    let nextIndex = (currentIndex + direction + visibleOptions.length) % visibleOptions.length;
+    if (currentIndex < 0) {
+      nextIndex = direction > 0 ? 0 : visibleOptions.length - 1;
+    }
     const nextOption = visibleOptions[nextIndex];
     if (nextOption === undefined) return;
-    setHighlighted(nextOption);
+    setHighlightedAndScroll(nextOption);
   }
 
   function handleSearchInputNavigation(e: KeyboardEvent): void {
@@ -118,9 +167,14 @@ export function SelectContent({
     moveSearchHighlight(e.key === "ArrowDown" ? 1 : -1);
   }
 
-  const initHighlight = useCallback(() => {
+  const initHighlight = () => {
     if (highlighted !== null) return;
-    const selectedValues = Array.isArray(value) ? value : value === null ? [] : [value];
+    let selectedValues: string[] = [];
+    if (Array.isArray(value)) {
+      selectedValues = value;
+    } else if (value !== null) {
+      selectedValues = [value];
+    }
     const firstSelected = selectedValues[0];
     if (firstSelected !== undefined && !options.get(firstSelected)?.disabled) {
       setHighlighted(firstSelected);
@@ -132,15 +186,45 @@ export function SelectContent({
         return;
       }
     }
-  }, [highlighted, options, setHighlighted, value]);
+  };
 
-  useLayoutEffect(() => {
-    if (!open) return;
+  // Read current highlight/value/options through an Effect Event so the focus +
+  // init only runs on the open transition. Keying it to initHighlight's identity
+  // re-fired on unrelated re-renders while open and re-stole focus from the user.
+  const runOpenInit = useEffectEvent(() => {
     if (!searchInputRef.current) {
       containerRef.current?.focus();
     }
     initHighlight();
-  }, [initHighlight, open, searchInputRef]);
+  });
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    runOpenInit();
+  }, [open]);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    const ownerDocument = containerRef.current?.ownerDocument ?? triggerRef.current?.ownerDocument;
+    if (!ownerDocument) return;
+
+    const handleDocumentKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+
+      const NodeCtor = ownerDocument.defaultView?.Node;
+      const targetNode = NodeCtor && event.target instanceof NodeCtor ? event.target : null;
+      const targetIsInsideContent = containsRefElement(selectContentRef, targetNode);
+      if (event.defaultPrevented && targetIsInsideContent) return;
+
+      event.preventDefault();
+      onOpenChange(false);
+      triggerRef.current?.focus();
+    };
+
+    ownerDocument.addEventListener("keydown", handleDocumentKeyDown);
+    return () => ownerDocument.removeEventListener("keydown", handleDocumentKeyDown);
+  }, [open, onOpenChange, selectContentRef, triggerRef]);
 
   const handleKeyDown = (e: KeyboardEvent) => {
     onKeyDown?.(e);
@@ -156,16 +240,28 @@ export function SelectContent({
     if (e.key === "Tab") {
       if (highlighted !== null && !multiple) selectItem(highlighted);
       onOpenChange(false);
+      // Restore focus to the trigger synchronously (mirroring the Escape branch)
+      // for every mode — multiple and searchable null-highlight never run the
+      // single-select commit that refocuses, so without this Tab would leave
+      // focus in the portaled panel and drop to the end of <body>. The default
+      // Tab action then advances from the trigger to the next element.
+      triggerRef.current?.focus();
       return;
     }
 
     const isTyping = e.target === searchInputRef.current;
     if (isTyping) {
       handleSearchInputNavigation(e);
-    } else {
-      navKeyDown(e);
-      if (!e.ctrlKey && !e.metaKey && !e.altKey) handleTypeahead(e.key);
+      return;
     }
+
+    const isModified = e.ctrlKey || e.metaKey || e.altKey;
+    // Space extends an in-progress typeahead query (e.g. "new y") instead of
+    // selecting: run typeahead first for Space so a non-empty buffer suppresses
+    // the Space-select that navKeyDown would otherwise dispatch.
+    if (e.key === " " && !isModified && handleTypeahead(e.key)) return;
+    navKeyDown(e);
+    if (e.key !== " " && !isModified) handleTypeahead(e.key);
   };
 
   const activeDescendant = isActiveOptionVisible(options, highlighted, searchQuery, matchesSearch)
@@ -196,16 +292,18 @@ export function SelectContent({
     return (
       <div
         {...(hasSearch ? { onKeyDown: handleKeyDown } : listboxProps)}
-        ref={
-          hasSearch
-            ? composeRefs(selectContentRef, ref)
-            : composeRefs(containerRef, selectContentRef, ref)
-        }
+        ref={composedRef}
         hidden={!open}
         className={cn("w-full overflow-hidden p-1 space-y-0.5 outline-none", className)}
       >
         {contentBody}
-        {searchQuery && <MatchCount options={options} searchQuery={searchQuery} />}
+        {hasSearch && (
+          <MatchCount
+            options={options}
+            searchQuery={searchQuery}
+            getResultsLabel={getResultsLabel}
+          />
+        )}
       </div>
     );
   }
@@ -222,19 +320,22 @@ export function SelectContent({
       collisionPadding={collisionPadding}
       avoidCollisions
       matchTriggerWidth
-      ref={
-        hasSearch
-          ? composeRefs(selectContentRef, ref)
-          : composeRefs(containerRef, selectContentRef, ref)
-      }
+      ref={composedRef}
       className={cn(
-        "border border-border bg-background shadow-2xl rounded-sm overflow-hidden outline-none",
+        "border border-border bg-background shadow-2xl rounded-sm overflow-y-auto outline-none",
         className,
       )}
-      style={{ width: "var(--ui-floating-trigger-width)" }}
+      // Cap the dropdown to the room FloatingPanel reports and scroll long lists
+      // instead of overflowing the viewport (the var is set on this element).
+      style={{
+        width: "var(--ui-floating-trigger-width)",
+        maxHeight: "var(--floating-panel-available-height)",
+      }}
     >
       {contentBody}
-      {searchQuery && <MatchCount options={options} searchQuery={searchQuery} />}
+      {hasSearch && (
+        <MatchCount options={options} searchQuery={searchQuery} getResultsLabel={getResultsLabel} />
+      )}
     </FloatingPanel>
   );
 }
@@ -254,10 +355,15 @@ function isSelectSearchElement(child: ReactNode): boolean {
 function MatchCount({
   options,
   searchQuery,
+  getResultsLabel,
 }: {
   options: ReadonlyMap<string, SelectOptionMetadata>;
   searchQuery: string;
+  getResultsLabel?: (count: number) => string;
 }) {
+  // Mount the live region unconditionally (empty until a query exists) so it is
+  // present in the DOM before its first announcement — a region that enters the
+  // DOM already containing text is often not announced by SR/browser pairs.
   let count = 0;
   for (const option of options.values()) {
     if (matchesSearch(option.label, searchQuery)) count++;
@@ -265,7 +371,7 @@ function MatchCount({
   return (
     // biome-ignore lint/a11y/useSemanticElements: role="status" is the sr-only results-count live region; <output> carries form-association semantics that do not fit here.
     <div role="status" aria-live="polite" className="sr-only">
-      {count} results
+      {searchQuery ? (getResultsLabel?.(count) ?? `${count} results`) : ""}
     </div>
   );
 }

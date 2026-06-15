@@ -1,10 +1,16 @@
+/** Inputs for searching a cyclic list with a typeahead query. */
 export interface TypeaheadSearchOptions<Item> {
+  /** Items to search in their rendered order. */
   items: readonly Item[];
+  /** Lowercased typeahead query. Repeating the same character cycles matches. */
   query: string;
+  /** Current highlighted item index, used as the starting point for cycling. */
   currentIndex: number;
+  /** Returns the accessible label for an item. */
   getLabel: (item: Item) => string;
 }
 
+/** Finds the next item whose label starts with the typeahead query. */
 export function typeaheadSearch<Item>({
   items,
   query,

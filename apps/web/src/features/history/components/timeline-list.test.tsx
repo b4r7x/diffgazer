@@ -14,9 +14,7 @@ describe("TimelineList", () => {
       <TimelineList items={items} selectedId="all" onSelect={vi.fn()} keyboardEnabled={false} />,
     );
 
-    expect(screen.getByRole("option", { name: "All" })).toHaveAccessibleDescription("3 reviews");
-    expect(screen.getByRole("option", { name: "Yesterday" })).toHaveAccessibleDescription(
-      "1 review",
-    );
+    expect(screen.getByRole("option", { name: "All" })).toHaveAccessibleDescription("3 runs");
+    expect(screen.getByRole("option", { name: "Yesterday" })).toHaveAccessibleDescription("1 run");
   });
 });

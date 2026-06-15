@@ -1,14 +1,17 @@
 "use client";
 
-import type { HTMLAttributes, Ref } from "react";
+import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 import { useSidebarChrome } from "./sidebar-context";
 import { useSidebarSectionContext } from "./sidebar-section-context";
 
-export interface SidebarSectionContentProps extends HTMLAttributes<HTMLDivElement> {
-  ref?: Ref<HTMLDivElement>;
-}
+/** Props for sidebar section content. */
+export interface SidebarSectionContentProps extends ComponentProps<"div"> {}
 
+/**
+ * Panel slot for collapsible sections. Wraps items so the title's aria-controls targets a
+ * single id.
+ */
 export function SidebarSectionContent({
   ref,
   className,

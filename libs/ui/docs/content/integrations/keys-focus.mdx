@@ -5,7 +5,7 @@ description: Manage keyboard navigation across multiple UI zones with useFocusZo
 
 Manage keyboard navigation across multiple UI zones (e.g., sidebar + content + preview). Handles zone transitions via arrow keys and Tab cycling. Requires `KeyboardProvider` — not available in copy mode.
 
-> For the complete API reference, see the [@diffgazer/keys documentation](/keys/api).
+> For the complete API reference, see the [`@diffgazer/keys` documentation](/keys/api).
 
 ---
 
@@ -17,7 +17,7 @@ import { useFocusZone, useKey } from "@diffgazer/keys"
 type Zone = "sidebar" | "content" | "preview"
 
 function Layout() {
-  const { zone, isZone, getKeyOptions, setZone } = useFocusZone({
+  const { zone, isZone, getKeyOptions, getZoneProps, setZone } = useFocusZone({
     initial: "sidebar",
     zones: ["sidebar", "content", "preview"] as const,
     tabCycle: ["sidebar", "content", "preview"] as const,
@@ -35,10 +35,16 @@ function Layout() {
 
   return (
     <div>
-      <aside className={isZone("sidebar") ? "ring-1 ring-white" : ""}>
+      <aside
+        {...getZoneProps("sidebar")}
+        className={isZone("sidebar") ? "ring-1 ring-white" : ""}
+      >
         Sidebar
       </aside>
-      <main className={isZone("content") ? "ring-1 ring-white" : ""}>
+      <main
+        {...getZoneProps("content")}
+        className={isZone("content") ? "ring-1 ring-white" : ""}
+      >
         Content
       </main>
     </div>
@@ -54,7 +60,8 @@ function Layout() {
 | `setZone` | `(zone: T) => void` | Set zone programmatically |
 | `isZone` | `(...zones: T[]) => boolean` | Check if current zone matches |
 | `getKeyOptions` | `(zone: T, extra?) => UseKeyOptions` | Create zone-scoped options for `useKey` |
+| `getZoneProps` | `(zone: T) => { "data-focused": true \| undefined }` | Add the active-zone data attribute to a zone container |
 
-### With @diffgazer/ui components
+### With `@diffgazer/ui` components
 
-See the [keys-package-mode example](/ui/integrations/keys-patterns) for a complete multi-zone layout using @diffgazer/ui's Menu, Dialog, CommandPalette, and Select components.
+See the [keys-package-mode example](/ui/integrations/keys-patterns) for a complete multi-zone layout using `@diffgazer/ui`'s Menu, Dialog, CommandPalette, and Select components.

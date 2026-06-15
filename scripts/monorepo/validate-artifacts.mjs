@@ -3,22 +3,22 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { ENV } from "./artifacts/env.mjs";
-import { readJson } from "./artifacts/json.mjs";
-import { validateArtifactPackSurface } from "./artifacts/pack-surface.mjs";
-import { runValidationChecks } from "./artifacts/run-checks.mjs";
 import {
   collectArtifactSyncValidationErrors,
   getArtifactLibraries,
   readDocsLibrariesConfig,
-} from "./artifacts/sync.mjs";
+} from "@diffgazer/registry";
+import { ENV } from "./lib/env.mjs";
+import { readJson } from "./lib/json.mjs";
+import { validateArtifactPackSurface } from "./lib/pack-surface.mjs";
+import { runValidationChecks } from "./lib/run-checks.mjs";
 import {
   assertNoDuplicateDemoKeys,
   collectBundleRelativeJsImportErrors,
   collectTreeParityErrors,
   validateIntegrityBundle,
   validateLibraryArtifacts,
-} from "./artifacts/validation.mjs";
+} from "./lib/validation.mjs";
 
 const root = process.cwd();
 const docsRoot = resolve(root, "apps/docs");

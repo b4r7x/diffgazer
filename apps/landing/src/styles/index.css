@@ -2,15 +2,13 @@
 /* Package consumers get no Tailwind @source scanning of @diffgazer/ui, so the
    compiled component CSS (styles.css) must be imported explicitly alongside the
    theme tokens — otherwise DiffView, CodeBlock, etc. render unstyled. */
-@import "@diffgazer/ui/theme-base.css";
-@import "@diffgazer/ui/theme.css";
 @import "@diffgazer/ui/sources.css";
 @import "@diffgazer/ui/styles.css";
 @source "../";
 
 body {
   min-height: 100vh;
-  background-color: var(--color-background);
-  color: var(--color-foreground);
-  font-family: var(--font-mono);
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--base-font-mono);
 }

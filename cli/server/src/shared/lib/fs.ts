@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { getErrorMessage } from "@diffgazer/core/errors";
+import { log } from "./log.js";
 
 const DEFAULT_DIR_MODE = 0o700;
 const DEFAULT_FILE_MODE = 0o600;
@@ -49,7 +50,7 @@ export const readJsonFileSync = <T>(filePath: string): T | null => {
   const result = readJsonFileSyncSafe<T>(filePath);
   if (result.status === "ok") return result.data;
   if (result.status === "missing") return null;
-  console.warn(`[fs] Failed to parse JSON from ${filePath}:`, result.error);
+  log("warn", "fs_json_parse_failed", { filePath, error: result.error });
   return null;
 };
 
@@ -64,8 +65,17 @@ export const writeJsonFileSync = (
   const tempPath = `${filePath}.${randomUUID()}.tmp`;
   const content = `${JSON.stringify(data, null, 2)}\n`;
 
-  fs.writeFileSync(tempPath, content, { mode });
-  fs.renameSync(tempPath, filePath);
+  try {
+    fs.writeFileSync(tempPath, content, { mode });
+    fs.renameSync(tempPath, filePath);
+  } catch (error) {
+    // Best-effort temp-file cleanup; the original error is what callers need, and
+    // a leftover .tmp on an unlink failure is harmless (it is uniquely named).
+    try {
+      fs.unlinkSync(tempPath);
+    } catch {}
+    throw error;
+  }
 };
 
 export const removeFileSync = (filePath: string): boolean => {
@@ -86,20 +96,7 @@ export async function writeJsonFile(
   const dir = path.dirname(filePath);
   await fs.promises.mkdir(dir, { recursive: true, mode: DEFAULT_DIR_MODE });
 
-  const tempPath = `${filePath}.${randomUUID()}.tmp`;
-  const content = `${JSON.stringify(data, null, 2)}\n`;
-
-  try {
-    await fs.promises.writeFile(tempPath, content, { mode });
-    await fs.promises.rename(tempPath, filePath);
-  } catch (error) {
-    // Best-effort temp-file cleanup; the original error is what callers need, and
-    // a leftover .tmp on an unlink failure is harmless (it is uniquely named).
-    try {
-      await fs.promises.unlink(tempPath);
-    } catch {}
-    throw error;
-  }
+  await atomicWriteFile(filePath, `${JSON.stringify(data, null, 2)}\n`, mode);
 }
 
 export async function atomicWriteFile(

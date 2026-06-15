@@ -26,7 +26,7 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
           )
         ) : (
           <InfoField
-            label="Not Trusted"
+            label="Not trusted"
             color="yellow"
             onClick={() => navigate({ to: "/settings/trust-permissions" })}
             ariaLabel="Grant trust permissions"
@@ -53,7 +53,7 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
             <div className="flex justify-between items-center">
               <span className="opacity-90">#{context.lastRunId}</span>
               {context.lastRunIssueCount !== undefined && (
-                <span className="text-tui-yellow text-xs">
+                <span className="text-warning-text text-xs">
                   ({context.lastRunIssueCount} issues)
                 </span>
               )}

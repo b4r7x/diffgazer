@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -63,6 +64,9 @@ export const DiffgazerAddConfigSchema = z.object({
 });
 
 export type DiffgazerAddConfig = z.infer<typeof DiffgazerAddConfigSchema>;
+
+/** A single zod-proved manifest entry keyed by installed item name. */
+export type ManifestItem = NonNullable<DiffgazerAddConfig["installedComponents"]>[string];
 
 export type ManifestInstallMetadata = {
   integrationMode?: "none" | "copy" | "@diffgazer/keys";
@@ -181,13 +185,35 @@ export function getRegistry(): RegistryBundle {
   return loadRegistry();
 }
 
+const KeysVersionSchema = z.object({ versionSpec: z.string().min(1) });
+
+let cachedKeysVersionSpec: string | null = null;
+
+// Derived at build time by generate-keys-copy-bundle.ts from libs/keys/package.json,
+// so the default --keys-version range tracks the bundled @diffgazer/keys release with
+// no hand edits. Read at runtime (not statically imported) so type-check stays
+// independent of the gitignored generated file and the path resolves the same from
+// src (tests/tsx) and the tsup bundle.
+export function getDefaultKeysVersionSpec(): string {
+  if (cachedKeysVersionSpec) return cachedKeysVersionSpec;
+  const path = resolve(__dirname, "./generated/keys-version.json");
+  const { versionSpec } = KeysVersionSchema.parse(JSON.parse(readFileSync(path, "utf-8")));
+  cachedKeysVersionSpec = versionSpec;
+  return versionSpec;
+}
+
 const registry = createRegistryAccessors({
   loader: () => getRegistry(),
   itemLabel: "Component",
   pathPrefixes: ["registry/ui/", "registry/hooks/", "registry/lib/", "styles/"],
 });
 
-const config = createConfigModule<DiffgazerAddConfig, ResolvedConfig, ManifestInstallMetadata>({
+const config = createConfigModule<
+  DiffgazerAddConfig,
+  ResolvedConfig,
+  ManifestInstallMetadata,
+  ManifestItem
+>({
   configFileName: CONFIG_FILE,
   schema: DiffgazerAddConfigSchema,
   resolveConfig,

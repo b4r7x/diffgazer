@@ -77,21 +77,6 @@ describe("SettingsThemePage keyboard behavior", () => {
     mockGetSettings = vi.fn<BoundApi["getSettings"]>().mockResolvedValue(SETTINGS_FIXTURE);
     mockSaveSettings = vi.fn<BoundApi["saveSettings"]>().mockResolvedValue(undefined);
     localStorage.clear();
-    // Force light resolved theme via matchMedia stub for auto setting.
-    Object.defineProperty(window, "matchMedia", {
-      writable: true,
-      configurable: true,
-      value: (query: string) => ({
-        matches: false,
-        media: query,
-        onchange: null,
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      }),
-    });
   });
 
   it("moves focus independently from selection and reaches button zone at list boundary", async () => {

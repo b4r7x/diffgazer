@@ -1,13 +1,12 @@
 import { err, ok, type Result } from "@diffgazer/core/result";
-import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { ReviewStartedEvent } from "@diffgazer/core/schemas/events";
-import type { ReviewMode } from "@diffgazer/core/schemas/review";
-import { parseDiff } from "../../shared/lib/diff/parser.js";
-import { computeTotalStats } from "../../shared/lib/diff/total-stats.js";
-import type { ParsedDiff } from "../../shared/lib/diff/types.js";
+import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
 import { createGitDiffError } from "../../shared/lib/git/errors.js";
 import type { createGitService } from "../../shared/lib/git/service.js";
 import { reviewAbort } from "./abort.js";
+import { parseDiff } from "./engine/diff/parser.js";
+import { computeTotalStats } from "./engine/diff/total-stats.js";
+import type { ParsedDiff } from "./engine/diff/types.js";
 import { stepComplete, stepStart } from "./stream/steps.js";
 import type { EmitFn, ReviewAbort } from "./types.js";
 
@@ -45,19 +44,24 @@ export async function resolveGitDiff(params: {
 
   await emit(stepStart("diff"));
 
-  let diff: string;
-  try {
-    diff = await gitService.getDiff(mode, files);
-  } catch (error: unknown) {
-    return err(reviewAbort(createGitDiffError(error).message, ErrorCode.GIT_NOT_FOUND, "diff"));
+  const diffResult = await gitService.getDiff(mode, files);
+  if (!diffResult.ok) {
+    return err(
+      reviewAbort(
+        createGitDiffError(diffResult.error.message).message,
+        ReviewErrorCode.GIT_NOT_FOUND,
+        "diff",
+      ),
+    );
   }
+  const diff = diffResult.value;
 
   if (!diff.trim()) {
     const errorMessage =
       mode === "staged"
         ? "No staged changes found. Use 'git add' to stage files, or review unstaged changes instead."
         : "No unstaged changes found. Make some edits first, or review staged changes instead.";
-    return err(reviewAbort(errorMessage, "NO_DIFF", "diff"));
+    return err(reviewAbort(errorMessage, ReviewErrorCode.NO_DIFF, "diff"));
   }
 
   let parsed = parseDiff(diff);
@@ -71,7 +75,11 @@ export async function resolveGitDiff(params: {
     parsed = filterDiffByFiles(parsed, files);
     if (parsed.files.length === 0) {
       return err(
-        reviewAbort(`None of the specified files have ${mode} changes`, "NO_DIFF", "diff"),
+        reviewAbort(
+          `None of the specified files have ${mode} changes`,
+          ReviewErrorCode.NO_DIFF,
+          "diff",
+        ),
       );
     }
   }
@@ -82,7 +90,9 @@ export async function resolveGitDiff(params: {
     return err(
       reviewAbort(
         `Diff too large (${sizeMB}MB exceeds ${maxMB}MB limit). Try reviewing fewer files or use file filtering.`,
-        ErrorCode.VALIDATION_ERROR,
+        // Not a ReviewErrorCode of its own; surfaces as GENERATION_FAILED (the
+        // same code the prior untyped collapse produced for this message).
+        ReviewErrorCode.GENERATION_FAILED,
         "diff",
       ),
     );

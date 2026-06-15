@@ -1,7 +1,7 @@
 import { TextInput } from "@inkjs/ui";
 import { Box, Text, useInput } from "ink";
-import { useContext, useEffect, useState } from "react";
-import { KeyboardContext } from "../../hooks/use-keyboard";
+import { useState } from "react";
+import { applyTextEditKey, useInputMode } from "../../hooks/use-input-mode";
 import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions";
 import { useTheme } from "../../theme/provider";
 
@@ -22,17 +22,6 @@ const widthBySize = {
   md: 40,
   lg: 60,
 } as const;
-
-function useInputMode(isActive: boolean): void {
-  const ctx = useContext(KeyboardContext);
-  const setInputActive = ctx?.setInputActive;
-
-  useEffect(() => {
-    if (!setInputActive || !isActive) return;
-    setInputActive(true);
-    return () => setInputActive(false);
-  }, [isActive, setInputActive]);
-}
 
 export function Input({
   value,
@@ -125,16 +114,8 @@ function ManualTextEdit({
 
   useInput(
     (input, key) => {
-      if (key.backspace || key.delete) {
-        onChange(value.slice(0, -1));
-        return;
-      }
-      if (key.return || key.escape || key.upArrow || key.downArrow || key.tab) {
-        return;
-      }
-      if (input.length >= 1 && !key.ctrl && !key.meta) {
-        onChange(value + input);
-      }
+      const next = applyTextEditKey(value, input, key);
+      if (next !== null) onChange(next);
     },
     { isActive },
   );

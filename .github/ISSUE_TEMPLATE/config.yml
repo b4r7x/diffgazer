@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: mailto:b4r7dev@gmail.com
+    about: Send vulnerability reports privately instead of opening a public issue.

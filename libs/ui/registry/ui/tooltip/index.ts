@@ -8,6 +8,7 @@ import {
 import { type TooltipProps, TooltipRoot } from "./tooltip";
 import { TooltipContent, type TooltipContentProps } from "./tooltip-content";
 
+/** Root - manages hover state, delay, and enabled toggle. */
 const Tooltip = Object.assign(TooltipRoot, {
   Trigger: TooltipTrigger,
   Content: TooltipContent,

@@ -7,7 +7,7 @@ import { Toaster, toast } from "@/components/ui/toast";
 import { ToggleGroup } from "@/components/ui/toggle-group";
 
 export default function ToastPositions() {
-  const [position, setPosition] = useState<string | null>("bottom-right");
+  const [position, setPosition] = useState<ToastPosition | null>("bottom-right");
   return (
     <div className="flex flex-col gap-4">
       <ToggleGroup value={position} onChange={setPosition}>
@@ -25,7 +25,7 @@ export default function ToastPositions() {
       >
         Show Toast
       </Button>
-      <Toaster position={(position ?? "bottom-right") as ToastPosition} />
+      <Toaster position={position ?? "bottom-right"} />
     </div>
   );
 }

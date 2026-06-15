@@ -13,14 +13,17 @@ interface ListboxQuery {
   getItemId: (idPrefix: string, id: string) => string;
 }
 
+/** Builds the DOM id used by aria-activedescendant for a logical listbox item id. */
 export function getEncodedListboxItemId(idPrefix: string, id: string): string {
   return `${idPrefix}-${encodeURIComponent(id)}`;
 }
 
+/** Returns the nearest composite-owner selector for the given container role. */
 export function getListboxOwnerSelector(containerRole: ContainerRole) {
   return containerRole === "listbox" ? '[role="listbox"]' : '[role="menu"]';
 }
 
+/** Returns true when an item belongs to the current composite rather than a nested listbox/menu. */
 export function isOwnedListboxItem(
   element: HTMLElement,
   container: HTMLElement,
@@ -30,6 +33,7 @@ export function isOwnedListboxItem(
   return owner === null || owner === container;
 }
 
+/** Checks whether a logical item id maps to a mounted, owned DOM option. */
 export function hasDomItem(options: {
   container: HTMLElement | null;
   query: ListboxQuery;
@@ -51,6 +55,7 @@ export function hasDomItem(options: {
   );
 }
 
+/** Returns owned item elements for keyboard navigation or typeahead. */
 export function getListboxItems(
   container: HTMLElement | null,
   itemRole: string,
@@ -64,6 +69,7 @@ export function getListboxItems(
   ).filter((item) => isOwnedListboxItem(item, container, containerRole));
 }
 
+/** Resolves the first item id that keyboard navigation can highlight. */
 export function getFirstNavigableItemId<TId extends string>(
   container: HTMLElement | null,
   itemRole: string,
@@ -86,6 +92,7 @@ export function getFirstNavigableItemId<TId extends string>(
   return firstItem?.dataset.value !== undefined ? (firstItem.dataset.value as TId) : null;
 }
 
+/** Resolves the logical active descendant from metadata, highlight, and selection state. */
 export function resolveActiveDescendant<TId extends string>(
   items: ListboxMetadataItem<TId>[] | undefined,
   highlighted: TId | null,
@@ -105,6 +112,7 @@ export function resolveActiveDescendant<TId extends string>(
   return null;
 }
 
+/** Reads accessible text from aria-label, aria-labelledby, and visible descendant text. */
 export function getAccessibleText(el: HTMLElement, visited: Set<HTMLElement> = new Set()): string {
   if (visited.has(el)) return "";
   visited.add(el);

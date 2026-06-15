@@ -1,14 +1,20 @@
 "use client";
 
-import { Children, type HTMLAttributes, isValidElement, type ReactNode } from "react";
+import { Children, type ComponentProps, isValidElement, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { PanelDescription } from "./panel-description";
 import { PanelTitle } from "./panel-title";
 
-export interface PanelHeaderProps extends HTMLAttributes<HTMLDivElement> {
+/** Props for panel header. */
+export interface PanelHeaderProps extends ComponentProps<"div"> {
+  /** Toggle the 4px foreground marker bar. Use "none" for rail or custom layouts. */
   marker?: "bar" | "none";
 }
 
+/**
+ * Compound header. Title and Description live in a left column; any other child (eyebrow span,
+ * badge, button) lands in a right slot.
+ */
 export function PanelHeader({ className, children, marker = "bar", ...props }: PanelHeaderProps) {
   const { bodyChildren, endChildren } = partitionHeaderChildren(children);
   const hasEnd = endChildren.length > 0;

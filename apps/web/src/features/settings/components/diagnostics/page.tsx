@@ -1,6 +1,12 @@
-import { type DiagnosticsData, useDiagnosticsData } from "@diffgazer/core/api/hooks";
+import {
+  type DiagnosticsData,
+  deriveDiagnosticsActions,
+  getContextActionLabel,
+  getServerStatusPresentation,
+  getSetupPresentation,
+  useDiagnosticsData,
+} from "@diffgazer/core/api/hooks";
 import { formatTimestampOrNA } from "@diffgazer/core/format";
-import type { SetupStatus } from "@diffgazer/core/schemas/config";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Divider } from "@diffgazer/ui/components/divider";
@@ -12,43 +18,10 @@ import { useDiagnosticsKeyboard } from "./use-diagnostics-keyboard";
 
 type OverallState = "loading" | "error" | "empty" | "success";
 
-function getServerValue(serverState: DiagnosticsData["serverState"]): string {
-  if (serverState.status === "checking") return "Checking...";
-  if (serverState.status === "connected") return "Connected";
-  return `Error: ${serverState.message}`;
-}
-
-const HEALTH_VARIANT_BY_STATUS = {
-  error: "error",
-  connected: "success",
-  checking: "info",
-} as const satisfies Record<DiagnosticsData["serverState"]["status"], "error" | "success" | "info">;
-
-function getHealthVariant(
-  status: DiagnosticsData["serverState"]["status"],
-): "error" | "success" | "info" {
-  return HEALTH_VARIANT_BY_STATUS[status];
-}
-
-function getSetupValue(setupStatus: SetupStatus | null): string {
-  if (!setupStatus) return "Unavailable";
-  if (setupStatus.isReady) return "Ready";
-  return `Incomplete (${setupStatus.missing.join(", ") || "unknown"})`;
-}
-
 function getProviderValue(provider: string | undefined, model: string | undefined): string {
   if (!provider) return "Unavailable";
   if (model) return `${provider} (${model})`;
   return provider;
-}
-
-function getContextActionLabel(
-  isRefreshing: boolean,
-  contextStatus: DiagnosticsData["contextStatus"],
-): string {
-  if (isRefreshing) return "Working...";
-  if (contextStatus === "ready") return "Regenerate Context";
-  return "Generate Context";
 }
 
 function getOverallState({
@@ -70,10 +43,13 @@ function getOverallState({
 }
 
 export function DiagnosticsPage() {
-  const { provider, model, setupStatus } = useConfigData();
+  const { provider, model } = useConfigData();
   const diagnostics = useDiagnosticsData();
   const {
     serverState,
+    setupStatus,
+    initLoading,
+    initError,
     contextStatus,
     contextGeneratedAt,
     contextError,
@@ -92,14 +68,16 @@ export function DiagnosticsPage() {
     handleRefreshAll,
   } = useDiagnosticsKeyboard({ diagnostics });
 
-  const serverValue = getServerValue(serverState);
-  const setupValue = getSetupValue(setupStatus);
+  const server = getServerStatusPresentation(serverState);
+  const setup = getSetupPresentation({ isLoading: initLoading, error: initError, setupStatus });
   const providerValue = getProviderValue(provider, model);
   const contextActionLabel = getContextActionLabel(isRefreshing, contextStatus);
   const serverError = serverState.status === "error" ? serverState.message : null;
   const diagnosticsError = refreshError ?? contextError ?? serverError;
-  const isRefreshAllDisabled = isRefreshingAll || isRefreshing;
-  const isContextActionDisabled = !canRegenerate || isRefreshing || isRefreshingAll;
+  const {
+    refreshAllDisabled: isRefreshAllDisabled,
+    contextActionDisabled: isContextActionDisabled,
+  } = deriveDiagnosticsActions({ canRegenerate, isRefreshing, isRefreshingAll });
   const overallState = getOverallState({ isRefreshingAll, serverState, contextStatus, provider });
 
   return (
@@ -108,11 +86,11 @@ export function DiagnosticsPage() {
         as="section"
         aria-label="system diagnostics"
         aria-busy={isRefreshingAll || isRefreshing}
-        className="w-full max-w-2xl flex flex-col border-tui-border bg-tui-bg shadow-lg"
+        className="w-full max-w-2xl flex flex-col border-border bg-background shadow-lg"
       >
-        <Panel.Header className="bg-tui-selection border-tui-border px-4 py-2">
-          <Panel.Title className="text-tui-fg">System Diagnostics</Panel.Title>
-          <span className="text-xs text-tui-muted">{overallState}</span>
+        <Panel.Header className="bg-secondary border-border px-4 py-2">
+          <Panel.Title className="text-foreground">System Diagnostics</Panel.Title>
+          <span className="text-xs text-muted-foreground">{overallState}</span>
         </Panel.Header>
 
         <Panel.Content
@@ -122,24 +100,24 @@ export function DiagnosticsPage() {
         >
           <div className="grid grid-cols-2 gap-x-8 text-sm">
             <div className="flex flex-col">
-              <span className="text-tui-muted text-xs uppercase tracking-wider mb-1">
+              <span className="text-muted-foreground text-xs uppercase tracking-wider mb-1">
                 Version Info
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-tui-blue">Diffgazer Web</span>
-                <span className="text-tui-border">|</span>
-                <span className="text-tui-green">{import.meta.env.MODE.toUpperCase()}</span>
+                <span className="text-info-text">Diffgazer Web</span>
+                <span className="text-border">|</span>
+                <span className="text-success-text">{import.meta.env.MODE.toUpperCase()}</span>
               </div>
             </div>
 
             <div className="flex flex-col">
-              <span className="text-tui-muted text-xs uppercase tracking-wider mb-1">
+              <span className="text-muted-foreground text-xs uppercase tracking-wider mb-1">
                 Context Snapshot
               </span>
               <div className="text-white flex items-center gap-2">
                 <span>[{contextStatus}]</span>
                 {contextStatus === "ready" && (
-                  <span className="text-xs text-tui-yellow">
+                  <span className="text-xs text-warning-text">
                     {formatTimestampOrNA(contextGeneratedAt, "Unavailable")}
                   </span>
                 )}
@@ -150,19 +128,19 @@ export function DiagnosticsPage() {
           <Divider className="border-dashed" />
 
           <div className="space-y-3">
-            <Typography as="h3" size="xs" className="text-tui-violet uppercase tracking-wider">
+            <Typography as="h3" size="xs" className="text-accent uppercase tracking-wider">
               Diagnostic Snapshot
             </Typography>
             <KeyValue className="font-mono">
               <KeyValue.Item
                 label="Health"
-                value={<span className="break-all">{serverValue}</span>}
-                variant={getHealthVariant(serverState.status)}
+                value={<span className="break-all">{server.label}</span>}
+                variant={server.variant}
               />
               <KeyValue.Item
                 label="Setup"
-                value={<span className="break-all">{setupValue}</span>}
-                variant={setupStatus?.isReady ? "success" : "warning"}
+                value={<span className="break-all">{setup.label}</span>}
+                variant={setup.variant}
               />
               <KeyValue.Item
                 label="Provider"

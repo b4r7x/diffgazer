@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 
+/** Heading activation line mode. A number sets a custom viewport fraction from 0 to 1. */
 export type ActiveHeadingActivation = "top-line" | "viewport-center" | (number & {});
 
 /**
@@ -14,16 +15,30 @@ export type ActiveHeadingActivation = "top-line" | "viewport-center" | (number &
  * document boundaries on its own — one hook tracks one document.
  */
 export interface UseActiveHeadingOptions {
+  /** Ordered list of heading element IDs to observe. Elements are resolved via document.getElementById. */
   ids: string[];
+  /** ID of a scrollable container element. When omitted, the window is used as the scroll target. */
   containerId?: string;
-  /** @default "top-line" */
+  /**
+   * How headings activate. "top-line" activates when crossing topOffset from container top.
+   * "viewport-center" activates at the vertical center. A number sets a custom viewport fraction.
+   *
+   * @default "top-line"
+   */
   activation?: ActiveHeadingActivation;
+  /** Pixel offset from the container top used by the "top-line" activation mode. @default 96 */
   topOffset?: number;
+  /** Pixel offset applied when scrollTo programmatically scrolls to a heading. Defaults to topOffset. */
   scrollOffset?: number;
+  /** Fraction of viewport height used as bottom margin for bottomLock detection. @default 0 */
   bottomMargin?: number;
+  /** Fraction of the heading height that must cross the activation line before it becomes active. @default 0 */
   threshold?: number;
+  /** When true, the last heading is always activated when the user scrolls to the bottom of the container. @default true */
   bottomLock?: boolean;
+  /** Set to false to disable scroll observation. When disabled, activeId is set to null. @default true */
   enabled?: boolean;
+  /** Milliseconds to wait after a programmatic scrollTo before resuming scroll tracking. @default 150 */
   settleDelay?: number;
   /** Watch for DOM changes via MutationObserver. Disable for static content. @default true */
   observe?: boolean;
@@ -31,8 +46,11 @@ export interface UseActiveHeadingOptions {
   ownerDocument?: Document;
 }
 
+/** Current heading state and an imperative scroll helper. */
 export interface UseActiveHeadingReturn {
+  /** ID of the currently active heading, or null when disabled or no headings are found. */
   activeId: string | null;
+  /** Scrolls to the heading with the given ID and pins activeId during the scroll animation. */
   scrollTo: (id: string) => void;
 }
 
@@ -102,6 +120,7 @@ function resolveActivationLine(
   return top + topOffset;
 }
 
+/** Configurable active heading detection for table-of-contents navigation. */
 export function useActiveHeading({
   ids,
   containerId,
@@ -119,6 +138,7 @@ export function useActiveHeading({
   const doc = ownerDocument ?? (typeof document !== "undefined" ? document : null);
   const idsKey = ids.join("\0");
   const [activeId, setActiveId] = useState<string | null>(ids[0] ?? null);
+  const [settleSignal, setSettleSignal] = useState(0);
   const scrollingToRef = useRef<string | null>(null);
   const settleTimerRef = useRef<number>(0);
   const update = useEffectEvent((): void => {
@@ -180,7 +200,7 @@ export function useActiveHeading({
           settleTimerRef.current = view.setTimeout(() => {
             settleTimerRef.current = 0;
             scrollingToRef.current = null;
-            update();
+            setSettleSignal((n) => n + 1);
           }, settleDelay);
         }
         return;
@@ -233,6 +253,13 @@ export function useActiveHeading({
     observe,
   ]);
 
+  // A settle timer releases the scroll guard and bumps this signal; recomputing
+  // here keeps the Effect Event effect-owned instead of called from the timer.
+  useEffect(() => {
+    if (settleSignal === 0) return;
+    update();
+  }, [settleSignal]);
+
   const scrollTo = useCallback(
     (id: string) => {
       if (doc === null) return;
@@ -265,7 +292,7 @@ export function useActiveHeading({
         settleTimerRef.current = view.setTimeout(() => {
           settleTimerRef.current = 0;
           scrollingToRef.current = null;
-          update();
+          setSettleSignal((n) => n + 1);
         }, settleDelay);
       }
     },

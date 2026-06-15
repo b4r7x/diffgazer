@@ -2,7 +2,12 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
-import { requireAttribute } from "../../testing/assertions";
+import {
+  expectFieldDescribedBy,
+  expectFieldInvalid,
+  expectResetClearsInvalid,
+  submitForm,
+} from "../../testing/form-behavior";
 import { Field } from "../field/index";
 import { Checkbox } from "./index";
 
@@ -27,6 +32,19 @@ describe("Checkbox", () => {
     screen.getByRole("checkbox").focus();
     await userEvent.keyboard(" ");
     expect(onChange).toHaveBeenCalledWith(true);
+  });
+
+  it("emits data-slot and data-state styling hooks", () => {
+    const { rerender } = render(<Checkbox checked={false} label="Accept" />);
+    const control = screen.getByRole("checkbox");
+    expect(control).toHaveAttribute("data-slot", "checkbox");
+    expect(control).toHaveAttribute("data-state", "unchecked");
+    rerender(<Checkbox checked label="Accept" />);
+    expect(control).toHaveAttribute("data-state", "checked");
+    rerender(<Checkbox checked="indeterminate" label="Accept" />);
+    expect(control).toHaveAttribute("data-state", "indeterminate");
+    rerender(<Checkbox checked disabled label="Accept" />);
+    expect(control).toHaveAttribute("data-disabled", "");
   });
 
   it("does not toggle when disabled via click or keyboard", async () => {
@@ -59,8 +77,7 @@ describe("Checkbox", () => {
   it("links description via aria-describedby", () => {
     render(<Checkbox label="Accept" description="You must accept to proceed" />);
     const checkbox = screen.getByRole("checkbox");
-    const descId = requireAttribute(checkbox, "aria-describedby");
-    expect(document.getElementById(descId)).toHaveTextContent("You must accept to proceed");
+    expectFieldDescribedBy(checkbox, screen.getByText("You must accept to proceed").id);
   });
 
   it("composes Field label and description ids with local label and description", () => {
@@ -76,8 +93,7 @@ describe("Checkbox", () => {
     );
 
     const checkbox = screen.getByRole("checkbox", { name: /accept policy.*terms/i });
-    expect(checkbox).toHaveAccessibleDescription(/field help.*field error.*local help/i);
-    expect(checkbox).toHaveAttribute("aria-invalid", "true");
+    expectFieldInvalid(checkbox, /field help.*field error.*local help/i);
   });
 
   it("renders aria-invalid and aria-required when set", () => {
@@ -100,22 +116,45 @@ describe("Checkbox", () => {
 
     form.reset();
     await waitFor(() => expect(new FormData(form).get("terms")).toBe("on"));
-    expect(screen.getByRole("checkbox")).toHaveAttribute("aria-checked", "true");
+    await waitFor(() =>
+      expect(screen.getByRole("checkbox")).toHaveAttribute("aria-checked", "true"),
+    );
   });
 
   it("focuses the visible checkbox when native required validation fails", async () => {
+    const user = userEvent.setup();
+    render(
+      <form aria-label="Test form" onSubmit={(event) => event.preventDefault()}>
+        <Checkbox name="terms" required label="Accept terms" />
+        <button type="submit">Submit</button>
+      </form>,
+    );
+
+    const checkbox = screen.getByRole("checkbox", { name: /accept terms/i });
+
+    await submitForm(user);
+    expect(checkbox).toHaveFocus();
+    await waitFor(() => expectFieldInvalid(checkbox));
+  });
+
+  it("clears aria-invalid on native form reset after a failed submit", async () => {
     render(
       <form aria-label="Test form">
         <Checkbox name="terms" required label="Accept terms" />
       </form>,
     );
 
-    const form = getForm();
-    const checkbox = screen.getByRole("checkbox", { name: /accept terms/i });
+    await expectResetClearsInvalid(
+      getForm(),
+      screen.getByRole("checkbox", { name: /accept terms/i }),
+    );
+  });
 
-    expect(form.reportValidity()).toBe(false);
-    expect(checkbox).toHaveFocus();
-    await waitFor(() => expect(checkbox).toHaveAttribute("aria-invalid", "true"));
+  it("keeps the hidden form-mirror input out of the a11y tree with no aria-label", () => {
+    const { container } = render(<Checkbox name="terms" required label="Accept terms" />);
+    const mirror = container.querySelector('input[type="checkbox"]');
+    expect(mirror).toHaveAttribute("aria-hidden", "true");
+    expect(mirror).not.toHaveAttribute("aria-label");
   });
 
   it("validates required unnamed checkboxes without contributing FormData", async () => {
@@ -276,8 +315,7 @@ describe("Checkbox.Group", () => {
     );
 
     const group = screen.getByRole("group", { name: "Fruits" });
-    expect(group).toHaveAttribute("aria-invalid", "true");
-    expect(group).toHaveAccessibleDescription("Select at least one fruit.");
+    expectFieldInvalid(group, "Select at least one fruit.");
   });
 
   it("navigates items with arrow keys", async () => {
@@ -458,10 +496,7 @@ describe("Checkbox.Group", () => {
     await userEvent.hover(screen.getByRole("checkbox", { name: /banana/i }));
 
     expect(onHighlight).not.toHaveBeenCalled();
-    expect(screen.getByRole("checkbox", { name: /apple/i })).toHaveAttribute(
-      "data-highlighted",
-      "true",
-    );
+    expect(screen.getByRole("checkbox", { name: /apple/i })).toHaveAttribute("data-highlighted");
     expect(screen.getByRole("checkbox", { name: /banana/i })).not.toHaveAttribute(
       "data-highlighted",
     );
@@ -483,9 +518,7 @@ describe("Checkbox.Group", () => {
       </Checkbox.Group>,
     );
 
-    // fireEvent retained: exercises the "no focused item + highlighted=null" fallback
-    // in useNavigation.getFocusedIndex (third branch returning -1). userEvent.tab() would focus the
-    // first checkbox first, making getFocusedIndex return 0 and ArrowDown advance to banana.
+    // fireEvent retained: direct keydown exercises the no-focused-item + highlighted=null fallback.
     fireEvent.keyDown(screen.getByRole("group"), { key: "ArrowDown" });
 
     expect(screen.getByRole("checkbox", { name: /apple/i })).toHaveFocus();
@@ -508,7 +541,7 @@ describe("Checkbox.Group", () => {
 
     expect(form.reportValidity()).toBe(false);
     expect(screen.getByRole("checkbox", { name: /apple/i })).toHaveFocus();
-    await waitFor(() => expect(screen.getByRole("group")).toHaveAttribute("aria-invalid", "true"));
+    await waitFor(() => expectFieldInvalid(screen.getByRole("group")));
   });
 
   it("validates required groups with items rendered through wrapper components", () => {
@@ -612,7 +645,7 @@ describe("Checkbox.Group", () => {
     expect(screen.getAllByRole("checkbox")).toHaveLength(2);
     expect(form.reportValidity()).toBe(false);
     expect(screen.getByRole("checkbox", { name: /apple/i })).toHaveFocus();
-    await waitFor(() => expect(screen.getByRole("group")).toHaveAttribute("aria-invalid", "true"));
+    await waitFor(() => expectFieldInvalid(screen.getByRole("group")));
 
     await userEvent.click(screen.getByRole("checkbox", { name: /banana/i }));
 
@@ -637,6 +670,19 @@ describe("Checkbox.Group", () => {
 
     form.reset();
     await waitFor(() => expect(new FormData(form).getAll("fruits")).toEqual(["apple"]));
+  });
+
+  it("clears the group's aria-invalid on native form reset after a failed submit", async () => {
+    render(
+      <form aria-label="Test form">
+        <Checkbox.Group label="Fruits" name="fruits" required>
+          <Checkbox.Item value="apple" label="Apple" />
+          <Checkbox.Item value="banana" label="Banana" />
+        </Checkbox.Group>
+      </form>,
+    );
+
+    await expectResetClearsInvalid(getForm(), screen.getByRole("group", { name: "Fruits" }));
   });
 
   it("toggles the focused item on Enter key", async () => {

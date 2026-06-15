@@ -1,5 +1,6 @@
 import type { ParsedDiff } from "./parse";
 
+/** Builds a stable identity string for parsed diff structure and hunk shape. */
 export function parsedDiffIdentity(parsed: ParsedDiff): string {
   const hunks = parsed.hunks
     .map(

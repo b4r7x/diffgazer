@@ -522,6 +522,27 @@ describe("getProviderModels (catalog)", () => {
     if (!result.ok) expect(CatalogErrorSchema.safeParse(result.error).success).toBe(true);
   });
 
+  it("rejects a surfaced-but-enabled non-enum provider with VALIDATION_ERROR before reaching the AIProvider-typed catalog", async () => {
+    // A surfaced overlay flipped to enabled clears the !overlay.enabled gate but is
+    // still not an AIProvider enum member; the isAIProvider guard must catch it
+    // instead of casting it through to the AIProvider-typed catalog call.
+    const actual =
+      await vi.importActual<typeof import("@diffgazer/core/catalog")>("@diffgazer/core/catalog");
+    vi.doMock("@diffgazer/core/catalog", () => ({
+      ...actual,
+      SURFACED_OVERLAYS: {
+        ...actual.SURFACED_OVERLAYS,
+        mistral: { ...actual.SURFACED_OVERLAYS.mistral, enabled: true },
+      },
+    }));
+
+    const { getProviderModels } = await loadService();
+    const result = await getProviderModels("mistral");
+
+    expect(catalog.getProviderModels).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: false, error: { code: "VALIDATION_ERROR" } });
+  });
+
   it("refuses to serve OpenRouter from the catalog so it stays on its live key-gated route (D4)", async () => {
     const { CatalogErrorSchema } = await import("@diffgazer/core/schemas/config");
     const { getProviderModels } = await loadService();

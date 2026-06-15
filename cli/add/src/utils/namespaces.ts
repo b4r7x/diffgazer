@@ -1,3 +1,4 @@
+import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
 import { ctx, type RegistryItem, type ResolvedConfig } from "../context.js";
 import {
   getKeysHookNames,
@@ -6,7 +7,11 @@ import {
 } from "./keys-copy-bundle.js";
 
 export type InstallNamespace = "ui" | "keys";
-const CLI_INSTALLABLE_TYPES = new Set(["registry:ui", "registry:hook", "registry:lib"]);
+const CLI_INSTALLABLE_TYPES = new Set<string>([
+  REGISTRY_ITEM_TYPE.ui,
+  REGISTRY_ITEM_TYPE.hook,
+  REGISTRY_ITEM_TYPE.lib,
+]);
 
 export interface InstallName {
   namespace: InstallNamespace;
@@ -70,17 +75,7 @@ function installableUiNames(items: RegistryItem[]): Set<string> {
   );
 }
 
-export function validateInstallNames(names: string[]): void {
-  validateInstallNamesAgainst(
-    names,
-    installableUiNames(ctx.registry.getAllItems()),
-    getKeysHookNames(),
-  );
-}
-
-// Diff accepts hidden transitives (e.g. ui/portal, ui/dialog-shell) so users
-// can inspect drift in dependencies they did not explicitly install.
-export function validateAnyInstallableName(names: string[]): void {
+export function validateInstallableNames(names: string[]): void {
   validateInstallNamesAgainst(
     names,
     installableUiNames(ctx.registry.getAllItems()),
@@ -118,7 +113,7 @@ export function getNamespacedItem(name: string): RegistryItem {
 
   return {
     name: parsed.publicName,
-    type: "registry:hook",
+    type: REGISTRY_ITEM_TYPE.hook,
     title: parsed.name,
     description: `Diffgazer keys hook: ${parsed.name}`,
     dependencies: [],

@@ -6,12 +6,12 @@ This document defines the current package, artifact, release, and support contra
 
 Public package targets:
 
-- `diffgazer` - product CLI, binary `diffgazer`, Node >= 20.
-- `@diffgazer/add` - registry installer CLI, binary `dgadd`, Node >= 20.
-- `@diffgazer/ui` - React `>=19.2.0` component package, Node >= 20.
-- `@diffgazer/keys` - React `>=19.2.0` keyboard hooks package, Node >= 20.
+- `diffgazer` - product CLI, binary `diffgazer`, Node >= 22.
+- `@diffgazer/add` - registry installer CLI, binary `dgadd`, Node >= 22.
+- `@diffgazer/ui` - React `>=19.2.0` component package, Node >= 22.
+- `@diffgazer/keys` - React `>=19.2.0` keyboard hooks package, Node >= 22.
 
-All four published packages declare a single `engines.node: ">=20.0.0"` floor (CI and Docker run Node 22, so Node 20 is the realistic minimum). The `check-invariants` script asserts this floor is uniform across the published surface so it cannot drift.
+All four published packages declare a single `engines.node: ">=22.0.0"` floor (ink 7's TUI runtime requires Node 22, and CI and Docker run Node 22). The `check-invariants` script asserts this floor is uniform across the published surface so it cannot drift.
 
 **Publish status is per package.** `diffgazer` is live on npm (`npm view diffgazer version` returns a version). The scoped libraries (`@diffgazer/add`, `@diffgazer/ui`, `@diffgazer/keys`) remain gated until `npm view` succeeds for each:
 
@@ -33,7 +33,7 @@ Artifact handoff:
 
 - `@diffgazer/ui` builds docs and registry artifacts into its own `dist/artifacts`; there is no `@diffgazer/ui-artifacts` package.
 - `@diffgazer/keys` builds artifacts into `dist/artifacts`; there is no public `@diffgazer/keys-artifacts` package.
-- `@diffgazer/docs prepare:generated` syncs artifacts from packages when resolvable and falls back to workspace artifacts outside CI.
+- `@diffgazer/docs prepare:generated` auto-detects sync mode from package resolvability everywhere (CI included): resolvable packages sync from package artifacts, otherwise it syncs from workspace artifacts. Force a mode with `DIFFGAZER_ARTIFACT_SYNC_MODE=workspace|package`.
 - Artifact validation is non-mutating and must fail on fingerprint drift, missing manifest inputs, stale/tampered copied artifact directories, stale docs-host sync outputs, and copied artifact mirror drift.
 
 ## Artifact Packaging
@@ -69,7 +69,7 @@ pnpm run release
 
 `pnpm run verify` runs monorepo invariants, type checks, tests, and smoke checks. `pnpm run smoke:packages` packs local workspace packages into temporary projects and verifies public imports/bins; it does not install from the public npm registry.
 
-`pnpm run test-ci` runs artifact preparation, validation, type-check, tests, strict smoke, and monorepo verification. It is the CI-safe gate that `$sota-verify` invokes.
+`pnpm run test-ci` runs artifact preparation, validation, type-check, tests, strict smoke, and monorepo verification. It is the CI-safe local pre-release gate. The release workflow uses `pnpm run release-check`, which runs the same gate families plus package pack dry-runs.
 
 `pnpm run release-check` runs the full no-publish release readiness sequence: artifact prep, artifact validation, type-check, tests, strict smoke, package smoke, pack dry-runs for all public packages, monorepo verification, and `git diff --check`. It does not run `changeset publish`.
 
@@ -177,7 +177,7 @@ The release-readiness workflow must also run pack dry-runs for all public packag
 
 ## Publish Metadata
 
-Public packages are published through the root `pnpm run release` script, which runs `changeset publish --provenance`. Public package manifests also set `publishConfig.provenance` so one-off `npm publish` calls use the same provenance policy. Scoped public packages set `publishConfig.access` to `public`. The `author` field is uniform across the four published packages (`"author": "diffgazer"`); the `license` field intentionally splits MIT vs Apache-2.0 per the [Licensing](#licensing) section.
+Public packages are published through the root `pnpm run release` script, which runs the first-publish guard and then `changeset publish`. Provenance is supplied by each package's `publishConfig.provenance` plus `NPM_CONFIG_PROVENANCE=true` in the release workflow env under GitHub OIDC, not by a CLI flag (`changeset publish` parses only `otp`/`tag`/`gitTag`). `publishConfig.provenance` also makes one-off `npm publish` calls use the same provenance policy. Scoped public packages set `publishConfig.access` to `public`. The `author` field is uniform across the four published packages (`"author": "diffgazer"`); the `license` field intentionally splits MIT vs Apache-2.0 per the [Licensing](#licensing) section.
 
 `@diffgazer/keys-artifacts` is private and exists only as a workspace mirror for docs artifact handoff; it is not a public package target.
 
@@ -186,12 +186,16 @@ Public packages are published through the root `pnpm run release` script, which 
 Publishing runs from `.github/workflows/release.yml` via `changesets/action`:
 
 1. A contributor adds a changeset on their PR (`pnpm run changeset`); merging the PR to `main` triggers the release workflow, which opens (or updates) a `chore: version packages` PR that applies pending changesets, bumps versions, and updates CHANGELOGs.
-2. Merging the Version PR re-triggers the workflow, which runs `pnpm run release-check` and then `pnpm run release` (`changeset publish --provenance`) under GitHub OIDC so npm records provenance attestations.
+2. Merging the Version PR re-triggers the workflow, which runs `pnpm run release-check` and then `pnpm run release` under GitHub OIDC so npm records provenance attestations. `pnpm run release` first runs `node scripts/monorepo/guard-publish.mjs`, then `changeset publish`.
 3. The workflow requires `secrets.NPM_TOKEN` until each public package is configured for npm Trusted Publishers; once trusted publishing is enabled per package on npmjs.com, the token becomes optional.
+
+#### First-publish gate
+
+`changeset publish` would publish every public package whose version is absent from npm, which would silently first-publish the gated scoped packages. To keep the per-package npm gate mechanical, `pnpm run release` runs `scripts/monorepo/guard-publish.mjs` first: it enumerates the non-private workspace packages, checks each against npm (`npm view <name> versions`), and fails the publish step if any unpublished package is missing from `FIRST_PUBLISH_ALLOWLIST` in that script. Today the allowlist is `["diffgazer"]` only, so a Version PR that bumps `@diffgazer/ui`, `@diffgazer/keys`, or `@diffgazer/add` fails the publish step loudly instead of un-gating them — that is the intended safe state. Un-gating a scoped package is an explicit reviewed PR adding its name to the allowlist (alongside the `npm view` go-live checks above). Because both the release workflow and the manual recovery command below run `pnpm run release`, the guard covers both paths.
 
 #### Recovery from publish failure
 
-If the publish step fails after the Version PR is merged (network blip, npm registry error, transient runner issue), re-run the failed `Release` workflow run from the GitHub Actions UI; `changesets/action` is idempotent — already-published versions are skipped. If the workflow itself is wedged or the secret is missing, a maintainer can publish manually from a clean tree at the merged Version PR commit with `pnpm install --frozen-lockfile && pnpm run release-check && pnpm run release`, supplying `NPM_TOKEN` and `NPM_CONFIG_PROVENANCE=true` locally. For any failure, open an issue or contact a maintainer before re-attempting a manual publish so the team can confirm registry state first.
+If the publish step fails after the Version PR is merged (network blip, npm registry error, transient runner issue), re-run the failed `Release` workflow run from the GitHub Actions UI; `changesets/action` is idempotent — already-published versions are skipped. If the workflow itself is wedged or the secret is missing, a maintainer can publish manually from a clean tree at the merged Version PR commit with `pnpm install --frozen-lockfile && pnpm run release-check && pnpm run release`, supplying `NPM_TOKEN` and `NPM_CONFIG_PROVENANCE=true` in the environment (`pnpm run release` routes through the first-publish guard, then `changeset publish`). For any failure, open an issue or contact a maintainer before re-attempting a manual publish so the team can confirm registry state first.
 
 ## Dependency Management
 
@@ -307,7 +311,7 @@ After deployment or ungating, hosted-registry availability is verified by:
 
 Once those checks pass, un-gate the hosted-shadcn install snippets in `README.md`, `libs/ui/README.md`, `libs/keys/README.md`, and `apps/docs/content/docs/**/*.mdx`, and remove the "future" preambles introduced by T-DIST-DEPLOY.
 
-The JSON `$schema` references at `https://diffgazer.com/schema/diffgazer.json` inside `libs/{ui,keys}/public/r/*.json` are machine references for shadcn tooling, not install commands. They are not user-facing and do not need gating.
+The committed registry JSON under `libs/ui/public/r` and `libs/keys/public/r` uses the shadcn registry schemas from `https://ui.shadcn.com/schema/`. The Diffgazer config schema is `https://r.b4r7.dev/schema/diffgazer.json`; `dgadd init` writes that URL into consumer `diffgazer.json` files via `REGISTRY_ORIGIN`. The schema file is generated at `apps/docs/public/schema/diffgazer.json` from the `cli/add` config contract, not by the registry item build.
 
 ## Migration and Support
 

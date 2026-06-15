@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { LensStatSchema } from "../events/agent.js";
 import { createdAtField, UuidSchema } from "../fields.js";
-import { ReviewResultSchema } from "./issues.js";
+import { ReviewResultSchema, ReviewSeveritySchema } from "./issues.js";
 import { DrilldownResultSchema, LensIdSchema, ProfileIdSchema } from "./lens.js";
 
 export const ReviewModeSchema = z.enum(["staged", "unstaged", "files"]);
@@ -83,5 +83,42 @@ export const SavedReviewSchema = z.object({
   gitContext: ReviewGitContextSchema,
   drilldowns: z.array(DrilldownResultSchema),
   lensStats: z.array(LensStatSchema).optional(),
+  // Count of issues removed after streaming (silently dropped from the final
+  // result) so the summary can surface "K below-threshold issue(s) hidden".
+  droppedBelowThreshold: CountFieldSchema.optional(),
+  droppedDuplicates: CountFieldSchema.optional(),
+  // The severity floor those issues fell below, so the notice can name the
+  // threshold the user can lower to surface them.
+  minSeverity: ReviewSeveritySchema.optional(),
 });
 export type SavedReview = z.infer<typeof SavedReviewSchema>;
+
+export const CreateReviewResponseSchema = z.object({
+  reviewId: UuidSchema,
+});
+export type CreateReviewResponse = z.infer<typeof CreateReviewResponseSchema>;
+
+export const ReviewsResponseSchema = z.object({
+  reviews: z.array(ReviewMetadataSchema),
+  warnings: z.array(z.string()).optional(),
+});
+export type ReviewsResponse = z.infer<typeof ReviewsResponseSchema>;
+
+export const ReviewResponseSchema = z.object({
+  review: SavedReviewSchema,
+});
+export type ReviewResponse = z.infer<typeof ReviewResponseSchema>;
+
+export const ActiveReviewSessionSchema = z.object({
+  reviewId: UuidSchema,
+  mode: ReviewModeSchema,
+  startedAt: z.string(),
+  headCommit: z.string(),
+  statusHash: z.string(),
+});
+export type ActiveReviewSession = z.infer<typeof ActiveReviewSessionSchema>;
+
+export const ActiveReviewSessionResponseSchema = z.object({
+  session: ActiveReviewSessionSchema.nullable(),
+});
+export type ActiveReviewSessionResponse = z.infer<typeof ActiveReviewSessionResponseSchema>;

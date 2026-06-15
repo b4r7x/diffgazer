@@ -1,9 +1,10 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import type { HTMLAttributes, Ref } from "react";
+import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
 type HeadingTag = "h2" | "h3" | "h4";
 
+/** Class variants for section header. */
 export const sectionHeaderVariants = cva("font-bold mb-2 uppercase tracking-wider", {
   variants: {
     variant: {
@@ -22,13 +23,18 @@ export const sectionHeaderVariants = cva("font-bold mb-2 uppercase tracking-wide
   defaultVariants: { variant: "default", bordered: false, as: "h3" },
 });
 
+/** Props for section header. */
 export interface SectionHeaderProps
-  extends HTMLAttributes<HTMLHeadingElement>,
+  extends ComponentProps<"h2">,
     VariantProps<typeof sectionHeaderVariants> {
+  /** Heading level. Choose the level that matches your document outline. */
   as?: HeadingTag;
-  ref?: Ref<HTMLHeadingElement>;
 }
 
+/**
+ * Uppercase heading element for labeling content sections, with configurable heading level and
+ * variant.
+ */
 export function SectionHeader({
   ref,
   className,
@@ -41,6 +47,7 @@ export function SectionHeader({
   return (
     <Tag
       ref={ref}
+      data-slot="section-header"
       className={cn(sectionHeaderVariants({ variant, bordered, as: Tag }), className)}
       {...props}
     >

@@ -1,6 +1,6 @@
 "use client";
 
-import { type KeyboardEvent, type RefObject, useCallback, useState } from "react";
+import { type KeyboardEvent, type RefObject, useState } from "react";
 import { dispatchNavigationKey, resolveDirectionKeys } from "../core/navigation-dispatch.js";
 import { isEditableElement } from "../dom/element-guards.js";
 import { containsActiveElement } from "../dom/focusable.js";
@@ -10,37 +10,65 @@ import {
   type NavigationItemType,
 } from "../dom/navigation-items.js";
 
+/** ARIA role or data-contract item type used for navigation item discovery. */
 export type NavigationRole = NavigationItemType;
 
+/** Options for standalone role-based list navigation. */
 export interface UseNavigationOptions<TValue extends string = string> {
+  /** Ref to the container element holding navigable items. */
   containerRef: RefObject<HTMLElement | null>;
+  /** ARIA role used to query navigable children within the container. */
   role: NavigationRole;
+  /** Controlled highlight value. When provided, the hook operates in controlled mode. */
   highlighted?: TValue | null;
+  /** Initial highlighted value in uncontrolled mode. */
   defaultHighlighted?: TValue | null;
+  /** Called when the controlled highlight value should change. */
   onHighlightChange?: (value: TValue | null) => void;
+  /** Called when an item is selected via Space key. */
   onSelect?: (value: TValue, event: globalThis.KeyboardEvent) => void;
+  /** Called when Enter is pressed on the highlighted item. */
   onEnter?: (value: TValue, event: globalThis.KeyboardEvent) => void;
+  /** Wrap around when reaching the first or last item. */
   wrap?: boolean;
+  /** Whether the navigation hook is active. */
   enabled?: boolean;
+  /** Call preventDefault() on handled keyboard events. */
   preventDefault?: boolean;
+  /**
+   * Called when the user tries to navigate past the first or last item.
+   * Receives the direction, originating event, and key that hit the boundary.
+   */
   onNavigationBoundaryReached?: (
     direction: "previous" | "next",
     event: globalThis.KeyboardEvent,
     key: string,
   ) => void;
+  /** Custom key names to move highlight up or left. */
   upKeys?: readonly string[];
+  /** Custom key names to move highlight down or right. */
   downKeys?: readonly string[];
+  /** Navigation axis for default arrow keys. */
   orientation?: "vertical" | "horizontal";
+  /** Skip aria-disabled, data-disabled, and native disabled items during navigation. */
   skipDisabled?: boolean;
+  /** Move DOM focus to the next item instead of only updating highlight state. */
   moveFocus?: boolean;
+  /** Ignore items owned by nested composite containers such as nested listboxes. */
   scopeToContainer?: boolean;
+  /** Advanced owner selector override for roles without a standard composite owner. */
   ownerSelector?: string | null;
 }
 
+/** Return value from `useNavigation`. */
 export interface UseNavigationReturn<TValue extends string = string> {
+  /** The value of the currently highlighted item, or null. */
   highlighted: TValue | null;
+  /** Returns true if the given value is the highlighted item. */
   isHighlighted: (value: TValue) => boolean;
+  /** Imperatively set the highlighted item. Pass null to clear. */
   highlight: (value: TValue | null) => void;
+  /** Keyboard event handler to attach to the container element. */
   onKeyDown: (event: KeyboardEvent) => void;
 }
 
@@ -76,6 +104,10 @@ function wrapIndex(index: number, length: number, wrap: boolean): number | null 
   return index;
 }
 
+/**
+ * Shared list-navigation state machine used by the standalone and provider-backed
+ * navigation hooks.
+ */
 export function useNavigationCore<TValue extends string = string>({
   containerRef,
   role,
@@ -95,21 +127,15 @@ export function useNavigationCore<TValue extends string = string>({
   const isControlled = controlledHighlighted !== undefined;
   const highlighted = isControlled ? (controlledHighlighted ?? null) : internalHighlighted;
 
-  const setFocusedValue = useCallback(
-    (nextValue: TValue | null) => {
-      if (!isControlled) setInternalHighlighted(nextValue);
-      onHighlightChange?.(nextValue);
-    },
-    [isControlled, onHighlightChange],
-  );
+  const setFocusedValue = (nextValue: TValue | null) => {
+    if (!isControlled) setInternalHighlighted(nextValue);
+    onHighlightChange?.(nextValue);
+  };
 
-  const getElements = useCallback(
-    () =>
-      queryNavigationElements(containerRef, role, skipDisabled, scopeToContainer, ownerSelector),
-    [containerRef, role, skipDisabled, scopeToContainer, ownerSelector],
-  );
+  const getElements = () =>
+    queryNavigationElements(containerRef, role, skipDisabled, scopeToContainer, ownerSelector);
 
-  const getFocusedIndex = useCallback((): number => {
+  const getFocusedIndex = (): number => {
     const elements = getElements();
     if (elements.length === 0) return -1;
 
@@ -122,9 +148,9 @@ export function useNavigationCore<TValue extends string = string>({
     }
 
     return -1;
-  }, [getElements, highlighted]);
+  };
 
-  const getCurrentValue = useCallback((): TValue | null => {
+  const getCurrentValue = (): TValue | null => {
     const focusedValue = getFocusedNavigationValue(containerRef.current, {
       type: role,
       skipDisabled,
@@ -141,63 +167,51 @@ export function useNavigationCore<TValue extends string = string>({
     }
 
     return null;
-  }, [containerRef, getElements, highlighted, ownerSelector, role, scopeToContainer, skipDisabled]);
+  };
 
-  const focusIndex = useCallback(
-    (index: number) => {
-      const elements = getElements();
-      const el = elements[index];
-      if (!el) return;
-      const nextValue = el.dataset.value;
-      if (nextValue === undefined) return;
+  const focusIndex = (index: number) => {
+    const elements = getElements();
+    const el = elements[index];
+    if (!el) return;
+    const nextValue = el.dataset.value;
+    if (nextValue === undefined) return;
 
-      el.scrollIntoView?.({ block: "nearest" });
-      if (moveFocus) el.focus();
-      // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.
-      setFocusedValue(nextValue as TValue);
-    },
-    [getElements, moveFocus, setFocusedValue],
-  );
+    el.scrollIntoView?.({ block: "nearest" });
+    if (moveFocus) el.focus();
+    // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.
+    setFocusedValue(nextValue as TValue);
+  };
 
-  const move = useCallback(
-    (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => {
-      const elements = getElements();
-      if (elements.length === 0) return;
+  const move = (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => {
+    const elements = getElements();
+    if (elements.length === 0) return;
 
-      const current = getFocusedIndex();
-      const rawNext = current + delta;
-      const next = wrapIndex(rawNext, elements.length, wrap);
-      if (next === null) {
-        const direction = delta < 0 ? "previous" : "next";
-        if (event && key) onNavigationBoundaryReached?.(direction, event, key);
-        return;
-      }
+    const current = getFocusedIndex();
+    const rawNext = current + delta;
+    const next = wrapIndex(rawNext, elements.length, wrap);
+    if (next === null) {
+      const direction = delta < 0 ? "previous" : "next";
+      if (event && key) onNavigationBoundaryReached?.(direction, event, key);
+      return;
+    }
 
-      focusIndex(next);
-    },
-    [focusIndex, getElements, getFocusedIndex, onNavigationBoundaryReached, wrap],
-  );
+    focusIndex(next);
+  };
 
-  const handleSelect = useCallback(
-    (event: globalThis.KeyboardEvent) => {
-      const currentValue = getCurrentValue();
-      if (currentValue !== null) onSelect?.(currentValue, event);
-    },
-    [getCurrentValue, onSelect],
-  );
+  const handleSelect = (event: globalThis.KeyboardEvent) => {
+    const currentValue = getCurrentValue();
+    if (currentValue !== null) onSelect?.(currentValue, event);
+  };
 
-  const handleEnter = useCallback(
-    (event: globalThis.KeyboardEvent) => {
-      const currentValue = getCurrentValue();
-      if (currentValue === null) return;
-      if (onEnter) onEnter(currentValue, event);
-      else onSelect?.(currentValue, event);
-    },
-    [getCurrentValue, onEnter, onSelect],
-  );
+  const handleEnter = (event: globalThis.KeyboardEvent) => {
+    const currentValue = getCurrentValue();
+    if (currentValue === null) return;
+    if (onEnter) onEnter(currentValue, event);
+    else onSelect?.(currentValue, event);
+  };
 
-  const isHighlighted = useCallback((v: TValue) => highlighted === v, [highlighted]);
-  const highlight = useCallback((v: TValue | null) => setFocusedValue(v), [setFocusedValue]);
+  const isHighlighted = (v: TValue) => highlighted === v;
+  const highlight = (v: TValue | null) => setFocusedValue(v);
 
   return {
     highlighted,
@@ -211,6 +225,10 @@ export function useNavigationCore<TValue extends string = string>({
   };
 }
 
+/**
+ * Adds standalone keyboard navigation, selection, and focus tracking to a
+ * role-based list. Attach the returned `onKeyDown` handler to the container.
+ */
 export function useNavigation<TValue extends string = string>(
   options: UseNavigationOptions<TValue>,
 ): UseNavigationReturn<TValue> {
@@ -239,66 +257,51 @@ export function useNavigation<TValue extends string = string>(
   const handlesEnter = Boolean(onEnter || onSelect);
   const handlesSpace = Boolean(onSelect);
 
-  const onKeyDown = useCallback(
-    (event: KeyboardEvent) => {
-      if (!enabled) return;
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (!enabled) return;
 
-      const key = event.key;
-      const isMoveKey = resolvedUpKeys.includes(key) || resolvedDownKeys.includes(key);
-      const isSpecialKey =
-        key === "Home" ||
-        key === "End" ||
-        (key === "Enter" && handlesEnter) ||
-        (key === " " && handlesSpace);
-      if (!isMoveKey && !isSpecialKey) return;
+    const key = event.key;
+    const isMoveKey = resolvedUpKeys.includes(key) || resolvedDownKeys.includes(key);
+    const isSpecialKey =
+      key === "Home" ||
+      key === "End" ||
+      (key === "Enter" && handlesEnter) ||
+      (key === " " && handlesSpace);
+    if (!isMoveKey && !isSpecialKey) return;
 
-      const elements = getElements();
+    const elements = getElements();
 
-      // Editable target guard: when an editable element bubbles a key into a wrapper
-      // that ALSO owns the navigation container, let the native control handle the key.
-      // We only skip when:
-      //   1) the event target is editable,
-      //   2) the target is NOT itself a navigation item,
-      //   3) currentTarget is an ancestor of the items (natural bubble case),
-      //      so the user did not explicitly forward the event from the editable.
-      if (isEditableElement(event.target)) {
-        const target = event.target as HTMLElement;
-        const isOwnItem = elements.some((el) => el === target || el.contains(target));
-        const currentTarget = event.currentTarget;
-        const ownsItems =
-          currentTarget != null &&
-          elements.length > 0 &&
-          elements.every((el) => currentTarget.contains(el));
-        if (!isOwnItem && ownsItems) return;
-      }
+    // Editable target guard: when an editable element bubbles a key into a wrapper
+    // that ALSO owns the navigation container, let the native control handle the key.
+    // We only skip when:
+    //   1) the event target is editable,
+    //   2) the target is NOT itself a navigation item,
+    //   3) currentTarget is an ancestor of the items (natural bubble case),
+    //      so the user did not explicitly forward the event from the editable.
+    if (isEditableElement(event.target)) {
+      const target = event.target as HTMLElement;
+      const isOwnItem = elements.some((el) => el === target || el.contains(target));
+      const currentTarget = event.currentTarget;
+      const ownsItems =
+        currentTarget != null &&
+        elements.length > 0 &&
+        elements.every((el) => currentTarget.contains(el));
+      if (!isOwnItem && ownsItems) return;
+    }
 
-      if (preventDefault) event.preventDefault();
+    if (preventDefault) event.preventDefault();
 
-      dispatchNavigationKey(key, {
-        resolvedUpKeys,
-        resolvedDownKeys,
-        move: (delta) => move(delta, event.nativeEvent, key),
-        focusIndex,
-        handleSelect: handlesSpace ? (e) => handleSelect(e) : undefined,
-        handleEnter: handlesEnter ? (e) => handleEnter(e) : undefined,
-        total: elements.length,
-        nativeEvent: event.nativeEvent,
-      });
-    },
-    [
-      enabled,
+    dispatchNavigationKey(key, {
       resolvedUpKeys,
       resolvedDownKeys,
-      preventDefault,
-      handlesEnter,
-      handlesSpace,
-      move,
+      move: (delta) => move(delta, event.nativeEvent, key),
       focusIndex,
-      handleSelect,
-      handleEnter,
-      getElements,
-    ],
-  );
+      handleSelect: handlesSpace ? (e) => handleSelect(e) : undefined,
+      handleEnter: handlesEnter ? (e) => handleEnter(e) : undefined,
+      total: elements.length,
+      nativeEvent: event.nativeEvent,
+    });
+  };
 
   return { highlighted, isHighlighted, highlight, onKeyDown };
 }

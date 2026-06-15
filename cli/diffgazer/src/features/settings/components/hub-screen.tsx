@@ -14,18 +14,17 @@ import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useNavigation } from "../../../hooks/use-navigation";
-import { useScope } from "../../../hooks/use-scope";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import type { Route } from "../../../lib/routes.js";
 
-const SETTINGS_ROUTE_MAP: Record<SettingsAction, Route["screen"]> = {
-  trust: "settings/trust-permissions",
-  theme: "settings/theme",
-  provider: "settings/providers",
-  storage: "settings/storage",
-  "agent-execution": "settings/agent-execution",
-  analysis: "settings/analysis",
-  diagnostics: "settings/diagnostics",
+const SETTINGS_ROUTE_MAP: Record<SettingsAction, Route> = {
+  trust: { screen: "settings/trust-permissions" },
+  theme: { screen: "settings/theme" },
+  provider: { screen: "settings/providers" },
+  storage: { screen: "settings/storage" },
+  "agent-execution": { screen: "settings/agent-execution" },
+  analysis: { screen: "settings/analysis" },
+  diagnostics: { screen: "settings/diagnostics" },
 };
 
 function HubFrame({
@@ -57,7 +56,6 @@ function HubFrame({
 }
 
 export function SettingsHubScreen(): ReactElement {
-  useScope("settings-hub");
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
   useBackHandler();
 
@@ -66,11 +64,8 @@ export function SettingsHubScreen(): ReactElement {
   const initQuery = useInit();
   const settingsQuery = useSettings();
 
-  const onSelect = (id: string) => {
-    const screen = SETTINGS_ROUTE_MAP[id as SettingsAction];
-    if (screen) {
-      navigate({ screen } as Route);
-    }
+  const onSelect = (id: SettingsAction) => {
+    navigate(SETTINGS_ROUTE_MAP[id]);
   };
 
   const guard = guardQueryState(initQuery, {

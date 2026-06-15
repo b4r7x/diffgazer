@@ -20,7 +20,8 @@ export const PUBLIC_ORIGIN: string = (() => {
 export const DEFAULT_SITE_NAME = "diffgazer docs";
 export const DEFAULT_SITE_DESCRIPTION =
   "Unified documentation for diffgazer libraries and UI primitives.";
-export const DEFAULT_THEME_COLOR = "#000000";
+// Matches the lib --base-bg dark value so the browser/PWA chrome aligns with the page.
+export const DEFAULT_THEME_COLOR = "#0a0a0a";
 
 type MetaTag =
   | { title: string }

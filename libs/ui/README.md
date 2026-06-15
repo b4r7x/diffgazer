@@ -4,11 +4,11 @@ Reusable React UI components for Diffgazer and compatible product surfaces.
 
 ## Consumption Paths
 
-All npm package names are external publish-gated as of May 2026. Public npm commands are valid only after `npm view @diffgazer/add`, `npm view @diffgazer/ui`, and `npm view @diffgazer/keys` return versions. Local tarballs are the package-mode validation path before publication.
+The scoped packages used by this library are publish-gated until `npm view @diffgazer/add`, `npm view @diffgazer/ui`, and `npm view @diffgazer/keys` return versions. Local tarballs are the package-mode validation path before publication. See [Hosted Registry Status](https://github.com/b4r7x/diffgazer/blob/main/PACKAGE_GOVERNANCE.md#hosted-registry-status).
 
 | Path | What it does | CSS setup |
 |------|-------------|-----------|
-| Manual copy / shadcn (future) | `npx shadcn add https://r.b4r7.dev/r/ui/button.json` (hosted registry not yet live — see [Hosted Registry Status](../../PACKAGE_GOVERNANCE.md#hosted-registry-status)) | Import copied `src/styles/styles.css` |
+| Manual copy / shadcn (future) | `npx shadcn add https://r.b4r7.dev/r/ui/button.json` (hosted registry not yet live; see [Hosted Registry Status](https://github.com/b4r7x/diffgazer/blob/main/PACKAGE_GOVERNANCE.md#hosted-registry-status)) | Import copied `src/styles/styles.css` |
 | `dgadd` CLI | `pnpm exec dgadd add ui/button` | Import copied `src/styles/styles.css` |
 | npm package | `npm install @diffgazer/ui @diffgazer/keys` | Import `@diffgazer/ui/sources.css` and `@diffgazer/ui/styles.css` |
 
@@ -63,7 +63,7 @@ Runtime package mode exports compiled components, hooks, utilities, and CSS. It 
 
 ### Direct shadcn / manual copy (future, after publication)
 
-The hosted registry at `https://r.b4r7.dev` is not yet live. After publication (see [Hosted Registry Status](../../PACKAGE_GOVERNANCE.md#hosted-registry-status)), the install command will be:
+The hosted registry at `https://r.b4r7.dev` is not yet live. After publication (see [Hosted Registry Status](https://github.com/b4r7x/diffgazer/blob/main/PACKAGE_GOVERNANCE.md#hosted-registry-status)), the install command will be:
 
 ```bash
 npx shadcn add https://r.b4r7.dev/r/ui/button.json
@@ -122,8 +122,11 @@ field. Import the specific subpath you need (listed below); `exports`-aware tool
 - `@diffgazer/ui/hooks/overflow-items`
 - `@diffgazer/ui/hooks/outside-click`
 - `@diffgazer/ui/hooks/presence`
+- `@diffgazer/ui/hooks/is-mobile`
 - `@diffgazer/ui/hooks/floating-position`
 - `@diffgazer/ui/hooks/listbox`
+- `@diffgazer/ui/hooks/copy-to-clipboard`
+- `@diffgazer/ui/hooks/composed-refs`
 - `@diffgazer/ui/lib/compose-refs`
 - `@diffgazer/ui/lib/selectable-collection`
 - `@diffgazer/ui/lib/utils`

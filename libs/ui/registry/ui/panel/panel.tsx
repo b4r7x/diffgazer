@@ -1,31 +1,46 @@
 "use client";
 
 import {
-  Children,
   type ComponentPropsWithRef,
   type ElementType,
-  isValidElement,
-  type ReactNode,
+  useCallback,
   useId,
   useMemo,
+  useState,
 } from "react";
 import { cn } from "@/lib/utils";
 import { PanelContext, type PanelContextValue } from "./panel-context";
-import { PanelDescription } from "./panel-description";
-import { PanelTitle } from "./panel-title";
 
+/**
+ * Root container. Polymorphic via `as` (div, article, section, aside). Switches to <section>
+ * automatically when Panel.Title or aria-label is present.
+ */
 export type PanelElement = "div" | "article" | "section" | "aside";
 
+/** Allowed panel frame values. */
 export type PanelFrame = "hairline" | "rail" | "viewfinder" | "surface";
+/** Allowed panel tone values. */
 export type PanelTone = "info" | "success" | "warning" | "error" | "accent";
+/** Allowed panel density values. */
 export type PanelDensity = "default" | "compact";
 
+/** Props for panel own. */
 interface PanelOwnProps {
+  /**
+   * Visual chrome. Hairline = soft border + marker bar; rail = inline-start rail only;
+   * viewfinder = corner brackets; surface = elevated --surface-1 background.
+   */
   frame?: PanelFrame;
+  /**
+   * Border-color tint. Visual cue only - no semantic role, no live announcement. Use Callout
+   * for real status messaging.
+   */
   tone?: PanelTone;
+  /** Padding rhythm. Default = 14/20; compact = 10/14. */
   density?: PanelDensity;
 }
 
+/** Props for panel. */
 export type PanelProps<T extends PanelElement = "div"> = Omit<
   ComponentPropsWithRef<T>,
   keyof PanelOwnProps | "as"
@@ -34,6 +49,10 @@ export type PanelProps<T extends PanelElement = "div"> = Omit<
     as?: T;
   };
 
+/**
+ * Root container. Polymorphic via `as` (div, article, section, aside). Switches to <section>
+ * automatically when Panel.Title or aria-label is present.
+ */
 export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
   const {
     as,
@@ -52,13 +71,48 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
   const titleId = `${id}-title`;
   const descriptionId = `${id}-description`;
 
-  const contextValue = useMemo<PanelContextValue>(
-    () => ({ titleId, descriptionId }),
-    [titleId, descriptionId],
+  // PanelTitle/PanelDescription register their RESOLVED id (consumer id wins)
+  // on mount, so a title wrapped in a layout div or consumer component still
+  // wires the panel's name. Registration replaces a brittle children-tree walk.
+  const [registeredTitleId, setRegisteredTitleId] = useState<string | null>(null);
+  const [registeredDescriptionId, setRegisteredDescriptionId] = useState<string | null>(null);
+
+  const registerTitle = useCallback((nextId: string) => setRegisteredTitleId(nextId), []);
+  const unregisterTitle = useCallback(
+    (nextId: string) => setRegisteredTitleId((current) => (current === nextId ? null : current)),
+    [],
+  );
+  const registerDescription = useCallback(
+    (nextId: string) => setRegisteredDescriptionId(nextId),
+    [],
+  );
+  const unregisterDescription = useCallback(
+    (nextId: string) =>
+      setRegisteredDescriptionId((current) => (current === nextId ? null : current)),
+    [],
   );
 
-  const hasRenderableTitle = containsPanelTitleElement(children);
-  const hasRenderableDescription = containsPanelDescriptionElement(children);
+  const contextValue = useMemo<PanelContextValue>(
+    () => ({
+      titleId,
+      descriptionId,
+      registerTitle,
+      unregisterTitle,
+      registerDescription,
+      unregisterDescription,
+    }),
+    [
+      titleId,
+      descriptionId,
+      registerTitle,
+      unregisterTitle,
+      registerDescription,
+      unregisterDescription,
+    ],
+  );
+
+  const hasRenderableTitle = registeredTitleId !== null;
+  const hasRenderableDescription = registeredDescriptionId !== null;
   const hasAriaName = isNonEmptyString(ariaLabel) || isNonEmptyString(ariaLabelledBy);
   const isNamedRegion = hasRenderableTitle || hasAriaName;
 
@@ -69,10 +123,12 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
   const accessibleName = resolvePanelAccessibleName({
     ariaLabel,
     ariaLabelledBy,
-    titleId,
+    titleId: registeredTitleId ?? titleId,
     hasRenderableTitle,
   });
-  const resolvedAriaDescribedBy = hasRenderableDescription ? descriptionId : undefined;
+  const resolvedAriaDescribedBy = hasRenderableDescription
+    ? (registeredDescriptionId ?? descriptionId)
+    : undefined;
 
   return (
     <PanelContext value={contextValue}>
@@ -127,20 +183,4 @@ function resolvePanelAccessibleName({
     return { "aria-label": undefined, "aria-labelledby": titleId };
   }
   return { "aria-label": undefined, "aria-labelledby": undefined };
-}
-
-function containsPanelTitleElement(children: ReactNode): boolean {
-  return Children.toArray(children).some((child) => {
-    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
-    if (child.type === PanelTitle) return true;
-    return containsPanelTitleElement(child.props.children);
-  });
-}
-
-function containsPanelDescriptionElement(children: ReactNode): boolean {
-  return Children.toArray(children).some((child) => {
-    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
-    if (child.type === PanelDescription) return true;
-    return containsPanelDescriptionElement(child.props.children);
-  });
 }

@@ -26,7 +26,11 @@ export function useTypeaheadBuffer(resetMs = DEFAULT_TYPEAHEAD_RESET_MS) {
 
   return useCallback(
     (key: string): string | null => {
-      if (key.length !== 1 || key === " ") return null;
+      if (key.length !== 1) return null;
+      // Space extends a non-empty query (multi-word labels like "New York") but
+      // is rejected on an empty buffer so it stays available as the select/activate
+      // key (APG/Radix typeahead behavior).
+      if (key === " " && bufferRef.current === "") return null;
       if (timerRef.current !== null) window.clearTimeout(timerRef.current);
 
       bufferRef.current += key;

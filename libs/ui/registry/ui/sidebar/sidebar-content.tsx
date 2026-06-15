@@ -1,15 +1,15 @@
 "use client";
 
-import { type HTMLAttributes, type KeyboardEvent, type Ref, useRef } from "react";
+import { type ComponentProps, type KeyboardEvent, useRef } from "react";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useNavigation } from "@/hooks/use-navigation";
-import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./sidebar-context";
 
-export interface SidebarContentProps extends HTMLAttributes<HTMLDivElement> {
-  ref?: Ref<HTMLDivElement>;
-}
+/** Props for sidebar content. */
+export interface SidebarContentProps extends ComponentProps<"div"> {}
 
+/** Scrollable middle area. */
 export function SidebarContent({
   ref,
   children,
@@ -18,6 +18,7 @@ export function SidebarContent({
   ...props
 }: SidebarContentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const composedRef = useComposedRefs(containerRef, ref);
   const { state, contentId } = useSidebar();
   const hidden = state === "hidden";
   const ariaHidden = hidden ? true : props["aria-hidden"];
@@ -39,7 +40,7 @@ export function SidebarContent({
   return (
     <div
       {...props}
-      ref={composeRefs(containerRef, ref)}
+      ref={composedRef}
       id={props.id ?? contentId}
       aria-hidden={ariaHidden}
       inert={hidden ? true : undefined}

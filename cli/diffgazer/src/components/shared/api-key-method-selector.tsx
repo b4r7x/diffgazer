@@ -1,3 +1,4 @@
+import { INPUT_METHODS, type InputMethod } from "@diffgazer/core/onboarding";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
@@ -6,13 +7,19 @@ import { Input } from "../ui/input";
 import { RadioGroup } from "../ui/radio";
 
 interface ApiKeyMethodSelectorProps {
-  method: "paste" | "env";
-  onMethodChange: (m: string) => void;
+  method: InputMethod;
+  onMethodChange: (m: InputMethod) => void;
   apiKey: string;
   onApiKeyChange: (v: string) => void;
   envVar: string;
   onEnvVarChange: (v: string) => void;
   isActive?: boolean;
+  /**
+   * Controlled input-focus toggle. When provided, the owner (e.g. the wizard)
+   * owns Tab so a single subscriber arbitrates the keystroke (F-347).
+   */
+  inputFocused?: boolean;
+  onInputFocusedChange?: (focused: boolean) => void;
 }
 
 export function ApiKeyMethodSelector({
@@ -23,35 +30,38 @@ export function ApiKeyMethodSelector({
   envVar,
   onEnvVarChange,
   isActive = true,
+  inputFocused: controlledInputFocused,
+  onInputFocusedChange,
 }: ApiKeyMethodSelectorProps): ReactElement {
   const { tokens } = useTheme();
-  const [inputFocused, setInputFocused] = useState(false);
+  const [uncontrolledInputFocused, setUncontrolledInputFocused] = useState(false);
+  const isControlled = controlledInputFocused !== undefined;
+  const inputFocused = isControlled ? controlledInputFocused : uncontrolledInputFocused;
 
   useInput(
     (_input, key) => {
       if (key.tab) {
-        setInputFocused((f) => !f);
+        setUncontrolledInputFocused((f) => !f);
       }
     },
-    { isActive },
+    // When the owner controls input focus it also owns Tab, so the selector
+    // must not double-subscribe (Ink delivers to all active subscribers).
+    { isActive: isActive && !isControlled },
   );
 
-  function handleMethodChange(value: string) {
-    setInputFocused(false);
-    onMethodChange(value);
-  }
-
-  function handleHighlightChange(value: string) {
-    setInputFocused(false);
-    onMethodChange(value);
+  function selectMethod(value: string) {
+    if (!(INPUT_METHODS as readonly string[]).includes(value)) return;
+    if (isControlled) onInputFocusedChange?.(false);
+    else setUncontrolledInputFocused(false);
+    onMethodChange(value as InputMethod);
   }
 
   return (
     <Box flexDirection="column" gap={1}>
       <RadioGroup
         value={method}
-        onChange={handleMethodChange}
-        onHighlightChange={handleHighlightChange}
+        onChange={selectMethod}
+        onHighlightChange={selectMethod}
         isActive={isActive && !inputFocused}
       >
         <RadioGroup.Item value="paste" label="Paste API key directly" />

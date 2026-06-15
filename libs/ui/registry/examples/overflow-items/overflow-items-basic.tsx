@@ -7,10 +7,10 @@ import { cn } from "@/lib/utils";
 const TAGS = ["React", "TypeScript", "Next.js", "Tailwind", "Vite", "Vitest", "Zustand", "Prisma"];
 
 const TAG_COLORS = [
-  "text-blue-400 border-blue-400/30",
-  "text-green-400 border-green-400/30",
-  "text-yellow-400 border-yellow-400/30",
-  "text-pink-400 border-pink-400/30",
+  "text-info-text border-info-border",
+  "text-success-text border-success-border",
+  "text-warning-text border-warning-border",
+  "text-error-text border-error-border",
 ];
 
 function Tag({ label, index }: { label: string; index: number }) {
@@ -28,7 +28,7 @@ function Tag({ label, index }: { label: string; index: number }) {
 
 function OverflowBadge({ count }: { count: number }) {
   return (
-    <span className="inline-flex shrink-0 items-center border border-dashed border-foreground/30 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+    <span className="inline-flex shrink-0 items-center border border-dashed border-foreground/30 px-1.5 py-0.5 font-mono text-2xs text-muted-foreground">
       +{count}
     </span>
   );
@@ -85,11 +85,11 @@ export default function OverflowItemsBasicExample() {
 
       <div className="flex gap-4 font-mono text-xs text-muted-foreground">
         <span>
-          visible: <span className="text-green-400">{visibleCount}</span>
+          visible: <span className="text-success-text">{visibleCount}</span>
         </span>
         <span>
           overflow:{" "}
-          <span className={overflowCount > 0 ? "text-red-400" : "text-muted-foreground"}>
+          <span className={overflowCount > 0 ? "text-error-text" : "text-muted-foreground"}>
             {overflowCount}
           </span>
         </span>

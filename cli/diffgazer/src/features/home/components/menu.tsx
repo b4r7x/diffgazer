@@ -1,12 +1,12 @@
 import { isMenuActionDisabled, withGroupDividers } from "@diffgazer/core/navigation";
-import { MENU_ITEMS } from "@diffgazer/core/schemas/presentation";
+import { MENU_ITEMS, type MenuAction } from "@diffgazer/core/schemas/presentation";
 import { Fragment } from "react";
 import { Menu } from "../../../components/ui/menu";
 import { Panel } from "../../../components/ui/panel";
 
 interface HomeMenuProps {
   isActive?: boolean;
-  onAction: (action: string) => void;
+  onAction: (action: MenuAction) => void;
   isTrusted?: boolean;
   hasResumableSession?: boolean;
 }

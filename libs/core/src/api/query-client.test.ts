@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createQueryClientBase } from "./query-client.js";
+import { createQueryClientBase, createQueryRetry } from "./query-client.js";
 
 type RetryFn = (failureCount: number, error: unknown) => boolean;
 
@@ -35,5 +35,21 @@ describe("createQueryClientBase", () => {
 
     expect(defaults.mutations?.networkMode).toBe("always");
     expect(defaults.queries?.staleTime).toBe(60_000);
+  });
+});
+
+describe("createQueryRetry", () => {
+  it("gives up on 4xx errors immediately", () => {
+    const retry = createQueryRetry(2);
+    expect(retry(0, httpError(403))).toBe(false);
+    expect(retry(0, httpError(404))).toBe(false);
+  });
+
+  it("retries transient errors up to the cap", () => {
+    const retry = createQueryRetry(1);
+    expect(retry(0, httpError(500))).toBe(true);
+    expect(retry(1, httpError(500))).toBe(false);
+    expect(retry(0, new Error("network down"))).toBe(true);
+    expect(retry(1, new Error("network down"))).toBe(false);
   });
 });

@@ -1,7 +1,8 @@
 import type { ComponentDoc } from "./types";
 
 export const toggleGroupDoc: ComponentDoc = {
-  description: "Compound toggle button group with keyboard navigation for single selection.",
+  description:
+    "Compound toggle button group with keyboard navigation for single or multiple selection.",
   notes: [
     {
       title: "Requires @diffgazer/keys (package mode)",
@@ -21,7 +22,12 @@ export const toggleGroupDoc: ComponentDoc = {
     {
       title: "Keyboard Navigation",
       content:
-        "Arrow keys navigate between items with wrapping. Enter/Space activation uses native button semantics. Highlight state can be controlled externally via highlighted and onHighlightChange props. Use onNavigationBoundaryReached for composite focus handoff when wrap is false.",
+        "Arrow keys move roving focus with wrapping by default. In single mode, selection follows focus unless allowDeselect is enabled; in multiple mode, arrow keys move focus and Enter/Space toggles the focused item. Highlight state can be controlled externally via highlighted and onHighlightChange props. Use onNavigationBoundaryReached for composite focus handoff when wrap is false.",
+    },
+    {
+      title: "Role semantics",
+      content:
+        "Single mode without allowDeselect renders as radiogroup/radio with aria-checked because exactly one choice is active. Multiple mode and allow-deselect single mode render as group plus button-style items with aria-pressed because each item is independently toggleable.",
     },
   ],
   usage: { example: "toggle-group-default" },
@@ -36,9 +42,60 @@ export const toggleGroupDoc: ComponentDoc = {
   ],
   keyboard: {
     description:
-      "Arrow keys move focus between toggle items with wrapping. Enter and Space select the focused item.",
+      "Arrow keys move focus between toggle items with wrapping. Single mode follows focus; multiple mode and allow-deselect single mode use button semantics and toggle with Enter or Space.",
+    keys: [
+      {
+        keys: "ArrowRight / ArrowDown",
+        action: "Moves focus to the next enabled item; wraps when wrap is true.",
+      },
+      {
+        keys: "ArrowLeft / ArrowUp",
+        action: "Moves focus to the previous enabled item; wraps when wrap is true.",
+      },
+      {
+        keys: "Home / End",
+        action: "Moves focus to the first or last enabled item.",
+      },
+      {
+        keys: "Enter / Space",
+        action:
+          "Toggles the focused item in multiple mode or allow-deselect single mode; native radio-style single mode changes selection during arrow navigation.",
+      },
+    ],
     examples: [{ name: "toggle-group-default", title: "With keyboard navigation" }],
   },
+  dataAttributes: [
+    {
+      attribute: "data-state",
+      appliesTo: "ToggleGroup.Item",
+      values: '"on" | "off"',
+      description: "Reflects whether the item is selected.",
+    },
+    {
+      attribute: "data-highlighted",
+      appliesTo: "ToggleGroup.Item",
+      values: "present when highlighted",
+      description: "Marks the roving-focus item.",
+    },
+    {
+      attribute: "data-value",
+      appliesTo: "ToggleGroup.Item",
+      values: "item value",
+      description: "Exposes the item value used for selection and indicator positioning.",
+    },
+    {
+      attribute: "data-variant",
+      appliesTo: "ToggleGroup",
+      values: '"default" | "pill" | "underline" | "bracket"',
+      description: "Reflects the visual variant on the group root.",
+    },
+    {
+      attribute: "data-orientation",
+      appliesTo: "ToggleGroup",
+      values: '"horizontal" | "vertical"',
+      description: "Reflects the layout and arrow-key axis.",
+    },
+  ],
   props: {
     ToggleGroup: {
       selectionMode: {

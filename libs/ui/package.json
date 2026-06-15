@@ -2,6 +2,18 @@
   "name": "@diffgazer/ui",
   "version": "0.2.0",
   "description": "Terminal-inspired React UI component library",
+  "keywords": [
+    "react",
+    "ui",
+    "components",
+    "component-library",
+    "shadcn",
+    "tailwind",
+    "tailwindcss",
+    "terminal",
+    "accessibility",
+    "diffgazer"
+  ],
   "homepage": "https://github.com/b4r7x/diffgazer/tree/main/libs/ui",
   "repository": {
     "type": "git",
@@ -258,9 +270,9 @@
       "types": "./dist/hooks/presence.d.ts",
       "import": "./dist/hooks/presence.js"
     },
-    "./hooks/use-is-mobile": {
-      "types": "./dist/hooks/use-is-mobile.d.ts",
-      "import": "./dist/hooks/use-is-mobile.js"
+    "./hooks/is-mobile": {
+      "types": "./dist/hooks/is-mobile.d.ts",
+      "import": "./dist/hooks/is-mobile.js"
     },
     "./hooks/floating-position": {
       "types": "./dist/hooks/floating-position.d.ts",
@@ -269,6 +281,14 @@
     "./hooks/listbox": {
       "types": "./dist/hooks/listbox.d.ts",
       "import": "./dist/hooks/listbox.js"
+    },
+    "./hooks/copy-to-clipboard": {
+      "types": "./dist/hooks/copy-to-clipboard.d.ts",
+      "import": "./dist/hooks/copy-to-clipboard.js"
+    },
+    "./hooks/composed-refs": {
+      "types": "./dist/hooks/composed-refs.d.ts",
+      "import": "./dist/hooks/composed-refs.js"
     },
     "./lib/compose-refs": {
       "types": "./dist/lib/compose-refs.d.ts",
@@ -302,11 +322,12 @@
     "!dist/_types/shared/**",
     "LICENSE",
     "README.md",
+    "CHANGELOG.md",
     "SECURITY.md",
     "SUPPORT.md"
   ],
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   },
   "browserslist": [
     "Chrome >= 111",
@@ -356,6 +377,7 @@
   },
   "devDependencies": {
     "@chialab/vitest-axe": "^0.19.1",
+    "@diffgazer/core": "workspace:*",
     "@diffgazer/keys": "workspace:*",
     "@diffgazer/registry": "workspace:*",
     "@testing-library/jest-dom": "^6.9.1",

@@ -12,6 +12,9 @@ export const requiredEndpoints = [
   "https://r.b4r7.dev/r/ui/registry.json",
   "https://r.b4r7.dev/r/ui/button.json",
   "https://r.b4r7.dev/r/keys/navigation.json",
+  // dgadd init writes this schema URL into every consumer config; a deploy that
+  // drops the /schema/ mount must fail the live-check, not 404 silently.
+  "https://r.b4r7.dev/schema/diffgazer.json",
 ];
 
 export function sha256Hex(text) {
@@ -45,9 +48,20 @@ export async function assertRegistryContentFresh(fetchImpl = fetch) {
   }
 }
 
-async function publicRegistryIsGated() {
-  const source = await readFile(metadataPath, "utf8");
-  return /\bPUBLISH_GATED\s*=\s*true\b/.test(source);
+// Source-text coupling: the docs app's PUBLISH_GATED constant decides whether CI
+// skips the live host check. A future rename/move of that assignment must not
+// silently flip this to "not gated" (a hard live-host dependency on every run),
+// so require the literal to exist and fail loudly otherwise.
+export async function publicRegistryIsGated(metadataFilePath = metadataPath) {
+  const source = await readFile(metadataFilePath, "utf8");
+  const match = source.match(/\bPUBLISH_GATED\s*=\s*(true|false)\b/);
+  if (!match) {
+    throw new Error(
+      `Could not find a 'PUBLISH_GATED = true|false' assignment in ${metadataFilePath}. ` +
+        "The live-check depends on this literal; update check-live-registry.mjs if it moved.",
+    );
+  }
+  return match[1] === "true";
 }
 
 const isDirectRun = process.argv[1] === fileURLToPath(import.meta.url);

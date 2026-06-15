@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ReviewMetadata } from "../schemas/review/index.js";
+import { makeIssue, makeReviewMetadata } from "../testing/factories.js";
 import {
   buildHistoryRunSummary,
   buildTimelineItems,
@@ -9,41 +9,26 @@ import {
   getRunDisplayId,
   getRunSummaryParts,
   getRunSummaryText,
+  HISTORY_SEARCH_PLACEHOLDER,
   HISTORY_SECTION_ALL_ID,
   matchesHistoryQuery,
   metadataToSeverityCounts,
   resolveSelectedDateId,
+  resolveSelectedId,
   resolveSelectedRunId,
+  sortIssuesBySeverity,
 } from "./history.js";
-
-function makeMetadata(overrides: Partial<ReviewMetadata> = {}): ReviewMetadata {
-  return {
-    id: "11111111-1111-4111-8111-111111111111",
-    projectPath: "/tmp/proj",
-    branch: "main",
-    mode: "unstaged",
-    createdAt: "2026-02-09T10:30:00.000Z",
-    durationMs: 4500,
-    issueCount: 0,
-    blockerCount: 0,
-    highCount: 0,
-    mediumCount: 0,
-    lowCount: 0,
-    nitCount: 0,
-    ...overrides,
-  } as ReviewMetadata;
-}
 
 describe("getRunSummaryParts", () => {
   it("flags a passing review when issueCount is zero", () => {
-    const summary = getRunSummaryParts(makeMetadata({ issueCount: 0 }));
+    const summary = getRunSummaryParts(makeReviewMetadata({ issueCount: 0 }));
     expect(summary.passed).toBe(true);
     expect(summary.parts).toEqual([]);
   });
 
   it("collects only non-zero severities in canonical order", () => {
     const summary = getRunSummaryParts(
-      makeMetadata({
+      makeReviewMetadata({
         issueCount: 5,
         blockerCount: 1,
         highCount: 0,
@@ -63,40 +48,44 @@ describe("getRunSummaryParts", () => {
 
 describe("getRunSummaryText", () => {
   it("returns the pass message when there are no issues", () => {
-    expect(getRunSummaryText(makeMetadata({ issueCount: 0 }))).toBe("Passed with no issues.");
+    expect(getRunSummaryText(makeReviewMetadata({ issueCount: 0 }))).toBe("Passed with no issues.");
   });
 
   it("joins severity parts with commas", () => {
-    const text = getRunSummaryText(makeMetadata({ issueCount: 3, blockerCount: 1, highCount: 2 }));
+    const text = getRunSummaryText(
+      makeReviewMetadata({ issueCount: 3, blockerCount: 1, highCount: 2 }),
+    );
     expect(text).toBe("1 blocker, 2 high");
   });
 
   it("falls back to a generic count when no severity breakdown is available", () => {
-    expect(getRunSummaryText(makeMetadata({ issueCount: 3 }))).toBe("Found 3 issues.");
-    expect(getRunSummaryText(makeMetadata({ issueCount: 1 }))).toBe("Found 1 issue.");
+    expect(getRunSummaryText(makeReviewMetadata({ issueCount: 3 }))).toBe("Found 3 issues.");
+    expect(getRunSummaryText(makeReviewMetadata({ issueCount: 1 }))).toBe("Found 1 issue.");
   });
 });
 
 describe("getRunBranchLabel + getRunDisplayId", () => {
   it("returns Staged when the run mode is staged", () => {
-    expect(getRunBranchLabel(makeMetadata({ mode: "staged" }))).toBe("Staged");
+    expect(getRunBranchLabel(makeReviewMetadata({ mode: "staged" }))).toBe("Staged");
   });
 
   it("returns Main when the branch is missing", () => {
-    expect(getRunBranchLabel(makeMetadata({ mode: "unstaged", branch: undefined }))).toBe("Main");
+    expect(getRunBranchLabel(makeReviewMetadata({ mode: "unstaged", branch: undefined }))).toBe(
+      "Main",
+    );
   });
 
   it("displays a short id with a leading hash", () => {
-    expect(getRunDisplayId(makeMetadata({ id: "abcdef00-0000-4000-8000-000000000000" }))).toBe(
-      "#abcd",
-    );
+    expect(
+      getRunDisplayId(makeReviewMetadata({ id: "abcdef00-0000-4000-8000-000000000000" })),
+    ).toBe("#abcd");
   });
 });
 
 describe("buildHistoryRunSummary", () => {
   it("projects the id, displayId, branch, timestamp, and summary subset", () => {
     const summary = buildHistoryRunSummary(
-      makeMetadata({
+      makeReviewMetadata({
         id: "abcdef00-0000-4000-8000-000000000000",
         mode: "staged",
         issueCount: 2,
@@ -112,7 +101,7 @@ describe("buildHistoryRunSummary", () => {
 
   it("labels an unstaged run with a missing branch as Main", () => {
     const summary = buildHistoryRunSummary(
-      makeMetadata({ mode: "unstaged", branch: undefined, issueCount: 0 }),
+      makeReviewMetadata({ mode: "unstaged", branch: undefined, issueCount: 0 }),
     );
     expect(summary.branch).toBe("Main");
     expect(summary.summary).toBe("Passed with no issues.");
@@ -126,7 +115,7 @@ describe("metadataToSeverityCounts", () => {
 
   it("projects the five severity count fields", () => {
     const counts = metadataToSeverityCounts(
-      makeMetadata({
+      makeReviewMetadata({
         blockerCount: 1,
         highCount: 2,
         mediumCount: 3,
@@ -141,16 +130,16 @@ describe("metadataToSeverityCounts", () => {
 describe("filterReviewsForHistory", () => {
   it("returns all reviews when the all-section is selected and there is no query", () => {
     const reviews = [
-      makeMetadata({ id: "a", createdAt: "2026-02-09T08:00:00.000Z" }),
-      makeMetadata({ id: "b", createdAt: "2026-02-08T08:00:00.000Z" }),
+      makeReviewMetadata({ id: "a", createdAt: "2026-02-09T08:00:00.000Z" }),
+      makeReviewMetadata({ id: "b", createdAt: "2026-02-08T08:00:00.000Z" }),
     ];
     expect(filterReviewsForHistory(reviews, HISTORY_SECTION_ALL_ID, "")).toEqual(reviews);
   });
 
   it("restricts to a date section by date key", () => {
     const reviews = [
-      makeMetadata({ id: "a", createdAt: "2026-02-09T08:00:00.000Z" }),
-      makeMetadata({ id: "b", createdAt: "2026-02-08T08:00:00.000Z" }),
+      makeReviewMetadata({ id: "a", createdAt: "2026-02-09T08:00:00.000Z" }),
+      makeReviewMetadata({ id: "b", createdAt: "2026-02-08T08:00:00.000Z" }),
     ];
     const filtered = filterReviewsForHistory(reviews, "2026-02-09", "");
     expect(filtered.map((r) => r.id)).toEqual(["a"]);
@@ -158,8 +147,12 @@ describe("filterReviewsForHistory", () => {
 
   it("applies the search query within the selected section", () => {
     const reviews = [
-      makeMetadata({ id: "a", branch: "feature/login", createdAt: "2026-02-09T08:00:00.000Z" }),
-      makeMetadata({ id: "b", branch: "main", createdAt: "2026-02-09T09:00:00.000Z" }),
+      makeReviewMetadata({
+        id: "a",
+        branch: "feature/login",
+        createdAt: "2026-02-09T08:00:00.000Z",
+      }),
+      makeReviewMetadata({ id: "b", branch: "main", createdAt: "2026-02-09T09:00:00.000Z" }),
     ];
     const filtered = filterReviewsForHistory(reviews, HISTORY_SECTION_ALL_ID, "feature");
     expect(filtered.map((r) => r.id)).toEqual(["a"]);
@@ -168,7 +161,7 @@ describe("filterReviewsForHistory", () => {
 
 describe("matchesHistoryQuery", () => {
   it("matches by full id, short id, branch text, or project path", () => {
-    const r = makeMetadata({
+    const r = makeReviewMetadata({
       id: "abcdef00-0000-4000-8000-000000000000",
       branch: "feature/login",
       projectPath: "/home/user/repo",
@@ -182,7 +175,7 @@ describe("matchesHistoryQuery", () => {
   });
 
   it("uses staged label when mode is staged", () => {
-    const r = makeMetadata({ mode: "staged" });
+    const r = makeReviewMetadata({ mode: "staged" });
     expect(matchesHistoryQuery(r, "staged")).toBe(true);
   });
 });
@@ -195,8 +188,8 @@ describe("buildTimelineItems", () => {
 
   it("prepends the all-section followed by date sections in descending order", () => {
     const items = buildTimelineItems([
-      makeMetadata({ id: "a", createdAt: "2026-02-08T08:00:00.000Z" }),
-      makeMetadata({ id: "b", createdAt: "2026-02-09T08:00:00.000Z" }),
+      makeReviewMetadata({ id: "a", createdAt: "2026-02-08T08:00:00.000Z" }),
+      makeReviewMetadata({ id: "b", createdAt: "2026-02-09T08:00:00.000Z" }),
     ]);
     expect(items[0]?.id).toBe(HISTORY_SECTION_ALL_ID);
     expect(items[0]?.count).toBe(2);
@@ -215,20 +208,65 @@ describe("resolveSelectedDateId + resolveSelectedRunId", () => {
 
   it("returns the current run id when present, else falls back to the first", () => {
     const runs = [{ id: "run-a" }, { id: "run-b" }];
-    expect(resolveSelectedRunId("run-b", runs)).toBe("run-b");
-    expect(resolveSelectedRunId("missing", runs)).toBe("run-a");
-    expect(resolveSelectedRunId("missing", [])).toBeNull();
-    expect(resolveSelectedRunId(null, runs)).toBe("run-a");
+    expect(resolveSelectedId("run-b", runs)).toBe("run-b");
+    expect(resolveSelectedId("missing", runs)).toBe("run-a");
+    expect(resolveSelectedId("missing", [])).toBeNull();
+    expect(resolveSelectedId(null, runs)).toBe("run-a");
+  });
+
+  it("resolveSelectedRunId remains a live alias of resolveSelectedId", () => {
+    expect(resolveSelectedRunId).toBe(resolveSelectedId);
   });
 });
 
 describe("getEmptyRunsMessage", () => {
   it("messages each empty case with distinct copy", () => {
-    expect(getEmptyRunsMessage(false, false, HISTORY_SECTION_ALL_ID)).toBe("No reviews yet");
+    expect(getEmptyRunsMessage(false, false, HISTORY_SECTION_ALL_ID)).toBe("No runs yet");
     expect(getEmptyRunsMessage(true, true, HISTORY_SECTION_ALL_ID)).toBe(
       "No runs match this search",
     );
     expect(getEmptyRunsMessage(true, false, HISTORY_SECTION_ALL_ID)).toBe("No runs available");
     expect(getEmptyRunsMessage(true, false, "2026-02-09")).toBe("No runs for this date");
+  });
+});
+
+describe("sortIssuesBySeverity", () => {
+  it("returns an empty array for missing or empty input", () => {
+    expect(sortIssuesBySeverity(undefined)).toEqual([]);
+    expect(sortIssuesBySeverity([])).toEqual([]);
+  });
+
+  it("orders blocker > high > medium > low > nit without mutating the input", () => {
+    const issues = [
+      makeIssue({ id: "l", severity: "low", title: "low issue", line_end: 1 }),
+      makeIssue({ id: "b", severity: "blocker", title: "blocker issue", line_end: 1 }),
+      makeIssue({ id: "n", severity: "nit", title: "nit issue", line_end: 1 }),
+      makeIssue({ id: "m", severity: "medium", title: "medium issue", line_end: 1 }),
+      makeIssue({ id: "h", severity: "high", title: "high issue", line_end: 1 }),
+    ];
+    expect(sortIssuesBySeverity(issues).map((i) => i.severity)).toEqual([
+      "blocker",
+      "high",
+      "medium",
+      "low",
+      "nit",
+    ]);
+    expect(issues.map((i) => i.id)).toEqual(["l", "b", "n", "m", "h"]);
+  });
+
+  it("preserves relative order within a single severity", () => {
+    const issues = [
+      makeIssue({ id: "h1", severity: "high", title: "high issue", line_end: 1 }),
+      makeIssue({ id: "h2", severity: "high", title: "high issue", line_end: 1 }),
+      makeIssue({ id: "b1", severity: "blocker", title: "blocker issue", line_end: 1 }),
+      makeIssue({ id: "h3", severity: "high", title: "high issue", line_end: 1 }),
+    ];
+    expect(sortIssuesBySeverity(issues).map((i) => i.id)).toEqual(["b1", "h1", "h2", "h3"]);
+  });
+});
+
+describe("HISTORY_SEARCH_PLACEHOLDER", () => {
+  it("is the single canonical run-search placeholder", () => {
+    expect(HISTORY_SEARCH_PLACEHOLDER).toBe("Search runs by ID...");
   });
 });

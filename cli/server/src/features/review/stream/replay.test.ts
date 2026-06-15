@@ -1,9 +1,13 @@
 import type { FullReviewStreamEvent, StepId } from "@diffgazer/core/schemas/events";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { SSEWriter } from "../../../shared/lib/http/types.js";
+import { log } from "../../../shared/lib/log.js";
 import { streamActiveSessionToSSE } from "./replay.js";
+import type { SSEWriter } from "./sse.js";
 import { addEvent, createSession, deleteSession, markComplete, markReady } from "./store.js";
+
+// Boundary mock: logging writes process-visible diagnostics; replay tests assert stream behavior without emitting logs.
+vi.mock("../../../shared/lib/log.js", () => ({ log: vi.fn() }));
 
 const trackedIds = new Set<string>();
 
@@ -13,6 +17,7 @@ function createTrackedSession(reviewId: string) {
     projectPath: "/project",
     headCommit: "abc",
     statusHash: "hash",
+    statusHashKind: "full" as const,
     mode: "staged",
   });
   markReady(reviewId);
@@ -76,11 +81,11 @@ afterEach(() => {
   }
   trackedIds.clear();
   vi.restoreAllMocks();
+  vi.mocked(log).mockClear();
 });
 
 describe("streamActiveSessionToSSE — terminal write failures", () => {
   it("logs and rejects when the terminal write rejects (stale session path)", async () => {
-    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const session = createTrackedSession("stale-terminal-fail");
     // Force `subscribe` to return null so the STALE_ERROR_EVENT terminal write
     // is exercised. Removing the session from the active map (without
@@ -91,11 +96,10 @@ describe("streamActiveSessionToSSE — terminal write failures", () => {
 
     await expect(streamActiveSessionToSSE(stream, session)).rejects.toBe(failure);
 
-    expect(consoleWarn).toHaveBeenCalledWith("SSE terminal write failed:", failure);
+    expect(log).toHaveBeenCalledWith("warn", "sse_terminal_write_failed", { error: failure });
   });
 
   it("logs and rejects when the subscriber write rejects mid-stream", async () => {
-    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const session = createTrackedSession("subscriber-write-fail");
     const failure = new Error("mid-stream write failed");
     const stream: SSEWriter = {
@@ -112,11 +116,10 @@ describe("streamActiveSessionToSSE — terminal write failures", () => {
     addEvent(session.reviewId, stepEvent());
 
     await expect(streamPromise).rejects.toBe(failure);
-    expect(consoleWarn).toHaveBeenCalledWith("SSE subscriber write failed:", failure);
+    expect(log).toHaveBeenCalledWith("warn", "sse_subscriber_write_failed", { error: failure });
   });
 
   it("resolves quietly when the client has already aborted before a write failure surfaces", async () => {
-    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const session = createTrackedSession("aborted-quiet");
     deleteSession(session.reviewId);
     const controller = new AbortController();
@@ -133,11 +136,10 @@ describe("streamActiveSessionToSSE — terminal write failures", () => {
     await expect(
       streamActiveSessionToSSE(wrapped, session, controller.signal),
     ).resolves.toBeUndefined();
-    expect(consoleWarn).not.toHaveBeenCalled();
+    expect(log).not.toHaveBeenCalled();
   });
 
   it("does not leave the replay stuck after a terminal write failure", async () => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
     const session = createTrackedSession("not-stuck");
     deleteSession(session.reviewId);
     const { stream, failure } = failingTerminalWriter(["error"]);
@@ -164,7 +166,6 @@ describe("streamActiveSessionToSSE — terminal write failures", () => {
   });
 
   it("replays terminal events without invoking the terminal-write path", async () => {
-    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const session = createTrackedSession("happy-replay");
     addEvent(session.reviewId, stepEvent());
     addEvent(session.reviewId, completeEvent(session.reviewId));
@@ -174,7 +175,7 @@ describe("streamActiveSessionToSSE — terminal write failures", () => {
     await streamActiveSessionToSSE(stream, session);
 
     expect(writes.map((w) => w.event)).toEqual(["step_start", "complete"]);
-    expect(consoleWarn).not.toHaveBeenCalled();
+    expect(log).not.toHaveBeenCalled();
     // Sanity: SESSION_STALE error never appears in the happy path.
     expect(writes.some((w) => w.data.includes(ReviewErrorCode.SESSION_STALE))).toBe(false);
   });

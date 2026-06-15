@@ -1,9 +1,7 @@
 ---
 title: Utilities
-description: Helper functions for working with @diffgazer/keys — keys, navigation item utilities, DOM focus restore utilities, and keyboard context hooks.
+description: Helper functions for working with `@diffgazer/keys` — keys, navigation item utilities, DOM focus restore utilities, and keyboard context hooks.
 ---
-
-# Utilities
 
 ## navigation item utilities
 
@@ -12,6 +10,8 @@ DOM helpers shared by `useNavigation` and composite widgets. These are package e
 ```ts
 import {
   NAVIGATION_ITEM_ATTRIBUTE,
+  canonicalizeHotkey,
+  clampIndex,
   getNavigationItemProps,
   getNavigationItems,
   containsActiveElement,
@@ -22,6 +22,12 @@ import {
   getFocusableElements,
   getTabbableElements,
   isFocusable,
+  isEditableElement,
+  isInputElement,
+  isListNavigationKey,
+  moveHighlight,
+  getVerticalArrowDirection,
+  toVerticalBoundaryDirection,
 } from "@diffgazer/keys";
 ```
 
@@ -93,6 +99,8 @@ function isFocusable(element: HTMLElement | null): boolean;
 The query helpers read `data-diffgazer-navigation-item`, role selectors, and native radio/checkbox/button controls. Navigation items should expose a stable `data-value`. Typed data-contract markers only match the requested item type, which keeps mixed widgets separated inside the same subtree.
 
 Focusable helpers use the same DOM contract as focus traps and overlays. `getFocusableElements()` includes programmatic focus targets such as `tabIndex={-1}`; `getTabbableElements()` returns browser Tab order and collapses native radio groups to one Tab stop.
+
+`canonicalizeHotkey`, `isEditableElement`, `isInputElement`, `isListNavigationKey`, `getVerticalArrowDirection`, and `toVerticalBoundaryDirection` expose the same parsing and guard helpers used internally by the hooks. `clampIndex` and `moveHighlight` are pure list-navigation helpers for code that already owns its item model.
 
 ---
 
@@ -183,7 +191,7 @@ interface KeyboardContextValue {
 
 - `useKeyboardContext` returns the active keyboard context and throws if `KeyboardProvider` is missing.
 - `useOptionalKeyboardContext` returns the active keyboard context or `null` if `KeyboardProvider` is missing.
-- This is what `useKey` uses internally. You probably don't need this directly unless you're building a custom hook on top of @diffgazer/keys.
+- This is what `useKey` uses internally. You probably don't need this directly unless you're building a custom hook on top of `@diffgazer/keys`.
 
 ---
 

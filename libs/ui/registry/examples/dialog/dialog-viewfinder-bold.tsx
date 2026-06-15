@@ -21,7 +21,7 @@ export default function DialogViewfinderBold() {
           <DialogDescription>This action is permanent and cannot be undone.</DialogDescription>
         </DialogHeader>
         <DialogBody>
-          <p className="text-sm text-gray-300 leading-relaxed">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             All files, commits, and branches in{" "}
             <span className="text-foreground font-mono">voitz/diffgazer</span> will be permanently
             deleted.

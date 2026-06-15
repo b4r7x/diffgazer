@@ -24,7 +24,8 @@ export function useProviderManagement() {
         setModelDialogOpen(true);
       }
     }).catch((error) => {
-      toast.error("Failed to Save", { message: getErrorMessage(error, "Unknown error") });
+      // Dialog path: rethrow WITHOUT toasting so the dialog's inline error is
+      // the single, focus-trapped report (F-465). The dialog awaits this.
       throw error;
     });
   };
@@ -36,7 +37,6 @@ export function useProviderManagement() {
       toast.success("API Key Removed", { message: "Provider key deleted" });
     }).catch((error) => {
       toast.error("Failed to Remove", { message: getErrorMessage(error, "Unknown error") });
-      throw error;
     });
   };
 
@@ -55,7 +55,6 @@ export function useProviderManagement() {
       toast.success("Provider Activated", { message: `${providerName} is now active` });
     }).catch((error) => {
       toast.error("Failed to Activate", { message: getErrorMessage(error, "Unknown error") });
-      throw error;
     });
   };
 
@@ -66,7 +65,6 @@ export function useProviderManagement() {
       toast.success("Model Selected", { message: `Selected ${modelId}` });
     }).catch((error) => {
       toast.error("Failed to Select Model", { message: getErrorMessage(error, "Unknown error") });
-      throw error;
     });
   };
 

@@ -1,14 +1,55 @@
-import type { AIProvider, ModelInfo } from "../schemas/config/index.js";
+import type { ModelInfo } from "../schemas/config/models.js";
+import type { AIProvider } from "../schemas/config/providers.js";
 import { formatContextTokens } from "./format.js";
 import { PROVIDER_OVERLAY, type ProviderOverlay } from "./provider-overlay.js";
 import type { ModelsDevCatalog, ModelsDevModel } from "./schema.js";
 
 type PricingTier = "free" | "paid" | "unknown";
 
+/**
+ * Minimum `limit.output` a model needs to emit a structured review object. Below
+ * this floor live only embedding (output 1) and prompt-guard (output 512) models;
+ * the smallest real review-capable chat model sits an order of magnitude above it.
+ */
+const REVIEW_OUTPUT_FLOOR = 1024;
+
 /** Derived from the models.dev sticker price only. Absent cost => 'unknown'. */
 function pricingTierOf(model: ModelsDevModel): PricingTier {
   if (!model.cost) return "unknown";
   return model.cost.input === 0 && model.cost.output === 0 ? "free" : "paid";
+}
+
+/**
+ * True when a model can actually produce a review. Excludes audio-output models
+ * (TTS) via `modalities.output` and embedding/guard models via the output floor —
+ * both data the snapshot/live catalog already carry. The live catalog tags audio
+ * output; the offline snapshot strips modalities, so the output floor stays the
+ * load-bearing guard there.
+ */
+export function canRunReview(model: ModelsDevModel): boolean {
+  const outputModalities = model.modalities?.output;
+  if (outputModalities && !outputModalities.includes("text")) return false;
+  const outputLimit = model.limit?.output;
+  if (outputLimit !== undefined && outputLimit < REVIEW_OUTPUT_FLOOR) return false;
+  return true;
+}
+
+/**
+ * Resolve a selected model's documented token limits from a merged catalog, so a
+ * request budget can be clamped to what the provider accepts. Returns an empty
+ * object when the model is absent (the caller falls back to its default budget).
+ */
+export function findModelLimit(
+  catalog: ModelsDevCatalog,
+  provider: AIProvider,
+  modelId: string,
+): { output?: number; context?: number } {
+  const overlay = PROVIDER_OVERLAY[provider];
+  const model = mergeModelsAcrossSources(catalog, overlay.modelsDevIds).find(
+    (entry) => entry.id === modelId,
+  );
+  if (!model?.limit) return {};
+  return { output: model.limit.output, context: model.limit.context };
 }
 
 function matchesSelector(model: ModelsDevModel, overlay: ProviderOverlay): boolean {
@@ -115,6 +156,7 @@ export function catalogToModelInfo(catalog: ModelsDevCatalog, provider: AIProvid
   const overlay = PROVIDER_OVERLAY[provider];
 
   return mergeModelsAcrossSources(catalog, overlay.modelsDevIds)
+    .filter(canRunReview)
     .map((model) => toModelInfo(model, overlay))
     .sort((a, b) => {
       const aFree = a.tier === "free" ? 0 : 1;

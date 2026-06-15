@@ -2,22 +2,30 @@ import {
   isCheckingForChanges as checkForChanges,
   isNoDiffError as checkNoDiffError,
   getLoadingMessage,
+  type SessionTerminationCode,
 } from "../../review/index.js";
-import type { ReviewMode } from "../../schemas/review/index.js";
+import type { ReviewContextResponse } from "../types.js";
 import { useSettings } from "./config.js";
+import { useReviewContext } from "./review.js";
 import { useReviewCompletion } from "./use-review-completion.js";
 import { useReviewStart } from "./use-review-start.js";
 import type { ReviewStreamState } from "./use-review-stream.js";
 import { useReviewStream } from "./use-review-stream.js";
 
+/**
+ * The gate a review screen is currently behind, computed in the canonical order
+ * shared by both surfaces: still loading config/changes, provider unconfigured,
+ * no diff to review, otherwise the live run.
+ */
+export type ReviewGate = "loading" | "unconfigured" | "no-diff" | "running";
+
 export interface UseReviewLifecycleBaseOptions {
-  mode: ReviewMode;
   configLoading: boolean;
   isConfigured: boolean;
   reviewId?: string;
   onComplete: () => void;
   onNotFoundInSession?: (reviewId: string) => void;
-  onStaleSession?: () => void;
+  onStaleSession?: (code: SessionTerminationCode) => void;
 }
 
 export interface UseReviewLifecycleBaseResult {
@@ -46,6 +54,21 @@ export interface UseReviewLifecycleBaseResult {
     setHasStarted: (value: boolean) => void;
     setHasStreamed: (value: boolean) => void;
   };
+
+  gate: ReviewGate;
+  contextReady: boolean;
+  contextSnapshot: ReviewContextResponse | null;
+}
+
+export function deriveReviewGate(input: {
+  loadingMessage: string | null;
+  isConfigured: boolean;
+  isNoDiffError: boolean;
+}): ReviewGate {
+  if (input.loadingMessage) return "loading";
+  if (!input.isConfigured) return "unconfigured";
+  if (input.isNoDiffError) return "no-diff";
+  return "running";
 }
 
 export function useReviewLifecycleBase(
@@ -55,7 +78,6 @@ export function useReviewLifecycleBase(
   const { isLoading: settingsLoading } = useSettings();
 
   const { hasStarted, hasStreamed, setHasStarted, setHasStreamed } = useReviewStart({
-    mode: options.mode,
     configLoading: options.configLoading,
     settingsLoading,
     isConfigured: options.isConfigured,
@@ -89,6 +111,20 @@ export function useReviewLifecycleBase(
     isInitializing,
   });
 
+  const contextStep = stream.state.steps.find((step) => step.id === "context");
+  const contextReady = contextStep?.status === "completed" && !!stream.state.reviewId;
+  const { data: contextData } = useReviewContext({
+    enabled: contextReady,
+    reviewId: stream.state.reviewId,
+  });
+  const contextSnapshot = contextReady ? (contextData ?? null) : null;
+
+  const gate = deriveReviewGate({
+    loadingMessage,
+    isConfigured: options.isConfigured,
+    isNoDiffError,
+  });
+
   return {
     stream: {
       stop: stream.stop,
@@ -112,5 +148,8 @@ export function useReviewLifecycleBase(
       setHasStarted,
       setHasStreamed,
     },
+    gate,
+    contextReady,
+    contextSnapshot,
   };
 }

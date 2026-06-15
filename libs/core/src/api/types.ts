@@ -1,15 +1,13 @@
 import type { TrustConfig } from "../schemas/config/index.js";
 import type { ProjectContextGraph, ProjectContextMeta } from "../schemas/context.js";
-import type {
-  DrilldownResult,
-  ReviewMetadata,
-  ReviewMode,
-  SavedReview,
-} from "../schemas/review/index.js";
+import type { ErrorCode } from "../schemas/errors.js";
 
 export interface ApiError extends Error {
   status: number;
-  code?: string;
+  // Known shared wire codes (incl. the four formerly-untyped ones) autocomplete
+  // and are exhaustively switchable, while server-only domain codes the client
+  // does not model still flow through untyped rather than being dropped.
+  code?: ErrorCode | (string & {});
 }
 
 export function isApiError(error: unknown): error is ApiError {
@@ -79,10 +77,6 @@ export interface TrustResponse {
   trust: TrustConfig;
 }
 
-export interface TrustListResponse {
-  projects: TrustConfig[];
-}
-
 export interface ReviewContextResponse {
   text: string;
   markdown: string;
@@ -90,37 +84,6 @@ export interface ReviewContextResponse {
   meta: ProjectContextMeta;
 }
 
-export interface GitDiffResponse {
-  diff: string;
-  mode: ReviewMode;
-}
-
-export interface ReviewsResponse {
-  reviews: ReviewMetadata[];
-  warnings?: string[];
-}
-
-export interface ReviewResponse {
-  review: SavedReview;
-}
-
-export interface DrilldownResponse {
-  drilldown: DrilldownResult;
-}
-
-export interface ActiveReviewSession {
-  reviewId: string;
-  mode: ReviewMode;
-  startedAt: string;
-  headCommit: string;
-  statusHash: string;
-}
-
-export interface ActiveReviewSessionResponse {
-  session: ActiveReviewSession | null;
-}
-
 export interface ShutdownResponse {
-  ok: boolean;
-  message?: string;
+  ok: true;
 }

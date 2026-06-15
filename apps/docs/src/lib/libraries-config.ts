@@ -22,10 +22,15 @@ const DocsLibraryConfigSchema = z.object({
   artifactSource: ArtifactSourceSchema.optional(),
 });
 
-const DocsLibrariesConfigSchema = z.object({
-  primaryLibraryId: z.string().min(1),
-  libraries: z.array(DocsLibraryConfigSchema).min(1),
-});
+export const DocsLibrariesConfigSchema = z
+  .object({
+    primaryLibraryId: z.string().min(1),
+    libraries: z.array(DocsLibraryConfigSchema).min(1),
+  })
+  .refine((config) => config.libraries.some((library) => library.id === config.primaryLibraryId), {
+    message: "primaryLibraryId must match one of libraries[].id",
+    path: ["primaryLibraryId"],
+  });
 
 export type ArtifactSourceConfig = z.infer<typeof ArtifactSourceSchema>;
 export type DocsLibraryConfigData = z.infer<typeof DocsLibraryConfigSchema>;

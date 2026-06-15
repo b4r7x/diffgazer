@@ -46,7 +46,9 @@ export function AnalysisSelectorContent({
 
   return (
     <div className="space-y-3">
-      <div className="text-xs text-tui-muted uppercase tracking-wider font-bold">Active Agents</div>
+      <div className="text-xs text-muted-foreground uppercase tracking-wider font-bold">
+        Active Agents
+      </div>
       <ScrollArea className="max-h-90 pr-2">
         <CheckboxGroup
           value={value}

@@ -16,7 +16,8 @@ export type {
 } from "./types.js";
 export { INPUT_METHODS, WIZARD_STEPS } from "./types.js";
 export {
-  type EarlySaveCallbacks,
+  type UseWizardStateOptions,
   type UseWizardStateResult,
   useWizardState,
+  type WizardSaveCallbacks,
 } from "./use-wizard-state.js";

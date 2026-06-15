@@ -3,7 +3,13 @@ import { requireValue } from "../testing/assertions.js";
 import { RAW_CATALOG } from "./fixtures.js";
 import { PROVIDER_OVERLAY, type ProviderOverlay } from "./provider-overlay.js";
 import { parseModelsDevCatalog } from "./schema.js";
-import { catalogToModelInfo, isModelFreeToUse, mergeModelsAcrossSources } from "./transform.js";
+import {
+  canRunReview,
+  catalogToModelInfo,
+  findModelLimit,
+  isModelFreeToUse,
+  mergeModelsAcrossSources,
+} from "./transform.js";
 
 const catalog = parseModelsDevCatalog(RAW_CATALOG);
 
@@ -91,11 +97,17 @@ describe("catalogToModelInfo", () => {
     expect(pro3.recommended).toBeUndefined();
   });
 
-  it("collapses an unknown-priced model (no cost) to tier 'paid', never 'free'", () => {
+  it("filters out the embedding model (output limit below the review floor)", () => {
     const models = catalogToModelInfo(catalog, "gemini");
-    // gemini-embedding-001 has no cost => pricingTier 'unknown'; the public
-    // 2-value tier must round it to 'paid', not silently claim 'free'.
-    expect(models.find((m) => m.id === "gemini-embedding-001")?.tier).toBe("paid");
+    // gemini-embedding-001 has limit.output 1 — it can never emit a review object,
+    // so it must not appear in the picker data.
+    expect(models.find((m) => m.id === "gemini-embedding-001")).toBeUndefined();
+  });
+
+  it("filters out an audio-output (TTS) model via modalities", () => {
+    const models = catalogToModelInfo(catalog, "gemini");
+    // gemini-2.5-flash-preview-tts has a usable output limit but outputs audio.
+    expect(models.find((m) => m.id === "gemini-2.5-flash-preview-tts")).toBeUndefined();
   });
 
   it("describes a model's context with the same K label as the capability card", () => {
@@ -142,7 +154,7 @@ describe("catalogToModelInfo", () => {
   it("orders Gemini free-first, then deterministically by name (pinned overlay order)", () => {
     const ids = catalogToModelInfo(catalog, "gemini").map((m) => m.id);
     const freeIds = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"];
-    const paidIds = ["gemini-3-pro-preview", "gemini-embedding-001"];
+    const paidIds = ["gemini-3-pro-preview"];
     expect(new Set(ids.slice(0, 3))).toEqual(new Set(freeIds));
     for (const free of freeIds) {
       for (const paid of paidIds) {
@@ -288,5 +300,43 @@ describe("catalogToModelInfo", () => {
     const merged = mergeModelsAcrossSources(aliased, ["google", "google-extra"]);
     expect(merged).toHaveLength(1);
     expect(merged[0]?.name).toBe("First seen");
+  });
+});
+
+describe("canRunReview", () => {
+  it("keeps a text-output model with a usable output limit", () => {
+    expect(canRunReview({ id: "x", limit: { context: 131072, output: 8192 } })).toBe(true);
+  });
+
+  it("rejects an audio-output model regardless of its output limit", () => {
+    expect(
+      canRunReview({
+        id: "tts",
+        limit: { context: 8192, output: 16384 },
+        modalities: { input: ["text"], output: ["audio"] },
+      }),
+    ).toBe(false);
+  });
+
+  it("rejects a model whose output limit is below the review floor", () => {
+    expect(canRunReview({ id: "embedding", limit: { context: 2048, output: 1 } })).toBe(false);
+    expect(canRunReview({ id: "guard", limit: { context: 512, output: 512 } })).toBe(false);
+  });
+
+  it("keeps a model with no declared limit or modalities (cannot prove it unusable)", () => {
+    expect(canRunReview({ id: "unknown" })).toBe(true);
+  });
+});
+
+describe("findModelLimit", () => {
+  it("resolves the output and context limits for a selected model", () => {
+    expect(findModelLimit(catalog, "groq", "meta-llama/llama-4-scout-17b-16e-instruct")).toEqual({
+      context: 131072,
+      output: 8192,
+    });
+  });
+
+  it("returns an empty object for an unknown model id", () => {
+    expect(findModelLimit(catalog, "gemini", "no-such-model")).toEqual({});
   });
 });

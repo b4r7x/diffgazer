@@ -1,21 +1,35 @@
 "use client";
 
-import { type HTMLAttributes, type ReactNode, type Ref, useMemo } from "react";
+import { type ComponentProps, type ReactNode, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "../dialog";
 import { SidebarChromeContext, useOptionalSidebar, useSidebar } from "./sidebar-context";
 import { SidebarProvider } from "./sidebar-provider";
 import { type SidebarVariant, sidebarContainerVariants } from "./sidebar-variants";
 
-export interface SidebarProps extends HTMLAttributes<HTMLElement> {
-  ref?: Ref<HTMLElement>;
+/** Props for sidebar. */
+export interface SidebarProps extends ComponentProps<"nav"> {
+  /**
+   * Visual variant. "caret" prefixes each item with ▸; "inverted" full-bleeds the active row
+   * with bg-foreground; "bar" draws a 1px left border on active; "bracket" prefixes items with
+   * [*]/[ ]; "block" applies a soft bg-foreground/8 fill on active; "terminal" prefixes active
+   * items with a `>` prompt and draws a 1px hairline left rail with no background fill; "tree"
+   * renders ▼/▶ section headers and ├─/└─ connectors with a left guide and soft active fill.
+   * Propagated to items via context and exposed as data-variant on the nav root.
+   */
   variant?: SidebarVariant;
+  /**
+   * When true, renders a small intent dot before each item label and derives intent from the
+   * item value via the built-in dictionary unless overridden by an explicit intent prop on the
+   * item. Color is decoration only (WCAG 1.4.1) - pair with a text/glyph cue.
+   */
   autoTone?: boolean;
   /**
-   * When true, always render inline navigation even on mobile. Use when a parent
-   * layout (for example an app shell drawer) already owns the mobile presentation.
+   * When true, always render inline navigation even on mobile. Use when a parent layout (for
+   * example an app shell drawer) already owns the mobile presentation.
    */
   embedded?: boolean;
+  /** Sidebar subparts (Header, Content, Footer, Trigger). */
   children: ReactNode;
 }
 
@@ -27,8 +41,7 @@ function SidebarNav({
   "aria-label": ariaLabel,
   children,
   ...rest
-}: HTMLAttributes<HTMLElement> & {
-  ref?: Ref<HTMLElement>;
+}: ComponentProps<"nav"> & {
   variant: SidebarVariant;
   autoTone: boolean;
 }) {
@@ -59,13 +72,12 @@ function SidebarShell({
   "aria-label": ariaLabel,
   ...rest
 }: {
-  ref?: Ref<HTMLElement>;
   variant: SidebarVariant;
   autoTone: boolean;
   embedded: boolean;
   className?: string;
   children: ReactNode;
-} & HTMLAttributes<HTMLElement>) {
+} & ComponentProps<"nav">) {
   const { state, isMobile, onStateChange } = useSidebar();
   const open = state !== "hidden";
 
@@ -109,6 +121,7 @@ function SidebarShell({
   );
 }
 
+/** Root nav element (standalone or within SidebarProvider). Owns variant + autoTone. */
 export function Sidebar({
   ref,
   variant,

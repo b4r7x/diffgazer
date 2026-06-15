@@ -9,7 +9,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { TerminalKeyboardProvider } from "../../../hooks/use-keyboard";
+import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
 import { CliThemeProvider } from "../../../theme/provider";
 import { ModelSelectOverlay } from "./model-select-overlay";
 
@@ -401,7 +401,7 @@ describe("ModelSelectOverlay saving state", () => {
         <ModelSelectOverlay
           open={true}
           onOpenChange={() => {}}
-          providerId="anthropic"
+          providerId="groq"
           onSelect={() => {}}
         />
       </StableWrapper>,
@@ -504,6 +504,28 @@ describe("ModelSelectOverlay search input mode", () => {
     expect(lastFrame()).toContain("q");
     expect(lastFrame()).not.toContain("Search models...");
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
+  test("a multi-character paste into the model search field lands in full", async () => {
+    const { stdin, lastFrame } = render(
+      <Wrapper>
+        <ModelSelectOverlay
+          open={true}
+          onOpenChange={() => {}}
+          providerId="gemini"
+          onSelect={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
+
+    stdin.write("/");
+    await flush();
+    stdin.write("flash");
+    await flush();
+
+    expect(lastFrame()).toContain("flash");
   });
 });
 

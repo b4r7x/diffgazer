@@ -1,13 +1,8 @@
-import {
-  CodeBlock,
-  CodeBlockContent,
-  CodeBlockLine,
-  type CodeBlockLineProps,
-} from "@diffgazer/ui/components/code-block";
+import type { CodeBlockLineProps } from "@diffgazer/ui/components/code-block";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
-import { useState } from "react";
 import { hooksData } from "@/generated/library-data";
 import { CopyButton } from "./copy-button";
+import { SourceViewer } from "./docs-mdx/source-viewer";
 
 interface HookData {
   name: string;
@@ -17,6 +12,11 @@ interface HookData {
     raw: string;
     highlighted: CodeBlockLineProps[];
   };
+  files?: Array<{
+    path: string;
+    raw: string;
+    highlighted: CodeBlockLineProps[];
+  }>;
 }
 
 interface HookSourceProps {
@@ -60,38 +60,29 @@ function HookSourceAll({ data, sectionTitle, hint }: HookSourceAllProps) {
 }
 
 function HookSourceBlock({ hook }: { hook: HookData }) {
-  const [expanded, setExpanded] = useState(false);
   const fileName = hook.name.startsWith("use-") ? `${hook.name}.ts` : `use-${hook.name}.ts`;
+  const files =
+    hook.files && hook.files.length > 0
+      ? hook.files
+      : [{ path: fileName, raw: hook.source.raw, highlighted: hook.source.highlighted }];
+  const isSingleFile = files.length === 1;
 
   return (
-    <div className="border border-border rounded-sm overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 bg-secondary/30 border-b border-border">
-        <div>
-          <button
-            onClick={() => setExpanded(!expanded)}
-            aria-expanded={expanded}
-            className="flex items-center gap-2 text-sm font-mono text-foreground hover:text-primary transition-colors cursor-pointer"
-            type="button"
-          >
-            <span aria-hidden="true" className="text-muted-foreground">
-              {expanded ? "v" : ">"}
-            </span>
-            <span className="font-bold">{fileName}</span>
-          </button>
-          <p className="text-xs text-muted-foreground mt-0.5 ml-5">{hook.description}</p>
-        </div>
-        <CopyButton text={hook.source.raw} label={`Copy ${hook.title}`} />
-      </div>
-      {expanded && (
-        <CodeBlock>
-          <CodeBlockContent>
-            {hook.source.highlighted.map((line) => (
-              <CodeBlockLine key={line.number} {...line} />
-            ))}
-          </CodeBlockContent>
-        </CodeBlock>
-      )}
-    </div>
+    <SourceViewer
+      files={files}
+      triggerLabel={
+        <span className="font-bold">
+          {isSingleFile ? files[0]?.path : `${hook.title} source (${files.length} files)`}
+        </span>
+      }
+      description={hook.description}
+      copyButton={
+        isSingleFile ? (
+          <CopyButton text={files[0]?.raw ?? ""} label={`Copy ${hook.title}`} />
+        ) : undefined
+      }
+      showHeading={false}
+    />
   );
 }
 

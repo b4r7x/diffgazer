@@ -1,6 +1,6 @@
+import { makeIssue } from "@diffgazer/core/testing/factories";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { makeIssue } from "@/testing/factories";
 import { IssueListPane } from "./issue-list-pane";
 
 const issues = [
@@ -21,7 +21,7 @@ const issues = [
 ];
 
 describe("IssueListPane row highlight inversion", () => {
-  it("marks the highlighted row with data-active so theming can invert chip colors", () => {
+  it("marks the highlighted row with data-highlighted so theming can invert chip colors", () => {
     render(
       <IssueListPane
         listState={{
@@ -40,7 +40,40 @@ describe("IssueListPane row highlight inversion", () => {
     const activeRow = screen.getByRole("option", { name: /avoid unsafe cast/i });
     const inactiveRow = screen.getByRole("option", { name: /tighten type/i });
 
-    expect(activeRow).toHaveAttribute("data-active", "true");
-    expect(inactiveRow).not.toHaveAttribute("data-active", "true");
+    expect(activeRow).toHaveAttribute("data-highlighted");
+    expect(inactiveRow).not.toHaveAttribute("data-highlighted");
+  });
+});
+
+describe("IssueListPane severity accessibility", () => {
+  it("exposes each issue's severity word in its accessible name, not just by color", () => {
+    render(
+      <IssueListPane
+        listState={{ issues, allIssues: issues, selectedIssueId: "issue-1" }}
+        callbacks={{ onSelectIssue: vi.fn() }}
+        filter={{ severityFilter: new Set(), onSeverityFilterChange: vi.fn() }}
+        refs={{}}
+        ui={{ isFocused: true }}
+      />,
+    );
+
+    // Severity reaches AT textually (F-230): high vs low is not color-only.
+    expect(screen.getByRole("option", { name: /high severity.*avoid unsafe cast/i })).toBeVisible();
+    expect(screen.getByRole("option", { name: /low severity.*tighten type/i })).toBeVisible();
+  });
+
+  it("announces the filter-to-empty state as a live status region", () => {
+    render(
+      <IssueListPane
+        listState={{ issues: [], allIssues: issues, selectedIssueId: null }}
+        callbacks={{ onSelectIssue: vi.fn() }}
+        filter={{ severityFilter: new Set(["nit"]), onSeverityFilterChange: vi.fn() }}
+        refs={{}}
+        ui={{ isFocused: true }}
+      />,
+    );
+
+    // F-353(d): the empty message announces on appear, matching the history page.
+    expect(screen.getByRole("status")).toHaveTextContent(/no issues match/i);
   });
 });

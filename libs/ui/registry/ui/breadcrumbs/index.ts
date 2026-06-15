@@ -9,6 +9,7 @@ import {
   type BreadcrumbsLinkRenderProps,
 } from "./breadcrumbs-link";
 
+/** Root container (nav + ol). Accepts separator prop. */
 const Breadcrumbs = Object.assign(BreadcrumbsRoot, {
   Item: BreadcrumbsItem,
   Link: BreadcrumbsLink,

@@ -1,15 +1,15 @@
 ---
 title: Compound Components
-description: How @diffgazer/ui uses the compound component pattern with React Context for Dialog, Tabs, Menu, and more.
+description: How `@diffgazer/ui` uses the compound component pattern with React Context for Dialog, Tabs, Menu, and more.
 ---
 
 ## What is a compound component?
 
 A compound component is a component split across multiple sub-components that share implicit state through React Context. Think of HTML's native `<select>` and `<option>` elements -- they only make sense together, and the parent manages shared state that the children consume.
 
-In @diffgazer/ui, several components use this pattern: **Dialog**, **Tabs**, **Menu**, **NavigationList**, and **Toast**. Each has a root component that provides context and child components that consume it.
+In `@diffgazer/ui`, several components use this pattern: **Dialog**, **Tabs**, **Menu**, and **NavigationList**. Each has a root component that provides context and child components that consume it.
 
-**Stepper** also uses the compound structure (`Stepper` > `StepperStep` > `StepperSubstep`) but passes state through props rather than context.
+**Stepper** also uses the compound structure (`Stepper` > `StepperStep` > `StepperSubstep`) and shares expansion state through context, with one direct-child detection rule described below.
 
 ## Anatomy
 
@@ -69,7 +69,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 </Tabs>
 ```
 
-## How Context works
+## How context works
 
 Every compound component follows the same pattern. Here's how Dialog implements it:
 
@@ -227,7 +227,7 @@ Toast is not a compound component in the current API. It exposes an imperative `
 ```tsx
 import { Toaster, toast } from "@/components/ui/toast"
 
-toast.success({ title: "Saved" })
+toast.success("Saved")
 
 <Toaster position="bottom-right" />
 ```
@@ -253,9 +253,8 @@ Keep `StepperContent` directly inside `StepperStep` when the trigger should expo
 |-----------|------|---------------|--------------|
 | Dialog | `Dialog` | `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogBody`, `DialogFooter`, `DialogClose` | `open`, `onOpenChange`, `titleId`, `descriptionId` |
 | Tabs | `Tabs` | `TabsList`, `TabsTrigger`, `TabsContent` | `value`, `onChange`, `orientation` |
-| Menu | `Menu` | `MenuItem`, `MenuDivider` | `selectedId`, `highlighted`, `onHighlightChange`, `onSelect`, `variant` |
-| NavigationList | `NavigationList` | `NavigationListItem`, `NavigationListItemTitle`, `NavigationListItemStatus`, `NavigationListItemMeta`, `NavigationListBadge`, `NavigationListSubtitle` | `selectedId`, `highlighted`, `onHighlightChange`, `onSelect`, `onEnter`, `onNavigationBoundaryReached`, `autoFocus`, `focused` |
-| Toast | `Toaster` | none | Shared toast store through `toast()` helpers |
+| Menu | `Menu` | `MenuItem`, `MenuItemCheckbox`, `MenuItemRadio`, `MenuDivider`, `MenuGroup`, `MenuLabel`, `MenuSub`, `MenuSubTrigger`, `MenuSubContent` | `selectedId`, `highlighted`, `onHighlightChange`, `onSelect`, `variant` |
+| NavigationList | `NavigationList` | `NavigationListItem`, `NavigationListTitle`, `NavigationListStatus`, `NavigationListMeta`, `NavigationListBadge`, `NavigationListSubtitle`, `NavigationListProgress`, `NavigationListGroup` | `selectedId`, `highlighted`, `onHighlightChange`, `onSelect`, `onEnter`, `onNavigationBoundaryReached`, `autoFocus`, `focused` |
 | Stepper | `Stepper` | `StepperStep`, `StepperTrigger`, `StepperContent`, `StepperSubstep` | `expandedIds`, `onExpandedChange` |
 
 > **Note**: `MenuItem` uses `children` for its label: `<MenuItem id="copy">Copy</MenuItem>`, not a `label` prop.

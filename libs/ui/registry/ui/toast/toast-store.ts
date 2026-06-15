@@ -3,40 +3,62 @@
 import { type ReactNode, useSyncExternalStore } from "react";
 import type { ToastTone, ToastVariant } from "./toast-variants";
 
-export type ToastPosition =
-  | "top-left"
-  | "top-center"
-  | "top-right"
-  | "bottom-left"
-  | "bottom-center"
-  | "bottom-right";
+export type { ToastPosition } from "./toast-variants";
 
+/** Individual toast notification with position-aware animation. */
 export interface Toast {
+  /** ID applied to the rendered element. */
   id: string;
+  /** Visual tone. */
   tone: ToastTone;
+  /** Visual style variant. */
   variant: ToastVariant;
+  /** Title content. */
   title: string;
+  /** Message content. */
   message?: string;
+  /** Duration in milliseconds. */
   duration?: number;
+  /** Action rendered with the item. */
   action?: ReactNode;
+  /** Accessible name for the dismiss button. Defaults to `Dismiss: ${title}`. */
+  dismissLabel?: string;
+  /** Screen-reader tone word announced before the title. Defaults to the tone name. */
+  toneLabel?: string;
 }
 
+/** Options for toast. */
 export interface ToastOptions {
+  /** Title content. */
   title: string;
+  /** Visual tone. */
   tone?: ToastTone;
+  /** Visual style variant. */
   variant?: ToastVariant;
+  /** Message content. */
   message?: string;
+  /** Duration in milliseconds. */
   duration?: number;
+  /** Action rendered with the item. */
   action?: ReactNode;
+  /** ID applied to the rendered element. */
   id?: string;
+  /** Accessible label for dismiss. */
+  dismissLabel?: string;
+  /** Accessible label for tone. */
+  toneLabel?: string;
 }
 
 const DEFAULT_DURATION = 5000;
 const MAX_TOASTS = 5;
 
+/** Individual toast notification with position-aware animation. */
 interface StoreState {
+  /** toasts used by store. */
   toasts: Toast[];
+  /** dismissing ids used by store. */
   dismissingIds: Set<string>;
+  /** paused used by store. */
   paused: boolean;
 }
 
@@ -156,6 +178,8 @@ function create(options: ToastOptions): string {
     message: options.message,
     duration: options.duration,
     action: effectiveAction,
+    dismissLabel: options.dismissLabel,
+    toneLabel: options.toneLabel,
   };
 
   clearTimer(id);
@@ -178,6 +202,7 @@ function create(options: ToastOptions): string {
   return id;
 }
 
+/** Individual toast notification with position-aware animation. */
 export function dismiss(id?: string) {
   if (id) {
     state = {
@@ -190,6 +215,7 @@ export function dismiss(id?: string) {
   emit();
 }
 
+/** Individual toast notification with position-aware animation. */
 export function remove(id: string) {
   clearTimer(id);
   const nextDismissing = new Set(state.dismissingIds);
@@ -202,6 +228,7 @@ export function remove(id: string) {
   emit();
 }
 
+/** Individual toast notification with position-aware animation. */
 export function pause() {
   if (state.paused) return;
   for (const [, entry] of timers) {
@@ -212,6 +239,7 @@ export function pause() {
   emit();
 }
 
+/** Individual toast notification with position-aware animation. */
 export function resume() {
   if (!state.paused) return;
   for (const [id, entry] of timers) {
@@ -222,13 +250,17 @@ export function resume() {
   emit();
 }
 
+/** Individual toast notification with position-aware animation. */
 export interface ToastTimerSnapshot {
+  /** Duration in milliseconds. */
   duration: number;
+  /** Remaining time in milliseconds. */
   remaining: number;
+  /** Timestamp when the timer started. */
   startedAt: number;
-  paused: boolean;
 }
 
+/** Returns timer snapshot. */
 export function getTimerSnapshot(id: string): ToastTimerSnapshot | null {
   const entry = timers.get(id);
   if (!entry) return null;
@@ -236,7 +268,6 @@ export function getTimerSnapshot(id: string): ToastTimerSnapshot | null {
     duration: entry.duration,
     remaining: entry.remaining,
     startedAt: entry.startedAt,
-    paused: state.paused,
   };
 }
 
@@ -283,6 +314,7 @@ function promiseToast<T>(
   );
 }
 
+/** Individual toast notification with position-aware animation. */
 export const toast: ToastFn = Object.assign(
   (title: string, options?: Omit<ToastOptions, "title">) => create({ ...options, title }),
   {
@@ -296,6 +328,7 @@ export const toast: ToastFn = Object.assign(
   },
 );
 
+/** Provides toast store behavior. */
 export function useToastStore(): StoreState {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

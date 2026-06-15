@@ -8,7 +8,7 @@ export default function PanelComposed() {
       <Panel.Header>
         <Panel.Title>Repository</Panel.Title>
         <Panel.Description>diffgazer-workspace · last synced 4 minutes ago</Panel.Description>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-muted">MAIN</span>
+        <span className="text-2xs font-bold uppercase tracking-widest text-muted">MAIN</span>
         <Button variant="ghost" size="sm">
           Open
         </Button>

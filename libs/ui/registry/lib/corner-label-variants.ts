@@ -1,5 +1,6 @@
 import { cva } from "class-variance-authority";
 
+/** Variants for the small absolute label used on framed panels. */
 export const cornerLabelVariants = cva(
   "absolute -top-3 left-4 z-[var(--z-base)] bg-background px-2 text-xs font-bold uppercase tracking-wider text-muted-foreground",
   {

@@ -136,7 +136,9 @@ export function ApiKeyStep({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-tui-muted font-mono">Provide your API key for {providerName}.</p>
+      <p className="text-sm text-muted-foreground font-mono">
+        Provide your API key for {providerName}.
+      </p>
       <ApiKeyMethodSelector
         value={method}
         onChange={onChange}

@@ -74,7 +74,7 @@
   top: 36px;
   bottom: -8px;
   width: 1px;
-  background: var(--color-border);
+  background: var(--border);
 }
 
 /*
@@ -98,7 +98,7 @@
   /* 1ch indicator → centre at ½ch. Dashed style differentiates the low-chrome variant. */
   left: calc(0.5ch + 0.5px);
   background: transparent;
-  border-left: 1px dashed var(--color-border);
+  border-left: 1px dashed var(--border);
   width: 0;
 }
 
@@ -111,10 +111,10 @@
   > li[data-status="completed"]:not(:last-child)::before,
 [data-orientation="vertical"][data-variant="numbered"]
   > li[data-status="completed"]:not(:last-child)::before {
-  background: var(--color-success);
+  background: var(--success);
 }
 
 [data-orientation="vertical"][data-variant="bullet"]
   > li[data-status="completed"]:not(:last-child)::before {
-  border-left-color: var(--color-success);
+  border-left-color: var(--success);
 }

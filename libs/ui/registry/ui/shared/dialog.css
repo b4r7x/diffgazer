@@ -10,7 +10,7 @@
 
 @layer components {
   dialog::backdrop {
-    background: rgba(0, 0, 0, 0.6);
+    background: var(--scrim);
     -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
   }
@@ -110,32 +110,25 @@
  */
 @layer components {
   /*
-   * Token defaults applied to each non-none corners value individually so
-   * per-corner overrides have equal specificity and win via source order.
+   * Default corner-token values are consumed via var() fallback at the corner
+   * use sites below (not declared on the slot) so an ancestor-scoped override
+   * reaches them. Defaults: --viewfinder-size → 18px; --viewfinder-weight → 2px;
+   * --viewfinder-color → var(--foreground); --viewfinder-offset → 0px. The
+   * per-corner variant overrides below still win.
    */
-  [data-slot="dialog-content"][data-corners="subtle"],
-  [data-slot="dialog-content"][data-corners="standard"],
-  [data-slot="dialog-content"][data-corners="bold"],
-  [data-slot="dialog-content"][data-corners="outset"] {
-    --dlg-corner-size: 18px;
-    --dlg-corner-weight: 2px;
-    --dlg-corner-color: var(--foreground);
-    --dlg-corner-offset: 0px;
-  }
-
   [data-slot="dialog-content"][data-corners="subtle"] {
-    --dlg-corner-size: 12px;
-    --dlg-corner-weight: 1.5px;
-    --dlg-corner-color: var(--border);
+    --viewfinder-size: 12px;
+    --viewfinder-weight: 1.5px;
+    --viewfinder-color: var(--border);
   }
 
   [data-slot="dialog-content"][data-corners="bold"] {
-    --dlg-corner-size: 28px;
-    --dlg-corner-weight: 3px;
+    --viewfinder-size: 28px;
+    --viewfinder-weight: 3px;
   }
 
   [data-slot="dialog-content"][data-corners="outset"] {
-    --dlg-corner-offset: -3px;
+    --viewfinder-offset: -3px;
   }
 
   [data-slot="dialog-content"][data-corners]:not([data-corners="none"])::before,
@@ -144,38 +137,38 @@
   [data-slot="dialog-content"][data-corners]:not([data-corners="none"]) > .dlg-corners::after {
     content: "";
     position: absolute;
-    width: var(--dlg-corner-size);
-    height: var(--dlg-corner-size);
-    border: 0 solid var(--dlg-corner-color);
+    width: var(--viewfinder-size, 18px);
+    height: var(--viewfinder-size, 18px);
+    border: 0 solid var(--viewfinder-color, var(--foreground));
     pointer-events: none;
   }
 
   [data-slot="dialog-content"][data-corners]:not([data-corners="none"])::before {
-    top: var(--dlg-corner-offset);
-    left: var(--dlg-corner-offset);
-    border-top-width: var(--dlg-corner-weight);
-    border-left-width: var(--dlg-corner-weight);
+    top: var(--viewfinder-offset, 0px);
+    left: var(--viewfinder-offset, 0px);
+    border-top-width: var(--viewfinder-weight, 2px);
+    border-left-width: var(--viewfinder-weight, 2px);
   }
 
   [data-slot="dialog-content"][data-corners]:not([data-corners="none"])::after {
-    top: var(--dlg-corner-offset);
-    right: var(--dlg-corner-offset);
-    border-top-width: var(--dlg-corner-weight);
-    border-right-width: var(--dlg-corner-weight);
+    top: var(--viewfinder-offset, 0px);
+    right: var(--viewfinder-offset, 0px);
+    border-top-width: var(--viewfinder-weight, 2px);
+    border-right-width: var(--viewfinder-weight, 2px);
   }
 
   [data-slot="dialog-content"][data-corners]:not([data-corners="none"]) > .dlg-corners::before {
-    bottom: var(--dlg-corner-offset);
-    left: var(--dlg-corner-offset);
-    border-bottom-width: var(--dlg-corner-weight);
-    border-left-width: var(--dlg-corner-weight);
+    bottom: var(--viewfinder-offset, 0px);
+    left: var(--viewfinder-offset, 0px);
+    border-bottom-width: var(--viewfinder-weight, 2px);
+    border-left-width: var(--viewfinder-weight, 2px);
   }
 
   [data-slot="dialog-content"][data-corners]:not([data-corners="none"]) > .dlg-corners::after {
-    bottom: var(--dlg-corner-offset);
-    right: var(--dlg-corner-offset);
-    border-bottom-width: var(--dlg-corner-weight);
-    border-right-width: var(--dlg-corner-weight);
+    bottom: var(--viewfinder-offset, 0px);
+    right: var(--viewfinder-offset, 0px);
+    border-bottom-width: var(--viewfinder-weight, 2px);
+    border-right-width: var(--viewfinder-weight, 2px);
   }
 }
 
@@ -185,8 +178,8 @@
  */
 @layer components {
   [data-slot="dialog-content"] {
-    --dlg-title-meta-size: 11px;
-    --dlg-title-meta-tracking: 0.08em;
+    --dialog-title-meta-size: 11px;
+    --dialog-title-meta-tracking: 0.08em;
   }
 }
 
@@ -201,19 +194,19 @@
  */
 @layer components {
   [data-slot="dialog-content"] {
-    --dlg-close-btn-inset: 0.5rem;
+    --dialog-close-btn-inset: 0.5rem;
   }
 
   [data-slot="dialog-content"][data-corners="subtle"] {
-    --dlg-close-btn-inset: 16px;
+    --dialog-close-btn-inset: 16px;
   }
 
   [data-slot="dialog-content"][data-corners="standard"],
   [data-slot="dialog-content"][data-corners="outset"] {
-    --dlg-close-btn-inset: 22px;
+    --dialog-close-btn-inset: 22px;
   }
 
   [data-slot="dialog-content"][data-corners="bold"] {
-    --dlg-close-btn-inset: 32px;
+    --dialog-close-btn-inset: 32px;
   }
 }

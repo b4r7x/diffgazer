@@ -1,3 +1,4 @@
+import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import { bodyLimit } from "hono/body-limit";
 import { errorResponse } from "../lib/http/response.js";
 
@@ -7,5 +8,5 @@ export const DEFAULT_BODY_LIMIT_KB = 50;
 export const createBodyLimitMiddleware = (maxSizeKB: number) =>
   bodyLimit({
     maxSize: maxSizeKB * 1024,
-    onError: (c) => errorResponse(c, "Request body too large", "PAYLOAD_TOO_LARGE", 413),
+    onError: (c) => errorResponse(c, "Request body too large", ErrorCode.PAYLOAD_TOO_LARGE, 413),
   });

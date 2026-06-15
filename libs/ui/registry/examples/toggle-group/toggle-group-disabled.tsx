@@ -12,7 +12,12 @@ export default function ToggleGroupDisabled() {
         <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
           Group disabled
         </span>
-        <ToggleGroup value={value} onChange={setValue} disabled>
+        <ToggleGroup
+          label="File filter (group disabled)"
+          value={value}
+          onChange={setValue}
+          disabled
+        >
           <ToggleGroup.Item value="all">All</ToggleGroup.Item>
           <ToggleGroup.Item value="added">Added</ToggleGroup.Item>
           <ToggleGroup.Item value="modified">Modified</ToggleGroup.Item>
@@ -24,7 +29,7 @@ export default function ToggleGroupDisabled() {
         <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
           Per-item disabled
         </span>
-        <ToggleGroup value={value} onChange={setValue}>
+        <ToggleGroup label="File filter (per-item disabled)" value={value} onChange={setValue}>
           <ToggleGroup.Item value="all">All</ToggleGroup.Item>
           <ToggleGroup.Item value="added">Added</ToggleGroup.Item>
           <ToggleGroup.Item value="modified" disabled>

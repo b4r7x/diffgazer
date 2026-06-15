@@ -9,7 +9,7 @@ import { defineConfig } from "vite";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 import { getPreRenderPages as enumeratePreRenderPages } from "./scripts/generate-sitemap.ts";
 import * as MdxConfig from "./source.config";
-import { DOCS_SECURITY_HEADERS } from "./src/security-headers";
+import { DOCS_BASE_SECURITY_HEADERS } from "./src/security-headers";
 import { docsDataRebuild } from "./vite-plugin-docs-rebuild";
 
 function getPreRenderPages(): Array<{ path: string }> {
@@ -42,9 +42,13 @@ const config = defineConfig(() => {
       : null,
     !isVitest
       ? nitro({
+          // The shipped Nitro server content-negotiates pre-compressed siblings
+          // but has no dynamic compressor; precompress so the ~1.8 MB-per-page
+          // payload is served gzip/brotli (Traefik only does TLS/routing).
+          compressPublicAssets: { gzip: true, brotli: true },
           routeRules: {
             "/**": {
-              headers: DOCS_SECURITY_HEADERS,
+              headers: DOCS_BASE_SECURITY_HEADERS,
             },
           },
         })
@@ -57,6 +61,7 @@ const config = defineConfig(() => {
       ? {
           environment: "jsdom",
           setupFiles: ["./src/test-setup.ts"],
+          testTimeout: 10_000,
         }
       : undefined,
     server: {
@@ -70,6 +75,7 @@ const config = defineConfig(() => {
             if (id.includes("/node_modules/react/") || id.includes("/node_modules/react-dom/"))
               return "vendor-react";
             if (id.includes("/node_modules/@tanstack/react-router/")) return "vendor-router";
+            return undefined;
           },
         },
       },
@@ -84,6 +90,20 @@ const config = defineConfig(() => {
       // libs/ui/registry source so demos resolve without a duplicated mirror.
       alias: {
         "@/components/ui": uiRegistryPath("ui"),
+        // Docs-owned hooks live in src/hooks/; they precede the blanket @/hooks
+        // alias (first match wins) so they resolve to docs source rather than the
+        // libs/ui registry that demo source authors against.
+        "@/hooks/use-demos": resolve(import.meta.dirname, "./src/hooks/use-demos"),
+        "@/hooks/use-pending-docs-route": resolve(
+          import.meta.dirname,
+          "./src/hooks/use-pending-docs-route",
+        ),
+        "@/hooks/mobile-nav-context": resolve(
+          import.meta.dirname,
+          "./src/hooks/mobile-nav-context",
+        ),
+        "@/hooks/search-context": resolve(import.meta.dirname, "./src/hooks/search-context"),
+        "@/hooks/theme-context": resolve(import.meta.dirname, "./src/hooks/theme-context"),
         "@/hooks": uiRegistryPath("hooks"),
         "@/lib/utils": uiRegistryPath("lib/utils"),
         "@/lib/aria": uiRegistryPath("lib/aria"),
@@ -100,6 +120,7 @@ const config = defineConfig(() => {
         "@/lib/step-status": uiRegistryPath("lib/step-status"),
         "@/lib/stepper-variants": uiRegistryPath("lib/stepper-variants"),
         "@/lib/typeahead": uiRegistryPath("lib/typeahead"),
+        "@/lib/warn-unregistered-value": uiRegistryPath("lib/warn-unregistered-value"),
         "@diffgazer/keys": resolve(import.meta.dirname, "../../libs/keys/src"),
         "@": resolve(import.meta.dirname, "./src"),
       },

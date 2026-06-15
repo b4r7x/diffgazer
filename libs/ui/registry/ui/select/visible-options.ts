@@ -1,6 +1,7 @@
 import { matchesSearch } from "@/lib/search";
 import type { SelectOptionMetadata } from "./select-context";
 
+/** Returns visible enabled option entries. */
 export function getVisibleEnabledOptionEntries(
   options: ReadonlyMap<string, SelectOptionMetadata>,
   searchQuery: string,
@@ -14,6 +15,7 @@ export function getVisibleEnabledOptionEntries(
   return entries;
 }
 
+/** Options for get visible enabled. */
 export function getVisibleEnabledOptions(
   options: ReadonlyMap<string, SelectOptionMetadata>,
   searchQuery: string,

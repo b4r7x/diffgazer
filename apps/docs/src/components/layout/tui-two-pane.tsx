@@ -1,7 +1,8 @@
+import { useFocusRestore, useKey } from "@diffgazer/keys";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { type ReactNode, useEffect, useRef } from "react";
-import { useMobileNav } from "@/lib/mobile-nav-context";
+import { useMobileNav } from "@/hooks/mobile-nav-context";
 
 export interface TuiTwoPaneProps {
   sidebar: (closeSidebar: () => void) => ReactNode;
@@ -31,9 +32,15 @@ export function TuiTwoPane({
   const panelInert = !isDesktop && sidebarOpen;
   const sidebarRef = useRef<HTMLElement>(null);
   const hadOpenSidebarRef = useRef(false);
+  const { capture, restore } = useFocusRestore({
+    fallback: menuButtonRef.current,
+    restoreOnUnmount: false,
+  });
 
   const closeSidebar = () => setSidebarOpen(false);
   const sidebarNode = sidebar(closeSidebar);
+
+  useKey("escape", closeSidebar, { enabled: sidebarOpen && !isDesktop, preventDefault: true });
 
   useEffect(() => {
     registerSidebar();
@@ -48,6 +55,7 @@ export function TuiTwoPane({
 
     if (sidebarOpen) {
       hadOpenSidebarRef.current = true;
+      capture();
       const firstLink = sidebarRef.current?.querySelector<HTMLElement>("a[href], button");
       (firstLink ?? sidebarRef.current)?.focus();
       return;
@@ -55,22 +63,9 @@ export function TuiTwoPane({
 
     if (hadOpenSidebarRef.current) {
       hadOpenSidebarRef.current = false;
-      menuButtonRef.current?.focus();
+      restore();
     }
-  }, [sidebarOpen, isDesktop, menuButtonRef]);
-
-  useEffect(() => {
-    if (!sidebarOpen || isDesktop) return;
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented) return;
-      event.preventDefault();
-      setSidebarOpen(false);
-    };
-
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [sidebarOpen, isDesktop, setSidebarOpen]);
+  }, [sidebarOpen, isDesktop, capture, restore]);
 
   const contentBody = contentInPanel ? (
     <Panel frame="hairline" className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -86,7 +81,7 @@ export function TuiTwoPane({
         <button
           type="button"
           aria-label="Close sidebar navigation"
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-(--z-overlay) bg-(--scrim) lg:hidden"
           onClick={closeSidebar}
         />
       )}
@@ -98,16 +93,14 @@ export function TuiTwoPane({
         aria-busy={sidebarBusy}
         inert={sidebarInert || undefined}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col transition-transform duration-150 ease-in-out",
+          "fixed inset-y-0 left-0 z-(--z-overlay) flex w-72 flex-col transition-transform duration-150 ease-in-out",
           "lg:static lg:z-auto lg:col-start-1 lg:row-start-1 lg:h-full lg:min-h-0 lg:w-auto lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
         <Panel frame="hairline" className="flex h-full min-h-0 flex-col">
           {sidebarHeader ? (
-            <div className="shrink-0 border-b border-border bg-[var(--tui-chrome-band-bg)]">
-              {sidebarHeader}
-            </div>
+            <div className="shrink-0 border-b border-border bg-background">{sidebarHeader}</div>
           ) : null}
           <div className="min-h-0 flex-1 overflow-hidden">{sidebarNode}</div>
         </Panel>

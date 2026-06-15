@@ -1,8 +1,10 @@
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
+/** Props for card footer. */
 export type CardFooterProps = ComponentPropsWithRef<"div">;
 
+/** Footer actions/meta region. */
 export function CardFooter({ className, ...props }: CardFooterProps) {
   return (
     <div

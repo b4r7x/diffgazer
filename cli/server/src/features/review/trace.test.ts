@@ -1,5 +1,7 @@
+import { err, ok } from "@diffgazer/core/result";
+import type { TraceRef } from "@diffgazer/core/schemas/review";
 import { describe, expect, it } from "vitest";
-import { summarizeOutput } from "./trace.js";
+import { recordTrace, summarizeOutput } from "./trace.js";
 
 describe("summarizeOutput", () => {
   it.each([
@@ -19,5 +21,28 @@ describe("summarizeOutput", () => {
 
     expect(result).toContain("chars");
     expect(result).toContain("lines");
+  });
+});
+
+describe("recordTrace", () => {
+  it("summarizes the unwrapped value of an ok Result, not the wrapper", async () => {
+    const steps: TraceRef[] = [];
+    await recordTrace(steps, "generateAnalysis", "input", async () =>
+      ok({ detailedAnalysis: "deep", rootCause: "cause" }),
+    );
+
+    expect(steps).toHaveLength(1);
+    expect(steps[0]?.outputSummary).toBe("Object{detailedAnalysis, rootCause}");
+    expect(steps[0]?.outputSummary).not.toContain("ok");
+    expect(steps[0]?.outputSummary).not.toContain("value");
+  });
+
+  it("summarizes the error of an err Result", async () => {
+    const steps: TraceRef[] = [];
+    await recordTrace(steps, "generateAnalysis", "input", async () =>
+      err({ code: "MODEL_ERROR", message: "failed" }),
+    );
+
+    expect(steps[0]?.outputSummary).toBe("Object{code, message}");
   });
 });

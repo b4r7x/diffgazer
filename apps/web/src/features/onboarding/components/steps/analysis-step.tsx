@@ -1,5 +1,5 @@
 import { buildLensOptions } from "@diffgazer/core/schemas/events";
-import type { LensId } from "@diffgazer/core/schemas/review";
+import { isLensId, type LensId } from "@diffgazer/core/schemas/review";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
@@ -7,10 +7,6 @@ import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { type KeyboardEvent, useState } from "react";
 
 const LENS_OPTIONS = buildLensOptions();
-
-function isLensId(value: string | null): value is LensId {
-  return LENS_OPTIONS.some((option) => option.id === value);
-}
 
 interface AnalysisStepProps {
   lenses: LensId[];
@@ -45,7 +41,7 @@ export function AnalysisStep({
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <div className="text-sm font-mono text-tui-fg/60">Review Agents:</div>
+        <div className="text-sm font-mono text-foreground/60">Review Agents:</div>
         <ScrollArea className="max-h-[35vh]">
           <CheckboxGroup
             value={lenses}

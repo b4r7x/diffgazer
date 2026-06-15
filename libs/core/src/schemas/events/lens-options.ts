@@ -1,3 +1,4 @@
+import type { BadgeVariant } from "../presentation/log.js";
 import type { LensId } from "../review/lens.js";
 import { AGENT_METADATA, LENS_TO_AGENT } from "./agent.js";
 
@@ -5,7 +6,7 @@ export interface LensOption {
   id: LensId;
   label: string;
   badgeLabel: string;
-  badgeVariant: "success" | "warning" | "error" | "info" | "neutral";
+  badgeVariant: BadgeVariant;
   description: string;
 }
 

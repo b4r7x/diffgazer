@@ -1,9 +1,9 @@
-import { render, screen, within } from "@testing-library/react";
+import { testNavigationBehavior } from "@diffgazer/keys/testing/navigation-behavior";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
-import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior";
 import { axe } from "../../../testing/axe";
 import { requireElement, requireValue } from "../../testing/assertions";
 import { Tabs } from "./index";
@@ -46,6 +46,79 @@ describe("Tabs", () => {
 
     expect(screen.getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("Settings panel")).not.toHaveAttribute("hidden");
+  });
+
+  it("resolves a controlled value through a trigger rendered by a consumer wrapper", () => {
+    function WrappedTab({ value, children }: { value: string; children: ReactNode }) {
+      return <Tabs.Trigger value={value}>{children}</Tabs.Trigger>;
+    }
+    function WrappedPanel({ value, children }: { value: string; children: ReactNode }) {
+      return <Tabs.Content value={value}>{children}</Tabs.Content>;
+    }
+
+    render(
+      <Tabs value="second">
+        <Tabs.List>
+          <WrappedTab value="first">First</WrappedTab>
+          <WrappedTab value="second">Second</WrappedTab>
+        </Tabs.List>
+        <WrappedPanel value="first">First panel</WrappedPanel>
+        <WrappedPanel value="second">Second panel</WrappedPanel>
+      </Tabs>,
+    );
+
+    // Without registration the controlled value would silently fall back to the
+    // first tab because the static children walk cannot see through WrappedTab.
+    expect(screen.getByRole("tab", { name: "Second" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "First" })).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByText("Second panel")).not.toHaveAttribute("hidden");
+  });
+
+  it("warns in development when a controlled value matches no registered trigger", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    render(
+      <Tabs value="ghost">
+        <Tabs.List>
+          <Tabs.Trigger value="one">One</Tabs.Trigger>
+          <Tabs.Trigger value="two">Two</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="one">Content one</Tabs.Content>
+        <Tabs.Content value="two">Content two</Tabs.Content>
+      </Tabs>,
+    );
+
+    await waitFor(() => expect(warn).toHaveBeenCalled());
+    expect(warn.mock.calls[0]?.[0]).toContain("ghost");
+    expect(warn.mock.calls[0]?.[0]).toContain("Tabs");
+    // The unregistered value still resolves to the first enabled tab (no crash).
+    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
+
+    warn.mockRestore();
+  });
+
+  it("does not warn when a controlled value matches a wrapper-rendered trigger", async () => {
+    function WrappedTab({ value, children }: { value: string; children: ReactNode }) {
+      return <Tabs.Trigger value={value}>{children}</Tabs.Trigger>;
+    }
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    render(
+      <Tabs value="second">
+        <Tabs.List>
+          <WrappedTab value="first">First</WrappedTab>
+          <WrappedTab value="second">Second</WrappedTab>
+        </Tabs.List>
+        <Tabs.Content value="first">First panel</Tabs.Content>
+        <Tabs.Content value="second">Second panel</Tabs.Content>
+      </Tabs>,
+    );
+
+    // Flush the deferred dev-warn frame: the wrapper triggers register before it
+    // fires, so no warning should appear for the legitimately-rendered value.
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it("selects a tab on click", async () => {
@@ -656,17 +729,17 @@ describe("Tabs variants", () => {
       </Tabs>,
     );
     // Both triggers carry the bracket marker spans (so width stays steady),
-    // but only the active one has data-active set — the CSS opacity rule on
-    // group-data-[active=true]/segmented-item reveals them visually.
+    // but only the active one has data-state="active" set — the CSS opacity rule
+    // on group-data-[state=active]/segmented-item reveals them visually.
     const activeTrigger = screen.getByRole("tab", { name: /beta/i });
     const inactiveTrigger = screen.getByRole("tab", { name: /alpha/i });
-    expect(activeTrigger).toHaveAttribute("data-active", "true");
-    expect(inactiveTrigger).not.toHaveAttribute("data-active");
+    expect(activeTrigger).toHaveAttribute("data-state", "active");
+    expect(inactiveTrigger).toHaveAttribute("data-state", "inactive");
     expect(activeTrigger).toHaveTextContent(/^\[\s*Beta\s*\]$/);
     expect(inactiveTrigger).toHaveTextContent(/^\[\s*Alpha\s*\]$/);
   });
 
-  it("marks the active trigger via data-active in variant='default'", () => {
+  it("marks the active trigger via data-state in variant='default'", () => {
     render(
       <Tabs defaultValue="b" variant="default">
         <Tabs.List>
@@ -677,8 +750,8 @@ describe("Tabs variants", () => {
         <Tabs.Content value="b">Beta content</Tabs.Content>
       </Tabs>,
     );
-    expect(screen.getByRole("tab", { name: /alpha/i })).not.toHaveAttribute("data-active");
-    expect(screen.getByRole("tab", { name: /beta/i })).toHaveAttribute("data-active", "true");
+    expect(screen.getByRole("tab", { name: /alpha/i })).toHaveAttribute("data-state", "inactive");
+    expect(screen.getByRole("tab", { name: /beta/i })).toHaveAttribute("data-state", "active");
   });
 });
 

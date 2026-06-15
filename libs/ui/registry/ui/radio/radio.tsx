@@ -13,10 +13,10 @@ import {
   useRef,
   useState,
 } from "react";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { mergeIds, resolveAriaInvalid } from "@/lib/aria";
-import { composeRefs } from "@/lib/compose-refs";
 import {
   type SelectableSize,
   type SelectableVariant,
@@ -29,6 +29,7 @@ import {
 } from "@/lib/selectable-variants";
 import { cn } from "@/lib/utils";
 
+/** Allowed radio size values. */
 export type RadioSize = SelectableSize;
 
 const RADIO_CHECK_EVENT = "diffgazer:radio-check";
@@ -51,6 +52,7 @@ function dispatchRadioCheck(source: HTMLElement, name: string) {
   );
 }
 
+/** Props for radio root. */
 type RadioRootProps = Omit<
   ComponentPropsWithRef<"div">,
   | "children"
@@ -68,30 +70,58 @@ type RadioRootProps = Omit<
   | "data-value"
 >;
 
+/** Props for radio. */
 export interface RadioProps extends RadioRootProps {
+  /** Controlled checked state. */
   checked?: boolean;
+  /** Initial checked state for uncontrolled usage. */
   defaultChecked?: boolean;
+  /** Whether radio is tab target. */
   isTabTarget?: boolean;
+  /** Called when the boolean checked state changes. */
   onChange?: (checked: boolean) => void;
+  /** Visible label associated with the custom radio. */
   label?: ReactNode;
+  /** Visible description wired with aria-describedby. */
   description?: ReactNode;
+  /** Disables the custom control and hidden input. */
   disabled?: boolean;
+  /** Marks the item as highlighted by a parent collection. */
   highlighted?: boolean;
+  /** Selectable control size token. */
   size?: RadioSize;
+  /** Hidden native input name used for same-name radio behavior and form submission. */
   name?: string;
+  /** Hidden native input value used for form submission. */
   value?: string;
+  /** Marks the hidden native radio input as required. */
   required?: boolean;
+  /** Indicator style. */
   variant?: SelectableVariant;
+  /** Accessible name when no visible label is supplied. */
   "aria-label"?: string;
+  /** ID of the element that labels this component. */
   "aria-labelledby"?: string;
+  /** ID of the element that describes this component. */
   "aria-describedby"?: string;
+  /** ARIA invalid state forwarded to the rendered control. */
   "aria-invalid"?: AriaAttributes["aria-invalid"];
+  /** Called when native invalid occurs. */
   onNativeInvalid?: () => void;
+  /** Additional class names merged onto the rendered element. */
   className?: string;
+  /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLDivElement>;
+  /** Value exposed as a data attribute for styling and selectors. */
   "data-value"?: string;
 }
 
+/**
+ * Standalone radio button. Same-name standalone radios stay mutually exclusive
+ * via a document-level CustomEvent, but they are form-submission-only: they have
+ * no arrow-key navigation and each is its own tab stop. For a keyboard-complete
+ * group (roving focus, arrow navigation, single tab stop) use RadioGroup.
+ */
 export function Radio({
   checked,
   defaultChecked = false,
@@ -124,6 +154,7 @@ export function Radio({
   const descriptionId = `${generatedId}-desc`;
 
   const rootRef = useRef<HTMLDivElement>(null);
+  const composedRef = useComposedRefs(rootRef, ref);
   const [isChecked, setIsChecked, isControlled] = useControllableState<boolean>({
     value: checked,
     defaultValue: defaultChecked,
@@ -142,7 +173,15 @@ export function Radio({
     description ? descriptionId : undefined,
   );
 
-  useFormReset(rootRef, defaultChecked, setIsChecked, checked === undefined);
+  useFormReset(
+    rootRef,
+    defaultChecked,
+    (value) => {
+      setNativeInvalid(false);
+      setIsChecked(value);
+    },
+    checked === undefined,
+  );
 
   const notifySameNameRadios = useCallback(() => {
     if (!name || !rootRef.current) return;
@@ -219,7 +258,6 @@ export function Radio({
           tabIndex={-1}
           readOnly
           aria-hidden={true}
-          aria-label={ariaLabel ?? (typeof label === "string" ? label : name)}
           onInvalid={(event) => {
             event.preventDefault();
             onNativeInvalid?.();
@@ -235,10 +273,13 @@ export function Radio({
       {/* biome-ignore lint/a11y/useSemanticElements: this is the custom-styled radio control; a hidden native <input type="radio"> (rendered separately) owns form submission, so the visible control uses role="radio". */}
       <div
         {...rootProps}
-        ref={composeRefs(rootRef, ref)}
+        ref={composedRef}
         role="radio"
+        data-slot="radio"
         data-value={dataValue ?? value}
-        data-highlighted={highlighted ? "true" : undefined}
+        data-state={isChecked ? "checked" : "unchecked"}
+        data-disabled={disabled ? "" : undefined}
+        data-highlighted={highlighted ? "" : undefined}
         aria-checked={isChecked}
         aria-disabled={disabled || undefined}
         aria-invalid={resolvedAriaInvalid}

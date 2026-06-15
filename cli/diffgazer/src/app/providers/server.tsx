@@ -1,7 +1,9 @@
-import type { ReactNode } from "react";
+import { createContext, type ReactNode, useContext } from "react";
 import { useExitHandler } from "../../hooks/use-exit-handler";
-import { useServers } from "../../hooks/use-servers";
+import { type ServerControls, useServers } from "../../hooks/use-servers";
 import type { ServerController } from "../../lib/servers/process";
+
+const ServerControlsContext = createContext<ServerControls | null>(null);
 
 interface ServerProviderProps {
   children: ReactNode;
@@ -9,8 +11,16 @@ interface ServerProviderProps {
 }
 
 export function ServerProvider({ children, servers }: ServerProviderProps) {
-  useServers(servers);
+  const controls = useServers(servers);
   useExitHandler();
 
-  return <>{children}</>;
+  return <ServerControlsContext value={controls}>{children}</ServerControlsContext>;
+}
+
+export function useServerControls(): ServerControls {
+  const ctx = useContext(ServerControlsContext);
+  if (!ctx) {
+    throw new Error("useServerControls must be used within a ServerProvider");
+  }
+  return ctx;
 }

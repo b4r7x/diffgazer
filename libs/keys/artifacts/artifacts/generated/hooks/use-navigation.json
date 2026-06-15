@@ -3,7 +3,7 @@
   "title": "useNavigation",
   "description": "Standalone keyboard navigation for role-based lists. Uses DOM queries to find navigable items. No provider needed.",
   "source": {
-    "raw": "\"use client\";\n\nimport { type KeyboardEvent, type RefObject, useCallback, useState } from \"react\";\nimport { dispatchNavigationKey, resolveDirectionKeys } from \"../core/navigation-dispatch.js\";\nimport { isEditableElement } from \"../dom/element-guards.js\";\nimport { containsActiveElement } from \"../dom/focusable.js\";\nimport {\n  getFocusedNavigationValue,\n  getNavigationItems,\n  type NavigationItemType,\n} from \"../dom/navigation-items.js\";\n\nexport type NavigationRole = NavigationItemType;\n\nexport interface UseNavigationOptions<TValue extends string = string> {\n  containerRef: RefObject<HTMLElement | null>;\n  role: NavigationRole;\n  highlighted?: TValue | null;\n  defaultHighlighted?: TValue | null;\n  onHighlightChange?: (value: TValue | null) => void;\n  onSelect?: (value: TValue, event: globalThis.KeyboardEvent) => void;\n  onEnter?: (value: TValue, event: globalThis.KeyboardEvent) => void;\n  wrap?: boolean;\n  enabled?: boolean;\n  preventDefault?: boolean;\n  onNavigationBoundaryReached?: (\n    direction: \"previous\" | \"next\",\n    event: globalThis.KeyboardEvent,\n    key: string,\n  ) => void;\n  upKeys?: readonly string[];\n  downKeys?: readonly string[];\n  orientation?: \"vertical\" | \"horizontal\";\n  skipDisabled?: boolean;\n  moveFocus?: boolean;\n  scopeToContainer?: boolean;\n  ownerSelector?: string | null;\n}\n\nexport interface UseNavigationReturn<TValue extends string = string> {\n  highlighted: TValue | null;\n  isHighlighted: (value: TValue) => boolean;\n  highlight: (value: TValue | null) => void;\n  onKeyDown: (event: KeyboardEvent) => void;\n}\n\ninterface UseNavigationCoreReturn<TValue extends string = string> {\n  highlighted: TValue | null;\n  isHighlighted: (value: TValue) => boolean;\n  highlight: (value: TValue | null) => void;\n  move: (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => void;\n  focusIndex: (index: number) => void;\n  handleSelect: (event: globalThis.KeyboardEvent) => void;\n  handleEnter: (event: globalThis.KeyboardEvent) => void;\n  getElements: () => HTMLElement[];\n}\n\nfunction queryNavigationElements(\n  containerRef: RefObject<HTMLElement | null>,\n  role: NavigationRole,\n  skipDisabled: boolean,\n  scopeToContainer: boolean,\n  ownerSelector: string | null | undefined,\n): HTMLElement[] {\n  return getNavigationItems(containerRef.current, {\n    type: role,\n    skipDisabled,\n    scopeToContainer,\n    ownerSelector,\n  });\n}\n\nfunction wrapIndex(index: number, length: number, wrap: boolean): number | null {\n  if (index < 0) return wrap ? length - 1 : null;\n  if (index >= length) return wrap ? 0 : null;\n  return index;\n}\n\nexport function useNavigationCore<TValue extends string = string>({\n  containerRef,\n  role,\n  highlighted: controlledHighlighted,\n  defaultHighlighted = null,\n  onSelect,\n  onEnter,\n  onHighlightChange,\n  wrap = true,\n  onNavigationBoundaryReached,\n  skipDisabled = true,\n  moveFocus = false,\n  scopeToContainer = true,\n  ownerSelector,\n}: UseNavigationOptions<TValue>): UseNavigationCoreReturn<TValue> {\n  const [internalHighlighted, setInternalHighlighted] = useState<TValue | null>(defaultHighlighted);\n  const isControlled = controlledHighlighted !== undefined;\n  const highlighted = isControlled ? (controlledHighlighted ?? null) : internalHighlighted;\n\n  const setFocusedValue = useCallback(\n    (nextValue: TValue | null) => {\n      if (!isControlled) setInternalHighlighted(nextValue);\n      onHighlightChange?.(nextValue);\n    },\n    [isControlled, onHighlightChange],\n  );\n\n  const getElements = useCallback(\n    () =>\n      queryNavigationElements(containerRef, role, skipDisabled, scopeToContainer, ownerSelector),\n    [containerRef, role, skipDisabled, scopeToContainer, ownerSelector],\n  );\n\n  const getFocusedIndex = useCallback((): number => {\n    const elements = getElements();\n    if (elements.length === 0) return -1;\n\n    const focusedIndex = elements.findIndex(containsActiveElement);\n    if (focusedIndex >= 0) return focusedIndex;\n\n    if (highlighted !== null) {\n      const index = elements.findIndex((el) => el.dataset.value === highlighted);\n      if (index >= 0) return index;\n    }\n\n    return -1;\n  }, [getElements, highlighted]);\n\n  const getCurrentValue = useCallback((): TValue | null => {\n    const focusedValue = getFocusedNavigationValue(containerRef.current, {\n      type: role,\n      skipDisabled,\n      scopeToContainer,\n      ownerSelector,\n    });\n    // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.\n    if (focusedValue !== null) return focusedValue as TValue;\n\n    const elements = getElements();\n\n    if (highlighted !== null) {\n      return elements.some((el) => el.dataset.value === highlighted) ? highlighted : null;\n    }\n\n    return null;\n  }, [containerRef, getElements, highlighted, ownerSelector, role, scopeToContainer, skipDisabled]);\n\n  const focusIndex = useCallback(\n    (index: number) => {\n      const elements = getElements();\n      const el = elements[index];\n      if (!el) return;\n      const nextValue = el.dataset.value;\n      if (nextValue === undefined) return;\n\n      el.scrollIntoView?.({ block: \"nearest\" });\n      if (moveFocus) el.focus();\n      // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.\n      setFocusedValue(nextValue as TValue);\n    },\n    [getElements, moveFocus, setFocusedValue],\n  );\n\n  const move = useCallback(\n    (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => {\n      const elements = getElements();\n      if (elements.length === 0) return;\n\n      const current = getFocusedIndex();\n      const rawNext = current + delta;\n      const next = wrapIndex(rawNext, elements.length, wrap);\n      if (next === null) {\n        const direction = delta < 0 ? \"previous\" : \"next\";\n        if (event && key) onNavigationBoundaryReached?.(direction, event, key);\n        return;\n      }\n\n      focusIndex(next);\n    },\n    [focusIndex, getElements, getFocusedIndex, onNavigationBoundaryReached, wrap],\n  );\n\n  const handleSelect = useCallback(\n    (event: globalThis.KeyboardEvent) => {\n      const currentValue = getCurrentValue();\n      if (currentValue !== null) onSelect?.(currentValue, event);\n    },\n    [getCurrentValue, onSelect],\n  );\n\n  const handleEnter = useCallback(\n    (event: globalThis.KeyboardEvent) => {\n      const currentValue = getCurrentValue();\n      if (currentValue === null) return;\n      if (onEnter) onEnter(currentValue, event);\n      else onSelect?.(currentValue, event);\n    },\n    [getCurrentValue, onEnter, onSelect],\n  );\n\n  const isHighlighted = useCallback((v: TValue) => highlighted === v, [highlighted]);\n  const highlight = useCallback((v: TValue | null) => setFocusedValue(v), [setFocusedValue]);\n\n  return {\n    highlighted,\n    isHighlighted,\n    highlight,\n    move,\n    focusIndex,\n    handleSelect,\n    handleEnter,\n    getElements,\n  };\n}\n\nexport function useNavigation<TValue extends string = string>(\n  options: UseNavigationOptions<TValue>,\n): UseNavigationReturn<TValue> {\n  const {\n    enabled = true,\n    preventDefault = true,\n    orientation = \"vertical\",\n    upKeys,\n    downKeys,\n    onEnter,\n    onSelect,\n  } = options;\n\n  const { resolvedUpKeys, resolvedDownKeys } = resolveDirectionKeys(orientation, upKeys, downKeys);\n\n  const {\n    highlighted,\n    isHighlighted,\n    highlight,\n    move,\n    focusIndex,\n    handleSelect,\n    handleEnter,\n    getElements,\n  } = useNavigationCore(options);\n  const handlesEnter = Boolean(onEnter || onSelect);\n  const handlesSpace = Boolean(onSelect);\n\n  const onKeyDown = useCallback(\n    (event: KeyboardEvent) => {\n      if (!enabled) return;\n\n      const key = event.key;\n      const isMoveKey = resolvedUpKeys.includes(key) || resolvedDownKeys.includes(key);\n      const isSpecialKey =\n        key === \"Home\" ||\n        key === \"End\" ||\n        (key === \"Enter\" && handlesEnter) ||\n        (key === \" \" && handlesSpace);\n      if (!isMoveKey && !isSpecialKey) return;\n\n      const elements = getElements();\n\n      // Editable target guard: when an editable element bubbles a key into a wrapper\n      // that ALSO owns the navigation container, let the native control handle the key.\n      // We only skip when:\n      //   1) the event target is editable,\n      //   2) the target is NOT itself a navigation item,\n      //   3) currentTarget is an ancestor of the items (natural bubble case),\n      //      so the user did not explicitly forward the event from the editable.\n      if (isEditableElement(event.target)) {\n        const target = event.target as HTMLElement;\n        const isOwnItem = elements.some((el) => el === target || el.contains(target));\n        const currentTarget = event.currentTarget;\n        const ownsItems =\n          currentTarget != null &&\n          elements.length > 0 &&\n          elements.every((el) => currentTarget.contains(el));\n        if (!isOwnItem && ownsItems) return;\n      }\n\n      if (preventDefault) event.preventDefault();\n\n      dispatchNavigationKey(key, {\n        resolvedUpKeys,\n        resolvedDownKeys,\n        move: (delta) => move(delta, event.nativeEvent, key),\n        focusIndex,\n        handleSelect: handlesSpace ? (e) => handleSelect(e) : undefined,\n        handleEnter: handlesEnter ? (e) => handleEnter(e) : undefined,\n        total: elements.length,\n        nativeEvent: event.nativeEvent,\n      });\n    },\n    [\n      enabled,\n      resolvedUpKeys,\n      resolvedDownKeys,\n      preventDefault,\n      handlesEnter,\n      handlesSpace,\n      move,\n      focusIndex,\n      handleSelect,\n      handleEnter,\n      getElements,\n    ],\n  );\n\n  return { highlighted, isHighlighted, highlight, onKeyDown };\n}\n",
+    "raw": "\"use client\";\n\nimport { type KeyboardEvent, type RefObject, useState } from \"react\";\nimport { dispatchNavigationKey, resolveDirectionKeys } from \"../core/navigation-dispatch.js\";\nimport { isEditableElement } from \"../dom/element-guards.js\";\nimport { containsActiveElement } from \"../dom/focusable.js\";\nimport {\n  getFocusedNavigationValue,\n  getNavigationItems,\n  type NavigationItemType,\n} from \"../dom/navigation-items.js\";\n\n/** ARIA role or data-contract item type used for navigation item discovery. */\nexport type NavigationRole = NavigationItemType;\n\n/** Options for standalone role-based list navigation. */\nexport interface UseNavigationOptions<TValue extends string = string> {\n  /** Ref to the container element holding navigable items. */\n  containerRef: RefObject<HTMLElement | null>;\n  /** ARIA role used to query navigable children within the container. */\n  role: NavigationRole;\n  /** Controlled highlight value. When provided, the hook operates in controlled mode. */\n  highlighted?: TValue | null;\n  /** Initial highlighted value in uncontrolled mode. */\n  defaultHighlighted?: TValue | null;\n  /** Called when the controlled highlight value should change. */\n  onHighlightChange?: (value: TValue | null) => void;\n  /** Called when an item is selected via Space key. */\n  onSelect?: (value: TValue, event: globalThis.KeyboardEvent) => void;\n  /** Called when Enter is pressed on the highlighted item. */\n  onEnter?: (value: TValue, event: globalThis.KeyboardEvent) => void;\n  /** Wrap around when reaching the first or last item. */\n  wrap?: boolean;\n  /** Whether the navigation hook is active. */\n  enabled?: boolean;\n  /** Call preventDefault() on handled keyboard events. */\n  preventDefault?: boolean;\n  /**\n   * Called when the user tries to navigate past the first or last item.\n   * Receives the direction, originating event, and key that hit the boundary.\n   */\n  onNavigationBoundaryReached?: (\n    direction: \"previous\" | \"next\",\n    event: globalThis.KeyboardEvent,\n    key: string,\n  ) => void;\n  /** Custom key names to move highlight up or left. */\n  upKeys?: readonly string[];\n  /** Custom key names to move highlight down or right. */\n  downKeys?: readonly string[];\n  /** Navigation axis for default arrow keys. */\n  orientation?: \"vertical\" | \"horizontal\";\n  /** Skip aria-disabled, data-disabled, and native disabled items during navigation. */\n  skipDisabled?: boolean;\n  /** Move DOM focus to the next item instead of only updating highlight state. */\n  moveFocus?: boolean;\n  /** Ignore items owned by nested composite containers such as nested listboxes. */\n  scopeToContainer?: boolean;\n  /** Advanced owner selector override for roles without a standard composite owner. */\n  ownerSelector?: string | null;\n}\n\n/** Return value from `useNavigation`. */\nexport interface UseNavigationReturn<TValue extends string = string> {\n  /** The value of the currently highlighted item, or null. */\n  highlighted: TValue | null;\n  /** Returns true if the given value is the highlighted item. */\n  isHighlighted: (value: TValue) => boolean;\n  /** Imperatively set the highlighted item. Pass null to clear. */\n  highlight: (value: TValue | null) => void;\n  /** Keyboard event handler to attach to the container element. */\n  onKeyDown: (event: KeyboardEvent) => void;\n}\n\ninterface UseNavigationCoreReturn<TValue extends string = string> {\n  highlighted: TValue | null;\n  isHighlighted: (value: TValue) => boolean;\n  highlight: (value: TValue | null) => void;\n  move: (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => void;\n  focusIndex: (index: number) => void;\n  handleSelect: (event: globalThis.KeyboardEvent) => void;\n  handleEnter: (event: globalThis.KeyboardEvent) => void;\n  getElements: () => HTMLElement[];\n}\n\nfunction queryNavigationElements(\n  containerRef: RefObject<HTMLElement | null>,\n  role: NavigationRole,\n  skipDisabled: boolean,\n  scopeToContainer: boolean,\n  ownerSelector: string | null | undefined,\n): HTMLElement[] {\n  return getNavigationItems(containerRef.current, {\n    type: role,\n    skipDisabled,\n    scopeToContainer,\n    ownerSelector,\n  });\n}\n\nfunction wrapIndex(index: number, length: number, wrap: boolean): number | null {\n  if (index < 0) return wrap ? length - 1 : null;\n  if (index >= length) return wrap ? 0 : null;\n  return index;\n}\n\n/**\n * Shared list-navigation state machine used by the standalone and provider-backed\n * navigation hooks.\n */\nexport function useNavigationCore<TValue extends string = string>({\n  containerRef,\n  role,\n  highlighted: controlledHighlighted,\n  defaultHighlighted = null,\n  onSelect,\n  onEnter,\n  onHighlightChange,\n  wrap = true,\n  onNavigationBoundaryReached,\n  skipDisabled = true,\n  moveFocus = false,\n  scopeToContainer = true,\n  ownerSelector,\n}: UseNavigationOptions<TValue>): UseNavigationCoreReturn<TValue> {\n  const [internalHighlighted, setInternalHighlighted] = useState<TValue | null>(defaultHighlighted);\n  const isControlled = controlledHighlighted !== undefined;\n  const highlighted = isControlled ? (controlledHighlighted ?? null) : internalHighlighted;\n\n  const setFocusedValue = (nextValue: TValue | null) => {\n    if (!isControlled) setInternalHighlighted(nextValue);\n    onHighlightChange?.(nextValue);\n  };\n\n  const getElements = () =>\n    queryNavigationElements(containerRef, role, skipDisabled, scopeToContainer, ownerSelector);\n\n  const getFocusedIndex = (): number => {\n    const elements = getElements();\n    if (elements.length === 0) return -1;\n\n    const focusedIndex = elements.findIndex(containsActiveElement);\n    if (focusedIndex >= 0) return focusedIndex;\n\n    if (highlighted !== null) {\n      const index = elements.findIndex((el) => el.dataset.value === highlighted);\n      if (index >= 0) return index;\n    }\n\n    return -1;\n  };\n\n  const getCurrentValue = (): TValue | null => {\n    const focusedValue = getFocusedNavigationValue(containerRef.current, {\n      type: role,\n      skipDisabled,\n      scopeToContainer,\n      ownerSelector,\n    });\n    // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.\n    if (focusedValue !== null) return focusedValue as TValue;\n\n    const elements = getElements();\n\n    if (highlighted !== null) {\n      return elements.some((el) => el.dataset.value === highlighted) ? highlighted : null;\n    }\n\n    return null;\n  };\n\n  const focusIndex = (index: number) => {\n    const elements = getElements();\n    const el = elements[index];\n    if (!el) return;\n    const nextValue = el.dataset.value;\n    if (nextValue === undefined) return;\n\n    el.scrollIntoView?.({ block: \"nearest\" });\n    if (moveFocus) el.focus();\n    // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.\n    setFocusedValue(nextValue as TValue);\n  };\n\n  const move = (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => {\n    const elements = getElements();\n    if (elements.length === 0) return;\n\n    const current = getFocusedIndex();\n    const rawNext = current + delta;\n    const next = wrapIndex(rawNext, elements.length, wrap);\n    if (next === null) {\n      const direction = delta < 0 ? \"previous\" : \"next\";\n      if (event && key) onNavigationBoundaryReached?.(direction, event, key);\n      return;\n    }\n\n    focusIndex(next);\n  };\n\n  const handleSelect = (event: globalThis.KeyboardEvent) => {\n    const currentValue = getCurrentValue();\n    if (currentValue !== null) onSelect?.(currentValue, event);\n  };\n\n  const handleEnter = (event: globalThis.KeyboardEvent) => {\n    const currentValue = getCurrentValue();\n    if (currentValue === null) return;\n    if (onEnter) onEnter(currentValue, event);\n    else onSelect?.(currentValue, event);\n  };\n\n  const isHighlighted = (v: TValue) => highlighted === v;\n  const highlight = (v: TValue | null) => setFocusedValue(v);\n\n  return {\n    highlighted,\n    isHighlighted,\n    highlight,\n    move,\n    focusIndex,\n    handleSelect,\n    handleEnter,\n    getElements,\n  };\n}\n\n/**\n * Adds standalone keyboard navigation, selection, and focus tracking to a\n * role-based list. Attach the returned `onKeyDown` handler to the container.\n */\nexport function useNavigation<TValue extends string = string>(\n  options: UseNavigationOptions<TValue>,\n): UseNavigationReturn<TValue> {\n  const {\n    enabled = true,\n    preventDefault = true,\n    orientation = \"vertical\",\n    upKeys,\n    downKeys,\n    onEnter,\n    onSelect,\n  } = options;\n\n  const { resolvedUpKeys, resolvedDownKeys } = resolveDirectionKeys(orientation, upKeys, downKeys);\n\n  const {\n    highlighted,\n    isHighlighted,\n    highlight,\n    move,\n    focusIndex,\n    handleSelect,\n    handleEnter,\n    getElements,\n  } = useNavigationCore(options);\n  const handlesEnter = Boolean(onEnter || onSelect);\n  const handlesSpace = Boolean(onSelect);\n\n  const onKeyDown = (event: KeyboardEvent) => {\n    if (!enabled) return;\n\n    const key = event.key;\n    const isMoveKey = resolvedUpKeys.includes(key) || resolvedDownKeys.includes(key);\n    const isSpecialKey =\n      key === \"Home\" ||\n      key === \"End\" ||\n      (key === \"Enter\" && handlesEnter) ||\n      (key === \" \" && handlesSpace);\n    if (!isMoveKey && !isSpecialKey) return;\n\n    const elements = getElements();\n\n    // Editable target guard: when an editable element bubbles a key into a wrapper\n    // that ALSO owns the navigation container, let the native control handle the key.\n    // We only skip when:\n    //   1) the event target is editable,\n    //   2) the target is NOT itself a navigation item,\n    //   3) currentTarget is an ancestor of the items (natural bubble case),\n    //      so the user did not explicitly forward the event from the editable.\n    if (isEditableElement(event.target)) {\n      const target = event.target as HTMLElement;\n      const isOwnItem = elements.some((el) => el === target || el.contains(target));\n      const currentTarget = event.currentTarget;\n      const ownsItems =\n        currentTarget != null &&\n        elements.length > 0 &&\n        elements.every((el) => currentTarget.contains(el));\n      if (!isOwnItem && ownsItems) return;\n    }\n\n    if (preventDefault) event.preventDefault();\n\n    dispatchNavigationKey(key, {\n      resolvedUpKeys,\n      resolvedDownKeys,\n      move: (delta) => move(delta, event.nativeEvent, key),\n      focusIndex,\n      handleSelect: handlesSpace ? (e) => handleSelect(e) : undefined,\n      handleEnter: handlesEnter ? (e) => handleEnter(e) : undefined,\n      total: elements.length,\n      nativeEvent: event.nativeEvent,\n    });\n  };\n\n  return { highlighted, isHighlighted, highlight, onKeyDown };\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -71,14 +71,6 @@
           },
           {
             "text": " RefObject",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " useCallback",
             "color": "var(--code-variable)"
           },
           {
@@ -399,6 +391,23 @@
         "number": 13,
         "content": [
           {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ARIA role or data-contract item type used for navigation item discovery. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 14,
+        "content": [
+          {
             "text": "export",
             "color": "var(--code-keyword)"
           },
@@ -441,11 +450,28 @@
         ]
       },
       {
-        "number": 14,
+        "number": 15,
         "content": []
       },
       {
-        "number": 15,
+        "number": 16,
+        "content": [
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Options for standalone role-based list navigation. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 17,
         "content": [
           {
             "text": "export",
@@ -522,7 +548,28 @@
         ]
       },
       {
-        "number": 16,
+        "number": 18,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Ref to the container element holding navigable items. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 19,
         "content": [
           {
             "text": "  containerRef",
@@ -571,7 +618,28 @@
         ]
       },
       {
-        "number": 17,
+        "number": 20,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ARIA role used to query navigable children within the container. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 21,
         "content": [
           {
             "text": "  role",
@@ -596,7 +664,28 @@
         ]
       },
       {
-        "number": 18,
+        "number": 22,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Controlled highlight value. When provided, the hook operates in controlled mode. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 23,
         "content": [
           {
             "text": "  highlighted",
@@ -637,7 +726,28 @@
         ]
       },
       {
-        "number": 19,
+        "number": 24,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Initial highlighted value in uncontrolled mode. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 25,
         "content": [
           {
             "text": "  defaultHighlighted",
@@ -678,7 +788,28 @@
         ]
       },
       {
-        "number": 20,
+        "number": 26,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Called when the controlled highlight value should change. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 27,
         "content": [
           {
             "text": "  ",
@@ -759,7 +890,28 @@
         ]
       },
       {
-        "number": 21,
+        "number": 28,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Called when an item is selected via Space key. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 29,
         "content": [
           {
             "text": "  ",
@@ -852,7 +1004,28 @@
         ]
       },
       {
-        "number": 22,
+        "number": 30,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Called when Enter is pressed on the highlighted item. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 31,
         "content": [
           {
             "text": "  ",
@@ -945,7 +1118,28 @@
         ]
       },
       {
-        "number": 23,
+        "number": 32,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Wrap around when reaching the first or last item. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 33,
         "content": [
           {
             "text": "  wrap",
@@ -970,7 +1164,28 @@
         ]
       },
       {
-        "number": 24,
+        "number": 34,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Whether the navigation hook is active. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 35,
         "content": [
           {
             "text": "  enabled",
@@ -995,7 +1210,28 @@
         ]
       },
       {
-        "number": 25,
+        "number": 36,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Call preventDefault() on handled keyboard events. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 37,
         "content": [
           {
             "text": "  preventDefault",
@@ -1020,7 +1256,51 @@
         ]
       },
       {
-        "number": 26,
+        "number": 38,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 39,
+        "content": [
+          {
+            "text": "   * Called when the user tries to navigate past the first or last item.",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 40,
+        "content": [
+          {
+            "text": "   * Receives the direction, originating event, and key that hit the boundary.",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 41,
+        "content": [
+          {
+            "text": "   ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 42,
         "content": [
           {
             "text": "  ",
@@ -1041,7 +1321,7 @@
         ]
       },
       {
-        "number": 27,
+        "number": 43,
         "content": [
           {
             "text": "    direction",
@@ -1098,7 +1378,7 @@
         ]
       },
       {
-        "number": 28,
+        "number": 44,
         "content": [
           {
             "text": "    event",
@@ -1131,7 +1411,7 @@
         ]
       },
       {
-        "number": 29,
+        "number": 45,
         "content": [
           {
             "text": "    key",
@@ -1156,7 +1436,7 @@
         ]
       },
       {
-        "number": 30,
+        "number": 46,
         "content": [
           {
             "text": "  ) ",
@@ -1181,7 +1461,28 @@
         ]
       },
       {
-        "number": 31,
+        "number": 47,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Custom key names to move highlight up or left. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 48,
         "content": [
           {
             "text": "  upKeys",
@@ -1218,7 +1519,28 @@
         ]
       },
       {
-        "number": 32,
+        "number": 49,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Custom key names to move highlight down or right. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 50,
         "content": [
           {
             "text": "  downKeys",
@@ -1255,7 +1577,28 @@
         ]
       },
       {
-        "number": 33,
+        "number": 51,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Navigation axis for default arrow keys. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 52,
         "content": [
           {
             "text": "  orientation",
@@ -1312,7 +1655,28 @@
         ]
       },
       {
-        "number": 34,
+        "number": 53,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Skip aria-disabled, data-disabled, and native disabled items during navigation. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 54,
         "content": [
           {
             "text": "  skipDisabled",
@@ -1337,7 +1701,28 @@
         ]
       },
       {
-        "number": 35,
+        "number": 55,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Move DOM focus to the next item instead of only updating highlight state. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 56,
         "content": [
           {
             "text": "  moveFocus",
@@ -1362,7 +1747,28 @@
         ]
       },
       {
-        "number": 36,
+        "number": 57,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Ignore items owned by nested composite containers such as nested listboxes. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 58,
         "content": [
           {
             "text": "  scopeToContainer",
@@ -1387,7 +1793,28 @@
         ]
       },
       {
-        "number": 37,
+        "number": 59,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Advanced owner selector override for roles without a standard composite owner. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 60,
         "content": [
           {
             "text": "  ownerSelector",
@@ -1428,7 +1855,7 @@
         ]
       },
       {
-        "number": 38,
+        "number": 61,
         "content": [
           {
             "text": "}",
@@ -1437,11 +1864,28 @@
         ]
       },
       {
-        "number": 39,
+        "number": 62,
         "content": []
       },
       {
-        "number": 40,
+        "number": 63,
+        "content": [
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Return value from `useNavigation`. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 64,
         "content": [
           {
             "text": "export",
@@ -1518,7 +1962,28 @@
         ]
       },
       {
-        "number": 41,
+        "number": 65,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " The value of the currently highlighted item, or null. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 66,
         "content": [
           {
             "text": "  highlighted",
@@ -1559,7 +2024,28 @@
         ]
       },
       {
-        "number": 42,
+        "number": 67,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Returns true if the given value is the highlighted item. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 68,
         "content": [
           {
             "text": "  ",
@@ -1624,7 +2110,28 @@
         ]
       },
       {
-        "number": 43,
+        "number": 69,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Imperatively set the highlighted item. Pass null to clear. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 70,
         "content": [
           {
             "text": "  ",
@@ -1705,7 +2212,28 @@
         ]
       },
       {
-        "number": 44,
+        "number": 71,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Keyboard event handler to attach to the container element. ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 72,
         "content": [
           {
             "text": "  ",
@@ -1770,7 +2298,7 @@
         ]
       },
       {
-        "number": 45,
+        "number": 73,
         "content": [
           {
             "text": "}",
@@ -1779,11 +2307,11 @@
         ]
       },
       {
-        "number": 46,
+        "number": 74,
         "content": []
       },
       {
-        "number": 47,
+        "number": 75,
         "content": [
           {
             "text": "interface",
@@ -1852,7 +2380,7 @@
         ]
       },
       {
-        "number": 48,
+        "number": 76,
         "content": [
           {
             "text": "  highlighted",
@@ -1893,7 +2421,7 @@
         ]
       },
       {
-        "number": 49,
+        "number": 77,
         "content": [
           {
             "text": "  ",
@@ -1958,7 +2486,7 @@
         ]
       },
       {
-        "number": 50,
+        "number": 78,
         "content": [
           {
             "text": "  ",
@@ -2039,7 +2567,7 @@
         ]
       },
       {
-        "number": 51,
+        "number": 79,
         "content": [
           {
             "text": "  ",
@@ -2168,7 +2696,7 @@
         ]
       },
       {
-        "number": 52,
+        "number": 80,
         "content": [
           {
             "text": "  ",
@@ -2233,7 +2761,7 @@
         ]
       },
       {
-        "number": 53,
+        "number": 81,
         "content": [
           {
             "text": "  ",
@@ -2306,7 +2834,7 @@
         ]
       },
       {
-        "number": 54,
+        "number": 82,
         "content": [
           {
             "text": "  ",
@@ -2379,7 +2907,7 @@
         ]
       },
       {
-        "number": 55,
+        "number": 83,
         "content": [
           {
             "text": "  ",
@@ -2428,7 +2956,7 @@
         ]
       },
       {
-        "number": 56,
+        "number": 84,
         "content": [
           {
             "text": "}",
@@ -2437,11 +2965,11 @@
         ]
       },
       {
-        "number": 57,
+        "number": 85,
         "content": []
       },
       {
-        "number": 58,
+        "number": 86,
         "content": [
           {
             "text": "function",
@@ -2462,7 +2990,7 @@
         ]
       },
       {
-        "number": 59,
+        "number": 87,
         "content": [
           {
             "text": "  containerRef",
@@ -2511,7 +3039,7 @@
         ]
       },
       {
-        "number": 60,
+        "number": 88,
         "content": [
           {
             "text": "  role",
@@ -2536,7 +3064,7 @@
         ]
       },
       {
-        "number": 61,
+        "number": 89,
         "content": [
           {
             "text": "  skipDisabled",
@@ -2561,7 +3089,7 @@
         ]
       },
       {
-        "number": 62,
+        "number": 90,
         "content": [
           {
             "text": "  scopeToContainer",
@@ -2586,7 +3114,7 @@
         ]
       },
       {
-        "number": 63,
+        "number": 91,
         "content": [
           {
             "text": "  ownerSelector",
@@ -2643,7 +3171,7 @@
         ]
       },
       {
-        "number": 64,
+        "number": 92,
         "content": [
           {
             "text": "):",
@@ -2668,7 +3196,7 @@
         ]
       },
       {
-        "number": 65,
+        "number": 93,
         "content": [
           {
             "text": "  ",
@@ -2717,7 +3245,7 @@
         ]
       },
       {
-        "number": 66,
+        "number": 94,
         "content": [
           {
             "text": "    type",
@@ -2738,7 +3266,7 @@
         ]
       },
       {
-        "number": 67,
+        "number": 95,
         "content": [
           {
             "text": "    skipDisabled",
@@ -2751,7 +3279,7 @@
         ]
       },
       {
-        "number": 68,
+        "number": 96,
         "content": [
           {
             "text": "    scopeToContainer",
@@ -2764,7 +3292,7 @@
         ]
       },
       {
-        "number": 69,
+        "number": 97,
         "content": [
           {
             "text": "    ownerSelector",
@@ -2777,7 +3305,7 @@
         ]
       },
       {
-        "number": 70,
+        "number": 98,
         "content": [
           {
             "text": "  ",
@@ -2798,7 +3326,7 @@
         ]
       },
       {
-        "number": 71,
+        "number": 99,
         "content": [
           {
             "text": "}",
@@ -2807,11 +3335,11 @@
         ]
       },
       {
-        "number": 72,
+        "number": 100,
         "content": []
       },
       {
-        "number": 73,
+        "number": 101,
         "content": [
           {
             "text": "function",
@@ -2924,7 +3452,7 @@
         ]
       },
       {
-        "number": 74,
+        "number": 102,
         "content": [
           {
             "text": "  ",
@@ -3005,7 +3533,7 @@
         ]
       },
       {
-        "number": 75,
+        "number": 103,
         "content": [
           {
             "text": "  ",
@@ -3070,7 +3598,7 @@
         ]
       },
       {
-        "number": 76,
+        "number": 104,
         "content": [
           {
             "text": "  ",
@@ -3091,7 +3619,7 @@
         ]
       },
       {
-        "number": 77,
+        "number": 105,
         "content": [
           {
             "text": "}",
@@ -3100,11 +3628,51 @@
         ]
       },
       {
-        "number": 78,
+        "number": 106,
         "content": []
       },
       {
-        "number": 79,
+        "number": 107,
+        "content": [
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 108,
+        "content": [
+          {
+            "text": " * Shared list-navigation state machine used by the standalone and provider-backed",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 109,
+        "content": [
+          {
+            "text": " * navigation hooks.",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 110,
+        "content": [
+          {
+            "text": " ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 111,
         "content": [
           {
             "text": "export",
@@ -3173,7 +3741,7 @@
         ]
       },
       {
-        "number": 80,
+        "number": 112,
         "content": [
           {
             "text": "  containerRef",
@@ -3186,7 +3754,7 @@
         ]
       },
       {
-        "number": 81,
+        "number": 113,
         "content": [
           {
             "text": "  role",
@@ -3199,7 +3767,7 @@
         ]
       },
       {
-        "number": 82,
+        "number": 114,
         "content": [
           {
             "text": "  highlighted",
@@ -3220,7 +3788,7 @@
         ]
       },
       {
-        "number": 83,
+        "number": 115,
         "content": [
           {
             "text": "  defaultHighlighted ",
@@ -3245,7 +3813,7 @@
         ]
       },
       {
-        "number": 84,
+        "number": 116,
         "content": [
           {
             "text": "  onSelect",
@@ -3258,7 +3826,7 @@
         ]
       },
       {
-        "number": 85,
+        "number": 117,
         "content": [
           {
             "text": "  onEnter",
@@ -3271,7 +3839,7 @@
         ]
       },
       {
-        "number": 86,
+        "number": 118,
         "content": [
           {
             "text": "  onHighlightChange",
@@ -3284,7 +3852,7 @@
         ]
       },
       {
-        "number": 87,
+        "number": 119,
         "content": [
           {
             "text": "  wrap ",
@@ -3309,7 +3877,7 @@
         ]
       },
       {
-        "number": 88,
+        "number": 120,
         "content": [
           {
             "text": "  onNavigationBoundaryReached",
@@ -3322,7 +3890,7 @@
         ]
       },
       {
-        "number": 89,
+        "number": 121,
         "content": [
           {
             "text": "  skipDisabled ",
@@ -3347,7 +3915,7 @@
         ]
       },
       {
-        "number": 90,
+        "number": 122,
         "content": [
           {
             "text": "  moveFocus ",
@@ -3372,7 +3940,7 @@
         ]
       },
       {
-        "number": 91,
+        "number": 123,
         "content": [
           {
             "text": "  scopeToContainer ",
@@ -3397,7 +3965,7 @@
         ]
       },
       {
-        "number": 92,
+        "number": 124,
         "content": [
           {
             "text": "  ownerSelector",
@@ -3410,7 +3978,7 @@
         ]
       },
       {
-        "number": 93,
+        "number": 125,
         "content": [
           {
             "text": "}:",
@@ -3467,7 +4035,7 @@
         ]
       },
       {
-        "number": 94,
+        "number": 126,
         "content": [
           {
             "text": "  ",
@@ -3560,7 +4128,7 @@
         ]
       },
       {
-        "number": 95,
+        "number": 127,
         "content": [
           {
             "text": "  ",
@@ -3609,7 +4177,7 @@
         ]
       },
       {
-        "number": 96,
+        "number": 128,
         "content": [
           {
             "text": "  ",
@@ -3678,11 +4246,11 @@
         ]
       },
       {
-        "number": 97,
+        "number": 129,
         "content": []
       },
       {
-        "number": 98,
+        "number": 130,
         "content": [
           {
             "text": "  ",
@@ -3698,7 +4266,7 @@
           },
           {
             "text": "setFocusedValue",
-            "color": "var(--code-number)"
+            "color": "var(--code-function)"
           },
           {
             "text": " ",
@@ -3710,23 +4278,6 @@
           },
           {
             "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useCallback",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          }
-        ]
-      },
-      {
-        "number": 99,
-        "content": [
-          {
-            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -3788,10 +4339,10 @@
         ]
       },
       {
-        "number": 100,
+        "number": 131,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -3825,10 +4376,10 @@
         ]
       },
       {
-        "number": 101,
+        "number": 132,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -3850,58 +4401,24 @@
         ]
       },
       {
-        "number": 102,
+        "number": 133,
         "content": [
           {
-            "text": "    ",
+            "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "},",
+            "text": "};",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 103,
-        "content": [
-          {
-            "text": "    [isControlled",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " onHighlightChange]",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 104,
-        "content": [
-          {
-            "text": "  )",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 105,
+        "number": 134,
         "content": []
       },
       {
-        "number": 106,
+        "number": 135,
         "content": [
           {
             "text": "  ",
@@ -3917,7 +4434,7 @@
           },
           {
             "text": "getElements",
-            "color": "var(--code-number)"
+            "color": "var(--code-function)"
           },
           {
             "text": " ",
@@ -3929,23 +4446,6 @@
           },
           {
             "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useCallback",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          }
-        ]
-      },
-      {
-        "number": 107,
-        "content": [
-          {
-            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -3963,10 +4463,10 @@
         ]
       },
       {
-        "number": 108,
+        "number": 136,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -4010,75 +4510,17 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 109,
-        "content": [
-          {
-            "text": "    [containerRef",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " role",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " skipDisabled",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " scopeToContainer",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ownerSelector]",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 110,
-        "content": [
-          {
-            "text": "  )",
-            "color": "var(--code-variable)"
-          },
-          {
             "text": ";",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 111,
+        "number": 137,
         "content": []
       },
       {
-        "number": 112,
+        "number": 138,
         "content": [
           {
             "text": "  ",
@@ -4094,7 +4536,7 @@
           },
           {
             "text": "getFocusedIndex",
-            "color": "var(--code-number)"
+            "color": "var(--code-function)"
           },
           {
             "text": " ",
@@ -4106,14 +4548,6 @@
           },
           {
             "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useCallback",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
             "color": "var(--code-variable)"
           },
           {
@@ -4147,7 +4581,7 @@
         ]
       },
       {
-        "number": 113,
+        "number": 139,
         "content": [
           {
             "text": "    ",
@@ -4192,7 +4626,7 @@
         ]
       },
       {
-        "number": 114,
+        "number": 140,
         "content": [
           {
             "text": "    ",
@@ -4261,11 +4695,11 @@
         ]
       },
       {
-        "number": 115,
+        "number": 141,
         "content": []
       },
       {
-        "number": 116,
+        "number": 142,
         "content": [
           {
             "text": "    ",
@@ -4318,7 +4752,7 @@
         ]
       },
       {
-        "number": 117,
+        "number": 143,
         "content": [
           {
             "text": "    ",
@@ -4363,11 +4797,11 @@
         ]
       },
       {
-        "number": 118,
+        "number": 144,
         "content": []
       },
       {
-        "number": 119,
+        "number": 145,
         "content": [
           {
             "text": "    ",
@@ -4404,7 +4838,7 @@
         ]
       },
       {
-        "number": 120,
+        "number": 146,
         "content": [
           {
             "text": "      ",
@@ -4509,7 +4943,7 @@
         ]
       },
       {
-        "number": 121,
+        "number": 147,
         "content": [
           {
             "text": "      ",
@@ -4554,7 +4988,7 @@
         ]
       },
       {
-        "number": 122,
+        "number": 148,
         "content": [
           {
             "text": "    ",
@@ -4567,11 +5001,11 @@
         ]
       },
       {
-        "number": 123,
+        "number": 149,
         "content": []
       },
       {
-        "number": 124,
+        "number": 150,
         "content": [
           {
             "text": "    ",
@@ -4600,40 +5034,24 @@
         ]
       },
       {
-        "number": 125,
+        "number": 151,
         "content": [
           {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "},",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " [getElements",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " highlighted])",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
+            "text": "};",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 126,
+        "number": 152,
         "content": []
       },
       {
-        "number": 127,
+        "number": 153,
         "content": [
           {
             "text": "  ",
@@ -4649,7 +5067,7 @@
           },
           {
             "text": "getCurrentValue",
-            "color": "var(--code-number)"
+            "color": "var(--code-function)"
           },
           {
             "text": " ",
@@ -4661,14 +5079,6 @@
           },
           {
             "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useCallback",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
             "color": "var(--code-variable)"
           },
           {
@@ -4718,7 +5128,7 @@
         ]
       },
       {
-        "number": 128,
+        "number": 154,
         "content": [
           {
             "text": "    ",
@@ -4783,7 +5193,7 @@
         ]
       },
       {
-        "number": 129,
+        "number": 155,
         "content": [
           {
             "text": "      type",
@@ -4804,7 +5214,7 @@
         ]
       },
       {
-        "number": 130,
+        "number": 156,
         "content": [
           {
             "text": "      skipDisabled",
@@ -4817,7 +5227,7 @@
         ]
       },
       {
-        "number": 131,
+        "number": 157,
         "content": [
           {
             "text": "      scopeToContainer",
@@ -4830,7 +5240,7 @@
         ]
       },
       {
-        "number": 132,
+        "number": 158,
         "content": [
           {
             "text": "      ownerSelector",
@@ -4843,7 +5253,7 @@
         ]
       },
       {
-        "number": 133,
+        "number": 159,
         "content": [
           {
             "text": "    ",
@@ -4864,7 +5274,7 @@
         ]
       },
       {
-        "number": 134,
+        "number": 160,
         "content": [
           {
             "text": "    //",
@@ -4877,7 +5287,7 @@
         ]
       },
       {
-        "number": 135,
+        "number": 161,
         "content": [
           {
             "text": "    ",
@@ -4934,11 +5344,11 @@
         ]
       },
       {
-        "number": 136,
+        "number": 162,
         "content": []
       },
       {
-        "number": 137,
+        "number": 163,
         "content": [
           {
             "text": "    ",
@@ -4983,11 +5393,11 @@
         ]
       },
       {
-        "number": 138,
+        "number": 164,
         "content": []
       },
       {
-        "number": 139,
+        "number": 165,
         "content": [
           {
             "text": "    ",
@@ -5024,7 +5434,7 @@
         ]
       },
       {
-        "number": 140,
+        "number": 166,
         "content": [
           {
             "text": "      ",
@@ -5133,7 +5543,7 @@
         ]
       },
       {
-        "number": 141,
+        "number": 167,
         "content": [
           {
             "text": "    ",
@@ -5146,11 +5556,11 @@
         ]
       },
       {
-        "number": 142,
+        "number": 168,
         "content": []
       },
       {
-        "number": 143,
+        "number": 169,
         "content": [
           {
             "text": "    ",
@@ -5175,80 +5585,24 @@
         ]
       },
       {
-        "number": 144,
+        "number": 170,
         "content": [
           {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "},",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " [containerRef",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " getElements",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " highlighted",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ownerSelector",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " role",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " scopeToContainer",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " skipDisabled])",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
+            "text": "};",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 145,
+        "number": 171,
         "content": []
       },
       {
-        "number": 146,
+        "number": 172,
         "content": [
           {
             "text": "  ",
@@ -5264,7 +5618,7 @@
           },
           {
             "text": "focusIndex",
-            "color": "var(--code-number)"
+            "color": "var(--code-function)"
           },
           {
             "text": " ",
@@ -5276,23 +5630,6 @@
           },
           {
             "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useCallback",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          }
-        ]
-      },
-      {
-        "number": 147,
-        "content": [
-          {
-            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5338,10 +5675,10 @@
         ]
       },
       {
-        "number": 148,
+        "number": 173,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5383,10 +5720,10 @@
         ]
       },
       {
-        "number": 149,
+        "number": 174,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5420,10 +5757,10 @@
         ]
       },
       {
-        "number": 150,
+        "number": 175,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5453,10 +5790,10 @@
         ]
       },
       {
-        "number": 151,
+        "number": 176,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5510,10 +5847,10 @@
         ]
       },
       {
-        "number": 152,
+        "number": 177,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5551,14 +5888,14 @@
         ]
       },
       {
-        "number": 153,
+        "number": 178,
         "content": []
       },
       {
-        "number": 154,
+        "number": 179,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5628,10 +5965,10 @@
         ]
       },
       {
-        "number": 155,
+        "number": 180,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5665,10 +6002,10 @@
         ]
       },
       {
-        "number": 156,
+        "number": 181,
         "content": [
           {
-            "text": "      //",
+            "text": "    //",
             "color": "var(--code-operator)"
           },
           {
@@ -5678,10 +6015,10 @@
         ]
       },
       {
-        "number": 157,
+        "number": 182,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5715,66 +6052,24 @@
         ]
       },
       {
-        "number": 158,
+        "number": 183,
         "content": [
           {
-            "text": "    ",
+            "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "},",
+            "text": "};",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 159,
-        "content": [
-          {
-            "text": "    [getElements",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " moveFocus",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " setFocusedValue]",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 160,
-        "content": [
-          {
-            "text": "  )",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 161,
+        "number": 184,
         "content": []
       },
       {
-        "number": 162,
+        "number": 185,
         "content": [
           {
             "text": "  ",
@@ -5790,7 +6085,7 @@
           },
           {
             "text": "move",
-            "color": "var(--code-number)"
+            "color": "var(--code-function)"
           },
           {
             "text": " ",
@@ -5802,23 +6097,6 @@
           },
           {
             "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useCallback",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          }
-        ]
-      },
-      {
-        "number": 163,
-        "content": [
-          {
-            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5928,10 +6206,10 @@
         ]
       },
       {
-        "number": 164,
+        "number": 186,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5973,10 +6251,10 @@
         ]
       },
       {
-        "number": 165,
+        "number": 187,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6030,14 +6308,14 @@
         ]
       },
       {
-        "number": 166,
+        "number": 188,
         "content": []
       },
       {
-        "number": 167,
+        "number": 189,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6079,10 +6357,10 @@
         ]
       },
       {
-        "number": 168,
+        "number": 190,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6124,10 +6402,10 @@
         ]
       },
       {
-        "number": 169,
+        "number": 191,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6197,10 +6475,10 @@
         ]
       },
       {
-        "number": 170,
+        "number": 192,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6234,10 +6512,10 @@
         ]
       },
       {
-        "number": 171,
+        "number": 193,
         "content": [
           {
-            "text": "        ",
+            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
@@ -6331,10 +6609,10 @@
         ]
       },
       {
-        "number": 172,
+        "number": 194,
         "content": [
           {
-            "text": "        ",
+            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
@@ -6388,10 +6666,10 @@
         ]
       },
       {
-        "number": 173,
+        "number": 195,
         "content": [
           {
-            "text": "        ",
+            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
@@ -6405,10 +6683,10 @@
         ]
       },
       {
-        "number": 174,
+        "number": 196,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6418,14 +6696,14 @@
         ]
       },
       {
-        "number": 175,
+        "number": 197,
         "content": []
       },
       {
-        "number": 176,
+        "number": 198,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6443,82 +6721,24 @@
         ]
       },
       {
-        "number": 177,
+        "number": 199,
         "content": [
           {
-            "text": "    ",
+            "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "},",
+            "text": "};",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 178,
-        "content": [
-          {
-            "text": "    [focusIndex",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " getElements",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " getFocusedIndex",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " onNavigationBoundaryReached",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " wrap]",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 179,
-        "content": [
-          {
-            "text": "  )",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 180,
+        "number": 200,
         "content": []
       },
       {
-        "number": 181,
+        "number": 201,
         "content": [
           {
             "text": "  ",
@@ -6534,7 +6754,7 @@
           },
           {
             "text": "handleSelect",
-            "color": "var(--code-number)"
+            "color": "var(--code-function)"
           },
           {
             "text": " ",
@@ -6546,23 +6766,6 @@
           },
           {
             "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useCallback",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          }
-        ]
-      },
-      {
-        "number": 182,
-        "content": [
-          {
-            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6616,10 +6819,10 @@
         ]
       },
       {
-        "number": 183,
+        "number": 202,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6661,10 +6864,10 @@
         ]
       },
       {
-        "number": 184,
+        "number": 203,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6718,58 +6921,24 @@
         ]
       },
       {
-        "number": 185,
+        "number": 204,
         "content": [
           {
-            "text": "    ",
+            "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "},",
+            "text": "};",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 186,
-        "content": [
-          {
-            "text": "    [getCurrentValue",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " onSelect]",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 187,
-        "content": [
-          {
-            "text": "  )",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 188,
+        "number": 205,
         "content": []
       },
       {
-        "number": 189,
+        "number": 206,
         "content": [
           {
             "text": "  ",
@@ -6785,7 +6954,7 @@
           },
           {
             "text": "handleEnter",
-            "color": "var(--code-number)"
+            "color": "var(--code-function)"
           },
           {
             "text": " ",
@@ -6797,23 +6966,6 @@
           },
           {
             "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useCallback",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          }
-        ]
-      },
-      {
-        "number": 190,
-        "content": [
-          {
-            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6867,10 +7019,10 @@
         ]
       },
       {
-        "number": 191,
+        "number": 207,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6912,10 +7064,10 @@
         ]
       },
       {
-        "number": 192,
+        "number": 208,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6953,10 +7105,10 @@
         ]
       },
       {
-        "number": 193,
+        "number": 209,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6990,10 +7142,10 @@
         ]
       },
       {
-        "number": 194,
+        "number": 210,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -7031,66 +7183,24 @@
         ]
       },
       {
-        "number": 195,
+        "number": 211,
         "content": [
           {
-            "text": "    ",
+            "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "},",
+            "text": "};",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 196,
-        "content": [
-          {
-            "text": "    [getCurrentValue",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " onEnter",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " onSelect]",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 197,
-        "content": [
-          {
-            "text": "  )",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 198,
+        "number": 212,
         "content": []
       },
       {
-        "number": 199,
+        "number": 213,
         "content": [
           {
             "text": "  ",
@@ -7106,7 +7216,7 @@
           },
           {
             "text": "isHighlighted",
-            "color": "var(--code-number)"
+            "color": "var(--code-function)"
           },
           {
             "text": " ",
@@ -7118,14 +7228,6 @@
           },
           {
             "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useCallback",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
             "color": "var(--code-variable)"
           },
           {
@@ -7173,21 +7275,13 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " [highlighted])",
-            "color": "var(--code-variable)"
-          },
-          {
             "text": ";",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 200,
+        "number": 214,
         "content": [
           {
             "text": "  ",
@@ -7203,7 +7297,7 @@
           },
           {
             "text": "highlight",
-            "color": "var(--code-number)"
+            "color": "var(--code-function)"
           },
           {
             "text": " ",
@@ -7215,14 +7309,6 @@
           },
           {
             "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useCallback",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
             "color": "var(--code-variable)"
           },
           {
@@ -7286,25 +7372,17 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " [setFocusedValue])",
-            "color": "var(--code-variable)"
-          },
-          {
             "text": ";",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 201,
+        "number": 215,
         "content": []
       },
       {
-        "number": 202,
+        "number": 216,
         "content": [
           {
             "text": "  ",
@@ -7325,7 +7403,7 @@
         ]
       },
       {
-        "number": 203,
+        "number": 217,
         "content": [
           {
             "text": "    highlighted",
@@ -7338,7 +7416,7 @@
         ]
       },
       {
-        "number": 204,
+        "number": 218,
         "content": [
           {
             "text": "    isHighlighted",
@@ -7351,7 +7429,7 @@
         ]
       },
       {
-        "number": 205,
+        "number": 219,
         "content": [
           {
             "text": "    highlight",
@@ -7364,7 +7442,7 @@
         ]
       },
       {
-        "number": 206,
+        "number": 220,
         "content": [
           {
             "text": "    move",
@@ -7377,7 +7455,7 @@
         ]
       },
       {
-        "number": 207,
+        "number": 221,
         "content": [
           {
             "text": "    focusIndex",
@@ -7390,7 +7468,7 @@
         ]
       },
       {
-        "number": 208,
+        "number": 222,
         "content": [
           {
             "text": "    handleSelect",
@@ -7403,7 +7481,7 @@
         ]
       },
       {
-        "number": 209,
+        "number": 223,
         "content": [
           {
             "text": "    handleEnter",
@@ -7416,7 +7494,7 @@
         ]
       },
       {
-        "number": 210,
+        "number": 224,
         "content": [
           {
             "text": "    getElements",
@@ -7429,7 +7507,7 @@
         ]
       },
       {
-        "number": 211,
+        "number": 225,
         "content": [
           {
             "text": "  ",
@@ -7442,7 +7520,7 @@
         ]
       },
       {
-        "number": 212,
+        "number": 226,
         "content": [
           {
             "text": "}",
@@ -7451,11 +7529,51 @@
         ]
       },
       {
-        "number": 213,
+        "number": 227,
         "content": []
       },
       {
-        "number": 214,
+        "number": 228,
+        "content": [
+          {
+            "text": "/**",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 229,
+        "content": [
+          {
+            "text": " * Adds standalone keyboard navigation, selection, and focus tracking to a",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 230,
+        "content": [
+          {
+            "text": " * role-based list. Attach the returned `onKeyDown` handler to the container.",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 231,
+        "content": [
+          {
+            "text": " ",
+            "color": "var(--code-comment)"
+          },
+          {
+            "text": "*/",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 232,
         "content": [
           {
             "text": "export",
@@ -7524,7 +7642,7 @@
         ]
       },
       {
-        "number": 215,
+        "number": 233,
         "content": [
           {
             "text": "  options",
@@ -7557,7 +7675,7 @@
         ]
       },
       {
-        "number": 216,
+        "number": 234,
         "content": [
           {
             "text": "):",
@@ -7594,7 +7712,7 @@
         ]
       },
       {
-        "number": 217,
+        "number": 235,
         "content": [
           {
             "text": "  ",
@@ -7615,7 +7733,7 @@
         ]
       },
       {
-        "number": 218,
+        "number": 236,
         "content": [
           {
             "text": "    ",
@@ -7648,7 +7766,7 @@
         ]
       },
       {
-        "number": 219,
+        "number": 237,
         "content": [
           {
             "text": "    ",
@@ -7681,7 +7799,7 @@
         ]
       },
       {
-        "number": 220,
+        "number": 238,
         "content": [
           {
             "text": "    ",
@@ -7722,7 +7840,7 @@
         ]
       },
       {
-        "number": 221,
+        "number": 239,
         "content": [
           {
             "text": "    ",
@@ -7739,7 +7857,7 @@
         ]
       },
       {
-        "number": 222,
+        "number": 240,
         "content": [
           {
             "text": "    ",
@@ -7756,7 +7874,7 @@
         ]
       },
       {
-        "number": 223,
+        "number": 241,
         "content": [
           {
             "text": "    ",
@@ -7773,7 +7891,7 @@
         ]
       },
       {
-        "number": 224,
+        "number": 242,
         "content": [
           {
             "text": "    ",
@@ -7790,7 +7908,7 @@
         ]
       },
       {
-        "number": 225,
+        "number": 243,
         "content": [
           {
             "text": "  ",
@@ -7819,11 +7937,11 @@
         ]
       },
       {
-        "number": 226,
+        "number": 244,
         "content": []
       },
       {
-        "number": 227,
+        "number": 245,
         "content": [
           {
             "text": "  ",
@@ -7912,11 +8030,11 @@
         ]
       },
       {
-        "number": 228,
+        "number": 246,
         "content": []
       },
       {
-        "number": 229,
+        "number": 247,
         "content": [
           {
             "text": "  ",
@@ -7937,7 +8055,7 @@
         ]
       },
       {
-        "number": 230,
+        "number": 248,
         "content": [
           {
             "text": "    ",
@@ -7954,7 +8072,7 @@
         ]
       },
       {
-        "number": 231,
+        "number": 249,
         "content": [
           {
             "text": "    ",
@@ -7971,7 +8089,7 @@
         ]
       },
       {
-        "number": 232,
+        "number": 250,
         "content": [
           {
             "text": "    ",
@@ -7988,7 +8106,7 @@
         ]
       },
       {
-        "number": 233,
+        "number": 251,
         "content": [
           {
             "text": "    ",
@@ -8005,7 +8123,7 @@
         ]
       },
       {
-        "number": 234,
+        "number": 252,
         "content": [
           {
             "text": "    ",
@@ -8022,7 +8140,7 @@
         ]
       },
       {
-        "number": 235,
+        "number": 253,
         "content": [
           {
             "text": "    ",
@@ -8039,7 +8157,7 @@
         ]
       },
       {
-        "number": 236,
+        "number": 254,
         "content": [
           {
             "text": "    ",
@@ -8056,7 +8174,7 @@
         ]
       },
       {
-        "number": 237,
+        "number": 255,
         "content": [
           {
             "text": "    ",
@@ -8073,7 +8191,7 @@
         ]
       },
       {
-        "number": 238,
+        "number": 256,
         "content": [
           {
             "text": "  ",
@@ -8110,7 +8228,7 @@
         ]
       },
       {
-        "number": 239,
+        "number": 257,
         "content": [
           {
             "text": "  ",
@@ -8163,7 +8281,7 @@
         ]
       },
       {
-        "number": 240,
+        "number": 258,
         "content": [
           {
             "text": "  ",
@@ -8208,11 +8326,11 @@
         ]
       },
       {
-        "number": 241,
+        "number": 259,
         "content": []
       },
       {
-        "number": 242,
+        "number": 260,
         "content": [
           {
             "text": "  ",
@@ -8228,7 +8346,7 @@
           },
           {
             "text": "onKeyDown",
-            "color": "var(--code-number)"
+            "color": "var(--code-function)"
           },
           {
             "text": " ",
@@ -8240,23 +8358,6 @@
           },
           {
             "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useCallback",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          }
-        ]
-      },
-      {
-        "number": 243,
-        "content": [
-          {
-            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -8302,10 +8403,10 @@
         ]
       },
       {
-        "number": 244,
+        "number": 261,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -8335,14 +8436,14 @@
         ]
       },
       {
-        "number": 245,
+        "number": 262,
         "content": []
       },
       {
-        "number": 246,
+        "number": 263,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -8388,10 +8489,10 @@
         ]
       },
       {
-        "number": 247,
+        "number": 264,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -8465,10 +8566,10 @@
         ]
       },
       {
-        "number": 248,
+        "number": 265,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -8494,10 +8595,10 @@
         ]
       },
       {
-        "number": 249,
+        "number": 266,
         "content": [
           {
-            "text": "        key ",
+            "text": "      key ",
             "color": "var(--code-variable)"
           },
           {
@@ -8531,10 +8632,10 @@
         ]
       },
       {
-        "number": 250,
+        "number": 267,
         "content": [
           {
-            "text": "        key ",
+            "text": "      key ",
             "color": "var(--code-variable)"
           },
           {
@@ -8568,10 +8669,10 @@
         ]
       },
       {
-        "number": 251,
+        "number": 268,
         "content": [
           {
-            "text": "        (key ",
+            "text": "      (key ",
             "color": "var(--code-variable)"
           },
           {
@@ -8613,10 +8714,10 @@
         ]
       },
       {
-        "number": 252,
+        "number": 269,
         "content": [
           {
-            "text": "        (key ",
+            "text": "      (key ",
             "color": "var(--code-variable)"
           },
           {
@@ -8658,10 +8759,10 @@
         ]
       },
       {
-        "number": 253,
+        "number": 270,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -8707,14 +8808,14 @@
         ]
       },
       {
-        "number": 254,
+        "number": 271,
         "content": []
       },
       {
-        "number": 255,
+        "number": 272,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -8756,14 +8857,14 @@
         ]
       },
       {
-        "number": 256,
+        "number": 273,
         "content": []
       },
       {
-        "number": 257,
+        "number": 274,
         "content": [
           {
-            "text": "      //",
+            "text": "    //",
             "color": "var(--code-operator)"
           },
           {
@@ -8773,10 +8874,10 @@
         ]
       },
       {
-        "number": 258,
+        "number": 275,
         "content": [
           {
-            "text": "      //",
+            "text": "    //",
             "color": "var(--code-operator)"
           },
           {
@@ -8786,10 +8887,10 @@
         ]
       },
       {
-        "number": 259,
+        "number": 276,
         "content": [
           {
-            "text": "      //",
+            "text": "    //",
             "color": "var(--code-operator)"
           },
           {
@@ -8799,10 +8900,10 @@
         ]
       },
       {
-        "number": 260,
+        "number": 277,
         "content": [
           {
-            "text": "      //",
+            "text": "    //",
             "color": "var(--code-operator)"
           },
           {
@@ -8812,10 +8913,10 @@
         ]
       },
       {
-        "number": 261,
+        "number": 278,
         "content": [
           {
-            "text": "      //",
+            "text": "    //",
             "color": "var(--code-operator)"
           },
           {
@@ -8825,10 +8926,10 @@
         ]
       },
       {
-        "number": 262,
+        "number": 279,
         "content": [
           {
-            "text": "      //",
+            "text": "    //",
             "color": "var(--code-operator)"
           },
           {
@@ -8838,10 +8939,10 @@
         ]
       },
       {
-        "number": 263,
+        "number": 280,
         "content": [
           {
-            "text": "      //",
+            "text": "    //",
             "color": "var(--code-operator)"
           },
           {
@@ -8851,10 +8952,10 @@
         ]
       },
       {
-        "number": 264,
+        "number": 281,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -8892,10 +8993,10 @@
         ]
       },
       {
-        "number": 265,
+        "number": 282,
         "content": [
           {
-            "text": "        ",
+            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
@@ -8953,10 +9054,10 @@
         ]
       },
       {
-        "number": 266,
+        "number": 283,
         "content": [
           {
-            "text": "        ",
+            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
@@ -9062,10 +9163,10 @@
         ]
       },
       {
-        "number": 267,
+        "number": 284,
         "content": [
           {
-            "text": "        ",
+            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
@@ -9111,10 +9212,10 @@
         ]
       },
       {
-        "number": 268,
+        "number": 285,
         "content": [
           {
-            "text": "        ",
+            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
@@ -9140,10 +9241,10 @@
         ]
       },
       {
-        "number": 269,
+        "number": 286,
         "content": [
           {
-            "text": "          currentTarget ",
+            "text": "        currentTarget ",
             "color": "var(--code-variable)"
           },
           {
@@ -9169,10 +9270,10 @@
         ]
       },
       {
-        "number": 270,
+        "number": 287,
         "content": [
           {
-            "text": "          ",
+            "text": "        ",
             "color": "var(--code-variable)"
           },
           {
@@ -9214,10 +9315,10 @@
         ]
       },
       {
-        "number": 271,
+        "number": 288,
         "content": [
           {
-            "text": "          ",
+            "text": "        ",
             "color": "var(--code-variable)"
           },
           {
@@ -9283,10 +9384,10 @@
         ]
       },
       {
-        "number": 272,
+        "number": 289,
         "content": [
           {
-            "text": "        ",
+            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
@@ -9324,10 +9425,10 @@
         ]
       },
       {
-        "number": 273,
+        "number": 290,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -9337,14 +9438,14 @@
         ]
       },
       {
-        "number": 274,
+        "number": 291,
         "content": []
       },
       {
-        "number": 275,
+        "number": 292,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -9378,14 +9479,14 @@
         ]
       },
       {
-        "number": 276,
+        "number": 293,
         "content": []
       },
       {
-        "number": 277,
+        "number": 294,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -9411,10 +9512,10 @@
         ]
       },
       {
-        "number": 278,
+        "number": 295,
         "content": [
           {
-            "text": "        resolvedUpKeys",
+            "text": "      resolvedUpKeys",
             "color": "var(--code-variable)"
           },
           {
@@ -9424,10 +9525,10 @@
         ]
       },
       {
-        "number": 279,
+        "number": 296,
         "content": [
           {
-            "text": "        resolvedDownKeys",
+            "text": "      resolvedDownKeys",
             "color": "var(--code-variable)"
           },
           {
@@ -9437,10 +9538,10 @@
         ]
       },
       {
-        "number": 280,
+        "number": 297,
         "content": [
           {
-            "text": "        ",
+            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
@@ -9522,10 +9623,10 @@
         ]
       },
       {
-        "number": 281,
+        "number": 298,
         "content": [
           {
-            "text": "        focusIndex",
+            "text": "      focusIndex",
             "color": "var(--code-variable)"
           },
           {
@@ -9535,10 +9636,10 @@
         ]
       },
       {
-        "number": 282,
+        "number": 299,
         "content": [
           {
-            "text": "        handleSelect",
+            "text": "      handleSelect",
             "color": "var(--code-variable)"
           },
           {
@@ -9608,10 +9709,10 @@
         ]
       },
       {
-        "number": 283,
+        "number": 300,
         "content": [
           {
-            "text": "        handleEnter",
+            "text": "      handleEnter",
             "color": "var(--code-variable)"
           },
           {
@@ -9681,10 +9782,10 @@
         ]
       },
       {
-        "number": 284,
+        "number": 301,
         "content": [
           {
-            "text": "        total",
+            "text": "      total",
             "color": "var(--code-variable)"
           },
           {
@@ -9714,10 +9815,10 @@
         ]
       },
       {
-        "number": 285,
+        "number": 302,
         "content": [
           {
-            "text": "        nativeEvent",
+            "text": "      nativeEvent",
             "color": "var(--code-variable)"
           },
           {
@@ -9747,10 +9848,10 @@
         ]
       },
       {
-        "number": 286,
+        "number": 303,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -9768,202 +9869,24 @@
         ]
       },
       {
-        "number": 287,
+        "number": 304,
         "content": [
           {
-            "text": "    ",
+            "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "},",
+            "text": "};",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 288,
-        "content": [
-          {
-            "text": "    [",
-            "color": "var(--code-variable)"
-          }
-        ]
-      },
-      {
-        "number": 289,
-        "content": [
-          {
-            "text": "      enabled",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 290,
-        "content": [
-          {
-            "text": "      resolvedUpKeys",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 291,
-        "content": [
-          {
-            "text": "      resolvedDownKeys",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 292,
-        "content": [
-          {
-            "text": "      preventDefault",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 293,
-        "content": [
-          {
-            "text": "      handlesEnter",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 294,
-        "content": [
-          {
-            "text": "      handlesSpace",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 295,
-        "content": [
-          {
-            "text": "      move",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 296,
-        "content": [
-          {
-            "text": "      focusIndex",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 297,
-        "content": [
-          {
-            "text": "      handleSelect",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 298,
-        "content": [
-          {
-            "text": "      handleEnter",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 299,
-        "content": [
-          {
-            "text": "      getElements",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 300,
-        "content": [
-          {
-            "text": "    ]",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 301,
-        "content": [
-          {
-            "text": "  )",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 302,
+        "number": 305,
         "content": []
       },
       {
-        "number": 303,
+        "number": 306,
         "content": [
           {
             "text": "  ",
@@ -10016,7 +9939,7 @@
         ]
       },
       {
-        "number": 304,
+        "number": 307,
         "content": [
           {
             "text": "}",
@@ -10025,7 +9948,7 @@
         ]
       },
       {
-        "number": 305,
+        "number": 308,
         "content": []
       }
     ]

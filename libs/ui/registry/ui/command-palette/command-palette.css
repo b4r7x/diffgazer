@@ -1,0 +1,417 @@
+/*
+ * CommandPalette primitive styles. Two orthogonal axes drive visual chrome
+ * via data-attribute selectors on [data-slot="command-palette-content"]:
+ *   [data-frame] = border | viewfinder | terminal | card | none
+ *   [data-density] = compact | comfortable | dense
+ *
+ * Density controls a CSS-variable surface read by every inner slot:
+ *   --command-palette-row-h, --command-palette-row-px, --command-palette-row-py,
+ *   --command-palette-input-py, --command-palette-input-px,
+ *   --command-palette-list-p,
+ *   --command-palette-heading-size, --command-palette-prefix-size, --command-palette-text-size
+ *
+ * Tone tokens (item left bar + icon tint) read from semantic theme tokens.
+ */
+@layer components {
+  /*
+   * Default component-token values are consumed via var() fallback (not declared
+   * on the slot) so an ancestor-scoped override reaches them. Defaults: --command-palette-bg →
+   * var(--background); --command-palette-fg → var(--foreground); --command-palette-border → var(--border);
+   * --command-palette-border-soft → color-mix(in oklab, var(--border) 60%, transparent);
+   * --command-palette-muted → var(--muted-foreground); --command-palette-prefix-content → ">";
+   * --command-palette-tone-nav → var(--info); --command-palette-tone-action → var(--success);
+   * --command-palette-tone-settings → var(--warning); --command-palette-tone-destructive → var(--error);
+   * --command-palette-tone-ai → var(--accent). The [data-frame="terminal"] prefix override below still wins.
+   */
+  [data-slot="command-palette-content"] {
+    position: relative;
+    background: var(--command-palette-bg, var(--background));
+    color: var(--command-palette-fg, var(--foreground));
+  }
+
+  /* Density: compact (default) */
+  [data-slot="command-palette-content"][data-density="compact"] {
+    --command-palette-row-h: 32px;
+    --command-palette-row-px: 12px;
+    --command-palette-row-py: 8px;
+    --command-palette-input-py: 12px;
+    --command-palette-input-px: 16px;
+    --command-palette-list-p: 6px;
+    --command-palette-heading-size: 12px;
+    --command-palette-prefix-size: 14px;
+    --command-palette-text-size: 14px;
+  }
+
+  /* Density: comfortable */
+  [data-slot="command-palette-content"][data-density="comfortable"] {
+    --command-palette-row-h: 40px;
+    --command-palette-row-px: 12px;
+    --command-palette-row-py: 10px;
+    --command-palette-input-py: 16px;
+    --command-palette-input-px: 20px;
+    --command-palette-list-p: 8px;
+    --command-palette-heading-size: 12px;
+    --command-palette-prefix-size: 15px;
+    --command-palette-text-size: 14px;
+  }
+
+  /* Density: dense */
+  [data-slot="command-palette-content"][data-density="dense"] {
+    --command-palette-row-h: 24px;
+    --command-palette-row-px: 8px;
+    --command-palette-row-py: 3px;
+    --command-palette-input-py: 8px;
+    --command-palette-input-px: 12px;
+    --command-palette-list-p: 4px;
+    --command-palette-heading-size: 11px;
+    --command-palette-prefix-size: 13px;
+    --command-palette-text-size: 13px;
+  }
+
+  /* Frame: border (default) — single 1px hairline. */
+  [data-slot="command-palette-content"][data-frame="border"] {
+    border: 1px solid var(--command-palette-border, var(--border));
+    box-shadow: 0 20px 60px oklch(0% 0 0 / 0.6);
+  }
+
+  /* Frame: viewfinder — no border, four corner brackets. */
+  [data-slot="command-palette-content"][data-frame="viewfinder"] {
+    border: 0;
+    box-shadow: 0 20px 60px oklch(0% 0 0 / 0.6);
+  }
+
+  [data-slot="command-palette-content"][data-frame="viewfinder"]::before,
+  [data-slot="command-palette-content"][data-frame="viewfinder"]::after,
+  [data-slot="command-palette-content"][data-frame="viewfinder"] > .cp-corners::before,
+  [data-slot="command-palette-content"][data-frame="viewfinder"] > .cp-corners::after {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border: 0 solid var(--command-palette-fg, var(--foreground));
+    pointer-events: none;
+  }
+
+  [data-slot="command-palette-content"][data-frame="viewfinder"]::before {
+    top: -1px;
+    left: -1px;
+    border-top-width: 2px;
+    border-left-width: 2px;
+  }
+
+  [data-slot="command-palette-content"][data-frame="viewfinder"]::after {
+    top: -1px;
+    right: -1px;
+    border-top-width: 2px;
+    border-right-width: 2px;
+  }
+
+  [data-slot="command-palette-content"][data-frame="viewfinder"] > .cp-corners::before {
+    bottom: -1px;
+    left: -1px;
+    border-bottom-width: 2px;
+    border-left-width: 2px;
+  }
+
+  [data-slot="command-palette-content"][data-frame="viewfinder"] > .cp-corners::after {
+    bottom: -1px;
+    right: -1px;
+    border-bottom-width: 2px;
+    border-right-width: 2px;
+  }
+
+  /* Frame: terminal — top + bottom 2px rules, no side borders. */
+  [data-slot="command-palette-content"][data-frame="terminal"] {
+    border: 0;
+    border-top: 2px solid var(--command-palette-fg, var(--foreground));
+    border-bottom: 2px solid var(--command-palette-fg, var(--foreground));
+    box-shadow: 0 20px 60px oklch(0% 0 0 / 0.6);
+    --command-palette-prefix-content: "$";
+  }
+
+  [data-slot="command-palette-content"][data-frame="terminal"]
+    [data-slot="command-palette-input-prefix"] {
+    color: var(--command-palette-fg, var(--foreground));
+    font-weight: 700;
+  }
+
+  /* Frame: card — Linear-ish rounded shell with a subtle gradient surface. */
+  [data-slot="command-palette-content"][data-frame="card"] {
+    border: 1px solid var(--command-palette-border, var(--border));
+    border-radius: 8px;
+    background: linear-gradient(
+      140deg,
+      color-mix(
+          in oklab,
+          var(--command-palette-fg, var(--foreground)) 6%,
+          var(--command-palette-bg, var(--background))
+        )
+        0%,
+      var(--command-palette-bg, var(--background)) 100%
+    );
+    box-shadow: 0 30px 80px oklch(0% 0 0 / 0.7);
+    overflow: hidden;
+  }
+
+  /* Frame: none — bare. */
+  [data-slot="command-palette-content"][data-frame="none"] {
+    border: 0;
+    box-shadow: 0 20px 60px oklch(0% 0 0 / 0.6);
+  }
+
+  /* Input row */
+  [data-slot="command-palette-input"] {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: var(--command-palette-input-py) var(--command-palette-input-px);
+    border-bottom: 1px solid
+      var(--command-palette-border-soft, color-mix(in oklab, var(--border) 60%, transparent));
+  }
+
+  [data-slot="command-palette-input-prefix"] {
+    color: var(--command-palette-muted, var(--muted-foreground));
+    font-size: var(--command-palette-prefix-size);
+    user-select: none;
+    flex-shrink: 0;
+  }
+
+  [data-slot="command-palette-input-prefix"][data-default]::before {
+    content: var(--command-palette-prefix-content, ">");
+  }
+
+  [data-slot="command-palette-input-suffix"] {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  /* List */
+  [data-slot="command-palette-list"] {
+    padding: var(--command-palette-list-p);
+  }
+
+  /* Group */
+  [data-slot="command-palette-group-heading"] {
+    padding: 8px 10px 4px;
+    font-size: var(--command-palette-heading-size);
+    font-weight: 500;
+    color: var(--command-palette-muted, var(--muted-foreground));
+  }
+
+  /* Frame-scoped heading typography. Mirrors V2/V3 in the variants preview. */
+  [data-slot="command-palette-content"][data-frame="viewfinder"]
+    [data-slot="command-palette-group-heading"] {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 11px;
+  }
+
+  [data-slot="command-palette-content"][data-frame="terminal"]
+    [data-slot="command-palette-group-heading"] {
+    padding: 6px var(--command-palette-input-px) 2px;
+    font-weight: 400;
+  }
+
+  /* Item */
+  [data-slot="command-palette-item"] {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: var(--command-palette-row-py) var(--command-palette-row-px);
+    min-height: var(--command-palette-row-h);
+    font-size: var(--command-palette-text-size);
+    color: var(--command-palette-fg, var(--foreground));
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+  }
+
+  [data-slot="command-palette-item"][aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  [data-slot="command-palette-item"][aria-selected="true"] {
+    background: color-mix(in oklab, var(--command-palette-fg, var(--foreground)) 7%, transparent);
+    color: var(--command-palette-fg, var(--foreground));
+  }
+
+  /* Viewfinder frame replaces the selection tint with a 2px left accent bar
+     (matches the dialog viewfinder language). Use ::after so it doesn't
+     collide with the tone bar at [data-tone]:not([data-tone="neutral"])::before. */
+  [data-slot="command-palette-content"][data-frame="viewfinder"]
+    [data-slot="command-palette-item"][aria-selected="true"] {
+    background: transparent;
+    font-weight: 500;
+  }
+
+  [data-slot="command-palette-content"][data-frame="viewfinder"]
+    [data-slot="command-palette-item"][aria-selected="true"]::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 4px;
+    bottom: 4px;
+    width: 2px;
+    background: var(--command-palette-fg, var(--foreground));
+    pointer-events: none;
+  }
+
+  /* Terminal frame inverts selection (white-on-black). */
+  [data-slot="command-palette-content"][data-frame="terminal"]
+    [data-slot="command-palette-item"][aria-selected="true"] {
+    background: var(--command-palette-fg, var(--foreground));
+    color: var(--command-palette-bg, var(--background));
+    font-weight: 500;
+  }
+
+  /* Card frame: rows float inside the list padding with a rounded selection. */
+  [data-slot="command-palette-content"][data-frame="card"] [data-slot="command-palette-item"] {
+    margin: 0 var(--command-palette-list-p);
+    border-radius: 6px;
+  }
+
+  [data-slot="command-palette-content"][data-frame="card"]
+    [data-slot="command-palette-item"][aria-selected="true"] {
+    background: color-mix(in oklab, var(--command-palette-fg, var(--foreground)) 8%, transparent);
+  }
+
+  [data-slot="command-palette-item-icon"] {
+    display: inline-flex;
+    align-items: center;
+    color: var(--command-palette-muted, var(--muted-foreground));
+    flex-shrink: 0;
+  }
+
+  [data-slot="command-palette-item-label"] {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  [data-slot="command-palette-item-shortcut"] {
+    color: var(--command-palette-muted, var(--muted-foreground));
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  /* Tones: 2px left bar + icon tint. Label color inherits to preserve readability. */
+  [data-slot="command-palette-item"][data-tone]:not([data-tone="neutral"])::before {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+  }
+
+  [data-slot="command-palette-item"][data-tone="nav"]::before {
+    background: var(--command-palette-tone-nav, var(--info));
+  }
+  [data-slot="command-palette-item"][data-tone="action"]::before {
+    background: var(--command-palette-tone-action, var(--success));
+  }
+  [data-slot="command-palette-item"][data-tone="settings"]::before {
+    background: var(--command-palette-tone-settings, var(--warning));
+  }
+  [data-slot="command-palette-item"][data-tone="destructive"]::before {
+    background: var(--command-palette-tone-destructive, var(--error));
+  }
+  [data-slot="command-palette-item"][data-tone="ai"]::before {
+    background: var(--command-palette-tone-ai, var(--accent));
+  }
+
+  /* Hide the tone bar on disabled rows; the muted row body already signals state. */
+  [data-slot="command-palette-item"][aria-disabled="true"]::before {
+    display: none;
+  }
+
+  [data-slot="command-palette-item"][data-tone="nav"] [data-slot="command-palette-item-icon"] {
+    color: var(--command-palette-tone-nav, var(--info));
+  }
+  [data-slot="command-palette-item"][data-tone="action"] [data-slot="command-palette-item-icon"] {
+    color: var(--command-palette-tone-action, var(--success));
+  }
+  [data-slot="command-palette-item"][data-tone="settings"] [data-slot="command-palette-item-icon"] {
+    color: var(--command-palette-tone-settings, var(--warning));
+  }
+  [data-slot="command-palette-item"][data-tone="destructive"]
+    [data-slot="command-palette-item-icon"] {
+    color: var(--command-palette-tone-destructive, var(--error));
+  }
+  [data-slot="command-palette-item"][data-tone="ai"] [data-slot="command-palette-item-icon"] {
+    color: var(--command-palette-tone-ai, var(--accent));
+  }
+
+  /* Under the terminal frame's inverted selection (bg: --command-palette-fg, color: --command-palette-bg)
+     tones lose contrast: in the dark-mode minimal theme several tone tokens
+     resolve to the same color as --foreground (e.g. --success → --base-success
+     → #e5e5e5 = white), which would render the 2px bar and icon invisible
+     against the white selection background. Re-tint both to --command-palette-bg so they
+     remain visible without re-coloring the label. */
+  [data-slot="command-palette-content"][data-frame="terminal"]
+    [data-slot="command-palette-item"][aria-selected="true"]
+    [data-slot="command-palette-item-icon"] {
+    color: var(--command-palette-bg, var(--background));
+  }
+
+  [data-slot="command-palette-content"][data-frame="terminal"]
+    [data-slot="command-palette-item"][aria-selected="true"][data-tone]:not(
+      [data-tone="neutral"]
+    )::before {
+    background: var(--command-palette-bg, var(--background));
+  }
+
+  /* Match highlight */
+  [data-slot="command-palette-item-match"] {
+    color: var(--command-palette-fg, var(--foreground));
+    background: transparent;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-thickness: 1px;
+  }
+
+  /* Empty state */
+  [data-slot="command-palette-empty"] {
+    padding: 24px 12px;
+    text-align: center;
+    font-size: var(--command-palette-text-size);
+    color: var(--command-palette-muted, var(--muted-foreground));
+  }
+
+  /* Footer */
+  [data-slot="command-palette-footer"] {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    border-top: 1px solid
+      var(--command-palette-border-soft, color-mix(in oklab, var(--border) 60%, transparent));
+    font-size: 11px;
+    color: var(--command-palette-muted, var(--muted-foreground));
+    user-select: none;
+  }
+
+  [data-slot="command-palette-content"][data-frame="card"] [data-slot="command-palette-footer"] {
+    background: color-mix(in oklab, black 25%, transparent);
+    border-top: 1px solid
+      color-mix(in oklab, var(--command-palette-fg, var(--foreground)) 8%, transparent);
+  }
+}
+
+@media (forced-colors: active) {
+  [data-slot="command-palette-content"][data-frame="border"],
+  [data-slot="command-palette-content"][data-frame="terminal"],
+  [data-slot="command-palette-content"][data-frame="card"] {
+    border-color: CanvasText;
+  }
+
+  [data-slot="command-palette-content"][data-frame="viewfinder"]::before,
+  [data-slot="command-palette-content"][data-frame="viewfinder"]::after,
+  [data-slot="command-palette-content"][data-frame="viewfinder"] > .cp-corners::before,
+  [data-slot="command-palette-content"][data-frame="viewfinder"] > .cp-corners::after {
+    border-color: CanvasText;
+  }
+}

@@ -7,6 +7,7 @@ import { stubMatchMedia } from "@/testing/match-media";
 import type { HomeLibrary } from "../data";
 import { HomeSidebar } from "./home-sidebar";
 
+// Boundary mock: TanStack Router is the external routing library; sidebar links need deterministic hrefs/current path.
 vi.mock("@tanstack/react-router", async () => {
   const { RouterLinkMock } = await import("@/testing/router-mock");
   return {

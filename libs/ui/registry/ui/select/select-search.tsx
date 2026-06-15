@@ -7,10 +7,18 @@ import { cn } from "@/lib/utils";
 import { useSelectContext } from "./select-context";
 import { isActiveOptionVisible, toOptionId } from "./selection";
 
+/** Props for select search. */
 export interface SelectSearchProps {
+  /** Placeholder shown when no value is present. */
   placeholder?: string;
+  /**
+   * Where the search row renders relative to the option list. "bottom" (default) renders it
+   * below the list with a top border; "top" renders it above with a bottom border.
+   */
   position?: "top" | "bottom";
+  /** Additional class names merged onto the rendered element. */
   className?: string;
+  /** Accessible name when no visible label is supplied. */
   "aria-label"?: string;
 }
 
@@ -32,6 +40,10 @@ const selectSearchVariants = cva("flex items-center gap-2 px-3 py-2", {
   defaultVariants: { variant: "default", position: "bottom" },
 });
 
+/**
+ * Filter input. position='bottom' (default) renders it below the option list; position='top'
+ * renders it above.
+ */
 export function SelectSearch({
   placeholder = "Search...",
   position = "bottom",
@@ -80,7 +92,7 @@ export function SelectSearch({
         onChange={(e) => onSearchChange(e.target.value)}
         placeholder={placeholder}
         className={cn(
-          "text-sm bg-transparent text-foreground w-full outline-none font-mono placeholder:text-foreground/30",
+          "text-sm bg-transparent text-foreground w-full outline-none font-mono placeholder:text-foreground/55",
           className,
         )}
       />

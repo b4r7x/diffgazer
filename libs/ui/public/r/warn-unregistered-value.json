@@ -1,0 +1,18 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "warn-unregistered-value",
+  "title": "warnUnregisteredValue",
+  "description": "Dev-mode guard for the convenience-assertion TValue/TId generics on compound-collection components: warns when a typed callback fires with a value that was never registered. No-op in production.",
+  "files": [
+    {
+      "path": "registry/lib/warn-unregistered-value.ts",
+      "content": "/**\n * Dev-mode guard for the convenience-assertion generics on compound-collection\n * components. The public `TId`/`TValue` parameters narrow the consumer-facing\n * callbacks, but the values they carry originate from untyped children props or\n * DOM dataset strings and are asserted (cast), not validated. This warns in\n * development when a typed callback is about to fire with a value that was never\n * registered, so the gap surfaces instead of flowing out with false type\n * confidence. No-op in production.\n */\nexport function warnUnregisteredValue(\n  component: string,\n  value: string,\n  registeredValues: Iterable<string>,\n): void {\n  if (process.env.NODE_ENV === \"production\") return;\n  for (const registered of registeredValues) {\n    if (registered === value) return;\n  }\n  console.warn(\n    `${component}: value \"${value}\" is not registered. The typed callback receives an asserted value that was never collected from a rendered item.`,\n  );\n}\n",
+      "type": "registry:lib"
+    }
+  ],
+  "meta": {
+    "client": false,
+    "hidden": true
+  },
+  "type": "registry:lib"
+}

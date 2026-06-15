@@ -43,17 +43,14 @@ export function normalizeReviewStreamError(
 
 export function reviewStreamError(
   message: string,
-  code: unknown = ReviewErrorCode.GENERATION_FAILED,
+  code: ReviewErrorCodeType = ReviewErrorCode.GENERATION_FAILED,
 ): FullReviewStreamEvent {
+  // `code` is the typed review-error union (abort codes and normalized codes are
+  // both already in-union), so an out-of-union code is a compile error here — no
+  // silent collapse. Untrusted input is narrowed earlier by normalizeReviewStreamError.
   return {
     type: "error",
-    error: {
-      code:
-        typeof code === "string" && isReviewStreamErrorCode(code)
-          ? code
-          : ReviewErrorCode.GENERATION_FAILED,
-      message,
-    },
+    error: { code, message },
   };
 }
 

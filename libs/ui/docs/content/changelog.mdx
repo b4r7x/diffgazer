@@ -1,25 +1,34 @@
 ---
 title: Changelog
-description: Release notes for @diffgazer/ui.
+description: Release notes for `@diffgazer/ui`.
 ---
 
-## 0.1.0 (2026-05-06)
+## 0.2.0
 
-Initial publish candidate. Public npm and hosted registry endpoints are deferred until the publication phase.
+### Minor changes
+
+- Added `FloatingPanel` as the shared anchored-surface primitive used by `Popover`, `Select`, and related floating UI.
+- Raised the `@diffgazer/keys` peer floor to `>=0.1.1`.
+- Renamed the decorated input wrapper to `InputGroup` and added `Field` for label/control/description/error wiring.
+- Normalized public form-like controls on `value`, `defaultValue`, and `onChange(value)` while native wrappers keep native React event handlers.
+
+### Patch changes
+
+- Regenerated package artifacts from source during verification instead of tracking deterministic generated docs and CLI bundles.
+- Documented publish-gated install flows, local validation, shadcn namespace setup, keyboard integration, release governance, and package surface validation.
+
+## 0.1.0
+
+Initial publish candidate. Public npm and hosted registry endpoints were gated until the package publication checks passed.
 
 ### Components
 
-Accordion, Avatar, Badge, Block Bar, Breadcrumbs, Button, Callout, Card,
-Checkbox, Code Block, Command Palette, Dialog, Diff View, Divider, Empty State,
-Horizontal Stepper, Icons, Input, Kbd, Key Value, Label, Logo, Menu,
-Navigation List, Overflow, Pager, Panel, Popover, Radio, Scroll Area,
-Search Input, Section Header, Select, Sidebar, Spinner, Stepper, Tabs,
-Textarea, Toast, TOC, Toggle Group, Tooltip, Typography.
+Accordion, Avatar, Badge, Block Bar, Breadcrumbs, Button, Callout, Card, Checkbox, Code Block, Command Palette, Dialog, Diff View, Divider, Empty State, Field, Floating Panel, Horizontal Stepper, Icons, Input, Kbd, Key Value, Label, Logo, Menu, Navigation List, Overflow, Pager, Panel, Popover, Progress, Radio, Scroll Area, Search Input, Section Header, Select, Sidebar, Skeleton, Spinner, Status Indicator, Stepper, Switch, Tabs, Textarea, Toast, TOC, Toggle Group, Tooltip, Typography.
 
 ### Features
 
-- CLI: `dgadd init`, `add`, `list`, `diff`, `remove`
-- Two-layer CSS variable theme system (Diffgazer monochrome palette)
-- Dark mode default with `[data-theme]` switching
-- All components use Tailwind 4 + CVA
-- Keyboard behavior can use copied hooks or `@diffgazer/keys`
+- CLI install paths through `dgadd init`, `add`, `list`, `diff`, and `remove`.
+- Two-layer CSS variable theme system with the Diffgazer monochrome palette.
+- Dark-mode default with `[data-theme]` switching.
+- Tailwind 4 and CVA component variants.
+- Keyboard behavior through copied hooks or `@diffgazer/keys`.

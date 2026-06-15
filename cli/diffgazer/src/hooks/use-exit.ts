@@ -1,23 +1,20 @@
 import { useApp } from "ink";
-import { useEffectEvent } from "react";
 import { config } from "../config";
 import { stopAllServers } from "../lib/servers/stop-all";
+import { stopWithTimeout } from "../lib/stop-with-timeout";
 
 export function useExit(): { handleExit: () => void } {
   const { exit } = useApp();
 
-  const handleExit = useEffectEvent(() => {
+  const handleExit = () => {
     exit();
     void shutdownAndExit();
-  });
+  };
 
   return { handleExit };
 }
 
 async function shutdownAndExit(): Promise<void> {
-  const timeout = new Promise<"timeout">((resolve) => {
-    setTimeout(() => resolve("timeout"), config.shutdown.gracefulMs);
-  });
-  await Promise.race([stopAllServers(), timeout]);
+  await stopWithTimeout(stopAllServers, config.shutdown.gracefulMs);
   process.exit(0);
 }

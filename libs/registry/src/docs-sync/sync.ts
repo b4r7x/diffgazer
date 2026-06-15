@@ -1,4 +1,4 @@
-import { defaultLogger } from "../logger.js";
+import { log } from "../logger.js";
 import { computeSyncFingerprint, readSyncState, shouldSkipSync, writeSyncState } from "./cache.js";
 import { assertSafeLibraryId } from "./library-id-validation.js";
 import { loadLibraryArtifacts } from "./loader.js";
@@ -20,7 +20,6 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
     outputPaths: outputPathOverrides,
     rootTitle,
     extraRootPages,
-    logger = defaultLogger,
   } = options;
 
   const paths = resolveSyncOutputPaths(docsRoot, outputPathOverrides);
@@ -30,7 +29,7 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
     assertSafeLibraryId(library.id, `Library id "${library.id}"`);
   }
 
-  logger.info(`[docs-sync] Mode: ${mode}`);
+  log.info(`[docs-sync] Mode: ${mode}`);
 
   const artifacts = libraries.map((lib) =>
     loadLibraryArtifacts(lib, mode, docsRoot, workspaceRoot, origin),
@@ -48,7 +47,7 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
     extraRootPages ?? [],
     rootTitle,
   );
-  const syncState = readSyncState(paths.stateFilePath, logger);
+  const syncState = readSyncState(paths.stateFilePath);
 
   if (
     shouldSkipSync({
@@ -59,11 +58,11 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
       primaryLibraryId,
     })
   ) {
-    logger.info("[docs-sync] Artifacts unchanged; skipping sync.");
+    log.info("[docs-sync] Artifacts unchanged; skipping sync.");
     return { synced: false, fingerprint: syncFingerprint, artifacts };
   }
 
-  logger.info("[docs-sync] Syncing docs and generated artifacts...");
+  log.info("[docs-sync] Syncing docs and generated artifacts...");
   runDocsSyncPass({
     artifacts,
     primaryArtifact,
@@ -73,7 +72,6 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
     afterSync,
     rootTitle,
     extraRootPages,
-    logger,
   });
 
   writeSyncState(paths.stateFilePath, {
@@ -82,6 +80,6 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
     syncedAt: new Date().toISOString(),
   });
 
-  logger.info("[docs-sync] Done.");
+  log.info("[docs-sync] Done.");
   return { synced: true, fingerprint: syncFingerprint, artifacts };
 }

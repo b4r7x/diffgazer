@@ -143,7 +143,7 @@ function parseKeysDependencyName(dep: string): string | null {
  * Extract keys hook names from registry items by scanning Diffgazer keys
  * namespace refs. Returns bare hook names (e.g. "focus-trap") that key the copy
  * bundle and match `parsed.name` on removal. This is intentionally not
- * `resolveKeysHookFiles` from @diffgazer/registry/cli: that helper returns
+ * `resolveKeysHookFiles` from @diffgazer/registry/build-checks: that helper returns
  * `use-`prefixed hook file basenames for the UI dist build, which would miss
  * every bundle lookup here.
  */

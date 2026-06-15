@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const doSearchMock = vi.hoisted(() => vi.fn());
 
+// Boundary mock: TanStack Start server functions cross the client/server boundary.
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => ({
     inputValidator: () => ({
@@ -12,9 +13,6 @@ vi.mock("@tanstack/react-start", () => ({
     }),
   }),
 }));
-
-// dialog.test.tsx mocks this hook globally; restore the real implementation here.
-vi.mock("./use-search", async (importOriginal) => importOriginal<typeof import("./use-search")>());
 
 import { useSearch } from "./use-search";
 

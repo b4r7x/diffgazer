@@ -155,6 +155,13 @@ return (
       description:
         "Override how option DOM ids are derived from idPrefix and the item's logical id. Defaults to URL-encoding the id; supply a custom encoder if your option ids must follow a different scheme (e.g. when consuming externally indexed nodes).",
     },
+    {
+      name: "ref",
+      type: "Ref<HTMLDivElement>",
+      required: false,
+      description:
+        "External/forwarded ref for the container. Composed once with the internal ref so getContainerProps returns a stable ref callback (pass a stable ref, e.g. from useComposedRefs, to avoid detach/re-attach).",
+    },
   ],
   returns: {
     type: "UseListboxReturn",
@@ -187,10 +194,10 @@ return (
       },
       {
         name: "getContainerProps",
-        type: "(ref?: Ref<HTMLDivElement>) => ContainerProps",
+        type: "() => ContainerProps",
         required: true,
         description:
-          "Prop-getter for the listbox container. Returns ref, role, tabIndex, aria-activedescendant, and onKeyDown. Accepts an optional external ref that is composed with the internal ref.",
+          "Prop-getter for the listbox container. Returns ref, role, tabIndex, aria-activedescendant, and onKeyDown. The ref composes the internal ref with the `ref` option passed to useListbox.",
       },
     ],
   },

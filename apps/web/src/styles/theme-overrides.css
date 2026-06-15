@@ -1,166 +1,70 @@
-/* Diffgazer Theme Overrides - GitHub Dark inspired terminal colors
- * Loaded AFTER @diffgazer/ui/styles.css to override monochrome values with GitHub palette.
- * Preserves diffgazer-only domain tokens (severity, status) and JetBrains Mono font. */
+/* Diffgazer Theme Overrides — delta-only layer over @diffgazer/ui/styles.css.
+ * Loaded AFTER the lib theme, so this file declares ONLY what differs from the
+ * lib palette: the GitHub-dark primitive values, the handful of semantic remaps
+ * whose mapping diverges from the lib, the diffgazer-only domain tokens
+ * (severity, status, row-active), and the bridge block for those domain tokens.
+ * Everything the lib already ships (subtle derivation, lib-identical semantic
+ * mappings, .ui-base, scrollbars, animations, radius, custom-variant) is
+ * inherited, not re-stated. */
 
 :root,
 [data-theme="dark"] {
-  /* Primitive token overrides (@diffgazer/ui uses monochrome values) */
-  --tui-bg: #0d1117;
-  --tui-fg: #e6edf3;
-  --tui-blue: #58a6ff;
-  --tui-violet: #bc8cff;
-  --tui-green: #3fb950;
-  --tui-red: #f85149;
-  --tui-yellow: #d29922;
-  --tui-border: #30363d;
-  --tui-muted: #8b949e;
-  --tui-input-bg: #010409;
-  --tui-selection: #1f2428;
+  /* GitHub-dark primitive overrides (lib ships monochrome values) */
+  --base-bg: #0d1117;
+  --base-fg: #e6edf3;
+  --base-info: #58a6ff;
+  --base-accent: #bc8cff;
+  --base-success: #3fb950;
+  --base-danger: #f85149;
+  --base-warning: #d29922;
+  --base-border: #30363d;
+  --base-muted: #8b949e;
+  --base-input-bg: #010409;
+  --base-selection: #1f2428;
 
-  /* Semantic overrides mapped to the archived GitHub-dark palette */
-  --background: var(--tui-bg);
-  --foreground: var(--tui-fg);
-  --primary: var(--tui-blue);
-  --primary-foreground: var(--tui-bg);
-  --secondary: var(--tui-selection);
-  --secondary-foreground: var(--tui-fg);
-  --muted: var(--tui-muted);
-  --accent: var(--tui-violet);
-  --accent-foreground: var(--tui-bg);
-  --border: var(--tui-border);
-  --input: var(--tui-selection);
-  --destructive: var(--tui-red);
-  --destructive-foreground: var(--tui-bg);
-  --card: var(--tui-selection);
-  --card-foreground: var(--tui-fg);
-  --popover: var(--tui-selection);
-  --popover-foreground: var(--tui-fg);
-  --ring: var(--tui-blue);
-  --success: var(--tui-green);
-  --success-foreground: var(--tui-bg);
-  --warning: var(--tui-yellow);
-  --warning-foreground: var(--tui-bg);
-  --info: var(--tui-blue);
-  --info-foreground: var(--tui-bg);
-  --error: var(--tui-red);
-  --error-foreground: var(--tui-bg);
-  --action: var(--tui-violet);
-  --action-foreground: var(--tui-bg);
-  --muted-foreground: var(--tui-muted);
-
-  /* Derived variant overrides (hex values differ from @diffgazer/ui base) */
-  --success-subtle: #3fb9501a;
-  --warning-subtle: #d299220d;
-  --error-subtle: #f851491a;
-  --info-subtle: #58a6ff1a;
-  --neutral-subtle: #8b949e1a;
+  /* Semantic remaps that diverge from the lib dark block */
+  --primary: var(--base-info);
+  --accent: var(--base-accent);
+  --accent-foreground: var(--base-bg);
+  --ring: var(--base-info);
+  --action: var(--base-accent);
+  --action-foreground: var(--base-bg);
+  --muted-foreground: var(--base-muted);
 
   /* Domain-specific tokens (diffgazer-only, not in /ui) */
-  --severity-blocker: var(--tui-red);
+  --severity-blocker: var(--base-danger);
   --severity-high: #f0883e;
-  --severity-medium: var(--tui-yellow);
-  --severity-low: var(--tui-blue);
+  --severity-medium: var(--base-warning);
+  --severity-low: var(--base-info);
   --severity-nit: var(--muted-foreground);
 
-  --status-running: var(--tui-blue);
-  --status-complete: var(--tui-green);
-  --status-pending: var(--tui-muted);
+  --status-running: var(--base-info);
+  --status-complete: var(--base-success);
+  --status-pending: var(--base-muted);
 
   --row-active-fg: var(--primary-foreground);
 
-  --trans-fast: 0.15s ease;
-  --radius: 0.25rem;
+  /* Sunken input-well surface (darker than --background in GitHub-dark); the
+     semantic --input role is selection-gray, so this is an app-only token. */
+  --input-well: var(--base-input-bg);
 }
 
 [data-theme="light"] {
-  /* Primitive token overrides */
-  --tui-bg: #f7f8f5;
-  --tui-fg: #1f2328;
-  --tui-dim: #5f6872;
-  --tui-blue: #0b63ce;
-  --tui-violet: #6f42c1;
-  --tui-green: #0f7a4f;
-  --tui-red: #c62828;
-  --tui-yellow: #8a5a00;
-  --tui-border: #aeb7c0;
-  --tui-highlight: #1f2328;
-  --tui-highlight-fg: #ffffff;
-  --tui-selection: #e8edf3;
-  --tui-muted: #69717a;
-  --tui-input-bg: #ffffff;
-
-  /* Semantic overrides */
-  --background: var(--tui-bg);
-  --foreground: var(--tui-fg);
-  --primary: var(--tui-highlight);
-  --primary-foreground: var(--tui-highlight-fg);
-  --secondary: var(--tui-selection);
-  --secondary-foreground: var(--tui-fg);
-  --muted: var(--tui-muted);
-  --muted-foreground: var(--tui-dim);
-  --border: var(--tui-border);
-  --input: var(--tui-input-bg);
-  --destructive: var(--tui-red);
-  --destructive-foreground: #ffffff;
-  --accent: var(--tui-violet);
-  --accent-foreground: #ffffff;
-  --card: var(--tui-input-bg);
-  --card-foreground: var(--tui-fg);
-  --popover: var(--tui-input-bg);
-  --popover-foreground: var(--tui-fg);
-  --ring: var(--tui-blue);
-  --success: var(--tui-green);
-  --success-foreground: #ffffff;
-  --warning: var(--tui-yellow);
-  --warning-foreground: #ffffff;
-  --info: var(--tui-blue);
-  --info-foreground: #ffffff;
-  --error: var(--tui-red);
-  --error-foreground: #ffffff;
-  --action: var(--tui-violet);
-  --action-foreground: #ffffff;
-
-  --success-subtle: #0f7a4f1f;
-  --success-fg: var(--tui-green);
-  --success-border: var(--tui-green);
-  --success-strong: var(--tui-green);
-  --success-strong-foreground: #ffffff;
-
-  --warning-subtle: #8a5a0014;
-  --warning-fg: var(--tui-yellow);
-  --warning-border: var(--tui-yellow);
-  --warning-strong: var(--tui-yellow);
-  --warning-strong-foreground: #ffffff;
-
-  --error-subtle: #c628281a;
-  --error-fg: var(--tui-red);
-  --error-border: var(--tui-red);
-  --error-strong: var(--tui-red);
-  --error-strong-foreground: #ffffff;
-
-  --info-subtle: #0b63ce1a;
-  --info-fg: var(--tui-blue);
-  --info-border: var(--tui-blue);
-  --info-strong: var(--tui-blue);
-  --info-strong-foreground: #ffffff;
-
-  --neutral-subtle: #aeb7c014;
-  --neutral-border: var(--tui-border);
-  --neutral-fg: var(--tui-muted);
-  --neutral-strong: var(--tui-muted);
-  --neutral-strong-foreground: #ffffff;
-
-  --severity-blocker: var(--tui-red);
+  /* Domain-specific tokens (diffgazer-only); the rest of the light palette is
+     the lib light palette verbatim and is intentionally not re-stated. */
+  --severity-blocker: var(--base-danger);
   --severity-high: #bc4c00;
-  --severity-medium: var(--tui-yellow);
-  --severity-low: var(--tui-blue);
+  --severity-medium: var(--base-warning);
+  --severity-low: var(--base-info);
   --severity-nit: var(--muted-foreground);
 
-  --status-running: var(--tui-blue);
-  --status-complete: var(--tui-green);
-  --status-pending: var(--tui-muted);
+  --status-running: var(--base-info);
+  --status-complete: var(--base-success);
+  --status-pending: var(--base-muted);
 
   --row-active-fg: var(--primary-foreground);
+
+  --input-well: var(--base-input-bg);
 }
 
 @font-face {
@@ -168,130 +72,10 @@
   font-style: normal;
   font-weight: 400 700;
   font-display: swap;
-  src: url("https://fonts.gstatic.com/s/jetbrainsmono/v18/tDbY2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKxjPVmUsaaDhw.woff2")
-    format("woff2");
+  src: url("../assets/fonts/jetbrains-mono.woff2") format("woff2");
 }
 
-.tui-base {
-  font-family: var(--tui-font-mono);
-  background-color: var(--tui-bg);
-  color: var(--tui-fg);
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.scrollbar-thin::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: var(--tui-bg);
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background: var(--tui-border);
-  border-radius: 2px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: var(--tui-fg);
-}
-
-.scrollbar-thin {
-  scrollbar-width: thin;
-  scrollbar-color: var(--tui-border) var(--tui-bg);
-}
-
-@keyframes tui-blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
-}
-
-.cursor-blink {
-  animation: tui-blink 1s step-end infinite;
-}
-
-@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
-
-@theme {
-  --color-tui-bg: var(--tui-bg);
-  --color-tui-fg: var(--tui-fg);
-  --color-tui-blue: var(--tui-blue);
-  --color-tui-violet: var(--tui-violet);
-  --color-tui-green: var(--tui-green);
-  --color-tui-red: var(--tui-red);
-  --color-tui-yellow: var(--tui-yellow);
-  --color-tui-border: var(--tui-border);
-  --color-tui-selection: var(--tui-selection);
-  --color-tui-muted: var(--tui-muted);
-  --color-tui-input-bg: var(--tui-input-bg);
-
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-success: var(--success);
-  --color-success-foreground: var(--success-foreground);
-  --color-warning: var(--warning);
-  --color-warning-foreground: var(--warning-foreground);
-  --color-info: var(--info);
-  --color-info-foreground: var(--info-foreground);
-  --color-error: var(--error);
-  --color-error-foreground: var(--error-foreground);
-  --color-success-subtle: var(--success-subtle);
-  --color-success-fg: var(--success-fg);
-  --color-success-border: var(--success-border);
-  --color-success-strong: var(--success-strong);
-  --color-success-strong-foreground: var(--success-strong-foreground);
-  --color-warning-subtle: var(--warning-subtle);
-  --color-warning-fg: var(--warning-fg);
-  --color-warning-border: var(--warning-border);
-  --color-warning-strong: var(--warning-strong);
-  --color-warning-strong-foreground: var(--warning-strong-foreground);
-  --color-error-subtle: var(--error-subtle);
-  --color-error-fg: var(--error-fg);
-  --color-error-border: var(--error-border);
-  --color-error-strong: var(--error-strong);
-  --color-error-strong-foreground: var(--error-strong-foreground);
-  --color-info-subtle: var(--info-subtle);
-  --color-info-fg: var(--info-fg);
-  --color-info-border: var(--info-border);
-  --color-info-strong: var(--info-strong);
-  --color-info-strong-foreground: var(--info-strong-foreground);
-  --color-neutral-subtle: var(--neutral-subtle);
-  --color-neutral-border: var(--neutral-border);
-  --color-neutral-fg: var(--neutral-fg);
-  --color-neutral-strong: var(--neutral-strong);
-  --color-neutral-strong-foreground: var(--neutral-strong-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-
+@theme inline {
   --color-severity-blocker: var(--severity-blocker);
   --color-severity-high: var(--severity-high);
   --color-severity-medium: var(--severity-medium);
@@ -304,56 +88,5 @@
 
   --color-row-active-fg: var(--row-active-fg);
 
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: max(calc(var(--radius) - 4px), 1px);
-
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  :root {
-    --animate-fade-in: fade-in 0.2s ease-out;
-    --animate-slide-in: slide-in 0.2s ease-out;
-    --animate-slide-in-right: slide-in-right 0.2s ease-out;
-    --animate-slide-out-right: slide-out-right 0.15s ease-in forwards;
-  }
-
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-  @keyframes slide-in {
-    from {
-      transform: translateY(10px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-  @keyframes slide-in-right {
-    from {
-      transform: translateX(100%);
-      opacity: 0;
-    }
-    to {
-      transform: translateX(0);
-      opacity: 1;
-    }
-  }
-  @keyframes slide-out-right {
-    from {
-      transform: translateX(0);
-      opacity: 1;
-    }
-    to {
-      transform: translateX(100%);
-      opacity: 0;
-    }
-  }
+  --color-input-well: var(--input-well);
 }

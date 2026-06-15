@@ -11,6 +11,7 @@ import {
 
 type Phase = "hidden" | "open" | "closing";
 
+/** Options for mounting through enter/exit animation phases. */
 export interface UsePresenceOptions {
   /** Whether the element should be visible. Flipping to false triggers the closing phase; the element stays mounted until the exit animation completes or `exitFallbackMs` fires. */
   open: boolean;
@@ -24,6 +25,7 @@ export interface UsePresenceOptions {
 
 const DEFAULT_EXIT_FALLBACK_MS = 250;
 
+/** Keeps an element mounted while its exit animation completes. */
 export function usePresence({
   open,
   ref,

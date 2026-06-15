@@ -1,13 +1,12 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { RELATIVE_JS_IMPORT_RE } from "@diffgazer/registry";
 import { describe, expect, it } from "vitest";
 import { transformUiPublicRegistryKeysImportContent } from "./rewrite-keys-imports";
 
 const ROOT = resolve(fileURLToPath(import.meta.url), "../../..");
 const PUBLIC_REGISTRY_DIR = resolve(ROOT, "public/r");
-const RELATIVE_JS_IMPORT =
-  /((?:\bfrom\s+|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)(["']))(\.{1,2}\/[^"']+)\.js\2/g;
 
 interface RegistryFile {
   path: string;
@@ -54,7 +53,8 @@ function readPublicRegistryItems(): PublicRegistryItem[] {
 }
 
 function findRelativeJsImportSpecifiers(content: string): string[] {
-  return [...content.matchAll(RELATIVE_JS_IMPORT)].map((match) => `${match[3]}.js`);
+  RELATIVE_JS_IMPORT_RE.lastIndex = 0;
+  return [...content.matchAll(RELATIVE_JS_IMPORT_RE)].map((match) => `${match[3]}.js`);
 }
 
 describe("Part A: no .js import leaks in public registry copy content", () => {

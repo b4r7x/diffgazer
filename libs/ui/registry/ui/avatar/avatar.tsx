@@ -2,9 +2,8 @@
 
 import { cva, type VariantProps } from "class-variance-authority";
 import {
-  type HTMLAttributes,
+  type ComponentProps,
   type ReactNode,
-  type Ref,
   useEffect,
   useEffectEvent,
   useMemo,
@@ -17,12 +16,13 @@ import { AvatarImage } from "./avatar-image";
 
 export type { AvatarStatus };
 
+/** Class variants for avatar. */
 export const avatarVariants = cva(
   "relative inline-flex items-center justify-center border border-foreground/40 font-mono font-medium text-foreground bg-background overflow-hidden shrink-0",
   {
     variants: {
       size: {
-        sm: "size-6 text-[10px]",
+        sm: "size-6 text-2xs",
         md: "size-8 text-xs",
         lg: "size-10 text-sm",
       },
@@ -31,17 +31,24 @@ export const avatarVariants = cva(
   },
 );
 
-export interface AvatarProps
-  extends HTMLAttributes<HTMLSpanElement>,
-    VariantProps<typeof avatarVariants> {
+/** Props for avatar. */
+export interface AvatarProps extends ComponentProps<"span">, VariantProps<typeof avatarVariants> {
+  /** Image URL. Ignored when children are provided. */
   src?: string;
+  /**
+   * Image alt text and accessible name. When omitted, falls back to a string `fallback`. When
+   * neither is set, the avatar uses role="presentation".
+   */
   alt?: string;
+  /** Shown when the image is loading, missing, or fails. */
   fallback?: ReactNode;
+  /** Fired when the image load status changes. Fires for the active image only. */
   onStatusChange?: (status: AvatarStatus) => void;
-  ref?: Ref<HTMLSpanElement>;
+  /** Custom inner content. Replaces the default AvatarImage + AvatarFallback composition. */
   children?: ReactNode;
 }
 
+/** Square avatar with src/fallback/size. Shows image or monospace initials. */
 function AvatarRoot({
   src,
   alt,
@@ -75,6 +82,7 @@ function AvatarRoot({
       <span
         ref={ref}
         role={label ? "img" : "presentation"}
+        data-slot="avatar"
         aria-label={label || undefined}
         className={cn(avatarVariants({ size: resolvedSize }), className)}
         {...props}

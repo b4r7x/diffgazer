@@ -1,10 +1,10 @@
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api/protocol";
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { requireValue } from "../../testing/assertions.js";
-import { PROJECT_ROOT_HEADER } from "../lib/paths.js";
 
 let diffgazerHome: string;
 let projectRoot: string;

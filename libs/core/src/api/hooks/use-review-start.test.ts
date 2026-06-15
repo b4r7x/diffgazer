@@ -15,7 +15,6 @@ function StrictModeWrapper({ children }: { children: ReactNode }) {
 
 function createOptions(overrides: Partial<UseReviewStartOptions> = {}): UseReviewStartOptions {
   return {
-    mode: "unstaged",
     configLoading: false,
     settingsLoading: false,
     isConfigured: true,

@@ -21,7 +21,7 @@ export default function UsePresenceBasicExample() {
         <div
           data-state={open ? "open" : "closed"}
           onAnimationEnd={onAnimationEnd}
-          className="w-48 border border-border bg-muted p-4 font-mono text-sm data-[state=open]:animate-[fade-in_0.15s_ease-out] data-[state=closed]:animate-[fade-out_0.15s_ease-in_forwards]"
+          className="w-48 border border-border bg-muted p-4 font-mono text-sm motion-safe:data-[state=open]:animate-[fade-in_0.15s_ease-out] motion-safe:data-[state=closed]:animate-[fade-out_0.15s_ease-in_forwards]"
         >
           Animated content
         </div>

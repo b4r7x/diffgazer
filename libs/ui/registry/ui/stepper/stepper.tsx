@@ -9,7 +9,9 @@ import {
   useCallback,
   useMemo,
   useRef,
+  useState,
 } from "react";
+import { useSelectableCollection } from "@/lib/selectable-collection";
 import { isStepInteractive, type StepStatus } from "@/lib/step-status";
 import { type StepperVariant, stepperRootVariants } from "@/lib/stepper-variants";
 import { cn } from "@/lib/utils";
@@ -18,11 +20,17 @@ import { StepperStep, type StepperStepProps } from "./stepper-step";
 import { StepperTrigger, type StepperTriggerProps } from "./stepper-trigger";
 import { useStepperState } from "./use-state";
 
+/** Props for stepper. */
 export interface StepperProps extends Omit<ComponentProps<"ol">, "children"> {
+  /** Controlled set of currently expanded step ids. */
   expandedIds?: string[];
+  /** Initial expanded ids for uncontrolled mode. */
   defaultExpandedIds?: string[];
+  /** Fired when the expanded set changes. */
   onExpandedChange?: (ids: string[]) => void;
+  /** Visual variant. Controls the indicator glyph and connector treatment across every step. */
   variant?: StepperVariant;
+  /** StepperStep children rendered inside an <ol>. */
   children: ReactNode;
 }
 
@@ -32,7 +40,11 @@ interface StepDescriptor {
   label: string | undefined;
 }
 
-function collectSteps(children: ReactNode): StepDescriptor[] {
+// First-render/SSR seed for directly-composed steps: registration effects have
+// not run yet, so resolve the active step from the static child tree. Once the
+// steps mount, the registrations below are authoritative and also cover steps
+// (or triggers) rendered through consumer wrapper components.
+function collectStepSeed(children: ReactNode): StepDescriptor[] {
   return Children.toArray(children).flatMap((child) => {
     if (!isValidElement(child) || child.type !== StepperStep) return [];
     const props = child.props as StepperStepProps;
@@ -50,6 +62,7 @@ function extractTriggerLabel(children: ReactNode): string | undefined {
   return undefined;
 }
 
+/** Root provider (manages expansion + variant) */
 export function Stepper({
   expandedIds,
   defaultExpandedIds,
@@ -68,7 +81,57 @@ export function Stepper({
 
   const listRef = useRef<HTMLOListElement>(null);
 
-  const steps = useMemo(() => collectSteps(children), [children]);
+  // Steps register through the selectable collection (DOM-ordered), while their
+  // status/label travel in a side state map keyed by registrationId so the active
+  // step and live-region announcement track the rendered order, including steps
+  // or triggers composed through consumer wrappers.
+  const [stepMeta, setStepMeta] = useState<
+    Record<string, { status: StepStatus; label: string | undefined }>
+  >({});
+  const {
+    items: registeredSteps,
+    registerItem: registerCollectionItem,
+    unregisterItem: unregisterCollectionItem,
+  } = useSelectableCollection(listRef);
+  const registerStep = useCallback(
+    (registrationId: string, descriptor: StepDescriptor, element: HTMLElement | null) => {
+      setStepMeta((current) => {
+        const existing = current[registrationId];
+        if (existing?.status === descriptor.status && existing.label === descriptor.label) {
+          return current;
+        }
+        return {
+          ...current,
+          [registrationId]: { status: descriptor.status, label: descriptor.label },
+        };
+      });
+      registerCollectionItem(registrationId, descriptor.id, false, element);
+    },
+    [registerCollectionItem],
+  );
+  const unregisterStep = useCallback(
+    (registrationId: string) => {
+      setStepMeta((current) => {
+        if (!(registrationId in current)) return current;
+        const { [registrationId]: _removed, ...rest } = current;
+        return rest;
+      });
+      unregisterCollectionItem(registrationId);
+    },
+    [unregisterCollectionItem],
+  );
+
+  const seed = useMemo(() => collectStepSeed(children), [children]);
+  const steps = useMemo<StepDescriptor[]>(
+    () =>
+      registeredSteps.length
+        ? registeredSteps.map((item) => {
+            const meta = stepMeta[item.id];
+            return { id: item.value, status: meta?.status ?? "pending", label: meta?.label };
+          })
+        : seed,
+    [registeredSteps, stepMeta, seed],
+  );
   const tabTargetId = useMemo(() => {
     const interactive = steps.filter((step) => isStepInteractive(step.status));
     const target = interactive.find((step) => step.status === "active") ?? interactive[0];
@@ -81,7 +144,7 @@ export function Stepper({
   // `aria-disabled`, while useNavigation uses `data-value` + role-based
   // selectors. Routing through useNavigation would require rewriting the
   // step trigger data contract, which is a public API change.
-  const moveFocus = useCallback((next: (count: number, current: number) => number) => {
+  const moveFocus = (next: (count: number, current: number) => number) => {
     const list = listRef.current;
     if (!list) return false;
     const triggers = Array.from(list.querySelectorAll<HTMLButtonElement>("[data-step-id]")).filter(
@@ -97,53 +160,57 @@ export function Stepper({
     if (!target) return false;
     target.focus();
     return true;
-  }, []);
+  };
 
-  const handleKeyDown = useCallback(
-    (event: ReactKeyboardEvent<HTMLOListElement>) => {
-      onKeyDown?.(event);
-      if (event.defaultPrevented) return;
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLOListElement>) => {
+    onKeyDown?.(event);
+    if (event.defaultPrevented) return;
 
-      const target = event.target as HTMLElement | null;
-      // Only react when focus is on one of our triggers (so editable targets
-      // in step content keep their native handling).
-      if (!target?.hasAttribute("data-step-id")) return;
+    const target = event.target as HTMLElement | null;
+    // Only react when focus is on one of our triggers (so editable targets
+    // in step content keep their native handling).
+    if (!target?.hasAttribute("data-step-id")) return;
 
-      switch (event.key) {
-        case "ArrowDown":
-        case "ArrowRight": {
-          if (moveFocus((count, current) => (current === -1 ? 0 : (current + 1) % count))) {
-            event.preventDefault();
-          }
-          return;
+    switch (event.key) {
+      case "ArrowDown":
+      case "ArrowRight": {
+        if (moveFocus((count, current) => (current === -1 ? 0 : (current + 1) % count))) {
+          event.preventDefault();
         }
-        case "ArrowUp":
-        case "ArrowLeft": {
-          if (
-            moveFocus((count, current) =>
-              current === -1 ? count - 1 : (current - 1 + count) % count,
-            )
-          ) {
-            event.preventDefault();
-          }
-          return;
-        }
-        case "Home": {
-          if (moveFocus(() => 0)) event.preventDefault();
-          return;
-        }
-        case "End": {
-          if (moveFocus((count) => count - 1)) event.preventDefault();
-          return;
-        }
+        return;
       }
-    },
-    [moveFocus, onKeyDown],
-  );
+      case "ArrowUp":
+      case "ArrowLeft": {
+        if (
+          moveFocus((count, current) =>
+            current === -1 ? count - 1 : (current - 1 + count) % count,
+          )
+        ) {
+          event.preventDefault();
+        }
+        return;
+      }
+      case "Home": {
+        if (moveFocus(() => 0)) event.preventDefault();
+        return;
+      }
+      case "End": {
+        if (moveFocus((count) => count - 1)) event.preventDefault();
+        return;
+      }
+    }
+  };
 
   const ctx = useMemo(
-    () => ({ expandedIds: expanded, onToggle: toggle, variant, tabTargetId }),
-    [expanded, toggle, variant, tabTargetId],
+    () => ({
+      expandedIds: expanded,
+      onToggle: toggle,
+      variant,
+      tabTargetId,
+      registerStep,
+      unregisterStep,
+    }),
+    [expanded, toggle, variant, tabTargetId, registerStep, unregisterStep],
   );
 
   const activeStep = steps.find((step) => step.status === "active");
@@ -158,6 +225,7 @@ export function Stepper({
         role="list"
         aria-label="Progress steps"
         {...props}
+        data-slot="stepper"
         data-variant={variant}
         data-orientation="vertical"
         onKeyDown={handleKeyDown}
@@ -177,10 +245,15 @@ export function Stepper({
   );
 }
 
+/** Props for stepper live region. */
 interface StepperLiveRegionProps {
+  /** DOM id for active step. */
   activeStepId: string;
+  /** Accessible label text. */
   label: string | undefined;
+  /** Placement position. */
   position: number;
+  /** Total item count. */
   total: number;
 }
 

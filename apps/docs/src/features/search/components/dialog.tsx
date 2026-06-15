@@ -10,8 +10,8 @@ import {
 import { Kbd } from "@diffgazer/ui/components/kbd";
 import { Spinner } from "@diffgazer/ui/components/spinner";
 import { useNavigate } from "@tanstack/react-router";
+import { useSearchOpen } from "@/hooks/search-context";
 import { getEnabledDocsLibraries } from "@/lib/library";
-import { useSearchOpen } from "@/lib/search-context";
 import { type SearchStatus, useSearch } from "../hooks/use-search";
 
 const LIBRARY_LABELS: Record<string, string> = Object.fromEntries(
@@ -36,7 +36,7 @@ const SECTION_LABELS: Record<string, string> = {
 
 interface SearchStatusView {
   message: string;
-  role: "status" | "alert";
+  severity?: "error";
 }
 
 export function getSearchStatusView(
@@ -45,13 +45,13 @@ export function getSearchStatusView(
   error: string | null,
 ): SearchStatusView | null {
   if (!hasQuery) {
-    return { message: "Type to search docs...", role: "status" };
+    return { message: "Type to search docs..." };
   }
   if (status === "error") {
-    return { message: error ?? "Search failed. Try again.", role: "alert" };
+    return { message: error ?? "Search failed. Try again.", severity: "error" };
   }
   if (status === "empty") {
-    return { message: "No results found.", role: "status" };
+    return { message: "No results found." };
   }
   return null;
 }
@@ -62,6 +62,7 @@ export function SearchDialog() {
   const navigate = useNavigate();
   const hasQuery = query.trim().length > 0;
   const statusView = getSearchStatusView(hasQuery, status, error);
+  const showsResults = hasQuery && status === "success";
 
   useKey(
     {
@@ -72,6 +73,27 @@ export function SearchDialog() {
   );
 
   useScope("search", { enabled: open });
+
+  let statusContent = null;
+  if (status === "loading") {
+    statusContent = (
+      <div className="flex items-center justify-center min-h-[240px] text-muted-foreground text-xs font-mono">
+        <Spinner variant="braille" size="sm">
+          Searching docs...
+        </Spinner>
+      </div>
+    );
+  } else if (statusView) {
+    statusContent = (
+      <div
+        role={statusView.severity === "error" ? "alert" : undefined}
+        aria-live={statusView.severity === "error" ? "assertive" : undefined}
+        className="flex items-center justify-center min-h-[240px] text-muted-foreground text-xs font-mono"
+      >
+        {statusView.message}
+      </div>
+    );
+  }
 
   return (
     <CommandPalette
@@ -87,33 +109,18 @@ export function SearchDialog() {
     >
       <CommandPaletteContent size="md">
         <CommandPaletteInput placeholder="Search docs..." />
-        <CommandPaletteList className={hasQuery ? "min-h-[240px]" : undefined}>
-          {status === "loading" ? (
-            <div className="flex items-center justify-center min-h-[240px] text-muted-foreground text-xs font-mono">
-              <Spinner variant="braille" size="sm">
-                Searching docs...
-              </Spinner>
-            </div>
-          ) : statusView ? (
-            <div
-              role={statusView.role}
-              aria-live={statusView.role === "status" ? "polite" : undefined}
-              className="flex items-center justify-center min-h-[240px] text-muted-foreground text-xs font-mono"
-            >
-              {statusView.message}
-            </div>
-          ) : null}
-          {hasQuery &&
-            status === "success" &&
+        {statusContent}
+        <CommandPaletteList className={showsResults ? "min-h-[240px]" : undefined}>
+          {showsResults &&
             results.map((result) => (
               <CommandPaletteItem key={result.id} id={result.url}>
                 <div className="flex flex-col gap-0.5">
                   <div className="flex items-center gap-2">
                     <span>{result.title}</span>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-2xs text-muted-foreground">
                       {SECTION_LABELS[result.section] ?? result.section}
                     </span>
-                    <span className="text-[10px] text-muted-foreground/50">
+                    <span className="text-2xs text-muted-foreground/50">
                       {LIBRARY_LABELS[result.library] ?? result.library}
                     </span>
                   </div>

@@ -17,45 +17,84 @@ import type { SelectContextValue, SelectOptionMetadata } from "./select-context"
 
 type SelectValue = string | null | string[];
 
+/** Options for use select state base. */
 interface UseSelectStateBaseOptions {
+  /** Controlled open state. Pair with onOpenChange. */
   open?: boolean;
+  /** open controlled used by use select state base. */
   openControlled?: boolean;
+  /** Called when open state changes. */
   onOpenChange?: (open: boolean) => void;
+  /**
+   * Initial open state for uncontrolled usage. Useful with variant="card" for a settings-panel
+   * layout that renders its list immediately.
+   */
   defaultOpen?: boolean;
+  /** Controlled highlighted item id. Pair with onHighlightChange. */
   highlighted?: string | null;
+  /** highlighted controlled used by use select state base. */
   highlightedControlled?: boolean;
+  /** Called when the highlighted item changes via keyboard or search. */
   onHighlightChange?: (value: string | null) => void;
+  /** Disable the trigger and prevent open. */
   disabled?: boolean;
+  /** searchable used by use select state base. */
   searchable?: boolean;
+  /**
+   * Visual treatment. "card" renders the inline settings-panel layout (combine with
+   * defaultOpen).
+   */
   variant?: "default" | "card";
+  /** ARIA invalid used by use select state base. */
   ariaInvalid?: AriaAttributes["aria-invalid"];
+  /** ARIA described by used by use select state base. */
   ariaDescribedBy?: string;
+  /** ARIA labelled by used by use select state base. */
   ariaLabelledBy?: string;
+  /** trigger id prop used by use select state base. */
   triggerIdProp?: string;
+  /** Mark the select as required for native form validation. */
   required?: boolean;
-  options: ReadonlyMap<string, SelectOptionMetadata>;
+  /** seed options used by use select state base. */
+  seedOptions: ReadonlyMap<string, SelectOptionMetadata>;
 }
 
+/** Options for use select state single. */
 interface UseSelectStateSingleOptions extends UseSelectStateBaseOptions {
+  /** Enable multi-select. value/onChange become string[]. */
   multiple?: false;
+  /** Controlled selected value. string[] when multiple, string in single mode. */
   value?: string;
+  /** value controlled used by use select state single. */
   valueControlled?: boolean;
+  /** Called when the selection changes. */
   onChange?: (value: string) => void;
+  /** Initial selected value for uncontrolled usage. */
   defaultValue?: string;
 }
 
+/** Options for use select state multiple. */
 interface UseSelectStateMultipleOptions extends UseSelectStateBaseOptions {
+  /** Enable multi-select. value/onChange become string[]. */
   multiple: true;
+  /** Controlled selected value. string[] when multiple, string in single mode. */
   value?: string[];
+  /** value controlled used by use select state multiple. */
   valueControlled?: boolean;
+  /** Called when the selection changes. */
   onChange?: (value: string[]) => void;
+  /** Initial selected value for uncontrolled usage. */
   defaultValue?: string[];
 }
 
+/** Options for use select state. */
 export type UseSelectStateOptions = UseSelectStateSingleOptions | UseSelectStateMultipleOptions;
 
+/** Return value from use select state. */
 export interface UseSelectStateReturn {
+  /** context value. */
   contextValue: SelectContextValue;
+  /** Ref for the wrapper element. */
   wrapperRef: RefObject<HTMLDivElement | null>;
 }
 
@@ -66,6 +105,7 @@ function getDefaultSelectValue(
   return defaultValue ?? (multiple ? [] : null);
 }
 
+/** Provides select state behavior. */
 export function useSelectState(options: UseSelectStateOptions): UseSelectStateReturn {
   const {
     open: controlledOpen,
@@ -87,26 +127,52 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
     ariaLabelledBy,
     triggerIdProp,
     required,
-    options: optionMetadata,
+    seedOptions,
   } = options;
-  const resetValue = useMemo(
-    () => getDefaultSelectValue(multiple, defaultValue),
-    [defaultValue, multiple],
-  );
+  const [registeredOptions, setRegisteredOptions] = useState<
+    ReadonlyMap<string, SelectOptionMetadata>
+  >(() => new Map());
+  const registerOption = useCallback((itemValue: string, metadata: SelectOptionMetadata) => {
+    setRegisteredOptions((current) => {
+      const existing = current.get(itemValue);
+      if (
+        existing &&
+        existing.label === metadata.label &&
+        existing.disabled === metadata.disabled
+      ) {
+        return current;
+      }
+      const next = new Map(current);
+      next.set(itemValue, metadata);
+      return next;
+    });
+  }, []);
+  const unregisterOption = useCallback((itemValue: string) => {
+    setRegisteredOptions((current) => {
+      if (!current.has(itemValue)) return current;
+      const next = new Map(current);
+      next.delete(itemValue);
+      return next;
+    });
+  }, []);
+  // Mounted items (registration) are authoritative; the static seed only fills
+  // labels for direct-child items while the dropdown is closed and unmounted.
+  const optionMetadata = useMemo<ReadonlyMap<string, SelectOptionMetadata>>(() => {
+    if (registeredOptions.size === 0) return seedOptions;
+    const merged = new Map(seedOptions);
+    for (const [value, metadata] of registeredOptions) merged.set(value, metadata);
+    return merged;
+  }, [registeredOptions, seedOptions]);
+  const resetValue = getDefaultSelectValue(multiple, defaultValue);
   const onSingleChange = options.multiple ? undefined : options.onChange;
   const onMultipleChange = options.multiple ? options.onChange : undefined;
-  // Stable ref required: feeds useControllableState({ onChange }), whose returned
-  // setValue then flows into useFormReset and the contextValue memo below.
-  const valueChangeHandler = useCallback(
-    (nextValue: SelectValue) => {
-      if (multiple) {
-        if (Array.isArray(nextValue)) onMultipleChange?.(nextValue);
-        return;
-      }
-      if (typeof nextValue === "string") onSingleChange?.(nextValue);
-    },
-    [multiple, onMultipleChange, onSingleChange],
-  );
+  const valueChangeHandler = (nextValue: SelectValue) => {
+    if (multiple) {
+      if (Array.isArray(nextValue)) onMultipleChange?.(nextValue);
+      return;
+    }
+    if (typeof nextValue === "string") onSingleChange?.(nextValue);
+  };
   const isOpenControlled = openControlled ?? controlledOpen !== undefined;
   const isValueControlled = valueControlled ?? controlledValue !== undefined;
   const isHighlightedControlled = highlightedControlled ?? controlledHighlighted !== undefined;
@@ -151,11 +217,7 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
     [disabled, setIsOpen, setHighlighted],
   );
 
-  // useOutsideClick depends on excludeRefs array identity; keep stable to avoid
-  // re-subscribing the document-level listener on every render. contentRef is a
-  // stable ref object, so an empty dependency list keeps the array referentially constant.
-  const outsideClickExcludeRefs = useMemo(() => [contentRef], []);
-  useOutsideClick(wrapperRef, () => handleOpenChange(false), isOpen, outsideClickExcludeRefs);
+  useOutsideClick(wrapperRef, () => handleOpenChange(false), isOpen, [contentRef]);
 
   // Stable ref required: dep of the contextValue memo below.
   const onSearchChange = useCallback(
@@ -186,6 +248,11 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
   const selectItem = useCallback(
     (itemValue: string) => {
       const option = optionMetadata.get(itemValue);
+      if (!option && process.env.NODE_ENV !== "production") {
+        console.warn(
+          `Select: ignoring activation of value "${itemValue}" — no SelectItem with this value is registered.`,
+        );
+      }
       if (disabled || !option || option.disabled || !matchesSearch(option.label, searchQuery))
         return;
       setNativeInvalid(false);
@@ -205,7 +272,17 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
     [disabled, multiple, optionMetadata, searchQuery, setValue, handleOpenChange],
   );
 
-  useFormReset(wrapperRef, resetValue, setValue, !isValueControlled);
+  // Reset clears both the value AND the post-submit invalid presentation so
+  // aria-invalid does not keep announcing after the form resets, matching native
+  // :user-invalid semantics (form reset clears the user-interacted flag).
+  const resetValueAndValidity = useCallback(
+    (next: SelectValue) => {
+      setNativeInvalid(false);
+      setValue(next);
+    },
+    [setValue],
+  );
+  useFormReset(wrapperRef, resetValue, resetValueAndValidity, !isValueControlled);
 
   const hasRequiredValue = Array.isArray(value) ? value.length > 0 : value !== null && value !== "";
   const resolvedAriaInvalid = nativeInvalid && required && !hasRequiredValue ? true : ariaInvalid;
@@ -229,6 +306,8 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
       highlighted,
       setHighlighted,
       selectItem,
+      registerOption,
+      unregisterOption,
       options: optionMetadata,
       triggerRef,
       contentRef,
@@ -254,6 +333,8 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
       highlighted,
       setHighlighted,
       selectItem,
+      registerOption,
+      unregisterOption,
       optionMetadata,
       variant,
       listboxId,

@@ -1,17 +1,19 @@
 import { notFound } from "@tanstack/react-router";
-import { z } from "zod";
 import type { LegalPageLoaderData } from "@/features/legal/lib/load-legal-page";
 import { buildPageSeo, DEFAULT_SITE_NAME } from "@/lib/seo";
+import type { LegalPageSlug } from "./legal-slugs";
 
 export const LEGAL_PAGES = [
   { slug: "privacy", path: "/privacy", panelLabel: "PRIVACY", label: "Privacy" },
   { slug: "terms", path: "/terms", panelLabel: "TERMS", label: "Terms" },
-] as const;
+] as const satisfies readonly {
+  slug: LegalPageSlug;
+  path: string;
+  panelLabel: string;
+  label: string;
+}[];
 
 export type LegalPageEntry = (typeof LEGAL_PAGES)[number];
-export type LegalPageSlug = LegalPageEntry["slug"];
-
-export const legalPageSlugSchema = z.enum(LEGAL_PAGES.map((page) => page.slug));
 
 export const LEGAL_LINKS = LEGAL_PAGES.map(({ slug, label, path }) => ({ slug, label, to: path }));
 

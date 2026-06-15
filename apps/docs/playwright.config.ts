@@ -33,13 +33,18 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `pnpm exec vite preview --outDir .output/public --port ${PORT} --strictPort --host 127.0.0.1`,
+    // Serve through the built Nitro server entry (not `vite preview`) so the
+    // per-path Content-Security-Policy from server.ts is actually applied; the
+    // static preview emits no headers and would never exercise the hash CSP.
+    command: "node .output/server/index.mjs",
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     stdout: "pipe",
     stderr: "pipe",
     env: {
+      HOST: "127.0.0.1",
+      PORT: String(PORT),
       NODE_OPTIONS: "--dns-result-order=ipv4first",
     },
   },

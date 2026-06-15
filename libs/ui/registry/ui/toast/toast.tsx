@@ -3,7 +3,7 @@
 import { type CSSProperties, lazy, Suspense, useLayoutEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import type { ToastPosition, Toast as ToastType } from "./toast-store";
-import { getTimerSnapshot } from "./toast-store";
+import { getTimerSnapshot, useToastStore } from "./toast-store";
 import {
   icons,
   positionToSide,
@@ -20,10 +20,15 @@ import { useToastDismiss } from "./use-dismiss";
 
 const LazySpinner = lazy(() => import("../spinner/spinner").then((m) => ({ default: m.Spinner })));
 
+/** Props for toast. */
 interface ToastProps extends ToastType {
+  /** Placement position. */
   position: ToastPosition;
+  /** Called when dismiss occurs. */
   onDismiss: (id: string) => void;
+  /** Called when remove occurs. */
   onRemove: (id: string) => void;
+  /** dismissing used by toast. */
   dismissing?: boolean;
 }
 
@@ -38,6 +43,7 @@ const TONE_ROLE: Record<ToastTone, "status" | "alert"> = {
   loading: "status",
 };
 
+/** Individual toast notification with position-aware animation. */
 export function Toast(props: ToastProps) {
   const { id, tone, variant, dismissing, position, onRemove } = props;
   const { onAnimationEnd } = useToastDismiss(dismissing ?? false, id, onRemove);
@@ -91,10 +97,12 @@ function ToneIcon({ tone }: { tone: ToastTone }) {
 function CloseButton({
   id,
   title,
+  dismissLabel,
   onDismiss,
 }: {
   id: string;
   title: string;
+  dismissLabel?: string;
   onDismiss: (id: string) => void;
 }) {
   return (
@@ -106,14 +114,14 @@ function CloseButton({
         "text-muted hover:text-foreground cursor-pointer",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       )}
-      aria-label={`Dismiss: ${title}`}
+      aria-label={dismissLabel ?? `Dismiss: ${title}`}
     >
       ✕
     </button>
   );
 }
 
-function HudLayout({ tone, title, message }: ToastProps) {
+function HudLayout({ tone, toneLabel, title, message }: ToastProps) {
   return (
     <>
       <span
@@ -122,14 +130,23 @@ function HudLayout({ tone, title, message }: ToastProps) {
       >
         <ToneIcon tone={tone} />
       </span>
-      <span className="sr-only">{tone}:</span>
+      <span className="sr-only">{toneLabel ?? tone}:</span>
       <span className="font-bold text-foreground">{title}</span>
       {message && <span className="text-muted-foreground truncate">{message}</span>}
     </>
   );
 }
 
-function CardLayout({ id, tone, title, message, action, onDismiss }: ToastProps) {
+function CardLayout({
+  id,
+  tone,
+  toneLabel,
+  title,
+  message,
+  action,
+  dismissLabel,
+  onDismiss,
+}: ToastProps) {
   return (
     <>
       <span aria-hidden="true" className={cn("w-[3px] shrink-0", toastToneBg({ tone }))} />
@@ -140,7 +157,7 @@ function CardLayout({ id, tone, title, message, action, onDismiss }: ToastProps)
         >
           <ToneIcon tone={tone} />
         </span>
-        <span className="sr-only">{tone}:</span>
+        <span className="sr-only">{toneLabel ?? tone}:</span>
         <div className="flex flex-col gap-1 min-w-0">
           <span className="text-sm font-bold text-foreground">{title}</span>
           {message && (
@@ -152,13 +169,21 @@ function CardLayout({ id, tone, title, message, action, onDismiss }: ToastProps)
             </span>
           )}
         </div>
-        <CloseButton id={id} title={title} onDismiss={onDismiss} />
+        <CloseButton id={id} title={title} dismissLabel={dismissLabel} onDismiss={onDismiss} />
       </div>
     </>
   );
 }
 
-function ViewfinderLayout({ id, tone, title, message, onDismiss }: ToastProps) {
+function ViewfinderLayout({
+  id,
+  tone,
+  toneLabel,
+  title,
+  message,
+  dismissLabel,
+  onDismiss,
+}: ToastProps) {
   return (
     <>
       <ViewfinderCorners tone={tone} />
@@ -168,10 +193,10 @@ function ViewfinderLayout({ id, tone, title, message, onDismiss }: ToastProps) {
             aria-hidden="true"
             className={cn("inline-block w-[3px] min-h-3.5", toastToneBg({ tone }))}
           />
-          <span className="sr-only">{tone}:</span>
+          <span className="sr-only">{toneLabel ?? tone}:</span>
           {title}
         </span>
-        <CloseButton id={id} title={title} onDismiss={onDismiss} />
+        <CloseButton id={id} title={title} dismissLabel={dismissLabel} onDismiss={onDismiss} />
       </div>
       {message && <div className="text-sm text-foreground/90">{message}</div>}
     </>
@@ -224,6 +249,7 @@ function CountdownLayout(props: ToastProps) {
 function CountdownBar({ id, tone }: { id: string; tone: ToastTone }) {
   const fillRef = useRef<HTMLSpanElement | null>(null);
   const rafRef = useRef<number | null>(null);
+  const { paused } = useToastStore();
 
   useLayoutEffect(() => {
     const fill = fillRef.current;
@@ -238,19 +264,29 @@ function CountdownBar({ id, tone }: { id: string; tone: ToastTone }) {
         rafRef.current = null;
         return;
       }
-      const elapsed = snap.paused ? 0 : Date.now() - snap.startedAt;
-      const remaining = Math.max(0, snap.remaining - elapsed);
+      const remaining = Math.max(0, snap.remaining - (Date.now() - snap.startedAt));
       const ratio = Math.max(0, Math.min(1, remaining / snap.duration));
       fill.style.setProperty("--remain", String(ratio));
       rafRef.current = requestAnimationFrame(tick);
     };
+
+    // While paused the remaining time is frozen, so paint the parked position
+    // once and stop the loop instead of re-scheduling an identical frame every
+    // tick; unpausing re-runs this effect and resumes the countdown.
+    if (paused) {
+      const snap = getTimerSnapshot(id);
+      const ratio =
+        snap && snap.duration > 0 ? Math.max(0, Math.min(1, snap.remaining / snap.duration)) : 1;
+      fill.style.setProperty("--remain", String(ratio));
+      return;
+    }
 
     rafRef.current = requestAnimationFrame(tick);
     return () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     };
-  }, [id]);
+  }, [id, paused]);
 
   return (
     <div

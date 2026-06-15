@@ -4,6 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentPropsWithRef, KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 
+/** Class variants for scroll area. */
 export const scrollAreaVariants = cva(
   "scrollbar-thin rounded-[inherit] [scrollbar-gutter:stable]",
   {
@@ -18,13 +19,22 @@ export const scrollAreaVariants = cva(
   },
 );
 
+/** Thin-scrollbar wrapper with vertical, horizontal, or both overflow directions. */
 export type ScrollOrientation = NonNullable<VariantProps<typeof scrollAreaVariants>["orientation"]>;
 
+/** Props for scroll area. */
 export interface ScrollAreaProps extends ComponentPropsWithRef<"div"> {
+  /** Axes that overflow. Other axes are clipped. */
   orientation?: ScrollOrientation;
+  /**
+   * When true and the region has an accessible name (aria-label or aria-labelledby), wires
+   * Arrow/PageUp/PageDown/Home/End to scroll the container and applies role="region" with
+   * tabIndex={0}.
+   */
   keyboardScrollable?: boolean;
 }
 
+/** Thin-scrollbar wrapper with vertical, horizontal, or both overflow directions. */
 export function ScrollArea({
   children,
   className,
@@ -113,6 +123,7 @@ export function ScrollArea({
     <div
       ref={ref}
       role={role}
+      data-slot="scroll-area"
       aria-label={ariaLabel}
       aria-labelledby={ariaLabelledBy}
       tabIndex={canKeyboardScroll ? (tabIndex ?? 0) : tabIndex}

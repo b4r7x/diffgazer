@@ -1,14 +1,15 @@
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
-import { ErrorCode } from "@diffgazer/core/schemas/errors";
+import type { ErrorCode } from "@diffgazer/core/schemas/errors";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import type { Context } from "hono";
 import { streamSSE } from "hono/streaming";
 import { createGitService } from "../../../shared/lib/git/service.js";
 import { getProjectRoot } from "../../../shared/lib/http/request.js";
 import { errorResponse } from "../../../shared/lib/http/response.js";
-import { writeSSEError } from "../../../shared/lib/http/sse.js";
+import { log } from "../../../shared/lib/log.js";
 import { streamActiveSessionToSSE } from "./replay.js";
+import { writeSSEError } from "./sse.js";
 import { type ActiveSession, cancelSession, getSession } from "./store.js";
 
 interface FreshnessFailure {
@@ -27,20 +28,22 @@ async function assertSessionFresh(
     gitService.getStatusHash(),
   ]);
 
-  if (!headCommitResult.ok) {
-    return err({
-      code: ErrorCode.INTERNAL_ERROR,
-      message: "Failed to inspect repository state",
-      status: 500,
-    });
+  // A repository-inspection failure (head-commit or status) means we cannot
+  // verify freshness — not that the repo changed. Keep streaming without a 409
+  // or a destructive cancel, so a transient git slowdown during reconnect never
+  // aborts a healthy in-flight review.
+  if (!headCommitResult.ok || statusHashResult.kind === "unavailable") {
+    return ok(undefined);
+  }
+
+  // A content-blind (status-only) hash must never be compared against the
+  // session's content-full hash: a degraded reconnect read cannot prove change.
+  if (statusHashResult.kind === "status-only") {
+    return ok(undefined);
   }
 
   const currentHeadCommit = headCommitResult.value;
-  if (
-    statusHashResult === null ||
-    currentHeadCommit !== session.headCommit ||
-    statusHashResult !== session.statusHash
-  ) {
+  if (currentHeadCommit !== session.headCommit || statusHashResult.hash !== session.statusHash) {
     return err({
       code: ReviewErrorCode.SESSION_STALE,
       message: "Session is stale: repository state changed. Start a new review.",
@@ -67,12 +70,23 @@ export async function resumeStreamById(c: Context): Promise<Response> {
     return errorResponse(c, "Session not found", ReviewErrorCode.SESSION_NOT_FOUND, 404);
   }
 
-  const freshness = await assertSessionFresh(session, projectPath);
-  if (!freshness.ok) {
-    if (freshness.error.code === ReviewErrorCode.SESSION_STALE) {
-      cancelSession(id);
+  // Completed sessions are retained precisely so the replay layer can serve
+  // their terminal event log within the retention window. Freshness-gating them
+  // turns "commit the just-reviewed work" into a 409, so skip the check (and the
+  // destructive cancel) and go straight to replay.
+  if (!session.isComplete) {
+    const freshness = await assertSessionFresh(session, projectPath);
+    if (!freshness.ok) {
+      if (freshness.error.code === ReviewErrorCode.SESSION_STALE) {
+        cancelSession(id);
+      }
+      return errorResponse(
+        c,
+        freshness.error.message,
+        freshness.error.code,
+        freshness.error.status,
+      );
     }
-    return errorResponse(c, freshness.error.message, freshness.error.code, freshness.error.status);
   }
 
   return streamSSE(c, async (stream) => {
@@ -82,7 +96,7 @@ export async function resumeStreamById(c: Context): Promise<Response> {
       try {
         await writeSSEError(stream, getErrorMessage(error), ReviewErrorCode.GENERATION_FAILED);
       } catch (e) {
-        console.warn("SSE error write failed:", e);
+        log("warn", "sse_error_write_failed", { error: e });
       }
     }
   });

@@ -13,7 +13,9 @@ import { cn } from "@/lib/utils";
 import { BreadcrumbsContext } from "./breadcrumbs-context";
 import { BreadcrumbsItem, type BreadcrumbsItemProps } from "./breadcrumbs-item";
 
+/** Props for breadcrumbs. */
 export interface BreadcrumbsProps extends ComponentPropsWithRef<"nav"> {
+  /** Separator rendered between items. Pass null to omit. */
   separator?: ReactNode;
 }
 
@@ -37,6 +39,7 @@ function resolveCurrentItem(children: ReactNode): ReactNode {
   );
 }
 
+/** Root container (nav + ol). Accepts separator prop. */
 export function Breadcrumbs({
   separator = "/",
   className,
@@ -51,6 +54,7 @@ export function Breadcrumbs({
     <BreadcrumbsContext value={contextValue}>
       <nav
         ref={ref}
+        data-slot="breadcrumbs"
         aria-label="Breadcrumb"
         className={cn("text-xs text-muted-foreground", className)}
         {...props}

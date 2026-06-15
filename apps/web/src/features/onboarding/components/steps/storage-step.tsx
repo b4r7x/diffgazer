@@ -18,7 +18,7 @@ export function StorageStep({
 }: StorageStepProps) {
   return (
     <div className="space-y-4">
-      <p className="text-sm text-tui-muted font-mono">
+      <p className="text-sm text-muted-foreground font-mono">
         Choose where Diffgazer stores your API keys and secrets.
       </p>
       <StorageSelectorContent

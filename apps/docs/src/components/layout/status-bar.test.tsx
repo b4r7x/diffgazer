@@ -2,11 +2,22 @@
 
 import "@testing-library/jest-dom/vitest";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { ThemeProvider } from "@/hooks/theme-context";
 import { StatusBar } from "./status-bar";
+
+function renderStatusBar() {
+  return render(
+    <ThemeProvider>
+      <StatusBar />
+    </ThemeProvider>,
+  );
+}
 
 const routerBoundary = vi.hoisted(() => ({ pathname: "/ui/components/button" }));
 
+// Boundary mock: TanStack Router is the external routing library; this test controls location-derived active links.
 vi.mock("@tanstack/react-router", async () => {
   const { RouterLinkMock } = await import("@/testing/router-mock");
   return {
@@ -22,7 +33,7 @@ vi.mock("@tanstack/react-router", async () => {
 describe("StatusBar", () => {
   it("marks the active library link with aria-current=page", () => {
     routerBoundary.pathname = "/ui/components/button";
-    render(<StatusBar />);
+    renderStatusBar();
 
     expect(screen.getByRole("link", { name: "Components" })).toHaveAttribute(
       "aria-current",
@@ -34,32 +45,34 @@ describe("StatusBar", () => {
 
   it("marks the home link active only on the root path", () => {
     routerBoundary.pathname = "/";
-    render(<StatusBar />);
+    renderStatusBar();
 
     expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Components" })).not.toHaveAttribute("aria-current");
   });
 
-  it("exposes a Primary navigation landmark with a visible focus ring on every link", () => {
+  it("exposes focusable links inside the Primary navigation landmark", () => {
     routerBoundary.pathname = "/";
-    render(<StatusBar />);
+    renderStatusBar();
 
     const nav = screen.getByRole("navigation", { name: "Primary" });
     const links = within(nav).getAllByRole("link");
     expect(links.length).toBeGreaterThan(0);
     for (const link of links) {
-      expect(link.className).toContain("focus-visible:outline-2");
-      expect(link.className).toContain("focus-visible:outline-ring");
+      link.focus();
+      expect(link).toHaveFocus();
     }
   });
 
-  it("hides the informational status cluster below the md breakpoint", () => {
+  it("toggles the document theme via the chrome toggle", async () => {
+    const user = userEvent.setup();
     routerBoundary.pathname = "/";
-    render(<StatusBar />);
+    renderStatusBar();
 
-    const cluster = screen.getByText("USER: GUEST").parentElement;
-    expect(cluster).not.toBeNull();
-    expect(cluster?.className).toContain("hidden");
-    expect(cluster?.className).toContain("md:flex");
+    const toggle = screen.getByRole("button", { name: /switch to light theme/i });
+    await user.click(toggle);
+
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+    expect(screen.getByRole("button", { name: /switch to dark theme/i })).toBeInTheDocument();
   });
 });

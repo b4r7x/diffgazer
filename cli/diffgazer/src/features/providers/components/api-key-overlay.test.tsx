@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { TerminalKeyboardProvider } from "../../../hooks/use-keyboard";
+import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
 import { CliThemeProvider } from "../../../theme/provider";
 import { ApiKeyOverlay } from "./api-key-overlay";
 
@@ -47,7 +47,7 @@ describe("ApiKeyOverlay", () => {
 
     const view = render(
       <Wrapper api={api}>
-        <ApiKeyOverlay open providerId="openai" onOpenChange={() => {}} onSaved={onSaved} />
+        <ApiKeyOverlay open providerId="gemini" onOpenChange={() => {}} onSaved={onSaved} />
       </Wrapper>,
     );
 
@@ -61,11 +61,39 @@ describe("ApiKeyOverlay", () => {
     await flush(8);
 
     expect(saveConfig).toHaveBeenCalledWith({
-      provider: "openai",
+      provider: "gemini",
       apiKey: { kind: "literal", value: "sk-test-secret" },
     });
     expect(onSaved).toHaveBeenCalledWith();
     expect(onSaved.mock.calls[0]?.length ?? 0).toBe(0);
+  });
+
+  test("ignores footer arrows while the key input is focused so Enter submits instead of cancelling", async () => {
+    const saveConfig = vi.fn<BoundApi["saveConfig"]>().mockResolvedValue(undefined);
+    const onOpenChange = vi.fn();
+    const api = { ...createApi({ baseUrl: "http://localhost" }), saveConfig } satisfies BoundApi;
+
+    const view = render(
+      <Wrapper api={api}>
+        <ApiKeyOverlay open providerId="gemini" onOpenChange={onOpenChange} />
+      </Wrapper>,
+    );
+
+    // Tab focuses the input; → must not move focus to Cancel while typing (F-347b).
+    view.stdin.write("\t");
+    await flush();
+    view.stdin.write("sk-typed-key");
+    await flush();
+    view.stdin.write("[C"); // right arrow
+    await flush();
+    view.stdin.write("\r"); // Enter
+    await flush(8);
+
+    expect(saveConfig).toHaveBeenCalledWith({
+      provider: "gemini",
+      apiKey: { kind: "literal", value: "sk-typed-key" },
+    });
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
   test("clears typed secrets when the overlay closes", async () => {
@@ -74,7 +102,7 @@ describe("ApiKeyOverlay", () => {
 
     const view = render(
       <Wrapper api={api}>
-        <ApiKeyOverlay open providerId="openai" onOpenChange={() => {}} />
+        <ApiKeyOverlay open providerId="gemini" onOpenChange={() => {}} />
       </Wrapper>,
     );
 
@@ -85,14 +113,14 @@ describe("ApiKeyOverlay", () => {
 
     view.rerender(
       <Wrapper api={api}>
-        <ApiKeyOverlay open={false} providerId="openai" onOpenChange={() => {}} />
+        <ApiKeyOverlay open={false} providerId="gemini" onOpenChange={() => {}} />
       </Wrapper>,
     );
     await flush();
 
     view.rerender(
       <Wrapper api={api}>
-        <ApiKeyOverlay open providerId="openai" onOpenChange={() => {}} />
+        <ApiKeyOverlay open providerId="gemini" onOpenChange={() => {}} />
       </Wrapper>,
     );
     await flush();
@@ -108,7 +136,7 @@ describe("ApiKeyOverlay", () => {
 
     const view = render(
       <Wrapper api={api}>
-        <ApiKeyOverlay open providerId="openai" onOpenChange={() => {}} />
+        <ApiKeyOverlay open providerId="gemini" onOpenChange={() => {}} />
       </Wrapper>,
     );
 
@@ -119,14 +147,14 @@ describe("ApiKeyOverlay", () => {
 
     view.rerender(
       <Wrapper api={api}>
-        <ApiKeyOverlay open providerId="anthropic" onOpenChange={() => {}} />
+        <ApiKeyOverlay open providerId="openrouter" onOpenChange={() => {}} />
       </Wrapper>,
     );
     await flush();
 
     const frame = view.lastFrame() ?? "";
     expect(frame).toContain("Configure API Key");
-    expect(frame).toContain("anthropic");
+    expect(frame).toContain("openrouter");
     expect(frame).not.toContain("sk-provider-secret");
     expect(frame).not.toContain("*".repeat("sk-provider-secret".length));
   });

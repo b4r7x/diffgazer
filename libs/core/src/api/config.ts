@@ -2,26 +2,30 @@ import type {
   ActivateProviderResponse,
   ConfigCheckResponse,
   CurrentConfigResponse as ConfigResponse,
-  DeleteConfigResponse,
   DeleteProviderCredentialsResponse as DeleteProviderResponse,
   InitResponse,
   OpenRouterModelsResponse,
   ProviderModelsResponse,
   ProvidersStatusResponse,
   SaveConfigRequest,
-  SettingsConfig,
-  TrustConfig,
 } from "../schemas/config/index.js";
 import {
+  CurrentConfigResponseSchema,
+  InitResponseSchema,
   OpenRouterModelsResponseSchema,
   ProviderModelsResponseSchema,
+  ProvidersStatusResponseSchema,
 } from "../schemas/config/index.js";
-import type { ApiClient, TrustListResponse, TrustResponse } from "./types.js";
+import type { ApiClient } from "./types.js";
 
 export async function getProviderStatus(
   client: ApiClient,
 ): Promise<ProvidersStatusResponse["providers"]> {
-  const response = await client.get<ProvidersStatusResponse>("/api/config/providers");
+  const response = await client.get<ProvidersStatusResponse>(
+    "/api/config/providers",
+    undefined,
+    (body) => ProvidersStatusResponseSchema.parse(body),
+  );
   return response.providers;
 }
 
@@ -52,17 +56,6 @@ export async function saveConfig(client: ApiClient, config: SaveConfigRequest): 
   await client.post("/api/config", config);
 }
 
-export async function getSettings(client: ApiClient): Promise<SettingsConfig> {
-  return client.get<SettingsConfig>("/api/settings");
-}
-
-export async function saveSettings(
-  client: ApiClient,
-  settings: Partial<SettingsConfig>,
-): Promise<void> {
-  await client.post("/api/settings", settings);
-}
-
 export async function activateProvider(
   client: ApiClient,
   providerId: string,
@@ -82,7 +75,9 @@ export async function deleteProviderCredentials(
 }
 
 export async function loadInit(client: ApiClient): Promise<InitResponse> {
-  return client.get<InitResponse>("/api/config/init");
+  return client.get<InitResponse>("/api/config/init", undefined, (body) =>
+    InitResponseSchema.parse(body),
+  );
 }
 
 export async function checkConfig(client: ApiClient): Promise<ConfigCheckResponse> {
@@ -90,30 +85,9 @@ export async function checkConfig(client: ApiClient): Promise<ConfigCheckRespons
 }
 
 export async function getConfig(client: ApiClient): Promise<ConfigResponse> {
-  return client.get<ConfigResponse>("/api/config");
-}
-
-export async function deleteConfig(client: ApiClient): Promise<DeleteConfigResponse> {
-  return client.delete<DeleteConfigResponse>("/api/config");
-}
-
-export async function getTrust(client: ApiClient, projectId: string): Promise<TrustResponse> {
-  return client.get<TrustResponse>("/api/settings/trust", { projectId });
-}
-
-export async function listTrustedProjects(client: ApiClient): Promise<TrustListResponse> {
-  return client.get<TrustListResponse>("/api/settings/trust/list");
-}
-
-export async function saveTrust(client: ApiClient, trust: TrustConfig): Promise<TrustResponse> {
-  return client.post<TrustResponse>("/api/settings/trust", trust);
-}
-
-export async function deleteTrust(
-  client: ApiClient,
-  projectId: string,
-): Promise<{ removed: boolean }> {
-  return client.delete<{ removed: boolean }>("/api/settings/trust", { projectId });
+  return client.get<ConfigResponse>("/api/config", undefined, (body) =>
+    CurrentConfigResponseSchema.parse(body),
+  );
 }
 
 export const bindConfig = (client: ApiClient) => ({
@@ -121,17 +95,10 @@ export const bindConfig = (client: ApiClient) => ({
   getOpenRouterModels: () => getOpenRouterModels(client),
   getProviderModels: (providerId: string) => getProviderModels(client, providerId),
   saveConfig: (config: SaveConfigRequest) => saveConfig(client, config),
-  getSettings: () => getSettings(client),
-  saveSettings: (settings: Partial<SettingsConfig>) => saveSettings(client, settings),
   activateProvider: (providerId: string, model?: string) =>
     activateProvider(client, providerId, model),
   deleteProviderCredentials: (providerId: string) => deleteProviderCredentials(client, providerId),
   loadInit: () => loadInit(client),
   checkConfig: () => checkConfig(client),
   getConfig: () => getConfig(client),
-  deleteConfig: () => deleteConfig(client),
-  getTrust: (projectId: string) => getTrust(client, projectId),
-  listTrustedProjects: () => listTrustedProjects(client),
-  saveTrust: (trust: TrustConfig) => saveTrust(client, trust),
-  deleteTrust: (projectId: string) => deleteTrust(client, projectId),
 });

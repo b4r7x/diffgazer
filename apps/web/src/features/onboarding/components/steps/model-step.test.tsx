@@ -80,6 +80,23 @@ function renderGemini(props: {
 }
 
 describe("ModelStep", () => {
+  it("exposes the model-loading branch as a status region", async () => {
+    const getProviderModels = vi
+      .fn<() => Promise<ProviderModelsResponse>>()
+      .mockReturnValue(new Promise<ProviderModelsResponse>(() => {}));
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      getProviderModels,
+    } satisfies BoundApi;
+
+    render(<ModelStep provider="gemini" value={null} onChange={vi.fn()} onCommit={vi.fn()} />, {
+      wrapper: makeWrapper(api),
+    });
+
+    // F-353(b): the loading branch announces via role="status" instead of plain text.
+    expect(await screen.findByRole("status")).toHaveTextContent(/loading models/i);
+  });
+
   it("commits the current selected catalog model when Enter is pressed", async () => {
     const selectedModel = geminiModel("gemini-2.5-pro");
     const user = userEvent.setup();

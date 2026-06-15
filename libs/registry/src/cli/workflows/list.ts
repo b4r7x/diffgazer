@@ -8,20 +8,34 @@ export interface ListDisplayItem {
   files: string[];
 }
 
-export interface RunListWorkflowOptions<TItem, TConfig> {
+interface ListWorkflowFile {
+  path: string;
+}
+
+interface ListWorkflowItem {
+  name: string;
+  title?: string;
+  description?: string;
+  dependencies: string[];
+  files: ListWorkflowFile[];
+}
+
+export interface RunListWorkflowOptions<TItem extends ListWorkflowItem, TConfig> {
   cwd: string;
   includeAll: boolean;
   installedOnly: boolean;
   json: boolean;
   itemPlural: string;
+  getRelativePath: (file: ListWorkflowFile) => string;
   getAllItems: () => TItem[];
   getPublicItems: () => TItem[];
   requireConfig: (cwd: string) => TConfig;
   isInstalled: (ctx: { cwd: string; config: TConfig; item: TItem }) => boolean;
-  toDisplayItem: (item: TItem) => ListDisplayItem;
 }
 
-function resolveItems<TItem, TConfig>(options: RunListWorkflowOptions<TItem, TConfig>): TItem[] {
+function resolveItems<TItem extends ListWorkflowItem, TConfig>(
+  options: RunListWorkflowOptions<TItem, TConfig>,
+): TItem[] {
   const {
     cwd,
     includeAll,
@@ -62,13 +76,21 @@ function printTable(
   newline();
 }
 
-export function runListWorkflow<TItem, TConfig>(
+export function runListWorkflow<TItem extends ListWorkflowItem, TConfig>(
   options: RunListWorkflowOptions<TItem, TConfig>,
 ): void {
-  const { json, installedOnly, itemPlural, toDisplayItem } = options;
+  const { json, installedOnly, itemPlural, getRelativePath } = options;
 
   const displayItems = resolveItems(options)
-    .map(toDisplayItem)
+    .map(
+      (item): ListDisplayItem => ({
+        name: item.name,
+        title: item.title,
+        description: item.description,
+        dependencies: item.dependencies,
+        files: item.files.map(getRelativePath),
+      }),
+    )
     .sort((left, right) => left.name.localeCompare(right.name));
 
   if (json) {

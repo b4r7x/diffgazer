@@ -1,9 +1,9 @@
 ---
 title: Contributing
-description: How to contribute to @diffgazer/ui.
+description: How to contribute to `@diffgazer/ui`.
 ---
 
-## Development Setup
+## Development setup
 
 ```bash
 git clone https://github.com/b4r7x/diffgazer.git
@@ -11,26 +11,35 @@ cd diffgazer
 pnpm install
 ```
 
-## Adding a Component
+## Adding a component
 
 1. Create component files in `registry/ui/<name>/`
 2. Add entry to `registry/registry.json`
-3. Create 2-3 demo files in `registry/examples/<name>/`
-4. Add `registry/component-docs/<name>.ts` (required for component docs rendering)
+3. Create at least one demo file in `registry/examples/<name>/` for the hero example; add more examples when the component warrants them.
+4. Add `registry/component-docs/<name>.ts` for API metadata, notes, examples, and accessibility details.
+5. Create `docs/content/components/<name>.mdx` and add the page to `docs/content/components/meta.json`.
 
-The docs pipeline generates component data (props/source/examples) and component MDX pages with TOC anchors from the registry entry.
+The docs pipeline generates component data (props, source, examples, usage snippets), but component MDX pages are authored and committed. Most pages use a one-line `<ComponentDocScaffold hero="<name>-default" />` plus optional prose when the component needs extra guidance.
 
-Generated artifacts are produced from the repo sources:
+Source artifacts for a component are:
+
+- `registry/ui/<name>/*`
+- `registry/registry.json`
+- `registry/component-docs/<name>.ts`
+- `registry/examples/<name>/*`
+- `docs/content/components/<name>.mdx`
+- `docs/content/components/meta.json`
+
+Generated artifacts are produced from those sources:
 
 - `public/r/*`
 - `docs/generated/*`
-- `docs/content/components/*`
 
 The committed handoff contract is `public/r/*`. It is the reviewable shadcn-style registry surface used by copy/CLI flows. Generated docs and CLI bundles are derived artifacts, not the source of truth, and deterministic generated data under `docs/generated/*` should not be committed.
 
 Run `pnpm run prepare:artifacts` before artifact validation, docs sync, root type-check, root tests, or release checks whenever generated files may be missing or stale.
 
-## Building Docs Artifacts
+## Building docs artifacts
 
 ```bash
 # Optional: override registry origin used inside generated JSON files
@@ -39,22 +48,24 @@ Run `pnpm run prepare:artifacts` before artifact validation, docs sync, root typ
 pnpm --filter @diffgazer/ui build
 ```
 
-## Verification Before PR
+## Verification before PR
 
 ```bash
 pnpm --filter @diffgazer/ui type-check
 pnpm --filter @diffgazer/ui build
 ```
 
-## Code Style
+## Code style
 
 - ESM imports only (no CommonJS)
 - Tailwind 4 + CVA for component variants
 - JetBrains Mono font, terminal aesthetic
 - No manual useCallback/useMemo (React 19 Compiler handles this)
 - Use `cn()` from `@/lib/utils` for class merging
+- Use sentence case for multiword H2/H3 headings, except proper nouns and component or API symbols.
+- Write "Diffgazer" when prose names the product or project; use code formatting for the `diffgazer` command, binary, and package name.
 
-## Pull Requests
+## Pull requests
 
 - One component per PR (unless they're tightly coupled)
 - Include demo files with the component

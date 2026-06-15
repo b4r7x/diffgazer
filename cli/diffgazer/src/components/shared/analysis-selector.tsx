@@ -21,9 +21,9 @@ export function AnalysisSelector({
   disabled = false,
 }: AnalysisSelectorProps): ReactElement {
   return (
-    <CheckboxGroup
+    <CheckboxGroup<LensId>
       value={selectedLenses}
-      onChange={(values) => onChange(values as LensId[])}
+      onChange={onChange}
       isActive={isActive}
       disabled={disabled}
     >

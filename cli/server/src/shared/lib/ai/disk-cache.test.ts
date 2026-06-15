@@ -3,7 +3,11 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+import { log } from "../log.js";
 import { isEntryFresh, loadDiskCache, persistDiskCache, withTtlAndFallback } from "./disk-cache.js";
+
+// Boundary mock: logging writes process-visible diagnostics; cache tests assert fallback behavior without emitting logs.
+vi.mock("../log.js", () => ({ log: vi.fn() }));
 
 const EntrySchema = z.object({
   payload: z.array(z.string()),
@@ -21,6 +25,7 @@ const writeRaw = (value: unknown): void => {
 beforeEach(() => {
   testDir = fs.mkdtempSync(path.join(os.tmpdir(), "dg-disk-cache-"));
   vi.restoreAllMocks();
+  vi.mocked(log).mockClear();
 });
 afterEach(() => {
   fs.rmSync(testDir, { recursive: true, force: true });
@@ -218,6 +223,32 @@ describe("withTtlAndFallback", () => {
     });
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.value.entry.payload).toEqual(["usable"]);
+  });
+
+  it("returns ok(entry) and warns when the post-fetch cache write fails", async () => {
+    // A directory at the cache path makes the persist rename fail without touching
+    // the in-hand fetched data: the request must still succeed.
+    fs.mkdirSync(cachePath());
+    const entry: Entry = { payload: ["live"], fetchedAt: fresh() };
+    const fetcher = vi.fn().mockResolvedValue({ ok: true, value: entry });
+
+    const result = await withTtlAndFallback({
+      path: cachePath(),
+      schema: EntrySchema,
+      ttlMs: ttl,
+      fetcher,
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.cached).toBe(false);
+      expect(result.value.entry.payload).toEqual(["live"]);
+    }
+    expect(log).toHaveBeenCalledWith(
+      "warn",
+      "disk_cache_persist_failed",
+      expect.objectContaining({ path: cachePath() }),
+    );
   });
 
   it("reports whether the loaded cache was TTL-fresh", async () => {

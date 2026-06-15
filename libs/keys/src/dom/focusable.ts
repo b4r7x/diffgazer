@@ -54,6 +54,10 @@ function isInsideDisabledFieldset(element: HTMLElement): boolean {
   return false;
 }
 
+/**
+ * Returns true for visible, non-disabled elements that can receive programmatic
+ * focus, including `tabIndex={-1}` targets.
+ */
 export function isFocusable(element: HTMLElement | null): boolean {
   if (!isHTMLElement(element)) return false;
   if (!element.matches(FOCUSABLE_SELECTOR)) return false;
@@ -68,6 +72,7 @@ export function isFocusable(element: HTMLElement | null): boolean {
 const DOCUMENT_POSITION_PRECEDING = 0x02;
 const DOCUMENT_POSITION_FOLLOWING = 0x04;
 
+/** Sort comparator that returns elements in DOM order across document realms. */
 export function documentOrder(a: HTMLElement, b: HTMLElement): number {
   const pos = a.compareDocumentPosition(b);
   if (pos & DOCUMENT_POSITION_FOLLOWING) return -1;
@@ -75,6 +80,10 @@ export function documentOrder(a: HTMLElement, b: HTMLElement): number {
   return 0;
 }
 
+/**
+ * Returns all focusable descendants in DOM order, including programmatic focus
+ * targets that are not reachable by Tab.
+ */
 export function getFocusableElements(container: HTMLElement | null): HTMLElement[] {
   if (!container) return [];
   return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
@@ -109,6 +118,10 @@ function tabIndexOrder(element: HTMLElement): number {
   return element.tabIndex > 0 ? element.tabIndex : Number.MAX_SAFE_INTEGER;
 }
 
+/**
+ * Returns browser Tab-order descendants, excluding negative tabindex targets
+ * and collapsing native radio groups to one Tab stop.
+ */
 export function getTabbableElements(container: HTMLElement | null): HTMLElement[] {
   if (!container) return [];
   const focusableElements = getFocusableElements(container);
@@ -120,10 +133,12 @@ export function getTabbableElements(container: HTMLElement | null): HTMLElement[
     .map(({ element }) => element);
 }
 
+/** Returns the first focusable descendant in DOM order. */
 export function getFirstFocusableElement(container: HTMLElement | null): HTMLElement | null {
   return getFocusableElements(container)[0] ?? null;
 }
 
+/** Returns true when the element contains its owner document's active element. */
 export function containsActiveElement(element: HTMLElement): boolean {
   const activeElement = element.ownerDocument.activeElement;
   return isHTMLElement(activeElement) && element.contains(activeElement);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ReviewIssue, ReviewSeverity } from "../schemas/review/index.js";
-import { filterIssuesBySeverity } from "./filtering.js";
+import { filterIssuesBySeverity, toggleSeverity } from "./filtering.js";
 
 const makeIssue = (severity: ReviewIssue["severity"], id: string): ReviewIssue => ({
   id,
@@ -78,5 +78,23 @@ describe("filterIssuesBySeverity", () => {
       { id: "high-1", severity: "high" },
       { id: "high-2", severity: "high" },
     ]);
+  });
+});
+
+describe("toggleSeverity", () => {
+  it("adds a severity not already in the filter", () => {
+    const result = toggleSeverity(new Set<ReviewSeverity>(["high"]), "blocker");
+    expect([...result].sort()).toEqual(["blocker", "high"]);
+  });
+
+  it("removes a severity already in the filter", () => {
+    const result = toggleSeverity(new Set<ReviewSeverity>(["high", "blocker"]), "high");
+    expect([...result]).toEqual(["blocker"]);
+  });
+
+  it("does not mutate the input set", () => {
+    const input = new Set<ReviewSeverity>(["high"]);
+    toggleSeverity(input, "blocker");
+    expect([...input]).toEqual(["high"]);
   });
 });

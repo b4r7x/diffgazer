@@ -12,7 +12,7 @@ export function SysInfoPanel() {
           aria-hidden="true"
           text="Documentation"
           asciiText={HEADING_ASCII.documentation}
-          className="mb-4 text-[8px] leading-[1.2] text-foreground md:text-[10px]"
+          className="mb-4 text-3xs leading-[1.2] text-foreground md:text-2xs"
         />
         <p className="max-w-2xl font-mono text-sm leading-relaxed text-muted-foreground">
           Reference for diffgazer's keyboard-first React UI primitives and the headless keys layer
@@ -22,20 +22,15 @@ export function SysInfoPanel() {
       </div>
       <div className="flex w-full flex-col justify-center p-4 font-mono text-sm text-muted-foreground lg:w-64">
         <KeyValue className="gap-x-4">
-          <KeyValue.Item label="STATUS:" value="OPERATIONAL" />
-          <KeyValue.Item
-            label="UPTIME:"
-            value="99.9%"
-            valueClassName="font-normal text-muted-foreground"
-          />
+          <KeyValue.Item label="STATUS:" value="ONLINE" />
           <KeyValue.Item
             label="VERSION:"
-            value={`${DOCS_CHROME_VERSION}-stable`}
+            value={DOCS_CHROME_VERSION}
             valueClassName="font-normal text-muted-foreground"
           />
           <KeyValue.Item
             label="REGISTRY:"
-            value={DOCS_REGISTRY_HOST}
+            value={`${DOCS_REGISTRY_HOST} (PENDING)`}
             labelClassName="mt-2 border-t border-dashed border-border pt-2"
             valueClassName="mt-2 border-t border-dashed border-border pt-2 font-normal"
           />

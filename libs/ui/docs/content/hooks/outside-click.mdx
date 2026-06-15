@@ -1,29 +1,18 @@
 ---
-title: "Outside Click"
+title: "useOutsideClick"
 description: "Detect clicks outside a referenced element. Useful for closing dropdowns, popovers, and modals when the user clicks elsewhere."
 hook: "outside-click"
 ---
 
-<UsageSnippet />
+<HookDocScaffold />
 
-## Installation
+## Escape dismissal
 
-<ConsumptionBlock />
+The same source file also exports `useEscapeKey` for overlay dismissal stacks that need Escape handling without outside-pointer handling. Both hooks share the same priority and nested-overlay ordering options:
 
-## Parameters
-
-<ParameterTable />
-
-## Returns
-
-<ReturnsTable />
-
-## Examples
-
-<Examples />
-
-## Notes
-
-<Notes />
-
-<SourceViewer />
+```tsx
+useEscapeKey((event) => {
+  event.preventDefault()
+  setOpen(false)
+}, open, { ref: panelRef })
+```

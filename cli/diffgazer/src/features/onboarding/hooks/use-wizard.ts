@@ -3,26 +3,14 @@ import {
   useSaveConfig,
   useSaveSettings,
 } from "@diffgazer/core/api/hooks";
-import { getErrorMessage } from "@diffgazer/core/errors";
-import {
-  INPUT_METHODS,
-  type InputMethod,
-  saveWizard,
-  useWizardState,
-} from "@diffgazer/core/onboarding";
+import { INPUT_METHODS, type InputMethod, useWizardState } from "@diffgazer/core/onboarding";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
-import {
-  AI_PROVIDERS,
-  isAgentExecution,
-  isSecretsStorage,
-  PROVIDER_ENV_VARS,
-} from "@diffgazer/core/schemas/config";
+import { AI_PROVIDERS, isAgentExecution, isSecretsStorage } from "@diffgazer/core/schemas/config";
 import type { LensId } from "@diffgazer/core/schemas/review";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useNavigation } from "../../../hooks/use-navigation";
 
 type FocusArea = "step" | "nav";
-const EARLY_SAVE_CLEANUP_ERROR = "Failed to remove saved credentials";
 
 function isAIProvider(v: string): v is AIProvider {
   return (AI_PROVIDERS as readonly string[]).includes(v);
@@ -37,32 +25,18 @@ export function useOnboardingWizard() {
   const saveSettings = useSaveSettings();
   const saveConfig = useSaveConfig();
   const deleteCredentials = useDeleteProviderCredentials();
-  const earlySavedProviderRef = useRef<AIProvider | null>(null);
   const [focusArea, setFocusArea] = useState<FocusArea>("step");
   const [navIndex, setNavIndex] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const [apiKeyInputFocused, setApiKeyInputFocused] = useState(false);
 
-  const wizard = useWizardState(undefined, {
-    saveCredentials: async (provider, apiKey) => {
-      await saveConfig.mutateAsync({
-        provider,
-        apiKey:
-          apiKey === "env"
-            ? { kind: "env", varName: PROVIDER_ENV_VARS[provider] }
-            : { kind: "literal", value: apiKey },
-      });
-      earlySavedProviderRef.current = provider;
+  const wizard = useWizardState({
+    callbacks: {
+      saveSettings: (payload) => saveSettings.mutateAsync(payload),
+      saveConfig: (payload) => saveConfig.mutateAsync(payload),
+      deleteCredentials: (provider) => deleteCredentials.mutateAsync(provider),
     },
-    deleteCredentials: async (provider) => {
-      await deleteCredentials.mutateAsync(provider);
-    },
+    onComplete: () => navigate({ screen: "home" }),
   });
-
-  function clearEarlySaveState() {
-    earlySavedProviderRef.current = null;
-    wizard.acknowledgeEarlySave();
-    setError((current) => (current?.startsWith(EARLY_SAVE_CLEANUP_ERROR) ? null : current));
-  }
 
   const isSaving = saveSettings.isPending || saveConfig.isPending || wizard.isEarlySaving;
 
@@ -94,47 +68,16 @@ export function useOnboardingWizard() {
     wizard.updateData({ defaultLenses: v });
   }
 
-  async function handleComplete() {
-    setError(null);
-    const result = await saveWizard(wizard.wizardData, {
-      saveSettings: (payload) => saveSettings.mutateAsync(payload),
-      saveConfig: (payload) => saveConfig.mutateAsync(payload),
-    });
-    if (result.status === "partial") {
-      setError(getErrorMessage(result.error, "Setup failed"));
-      return;
-    }
-    clearEarlySaveState();
-    navigate({ screen: "home" });
-  }
-
-  async function cleanupEarlySave() {
-    const provider = earlySavedProviderRef.current;
-    if (!provider) {
-      await wizard.cleanupEarlySave();
-      return;
-    }
-
-    try {
-      await deleteCredentials.mutateAsync(provider);
-      clearEarlySaveState();
-    } catch (cleanupError) {
-      setError(
-        `${EARLY_SAVE_CLEANUP_ERROR}: ${getErrorMessage(cleanupError, "Retry to remove them.")}`,
-      );
-      throw cleanupError;
-    }
-  }
-
   function handleNext() {
     if (!wizard.canProceed) return;
     if (wizard.isLastStep) {
-      void handleComplete();
+      void wizard.complete();
       return;
     }
     wizard.next();
     setFocusArea("step");
     setNavIndex(0);
+    setApiKeyInputFocused(false);
   }
 
   function handleBack() {
@@ -142,11 +85,16 @@ export function useOnboardingWizard() {
     wizard.back();
     setFocusArea("step");
     setNavIndex(0);
+    setApiKeyInputFocused(false);
   }
 
   function toggleFocusArea() {
     setFocusArea((prev) => (prev === "step" ? "nav" : "step"));
     setNavIndex(0);
+  }
+
+  function toggleApiKeyInputFocus() {
+    setApiKeyInputFocused((focused) => !focused);
   }
 
   function moveNavIndex(direction: 1 | -1) {
@@ -164,8 +112,9 @@ export function useOnboardingWizard() {
     canProceed: wizard.canProceed,
     focusArea,
     navIndex,
+    apiKeyInputFocused,
     isSaving,
-    error,
+    error: wizard.error ?? wizard.earlySaveError,
 
     handleProviderChange,
     handleSecretsStorageChange,
@@ -174,10 +123,12 @@ export function useOnboardingWizard() {
     handleApiKeyChange,
     handleModelChange,
     handleLensesChange,
-    cleanupEarlySave,
+    cleanupEarlySave: wizard.cleanupEarlySave,
     handleNext,
     handleBack,
     toggleFocusArea,
+    toggleApiKeyInputFocus,
+    setApiKeyInputFocused,
     moveNavIndex,
   };
 }

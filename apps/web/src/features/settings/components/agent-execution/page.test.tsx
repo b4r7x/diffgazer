@@ -87,4 +87,16 @@ describe("SettingsAgentExecutionPage", () => {
     expect(cancel).toHaveFocus();
     expect(save).not.toHaveFocus();
   });
+
+  it("enables Save once a different execution mode is selected", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await waitFor(() => expect(screen.getByRole("radio", { name: /sequential/i })).toHaveFocus());
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+
+    await user.keyboard("{ArrowDown} ");
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+  });
 });

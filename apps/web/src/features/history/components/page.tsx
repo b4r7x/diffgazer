@@ -1,5 +1,6 @@
 import { matchQueryState } from "@diffgazer/core/api/hooks";
 import { deriveTrustStatus } from "@diffgazer/core/navigation";
+import { HISTORY_SEARCH_PLACEHOLDER } from "@diffgazer/core/review";
 import { isListNavigationKey, toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
@@ -7,6 +8,7 @@ import { Panel } from "@diffgazer/ui/components/panel";
 import { SearchInput } from "@diffgazer/ui/components/search-input";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { type KeyboardEvent, useRef } from "react";
+import { CenteredStatus } from "@/components/shared/centered-status";
 import { TrustPanel } from "@/components/shared/trust-panel";
 import { HistoryInsightsPane } from "@/features/history/components/insights-pane";
 import { TimelineList } from "@/features/history/components/timeline-list";
@@ -19,7 +21,7 @@ export function HistoryPage() {
   const { needsTrust } = deriveTrustStatus({ trust, projectId, repoRoot });
 
   if (needsTrust && projectId && repoRoot) {
-    return <TrustPanel directory={repoRoot} projectId={projectId} />;
+    return <TrustPanel directory={repoRoot} />;
   }
 
   return <HistoryPageContent />;
@@ -55,6 +57,7 @@ function HistoryPageContent() {
     setHighlightedIssueId,
   } = useHistoryPage();
 
+  const timelineRef = useRef<HTMLElement>(null);
   const runsListRef = useRef<HTMLDivElement>(null);
   const insightsListRef = useRef<HTMLDivElement>(null);
   const activeRunId = selectedRunId;
@@ -65,6 +68,7 @@ function HistoryPageContent() {
     activeRunId,
     hasRuns: mappedRuns.length > 0,
     searchInputRef,
+    timelineRef,
     runsListRef,
     insightsListRef,
     highlightedIssueId,
@@ -84,26 +88,26 @@ function HistoryPageContent() {
   };
 
   const guard = matchQueryState(reviewsQuery, {
-    loading: () => (
-      <div className="flex flex-col flex-1 items-center justify-center text-tui-muted">
-        <span>Loading reviews...</span>
-      </div>
-    ),
-    error: (err) => (
-      <div className="flex flex-col flex-1 items-center justify-center text-tui-red">
-        <span>Error: {err.message}</span>
-      </div>
-    ),
+    loading: () => <CenteredStatus>Loading runs...</CenteredStatus>,
+    error: (err) => <CenteredStatus tone="error">Error: {err.message}</CenteredStatus>,
     success: () => null,
   });
 
   if (guard) return guard;
 
+  const warnings = reviewsQuery.data?.warnings ?? [];
+
   return (
     <div className="flex flex-col flex-1 overflow-hidden px-4 pb-2">
       <div className="flex items-center gap-6 mb-0 text-sm select-none shrink-0">
-        <span className="py-2 text-sm font-medium">Reviews</span>
+        <span className="py-2 text-sm font-medium">Runs</span>
       </div>
+
+      {warnings.length > 0 ? (
+        <output className="shrink-0 mb-1 text-sm text-warning-text">
+          {warnings.length} saved review{warnings.length === 1 ? "" : "s"} could not be read.
+        </output>
+      ) : null}
 
       <SearchInput
         ref={searchInputRef}
@@ -119,24 +123,25 @@ function HistoryPageContent() {
             handleSearchArrowDown();
           }
         }}
-        placeholder="Search runs by ID..."
+        placeholder={HISTORY_SEARCH_PLACEHOLDER}
         prefix={
-          <span aria-hidden="true" className="text-tui-blue font-bold">
+          <span aria-hidden="true" className="text-info-text font-bold">
             /
           </span>
         }
-        className="border-tui-border bg-tui-bg text-sm"
+        className="border-border bg-background text-sm"
       />
 
       <div data-row="history" className="flex flex-1 overflow-hidden gap-px">
         <Panel
+          ref={timelineRef}
           as="aside"
           aria-label="Review sections"
           data-pane="timeline"
           data-focused={focusZone === "timeline" || undefined}
-          className="w-48 flex flex-col shrink-0 overflow-hidden border border-tui-border data-[focused]:border-tui-blue focus:outline-none"
+          className="w-48 flex flex-col shrink-0 overflow-hidden border border-border data-[focused]:border-info focus:outline-none"
         >
-          <SectionHeader as="h2" variant="muted" bordered className="mb-0 p-3 border-tui-border">
+          <SectionHeader as="h2" variant="muted" bordered className="mb-0 p-3 border-border">
             Sections
           </SectionHeader>
           <div className="flex-1 overflow-y-auto p-2">
@@ -158,15 +163,15 @@ function HistoryPageContent() {
           as="section"
           data-pane="runs"
           data-focused={focusZone === "runs" || undefined}
-          className="flex-1 min-w-0 flex flex-col overflow-hidden border border-tui-border data-[focused]:border-tui-blue focus:outline-none"
+          className="flex-1 min-w-0 flex flex-col overflow-hidden border border-border data-[focused]:border-info focus:outline-none"
         >
           <SectionHeader
             as="h2"
             variant="muted"
             bordered
-            className="mb-0 flex justify-between overflow-hidden p-3 border-tui-border"
+            className="mb-0 flex justify-between overflow-hidden p-3 border-border"
           >
-            <span className="truncate">Reviews</span>
+            <span className="truncate">Runs</span>
             <span className="shrink-0 ml-2">Sort: Recent</span>
           </SectionHeader>
           <div className="flex-1 overflow-y-auto p-2">
@@ -197,10 +202,10 @@ function HistoryPageContent() {
                     key={run.id}
                     id={run.id}
                     onDoubleClick={() => handleRunActivate(run.id)}
-                    className="border-b border-tui-border last:border-b-0"
+                    className="border-b border-border last:border-b-0"
                   >
                     <NavigationList.Title>{run.displayId}</NavigationList.Title>
-                    <NavigationList.Status className="text-tui-muted group-data-[active]:text-primary-foreground/70">
+                    <NavigationList.Status className="text-muted-foreground group-data-[highlighted]:text-primary-foreground/70">
                       {run.timestamp}
                     </NavigationList.Status>
                     <NavigationList.Meta className="min-w-0 flex-wrap">
@@ -208,18 +213,24 @@ function HistoryPageContent() {
                         {run.branch}
                       </NavigationList.Badge>
                       <NavigationList.Subtitle>{run.provider}</NavigationList.Subtitle>
-                      <span className="min-w-full line-clamp-2 text-sm text-muted-foreground group-data-[active]:text-primary-foreground/85">
+                      <span className="min-w-full line-clamp-2 text-sm text-muted-foreground group-data-[highlighted]:text-primary-foreground/85">
                         {run.summary}
                       </span>
                     </NavigationList.Meta>
                   </NavigationList.Item>
                 ))}
               </NavigationList>
-            ) : (
-              <EmptyState variant="inline" size="sm" live className="h-full">
-                {emptyRunsMessage}
-              </EmptyState>
-            )}
+            ) : null}
+            {/* Live region stays mounted across the runs→empty transition so the
+                empty message is announced; empty (and collapsed) while runs exist. */}
+            <EmptyState
+              variant="inline"
+              size="sm"
+              live
+              className={mappedRuns.length === 0 ? "h-full" : "p-0"}
+            >
+              {mappedRuns.length === 0 ? emptyRunsMessage : null}
+            </EmptyState>
           </div>
         </Panel>
 
@@ -228,7 +239,7 @@ function HistoryPageContent() {
           aria-label="Review insights"
           data-pane="insights"
           data-focused={focusZone === "insights" || undefined}
-          className="w-80 min-h-0 flex flex-col shrink-0 overflow-hidden border border-tui-border data-[focused]:border-tui-blue focus:outline-none"
+          className="w-80 min-h-0 flex flex-col shrink-0 overflow-hidden border border-border data-[focused]:border-info focus:outline-none"
         >
           <HistoryInsightsPane
             runId={selectedRun ? `#${selectedRun.id.slice(0, 4)}` : null}

@@ -4,10 +4,16 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useStepperStepContext } from "./stepper-context";
 
+/** Props for stepper content. */
 export interface StepperContentProps extends Omit<ComponentProps<"div">, "children"> {
+  /**
+   * Expandable content (e.g. nested StepperSubstep rows). Hidden, aria-hidden, and inert when
+   * collapsed.
+   */
   children: ReactNode;
 }
 
+/** Expandable content panel (substeps, custom content) */
 export function StepperContent({ children, className, ...props }: StepperContentProps) {
   const { isExpanded, triggerId, contentId } = useStepperStepContext();
 

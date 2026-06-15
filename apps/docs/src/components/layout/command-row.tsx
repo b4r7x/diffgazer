@@ -1,6 +1,7 @@
 import { Kbd } from "@diffgazer/ui/components/kbd";
-import { useMobileNav } from "@/lib/mobile-nav-context";
-import { useSearchOpen } from "@/lib/search-context";
+import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
+import { useMobileNav } from "@/hooks/mobile-nav-context";
+import { useSearchOpen } from "@/hooks/search-context";
 
 function MobileNavToggle() {
   const { open, setOpen, isDesktop, sidebarEnabled, menuButtonRef } = useMobileNav();
@@ -30,7 +31,7 @@ export function CommandRow() {
   const { setOpen } = useSearchOpen();
 
   return (
-    <div className="flex shrink-0 items-center border-b border-border bg-[var(--tui-chrome-band-bg)] px-4 py-2">
+    <div className="flex shrink-0 items-center border-b border-border bg-background px-4 py-2">
       <MobileNavToggle />
       <span className="mr-3 font-bold text-foreground" aria-hidden="true">
         ❯
@@ -45,10 +46,7 @@ export function CommandRow() {
           /
         </Kbd>
       </button>
-      <span
-        aria-hidden="true"
-        className="ml-4 shrink-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
-      >
+      <span aria-hidden="true" className={`ml-4 shrink-0 ${CHROME_LABEL_CLASS}`}>
         [MODE: CMD]
       </span>
     </div>

@@ -2,10 +2,9 @@
 
 import {
   Children,
-  type HTMLAttributes,
+  type ComponentProps,
   isValidElement,
   type ReactNode,
-  type Ref,
   useId,
   useMemo,
 } from "react";
@@ -14,14 +13,22 @@ import { cn } from "@/lib/utils";
 import { SidebarSectionContext } from "./sidebar-section-context";
 import { SidebarSectionTitle } from "./sidebar-section-title";
 
-export interface SidebarSectionProps extends HTMLAttributes<HTMLDivElement> {
-  ref?: Ref<HTMLDivElement>;
+/** Props for sidebar section. */
+export interface SidebarSectionProps extends ComponentProps<"div"> {
+  /**
+   * When true, Sidebar.SectionTitle becomes a disclosure toggle that expands/collapses the
+   * section.
+   */
   collapsible?: boolean;
+  /** Controlled open state for the section. */
   open?: boolean;
+  /** Fired when the section open state changes. */
   onOpenChange?: (open: boolean) => void;
+  /** Initial open state for the section. */
   defaultOpen?: boolean;
 }
 
+/** Grouping container (optional collapsible, supports controlled open/onOpenChange) */
 export function SidebarSection({
   ref,
   collapsible = false,

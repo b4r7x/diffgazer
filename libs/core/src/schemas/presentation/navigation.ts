@@ -44,7 +44,7 @@ export const SETTINGS_MENU_ITEMS: SettingsMenuItem[] = [
   {
     id: "trust",
     label: "Trust & Permissions",
-    description: "Manage directory trust and capabilities",
+    description: "Manage repository trust and permissions",
   },
   { id: "theme", label: "Theme", description: "Change color theme preferences" },
   { id: "provider", label: "Provider", description: "Select AI provider for code review" },

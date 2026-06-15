@@ -7,7 +7,7 @@ import { buildExpectedChunkContentsForItem, extractCssChunkContents } from "../u
 import {
   getNamespacedItem,
   parseInstallName,
-  validateAnyInstallableName,
+  validateInstallableNames,
 } from "../utils/namespaces.js";
 import { resolveInstallPath } from "../utils/paths.js";
 import {
@@ -24,7 +24,7 @@ function resolveIntegrationMode(
   itemName: string,
   manifestPath: string,
 ): IntegrationMode {
-  const manifest = ctx.config.getManifestItems(cwd) as InstalledComponents | undefined;
+  const manifest = ctx.config.getManifestItems(cwd);
   const entry = manifest?.[itemName];
   const fileEntry = entry?.files?.find((file) => file.path === manifestPath);
   return fileEntry?.integrationMode ?? entry?.integrationMode;
@@ -83,7 +83,7 @@ function buildCssChunkDriftFiles(
   cwd: string,
   config: ResolvedConfig,
 ): ChunkDriftFile[] {
-  const manifest = ctx.config.getManifestItems(cwd) as InstalledComponents | undefined;
+  const manifest = ctx.config.getManifestItems(cwd);
   const chunkHashes = manifest?.[itemName]?.cssChunks ?? [];
   if (chunkHashes.length === 0) return [];
 
@@ -114,7 +114,7 @@ export const diffCommand = createDiffCommand({
   resolveDefaultNames: ({ cwd }) => {
     return Object.keys(ctx.config.getManifestItems(cwd) ?? {}).filter((name) => name.includes("/"));
   },
-  validateRequestedNames: validateAnyInstallableName,
+  validateRequestedNames: validateInstallableNames,
   resolveFilesForName: ({ name, cwd, config }) => {
     const parsed = parseInstallName(name);
     const item = getNamespacedItem(name);

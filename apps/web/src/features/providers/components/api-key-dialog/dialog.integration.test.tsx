@@ -89,6 +89,38 @@ describe("ApiKeyDialog footer integration", () => {
     expect(screen.getByText("Back")).toBeInTheDocument();
   });
 
+  it("announces a failed save inline and marks the key input invalid without a toast", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockRejectedValue(new Error("Storage not configured"));
+
+    render(
+      <FooterProvider>
+        <KeyboardProvider>
+          <ApiKeyDialog
+            open
+            onOpenChange={vi.fn()}
+            providerName="Z.AI"
+            envVarName="ZAI_API_KEY"
+            onSubmit={onSubmit}
+          />
+        </KeyboardProvider>
+      </FooterProvider>,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: /API Key/ });
+    const keyInput = within(dialog).getByLabelText("Z.AI API Key");
+    await user.type(keyInput, "sk-test-key");
+    await user.click(within(dialog).getByRole("button", { name: "Confirm" }));
+
+    // WCAG 3.3.1/4.1.3: the failure is announced inside the focus-trapped dialog.
+    const alert = await within(dialog).findByRole("alert");
+    expect(alert).toHaveTextContent("Storage not configured");
+    expect(keyInput).toHaveAttribute("aria-invalid", "true");
+    expect(keyInput).toHaveAttribute("aria-describedby", alert.id);
+    // The dialog owns the report; nothing closes it on failure.
+    expect(dialog).toBeInTheDocument();
+  });
+
   it("returns focus to the trigger button after the dialog closes", async () => {
     const user = userEvent.setup();
 

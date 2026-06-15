@@ -1,15 +1,15 @@
 ---
 title: Review output and severities
-description: The shape of a finished review, how findings are ranked by severity, and how they group by category.
+description: The shape of a finished review, how issues are ranked by severity, and how they group by category.
 ---
 
-A finished review is a summary line plus a flat list of findings. Every finding carries the same fixed set of fields, so the [results view](/app/web/results) always has the same data to draw from no matter which lens produced it. This page documents that data model: the severity levels, the categories, the fields on a single issue, and the built-in profiles that decide which lenses run.
+A finished review is a summary line plus a flat list of issues. Each issue (sometimes called a finding) carries the same fixed set of fields, so the [results view](/app/web/results) always has the same data to draw from no matter which lens produced it. This page documents that data model: the severity levels, the categories, the fields on a single issue, and the built-in profiles that decide which lenses run.
 
-If you want to know how findings get produced in the first place, read [the review pipeline](/app/concepts/review-pipeline). This page is about what comes out the other end.
+If you want to know how issues get produced in the first place, read [the review pipeline](/app/concepts/review-pipeline). This page is about what comes out the other end.
 
 ## Severities
 
-Every finding has exactly one severity. There are five, listed here from most to least severe:
+Every issue has exactly one severity. There are five, listed here from most to least severe:
 
 | Severity  | Meaning                                                              |
 |-----------|---------------------------------------------------------------------|
@@ -25,7 +25,7 @@ The terminal UI colors each severity differently, and the exact color depends on
 
 ## Categories
 
-Each finding is also tagged with one category, describing what kind of problem it is. There are seven:
+Each issue is also tagged with one category, describing what kind of problem it is. There are seven:
 
 | Category      | What it covers                                          |
 |---------------|--------------------------------------------------------|
@@ -37,35 +37,34 @@ Each finding is also tagged with one category, describing what kind of problem i
 | `readability` | Code that is hard to follow.                            |
 | `style`       | Formatting and stylistic conventions.                  |
 
-> Note: The seven categories are not the same as the five lenses. A lens is a reviewer pass with a focus area (correctness, security, performance, simplicity, tests). A category is the label attached to a finding. The two lists overlap but do not match: `api`, `readability`, and `style` are categories with no lens of the same name, and `simplicity` is a lens whose findings surface under categories like `readability`. So a review running three lenses can still return findings across more than three categories.
+> Note: The seven categories are not the same as the five lenses. A lens is a reviewer pass with a focus area (correctness, security, performance, simplicity, tests). A category is the label attached to an issue. The two lists overlap but do not match: `api`, `readability`, and `style` are categories with no lens of the same name, and `simplicity` is a lens whose issues surface under categories like `readability`. So a review running three lenses can still return issues across more than three categories.
 
 ## Issue fields
 
-A single finding follows a fixed shape. The results view spreads these across a few tabs, but the underlying record is one object:
+A single issue follows a fixed shape. The results view spreads these across a few tabs, but the underlying record is one object:
 
 | Field             | Type             | Description                                                        |
 |-------------------|------------------|-------------------------------------------------------------------|
-| `id`              | string           | Stable identifier for the finding.                                |
+| `id`              | string           | Stable identifier for the issue.                                  |
 | `severity`        | severity         | One of the five levels above.                                     |
 | `category`        | category         | One of the seven categories above.                                |
-| `title`           | string           | Short headline for the finding.                                   |
-| `file`            | string           | The file the finding points at.                                   |
+| `title`           | string           | Short headline for the issue.                                     |
+| `file`            | string           | The file the issue points at.                                     |
 | `line_start`      | number or null   | First line of the range, or null when not line-specific.          |
 | `line_end`        | number or null   | Last line of the range, or null.                                  |
-| `rationale`       | string           | The reasoning behind the finding.                                 |
+| `rationale`       | string           | The reasoning behind the issue.                                   |
 | `recommendation`  | string           | What to do about it.                                              |
 | `suggested_patch` | string or null   | A proposed fix as a diff, or null when none was produced.         |
 | `confidence`      | number (0 to 1)  | How sure the reviewer is, from 0 to 1.                            |
 | `symptom`         | string           | What is observably wrong.                                         |
-| `whyItMatters`    | string           | Why the finding is worth your attention.                          |
+| `whyItMatters`    | string           | Why the issue is worth your attention.                            |
 | `fixPlan`         | step[] (optional)| Ordered steps to fix it; each has an action and optional files and risk. |
 | `betterOptions`   | string[] (optional) | Alternative approaches worth considering.                      |
 | `testsToAdd`      | string[] (optional) | Tests that would catch this in future.                         |
 | `evidence`        | evidence[]       | Supporting references: code excerpts, docs, traces, or external sources. |
-| `trace`           | trace[] (optional) | The agent steps taken to reach the finding.                     |
-| `enrichment`      | object (optional)| Added context such as git blame and surrounding lines.            |
+| `trace`           | trace[] (optional) | The agent steps taken to reach the issue.                       |
 
-The optional fields are exactly that. A finding with no suggested fix has `suggested_patch` set to null and no Patch tab in the results view, and a finding with no `trace` shows an empty Trace tab. For how each of these renders, see [reading results](/app/web/results).
+The optional fields are exactly that. An issue with no suggested fix has `suggested_patch` set to null and no Patch tab in the results view, and an issue with no `trace` shows an empty Trace tab. For how each of these renders, see [reading results](/app/web/results).
 
 ## Profiles
 
@@ -74,17 +73,17 @@ A profile is a named preset that picks which lenses run and, optionally, a minim
 | Profile    | Name                | Lenses                              | Minimum severity |
 |------------|---------------------|-------------------------------------|------------------|
 | `quick`    | Quick Review        | correctness                         | high             |
-| `strict`   | Strict Review       | correctness, security, tests        | none             |
+| `strict`   | Strict Review       | correctness, security, tests        | global threshold (default `low`) |
 | `perf`     | Performance Review  | correctness, performance            | medium           |
-| `security` | Security Audit      | security, correctness               | none             |
+| `security` | Security Audit      | security, correctness               | global threshold (default `low`) |
 
-`quick` is the fast path: it runs only the correctness lens and drops anything below high severity, so you see blockers and high-severity issues and nothing else. `strict` is the broad pass with no severity floor, so it surfaces everything down to nits across correctness, security, and tests. `perf` pairs the performance lens with a correctness baseline and hides anything below medium. `security` leads with the security lens, backed by correctness, and keeps every severity.
+`quick` is the fast path: it runs only the correctness lens and drops anything below high severity, so you see blockers and high-severity issues and nothing else. `strict` is the broad pass across correctness, security, and tests, but it still respects the configured `severityThreshold`. `perf` pairs the performance lens with a correctness baseline and hides anything below medium. `security` leads with the security lens, backed by correctness, and also respects the configured threshold.
 
-When a profile sets a minimum severity, findings below that level are filtered out before you ever see them. A profile with no minimum returns the full range.
+The configured [`severityThreshold`](/app/reference/configuration#settings) is always a floor. A profile minimum can tighten that floor, but it cannot relax it. To keep the full range down to `nit`, set `severityThreshold` to `nit`; profiles without their own minimum, such as `strict` and `security`, then inherit that wider range.
 
 ## Related
 
 - [Reading results](/app/web/results) shows how these fields render across the issue tabs.
-- [The review pipeline](/app/concepts/review-pipeline) explains how findings get produced.
+- [The review pipeline](/app/concepts/review-pipeline) explains how issues get produced.
 - [Reference: providers](/app/reference/providers) covers the models that generate them.
-- [Reference: environment variables](/app/reference/environment-variables) lists the variables diffgazer reads.
+- [Reference: environment variables](/app/reference/environment-variables) lists the variables Diffgazer reads.

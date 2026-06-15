@@ -1,20 +1,33 @@
 "use client";
 
-import type { VariantProps } from "class-variance-authority";
 import { createContext, useContext } from "react";
-import type { keyValueVariants } from "./key-value";
-import type { valueVariants } from "./key-value-item";
 
-export type KeyValueLayout = NonNullable<VariantProps<typeof keyValueVariants>["layout"]>;
-export type KeyValueVariant = NonNullable<VariantProps<typeof valueVariants>["variant"]>;
+/**
+ * Compound component for displaying labeled data. KeyValue wraps one or more KeyValue.Item rows
+ * in a semantic description list.
+ */
+export type KeyValueLayout = "horizontal" | "vertical";
+/** Allowed key value variant values. */
+export type KeyValueVariant = "default" | "warning" | "info" | "success" | "error";
 
+/** Context value shared by key value. */
 interface KeyValueContextValue {
+  /**
+   * Horizontal places label and value side-by-side; vertical stacks them. Propagated to
+   * KeyValue.Item via context.
+   */
   layout: KeyValueLayout;
+  /**
+   * Adds row borders and switches items to compact xs sizing. Propagated to KeyValue.Item via
+   * context.
+   */
   bordered: boolean;
 }
 
+/** React context backing key value. */
 const KeyValueContext = createContext<KeyValueContextValue | undefined>(undefined);
 
+/** Reads the key value context. */
 function useKeyValueContext(): KeyValueContextValue {
   const context = useContext(KeyValueContext);
   if (context === undefined) {

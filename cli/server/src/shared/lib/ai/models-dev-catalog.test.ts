@@ -5,6 +5,25 @@ import { PROVIDER_OVERLAY } from "@diffgazer/core/catalog";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { ProviderModelsResponseSchema } from "@diffgazer/core/schemas/config";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const writeJsonFileSyncFailPaths = vi.hoisted(() => new Set<string>());
+
+vi.mock("../fs.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../fs.js")>();
+  return {
+    ...real,
+    writeJsonFileSync: (filePath: string, data: unknown, mode?: number) => {
+      if (writeJsonFileSyncFailPaths.has(filePath)) {
+        const error = new Error("ENOSPC: no space left on device") as NodeJS.ErrnoException;
+        error.code = "ENOSPC";
+        throw error;
+      }
+
+      return real.writeJsonFileSync(filePath, data, mode);
+    },
+  };
+});
+
 import { requireValue } from "../../../testing/assertions.js";
 import {
   fetchModelsDevCatalog,
@@ -55,10 +74,12 @@ beforeEach(() => {
   testHome = fs.mkdtempSync(path.join(os.tmpdir(), "dg-models-dev-"));
   process.env.DIFFGAZER_HOME = testHome;
   delete process.env.DIFFGAZER_OFFLINE;
+  writeJsonFileSyncFailPaths.clear();
   resetCatalogParseMemo();
   vi.restoreAllMocks();
 });
 afterEach(() => {
+  writeJsonFileSyncFailPaths.clear();
   delete process.env.DIFFGAZER_HOME;
   delete process.env.DIFFGAZER_OFFLINE;
   fs.rmSync(testHome, { recursive: true, force: true });
@@ -373,18 +394,12 @@ describe("getProviderModels — three-tier fallback", () => {
 
   it("disk-write failure on a live fetch: still serves the fetched models, never throws out of the request", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(MODELS_DEV_SAMPLE));
-    // Make the cache directory read-only so the atomic write fails at the real fs
-    // boundary (EACCES), exactly like ENOSPC/EROFS in the field. No cache file
-    // exists, so the read path is a clean first run.
-    fs.chmodSync(testHome, 0o500);
-    try {
-      const result = await getProviderModels("gemini");
-      expect(result.source).toBe("live");
-      expect(result.models.map((m) => m.id)).toContain("gemini-2.5-flash");
-      expect(fs.existsSync(cachePath())).toBe(false);
-    } finally {
-      fs.chmodSync(testHome, 0o700);
-    }
+    writeJsonFileSyncFailPaths.add(cachePath());
+
+    const result = await getProviderModels("gemini");
+    expect(result.source).toBe("live");
+    expect(result.models.map((m) => m.id)).toContain("gemini-2.5-flash");
+    expect(fs.existsSync(cachePath())).toBe(false);
   });
 
   it("corrupt cache file present: quarantines it and uses the snapshot baseline to guard a degenerate live fetch", async () => {

@@ -10,16 +10,21 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
-import { composeRefs } from "@/lib/compose-refs";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { segmentedItemVariants } from "@/lib/segmented-variants";
 import { cn } from "@/lib/utils";
 import { useToggleGroupContext } from "./toggle-group-context";
 
+/** Props for toggle group item. */
 export interface ToggleGroupItemProps<TValue extends string = string>
   extends Omit<ComponentPropsWithRef<"button">, "children" | "disabled" | "value"> {
+  /** Stable identifier matched against the group value. */
   value: TValue;
+  /** Optional trailing count rendered as [label count]. */
   count?: number;
+  /** Disables this item only; remains in the navigation order with aria-disabled. */
   disabled?: boolean;
+  /** Item label. */
   children: ReactNode;
 }
 
@@ -28,14 +33,14 @@ function BracketMarkers({ children }: { children: ReactNode }) {
     <>
       <span
         aria-hidden="true"
-        className="mr-1 text-foreground opacity-0 group-data-[active=true]/segmented-item:opacity-100"
+        className="mr-1 text-foreground opacity-0 group-data-[state=on]/segmented-item:opacity-100"
       >
         [
       </span>
       {children}
       <span
         aria-hidden="true"
-        className="ml-1 text-foreground opacity-0 group-data-[active=true]/segmented-item:opacity-100"
+        className="ml-1 text-foreground opacity-0 group-data-[state=on]/segmented-item:opacity-100"
       >
         ]
       </span>
@@ -43,6 +48,7 @@ function BracketMarkers({ children }: { children: ReactNode }) {
   );
 }
 
+/** Compound toggle button group with keyboard navigation for single or multiple selection. */
 export function ToggleGroupItem<TValue extends string = string>({
   value,
   count,
@@ -59,6 +65,7 @@ export function ToggleGroupItem<TValue extends string = string>({
   const context = useToggleGroupContext();
   const itemId = useId();
   const rootRef = useRef<HTMLButtonElement>(null);
+  const composedRef = useComposedRefs(rootRef, ref);
   const isActive = context.isItemSelected(value);
   const isHighlighted = context.highlightedValue === value;
   const isDisabled = context.disabled || !!disabled;
@@ -103,13 +110,13 @@ export function ToggleGroupItem<TValue extends string = string>({
     // biome-ignore lint/a11y/useAriaPropsSupportedByRole: role is conditionally "radio" (Biome cannot resolve the ternary); aria-checked is applied only in the radio branch and aria-pressed only in the button branch.
     <button
       {...props}
-      ref={composeRefs(rootRef, ref)}
+      ref={composedRef}
       type="button"
       role={context.usesButtonSemantics ? undefined : "radio"}
       data-value={value}
       data-diffgazer-navigation-item={context.usesButtonSemantics ? "button" : "radio"}
-      data-active={isActive || undefined}
-      data-highlighted={isHighlighted || undefined}
+      data-state={isActive ? "on" : "off"}
+      data-highlighted={isHighlighted ? "" : undefined}
       aria-checked={context.usesButtonSemantics ? undefined : isActive}
       aria-pressed={context.usesButtonSemantics ? isActive : undefined}
       aria-disabled={isDisabled || undefined}
@@ -121,7 +128,7 @@ export function ToggleGroupItem<TValue extends string = string>({
       onFocus={handleFocus}
       className={cn(
         // group/segmented-item lets the bracket markers (and any future
-        // decoration) react to data-active without a separate context read.
+        // decoration) react to data-state without a separate context read.
         "group/segmented-item",
         segmentedItemVariants({
           variant,

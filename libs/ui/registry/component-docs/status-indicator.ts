@@ -19,7 +19,12 @@ export const statusIndicatorDoc: ComponentDoc = {
     {
       title: "Status colors",
       content:
-        "status='online' uses primary, 'offline' uses muted-foreground, and 'busy' uses warning.",
+        "The status maps to a dot color: online uses primary, offline uses muted-foreground, and busy uses warning. Color is decoration only (WCAG 1.4.1) — the status word is always exposed to assistive technology (see Accessible status word).",
+    },
+    {
+      title: "Accessible status word",
+      content:
+        "Because the dot conveys state by color alone, the root renders an sr-only status word (defaulting to the status value) so screen-reader users perceive the state. Override the word with the label prop, or pass label={null} to suppress it when the visible children already state the status.",
     },
     {
       title: "Live region",
@@ -36,7 +41,7 @@ export const statusIndicatorDoc: ComponentDoc = {
         type: '"online" | "offline" | "busy"',
         required: false,
         defaultValue: '"online"',
-        description: "Dot color variant.",
+        description: "Semantic status. Drives the dot color and the default sr-only status word.",
       },
       pulse: {
         type: "boolean",
@@ -44,6 +49,13 @@ export const statusIndicatorDoc: ComponentDoc = {
         defaultValue: "true",
         description:
           "Animate the dot. Only the online status animates; busy and offline never pulse.",
+      },
+      label: {
+        type: "string | null",
+        required: false,
+        defaultValue: "the status value",
+        description:
+          "Screen-reader status word announced beside the color-only dot. Defaults to the status value; pass null to suppress it when the children already state the status.",
       },
       children: {
         type: "ReactNode",

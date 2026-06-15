@@ -7,9 +7,9 @@ import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { z } from "zod";
 import type { AIClient, AIError } from "../../shared/lib/ai/types.js";
-import { parseDiff } from "../../shared/lib/diff/parser.js";
-import type { ParsedDiff } from "../../shared/lib/diff/types.js";
 import { makeIssue } from "../../shared/lib/testing/factories.js";
+import { parseDiff } from "./engine/diff/parser.js";
+import type { ParsedDiff } from "./engine/diff/types.js";
 import type { DrilldownAIResponse } from "./schemas.js";
 
 // Boundary mock: git/service wraps the `git` CLI subprocess (external-process boundary); tests provide canned diff/blame/file-lines responses so drilldown behavior can be exercised without a real repository.
@@ -23,7 +23,6 @@ type GitService = ReturnType<typeof createGitService>;
 
 const REVIEW_ID = "550e8400-e29b-41d4-a716-446655440000";
 let tempHome: string;
-let failNextDiff = false;
 
 const DIFF = [
   "diff --git a/src/app.ts b/src/app.ts",
@@ -51,18 +50,10 @@ function makeGitService(overrides: Partial<GitService> = {}): GitService {
         conflicted: [],
       }),
     ),
-    getDiff: async () => {
-      if (failNextDiff) {
-        failNextDiff = false;
-        throw new Error("git failed");
-      }
-      return DIFF;
-    },
+    getDiff: async () => ok(DIFF),
     isGitInstalled: vi.fn(async () => true),
-    getBlame: vi.fn(async () => null),
-    getFileLines: vi.fn(async () => []),
     getHeadCommit: vi.fn(async () => ok("HEAD")),
-    getStatusHash: vi.fn(async () => "hash-1"),
+    getStatusHash: vi.fn(async () => ({ kind: "full" as const, hash: "hash-1" })),
     ...overrides,
   };
 }
@@ -70,7 +61,6 @@ function makeGitService(overrides: Partial<GitService> = {}): GitService {
 beforeEach(async () => {
   tempHome = await mkdtemp(join(tmpdir(), "diffgazer-drilldown-"));
   process.env.DIFFGAZER_HOME = tempHome;
-  failNextDiff = false;
   vi.resetModules();
   vi.clearAllMocks();
   vi.mocked(createGitService).mockReturnValue(makeGitService());
@@ -89,7 +79,7 @@ async function loadDrilldown() {
 }
 
 async function loadReviewStorage() {
-  return import("../../shared/lib/storage/reviews.js");
+  return import("./storage/reviews.js");
 }
 
 function makeMockClient(
@@ -112,7 +102,6 @@ function makeMockClient(
 
       return ok(schema.parse(generateResult.value) as z.output<T>);
     },
-    generateStream: vi.fn(),
   };
 }
 
@@ -142,16 +131,13 @@ async function removeStoredDiff(): Promise<void> {
 }
 
 describe("drilldownIssue", () => {
-  it("uses the parsed diff context and returns the AI analysis with trace events", async () => {
+  it("uses the parsed diff context and returns the AI analysis with a trace step", async () => {
     const { drilldownIssue } = await loadDrilldown();
     const issue = makeIssue({ file: "src/app.ts", line_start: 1, line_end: 2 });
     const diff = parseDiff(DIFF);
     const client = makeMockClient();
-    const events: unknown[] = [];
 
-    const result = await drilldownIssue(client, issue, diff, [], {
-      onEvent: (event) => events.push(event),
-    });
+    const result = await drilldownIssue(client, issue, diff, []);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -161,35 +147,10 @@ describe("drilldownIssue", () => {
         detailedAnalysis: "analysis",
         rootCause: "cause",
       });
+      // The drilldown records a real generateAnalysis trace step, not fabricated
+      // readFileContext tool events.
+      expect(result.value.trace?.[0]?.tool).toBe("generateAnalysis");
     }
-    expect(events).toMatchObject([
-      {
-        type: "tool_call",
-        agent: "detective",
-        tool: "readFileContext",
-        input: "src/app.ts:1-2",
-      },
-      {
-        type: "tool_result",
-        agent: "detective",
-        tool: "readFileContext",
-        summary: expect.stringContaining("src/app.ts"),
-      },
-    ]);
-  });
-
-  it("does not emit file-context events when the issue file is absent from the diff", async () => {
-    const { drilldownIssue } = await loadDrilldown();
-    const issue = makeIssue({ file: "src/missing.ts" });
-    const client = makeMockClient();
-    const events: unknown[] = [];
-
-    const result = await drilldownIssue(client, issue, parseDiff(DIFF), [], {
-      onEvent: (event) => events.push(event),
-    });
-
-    expect(result.ok).toBe(true);
-    expect(events).toEqual([]);
   });
 
   it("returns AI generation failures", async () => {
