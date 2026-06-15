@@ -158,7 +158,7 @@ jobs:
     steps:
       - name: Checkout
         if: ${{ contains(matrix.service.targets, inputs.target) }}
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
@@ -177,7 +177,7 @@ jobs:
 
       - name: Build and push SHA image
         if: ${{ contains(matrix.service.targets, inputs.target) }}
-        uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 # v6.16.0
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         with:
           context: .
           file: ${{ matrix.service.dockerfile }}
@@ -194,7 +194,7 @@ jobs:
 
       - name: Scan pushed SHA image
         if: ${{ contains(matrix.service.targets, inputs.target) }}
-        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # v0.28.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ env.IMAGE_REF }}
           format: table
@@ -229,7 +229,7 @@ jobs:
       COOLIFY_WEBHOOK_LANDING: ${{ secrets.COOLIFY_WEBHOOK_LANDING }}
     steps:
       - name: Checkout deployed SHA
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ needs.validate-request.outputs.target_sha }}
           persist-credentials: false
