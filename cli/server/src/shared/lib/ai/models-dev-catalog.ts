@@ -24,7 +24,7 @@ const SHRINK_GUARD_RATIO = 0.5;
 /** Exported as a test seam: colocated tests round-trip the on-disk cache shape. */
 export const ModelsDevCatalogCacheSchema = z.object({
   catalog: ModelsDevCatalogSchema,
-  fetchedAt: z.string().datetime(),
+  fetchedAt: z.iso.datetime(),
 });
 type ModelsDevCatalogCache = z.infer<typeof ModelsDevCatalogCacheSchema>;
 

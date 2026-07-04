@@ -18,7 +18,6 @@ export interface AvatarImageProps extends Omit<ImgHTMLAttributes<HTMLImageElemen
   ref?: Ref<HTMLImageElement>;
 }
 
-/** Square avatar with src/fallback/size. Shows image or monospace initials. */
 export function AvatarImage({ src, alt, className, ref, ...imgProps }: AvatarImageProps) {
   const { setImageStatus } = useAvatarContext();
   const { showImage, onLoad, onError } = useImageStatus(src);

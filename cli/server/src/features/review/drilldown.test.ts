@@ -153,6 +153,42 @@ describe("drilldownIssue", () => {
     }
   });
 
+  it("strips terminal escape bytes from the AI analysis before returning it", async () => {
+    const { drilldownIssue } = await loadDrilldown();
+    const esc = "\u001b";
+    const osc52 = `${esc}]52;c;payload\u0007`;
+
+    const result = await drilldownIssue(
+      makeMockClient(
+        ok({
+          detailedAnalysis: `analysis${osc52}`,
+          rootCause: `cause${osc52}`,
+          impact: `impact${osc52}`,
+          suggestedFix: `fix${osc52}`,
+          patch: `patch${osc52}`,
+          relatedIssues: [`related${osc52}`],
+          references: [`reference${osc52}`],
+        }),
+      ),
+      makeIssue(),
+      parseDiff(DIFF),
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(JSON.stringify(result.value)).not.toContain(esc);
+      expect(result.value).toMatchObject({
+        detailedAnalysis: "analysis",
+        rootCause: "cause",
+        impact: "impact",
+        suggestedFix: "fix",
+        patch: "patch",
+        relatedIssues: ["related"],
+        references: ["reference"],
+      });
+    }
+  });
+
   it("returns AI generation failures", async () => {
     const { drilldownIssue } = await loadDrilldown();
     const result = await drilldownIssue(

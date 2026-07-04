@@ -15,8 +15,6 @@ const KNOWN_LIBRARY_IDS: readonly DocsLibraryId[] = rawConfig.libraries.map(
 );
 export const DOCS_LIBRARY_IDS: readonly DocsLibraryId[] = KNOWN_LIBRARY_IDS;
 export const PRIMARY_DOCS_LIBRARY_ID: DocsLibraryId = rawConfig.primaryLibraryId;
-export const LOCAL_DGADD_PREREQUISITE =
-  "Before publication, install a locally packed @diffgazer/add tarball in this app; pnpm exec dgadd resolves only after that local install.";
 
 const LIBRARY_CONFIG = Object.fromEntries(
   docsLibrariesConfig.libraries.map((library) => [library.id, library]),
@@ -46,6 +44,11 @@ export function getDocsLibraryConfig(lib: DocsLibraryId): DocsLibraryConfigData 
 
 export function getEnabledDocsLibraries(): DocsLibraryConfigData[] {
   return docsLibrariesConfig.libraries.filter((config) => config.enabled);
+}
+
+export function hookFileName(name: string): string {
+  const hookName = name.startsWith("use-") ? name : `use-${name}`;
+  return `${hookName}.ts`;
 }
 
 function prefixInstallItem(itemName: string, itemPrefix?: string): string {

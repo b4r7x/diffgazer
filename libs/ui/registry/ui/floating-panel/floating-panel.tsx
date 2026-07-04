@@ -27,7 +27,7 @@ interface FloatingCSS extends CSSProperties {
 
 /** Context value shared by floating panel. */
 export interface FloatingPanelContextValue {
-  /** positioned used by floating panel. */
+  /** True once a viewport position has been resolved. */
   positioned: boolean;
   /** Preferred side relative to the trigger. */
   side: FloatingSide | null;
@@ -215,7 +215,7 @@ export function FloatingPanel({
 
   return (
     <Portal container={portalContainer}>
-      <FloatingPanelContext.Provider value={contextValue}>
+      <FloatingPanelContext value={contextValue}>
         <div
           data-slot="floating-panel"
           {...rest}
@@ -229,7 +229,7 @@ export function FloatingPanel({
         >
           {children}
         </div>
-      </FloatingPanelContext.Provider>
+      </FloatingPanelContext>
     </Portal>
   );
 }

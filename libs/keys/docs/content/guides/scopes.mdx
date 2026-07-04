@@ -15,9 +15,9 @@ KeyboardProvider maintains an internal stack. It starts with one entry:
 [ global ]
 ```
 
-The scope with the highest React `useId` order-segments wins. Precedence is a depth-major comparison of the parsed `useId` of each `useScope` call: segments are compared left to right, and the larger segment at the first difference takes priority. On the client, React assigns those ids in registration order, so this resolves to "the most recently mounted declarative scope wins" — a nested confirmation dialog that mounts in the same commit as its parent modal becomes active because it mounts after it. Imperative `pushScope` calls outrank all declarative scopes until popped.
+For declarative scopes pushed with `useScope`, the most recently mounted active scope wins. A nested confirmation dialog that mounts with its parent modal becomes active because it mounts after the modal. Imperative `pushScope` calls outrank declarative scopes until popped.
 
-> Under SSR/hydration, React bit-packs each id's tree position into a single value, so a more deeply nested scope in an earlier branch can produce a larger segment and outrank a shallower scope in a later branch — i.e. on the server the same comparison can resolve to deepest-wins. Keep mutually exclusive scopes (e.g. modal vs. its confirm dialog) in a parent→child nesting relationship rather than relying on sibling-branch ordering.
+> Implementation note: declarative scopes use React `useId` ordering so the provider can resolve scopes that mount in the same commit. Under SSR/hydration, React can encode deeper tree position ahead of later sibling order, so keep mutually exclusive scopes (for example, a modal and its confirm dialog) in a parent-to-child nesting relationship rather than relying on sibling branch ordering.
 
 ```
 [ global ]                    -> "global" is active

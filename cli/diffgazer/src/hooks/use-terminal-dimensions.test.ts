@@ -12,7 +12,7 @@ vi.mock("ink", () => ({
   useStdout: useStdoutMock,
 }));
 
-import { useTerminalDimensions } from "./use-terminal-dimensions.js";
+import { useTerminalDimensions } from "./use-terminal-dimensions";
 
 class FakeStdout extends EventEmitter {
   columns = 80;

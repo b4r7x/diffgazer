@@ -17,20 +17,21 @@ const routerBoundary = vi.hoisted(() => ({
 
 // Boundary mock: @tanstack/react-router is the external route context boundary.
 vi.mock("@tanstack/react-router", async () => {
-  const { RouterLinkMock } = await import("@/testing/router-mock");
+  const { RouterLinkMock, useLocationMock, useRouterStateMock } = await import(
+    "@/testing/router-mock"
+  );
   return {
     Link: RouterLinkMock,
-    useLocation: ({ select }: { select: (location: { pathname: string }) => unknown }) =>
-      select({ pathname: routerBoundary.pathname }),
-    useRouterState: ({
-      select,
-    }: {
-      select: (state: { location: { pathname: string }; status: "idle" }) => unknown;
-    }) =>
-      select({
-        location: { pathname: routerBoundary.pathname },
-        status: "idle",
-      }),
+    ...useLocationMock({
+      get pathname() {
+        return routerBoundary.pathname;
+      },
+    }),
+    ...useRouterStateMock({
+      get pathname() {
+        return routerBoundary.pathname;
+      },
+    }),
     useRouter: () => ({
       subscribe: () => () => {},
     }),

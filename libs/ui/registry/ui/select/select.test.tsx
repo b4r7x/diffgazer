@@ -104,6 +104,7 @@ function renderSelect({
 interface InlineRenderProps {
   readonly children: ReactNode;
   readonly multiple?: boolean;
+  readonly variant?: "default" | "card";
   readonly defaultValue?: string | string[];
   readonly onChange?: (v: string | string[]) => void;
   readonly defaultOpen?: boolean;
@@ -114,6 +115,7 @@ interface InlineRenderProps {
 function renderSelectInline({
   children,
   multiple,
+  variant = "card",
   defaultValue,
   onChange,
   defaultOpen,
@@ -121,7 +123,7 @@ function renderSelectInline({
   onHighlightChange,
 }: InlineRenderProps) {
   const commonProps = {
-    variant: "card" as const,
+    variant,
     ...(defaultOpen !== undefined ? { defaultOpen } : {}),
     ...(highlighted !== undefined ? { highlighted } : {}),
     ...(onHighlightChange ? { onHighlightChange } : {}),
@@ -158,6 +160,7 @@ function renderSelectInline({
 
 describe("Select selection", () => {
   it("supports direct namespaced parts with custom option UI inside Select.Item", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderSelectInline({
       defaultOpen: true,
@@ -173,27 +176,29 @@ describe("Select selection", () => {
       ),
     });
 
-    await userEvent.type(getSearchInput(), "ban");
-    await userEvent.click(screen.getByRole("option", { name: /banana/i }));
+    await user.type(getSearchInput(), "ban");
+    await user.click(screen.getByRole("option", { name: /banana/i }));
     expect(onChange).toHaveBeenCalledWith("banana");
   });
 
   it("toggles open/close on trigger click", async () => {
+    const user = userEvent.setup();
     renderSelect();
     const trigger = getSelectTrigger();
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     expect(trigger).not.toHaveAttribute("aria-controls");
 
-    await userEvent.click(trigger);
+    await user.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     expect(trigger).toHaveAttribute("aria-controls", screen.getByRole("listbox").id);
 
-    await userEvent.click(trigger);
+    await user.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     expect(trigger).not.toHaveAttribute("aria-controls");
   });
 
   it("does not invalidate the context value when the consumer passes an inline onChange", async () => {
+    const user = userEvent.setup();
     const seen: unknown[] = [];
     function Probe() {
       seen.push(useSelectContext("Probe"));
@@ -226,7 +231,7 @@ describe("Select selection", () => {
     render(<Parent />);
     const before = seen.length;
     const initialContext = seen.at(-1);
-    await userEvent.click(screen.getByRole("button", { name: "rerender" }));
+    await user.click(screen.getByRole("button", { name: "rerender" }));
     // Probe sits in a stable children element, so it re-renders ONLY if the
     // SelectContext value identity changed. A stable context means no extra
     // Probe render — and any render it does do reports the same object.
@@ -235,11 +240,12 @@ describe("Select selection", () => {
   });
 
   it("emits data-slot and data-state styling hooks on the trigger", async () => {
+    const user = userEvent.setup();
     renderSelect();
     const trigger = getSelectTrigger();
     expect(trigger).toHaveAttribute("data-slot", "select-trigger");
     expect(trigger).toHaveAttribute("data-state", "closed");
-    await userEvent.click(trigger);
+    await user.click(trigger);
     expect(trigger).toHaveAttribute("data-state", "open");
   });
 
@@ -249,56 +255,62 @@ describe("Select selection", () => {
   });
 
   it("selects a single value on click", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderSelect({ onChange });
-    await userEvent.click(getSelectTrigger());
-    await userEvent.click(screen.getByText("Banana"));
+    await user.click(getSelectTrigger());
+    await user.click(screen.getByText("Banana"));
     expect(onChange).toHaveBeenCalledWith("banana");
   });
 
   it("activates a default portalled option on mouse click before outside-click close", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderSelect({ variant: "default", onChange });
-    await userEvent.click(getSelectTrigger());
-    await userEvent.click(screen.getByRole("option", { name: /banana/i }));
+    await user.click(getSelectTrigger());
+    await user.click(screen.getByRole("option", { name: /banana/i }));
 
     expect(onChange).toHaveBeenCalledWith("banana");
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false");
   });
 
   it("selects multiple values on click", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderSelect({ multiple: true, defaultValue: [], onChange });
-    await userEvent.click(getSelectTrigger());
-    await userEvent.click(screen.getByText("Apple"));
+    await user.click(getSelectTrigger());
+    await user.click(screen.getByText("Apple"));
     expect(onChange).toHaveBeenCalledWith(["apple"]);
-    await userEvent.click(screen.getByText("Cherry"));
+    await user.click(screen.getByText("Cherry"));
     expect(onChange).toHaveBeenCalledWith(["apple", "cherry"]);
   });
 
   it("keeps a default portalled multi-select open while activating mouse options", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderSelect({ variant: "default", multiple: true, defaultValue: [], onChange });
-    await userEvent.click(getSelectTrigger());
-    await userEvent.click(screen.getByRole("option", { name: /apple/i }));
+    await user.click(getSelectTrigger());
+    await user.click(screen.getByRole("option", { name: /apple/i }));
 
     expect(onChange).toHaveBeenCalledWith(["apple"]);
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true");
   });
 
   it("deselects an already-selected value in multiple mode", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderSelect({ multiple: true, defaultValue: ["apple", "banana"], onChange });
-    await userEvent.click(getSelectTrigger());
-    await userEvent.click(screen.getByRole("option", { name: /Apple/i }));
+    await user.click(getSelectTrigger());
+    await user.click(screen.getByRole("option", { name: /Apple/i }));
     expect(onChange).toHaveBeenCalledWith(["banana"]);
   });
 
   it("stays open after selection in multiple mode", async () => {
+    const user = userEvent.setup();
     renderSelect({ multiple: true, defaultValue: [] });
     const trigger = getSelectTrigger();
-    await userEvent.click(trigger);
-    await userEvent.click(screen.getByText("Apple"));
+    await user.click(trigger);
+    await user.click(screen.getByText("Apple"));
     expect(trigger).toHaveAttribute("aria-expanded", "true");
   });
 
@@ -310,10 +322,11 @@ describe("Select selection", () => {
   });
 
   it("removes a selected tag by selecting its option again", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderSelect({ multiple: true, defaultValue: ["apple", "banana"], onChange });
-    await userEvent.click(getSelectTrigger());
-    await userEvent.click(screen.getByRole("option", { name: /Apple/i }));
+    await user.click(getSelectTrigger());
+    await user.click(screen.getByRole("option", { name: /Apple/i }));
     expect(onChange).toHaveBeenCalledWith(["banana"]);
   });
 
@@ -326,9 +339,10 @@ describe("Select selection", () => {
 
 describe("Select controlled state", () => {
   it("works in uncontrolled mode with defaultValue", async () => {
+    const user = userEvent.setup();
     renderSelect({ defaultValue: "banana" });
     expect(screen.getByText("Banana")).toBeInTheDocument();
-    await userEvent.click(getSelectTrigger());
+    await user.click(getSelectTrigger());
     expect(screen.getByRole("option", { name: /banana/i })).toHaveAttribute(
       "aria-selected",
       "true",
@@ -336,24 +350,53 @@ describe("Select controlled state", () => {
   });
 
   it("respects controlled open prop", async () => {
+    const user = userEvent.setup();
     const onOpenChange = vi.fn();
     renderSelect({ open: false, onOpenChange });
-    await userEvent.click(getSelectTrigger());
+    await user.click(getSelectTrigger());
     expect(onOpenChange).toHaveBeenCalledWith(true);
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false");
   });
 
+  it("closes the dropdown and notifies onOpenChange when disabled while open", async () => {
+    const onOpenChange = vi.fn();
+
+    function Harness({ disabled }: { disabled?: boolean }) {
+      return (
+        <Select variant="default" defaultOpen disabled={disabled} onOpenChange={onOpenChange}>
+          <Select.Trigger aria-label="Fruit">
+            <Select.Value placeholder={PICK_FRUIT} />
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="apple">Apple</Select.Item>
+            <Select.Item value="banana">Banana</Select.Item>
+          </Select.Content>
+        </Select>
+      );
+    }
+
+    const { rerender } = render(<Harness />);
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+
+    rerender(<Harness disabled />);
+
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    await waitFor(() => expect(screen.queryByRole("listbox")).not.toBeInTheDocument());
+  });
+
   it("respects controlled value prop", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderSelect({ value: "apple", onChange });
-    await userEvent.click(getSelectTrigger());
-    await userEvent.click(screen.getByText("Banana"));
+    await user.click(getSelectTrigger());
+    await user.click(screen.getByText("Banana"));
     expect(onChange).toHaveBeenCalledWith("banana");
-    await userEvent.click(getSelectTrigger());
+    await user.click(getSelectTrigger());
     expect(screen.getByRole("option", { name: /apple/i })).toHaveAttribute("aria-selected", "true");
   });
 
   it("treats explicit undefined value as a controlled empty value", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     render(
       <Select variant="card" value={undefined} onChange={onChange}>
@@ -368,13 +411,14 @@ describe("Select controlled state", () => {
     );
 
     expect(screen.getByText(PICK_FRUIT)).toBeInTheDocument();
-    await userEvent.click(getSelectTrigger());
-    await userEvent.click(screen.getByRole("option", { name: /banana/i }));
+    await user.click(getSelectTrigger());
+    await user.click(screen.getByRole("option", { name: /banana/i }));
     expect(onChange).toHaveBeenCalledWith("banana");
     expect(screen.getByText(PICK_FRUIT)).toBeInTheDocument();
   });
 
   it("keeps keyboard highlight when a different option is hovered", async () => {
+    const user = userEvent.setup();
     const onHighlightChange = vi.fn();
     renderSelectInline({
       defaultOpen: true,
@@ -392,7 +436,7 @@ describe("Select controlled state", () => {
 
     const appleOption = screen.getByRole("option", { name: /apple/i });
     const bananaOption = screen.getByRole("option", { name: /banana/i });
-    await userEvent.hover(bananaOption);
+    await user.hover(bananaOption);
 
     expect(onHighlightChange).not.toHaveBeenCalled();
     expect(screen.getByRole("listbox")).toHaveAttribute("aria-activedescendant", appleOption.id);
@@ -431,33 +475,36 @@ describe("Select empty-string values", () => {
   }
 
   it("selects an empty string value via mouse click in single mode", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderWithNoneOption({ onChange });
 
     expect(screen.getByText(PICK_FRUIT)).toBeInTheDocument();
-    await userEvent.click(getSelectTrigger());
-    await userEvent.click(screen.getByRole("option", { name: "None" }));
+    await user.click(getSelectTrigger());
+    await user.click(screen.getByRole("option", { name: "None" }));
 
     expect(onChange).toHaveBeenCalledWith("");
     expect(screen.getByText("None")).toBeInTheDocument();
   });
 
   it("retains empty string entries in multiple-select state", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderWithNoneOption({ multiple: true, defaultValue: [""], onChange });
 
     expect(screen.getByText("None")).toBeInTheDocument();
-    await userEvent.click(getSelectTrigger());
-    await userEvent.click(screen.getByRole("option", { name: /banana/i }));
+    await user.click(getSelectTrigger());
+    await user.click(screen.getByRole("option", { name: /banana/i }));
     expect(onChange).toHaveBeenCalledWith(["", "banana"]);
   });
 
   it("activates an empty string highlight via keyboard Enter", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderWithNoneOption({ defaultOpen: true, highlighted: "", onChange });
 
     screen.getByRole("listbox").focus();
-    await userEvent.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
     expect(onChange).toHaveBeenCalledWith("");
   });
 });
@@ -474,17 +521,19 @@ describe("Select disabled options", () => {
   );
 
   it("does not open when the whole select is disabled", async () => {
+    const user = userEvent.setup();
     renderSelect({ disabled: true });
-    await userEvent.click(getSelectTrigger());
+    await user.click(getSelectTrigger());
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false");
   });
 
   it("does not select disabled options by click", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderSelectInline({ defaultOpen: true, onChange, children: disabledBananaChildren });
 
     const disabledOption = screen.getByRole("option", { name: /banana/i });
-    await userEvent.click(disabledOption);
+    await user.click(disabledOption);
 
     expect(onChange).not.toHaveBeenCalled();
     expect(disabledOption).toHaveAttribute("aria-selected", "false");
@@ -496,25 +545,26 @@ describe("Select disabled options", () => {
   ])("skips a disabled option during keyboard navigation and commits the next enabled option on $commit", async ({
     commit,
   }) => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
-    renderSelectInline({ onChange, children: disabledBananaChildren });
+    renderSelectInline({ variant: "default", onChange, children: disabledBananaChildren });
 
-    await userEvent.click(getSelectTrigger());
+    await user.click(getSelectTrigger());
     const listbox = screen.getByRole("listbox");
     const disabledOption = screen.getByRole("option", { name: /banana/i });
     const blueberryOption = screen.getByRole("option", { name: /blueberry/i });
 
     listbox.focus();
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(listbox).toHaveAttribute("aria-activedescendant", blueberryOption.id);
     expect(listbox).not.toHaveAttribute("aria-activedescendant", disabledOption.id);
 
     if (commit === "Enter") {
-      await userEvent.keyboard("b");
+      await user.keyboard("b");
       expect(listbox).toHaveAttribute("aria-activedescendant", blueberryOption.id);
-      await userEvent.keyboard("{Enter}");
+      await user.keyboard("{Enter}");
     } else {
-      await userEvent.tab();
+      await user.tab();
       expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false");
     }
 
@@ -558,65 +608,72 @@ describe("Select search position", () => {
 
 describe("Select results live region", () => {
   it("mounts the status region before any query and swaps its text as the query changes", async () => {
+    const user = userEvent.setup();
     renderSelect({ withSearch: true, defaultOpen: true });
 
     const status = screen.getByRole("status");
     expect(status).toHaveTextContent("");
 
-    await userEvent.type(getSearchInput(), "ban");
+    await user.type(getSearchInput(), "ban");
     expect(status).toHaveTextContent("1 results");
 
-    await userEvent.clear(getSearchInput());
+    await user.clear(getSearchInput());
     expect(status).toHaveTextContent("");
   });
 });
 
 describe("Select search filtering", () => {
   it("filters items based on search query", async () => {
+    const user = userEvent.setup();
     renderSelect({ withSearch: true });
-    await userEvent.click(getSelectTrigger());
-    await userEvent.type(getSearchInput(), "ban");
+    await user.click(getSelectTrigger());
+    await user.type(getSearchInput(), "ban");
     expect(screen.getByText("Banana")).toBeInTheDocument();
     expect(screen.queryByText("Apple")).not.toBeInTheDocument();
     expect(screen.queryByText("Cherry")).not.toBeInTheDocument();
   });
 
   it("activates searchable default portalled options on mouse click", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderSelect({ variant: "default", withSearch: true, onChange });
 
-    await userEvent.click(getSelectTrigger());
-    await userEvent.type(getSearchInput(), "ban");
-    await userEvent.click(screen.getByRole("option", { name: /banana/i }));
+    await user.click(getSelectTrigger());
+    await user.type(getSearchInput(), "ban");
+    await user.click(screen.getByRole("option", { name: /banana/i }));
 
     expect(onChange).toHaveBeenCalledWith("banana");
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false");
   });
 
   it("shows empty state when search has no matches", async () => {
+    const user = userEvent.setup();
     renderSelect({ withSearch: true });
-    await userEvent.click(getSelectTrigger());
-    await userEvent.type(getSearchInput(), "zzz");
+    await user.click(getSelectTrigger());
+    await user.type(getSearchInput(), "zzz");
     expect(screen.getByText("> no results.")).toBeInTheDocument();
   });
 
   it("keeps Select.Empty outside the searchable listbox", async () => {
+    const user = userEvent.setup();
     renderSelect({ withSearch: true, defaultOpen: true });
     const listbox = screen.getByRole("listbox");
-    await userEvent.type(getSearchInput(), "zzz");
+    await user.type(getSearchInput(), "zzz");
     expect(listbox).not.toContainElement(screen.getByText("> no results."));
   });
 
   it("does not activate a filtered-out highlighted option", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderSelect({ withSearch: true, defaultOpen: true, highlighted: "banana", onChange });
 
-    await userEvent.type(getSearchInput(), "zzz");
-    await userEvent.keyboard("{Enter}");
+    await user.type(getSearchInput(), "zzz");
+    await user.keyboard("{Enter}");
     expect(onChange).not.toHaveBeenCalled();
   });
 
   it("keeps Home and End available for text editing in searchable input", async () => {
+    const user = userEvent.setup();
     const onHighlightChange = vi.fn();
     renderSelectInline({
       defaultOpen: true,
@@ -633,7 +690,7 @@ describe("Select search filtering", () => {
     });
 
     onHighlightChange.mockClear();
-    await userEvent.type(getSearchInput(), "{Home}{End}");
+    await user.type(getSearchInput(), "{Home}{End}");
     expect(onHighlightChange).not.toHaveBeenCalled();
   });
 
@@ -667,16 +724,18 @@ describe("Select search filtering", () => {
 
 describe("Select keyboard navigation", () => {
   it.each(["Enter", " ", "ArrowDown"])("opens with %s key on trigger", async (key) => {
+    const user = userEvent.setup();
     renderSelect();
     getSelectTrigger().focus();
-    await userEvent.keyboard(key === " " ? " " : `{${key}}`);
+    await user.keyboard(key === " " ? " " : `{${key}}`);
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true");
   });
 
   it("transfers focus from trigger toggle to search combobox when opening searchable Select via keyboard", async () => {
+    const user = userEvent.setup();
     renderSelect({ withSearch: true });
     getSelectTrigger().focus();
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
 
     const searchInput = getSearchInput();
     expect(searchInput).toHaveFocus();
@@ -685,13 +744,15 @@ describe("Select keyboard navigation", () => {
   });
 
   it("closes with Escape key", async () => {
-    renderSelect({ defaultOpen: true });
+    const user = userEvent.setup();
+    renderSelect({ variant: "default", defaultOpen: true });
     screen.getByRole("listbox").focus();
-    await userEvent.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false");
   });
 
   it("closes with Escape when focus has moved outside the listbox", async () => {
+    const user = userEvent.setup();
     render(
       <>
         <button type="button">Outside</button>
@@ -711,14 +772,15 @@ describe("Select keyboard navigation", () => {
     outside.focus();
     expect(outside).toHaveFocus();
 
-    await userEvent.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
 
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getByRole("listbox", { hidden: true })).toHaveAttribute("data-state", "closed");
+    expect(screen.queryByRole("listbox", { hidden: true })).not.toBeInTheDocument();
     expect(getSelectTrigger()).toHaveFocus();
   });
 
   it("closes with Escape from outside focus even when the outside handler prevents default", async () => {
+    const user = userEvent.setup();
     render(
       <>
         <button type="button" onKeyDown={(event) => event.preventDefault()}>
@@ -737,13 +799,14 @@ describe("Select keyboard navigation", () => {
     );
 
     screen.getByRole("button", { name: "Outside" }).focus();
-    await userEvent.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
 
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getByRole("listbox", { hidden: true })).toHaveAttribute("data-state", "closed");
+    expect(screen.queryByRole("listbox", { hidden: true })).not.toBeInTheDocument();
   });
 
   it("closes the focused open Select when another Select also starts open", async () => {
+    const user = userEvent.setup();
     render(
       <>
         <Select>
@@ -769,7 +832,7 @@ describe("Select keyboard navigation", () => {
 
     const branchTrigger = screen.getByRole("combobox", { name: "Branch" });
     branchTrigger.focus();
-    await userEvent.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
 
     expect(branchTrigger).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("combobox", { name: "Framework" })).toHaveAttribute(
@@ -777,12 +840,13 @@ describe("Select keyboard navigation", () => {
       "true",
     );
 
-    await userEvent.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
 
     expect(branchTrigger).toHaveAttribute("aria-expanded", "false");
   });
 
   it("honors preventDefault for Escape inside content key handlers", async () => {
+    const user = userEvent.setup();
     render(
       <Select defaultOpen>
         <Select.Trigger aria-label="Fruit">
@@ -796,39 +860,58 @@ describe("Select keyboard navigation", () => {
     );
 
     screen.getByRole("listbox").focus();
-    await userEvent.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
 
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("listbox")).toHaveAttribute("data-state", "open");
   });
 
   it("navigates and selects options from the listbox", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderSelect({ onChange, defaultOpen: true });
     const listbox = screen.getByRole("listbox");
     const bananaOption = screen.getByRole("option", { name: /banana/i });
     listbox.focus();
 
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(listbox).toHaveAttribute("aria-activedescendant", bananaOption.id);
-    await userEvent.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
     expect(onChange).toHaveBeenCalledWith("banana");
   });
 
   it("moves and selects options from the searchable input with Arrow keys and Enter", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderSelect({ withSearch: true, defaultOpen: true, onChange });
 
     const searchInput = getSearchInput();
     const bananaOption = screen.getByRole("option", { name: /banana/i });
 
-    await userEvent.type(searchInput, "{ArrowDown}");
+    await user.type(searchInput, "{ArrowDown}");
     expect(searchInput).toHaveAttribute("aria-activedescendant", bananaOption.id);
-    await userEvent.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
     expect(onChange).toHaveBeenCalledWith("banana");
   });
 
+  it("ignores Enter and Escape during IME composition in the searchable select", () => {
+    const onChange = vi.fn();
+    renderSelect({ withSearch: true, defaultOpen: true, onChange });
+
+    const searchInput = getSearchInput();
+    // fireEvent retained: userEvent cannot mark key events as IME composition events.
+    fireEvent.keyDown(searchInput, { key: "Enter", isComposing: true, keyCode: 229 });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true");
+
+    // fireEvent retained: userEvent cannot mark key events as IME composition events.
+    fireEvent.keyDown(searchInput, { key: "Escape", isComposing: true, keyCode: 229 });
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true");
+    expect(getSearchInput()).toBeInTheDocument();
+  });
+
   it("honors preventDefault in content key handlers", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     render(
       <Select variant="card" defaultOpen highlighted="banana" onChange={onChange}>
@@ -842,21 +925,83 @@ describe("Select keyboard navigation", () => {
     );
 
     screen.getByRole("listbox").focus();
-    await userEvent.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
     expect(onChange).not.toHaveBeenCalled();
   });
 
   it("closes on outside click", async () => {
+    const user = userEvent.setup();
     renderSelect({ defaultOpen: true });
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true");
-    await userEvent.click(document.body);
+    await user.click(document.body);
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false");
   });
 
+  it("card variant does not hijack Escape from an unrelated focused input", () => {
+    render(
+      <>
+        <input aria-label="Unrelated" />
+        <Select variant="card" defaultOpen>
+          <Select.Trigger aria-label="Fruit">
+            <Select.Value placeholder={PICK_FRUIT} />
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="apple">Apple</Select.Item>
+            <Select.Item value="banana">Banana</Select.Item>
+          </Select.Content>
+        </Select>
+      </>,
+    );
+
+    const outsideInput = screen.getByRole("textbox", { name: "Unrelated" });
+    outsideInput.focus();
+    const event = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+    });
+
+    outsideInput.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(screen.getByRole("listbox")).toBeVisible();
+    expect(outsideInput).toHaveFocus();
+  });
+
+  it("card variant keeps its inline list on Tab and does not commit the highlighted option", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderSelectInline({
+      defaultOpen: true,
+      onChange,
+      children: (
+        <>
+          <Select.Item value="apple">Apple</Select.Item>
+          <Select.Item value="banana">Banana</Select.Item>
+        </>
+      ),
+    });
+
+    const listbox = screen.getByRole("listbox");
+    listbox.focus();
+    await user.keyboard("{ArrowDown}");
+    expect(listbox).toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("option", { name: /banana/i }).id,
+    );
+
+    await user.tab();
+
+    expect(listbox).toBeVisible();
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true");
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it("opens with the first enabled option highlighted on Home from the closed trigger", async () => {
+    const user = userEvent.setup();
     renderSelect();
     getSelectTrigger().focus();
-    await userEvent.keyboard("{Home}");
+    await user.keyboard("{Home}");
 
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true");
     const listbox = screen.getByRole("listbox");
@@ -867,9 +1012,10 @@ describe("Select keyboard navigation", () => {
   });
 
   it("opens with the last enabled option highlighted on End from the closed trigger", async () => {
+    const user = userEvent.setup();
     renderSelect();
     getSelectTrigger().focus();
-    await userEvent.keyboard("{End}");
+    await user.keyboard("{End}");
 
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true");
     const listbox = screen.getByRole("listbox");
@@ -880,9 +1026,10 @@ describe("Select keyboard navigation", () => {
   });
 
   it("opens and highlights the first typeahead match on a printable character from the closed trigger", async () => {
+    const user = userEvent.setup();
     renderSelect();
     getSelectTrigger().focus();
-    await userEvent.keyboard("b");
+    await user.keyboard("b");
 
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true");
     const listbox = screen.getByRole("listbox");
@@ -892,29 +1039,72 @@ describe("Select keyboard navigation", () => {
     );
   });
 
+  it("scrolls the selected option into view when the dropdown opens", async () => {
+    const user = userEvent.setup();
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    const scrolledElements: Element[] = [];
+    const scrollFn = vi.fn(function (this: Element) {
+      scrolledElements.push(this);
+    });
+    Element.prototype.scrollIntoView = scrollFn;
+    const items = Array.from({ length: 50 }, (_, index) => `Option ${index + 1}`);
+
+    try {
+      const { unmount } = renderSelect({
+        variant: "default",
+        defaultValue: "option 45",
+        items,
+      });
+
+      await user.click(getSelectTrigger());
+      await waitFor(() => expect(scrollFn).toHaveBeenCalledWith({ block: "nearest" }));
+      expect(scrolledElements).toContain(screen.getByRole("option", { name: "Option 45" }));
+
+      unmount();
+      scrollFn.mockClear();
+      scrolledElements.length = 0;
+
+      renderSelect({ variant: "default", items });
+      getSelectTrigger().focus();
+      await user.keyboard("{End}");
+
+      await waitFor(() => expect(scrollFn).toHaveBeenCalledWith({ block: "nearest" }));
+      expect(scrolledElements).toContain(screen.getByRole("option", { name: "Option 50" }));
+    } finally {
+      if (originalScrollIntoView) {
+        Element.prototype.scrollIntoView = originalScrollIntoView;
+      } else {
+        Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+      }
+    }
+  });
+
   it("scrolls the new highlighted option into view on listbox typeahead", async () => {
+    const user = userEvent.setup();
     // jsdom does not implement scrollIntoView; define it before spying.
     const scrollFn = vi.fn();
     Element.prototype.scrollIntoView = scrollFn;
     renderSelect({ defaultOpen: true });
     screen.getByRole("listbox").focus();
 
-    await userEvent.keyboard("b");
+    await user.keyboard("b");
     expect(scrollFn).toHaveBeenCalledWith({ block: "nearest" });
     Reflect.deleteProperty(Element.prototype, "scrollIntoView");
   });
 
   it("scrolls the new highlighted option into view on searchable arrow navigation", async () => {
+    const user = userEvent.setup();
     const scrollFn = vi.fn();
     Element.prototype.scrollIntoView = scrollFn;
     renderSelect({ withSearch: true, defaultOpen: true });
 
-    await userEvent.type(getSearchInput(), "{ArrowDown}");
+    await user.type(getSearchInput(), "{ArrowDown}");
     expect(scrollFn).toHaveBeenCalledWith({ block: "nearest" });
     Reflect.deleteProperty(Element.prototype, "scrollIntoView");
   });
 
   it("extends the listbox typeahead query with Space without selecting", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderSelectInline({
       defaultOpen: true,
@@ -929,7 +1119,7 @@ describe("Select keyboard navigation", () => {
 
     const listbox = screen.getByRole("listbox");
     listbox.focus();
-    await userEvent.keyboard("new y");
+    await user.keyboard("new y");
 
     expect(listbox).toHaveAttribute(
       "aria-activedescendant",
@@ -940,10 +1130,10 @@ describe("Select keyboard navigation", () => {
 });
 
 describe("Select Tab-close focus restore", () => {
-  it("restores focus to the trigger then advances when Tab-closing a multiple select", async () => {
+  it("restores focus to the trigger when Tab-closing a multiple select", () => {
     render(
       <>
-        <Select variant="card" multiple defaultValue={[]} defaultOpen>
+        <Select variant="default" multiple defaultValue={[]} defaultOpen>
           <Select.Trigger>
             <Select.Tags placeholder="Pick" />
           </Select.Trigger>
@@ -956,17 +1146,19 @@ describe("Select Tab-close focus restore", () => {
       </>,
     );
 
-    screen.getByRole("listbox").focus();
-    await userEvent.tab();
+    const listbox = screen.getByRole("listbox");
+    listbox.focus();
+    // fireEvent retained: direct keydown asserts synchronous focus handoff before browser Tab movement.
+    fireEvent.keyDown(listbox, { key: "Tab" });
 
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getByRole("button", { name: "After" })).toHaveFocus();
+    expect(getSelectTrigger()).toHaveFocus();
   });
 
   it("restores focus to the trigger synchronously when Tab-closing a searchable select with no highlight", async () => {
     render(
       <>
-        <Select variant="card" defaultOpen highlighted={null}>
+        <Select variant="default" defaultOpen highlighted={null}>
           <Select.Trigger>
             <Select.Value placeholder="Pick" />
           </Select.Trigger>
@@ -1048,9 +1240,10 @@ describe("Select active-descendant ownership", () => {
   });
 
   it("announces the first matching searchable option as the active descendant on the search input only", async () => {
+    const user = userEvent.setup();
     renderSelect({ withSearch: true, defaultOpen: true });
     const searchInput = getSearchInput();
-    await userEvent.type(searchInput, "ban");
+    await user.type(searchInput, "ban");
 
     const bananaOption = screen.getByRole("option", { name: /banana/i });
     expect(searchInput).toHaveAttribute("aria-activedescendant", bananaOption.id);
@@ -1077,6 +1270,7 @@ describe("Select active-descendant ownership", () => {
   });
 
   it("omits stale controlled active descendants for disabled, filtered, and missing options", async () => {
+    const user = userEvent.setup();
     function renderStale(children: ReactNode, opts: { withSearch?: boolean; highlighted: string }) {
       return (
         <Select variant="card" defaultOpen highlighted={opts.highlighted}>
@@ -1113,7 +1307,7 @@ describe("Select active-descendant ownership", () => {
         { highlighted: "banana", withSearch: true },
       ),
     );
-    await userEvent.type(getSearchInput(), "apple");
+    await user.type(getSearchInput(), "apple");
     expect(getSelectTrigger()).not.toHaveAttribute("aria-activedescendant");
     expect(getSearchInput()).not.toHaveAttribute("aria-activedescendant");
     expect(screen.getByRole("listbox")).not.toHaveAttribute("aria-activedescendant");
@@ -1157,6 +1351,7 @@ describe("Select accessibility", () => {
   });
 
   it("overrides the searchable results-count live region via getResultsLabel (F-010)", async () => {
+    const user = userEvent.setup();
     render(
       <Select defaultOpen>
         <Select.Trigger aria-label="Fruit">
@@ -1170,7 +1365,7 @@ describe("Select accessibility", () => {
         </Select.Content>
       </Select>,
     );
-    await userEvent.type(getSearchInput(), "a");
+    await user.type(getSearchInput(), "a");
     expect(screen.getByRole("status")).toHaveTextContent(/trafień/);
   });
 
@@ -1325,6 +1520,7 @@ describe("Select form submission", () => {
   });
 
   it("uses native validity for required single and multiple selects", async () => {
+    const user = userEvent.setup();
     const { unmount } = renderFormSelect({ name: "fruit", required: true });
     const form = getTestForm();
 
@@ -1334,8 +1530,8 @@ describe("Select form submission", () => {
     expect(getSelectTrigger()).toHaveAttribute("aria-required", "true");
     expect(screen.getAllByRole("combobox")).toHaveLength(1);
 
-    await userEvent.click(getSelectTrigger());
-    await userEvent.click(screen.getByRole("option", { name: /banana/i }));
+    await user.click(getSelectTrigger());
+    await user.click(screen.getByRole("option", { name: /banana/i }));
     expect(form.checkValidity()).toBe(true);
 
     unmount();
@@ -1346,12 +1542,13 @@ describe("Select form submission", () => {
       items: ["Apple", "Banana"],
     });
     expect(getTestForm().checkValidity()).toBe(false);
-    await userEvent.click(getSelectTrigger());
-    await userEvent.click(screen.getByRole("option", { name: /apple/i }));
+    await user.click(getSelectTrigger());
+    await user.click(screen.getByRole("option", { name: /apple/i }));
     expect(getTestForm().checkValidity()).toBe(true);
   });
 
   it("validates required unnamed selects without contributing FormData", async () => {
+    const user = userEvent.setup();
     renderFormSelect({ required: true });
     const form = getTestForm();
 
@@ -1360,10 +1557,10 @@ describe("Select form submission", () => {
     await waitFor(() => expect(getSelectTrigger()).toHaveAttribute("aria-invalid", "true"));
     expect(new FormData(form).entries().next().done).toBe(true);
 
-    await userEvent.click(getSelectTrigger());
+    await user.click(getSelectTrigger());
     expect(screen.getByRole("listbox")).toHaveAttribute("aria-required", "true");
     expect(screen.getByRole("listbox")).toHaveAttribute("aria-invalid", "true");
-    await userEvent.click(screen.getByRole("option", { name: /banana/i }));
+    await user.click(screen.getByRole("option", { name: /banana/i }));
     expect(form.checkValidity()).toBe(true);
     expect(new FormData(form).entries().next().done).toBe(true);
   });
@@ -1390,14 +1587,16 @@ describe("Select form submission", () => {
   });
 
   it("updates FormData when selection changes", async () => {
+    const user = userEvent.setup();
     renderFormSelect({ name: "fruit", defaultOpen: true });
-    await userEvent.click(screen.getByText("Banana"));
+    await user.click(screen.getByText("Banana"));
     expect(new FormData(getTestForm()).get("fruit")).toBe("banana");
   });
 
   it("resets uncontrolled single and multiple selects with native form reset", async () => {
+    const user = userEvent.setup();
     renderFormSelect({ name: "fruit", defaultValue: "banana", defaultOpen: true });
-    await userEvent.click(screen.getByRole("option", { name: /cherry/i }));
+    await user.click(screen.getByRole("option", { name: /cherry/i }));
 
     let form = getTestForm();
     expect(new FormData(form).get("fruit")).toBe("cherry");
@@ -1413,7 +1612,7 @@ describe("Select form submission", () => {
       items: ["Apple", "Banana"],
       formLabel: "Multi fruit form",
     });
-    await userEvent.click(screen.getByRole("option", { name: /banana/i }));
+    await user.click(screen.getByRole("option", { name: /banana/i }));
     form = getTestForm(/multi fruit form/i);
     expect(new FormData(form).getAll("fruits")).toEqual(["apple", "banana"]);
 
@@ -1527,6 +1726,7 @@ describe("Select cross-document portal", () => {
 
 describe("Select searchable combobox controlled value", () => {
   it("treats explicit undefined value as controlled for searchable combobox", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     render(
       <Select value={undefined} onChange={onChange} defaultOpen>
@@ -1542,7 +1742,7 @@ describe("Select searchable combobox controlled value", () => {
     );
 
     expect(screen.getByText(PICK_FRUIT)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("option", { name: /banana/i }));
+    await user.click(screen.getByRole("option", { name: /banana/i }));
     expect(onChange).toHaveBeenCalledWith("banana");
     expect(screen.getByText(PICK_FRUIT)).toBeInTheDocument();
   });
@@ -1553,7 +1753,12 @@ describe("Select indirect composition (registration)", () => {
     return <Select.Item value={value}>{children}</Select.Item>;
   }
 
+  function WrappedSearch() {
+    return <Select.Search />;
+  }
+
   it("makes a SelectItem rendered inside a consumer wrapper selectable", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     render(
       <Select defaultOpen onChange={onChange}>
@@ -1567,7 +1772,7 @@ describe("Select indirect composition (registration)", () => {
       </Select>,
     );
 
-    await userEvent.click(screen.getByRole("option", { name: /banana/i }));
+    await user.click(screen.getByRole("option", { name: /banana/i }));
     expect(onChange).toHaveBeenCalledWith("banana");
   });
 
@@ -1586,6 +1791,28 @@ describe("Select indirect composition (registration)", () => {
 
     // The trigger value display resolves "banana" -> "Banana" from registered metadata.
     expect(getSelectTrigger().textContent).toContain("Banana");
+  });
+
+  it("detects a SelectSearch rendered through a wrapper component", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    try {
+      render(
+        <Select defaultOpen>
+          <Select.Trigger>
+            <Select.Value placeholder={PICK_FRUIT} />
+          </Select.Trigger>
+          <Select.Content>
+            <WrappedSearch />
+            <Select.Item value="apple">Apple</Select.Item>
+          </Select.Content>
+        </Select>,
+      );
+
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("Select.Search rendered through"));
+    } finally {
+      warn.mockRestore();
+    }
   });
 });
 
@@ -1613,36 +1840,38 @@ describe("Select unified label derivation (JSX children)", () => {
   }
 
   it("filters, highlights, counts, and commits by the visible JSX text without textValue", async () => {
+    const user = userEvent.setup();
     const onChange = renderComposite();
     const searchInput = getSearchInput();
 
-    await userEvent.type(searchInput, "banana");
+    await user.type(searchInput, "banana");
 
     const bananaOption = screen.getByRole("option", { name: /banana/i });
     expect(screen.queryByRole("option", { name: /apple/i })).not.toBeInTheDocument();
     expect(searchInput).toHaveAttribute("aria-activedescendant", bananaOption.id);
     expect(screen.getByRole("status")).toHaveTextContent("1 results");
 
-    await userEvent.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
     expect(onChange).toHaveBeenCalledWith("banana");
   });
 
   it("does not match the raw value string and never points activedescendant at an unmounted node", async () => {
+    const user = userEvent.setup();
     renderComposite();
     const searchInput = getSearchInput();
 
-    await userEvent.type(searchInput, "banana");
+    await user.type(searchInput, "banana");
     // Activedescendant resolves to a mounted option.
     const active = searchInput.getAttribute("aria-activedescendant");
     expect(active).toBeTruthy();
     expect(document.getElementById(active as string)).not.toBeNull();
 
-    await userEvent.clear(searchInput);
+    await user.clear(searchInput);
     // Typing the raw value string must not match the visible-text labels.
-    await userEvent.type(searchInput, "apple");
+    await user.type(searchInput, "apple");
     expect(screen.queryByRole("option", { name: /apple/i })).toBeInTheDocument();
-    await userEvent.clear(searchInput);
-    await userEvent.type(searchInput, "value");
+    await user.clear(searchInput);
+    await user.type(searchInput, "value");
     expect(screen.queryByRole("option")).not.toBeInTheDocument();
     const stale = searchInput.getAttribute("aria-activedescendant");
     if (stale) expect(document.getElementById(stale)).not.toBeNull();

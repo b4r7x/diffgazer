@@ -43,10 +43,14 @@ export interface BuildCopyBundleResult {
   integrity: string;
 }
 
-// NOTE: Identical implementation exists in src/cli/integrity.ts.
-// Intentionally duplicated so artifact generation and installer runtime stay decoupled.
 export function computeIntegrity(content: string): string {
   return `sha256-${createHash("sha256").update(content).digest("hex")}`;
+}
+
+function compareCodeUnits(a: string, b: string): number {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
 }
 
 function normalizeFilePath(path: string, mapping?: { from: string; to: string }): string {
@@ -105,7 +109,7 @@ export function buildCopyBundle(options: BuildCopyBundleOptions): BuildCopyBundl
         };
       }),
     }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => compareCodeUnits(a.name, b.name));
 
   const contentForIntegrity = JSON.stringify({ items });
   const integrity = computeIntegrity(contentForIntegrity);

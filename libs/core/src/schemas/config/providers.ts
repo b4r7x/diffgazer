@@ -43,7 +43,7 @@ export const UserConfigSchema = z
     ...timestampFields,
   })
   .refine((data) => data.model === undefined || data.model.trim().length > 0, {
-    message: "Model must not be empty",
+    error: "Model must not be empty",
     path: ["model"],
   });
 export type UserConfig = z.infer<typeof UserConfigSchema>;

@@ -43,8 +43,21 @@ function clampStyle(lines: number): CSSProperties | undefined {
   };
 }
 
+type PassiveOverflowTriggerProps = Pick<
+  PopoverTriggerRenderProps,
+  | "ref"
+  | "className"
+  | "aria-describedby"
+  | "onPointerDown"
+  | "onMouseEnter"
+  | "onMouseLeave"
+  | "onFocus"
+  | "onBlur"
+  | "tabIndex"
+>;
+
 /** Props for overflow tooltip trigger. */
-interface OverflowTooltipTriggerProps extends PopoverTriggerRenderProps {
+interface OverflowTooltipTriggerProps extends PassiveOverflowTriggerProps {
   /** Ref for the container element. */
   containerRef: Ref<HTMLDivElement>;
   /** Text mode only. 1 truncates; 2+ uses CSS line-clamp. */
@@ -62,7 +75,6 @@ interface OverflowTooltipTriggerProps extends PopoverTriggerRenderProps {
 function OverflowTooltipTrigger({
   ref: triggerRef,
   className: triggerClassName,
-  role,
   containerRef,
   lines,
   className,
@@ -75,7 +87,6 @@ function OverflowTooltipTrigger({
   return (
     <div
       ref={composedRef}
-      role={role}
       data-slot="overflow"
       className={cn(lines === 1 && "truncate", className, triggerClassName)}
       style={style}
@@ -123,18 +134,32 @@ export function OverflowText({
     return (
       <Tooltip enabled={isOverflowing}>
         <TooltipTrigger>
-          {(triggerProps: PopoverTriggerRenderProps) => (
-            <OverflowTooltipTrigger
-              {...triggerProps}
-              containerRef={composedRef}
-              lines={lines}
-              className={className}
-              style={style}
-              containerProps={props}
-            >
-              {children}
-            </OverflowTooltipTrigger>
-          )}
+          {(triggerProps: PopoverTriggerRenderProps) => {
+            const passiveTriggerProps = {
+              ref: triggerProps.ref,
+              className: triggerProps.className,
+              "aria-describedby": triggerProps["aria-describedby"],
+              onPointerDown: triggerProps.onPointerDown,
+              onMouseEnter: triggerProps.onMouseEnter,
+              onMouseLeave: triggerProps.onMouseLeave,
+              onFocus: triggerProps.onFocus,
+              onBlur: triggerProps.onBlur,
+              tabIndex: triggerProps.tabIndex,
+            } satisfies PassiveOverflowTriggerProps;
+
+            return (
+              <OverflowTooltipTrigger
+                {...passiveTriggerProps}
+                containerRef={composedRef}
+                lines={lines}
+                className={className}
+                style={style}
+                containerProps={props}
+              >
+                {children}
+              </OverflowTooltipTrigger>
+            );
+          }}
         </TooltipTrigger>
         <TooltipContent>{resolvedTooltip}</TooltipContent>
       </Tooltip>

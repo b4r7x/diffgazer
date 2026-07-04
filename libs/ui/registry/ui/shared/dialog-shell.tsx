@@ -3,6 +3,7 @@
 import {
   type ComponentProps,
   type MouseEvent,
+  type PointerEvent,
   type ReactNode,
   type Ref,
   type RefObject,
@@ -85,8 +86,8 @@ function popShell(element: HTMLElement): void {
   notifyShellStack(ownerDocument);
 }
 
-function isClickOutsideDialogRect(
-  event: MouseEvent<HTMLDialogElement>,
+function isEventOutsideDialogRect(
+  event: { clientX: number; clientY: number },
   dialog: HTMLDialogElement,
 ): boolean {
   const rect = dialog.getBoundingClientRect();
@@ -111,10 +112,13 @@ export function DialogShell({
   dialogRef: externalDialogRef,
   initialFocus,
   onClick,
+  onPointerDown,
   onAnimationEnd: externalOnAnimationEnd,
   ...props
 }: DialogShellProps) {
   const shellRef = useRef<HTMLElement | null>(null);
+  const didPressBackdropRef = useRef(false);
+  const isClosingFromShellRef = useRef(false);
   // usePresence's native animationend/animationcancel listener owns the
   // exit-complete path; do not also wire the returned React handler here or
   // onClose would fire twice on the non-portaled <dialog>.
@@ -124,7 +128,12 @@ export function DialogShell({
     onExitComplete: () => {
       const element = shellRef.current;
       if (isHTMLDialogElement(element) && element.open) {
-        element.close();
+        isClosingFromShellRef.current = true;
+        try {
+          element.close();
+        } finally {
+          isClosingFromShellRef.current = false;
+        }
       }
       onClose?.();
     },
@@ -172,6 +181,21 @@ export function DialogShell({
     }
   }, [onAfterShowModal, onBeforeShowModal, open, present]);
 
+  useLayoutEffect(() => {
+    const element = shellRef.current;
+    if (!isHTMLDialogElement(element)) return;
+
+    const handleNativeClose = () => {
+      if (isClosingFromShellRef.current || !open || !present || element.open) return;
+      onBeforeShowModal?.(element.ownerDocument);
+      element.showModal();
+      onAfterShowModal?.();
+    };
+
+    element.addEventListener("close", handleNativeClose);
+    return () => element.removeEventListener("close", handleNativeClose);
+  }, [onAfterShowModal, onBeforeShowModal, open, present]);
+
   const setShellRef = useCallback((node: HTMLElement | null) => {
     shellRef.current = node;
   }, []);
@@ -189,16 +213,26 @@ export function DialogShell({
       ref={dialogRef}
       data-state={open ? "open" : "closed"}
       className={className}
+      onPointerDown={(e: PointerEvent<HTMLDialogElement>) => {
+        onPointerDown?.(e);
+        const element = shellRef.current;
+        didPressBackdropRef.current =
+          isHTMLDialogElement(element) &&
+          e.target === element &&
+          isEventOutsideDialogRect(e, element);
+      }}
       onClick={(e: MouseEvent<HTMLDialogElement>) => {
         onClick?.(e);
         const element = shellRef.current;
         if (
           isHTMLDialogElement(element) &&
+          didPressBackdropRef.current &&
           e.target === element &&
-          isClickOutsideDialogRect(e, element)
+          isEventOutsideDialogRect(e, element)
         ) {
           onBackdropClick?.(e);
         }
+        didPressBackdropRef.current = false;
       }}
       onCancel={(e) => {
         onCancel?.(e);

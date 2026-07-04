@@ -6,6 +6,7 @@ import {
   type SessionCancelOptions,
   unregisterSession,
 } from "../../../shared/lib/session-registry.js";
+import { isTerminalEvent } from "./events.js";
 
 /**
  * Discriminant for a session's stored `statusHash` provenance. A content-blind
@@ -26,6 +27,7 @@ export interface ActiveSession {
   reviewConfigKey: string;
   provider: string | null;
   startedAt: Date;
+  lastEventAt: Date;
   events: FullReviewStreamEvent[];
   isComplete: boolean;
   isReady: boolean;
@@ -77,10 +79,6 @@ const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 const activeSessions = new Map<string, ActiveSession>();
 
-function isTerminalEvent(event: FullReviewStreamEvent): boolean {
-  return event.type === "complete" || event.type === "error";
-}
-
 /**
  * Builds the non-terminal notice replayed/streamed to the client when the
  * per-session event cap is hit and progress events start being dropped. It is a
@@ -109,6 +107,7 @@ type StoreEventResult = { stored: true } | { stored: false; firstDrop: boolean }
  * single client-facing cap notice.
  */
 function storeSessionEvent(session: ActiveSession, event: FullReviewStreamEvent): StoreEventResult {
+  session.lastEventAt = new Date();
   if (session.events.length < MAX_EVENTS_PER_SESSION) {
     session.events.push(event);
     return { stored: true };
@@ -162,6 +161,25 @@ function notifyCompletion(session: ActiveSession): void {
   session.completionListeners.clear();
 }
 
+function terminateSession(
+  session: ActiveSession,
+  options: { code: ReviewErrorCode; message: string; reason: string },
+): void {
+  session.controller.abort(options.reason);
+  const event: FullReviewStreamEvent = {
+    type: "error",
+    error: {
+      code: options.code,
+      message: options.message,
+    },
+  };
+  storeSessionEvent(session, event);
+  session.isComplete = true;
+  notifySubscribers(session, event);
+  session.subscribers.clear();
+  notifyCompletion(session);
+}
+
 function evictOldestSession(): void {
   let oldest: { id: string; startedAt: Date } | null = null;
   for (const [id, session] of activeSessions) {
@@ -172,19 +190,11 @@ function evictOldestSession(): void {
   if (oldest) {
     const session = activeSessions.get(oldest.id);
     if (session && !session.isComplete) {
-      session.controller.abort("evicted");
-      const evictionEvent: FullReviewStreamEvent = {
-        type: "error",
-        error: {
-          code: ReviewErrorCode.SESSION_EVICTED,
-          message: "Review session evicted due to session limit.",
-        },
-      };
-      storeSessionEvent(session, evictionEvent);
-      session.isComplete = true;
-      notifySubscribers(session, evictionEvent);
-      session.subscribers.clear();
-      notifyCompletion(session);
+      terminateSession(session, {
+        code: ReviewErrorCode.SESSION_EVICTED,
+        message: "Review session evicted due to session limit.",
+        reason: "evicted",
+      });
     }
     activeSessions.delete(oldest.id);
     unregisterSession(oldest.id);
@@ -200,20 +210,12 @@ function evictOldestSession(): void {
 export function cleanupStaleSessions(): void {
   const now = Date.now();
   for (const [id, session] of activeSessions) {
-    if (!session.isComplete && now - session.startedAt.getTime() > SESSION_TIMEOUT_MS) {
-      session.controller.abort("timeout");
-      const timeoutEvent: FullReviewStreamEvent = {
-        type: "error",
-        error: {
-          code: ReviewErrorCode.SESSION_TIMEOUT,
-          message: "Review session timed out.",
-        },
-      };
-      storeSessionEvent(session, timeoutEvent);
-      session.isComplete = true;
-      notifySubscribers(session, timeoutEvent);
-      session.subscribers.clear();
-      notifyCompletion(session);
+    if (!session.isComplete && now - session.lastEventAt.getTime() > SESSION_TIMEOUT_MS) {
+      terminateSession(session, {
+        code: ReviewErrorCode.SESSION_TIMEOUT,
+        message: "Review session timed out.",
+        reason: "timeout",
+      });
       activeSessions.delete(id);
       unregisterSession(id);
     }
@@ -240,18 +242,11 @@ export function shutdownSessions(): void {
 
   for (const [id, session] of activeSessions) {
     if (!session.isComplete) {
-      session.controller.abort("shutdown");
-      const shutdownEvent: FullReviewStreamEvent = {
-        type: "error",
-        error: {
-          code: ReviewErrorCode.SERVER_SHUTDOWN,
-          message: "Review session aborted because the server is shutting down.",
-        },
-      };
-      storeSessionEvent(session, shutdownEvent);
-      session.isComplete = true;
-      notifySubscribers(session, shutdownEvent);
-      notifyCompletion(session);
+      terminateSession(session, {
+        code: ReviewErrorCode.SERVER_SHUTDOWN,
+        message: "Review session aborted because the server is shutting down.",
+        reason: "shutdown",
+      });
     }
     session.subscribers.clear();
     session.completionListeners.clear();
@@ -277,6 +272,7 @@ export function createSession(
     evictOldestSession();
   }
 
+  const startedAt = new Date();
   const session: ActiveSession = {
     reviewId,
     projectPath: options.projectPath,
@@ -287,7 +283,8 @@ export function createSession(
     scopeKey: options.scopeKey ?? "",
     reviewConfigKey: options.reviewConfigKey ?? "",
     provider: options.provider ?? null,
-    startedAt: new Date(),
+    startedAt,
+    lastEventAt: startedAt,
     events: [],
     isComplete: false,
     isReady: false,
@@ -359,20 +356,11 @@ export function cancelSession(
   const session = activeSessions.get(reviewId);
   if (!session || session.isComplete) return;
 
-  session.controller.abort(options?.reason ?? "session_stale");
-  const cancelEvent: FullReviewStreamEvent = {
-    type: "error",
-    error: {
-      code: ReviewErrorCode.SESSION_STALE,
-      message: options?.message ?? "Review session cancelled because repository state changed.",
-    },
-  };
-  storeSessionEvent(session, cancelEvent);
-  session.isComplete = true;
-
-  notifySubscribers(session, cancelEvent);
-  session.subscribers.clear();
-  notifyCompletion(session);
+  terminateSession(session, {
+    code: ReviewErrorCode.SESSION_STALE,
+    message: options?.message ?? "Review session cancelled because repository state changed.",
+    reason: options?.reason ?? "session_stale",
+  });
   setTimeout(
     () => {
       activeSessions.delete(reviewId);
@@ -403,14 +391,19 @@ export function cancelStaleSessionsForProjectMode(
     // Only same-kind hashes are comparable; a content-blind hash cannot prove a
     // content-full session changed, so leave cross-kind sessions untouched.
     if (session.statusHashKind !== statusHashKind) continue;
-    if (
-      session.headCommit === headCommit &&
-      session.statusHash === statusHash &&
-      session.reviewConfigKey === reviewConfigKey
-    ) {
+    const gitStateMatches = session.headCommit === headCommit && session.statusHash === statusHash;
+    if (gitStateMatches && session.reviewConfigKey === reviewConfigKey) {
       continue;
     }
-    cancelSession(reviewId);
+    cancelSession(
+      reviewId,
+      gitStateMatches
+        ? {
+            message:
+              "Review session cancelled: superseded by a review with a different configuration.",
+          }
+        : undefined,
+    );
   }
 }
 

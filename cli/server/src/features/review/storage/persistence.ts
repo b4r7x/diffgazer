@@ -7,6 +7,16 @@ import type { ZodType } from "zod";
 import { atomicWriteFile as atomicWrite, isNodeError } from "../../../shared/lib/fs.js";
 import type { Collection, CollectionConfig, StoreError, StoreErrorCode } from "./types.js";
 
+interface ExtendedCollectionConfig<T, M> extends CollectionConfig<T, M> {
+  coerceMetadata?: (metadata: unknown) => unknown;
+  transformRead?: (item: T) => T;
+}
+
+type ExtendedCollection<T, M> = Collection<T, M> & {
+  readDetailed(id: string): Promise<Result<{ item: T; salvaged: boolean }, StoreError>>;
+  readMetadata(id: string): Promise<Result<M, StoreError>>;
+};
+
 const isValidUuid = (id: string): boolean => UuidSchema.safeParse(id).success;
 
 const validateSchema = <T, E>(
@@ -72,6 +82,7 @@ async function extractMetadataFromFile<M>(
   path: string,
   schema: ZodType<M>,
   name: string,
+  coerceMetadata?: (metadata: unknown) => unknown,
 ): Promise<Result<M, StoreError>> {
   const readResult = await safeReadFile(path, name);
   if (!readResult.ok) return readResult;
@@ -86,21 +97,40 @@ async function extractMetadataFromFile<M>(
     return err(createStoreError("PARSE_ERROR", `${name} missing metadata key`));
   }
 
-  return validateSchema(metadata, schema, (message) =>
+  return validateSchema(coerceMetadata ? coerceMetadata(metadata) : metadata, schema, (message) =>
     createStoreError("VALIDATION_ERROR", `${name} metadata validation failed`, message),
   );
 }
 
 export type { Collection, StoreError, StoreErrorCode } from "./types.js";
 
-export function createCollection<T, M>(config: CollectionConfig<T, M>): Collection<T, M> {
-  const { name, dir, filePath, schema, getMetadata, getId, metadataSchema, lenientRead } = config;
+export function createCollection<T, M>(
+  config: ExtendedCollectionConfig<T, M>,
+): ExtendedCollection<T, M> {
+  const {
+    name,
+    dir,
+    filePath,
+    schema,
+    getMetadata,
+    getId,
+    metadataSchema,
+    lenientRead,
+    coerceMetadata,
+    transformRead,
+  } = config;
 
   async function ensureDir(): Promise<Result<void, StoreError>> {
     return ensureDirectory(dir, name);
   }
 
-  async function read(id: string): Promise<Result<T, StoreError>> {
+  function transform(item: T): T {
+    return transformRead ? transformRead(item) : item;
+  }
+
+  async function readDetailed(
+    id: string,
+  ): Promise<Result<{ item: T; salvaged: boolean }, StoreError>> {
     const path = filePath(id);
     const readResult = await safeReadFile(path, name);
     if (!readResult.ok) return readResult;
@@ -114,16 +144,32 @@ export function createCollection<T, M>(config: CollectionConfig<T, M>): Collecti
     if (!parseResult.ok) return parseResult;
 
     const validation = schema.safeParse(parseResult.value);
-    if (validation.success) return ok(validation.data);
+    if (validation.success) return ok({ item: transform(validation.data), salvaged: false });
 
     if (lenientRead) {
       const salvaged = lenientRead(parseResult.value);
-      if (salvaged !== null) return ok(salvaged);
+      if (salvaged !== null) return ok({ item: transform(salvaged), salvaged: true });
     }
 
     return err(
       createStoreError("VALIDATION_ERROR", `${name} failed validation`, validation.error.message),
     );
+  }
+
+  async function read(id: string): Promise<Result<T, StoreError>> {
+    const result = await readDetailed(id);
+    if (!result.ok) return result;
+    return ok(result.value.item);
+  }
+
+  async function readMetadata(id: string): Promise<Result<M, StoreError>> {
+    if (metadataSchema) {
+      return extractMetadataFromFile(filePath(id), metadataSchema, name, coerceMetadata);
+    }
+
+    const result = await read(id);
+    if (!result.ok) return result;
+    return ok(getMetadata(result.value));
   }
 
   async function write(item: T): Promise<Result<void, StoreError>> {
@@ -160,27 +206,14 @@ export function createCollection<T, M>(config: CollectionConfig<T, M>): Collecti
 
     const items: M[] = [];
 
-    if (metadataSchema) {
-      const results = await Promise.all(
-        ids.map((id) => extractMetadataFromFile(filePath(id), metadataSchema, name)),
-      );
-      results.forEach((result, i) => {
-        if (result.ok) {
-          items.push(result.value);
-        } else {
-          warnings.push(`[${name}] Failed to read ${ids[i]}: ${result.error.message}`);
-        }
-      });
-    } else {
-      const results = await Promise.all(ids.map(read));
-      results.forEach((result, i) => {
-        if (result.ok) {
-          items.push(getMetadata(result.value));
-        } else {
-          warnings.push(`[${name}] Failed to read ${ids[i]}: ${result.error.message}`);
-        }
-      });
-    }
+    const results = await Promise.all(ids.map(readMetadata));
+    results.forEach((result, i) => {
+      if (result.ok) {
+        items.push(result.value);
+      } else {
+        warnings.push(`[${name}] Failed to read ${ids[i]}: ${result.error.message}`);
+      }
+    });
 
     return ok({ items, warnings });
   }
@@ -204,5 +237,5 @@ export function createCollection<T, M>(config: CollectionConfig<T, M>): Collecti
     }
   }
 
-  return { ensureDir, read, write, list, remove };
+  return { ensureDir, read, readDetailed, readMetadata, write, list, remove };
 }

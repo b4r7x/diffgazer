@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { makeIssue, makeReviewMetadata } from "../testing/factories.js";
 import {
   buildHistoryRunSummary,
@@ -15,7 +15,6 @@ import {
   metadataToSeverityCounts,
   resolveSelectedDateId,
   resolveSelectedId,
-  resolveSelectedRunId,
   sortIssuesBySeverity,
 } from "./history.js";
 
@@ -196,9 +195,25 @@ describe("buildTimelineItems", () => {
     expect(items[1]?.count).toBe(1);
     expect(items[2]?.count).toBe(1);
   });
+
+  it("labels date groups from the same date key used for grouping in TZ-sensitive runs", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-01T12:00:00.000Z"));
+
+    try {
+      const items = buildTimelineItems([
+        makeReviewMetadata({ id: "a", createdAt: "2026-07-03T23:30:00.000Z" }),
+        makeReviewMetadata({ id: "b", createdAt: "2026-07-03T01:30:00.000Z" }),
+      ]);
+
+      expect(items[1]).toMatchObject({ id: "2026-07-03", label: "Jul 3", count: 2 });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
-describe("resolveSelectedDateId + resolveSelectedRunId", () => {
+describe("resolveSelectedDateId + resolveSelectedId", () => {
   it("returns the current date id when present, else falls back to the first", () => {
     const timeline = [{ id: HISTORY_SECTION_ALL_ID }, { id: "2026-02-09" }];
     expect(resolveSelectedDateId("2026-02-09", timeline)).toBe("2026-02-09");
@@ -212,10 +227,6 @@ describe("resolveSelectedDateId + resolveSelectedRunId", () => {
     expect(resolveSelectedId("missing", runs)).toBe("run-a");
     expect(resolveSelectedId("missing", [])).toBeNull();
     expect(resolveSelectedId(null, runs)).toBe("run-a");
-  });
-
-  it("resolveSelectedRunId remains a live alias of resolveSelectedId", () => {
-    expect(resolveSelectedRunId).toBe(resolveSelectedId);
   });
 });
 

@@ -73,6 +73,7 @@ describe("Nested overlay: outside-press consumes exactly one layer", () => {
   });
 
   it("closing a Select by pressing an underlying button does not activate the button", async () => {
+    const user = userEvent.setup();
     const onButtonClick = vi.fn();
 
     render(
@@ -94,13 +95,52 @@ describe("Nested overlay: outside-press consumes exactly one layer", () => {
     const trigger = screen.getByRole("combobox");
     expect(trigger).toHaveAttribute("aria-expanded", "true");
 
-    await userEvent.click(screen.getByRole("button", { name: "Underlying" }));
+    await user.click(screen.getByRole("button", { name: "Underlying" }));
 
     await waitFor(() => expect(trigger).toHaveAttribute("aria-expanded", "false"));
     expect(onButtonClick).not.toHaveBeenCalled();
   });
 
+  it("swallows the dismissing gesture's click when the click arrives on a later macrotask", async () => {
+    vi.useFakeTimers();
+    const onButtonClick = vi.fn();
+
+    try {
+      render(
+        <>
+          <Select variant="default" defaultOpen>
+            <Select.Trigger>
+              <Select.Value placeholder="Pick" />
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="apple">Apple</Select.Item>
+            </Select.Content>
+          </Select>
+          <button type="button" onClick={onButtonClick}>
+            Underlying
+          </button>
+        </>,
+      );
+
+      const trigger = screen.getByRole("combobox");
+      const button = screen.getByRole("button", { name: "Underlying" });
+      expect(trigger).toHaveAttribute("aria-expanded", "true");
+
+      // fireEvent retained: split pointerdown and click across macrotasks to model browser gesture timing.
+      fireEvent.pointerDown(button);
+      await vi.advanceTimersByTimeAsync(50);
+      // fireEvent retained: click must be swallowed even after delayed browser dispatch.
+      fireEvent.click(button);
+
+      expect(trigger).toHaveAttribute("aria-expanded", "false");
+      expect(onButtonClick).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("does not swallow a normal click when no overlay is open", async () => {
+    const user = userEvent.setup();
     const onButtonClick = vi.fn();
     render(
       <button type="button" onClick={onButtonClick}>
@@ -108,7 +148,7 @@ describe("Nested overlay: outside-press consumes exactly one layer", () => {
       </button>,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Plain" }));
+    await user.click(screen.getByRole("button", { name: "Plain" }));
     expect(onButtonClick).toHaveBeenCalledOnce();
   });
 });

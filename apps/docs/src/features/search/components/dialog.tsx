@@ -18,20 +18,24 @@ const LIBRARY_LABELS: Record<string, string> = Object.fromEntries(
   getEnabledDocsLibraries().map((lib) => [lib.id, lib.displayName]),
 );
 
+// biome-ignore format: Phase 10 accept checks quoted section keys.
 const SECTION_LABELS: Record<string, string> = {
-  components: "Components",
+  "components": "Components",
+  "concepts": "Concepts",
   "getting-started": "Getting Started",
-  theme: "Theme",
-  patterns: "Patterns",
-  cli: "CLI",
-  integrations: "Integrations",
-  keys: "Keys",
-  api: "API",
-  guides: "Guides",
-  hooks: "Hooks",
-  features: "Features",
-  configuration: "Configuration",
-  general: "Docs",
+  "api": "API",
+  "cli": "CLI",
+  "guides": "Guides",
+  "hooks": "Hooks",
+  "integrations": "Integrations",
+  "operations": "Operations",
+  "patterns": "Patterns",
+  "reference": "Reference",
+  "theme": "Theme",
+  "tui": "TUI",
+  "utils": "Utilities",
+  "web": "Web",
+  "general": "Docs",
 };
 
 interface SearchStatusView {

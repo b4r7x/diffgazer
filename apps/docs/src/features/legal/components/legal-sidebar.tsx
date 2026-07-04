@@ -7,7 +7,7 @@ import {
 import { Link, useLocation } from "@tanstack/react-router";
 import { chromeSidebarItemClassName, isPrimaryNavigationClick } from "@/components/layout/sidebar";
 import { TreeSidebarShell } from "@/components/layout/tree-sidebar-shell";
-import { LEGAL_LINKS } from "../lib/legal-pages";
+import { LEGAL_LINKS } from "../lib/pages";
 
 const NAV_LINKS = [{ slug: "home", label: "Home", to: "/" }, ...LEGAL_LINKS] as const;
 

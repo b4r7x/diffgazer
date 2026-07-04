@@ -140,6 +140,23 @@ describe("Field", () => {
     expect(labelledBy).toContain(fieldLabel.id);
   });
 
+  it("omits aria-labelledby when Field.Label is absent", () => {
+    render(
+      <Field>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+        <Field.Description id="username-help">Use your work email.</Field.Description>
+      </Field>,
+    );
+
+    const input = screen.getByRole("textbox");
+
+    expect(input).not.toHaveAttribute("aria-labelledby");
+    expectFieldDescribedBy(input, "username-help");
+    expect(input).toHaveAccessibleDescription("Use your work email.");
+  });
+
   it("keeps ARIA wiring when slots are wrapped in layout elements", () => {
     render(
       <Field invalid required>
@@ -436,7 +453,7 @@ describe("Field", () => {
     expect(input).toHaveAttribute("aria-labelledby", fieldLabel.id);
   });
 
-  it("emits aria-labelledby in SSR output (no effect required)", () => {
+  it("keeps native label wiring in SSR output without aria-labelledby", () => {
     const html = renderToStaticMarkup(
       <Field controlId="ssr-test">
         <Field.Label>Username</Field.Label>
@@ -446,7 +463,8 @@ describe("Field", () => {
       </Field>,
     );
 
-    expect(html).toMatch(/aria-labelledby="[^"]+"/);
+    expect(html).toContain('for="ssr-test"');
+    expect(html).not.toMatch(/aria-labelledby="[^"]+"/);
   });
 
   it("omits aria-describedby when FieldDescription is not rendered", () => {

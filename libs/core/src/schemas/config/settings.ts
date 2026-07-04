@@ -14,7 +14,7 @@ const TrustModeSchema = z.enum(TRUST_MODES);
 export const TrustConfigSchema = z.object({
   projectId: z.string(),
   repoRoot: z.string(),
-  trustedAt: z.string().datetime(),
+  trustedAt: z.iso.datetime(),
   capabilities: TrustCapabilitiesSchema,
   trustMode: TrustModeSchema,
 });

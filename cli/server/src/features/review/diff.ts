@@ -13,6 +13,20 @@ import type { EmitFn, ReviewAbort } from "./types.js";
 const MAX_DIFF_SIZE_BYTES = 524288; // 512KB
 const DIFFGAZER_DIR_PREFIX = ".diffgazer/";
 
+function getReviewErrorCodeForGitDiff(error: Error): ReviewErrorCode {
+  return error.message.startsWith("Git is not installed")
+    ? ReviewErrorCode.GIT_NOT_FOUND
+    : ReviewErrorCode.GENERATION_FAILED;
+}
+
+function getFilesModeNoDiffMessage(mode: ReviewMode): string {
+  if (mode === "files") {
+    return "None of the specified files have changes";
+  }
+  const changeScope = mode === "staged" ? "staged" : "unstaged";
+  return `None of the specified files have ${changeScope} changes`;
+}
+
 function isDiffgazerPath(filePath: string): boolean {
   const normalized = filePath.replace(/^\.\//, "");
   return normalized === ".diffgazer" || normalized.startsWith(DIFFGAZER_DIR_PREFIX);
@@ -46,12 +60,9 @@ export async function resolveGitDiff(params: {
 
   const diffResult = await gitService.getDiff(mode, files);
   if (!diffResult.ok) {
+    const gitDiffError = createGitDiffError(diffResult.error.message);
     return err(
-      reviewAbort(
-        createGitDiffError(diffResult.error.message).message,
-        ReviewErrorCode.GIT_NOT_FOUND,
-        "diff",
-      ),
+      reviewAbort(gitDiffError.message, getReviewErrorCodeForGitDiff(gitDiffError), "diff"),
     );
   }
   const diff = diffResult.value;
@@ -74,13 +85,7 @@ export async function resolveGitDiff(params: {
   if (files && files.length > 0) {
     parsed = filterDiffByFiles(parsed, files);
     if (parsed.files.length === 0) {
-      return err(
-        reviewAbort(
-          `None of the specified files have ${mode} changes`,
-          ReviewErrorCode.NO_DIFF,
-          "diff",
-        ),
-      );
+      return err(reviewAbort(getFilesModeNoDiffMessage(mode), ReviewErrorCode.NO_DIFF, "diff"));
     }
   }
 

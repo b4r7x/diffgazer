@@ -30,6 +30,8 @@ export {
   assertArtifactSyncOutputs,
   collectArtifactSyncValidationErrors,
   collectMissingWorkspaceArtifactFiles,
+  collectPathParityErrors,
+  collectTreeParityErrors,
   type DocsLibrariesConfig,
   getArtifactLibraries,
   readDocsLibrariesConfig,
@@ -38,12 +40,25 @@ export {
 } from "./docs-sync/artifact-sync.js";
 export { syncDocsFromArtifacts } from "./docs-sync/sync.js";
 export {
-  type RewriteKeysImportOptions,
-  rewriteKeysPackageImportsInContent,
-} from "./keys-import-rewrite.js";
-export { KEYS_PACKAGE_IMPORT_TARGETS } from "./keys-imports.js";
-export { createArtifactManifest } from "./manifest.js";
+  computeArtifactFingerprint,
+  computeInputsFingerprint,
+  computeRequiredArtifactFingerprint,
+  computeStrictArtifactFingerprint,
+  type InputsFingerprintResult,
+} from "./fingerprint.js";
+export {
+  extractImportSpecifiers,
+  type ImportSpecifier,
+  type ImportSpecifierKind,
+  stripTemplateLiterals,
+} from "./import-specifiers.js";
+export { rewriteKeysPackageImportsInContent } from "./keys-import-rewrite.js";
+export {
+  type ArtifactManifest,
+  createArtifactManifest,
+  loadValidatedManifest,
+  validateManifest,
+} from "./manifest.js";
 export { normalizeOrigin } from "./origin.js";
 export { RELATIVE_JS_IMPORT_RE, stripRelativeJsExtensions } from "./relative-js-imports.js";
 export { aggregateThemeStyles, buildShadcnRegistryWithOrigin } from "./shadcn/build.js";
-export { assertRegistrySourceFilePath, isRelativeSubpath } from "./utils/fs.js";

@@ -4,11 +4,13 @@ Composable, scoped keyboard navigation hooks for React `>=19.2.0`.
 
 ## Consumption Paths Summary
 
-`@diffgazer/keys` is publish-gated until `npm view @diffgazer/keys version` succeeds. Local tarballs are the package-mode validation path before publication. `@diffgazer/keys` requires no CSS or Tailwind setup. See [Hosted Registry Status](https://github.com/b4r7x/diffgazer/blob/main/PACKAGE_GOVERNANCE.md#hosted-registry-status).
+> **Note:** Diffgazer packages are not yet published to npm. Until the first release, install from a local checkout of the repository.
+
+`@diffgazer/keys` requires no CSS or Tailwind setup.
 
 | Path | Standalone hooks | Provider-backed APIs |
 |------|-----------------|---------------------|
-| Manual copy / shadcn (future) | `npx shadcn add https://r.b4r7.dev/r/keys/navigation.json` (hosted registry not yet live; see [Hosted Registry Status](https://github.com/b4r7x/diffgazer/blob/main/PACKAGE_GOVERNANCE.md#hosted-registry-status)) | Not available |
+| Manual copy / shadcn | `npx shadcn add https://r.b4r7.dev/r/keys/navigation.json` | Not available |
 | `dgadd` CLI | `pnpm exec dgadd add keys/navigation` | Not available |
 | npm package | `npm install @diffgazer/keys` | `npm install @diffgazer/keys` |
 
@@ -16,7 +18,7 @@ Provider-backed APIs (`KeyboardProvider`, `useKey`, `useScope`, `useScopedNaviga
 
 ## Install
 
-Use the public npm command only after `npm view @diffgazer/keys version` succeeds. Before publication, validate with a locally packed workspace tarball.
+Install the package from npm after the first release:
 
 ```bash
 npm install @diffgazer/keys
@@ -73,7 +75,7 @@ export function App() {
 | `useScopedNavigation` | Navigation scoped to the keyboard provider |
 | `useActionRowNavigation` | Roving row navigation for action toolbars within the keyboard provider |
 | `useFocusZone` | Multi-zone focus management |
-| `keys` | Key constant utilities |
+| `keys` | Map multiple hotkeys to one handler for the `useKey` key-map overload |
 | `useKeyboardContext` | Access the keyboard context |
 | `useOptionalKeyboardContext` | Optionally access the keyboard context |
 

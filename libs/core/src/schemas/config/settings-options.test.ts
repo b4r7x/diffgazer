@@ -7,18 +7,11 @@ import {
   isTheme,
   SECRETS_STORAGE_OPTIONS,
   SELECTABLE_THEME_OPTIONS,
-  THEME_OPTIONS,
   toSelectableTheme,
 } from "./settings-options.js";
 
 describe("settings option contracts", () => {
-  it("keeps the canonical theme options and selectable subset", () => {
-    expect(THEME_OPTIONS.map((option) => option.value)).toEqual([
-      "auto",
-      "dark",
-      "light",
-      "terminal",
-    ]);
+  it("keeps the selectable theme options", () => {
     expect(SELECTABLE_THEME_OPTIONS.map((option) => option.value)).toEqual([
       "auto",
       "dark",

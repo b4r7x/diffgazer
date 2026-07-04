@@ -6,7 +6,6 @@ import { useControllableState } from "@/hooks/use-controllable-state";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { SidebarContext, type SidebarState } from "./sidebar-context";
 
-/** Props for sidebar provider. */
 export interface SidebarProviderProps {
   /**
    * Documented exception to the `value`/`onChange` control convention: the sidebar exposes a
@@ -33,7 +32,6 @@ export interface SidebarProviderProps {
   children: ReactNode;
 }
 
-/** Root nav element (standalone or within SidebarProvider). Owns variant + autoTone. */
 export const SIDEBAR_STATE_COOKIE = "dg_sidebar_state";
 
 // keys' isEditableElement excludes <select> (a list control, not a text editor);
@@ -48,7 +46,6 @@ function isShortcutEditableTarget(target: EventTarget | null): boolean {
   return Boolean(view && target instanceof view.HTMLSelectElement);
 }
 
-/** Optional wrapper for external state control. Owns breakpoint + shortcutKey. */
 export function SidebarProvider({
   state: controlledState,
   defaultState = "open",

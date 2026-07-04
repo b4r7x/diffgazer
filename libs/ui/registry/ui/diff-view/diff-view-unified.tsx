@@ -17,8 +17,8 @@ import {
 
 type UnifiedHunk = { hunk: ParsedDiff["hunks"][number]; changes: AnnotatedChange[] };
 
-/** Root <figure> with aria-roledescription="diff". */
-export function UnifiedView({
+/** Internal unified rows renderer. */
+export function DiffViewUnified({
   parsed,
   showLineNumbers,
   disableWordDiff,

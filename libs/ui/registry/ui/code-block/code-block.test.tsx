@@ -13,6 +13,7 @@ const lowlight = createLowlight(common);
 describe("CodeBlock", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.doUnmock("lowlight");
   });
 
   describe("accessible name", () => {
@@ -477,6 +478,28 @@ describe("CodeBlock", () => {
       expect(line.querySelector("code")).toHaveTextContent("const x = 1");
     });
 
+    it("tokenizes multi-line constructs across line boundaries", () => {
+      const { container } = render(
+        <CodeBlock language="ts">
+          <CodeBlockHighlight
+            code={"/* starts here\ncontinues here */"}
+            language="typescript"
+            lowlight={lowlight}
+          />
+        </CodeBlock>,
+      );
+
+      const lines = container.querySelectorAll('[data-slot="code-block-line"]');
+      const secondLine = requireElement(lines[1], "second highlighted code line");
+      const commentTokens = Array.from(secondLine.querySelectorAll("code span")).filter((span) =>
+        span.className.split(/\s+/).includes("hljs-comment"),
+      );
+
+      expect(lines).toHaveLength(2);
+      expect(secondLine.querySelector("code")).toHaveTextContent("continues here */");
+      expect(commentTokens.length).toBeGreaterThan(0);
+    });
+
     it("renders source as plain text when no lowlight instance is provided", () => {
       render(
         <CodeBlock language="ts">
@@ -520,6 +543,26 @@ describe("CodeBlock", () => {
       expect(typeof instance.highlightAuto).toBe("function");
       const tree = instance.highlight("typescript", "const x = 1");
       expect(tree.children.length).toBeGreaterThan(0);
+    });
+
+    it("retries loading lowlight after a rejected import", async () => {
+      vi.resetModules();
+      let importCount = 0;
+      vi.doMock("lowlight", async () => {
+        importCount += 1;
+        if (importCount === 1) {
+          throw new Error("chunk load failed");
+        }
+        return vi.importActual<typeof import("lowlight")>("lowlight");
+      });
+
+      const { createDefaultLowlight: loadLowlight } = await import("./highlight");
+
+      await expect(loadLowlight()).rejects.toThrow(/optional peer dependency 'lowlight'/);
+      const instance = await loadLowlight();
+
+      expect(typeof instance.highlight).toBe("function");
+      expect(importCount).toBe(2);
     });
   });
 

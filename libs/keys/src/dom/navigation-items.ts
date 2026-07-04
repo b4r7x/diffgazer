@@ -71,12 +71,6 @@ function matchesNavigationDataContract(element: HTMLElement, type: NavigationIte
 
 function buildNavigationSelectors(type: NavigationItemType, skipDisabled: boolean): string[] {
   const disabled = disabledSelector(skipDisabled);
-  const dataContractSelectors = [
-    `[${NAVIGATION_ITEM_ATTRIBUTE}="${type}"][data-value]${disabled}`,
-    `[${NAVIGATION_ITEM_ATTRIBUTE}="true"][data-value]${disabled}`,
-    `[${NAVIGATION_ITEM_ATTRIBUTE}=""][data-value]${disabled}`,
-    `[${NAVIGATION_ITEM_ATTRIBUTE}][data-value]${disabled}`,
-  ];
   const nativeRoleSelectors: Partial<Record<NavigationItemType, string[]>> = {
     button: [`button[data-value]${disabled}`],
     checkbox: [`input[type="checkbox"][data-value]${disabled}`],
@@ -84,7 +78,7 @@ function buildNavigationSelectors(type: NavigationItemType, skipDisabled: boolea
   };
 
   return [
-    dataContractSelectors.join(","),
+    `[${NAVIGATION_ITEM_ATTRIBUTE}][data-value]${disabled}`,
     `[role="${type}"][data-value]${disabled}`,
     ...(nativeRoleSelectors[type] ?? []),
   ];

@@ -6,7 +6,7 @@ import {
   WIZARD_STEPS,
 } from "@diffgazer/core/onboarding";
 import { Box, useInput } from "ink";
-import { type ReactElement, useEffect, useRef } from "react";
+import { type ReactElement, useEffect, useEffectEvent } from "react";
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
 import { SectionHeader } from "../../../components/ui/section-header";
@@ -96,11 +96,13 @@ export function OnboardingWizard(): ReactElement {
   const { columns } = useTerminalDimensions();
   const wizard = useOnboardingWizard();
 
-  const cleanupRef = useRef(wizard.cleanupEarlySave);
-  cleanupRef.current = wizard.cleanupEarlySave;
+  const cleanupEarlySave = useEffectEvent(() => {
+    void wizard.cleanupEarlySave();
+  });
+
   useEffect(() => {
     return () => {
-      void cleanupRef.current();
+      cleanupEarlySave();
     };
   }, []);
 

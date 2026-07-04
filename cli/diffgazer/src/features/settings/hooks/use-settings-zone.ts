@@ -8,6 +8,7 @@ interface UseSettingsZoneOptions {
   disabled?: boolean;
   initialZone?: SettingsZone;
   disabledButtons?: number[];
+  hasList?: boolean;
 }
 
 interface SettingsZoneResult {
@@ -53,11 +54,13 @@ export function useSettingsZone({
   disabled = false,
   initialZone = "list",
   disabledButtons,
+  hasList = true,
 }: UseSettingsZoneOptions): SettingsZoneResult {
-  const [zone, setZone] = useState<SettingsZone>(initialZone);
+  const [zone, setZone] = useState<SettingsZone>(hasList ? initialZone : "buttons");
   const [buttonIndex, setButtonIndex] = useState(() =>
     findFirstEnabledButton(buttonCount, disabledButtons),
   );
+  const effectiveZone = hasList ? zone : "buttons";
 
   // Derive the effective button index during render so a disabled button never
   // stays focused when disabledButtons changes (no state-sync effect).
@@ -68,7 +71,11 @@ export function useSettingsZone({
   useInput(
     (_input, key) => {
       if (key.tab) {
-        const next = zone === "list" ? "buttons" : "list";
+        if (!hasList) {
+          setZone("buttons");
+          return;
+        }
+        const next = effectiveZone === "list" ? "buttons" : "list";
         if (next === "buttons") {
           setButtonIndex(findFirstEnabledButton(buttonCount, disabledButtons));
         }
@@ -76,7 +83,7 @@ export function useSettingsZone({
         return;
       }
 
-      if (zone === "buttons") {
+      if (effectiveZone === "buttons") {
         if (key.leftArrow) {
           setButtonIndex(
             findNextEnabledButton(effectiveButtonIndex, -1, buttonCount, disabledButtons),
@@ -90,7 +97,7 @@ export function useSettingsZone({
           return;
         }
         if (key.upArrow) {
-          setZone("list");
+          if (hasList) setZone("list");
         }
       }
     },
@@ -98,11 +105,11 @@ export function useSettingsZone({
   );
 
   return {
-    zone,
+    zone: effectiveZone,
     buttonIndex: effectiveButtonIndex,
-    isListActive: zone === "list" && !disabled,
+    isListActive: hasList && effectiveZone === "list" && !disabled,
     isButtonActive: (index: number) =>
-      zone === "buttons" &&
+      effectiveZone === "buttons" &&
       effectiveButtonIndex === index &&
       !disabled &&
       !disabledButtons?.includes(index),

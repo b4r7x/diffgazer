@@ -1,6 +1,19 @@
+import { resolve } from "node:path";
+import { createError, getErrorMessage } from "@diffgazer/core/errors";
+import { err } from "@diffgazer/core/result";
+import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import { zValidator } from "@hono/zod-validator";
-import { Hono } from "hono";
-import { zodErrorHandler } from "../../shared/lib/http/response.js";
+import { type Context, Hono } from "hono";
+import { initializeAIClient } from "../../shared/lib/ai/client.js";
+import { createGitService } from "../../shared/lib/git/service.js";
+import { getProjectRoot } from "../../shared/lib/http/request.js";
+import {
+  type ErrorStatus,
+  errorResponse,
+  zodErrorHandler as handleZodError,
+} from "../../shared/lib/http/response.js";
+import { log } from "../../shared/lib/log.js";
+import { getProjectDiffgazerDir } from "../../shared/lib/paths.js";
 import {
   createBodyLimitMiddleware,
   DEFAULT_BODY_LIMIT_KB,
@@ -8,16 +21,9 @@ import {
 import { createRateLimitMiddleware } from "../../shared/middlewares/rate-limit.js";
 import { requireSetup } from "../../shared/middlewares/setup-guard.js";
 import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
-import { getContextHandler, refreshContextHandler } from "./context/routes.js";
-import {
-  cancelSessionHandler,
-  createReviewHandler,
-  deleteReviewHandler,
-  drilldownHandler,
-  getActiveSessionHandler,
-  getReviewHandler,
-  listReviewsHandler,
-} from "./handlers.js";
+import { buildProjectContextSnapshot, loadContextSnapshot } from "./context/snapshot.js";
+import { handleDrilldownRequest } from "./drilldown.js";
+import { handleStoreError } from "./errors.js";
 import {
   ActiveSessionQuerySchema,
   ContextRefreshSchema,
@@ -25,7 +31,21 @@ import {
   DrilldownRequestSchema,
   ReviewIdParamSchema,
 } from "./schemas.js";
+import { createReviewSession } from "./service.js";
+import {
+  deleteReview as deleteStoredReview,
+  getReview as getStoredReview,
+  listReviews as listStoredReviews,
+} from "./storage/reviews.js";
 import { resumeStreamById } from "./stream/resume.js";
+import {
+  cancelSession,
+  deleteSession,
+  getActiveSessionForProject,
+  getSession,
+} from "./stream/store.js";
+import type { HandleDrilldownError } from "./types.js";
+import { isValidProjectPath, resolvesToSameProject } from "./validation.js";
 
 const reviewRouter = new Hono();
 
@@ -45,59 +65,203 @@ reviewRouter.post(
   reviewCreationLimit,
   requireSetup,
   requireRepoAccess,
-  zValidator("json", CreateReviewBodySchema, zodErrorHandler),
-  (c) => createReviewHandler(c, c.req.valid("json")),
+  zValidator("json", CreateReviewBodySchema, handleZodError),
+  async (c): Promise<Response> => {
+    const body = c.req.valid("json");
+    const clientResult = initializeAIClient();
+    if (!clientResult.ok) {
+      return errorResponse(c, clientResult.error.message, clientResult.error.code, 500);
+    }
+
+    const projectPath = getProjectRoot(c);
+    const result = await createReviewSession(clientResult.value, {
+      mode: body.mode ?? "unstaged",
+      files: body.files,
+      lenses: body.lenses,
+      profile: body.profile,
+      projectPath,
+    });
+
+    if (!result.ok) {
+      return errorResponse(c, result.error.message, result.error.code, 500);
+    }
+
+    return c.json({ reviewId: result.value.reviewId });
+  },
 );
 
 reviewRouter.get(
   "/reviews/:id/stream",
   requireRepoAccess,
-  zValidator("param", ReviewIdParamSchema, zodErrorHandler),
+  zValidator("param", ReviewIdParamSchema, handleZodError),
   resumeStreamById,
 );
 
 reviewRouter.get(
   "/sessions/active",
   requireRepoAccess,
-  zValidator("query", ActiveSessionQuerySchema, zodErrorHandler),
-  (c) => {
+  zValidator("query", ActiveSessionQuerySchema, handleZodError),
+  async (c): Promise<Response> => {
     const query = c.req.valid("query");
-    return getActiveSessionHandler(c, { mode: query.mode ?? "unstaged" });
+    const projectPath = getProjectRoot(c);
+    const gitService = createGitService({ cwd: projectPath });
+
+    const [headCommitResult, statusHashResult] = await Promise.all([
+      gitService.getHeadCommit(),
+      gitService.getStatusHash(),
+    ]);
+    if (!headCommitResult.ok) {
+      return errorResponse(c, "Failed to inspect repository state", ErrorCode.INTERNAL_ERROR, 500);
+    }
+
+    if (statusHashResult.kind === "unavailable") {
+      return c.json({ session: null });
+    }
+    // Match regardless of scopeKey so a client reloading during a scoped
+    // (files/lenses/profile) review can resume it -- only mode is constrained.
+    const session = getActiveSessionForProject(projectPath, {
+      headCommit: headCommitResult.value,
+      statusHash: statusHashResult.hash,
+      statusHashKind: statusHashResult.kind,
+      mode: query.mode ?? "unstaged",
+    });
+    if (!session) {
+      return c.json({ session: null });
+    }
+
+    return c.json({
+      session: {
+        reviewId: session.reviewId,
+        mode: session.mode,
+        startedAt: session.startedAt.toISOString(),
+        headCommit: session.headCommit,
+        statusHash: session.statusHash,
+      },
+    });
   },
 );
 
 reviewRouter.delete(
   "/sessions/:id",
   requireRepoAccess,
-  zValidator("param", ReviewIdParamSchema, zodErrorHandler),
-  (c) => cancelSessionHandler(c, c.req.valid("param").id),
+  zValidator("param", ReviewIdParamSchema, handleZodError),
+  (c): Response => {
+    const { id } = c.req.valid("param");
+    const session = getSession(id);
+    if (!session || session.projectPath !== getProjectRoot(c)) {
+      return c.json({ cancelled: true, reason: "not-found" });
+    }
+    if (session.isComplete) {
+      return c.json({ cancelled: true, reason: "already-complete" });
+    }
+    cancelSession(id);
+    return c.json({ cancelled: true, reason: "cancelled" });
+  },
 );
 
-reviewRouter.get("/context", requireSetup, requireRepoAccess, getContextHandler);
+reviewRouter.get("/context", requireSetup, requireRepoAccess, async (c): Promise<Response> => {
+  const projectRoot = getProjectRoot(c);
+  if (!isValidProjectPath(projectRoot)) {
+    return errorResponse(c, "Invalid project path", ErrorCode.INVALID_PATH, 400);
+  }
+
+  const contextDir = getProjectDiffgazerDir(projectRoot);
+  const snapshot = await loadContextSnapshot(contextDir);
+
+  if (!snapshot || !snapshot.markdown.trim()) {
+    return errorResponse(c, "Context snapshot not found", ErrorCode.NOT_FOUND, 404);
+  }
+
+  // `text` and `markdown` carry the same content; the web client offers both a
+  // plain-text and a Markdown download of the snapshot from these two fields.
+  return c.json({
+    text: snapshot.markdown,
+    markdown: snapshot.markdown,
+    graph: snapshot.graph,
+    meta: snapshot.meta,
+  });
+});
 
 reviewRouter.post(
   "/context/refresh",
   bodyLimitMiddleware,
   requireSetup,
   requireRepoAccess,
-  zValidator("json", ContextRefreshSchema, zodErrorHandler),
-  (c) => refreshContextHandler(c, c.req.valid("json")),
+  zValidator("json", ContextRefreshSchema, handleZodError),
+  async (c): Promise<Response> => {
+    const body = c.req.valid("json");
+    const projectRoot = getProjectRoot(c);
+    if (!isValidProjectPath(projectRoot)) {
+      return errorResponse(c, "Invalid project path", ErrorCode.INVALID_PATH, 400);
+    }
+
+    try {
+      const snapshot = await buildProjectContextSnapshot(projectRoot, {
+        force: body.force,
+      });
+      return c.json({
+        text: snapshot.markdown,
+        markdown: snapshot.markdown,
+        graph: snapshot.graph,
+        meta: snapshot.meta,
+      });
+    } catch (error) {
+      log("error", "context_refresh_failed", { error: getErrorMessage(error) });
+      return errorResponse(c, "Failed to refresh project context", ErrorCode.INTERNAL_ERROR, 500);
+    }
+  },
 );
 
-reviewRouter.get("/reviews", requireRepoAccess, listReviewsHandler);
+reviewRouter.get("/reviews", requireRepoAccess, async (c): Promise<Response> => {
+  const requested = await getRequestedProjectPath(c);
+  if (!requested.ok) return requested.response;
+
+  const result = await listStoredReviews(requested.projectPath);
+  if (!result.ok) return handleStoreError(c, result.error);
+
+  return c.json({
+    reviews: result.value.items,
+    ...(result.value.warnings.length > 0 ? { warnings: result.value.warnings } : {}),
+  });
+});
 
 reviewRouter.get(
   "/reviews/:id",
   requireRepoAccess,
-  zValidator("param", ReviewIdParamSchema, zodErrorHandler),
-  (c) => getReviewHandler(c, c.req.valid("param").id),
+  zValidator("param", ReviewIdParamSchema, handleZodError),
+  async (c): Promise<Response> => {
+    const { id } = c.req.valid("param");
+    const result = await getReviewForProject(id, getProjectRoot(c));
+    if (!result.ok) return handleStoreError(c, result.error);
+    return c.json({ review: result.value });
+  },
 );
 
 reviewRouter.delete(
   "/reviews/:id",
   requireRepoAccess,
-  zValidator("param", ReviewIdParamSchema, zodErrorHandler),
-  (c) => deleteReviewHandler(c, c.req.valid("param").id),
+  zValidator("param", ReviewIdParamSchema, handleZodError),
+  async (c): Promise<Response> => {
+    const { id } = c.req.valid("param");
+    const projectPath = getProjectRoot(c);
+    const existing = await getStoredReview(id);
+    if (!existing.ok) {
+      if (existing.error.code === "NOT_FOUND") {
+        return c.json({ existed: false });
+      }
+      return handleStoreError(c, existing.error);
+    }
+    if (existing.value.metadata.projectPath !== projectPath) {
+      return c.json({ existed: false });
+    }
+
+    const result = await deleteStoredReview(id, projectPath);
+    if (!result.ok) return handleStoreError(c, result.error);
+    if (result.value.existed) {
+      deleteSession(id);
+    }
+    return c.json({ existed: result.value.existed });
+  },
 );
 
 reviewRouter.post(
@@ -106,9 +270,92 @@ reviewRouter.post(
   drilldownLimit,
   requireSetup,
   requireRepoAccess,
-  zValidator("param", ReviewIdParamSchema, zodErrorHandler),
-  zValidator("json", DrilldownRequestSchema, zodErrorHandler),
-  (c) => drilldownHandler(c, c.req.valid("param").id, c.req.valid("json")),
+  zValidator("param", ReviewIdParamSchema, handleZodError),
+  zValidator("json", DrilldownRequestSchema, handleZodError),
+  async (c): Promise<Response> => {
+    const { id } = c.req.valid("param");
+    const body = c.req.valid("json");
+    const projectPath = getProjectRoot(c);
+    const reviewResult = await getReviewForProject(id, projectPath);
+    if (!reviewResult.ok) return handleStoreError(c, reviewResult.error);
+
+    const clientResult = initializeAIClient();
+    if (!clientResult.ok) {
+      return errorResponse(c, clientResult.error.message, clientResult.error.code, 500);
+    }
+
+    const result = await handleDrilldownRequest(clientResult.value, id, body.issueId, projectPath, {
+      review: reviewResult.value,
+      signal: c.req.raw.signal,
+    });
+
+    if (!result.ok) {
+      return errorResponse(
+        c,
+        result.error.message,
+        result.error.code,
+        drilldownErrorStatus(result.error.code),
+      );
+    }
+
+    return c.json({ drilldown: result.value });
+  },
 );
+
+async function getReviewForProject(id: string, projectPath: string) {
+  const result = await getStoredReview(id);
+  if (!result.ok) return result;
+  if (result.value.metadata.projectPath !== projectPath) {
+    return err(createError("NOT_FOUND", "Review not found"));
+  }
+  return result;
+}
+
+type RequestedProjectPath = { ok: true; projectPath: string } | { ok: false; response: Response };
+
+async function getRequestedProjectPath(c: Context): Promise<RequestedProjectPath> {
+  const projectPath = getProjectRoot(c);
+  const queryProjectPath = c.req.query("projectPath");
+  if (!queryProjectPath) return { ok: true, projectPath };
+
+  if (!isValidProjectPath(queryProjectPath)) {
+    return {
+      ok: false,
+      response: errorResponse(c, "Invalid project path", ErrorCode.INVALID_PATH, 400),
+    };
+  }
+
+  // The requested path must identify the request's project root. The fast string
+  // check covers the common exact-match case; the realpath check follows symlinks
+  // so a spoofed or traversal path that resolves elsewhere is rejected.
+  const matchesProject =
+    resolve(queryProjectPath) === projectPath ||
+    (await resolvesToSameProject(queryProjectPath, projectPath));
+  if (!matchesProject) {
+    return {
+      ok: false,
+      response: errorResponse(
+        c,
+        "projectPath does not match request project",
+        ErrorCode.VALIDATION_ERROR,
+        400,
+      ),
+    };
+  }
+
+  return { ok: true, projectPath };
+}
+
+function drilldownErrorStatus(code: HandleDrilldownError["code"]): ErrorStatus {
+  switch (code) {
+    case "ISSUE_NOT_FOUND":
+    case "NOT_FOUND":
+      return 404;
+    case "VALIDATION_ERROR":
+      return 400;
+    default:
+      return 500;
+  }
+}
 
 export { reviewRouter };

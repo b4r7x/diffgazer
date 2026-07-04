@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
+import { extractImportSpecifiers, stripTemplateLiterals } from "@diffgazer/registry";
 
 export type { RegistryFile, RegistryItem } from "./types.js";
 
@@ -32,40 +33,23 @@ export function existingRegistryPath(root: string, modulePath: string): string |
   return null;
 }
 
-export function stripTemplateLiterals(source: string): string {
-  return source.replace(/`[^`]*`/gs, "``");
-}
-
 export function extractLocalImports(source: string): string[] {
   const imports = new Set<string>();
-  const cleaned = stripTemplateLiterals(source);
-  const patterns = [
-    /\bimport\s+(?:type\s+)?[\s\S]*?\s+from\s+["']([^"']+)["']/g,
-    /\bexport\s+(?:type\s+)?[\s\S]*?\s+from\s+["']([^"']+)["']/g,
-    /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g,
-    /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g,
-    /\bimport\s+["']([^"']+)["']/g,
-  ];
-
-  for (const pattern of patterns) {
-    let match = pattern.exec(cleaned);
-    while (match !== null) {
-      const specifier = match[1];
-      if (
-        specifier &&
-        (specifier.startsWith("@/hooks/") ||
-          specifier.startsWith("@/lib/") ||
-          specifier.startsWith("@/components/ui/") ||
-          specifier.startsWith("."))
-      ) {
-        imports.add(specifier);
-      }
-      match = pattern.exec(cleaned);
+  for (const { specifier } of extractImportSpecifiers(source)) {
+    if (
+      specifier.startsWith("@/hooks/") ||
+      specifier.startsWith("@/lib/") ||
+      specifier.startsWith("@/components/ui/") ||
+      specifier.startsWith(".")
+    ) {
+      imports.add(specifier);
     }
   }
 
   return [...imports];
 }
+
+export { stripTemplateLiterals };
 
 export function aliasImportBase(specifier: string): string | null {
   if (specifier.startsWith("@/hooks/"))

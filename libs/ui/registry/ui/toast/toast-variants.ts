@@ -14,7 +14,6 @@ export type ToastTone = "success" | "error" | "warning" | "info" | "loading";
 /** Allowed toast variant values. */
 export type ToastVariant = "hud" | "card" | "viewfinder" | "countdown";
 
-/** Individual toast notification with position-aware animation. */
 export const toastToneBorder = cva("", {
   variants: {
     tone: {
@@ -28,7 +27,6 @@ export const toastToneBorder = cva("", {
   defaultVariants: { tone: "info" },
 });
 
-/** Individual toast notification with position-aware animation. */
 export const toastToneText = cva("", {
   variants: {
     tone: {
@@ -42,7 +40,6 @@ export const toastToneText = cva("", {
   defaultVariants: { tone: "info" },
 });
 
-/** Individual toast notification with position-aware animation. */
 export const toastToneBg = cva("", {
   variants: {
     tone: {
@@ -56,7 +53,6 @@ export const toastToneBg = cva("", {
   defaultVariants: { tone: "info" },
 });
 
-/** Individual toast notification with position-aware animation. */
 export const toastToneCornerBorder = cva("", {
   variants: {
     tone: {
@@ -83,7 +79,6 @@ export const toastShellVariants = cva("font-mono", {
   defaultVariants: { variant: "card" },
 });
 
-/** Individual toast notification with position-aware animation. */
 export const icons: Record<Exclude<ToastTone, "loading">, string> = {
   success: "✓",
   error: "✕",
@@ -91,7 +86,6 @@ export const icons: Record<Exclude<ToastTone, "loading">, string> = {
   info: "i",
 };
 
-/** Individual toast notification with position-aware animation. */
 export type ToastSide = "left" | "right" | "top" | "bottom";
 
 /** Class variants for toast slide in. */
@@ -123,7 +117,6 @@ export const toastSlideOutVariants = cva(
   },
 );
 
-/** Individual toast notification with position-aware animation. */
 export const positionToSide: Record<ToastPosition, ToastSide> = {
   "top-left": "left",
   "top-center": "top",

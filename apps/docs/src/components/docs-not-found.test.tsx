@@ -15,24 +15,23 @@ const routerBoundary = vi.hoisted(() => ({
 
 // Boundary mock: TanStack Router is the external routing library; links need deterministic hrefs in this component test.
 vi.mock("@tanstack/react-router", async () => {
-  const { RouterLinkMock } = await import("@/testing/router-mock");
+  const { RouterLinkMock, useLocationMock, useRouterStateMock } = await import(
+    "@/testing/router-mock"
+  );
   return {
     Link: RouterLinkMock,
-    useLocation: ({ select }: { select?: (location: { pathname: string }) => unknown } = {}) =>
-      select
-        ? select({ pathname: routerBoundary.pathname })
-        : { pathname: routerBoundary.pathname },
+    ...useLocationMock({
+      get pathname() {
+        return routerBoundary.pathname;
+      },
+    }),
     useNavigate: () => routerBoundary.navigate,
     useRouter: () => ({ subscribe: () => () => {} }),
-    useRouterState: ({
-      select,
-    }: {
-      select: (state: { location: { pathname: string }; status: "idle" }) => unknown;
-    }) =>
-      select({
-        location: { pathname: routerBoundary.pathname },
-        status: "idle",
-      }),
+    ...useRouterStateMock({
+      get pathname() {
+        return routerBoundary.pathname;
+      },
+    }),
   };
 });
 

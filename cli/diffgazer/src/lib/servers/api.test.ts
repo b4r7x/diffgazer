@@ -24,7 +24,10 @@ describe("waitForHealthy", () => {
 
     await expect(waitForHealthy({ address: ADDRESS, fetchImpl, sleep })).resolves.toBeUndefined();
 
-    expect(fetchImpl).toHaveBeenCalledExactlyOnceWith(`${ADDRESS}/api/health`);
+    expect(fetchImpl).toHaveBeenCalledExactlyOnceWith(
+      `${ADDRESS}/api/health`,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
     expect(sleep).not.toHaveBeenCalled();
   });
 
@@ -39,8 +42,40 @@ describe("waitForHealthy", () => {
     await waitForHealthy({ address: ADDRESS, fetchImpl, sleep, intervalMs: 50 });
 
     expect(fetchImpl).toHaveBeenCalledTimes(3);
+    for (const call of fetchImpl.mock.calls) {
+      expect(call[1]).toEqual(expect.objectContaining({ signal: expect.any(AbortSignal) }));
+    }
     expect(sleep).toHaveBeenCalledTimes(2);
     expect(sleep).toHaveBeenLastCalledWith(50);
+  });
+
+  it("passes the remaining timeout to each health probe signal", async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(unavailableResponse())
+      .mockResolvedValue(okResponse());
+    let clock = 1000;
+    const sleep = vi.fn((ms: number) => {
+      clock += ms;
+      return Promise.resolve();
+    });
+    const now = () => clock;
+
+    await waitForHealthy({
+      address: ADDRESS,
+      fetchImpl,
+      sleep,
+      now,
+      timeoutMs: 500,
+      intervalMs: 125,
+    });
+
+    expect(timeoutSpy).toHaveBeenNthCalledWith(1, 500);
+    expect(timeoutSpy).toHaveBeenNthCalledWith(2, 375);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+
+    timeoutSpy.mockRestore();
   });
 
   it("rejects once the timeout elapses without a healthy response", async () => {
@@ -97,7 +132,10 @@ describe("createApiServer readiness wiring", () => {
     child.stdout.emit("data", Buffer.from("Server running on 4100"));
 
     await vi.waitFor(() => {
-      expect(fetchSpy).toHaveBeenCalledWith("http://localhost:4100/api/health");
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "http://localhost:4100/api/health",
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
     });
   });
 

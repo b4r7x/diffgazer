@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
@@ -82,6 +82,29 @@ describe("useScopedNavigation", () => {
     expect(onEnter).toHaveBeenCalledWith("a", expect.any(KeyboardEvent));
   });
 
+  it("navigates with the documented 'up'/'down' hotkey aliases", async () => {
+    const user = userEvent.setup();
+    render(<TestList defaultHighlighted="b" upKeys={["up"]} downKeys={["down"]} />, {
+      wrapper: KeyboardWrapper,
+    });
+
+    await user.keyboard("{ArrowUp}");
+
+    expectActiveOptionText("a");
+  });
+
+  it("navigates on a CapsLock-cased custom letter key", () => {
+    render(<TestList defaultHighlighted="b" upKeys={["k"]} />, {
+      wrapper: KeyboardWrapper,
+    });
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "K", bubbles: true }));
+    });
+
+    expectActiveOptionText("a");
+  });
+
   it("requires KeyboardProvider", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -93,6 +116,7 @@ describe("useScopedNavigation", () => {
   });
 
   it("moves DOM focus and honors explicit activation handlers when moveFocus is true", async () => {
+    const user = userEvent.setup();
     const onSelect = vi.fn();
     const onEnter = vi.fn();
 
@@ -121,7 +145,7 @@ describe("useScopedNavigation", () => {
 
     render(<MoveFocusList />, { wrapper: KeyboardWrapper });
 
-    await userEvent.keyboard("{ArrowDown} {Enter}");
+    await user.keyboard("{ArrowDown} {Enter}");
 
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "B" }));
     expect(onSelect).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
@@ -129,6 +153,7 @@ describe("useScopedNavigation", () => {
   });
 
   it("moves focus from native checkbox controls", async () => {
+    const user = userEvent.setup();
     const onSelect = vi.fn();
 
     function CheckboxList() {
@@ -157,13 +182,14 @@ describe("useScopedNavigation", () => {
     render(<CheckboxList />, { wrapper: KeyboardWrapper });
 
     screen.getByRole("checkbox", { name: "A" }).focus();
-    await userEvent.keyboard("{ArrowDown} ");
+    await user.keyboard("{ArrowDown} ");
 
     expect(document.activeElement).toBe(screen.getByRole("checkbox", { name: "B" }));
     expect(onSelect).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
   });
 
   it("moves focus from native radio controls", async () => {
+    const user = userEvent.setup();
     function RadioList() {
       const ref = useRef<HTMLDivElement>(null);
       useScopedNavigation({
@@ -189,7 +215,7 @@ describe("useScopedNavigation", () => {
     render(<RadioList />, { wrapper: KeyboardWrapper });
 
     screen.getByRole("radio", { name: "Basic" }).focus();
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
 
     expect(document.activeElement).toBe(screen.getByRole("radio", { name: "Pro" }));
   });

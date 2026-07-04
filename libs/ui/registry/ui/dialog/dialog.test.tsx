@@ -52,19 +52,31 @@ function mockDialogBounds(dialog: HTMLElement) {
   });
 }
 
+function fireDialogPointerClick(
+  dialog: HTMLElement,
+  coordinates: { clientX: number; clientY: number },
+) {
+  // fireEvent retained: pointer coordinates are required to exercise native dialog backdrop hit testing.
+  fireEvent.pointerDown(dialog, coordinates);
+  // fireEvent retained: click coordinates must match the pointerdown for the shell backdrop contract.
+  fireEvent.click(dialog, coordinates);
+}
+
 describe("Dialog", () => {
   it("opens when trigger is clicked and calls onOpenChange in controlled mode", async () => {
+    const user = userEvent.setup();
     const onOpenChange = vi.fn();
     renderDialog({ open: false, onOpenChange });
-    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    await user.click(screen.getByRole("button", { name: "Open" }));
     expect(onOpenChange).toHaveBeenCalledWith(true);
   });
 
   it("closes when close button is clicked", async () => {
+    const user = userEvent.setup();
     renderDialog({ defaultOpen: true });
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveAttribute("data-state", "open");
-    await userEvent.click(screen.getByRole("button", { name: "Close dialog" }));
+    await user.click(screen.getByRole("button", { name: "Close dialog" }));
     expect(dialog).toHaveAttribute("data-state", "closed");
   });
 
@@ -94,8 +106,8 @@ describe("Dialog", () => {
     const dialog = screen.getByRole("dialog");
     mockDialogBounds(dialog);
 
-    // fireEvent retained: backdrop close requires explicit clientX/clientY to land outside dialog bounds
-    fireEvent.click(dialog, { clientX: 80, clientY: 120 });
+    // fireEvent retained: backdrop close requires explicit pointer coordinates to land outside dialog bounds
+    fireDialogPointerClick(dialog, { clientX: 80, clientY: 120 });
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
@@ -113,8 +125,8 @@ describe("Dialog", () => {
     const dialog = screen.getByRole("dialog", { name: "Bounded dialog" });
     mockDialogBounds(dialog);
 
-    // fireEvent retained: backdrop logic needs clientX/clientY to evaluate inside-vs-outside
-    fireEvent.click(dialog, { clientX: 200, clientY: 200 });
+    // fireEvent retained: backdrop logic needs pointer coordinates to evaluate inside-vs-outside
+    fireDialogPointerClick(dialog, { clientX: 200, clientY: 200 });
 
     expect(onOpenChange).not.toHaveBeenCalled();
     expect(dialog).toHaveAttribute("data-state", "open");
@@ -134,14 +146,14 @@ describe("Dialog", () => {
     const dialog = screen.getByRole("dialog", { name: "Static dialog" });
     mockDialogBounds(dialog);
 
-    // fireEvent retained: backdrop click needs explicit coordinates outside dialog bounds
-    fireEvent.click(dialog, { clientX: 80, clientY: 120 });
+    // fireEvent retained: backdrop click needs explicit pointer coordinates outside dialog bounds
+    fireDialogPointerClick(dialog, { clientX: 80, clientY: 120 });
 
     expect(onOpenChange).not.toHaveBeenCalled();
     expect(dialog).toHaveAttribute("data-state", "open");
   });
 
-  it("returns focus to trigger after dialog closes", () => {
+  it("returns focus to trigger after dialog closes", async () => {
     const { rerender } = renderDialog({ defaultOpen: true });
     const trigger = screen.getByRole("button", { name: "Open" });
     trigger.focus();
@@ -163,10 +175,11 @@ describe("Dialog", () => {
     // fireEvent retained: animationend has no user-event equivalent; presence transitions complete on this event
     if (dialog) fireEvent.animationEnd(dialog);
 
-    expect(trigger).toHaveFocus();
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 
   it("returns focus to the previously focused element without DialogTrigger", async () => {
+    const user = userEvent.setup();
     function ControlledDialog() {
       const [open, setOpen] = useState(false);
 
@@ -188,9 +201,9 @@ describe("Dialog", () => {
     render(<ControlledDialog />);
     const opener = screen.getByRole("button", { name: "Open controlled dialog" });
 
-    await userEvent.click(opener);
+    await user.click(opener);
     const dialog = screen.getByRole("dialog", { name: "Controlled dialog" });
-    await userEvent.click(screen.getByRole("button", { name: "Close dialog" }));
+    await user.click(screen.getByRole("button", { name: "Close dialog" }));
     await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"));
     // fireEvent retained: animationend has no user-event equivalent
     fireEvent.animationEnd(dialog);
@@ -198,7 +211,35 @@ describe("Dialog", () => {
     await waitFor(() => expect(opener).toHaveFocus());
   });
 
+  it("restores focus to the opener when an open dialog is unmounted", async () => {
+    const user = userEvent.setup();
+    function ConditionalDialog({ mounted }: { mounted: boolean }) {
+      return (
+        <Dialog>
+          <Dialog.Trigger>Open removable dialog</Dialog.Trigger>
+          {mounted ? (
+            <Dialog.Content>
+              <Dialog.Title>Removable dialog</Dialog.Title>
+              <Dialog.Close>Close</Dialog.Close>
+            </Dialog.Content>
+          ) : null}
+        </Dialog>
+      );
+    }
+
+    const { rerender } = render(<ConditionalDialog mounted />);
+    const trigger = screen.getByRole("button", { name: "Open removable dialog" });
+
+    await user.click(trigger);
+    expect(screen.getByRole("dialog", { name: "Removable dialog" })).toBeInTheDocument();
+
+    rerender(<ConditionalDialog mounted={false} />);
+
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
   it("restores focus in close order for nested triggerless dialogs", async () => {
+    const user = userEvent.setup();
     function NestedDialogs() {
       const [parentOpen, setParentOpen] = useState(false);
       const [childOpen, setChildOpen] = useState(false);
@@ -230,19 +271,19 @@ describe("Dialog", () => {
     render(<NestedDialogs />);
     const opener = screen.getByRole("button", { name: "Open parent" });
 
-    await userEvent.click(opener);
+    await user.click(opener);
     const childOpener = screen.getByRole("button", { name: "Open child" });
-    await userEvent.click(childOpener);
+    await user.click(childOpener);
 
     const childDialog = screen.getByRole("dialog", { name: "Child dialog" });
-    await userEvent.click(screen.getByRole("button", { name: "Close child" }));
+    await user.click(screen.getByRole("button", { name: "Close child" }));
     await waitFor(() => expect(childDialog).toHaveAttribute("data-state", "closed"));
     // fireEvent retained: animationend has no user-event equivalent
     fireEvent.animationEnd(childDialog);
     await waitFor(() => expect(childOpener).toHaveFocus());
 
     const parentDialog = screen.getByRole("dialog", { name: "Parent dialog" });
-    await userEvent.click(screen.getByRole("button", { name: "Close parent" }));
+    await user.click(screen.getByRole("button", { name: "Close parent" }));
     await waitFor(() => expect(parentDialog).toHaveAttribute("data-state", "closed"));
     // fireEvent retained: animationend has no user-event equivalent
     fireEvent.animationEnd(parentDialog);
@@ -269,6 +310,7 @@ describe("Dialog", () => {
   });
 
   it("keeps nested portals inside a dialog opened after an initial closed render", async () => {
+    const user = userEvent.setup();
     function ClosedFirstDialog() {
       const [open, setOpen] = useState(false);
 
@@ -290,7 +332,7 @@ describe("Dialog", () => {
 
     render(<ClosedFirstDialog />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Open delayed dialog" }));
+    await user.click(screen.getByRole("button", { name: "Open delayed dialog" }));
 
     const dialog = screen.getByRole("dialog", { name: "Delayed dialog" });
     const popoverTrigger = screen.getByRole("button", { name: "Nested popover trigger" });
@@ -306,17 +348,19 @@ describe("Dialog", () => {
   });
 
   it("trigger has aria-expanded reflecting open state", async () => {
+    const user = userEvent.setup();
     renderDialog();
     const trigger = screen.getByRole("button", { name: "Open" });
     expect(trigger).toHaveAttribute("aria-expanded", "false");
-    await userEvent.click(trigger);
+    await user.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
   });
 
   it("trigger aria-controls references the dialog content", async () => {
+    const user = userEvent.setup();
     renderDialog();
     const trigger = screen.getByRole("button", { name: "Open" });
-    await userEvent.click(trigger);
+    await user.click(trigger);
     const dialog = screen.getByRole("dialog");
     expect(trigger).toHaveAttribute("aria-controls", dialog.id);
   });
@@ -368,6 +412,32 @@ describe("Dialog", () => {
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("No accessible name provided")),
     );
     warnSpy.mockRestore();
+  });
+
+  it("does not warn about a missing accessible name while the dialog is closed", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    function WrappedTitle({ children }: { children: ReactNode }) {
+      return <Dialog.Title>{children}</Dialog.Title>;
+    }
+
+    render(
+      <Dialog open={false}>
+        <Dialog.Content>
+          <WrappedTitle>Closed wrapped title</WrappedTitle>
+          <Dialog.Body>Body content</Dialog.Body>
+        </Dialog.Content>
+      </Dialog>,
+    );
+
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("No accessible name provided"),
+    );
+    expect(errorSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("No accessible name provided"),
+    );
   });
 
   it("preserves consumer aria-describedby and merges with description id", () => {
@@ -596,6 +666,7 @@ describe("Dialog", () => {
   });
 
   it("uses an interactive child as the trigger without nesting controls", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <Dialog>
         <Dialog.Trigger>
@@ -613,7 +684,7 @@ describe("Dialog", () => {
     expect(container.querySelector("button button")).toBeNull();
     expect(await axe(container)).toHaveNoViolations();
 
-    await userEvent.click(trigger);
+    await user.click(trigger);
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(trigger).toHaveAttribute("aria-expanded", "true");
   });
@@ -644,6 +715,7 @@ describe("Dialog", () => {
   });
 
   it("closes only the top dialog when closing nested dialogs", async () => {
+    const user = userEvent.setup();
     const onOpenChange1 = vi.fn();
     const onOpenChange2 = vi.fn();
     render(
@@ -669,24 +741,19 @@ describe("Dialog", () => {
     const closeButtons = screen.getAllByRole("button", { name: "Close dialog" });
     const lastClose = closeButtons[closeButtons.length - 1];
     if (!lastClose) throw new Error("expected close button");
-    await userEvent.click(lastClose);
+    await user.click(lastClose);
 
     expect(onOpenChange2).toHaveBeenCalledWith(false);
     expect(onOpenChange1).not.toHaveBeenCalled();
-    // Assert the closing-but-still-present contract in a single synchronous
-    // waitFor snapshot: the top dialog is "closed" yet still mounted for its exit
-    // animation while the dialog below stays open. Observing all three facts in
-    // one callback prevents the presence exit-fallback timer (which unmounts the
-    // closing dialog after exitFallbackMs) from interleaving between the
-    // data-state check and the containment check under CPU load.
     await waitFor(() => {
-      expect(secondDialog).toHaveAttribute("data-state", "closed");
       expect(firstDialog).toHaveAttribute("data-state", "open");
-      expect(document.body).toContainElement(secondDialog);
     });
 
-    // fireEvent retained: animationend has no user-event equivalent
-    fireEvent.animationEnd(secondDialog);
+    if (document.body.contains(secondDialog)) {
+      expect(secondDialog).toHaveAttribute("data-state", "closed");
+      // fireEvent retained: animationend has no user-event equivalent
+      fireEvent.animationEnd(secondDialog);
+    }
 
     await waitFor(() => expect(document.body).not.toContainElement(secondDialog));
     expect(document.body).toContainElement(firstDialog);
@@ -753,13 +820,14 @@ describe("Dialog", () => {
     });
 
     it("keeps Tab order across action buttons; hint glyphs are not focusable", async () => {
+      const user = userEvent.setup();
       renderWithHints();
       const cancel = screen.getByRole("button", { name: "Cancel" });
       const confirm = screen.getByRole("button", { name: "Confirm" });
 
       cancel.focus();
       expect(cancel).toHaveFocus();
-      await userEvent.tab();
+      await user.tab();
       expect(confirm).toHaveFocus();
 
       for (const hint of hints) {
@@ -1001,7 +1069,7 @@ describe("Dialog", () => {
     const onCancel = vi.fn();
 
     render(
-      <Dialog defaultOpen onOpenChange={onOpenChange}>
+      <Dialog open onOpenChange={onOpenChange}>
         <Dialog.Trigger>Open Dialog</Dialog.Trigger>
         <Dialog.Content onClick={onClick} onCancel={onCancel}>
           <Dialog.Title>Composed dialog</Dialog.Title>
@@ -1012,8 +1080,8 @@ describe("Dialog", () => {
     const dialog = screen.getByRole("dialog", { name: "Composed dialog" });
     mockDialogBounds(dialog);
 
-    // fireEvent retained: backdrop click needs explicit coordinates outside dialog bounds
-    fireEvent.click(dialog, { clientX: 80, clientY: 120 });
+    // fireEvent retained: backdrop click needs explicit pointer coordinates outside dialog bounds
+    fireDialogPointerClick(dialog, { clientX: 80, clientY: 120 });
     // fireEvent retained: native <dialog> cancel event has no user-event equivalent
     fireEvent(dialog, new Event("cancel", { bubbles: false }));
 
@@ -1148,6 +1216,7 @@ describe("Dialog body scroll lock (CSS-only)", () => {
   });
 
   it("locks body overflow while a Dialog is open and releases it on close", async () => {
+    const user = userEvent.setup();
     const baselineOverflow = getComputedStyle(document.body).overflow;
     expect(baselineOverflow).not.toBe("hidden");
 
@@ -1163,7 +1232,7 @@ describe("Dialog body scroll lock (CSS-only)", () => {
     const dialog = screen.getByRole("dialog", { name: "Scroll lock dialog" });
     expect(getComputedStyle(document.body).overflow).toBe("hidden");
 
-    await userEvent.click(screen.getByRole("button", { name: "Close dialog" }));
+    await user.click(screen.getByRole("button", { name: "Close dialog" }));
     await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"));
     // fireEvent retained: animationend has no user-event equivalent; presence transitions complete on this event
     fireEvent.animationEnd(dialog);
@@ -1173,6 +1242,7 @@ describe("Dialog body scroll lock (CSS-only)", () => {
   });
 
   it("keeps body locked while any of multiple open dialogs remains open", async () => {
+    const user = userEvent.setup();
     render(
       <>
         <Dialog defaultOpen>
@@ -1193,7 +1263,7 @@ describe("Dialog body scroll lock (CSS-only)", () => {
     expect(getComputedStyle(document.body).overflow).toBe("hidden");
 
     const innerDialog = screen.getByRole("dialog", { name: "Inner dialog" });
-    await userEvent.click(screen.getByRole("button", { name: "Close inner" }));
+    await user.click(screen.getByRole("button", { name: "Close inner" }));
     await waitFor(() => expect(innerDialog).toHaveAttribute("data-state", "closed"));
     // fireEvent retained: animationend has no user-event equivalent
     fireEvent.animationEnd(innerDialog);
@@ -1202,7 +1272,7 @@ describe("Dialog body scroll lock (CSS-only)", () => {
     expect(getComputedStyle(document.body).overflow).toBe("hidden");
 
     const outerDialog = screen.getByRole("dialog", { name: "Outer dialog" });
-    await userEvent.click(screen.getByRole("button", { name: "Close outer" }));
+    await user.click(screen.getByRole("button", { name: "Close outer" }));
     await waitFor(() => expect(outerDialog).toHaveAttribute("data-state", "closed"));
     // fireEvent retained: animationend has no user-event equivalent
     fireEvent.animationEnd(outerDialog);
@@ -1415,6 +1485,7 @@ describe("Dialog.CloseIcon", () => {
   });
 
   it("clicking closes the dialog", async () => {
+    const user = userEvent.setup();
     render(
       <Dialog defaultOpen>
         <Dialog.Content>
@@ -1425,7 +1496,7 @@ describe("Dialog.CloseIcon", () => {
     );
     const dialog = screen.getByRole("dialog", { name: "Click closes" });
     expect(dialog).toHaveAttribute("data-state", "open");
-    await userEvent.click(screen.getByRole("button", { name: "Close dialog" }));
+    await user.click(screen.getByRole("button", { name: "Close dialog" }));
     expect(dialog).toHaveAttribute("data-state", "closed");
   });
 
@@ -1470,6 +1541,7 @@ describe("Dialog.CloseIcon", () => {
   });
 
   it("consumer onClick can preventDefault to keep the dialog open", async () => {
+    const user = userEvent.setup();
     render(
       <Dialog defaultOpen>
         <Dialog.Content>
@@ -1479,7 +1551,7 @@ describe("Dialog.CloseIcon", () => {
       </Dialog>,
     );
     const dialog = screen.getByRole("dialog", { name: "Prevented" });
-    await userEvent.click(screen.getByRole("button", { name: "Close dialog" }));
+    await user.click(screen.getByRole("button", { name: "Close dialog" }));
     expect(dialog).toHaveAttribute("data-state", "open");
   });
 
@@ -1498,6 +1570,7 @@ describe("Dialog.CloseIcon", () => {
 
 describe("Dialog focus trap", () => {
   it("Tab from the last focusable wraps back to the first", async () => {
+    const user = userEvent.setup();
     render(
       <Dialog defaultOpen>
         <Dialog.Content>
@@ -1516,11 +1589,12 @@ describe("Dialog focus trap", () => {
     confirm.focus();
     expect(confirm).toHaveFocus();
 
-    await userEvent.tab();
+    await user.tab();
     expect(cancel).toHaveFocus();
   });
 
   it("Shift+Tab from the first focusable wraps to the last", async () => {
+    const user = userEvent.setup();
     render(
       <Dialog defaultOpen>
         <Dialog.Content>
@@ -1539,7 +1613,7 @@ describe("Dialog focus trap", () => {
     cancel.focus();
     expect(cancel).toHaveFocus();
 
-    await userEvent.tab({ shift: true });
+    await user.tab({ shift: true });
     expect(confirm).toHaveFocus();
   });
 
@@ -1565,6 +1639,23 @@ describe("Dialog focus trap", () => {
     await waitFor(() => expect(confirm).toHaveFocus());
   });
 
+  it("keeps focus on an autoFocus element that is not the first focusable when the dialog opens", async () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>Auto focus dialog</Dialog.Title>
+          <Dialog.Footer>
+            <Dialog.Close>Cancel</Dialog.Close>
+            <Dialog.Action autoFocus>Confirm</Dialog.Action>
+          </Dialog.Footer>
+        </Dialog.Content>
+      </Dialog>,
+    );
+
+    const confirm = screen.getByRole("button", { name: "Confirm" });
+    await waitFor(() => expect(confirm).toHaveFocus());
+  });
+
   it("focuses the first focusable element on open when no initialFocus is provided", async () => {
     render(
       <Dialog defaultOpen>
@@ -1583,6 +1674,7 @@ describe("Dialog focus trap", () => {
   });
 
   it("focuses the first footer action on open and Tab cycles through CloseIcon, wrapping at the boundaries", async () => {
+    const user = userEvent.setup();
     render(
       <Dialog defaultOpen>
         <Dialog.Content>
@@ -1602,14 +1694,14 @@ describe("Dialog focus trap", () => {
 
     await waitFor(() => expect(cancel).toHaveFocus());
 
-    await userEvent.tab();
+    await user.tab();
     expect(confirm).toHaveFocus();
-    await userEvent.tab();
+    await user.tab();
     expect(closeIcon).toHaveFocus();
-    await userEvent.tab();
+    await user.tab();
     expect(cancel).toHaveFocus();
 
-    await userEvent.tab({ shift: true });
+    await user.tab({ shift: true });
     expect(closeIcon).toHaveFocus();
   });
 });

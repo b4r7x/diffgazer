@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { afterEach, test } from "node:test";
-import { collectFiles } from "./files.mjs";
-import { computeStrictArtifactFingerprint } from "./validation.mjs";
+import { computeStrictArtifactFingerprint } from "@diffgazer/registry";
+import { collectFiles, listRepoFiles } from "./files.mjs";
 
 const tempRoots = [];
 
@@ -59,4 +60,16 @@ test("file collection and artifact fingerprints use deterministic code-unit orde
   ).fingerprint;
 
   assert.equal(secondFingerprint, firstFingerprint);
+});
+
+test("repo file listing includes untracked files and honors git excludes", () => {
+  const root = makeTempRoot();
+
+  execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+  writeText(root, ".gitignore", "ignored.txt\n");
+  writeText(root, "visible.txt", "visible\n");
+  writeText(root, "nested/file.ts", "nested\n");
+  writeText(root, "ignored.txt", "ignored\n");
+
+  assert.deepEqual(listRepoFiles(root).sort(), [".gitignore", "nested/file.ts", "visible.txt"]);
 });

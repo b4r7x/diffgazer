@@ -5,7 +5,7 @@ import { cn } from "@diffgazer/ui/lib/utils";
 export interface FixPlanChecklistProps {
   steps: FixPlanStep[];
   completedSteps: Set<number>;
-  onToggle: (step: number) => void;
+  onToggle: (stepIndex: number) => void;
   focusedStepIndex?: number | null;
   className?: string;
 }
@@ -20,12 +20,13 @@ export function FixPlanChecklist({
   return (
     <div className={cn("space-y-1 text-sm", className)}>
       {steps.map((step, index) => {
-        const isComplete = completedSteps.has(step.step);
+        const isComplete = completedSteps.has(index);
         return (
           <Checkbox
-            key={step.step}
+            // biome-ignore lint/suspicious/noArrayIndexKey: fix-plan step numbers can repeat; rendered index is the completion identity.
+            key={index}
             checked={isComplete}
-            onChange={() => onToggle(step.step)}
+            onChange={() => onToggle(index)}
             label={step.action}
             highlighted={focusedStepIndex === index}
             strikethrough

@@ -7,8 +7,8 @@ import { describe, expect, it } from "vitest";
 import { demoLoaders } from "@/generated/demo-loaders";
 import { getConsumptionMetadata } from "@/lib/consumption-metadata";
 import {
+  getDocsLibraryConfig,
   getInstallCommand,
-  LOCAL_DGADD_PREREQUISITE,
   routeSlugsFromSourcePath,
   sourceSlugsForLibrary,
 } from "@/lib/library";
@@ -282,10 +282,23 @@ describe("docs-library source path mapping", () => {
     expect(getInstallCommand("app", "installation")).toBeNull();
   });
 
-  it("keeps installer handoff publish-gated and local-first", () => {
-    expect(LOCAL_DGADD_PREREQUISITE).toContain("locally packed @diffgazer/add tarball");
-    expect(LOCAL_DGADD_PREREQUISITE).toContain("pnpm exec dgadd");
-    expect(LOCAL_DGADD_PREREQUISITE).not.toContain("npx @diffgazer/add");
+  it("keeps consumption metadata dgadd commands on the configured installer path", () => {
+    const config = getDocsLibraryConfig("ui");
+    const originalInstaller = config.installer;
+    config.installer = {
+      command: "pnpm dlx @diffgazer/add add",
+      itemPrefix: "ui/",
+    };
+
+    try {
+      const expected = getInstallCommand("ui", "ui/button");
+      const meta = getConsumptionMetadata("ui", "button", "component");
+
+      expect(expected).toBe("pnpm dlx @diffgazer/add add ui/button");
+      expect(meta.paths.dgadd.command).toBe(expected);
+    } finally {
+      config.installer = originalInstaller;
+    }
   });
 
   it("maps UI utility consumption metadata to lib paths", () => {
@@ -297,7 +310,7 @@ describe("docs-library source path mapping", () => {
     expect(meta.paths.copy.available).toBe(false);
     expect(meta.paths.copy.note).toContain("r.b4r7.dev does not resolve");
     expect(meta.paths.dgadd.command).toBe("pnpm exec dgadd add ui/compose-refs");
-    expect(meta.paths.dgadd.note).toContain("tarball");
+    expect(meta.paths.dgadd.note).toContain("local checkout");
     expect(meta.paths.package.available).toBe(false);
   });
 
@@ -309,7 +322,7 @@ describe("docs-library source path mapping", () => {
     expect(meta.paths.copy.available).toBe(false);
     expect(meta.paths.copy.note).toContain("r.b4r7.dev does not resolve");
     expect(meta.paths.dgadd.command).toBe("pnpm exec dgadd add keys/navigation");
-    expect(meta.paths.dgadd.note).toContain("tarball");
+    expect(meta.paths.dgadd.note).toContain("local checkout");
   });
 
   it("marks provider-backed keys hooks as package-only while keeping package import metadata", () => {
@@ -320,7 +333,7 @@ describe("docs-library source path mapping", () => {
     expect(meta.paths.copy.available).toBe(false);
     expect(meta.paths.dgadd.available).toBe(false);
     expect(meta.paths.package.available).toBe(false);
-    expect(meta.paths.package.note).toContain("not live yet");
+    expect(meta.paths.package.note).toContain("not yet published to npm");
   });
 
   it("uses deterministic docs preview without npx network dependency", () => {
@@ -498,7 +511,7 @@ describe("docs-library source path mapping", () => {
       }
 
       expect(source, path).toMatch(
-        /npm view|publish-gated|After Publication|after publication|after `@diffgazer\/add` is published|after its npm package is published/,
+        /not yet published to npm|first release|local checkout|npm view|publish-gated|After Publication|after publication|after `@diffgazer\/add` is published|after its npm package is published/,
       );
     }
   });
@@ -608,7 +621,7 @@ describe("docs-library source path mapping", () => {
     expect(cliReadme).toContain("@diffgazer/keys");
 
     for (const readme of [rootReadme, uiReadme, keysReadme, cliReadme]) {
-      expect(readme).toMatch(/publish-gated/);
+      expect(readme).toMatch(/publish-gated|not yet published to npm/);
     }
   });
 });

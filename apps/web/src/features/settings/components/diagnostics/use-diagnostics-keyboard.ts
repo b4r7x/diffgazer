@@ -94,6 +94,7 @@ export function useDiagnosticsKeyboard({
     onAction: handleButtonAction,
     defaultZone: "actions",
     canExitActions: false,
+    scope: SETTINGS_DIAGNOSTICS_SCOPE,
   });
 
   const footerShortcuts: Shortcut[] = inActions

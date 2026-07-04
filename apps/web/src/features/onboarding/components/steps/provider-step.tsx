@@ -4,7 +4,7 @@ import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { useState } from "react";
-import { resolveAvailableValue } from "../../lib/select.js";
+import { resolveAvailableValue } from "../../lib/select";
 
 const PROVIDER_IDS = AVAILABLE_PROVIDERS.map((provider) => provider.id);
 

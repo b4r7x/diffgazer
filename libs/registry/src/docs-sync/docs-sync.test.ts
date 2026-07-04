@@ -291,7 +291,6 @@ describe("syncDocsFromArtifacts", () => {
     const result = runSync(fixture.config);
 
     expect(result.synced).toBe(true);
-    expect(existsSync(join(docsRoot, "content/docs/meta.json"))).toBe(true);
     expect(existsSync(join(docsRoot, "content/docs", fixture.config.id, "meta.json"))).toBe(true);
 
     for (const basename of fixture.generatedOutputBasenames) {
@@ -303,86 +302,6 @@ describe("syncDocsFromArtifacts", () => {
     expect(existsSync(join(docsRoot, "src/generated", fixture.config.id, "logical-name"))).toBe(
       false,
     );
-  });
-
-  it("appends configured extra root pages after the artifact namespaces", () => {
-    const primary = createLibraryFixture({
-      workspaceRoot,
-      id: "ui",
-      workspaceDir: "ui-lib",
-    });
-    const secondary = createLibraryFixture({
-      workspaceRoot,
-      id: "keys",
-      workspaceDir: "keys-lib",
-    });
-
-    const result = syncDocsFromArtifacts({
-      docsRoot,
-      workspaceRoot,
-      libraries: [primary.config, secondary.config],
-      primaryLibraryId: primary.config.id,
-      origin: TEST_ORIGIN,
-      sourceOrigin: TEST_ORIGIN,
-      mode: "workspace",
-      extraRootPages: ["...app"],
-    });
-
-    expect(result.synced).toBe(true);
-    const rootMeta = JSON.parse(readFileSync(join(docsRoot, "content/docs/meta.json"), "utf-8"));
-    expect(rootMeta.pages).toEqual(["...ui", "...keys", "...app"]);
-  });
-
-  it("re-syncs and rewrites root pages when extra root pages change on a warm cache", () => {
-    const primary = createLibraryFixture({
-      workspaceRoot,
-      id: "ui",
-      workspaceDir: "ui-lib",
-    });
-    const secondary = createLibraryFixture({
-      workspaceRoot,
-      id: "keys",
-      workspaceDir: "keys-lib",
-    });
-
-    function syncWithExtraRootPages(extraRootPages: string[]) {
-      return syncDocsFromArtifacts({
-        docsRoot,
-        workspaceRoot,
-        libraries: [primary.config, secondary.config],
-        primaryLibraryId: primary.config.id,
-        origin: TEST_ORIGIN,
-        sourceOrigin: TEST_ORIGIN,
-        mode: "workspace",
-        extraRootPages,
-      });
-    }
-
-    function readRootPages(): unknown {
-      return JSON.parse(readFileSync(join(docsRoot, "content/docs/meta.json"), "utf-8")).pages;
-    }
-
-    const first = syncWithExtraRootPages(["...app"]);
-    expect(first.synced).toBe(true);
-    expect(readRootPages()).toEqual(["...ui", "...keys", "...app"]);
-
-    // Same root → the state file from the first run persists, so this second
-    // run hits the warm-cache skip path. With identical artifacts but changed
-    // extraRootPages, the fingerprint must differ so the sync is NOT skipped
-    // and the stale root pages are rewritten.
-    const second = syncWithExtraRootPages(["...app", "...guides"]);
-    expect(second.synced).toBe(true);
-    expect(readRootPages()).toEqual(["...ui", "...keys", "...app", "...guides"]);
-  });
-
-  it("writes only artifact namespaces when no extra root pages are configured", () => {
-    const fixture = createLibraryFixture({ workspaceRoot });
-
-    const result = runSync(fixture.config);
-
-    expect(result.synced).toBe(true);
-    const rootMeta = JSON.parse(readFileSync(join(docsRoot, "content/docs/meta.json"), "utf-8"));
-    expect(rootMeta.pages).toEqual([`...${fixture.config.id}`]);
   });
 
   it("rewrites secondary demo indexes to the copied example namespace", () => {

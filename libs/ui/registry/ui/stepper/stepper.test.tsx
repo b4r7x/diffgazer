@@ -6,9 +6,10 @@ import { STEP_STATUSES, type StepStatus } from "@/lib/step-status";
 import type { StepperVariant } from "@/lib/stepper-variants";
 import { axe } from "../../../testing/axe";
 import { requireElement, requireValue } from "../../testing/assertions";
-import { getStepperIndicatorGlyph, Stepper } from "./index";
+import { Stepper, type StepperProps } from "./index";
+import { getStepperIndicatorGlyph } from "./stepper-trigger";
 
-function renderStepper(props: Record<string, unknown> = {}) {
+function renderStepper(props: Partial<StepperProps> = {}) {
   return render(
     <Stepper {...props}>
       <Stepper.Step stepId="s1" status="completed">
@@ -29,20 +30,22 @@ function renderStepper(props: Record<string, unknown> = {}) {
 
 describe("Stepper", () => {
   it("expands step content when trigger is clicked", async () => {
+    const user = userEvent.setup();
     renderStepper();
     const trigger = screen.getByRole("button", { name: /Step 1/ });
-    await userEvent.click(trigger);
+    await user.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     const region = screen.getByRole("region", { name: /Step 1/ });
     expect(region).not.toHaveAttribute("aria-hidden");
   });
 
   it("collapses an expanded step when trigger is clicked again", async () => {
+    const user = userEvent.setup();
     renderStepper({ defaultExpandedIds: ["s1"] });
     const trigger = screen.getByRole("button", { name: /Step 1/ });
     expect(trigger).toHaveAttribute("aria-expanded", "true");
 
-    await userEvent.click(trigger);
+    await user.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "false");
   });
 
@@ -57,6 +60,7 @@ describe("Stepper", () => {
   });
 
   it("fires onExpandedChange in controlled mode", async () => {
+    const user = userEvent.setup();
     const onExpandedChange = vi.fn();
     const { rerender } = render(
       <Stepper expandedIds={[]} onExpandedChange={onExpandedChange}>
@@ -66,7 +70,7 @@ describe("Stepper", () => {
         </Stepper.Step>
       </Stepper>,
     );
-    await userEvent.click(screen.getByRole("button", { name: /Step 1/ }));
+    await user.click(screen.getByRole("button", { name: /Step 1/ }));
     expect(onExpandedChange).toHaveBeenCalledWith(["s1"]);
     expect(screen.getByRole("button", { name: /Step 1/ })).toHaveAttribute(
       "aria-expanded",
@@ -85,6 +89,7 @@ describe("Stepper", () => {
   });
 
   it("calls consumer trigger onClick before expanding", async () => {
+    const user = userEvent.setup();
     const onClick = vi.fn();
     render(
       <Stepper>
@@ -96,13 +101,14 @@ describe("Stepper", () => {
     );
     const trigger = screen.getByRole("button", { name: /Step 1/ });
 
-    await userEvent.click(trigger);
+    await user.click(trigger);
 
     expect(onClick).toHaveBeenCalled();
     expect(trigger).toHaveAttribute("aria-expanded", "true");
   });
 
   it("does not expand when trigger click is prevented", async () => {
+    const user = userEvent.setup();
     render(
       <Stepper>
         <Stepper.Step stepId="s1" status="active">
@@ -113,7 +119,7 @@ describe("Stepper", () => {
     );
     const trigger = screen.getByRole("button", { name: /Step 1/ });
 
-    await userEvent.click(trigger);
+    await user.click(trigger);
 
     expect(trigger).toHaveAttribute("aria-expanded", "false");
   });
@@ -144,6 +150,7 @@ describe("Stepper", () => {
   });
 
   it("does not toggle steps that have no content", async () => {
+    const user = userEvent.setup();
     const onExpandedChange = vi.fn();
     render(
       <Stepper onExpandedChange={onExpandedChange}>
@@ -154,7 +161,7 @@ describe("Stepper", () => {
     );
 
     const trigger = screen.getByRole("button", { name: /No content/ });
-    await userEvent.click(trigger);
+    await user.click(trigger);
 
     expect(onExpandedChange).not.toHaveBeenCalled();
     expect(trigger).not.toHaveAttribute("aria-expanded");
@@ -293,6 +300,31 @@ describe("Stepper", () => {
     expect(s1).toHaveFocus();
   });
 
+  it("arrow navigation skips a trigger disabled via the disabled prop", async () => {
+    const user = userEvent.setup();
+    render(
+      <Stepper>
+        <Stepper.Step stepId="s1" status="completed">
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s2" status="active">
+          <Stepper.Trigger disabled>Step 2</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s3" status="pending">
+          <Stepper.Trigger>Step 3</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    );
+
+    const s1 = screen.getByRole("button", { name: /Step 1/ });
+    const s3 = screen.getByRole("button", { name: /Step 3/ });
+
+    s1.focus();
+    await user.keyboard("{ArrowDown}");
+
+    expect(s3).toHaveFocus();
+  });
+
   it("marks disabled steps with aria-disabled and excludes them from tab order", () => {
     render(
       <Stepper>
@@ -308,6 +340,34 @@ describe("Stepper", () => {
     const disabled = screen.getByRole("button", { name: /Locked step/ });
     expect(disabled).toHaveAttribute("aria-disabled", "true");
     expect(disabled).toHaveAttribute("tabIndex", "-1");
+  });
+
+  it("tab target skips a prop-disabled step", async () => {
+    const user = userEvent.setup();
+    render(
+      <Stepper>
+        <Stepper.Step stepId="s1" status="completed">
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s2" status="active">
+          <Stepper.Trigger disabled>Step 2</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s3" status="pending">
+          <Stepper.Trigger>Step 3</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    );
+
+    const s1 = screen.getByRole("button", { name: /Step 1/ });
+    const s2 = screen.getByRole("button", { name: /Step 2/ });
+    const s3 = screen.getByRole("button", { name: /Step 3/ });
+
+    expect(s1).toHaveAttribute("tabIndex", "0");
+    expect(s2).toHaveAttribute("tabIndex", "-1");
+    expect(s3).toHaveAttribute("tabIndex", "-1");
+
+    await user.tab();
+    expect(s1).toHaveFocus();
   });
 
   it("renders a polite live region with the active step announcement", () => {
@@ -328,6 +388,23 @@ describe("Stepper", () => {
     const status = screen.getByRole("status");
     expect(status).toHaveAttribute("aria-live", "polite");
     expect(status).toHaveTextContent("Step 2 of 3: Step 2");
+  });
+
+  it("keeps the status live region mounted when no step is active", () => {
+    render(
+      <Stepper>
+        <Stepper.Step stepId="s1" status="completed">
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s2" status="completed">
+          <Stepper.Trigger>Step 2</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    );
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status).toHaveTextContent("");
   });
 
   it("resolves the active step and its label through a consumer wrapper component", () => {

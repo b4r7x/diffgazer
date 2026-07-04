@@ -4,7 +4,7 @@ export type CliMode = "dev" | "prod";
 
 export const HELP_TEXT = `Usage: diffgazer [options]
 
-Product CLI for reviewing code changes with Diffgazer.
+Review code changes with Diffgazer in your browser or terminal.
 
 Options:
   --tui              Start the beta terminal UI (incomplete; not recommended)

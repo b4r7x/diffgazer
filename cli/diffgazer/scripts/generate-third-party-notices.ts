@@ -19,14 +19,39 @@ interface NoticeEntry {
   licenseText: string;
 }
 
-function readLicenseFile(packageDir: string, name: string): string {
+interface PackageJson {
+  dependencies?: Record<string, string>;
+  license?: string;
+  optionalDependencies?: Record<string, string>;
+}
+
+function readPackageJson(path: string): PackageJson {
+  return JSON.parse(readFileSync(path, "utf-8")) as PackageJson;
+}
+
+function normalizeLicenseText(text: string): string {
+  return text.replace(/[ \t]+$/gm, "").trimEnd();
+}
+
+function readLicenseText(packageDir: string, name: string): string {
   for (const filename of LICENSE_FILENAMES) {
     const licensePath = resolve(packageDir, filename);
     if (existsSync(licensePath)) {
-      return readFileSync(licensePath, "utf-8").trimEnd();
+      return normalizeLicenseText(readFileSync(licensePath, "utf-8"));
     }
   }
-  throw new Error(`No LICENSE file found for "${name}" in ${packageDir}`);
+
+  const packageJson = readPackageJson(resolve(packageDir, "package.json"));
+  if (packageJson.license === "Apache-2.0") {
+    return normalizeLicenseText(readFileSync(resolve(PACKAGE_ROOT, "LICENSE"), "utf-8"));
+  }
+  if (packageJson.license === "MIT") {
+    return normalizeLicenseText(
+      readFileSync(resolve(WORKSPACE_ROOT, "libs/keys/LICENSE"), "utf-8"),
+    );
+  }
+
+  throw new Error(`No LICENSE text found for "${name}" in ${packageDir}`);
 }
 
 // First-party MIT workspace packages whose source is inlined into the published
@@ -38,16 +63,14 @@ function collectWorkspaceNotices(): NoticeEntry[] {
   ];
   return workspacePackages.map(({ name, dir }) => ({
     name,
-    licenseText: readLicenseFile(dir, name),
+    licenseText: readLicenseText(dir, name),
   }));
 }
 
 // Third-party prod dependencies the SPA bundles, derived from apps/web's
 // dependencies (workspace packages are covered above).
 function collectSpaThirdPartyNotices(): NoticeEntry[] {
-  const webPackageJson = JSON.parse(
-    readFileSync(resolve(WORKSPACE_ROOT, "apps/web/package.json"), "utf-8"),
-  ) as { dependencies?: Record<string, string> };
+  const webPackageJson = readPackageJson(resolve(WORKSPACE_ROOT, "apps/web/package.json"));
   const dependencies = webPackageJson.dependencies ?? {};
 
   const require = createRequire(resolve(WORKSPACE_ROOT, "apps/web/package.json"));
@@ -55,7 +78,47 @@ function collectSpaThirdPartyNotices(): NoticeEntry[] {
 
   for (const name of Object.keys(dependencies).sort()) {
     if (name.startsWith("@diffgazer/")) continue;
-    notices.push({ name, licenseText: readLicenseFile(resolvePackageDir(require, name), name) });
+    notices.push({ name, licenseText: readLicenseText(resolvePackageDir(require, name), name) });
+  }
+
+  return notices;
+}
+
+function collectBundledServerThirdPartyNotices(): NoticeEntry[] {
+  const serverPackageJsonPath = resolve(WORKSPACE_ROOT, "cli/server/package.json");
+  const serverPackageJson = readPackageJson(serverPackageJsonPath);
+  const cliPackageJson = readPackageJson(resolve(PACKAGE_ROOT, "package.json"));
+  const serverRequire = createRequire(serverPackageJsonPath);
+  const externalPackageNames = new Set([
+    ...Object.keys(cliPackageJson.dependencies ?? {}),
+    ...Object.keys(cliPackageJson.optionalDependencies ?? {}),
+  ]);
+  const visitedPackageNames = new Set<string>();
+  const notices: NoticeEntry[] = [];
+
+  function visitPackage(name: string, requireFromParent: NodeRequire): void {
+    if (
+      name.startsWith("@diffgazer/") ||
+      externalPackageNames.has(name) ||
+      visitedPackageNames.has(name)
+    ) {
+      return;
+    }
+
+    visitedPackageNames.add(name);
+    const packageDir = resolvePackageDir(requireFromParent, name);
+    notices.push({ name, licenseText: readLicenseText(packageDir, name) });
+
+    const packageJsonPath = resolve(packageDir, "package.json");
+    const packageJson = readPackageJson(packageJsonPath);
+    const packageRequire = createRequire(packageJsonPath);
+    for (const dependencyName of Object.keys(packageJson.dependencies ?? {}).sort()) {
+      visitPackage(dependencyName, packageRequire);
+    }
+  }
+
+  for (const name of Object.keys(serverPackageJson.dependencies ?? {}).sort()) {
+    visitPackage(name, serverRequire);
   }
 
   return notices;
@@ -95,6 +158,10 @@ function renderNotices(entries: NoticeEntry[]): string {
   return `${[header, ...sections].join("\n\n")}\n`;
 }
 
-const entries = [...collectWorkspaceNotices(), ...collectSpaThirdPartyNotices()];
+const entries = [
+  ...collectWorkspaceNotices(),
+  ...collectSpaThirdPartyNotices(),
+  ...collectBundledServerThirdPartyNotices(),
+];
 writeFileSync(OUTPUT_PATH, renderNotices(entries));
 console.log(`Wrote ${OUTPUT_PATH} (${entries.length} packages)`);

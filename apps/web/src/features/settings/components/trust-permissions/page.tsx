@@ -15,7 +15,7 @@ import { useConfigData } from "@/hooks/use-config";
 
 const SETTINGS_TRUST_PERMISSIONS_SCOPE = "settings-trust-permissions";
 
-export function TrustPermissionsPage() {
+export function SettingsTrustPermissionsPage() {
   const { projectId, repoRoot, trust } = useConfigData();
 
   return <TrustPermissionsEditor editorInput={{ projectId, repoRoot, trust }} />;

@@ -7,7 +7,7 @@ import type {
 } from "@diffgazer/core/schemas/config";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -104,12 +104,12 @@ describe("ModelStep", () => {
 
     renderGemini({ value: selectedModel.id, onCommit });
 
-    await waitFor(() =>
-      expect(
-        screen.getByRole("radio", { name: new RegExp(escapeRegExp(selectedModel.name)) }),
-      ).toBeInTheDocument(),
-    );
-    screen.getByRole("radio", { name: new RegExp(escapeRegExp(selectedModel.name)) }).focus();
+    const modelGroup = await screen.findByRole("radiogroup", { name: /available models/i });
+    const selectedRadio = within(modelGroup).getByRole("radio", {
+      name: new RegExp(escapeRegExp(selectedModel.name)),
+    });
+
+    selectedRadio.focus();
     await user.keyboard("{Enter}");
 
     expect(onCommit).toHaveBeenCalledWith(selectedModel.id);
@@ -123,12 +123,12 @@ describe("ModelStep", () => {
 
     renderGemini({ value: selectedModel.id, onCommit });
 
-    await waitFor(() =>
-      expect(
-        screen.getByRole("radio", { name: new RegExp(escapeRegExp(selectedModel.name)) }),
-      ).toBeInTheDocument(),
-    );
-    screen.getByRole("radio", { name: new RegExp(escapeRegExp(selectedModel.name)) }).focus();
+    const modelGroup = await screen.findByRole("radiogroup", { name: /available models/i });
+    const selectedRadio = within(modelGroup).getByRole("radio", {
+      name: new RegExp(escapeRegExp(selectedModel.name)),
+    });
+
+    selectedRadio.focus();
     await user.keyboard("{ArrowDown}{Enter}");
 
     expect(onCommit).toHaveBeenCalledWith(highlightedModel.id);
@@ -137,7 +137,8 @@ describe("ModelStep", () => {
   it("renders the recommended and tier badges from the catalog", async () => {
     renderGemini({ value: "gemini-2.5-flash" });
 
-    const flashRadio = await screen.findByRole("radio", { name: /Gemini 2\.5 Flash/ });
+    const modelGroup = await screen.findByRole("radiogroup", { name: /available models/i });
+    const flashRadio = within(modelGroup).getByRole("radio", { name: /Gemini 2\.5 Flash/ });
     expect(flashRadio).toHaveTextContent(/recommended/i);
     expect(flashRadio).toHaveTextContent(/free/i);
   });
@@ -242,11 +243,10 @@ describe("ModelStep", () => {
       { wrapper: makeWrapper(api) },
     );
 
-    await waitFor(() => {
-      expect(screen.getByRole("radio", { name: /OpenRouter Model B/ })).toBeInTheDocument();
-    });
+    const modelGroup = await screen.findByRole("radiogroup", { name: /available models/i });
+    const selectedRadio = within(modelGroup).getByRole("radio", { name: /OpenRouter Model B/ });
 
-    screen.getByRole("radio", { name: /OpenRouter Model B/ }).focus();
+    selectedRadio.focus();
     await user.keyboard("{Enter}");
 
     expect(onCommit).toHaveBeenCalledWith("openrouter/model-b");

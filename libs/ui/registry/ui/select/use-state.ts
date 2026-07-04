@@ -4,6 +4,7 @@ import {
   type AriaAttributes,
   type RefObject,
   useCallback,
+  useEffect,
   useId,
   useMemo,
   useRef,
@@ -17,11 +18,9 @@ import type { SelectContextValue, SelectOptionMetadata } from "./select-context"
 
 type SelectValue = string | null | string[];
 
-/** Options for use select state base. */
 interface UseSelectStateBaseOptions {
   /** Controlled open state. Pair with onOpenChange. */
   open?: boolean;
-  /** open controlled used by use select state base. */
   openControlled?: boolean;
   /** Called when open state changes. */
   onOpenChange?: (open: boolean) => void;
@@ -32,30 +31,23 @@ interface UseSelectStateBaseOptions {
   defaultOpen?: boolean;
   /** Controlled highlighted item id. Pair with onHighlightChange. */
   highlighted?: string | null;
-  /** highlighted controlled used by use select state base. */
   highlightedControlled?: boolean;
   /** Called when the highlighted item changes via keyboard or search. */
   onHighlightChange?: (value: string | null) => void;
   /** Disable the trigger and prevent open. */
   disabled?: boolean;
-  /** searchable used by use select state base. */
   searchable?: boolean;
   /**
    * Visual treatment. "card" renders the inline settings-panel layout (combine with
    * defaultOpen).
    */
   variant?: "default" | "card";
-  /** ARIA invalid used by use select state base. */
   ariaInvalid?: AriaAttributes["aria-invalid"];
-  /** ARIA described by used by use select state base. */
   ariaDescribedBy?: string;
-  /** ARIA labelled by used by use select state base. */
   ariaLabelledBy?: string;
-  /** trigger id prop used by use select state base. */
   triggerIdProp?: string;
   /** Mark the select as required for native form validation. */
   required?: boolean;
-  /** seed options used by use select state base. */
   seedOptions: ReadonlyMap<string, SelectOptionMetadata>;
 }
 
@@ -65,7 +57,6 @@ interface UseSelectStateSingleOptions extends UseSelectStateBaseOptions {
   multiple?: false;
   /** Controlled selected value. string[] when multiple, string in single mode. */
   value?: string;
-  /** value controlled used by use select state single. */
   valueControlled?: boolean;
   /** Called when the selection changes. */
   onChange?: (value: string) => void;
@@ -79,7 +70,6 @@ interface UseSelectStateMultipleOptions extends UseSelectStateBaseOptions {
   multiple: true;
   /** Controlled selected value. string[] when multiple, string in single mode. */
   value?: string[];
-  /** value controlled used by use select state multiple. */
   valueControlled?: boolean;
   /** Called when the selection changes. */
   onChange?: (value: string[]) => void;
@@ -90,9 +80,7 @@ interface UseSelectStateMultipleOptions extends UseSelectStateBaseOptions {
 /** Options for use select state. */
 export type UseSelectStateOptions = UseSelectStateSingleOptions | UseSelectStateMultipleOptions;
 
-/** Return value from use select state. */
 export interface UseSelectStateReturn {
-  /** context value. */
   contextValue: SelectContextValue;
   /** Ref for the wrapper element. */
   wrapperRef: RefObject<HTMLDivElement | null>;
@@ -105,7 +93,6 @@ function getDefaultSelectValue(
   return defaultValue ?? (multiple ? [] : null);
 }
 
-/** Provides select state behavior. */
 export function useSelectState(options: UseSelectStateOptions): UseSelectStateReturn {
   const {
     open: controlledOpen,
@@ -205,17 +192,27 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
   const listboxId = useId();
 
   // Stable ref required: dep of the contextValue memo and of selectItem below.
+  const closeSelect = useCallback(() => {
+    setIsOpen(false);
+    setSearchQuery("");
+    setHighlighted(null);
+  }, [setIsOpen, setHighlighted]);
+
   const handleOpenChange = useCallback(
     (open: boolean) => {
-      if (disabled) return;
-      setIsOpen(open);
-      if (!open) {
-        setSearchQuery("");
-        setHighlighted(null);
+      if (disabled && open) return;
+      if (open) {
+        setIsOpen(true);
+        return;
       }
+      closeSelect();
     },
-    [disabled, setIsOpen, setHighlighted],
+    [closeSelect, disabled, setIsOpen],
   );
+
+  useEffect(() => {
+    if (disabled && isOpen) closeSelect();
+  }, [closeSelect, disabled, isOpen]);
 
   useOutsideClick(wrapperRef, () => handleOpenChange(false), isOpen, [contentRef]);
 

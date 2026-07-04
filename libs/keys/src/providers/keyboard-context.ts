@@ -37,13 +37,18 @@ export interface KeyboardContextValue {
 export interface KeyboardRegistryContextValue {
   /** Returns the currently active keyboard scope at call time. */
   getActiveScope: () => string | null;
-  /** Resolves the scope that should own a hook declared at a React id order. */
-  getScopeForOrder: (order: string) => string | null;
   /** Pushes a scope, optionally at a declarative React id order. */
   pushScope: (scope: string, order?: string) => () => void;
   /** Registers a hotkey handler under a scope and returns an unregister function. */
   register: <S extends string>(
     scope: string,
+    hotkey: ValidateHotkey<S>,
+    handler: KeyHandler,
+    options?: HandlerOptions,
+  ) => () => void;
+  /** Registers a hotkey whose owning scope is resolved from React id order at dispatch time. */
+  registerImplicit: <S extends string>(
+    order: string,
     hotkey: ValidateHotkey<S>,
     handler: KeyHandler,
     options?: HandlerOptions,

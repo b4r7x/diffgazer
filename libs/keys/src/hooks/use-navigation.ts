@@ -259,6 +259,7 @@ export function useNavigation<TValue extends string = string>(
 
   const onKeyDown = (event: KeyboardEvent) => {
     if (!enabled) return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
 
     const key = event.key;
     const isMoveKey = resolvedUpKeys.includes(key) || resolvedDownKeys.includes(key);
@@ -286,7 +287,7 @@ export function useNavigation<TValue extends string = string>(
         currentTarget != null &&
         elements.length > 0 &&
         elements.every((el) => currentTarget.contains(el));
-      if (!isOwnItem && ownsItems) return;
+      if (!isOwnItem && (ownsItems || elements.length === 0)) return;
     }
 
     if (preventDefault) event.preventDefault();

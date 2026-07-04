@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import type { Route } from "../../../lib/routes.js";
+import type { Route } from "../../../lib/routes";
 import { createHomeMenuAction, type HomeMenuActionOptions } from "./create-menu-action";
 
 interface Harness {

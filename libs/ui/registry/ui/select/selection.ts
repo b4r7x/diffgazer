@@ -1,4 +1,4 @@
-import { isValidElement, type ReactNode } from "react";
+import { Children, isValidElement, type ReactNode } from "react";
 
 /** Returns whether value selected. */
 export function isValueSelected(value: string | null | string[], itemValue: string): boolean {
@@ -38,4 +38,15 @@ export function isActiveOptionVisible(
   if (value === null) return false;
   const option = options.get(value);
   return !!option && !option.disabled && matches(option.label, searchQuery);
+}
+
+export function containsSelectSearchElement(
+  children: ReactNode,
+  isSelectSearchElement: (child: ReactNode) => boolean,
+): boolean {
+  return Children.toArray(children).some((child) => {
+    if (isSelectSearchElement(child)) return true;
+    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
+    return containsSelectSearchElement(child.props.children, isSelectSearchElement);
+  });
 }

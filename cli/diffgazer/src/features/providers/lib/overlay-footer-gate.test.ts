@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isOverlayFooterNavActive } from "./overlay-footer-gate.js";
+import { isOverlayFooterNavActive } from "./overlay-footer-gate";
 
 describe("isOverlayFooterNavActive", () => {
   it("is active when the overlay is open and the input is not focused", () => {

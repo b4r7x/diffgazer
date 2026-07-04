@@ -30,7 +30,7 @@ export function SysInfoPanel() {
           />
           <KeyValue.Item
             label="REGISTRY:"
-            value={`${DOCS_REGISTRY_HOST} (PENDING)`}
+            value={DOCS_REGISTRY_HOST}
             labelClassName="mt-2 border-t border-dashed border-border pt-2"
             valueClassName="mt-2 border-t border-dashed border-border pt-2 font-normal"
           />

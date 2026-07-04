@@ -10,13 +10,11 @@ Composable, scoped keyboard navigation hooks for React `>=19.2.0`.
 - **React `>=19.2.0` ready** -- stable callback/ref patterns without stale closures
 - **ESM only**
 
-`@diffgazer/keys` is publish-gated until the npm `view` checks in PACKAGE_GOVERNANCE.md pass. Use public package install commands only after `npm view @diffgazer/keys version` succeeds. Before publication, validate package mode with a packed workspace tarball.
+> **Note:** Diffgazer packages are not yet published to npm. Until the first release, install from a local checkout of the repository.
 
 ## Installation options
 
 `@diffgazer/ui` components are not all visual-only. Some copied components include local keyboard handling, and some package-mode entries import hooks from `@diffgazer/keys`. You have four ways to source keyboard hooks:
-
-Before publication, install a locally packed `@diffgazer/add` tarball into the target app before running any `pnpm exec dgadd` command below.
 
 ### Option 1: `dgadd` component install
 
@@ -40,16 +38,13 @@ pnpm exec dgadd add keys/scroll-lock
 
 ### Option 2: Install `@diffgazer/keys` package
 
-Before publication, install a locally packed `@diffgazer/keys` tarball into the target app:
+Install the package:
 
 ```bash
-pnpm --filter @diffgazer/keys pack --pack-destination /tmp/diffgazer-packs
-npm install /tmp/diffgazer-packs/diffgazer-keys-*.tgz
+npm install @diffgazer/keys
 ```
 
-After publication, switch the tarball install to the public package name once `npm view @diffgazer/keys version` succeeds.
-
-You can also let `dgadd` set up keys integration after the local `@diffgazer/add` tarball is installed:
+You can also let `dgadd` set up keys integration:
 
 ```bash
 pnpm exec dgadd add ui/menu --integration keys
@@ -120,7 +115,9 @@ function Editor() {
 | `useScrollLock` | Prevent scrolling (ref-counted) | No | [Utilities](/ui/integrations/keys-utilities) |
 | `useKey` | Bind keyboard shortcuts (single, array, or key map) | Yes* | [useKey](/ui/integrations/keys-usekey) |
 | `useScope` | Push a named scope onto the stack | Yes | [useScope](/ui/integrations/keys-usekey#usescope) |
+| `useScopedNavigation` | Provider-backed list navigation that participates in scopes | Yes | [Navigation](/ui/integrations/keys-navigation) |
 | `useFocusZone` | Multi-zone keyboard navigation with transitions | Yes | [Focus Zones](/ui/integrations/keys-focus) |
+| `useActionRowNavigation` | Two-zone row navigation for content plus inline actions | Yes | [Focus Zones](/ui/integrations/keys-focus) |
 | `keys()` | Map multiple hotkeys to the same handler | No | [Utilities](/ui/integrations/keys-utilities) |
 
 \* `useKey` silently does nothing without a provider — safe to use in portable components.
@@ -147,7 +144,9 @@ function Editor() {
 | `KeyboardProvider` | — | ✓ | — | — |
 | `useKey` (global shortcuts) | — | ✓ | — | — |
 | `useScope` (modal isolation) | — | ✓ | — | — |
+| `useScopedNavigation` (scope-aware list navigation) | — | ✓ | — | — |
 | `useFocusZone` (multi-panel) | — | ✓ | — | — |
+| `useActionRowNavigation` (row action navigation) | — | ✓ | — | — |
 | Zero external deps | ✓ | — | ✓ | ✓ |
 | Custom modifications | ✓ | — | ✓ | ✓ |
 
@@ -159,6 +158,6 @@ function Editor() {
 
 ## Utility hooks
 
-<LibraryHookSource library="ui" sectionTitle="Utility Hook Source Code" hint={<>Copy these hooks into a project with the <code className="text-xs bg-border px-1 rounded">@/</code> source alias that <code className="text-xs bg-border px-1 rounded">dgadd init</code> records, or install via a local CLI tarball before publication: <code className="text-xs bg-border px-1 rounded">pnpm exec dgadd add ui/controllable-state</code></>} />
+<LibraryHookSource library="ui" sectionTitle="Utility Hook Source Code" hint={<>Copy these hooks into a project with the <code className="text-xs bg-border px-1 rounded">@/</code> source alias that <code className="text-xs bg-border px-1 rounded">dgadd init</code> records, or install with <code className="text-xs bg-border px-1 rounded">pnpm exec dgadd add ui/controllable-state</code>.</>} />
 
 For the complete API reference, visit the [`@diffgazer/keys` documentation](/keys/api).

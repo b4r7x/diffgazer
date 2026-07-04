@@ -1,6 +1,5 @@
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
-import type { ErrorCode } from "@diffgazer/core/schemas/errors";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import type { Context } from "hono";
 import { streamSSE } from "hono/streaming";
@@ -13,9 +12,9 @@ import { writeSSEError } from "./sse.js";
 import { type ActiveSession, cancelSession, getSession } from "./store.js";
 
 interface FreshnessFailure {
-  code: typeof ReviewErrorCode.SESSION_STALE | typeof ErrorCode.INTERNAL_ERROR;
+  code: typeof ReviewErrorCode.SESSION_STALE;
   message: string;
-  status: 409 | 500;
+  status: 409;
 }
 
 async function assertSessionFresh(
@@ -36,14 +35,11 @@ async function assertSessionFresh(
     return ok(undefined);
   }
 
-  // A content-blind (status-only) hash must never be compared against the
-  // session's content-full hash: a degraded reconnect read cannot prove change.
-  if (statusHashResult.kind === "status-only") {
-    return ok(undefined);
-  }
-
   const currentHeadCommit = headCommitResult.value;
-  if (currentHeadCommit !== session.headCommit || statusHashResult.hash !== session.statusHash) {
+  const statusHashChanged =
+    statusHashResult.kind === session.statusHashKind &&
+    statusHashResult.hash !== session.statusHash;
+  if (currentHeadCommit !== session.headCommit || statusHashChanged) {
     return err({
       code: ReviewErrorCode.SESSION_STALE,
       message: "Session is stale: repository state changed. Start a new review.",
@@ -77,9 +73,7 @@ export async function resumeStreamById(c: Context): Promise<Response> {
   if (!session.isComplete) {
     const freshness = await assertSessionFresh(session, projectPath);
     if (!freshness.ok) {
-      if (freshness.error.code === ReviewErrorCode.SESSION_STALE) {
-        cancelSession(id);
-      }
+      cancelSession(id);
       return errorResponse(
         c,
         freshness.error.message,

@@ -10,21 +10,42 @@ import {
   findExamples,
   type HookRegistryItem,
   highlightCode,
+  kebabToCamelCase,
 } from "@diffgazer/registry";
-import { REGISTRY_ITEM_TYPE, type Registry, type RegistryItem } from "@diffgazer/registry/schemas";
+import {
+  REGISTRY_ITEM_TYPE,
+  type Registry,
+  type RegistryItem,
+  RegistrySchema,
+} from "@diffgazer/registry/schemas";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const REGISTRY_PATH = resolve(ROOT, "registry/registry.json");
 
 function loadRegistryItems(): RegistryItem[] {
-  return (
-    (JSON.parse(readFileSync(REGISTRY_PATH, "utf-8")) as { items?: RegistryItem[] }).items ?? []
-  );
+  return RegistrySchema.parse(JSON.parse(readFileSync(REGISTRY_PATH, "utf-8"))).items;
 }
 
 const registryItems = loadRegistryItems();
 const loadHookDoc = createHookDocLoader(resolve(ROOT, "registry/hook-docs"), (name) => name);
 const COMPONENT_DOCS_DIR = resolve(ROOT, "registry/component-docs");
+const COMPONENT_DOC_ARRAY_FIELDS = [
+  "anatomy",
+  "companionExamples",
+  "cssVariables",
+  "dataAttributes",
+  "examples",
+  "notes",
+  "tags",
+] as const;
+const COMPONENT_DOC_OBJECT_FIELDS = ["props", "usage"] as const;
+const COMPONENT_DOC_FIELDS = [
+  "description",
+  "keyboard",
+  "noProps",
+  ...COMPONENT_DOC_ARRAY_FIELDS,
+  ...COMPONENT_DOC_OBJECT_FIELDS,
+] as const;
 
 function isPublicItem(item: RegistryItem): boolean {
   return item.meta?.hidden !== true;
@@ -49,15 +70,50 @@ function mapHookItem(item: RegistryItem): HookRegistryItem {
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object") return false;
+  return !Array.isArray(value);
+}
+
+function isComponentDoc(value: unknown): value is ComponentDoc {
+  if (!isRecord(value)) return false;
+  if (!COMPONENT_DOC_FIELDS.some((field) => field in value)) return false;
+  if ("description" in value && typeof value.description !== "string") return false;
+  if ("keyboard" in value && value.keyboard !== null && !isRecord(value.keyboard)) return false;
+  if ("noProps" in value && typeof value.noProps !== "boolean") return false;
+
+  for (const field of COMPONENT_DOC_ARRAY_FIELDS) {
+    if (field in value && !Array.isArray(value[field])) return false;
+  }
+  for (const field of COMPONENT_DOC_OBJECT_FIELDS) {
+    if (field in value && !isRecord(value[field])) return false;
+  }
+
+  return true;
+}
+
 async function loadComponentDoc(name: string): Promise<ComponentDoc | null> {
   const docPath = resolve(COMPONENT_DOCS_DIR, `${name}.ts`);
   if (!existsSync(docPath)) return null;
 
-  const exports = (await import(docPath)) as Record<string, unknown>;
-  const doc = Object.values(exports).find((value): value is ComponentDoc => {
-    return Boolean(value && typeof value === "object" && !Array.isArray(value));
-  });
-  return doc ?? null;
+  const exports: unknown = await import(docPath);
+  if (!isRecord(exports)) {
+    throw new Error(
+      `Component "${name}": docs module did not load an export object from ${docPath}`,
+    );
+  }
+
+  const exportName = `${kebabToCamelCase(name)}Doc`;
+  if (!(exportName in exports)) {
+    throw new Error(`Component "${name}": expected docs export "${exportName}" in ${docPath}`);
+  }
+
+  const doc = exports[exportName];
+  if (!isComponentDoc(doc)) {
+    throw new Error(`Component "${name}": docs export "${exportName}" is not a ComponentDoc`);
+  }
+
+  return doc;
 }
 
 function readRegistrySourceFile(
@@ -163,7 +219,7 @@ buildDocsData({
       item.type === REGISTRY_ITEM_TYPE.hook && isPublicItem(item) && hasOwnDocsPage(item),
     mapItem: mapHookItem,
     loadHookDoc,
-    backwardCompatFile: "ui-hooks.json",
+    aggregateHooksFile: "ui-hooks.json",
   },
   components: {
     contentDir: resolve(ROOT, "docs/content/components"),

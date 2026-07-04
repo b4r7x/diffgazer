@@ -31,7 +31,7 @@ export interface PopoverContextValue {
   onTriggerClick: () => void;
   /** Called when trigger pointer down occurs. */
   onTriggerPointerDown: () => void;
-  /** mark dismissed used by popover. */
+  /** Suppresses immediate focus-open after dismissal. */
   markDismissed: () => void;
   /** Called when content enter occurs. */
   onContentEnter: () => void;

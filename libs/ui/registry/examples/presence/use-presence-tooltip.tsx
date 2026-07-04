@@ -1,21 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { type KeyboardEvent, useId, useState } from "react";
 import { usePresence } from "@/hooks/use-presence";
 
 export default function UsePresenceTooltipExample() {
   const [open, setOpen] = useState(false);
+  const tooltipId = useId();
   const { present, onAnimationEnd } = usePresence({ open });
+  const openTooltip = () => setOpen(true);
+  const closeTooltip = () => setOpen(false);
+  const closeOnEscape = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    setOpen(false);
+  };
 
   return (
     <div className="flex items-center justify-center py-12">
-      <div className="relative inline-block">
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: the non-focusable hover region keeps the tooltip hoverable while keyboard access stays on the button. */}
+      <div className="relative inline-block" onMouseEnter={openTooltip} onMouseLeave={closeTooltip}>
         <button
           type="button"
-          onMouseEnter={() => setOpen(true)}
-          onMouseLeave={() => setOpen(false)}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setOpen(false)}
+          aria-describedby={present ? tooltipId : undefined}
+          onFocus={openTooltip}
+          onBlur={closeTooltip}
+          onKeyDown={closeOnEscape}
           className="font-mono text-sm border border-border px-3 py-1.5 bg-background hover:bg-muted transition-colors"
         >
           Hover me
@@ -23,6 +32,7 @@ export default function UsePresenceTooltipExample() {
 
         {present && (
           <div
+            id={tooltipId}
             role="tooltip"
             data-state={open ? "open" : "closed"}
             onAnimationEnd={onAnimationEnd}

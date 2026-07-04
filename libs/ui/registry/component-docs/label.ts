@@ -17,7 +17,7 @@ export const labelDoc: ComponentDoc = {
     {
       title: "Native Label Wrapping",
       content:
-        "Both modes render a native <label> element. In wrapper mode, the label wraps the form control — this provides implicit association without needing htmlFor/id pairs.",
+        "Wrapper mode uses native label wrapping, which only associates text with labelable descendants such as input, textarea, and select. Div-based Checkbox and Radio controls are not labelable through the wrapper; pass their own label prop instead.",
     },
     {
       title: "Disabled State",

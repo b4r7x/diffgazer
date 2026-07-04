@@ -1,9 +1,15 @@
-import { ApiProvider, useConfigCheck, useServerStatus } from "@diffgazer/core/api/hooks";
+import {
+  ApiProvider,
+  useConfigCheck,
+  useServerStatus,
+  useSettings,
+} from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
+import { toSelectableTheme } from "@diffgazer/core/schemas/config";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
-import { useContext, useEffect, useEffectEvent, useMemo, useState } from "react";
+import { useContext, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import type { CliMode } from "../cli-options";
 import { GlobalLayout } from "../components/layout/global";
 import { Spinner } from "../components/ui/spinner";
@@ -13,10 +19,10 @@ import { useNavigation } from "../hooks/use-navigation";
 import { api } from "../lib/api";
 import { createCliQueryClient } from "../lib/query-client";
 import { createServerFactories } from "../lib/servers/factories";
+import { CliThemeProvider, useTheme } from "../theme/provider";
 import { TerminalKeyboardProvider } from "./providers/keyboard";
 import { NavigationProvider } from "./providers/navigation-provider";
 import { ServerProvider, useServerControls } from "./providers/server";
-import { CliThemeProvider } from "./providers/theme";
 import { ScreenRouter } from "./router";
 import { useConfigGuard } from "./use-config-guard";
 
@@ -104,6 +110,20 @@ function ConfigGate({ children }: { children: ReactNode }): ReactElement {
   return <>{children}</>;
 }
 
+export function StartupThemeSync({ explicitTheme }: { explicitTheme?: string }): null {
+  const settingsQuery = useSettings();
+  const { setTheme } = useTheme();
+  const hasApplied = useRef(false);
+
+  useEffect(() => {
+    if (explicitTheme || hasApplied.current || !settingsQuery.data?.theme) return;
+    hasApplied.current = true;
+    setTheme(toSelectableTheme(settingsQuery.data.theme));
+  }, [explicitTheme, settingsQuery.data?.theme, setTheme]);
+
+  return null;
+}
+
 function GlobalShortcuts(): null {
   const ctx = useContext(KeyboardContext);
   const { navigate, route } = useNavigation();
@@ -185,6 +205,7 @@ export function App({ mode, theme, openBrowser }: AppProps): ReactElement {
                     onClearStartupFailure={() => setStartupFailure(null)}
                   >
                     <ConfigGate>
+                      <StartupThemeSync explicitTheme={theme} />
                       <GlobalLayout>
                         <ScreenRouter />
                       </GlobalLayout>

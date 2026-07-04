@@ -22,7 +22,7 @@ vi.mock("@diffgazer/core/api/hooks", () => ({
 }));
 
 import { CliThemeProvider } from "../../../theme/provider";
-import { ReviewScreen } from "./screen.js";
+import { ReviewScreen } from "./screen";
 
 afterEach(() => {
   cleanup();
@@ -121,6 +121,7 @@ function makeLifecycleBase(): UseReviewLifecycleBaseResult {
         notices: [],
         isStreaming: true,
         error: null,
+        errorCode: null,
         startedAt: null,
         reviewId: "review-123",
       },

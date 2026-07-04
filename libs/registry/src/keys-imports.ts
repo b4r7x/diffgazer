@@ -1,7 +1,7 @@
 /**
  * Canonical map from @diffgazer/keys named exports to their local copy-mode
- * hook/utility target paths. Used by both the UI public registry build script
- * and the CLI copy-mode import rewriter.
+ * hook/utility target paths. Used by rewriteKeysPackageImportsInContent and
+ * the UI public registry build script's source-content transform.
  */
 export const KEYS_PACKAGE_IMPORT_TARGETS = new Map<string, string>([
   ["useNavigation", "use-navigation"],

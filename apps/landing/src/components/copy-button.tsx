@@ -1,8 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-
-const RESET_DELAY_MS = 2000;
-
-type CopyStatus = "idle" | "copied" | "failed";
+import { useCopyToClipboard } from "@diffgazer/ui/hooks/copy-to-clipboard";
 
 interface CopyButtonProps {
   text: string;
@@ -10,34 +6,17 @@ interface CopyButtonProps {
 }
 
 export function CopyButton({ text, label }: CopyButtonProps) {
-  const [status, setStatus] = useState<CopyStatus>("idle");
-  const resetTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  useEffect(() => {
-    return () => clearTimeout(resetTimer.current);
-  }, []);
-
-  const scheduleReset = () => {
-    clearTimeout(resetTimer.current);
-    resetTimer.current = setTimeout(() => setStatus("idle"), RESET_DELAY_MS);
-  };
+  const { status, copy } = useCopyToClipboard({
+    write: (value) => {
+      if (!navigator.clipboard || !window.isSecureContext) {
+        throw new Error("Clipboard API unavailable");
+      }
+      return navigator.clipboard.writeText(value);
+    },
+  });
 
   const handleCopy = () => {
-    if (!navigator.clipboard || !window.isSecureContext) {
-      setStatus("failed");
-      scheduleReset();
-      return;
-    }
-    void navigator.clipboard.writeText(text).then(
-      () => {
-        setStatus("copied");
-        scheduleReset();
-      },
-      () => {
-        setStatus("failed");
-        scheduleReset();
-      },
-    );
+    void copy(text);
   };
 
   let buttonLabel = label;

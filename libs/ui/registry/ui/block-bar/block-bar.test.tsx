@@ -67,6 +67,19 @@ describe("BlockBar", () => {
     expect(meter).toHaveAttribute("aria-valuetext", "10 of 10");
   });
 
+  it("exposes segment label children to assistive technology", () => {
+    render(
+      <BlockBar label="Custom usage" max={10} barWidth={5}>
+        <BlockBar.Segment value={4} char="x">
+          Errors
+        </BlockBar.Segment>
+      </BlockBar>,
+    );
+
+    const segmentLabel = screen.getByText("Errors");
+    expect(segmentLabel.closest('[aria-hidden="true"]')).toBeNull();
+  });
+
   it("requires an explicit value when custom children are not segments", () => {
     expect(() =>
       render(

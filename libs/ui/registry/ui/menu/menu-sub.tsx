@@ -174,7 +174,7 @@ export function MenuSubTrigger({
 
   // Close an open submenu when the parent menu's highlight moves off this
   // trigger — this also enforces one open submenu per level, since opening a
-  // sibling highlights that sibling and unhighlights this one (F-341).
+  // sibling highlights that sibling and unhighlights this one.
   useEffect(() => {
     if (open && highlighted !== null && highlighted !== id) onOpenChange(false);
   }, [open, highlighted, id, onOpenChange]);
@@ -280,6 +280,12 @@ export function MenuSubContent({
   useOutsideClick(contentRef, dismissSubmenu, open, [triggerRef]);
 
   const handleSubmenuKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Tab") {
+      event.preventDefault();
+      event.stopPropagation();
+      returnFocusToParent();
+      return;
+    }
     if (event.key === "ArrowLeft") {
       event.preventDefault();
       event.stopPropagation();
@@ -288,7 +294,7 @@ export function MenuSubContent({
     }
     if (event.key === "Escape") {
       // preventDefault so a submenu open inside a native <dialog> consumes the
-      // Escape instead of also firing the dialog's cancel (F-207).
+      // Escape instead of also firing the dialog's cancel event.
       event.preventDefault();
       event.stopPropagation();
       returnFocusToParent();

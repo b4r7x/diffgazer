@@ -133,6 +133,46 @@ describe("createCollection", () => {
     }
   });
 
+  it("lists a legacy review whose metadata carries retired vocabulary", async () => {
+    const LegacyItemSchema = z.object({
+      id: z.uuid(),
+      metadata: z.object({
+        id: z.uuid(),
+        label: z.enum(["current"]),
+      }),
+    });
+    const LegacyMetadataSchema = LegacyItemSchema.shape.metadata;
+    const collection = createCollection<
+      z.infer<typeof LegacyItemSchema>,
+      z.infer<typeof LegacyMetadataSchema>
+    >({
+      name: "test-item",
+      dir: collectionDir,
+      filePath: (id) => join(collectionDir, `${id}.json`),
+      schema: LegacyItemSchema,
+      metadataSchema: LegacyMetadataSchema,
+      getMetadata: (item) => item.metadata,
+      getId: (item) => item.id,
+      coerceMetadata: (metadata) => {
+        if (typeof metadata !== "object" || metadata === null) return metadata;
+        return { ...(metadata as Record<string, unknown>), label: "current" };
+      },
+    });
+    await collection.ensureDir();
+    await writeFile(
+      join(collectionDir, `${TEST_ID}.json`),
+      JSON.stringify({ id: TEST_ID, metadata: { id: TEST_ID, label: "retired" } }),
+      "utf-8",
+    );
+
+    const result = await collection.list();
+
+    expect(result).toEqual({
+      ok: true,
+      value: { items: [{ id: TEST_ID, label: "current" }], warnings: [] },
+    });
+  });
+
   it("uses getMetadata when no metadata schema is provided", async () => {
     const collection = createCollection<TestItem, TestMetadata>({
       name: "test-item",

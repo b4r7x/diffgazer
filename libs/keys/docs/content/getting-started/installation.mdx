@@ -7,7 +7,7 @@ description: Install `@diffgazer/keys` as a package, or copy standalone hooks in
 
 > **Installing via dgadd:** Only standalone hooks (`keys/navigation`, `keys/focus-trap`, `keys/focus-restore`, `keys/scroll-lock`) are copyable; provider-backed hooks are package-only. For the full command and flag reference — `init`, `add`, `list`, `diff`, `remove` — see the [dgadd CLI reference](/app/cli).
 
-> **Warning:** Both `@diffgazer/keys` and `@diffgazer/add` are publish-gated until the npm `view` checks in PACKAGE_GOVERNANCE.md pass. Use package-manager commands against public package names only after `npm view @diffgazer/keys version` and `npm view @diffgazer/add version` succeed; until then, validate against locally packed workspace tarballs.
+> **Note:** Diffgazer packages are not yet published to npm. Until the first release, install from a local checkout of the repository.
 
 ## Package install
 
@@ -15,11 +15,10 @@ Use the package when you need provider-backed hooks: `KeyboardProvider`, `useKey
 
 <Steps>
 
-<Step title="Pack and install the package">
+<Step title="Install the package">
 
 ```bash
-pnpm --filter @diffgazer/keys pack --pack-destination /tmp/diffgazer-packs
-npm install /tmp/diffgazer-packs/diffgazer-keys-*.tgz
+npm install @diffgazer/keys
 ```
 
 </Step>
@@ -65,13 +64,11 @@ For a single item you can drop the `add` keyword — `pnpm exec dgadd keys/navig
 
 </Steps>
 
-> **Note:** `@diffgazer/add` is publish-gated too. Before publication, install a local `@diffgazer/add` tarball into a fixture app and run `pnpm exec dgadd`. Use `npx @diffgazer/add ...` only after `npm view @diffgazer/add version` succeeds.
-
 ## Direct shadcn / manual copy
 
-The hosted registry at `https://r.b4r7.dev/` is not yet live. After DNS resolves and the registry endpoints return 200, public keys registry items will be installable directly with shadcn from their `/r/keys/<item>.json` URLs.
+Direct shadcn registry URLs are not available yet.
 
-Until then, use `pnpm exec dgadd add keys/navigation`, or copy the source from the hook source sections in these docs. Place each file at the path shown above its source block, such as `src/hooks/use-navigation.ts` and `src/hooks/utils/navigation-items.ts`.
+Use `pnpm exec dgadd add keys/navigation`, or copy the source from the hook source sections in these docs. Place each file at the path shown above its source block, such as `src/hooks/use-navigation.ts` and `src/hooks/utils/navigation-items.ts`.
 
 ## API availability by path
 

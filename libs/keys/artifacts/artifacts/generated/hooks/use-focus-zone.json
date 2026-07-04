@@ -3,7 +3,7 @@
   "title": "useFocusZone",
   "description": "Manage focus across multiple zones with arrow key and Tab transitions. Supports controlled and uncontrolled zone state.",
   "source": {
-    "raw": "\"use client\";\n\nimport { type RefObject, useCallback, useEffect, useEffectEvent, useRef, useState } from \"react\";\nimport { DECLINE } from \"../core/normalize-key-input.js\";\nimport { isHTMLElement } from \"../dom/element-guards.js\";\nimport { containsActiveElement, getFirstFocusableElement, isFocusable } from \"../dom/focusable.js\";\nimport type { UseKeyOptions } from \"./use-key.js\";\nimport { useKey } from \"./use-key.js\";\nimport { useScope } from \"./use-scope.js\";\n\ntype ZoneTransition<T extends string> = (params: {\n  zone: T;\n  key: \"ArrowLeft\" | \"ArrowRight\" | \"ArrowUp\" | \"ArrowDown\";\n}) => T | null;\n\n/** Options for multi-zone focus management and inter-zone keyboard transitions. */\nexport interface UseFocusZoneOptions<T extends string> {\n  /** The initial active zone when in uncontrolled mode. */\n  initial: T;\n  /** All available zone identifiers. */\n  zones: readonly [T, ...T[]];\n  /** Controlled zone value. When provided, the hook operates in controlled mode. */\n  zone?: T;\n  /** Called whenever the active zone changes. */\n  onZoneChange?: (zone: T) => void;\n  /** Called before focus leaves a zone. */\n  onLeaveZone?: (zone: T) => void;\n  /** Called when focus enters a zone. */\n  onEnterZone?: (zone: T) => void;\n  /** Custom arrow-key transition function; return a target zone or null to block. */\n  transitions?: ZoneTransition<T>;\n  /** Zone order for Tab/Shift+Tab cycling; omitted means native Tab behavior. */\n  tabCycle?: readonly T[];\n  /** Keyboard scope name to push while the focus zone is active; null skips registration. */\n  scope?: string | null;\n  /** Optional DOM subtree used to scope registered focus-zone keys. */\n  containerRef?: UseKeyOptions[\"containerRef\"];\n  /** When true, focus-zone keys only run while focus is inside containerRef. */\n  focusWithinOnly?: boolean;\n  /** Whether focus-zone keys may run when an input-like element has focus. */\n  allowInInput?: boolean;\n  /** Default preventDefault behavior inherited by transition keys and key helpers. */\n  preventDefault?: boolean;\n  /** Whether the focus zone hook is active. */\n  enabled?: boolean;\n  /** Optional DOM focus targets for zone changes. */\n  focus?: UseFocusZoneFocusOptions<T>;\n}\n\n/** DOM attributes for a zone container. */\nexport interface FocusZoneProps {\n  /** Present when the zone is active. */\n  \"data-focused\": true | undefined;\n}\n\n/** Ref-like value that resolves to a zone container or target element. */\nexport type FocusZoneTargetRef = RefObject<HTMLElement | null> | (() => HTMLElement | null);\n\n/**\n * Focus target for a zone: a single ref/getter, or a container plus optional\n * inner target that avoids focus repair while focus remains inside the container.\n */\nexport type FocusZoneTarget =\n  | FocusZoneTargetRef\n  | {\n      /** Container used for containment checks and focus-zone synchronization. */\n      container: FocusZoneTargetRef;\n      /** Specific element to focus when the zone becomes active. */\n      target?: FocusZoneTargetRef;\n    };\n\n/** DOM focus behavior for `useFocusZone`. */\nexport interface UseFocusZoneFocusOptions<T extends string> {\n  /** Focus target configuration keyed by zone name. */\n  targets: Partial<Record<T, FocusZoneTarget>>;\n  /** Whether the initial zone should receive focus on mount. */\n  autoFocus?: boolean;\n  /** Pass `preventScroll` when moving focus to a zone target. */\n  preventScroll?: boolean;\n}\n\n/** Return value from `useFocusZone`. */\nexport interface UseFocusZoneReturn<T extends string> {\n  /** The currently active zone. */\n  zone: T;\n  /** Imperatively set the active zone. */\n  setZone: (zone: T) => void;\n  /** Returns true if the current zone matches any provided zone. */\n  isZone: (...zones: T[]) => boolean;\n  /** Returns `UseKeyOptions` scoped to one zone, merged with optional extras. */\n  getKeyOptions: (zone: T, extra?: UseKeyOptions) => UseKeyOptions;\n  /** Returns DOM attributes for a zone's container element. */\n  getZoneProps: (zone: T) => FocusZoneProps;\n}\n\nconst ARROW_KEYS = [\"ArrowLeft\", \"ArrowRight\", \"ArrowUp\", \"ArrowDown\"] as const;\n\nfunction resolveFocusTargetRef(ref: FocusZoneTargetRef | undefined): HTMLElement | null {\n  if (!ref) return null;\n  if (typeof ref === \"function\") return ref();\n  return ref.current;\n}\n\nfunction resolveFocusTarget(entry: FocusZoneTarget | undefined): {\n  container: HTMLElement | null;\n  target: HTMLElement | null;\n} {\n  if (!entry) return { container: null, target: null };\n  if (typeof entry === \"object\" && \"container\" in entry) {\n    const container = resolveFocusTargetRef(entry.container);\n    return {\n      container,\n      target: resolveFocusTargetRef(entry.target) ?? container,\n    };\n  }\n\n  const target = resolveFocusTargetRef(entry);\n  return { container: target, target };\n}\n\nfunction resolveFocusableTarget(target: HTMLElement): HTMLElement | null {\n  if (isFocusable(target)) return target;\n  return getFirstFocusableElement(target);\n}\n\n/**\n * Models a layout as named zones, routes arrow or Tab transitions between them,\n * and optionally moves DOM focus to the active zone target.\n */\nexport function useFocusZone<T extends string>(\n  options: UseFocusZoneOptions<T>,\n): UseFocusZoneReturn<T> {\n  const { initial, zones, enabled = true } = options;\n  const {\n    zone: controlledZone,\n    onZoneChange,\n    onLeaveZone,\n    onEnterZone,\n    transitions,\n    tabCycle,\n    scope,\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n    preventDefault,\n    focus,\n  } = options;\n\n  const [internalZone, setInternalZone] = useState<T>(initial);\n\n  const currentZone: T = controlledZone ?? internalZone;\n  const lastFocusedZoneRef = useRef<T | null>(null);\n\n  const validatedTabCycle = tabCycle?.filter((entry) => zones.includes(entry));\n\n  const canCycleTabs = enabled && validatedTabCycle != null && validatedTabCycle.length > 1;\n\n  const setZoneValue = useCallback(\n    (next: T) => {\n      if (next === currentZone) return;\n      if (!zones.includes(next)) return;\n      onLeaveZone?.(currentZone);\n      onEnterZone?.(next);\n      if (controlledZone === undefined) setInternalZone(next);\n      onZoneChange?.(next);\n    },\n    [controlledZone, currentZone, onEnterZone, onLeaveZone, onZoneChange, zones],\n  );\n\n  const stableTransitions = useCallback(\n    (key: \"ArrowLeft\" | \"ArrowRight\" | \"ArrowUp\" | \"ArrowDown\") => {\n      const next = transitions?.({ zone: currentZone, key });\n      if (next != null && zones.includes(next)) {\n        setZoneValue(next);\n        return;\n      }\n      return DECLINE;\n    },\n    [currentZone, setZoneValue, transitions, zones],\n  );\n\n  const cycleZone = useCallback(\n    (delta: 1 | -1) => {\n      if (!validatedTabCycle || validatedTabCycle.length === 0) return;\n      const cycle = validatedTabCycle;\n      const idx = cycle.indexOf(currentZone);\n      if (idx === -1) {\n        // Current zone is not part of the cycle; Tab enters the cycle from either end.\n        const next = delta > 0 ? cycle[0] : cycle[cycle.length - 1];\n        if (next) setZoneValue(next);\n        return;\n      }\n      const next = cycle[(idx + delta + cycle.length) % cycle.length] ?? cycle[0];\n      if (!next) return;\n      setZoneValue(next);\n    },\n    [currentZone, setZoneValue, validatedTabCycle],\n  );\n\n  useKey(ARROW_KEYS, (e) => stableTransitions(e.key as (typeof ARROW_KEYS)[number]), {\n    enabled: enabled && transitions != null,\n    scope,\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n    preventDefault,\n  });\n\n  // Resolve every container that anchors this focus zone (per-zone focus targets\n  // plus an explicit containerRef). Returns null when no containment is\n  // resolvable, in which case Tab keeps its legacy document-wide cycle.\n  const getTabContainers = useEffectEvent((): HTMLElement[] | null => {\n    const containers: HTMLElement[] = [];\n    if (focus) {\n      for (const zone of zones) {\n        const { container } = resolveFocusTarget(focus.targets[zone]);\n        if (container) containers.push(container);\n      }\n    }\n    const explicit = containerRef?.current;\n    if (explicit) containers.push(explicit);\n    return containers.length > 0 ? containers : null;\n  });\n\n  const handleTabCycle = useEffectEvent((delta: 1 | -1, event: KeyboardEvent) => {\n    const containers = getTabContainers();\n    if (containers) {\n      const target = event.target;\n      const inside = containers.some(\n        (container) =>\n          (isHTMLElement(target) && container.contains(target)) || containsActiveElement(container),\n      );\n      // Outside every container: decline so native Tab proceeds (no preventDefault).\n      if (!inside) return DECLINE;\n    }\n    event.preventDefault();\n    cycleZone(delta);\n    return undefined;\n  });\n\n  useKey(\"Tab\", (event) => handleTabCycle(1, event), {\n    enabled: canCycleTabs,\n    scope,\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n  });\n\n  useKey(\"shift+Tab\", (event) => handleTabCycle(-1, event), {\n    enabled: canCycleTabs,\n    scope,\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n  });\n\n  const hasExplicitScope = \"scope\" in options;\n  useScope(hasExplicitScope ? (scope ?? null) : null, {\n    enabled: enabled && hasExplicitScope && scope != null,\n  });\n\n  const hasFocusTargets = focus != null;\n\n  const syncZoneFromFocusTarget = useEffectEvent((target: HTMLElement) => {\n    if (!focus) return;\n    for (const zone of zones) {\n      const { container } = resolveFocusTarget(focus.targets[zone]);\n      if (container?.contains(target)) {\n        setZoneValue(zone);\n        return;\n      }\n    }\n  });\n\n  const attachedFocusinDocsRef = useRef(new Map<Document, (event: FocusEvent) => void>());\n\n  // The listener set is reconciled when the resolvable document set actually\n  // changes (e.g. a cross-document target mounts late). A keystroke never changes\n  // that set, so the listener is not churned per keypress; per-event container\n  // resolution lives in `syncZoneFromFocusTarget`.\n  const reconcileFocusinListeners = useEffectEvent(() => {\n    const attached = attachedFocusinDocsRef.current;\n    if (!enabled || !focus) {\n      for (const [doc, handler] of attached) doc.removeEventListener(\"focusin\", handler);\n      attached.clear();\n      return;\n    }\n\n    const docs = new Set<Document>();\n    for (const zone of zones) {\n      const { container } = resolveFocusTarget(focus.targets[zone]);\n      if (container) docs.add(container.ownerDocument);\n    }\n    if (docs.size === 0 && typeof document !== \"undefined\") {\n      docs.add(document);\n    }\n\n    for (const [doc, handler] of attached) {\n      if (!docs.has(doc)) {\n        doc.removeEventListener(\"focusin\", handler);\n        attached.delete(doc);\n      }\n    }\n    for (const doc of docs) {\n      if (attached.has(doc)) continue;\n      const handler = (event: FocusEvent) => {\n        const target = event.target;\n        if (!isHTMLElement(target)) return;\n        syncZoneFromFocusTarget(target);\n      };\n      doc.addEventListener(\"focusin\", handler);\n      attached.set(doc, handler);\n    }\n  });\n\n  useEffect(() => {\n    reconcileFocusinListeners();\n  });\n\n  useEffect(() => {\n    const attached = attachedFocusinDocsRef.current;\n    return () => {\n      for (const [doc, handler] of attached) doc.removeEventListener(\"focusin\", handler);\n      attached.clear();\n    };\n  }, []);\n\n  const safeZone = zones.includes(currentZone) ? currentZone : zones[0];\n\n  const repairZoneFocus = useEffectEvent((zone: T) => {\n    if (!focus) return;\n    const { container, target } = resolveFocusTarget(focus.targets[zone]);\n    if (!target) return;\n    if (container && containsActiveElement(container)) return;\n\n    const focusTarget = resolveFocusableTarget(target);\n    if (!focusTarget) return;\n\n    focusTarget.focus({ preventScroll: focus.preventScroll ?? true });\n  });\n\n  const shouldAutoFocusInitial = useEffectEvent(() => focus?.autoFocus ?? false);\n\n  useEffect(() => {\n    const previousZone = lastFocusedZoneRef.current;\n    if (!enabled || !hasFocusTargets) return;\n    if (previousZone === safeZone) return;\n    if (previousZone === null && !shouldAutoFocusInitial()) {\n      lastFocusedZoneRef.current = safeZone;\n      return;\n    }\n\n    repairZoneFocus(safeZone);\n    lastFocusedZoneRef.current = safeZone;\n  }, [enabled, hasFocusTargets, safeZone]);\n\n  const isZone = (...zones: T[]) => zones.includes(safeZone);\n  const getKeyOptions = (zone: T, extra?: UseKeyOptions): UseKeyOptions => ({\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n    preventDefault,\n    ...extra,\n    scope: extra?.scope ?? scope,\n    enabled: enabled && safeZone === zone && (extra?.enabled ?? true),\n  });\n  const getZoneProps = (zone: T): FocusZoneProps => ({\n    \"data-focused\": safeZone === zone || undefined,\n  });\n\n  return {\n    zone: safeZone,\n    setZone: setZoneValue,\n    isZone,\n    getKeyOptions,\n    getZoneProps,\n  };\n}\n",
+    "raw": "\"use client\";\n\nimport { type RefObject, useEffect, useEffectEvent, useRef, useState } from \"react\";\nimport { DECLINE } from \"../core/normalize-key-input.js\";\nimport { isHTMLElement } from \"../dom/element-guards.js\";\nimport { containsActiveElement, getFirstFocusableElement, isFocusable } from \"../dom/focusable.js\";\nimport type { UseKeyOptions } from \"./use-key.js\";\nimport { useKey } from \"./use-key.js\";\nimport { useScope } from \"./use-scope.js\";\n\ntype ZoneTransition<T extends string> = (params: {\n  zone: T;\n  key: \"ArrowLeft\" | \"ArrowRight\" | \"ArrowUp\" | \"ArrowDown\";\n}) => T | null;\n\n/** Options for multi-zone focus management and inter-zone keyboard transitions. */\nexport interface UseFocusZoneOptions<T extends string> {\n  /** The initial active zone when in uncontrolled mode. */\n  initial: T;\n  /** All available zone identifiers. */\n  zones: readonly [T, ...T[]];\n  /** Controlled zone value. When provided, the hook operates in controlled mode. */\n  zone?: T;\n  /** Called whenever the active zone changes. */\n  onZoneChange?: (zone: T) => void;\n  /** Called before focus leaves a zone. */\n  onLeaveZone?: (zone: T) => void;\n  /** Called when focus enters a zone. */\n  onEnterZone?: (zone: T) => void;\n  /** Custom arrow-key transition function; return a target zone or null to block. */\n  transitions?: ZoneTransition<T>;\n  /** Zone order for Tab/Shift+Tab cycling; omitted means native Tab behavior. */\n  tabCycle?: readonly T[];\n  /** Keyboard scope name to push while the focus zone is active; null skips registration. */\n  scope?: string | null;\n  /** Optional DOM subtree used to scope registered focus-zone keys. */\n  containerRef?: UseKeyOptions[\"containerRef\"];\n  /** When true, focus-zone keys only run while focus is inside containerRef. */\n  focusWithinOnly?: boolean;\n  /** Whether focus-zone keys may run when an input-like element has focus. */\n  allowInInput?: boolean;\n  /** Default preventDefault behavior inherited by transition keys and key helpers. */\n  preventDefault?: boolean;\n  /** Whether the focus zone hook is active. */\n  enabled?: boolean;\n  /** Optional DOM focus targets for zone changes. */\n  focus?: UseFocusZoneFocusOptions<T>;\n}\n\n/** DOM attributes for a zone container. */\nexport interface FocusZoneProps {\n  /** Present when the zone is active. */\n  \"data-focused\": true | undefined;\n}\n\n/** Ref-like value that resolves to a zone container or target element. */\nexport type FocusZoneTargetRef = RefObject<HTMLElement | null> | (() => HTMLElement | null);\n\n/**\n * Focus target for a zone: a single ref/getter, or a container plus optional\n * inner target that avoids focus repair while focus remains inside the container.\n */\nexport type FocusZoneTarget =\n  | FocusZoneTargetRef\n  | {\n      /** Container used for containment checks and focus-zone synchronization. */\n      container: FocusZoneTargetRef;\n      /** Specific element to focus when the zone becomes active. */\n      target?: FocusZoneTargetRef;\n    };\n\n/** DOM focus behavior for `useFocusZone`. */\nexport interface UseFocusZoneFocusOptions<T extends string> {\n  /** Focus target configuration keyed by zone name. */\n  targets: Partial<Record<T, FocusZoneTarget>>;\n  /** Whether the initial zone should receive focus on mount. */\n  autoFocus?: boolean;\n  /** Pass `preventScroll` when moving focus to a zone target. */\n  preventScroll?: boolean;\n}\n\n/** Return value from `useFocusZone`. */\nexport interface UseFocusZoneReturn<T extends string> {\n  /** The currently active zone. */\n  zone: T;\n  /** Imperatively set the active zone. */\n  setZone: (zone: T) => void;\n  /** Returns true if the current zone matches any provided zone. */\n  isZone: (...zones: T[]) => boolean;\n  /** Returns `UseKeyOptions` scoped to one zone, merged with optional extras. */\n  getKeyOptions: (zone: T, extra?: UseKeyOptions) => UseKeyOptions;\n  /** Returns DOM attributes for a zone's container element. */\n  getZoneProps: (zone: T) => FocusZoneProps;\n}\n\nconst ARROW_KEYS = [\"ArrowLeft\", \"ArrowRight\", \"ArrowUp\", \"ArrowDown\"] as const;\n\nfunction resolveFocusTargetRef(ref: FocusZoneTargetRef | undefined): HTMLElement | null {\n  if (!ref) return null;\n  if (typeof ref === \"function\") return ref();\n  return ref.current;\n}\n\nfunction resolveFocusTarget(entry: FocusZoneTarget | undefined): {\n  container: HTMLElement | null;\n  target: HTMLElement | null;\n} {\n  if (!entry) return { container: null, target: null };\n  if (typeof entry === \"object\" && \"container\" in entry) {\n    const container = resolveFocusTargetRef(entry.container);\n    return {\n      container,\n      target: resolveFocusTargetRef(entry.target) ?? container,\n    };\n  }\n\n  const target = resolveFocusTargetRef(entry);\n  return { container: target, target };\n}\n\nfunction resolveFocusableTarget(target: HTMLElement): HTMLElement | null {\n  if (isFocusable(target)) return target;\n  return getFirstFocusableElement(target);\n}\n\n/**\n * Models a layout as named zones, routes arrow or Tab transitions between them,\n * and optionally moves DOM focus to the active zone target.\n */\nexport function useFocusZone<T extends string>(\n  options: UseFocusZoneOptions<T>,\n): UseFocusZoneReturn<T> {\n  const { initial, zones, enabled = true } = options;\n  const {\n    zone: controlledZone,\n    onZoneChange,\n    onLeaveZone,\n    onEnterZone,\n    transitions,\n    tabCycle,\n    scope,\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n    preventDefault,\n    focus,\n  } = options;\n\n  const [internalZone, setInternalZone] = useState<T>(initial);\n\n  const currentZone: T = controlledZone ?? internalZone;\n  const lastFocusedZoneRef = useRef<T | null>(null);\n\n  const validatedTabCycle = tabCycle?.filter((entry) => zones.includes(entry));\n\n  const canCycleTabs = enabled && validatedTabCycle != null && validatedTabCycle.length > 1;\n\n  const setZoneValue = (next: T) => {\n    if (next === currentZone) return;\n    if (!zones.includes(next)) return;\n    onLeaveZone?.(currentZone);\n    onEnterZone?.(next);\n    if (controlledZone === undefined) setInternalZone(next);\n    onZoneChange?.(next);\n  };\n\n  const handleArrowTransition = (key: \"ArrowLeft\" | \"ArrowRight\" | \"ArrowUp\" | \"ArrowDown\") => {\n    const next = transitions?.({ zone: currentZone, key });\n    if (next != null && zones.includes(next)) {\n      setZoneValue(next);\n      return;\n    }\n    return DECLINE;\n  };\n\n  const cycleZone = (delta: 1 | -1) => {\n    if (!validatedTabCycle || validatedTabCycle.length === 0) return;\n    const cycle = validatedTabCycle;\n    const idx = cycle.indexOf(currentZone);\n    if (idx === -1) {\n      // Current zone is not part of the cycle; Tab enters the cycle from either end.\n      const next = delta > 0 ? cycle[0] : cycle[cycle.length - 1];\n      if (next) setZoneValue(next);\n      return;\n    }\n    const next = cycle[(idx + delta + cycle.length) % cycle.length] ?? cycle[0];\n    if (!next) return;\n    setZoneValue(next);\n  };\n\n  useKey(ARROW_KEYS, (e) => handleArrowTransition(e.key as (typeof ARROW_KEYS)[number]), {\n    enabled: enabled && transitions != null,\n    scope,\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n    preventDefault,\n  });\n\n  // Resolve every container that anchors this focus zone (per-zone focus targets\n  // plus an explicit containerRef). Returns null when no containment is\n  // resolvable, in which case Tab keeps its legacy document-wide cycle.\n  const getTabContainers = useEffectEvent((): HTMLElement[] | null => {\n    const containers: HTMLElement[] = [];\n    if (focus) {\n      for (const zone of zones) {\n        const { container } = resolveFocusTarget(focus.targets[zone]);\n        if (container) containers.push(container);\n      }\n    }\n    const explicit = containerRef?.current;\n    if (explicit) containers.push(explicit);\n    return containers.length > 0 ? containers : null;\n  });\n\n  const handleTabCycle = useEffectEvent((delta: 1 | -1, event: KeyboardEvent) => {\n    const containers = getTabContainers();\n    if (containers) {\n      const target = event.target;\n      const inside = containers.some(\n        (container) =>\n          (isHTMLElement(target) && container.contains(target)) || containsActiveElement(container),\n      );\n      // Outside every container: decline so native Tab proceeds (no preventDefault).\n      if (!inside) return DECLINE;\n    }\n    event.preventDefault();\n    cycleZone(delta);\n    return undefined;\n  });\n\n  useKey(\"Tab\", (event) => handleTabCycle(1, event), {\n    enabled: canCycleTabs,\n    scope,\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n  });\n\n  useKey(\"shift+Tab\", (event) => handleTabCycle(-1, event), {\n    enabled: canCycleTabs,\n    scope,\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n  });\n\n  const hasExplicitScope = \"scope\" in options;\n  useScope(hasExplicitScope ? (scope ?? null) : null, {\n    enabled: enabled && hasExplicitScope && scope != null,\n  });\n\n  const hasFocusTargets = focus != null;\n\n  const syncZoneFromFocusTarget = useEffectEvent((target: HTMLElement) => {\n    if (!focus) return;\n    for (const zone of zones) {\n      const { container } = resolveFocusTarget(focus.targets[zone]);\n      if (container?.contains(target)) {\n        setZoneValue(zone);\n        return;\n      }\n    }\n  });\n\n  const attachedFocusinDocsRef = useRef(new Map<Document, (event: FocusEvent) => void>());\n\n  // The listener set is reconciled when the resolvable document set actually\n  // changes (e.g. a cross-document target mounts late). A keystroke never changes\n  // that set, so the listener is not churned per keypress; per-event container\n  // resolution lives in `syncZoneFromFocusTarget`.\n  const reconcileFocusinListeners = useEffectEvent(() => {\n    const attached = attachedFocusinDocsRef.current;\n    if (!enabled || !focus) {\n      for (const [doc, handler] of attached) doc.removeEventListener(\"focusin\", handler);\n      attached.clear();\n      return;\n    }\n\n    const docs = new Set<Document>();\n    for (const zone of zones) {\n      const { container } = resolveFocusTarget(focus.targets[zone]);\n      if (container) docs.add(container.ownerDocument);\n    }\n    if (docs.size === 0 && typeof document !== \"undefined\") {\n      docs.add(document);\n    }\n\n    for (const [doc, handler] of attached) {\n      if (!docs.has(doc)) {\n        doc.removeEventListener(\"focusin\", handler);\n        attached.delete(doc);\n      }\n    }\n    for (const doc of docs) {\n      if (attached.has(doc)) continue;\n      const handler = (event: FocusEvent) => {\n        const target = event.target;\n        if (!isHTMLElement(target)) return;\n        syncZoneFromFocusTarget(target);\n      };\n      doc.addEventListener(\"focusin\", handler);\n      attached.set(doc, handler);\n    }\n  });\n\n  useEffect(() => {\n    reconcileFocusinListeners();\n  });\n\n  useEffect(() => {\n    const attached = attachedFocusinDocsRef.current;\n    return () => {\n      for (const [doc, handler] of attached) doc.removeEventListener(\"focusin\", handler);\n      attached.clear();\n    };\n  }, []);\n\n  const safeZone = zones.includes(currentZone) ? currentZone : zones[0];\n\n  const repairZoneFocus = useEffectEvent((zone: T) => {\n    if (!focus) return;\n    const { container, target } = resolveFocusTarget(focus.targets[zone]);\n    if (!target) return;\n    if (container && containsActiveElement(container)) return;\n\n    const focusTarget = resolveFocusableTarget(target);\n    if (!focusTarget) return;\n\n    focusTarget.focus({ preventScroll: focus.preventScroll ?? true });\n  });\n\n  const shouldAutoFocusInitial = useEffectEvent(() => focus?.autoFocus ?? false);\n\n  useEffect(() => {\n    const previousZone = lastFocusedZoneRef.current;\n    if (!enabled || !hasFocusTargets) return;\n    if (previousZone === safeZone) return;\n    if (previousZone === null && !shouldAutoFocusInitial()) {\n      lastFocusedZoneRef.current = safeZone;\n      return;\n    }\n\n    repairZoneFocus(safeZone);\n    lastFocusedZoneRef.current = safeZone;\n  }, [enabled, hasFocusTargets, safeZone]);\n\n  const isZone = (...zones: T[]) => zones.includes(safeZone);\n  const getKeyOptions = (zone: T, extra?: UseKeyOptions): UseKeyOptions => ({\n    containerRef,\n    focusWithinOnly,\n    allowInInput,\n    preventDefault,\n    ...extra,\n    scope: extra?.scope ?? scope,\n    enabled: enabled && safeZone === zone && (extra?.enabled ?? true),\n  });\n  const getZoneProps = (zone: T): FocusZoneProps => ({\n    \"data-focused\": safeZone === zone || undefined,\n  });\n\n  return {\n    zone: safeZone,\n    setZone: setZoneValue,\n    isZone,\n    getKeyOptions,\n    getZoneProps,\n  };\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -55,14 +55,6 @@
           },
           {
             "text": " RefObject",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " useCallback",
             "color": "var(--code-variable)"
           },
           {
@@ -5080,7 +5072,7 @@
           },
           {
             "text": "setZoneValue",
-            "color": "var(--code-number)"
+            "color": "var(--code-function)"
           },
           {
             "text": " ",
@@ -5092,23 +5084,6 @@
           },
           {
             "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useCallback",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          }
-        ]
-      },
-      {
-        "number": 159,
-        "content": [
-          {
-            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5154,10 +5129,10 @@
         ]
       },
       {
-        "number": 160,
+        "number": 159,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5187,10 +5162,10 @@
         ]
       },
       {
-        "number": 161,
+        "number": 160,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5232,10 +5207,10 @@
         ]
       },
       {
-        "number": 162,
+        "number": 161,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5257,10 +5232,10 @@
         ]
       },
       {
-        "number": 163,
+        "number": 162,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5282,10 +5257,10 @@
         ]
       },
       {
-        "number": 164,
+        "number": 163,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5327,10 +5302,10 @@
         ]
       },
       {
-        "number": 165,
+        "number": 164,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5352,90 +5327,24 @@
         ]
       },
       {
+        "number": 165,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "};",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
         "number": 166,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "},",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 167,
-        "content": [
-          {
-            "text": "    [controlledZone",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " currentZone",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " onEnterZone",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " onLeaveZone",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " onZoneChange",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " zones]",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 168,
-        "content": [
-          {
-            "text": "  )",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 169,
         "content": []
       },
       {
-        "number": 170,
+        "number": 167,
         "content": [
           {
             "text": "  ",
@@ -5450,8 +5359,8 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "stableTransitions",
-            "color": "var(--code-number)"
+            "text": "handleArrowTransition",
+            "color": "var(--code-function)"
           },
           {
             "text": " ",
@@ -5463,23 +5372,6 @@
           },
           {
             "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useCallback",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          }
-        ]
-      },
-      {
-        "number": 171,
-        "content": [
-          {
-            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5605,10 +5497,10 @@
         ]
       },
       {
-        "number": 172,
+        "number": 168,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5686,10 +5578,10 @@
         ]
       },
       {
-        "number": 173,
+        "number": 169,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5747,10 +5639,10 @@
         ]
       },
       {
-        "number": 174,
+        "number": 170,
         "content": [
           {
-            "text": "        ",
+            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
@@ -5768,10 +5660,10 @@
         ]
       },
       {
-        "number": 175,
+        "number": 171,
         "content": [
           {
-            "text": "        ",
+            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
@@ -5785,10 +5677,10 @@
         ]
       },
       {
-        "number": 176,
+        "number": 172,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5798,10 +5690,10 @@
         ]
       },
       {
-        "number": 177,
+        "number": 173,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5823,74 +5715,24 @@
         ]
       },
       {
-        "number": 178,
+        "number": 174,
         "content": [
           {
-            "text": "    ",
+            "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "},",
+            "text": "};",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 179,
-        "content": [
-          {
-            "text": "    [currentZone",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " setZoneValue",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " transitions",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " zones]",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 180,
-        "content": [
-          {
-            "text": "  )",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 181,
+        "number": 175,
         "content": []
       },
       {
-        "number": 182,
+        "number": 176,
         "content": [
           {
             "text": "  ",
@@ -5906,7 +5748,7 @@
           },
           {
             "text": "cycleZone",
-            "color": "var(--code-number)"
+            "color": "var(--code-function)"
           },
           {
             "text": " ",
@@ -5918,23 +5760,6 @@
           },
           {
             "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useCallback",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          }
-        ]
-      },
-      {
-        "number": 183,
-        "content": [
-          {
-            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -5996,10 +5821,10 @@
         ]
       },
       {
-        "number": 184,
+        "number": 177,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6069,10 +5894,10 @@
         ]
       },
       {
-        "number": 185,
+        "number": 178,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6106,10 +5931,10 @@
         ]
       },
       {
-        "number": 186,
+        "number": 179,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6159,10 +5984,10 @@
         ]
       },
       {
-        "number": 187,
+        "number": 180,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6200,10 +6025,10 @@
         ]
       },
       {
-        "number": 188,
+        "number": 181,
         "content": [
           {
-            "text": "        //",
+            "text": "      //",
             "color": "var(--code-operator)"
           },
           {
@@ -6213,10 +6038,10 @@
         ]
       },
       {
-        "number": 189,
+        "number": 182,
         "content": [
           {
-            "text": "        ",
+            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
@@ -6322,10 +6147,10 @@
         ]
       },
       {
-        "number": 190,
+        "number": 183,
         "content": [
           {
-            "text": "        ",
+            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
@@ -6351,10 +6176,10 @@
         ]
       },
       {
-        "number": 191,
+        "number": 184,
         "content": [
           {
-            "text": "        ",
+            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
@@ -6368,10 +6193,10 @@
         ]
       },
       {
-        "number": 192,
+        "number": 185,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6381,10 +6206,10 @@
         ]
       },
       {
-        "number": 193,
+        "number": 186,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6490,10 +6315,10 @@
         ]
       },
       {
-        "number": 194,
+        "number": 187,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6523,10 +6348,10 @@
         ]
       },
       {
-        "number": 195,
+        "number": 188,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -6544,66 +6369,24 @@
         ]
       },
       {
-        "number": 196,
+        "number": 189,
         "content": [
           {
-            "text": "    ",
+            "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "},",
+            "text": "};",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 197,
-        "content": [
-          {
-            "text": "    [currentZone",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " setZoneValue",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " validatedTabCycle]",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 198,
-        "content": [
-          {
-            "text": "  )",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 199,
+        "number": 190,
         "content": []
       },
       {
-        "number": 200,
+        "number": 191,
         "content": [
           {
             "text": "  ",
@@ -6654,7 +6437,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "stableTransitions",
+            "text": "handleArrowTransition",
             "color": "var(--code-function)"
           },
           {
@@ -6720,7 +6503,7 @@
         ]
       },
       {
-        "number": 201,
+        "number": 192,
         "content": [
           {
             "text": "    enabled",
@@ -6761,7 +6544,7 @@
         ]
       },
       {
-        "number": 202,
+        "number": 193,
         "content": [
           {
             "text": "    scope",
@@ -6774,7 +6557,7 @@
         ]
       },
       {
-        "number": 203,
+        "number": 194,
         "content": [
           {
             "text": "    containerRef",
@@ -6787,7 +6570,7 @@
         ]
       },
       {
-        "number": 204,
+        "number": 195,
         "content": [
           {
             "text": "    focusWithinOnly",
@@ -6800,7 +6583,7 @@
         ]
       },
       {
-        "number": 205,
+        "number": 196,
         "content": [
           {
             "text": "    allowInInput",
@@ -6813,7 +6596,7 @@
         ]
       },
       {
-        "number": 206,
+        "number": 197,
         "content": [
           {
             "text": "    preventDefault",
@@ -6826,7 +6609,7 @@
         ]
       },
       {
-        "number": 207,
+        "number": 198,
         "content": [
           {
             "text": "  ",
@@ -6847,11 +6630,11 @@
         ]
       },
       {
-        "number": 208,
+        "number": 199,
         "content": []
       },
       {
-        "number": 209,
+        "number": 200,
         "content": [
           {
             "text": "  //",
@@ -6864,7 +6647,7 @@
         ]
       },
       {
-        "number": 210,
+        "number": 201,
         "content": [
           {
             "text": "  //",
@@ -6877,7 +6660,7 @@
         ]
       },
       {
-        "number": 211,
+        "number": 202,
         "content": [
           {
             "text": "  //",
@@ -6890,7 +6673,7 @@
         ]
       },
       {
-        "number": 212,
+        "number": 203,
         "content": [
           {
             "text": "  ",
@@ -6975,7 +6758,7 @@
         ]
       },
       {
-        "number": 213,
+        "number": 204,
         "content": [
           {
             "text": "    ",
@@ -7024,7 +6807,7 @@
         ]
       },
       {
-        "number": 214,
+        "number": 205,
         "content": [
           {
             "text": "    ",
@@ -7045,7 +6828,7 @@
         ]
       },
       {
-        "number": 215,
+        "number": 206,
         "content": [
           {
             "text": "      ",
@@ -7090,7 +6873,7 @@
         ]
       },
       {
-        "number": 216,
+        "number": 207,
         "content": [
           {
             "text": "        ",
@@ -7163,7 +6946,7 @@
         ]
       },
       {
-        "number": 217,
+        "number": 208,
         "content": [
           {
             "text": "        ",
@@ -7200,7 +6983,7 @@
         ]
       },
       {
-        "number": 218,
+        "number": 209,
         "content": [
           {
             "text": "      ",
@@ -7213,7 +6996,7 @@
         ]
       },
       {
-        "number": 219,
+        "number": 210,
         "content": [
           {
             "text": "    ",
@@ -7226,7 +7009,7 @@
         ]
       },
       {
-        "number": 220,
+        "number": 211,
         "content": [
           {
             "text": "    ",
@@ -7275,7 +7058,7 @@
         ]
       },
       {
-        "number": 221,
+        "number": 212,
         "content": [
           {
             "text": "    ",
@@ -7312,7 +7095,7 @@
         ]
       },
       {
-        "number": 222,
+        "number": 213,
         "content": [
           {
             "text": "    ",
@@ -7385,7 +7168,7 @@
         ]
       },
       {
-        "number": 223,
+        "number": 214,
         "content": [
           {
             "text": "  ",
@@ -7406,11 +7189,11 @@
         ]
       },
       {
-        "number": 224,
+        "number": 215,
         "content": []
       },
       {
-        "number": 225,
+        "number": 216,
         "content": [
           {
             "text": "  ",
@@ -7527,7 +7310,7 @@
         ]
       },
       {
-        "number": 226,
+        "number": 217,
         "content": [
           {
             "text": "    ",
@@ -7572,7 +7355,7 @@
         ]
       },
       {
-        "number": 227,
+        "number": 218,
         "content": [
           {
             "text": "    ",
@@ -7593,7 +7376,7 @@
         ]
       },
       {
-        "number": 228,
+        "number": 219,
         "content": [
           {
             "text": "      ",
@@ -7642,7 +7425,7 @@
         ]
       },
       {
-        "number": 229,
+        "number": 220,
         "content": [
           {
             "text": "      ",
@@ -7691,7 +7474,7 @@
         ]
       },
       {
-        "number": 230,
+        "number": 221,
         "content": [
           {
             "text": "        ",
@@ -7720,7 +7503,7 @@
         ]
       },
       {
-        "number": 231,
+        "number": 222,
         "content": [
           {
             "text": "          (",
@@ -7781,7 +7564,7 @@
         ]
       },
       {
-        "number": 232,
+        "number": 223,
         "content": [
           {
             "text": "      )",
@@ -7794,7 +7577,7 @@
         ]
       },
       {
-        "number": 233,
+        "number": 224,
         "content": [
           {
             "text": "      //",
@@ -7807,7 +7590,7 @@
         ]
       },
       {
-        "number": 234,
+        "number": 225,
         "content": [
           {
             "text": "      ",
@@ -7848,7 +7631,7 @@
         ]
       },
       {
-        "number": 235,
+        "number": 226,
         "content": [
           {
             "text": "    ",
@@ -7861,7 +7644,7 @@
         ]
       },
       {
-        "number": 236,
+        "number": 227,
         "content": [
           {
             "text": "    ",
@@ -7890,7 +7673,7 @@
         ]
       },
       {
-        "number": 237,
+        "number": 228,
         "content": [
           {
             "text": "    ",
@@ -7911,7 +7694,7 @@
         ]
       },
       {
-        "number": 238,
+        "number": 229,
         "content": [
           {
             "text": "    ",
@@ -7936,7 +7719,7 @@
         ]
       },
       {
-        "number": 239,
+        "number": 230,
         "content": [
           {
             "text": "  ",
@@ -7957,11 +7740,11 @@
         ]
       },
       {
-        "number": 240,
+        "number": 231,
         "content": []
       },
       {
-        "number": 241,
+        "number": 232,
         "content": [
           {
             "text": "  ",
@@ -8054,7 +7837,7 @@
         ]
       },
       {
-        "number": 242,
+        "number": 233,
         "content": [
           {
             "text": "    enabled",
@@ -8075,7 +7858,7 @@
         ]
       },
       {
-        "number": 243,
+        "number": 234,
         "content": [
           {
             "text": "    scope",
@@ -8088,7 +7871,7 @@
         ]
       },
       {
-        "number": 244,
+        "number": 235,
         "content": [
           {
             "text": "    containerRef",
@@ -8101,7 +7884,7 @@
         ]
       },
       {
-        "number": 245,
+        "number": 236,
         "content": [
           {
             "text": "    focusWithinOnly",
@@ -8114,7 +7897,7 @@
         ]
       },
       {
-        "number": 246,
+        "number": 237,
         "content": [
           {
             "text": "    allowInInput",
@@ -8127,7 +7910,7 @@
         ]
       },
       {
-        "number": 247,
+        "number": 238,
         "content": [
           {
             "text": "  ",
@@ -8148,11 +7931,11 @@
         ]
       },
       {
-        "number": 248,
+        "number": 239,
         "content": []
       },
       {
-        "number": 249,
+        "number": 240,
         "content": [
           {
             "text": "  ",
@@ -8249,7 +8032,7 @@
         ]
       },
       {
-        "number": 250,
+        "number": 241,
         "content": [
           {
             "text": "    enabled",
@@ -8270,7 +8053,7 @@
         ]
       },
       {
-        "number": 251,
+        "number": 242,
         "content": [
           {
             "text": "    scope",
@@ -8283,7 +8066,7 @@
         ]
       },
       {
-        "number": 252,
+        "number": 243,
         "content": [
           {
             "text": "    containerRef",
@@ -8296,7 +8079,7 @@
         ]
       },
       {
-        "number": 253,
+        "number": 244,
         "content": [
           {
             "text": "    focusWithinOnly",
@@ -8309,7 +8092,7 @@
         ]
       },
       {
-        "number": 254,
+        "number": 245,
         "content": [
           {
             "text": "    allowInInput",
@@ -8322,7 +8105,7 @@
         ]
       },
       {
-        "number": 255,
+        "number": 246,
         "content": [
           {
             "text": "  ",
@@ -8343,11 +8126,11 @@
         ]
       },
       {
-        "number": 256,
+        "number": 247,
         "content": []
       },
       {
-        "number": 257,
+        "number": 248,
         "content": [
           {
             "text": "  ",
@@ -8408,7 +8191,7 @@
         ]
       },
       {
-        "number": 258,
+        "number": 249,
         "content": [
           {
             "text": "  ",
@@ -8473,7 +8256,7 @@
         ]
       },
       {
-        "number": 259,
+        "number": 250,
         "content": [
           {
             "text": "    enabled",
@@ -8522,7 +8305,7 @@
         ]
       },
       {
-        "number": 260,
+        "number": 251,
         "content": [
           {
             "text": "  ",
@@ -8543,11 +8326,11 @@
         ]
       },
       {
-        "number": 261,
+        "number": 252,
         "content": []
       },
       {
-        "number": 262,
+        "number": 253,
         "content": [
           {
             "text": "  ",
@@ -8596,11 +8379,11 @@
         ]
       },
       {
-        "number": 263,
+        "number": 254,
         "content": []
       },
       {
-        "number": 264,
+        "number": 255,
         "content": [
           {
             "text": "  ",
@@ -8681,7 +8464,7 @@
         ]
       },
       {
-        "number": 265,
+        "number": 256,
         "content": [
           {
             "text": "    ",
@@ -8714,7 +8497,7 @@
         ]
       },
       {
-        "number": 266,
+        "number": 257,
         "content": [
           {
             "text": "    ",
@@ -8759,7 +8542,7 @@
         ]
       },
       {
-        "number": 267,
+        "number": 258,
         "content": [
           {
             "text": "      ",
@@ -8832,7 +8615,7 @@
         ]
       },
       {
-        "number": 268,
+        "number": 259,
         "content": [
           {
             "text": "      ",
@@ -8869,7 +8652,7 @@
         ]
       },
       {
-        "number": 269,
+        "number": 260,
         "content": [
           {
             "text": "        ",
@@ -8890,7 +8673,7 @@
         ]
       },
       {
-        "number": 270,
+        "number": 261,
         "content": [
           {
             "text": "        ",
@@ -8907,7 +8690,7 @@
         ]
       },
       {
-        "number": 271,
+        "number": 262,
         "content": [
           {
             "text": "      ",
@@ -8920,7 +8703,7 @@
         ]
       },
       {
-        "number": 272,
+        "number": 263,
         "content": [
           {
             "text": "    ",
@@ -8933,7 +8716,7 @@
         ]
       },
       {
-        "number": 273,
+        "number": 264,
         "content": [
           {
             "text": "  ",
@@ -8954,11 +8737,11 @@
         ]
       },
       {
-        "number": 274,
+        "number": 265,
         "content": []
       },
       {
-        "number": 275,
+        "number": 266,
         "content": [
           {
             "text": "  ",
@@ -9079,11 +8862,11 @@
         ]
       },
       {
-        "number": 276,
+        "number": 267,
         "content": []
       },
       {
-        "number": 277,
+        "number": 268,
         "content": [
           {
             "text": "  //",
@@ -9096,7 +8879,7 @@
         ]
       },
       {
-        "number": 278,
+        "number": 269,
         "content": [
           {
             "text": "  //",
@@ -9109,7 +8892,7 @@
         ]
       },
       {
-        "number": 279,
+        "number": 270,
         "content": [
           {
             "text": "  //",
@@ -9122,7 +8905,7 @@
         ]
       },
       {
-        "number": 280,
+        "number": 271,
         "content": [
           {
             "text": "  //",
@@ -9135,7 +8918,7 @@
         ]
       },
       {
-        "number": 281,
+        "number": 272,
         "content": [
           {
             "text": "  ",
@@ -9196,7 +8979,7 @@
         ]
       },
       {
-        "number": 282,
+        "number": 273,
         "content": [
           {
             "text": "    ",
@@ -9245,7 +9028,7 @@
         ]
       },
       {
-        "number": 283,
+        "number": 274,
         "content": [
           {
             "text": "    ",
@@ -9290,7 +9073,7 @@
         ]
       },
       {
-        "number": 284,
+        "number": 275,
         "content": [
           {
             "text": "      ",
@@ -9391,7 +9174,7 @@
         ]
       },
       {
-        "number": 285,
+        "number": 276,
         "content": [
           {
             "text": "      ",
@@ -9420,7 +9203,7 @@
         ]
       },
       {
-        "number": 286,
+        "number": 277,
         "content": [
           {
             "text": "      ",
@@ -9437,7 +9220,7 @@
         ]
       },
       {
-        "number": 287,
+        "number": 278,
         "content": [
           {
             "text": "    ",
@@ -9450,11 +9233,11 @@
         ]
       },
       {
-        "number": 288,
+        "number": 279,
         "content": []
       },
       {
-        "number": 289,
+        "number": 280,
         "content": [
           {
             "text": "    ",
@@ -9519,7 +9302,7 @@
         ]
       },
       {
-        "number": 290,
+        "number": 281,
         "content": [
           {
             "text": "    ",
@@ -9564,7 +9347,7 @@
         ]
       },
       {
-        "number": 291,
+        "number": 282,
         "content": [
           {
             "text": "      ",
@@ -9637,7 +9420,7 @@
         ]
       },
       {
-        "number": 292,
+        "number": 283,
         "content": [
           {
             "text": "      ",
@@ -9686,7 +9469,7 @@
         ]
       },
       {
-        "number": 293,
+        "number": 284,
         "content": [
           {
             "text": "    ",
@@ -9699,7 +9482,7 @@
         ]
       },
       {
-        "number": 294,
+        "number": 285,
         "content": [
           {
             "text": "    ",
@@ -9788,7 +9571,7 @@
         ]
       },
       {
-        "number": 295,
+        "number": 286,
         "content": [
           {
             "text": "      ",
@@ -9817,7 +9600,7 @@
         ]
       },
       {
-        "number": 296,
+        "number": 287,
         "content": [
           {
             "text": "    ",
@@ -9830,11 +9613,11 @@
         ]
       },
       {
-        "number": 297,
+        "number": 288,
         "content": []
       },
       {
-        "number": 298,
+        "number": 289,
         "content": [
           {
             "text": "    ",
@@ -9899,7 +9682,7 @@
         ]
       },
       {
-        "number": 299,
+        "number": 290,
         "content": [
           {
             "text": "      ",
@@ -9940,7 +9723,7 @@
         ]
       },
       {
-        "number": 300,
+        "number": 291,
         "content": [
           {
             "text": "        ",
@@ -9989,7 +9772,7 @@
         ]
       },
       {
-        "number": 301,
+        "number": 292,
         "content": [
           {
             "text": "        ",
@@ -10018,7 +9801,7 @@
         ]
       },
       {
-        "number": 302,
+        "number": 293,
         "content": [
           {
             "text": "      ",
@@ -10031,7 +9814,7 @@
         ]
       },
       {
-        "number": 303,
+        "number": 294,
         "content": [
           {
             "text": "    ",
@@ -10044,7 +9827,7 @@
         ]
       },
       {
-        "number": 304,
+        "number": 295,
         "content": [
           {
             "text": "    ",
@@ -10089,7 +9872,7 @@
         ]
       },
       {
-        "number": 305,
+        "number": 296,
         "content": [
           {
             "text": "      ",
@@ -10130,7 +9913,7 @@
         ]
       },
       {
-        "number": 306,
+        "number": 297,
         "content": [
           {
             "text": "      ",
@@ -10203,7 +9986,7 @@
         ]
       },
       {
-        "number": 307,
+        "number": 298,
         "content": [
           {
             "text": "        ",
@@ -10252,7 +10035,7 @@
         ]
       },
       {
-        "number": 308,
+        "number": 299,
         "content": [
           {
             "text": "        ",
@@ -10289,7 +10072,7 @@
         ]
       },
       {
-        "number": 309,
+        "number": 300,
         "content": [
           {
             "text": "        ",
@@ -10310,7 +10093,7 @@
         ]
       },
       {
-        "number": 310,
+        "number": 301,
         "content": [
           {
             "text": "      ",
@@ -10323,7 +10106,7 @@
         ]
       },
       {
-        "number": 311,
+        "number": 302,
         "content": [
           {
             "text": "      ",
@@ -10372,7 +10155,7 @@
         ]
       },
       {
-        "number": 312,
+        "number": 303,
         "content": [
           {
             "text": "      ",
@@ -10409,7 +10192,7 @@
         ]
       },
       {
-        "number": 313,
+        "number": 304,
         "content": [
           {
             "text": "    ",
@@ -10422,7 +10205,7 @@
         ]
       },
       {
-        "number": 314,
+        "number": 305,
         "content": [
           {
             "text": "  ",
@@ -10443,11 +10226,11 @@
         ]
       },
       {
-        "number": 315,
+        "number": 306,
         "content": []
       },
       {
-        "number": 316,
+        "number": 307,
         "content": [
           {
             "text": "  ",
@@ -10484,7 +10267,7 @@
         ]
       },
       {
-        "number": 317,
+        "number": 308,
         "content": [
           {
             "text": "    ",
@@ -10505,7 +10288,7 @@
         ]
       },
       {
-        "number": 318,
+        "number": 309,
         "content": [
           {
             "text": "  ",
@@ -10526,11 +10309,11 @@
         ]
       },
       {
-        "number": 319,
+        "number": 310,
         "content": []
       },
       {
-        "number": 320,
+        "number": 311,
         "content": [
           {
             "text": "  ",
@@ -10567,7 +10350,7 @@
         ]
       },
       {
-        "number": 321,
+        "number": 312,
         "content": [
           {
             "text": "    ",
@@ -10616,7 +10399,7 @@
         ]
       },
       {
-        "number": 322,
+        "number": 313,
         "content": [
           {
             "text": "    ",
@@ -10653,7 +10436,7 @@
         ]
       },
       {
-        "number": 323,
+        "number": 314,
         "content": [
           {
             "text": "      ",
@@ -10754,7 +10537,7 @@
         ]
       },
       {
-        "number": 324,
+        "number": 315,
         "content": [
           {
             "text": "      ",
@@ -10783,7 +10566,7 @@
         ]
       },
       {
-        "number": 325,
+        "number": 316,
         "content": [
           {
             "text": "    ",
@@ -10796,7 +10579,7 @@
         ]
       },
       {
-        "number": 326,
+        "number": 317,
         "content": [
           {
             "text": "  ",
@@ -10817,11 +10600,11 @@
         ]
       },
       {
-        "number": 327,
+        "number": 318,
         "content": []
       },
       {
-        "number": 328,
+        "number": 319,
         "content": [
           {
             "text": "  ",
@@ -10898,11 +10681,11 @@
         ]
       },
       {
-        "number": 329,
+        "number": 320,
         "content": []
       },
       {
-        "number": 330,
+        "number": 321,
         "content": [
           {
             "text": "  ",
@@ -10983,7 +10766,7 @@
         ]
       },
       {
-        "number": 331,
+        "number": 322,
         "content": [
           {
             "text": "    ",
@@ -11016,7 +10799,7 @@
         ]
       },
       {
-        "number": 332,
+        "number": 323,
         "content": [
           {
             "text": "    ",
@@ -11101,7 +10884,7 @@
         ]
       },
       {
-        "number": 333,
+        "number": 324,
         "content": [
           {
             "text": "    ",
@@ -11134,7 +10917,7 @@
         ]
       },
       {
-        "number": 334,
+        "number": 325,
         "content": [
           {
             "text": "    ",
@@ -11175,11 +10958,11 @@
         ]
       },
       {
-        "number": 335,
+        "number": 326,
         "content": []
       },
       {
-        "number": 336,
+        "number": 327,
         "content": [
           {
             "text": "    ",
@@ -11224,7 +11007,7 @@
         ]
       },
       {
-        "number": 337,
+        "number": 328,
         "content": [
           {
             "text": "    ",
@@ -11257,11 +11040,11 @@
         ]
       },
       {
-        "number": 338,
+        "number": 329,
         "content": []
       },
       {
-        "number": 339,
+        "number": 330,
         "content": [
           {
             "text": "    ",
@@ -11342,7 +11125,7 @@
         ]
       },
       {
-        "number": 340,
+        "number": 331,
         "content": [
           {
             "text": "  ",
@@ -11363,11 +11146,11 @@
         ]
       },
       {
-        "number": 341,
+        "number": 332,
         "content": []
       },
       {
-        "number": 342,
+        "number": 333,
         "content": [
           {
             "text": "  ",
@@ -11456,11 +11239,11 @@
         ]
       },
       {
-        "number": 343,
+        "number": 334,
         "content": []
       },
       {
-        "number": 344,
+        "number": 335,
         "content": [
           {
             "text": "  ",
@@ -11497,7 +11280,7 @@
         ]
       },
       {
-        "number": 345,
+        "number": 336,
         "content": [
           {
             "text": "    ",
@@ -11546,7 +11329,7 @@
         ]
       },
       {
-        "number": 346,
+        "number": 337,
         "content": [
           {
             "text": "    ",
@@ -11595,7 +11378,7 @@
         ]
       },
       {
-        "number": 347,
+        "number": 338,
         "content": [
           {
             "text": "    ",
@@ -11628,7 +11411,7 @@
         ]
       },
       {
-        "number": 348,
+        "number": 339,
         "content": [
           {
             "text": "    ",
@@ -11685,7 +11468,7 @@
         ]
       },
       {
-        "number": 349,
+        "number": 340,
         "content": [
           {
             "text": "      ",
@@ -11718,7 +11501,7 @@
         ]
       },
       {
-        "number": 350,
+        "number": 341,
         "content": [
           {
             "text": "      ",
@@ -11735,7 +11518,7 @@
         ]
       },
       {
-        "number": 351,
+        "number": 342,
         "content": [
           {
             "text": "    ",
@@ -11748,11 +11531,11 @@
         ]
       },
       {
-        "number": 352,
+        "number": 343,
         "content": []
       },
       {
-        "number": 353,
+        "number": 344,
         "content": [
           {
             "text": "    ",
@@ -11773,7 +11556,7 @@
         ]
       },
       {
-        "number": 354,
+        "number": 345,
         "content": [
           {
             "text": "    ",
@@ -11806,7 +11589,7 @@
         ]
       },
       {
-        "number": 355,
+        "number": 346,
         "content": [
           {
             "text": "  ",
@@ -11843,11 +11626,11 @@
         ]
       },
       {
-        "number": 356,
+        "number": 347,
         "content": []
       },
       {
-        "number": 357,
+        "number": 348,
         "content": [
           {
             "text": "  ",
@@ -11940,7 +11723,7 @@
         ]
       },
       {
-        "number": 358,
+        "number": 349,
         "content": [
           {
             "text": "  ",
@@ -12041,7 +11824,7 @@
         ]
       },
       {
-        "number": 359,
+        "number": 350,
         "content": [
           {
             "text": "    containerRef",
@@ -12054,7 +11837,7 @@
         ]
       },
       {
-        "number": 360,
+        "number": 351,
         "content": [
           {
             "text": "    focusWithinOnly",
@@ -12067,7 +11850,7 @@
         ]
       },
       {
-        "number": 361,
+        "number": 352,
         "content": [
           {
             "text": "    allowInInput",
@@ -12080,7 +11863,7 @@
         ]
       },
       {
-        "number": 362,
+        "number": 353,
         "content": [
           {
             "text": "    preventDefault",
@@ -12093,7 +11876,7 @@
         ]
       },
       {
-        "number": 363,
+        "number": 354,
         "content": [
           {
             "text": "    ",
@@ -12114,7 +11897,7 @@
         ]
       },
       {
-        "number": 364,
+        "number": 355,
         "content": [
           {
             "text": "    scope",
@@ -12155,7 +11938,7 @@
         ]
       },
       {
-        "number": 365,
+        "number": 356,
         "content": [
           {
             "text": "    enabled",
@@ -12228,7 +12011,7 @@
         ]
       },
       {
-        "number": 366,
+        "number": 357,
         "content": [
           {
             "text": "  ",
@@ -12249,7 +12032,7 @@
         ]
       },
       {
-        "number": 367,
+        "number": 358,
         "content": [
           {
             "text": "  ",
@@ -12330,7 +12113,7 @@
         ]
       },
       {
-        "number": 368,
+        "number": 359,
         "content": [
           {
             "text": "    ",
@@ -12383,7 +12166,7 @@
         ]
       },
       {
-        "number": 369,
+        "number": 360,
         "content": [
           {
             "text": "  ",
@@ -12404,11 +12187,11 @@
         ]
       },
       {
-        "number": 370,
+        "number": 361,
         "content": []
       },
       {
-        "number": 371,
+        "number": 362,
         "content": [
           {
             "text": "  ",
@@ -12429,7 +12212,7 @@
         ]
       },
       {
-        "number": 372,
+        "number": 363,
         "content": [
           {
             "text": "    zone",
@@ -12450,7 +12233,7 @@
         ]
       },
       {
-        "number": 373,
+        "number": 364,
         "content": [
           {
             "text": "    setZone",
@@ -12471,7 +12254,7 @@
         ]
       },
       {
-        "number": 374,
+        "number": 365,
         "content": [
           {
             "text": "    isZone",
@@ -12484,7 +12267,7 @@
         ]
       },
       {
-        "number": 375,
+        "number": 366,
         "content": [
           {
             "text": "    getKeyOptions",
@@ -12497,7 +12280,7 @@
         ]
       },
       {
-        "number": 376,
+        "number": 367,
         "content": [
           {
             "text": "    getZoneProps",
@@ -12510,7 +12293,7 @@
         ]
       },
       {
-        "number": 377,
+        "number": 368,
         "content": [
           {
             "text": "  ",
@@ -12523,7 +12306,7 @@
         ]
       },
       {
-        "number": 378,
+        "number": 369,
         "content": [
           {
             "text": "}",
@@ -12532,7 +12315,7 @@
         ]
       },
       {
-        "number": 379,
+        "number": 370,
         "content": []
       }
     ]

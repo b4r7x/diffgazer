@@ -1,6 +1,6 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
-import type { ReviewMode } from "@diffgazer/core/schemas/review";
+import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
@@ -84,6 +84,7 @@ function makeBaseReturn() {
         fileProgress: { total: 0, current: 0, currentFile: null, completed: [] },
         isStreaming: false,
         error: "No unstaged changes found",
+        errorCode: ReviewErrorCode.NO_DIFF,
         startedAt: null,
         reviewId: "11111111-1111-4111-8111-111111111111",
       },

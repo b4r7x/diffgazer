@@ -5,10 +5,9 @@ import { getKeysHookImportNames } from "./keys-copy-bundle.js";
 
 const IMPORT_PREFIX = String.raw`(from\s+|import\(\s*|require\(\s*)(["'])`;
 
-// Kept local on purpose. `dgadd` publishes as a self-contained npm bundle, so
-// pulling a one-line regex-escape from a workspace package would drag that
-// package's whole dependency graph into the binary. Same decoupling rationale
-// as `sha256` (utils/hashing.ts) and registry `computeIntegrity`.
+// Kept local because this transformer is the only runtime caller in dgadd, and
+// exporting a regex helper from another workspace would create a dependency edge
+// for a one-line implementation.
 function escapeForRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

@@ -111,9 +111,18 @@ function categorizeGitFile(line: string): CategorizedFile | null {
 
   const indexStatus = toStatusCode(line[0] ?? " ");
   const workTreeStatus = toStatusCode(line[1] ?? " ");
-  const path = decodePorcelainPath(line.slice(3));
-
-  const entry: GitFileEntry = { path, indexStatus, workTreeStatus };
+  const pathField = line.slice(3);
+  const [previousPathPart, nextPathPart] = pathField.split(" -> ");
+  const path = decodePorcelainPath(nextPathPart ?? previousPathPart ?? "");
+  const entry: GitFileEntry =
+    nextPathPart === undefined || previousPathPart === undefined
+      ? { path, indexStatus, workTreeStatus }
+      : {
+          path,
+          previousPath: decodePorcelainPath(previousPathPart),
+          indexStatus,
+          workTreeStatus,
+        };
 
   return {
     entry,
@@ -234,6 +243,18 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
     } catch (error) {
       const msg = getErrorMessage(error);
       log("warn", "git_status_failed", { error: msg });
+      if (msg.toLowerCase().includes("not a git repository")) {
+        return ok({
+          isGitRepo: false,
+          branch: null,
+          remoteBranch: null,
+          ahead: 0,
+          behind: 0,
+          files: { staged: [], unstaged: [], untracked: [] },
+          hasChanges: false,
+          conflicted: [],
+        });
+      }
       return err({ message: msg });
     }
   }

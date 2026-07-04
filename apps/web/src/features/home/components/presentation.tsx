@@ -190,6 +190,10 @@ export function HomePagePresentation({
         return;
       case "noop":
         return;
+      default: {
+        const _exhaustive: never = decision;
+        return _exhaustive;
+      }
     }
   };
 
@@ -203,7 +207,7 @@ export function HomePagePresentation({
   useKey("q", () => {
     void handleQuit();
   });
-  useKey("s", () => navigate({ to: "/settings" }));
+  useKey("s", () => handleActivate("settings"));
   useKey("h", () => handleActivate("history"));
 
   useKey("shift+?", () => handleActivate("help"));

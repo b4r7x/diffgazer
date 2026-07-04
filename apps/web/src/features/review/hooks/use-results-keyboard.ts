@@ -1,5 +1,5 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import type { Shortcut } from "@diffgazer/core/schemas/presentation";
+import type { IssueTab, Shortcut } from "@diffgazer/core/schemas/presentation";
 import { BACK_SHORTCUT, SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import {
@@ -23,6 +23,12 @@ type FocusZone = "filters" | "list" | "details";
 
 const ZONES = ["filters", "list", "details"] as const;
 const REVIEW_SCOPE = "review";
+const TAB_KEY_BY_ID: Record<IssueTab, string> = {
+  details: "1",
+  explain: "2",
+  trace: "3",
+  patch: "4",
+};
 
 interface UseReviewResultsKeyboardOptions {
   issues: ReviewIssue[];
@@ -32,7 +38,7 @@ interface UseReviewResultsKeyboardOptions {
 function getReviewResultsFooter(
   focusZone: FocusZone,
   hasSelectedIssue: boolean,
-  canUsePatchTab: boolean,
+  availableTabs: readonly IssueTab[],
   isFilterActive: boolean,
   hasFixPlanSteps: boolean,
 ): { shortcuts: Shortcut[]; rightShortcuts: Shortcut[] } {
@@ -57,7 +63,7 @@ function getReviewResultsFooter(
       };
     }
 
-    const shortcuts: Shortcut[] = [{ key: canUsePatchTab ? "1-4" : "1-3", label: "Switch Tab" }];
+    const shortcuts: Shortcut[] = [{ key: getTabKeyHint(availableTabs), label: "Switch Tab" }];
     if (hasFixPlanSteps) {
       shortcuts.push(
         { key: "j/k", label: "Move Step" },
@@ -78,6 +84,13 @@ function getReviewResultsFooter(
     ],
     rightShortcuts: [BACK_SHORTCUT],
   };
+}
+
+function getTabKeyHint(availableTabs: readonly IssueTab[]): string {
+  const keys = availableTabs.map((tab) => TAB_KEY_BY_ID[tab]);
+  const isContiguous = keys.every((key, index) => Number(key) === index + 1);
+  if (isContiguous && keys.length > 1) return `${keys[0]}-${keys.at(-1)}`;
+  return keys.join("/");
 }
 
 function severityFilterToKey(filter: ReadonlySet<ReviewIssue["severity"]>): string {
@@ -115,6 +128,7 @@ export function useReviewResultsKeyboard({
 
   const {
     activeTab,
+    availableTabs,
     setActiveTab,
     completedSteps,
     handleToggleStep,
@@ -128,6 +142,13 @@ export function useReviewResultsKeyboard({
 
   const focusTargetValueForIndex = (index: number): string =>
     index === resetIndex ? RESET_FILTER_VALUE : (SEVERITY_ORDER[index] ?? SEVERITY_ORDER[0]);
+
+  const findFilterChip = (index: number): HTMLElement | null =>
+    findNavigationItemByValue(filterRef.current, {
+      type: "button",
+      value: focusTargetValueForIndex(index),
+      ownerSelector: null,
+    });
 
   useFocusZone<FocusZone>({
     initial: "list",
@@ -247,16 +268,25 @@ export function useReviewResultsKeyboard({
     lastFilterIndex,
     resetIndex,
     setFocusedFilterIndex,
+    focusChip: findFilterChip,
     toggleSeverityFilter,
     resetSeverityFilter,
     enterList: () => setFocusZone("list"),
     enterDetails: () => setFocusZone("details"),
   });
 
+  const selectedIssueForKeyboard =
+    selectedIssue?.fixPlan === undefined
+      ? selectedIssue
+      : {
+          ...selectedIssue,
+          fixPlan: selectedIssue.fixPlan.map((step, index) => ({ ...step, step: index })),
+        };
+
   const { focusedStepIndex } = useReviewDetailsTabKeyboard({
     scope: REVIEW_SCOPE,
     enabled: focusZone === "details",
-    selectedIssue,
+    selectedIssue: selectedIssueForKeyboard,
     activeTab,
     moveTab,
     scrollDetails,
@@ -271,7 +301,7 @@ export function useReviewResultsKeyboard({
   const footer = getReviewResultsFooter(
     focusZone,
     selectedIssue !== null,
-    Boolean(selectedIssue?.suggested_patch),
+    availableTabs,
     isFilterActive,
     hasFixPlanSteps,
   );

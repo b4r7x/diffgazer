@@ -2,54 +2,35 @@ import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { RELATIVE_JS_IMPORT_RE } from "@diffgazer/registry";
+import type { Registry, RegistryItem } from "@diffgazer/registry/schemas";
+import { RegistrySchema } from "@diffgazer/registry/schemas";
 import { describe, expect, it } from "vitest";
 import { transformUiPublicRegistryKeysImportContent } from "./rewrite-keys-imports";
 
 const ROOT = resolve(fileURLToPath(import.meta.url), "../../..");
 const PUBLIC_REGISTRY_DIR = resolve(ROOT, "public/r");
 
-interface RegistryFile {
-  path: string;
-  content?: string;
-  type?: string;
-  target?: string;
-}
-
-interface RegistryItem {
-  name: string;
-  type?: string;
-  dependencies?: string[];
-  registryDependencies?: string[];
-  files?: RegistryFile[];
-  meta?: {
-    client?: boolean;
-    hidden?: boolean;
-  };
-}
-
-interface Registry {
-  items?: RegistryItem[];
-}
-
 function readSourceRegistry(): Registry {
-  return JSON.parse(readFileSync(resolve(ROOT, "registry/registry.json"), "utf-8")) as Registry;
+  return RegistrySchema.parse(
+    JSON.parse(readFileSync(resolve(ROOT, "registry/registry.json"), "utf-8")),
+  );
 }
 
-interface PublicRegistryItem {
-  name: string;
-  dependencies?: string[];
-  files?: Array<{ path: string; content?: string }>;
-}
-
-function readPublicRegistryItems(): PublicRegistryItem[] {
-  const items: PublicRegistryItem[] = [];
+function readPublicRegistryItems(): RegistryItem[] {
+  const items: RegistryItem[] = [];
   for (const entry of readdirSync(PUBLIC_REGISTRY_DIR)) {
     if (!entry.endsWith(".json") || entry === "registry.json") continue;
     items.push(
-      JSON.parse(readFileSync(resolve(PUBLIC_REGISTRY_DIR, entry), "utf-8")) as PublicRegistryItem,
+      parseRegistryEntry(JSON.parse(readFileSync(resolve(PUBLIC_REGISTRY_DIR, entry), "utf-8"))),
     );
   }
   return items;
+}
+
+function parseRegistryEntry(raw: unknown): RegistryItem {
+  const [item] = RegistrySchema.parse({ items: [raw] }).items;
+  if (!item) throw new Error("Missing registry item");
+  return item;
 }
 
 function findRelativeJsImportSpecifiers(content: string): string[] {

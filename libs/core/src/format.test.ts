@@ -79,13 +79,16 @@ describe("getDateLabel", () => {
   });
 
   it("falls back to a short month/day label for older dates", () => {
-    expect(getDateLabel("2026-01-15T08:00:00.000Z")).toMatch(/^Jan\s+15$/);
+    expect(getDateLabel("2026-01-15T08:00:00.000Z")).toBe("Jan 15");
+  });
+
+  it("formats fallback labels from the date key instead of local timezone conversion", () => {
+    expect(getDateLabel("2026-01-15T01:30:00.000Z")).toBe("Jan 15");
+    expect(getDateLabel("2026-01-15T23:30:00.000Z")).toBe("Jan 15");
   });
 
   it("includes the year when requested", () => {
-    expect(getDateLabel("2025-01-15T08:00:00.000Z", { showYear: true })).toMatch(
-      /^Jan\s+15,\s+2025$/,
-    );
+    expect(getDateLabel("2025-01-15T08:00:00.000Z", { showYear: true })).toBe("Jan 15, 2025");
   });
 });
 

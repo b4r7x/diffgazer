@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { ARTIFACT_MANIFEST_REL_PATH } from "../constants.js";
-import { computeArtifactFingerprint } from "../fingerprint.js";
+import { computeRequiredArtifactFingerprint } from "../fingerprint.js";
 import type { ArtifactManifest } from "../manifest.js";
 import { loadValidatedManifest } from "../manifest.js";
 import { ensureExists, resolveInside } from "../utils/fs.js";
@@ -107,7 +107,12 @@ function loadFromWorkspace(
   ensureExists(fingerprintPath, `${config.id} artifact fingerprint`);
 
   const expectedFingerprint = readFileSync(fingerprintPath, "utf-8").trim();
-  const currentFingerprint = computeArtifactFingerprint(libraryRoot, manifest.inputs, origin);
+  const currentFingerprint = computeRequiredArtifactFingerprint(
+    libraryRoot,
+    manifest.inputs,
+    origin,
+    `${config.id} artifacts`,
+  );
 
   if (expectedFingerprint !== currentFingerprint) {
     throw new Error(

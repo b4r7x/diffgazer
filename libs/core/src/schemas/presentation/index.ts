@@ -49,4 +49,3 @@ export {
   TRUST_FOOTER_SHORTCUTS,
 } from "./shortcuts.js";
 export type { TimelineItem } from "./timeline.js";
-export type { ToastVariant } from "./toast.js";

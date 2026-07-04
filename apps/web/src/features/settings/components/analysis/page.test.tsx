@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/testing/render";
@@ -27,28 +27,21 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-type QueryStateHandlers = {
-  loading: () => unknown;
-  error: (error: Error) => unknown;
-  success: () => unknown;
-};
-
 // Boundary mock: api/hooks is the HTTP-data fetch boundary; we provide canned data and assert on the resulting UI.
-vi.mock("@diffgazer/core/api/hooks", () => ({
-  useSettings: () => mockSettingsQuery.current,
-  useSaveSettings: () => ({
-    isPending: mockIsSaving.current,
-    mutateAsync: mockSaveSettings,
-  }),
-  matchQueryState: (
-    query: { isLoading?: boolean; error?: Error | null },
-    handlers: QueryStateHandlers,
-  ) => {
-    if (query.isLoading) return handlers.loading();
-    if (query.error) return handlers.error(query.error);
-    return handlers.success();
-  },
-}));
+vi.mock("@diffgazer/core/api/hooks", async () => {
+  const actual = await vi.importActual<typeof import("@diffgazer/core/api/hooks")>(
+    "@diffgazer/core/api/hooks",
+  );
+
+  return {
+    ...actual,
+    useSettings: () => mockSettingsQuery.current,
+    useSaveSettings: () => ({
+      isPending: mockIsSaving.current,
+      mutateAsync: mockSaveSettings,
+    }),
+  };
+});
 
 import { SettingsAnalysisPage } from "./page";
 
@@ -57,7 +50,8 @@ function renderPage() {
 }
 
 async function moveFromSelectedLensToFooter(user: ReturnType<typeof userEvent.setup>) {
-  await user.keyboard("{ArrowDown}".repeat(screen.getAllByRole("checkbox").length));
+  const agentsGroup = screen.getByRole("group", { name: /active agents/i });
+  await user.keyboard("{ArrowDown}".repeat(within(agentsGroup).getAllByRole("checkbox").length));
 }
 
 describe("SettingsAnalysisPage keyboard behavior", () => {
@@ -78,7 +72,8 @@ describe("SettingsAnalysisPage keyboard behavior", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByRole("checkbox", { name: /detective/i })).toHaveFocus();
+      const agentsGroup = screen.getByRole("group", { name: /active agents/i });
+      expect(within(agentsGroup).getByRole("checkbox", { name: /detective/i })).toHaveFocus();
     });
 
     await moveFromSelectedLensToFooter(user);
@@ -99,7 +94,8 @@ describe("SettingsAnalysisPage keyboard behavior", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByRole("checkbox", { name: /detective/i })).toHaveFocus();
+      const agentsGroup = screen.getByRole("group", { name: /active agents/i });
+      expect(within(agentsGroup).getByRole("checkbox", { name: /detective/i })).toHaveFocus();
     });
 
     await user.keyboard("{Enter}");

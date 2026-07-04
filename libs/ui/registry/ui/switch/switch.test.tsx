@@ -35,50 +35,55 @@ describe("Switch", () => {
   });
 
   it("toggles on click in controlled mode", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     render(<Switch checked={false} onChange={onChange} aria-label="Toggle" />);
-    await userEvent.click(screen.getByRole("switch"));
+    await user.click(screen.getByRole("switch"));
     expect(onChange).toHaveBeenCalledWith(true);
     expect(screen.getByRole("switch")).toHaveAttribute("aria-checked", "false");
   });
 
   it("toggles on click in uncontrolled mode", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     render(<Switch onChange={onChange} aria-label="Toggle" />);
     const sw = screen.getByRole("switch");
     expect(sw).toHaveAttribute("aria-checked", "false");
 
-    await userEvent.click(sw);
+    await user.click(sw);
     expect(onChange).toHaveBeenCalledWith(true);
     expect(sw).toHaveAttribute("aria-checked", "true");
 
-    await userEvent.click(sw);
+    await user.click(sw);
     expect(onChange).toHaveBeenCalledWith(false);
     expect(sw).toHaveAttribute("aria-checked", "false");
   });
 
   it("toggles on Space key", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     render(<Switch onChange={onChange} aria-label="Toggle" />);
     screen.getByRole("switch").focus();
-    await userEvent.keyboard(" ");
+    await user.keyboard(" ");
     expect(onChange).toHaveBeenCalledWith(true);
   });
 
   it("toggles on Enter key", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     render(<Switch onChange={onChange} aria-label="Toggle" />);
     screen.getByRole("switch").focus();
-    await userEvent.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
     expect(onChange).toHaveBeenCalledWith(true);
   });
 
   it("does not toggle when disabled", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     render(<Switch disabled onChange={onChange} aria-label="Toggle" />);
     const sw = screen.getByRole("switch");
 
-    await userEvent.click(sw);
+    await user.click(sw);
     expect(onChange).not.toHaveBeenCalled();
     expect(sw).toHaveAttribute("aria-checked", "false");
   });
@@ -131,13 +136,14 @@ describe("Switch", () => {
   });
 
   it("resets uncontrolled state with native form reset", async () => {
+    const user = userEvent.setup();
     render(
       <form aria-label="Test form">
         <Switch name="toggle" defaultChecked aria-label="Toggle" />
       </form>,
     );
 
-    await userEvent.click(screen.getByRole("switch"));
+    await user.click(screen.getByRole("switch"));
     const form = getForm();
     expect(new FormData(form).has("toggle")).toBe(false);
 
@@ -179,6 +185,7 @@ describe("Switch", () => {
   });
 
   it("clears the invalid state once the required switch is turned on", async () => {
+    const user = userEvent.setup();
     render(
       <form aria-label="Test form">
         <Switch name="accept" required aria-label="Accept" />
@@ -191,12 +198,13 @@ describe("Switch", () => {
     expect(form.reportValidity()).toBe(false);
     await waitFor(() => expect(sw).toHaveAttribute("aria-invalid", "true"));
 
-    await userEvent.click(sw);
+    await user.click(sw);
     expect(form.checkValidity()).toBe(true);
     expect(sw).not.toHaveAttribute("aria-invalid");
   });
 
   it("lets consumer click handlers prevent the built-in toggle", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     render(
       <Switch
@@ -206,7 +214,7 @@ describe("Switch", () => {
       />,
     );
 
-    await userEvent.click(screen.getByRole("switch"));
+    await user.click(screen.getByRole("switch"));
 
     expect(onChange).not.toHaveBeenCalled();
     expect(screen.getByRole("switch")).toHaveAttribute("aria-checked", "false");

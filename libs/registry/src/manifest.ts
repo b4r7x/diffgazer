@@ -6,7 +6,7 @@ import { isRelativeSubpath } from "./utils/fs.js";
 import { readJson } from "./utils/json.js";
 
 const RelativeArtifactPathSchema = z.string().min(1).refine(isRelativeSubpath, {
-  message: "Path must be relative and must not contain '..' segments",
+  error: "Path must be relative and must not contain '..' segments",
 });
 
 export const ArtifactManifestDocsSchema = z.object({

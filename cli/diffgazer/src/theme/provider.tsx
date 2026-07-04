@@ -32,7 +32,7 @@ export function detectPaletteNameFromColorFgBg(value: string | undefined): "dark
   return num === 7 || (num >= 9 && num <= 15) ? "light" : "dark";
 }
 
-function detectDefaultPalette(): { name: string; tokens: CliColorTokens } {
+export function detectDefaultPalette(): { name: string; tokens: CliColorTokens } {
   const name = detectPaletteNameFromColorFgBg(process.env.COLORFGBG);
   return { name, tokens: name === "light" ? lightPalette : darkPalette };
 }

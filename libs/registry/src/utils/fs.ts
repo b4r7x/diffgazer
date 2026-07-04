@@ -8,8 +8,8 @@ export function cleanDir(dir: string, ext: string): void {
   }
 }
 
-export function relativePath(base: string, filePath: string): string {
-  return filePath.startsWith(`${base}/`) ? filePath.slice(base.length + 1) : filePath;
+export function toPosixPath(path: string): string {
+  return path.split(/[\\/]+/).join("/");
 }
 
 export function ensureExists(path: string, label: string): void {

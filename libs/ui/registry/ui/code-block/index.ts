@@ -14,7 +14,6 @@ import {
 } from "./code-block-line";
 import { InlineCode } from "./inline-code";
 
-/** Root <figure>. */
 const CodeBlock = Object.assign(CodeBlockRoot, {
   Content: CodeBlockContent,
   Header: CodeBlockHeader,

@@ -89,6 +89,25 @@ describe("resumeStreamById freshness gating", () => {
     expect(getSession(REVIEW_ID)?.isComplete).toBe(false);
   });
 
+  it("keeps a status-only session streaming when the reconnect read is a healthy full hash", async () => {
+    const session = createSession(REVIEW_ID, {
+      projectPath: PROJECT_PATH,
+      headCommit: "abc123",
+      statusHash: "status-only-hash",
+      statusHashKind: "status-only",
+      mode: "unstaged",
+    });
+    markReady(REVIEW_ID);
+    setStatusHash({ kind: "full", hash: "full-hash" });
+
+    const response = await resume();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+    expect(getSession(REVIEW_ID)?.isComplete).toBe(false);
+    expect(session.controller.signal.aborted).toBe(false);
+  });
+
   it("keeps an in-flight session streaming when reconnect status is unavailable", async () => {
     createSession(REVIEW_ID, {
       projectPath: PROJECT_PATH,

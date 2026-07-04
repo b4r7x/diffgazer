@@ -7,7 +7,11 @@ const HORIZONTAL_BLOCKS = Array.from({ length: 12 }, (_, index) => ({
 
 export default function ScrollAreaHorizontal() {
   return (
-    <ScrollArea orientation="horizontal" className="border border-border p-2">
+    <ScrollArea
+      aria-label="Horizontal strip"
+      orientation="horizontal"
+      className="border border-border p-2"
+    >
       <div className="flex gap-2 w-[800px]">
         {HORIZONTAL_BLOCKS.map((block) => (
           <div

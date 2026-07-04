@@ -15,9 +15,13 @@ const BEL = 0x07;
 const CSI_FINAL_MIN = 0x40; // '@'
 const CSI_FINAL_MAX = 0x7e; // '~'
 
-function isCsiParamByte(code: number): boolean {
+function isCsiSequenceByte(code: number): boolean {
   // params (0x30-0x3f) and intermediates (0x20-0x2f) of a CSI sequence
   return (code >= 0x30 && code <= 0x3f) || (code >= 0x20 && code <= 0x2f);
+}
+
+function isSgrParamByte(code: number): boolean {
+  return (code >= 0x30 && code <= 0x39) || code === 0x3a || code === 0x3b;
 }
 
 function isStrippedControl(code: number): boolean {
@@ -58,10 +62,16 @@ export function sanitizeTerminalText(input: string): string {
       // CSI: ESC [ params final. Keep only the SGR form (final byte 'm').
       if (next === 0x5b) {
         let j = i + 2;
-        while (j < input.length && isCsiParamByte(input.charCodeAt(j))) j++;
+        let hasOnlySgrParams = true;
+        while (j < input.length && isCsiSequenceByte(input.charCodeAt(j))) {
+          if (!isSgrParamByte(input.charCodeAt(j))) {
+            hasOnlySgrParams = false;
+          }
+          j++;
+        }
         const finalByte = input.charCodeAt(j);
         if (finalByte >= CSI_FINAL_MIN && finalByte <= CSI_FINAL_MAX) {
-          if (finalByte === 0x6d) {
+          if (finalByte === 0x6d && hasOnlySgrParams) {
             out += input.slice(i, j + 1); // preserve inert SGR
           }
           i = j + 1;

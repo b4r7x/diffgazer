@@ -1,6 +1,6 @@
 "use client";
 
-import { type RefObject, useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
+import { type RefObject, useEffect, useEffectEvent, useRef, useState } from "react";
 import { DECLINE } from "../core/normalize-key-input.js";
 import { isHTMLElement } from "../dom/element-guards.js";
 import { containsActiveElement, getFirstFocusableElement, isFocusable } from "../dom/focusable.js";
@@ -155,49 +155,40 @@ export function useFocusZone<T extends string>(
 
   const canCycleTabs = enabled && validatedTabCycle != null && validatedTabCycle.length > 1;
 
-  const setZoneValue = useCallback(
-    (next: T) => {
-      if (next === currentZone) return;
-      if (!zones.includes(next)) return;
-      onLeaveZone?.(currentZone);
-      onEnterZone?.(next);
-      if (controlledZone === undefined) setInternalZone(next);
-      onZoneChange?.(next);
-    },
-    [controlledZone, currentZone, onEnterZone, onLeaveZone, onZoneChange, zones],
-  );
+  const setZoneValue = (next: T) => {
+    if (next === currentZone) return;
+    if (!zones.includes(next)) return;
+    onLeaveZone?.(currentZone);
+    onEnterZone?.(next);
+    if (controlledZone === undefined) setInternalZone(next);
+    onZoneChange?.(next);
+  };
 
-  const stableTransitions = useCallback(
-    (key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown") => {
-      const next = transitions?.({ zone: currentZone, key });
-      if (next != null && zones.includes(next)) {
-        setZoneValue(next);
-        return;
-      }
-      return DECLINE;
-    },
-    [currentZone, setZoneValue, transitions, zones],
-  );
-
-  const cycleZone = useCallback(
-    (delta: 1 | -1) => {
-      if (!validatedTabCycle || validatedTabCycle.length === 0) return;
-      const cycle = validatedTabCycle;
-      const idx = cycle.indexOf(currentZone);
-      if (idx === -1) {
-        // Current zone is not part of the cycle; Tab enters the cycle from either end.
-        const next = delta > 0 ? cycle[0] : cycle[cycle.length - 1];
-        if (next) setZoneValue(next);
-        return;
-      }
-      const next = cycle[(idx + delta + cycle.length) % cycle.length] ?? cycle[0];
-      if (!next) return;
+  const handleArrowTransition = (key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown") => {
+    const next = transitions?.({ zone: currentZone, key });
+    if (next != null && zones.includes(next)) {
       setZoneValue(next);
-    },
-    [currentZone, setZoneValue, validatedTabCycle],
-  );
+      return;
+    }
+    return DECLINE;
+  };
 
-  useKey(ARROW_KEYS, (e) => stableTransitions(e.key as (typeof ARROW_KEYS)[number]), {
+  const cycleZone = (delta: 1 | -1) => {
+    if (!validatedTabCycle || validatedTabCycle.length === 0) return;
+    const cycle = validatedTabCycle;
+    const idx = cycle.indexOf(currentZone);
+    if (idx === -1) {
+      // Current zone is not part of the cycle; Tab enters the cycle from either end.
+      const next = delta > 0 ? cycle[0] : cycle[cycle.length - 1];
+      if (next) setZoneValue(next);
+      return;
+    }
+    const next = cycle[(idx + delta + cycle.length) % cycle.length] ?? cycle[0];
+    if (!next) return;
+    setZoneValue(next);
+  };
+
+  useKey(ARROW_KEYS, (e) => handleArrowTransition(e.key as (typeof ARROW_KEYS)[number]), {
     enabled: enabled && transitions != null,
     scope,
     containerRef,

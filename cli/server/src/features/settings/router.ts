@@ -55,18 +55,6 @@ settingsRouter.get("/trust", requireTrustRouteToken, (c) => {
   return c.json({ trust });
 });
 
-// Despite the plural "list" name, this route returns ONLY the current
-// project's trust record (filtered by the request's resolved projectId). The
-// broader name is reserved by design for a future multi-project UI consumer;
-// today no client calls it.
-settingsRouter.get("/trust/list", requireTrustRouteToken, (c) => {
-  const projectRoot = getProjectRoot(c);
-  const project = getStore().getProjectInfo(projectRoot);
-  const all = getStore().listTrustedProjects();
-  const scoped = all.filter((t) => t.projectId === project.projectId);
-  return c.json({ projects: scoped });
-});
-
 settingsRouter.post(
   "/trust",
   requireTrustRouteToken,

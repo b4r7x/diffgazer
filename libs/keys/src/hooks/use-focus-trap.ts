@@ -3,7 +3,12 @@
 import { type RefObject, useEffect, useRef } from "react";
 import { getOwnerView, isNode } from "../dom/element-guards.js";
 import { restoreFocus as restoreFocusTarget } from "../dom/focus-restore.js";
-import { getFocusableElements, getTabbableElements, isFocusable } from "../dom/focusable.js";
+import {
+  documentOrder,
+  getFocusableElements,
+  getTabbableElements,
+  isFocusable,
+} from "../dom/focusable.js";
 import { useFocusRestore } from "./use-focus-restore.js";
 
 /** Options for trapping Tab focus inside a container. */
@@ -37,6 +42,7 @@ interface ActiveTrap {
 // When a new trap activates, the previous top is suspended (listeners removed).
 // When the top trap releases, the next-in-stack is re-armed (listeners re-attached).
 const trapStacks = new WeakMap<Document, TrapEntry[]>();
+const DOCUMENT_POSITION_FOLLOWING = 0x04;
 
 function getTrapStack(ownerDocument: Document): TrapEntry[] {
   let stack = trapStacks.get(ownerDocument);
@@ -45,6 +51,19 @@ function getTrapStack(ownerDocument: Document): TrapEntry[] {
     trapStacks.set(ownerDocument, stack);
   }
   return stack;
+}
+
+function armEntry(entry: TrapEntry): void {
+  if (!entry.suspended) return;
+  entry.ownerDocument.addEventListener("keydown", entry.handleKeyDown, true);
+  entry.ownerDocument.addEventListener("focusin", entry.handleFocusIn, true);
+  entry.observer.observe(entry.container, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["disabled", "hidden", "tabindex", "aria-hidden", "inert"],
+  });
+  entry.suspended = false;
 }
 
 function suspendEntry(entry: TrapEntry): void {
@@ -56,16 +75,7 @@ function suspendEntry(entry: TrapEntry): void {
 }
 
 function resumeEntry(entry: TrapEntry): void {
-  if (!entry.suspended) return;
-  entry.ownerDocument.addEventListener("keydown", entry.handleKeyDown, true);
-  entry.ownerDocument.addEventListener("focusin", entry.handleFocusIn, true);
-  entry.observer.observe(entry.container, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ["disabled", "hidden", "tabindex", "aria-hidden", "inert"],
-  });
-  entry.suspended = false;
+  armEntry(entry);
   // Recapture focus into the resumed trap's container
   const target =
     entry.container.contains(entry.lastFocused) &&
@@ -76,11 +86,25 @@ function resumeEntry(entry: TrapEntry): void {
   target.focus();
 }
 
-function pushTrap(entry: TrapEntry): void {
+function shouldInsertBefore(incoming: TrapEntry, existing: TrapEntry): boolean {
+  if (incoming.container === existing.container) return false;
+  if (incoming.container.contains(existing.container)) return true;
+  if (existing.container.contains(incoming.container)) return false;
+  return Boolean(
+    incoming.container.compareDocumentPosition(existing.container) & DOCUMENT_POSITION_FOLLOWING,
+  );
+}
+
+function pushTrap(entry: TrapEntry): boolean {
   const stack = getTrapStack(entry.ownerDocument);
-  const prev = stack.at(-1);
-  if (prev) suspendEntry(prev);
-  stack.push(entry);
+  const previousTop = stack.at(-1);
+  const insertIndex = stack.findIndex((existing) => shouldInsertBefore(entry, existing));
+  if (insertIndex === -1) stack.push(entry);
+  else stack.splice(insertIndex, 0, entry);
+
+  const nextTop = stack.at(-1);
+  if (previousTop && previousTop !== nextTop) suspendEntry(previousTop);
+  return nextTop === entry;
 }
 
 function removeTrap(entry: TrapEntry): void {
@@ -112,6 +136,26 @@ function isInsideContainer(
   return isNode(target, View) && container.contains(target);
 }
 
+function getTabbableFromAnchor(
+  tabbableEls: HTMLElement[],
+  activeElement: HTMLElement,
+  shiftKey: boolean,
+): HTMLElement | null {
+  const documentOrderEls = [...tabbableEls].sort(documentOrder);
+  if (shiftKey) {
+    for (let index = documentOrderEls.length - 1; index >= 0; index -= 1) {
+      const candidate = documentOrderEls[index];
+      if (candidate && documentOrder(candidate, activeElement) < 0) return candidate;
+    }
+    return documentOrderEls.at(-1) ?? null;
+  }
+
+  for (const candidate of documentOrderEls) {
+    if (documentOrder(activeElement, candidate) < 0) return candidate;
+  }
+  return documentOrderEls[0] ?? null;
+}
+
 // Effect-on-every-render is intentional: React does not re-fire effects when
 // containerRef.current mutates while the ref object stays stable.
 /**
@@ -131,7 +175,7 @@ export function useFocusTrap(
   // otherwise the document-level focusin recapture re-traps the restored
   // target. `restoreOnUnmount: false` prevents the stack hook from moving
   // focus during its own unmount cleanup.
-  const { capture } = useFocusRestore({
+  const { capture, restore } = useFocusRestore({
     enabled: restoreFocus,
     restoreOnUnmount: false,
   });
@@ -202,7 +246,10 @@ export function useFocusTrap(
 
       if (!focusableEls.includes(activeElement as HTMLElement)) {
         event.preventDefault();
-        (event.shiftKey ? last : first)?.focus();
+        const anchorTarget = isInsideContainer(container, activeElement)
+          ? getTabbableFromAnchor(focusableEls, activeElement, event.shiftKey)
+          : null;
+        (anchorTarget ?? (event.shiftKey ? last : first))?.focus();
         return;
       }
 
@@ -236,27 +283,24 @@ export function useFocusTrap(
       handleKeyDown,
       handleFocusIn,
       observer,
-      suspended: false,
+      suspended: true,
     };
     trapEntryRef.current = entry;
-    pushTrap(entry);
+    const isTopTrap = pushTrap(entry);
 
-    // Attach listeners and focus now that the outer trap is suspended
-    ownerDocument.addEventListener("keydown", handleKeyDown, true);
-    ownerDocument.addEventListener("focusin", handleFocusIn, true);
-    observer.observe(container, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["disabled", "hidden", "tabindex", "aria-hidden", "inert"],
-    });
-
-    const initialTarget = pickInitialTarget(container, initialFocus);
-    initialTarget.focus();
-    lastFocused = container.contains(ownerDocument.activeElement)
-      ? (ownerDocument.activeElement as HTMLElement)
-      : initialTarget;
-    entry.lastFocused = lastFocused;
+    if (isTopTrap) {
+      armEntry(entry);
+      if (!isInsideContainer(container, ownerDocument.activeElement)) {
+        pickInitialTarget(container, initialFocus).focus();
+      }
+      lastFocused = isInsideContainer(container, ownerDocument.activeElement)
+        ? ownerDocument.activeElement
+        : pickInitialTarget(container, initialFocus);
+      entry.lastFocused = lastFocused;
+    } else if (isInsideContainer(container, ownerDocument.activeElement)) {
+      lastFocused = ownerDocument.activeElement;
+      entry.lastFocused = lastFocused;
+    }
 
     activeTrapRef.current = {
       container,
@@ -281,11 +325,10 @@ export function useFocusTrap(
           container.setAttribute("tabindex", originalTabIndex);
         }
 
-        // Only restore focus to pre-trap target if there is no outer trap
-        // waiting. When an outer trap exists, resumeEntry() already moved
-        // focus back into the outer container.
-        if (restoreFocus && getTrapStack(ownerDocument).length === 0) {
-          restoreFocusTarget(restoreTarget);
+        if (restoreFocus) {
+          const hasOuterTrap = getTrapStack(ownerDocument).length > 0;
+          const restored = restore();
+          if (!restored && !hasOuterTrap) restoreFocusTarget(restoreTarget);
         }
       },
     };

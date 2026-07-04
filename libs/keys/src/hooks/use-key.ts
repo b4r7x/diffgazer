@@ -51,7 +51,7 @@ export function useKey(
 
   const ctx = useOptionalKeyboardRegistryContext();
   const register = ctx?.register ?? null;
-  const getScopeForOrder = ctx?.getScopeForOrder ?? null;
+  const registerImplicit = ctx?.registerImplicit ?? null;
   const order = useId();
 
   const enabled = options?.enabled;
@@ -78,27 +78,24 @@ export function useKey(
   // biome-ignore lint/correctness/useExhaustiveDependencies: deps are intentionally the stable primitive options plus the derived `registrationVersion` string; depending on the per-render `handlerMap`/`registrationKeys`/`handlerOptions` objects would re-register on every render. Latest handlers are read via the stable `dispatch` effect event.
   useLayoutEffect(() => {
     if (enabled === false) return;
-    if (!register) return;
     if (scope === null) return;
 
-    const registrationScope = scope ?? getScopeForOrder?.(order) ?? null;
-    if (registrationScope === null) return;
+    if (scope === undefined && !registerImplicit) return;
+    if (scope !== undefined && !register) return;
 
-    const cleanups = registrationKeys.map((key) =>
-      register(
-        registrationScope,
-        key,
-        (event: KeyboardEvent) => dispatch(key, event),
-        handlerOptions,
-      ),
-    );
+    const cleanups = registrationKeys.map((key) => {
+      const handler = (event: KeyboardEvent) => dispatch(key, event);
+      return scope === undefined
+        ? registerImplicit?.(order, key, handler, handlerOptions)
+        : register?.(scope, key, handler, handlerOptions);
+    });
 
     return () => {
-      for (const cleanup of cleanups) cleanup();
+      for (const cleanup of cleanups) cleanup?.();
     };
   }, [
     register,
-    getScopeForOrder,
+    registerImplicit,
     scope,
     order,
     registrationVersion,

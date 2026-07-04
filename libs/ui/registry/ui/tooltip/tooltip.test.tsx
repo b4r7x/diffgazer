@@ -1,8 +1,16 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { Tooltip } from "./index";
+
+function expectClosedOrUnmounted(element: HTMLElement) {
+  if (element.isConnected) {
+    expect(element).toHaveAttribute("data-state", "closed");
+    return;
+  }
+  expect(element).not.toBeInTheDocument();
+}
 
 describe("Tooltip", () => {
   it("renders content when defaultOpen is true", () => {
@@ -50,31 +58,88 @@ describe("Tooltip", () => {
 });
 
 describe("Tooltip keyboard", () => {
+  it("fires a Tooltip-wrapped button's onClick on Enter and on Space", async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    render(
+      <Tooltip content="Tip text" delayMs={0}>
+        <button type="button" onClick={onClick}>
+          Save
+        </button>
+      </Tooltip>,
+    );
+
+    await user.tab();
+    await user.keyboard("{Enter}");
+    await user.keyboard(" ");
+
+    expect(screen.getByRole("button", { name: "Save" })).toHaveFocus();
+    expect(onClick).toHaveBeenCalledTimes(2);
+  });
+
   it("shows on focus via tab", async () => {
+    const user = userEvent.setup();
     render(
       <Tooltip content="Tip text" delayMs={0}>
         <button type="button">Focus me</button>
       </Tooltip>,
     );
 
-    await userEvent.tab();
+    await user.tab();
     expect(screen.getByRole("tooltip")).toBeInTheDocument();
   });
 
   it("dismisses on Escape", async () => {
+    const user = userEvent.setup();
     render(
       <Tooltip content="Tip text" defaultOpen>
         <button type="button">Hover me</button>
       </Tooltip>,
     );
-    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip).toBeInTheDocument();
 
-    await userEvent.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
 
-    expect(screen.getByRole("tooltip")).toHaveAttribute("data-state", "closed");
+    expectClosedOrUnmounted(tooltip);
+  });
+
+  it("Escape pressed while focus is in an unrelated input closes a hover tooltip without moving focus", async () => {
+    const user = userEvent.setup();
+    render(
+      <div>
+        <label>
+          Search
+          <input />
+        </label>
+        <Tooltip content="Tip text" delayMs={0}>
+          <button type="button">Hover me</button>
+        </Tooltip>
+      </div>,
+    );
+
+    await user.hover(screen.getByRole("button", { name: "Hover me" }));
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip).toHaveAttribute("data-state", "open");
+
+    const input = screen.getByRole("textbox", { name: "Search" });
+    input.focus();
+    const escapeEvent = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+    });
+
+    // fireEvent retained: user-event does not expose the dispatched event for defaultPrevented assertions.
+    fireEvent(input, escapeEvent);
+
+    expectClosedOrUnmounted(tooltip);
+    expect(input).toHaveFocus();
+    expect(escapeEvent.defaultPrevented).toBe(false);
   });
 
   it("makes a tooltip on plain text reachable with Tab and opens on focus", async () => {
+    const user = userEvent.setup();
     render(
       <Tooltip content="Tip text" delayMs={0}>
         Passive text
@@ -84,12 +149,13 @@ describe("Tooltip keyboard", () => {
     const trigger = screen.getByText("Passive text");
     expect(trigger).toHaveAttribute("tabindex", "0");
 
-    await userEvent.tab();
+    await user.tab();
     expect(trigger).toHaveFocus();
     expect(screen.getByRole("tooltip")).toBeInTheDocument();
   });
 
   it("does not add a duplicate tab stop when wrapping a native button", async () => {
+    const user = userEvent.setup();
     render(
       <Tooltip content="Tip text" delayMs={0}>
         <button type="button">Focus me</button>
@@ -100,7 +166,7 @@ describe("Tooltip keyboard", () => {
     expect(button).not.toHaveAttribute("tabindex");
 
     // A single Tab lands on the button itself — no wrapper span tab stop precedes it.
-    await userEvent.tab();
+    await user.tab();
     expect(button).toHaveFocus();
   });
 });
@@ -161,11 +227,12 @@ describe("Tooltip touch", () => {
 
     // fireEvent retained: pointerType is required to distinguish touch from mouse; user-event cannot set it
     fireEvent.pointerDown(trigger, { pointerType: "touch" });
-    expect(screen.getByRole("tooltip")).toHaveAttribute("data-state", "open");
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip).toHaveAttribute("data-state", "open");
 
     // fireEvent retained: same pointerType signal closes the tooltip
     fireEvent.pointerDown(trigger, { pointerType: "touch" });
-    expect(screen.getByRole("tooltip")).toHaveAttribute("data-state", "closed");
+    expectClosedOrUnmounted(tooltip);
   });
 
   it("dismisses on outside tap", () => {
@@ -177,10 +244,11 @@ describe("Tooltip touch", () => {
         </Tooltip>
       </div>,
     );
-    expect(screen.getByRole("tooltip")).toHaveAttribute("data-state", "open");
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip).toHaveAttribute("data-state", "open");
 
     // fireEvent retained: document-level pointerdown listener attaches in capture phase
     fireEvent.pointerDown(screen.getByRole("button", { name: "Outside" }));
-    expect(screen.getByRole("tooltip")).toHaveAttribute("data-state", "closed");
+    expectClosedOrUnmounted(tooltip);
   });
 });

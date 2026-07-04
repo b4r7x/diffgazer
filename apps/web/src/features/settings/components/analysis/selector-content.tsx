@@ -2,7 +2,7 @@ import type { LensId } from "@diffgazer/core/schemas/review";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 export interface AnalysisOption {
   id: LensId;
@@ -31,6 +31,7 @@ export function AnalysisSelectorContent({
   autoFocusList = false,
   onBoundaryReached,
 }: AnalysisSelectorContentProps) {
+  const labelId = useId();
   const [focusedLens, setFocusedLens] = useState<LensId | null>(() => options[0]?.id ?? null);
 
   const optionIds = options.map((option) => option.id);
@@ -46,7 +47,10 @@ export function AnalysisSelectorContent({
 
   return (
     <div className="space-y-3">
-      <div className="text-xs text-muted-foreground uppercase tracking-wider font-bold">
+      <div
+        id={labelId}
+        className="text-xs text-muted-foreground uppercase tracking-wider font-bold"
+      >
         Active Agents
       </div>
       <ScrollArea className="max-h-90 pr-2">
@@ -65,6 +69,7 @@ export function AnalysisSelectorContent({
           variant="bullet"
           disabled={disabled || !enabled}
           autoFocus={autoFocusReady}
+          aria-labelledby={labelId}
         >
           {options.map((option) => (
             <CheckboxItem

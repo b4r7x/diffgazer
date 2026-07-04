@@ -7,7 +7,6 @@ import {
   warn,
   writeFileSafe,
 } from "@diffgazer/registry/cli";
-import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
 import { z } from "zod";
 import { ctx, getRegistry, VERSION } from "../context.js";
 import { detectProject } from "../utils/detect.js";
@@ -116,26 +115,8 @@ const UTILS_CONTENT = [
   ``,
 ].join("\n");
 
-function componentCssContent(registry: ReturnType<typeof getRegistry>): string {
-  const seen = new Set<string>();
-  const chunks: string[] = [];
-
-  for (const item of registry.items) {
-    if (item.type === REGISTRY_ITEM_TYPE.theme) continue;
-
-    for (const file of item.files) {
-      if (!file.path.endsWith(".css") || seen.has(file.path)) continue;
-      seen.add(file.path);
-      chunks.push(file.content.trimEnd());
-    }
-  }
-
-  return chunks.filter(Boolean).join("\n\n");
-}
-
-function buildStylesContent(registry: ReturnType<typeof getRegistry>): string {
-  const chunks = [registry.styles.trimEnd(), componentCssContent(registry)].filter(Boolean);
-  return `${chunks.join("\n\n")}\n`;
+export function buildStylesContent(registry: ReturnType<typeof getRegistry>): string {
+  return `${registry.styles.trimEnd()}\n`;
 }
 
 export const initCommand = createInitCommand({

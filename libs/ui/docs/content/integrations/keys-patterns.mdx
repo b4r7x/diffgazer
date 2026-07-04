@@ -45,8 +45,8 @@ import {
 } from "@/components/ui/dialog"
 
 function ConfirmDialog({ open, onOpenChange, onConfirm }) {
-  useScope("confirm-dialog", { enabled: open })
-  useKey("mod+enter", onConfirm, { enabled: open })
+  const scope = useScope("confirm-dialog", { enabled: open })
+  useKey("mod+enter", onConfirm, { scope })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

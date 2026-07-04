@@ -104,9 +104,11 @@ export function HistoryInsightsPane({
                     </span>
                     <span className="min-w-0 truncate">{issue.title}</span>
                   </NavigationList.Title>
-                  <NavigationList.Meta>
-                    <NavigationList.Subtitle>L:{issue.line_start}</NavigationList.Subtitle>
-                  </NavigationList.Meta>
+                  {issue.line_start != null && (
+                    <NavigationList.Meta>
+                      <NavigationList.Subtitle>L:{issue.line_start}</NavigationList.Subtitle>
+                    </NavigationList.Meta>
+                  )}
                 </NavigationList.Item>
               ))}
             </NavigationList>

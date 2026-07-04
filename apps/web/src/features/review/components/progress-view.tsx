@@ -193,11 +193,13 @@ export function ReviewProgressView({
 
         <ReviewMetricsFooter metrics={metrics} startTime={startTime} isRunning={isRunning} />
 
-        {isRunning && onCancel && (
+        {(onViewResults || (isRunning && onCancel)) && !error && (
           <div className="shrink-0 flex flex-wrap gap-3 pb-4">
-            <Button variant="secondary" bracket onClick={onCancel}>
-              Cancel
-            </Button>
+            {isRunning && onCancel && (
+              <Button variant="secondary" bracket onClick={onCancel}>
+                Cancel
+              </Button>
+            )}
             {onViewResults && (
               <Button variant="outline" bracket onClick={onViewResults}>
                 View Results

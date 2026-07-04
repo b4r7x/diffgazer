@@ -40,14 +40,14 @@ const SettingsThemePage = lazy(() =>
     default: m.SettingsThemePage,
   })),
 );
-const TrustPermissionsPage = lazy(() =>
+const SettingsTrustPermissionsPage = lazy(() =>
   import("./routes/settings/trust-permissions").then((m) => ({
-    default: m.TrustPermissionsPage,
+    default: m.SettingsTrustPermissionsPage,
   })),
 );
-const ProviderSettingsPage = lazy(() =>
+const SettingsProvidersPage = lazy(() =>
   import("./routes/settings/providers").then((m) => ({
-    default: m.ProviderSettingsPage,
+    default: m.SettingsProvidersPage,
   })),
 );
 const SettingsAgentExecutionPage = lazy(() =>
@@ -154,7 +154,7 @@ const settingsThemeRoute = createRoute({
 const settingsProvidersRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: "/providers",
-  component: ProviderSettingsPage,
+  component: SettingsProvidersPage,
   head: () => ({ meta: [{ title: "Providers — Diffgazer" }] }),
 });
 
@@ -189,7 +189,7 @@ const settingsDiagnosticsRoute = createRoute({
 const settingsTrustPermissionsRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: "/trust-permissions",
-  component: TrustPermissionsPage,
+  component: SettingsTrustPermissionsPage,
   head: () => ({ meta: [{ title: "Trust & Permissions — Diffgazer" }] }),
 });
 

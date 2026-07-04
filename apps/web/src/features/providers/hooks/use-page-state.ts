@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import { useProvidersKeyboard } from "@/features/providers/hooks/use-keyboard";
 import { useProviderManagement } from "@/features/providers/hooks/use-provider-management";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
-import { filterProviders, type ProviderFilter } from "../lib/filter.js";
+import { filterProviders, type ProviderFilter } from "../lib/filter";
 
 export function useProvidersPageState() {
   const inputRef = useRef<HTMLInputElement>(null);

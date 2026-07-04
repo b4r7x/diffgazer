@@ -54,6 +54,7 @@ describe("useFocusZone", () => {
     });
 
     it("honors allowInInput so keys fire even when an input is focused", async () => {
+      const user = userEvent.setup();
       const handler = vi.fn();
 
       function Host() {
@@ -68,7 +69,7 @@ describe("useFocusZone", () => {
       render(createElement(Host), { wrapper });
 
       screen.getByRole("textbox", { name: "Search" }).focus();
-      await userEvent.keyboard("{Enter}");
+      await user.keyboard("{Enter}");
 
       expect(handler).toHaveBeenCalledOnce();
     });
@@ -161,6 +162,7 @@ describe("useFocusZone", () => {
     });
 
     it("can require transition keys to originate inside a container subtree", async () => {
+      const user = userEvent.setup();
       function Host() {
         const containerRef = useRef<HTMLDivElement>(null);
         const focusZone = useFocusZone({
@@ -193,11 +195,11 @@ describe("useFocusZone", () => {
       const insideButton = screen.getByRole("button", { name: "Inside" });
 
       outsideButton.focus();
-      await userEvent.keyboard("{ArrowRight}");
+      await user.keyboard("{ArrowRight}");
       expect(screen.getByLabelText("Current zone").textContent).toBe("main");
 
       insideButton.focus();
-      await userEvent.keyboard("{ArrowRight}");
+      await user.keyboard("{ArrowRight}");
       expect(screen.getByLabelText("Current zone").textContent).toBe("sidebar");
     });
 
@@ -523,6 +525,7 @@ describe("useFocusZone", () => {
     });
 
     it("focuses the active zone target when the zone changes", async () => {
+      const user = userEvent.setup();
       function Host() {
         const mainRef = useRef<HTMLDivElement>(null);
         const sidebarRef = useRef<HTMLDivElement>(null);
@@ -552,7 +555,7 @@ describe("useFocusZone", () => {
 
       render(createElement(Host), { wrapper });
 
-      await userEvent.click(screen.getByRole("button", { name: "Move" }));
+      await user.click(screen.getByRole("button", { name: "Move" }));
 
       expect(document.activeElement).toBe(screen.getByText("Sidebar"));
     });
@@ -663,6 +666,7 @@ describe("useFocusZone", () => {
     });
 
     it("skips focus repair when the active element is already inside the zone container", async () => {
+      const user = userEvent.setup();
       function Host() {
         const [tick, setTick] = useState(0);
         const containerRef = useRef<HTMLDivElement>(null);
@@ -697,7 +701,7 @@ describe("useFocusZone", () => {
 
       const second = screen.getByRole("button", { name: /second/i });
       second.focus();
-      await userEvent.click(second);
+      await user.click(second);
 
       expect(document.activeElement).toBe(second);
     });
@@ -821,6 +825,7 @@ describe("useFocusZone", () => {
     });
 
     it("still moves focus to the new zone target when the zone changes after a re-render", async () => {
+      const user = userEvent.setup();
       function Host() {
         const [tick, setTick] = useState(0);
         const mainRef = useRef<HTMLDivElement>(null);
@@ -855,7 +860,7 @@ describe("useFocusZone", () => {
       act(() => screen.getByRole("button", { name: /tick/i }).click());
       act(() => screen.getByRole("button", { name: /tick/i }).click());
 
-      await userEvent.click(screen.getByRole("button", { name: "Move" }));
+      await user.click(screen.getByRole("button", { name: "Move" }));
       expect(document.activeElement).toBe(screen.getByText("Sidebar"));
     });
   });

@@ -9,6 +9,7 @@ import {
   type UseActionRowNavigationReturn,
   useActionRowNavigation,
 } from "./use-action-row-navigation.js";
+import { useScope } from "./use-scope.js";
 
 function getActionRowActiveIndex(): number {
   const active = document.activeElement;
@@ -166,6 +167,35 @@ describe("useActionRowNavigation", () => {
     expect(onAction).toHaveBeenLastCalledWith(0);
   });
 
+  it("keeps implicit action-row keys in the active page scope", async () => {
+    const user = userEvent.setup();
+    function ScopedActionRow() {
+      useScope("settings");
+      return (
+        <TestActionRow
+          options={{
+            enabled: true,
+            actionCount: 2,
+            defaultZone: "actions",
+            onAction: vi.fn(),
+          }}
+        />
+      );
+    }
+
+    render(
+      <KeyboardWrapper>
+        <ScopedActionRow />
+      </KeyboardWrapper>,
+    );
+
+    await waitFor(() => expectFocused(getButton("Cancel")));
+
+    await user.keyboard("{ArrowRight}");
+
+    expectFocused(getButton("Save"));
+  });
+
   it("enters actions from content and focuses the first action", async () => {
     const { onAction, user } = renderActionRow({ defaultZone: "content" });
 
@@ -248,6 +278,50 @@ describe("useActionRowNavigation", () => {
     await user.keyboard("{Enter}");
     expect(onAction).toHaveBeenCalledWith(0);
     expect(onAction).not.toHaveBeenCalledWith(1);
+  });
+
+  it("keeps focus in an input when an action's disabled state flips while focus is outside the actions row", async () => {
+    function ActionRowWithInput({ disabledActions }: { disabledActions: readonly boolean[] }) {
+      const row = useActionRowNavigation({
+        enabled: true,
+        actionCount: 2,
+        defaultZone: "actions",
+        disabledActions,
+        onAction: vi.fn(),
+      });
+
+      return (
+        <div>
+          <button type="button" disabled={disabledActions[0]} {...row.getActionProps(0)}>
+            Cancel
+          </button>
+          <button type="button" disabled={disabledActions[1]} {...row.getActionProps(1)}>
+            Save
+          </button>
+          <input aria-label="API key" />
+        </div>
+      );
+    }
+
+    const { rerender } = render(
+      <KeyboardWrapper>
+        <ActionRowWithInput disabledActions={[false, false]} />
+      </KeyboardWrapper>,
+    );
+
+    await waitFor(() => expectFocused(getButton("Cancel")));
+
+    const input = screen.getByRole("textbox", { name: "API key" });
+    input.focus();
+    expectFocused(input);
+
+    rerender(
+      <KeyboardWrapper>
+        <ActionRowWithInput disabledActions={[true, false]} />
+      </KeyboardWrapper>,
+    );
+
+    expectFocused(input);
   });
 
   it("calls onNavigate when navigating between actions", async () => {

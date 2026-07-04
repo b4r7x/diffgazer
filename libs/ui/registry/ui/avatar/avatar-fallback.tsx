@@ -15,7 +15,6 @@ export interface AvatarFallbackProps {
   className?: string;
 }
 
-/** Square avatar with src/fallback/size. Shows image or monospace initials. */
 export function AvatarFallback({ src, children, className }: AvatarFallbackProps) {
   const { imageStatus } = useAvatarContext();
   const fallbackImage = useImageStatus(src);

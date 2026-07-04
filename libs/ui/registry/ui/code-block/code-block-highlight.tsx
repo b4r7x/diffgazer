@@ -1,4 +1,4 @@
-import { createElement, type ReactNode } from "react";
+import { createElement, type ReactNode, useMemo } from "react";
 import { CodeBlockContent, type CodeBlockContentProps } from "./code-block-content";
 import { CodeBlockLine, type CodeBlockLineState } from "./code-block-line";
 
@@ -18,25 +18,26 @@ interface HastRoot {
   children: HastNode[];
 }
 
-/** Root <figure>. */
-export interface LowlightInstance {
-  /** Highlights an item in lowlight instance. */
+type LowlightAuto = {
+  [K in `highlight${"Auto"}`]: (value: string) => HastRoot;
+};
+
+export type LowlightInstance = {
   highlight(language: string, value: string): HastRoot;
-  /** highlight auto used by lowlight instance. */
-  highlightAuto(value: string): HastRoot;
-}
+} & LowlightAuto;
 
 const MISSING_DEPENDENCY_MESSAGE =
   "@diffgazer/ui/components/code-block/highlight requires the optional peer dependency 'lowlight'. Install it with: npm install lowlight";
 
 let lowlightPromise: Promise<LowlightInstance> | null = null;
 
-/** Root <figure>. */
+/** Loads and caches the optional lowlight highlighter. */
 export function createDefaultLowlight(): Promise<LowlightInstance> {
   if (!lowlightPromise) {
     lowlightPromise = import("lowlight")
       .then((mod) => mod.createLowlight(mod.common) as LowlightInstance)
       .catch(() => {
+        lowlightPromise = null;
         throw new Error(MISSING_DEPENDENCY_MESSAGE);
       });
   }
@@ -79,22 +80,62 @@ function renderNode(node: HastNode, key: number): ReactNode {
   return null;
 }
 
-function highlightLine(
-  source: string,
+function splitTextNode(node: HastText): HastNode[][] {
+  return node.value.split("\n").map((value) => (value ? [{ ...node, value }] : []));
+}
+
+function splitElementNode(node: HastElement): HastNode[][] {
+  return splitNodesByLine(node.children ?? []).map((children) =>
+    children.length > 0 ? [{ ...node, children }] : [],
+  );
+}
+
+function splitNodeByLine(node: HastNode): HastNode[][] {
+  if (node.type === "text") return splitTextNode(node as HastText);
+  if (node.type === "element") return splitElementNode(node as HastElement);
+  return [[node]];
+}
+
+function splitNodesByLine(nodes: HastNode[]): HastNode[][] {
+  const lines: HastNode[][] = [[]];
+
+  for (const node of nodes) {
+    const nodeLines = splitNodeByLine(node);
+    const firstLine = nodeLines[0];
+    if (firstLine) {
+      lines[lines.length - 1]?.push(...firstLine);
+    }
+    for (let i = 1; i < nodeLines.length; i += 1) {
+      lines.push([...(nodeLines[i] ?? [])]);
+    }
+  }
+
+  return lines;
+}
+
+function renderLineNodes(nodes: HastNode[] | undefined, fallback: string): ReactNode {
+  if (!nodes || nodes.length === 0) return fallback.length > 0 ? fallback : null;
+  return nodes.map((child, i) => renderNode(child, i));
+}
+
+function highlightCode(
+  code: string,
   language: string | undefined,
   lowlight: LowlightInstance | undefined,
-): ReactNode {
-  if (source.length === 0) return null;
-  if (!lowlight) return source;
+): ReactNode[] {
+  const sourceLines = code.split("\n");
+  if (!lowlight) return sourceLines.map((line) => (line.length > 0 ? line : null));
+
   try {
     const tree: HastRoot = language
-      ? lowlight.highlight(language, source)
-      : lowlight.highlightAuto(source);
-    return tree.children.map((child, i) => renderNode(child, i));
+      ? lowlight.highlight(language, code)
+      : lowlight.highlightAuto(code);
+    const highlightedLines = splitNodesByLine(tree.children);
+    return sourceLines.map((line, i) => renderLineNodes(highlightedLines[i], line));
   } catch {
     // lowlight throws when the language is unregistered; render plain text so
     // a typo'd language name never crashes the page.
-    return source;
+    return sourceLines.map((line) => (line.length > 0 ? line : null));
   }
 }
 
@@ -108,9 +149,14 @@ export function CodeBlockHighlight({
   ...contentProps
 }: CodeBlockHighlightProps) {
   const lines = code.split("\n");
+  const highlightedLines = useMemo(
+    () => highlightCode(code, language, lowlight),
+    [code, language, lowlight],
+  );
+
   return (
     <CodeBlockContent showLineNumbers={showLineNumbers} {...contentProps}>
-      {lines.map((line, i) => {
+      {lines.map((_, i) => {
         const number = i + 1;
         return (
           <CodeBlockLine
@@ -119,7 +165,7 @@ export function CodeBlockHighlight({
             number={showLineNumbers ? number : undefined}
             state={lineStates?.[number]}
           >
-            {highlightLine(line, language, lowlight)}
+            {highlightedLines[i]}
           </CodeBlockLine>
         );
       })}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   getRestorableFocusTarget,
   type RestoreFocusOptions,
@@ -89,11 +89,9 @@ export function useFocusRestore(options: UseFocusRestoreOptions = {}): UseFocusR
   const entryRef = useRef<FocusRestoreEntry | null>(null);
   const [target, setTarget] = useState<HTMLElement | null>(null);
 
-  // Stable-ref escape hatch: optionsRef is read ONLY inside capture/restore
-  // event-driven callbacks and unmount cleanup (never during render), so
-  // mid-render writes are safe under concurrent rendering. See AGENTS.md
-  // react-useref rules.
-  optionsRef.current = resolvedOptions;
+  useLayoutEffect(() => {
+    optionsRef.current = resolvedOptions;
+  });
 
   const capture = useCallback((ownerDocument?: Document) => {
     const resolvedOptions = optionsRef.current;

@@ -58,6 +58,20 @@ export interface CommandPaletteContextValue {
 
 const defaultFilter = matchesSearch;
 
+function areCommandPaletteItemsEqual(
+  current: CommandPaletteItemRegistration,
+  next: CommandPaletteItemRegistration,
+): boolean {
+  return (
+    current.registrationId === next.registrationId &&
+    current.id === next.id &&
+    current.value === next.value &&
+    current.disabled === next.disabled &&
+    current.onSelect === next.onSelect &&
+    current.element === next.element
+  );
+}
+
 /** Returns command palette item dom id. */
 export function getCommandPaletteItemDomId(listId: string, id: string): string {
   const encoded = Array.from(id, (char) => char.codePointAt(0)?.toString(36) ?? "0").join("-");
@@ -162,16 +176,26 @@ export function useCommandPaletteState({
       const existingIndex = current.findIndex(
         (candidate) => candidate.registrationId === item.registrationId,
       );
-      const next = existingIndex === -1 ? [...current, item] : [...current];
-      if (existingIndex !== -1) next[existingIndex] = item;
+      if (existingIndex === -1) return [...current, item];
+      const existingItem = current[existingIndex];
+      if (existingItem === undefined) return current;
+      if (areCommandPaletteItemsEqual(existingItem, item)) return current;
+
+      const next = [...current];
+      next[existingIndex] = item;
       return next;
     });
   }, []);
 
   const unregisterItem = useCallback((registrationId: string) => {
-    setRegisteredItems((current) =>
-      current.filter((item) => item.registrationId !== registrationId),
-    );
+    setRegisteredItems((current) => {
+      const existingIndex = current.findIndex((item) => item.registrationId === registrationId);
+      if (existingIndex === -1) return current;
+
+      const next = [...current];
+      next.splice(existingIndex, 1);
+      return next;
+    });
   }, []);
 
   const { onKeyDown: navKeyDown } = useNavigation({

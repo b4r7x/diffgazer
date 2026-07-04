@@ -19,10 +19,10 @@ import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useExit } from "../../../hooks/use-exit";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions";
-import { createHomeMenuAction } from "../lib/create-menu-action.js";
-import { ContextSidebar } from "./context-sidebar.js";
-import { HomeMenu } from "./menu.js";
-import { TrustPanel } from "./trust-panel.js";
+import { createHomeMenuAction } from "../lib/create-menu-action";
+import { ContextSidebar } from "./context-sidebar";
+import { HomeMenu } from "./menu";
+import { TrustPanel } from "./trust-panel";
 
 const EMPTY_SHORTCUTS: Shortcut[] = [];
 

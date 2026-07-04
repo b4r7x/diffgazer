@@ -7,6 +7,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   useCallback,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -38,7 +39,10 @@ interface StepDescriptor {
   id: string;
   status: StepStatus;
   label: string | undefined;
+  disabled: boolean;
 }
+
+type StepRegistrationDescriptor = Omit<StepDescriptor, "disabled">;
 
 // First-render/SSR seed for directly-composed steps: registration effects have
 // not run yet, so resolve the active step from the static child tree. Once the
@@ -48,18 +52,32 @@ function collectStepSeed(children: ReactNode): StepDescriptor[] {
   return Children.toArray(children).flatMap((child) => {
     if (!isValidElement(child) || child.type !== StepperStep) return [];
     const props = child.props as StepperStepProps;
-    return [{ id: props.stepId, status: props.status, label: extractTriggerLabel(props.children) }];
+    const trigger = extractTriggerSeed(props.children);
+    return [
+      {
+        id: props.stepId,
+        status: props.status,
+        label: trigger.label,
+        disabled: !isStepInteractive(props.status) || trigger.disabled,
+      },
+    ];
   });
 }
 
-function extractTriggerLabel(children: ReactNode): string | undefined {
+function extractTriggerSeed(children: ReactNode): Pick<StepDescriptor, "label" | "disabled"> {
   for (const child of Children.toArray(children)) {
     if (!isValidElement(child) || child.type !== StepperTrigger) continue;
-    const triggerChildren = (child.props as StepperTriggerProps).children;
-    if (typeof triggerChildren === "string") return triggerChildren.trim() || undefined;
-    return undefined;
+    const props = child.props as StepperTriggerProps;
+    const label =
+      typeof props.children === "string" ? props.children.trim() || undefined : undefined;
+    return { label, disabled: props.disabled === true };
   }
-  return undefined;
+  return { label: undefined, disabled: false };
+}
+
+function isRegisteredStepDisabled(status: StepStatus, element: HTMLElement | null): boolean {
+  if (!isStepInteractive(status)) return true;
+  return element?.querySelector<HTMLButtonElement>("[data-step-id]")?.disabled === true;
 }
 
 /** Root provider (manages expansion + variant) */
@@ -94,7 +112,11 @@ export function Stepper({
     unregisterItem: unregisterCollectionItem,
   } = useSelectableCollection(listRef);
   const registerStep = useCallback(
-    (registrationId: string, descriptor: StepDescriptor, element: HTMLElement | null) => {
+    (
+      registrationId: string,
+      descriptor: StepRegistrationDescriptor,
+      element: HTMLElement | null,
+    ) => {
       setStepMeta((current) => {
         const existing = current[registrationId];
         if (existing?.status === descriptor.status && existing.label === descriptor.label) {
@@ -105,7 +127,12 @@ export function Stepper({
           [registrationId]: { status: descriptor.status, label: descriptor.label },
         };
       });
-      registerCollectionItem(registrationId, descriptor.id, false, element);
+      registerCollectionItem(
+        registrationId,
+        descriptor.id,
+        isRegisteredStepDisabled(descriptor.status, element),
+        element,
+      );
     },
     [registerCollectionItem],
   );
@@ -120,6 +147,29 @@ export function Stepper({
     },
     [unregisterCollectionItem],
   );
+  const syncRegisteredDisabledState = useCallback(() => {
+    for (const item of registeredSteps) {
+      const meta = stepMeta[item.id];
+      const disabled = isRegisteredStepDisabled(meta?.status ?? "pending", item.element);
+      if (item.disabled === disabled) continue;
+      registerCollectionItem(item.id, item.value, disabled, item.element);
+    }
+  }, [registeredSteps, stepMeta, registerCollectionItem]);
+
+  useLayoutEffect(() => {
+    syncRegisteredDisabledState();
+  }, [syncRegisteredDisabledState]);
+
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    const View = list?.ownerDocument.defaultView;
+    if (!list || !View?.MutationObserver) return;
+
+    const observer = new View.MutationObserver(syncRegisteredDisabledState);
+    observer.observe(list, { attributeFilter: ["disabled"], attributes: true, subtree: true });
+
+    return () => observer.disconnect();
+  }, [syncRegisteredDisabledState]);
 
   const seed = useMemo(() => collectStepSeed(children), [children]);
   const steps = useMemo<StepDescriptor[]>(
@@ -127,13 +177,18 @@ export function Stepper({
       registeredSteps.length
         ? registeredSteps.map((item) => {
             const meta = stepMeta[item.id];
-            return { id: item.value, status: meta?.status ?? "pending", label: meta?.label };
+            return {
+              id: item.value,
+              status: meta?.status ?? "pending",
+              label: meta?.label,
+              disabled: item.disabled,
+            };
           })
         : seed,
     [registeredSteps, stepMeta, seed],
   );
   const tabTargetId = useMemo(() => {
-    const interactive = steps.filter((step) => isStepInteractive(step.status));
+    const interactive = steps.filter((step) => !step.disabled && isStepInteractive(step.status));
     const target = interactive.find((step) => step.status === "active") ?? interactive[0];
     return target?.id ?? null;
   }, [steps]);
@@ -148,7 +203,7 @@ export function Stepper({
     const list = listRef.current;
     if (!list) return false;
     const triggers = Array.from(list.querySelectorAll<HTMLButtonElement>("[data-step-id]")).filter(
-      (el) => el.getAttribute("aria-disabled") !== "true",
+      (el) => el.getAttribute("aria-disabled") !== "true" && !el.disabled,
     );
     if (triggers.length === 0) return false;
     const activeElement = list.ownerDocument.activeElement;
@@ -233,35 +288,34 @@ export function Stepper({
       >
         {children}
       </ol>
-      {activeStep && (
-        <StepperLiveRegion
-          activeStepId={activeStep.id}
-          label={activeStep.label}
-          position={activeIndex + 1}
-          total={steps.length}
-        />
-      )}
+      <StepperLiveRegion
+        label={activeStep?.label}
+        position={activeStep ? activeIndex + 1 : null}
+        total={steps.length}
+      />
     </StepperContext>
   );
 }
 
 /** Props for stepper live region. */
 interface StepperLiveRegionProps {
-  /** DOM id for active step. */
-  activeStepId: string;
   /** Accessible label text. */
   label: string | undefined;
   /** Placement position. */
-  position: number;
+  position: number | null;
   /** Total item count. */
   total: number;
 }
 
-function StepperLiveRegion({ activeStepId, label, position, total }: StepperLiveRegionProps) {
-  const message = label ? `Step ${position} of ${total}: ${label}` : `Step ${position} of ${total}`;
+function StepperLiveRegion({ label, position, total }: StepperLiveRegionProps) {
+  let message = "";
+  if (position !== null) {
+    message = label ? `Step ${position} of ${total}: ${label}` : `Step ${position} of ${total}`;
+  }
+
   return (
     // biome-ignore lint/a11y/useSemanticElements: role="status" is the sr-only live region announcing step changes; <output> carries form-association semantics that do not fit here.
-    <div key={activeStepId} role="status" aria-live="polite" className="sr-only">
+    <div role="status" aria-live="polite" className="sr-only">
       {message}
     </div>
   );

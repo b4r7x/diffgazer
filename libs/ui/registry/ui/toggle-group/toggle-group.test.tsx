@@ -27,6 +27,7 @@ function getRadios() {
 
 describe("ToggleGroup", () => {
   it("supports direct namespaced items with custom item UI", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     render(
       <ToggleGroup label="Options" onChange={onChange}>
@@ -39,39 +40,43 @@ describe("ToggleGroup", () => {
       </ToggleGroup>,
     );
 
-    await userEvent.click(screen.getByRole("radio", { name: /beta/i }));
+    await user.click(screen.getByRole("radio", { name: /beta/i }));
 
     expect(onChange).toHaveBeenCalledWith("b");
   });
 
   it("selects an item on click", async () => {
+    const user = userEvent.setup();
     renderGroup();
-    await userEvent.click(screen.getByText("Beta"));
+    await user.click(screen.getByText("Beta"));
     expect(getRadios()[1]).toHaveAttribute("aria-checked", "true");
   });
 
   it("does not deselect when clicking the same item without allowDeselect", async () => {
+    const user = userEvent.setup();
     renderGroup({ defaultValue: "a" });
-    await userEvent.click(screen.getByText("Alpha"));
+    await user.click(screen.getByText("Alpha"));
     expect(getRadios()[0]).toHaveAttribute("aria-checked", "true");
   });
 
   it("deselects when clicking the same item with allowDeselect", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderGroup({ defaultValue: "a", allowDeselect: true, onChange: onChange });
-    await userEvent.click(screen.getByText("Alpha"));
+    await user.click(screen.getByText("Alpha"));
     expect(onChange).toHaveBeenCalledWith(null);
     expect(screen.getByRole("button", { name: /alpha/i })).toHaveAttribute("aria-pressed", "false");
   });
 
   it("moves focus without changing pressed state when allowDeselect is true", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderGroup({ defaultValue: "a", allowDeselect: true, onChange });
     const alpha = screen.getByRole("button", { name: /alpha/i });
     const beta = screen.getByRole("button", { name: /beta/i });
 
     alpha.focus();
-    await userEvent.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
 
     expect(beta).toHaveFocus();
     expect(alpha).toHaveAttribute("aria-pressed", "true");
@@ -80,17 +85,18 @@ describe("ToggleGroup", () => {
   });
 
   it("activates the focused item with Space and Enter when allowDeselect is true", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderGroup({ defaultValue: "a", allowDeselect: true, onChange });
     const alpha = screen.getByRole("button", { name: /alpha/i });
     const beta = screen.getByRole("button", { name: /beta/i });
 
     alpha.focus();
-    await userEvent.keyboard("{ArrowRight}");
-    await userEvent.keyboard(" ");
+    await user.keyboard("{ArrowRight}");
+    await user.keyboard(" ");
     expect(onChange).toHaveBeenCalledWith("b");
 
-    await userEvent.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
     expect(onChange).toHaveBeenCalledWith(null);
     expect(beta).toHaveAttribute("aria-pressed", "false");
   });
@@ -106,15 +112,17 @@ describe("ToggleGroup", () => {
   });
 
   it("switches selection between items", async () => {
+    const user = userEvent.setup();
     renderGroup({ defaultValue: "a" });
     const radios = getRadios();
     expect(radios[0]).toHaveAttribute("aria-checked", "true");
-    await userEvent.click(screen.getByText("Charlie"));
+    await user.click(screen.getByText("Charlie"));
     expect(radios[0]).toHaveAttribute("aria-checked", "false");
     expect(radios[2]).toHaveAttribute("aria-checked", "true");
   });
 
   it("does not select disabled items (individual or group-level)", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     const { unmount: unmount1 } = render(
       <ToggleGroup label="Options" onChange={onChange}>
@@ -124,7 +132,7 @@ describe("ToggleGroup", () => {
         </ToggleGroup.Item>
       </ToggleGroup>,
     );
-    await userEvent.click(screen.getByText("Beta"));
+    await user.click(screen.getByText("Beta"));
     expect(onChange).not.toHaveBeenCalled();
     unmount1();
     onChange.mockClear();
@@ -141,7 +149,7 @@ describe("ToggleGroup", () => {
       expect(radio).toHaveAttribute("aria-disabled", "true");
       expect(radio).toBeDisabled();
     }
-    await userEvent.click(screen.getByText("Alpha"));
+    await user.click(screen.getByText("Alpha"));
     expect(onChange).not.toHaveBeenCalled();
   });
 
@@ -159,44 +167,49 @@ describe("ToggleGroup", () => {
   });
 
   it("works in uncontrolled mode with defaultValue", async () => {
+    const user = userEvent.setup();
     renderGroup({ defaultValue: "b" });
     const radios = getRadios();
     expect(radios[1]).toHaveAttribute("aria-checked", "true");
-    await userEvent.click(screen.getByText("Charlie"));
+    await user.click(screen.getByText("Charlie"));
     expect(radios[1]).toHaveAttribute("aria-checked", "false");
     expect(radios[2]).toHaveAttribute("aria-checked", "true");
   });
 
   it("respects controlled value", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderGroup({ value: "a", onChange: onChange });
-    await userEvent.click(screen.getByText("Beta"));
+    await user.click(screen.getByText("Beta"));
     expect(onChange).toHaveBeenCalledWith("b");
     expect(getRadios()[0]).toHaveAttribute("aria-checked", "true");
     expect(getRadios()[1]).toHaveAttribute("aria-checked", "false");
   });
 
   it("keeps explicit value undefined controlled instead of adopting internal selection", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderGroup({ value: undefined, onChange });
     const radios = getRadios();
     expect(radios[0]).toHaveAttribute("aria-checked", "false");
     expect(radios[1]).toHaveAttribute("aria-checked", "false");
 
-    await userEvent.click(screen.getByText("Beta"));
+    await user.click(screen.getByText("Beta"));
     expect(onChange).toHaveBeenCalledWith("b");
     expect(radios[0]).toHaveAttribute("aria-checked", "false");
     expect(radios[1]).toHaveAttribute("aria-checked", "false");
   });
 
   it("calls onChange as the preferred controlled callback", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderGroup({ value: "a", onChange });
-    await userEvent.click(screen.getByText("Beta"));
+    await user.click(screen.getByText("Beta"));
     expect(onChange).toHaveBeenCalledWith("b");
   });
 
   it("forwards item props and refs while honoring preventDefault", async () => {
+    const user = userEvent.setup();
     const ref = createRef<HTMLButtonElement>();
     const onChange = vi.fn();
     const onClick = vi.fn((event) => event.preventDefault());
@@ -211,12 +224,13 @@ describe("ToggleGroup", () => {
 
     const item = screen.getByRole("radio", { name: /alpha/i });
     expect(ref.current).toBe(item);
-    await userEvent.click(item);
+    await user.click(item);
     expect(onClick).toHaveBeenCalledOnce();
     expect(onChange).not.toHaveBeenCalled();
   });
 
   it("participates in form data by name and resets to defaultValue", async () => {
+    const user = userEvent.setup();
     render(
       <form aria-label="Test form">
         <ToggleGroup label="Options" name="option" defaultValue="a">
@@ -228,7 +242,7 @@ describe("ToggleGroup", () => {
     const form = screen.getByRole("form", { name: "Test form" }) as HTMLFormElement;
 
     expect(new FormData(form).get("option")).toBe("a");
-    await userEvent.click(screen.getByRole("radio", { name: /beta/i }));
+    await user.click(screen.getByRole("radio", { name: /beta/i }));
     expect(new FormData(form).get("option")).toBe("b");
 
     form.reset();
@@ -236,6 +250,7 @@ describe("ToggleGroup", () => {
   });
 
   it("omits form data when disabled or deselected", async () => {
+    const user = userEvent.setup();
     const { rerender } = render(
       <form aria-label="Test form">
         <ToggleGroup label="Options" name="option" defaultValue="a" disabled>
@@ -256,7 +271,7 @@ describe("ToggleGroup", () => {
         </ToggleGroup>
       </form>,
     );
-    await userEvent.click(screen.getByRole("button", { name: /alpha/i }));
+    await user.click(screen.getByRole("button", { name: /alpha/i }));
     expect(
       new FormData(screen.getByRole("form", { name: "Test form" }) as HTMLFormElement).has(
         "option",
@@ -275,14 +290,16 @@ describe("ToggleGroup", () => {
   });
 
   it("moves focus with ArrowRight", async () => {
+    const user = userEvent.setup();
     renderGroup({ defaultValue: "a" });
     const radios = getRadios();
     radios[0]?.focus();
-    await userEvent.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
     expect(radios[1]).toHaveFocus();
   });
 
   it("skips disabled items while wrapping across vertical and cross-axis arrows", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     render(
       <ToggleGroup label="Options" orientation="vertical" defaultValue="a" onChange={onChange}>
@@ -299,23 +316,23 @@ describe("ToggleGroup", () => {
     const charlie = screen.getByRole("radio", { name: /charlie/i });
 
     alpha.focus();
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(charlie).toHaveFocus();
     expect(onChange).toHaveBeenLastCalledWith("c");
 
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(alpha).toHaveFocus();
     expect(onChange).toHaveBeenLastCalledWith("a");
 
-    await userEvent.keyboard("{ArrowUp}");
+    await user.keyboard("{ArrowUp}");
     expect(charlie).toHaveFocus();
     expect(onChange).toHaveBeenLastCalledWith("c");
 
-    await userEvent.keyboard("{ArrowLeft}");
+    await user.keyboard("{ArrowLeft}");
     expect(alpha).toHaveFocus();
     expect(onChange).toHaveBeenLastCalledWith("a");
 
-    await userEvent.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
     expect(charlie).toHaveFocus();
     expect(onChange).toHaveBeenLastCalledWith("c");
     expect(beta).not.toHaveFocus();
@@ -323,6 +340,7 @@ describe("ToggleGroup", () => {
   });
 
   it("keeps nested toggle group keyboard navigation scoped to the owning group", async () => {
+    const user = userEvent.setup();
     const onOuterChange = vi.fn();
     const onInnerChange = vi.fn();
     render(
@@ -342,43 +360,45 @@ describe("ToggleGroup", () => {
     const innerB = screen.getByRole("radio", { name: /inner b/i });
 
     outerA.focus();
-    await userEvent.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
     expect(outerB).toHaveFocus();
     expect(onOuterChange).toHaveBeenCalledWith("outer-b");
     expect(onInnerChange).not.toHaveBeenCalled();
 
     onOuterChange.mockClear();
     innerA.focus();
-    await userEvent.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
     expect(innerB).toHaveFocus();
     expect(onInnerChange).toHaveBeenCalledWith("inner-b");
     expect(onOuterChange).not.toHaveBeenCalled();
   });
 
   it("wraps button-mode focus and selects the focused item with Enter", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderGroup({ allowDeselect: true, onChange });
     const alpha = screen.getByRole("button", { name: /alpha/i });
     const charlie = screen.getByRole("button", { name: /charlie/i });
 
     alpha.focus();
-    await userEvent.keyboard("{ArrowLeft}");
+    await user.keyboard("{ArrowLeft}");
     expect(charlie).toHaveFocus();
     expect(onChange).not.toHaveBeenCalled();
 
-    await userEvent.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
     expect(onChange).toHaveBeenCalledWith("c");
     expect(charlie).toHaveAttribute("aria-pressed", "true");
   });
 
   it("keeps keyboard highlight when a different enabled item is hovered", async () => {
+    const user = userEvent.setup();
     const onHighlightChange = vi.fn();
     renderGroup({ highlighted: "a", onHighlightChange });
 
     const alpha = screen.getByRole("radio", { name: /alpha/i });
     const beta = screen.getByRole("radio", { name: /beta/i });
 
-    await userEvent.hover(beta);
+    await user.hover(beta);
 
     expect(onHighlightChange).not.toHaveBeenCalled();
     expect(alpha).toHaveAttribute("data-highlighted");
@@ -386,6 +406,7 @@ describe("ToggleGroup", () => {
   });
 
   it("disabled items do not activate on Enter key", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     render(
       <ToggleGroup label="Options" onChange={onChange}>
@@ -396,11 +417,12 @@ describe("ToggleGroup", () => {
     );
     const alpha = screen.getByRole("radio", { name: /alpha/i });
     alpha.focus();
-    await userEvent.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
     expect(onChange).not.toHaveBeenCalled();
   });
 
   it("calls onNavigationBoundaryReached when wrap is false and boundary is hit", async () => {
+    const user = userEvent.setup();
     const onNavigationBoundaryReached = vi.fn();
     render(
       <ToggleGroup
@@ -417,7 +439,7 @@ describe("ToggleGroup", () => {
 
     const charlie = screen.getByRole("radio", { name: /charlie/i });
     charlie.focus();
-    await userEvent.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
 
     expect(onNavigationBoundaryReached).toHaveBeenCalledWith(
       "next",
@@ -428,7 +450,7 @@ describe("ToggleGroup", () => {
 
     const alpha = screen.getByRole("radio", { name: /alpha/i });
     alpha.focus();
-    await userEvent.keyboard("{ArrowLeft}");
+    await user.keyboard("{ArrowLeft}");
 
     expect(onNavigationBoundaryReached).toHaveBeenCalledWith(
       "previous",
@@ -439,6 +461,7 @@ describe("ToggleGroup", () => {
   });
 
   it("honors preventDefault in custom key handlers", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderGroup({
       defaultValue: "a",
@@ -447,7 +470,7 @@ describe("ToggleGroup", () => {
     });
 
     getRadios()[0]?.focus();
-    await userEvent.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
 
     expect(getRadios()[0]).toHaveFocus();
     expect(onChange).not.toHaveBeenCalled();
@@ -597,13 +620,14 @@ describe("ToggleGroup multiple mode", () => {
   });
 
   it("toggles multiple items independently on click", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderMultiple(onChange);
 
-    await userEvent.click(screen.getByRole("button", { name: /alpha/i }));
+    await user.click(screen.getByRole("button", { name: /alpha/i }));
     expect(onChange).toHaveBeenLastCalledWith(["a"]);
 
-    await userEvent.click(screen.getByRole("button", { name: /charlie/i }));
+    await user.click(screen.getByRole("button", { name: /charlie/i }));
     expect(onChange).toHaveBeenLastCalledWith(["a", "c"]);
 
     expect(screen.getByRole("button", { name: /alpha/i })).toHaveAttribute("aria-pressed", "true");
@@ -615,10 +639,11 @@ describe("ToggleGroup multiple mode", () => {
   });
 
   it("deselects an active item on second activation", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderMultiple(onChange, ["a", "b"]);
 
-    await userEvent.click(screen.getByRole("button", { name: /alpha/i }));
+    await user.click(screen.getByRole("button", { name: /alpha/i }));
 
     expect(onChange).toHaveBeenLastCalledWith(["b"]);
     expect(screen.getByRole("button", { name: /alpha/i })).toHaveAttribute("aria-pressed", "false");
@@ -626,6 +651,7 @@ describe("ToggleGroup multiple mode", () => {
   });
 
   it("moves keyboard highlight without changing pressed state", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderMultiple(onChange, ["a"]);
 
@@ -633,7 +659,7 @@ describe("ToggleGroup multiple mode", () => {
     const beta = screen.getByRole("button", { name: /beta/i });
 
     alpha.focus();
-    await userEvent.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
 
     expect(beta).toHaveFocus();
     expect(alpha).toHaveAttribute("aria-pressed", "true");
@@ -642,6 +668,7 @@ describe("ToggleGroup multiple mode", () => {
   });
 
   it("toggles the focused item with Enter and Space", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderMultiple(onChange);
 
@@ -649,23 +676,24 @@ describe("ToggleGroup multiple mode", () => {
     const beta = screen.getByRole("button", { name: /beta/i });
 
     alpha.focus();
-    await userEvent.keyboard(" ");
+    await user.keyboard(" ");
     expect(onChange).toHaveBeenLastCalledWith(["a"]);
     expect(alpha).toHaveAttribute("aria-pressed", "true");
 
-    await userEvent.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
     expect(beta).toHaveFocus();
 
-    await userEvent.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
     expect(onChange).toHaveBeenLastCalledWith(["a", "b"]);
     expect(beta).toHaveAttribute("aria-pressed", "true");
 
-    await userEvent.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
     expect(onChange).toHaveBeenLastCalledWith(["a"]);
     expect(beta).toHaveAttribute("aria-pressed", "false");
   });
 
   it("keeps explicit multiple value undefined controlled instead of adopting internal selection", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     render(
       <ToggleGroup label="Options" selectionMode="multiple" value={undefined} onChange={onChange}>
@@ -679,13 +707,14 @@ describe("ToggleGroup multiple mode", () => {
     expect(alpha).toHaveAttribute("aria-pressed", "false");
     expect(beta).toHaveAttribute("aria-pressed", "false");
 
-    await userEvent.click(beta);
+    await user.click(beta);
     expect(onChange).toHaveBeenCalledWith(["b"]);
     expect(alpha).toHaveAttribute("aria-pressed", "false");
     expect(beta).toHaveAttribute("aria-pressed", "false");
   });
 
   it("respects controlled multiple value", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     render(
       <ToggleGroup label="Options" selectionMode="multiple" value={["a"]} onChange={onChange}>
@@ -694,7 +723,7 @@ describe("ToggleGroup multiple mode", () => {
       </ToggleGroup>,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: /beta/i }));
+    await user.click(screen.getByRole("button", { name: /beta/i }));
 
     expect(onChange).toHaveBeenCalledWith(["a", "b"]);
     expect(screen.getByRole("button", { name: /alpha/i })).toHaveAttribute("aria-pressed", "true");

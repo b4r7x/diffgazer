@@ -4,7 +4,8 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { NavigationProvider, useNavigation } from "../hooks/use-navigation";
+import { useNavigation } from "../hooks/use-navigation";
+import { NavigationProvider } from "./providers/navigation-provider";
 
 const useConfigCheckMock = vi.hoisted(() => vi.fn());
 

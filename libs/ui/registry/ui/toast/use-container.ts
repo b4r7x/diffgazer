@@ -5,11 +5,20 @@ import { useEscapeKey } from "@/hooks/use-outside-click";
 import type { Toast } from "./toast-store";
 import { dismiss, pause, resume } from "./toast-store";
 
+function isHovered(node: HTMLElement): boolean {
+  try {
+    return node.matches(":hover");
+  } catch {
+    return false;
+  }
+}
+
 /** Provides toast container behavior. */
 export function useToastContainer(
   toasts: Toast[],
   dismissingIds: Set<string>,
   containerRef: RefObject<HTMLElement | null>,
+  enabled = true,
 ) {
   const handleEscape = (event: KeyboardEvent) => {
     const last = toasts.findLast((t) => !dismissingIds.has(t.id));
@@ -22,21 +31,29 @@ export function useToastContainer(
     dismiss(last.id);
   };
 
-  useEscapeKey(handleEscape, toasts.length > 0, { priority: 0, ref: containerRef });
+  useEscapeKey(handleEscape, enabled && toasts.length > 0, { priority: 0, ref: containerRef });
 
   useEffect(() => {
+    if (!enabled) return;
     const node = containerRef.current;
     if (!node) return;
     const doc = node.ownerDocument;
-    if (!doc.hidden) resume();
+    if (node.contains(doc.activeElement)) pause("focus");
+    else resume("focus");
+    if (isHovered(node)) pause("hover");
+    else resume("hover");
+    if (doc.hidden) pause("document-hidden");
+    else resume("document-hidden");
     function onVisibilityChange() {
-      if (doc.hidden) pause();
-      else resume();
+      if (doc.hidden) pause("document-hidden");
+      else resume("document-hidden");
     }
     doc.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       doc.removeEventListener("visibilitychange", onVisibilityChange);
-      resume();
+      resume("document-hidden");
+      resume("focus");
+      resume("hover");
     };
-  }, [containerRef]);
+  }, [containerRef, enabled]);
 }

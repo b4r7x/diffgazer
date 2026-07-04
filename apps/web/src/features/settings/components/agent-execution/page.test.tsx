@@ -1,13 +1,7 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/testing/render";
-
-type QueryStateHandlers = {
-  loading: () => unknown;
-  error: (error: Error) => unknown;
-  success: () => unknown;
-};
 
 const { mockNavigate, mockSaveSettings } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
@@ -20,25 +14,24 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 // Boundary mock: api/hooks is the HTTP-data fetch boundary; we provide canned data and assert on the resulting UI.
-vi.mock("@diffgazer/core/api/hooks", () => ({
-  useSettings: () => ({
-    data: { agentExecution: "sequential" },
-    error: null,
-    isLoading: false,
-  }),
-  useSaveSettings: () => ({
-    isPending: false,
-    mutateAsync: mockSaveSettings,
-  }),
-  matchQueryState: (
-    query: { isLoading?: boolean; error?: Error | null },
-    handlers: QueryStateHandlers,
-  ) => {
-    if (query.isLoading) return handlers.loading();
-    if (query.error) return handlers.error(query.error);
-    return handlers.success();
-  },
-}));
+vi.mock("@diffgazer/core/api/hooks", async () => {
+  const actual = await vi.importActual<typeof import("@diffgazer/core/api/hooks")>(
+    "@diffgazer/core/api/hooks",
+  );
+
+  return {
+    ...actual,
+    useSettings: () => ({
+      data: { agentExecution: "sequential" },
+      error: null,
+      isLoading: false,
+    }),
+    useSaveSettings: () => ({
+      isPending: false,
+      mutateAsync: mockSaveSettings,
+    }),
+  };
+});
 
 import { SettingsAgentExecutionPage } from "./page";
 
@@ -56,8 +49,9 @@ describe("SettingsAgentExecutionPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    const sequential = screen.getByRole("radio", { name: /sequential/i });
-    const parallel = screen.getByRole("radio", { name: /parallel/i });
+    const modeGroup = screen.getByRole("radiogroup", { name: /agent execution mode/i });
+    const sequential = within(modeGroup).getByRole("radio", { name: /sequential/i });
+    const parallel = within(modeGroup).getByRole("radio", { name: /parallel/i });
 
     await waitFor(() => expect(sequential).toHaveFocus());
 
@@ -73,7 +67,10 @@ describe("SettingsAgentExecutionPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await waitFor(() => expect(screen.getByRole("radio", { name: /sequential/i })).toHaveFocus());
+    const modeGroup = screen.getByRole("radiogroup", { name: /agent execution mode/i });
+    await waitFor(() =>
+      expect(within(modeGroup).getByRole("radio", { name: /sequential/i })).toHaveFocus(),
+    );
 
     await user.keyboard("{ArrowDown}{ArrowDown}");
 
@@ -92,7 +89,10 @@ describe("SettingsAgentExecutionPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await waitFor(() => expect(screen.getByRole("radio", { name: /sequential/i })).toHaveFocus());
+    const modeGroup = screen.getByRole("radiogroup", { name: /agent execution mode/i });
+    await waitFor(() =>
+      expect(within(modeGroup).getByRole("radio", { name: /sequential/i })).toHaveFocus(),
+    );
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
     await user.keyboard("{ArrowDown} ");

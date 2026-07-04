@@ -37,6 +37,13 @@ describe("IssueDetailsPane", () => {
     expect(screen.queryByRole("tab", { name: "Patch" })).not.toBeInTheDocument();
   });
 
+  it("does not fabricate a line number when issue location has no line", () => {
+    renderPane(makeIssue({ file: "src/db.ts", line_start: null, line_end: null }));
+
+    expect(screen.getByText("src/db.ts")).toBeInTheDocument();
+    expect(screen.queryByText("src/db.ts:0")).not.toBeInTheDocument();
+  });
+
   it("keeps multi-file suggested patches visible instead of dropping later files", () => {
     renderPane(
       makeIssue({

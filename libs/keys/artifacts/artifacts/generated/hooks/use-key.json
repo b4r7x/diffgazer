@@ -3,7 +3,7 @@
   "title": "useKey",
   "description": "Bind keyboard shortcuts to handlers with scoped, document-level, or container-scoped listening. Supports single key, array of keys, or key map overloads.",
   "source": {
-    "raw": "\"use client\";\n\nimport { useEffectEvent, useId, useLayoutEffect } from \"react\";\nimport type { KeyHandler } from \"../core/normalize-key-input.js\";\nimport { normalizeKeyInput } from \"../core/normalize-key-input.js\";\nimport type { ValidateHotkey } from \"../dom/hotkey.js\";\nimport type { HandlerOptions } from \"../providers/keyboard.js\";\nimport { useOptionalKeyboardRegistryContext } from \"../providers/keyboard-context.js\";\n\n/** Options for registering one or more hotkeys with `useKey`. */\nexport interface UseKeyOptions extends HandlerOptions {\n  /** Whether the binding is active. */\n  enabled?: boolean;\n  /**\n   * Explicit keyboard scope to register under. Pass null to skip registration.\n   * Defaults to the nearest active provider scope for this hook's declaration order.\n   */\n  scope?: string | null;\n}\n\n/**\n * Registers a single hotkey with the nearest `KeyboardProvider`.\n * Without a provider this hook is a no-op.\n */\nexport function useKey<S extends string>(\n  hotkey: ValidateHotkey<S>,\n  handler: KeyHandler,\n  options?: UseKeyOptions,\n): void;\n\n/**\n * Registers several hotkeys with one handler through the nearest\n * `KeyboardProvider`.\n */\nexport function useKey<const Hotkeys extends readonly string[]>(\n  hotkeys: { [K in keyof Hotkeys]: ValidateHotkey<Hotkeys[K]> },\n  handler: KeyHandler,\n  options?: UseKeyOptions,\n): void;\n\n/** Registers a map of hotkeys to handlers through the nearest `KeyboardProvider`. */\nexport function useKey(handlers: Record<string, KeyHandler>, options?: UseKeyOptions): void;\n\n/** Implementation for the `useKey` overloads. */\nexport function useKey(\n  first: string | readonly string[] | Record<string, KeyHandler>,\n  second?: KeyHandler | UseKeyOptions,\n  third?: UseKeyOptions,\n): void {\n  const { handlerMap, options } = normalizeKeyInput<UseKeyOptions>(first, second, third);\n\n  const ctx = useOptionalKeyboardRegistryContext();\n  const register = ctx?.register ?? null;\n  const getScopeForOrder = ctx?.getScopeForOrder ?? null;\n  const order = useId();\n\n  const enabled = options?.enabled;\n  const scope = options?.scope;\n  const allowInInput = options?.allowInInput;\n  const containerRef = options?.containerRef;\n  const focusWithinOnly = options?.focusWithinOnly;\n  const preventDefault = options?.preventDefault;\n\n  const dispatch = useEffectEvent((key: string, event: KeyboardEvent) => handlerMap[key]?.(event));\n\n  const registrationKeys = Object.keys(handlerMap).sort();\n  const registrationVersion = registrationKeys.map((key) => `${key.length}:${key}`).join(\"|\");\n\n  const handlerOptions: HandlerOptions | undefined = options\n    ? {\n        allowInInput,\n        containerRef,\n        focusWithinOnly,\n        preventDefault,\n      }\n    : undefined;\n\n  // biome-ignore lint/correctness/useExhaustiveDependencies: deps are intentionally the stable primitive options plus the derived `registrationVersion` string; depending on the per-render `handlerMap`/`registrationKeys`/`handlerOptions` objects would re-register on every render. Latest handlers are read via the stable `dispatch` effect event.\n  useLayoutEffect(() => {\n    if (enabled === false) return;\n    if (!register) return;\n    if (scope === null) return;\n\n    const registrationScope = scope ?? getScopeForOrder?.(order) ?? null;\n    if (registrationScope === null) return;\n\n    const cleanups = registrationKeys.map((key) =>\n      register(\n        registrationScope,\n        key,\n        (event: KeyboardEvent) => dispatch(key, event),\n        handlerOptions,\n      ),\n    );\n\n    return () => {\n      for (const cleanup of cleanups) cleanup();\n    };\n  }, [\n    register,\n    getScopeForOrder,\n    scope,\n    order,\n    registrationVersion,\n    enabled,\n    allowInInput,\n    containerRef,\n    focusWithinOnly,\n    preventDefault,\n  ]);\n}\n",
+    "raw": "\"use client\";\n\nimport { useEffectEvent, useId, useLayoutEffect } from \"react\";\nimport type { KeyHandler } from \"../core/normalize-key-input.js\";\nimport { normalizeKeyInput } from \"../core/normalize-key-input.js\";\nimport type { ValidateHotkey } from \"../dom/hotkey.js\";\nimport type { HandlerOptions } from \"../providers/keyboard.js\";\nimport { useOptionalKeyboardRegistryContext } from \"../providers/keyboard-context.js\";\n\n/** Options for registering one or more hotkeys with `useKey`. */\nexport interface UseKeyOptions extends HandlerOptions {\n  /** Whether the binding is active. */\n  enabled?: boolean;\n  /**\n   * Explicit keyboard scope to register under. Pass null to skip registration.\n   * Defaults to the nearest active provider scope for this hook's declaration order.\n   */\n  scope?: string | null;\n}\n\n/**\n * Registers a single hotkey with the nearest `KeyboardProvider`.\n * Without a provider this hook is a no-op.\n */\nexport function useKey<S extends string>(\n  hotkey: ValidateHotkey<S>,\n  handler: KeyHandler,\n  options?: UseKeyOptions,\n): void;\n\n/**\n * Registers several hotkeys with one handler through the nearest\n * `KeyboardProvider`.\n */\nexport function useKey<const Hotkeys extends readonly string[]>(\n  hotkeys: { [K in keyof Hotkeys]: ValidateHotkey<Hotkeys[K]> },\n  handler: KeyHandler,\n  options?: UseKeyOptions,\n): void;\n\n/** Registers a map of hotkeys to handlers through the nearest `KeyboardProvider`. */\nexport function useKey(handlers: Record<string, KeyHandler>, options?: UseKeyOptions): void;\n\n/** Implementation for the `useKey` overloads. */\nexport function useKey(\n  first: string | readonly string[] | Record<string, KeyHandler>,\n  second?: KeyHandler | UseKeyOptions,\n  third?: UseKeyOptions,\n): void {\n  const { handlerMap, options } = normalizeKeyInput<UseKeyOptions>(first, second, third);\n\n  const ctx = useOptionalKeyboardRegistryContext();\n  const register = ctx?.register ?? null;\n  const registerImplicit = ctx?.registerImplicit ?? null;\n  const order = useId();\n\n  const enabled = options?.enabled;\n  const scope = options?.scope;\n  const allowInInput = options?.allowInInput;\n  const containerRef = options?.containerRef;\n  const focusWithinOnly = options?.focusWithinOnly;\n  const preventDefault = options?.preventDefault;\n\n  const dispatch = useEffectEvent((key: string, event: KeyboardEvent) => handlerMap[key]?.(event));\n\n  const registrationKeys = Object.keys(handlerMap).sort();\n  const registrationVersion = registrationKeys.map((key) => `${key.length}:${key}`).join(\"|\");\n\n  const handlerOptions: HandlerOptions | undefined = options\n    ? {\n        allowInInput,\n        containerRef,\n        focusWithinOnly,\n        preventDefault,\n      }\n    : undefined;\n\n  // biome-ignore lint/correctness/useExhaustiveDependencies: deps are intentionally the stable primitive options plus the derived `registrationVersion` string; depending on the per-render `handlerMap`/`registrationKeys`/`handlerOptions` objects would re-register on every render. Latest handlers are read via the stable `dispatch` effect event.\n  useLayoutEffect(() => {\n    if (enabled === false) return;\n    if (scope === null) return;\n\n    if (scope === undefined && !registerImplicit) return;\n    if (scope !== undefined && !register) return;\n\n    const cleanups = registrationKeys.map((key) => {\n      const handler = (event: KeyboardEvent) => dispatch(key, event);\n      return scope === undefined\n        ? registerImplicit?.(order, key, handler, handlerOptions)\n        : register?.(scope, key, handler, handlerOptions);\n    });\n\n    return () => {\n      for (const cleanup of cleanups) cleanup?.();\n    };\n  }, [\n    register,\n    registerImplicit,\n    scope,\n    order,\n    registrationVersion,\n    enabled,\n    allowInInput,\n    containerRef,\n    focusWithinOnly,\n    preventDefault,\n  ]);\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -1663,7 +1663,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "getScopeForOrder",
+            "text": "registerImplicit",
             "color": "var(--code-number)"
           },
           {
@@ -1687,7 +1687,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "getScopeForOrder ",
+            "text": "registerImplicit ",
             "color": "var(--code-variable)"
           },
           {
@@ -2669,39 +2669,6 @@
             "color": "var(--code-keyword)"
           },
           {
-            "text": " (",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "!",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "register) ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "return",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 82,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "if",
-            "color": "var(--code-keyword)"
-          },
-          {
             "text": " (scope ",
             "color": "var(--code-variable)"
           },
@@ -2732,80 +2699,11 @@
         ]
       },
       {
-        "number": 83,
+        "number": 82,
         "content": []
       },
       {
-        "number": 84,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "registrationScope",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " scope ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "??",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "getScopeForOrder",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "?.",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "(order) ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "??",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "null",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 85,
+        "number": 83,
         "content": [
           {
             "text": "    ",
@@ -2816,7 +2714,7 @@
             "color": "var(--code-keyword)"
           },
           {
-            "text": " (registrationScope ",
+            "text": " (scope ",
             "color": "var(--code-variable)"
           },
           {
@@ -2828,11 +2726,27 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "null",
+            "text": "undefined",
             "color": "var(--code-number)"
           },
           {
-            "text": ") ",
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "&&",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "registerImplicit) ",
             "color": "var(--code-variable)"
           },
           {
@@ -2846,11 +2760,68 @@
         ]
       },
       {
-        "number": 86,
+        "number": 84,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (scope ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!==",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "undefined",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "&&",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "register) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 85,
         "content": []
       },
       {
-        "number": 87,
+        "number": 86,
         "content": [
           {
             "text": "    ",
@@ -2915,57 +2886,46 @@
           {
             "text": "=>",
             "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 88,
+        "number": 87,
         "content": [
           {
             "text": "      ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "register",
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "handler",
             "color": "var(--code-function)"
           },
           {
-            "text": "(",
-            "color": "var(--code-variable)"
-          }
-        ]
-      },
-      {
-        "number": 89,
-        "content": [
-          {
-            "text": "        registrationScope",
+            "text": " ",
             "color": "var(--code-variable)"
           },
           {
-            "text": ",",
+            "text": "=",
             "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 90,
-        "content": [
-          {
-            "text": "        key",
-            "color": "var(--code-variable)"
           },
           {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 91,
-        "content": [
-          {
-            "text": "        ",
+            "text": " ",
             "color": "var(--code-variable)"
           },
           {
@@ -3021,42 +2981,142 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": ",",
+            "text": ";",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 92,
+        "number": 88,
         "content": [
           {
-            "text": "        handlerOptions",
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " scope ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "undefined",
+            "color": "var(--code-number)"
+          }
+        ]
+      },
+      {
+        "number": 89,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "?",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "registerImplicit",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "(order",
             "color": "var(--code-variable)"
           },
           {
             "text": ",",
             "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 93,
-        "content": [
+          },
           {
-            "text": "      )",
+            "text": " key",
             "color": "var(--code-variable)"
           },
           {
             "text": ",",
             "color": "var(--code-operator)"
+          },
+          {
+            "text": " handler",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " handlerOptions)",
+            "color": "var(--code-variable)"
           }
         ]
       },
       {
-        "number": 94,
+        "number": 90,
         "content": [
           {
-            "text": "    )",
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "register",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "(scope",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " key",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " handler",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " handlerOptions)",
             "color": "var(--code-variable)"
           },
           {
@@ -3066,11 +3126,32 @@
         ]
       },
       {
-        "number": 95,
+        "number": 91,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 92,
         "content": []
       },
       {
-        "number": 96,
+        "number": 93,
         "content": [
           {
             "text": "    ",
@@ -3107,7 +3188,7 @@
         ]
       },
       {
-        "number": 97,
+        "number": 94,
         "content": [
           {
             "text": "      ",
@@ -3150,6 +3231,10 @@
             "color": "var(--code-function)"
           },
           {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
             "text": "()",
             "color": "var(--code-variable)"
           },
@@ -3160,7 +3245,7 @@
         ]
       },
       {
-        "number": 98,
+        "number": 95,
         "content": [
           {
             "text": "    ",
@@ -3173,7 +3258,7 @@
         ]
       },
       {
-        "number": 99,
+        "number": 96,
         "content": [
           {
             "text": "  ",
@@ -3190,7 +3275,7 @@
         ]
       },
       {
-        "number": 100,
+        "number": 97,
         "content": [
           {
             "text": "    register",
@@ -3203,10 +3288,10 @@
         ]
       },
       {
-        "number": 101,
+        "number": 98,
         "content": [
           {
-            "text": "    getScopeForOrder",
+            "text": "    registerImplicit",
             "color": "var(--code-variable)"
           },
           {
@@ -3216,7 +3301,7 @@
         ]
       },
       {
-        "number": 102,
+        "number": 99,
         "content": [
           {
             "text": "    scope",
@@ -3229,7 +3314,7 @@
         ]
       },
       {
-        "number": 103,
+        "number": 100,
         "content": [
           {
             "text": "    order",
@@ -3242,7 +3327,7 @@
         ]
       },
       {
-        "number": 104,
+        "number": 101,
         "content": [
           {
             "text": "    registrationVersion",
@@ -3255,7 +3340,7 @@
         ]
       },
       {
-        "number": 105,
+        "number": 102,
         "content": [
           {
             "text": "    enabled",
@@ -3268,7 +3353,7 @@
         ]
       },
       {
-        "number": 106,
+        "number": 103,
         "content": [
           {
             "text": "    allowInInput",
@@ -3281,7 +3366,7 @@
         ]
       },
       {
-        "number": 107,
+        "number": 104,
         "content": [
           {
             "text": "    containerRef",
@@ -3294,7 +3379,7 @@
         ]
       },
       {
-        "number": 108,
+        "number": 105,
         "content": [
           {
             "text": "    focusWithinOnly",
@@ -3307,7 +3392,7 @@
         ]
       },
       {
-        "number": 109,
+        "number": 106,
         "content": [
           {
             "text": "    preventDefault",
@@ -3320,7 +3405,7 @@
         ]
       },
       {
-        "number": 110,
+        "number": 107,
         "content": [
           {
             "text": "  ])",
@@ -3333,7 +3418,7 @@
         ]
       },
       {
-        "number": 111,
+        "number": 108,
         "content": [
           {
             "text": "}",
@@ -3342,7 +3427,7 @@
         ]
       },
       {
-        "number": 112,
+        "number": 109,
         "content": []
       }
     ]

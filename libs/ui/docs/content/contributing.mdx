@@ -60,7 +60,7 @@ pnpm --filter @diffgazer/ui build
 - ESM imports only (no CommonJS)
 - Tailwind 4 + CVA for component variants
 - JetBrains Mono font, terminal aesthetic
-- No manual useCallback/useMemo (React 19 Compiler handles this)
+- No defensive `useCallback`/`useMemo`/`memo`; use them only where stable identity is part of the component contract
 - Use `cn()` from `@/lib/utils` for class merging
 - Use sentence case for multiword H2/H3 headings, except proper nouns and component or API symbols.
 - Write "Diffgazer" when prose names the product or project; use code formatting for the `diffgazer` command, binary, and package name.

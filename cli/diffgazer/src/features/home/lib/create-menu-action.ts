@@ -1,7 +1,7 @@
 import { resolveHomeMenuActivation } from "@diffgazer/core/navigation";
 import type { MenuAction } from "@diffgazer/core/schemas/presentation";
 import type { UseMutationResult } from "@tanstack/react-query";
-import type { Route } from "../../../lib/routes.js";
+import type { Route } from "../../../lib/routes";
 
 type RouteReviewMode = Extract<Route, { screen: "review" }>["mode"];
 
@@ -60,6 +60,10 @@ export function createHomeMenuAction({
       case "blocked-untrusted":
       case "noop":
         return;
+      default: {
+        const _exhaustive: never = decision;
+        return _exhaustive;
+      }
     }
   };
 }

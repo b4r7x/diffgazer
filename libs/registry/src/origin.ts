@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from "node:fs";
+import { REGISTRY_ORIGIN } from "./constants.js";
 import { collectJsonFiles } from "./utils/fs.js";
 
 export interface OriginRewriteOptions {
@@ -7,14 +8,14 @@ export interface OriginRewriteOptions {
 }
 
 export interface NormalizeOriginOptions {
-  defaultOrigin: string;
+  defaultOrigin?: string;
 }
 
 export function normalizeOrigin(
   raw: string | undefined | null,
-  options: NormalizeOriginOptions,
+  options: NormalizeOriginOptions = {},
 ): string {
-  const { defaultOrigin } = options;
+  const defaultOrigin = options.defaultOrigin ?? REGISTRY_ORIGIN;
   const value = (raw ?? defaultOrigin).trim();
   if (!/^https?:\/\//.test(value)) {
     throw new Error(`REGISTRY_ORIGIN must start with http:// or https:// (received "${value}")`);

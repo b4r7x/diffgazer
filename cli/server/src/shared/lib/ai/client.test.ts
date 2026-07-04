@@ -14,10 +14,10 @@ const keyring = vi.hoisted(() => ({
 // Boundary mock: keyring wraps the OS keychain via @napi-rs/keyring; tests provide canned secret read/write results.
 vi.mock("../config/keyring.js", () => keyring);
 
-// Boundary mock: `ai` is the Vercel AI SDK external HTTP client; tests provide canned generateObject output.
+// Boundary mock: `ai` is the Vercel AI SDK external HTTP client; tests provide canned generateText output.
 vi.mock("ai", async (importOriginal) => ({
   ...(await importOriginal<typeof import("ai")>()),
-  generateObject: vi.fn(),
+  generateText: vi.fn(),
 }));
 
 // Boundary mock: @ai-sdk/google is the Google Generative AI external HTTP client; tests provide a no-op model factory.
@@ -222,8 +222,8 @@ describe("classifyError (via generate)", () => {
     providerMessage,
     expectedCode,
   }) => {
-    const { generateObject } = await import("ai");
-    vi.mocked(generateObject).mockRejectedValue(new Error(providerMessage));
+    const { generateText } = await import("ai");
+    vi.mocked(generateText).mockRejectedValue(new Error(providerMessage));
 
     const { createAIClient } = await loadClient();
     const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
@@ -240,8 +240,8 @@ describe("classifyError (via generate)", () => {
   });
 
   it("surfaces model errors to caller for unclassified provider errors", async () => {
-    const { generateObject } = await import("ai");
-    vi.mocked(generateObject).mockRejectedValue(new Error("something unexpected happened"));
+    const { generateText } = await import("ai");
+    vi.mocked(generateText).mockRejectedValue(new Error("something unexpected happened"));
 
     const { createAIClient } = await loadClient();
     const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
@@ -262,8 +262,8 @@ describe("generate output budget", () => {
   afterEach(teardownTempHome);
 
   it("clamps maxOutputTokens to the model's documented output limit", async () => {
-    const { generateObject } = await import("ai");
-    vi.mocked(generateObject).mockResolvedValue({ object: { x: "ok" } } as never);
+    const { generateText } = await import("ai");
+    vi.mocked(generateText).mockResolvedValue({ output: { x: "ok" } } as never);
 
     const { createAIClient } = await loadClient();
     const clientResult = createAIClient({
@@ -277,12 +277,12 @@ describe("generate output budget", () => {
     const { z } = await import("zod");
     await clientResult.value.generate("test", z.object({ x: z.string() }));
 
-    expect(generateObject).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 8192 }));
+    expect(generateText).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 8192 }));
   });
 
   it("initializeAIClient threads the active model's snapshot limit into the request", async () => {
-    const { generateObject } = await import("ai");
-    vi.mocked(generateObject).mockResolvedValue({ object: { x: "ok" } } as never);
+    const { generateText } = await import("ai");
+    vi.mocked(generateText).mockResolvedValue({ output: { x: "ok" } } as never);
 
     writeJson(join(diffgazerHome, "config.json"), {
       settings: { secretsStorage: "file" },
@@ -306,11 +306,11 @@ describe("generate output budget", () => {
     await clientResult.value.generate("test", z.object({ x: z.string() }));
 
     // The groq scout model's snapshot output limit is 8192, well below the 65536 default.
-    expect(generateObject).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 8192 }));
+    expect(generateText).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 8192 }));
   });
 
   it("refuses a prompt that exceeds the model's context window with a named-limit message", async () => {
-    const { generateObject } = await import("ai");
+    const { generateText } = await import("ai");
 
     const { createAIClient } = await loadClient();
     const clientResult = createAIClient({
@@ -335,7 +335,7 @@ describe("generate output budget", () => {
       expect(result.error.message).toContain("tiny-context-model");
       expect(result.error.message).toContain("8192");
     }
-    expect(generateObject).not.toHaveBeenCalled();
+    expect(generateText).not.toHaveBeenCalled();
   });
 });
 
@@ -350,7 +350,7 @@ describe("generate response recovery", () => {
     });
 
   it("salvages valid issues when one issue fails strict validation", async () => {
-    const { generateObject, NoObjectGeneratedError } = await import("ai");
+    const { generateText, NoObjectGeneratedError } = await import("ai");
     const rawText = JSON.stringify({
       summary: "ok",
       issues: [
@@ -359,7 +359,7 @@ describe("generate response recovery", () => {
         { id: "c", line: 20 },
       ],
     });
-    vi.mocked(generateObject).mockRejectedValue(
+    vi.mocked(generateText).mockRejectedValue(
       new NoObjectGeneratedError({
         message: "No object generated: response did not match schema.",
         text: rawText,
@@ -382,17 +382,49 @@ describe("generate response recovery", () => {
     }
   });
 
-  it("reports the output limit when the response was truncated (finishReason length)", async () => {
-    const { generateObject, NoObjectGeneratedError } = await import("ai");
-    vi.mocked(generateObject).mockRejectedValue(
-      new NoObjectGeneratedError({
-        message: "No object generated: could not parse the response.",
-        text: '{"summary":"partial","issues":[{"id":"a","li',
-        response: {} as never,
-        usage: {} as never,
-        finishReason: "length",
-      }),
-    );
+  it("salvages valid issues when the response is truncated but the raw text still validates", async () => {
+    // ai@6 resolves generateText successfully on a truncated response — finishReason
+    // is "length" and .output is never populated. Accessing .output throws a bare
+    // NoOutputGeneratedError with no text attached, so the client must check
+    // finishReason before touching .output at all.
+    const { generateText } = await import("ai");
+    const rawText = JSON.stringify({
+      summary: "ok",
+      issues: [
+        { id: "a", line: 10 },
+        { id: "b", line: -1 },
+      ],
+    });
+    vi.mocked(generateText).mockResolvedValue({
+      finishReason: "length",
+      text: rawText,
+      get output(): never {
+        throw new Error("output must not be accessed when finishReason is length");
+      },
+    } as never);
+
+    const { createAIClient } = await loadClient();
+    const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
+    if (!clientResult.ok) return;
+
+    const { z } = await import("zod");
+    const result = await clientResult.value.generate("test", reviewSchema(z));
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.issues.map((i) => i.id)).toEqual(["a"]);
+    }
+  });
+
+  it("reports the output limit when the response was truncated and unsalvageable", async () => {
+    const { generateText } = await import("ai");
+    vi.mocked(generateText).mockResolvedValue({
+      finishReason: "length",
+      text: '{"summary":"partial","issues":[{"id":"a","li',
+      get output(): never {
+        throw new Error("output must not be accessed when finishReason is length");
+      },
+    } as never);
 
     const { createAIClient } = await loadClient();
     const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });

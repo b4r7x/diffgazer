@@ -19,6 +19,7 @@ function renderInProvider(children: ReactNode) {
 
 describe("KeyboardProvider", () => {
   it("fires handler only for matching key in the active scope", async () => {
+    const user = userEvent.setup();
     const handler = vi.fn();
 
     function Consumer() {
@@ -33,10 +34,10 @@ describe("KeyboardProvider", () => {
       </KeyboardWrapper>,
     );
 
-    await userEvent.keyboard("b");
+    await user.keyboard("b");
     expect(handler).not.toHaveBeenCalled();
 
-    await userEvent.keyboard("a");
+    await user.keyboard("a");
     expect(handler).toHaveBeenCalledOnce();
   });
 
@@ -68,7 +69,42 @@ describe("KeyboardProvider", () => {
     expect(eventB.defaultPrevented).toBe(true);
   });
 
+  it("does not suppress the native default when a preventDefault handler declines", () => {
+    const declineHandler = vi.fn(() => DECLINE);
+    const handledHandler = vi.fn();
+
+    function Consumer() {
+      const { register } = useKeyboardContext();
+      useEffect(() => {
+        register("global", "d", declineHandler, { preventDefault: true });
+        register("global", "e", handledHandler, { preventDefault: true });
+      }, [register]);
+      return <div>consumer</div>;
+    }
+
+    renderInProvider(<Consumer />);
+
+    const declinedEvent = new KeyboardEvent("keydown", {
+      key: "d",
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => window.dispatchEvent(declinedEvent));
+    expect(declineHandler).toHaveBeenCalledOnce();
+    expect(declinedEvent.defaultPrevented).toBe(false);
+
+    const handledEvent = new KeyboardEvent("keydown", {
+      key: "e",
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => window.dispatchEvent(handledEvent));
+    expect(handledHandler).toHaveBeenCalledOnce();
+    expect(handledEvent.defaultPrevented).toBe(true);
+  });
+
   it("does not fire when a local keydown listener has already handled the event", async () => {
+    const user = userEvent.setup();
     const handler = vi.fn();
 
     function Consumer() {
@@ -93,12 +129,13 @@ describe("KeyboardProvider", () => {
 
     const button = screen.getByRole("button", { name: "local" });
     button.focus();
-    await userEvent.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
 
     expect(handler).not.toHaveBeenCalled();
   });
 
   it("fires only handlers registered in the active scope", async () => {
+    const user = userEvent.setup();
     const globalHandler = vi.fn();
     const modalHandler = vi.fn();
 
@@ -118,7 +155,7 @@ describe("KeyboardProvider", () => {
       </KeyboardWrapper>,
     );
 
-    await userEvent.keyboard("a");
+    await user.keyboard("a");
     expect(modalHandler).toHaveBeenCalledOnce();
     expect(globalHandler).not.toHaveBeenCalled();
   });
@@ -177,6 +214,7 @@ describe("KeyboardProvider", () => {
   });
 
   it("does not fire from text-editable elements unless allowInInput is set", async () => {
+    const user = userEvent.setup();
     const blocked = vi.fn();
     const allowed = vi.fn();
 
@@ -197,10 +235,10 @@ describe("KeyboardProvider", () => {
 
     const input = screen.getByRole("textbox", { name: "Search" });
     input.focus();
-    await userEvent.keyboard("a");
+    await user.keyboard("a");
     expect(blocked).not.toHaveBeenCalled();
 
-    await userEvent.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
     expect(allowed).toHaveBeenCalledOnce();
   });
 
@@ -636,6 +674,36 @@ describe("KeyboardProvider", () => {
     expect(shallowHandler).not.toHaveBeenCalled();
   });
 
+  it("keeps a colocated implicit useKey bound to its own scope when hydrated useIds carry H-suffixed local ids", () => {
+    const handler = vi.fn();
+    const popBRef = { current: null as null | (() => void) };
+
+    function SsrLocalIdScope() {
+      const { pushScope, registerImplicit } = useKeyboardRegistryContext();
+      useEffect(() => {
+        const popA = pushScope("a", "_R_1_");
+        const popB = pushScope("b", "_R_2_");
+        popBRef.current = popB;
+        const unregister = registerImplicit("_R_1H1_", "a", handler);
+        return () => {
+          unregister();
+          popB();
+          popA();
+        };
+      }, [pushScope, registerImplicit]);
+      return <div>ssr local id scope</div>;
+    }
+
+    renderInProvider(<SsrLocalIdScope />);
+
+    act(() => pressKey("a"));
+    expect(handler).not.toHaveBeenCalled();
+
+    act(() => popBRef.current?.());
+    act(() => pressKey("a"));
+    expect(handler).toHaveBeenCalledOnce();
+  });
+
   it("stops receiving key events after the provider unmounts", () => {
     const handler = vi.fn();
 
@@ -661,6 +729,7 @@ describe("KeyboardProvider", () => {
   });
 
   it("fires focus-scoped handlers only when the event target is inside the focus container", async () => {
+    const user = userEvent.setup();
     const handler = vi.fn();
 
     function Consumer() {
@@ -694,11 +763,11 @@ describe("KeyboardProvider", () => {
     const insideButton = screen.getByRole("button", { name: "Inside" });
 
     outside.focus();
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(handler).not.toHaveBeenCalled();
 
     insideButton.focus();
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(handler).toHaveBeenCalledOnce();
   });
 });

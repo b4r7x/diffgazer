@@ -80,10 +80,6 @@
       "types": "./dist/api/protocol.d.ts",
       "import": "./dist/api/protocol.js"
     },
-    "./schemas": {
-      "types": "./dist/schemas/index.d.ts",
-      "import": "./dist/schemas/index.js"
-    },
     "./schemas/errors": {
       "types": "./dist/schemas/errors.d.ts",
       "import": "./dist/schemas/errors.js"

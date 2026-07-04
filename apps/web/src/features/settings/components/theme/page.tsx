@@ -15,18 +15,18 @@ import { useSettingsFormFooter } from "../../hooks/use-settings-form-footer";
 import { ThemePreviewCard } from "./preview-card";
 import { ThemeSelectorContent } from "./selector-content";
 
-function resolveTheme(theme: WebTheme, systemResolved?: ResolvedTheme | null): ResolvedTheme {
-  return theme === "auto" ? (systemResolved ?? "dark") : theme;
+function resolveTheme(theme: WebTheme, system: ResolvedTheme): ResolvedTheme {
+  return theme === "auto" ? system : theme;
 }
 
 export function SettingsThemePage() {
-  const { theme: savedTheme, resolved: systemResolved, setTheme } = useTheme();
+  const { theme: savedTheme, system, setTheme } = useTheme();
 
   return (
     <SettingsThemeEditor
       key={savedTheme}
       savedTheme={savedTheme}
-      systemResolved={systemResolved}
+      system={system}
       setTheme={setTheme}
     />
   );
@@ -34,11 +34,11 @@ export function SettingsThemePage() {
 
 interface SettingsThemeEditorProps {
   savedTheme: WebTheme;
-  systemResolved?: ResolvedTheme | null;
-  setTheme: (theme: WebTheme) => void;
+  system: ResolvedTheme;
+  setTheme: (theme: WebTheme) => Promise<void>;
 }
 
-function SettingsThemeEditor({ savedTheme, systemResolved, setTheme }: SettingsThemeEditorProps) {
+function SettingsThemeEditor({ savedTheme, system, setTheme }: SettingsThemeEditorProps) {
   const navigate = useNavigate();
   const [selectedTheme, setSelectedTheme] = useState<WebTheme>(savedTheme);
   const [focusedTheme, setFocusedTheme] = useState<WebTheme | null>(savedTheme);
@@ -46,7 +46,7 @@ function SettingsThemeEditor({ savedTheme, systemResolved, setTheme }: SettingsT
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const previewTheme = hoveredTheme ?? focusedTheme ?? selectedTheme;
-  const previewResolved = resolveTheme(previewTheme, systemResolved);
+  const previewResolved = resolveTheme(previewTheme, system);
   useScope("settings-theme");
 
   const { canSave } = deriveSaveState<WebTheme>({

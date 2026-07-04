@@ -89,6 +89,7 @@ export function SettingsAgentExecutionPage() {
     >
       <div ref={focusFallbackRef} tabIndex={-1} className="space-y-6 focus:outline-none">
         <RadioGroup
+          aria-label="Agent execution mode"
           value={effectiveMode}
           onChange={onExecutionChange}
           highlighted={navigationEnabled ? effectiveFocusedMode : null}

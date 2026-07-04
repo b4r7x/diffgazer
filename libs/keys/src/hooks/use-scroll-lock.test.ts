@@ -54,6 +54,19 @@ describe("useScrollLock", () => {
     container.remove();
   });
 
+  it("does not lock document.body while a provided target ref is null", () => {
+    document.body.style.overflow = "auto";
+    const targetRef = { current: null };
+
+    const { unmount } = renderHook(() => useScrollLock({ target: targetRef }));
+
+    expect(document.body.style.overflow).toBe("auto");
+    expect(document.body.hasAttribute("data-scroll-locked")).toBe(false);
+
+    unmount();
+    expect(document.body.style.overflow).toBe("auto");
+  });
+
   it("locks a DOM ref after React assigns it", () => {
     function Host() {
       const ref = useRef<HTMLDivElement>(null);
@@ -216,5 +229,33 @@ describe("useScrollLock", () => {
 
     innerWidthSpy.mockRestore();
     clientWidthSpy.mockRestore();
+  });
+
+  it("subtracts element borders from non-viewport scrollbar compensation", () => {
+    const container = document.createElement("div");
+    container.style.overflow = "auto";
+    container.style.paddingRight = "5px";
+    document.body.appendChild(container);
+
+    const view = document.defaultView as Window & typeof globalThis;
+    const offsetWidthSpy = vi.spyOn(container, "offsetWidth", "get").mockReturnValue(128);
+    const clientWidthSpy = vi.spyOn(container, "clientWidth", "get").mockReturnValue(100);
+    const computedStyleSpy = vi.spyOn(view, "getComputedStyle").mockReturnValue({
+      paddingRight: "5px",
+      borderLeftWidth: "6px",
+      borderRightWidth: "4px",
+    } as CSSStyleDeclaration);
+
+    const { unmount } = renderHook(() => useScrollLock({ target: { current: container } }));
+
+    expect(container.style.paddingRight).toBe("23px");
+
+    unmount();
+    expect(container.style.paddingRight).toBe("5px");
+
+    offsetWidthSpy.mockRestore();
+    clientWidthSpy.mockRestore();
+    computedStyleSpy.mockRestore();
+    container.remove();
   });
 });

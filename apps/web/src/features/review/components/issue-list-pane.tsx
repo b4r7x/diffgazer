@@ -145,6 +145,8 @@ export function IssueListPane({
         >
           {issues.map((issue) => {
             const config = SEVERITY_CONFIG[issue.severity];
+            const location =
+              issue.line_start == null ? issue.file : `${issue.file}:${issue.line_start}`;
             return (
               <NavigationList.Item
                 key={issue.id}
@@ -170,9 +172,7 @@ export function IssueListPane({
                   <span className="min-w-0 truncate">{issue.title}</span>
                 </NavigationList.Title>
                 <NavigationList.Meta>
-                  <NavigationList.Subtitle>
-                    {issue.file}:{issue.line_start}
-                  </NavigationList.Subtitle>
+                  <NavigationList.Subtitle>{location}</NavigationList.Subtitle>
                 </NavigationList.Meta>
               </NavigationList.Item>
             );

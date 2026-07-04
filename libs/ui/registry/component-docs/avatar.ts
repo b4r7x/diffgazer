@@ -166,6 +166,13 @@ export const avatarDoc: ComponentDoc = {
         defaultValue: null,
         description: "Size override. Falls back to the AvatarGroup size.",
       },
+      getLabel: {
+        type: "(count: number) => string",
+        required: false,
+        defaultValue: null,
+        description:
+          'Localizes the indicator accessible name. Defaults to the "N more" pattern when neither getLabel nor aria-label is provided.',
+      },
     },
   },
 };

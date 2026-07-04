@@ -2,9 +2,9 @@ import { createEvent, fireEvent, render, screen, waitFor } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
-import { SearchInput } from "./index";
+import { SearchInput, type SearchInputProps } from "./index";
 
-function renderSearchInput(props: Record<string, unknown> = {}) {
+function renderSearchInput(props: Partial<SearchInputProps> = {}) {
   return render(<SearchInput aria-label="Search" {...props} />);
 }
 
@@ -91,7 +91,7 @@ describe("SearchInput", () => {
   it("honors preventDefault in custom key handlers", async () => {
     const user = userEvent.setup();
     const onEnter = vi.fn();
-    renderSearchInput({ onEnter, onKeyDown: (event: KeyboardEvent) => event.preventDefault() });
+    renderSearchInput({ onEnter, onKeyDown: (event) => event.preventDefault() });
     const input = screen.getByRole("searchbox");
     input.focus();
     await user.keyboard("{Enter}");

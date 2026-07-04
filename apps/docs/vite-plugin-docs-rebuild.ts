@@ -66,7 +66,10 @@ export function docsDataRebuild(): Plugin {
       server.watcher.on("all", (event, filePath) => {
         const isWatched = watchPaths.some((dir) => filePath.startsWith(dir));
         if (!isWatched) return;
-        if (rebuilding) return;
+        if (rebuilding) {
+          pendingRebuild = true;
+          return;
+        }
         if (!["add", "change", "unlink"].includes(event)) return;
 
         if (timer) clearTimeout(timer);

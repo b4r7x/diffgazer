@@ -29,6 +29,26 @@ describe("HistoryInsightsPane", () => {
     expect(screen.getByText("4m 12s")).toBeInTheDocument();
   });
 
+  it("does not render a nullable line label for run issues", () => {
+    render(
+      <HistoryInsightsPane
+        runId="run-1"
+        severityCounts={null}
+        issues={[
+          makeIssue({
+            id: "issue-without-line",
+            title: "Missing line location",
+            line_start: null,
+            line_end: null,
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("option", { name: /missing line location/i })).toBeInTheDocument();
+    expect(screen.queryByText("L:null")).not.toBeInTheDocument();
+  });
+
   it("invokes onSelectIssue with the issue id when an issue is clicked", async () => {
     const user = userEvent.setup();
     const onSelectIssue = vi.fn();

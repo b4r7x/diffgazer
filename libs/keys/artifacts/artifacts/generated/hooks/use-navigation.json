@@ -3,7 +3,7 @@
   "title": "useNavigation",
   "description": "Standalone keyboard navigation for role-based lists. Uses DOM queries to find navigable items. No provider needed.",
   "source": {
-    "raw": "\"use client\";\n\nimport { type KeyboardEvent, type RefObject, useState } from \"react\";\nimport { dispatchNavigationKey, resolveDirectionKeys } from \"../core/navigation-dispatch.js\";\nimport { isEditableElement } from \"../dom/element-guards.js\";\nimport { containsActiveElement } from \"../dom/focusable.js\";\nimport {\n  getFocusedNavigationValue,\n  getNavigationItems,\n  type NavigationItemType,\n} from \"../dom/navigation-items.js\";\n\n/** ARIA role or data-contract item type used for navigation item discovery. */\nexport type NavigationRole = NavigationItemType;\n\n/** Options for standalone role-based list navigation. */\nexport interface UseNavigationOptions<TValue extends string = string> {\n  /** Ref to the container element holding navigable items. */\n  containerRef: RefObject<HTMLElement | null>;\n  /** ARIA role used to query navigable children within the container. */\n  role: NavigationRole;\n  /** Controlled highlight value. When provided, the hook operates in controlled mode. */\n  highlighted?: TValue | null;\n  /** Initial highlighted value in uncontrolled mode. */\n  defaultHighlighted?: TValue | null;\n  /** Called when the controlled highlight value should change. */\n  onHighlightChange?: (value: TValue | null) => void;\n  /** Called when an item is selected via Space key. */\n  onSelect?: (value: TValue, event: globalThis.KeyboardEvent) => void;\n  /** Called when Enter is pressed on the highlighted item. */\n  onEnter?: (value: TValue, event: globalThis.KeyboardEvent) => void;\n  /** Wrap around when reaching the first or last item. */\n  wrap?: boolean;\n  /** Whether the navigation hook is active. */\n  enabled?: boolean;\n  /** Call preventDefault() on handled keyboard events. */\n  preventDefault?: boolean;\n  /**\n   * Called when the user tries to navigate past the first or last item.\n   * Receives the direction, originating event, and key that hit the boundary.\n   */\n  onNavigationBoundaryReached?: (\n    direction: \"previous\" | \"next\",\n    event: globalThis.KeyboardEvent,\n    key: string,\n  ) => void;\n  /** Custom key names to move highlight up or left. */\n  upKeys?: readonly string[];\n  /** Custom key names to move highlight down or right. */\n  downKeys?: readonly string[];\n  /** Navigation axis for default arrow keys. */\n  orientation?: \"vertical\" | \"horizontal\";\n  /** Skip aria-disabled, data-disabled, and native disabled items during navigation. */\n  skipDisabled?: boolean;\n  /** Move DOM focus to the next item instead of only updating highlight state. */\n  moveFocus?: boolean;\n  /** Ignore items owned by nested composite containers such as nested listboxes. */\n  scopeToContainer?: boolean;\n  /** Advanced owner selector override for roles without a standard composite owner. */\n  ownerSelector?: string | null;\n}\n\n/** Return value from `useNavigation`. */\nexport interface UseNavigationReturn<TValue extends string = string> {\n  /** The value of the currently highlighted item, or null. */\n  highlighted: TValue | null;\n  /** Returns true if the given value is the highlighted item. */\n  isHighlighted: (value: TValue) => boolean;\n  /** Imperatively set the highlighted item. Pass null to clear. */\n  highlight: (value: TValue | null) => void;\n  /** Keyboard event handler to attach to the container element. */\n  onKeyDown: (event: KeyboardEvent) => void;\n}\n\ninterface UseNavigationCoreReturn<TValue extends string = string> {\n  highlighted: TValue | null;\n  isHighlighted: (value: TValue) => boolean;\n  highlight: (value: TValue | null) => void;\n  move: (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => void;\n  focusIndex: (index: number) => void;\n  handleSelect: (event: globalThis.KeyboardEvent) => void;\n  handleEnter: (event: globalThis.KeyboardEvent) => void;\n  getElements: () => HTMLElement[];\n}\n\nfunction queryNavigationElements(\n  containerRef: RefObject<HTMLElement | null>,\n  role: NavigationRole,\n  skipDisabled: boolean,\n  scopeToContainer: boolean,\n  ownerSelector: string | null | undefined,\n): HTMLElement[] {\n  return getNavigationItems(containerRef.current, {\n    type: role,\n    skipDisabled,\n    scopeToContainer,\n    ownerSelector,\n  });\n}\n\nfunction wrapIndex(index: number, length: number, wrap: boolean): number | null {\n  if (index < 0) return wrap ? length - 1 : null;\n  if (index >= length) return wrap ? 0 : null;\n  return index;\n}\n\n/**\n * Shared list-navigation state machine used by the standalone and provider-backed\n * navigation hooks.\n */\nexport function useNavigationCore<TValue extends string = string>({\n  containerRef,\n  role,\n  highlighted: controlledHighlighted,\n  defaultHighlighted = null,\n  onSelect,\n  onEnter,\n  onHighlightChange,\n  wrap = true,\n  onNavigationBoundaryReached,\n  skipDisabled = true,\n  moveFocus = false,\n  scopeToContainer = true,\n  ownerSelector,\n}: UseNavigationOptions<TValue>): UseNavigationCoreReturn<TValue> {\n  const [internalHighlighted, setInternalHighlighted] = useState<TValue | null>(defaultHighlighted);\n  const isControlled = controlledHighlighted !== undefined;\n  const highlighted = isControlled ? (controlledHighlighted ?? null) : internalHighlighted;\n\n  const setFocusedValue = (nextValue: TValue | null) => {\n    if (!isControlled) setInternalHighlighted(nextValue);\n    onHighlightChange?.(nextValue);\n  };\n\n  const getElements = () =>\n    queryNavigationElements(containerRef, role, skipDisabled, scopeToContainer, ownerSelector);\n\n  const getFocusedIndex = (): number => {\n    const elements = getElements();\n    if (elements.length === 0) return -1;\n\n    const focusedIndex = elements.findIndex(containsActiveElement);\n    if (focusedIndex >= 0) return focusedIndex;\n\n    if (highlighted !== null) {\n      const index = elements.findIndex((el) => el.dataset.value === highlighted);\n      if (index >= 0) return index;\n    }\n\n    return -1;\n  };\n\n  const getCurrentValue = (): TValue | null => {\n    const focusedValue = getFocusedNavigationValue(containerRef.current, {\n      type: role,\n      skipDisabled,\n      scopeToContainer,\n      ownerSelector,\n    });\n    // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.\n    if (focusedValue !== null) return focusedValue as TValue;\n\n    const elements = getElements();\n\n    if (highlighted !== null) {\n      return elements.some((el) => el.dataset.value === highlighted) ? highlighted : null;\n    }\n\n    return null;\n  };\n\n  const focusIndex = (index: number) => {\n    const elements = getElements();\n    const el = elements[index];\n    if (!el) return;\n    const nextValue = el.dataset.value;\n    if (nextValue === undefined) return;\n\n    el.scrollIntoView?.({ block: \"nearest\" });\n    if (moveFocus) el.focus();\n    // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.\n    setFocusedValue(nextValue as TValue);\n  };\n\n  const move = (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => {\n    const elements = getElements();\n    if (elements.length === 0) return;\n\n    const current = getFocusedIndex();\n    const rawNext = current + delta;\n    const next = wrapIndex(rawNext, elements.length, wrap);\n    if (next === null) {\n      const direction = delta < 0 ? \"previous\" : \"next\";\n      if (event && key) onNavigationBoundaryReached?.(direction, event, key);\n      return;\n    }\n\n    focusIndex(next);\n  };\n\n  const handleSelect = (event: globalThis.KeyboardEvent) => {\n    const currentValue = getCurrentValue();\n    if (currentValue !== null) onSelect?.(currentValue, event);\n  };\n\n  const handleEnter = (event: globalThis.KeyboardEvent) => {\n    const currentValue = getCurrentValue();\n    if (currentValue === null) return;\n    if (onEnter) onEnter(currentValue, event);\n    else onSelect?.(currentValue, event);\n  };\n\n  const isHighlighted = (v: TValue) => highlighted === v;\n  const highlight = (v: TValue | null) => setFocusedValue(v);\n\n  return {\n    highlighted,\n    isHighlighted,\n    highlight,\n    move,\n    focusIndex,\n    handleSelect,\n    handleEnter,\n    getElements,\n  };\n}\n\n/**\n * Adds standalone keyboard navigation, selection, and focus tracking to a\n * role-based list. Attach the returned `onKeyDown` handler to the container.\n */\nexport function useNavigation<TValue extends string = string>(\n  options: UseNavigationOptions<TValue>,\n): UseNavigationReturn<TValue> {\n  const {\n    enabled = true,\n    preventDefault = true,\n    orientation = \"vertical\",\n    upKeys,\n    downKeys,\n    onEnter,\n    onSelect,\n  } = options;\n\n  const { resolvedUpKeys, resolvedDownKeys } = resolveDirectionKeys(orientation, upKeys, downKeys);\n\n  const {\n    highlighted,\n    isHighlighted,\n    highlight,\n    move,\n    focusIndex,\n    handleSelect,\n    handleEnter,\n    getElements,\n  } = useNavigationCore(options);\n  const handlesEnter = Boolean(onEnter || onSelect);\n  const handlesSpace = Boolean(onSelect);\n\n  const onKeyDown = (event: KeyboardEvent) => {\n    if (!enabled) return;\n\n    const key = event.key;\n    const isMoveKey = resolvedUpKeys.includes(key) || resolvedDownKeys.includes(key);\n    const isSpecialKey =\n      key === \"Home\" ||\n      key === \"End\" ||\n      (key === \"Enter\" && handlesEnter) ||\n      (key === \" \" && handlesSpace);\n    if (!isMoveKey && !isSpecialKey) return;\n\n    const elements = getElements();\n\n    // Editable target guard: when an editable element bubbles a key into a wrapper\n    // that ALSO owns the navigation container, let the native control handle the key.\n    // We only skip when:\n    //   1) the event target is editable,\n    //   2) the target is NOT itself a navigation item,\n    //   3) currentTarget is an ancestor of the items (natural bubble case),\n    //      so the user did not explicitly forward the event from the editable.\n    if (isEditableElement(event.target)) {\n      const target = event.target as HTMLElement;\n      const isOwnItem = elements.some((el) => el === target || el.contains(target));\n      const currentTarget = event.currentTarget;\n      const ownsItems =\n        currentTarget != null &&\n        elements.length > 0 &&\n        elements.every((el) => currentTarget.contains(el));\n      if (!isOwnItem && ownsItems) return;\n    }\n\n    if (preventDefault) event.preventDefault();\n\n    dispatchNavigationKey(key, {\n      resolvedUpKeys,\n      resolvedDownKeys,\n      move: (delta) => move(delta, event.nativeEvent, key),\n      focusIndex,\n      handleSelect: handlesSpace ? (e) => handleSelect(e) : undefined,\n      handleEnter: handlesEnter ? (e) => handleEnter(e) : undefined,\n      total: elements.length,\n      nativeEvent: event.nativeEvent,\n    });\n  };\n\n  return { highlighted, isHighlighted, highlight, onKeyDown };\n}\n",
+    "raw": "\"use client\";\n\nimport { type KeyboardEvent, type RefObject, useState } from \"react\";\nimport { dispatchNavigationKey, resolveDirectionKeys } from \"../core/navigation-dispatch.js\";\nimport { isEditableElement } from \"../dom/element-guards.js\";\nimport { containsActiveElement } from \"../dom/focusable.js\";\nimport {\n  getFocusedNavigationValue,\n  getNavigationItems,\n  type NavigationItemType,\n} from \"../dom/navigation-items.js\";\n\n/** ARIA role or data-contract item type used for navigation item discovery. */\nexport type NavigationRole = NavigationItemType;\n\n/** Options for standalone role-based list navigation. */\nexport interface UseNavigationOptions<TValue extends string = string> {\n  /** Ref to the container element holding navigable items. */\n  containerRef: RefObject<HTMLElement | null>;\n  /** ARIA role used to query navigable children within the container. */\n  role: NavigationRole;\n  /** Controlled highlight value. When provided, the hook operates in controlled mode. */\n  highlighted?: TValue | null;\n  /** Initial highlighted value in uncontrolled mode. */\n  defaultHighlighted?: TValue | null;\n  /** Called when the controlled highlight value should change. */\n  onHighlightChange?: (value: TValue | null) => void;\n  /** Called when an item is selected via Space key. */\n  onSelect?: (value: TValue, event: globalThis.KeyboardEvent) => void;\n  /** Called when Enter is pressed on the highlighted item. */\n  onEnter?: (value: TValue, event: globalThis.KeyboardEvent) => void;\n  /** Wrap around when reaching the first or last item. */\n  wrap?: boolean;\n  /** Whether the navigation hook is active. */\n  enabled?: boolean;\n  /** Call preventDefault() on handled keyboard events. */\n  preventDefault?: boolean;\n  /**\n   * Called when the user tries to navigate past the first or last item.\n   * Receives the direction, originating event, and key that hit the boundary.\n   */\n  onNavigationBoundaryReached?: (\n    direction: \"previous\" | \"next\",\n    event: globalThis.KeyboardEvent,\n    key: string,\n  ) => void;\n  /** Custom key names to move highlight up or left. */\n  upKeys?: readonly string[];\n  /** Custom key names to move highlight down or right. */\n  downKeys?: readonly string[];\n  /** Navigation axis for default arrow keys. */\n  orientation?: \"vertical\" | \"horizontal\";\n  /** Skip aria-disabled, data-disabled, and native disabled items during navigation. */\n  skipDisabled?: boolean;\n  /** Move DOM focus to the next item instead of only updating highlight state. */\n  moveFocus?: boolean;\n  /** Ignore items owned by nested composite containers such as nested listboxes. */\n  scopeToContainer?: boolean;\n  /** Advanced owner selector override for roles without a standard composite owner. */\n  ownerSelector?: string | null;\n}\n\n/** Return value from `useNavigation`. */\nexport interface UseNavigationReturn<TValue extends string = string> {\n  /** The value of the currently highlighted item, or null. */\n  highlighted: TValue | null;\n  /** Returns true if the given value is the highlighted item. */\n  isHighlighted: (value: TValue) => boolean;\n  /** Imperatively set the highlighted item. Pass null to clear. */\n  highlight: (value: TValue | null) => void;\n  /** Keyboard event handler to attach to the container element. */\n  onKeyDown: (event: KeyboardEvent) => void;\n}\n\ninterface UseNavigationCoreReturn<TValue extends string = string> {\n  highlighted: TValue | null;\n  isHighlighted: (value: TValue) => boolean;\n  highlight: (value: TValue | null) => void;\n  move: (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => void;\n  focusIndex: (index: number) => void;\n  handleSelect: (event: globalThis.KeyboardEvent) => void;\n  handleEnter: (event: globalThis.KeyboardEvent) => void;\n  getElements: () => HTMLElement[];\n}\n\nfunction queryNavigationElements(\n  containerRef: RefObject<HTMLElement | null>,\n  role: NavigationRole,\n  skipDisabled: boolean,\n  scopeToContainer: boolean,\n  ownerSelector: string | null | undefined,\n): HTMLElement[] {\n  return getNavigationItems(containerRef.current, {\n    type: role,\n    skipDisabled,\n    scopeToContainer,\n    ownerSelector,\n  });\n}\n\nfunction wrapIndex(index: number, length: number, wrap: boolean): number | null {\n  if (index < 0) return wrap ? length - 1 : null;\n  if (index >= length) return wrap ? 0 : null;\n  return index;\n}\n\n/**\n * Shared list-navigation state machine used by the standalone and provider-backed\n * navigation hooks.\n */\nexport function useNavigationCore<TValue extends string = string>({\n  containerRef,\n  role,\n  highlighted: controlledHighlighted,\n  defaultHighlighted = null,\n  onSelect,\n  onEnter,\n  onHighlightChange,\n  wrap = true,\n  onNavigationBoundaryReached,\n  skipDisabled = true,\n  moveFocus = false,\n  scopeToContainer = true,\n  ownerSelector,\n}: UseNavigationOptions<TValue>): UseNavigationCoreReturn<TValue> {\n  const [internalHighlighted, setInternalHighlighted] = useState<TValue | null>(defaultHighlighted);\n  const isControlled = controlledHighlighted !== undefined;\n  const highlighted = isControlled ? (controlledHighlighted ?? null) : internalHighlighted;\n\n  const setFocusedValue = (nextValue: TValue | null) => {\n    if (!isControlled) setInternalHighlighted(nextValue);\n    onHighlightChange?.(nextValue);\n  };\n\n  const getElements = () =>\n    queryNavigationElements(containerRef, role, skipDisabled, scopeToContainer, ownerSelector);\n\n  const getFocusedIndex = (): number => {\n    const elements = getElements();\n    if (elements.length === 0) return -1;\n\n    const focusedIndex = elements.findIndex(containsActiveElement);\n    if (focusedIndex >= 0) return focusedIndex;\n\n    if (highlighted !== null) {\n      const index = elements.findIndex((el) => el.dataset.value === highlighted);\n      if (index >= 0) return index;\n    }\n\n    return -1;\n  };\n\n  const getCurrentValue = (): TValue | null => {\n    const focusedValue = getFocusedNavigationValue(containerRef.current, {\n      type: role,\n      skipDisabled,\n      scopeToContainer,\n      ownerSelector,\n    });\n    // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.\n    if (focusedValue !== null) return focusedValue as TValue;\n\n    const elements = getElements();\n\n    if (highlighted !== null) {\n      return elements.some((el) => el.dataset.value === highlighted) ? highlighted : null;\n    }\n\n    return null;\n  };\n\n  const focusIndex = (index: number) => {\n    const elements = getElements();\n    const el = elements[index];\n    if (!el) return;\n    const nextValue = el.dataset.value;\n    if (nextValue === undefined) return;\n\n    el.scrollIntoView?.({ block: \"nearest\" });\n    if (moveFocus) el.focus();\n    // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.\n    setFocusedValue(nextValue as TValue);\n  };\n\n  const move = (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => {\n    const elements = getElements();\n    if (elements.length === 0) return;\n\n    const current = getFocusedIndex();\n    const rawNext = current + delta;\n    const next = wrapIndex(rawNext, elements.length, wrap);\n    if (next === null) {\n      const direction = delta < 0 ? \"previous\" : \"next\";\n      if (event && key) onNavigationBoundaryReached?.(direction, event, key);\n      return;\n    }\n\n    focusIndex(next);\n  };\n\n  const handleSelect = (event: globalThis.KeyboardEvent) => {\n    const currentValue = getCurrentValue();\n    if (currentValue !== null) onSelect?.(currentValue, event);\n  };\n\n  const handleEnter = (event: globalThis.KeyboardEvent) => {\n    const currentValue = getCurrentValue();\n    if (currentValue === null) return;\n    if (onEnter) onEnter(currentValue, event);\n    else onSelect?.(currentValue, event);\n  };\n\n  const isHighlighted = (v: TValue) => highlighted === v;\n  const highlight = (v: TValue | null) => setFocusedValue(v);\n\n  return {\n    highlighted,\n    isHighlighted,\n    highlight,\n    move,\n    focusIndex,\n    handleSelect,\n    handleEnter,\n    getElements,\n  };\n}\n\n/**\n * Adds standalone keyboard navigation, selection, and focus tracking to a\n * role-based list. Attach the returned `onKeyDown` handler to the container.\n */\nexport function useNavigation<TValue extends string = string>(\n  options: UseNavigationOptions<TValue>,\n): UseNavigationReturn<TValue> {\n  const {\n    enabled = true,\n    preventDefault = true,\n    orientation = \"vertical\",\n    upKeys,\n    downKeys,\n    onEnter,\n    onSelect,\n  } = options;\n\n  const { resolvedUpKeys, resolvedDownKeys } = resolveDirectionKeys(orientation, upKeys, downKeys);\n\n  const {\n    highlighted,\n    isHighlighted,\n    highlight,\n    move,\n    focusIndex,\n    handleSelect,\n    handleEnter,\n    getElements,\n  } = useNavigationCore(options);\n  const handlesEnter = Boolean(onEnter || onSelect);\n  const handlesSpace = Boolean(onSelect);\n\n  const onKeyDown = (event: KeyboardEvent) => {\n    if (!enabled) return;\n    if (event.ctrlKey || event.metaKey || event.altKey) return;\n\n    const key = event.key;\n    const isMoveKey = resolvedUpKeys.includes(key) || resolvedDownKeys.includes(key);\n    const isSpecialKey =\n      key === \"Home\" ||\n      key === \"End\" ||\n      (key === \"Enter\" && handlesEnter) ||\n      (key === \" \" && handlesSpace);\n    if (!isMoveKey && !isSpecialKey) return;\n\n    const elements = getElements();\n\n    // Editable target guard: when an editable element bubbles a key into a wrapper\n    // that ALSO owns the navigation container, let the native control handle the key.\n    // We only skip when:\n    //   1) the event target is editable,\n    //   2) the target is NOT itself a navigation item,\n    //   3) currentTarget is an ancestor of the items (natural bubble case),\n    //      so the user did not explicitly forward the event from the editable.\n    if (isEditableElement(event.target)) {\n      const target = event.target as HTMLElement;\n      const isOwnItem = elements.some((el) => el === target || el.contains(target));\n      const currentTarget = event.currentTarget;\n      const ownsItems =\n        currentTarget != null &&\n        elements.length > 0 &&\n        elements.every((el) => currentTarget.contains(el));\n      if (!isOwnItem && (ownsItems || elements.length === 0)) return;\n    }\n\n    if (preventDefault) event.preventDefault();\n\n    dispatchNavigationKey(key, {\n      resolvedUpKeys,\n      resolvedDownKeys,\n      move: (delta) => move(delta, event.nativeEvent, key),\n      focusIndex,\n      handleSelect: handlesSpace ? (e) => handleSelect(e) : undefined,\n      handleEnter: handlesEnter ? (e) => handleEnter(e) : undefined,\n      total: elements.length,\n      nativeEvent: event.nativeEvent,\n    });\n  };\n\n  return { highlighted, isHighlighted, highlight, onKeyDown };\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -8437,10 +8437,87 @@
       },
       {
         "number": 262,
-        "content": []
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "event",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "ctrlKey ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "||",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "event",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "metaKey ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "||",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "event",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "altKey) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
       },
       {
         "number": 263,
+        "content": []
+      },
+      {
+        "number": 264,
         "content": [
           {
             "text": "    ",
@@ -8489,7 +8566,7 @@
         ]
       },
       {
-        "number": 264,
+        "number": 265,
         "content": [
           {
             "text": "    ",
@@ -8566,7 +8643,7 @@
         ]
       },
       {
-        "number": 265,
+        "number": 266,
         "content": [
           {
             "text": "    ",
@@ -8595,7 +8672,7 @@
         ]
       },
       {
-        "number": 266,
+        "number": 267,
         "content": [
           {
             "text": "      key ",
@@ -8632,7 +8709,7 @@
         ]
       },
       {
-        "number": 267,
+        "number": 268,
         "content": [
           {
             "text": "      key ",
@@ -8669,7 +8746,7 @@
         ]
       },
       {
-        "number": 268,
+        "number": 269,
         "content": [
           {
             "text": "      (key ",
@@ -8714,7 +8791,7 @@
         ]
       },
       {
-        "number": 269,
+        "number": 270,
         "content": [
           {
             "text": "      (key ",
@@ -8759,7 +8836,7 @@
         ]
       },
       {
-        "number": 270,
+        "number": 271,
         "content": [
           {
             "text": "    ",
@@ -8808,11 +8885,11 @@
         ]
       },
       {
-        "number": 271,
+        "number": 272,
         "content": []
       },
       {
-        "number": 272,
+        "number": 273,
         "content": [
           {
             "text": "    ",
@@ -8857,11 +8934,11 @@
         ]
       },
       {
-        "number": 273,
+        "number": 274,
         "content": []
       },
       {
-        "number": 274,
+        "number": 275,
         "content": [
           {
             "text": "    //",
@@ -8874,7 +8951,7 @@
         ]
       },
       {
-        "number": 275,
+        "number": 276,
         "content": [
           {
             "text": "    //",
@@ -8887,7 +8964,7 @@
         ]
       },
       {
-        "number": 276,
+        "number": 277,
         "content": [
           {
             "text": "    //",
@@ -8900,7 +8977,7 @@
         ]
       },
       {
-        "number": 277,
+        "number": 278,
         "content": [
           {
             "text": "    //",
@@ -8913,7 +8990,7 @@
         ]
       },
       {
-        "number": 278,
+        "number": 279,
         "content": [
           {
             "text": "    //",
@@ -8926,7 +9003,7 @@
         ]
       },
       {
-        "number": 279,
+        "number": 280,
         "content": [
           {
             "text": "    //",
@@ -8939,7 +9016,7 @@
         ]
       },
       {
-        "number": 280,
+        "number": 281,
         "content": [
           {
             "text": "    //",
@@ -8952,7 +9029,7 @@
         ]
       },
       {
-        "number": 281,
+        "number": 282,
         "content": [
           {
             "text": "    ",
@@ -8993,7 +9070,7 @@
         ]
       },
       {
-        "number": 282,
+        "number": 283,
         "content": [
           {
             "text": "      ",
@@ -9054,7 +9131,7 @@
         ]
       },
       {
-        "number": 283,
+        "number": 284,
         "content": [
           {
             "text": "      ",
@@ -9163,7 +9240,7 @@
         ]
       },
       {
-        "number": 284,
+        "number": 285,
         "content": [
           {
             "text": "      ",
@@ -9212,7 +9289,7 @@
         ]
       },
       {
-        "number": 285,
+        "number": 286,
         "content": [
           {
             "text": "      ",
@@ -9241,7 +9318,7 @@
         ]
       },
       {
-        "number": 286,
+        "number": 287,
         "content": [
           {
             "text": "        currentTarget ",
@@ -9270,7 +9347,7 @@
         ]
       },
       {
-        "number": 287,
+        "number": 288,
         "content": [
           {
             "text": "        ",
@@ -9315,7 +9392,7 @@
         ]
       },
       {
-        "number": 288,
+        "number": 289,
         "content": [
           {
             "text": "        ",
@@ -9384,7 +9461,7 @@
         ]
       },
       {
-        "number": 289,
+        "number": 290,
         "content": [
           {
             "text": "      ",
@@ -9411,7 +9488,47 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " ownsItems) ",
+            "text": " (ownsItems ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "||",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "elements",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "length",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ")) ",
             "color": "var(--code-variable)"
           },
           {
@@ -9425,7 +9542,7 @@
         ]
       },
       {
-        "number": 290,
+        "number": 291,
         "content": [
           {
             "text": "    ",
@@ -9438,11 +9555,11 @@
         ]
       },
       {
-        "number": 291,
+        "number": 292,
         "content": []
       },
       {
-        "number": 292,
+        "number": 293,
         "content": [
           {
             "text": "    ",
@@ -9479,11 +9596,11 @@
         ]
       },
       {
-        "number": 293,
+        "number": 294,
         "content": []
       },
       {
-        "number": 294,
+        "number": 295,
         "content": [
           {
             "text": "    ",
@@ -9512,7 +9629,7 @@
         ]
       },
       {
-        "number": 295,
+        "number": 296,
         "content": [
           {
             "text": "      resolvedUpKeys",
@@ -9525,7 +9642,7 @@
         ]
       },
       {
-        "number": 296,
+        "number": 297,
         "content": [
           {
             "text": "      resolvedDownKeys",
@@ -9538,7 +9655,7 @@
         ]
       },
       {
-        "number": 297,
+        "number": 298,
         "content": [
           {
             "text": "      ",
@@ -9623,7 +9740,7 @@
         ]
       },
       {
-        "number": 298,
+        "number": 299,
         "content": [
           {
             "text": "      focusIndex",
@@ -9636,7 +9753,7 @@
         ]
       },
       {
-        "number": 299,
+        "number": 300,
         "content": [
           {
             "text": "      handleSelect",
@@ -9709,7 +9826,7 @@
         ]
       },
       {
-        "number": 300,
+        "number": 301,
         "content": [
           {
             "text": "      handleEnter",
@@ -9782,7 +9899,7 @@
         ]
       },
       {
-        "number": 301,
+        "number": 302,
         "content": [
           {
             "text": "      total",
@@ -9815,7 +9932,7 @@
         ]
       },
       {
-        "number": 302,
+        "number": 303,
         "content": [
           {
             "text": "      nativeEvent",
@@ -9848,7 +9965,7 @@
         ]
       },
       {
-        "number": 303,
+        "number": 304,
         "content": [
           {
             "text": "    ",
@@ -9869,7 +9986,7 @@
         ]
       },
       {
-        "number": 304,
+        "number": 305,
         "content": [
           {
             "text": "  ",
@@ -9882,11 +9999,11 @@
         ]
       },
       {
-        "number": 305,
+        "number": 306,
         "content": []
       },
       {
-        "number": 306,
+        "number": 307,
         "content": [
           {
             "text": "  ",
@@ -9939,7 +10056,7 @@
         ]
       },
       {
-        "number": 307,
+        "number": 308,
         "content": [
           {
             "text": "}",
@@ -9948,7 +10065,7 @@
         ]
       },
       {
-        "number": 308,
+        "number": 309,
         "content": []
       }
     ]

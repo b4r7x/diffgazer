@@ -24,7 +24,7 @@ export const checkboxDoc: ComponentDoc = {
     {
       title: "Requires @diffgazer/keys (package mode)",
       content:
-        "CheckboxGroup's arrow-key navigation imports from the required @diffgazer/keys peer. Package/npm consumers need @diffgazer/keys as a peer after public packages are published. Before publication, validate package mode with a locally packed @diffgazer/keys tarball and use public package commands only after `npm view @diffgazer/keys version` succeeds. Importing @diffgazer/ui/components/checkbox without keys fails at module load with an error naming the missing @diffgazer/keys package. Standalone Checkbox still needs it because the subpath bundles the group. Copy/dgadd consumers do not need the package — copy mode rewrites the keyboard hooks to local source.",
+        "CheckboxGroup's arrow-key navigation imports from the required @diffgazer/keys peer. Package consumers must install @diffgazer/keys with @diffgazer/ui; packages are not yet published to npm, so use a local checkout until the first release. Importing @diffgazer/ui/components/checkbox without keys fails at module load with an error naming the missing @diffgazer/keys package. Standalone Checkbox still needs it because the subpath bundles the group. Copy/dgadd consumers do not need the package — copy mode rewrites the keyboard hooks to local source.",
     },
     {
       title: "Indeterminate State",
@@ -246,25 +246,25 @@ export const checkboxDoc: ComponentDoc = {
         description: "Requires at least one enabled item to be selected.",
       },
       label: {
-        type: "ReactNode",
+        type: "string",
         required: false,
         defaultValue: null,
         description:
-          "Visible group label. Also provides the accessible name when aria-label is omitted.",
+          "Visible group label rendered before the items. Also names the group unless aria-label overrides it.",
       },
       "aria-label": {
         type: "string",
         required: false,
-        defaultValue: "label text",
+        defaultValue: null,
         description:
-          "Accessible name for the group. Overrides the label-derived fallback when supplied.",
+          "Explicit accessible name for the group. Overrides the visible label when supplied.",
       },
       "aria-labelledby": {
         type: "string",
         required: false,
         defaultValue: null,
         description:
-          "ID reference for an external label. Use when another element already names the group.",
+          "ID reference for an external label. Composed with the visible label unless aria-label is supplied.",
       },
     },
     CheckboxItem: {

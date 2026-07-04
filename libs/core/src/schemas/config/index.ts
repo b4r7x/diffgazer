@@ -89,7 +89,6 @@ export {
   SELECTABLE_THEME_OPTIONS,
   type SelectableTheme,
   type SettingsOption,
-  THEME_OPTIONS,
   toSelectableTheme,
 } from "./settings-options.js";
 export {

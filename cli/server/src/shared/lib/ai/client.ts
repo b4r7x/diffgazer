@@ -4,7 +4,7 @@ import { CATALOG_SNAPSHOT, findModelLimit, PROVIDER_OVERLAY } from "@diffgazer/c
 import { createError } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { generateObject, type LanguageModel, NoObjectGeneratedError } from "ai";
+import { generateText, type LanguageModel, NoObjectGeneratedError, Output } from "ai";
 import { createZhipu } from "zhipu-ai-provider";
 import type { z } from "zod";
 import { getStore } from "../config/store.js";
@@ -107,7 +107,7 @@ function recoverObject<T extends z.ZodType>(
   if (parsed === undefined) return null;
 
   const full = schema.safeParse(parsed);
-  if (full.success) return { value: full.data as z.infer<T>, dropped: 0 };
+  if (full.success) return { value: full.data, dropped: 0 };
 
   if (!parsed || typeof parsed !== "object") return null;
   const envelope = parsed as Record<string, unknown>;
@@ -122,7 +122,24 @@ function recoverObject<T extends z.ZodType>(
   const salvaged = schema.safeParse({ ...envelope, issues: keptIssues });
   if (!salvaged.success) return null;
 
-  return { value: salvaged.data as z.infer<T>, dropped: allIssues.length - keptIssues.length };
+  return { value: salvaged.data, dropped: allIssues.length - keptIssues.length };
+}
+
+function salvageTruncatedOutput<T extends z.ZodType>(
+  schema: T,
+  rawText: string | undefined,
+  config: AIClientConfig,
+): Result<z.infer<T>, AIError> | null {
+  const recovered = recoverObject(schema, rawText);
+  if (!recovered) return null;
+  if (recovered.dropped > 0) {
+    log("warn", "ai-client.recovered-issues", {
+      provider: config.provider,
+      model: config.model,
+      droppedIssues: recovered.dropped,
+    });
+  }
+  return ok(recovered.value);
 }
 
 function resolveAbortSignal(
@@ -260,38 +277,36 @@ export function createAIClient(config: AIClientConfig): Result<AIClient, AIError
 
       try {
         const abortSignal = resolveAbortSignal(config, options?.signal);
-        const result = await generateObject({
+        const result = await generateText({
           model: languageModel,
           prompt,
-          schema,
+          output: Output.object<z.infer<T>>({ schema }),
           temperature: config.temperature ?? DEFAULT_TEMPERATURE,
           maxOutputTokens,
           maxRetries: config.maxRetries ?? DEFAULT_MAX_RETRIES,
           abortSignal,
         });
 
-        return ok(result.object as z.infer<T>);
+        // `.output` only resolves when finishReason is "stop"; any other finish
+        // reason (e.g. a truncated response) throws a bare NoOutputGeneratedError
+        // with no salvageable text attached. Check finishReason directly so a
+        // truncated response can still be salvaged from the raw text.
+        if (result.finishReason === "length") {
+          const salvaged = salvageTruncatedOutput(schema, result.text, config);
+          if (salvaged) return salvaged;
+          return err(
+            createError<AIErrorCode>(
+              "MODEL_ERROR",
+              `The model response was cut off at its output limit (${maxOutputTokens} tokens) before producing valid results. Try a model with a larger output limit or review a smaller diff.`,
+            ),
+          );
+        }
+
+        return ok(result.output);
       } catch (error) {
         if (NoObjectGeneratedError.isInstance(error)) {
-          const recovered = recoverObject(schema, error.text);
-          if (recovered) {
-            if (recovered.dropped > 0) {
-              log("warn", "ai-client.recovered-issues", {
-                provider: config.provider,
-                model: config.model,
-                droppedIssues: recovered.dropped,
-              });
-            }
-            return ok(recovered.value);
-          }
-          if (error.finishReason === "length") {
-            return err(
-              createError<AIErrorCode>(
-                "MODEL_ERROR",
-                `The model response was cut off at its output limit (${maxOutputTokens} tokens) before producing valid results. Try a model with a larger output limit or review a smaller diff.`,
-              ),
-            );
-          }
+          const salvaged = salvageTruncatedOutput(schema, error.text, config);
+          if (salvaged) return salvaged;
         }
         return err(classifyApiError(error));
       }

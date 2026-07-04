@@ -27,6 +27,15 @@ const CATEGORY_META: Record<string, CategoryMeta> = {
   performance: { icon: "zap", iconColor: "text-warning-text" },
 };
 
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return Boolean(
+    target.closest(
+      'a, button, input, textarea, select, [role="button"], [role="checkbox"], [role="radio"], [role="tab"], [contenteditable="true"]',
+    ),
+  );
+}
+
 interface ReviewSummaryViewProps {
   issues: ReviewIssue[];
   reviewId: string | null;
@@ -59,7 +68,7 @@ export function ReviewSummaryView({
     id: issue.id,
     title: issue.title,
     file: issue.file,
-    line: issue.line_start ?? 0,
+    line: issue.line_start,
     category: issue.category,
     severity: issue.severity,
   }));
@@ -72,7 +81,11 @@ export function ReviewSummaryView({
   };
 
   useScope("review-summary");
-  useKey("Enter", onEnterReview);
+  useKey("Enter", (event) => {
+    if (isInteractiveTarget(event.target)) return false;
+    onEnterReview();
+    return true;
+  });
   useKey("Escape", onBack);
 
   usePageFooter({

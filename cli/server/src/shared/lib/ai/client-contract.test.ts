@@ -42,7 +42,7 @@ describe("createLanguageModel real openai-compatible adapters", () => {
 
 const LIVE = process.env.DIFFGAZER_LIVE_AI === "1";
 
-describe.runIf(LIVE)("createLanguageModel live generateObject smoke (network-gated)", () => {
+describe.runIf(LIVE)("createLanguageModel live generateText smoke (network-gated)", () => {
   it.each([
     { provider: "groq" as const, keyEnv: "GROQ_API_KEY" },
     { provider: "cerebras" as const, keyEnv: "CEREBRAS_API_KEY" },

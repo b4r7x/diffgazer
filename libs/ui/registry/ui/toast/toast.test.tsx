@@ -10,7 +10,7 @@ import { dismiss, remove, useToastStore } from "./toast-store";
 // toast content for screen readers, so text queries ignore it — exactly as
 // they ignore script/style — to assert against the rendered toast.
 const DEFAULT_IGNORE = "script, style";
-const TOAST_IGNORE = `${DEFAULT_IGNORE}, [data-slot="toast-announcer"]`;
+const TOAST_IGNORE = `${DEFAULT_IGNORE}, [data-slot="toast-announcer"], [data-slot="toast-announcer"] *`;
 const LAZY_CHUNK_TIMEOUT_MS = 8_000;
 
 function StoreReader({ onRead }: { onRead: (ids: string[]) => void }) {
@@ -306,6 +306,24 @@ describe("Toast", () => {
     expect(screen.getByText("Toast 6")).toBeInTheDocument();
   });
 
+  it("evicts the oldest persistent toast when max persistent toasts exist", () => {
+    render(<Toaster />);
+    act(() => {
+      for (let index = 1; index <= 5; index++) {
+        toast(`Persistent ${index}`, {
+          id: `persistent-${index}`,
+          action: <button type="button">Action {index}</button>,
+        });
+      }
+      toast("Incoming toast", { id: "persistent-incoming" });
+    });
+
+    expect(screen.queryByText("Persistent 1")).not.toBeInTheDocument();
+    expect(screen.getByText("Persistent 2")).toBeInTheDocument();
+    expect(screen.getByText("Persistent 5")).toBeInTheDocument();
+    expect(screen.getByText("Incoming toast")).toBeInTheDocument();
+  });
+
   it("dismisses a toast via toast.dismiss(id)", () => {
     render(<Toaster />);
     let id!: string;
@@ -486,6 +504,28 @@ describe("Toast", () => {
       toast("Saved changes", { message: "All files synced" });
     });
     expect(announcer?.textContent).toBe("Saved changes, All files synced");
+  });
+
+  it("queues repeated batched announcements and prunes them", () => {
+    const { container } = render(<Toaster />);
+    const announcer = container.querySelector('[data-slot="toast-announcer"]');
+
+    act(() => {
+      toast("Repeated notice", { id: "repeat-1" });
+      toast("Repeated notice", { id: "repeat-2" });
+      toast.error("Assertive notice", { id: "repeat-error" });
+    });
+
+    const entries = announcer?.querySelectorAll('[data-slot="toast-announcement"]') ?? [];
+    expect(Array.from(entries).map((entry) => entry.textContent)).toEqual([
+      "Repeated notice",
+      "Repeated notice",
+    ]);
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(announcer?.querySelectorAll('[data-slot="toast-announcement"]')).toHaveLength(0);
   });
 
   it("keeps error toasts on the role=alert path and out of the polite region", () => {
@@ -787,6 +827,108 @@ describe("Toast", () => {
     expect(screen.queryByText("Paused toast")).not.toBeInTheDocument();
   });
 
+  it("keeps auto-dismiss paused until hover, focus, and document-hidden causes all clear", () => {
+    render(<Toaster />);
+    act(() => {
+      toast("Multi-paused toast", {
+        duration: 3000,
+        action: <button type="button">Undo multi pause</button>,
+      });
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    const region = screen.getByRole("region", { name: "Notifications" });
+    const actionButton = screen.getByRole("button", { name: "Undo multi pause" });
+    act(() => {
+      actionButton.focus();
+    });
+    act(() => {
+      // fireEvent retained: hover under fake timers; userEvent uses real timers internally.
+      fireEvent.mouseEnter(region);
+    });
+    Object.defineProperty(document, "hidden", { value: true, writable: true, configurable: true });
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    act(() => {
+      // fireEvent retained: hover under fake timers; userEvent uses real timers internally.
+      fireEvent.mouseLeave(region);
+    });
+    Object.defineProperty(document, "hidden", { value: false, writable: true, configurable: true });
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(10000);
+    });
+    expect(screen.getByText("Multi-paused toast")).toBeInTheDocument();
+
+    act(() => {
+      actionButton.blur();
+    });
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(screen.queryByText("Multi-paused toast")).not.toBeInTheDocument();
+  });
+
+  it("renders toasts and document handlers from the last mounted Toaster", () => {
+    const firstRoot = document.createElement("div");
+    const secondRoot = document.createElement("div");
+    document.body.append(firstRoot, secondRoot);
+    const first = render(<Toaster hotkey="F8" />, { container: firstRoot });
+    const second = render(<Toaster hotkey="F9" />, { container: secondRoot });
+    let secondMounted = true;
+
+    try {
+      act(() => {
+        toast("Stacked toast", { id: "stacked-toast" });
+      });
+
+      expect(firstRoot).not.toHaveTextContent("Stacked toast");
+      expect(firstRoot.querySelector('[data-slot="toast-announcer"]')).toBeNull();
+      expect(secondRoot).toHaveTextContent("Stacked toast");
+      expect(secondRoot.querySelector('[data-slot="toast-announcer"]')).not.toBeNull();
+
+      const secondRegion = secondRoot.querySelector("[role='region'][aria-label='Notifications']");
+      expect(secondRegion).not.toBeNull();
+      act(() => {
+        document.body.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "F8", bubbles: true, cancelable: true }),
+        );
+      });
+      expect(document.activeElement).not.toBe(secondRegion);
+
+      act(() => {
+        document.body.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "F9", bubbles: true, cancelable: true }),
+        );
+      });
+      expect(document.activeElement).toBe(secondRegion);
+
+      act(() => {
+        second.unmount();
+      });
+      secondMounted = false;
+
+      expect(firstRoot).toHaveTextContent("Stacked toast");
+      expect(firstRoot.querySelector('[data-slot="toast-announcer"]')).not.toBeNull();
+    } finally {
+      if (secondMounted) second.unmount();
+      first.unmount();
+      firstRoot.remove();
+      secondRoot.remove();
+    }
+  });
+
   describe("variant layouts", () => {
     function findToast(text: string) {
       // querySelector: the toast root carries the data-variant attribute used
@@ -884,6 +1026,57 @@ describe("Toast", () => {
       const countdown = root?.querySelector('[data-slot="toast-countdown"]');
       expect(countdown).not.toBeNull();
       expect(countdown).toHaveAttribute("aria-hidden", "true");
+    });
+
+    it("starts timed countdown dismissal when a persistent toast is updated", () => {
+      render(<Toaster />);
+      act(() => {
+        toast("Waiting", { id: "countdown-update", variant: "countdown", duration: 0 });
+      });
+
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+      expect(screen.getByText("Waiting")).toBeInTheDocument();
+
+      act(() => {
+        toast("Timed", { id: "countdown-update", variant: "countdown", duration: 1000 });
+      });
+      expect(screen.queryByText("Waiting")).not.toBeInTheDocument();
+      expect(screen.getByText("Timed")).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(400);
+      });
+
+      const region = screen.getByRole("region", { name: "Notifications" });
+      act(() => {
+        // fireEvent retained: hover under fake timers; userEvent uses real timers internally.
+        fireEvent.mouseEnter(region);
+      });
+
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+      expect(screen.getByText("Timed")).toBeInTheDocument();
+
+      act(() => {
+        // fireEvent retained: hover under fake timers; userEvent uses real timers internally.
+        fireEvent.mouseLeave(region);
+      });
+
+      act(() => {
+        vi.advanceTimersByTime(599);
+      });
+      expect(screen.getByText("Timed")).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(screen.queryByText("Timed")).not.toBeInTheDocument();
     });
 
     it('variant="countdown" parks its rAF loop while paused and resumes on unpause (F-187)', () => {

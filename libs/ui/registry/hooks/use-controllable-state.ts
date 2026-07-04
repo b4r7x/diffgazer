@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
 /** Options for a value that can be controlled by props or owned internally. */
 export interface UseControllableStateOptions<T> {
@@ -32,13 +32,13 @@ export function useControllableState<T>({
   const isControlled = controlled ?? controlledValue !== undefined;
   const current = isControlled ? (controlledValue as T) : internal;
 
-  // Radix useCallbackRef pattern: read the controlled value and consumer
-  // onChange through a ref so setValue stays referentially stable across
-  // renders even when the consumer passes an inline onChange or a changing
-  // controlled value. Without this the memoized context values that depend on
-  // setValue would bust on every parent render.
+  // Effect-synced Radix useCallbackRef pattern: read the controlled value and
+  // consumer onChange through a ref so setValue stays referentially stable.
   const latest = useRef({ isControlled, controlledValue, onChange });
-  latest.current = { isControlled, controlledValue, onChange };
+
+  useLayoutEffect(() => {
+    latest.current = { isControlled, controlledValue, onChange };
+  });
 
   const setValue = useCallback((next: T | ((prev: T) => T)) => {
     const {

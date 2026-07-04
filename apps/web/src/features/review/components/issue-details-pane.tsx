@@ -112,7 +112,7 @@ export function IssueDetailsPane({
               title={issue.title}
               severity={issue.severity}
               file={issue.file}
-              line={issue.line_start ?? 0}
+              line={issue.line_start}
             />
 
             <TabsContent value="details" className="mt-0">
@@ -196,8 +196,9 @@ function DetailsTabContent({
 }) {
   const evidenceLines = issue.evidence
     .filter((e) => e.type === "code" && e.excerpt)
-    .map((e, i) => ({
-      number: e.range?.start ?? issue.line_start ?? i + 1,
+    .map((e, index) => ({
+      key: index,
+      number: e.range?.start,
       content: e.excerpt,
       state: "highlight" as CodeBlockLineState,
     }));
@@ -213,7 +214,7 @@ function DetailsTabContent({
               <CodeBlock.Content>
                 {evidenceLines.map((line) => (
                   <CodeBlock.Line
-                    key={`${line.number}-${line.content}`}
+                    key={line.key}
                     number={line.number}
                     content={line.content}
                     state={line.state}
@@ -246,8 +247,9 @@ function DetailsTabContent({
         <div className="mb-6">
           <SectionHeader>BETTER OPTIONS</SectionHeader>
           <ul className="list-disc pl-4 space-y-1">
-            {issue.betterOptions.map((opt) => (
-              <li key={opt} className="text-sm leading-relaxed text-foreground/80">
+            {issue.betterOptions.map((opt, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: option text can repeat; backend order is the rendered identity.
+              <li key={index} className="text-sm leading-relaxed text-foreground/80">
                 {opt}
               </li>
             ))}

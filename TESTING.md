@@ -93,7 +93,7 @@ Both `cli/add` and `cli/diffgazer` run on Vitest 4 with `environment: "node"`. S
 
 ### 10. Type-check enforcement
 
-Every workspace package has an explicit `test:types` script so `turbo run test:types` cannot silently skip packages through nonexistent tasks. Packages with type-level Vitest assertions use `vitest --typecheck --typecheck.only --run`; packages with ordinary runtime tests use `tsc --noEmit -p tsconfig.test.json` so test files participate in `tsconfig.test.json` without leaking jest-dom/vitest-globals types into production source. Artifact-only packages may use an explicit no-op script and must keep that exception obvious in `package.json`.
+Only `cli/add`, `cli/diffgazer`, `libs/keys`, and `libs/ui` define package-level `test:types` scripts today. `libs/keys` and `libs/ui` use `vitest --typecheck --typecheck.only --run`; `cli/add` and `cli/diffgazer` use `tsc --noEmit -p tsconfig.test.json`. Other packages type-check test files through their package `type-check` scripts, so `turbo run test:types` intentionally runs only where the script exists.
 
 ## Shared test helpers
 
@@ -115,9 +115,9 @@ Helpers live in per-package `testing/` directories (not a separate `@diffgazer/t
 
 Per-package after localized changes:
 ```
-pnpm --filter <pkg> type-check        # production type-check
+pnpm --filter <pkg> type-check        # source, test, and build-script type-check where applicable
 pnpm --filter <pkg> test              # runtime tests
-pnpm --filter <pkg> test:types        # type-check test files
+pnpm --filter <pkg> test:types        # only where the package defines this script
 ```
 
 After registry/UI/keys/CLI/docs changes (handoff-affecting):
@@ -149,7 +149,7 @@ pnpm run release-check
 ```
 Runs the `test-ci` chain plus pack dry-runs for all four public packages, `verify:monorepo`, and `git diff --check`.
 
-`turbo run test:types` is wired in `verify`, `test-ci`, and `release-check` as a required step.
+`turbo run test:types` is wired in `verify`, `test-ci`, and `release-check` as a required step for packages that define the script; the remaining packages cover test files through `type-check`.
 
 ### Catalog smoke: bundled snapshot (offline) + live models.dev (network)
 

@@ -5,7 +5,7 @@ import { createContext, useContext } from "react";
 /** Allowed code block variant values. */
 export type CodeBlockVariant = "hairline" | "bare" | "terminal";
 
-/** Root <figure>. */
+/** Decorative header chrome options. */
 export type CodeBlockChrome = "dots" | "none";
 
 /** Context value shared by code block. */
@@ -39,7 +39,6 @@ export interface CodeBlockContextValue {
 
 const CodeBlockContext = createContext<CodeBlockContextValue | null>(null);
 
-/** Root <figure>. */
 export const CodeBlockProvider = CodeBlockContext.Provider;
 
 /** Reads the required code block context. */

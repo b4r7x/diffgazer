@@ -1,17 +1,7 @@
 {
+  "extends": "../tsconfig.json",
   "references": [{ "path": "../tsconfig.test.json" }],
   "compilerOptions": {
-    "target": "ES2022",
-    "jsx": "react-jsx",
-    "module": "ESNext",
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
-    "noEmit": true,
-    "skipLibCheck": true,
-    "strict": true,
     "baseUrl": ".",
     "paths": {
       "@/components/ui/*": ["./ui/*"],

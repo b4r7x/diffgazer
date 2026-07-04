@@ -1,8 +1,8 @@
 import { readFileSync, writeFileSync } from "node:fs";
+import { computeIntegrity } from "@diffgazer/registry";
 import { createRemoveCommand, findOrphanedNpmDeps } from "@diffgazer/registry/cli";
 import { ctx, type ManifestItem, type ResolvedConfig } from "../context.js";
 import { readInstalledCssChunkHashes, removeCssChunks } from "../utils/css-chunks.js";
-import { sha256 } from "../utils/hashing.js";
 import {
   getKeysHookNames,
   resolveKeysCopyHookFiles,
@@ -168,9 +168,8 @@ function removeOwnedCssChunks(
 // one another through arguments:
 //   - `getAllItems` runs with no cwd; the workflow calls `requireConfig(cwd)`
 //     first, so the active cwd captured there is the one to resolve against.
-//   - `onAfterRemove` runs before `updateManifest`, but the pre-removal
-//     cssChunks must still be snapshotted during expandRequestedNames so CSS
-//     during `expandRequestedNames` (before any deletion) and read back later.
+//   - `onAfterRemove` runs before `updateManifest`, so pre-removal cssChunks are
+//     snapshotted during `expandRequestedNames` and read back later.
 // The registry command factory (B7-owned) cannot thread a per-call context
 // through these callbacks, so the state lives in one object instead of loose
 // module-level bindings. `beginInvocation` resets it on the first callback
@@ -258,7 +257,7 @@ export const removeCommand = createRemoveCommand({
     if (force) return true;
     const expectedHash = ownedFileHash(cwd, item.name, file.absolutePath);
     if (!expectedHash) return false;
-    return sha256(readFileSync(file.absolutePath, "utf-8")) === expectedHash;
+    return computeIntegrity(readFileSync(file.absolutePath, "utf-8")) === expectedHash;
   },
   resolveAllowedBaseDirs: ({ cwd, config }) => [
     resolveProjectPath(cwd, config.componentsFsPath),

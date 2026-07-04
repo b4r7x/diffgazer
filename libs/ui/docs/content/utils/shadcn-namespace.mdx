@@ -5,27 +5,29 @@ description: Configure shadcn registry aliases for `@diffgazer/ui` and `@diffgaz
 
 The shadcn CLI can install registry items by direct URL or by namespace after `components.json` maps each namespace to a registry URL.
 
-Public Diffgazer registry hosts are future, non-blocking release work until deployment and endpoint smoke tests verify them. Until those hosts are live, use a local preview server or an environment-specific URL that serves the generated `public/r/ui/{name}.json` and `public/r/keys/{name}.json` files.
+Direct URLs use the public registry origin:
 
-Public direct-URL item JSON carries absolute URLs for transitive Diffgazer registry dependencies. Configure both namespaces when you want shorthand for top-level UI and keys installs:
+```bash
+npx shadcn@latest add https://r.b4r7.dev/r/ui/button.json
+```
+
+Configure both namespaces when you want shorthand for top-level UI and keys installs:
 
 ```json
 {
   "registries": {
-    "@ui": "https://<registry-host>/r/ui/{name}.json",
-    "@diffgazer-keys": "https://<registry-host>/r/keys/{name}.json"
+    "@ui": "https://r.b4r7.dev/r/ui/{name}.json",
+    "@diffgazer-keys": "https://r.b4r7.dev/r/keys/{name}.json"
   }
 }
 ```
-
-For local validation, either rebuild artifacts with `REGISTRY_ORIGIN` set to the localhost registry host or use a local server that rewrites `/r/ui/*` and `/r/keys/*` dependency URLs to localhost. Do not publish concrete production hosts until deployment and endpoint smoke tests are complete.
 
 Then install namespaced items:
 
 ```bash
 npx shadcn@latest add "@ui/accordion"
 npx shadcn@latest add "@ui/dialog" "@ui/popover"
-npx shadcn@latest add "@ui/compose-refs"
+npx shadcn@latest add "@diffgazer-keys/navigation"
 ```
 
 When a UI source item depends on keys behavior, the published public JSON resolves that dependency through the corresponding keys registry URL.
@@ -40,13 +42,3 @@ Installing the theme item writes an aggregated `~/styles/styles.css` that alread
 ```
 
 No per-component CSS import is required: the component CSS ships inside that aggregated `styles.css`, so components such as Dialog, CommandPalette, Select, Popover, and Tooltip are fully wired once it is imported.
-
-## Validation
-
-For a handoff-ready release, verify a clean shadcn app can run:
-
-```bash
-npx shadcn@latest add "@ui/accordion" "@ui/dialog" "@ui/popover"
-```
-
-Then run the app type-check/build. Do not publish shadcn instructions for a registry host until those URLs serve the generated JSON files.

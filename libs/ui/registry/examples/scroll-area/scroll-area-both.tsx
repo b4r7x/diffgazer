@@ -2,7 +2,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function ScrollAreaBoth() {
   return (
-    <ScrollArea orientation="both" className="h-32 border border-border p-2">
+    <ScrollArea
+      aria-label="Two-axis demo"
+      orientation="both"
+      className="h-32 border border-border p-2"
+    >
       <div className="w-[600px]">
         {Array.from({ length: 15 }, (_, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length synthetic demo rows that never change order; the index is the stable identity.

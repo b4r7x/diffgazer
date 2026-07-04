@@ -9,29 +9,35 @@ const routerBoundary = vi.hoisted(() => ({
 }));
 
 // Boundary mock: TanStack Router is the external routing library; this test controls the current location and link href resolution.
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    to,
-    params,
-    children,
-    ...rest
-  }: {
-    to: string;
-    params?: { lib?: string; _splat?: string };
-    children: ReactNode;
-  } & Record<string, unknown>) => {
-    let href = to;
-    if (params?.lib) href = href.replace("$lib", params.lib);
-    href = params?._splat ? href.replace("$", params._splat) : href.replace("/$", "");
-    return (
-      <a href={href} data-tanstack-link="true" {...rest}>
-        {children}
-      </a>
-    );
-  },
-  useLocation: ({ select }: { select: (location: { pathname: string }) => unknown }) =>
-    select({ pathname: routerBoundary.pathname }),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const { useLocationMock } = await import("@/testing/router-mock");
+  return {
+    Link: ({
+      to,
+      params,
+      children,
+      ...rest
+    }: {
+      to: string;
+      params?: { lib?: string; _splat?: string };
+      children: ReactNode;
+    } & Record<string, unknown>) => {
+      let href = to;
+      if (params?.lib) href = href.replace("$lib", params.lib);
+      href = params?._splat ? href.replace("$", params._splat) : href.replace("/$", "");
+      return (
+        <a href={href} data-tanstack-link="true" {...rest}>
+          {children}
+        </a>
+      );
+    },
+    ...useLocationMock({
+      get pathname() {
+        return routerBoundary.pathname;
+      },
+    }),
+  };
+});
 
 import { Breadcrumbs } from "./breadcrumbs";
 

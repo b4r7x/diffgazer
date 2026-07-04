@@ -6,16 +6,13 @@ export {
   createInitCommand,
   createListCommand,
   createRemoveCommand,
-  type ExtraOption,
 } from "./command-factories.js";
 export {
   aliasPathSchema,
   type ConfigLoadResult,
   createConfigModule,
-  loadJsonConfig,
   resolveAliasedPaths,
   updateManifest,
-  writeJsonConfig,
 } from "./config.js";
 export {
   detectPackageManager,
@@ -30,7 +27,6 @@ export {
   atomicWriteFile,
   copyGeneratedDir,
   ensureWithinDir,
-  isEnoent,
   readTsConfigPaths,
   writeFileSafe,
 } from "./fs.js";
@@ -49,14 +45,12 @@ export {
   createRegistryAccessors,
   createRegistryLoader,
   metaField,
-  parseRegistryDependencyRef,
   REGISTRY_ORIGIN,
   type RegistryAccessors,
   RegistryContentFileSchema,
   type RegistryContentItem,
   RegistryContentItemSchema,
   type RegistryItem,
-  RegistryItemSchema,
 } from "./registry.js";
 export { heading, info, promptSelect, warn } from "./terminal.js";
 export { type InitWorkflowOptions, runInitWorkflow } from "./workflows/init.js";

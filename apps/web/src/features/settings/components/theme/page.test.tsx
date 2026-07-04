@@ -2,6 +2,7 @@ import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
 import type { SettingsConfig } from "@diffgazer/core/schemas/config";
+import { stubMatchMedia } from "@diffgazer/core/testing/match-media";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -71,11 +72,22 @@ async function waitForThemeReady() {
   });
 }
 
+async function waitForSelectedTheme(name: RegExp) {
+  await waitFor(() => {
+    expect(screen.getByRole("radio", { name })).toHaveAttribute("aria-checked", "true");
+  });
+}
+
+function setSystemPrefersDark(prefersDark: boolean): void {
+  stubMatchMedia((query) => (query === "(prefers-color-scheme: dark)" ? prefersDark : false));
+}
+
 describe("SettingsThemePage keyboard behavior", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
     mockGetSettings = vi.fn<BoundApi["getSettings"]>().mockResolvedValue(SETTINGS_FIXTURE);
     mockSaveSettings = vi.fn<BoundApi["saveSettings"]>().mockResolvedValue(undefined);
+    setSystemPrefersDark(false);
     localStorage.clear();
   });
 
@@ -187,6 +199,32 @@ describe("SettingsThemePage keyboard behavior", () => {
     await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
 
     await user.hover(darkRadio);
+    expect(preview.getAttribute("data-theme")).toBe("dark");
+  });
+
+  it("previews the raw system theme for Auto when the saved theme is light", async () => {
+    setSystemPrefersDark(true);
+    mockGetSettings.mockResolvedValue({ ...SETTINGS_FIXTURE, theme: "light" });
+    const user = userEvent.setup();
+    renderPage();
+    await waitForSelectedTheme(/light/i);
+
+    const preview = screen.getByRole("region", { name: /theme preview/i });
+    const autoRadio = screen.getByRole("radio", { name: /auto/i });
+    const lightRadio = screen.getByRole("radio", { name: /light/i });
+
+    expect(preview.getAttribute("data-theme")).toBe("light");
+
+    await user.hover(autoRadio);
+    expect(preview.getAttribute("data-theme")).toBe("dark");
+
+    await user.unhover(autoRadio);
+    await waitFor(() => expect(preview.getAttribute("data-theme")).toBe("light"));
+
+    await waitFor(() => expect(lightRadio).toHaveFocus());
+    await user.keyboard("{ArrowUp}{ArrowUp}");
+
+    await waitFor(() => expect(autoRadio).toHaveFocus());
     expect(preview.getAttribute("data-theme")).toBe("dark");
   });
 

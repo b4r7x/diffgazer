@@ -1,5 +1,5 @@
-const IMPORT_PATTERN = /^\s*import\s+(?:[^"']+\s+from\s+)?["']([^"']+)["']/;
-const EXPORT_PATTERN = /^\s*export\s+(?!type\b)[^"']+\s+from\s+["']([^"']+)["']/;
+import { extractImportSpecifiers } from "../../import-specifiers.js";
+
 const DEFAULT_PEER_DEPS = new Set<string>();
 const DEFAULT_ALIAS_PREFIXES = ["@/", "./", "../", "node:"];
 
@@ -13,15 +13,8 @@ export function detectNpmImports(content: string, options?: DetectNpmImportsOpti
   const aliasPrefixes = options?.aliasPrefixes ?? DEFAULT_ALIAS_PREFIXES;
   const imports: string[] = [];
 
-  for (const line of content.split("\n")) {
-    if (/^\s*import\s+type\s/.test(line)) continue;
-    if (/^\s*export\s+type\s/.test(line)) continue;
-
-    const match = IMPORT_PATTERN.exec(line) ?? EXPORT_PATTERN.exec(line);
-    if (!match) continue;
-
-    const pkg = match[1];
-    if (!pkg || aliasPrefixes.some((p) => pkg.startsWith(p))) continue;
+  for (const { specifier: pkg, isTypeOnly } of extractImportSpecifiers(content)) {
+    if (isTypeOnly || aliasPrefixes.some((p) => pkg.startsWith(p))) continue;
 
     const parts = pkg.split("/");
     let pkgName = parts[0] ?? pkg;

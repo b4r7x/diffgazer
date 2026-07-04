@@ -286,6 +286,26 @@ describe("useKey", () => {
       expect(parentHandler).not.toHaveBeenCalled();
     });
 
+    it("fires an implicit useKey in a descendant mounted in the same commit as an ancestor useScope", () => {
+      const handler = vi.fn();
+
+      function Child() {
+        useKey("x", handler);
+        return null;
+      }
+
+      function Page() {
+        useScope("modal");
+        return <Child />;
+      }
+
+      render(<Page />, { wrapper: KeyboardWrapper });
+
+      act(() => fireKey("x"));
+
+      expect(handler).toHaveBeenCalledOnce();
+    });
+
     it("keeps explicit scoped registrations across scope push and pop", () => {
       const modalEscape = vi.fn();
       let open = false;
@@ -321,9 +341,10 @@ describe("useKey", () => {
 
   describe("without KeyboardProvider", () => {
     it("does not throw when used without KeyboardProvider", async () => {
+      const user = userEvent.setup();
       const handler = vi.fn();
       const { unmount } = renderHook(() => useKey("a", handler));
-      await userEvent.keyboard("a");
+      await user.keyboard("a");
       expect(handler).not.toHaveBeenCalled();
       unmount();
     });

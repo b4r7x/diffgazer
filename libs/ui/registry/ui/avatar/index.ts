@@ -11,7 +11,6 @@ import { AvatarGroup, type AvatarGroupProps, avatarGroupSpacingVariants } from "
 import { AvatarImage, type AvatarImageProps } from "./avatar-image";
 import { AvatarIndicator, type AvatarIndicatorProps } from "./avatar-indicator";
 
-/** Square avatar with src/fallback/size. Shows image or monospace initials. */
 const Avatar = Object.assign(AvatarRoot, {
   Image: AvatarImage,
   Fallback: AvatarFallback,

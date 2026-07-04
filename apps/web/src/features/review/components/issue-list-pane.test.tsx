@@ -62,6 +62,33 @@ describe("IssueListPane severity accessibility", () => {
     expect(screen.getByRole("option", { name: /low severity.*tighten type/i })).toBeVisible();
   });
 
+  it("does not render a nullable line as part of the issue location", () => {
+    const issueWithoutLine = makeIssue({
+      id: "issue-without-line",
+      title: "Missing line location",
+      file: "src/db.ts",
+      line_start: null,
+      line_end: null,
+    });
+
+    render(
+      <IssueListPane
+        listState={{
+          issues: [issueWithoutLine],
+          allIssues: [issueWithoutLine],
+          selectedIssueId: issueWithoutLine.id,
+        }}
+        callbacks={{ onSelectIssue: vi.fn() }}
+        filter={{ severityFilter: new Set(), onSeverityFilterChange: vi.fn() }}
+        refs={{}}
+        ui={{ isFocused: true }}
+      />,
+    );
+
+    expect(screen.getByText("src/db.ts")).toBeVisible();
+    expect(screen.queryByText("src/db.ts:null")).not.toBeInTheDocument();
+  });
+
   it("announces the filter-to-empty state as a live status region", () => {
     render(
       <IssueListPane

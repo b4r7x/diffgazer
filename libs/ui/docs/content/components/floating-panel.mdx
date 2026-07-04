@@ -29,8 +29,6 @@ component: "floating-panel"
 - a `role` (for example `"dialog"`, `"menu"`, `"listbox"`, `"tooltip"`)
 - an accessible name via `aria-label` or `aria-labelledby`
 
-Emits a one-time `console.warn` per panel element when neither `role` nor `aria-label`/`aria-labelledby` is supplied.
-
 Descendants of the rendered panel can read positioning state via `useFloatingPanelContext()`:
 
 ```tsx
@@ -54,6 +52,8 @@ The panel reads these CSS custom properties from the `.ui-floating-panel` cascad
 | `--ui-content-exit-to-{top\|bottom\|left\|right}`    | `ui-content-exit-fade var(--ui-content-exit-duration) linear forwards` | Full `animation` shorthand the panel uses when exiting toward that side. |
 | `--ui-content-transform-origin`     | set by `FloatingPanel`                                        | Resolved from `data-side` and `data-align`. Read it from custom keyframes that animate `transform`. |
 | `--ui-floating-trigger-width`       | set by `FloatingPanel` when `matchTriggerWidth`               | Width of the trigger in pixels. Use as `width`, `min-width`, or `max-width` on the panel. |
+| `--floating-panel-available-height` | set by `FloatingPanel` on every measure                       | Available height before viewport overflow. Use as `max-height` with `overflow-y: auto`. |
+| `--floating-panel-available-width`  | set by `FloatingPanel` on every measure                       | Available width before viewport overflow. Use as `max-width` with `overflow-x: auto`. |
 
 Override one direction with a transform-based keyframe:
 

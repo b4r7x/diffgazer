@@ -6,7 +6,7 @@ import type {
   StepState,
 } from "../schemas/events/index.js";
 import { createInitialSteps, isStepEvent } from "../schemas/events/index.js";
-import type { ReviewIssue } from "../schemas/review/index.js";
+import { ReviewErrorCode, type ReviewIssue } from "../schemas/review/index.js";
 
 export interface FileProgress {
   total: number;
@@ -26,6 +26,7 @@ export interface ReviewState {
   fileProgress: FileProgress;
   isStreaming: boolean;
   error: string | null;
+  errorCode: string | null;
   startedAt: Date | null;
 }
 
@@ -34,7 +35,8 @@ export type ReviewAction =
   | { type: "EVENT"; event: ReviewEvent }
   | { type: "COMPLETE" }
   | { type: "COMPLETE_WITH_RESULT"; issues: ReviewIssue[] }
-  | { type: "ERROR"; error: string }
+  | { type: "CANCELLED" }
+  | { type: "ERROR"; error: string; errorCode?: string | null }
   | { type: "RESET" };
 
 // Cap on retained streaming events. A long review can emit thousands of agent
@@ -61,6 +63,7 @@ export function createInitialReviewState(): ReviewState {
     fileProgress: { total: 0, current: 0, currentFile: null, completed: [] },
     isStreaming: false,
     error: null,
+    errorCode: null,
     startedAt: null,
   };
 }
@@ -205,7 +208,7 @@ function handleStepEvent(state: ReviewState, event: StepEvent): ReviewState {
         ...state,
         steps: updateStepStatus(state.steps, event.step, "error"),
         events: appendEvent(state.events, event),
-        ...(isFatal ? { error: event.error, isStreaming: false } : {}),
+        ...(isFatal ? { error: event.error, errorCode: null, isStreaming: false } : {}),
       };
     }
   }
@@ -316,8 +319,21 @@ export function reviewReducer(state: ReviewState, action: ReviewAction): ReviewS
     case "COMPLETE_WITH_RESULT":
       return { ...state, isStreaming: false, issues: action.issues };
 
+    case "CANCELLED":
+      return {
+        ...state,
+        isStreaming: false,
+        error: null,
+        errorCode: ReviewErrorCode.CANCELLED,
+      };
+
     case "ERROR":
-      return { ...state, isStreaming: false, error: action.error };
+      return {
+        ...state,
+        isStreaming: false,
+        error: action.error,
+        errorCode: action.errorCode ?? null,
+      };
 
     case "RESET":
       return createInitialReviewState();

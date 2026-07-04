@@ -1,55 +1,39 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
-import { basename, isAbsolute, relative, resolve, win32 } from "node:path";
-import { isRelativeSubpath } from "../utils/fs.js";
+import { basename, relative, resolve } from "node:path";
+import type { ArtifactManifest } from "../manifest.js";
+import { validateManifest } from "../manifest.js";
+import { resolveInside, toPosixPath } from "../utils/fs.js";
 import { readJson } from "../utils/json.js";
-import { assertSafeLibraryId, isPackageName } from "./library-id-validation.js";
-import { rewriteSecondaryDemoIndexImports } from "./sync-operations.js";
+import type { ArtifactLibrary } from "./docs-libraries-config.js";
 
-export interface ArtifactLibrary {
-  id: string;
-  packageName: string;
-  workspaceDir: string;
-}
+export {
+  type ArtifactLibrary,
+  type DocsLibrariesConfig,
+  getArtifactLibraries,
+  parseDocsLibrariesConfig,
+  readDocsLibrariesConfig,
+} from "./docs-libraries-config.js";
 
-interface ArtifactSourceConfig {
-  workspaceDir: string;
-  packageName: string;
-}
+import { assertSafeLibraryId } from "./library-id-validation.js";
+import {
+  rewriteDemoIndexForViteGlob,
+  rewriteSecondaryDemoIndexImports,
+} from "./sync-operations.js";
 
-interface DocsLibraryConfig {
-  id: string;
-  enabled: boolean;
-  artifactSource?: ArtifactSourceConfig;
-}
+export { rewriteDemoIndexForViteGlob } from "./sync-operations.js";
 
-export interface DocsLibrariesConfig {
-  primaryLibraryId: string;
-  libraries: DocsLibraryConfig[];
-}
-
-interface ArtifactManifestLike {
-  docs?: {
-    contentDir?: string;
-    metaFile?: string;
-    assetsDir?: string;
-    generatedDir?: string;
-  };
-  registry?: {
-    publicDir?: string;
-    index?: string;
-  };
-  source?: {
-    registryDir?: string;
-    stylesDir?: string;
-  };
-  generated?: Record<string, string>;
-}
+type ArtifactSyncManifest = {
+  docs?: Partial<ArtifactManifest["docs"]>;
+  registry?: Partial<ArtifactManifest["registry"]>;
+  source?: ArtifactManifest["source"];
+  generated?: ArtifactManifest["generated"];
+};
 
 interface LoadedArtifact {
   id: string;
   artifactRoot: string;
-  manifest: ArtifactManifestLike;
+  manifest: ArtifactSyncManifest;
   generatedFiles?: string[];
 }
 
@@ -64,128 +48,18 @@ interface ParityOptions {
   artifactFilter?: (path: string) => boolean;
 }
 
-function toPosixPath(path: string): string {
-  return path.split(/[\\/]+/).join("/");
-}
-
-function resolveInside(baseDir: string, relPath: unknown, label: string): string {
-  if (typeof relPath !== "string" || relPath.length === 0) {
-    throw new Error(`${label} must be a non-empty relative path`);
+function resolveArtifactPath(baseDir: string, relPath: string, label: string): string {
+  try {
+    return resolveInside(baseDir, relPath, label);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.startsWith(`${label} must be a relative path inside`)
+    ) {
+      throw new Error(`${label} escapes ${resolve(baseDir)}: ${relPath}`, { cause: error });
+    }
+    throw error;
   }
-  if (isAbsolute(relPath) || win32.isAbsolute(relPath)) {
-    throw new Error(`${label} must be relative: ${relPath}`);
-  }
-
-  const baseAbs = resolve(baseDir);
-  const target = resolve(baseAbs, relPath);
-  const relativePath = relative(baseAbs, target);
-  if (relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath))) {
-    return target;
-  }
-
-  throw new Error(`${label} escapes ${baseAbs}: ${relPath}`);
-}
-
-function assertRelativeSubpath(path: string, label: string): void {
-  if (isRelativeSubpath(path)) return;
-  throw new Error(`${label} must be a relative path without '..' segments`);
-}
-
-function assertPackageName(name: string, label: string): void {
-  if (isPackageName(name)) return;
-  throw new Error(`${label} must be an npm package name`);
-}
-
-export function parseDocsLibrariesConfig(rawConfig: unknown): DocsLibrariesConfig {
-  if (!rawConfig || typeof rawConfig !== "object" || Array.isArray(rawConfig)) {
-    throw new Error("docs libraries config must be an object");
-  }
-  const config = rawConfig as Record<string, unknown>;
-  if (typeof config.primaryLibraryId !== "string" || config.primaryLibraryId.length === 0) {
-    throw new Error("docs libraries config primaryLibraryId must be a non-empty string");
-  }
-  assertSafeLibraryId(config.primaryLibraryId, "docs libraries config primaryLibraryId");
-  if (!Array.isArray(config.libraries) || config.libraries.length === 0) {
-    throw new Error("docs libraries config libraries must be a non-empty array");
-  }
-
-  return {
-    primaryLibraryId: config.primaryLibraryId,
-    libraries: config.libraries.map((rawLibrary, index): DocsLibraryConfig => {
-      if (!rawLibrary || typeof rawLibrary !== "object" || Array.isArray(rawLibrary)) {
-        throw new Error(`docs libraries config libraries[${index}] must be an object`);
-      }
-      const library = rawLibrary as Record<string, unknown>;
-      if (typeof library.id !== "string" || library.id.length === 0) {
-        throw new Error(`docs libraries config libraries[${index}].id must be a non-empty string`);
-      }
-      assertSafeLibraryId(library.id, `docs libraries config libraries[${index}].id`);
-      if (typeof library.enabled !== "boolean") {
-        throw new Error(`docs libraries config libraries[${index}].enabled must be a boolean`);
-      }
-
-      if (library.artifactSource === undefined) {
-        return { id: library.id, enabled: library.enabled };
-      }
-      if (
-        !library.artifactSource ||
-        typeof library.artifactSource !== "object" ||
-        Array.isArray(library.artifactSource)
-      ) {
-        throw new Error(
-          `docs libraries config libraries[${index}].artifactSource must be an object`,
-        );
-      }
-      const artifactSource = library.artifactSource as Record<string, unknown>;
-      if (
-        typeof artifactSource.workspaceDir !== "string" ||
-        artifactSource.workspaceDir.length === 0
-      ) {
-        throw new Error(
-          `docs libraries config libraries[${index}].artifactSource.workspaceDir must be a non-empty string`,
-        );
-      }
-      assertRelativeSubpath(
-        artifactSource.workspaceDir,
-        `docs libraries config libraries[${index}].artifactSource.workspaceDir`,
-      );
-      if (
-        typeof artifactSource.packageName !== "string" ||
-        artifactSource.packageName.length === 0
-      ) {
-        throw new Error(
-          `docs libraries config libraries[${index}].artifactSource.packageName must be a non-empty string`,
-        );
-      }
-      assertPackageName(
-        artifactSource.packageName,
-        `docs libraries config libraries[${index}].artifactSource.packageName`,
-      );
-
-      return {
-        id: library.id,
-        enabled: library.enabled,
-        artifactSource: {
-          workspaceDir: artifactSource.workspaceDir,
-          packageName: artifactSource.packageName,
-        },
-      };
-    }),
-  };
-}
-
-export function readDocsLibrariesConfig(configPath: string): DocsLibrariesConfig {
-  return parseDocsLibrariesConfig(readJson(configPath));
-}
-
-export function getArtifactLibraries(docsLibraries: DocsLibrariesConfig): ArtifactLibrary[] {
-  return docsLibraries.libraries
-    .filter((library) => library.enabled && library.artifactSource)
-    .map((library) => ({
-      id: library.id,
-      packageName: (library.artifactSource as ArtifactSourceConfig).packageName,
-      workspaceDir: (library.artifactSource as ArtifactSourceConfig).workspaceDir,
-    }));
 }
 
 function makePackageResolver(resolveFromDir: string): (packageName: string) => boolean {
@@ -264,7 +138,17 @@ export function collectMissingWorkspaceArtifactFiles(
 
     if (!existsSync(manifestPath)) return missing;
 
-    const manifest = readJson(manifestPath) as ArtifactManifestLike;
+    const manifestResult = validateManifest(readJson(manifestPath));
+    if (!manifestResult.success) {
+      missing.push({
+        id: library.id,
+        path: manifestPath,
+        relativePath: `${manifestRelPath} (invalid: ${manifestResult.errors.join("; ")})`,
+      });
+      return missing;
+    }
+
+    const manifest = manifestResult.data;
     const expectedArtifactPaths = [
       manifest.docs?.contentDir,
       manifest.docs?.metaFile,
@@ -278,7 +162,11 @@ export function collectMissingWorkspaceArtifactFiles(
     ].filter((relPath): relPath is string => typeof relPath === "string" && relPath.length > 0);
 
     for (const relPath of expectedArtifactPaths) {
-      const artifactPath = resolveInside(artifactRoot, relPath, `${library.id} artifact path`);
+      const artifactPath = resolveArtifactPath(
+        artifactRoot,
+        relPath,
+        `${library.id} artifact path`,
+      );
       if (!existsSync(artifactPath)) {
         missing.push({
           id: library.id,
@@ -403,7 +291,7 @@ function compareCopiedPath(
   errors.push(`${label}: source and artifact path types differ`);
 }
 
-function collectPathParityErrors(
+export function collectPathParityErrors(
   sourcePath: string,
   artifactPath: string,
   label: string,
@@ -414,7 +302,7 @@ function collectPathParityErrors(
   return errors;
 }
 
-function collectTreeParityErrors(
+export function collectTreeParityErrors(
   sourceDir: string,
   artifactDir: string,
   label: string,
@@ -441,37 +329,6 @@ function directoryHasFiles(dirPath: string): boolean {
   return false;
 }
 
-export function rewriteDemoIndexForViteGlob(content: string): string {
-  const entries = Array.from(
-    content.matchAll(/^\s+"([^"]+)": lazy\(\(\) => import\("([^"]+)"\)\),$/gm),
-  );
-  if (entries.length === 0) return content;
-
-  return [
-    `import { lazy } from "react"`,
-    `import type { ComponentType, LazyExoticComponent } from "react"`,
-    "",
-    "type DemoModule = { default: ComponentType }",
-    `const demoModules = import.meta.glob<DemoModule>("../../../registry/examples/**/*.tsx")`,
-    "",
-    "function lazyDemo(path: string): LazyExoticComponent<ComponentType> {",
-    "  const load = demoModules[path]",
-    "  if (!load) {",
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: emitted source text for the generated demo-index module, not an interpolation in this file.
-    "    return lazy(() => Promise.reject(new Error(`Missing demo module: ${path}`)))",
-    "  }",
-    "  return lazy(load)",
-    "}",
-    "",
-    "export const demos: Record<string, LazyExoticComponent<ComponentType>> = {",
-    ...entries.map(([, demoName, importPath]) => {
-      return `  "${demoName}": lazyDemo("${importPath}.tsx"),`;
-    }),
-    "}",
-    "",
-  ].join("\n");
-}
-
 function collectGeneratedDemoIndexErrors(
   artifactPath: string,
   outputPath: string,
@@ -494,21 +351,28 @@ function collectGeneratedDemoIndexErrors(
 
 function collectBaseOutputErrors(docsRoot: string, artifact: LoadedArtifact): string[] {
   const libraryId = artifact.id;
+  const docsContentDir = artifact.manifest.docs?.contentDir;
+  const publicRegistryDir = artifact.manifest.registry?.publicDir;
+
+  if (typeof docsContentDir !== "string") return [`${libraryId} manifest missing docs.contentDir`];
+  if (typeof publicRegistryDir !== "string") {
+    return [`${libraryId} manifest missing registry.publicDir`];
+  }
 
   return [
     ...collectTreeParityErrors(
-      resolveInside(
+      resolveArtifactPath(
         artifact.artifactRoot,
-        artifact.manifest.docs?.contentDir,
+        docsContentDir,
         `${libraryId} docs content artifact path`,
       ),
       resolve(docsRoot, "content/docs", libraryId),
       `${libraryId} docs content sync`,
     ),
     ...collectTreeParityErrors(
-      resolveInside(
+      resolveArtifactPath(
         artifact.artifactRoot,
-        artifact.manifest.registry?.publicDir,
+        publicRegistryDir,
         `${libraryId} public registry artifact path`,
       ),
       resolve(docsRoot, "public/r", libraryId),
@@ -521,7 +385,7 @@ function collectAssetOutputErrors(docsRoot: string, artifact: LoadedArtifact): s
   if (!artifact.manifest.docs?.assetsDir) return [];
 
   const libraryId = artifact.id;
-  const artifactAssetsDir = resolveInside(
+  const artifactAssetsDir = resolveArtifactPath(
     artifact.artifactRoot,
     artifact.manifest.docs.assetsDir,
     `${libraryId} assets artifact path`,
@@ -539,7 +403,7 @@ function collectAssetOutputErrors(docsRoot: string, artifact: LoadedArtifact): s
 function collectPrimaryGeneratedErrors(docsRoot: string, artifact: LoadedArtifact): string[] {
   if (!artifact.manifest.docs?.generatedDir) return [];
 
-  const artifactGeneratedDir = resolveInside(
+  const artifactGeneratedDir = resolveArtifactPath(
     artifact.artifactRoot,
     artifact.manifest.docs.generatedDir,
     `${artifact.id} generated artifact path`,
@@ -578,7 +442,7 @@ function collectSecondaryGeneratedFileErrors(
   artifact: LoadedArtifact,
   generatedFile: string,
 ): string[] {
-  const artifactPath = resolveInside(
+  const artifactPath = resolveArtifactPath(
     artifact.artifactRoot,
     generatedFile,
     `${artifact.id} generated artifact path ${generatedFile}`,
@@ -609,7 +473,7 @@ function collectSecondaryExampleErrors(docsRoot: string, artifact: LoadedArtifac
   const registryDirRel = artifact.manifest.source?.registryDir;
   if (!registryDirRel) return [];
 
-  const examplesDir = resolveInside(
+  const examplesDir = resolveArtifactPath(
     artifact.artifactRoot,
     `${registryDirRel}/examples`,
     `${artifact.id} examples artifact path`,

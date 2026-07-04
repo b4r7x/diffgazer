@@ -1,3 +1,4 @@
+import { sanitizeTerminalText } from "@diffgazer/core/review";
 import type { FixPlanStep } from "@diffgazer/core/schemas/review";
 import { Box, Text, useInput } from "ink";
 import { useState } from "react";
@@ -64,8 +65,7 @@ export function FixPlanChecklist({
         return;
       }
       if (input === " " || key.return) {
-        const step = steps[highlightIndex];
-        if (step) onToggle(step.step);
+        if (steps[highlightIndex]) onToggle(highlightIndex);
       }
     },
     { isActive },
@@ -74,12 +74,16 @@ export function FixPlanChecklist({
   return (
     <Box flexDirection="column">
       {steps.map((step, i) => {
-        const isComplete = completedSteps.has(step.step);
+        const isComplete = completedSteps.has(i);
         const isHighlighted = isActive && i === highlightIndex;
         const indicator = isComplete ? "[x]" : "[ ]";
 
         return (
-          <Box key={step.step} gap={1}>
+          <Box
+            // biome-ignore lint/suspicious/noArrayIndexKey: fix-plan step numbers can repeat; rendered index is the completion identity.
+            key={i}
+            gap={1}
+          >
             <Text color={getIndicatorColor(isHighlighted, isComplete, tokens)} bold={isHighlighted}>
               {indicator}
             </Text>
@@ -89,7 +93,7 @@ export function FixPlanChecklist({
               bold={isHighlighted}
               strikethrough={isComplete}
             >
-              {step.action}
+              {sanitizeTerminalText(step.action)}
             </Text>
             {step.risk ? <Badge variant={riskVariant(step.risk)}>{step.risk}</Badge> : null}
           </Box>

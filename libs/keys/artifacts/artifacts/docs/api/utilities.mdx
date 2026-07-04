@@ -3,7 +3,7 @@ title: Utilities
 description: Helper functions for working with `@diffgazer/keys` — keys, navigation item utilities, DOM focus restore utilities, and keyboard context hooks.
 ---
 
-## navigation item utilities
+## Navigation item utilities
 
 DOM helpers shared by `useNavigation` and composite widgets. These are package exports, not standalone shadcn registry items.
 
@@ -161,12 +161,17 @@ useKey({
 
 ---
 
-## useKeyboardContext and useOptionalKeyboardContext
+## Provider-aware hooks
 
 Low-level hooks to access the `KeyboardProvider` context. `useKeyboardContext` throws when no provider is present. `useOptionalKeyboardContext` returns `null`.
 
 ```ts
-import { useKeyboardContext, useOptionalKeyboardContext } from "@diffgazer/keys";
+import {
+  type HandlerOptions,
+  type KeyHandler,
+  useKeyboardContext,
+  useOptionalKeyboardContext,
+} from "@diffgazer/keys";
 ```
 
 ### Signature
@@ -183,7 +188,7 @@ interface KeyboardContextValue {
   activeScope: string | null;
   getActiveScope: () => string | null;
   pushScope: (scope: string) => () => void;
-  register: (scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => () => void;
+  register: (scope: string, hotkey: string, handler: KeyHandler, options?: HandlerOptions) => () => void;
 }
 ```
 

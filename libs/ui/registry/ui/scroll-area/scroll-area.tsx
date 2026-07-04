@@ -57,37 +57,41 @@ export function ScrollArea({
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     onKeyDown?.(e);
     if (e.defaultPrevented) return;
+    if (e.target !== e.currentTarget) return;
 
     const el = e.currentTarget;
+    const hasVerticalOverflow = canScrollV && el.scrollHeight > el.clientHeight;
+    const hasHorizontalOverflow = canScrollH && el.scrollWidth > el.clientWidth;
     const pageStepV = el.clientHeight * 0.8;
     const pageStepH = el.clientWidth * 0.8;
     const pageScrollsHorizontal = orientation === "horizontal";
 
     switch (e.key) {
       case "ArrowUp":
-        if (!canScrollV) break;
+        if (!hasVerticalOverflow) break;
         el.scrollTop -= 40;
         e.preventDefault();
         break;
       case "ArrowDown":
-        if (!canScrollV) break;
+        if (!hasVerticalOverflow) break;
         el.scrollTop += 40;
         e.preventDefault();
         break;
       case "ArrowLeft":
-        if (!canScrollH) break;
+        if (!hasHorizontalOverflow) break;
         el.scrollLeft -= 40;
         e.preventDefault();
         break;
       case "ArrowRight":
-        if (!canScrollH) break;
+        if (!hasHorizontalOverflow) break;
         el.scrollLeft += 40;
         e.preventDefault();
         break;
       case "PageUp":
         if (pageScrollsHorizontal) {
+          if (!hasHorizontalOverflow) break;
           el.scrollLeft -= pageStepH;
-        } else if (canScrollV) {
+        } else if (hasVerticalOverflow) {
           el.scrollTop -= pageStepV;
         } else {
           break;
@@ -96,8 +100,9 @@ export function ScrollArea({
         break;
       case "PageDown":
         if (pageScrollsHorizontal) {
+          if (!hasHorizontalOverflow) break;
           el.scrollLeft += pageStepH;
-        } else if (canScrollV) {
+        } else if (hasVerticalOverflow) {
           el.scrollTop += pageStepV;
         } else {
           break;
@@ -105,13 +110,15 @@ export function ScrollArea({
         e.preventDefault();
         break;
       case "Home":
-        if (canScrollV) el.scrollTop = 0;
-        if (canScrollH) el.scrollLeft = 0;
+        if (!hasVerticalOverflow && !hasHorizontalOverflow) break;
+        if (hasVerticalOverflow) el.scrollTop = 0;
+        if (hasHorizontalOverflow) el.scrollLeft = 0;
         e.preventDefault();
         break;
       case "End":
-        if (canScrollV) el.scrollTop = el.scrollHeight;
-        if (canScrollH) el.scrollLeft = el.scrollWidth;
+        if (!hasVerticalOverflow && !hasHorizontalOverflow) break;
+        if (hasVerticalOverflow) el.scrollTop = el.scrollHeight;
+        if (hasHorizontalOverflow) el.scrollLeft = el.scrollWidth;
         e.preventDefault();
         break;
     }

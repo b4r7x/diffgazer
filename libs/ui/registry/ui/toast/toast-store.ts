@@ -5,7 +5,6 @@ import type { ToastTone, ToastVariant } from "./toast-variants";
 
 export type { ToastPosition } from "./toast-variants";
 
-/** Individual toast notification with position-aware animation. */
 export interface Toast {
   /** ID applied to the rendered element. */
   id: string;
@@ -52,17 +51,25 @@ export interface ToastOptions {
 const DEFAULT_DURATION = 5000;
 const MAX_TOASTS = 5;
 
-/** Individual toast notification with position-aware animation. */
+export type ToastPauseCause = "hover" | "focus" | "document-hidden";
+
 interface StoreState {
   /** toasts used by store. */
   toasts: Toast[];
   /** dismissing ids used by store. */
   dismissingIds: Set<string>;
-  /** paused used by store. */
+  pauseCauses: Set<ToastPauseCause>;
   paused: boolean;
+  timerVersion: number;
 }
 
-const INITIAL_STATE: StoreState = { toasts: [], dismissingIds: new Set(), paused: false };
+const INITIAL_STATE: StoreState = {
+  toasts: [],
+  dismissingIds: new Set(),
+  pauseCauses: new Set(),
+  paused: false,
+  timerVersion: 0,
+};
 
 interface TimerEntry {
   timeout: ReturnType<typeof setTimeout> | undefined;
@@ -75,9 +82,14 @@ let state: StoreState = INITIAL_STATE;
 const listeners = new Set<() => void>();
 const timers = new Map<string, TimerEntry>();
 let fallbackToastId = 0;
+let timerVersion = 0;
 
 function emit() {
   for (const listener of listeners) listener();
+}
+
+function markTimersChanged() {
+  timerVersion += 1;
 }
 
 function clearTimer(id: string) {
@@ -85,6 +97,7 @@ function clearTimer(id: string) {
   if (entry) {
     clearTimeout(entry.timeout);
     timers.delete(id);
+    markTimersChanged();
   }
 }
 
@@ -112,6 +125,7 @@ function scheduleAutoDismiss(id: string, tone: ToastTone, duration?: number) {
     duration: resolved,
   };
   timers.set(id, entry);
+  markTimersChanged();
 }
 
 function isEvictable(t: Toast): boolean {
@@ -127,33 +141,20 @@ function resolveNextToasts(current: Toast[], incoming: Toast): Toast[] {
   const existingIdx = current.findIndex((t) => t.id === incoming.id);
   if (existingIdx >= 0) return current.map((t) => (t.id === incoming.id ? incoming : t));
 
-  const all = [...current, incoming];
-  if (all.length <= MAX_TOASTS) return all;
+  if (current.length < MAX_TOASTS) return [...current, incoming];
 
-  // Evict transient toasts first (oldest first), then persistent ones
-  // only if no transient candidates remain.
-  const evictCount = all.length - MAX_TOASTS;
   const evicted: Toast[] = [];
-  const remaining = [...all];
+  const remaining = [...current];
 
-  // First pass: evict oldest transient toasts
-  for (let i = 0; i < remaining.length && evicted.length < evictCount; i++) {
-    const toast = remaining[i];
-    if (toast && isEvictable(toast)) {
-      const [removed] = remaining.splice(i, 1);
-      if (removed) evicted.push(removed);
-      i--; // adjust index after splice
-    }
-  }
-
-  // Second pass: if still over limit, evict oldest persistent toasts
-  while (remaining.length > MAX_TOASTS) {
-    const removed = remaining.shift();
+  while (remaining.length >= MAX_TOASTS) {
+    const transientIndex = remaining.findIndex(isEvictable);
+    const evictionIndex = transientIndex >= 0 ? transientIndex : 0;
+    const [removed] = remaining.splice(evictionIndex, 1);
     if (removed) evicted.push(removed);
   }
 
   for (const t of evicted) clearTimer(t.id);
-  return remaining;
+  return [...remaining, incoming];
 }
 
 function createToastId(): string {
@@ -197,12 +198,11 @@ function create(options: ToastOptions): string {
     if (!nextIds.has(dismissId)) nextDismissing.delete(dismissId);
   }
 
-  state = { ...state, toasts: nextToasts, dismissingIds: nextDismissing };
+  state = { ...state, toasts: nextToasts, dismissingIds: nextDismissing, timerVersion };
   emit();
   return id;
 }
 
-/** Individual toast notification with position-aware animation. */
 export function dismiss(id?: string) {
   if (id) {
     state = {
@@ -215,7 +215,6 @@ export function dismiss(id?: string) {
   emit();
 }
 
-/** Individual toast notification with position-aware animation. */
 export function remove(id: string) {
   clearTimer(id);
   const nextDismissing = new Set(state.dismissingIds);
@@ -224,33 +223,47 @@ export function remove(id: string) {
     ...state,
     toasts: state.toasts.filter((t) => t.id !== id),
     dismissingIds: nextDismissing,
+    timerVersion,
   };
   emit();
 }
 
-/** Individual toast notification with position-aware animation. */
-export function pause() {
-  if (state.paused) return;
+export function pause(cause: ToastPauseCause) {
+  if (state.pauseCauses.has(cause)) return;
+  const pauseCauses = new Set(state.pauseCauses).add(cause);
+  if (state.paused) {
+    state = { ...state, pauseCauses, paused: true };
+    emit();
+    return;
+  }
   for (const [, entry] of timers) {
     clearTimeout(entry.timeout);
+    entry.timeout = undefined;
     entry.remaining = Math.max(0, entry.remaining - (Date.now() - entry.startedAt));
   }
-  state = { ...state, paused: true };
+  if (timers.size > 0) markTimersChanged();
+  state = { ...state, pauseCauses, paused: true, timerVersion };
   emit();
 }
 
-/** Individual toast notification with position-aware animation. */
-export function resume() {
-  if (!state.paused) return;
+export function resume(cause: ToastPauseCause) {
+  if (!state.pauseCauses.has(cause)) return;
+  const pauseCauses = new Set(state.pauseCauses);
+  pauseCauses.delete(cause);
+  if (pauseCauses.size > 0) {
+    state = { ...state, pauseCauses, paused: true };
+    emit();
+    return;
+  }
   for (const [id, entry] of timers) {
     entry.startedAt = Date.now();
     entry.timeout = setTimeout(() => dismiss(id), entry.remaining);
   }
-  state = { ...state, paused: false };
+  if (timers.size > 0) markTimersChanged();
+  state = { ...state, pauseCauses, paused: false, timerVersion };
   emit();
 }
 
-/** Individual toast notification with position-aware animation. */
 export interface ToastTimerSnapshot {
   /** Duration in milliseconds. */
   duration: number;
@@ -314,7 +327,6 @@ function promiseToast<T>(
   );
 }
 
-/** Individual toast notification with position-aware animation. */
 export const toast: ToastFn = Object.assign(
   (title: string, options?: Omit<ToastOptions, "title">) => create({ ...options, title }),
   {

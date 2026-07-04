@@ -17,7 +17,7 @@ export const toastDoc: ComponentDoc = {
     {
       title: "Promise Support",
       content:
-        "toast.promise(asyncFn, { loading, success, error }) shows a loading toast that updates to success or error when the promise resolves.",
+        "toast.promise(asyncFn, { loading, success, error }) shows a loading toast that updates to success or error when the promise settles. It returns the input promise and rejects when the input rejects, so callers must handle rejection with await/try-catch or .catch().",
     },
     {
       title: "Loading Toasts",
@@ -31,7 +31,7 @@ export const toastDoc: ComponentDoc = {
     {
       title: "Keyboard",
       content:
-        "Press Escape to dismiss the most recent toast. Press the focus hotkey (F8 by default, configurable via the Toaster `hotkey` prop) to move focus into the toast region so action and close buttons stay reachable before a timed toast disappears; the hotkey is ignored while an editable element has focus.",
+        "Press Escape to dismiss the most recent toast. Toast Escape handling is global when toasts are present, so it runs before lower-priority page overlays that have not already handled the key. Press the focus hotkey (F8 by default, configurable via the Toaster `hotkey` prop) to move focus into the toast region so action and close buttons stay reachable before a timed toast disappears; the hotkey is ignored while an editable element has focus.",
     },
     {
       title: "Pause Behavior (WCAG 2.2.1)",
@@ -58,7 +58,7 @@ export const toastDoc: ComponentDoc = {
   ],
   keyboard: {
     description:
-      "Press Escape to dismiss the most recent toast. Press the focus hotkey (F8 by default, configurable via the Toaster `hotkey` prop) to move focus into the toast region.",
+      "Press Escape to dismiss the most recent toast. Toast Escape handling is global while toasts are present and runs before lower-priority page overlays unless another handler has already consumed the key. Press the focus hotkey (F8 by default, configurable via the Toaster `hotkey` prop) to move focus into the toast region.",
     examples: [],
   },
   props: {

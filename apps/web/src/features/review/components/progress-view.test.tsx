@@ -83,6 +83,18 @@ describe("ReviewProgressView", () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
+  it("renders a clickable View Results button after completion", async () => {
+    const user = userEvent.setup();
+    const onViewResults = vi.fn();
+
+    renderView({ isRunning: false, onViewResults });
+
+    const viewResults = await screen.findByRole("button", { name: "View Results" });
+    await user.click(viewResults);
+
+    expect(onViewResults).toHaveBeenCalledTimes(1);
+  });
+
   it("does not render the streaming Cancel button once the review is no longer running", () => {
     renderView({ isRunning: false, onViewResults: vi.fn(), onCancel: vi.fn() });
 
@@ -115,7 +127,8 @@ describe("ReviewProgressView", () => {
     });
 
     // The Partial Analysis Callout announces on appear via a live status region (F-353c).
-    const status = screen.getByRole("status");
+    const status = screen.getByText("Partial Analysis").closest('[role="status"]');
+    if (!status) throw new Error("Partial Analysis callout did not render as a live status region");
     expect(status).toHaveTextContent("Partial Analysis");
   });
 
@@ -179,7 +192,7 @@ describe("ReviewProgressView", () => {
 
     renderView({ onViewResults, onCancel });
 
-    expect(await screen.findByText("View Results")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "View Results" })).toBeInTheDocument();
     expect(screen.getByText("Cancel")).toBeInTheDocument();
 
     await user.keyboard("{Enter}");

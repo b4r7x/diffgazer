@@ -231,6 +231,44 @@ describe("useActiveHeading", () => {
     }
   });
 
+  it("keeps the clicked heading pinned during a long smooth scroll when scrollend is supported", () => {
+    const originalScrollEnd = Object.getOwnPropertyDescriptor(document, "onscrollend");
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      Object.defineProperty(document, "onscrollend", { configurable: true, value: null });
+      Object.defineProperty(window, "scrollTo", { configurable: true, value: vi.fn() });
+      const { result } = renderActiveHeading();
+      flushFrames();
+
+      act(() => {
+        result.current.scrollTo("h3");
+      });
+      expect(result.current.activeId).toBe("h3");
+
+      setHeadingRect("h1", -500);
+      setHeadingRect("h2", 100);
+      setHeadingRect("h3", 700);
+
+      act(() => {
+        window.dispatchEvent(new Event("scroll"));
+        vi.advanceTimersByTime(151);
+        window.dispatchEvent(new Event("scroll"));
+      });
+      flushFrames();
+
+      expect(result.current.activeId).toBe("h3");
+
+      act(() => {
+        window.dispatchEvent(new Event("scrollend"));
+      });
+
+      expect(result.current.activeId).toBe("h2");
+    } finally {
+      restoreProperty(document, "onscrollend", originalScrollEnd);
+      vi.useRealTimers();
+    }
+  });
+
   it("cleans up observers, listeners, and pending animation frames on unmount", () => {
     const removeListener = vi.spyOn(window, "removeEventListener");
     try {

@@ -5,6 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   collectArtifactSyncValidationErrors,
+  collectTreeParityErrors,
   getArtifactLibraries,
   readDocsLibrariesConfig,
 } from "@diffgazer/registry";
@@ -15,7 +16,6 @@ import { runValidationChecks } from "./lib/run-checks.mjs";
 import {
   assertNoDuplicateDemoKeys,
   collectBundleRelativeJsImportErrors,
-  collectTreeParityErrors,
   validateIntegrityBundle,
   validateLibraryArtifacts,
 } from "./lib/validation.mjs";

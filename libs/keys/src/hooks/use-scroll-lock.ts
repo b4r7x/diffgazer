@@ -22,7 +22,10 @@ function measureScrollbarWidth(el: HTMLElement): number {
     if (!view) return 0;
     return view.innerWidth - ownerDocument.documentElement.clientWidth;
   }
-  return el.offsetWidth - el.clientWidth;
+  const style = ownerDocument.defaultView?.getComputedStyle(el);
+  const borderLeft = style ? Number.parseFloat(style.borderLeftWidth) || 0 : 0;
+  const borderRight = style ? Number.parseFloat(style.borderRightWidth) || 0 : 0;
+  return Math.max(0, el.offsetWidth - el.clientWidth - borderLeft - borderRight);
 }
 
 function lockElement(el: HTMLElement): () => void {
@@ -75,7 +78,10 @@ export function useScrollLock(options: UseScrollLockOptions = {}): void {
 
   // No dependency array on purpose; see hook-level comment above.
   useEffect(() => {
-    const nextElement = enabled ? (target?.current ?? document.body) : null;
+    let nextElement: HTMLElement | null = null;
+    if (enabled) {
+      nextElement = target ? target.current : document.body;
+    }
     if (lockedElementRef.current === nextElement) return;
 
     releaseRef.current?.();

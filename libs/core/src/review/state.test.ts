@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgentStreamEvent, StepEvent } from "../schemas/events/index.js";
+import { ReviewErrorCode } from "../schemas/review/index.js";
 import {
   createInitialReviewState,
   type ReviewAction,
@@ -80,6 +81,7 @@ describe("review-state", () => {
 
     expect(initial.startedAt).toBeNull();
     expect(initial.isStreaming).toBe(false);
+    expect(initial.errorCode).toBeNull();
 
     const started = reduce([
       { type: "START" },
@@ -101,8 +103,16 @@ describe("review-state", () => {
       expect.objectContaining({ type: "review_started", reviewId: "review-123" }),
     ]);
 
-    const failed = reviewReducer(started, { type: "ERROR", error: "Network failed" });
-    expect(failed).toMatchObject({ isStreaming: false, error: "Network failed" });
+    const failed = reviewReducer(started, {
+      type: "ERROR",
+      error: "No staged changes found",
+      errorCode: ReviewErrorCode.NO_DIFF,
+    });
+    expect(failed).toMatchObject({
+      isStreaming: false,
+      error: "No staged changes found",
+      errorCode: ReviewErrorCode.NO_DIFF,
+    });
 
     const restarted = reviewReducer(failed, { type: "START" });
     expect(restarted).toMatchObject({
@@ -110,6 +120,7 @@ describe("review-state", () => {
       agents: [],
       issues: [],
       error: null,
+      errorCode: null,
       isStreaming: true,
     });
 
@@ -126,6 +137,14 @@ describe("review-state", () => {
 
     expect(completed.isStreaming).toBe(false);
     expect(completed.issues).toEqual([expect.objectContaining({ title: "Bug found" })]);
+  });
+
+  it("marks cancellation without turning it into an error", () => {
+    const cancelled = reviewReducer(startedState(), { type: "CANCELLED" });
+
+    expect(cancelled.isStreaming).toBe(false);
+    expect(cancelled.error).toBeNull();
+    expect(cancelled.errorCode).toBe(ReviewErrorCode.CANCELLED);
   });
 
   it("tracks agent queue, execution, tools, errors, and completion", () => {

@@ -10,19 +10,19 @@ import { AVAILABLE_PROVIDERS, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/sch
 import { BACK_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Panel } from "../../../components/ui/panel";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions";
 import { useTheme } from "../../../theme/provider";
-import { ApiKeyOverlay } from "./api-key-overlay.js";
-import type { ProviderDetailData } from "./details.js";
-import { ProviderDetails } from "./details.js";
-import type { ProviderListItem } from "./list.js";
-import { ProviderList } from "./list.js";
-import { ModelSelectOverlay } from "./model-select-overlay.js";
+import { ApiKeyOverlay } from "./api-key-overlay";
+import type { ProviderDetailData } from "./details";
+import { ProviderDetails } from "./details";
+import type { ProviderListItem } from "./list";
+import { ProviderList } from "./list";
+import { ModelSelectOverlay } from "./model-select-overlay";
 
 const PROVIDER_IDS = AVAILABLE_PROVIDERS.map((provider) => provider.id);
 
@@ -88,6 +88,7 @@ export function ProvidersScreen(): ReactElement {
   const selectedProvider = providers.find((p) => p.id === selectedId);
   const selectedDetail = selectedProvider ? toDetailData(selectedProvider) : undefined;
   const selectedProviderId = isProviderId(selectedId) ? selectedId : null;
+  const hasSelection = selectedId !== undefined;
 
   function handleConfigureKey() {
     if (selectedId) setApiKeyOpen(true);
@@ -114,13 +115,24 @@ export function ProvidersScreen(): ReactElement {
   }
 
   const isOverlayOpen = apiKeyOpen || modelSelectOpen;
-  const isListActive = !isOverlayOpen && zone === "list";
-  const isDetailsActive = !isOverlayOpen && zone === "details";
+  useEffect(() => {
+    if (!hasSelection && zone !== "list") {
+      setZone("list");
+    }
+  }, [hasSelection, zone]);
+
+  const activeZone = hasSelection ? zone : "list";
+  const isListActive = !isOverlayOpen && activeZone === "list";
+  const isDetailsActive = !isOverlayOpen && activeZone === "details";
 
   useInput(
     (_input, key) => {
       if (key.tab) {
-        setZone((z) => (z === "list" ? "details" : "list"));
+        if (!hasSelection) {
+          setZone("list");
+          return;
+        }
+        setZone(activeZone === "list" ? "details" : "list");
       }
     },
     { isActive: !isOverlayOpen },

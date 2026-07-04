@@ -15,8 +15,8 @@ import { cn } from "@/lib/utils";
 import { SelectContext, type SelectOptionMetadata } from "./select-context";
 import { SelectItem, type SelectItemProps } from "./select-item";
 import { SelectSearch } from "./select-search";
-import { getNodeText } from "./selection";
-import { type UseSelectStateOptions, useSelectState } from "./use-state-machine";
+import { containsSelectSearchElement, getNodeText } from "./selection";
+import { type UseSelectStateOptions, useSelectState } from "./use-state";
 
 /** Props for select base. */
 interface SelectBaseProps<TValue extends string = string>
@@ -197,7 +197,7 @@ export function Select<TValue extends string = string>(props: SelectProps<TValue
     "aria-labelledby": _ariaLabelledBy,
     ...rootProps
   } = props;
-  const searchable = containsSelectSearchElement(children);
+  const searchable = containsSelectSearchElement(children, isSelectSearchElement);
   // Seed labels for direct-child items so the trigger/value display works while
   // the (portaled) dropdown is closed and its items are unmounted. Registration
   // is authoritative whenever items are mounted (open) and is the only path that
@@ -294,14 +294,6 @@ export function Select<TValue extends string = string>(props: SelectProps<TValue
   );
 }
 
-function containsSelectSearchElement(children: ReactNode): boolean {
-  return Children.toArray(children).some((child) => {
-    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
-    if (child.type === SelectSearch) return true;
-    return containsSelectSearchElement(child.props.children);
-  });
-}
-
 // Static seed for direct-child SelectItems. Used only to display the selected
 // label while the dropdown is closed (items unmounted). It deliberately does NOT
 // gate selectability — mounted items register through context, which is the only
@@ -327,4 +319,8 @@ function collectSeedOptions(children: ReactNode): ReadonlyMap<string, SelectOpti
   });
 
   return seed;
+}
+
+function isSelectSearchElement(child: ReactNode): boolean {
+  return isValidElement(child) && child.type === SelectSearch;
 }

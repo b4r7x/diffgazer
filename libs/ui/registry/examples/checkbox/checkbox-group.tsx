@@ -7,7 +7,7 @@ export default function CheckboxGroupDemo() {
   const [value, setValue] = useState<string[]>(["typescript"]);
 
   return (
-    <CheckboxGroup value={value} onChange={setValue}>
+    <CheckboxGroup value={value} onChange={setValue} aria-label="Technology choices">
       <CheckboxItem value="typescript" label="TypeScript" />
       <CheckboxItem value="react" label="React" />
       <CheckboxItem value="tailwind" label="Tailwind CSS" />

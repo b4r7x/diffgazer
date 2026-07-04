@@ -22,7 +22,7 @@ component: "code-block"
 
 ## Syntax highlighting
 
-`CodeBlock` is highlighter-agnostic. It renders structure — header, scrollable area, line numbers, copy button — but does not tokenize code. Pick one of two patterns to color output.
+`CodeBlock` is highlighter-agnostic. Its core parts render structure — header, scrollable area, line numbers, copy button — but do not tokenize code. Pick one of three patterns to color output.
 
 ### Pre-tokenized lines
 
@@ -77,6 +77,19 @@ pre: ({ children }) => (
 ```
 
 `.shiki` is a descendant selector, so the class can sit on `CodeBlockContent` and apply to every token span the highlighter emits inside it. Define `--code-keyword`, `--code-string`, `--code-comment`, etc. in your theme to match your palette.
+
+### CodeBlockHighlight
+
+Use `CodeBlockHighlight` when you want runtime syntax coloring through lowlight. Package consumers import it from `@diffgazer/ui/components/code-block/highlight`; copy, `dgadd`, and direct registry consumers add the separate `ui/code-block-highlight` item.
+
+```tsx
+import { CodeBlock } from "@diffgazer/ui/components/code-block"
+import { CodeBlockHighlight } from "@diffgazer/ui/components/code-block/highlight"
+
+<CodeBlock aria-label="Example">
+  <CodeBlockHighlight code="const greeting = 'hello'" language="typescript" />
+</CodeBlock>
+```
 
 ## Accessibility
 

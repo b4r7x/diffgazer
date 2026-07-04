@@ -6,6 +6,7 @@ export type GitFileStatusCode = z.infer<typeof GitFileStatusCodeSchema>;
 
 export const GitFileEntrySchema = z.object({
   path: z.string(),
+  previousPath: z.string().optional(),
   indexStatus: GitFileStatusCodeSchema,
   workTreeStatus: GitFileStatusCodeSchema,
 });

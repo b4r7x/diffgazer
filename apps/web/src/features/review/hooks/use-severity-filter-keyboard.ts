@@ -8,6 +8,7 @@ interface UseReviewSeverityFilterKeyboardOptions {
   lastFilterIndex: number;
   resetIndex: number;
   setFocusedFilterIndex: (index: number) => void;
+  focusChip: (index: number) => HTMLElement | null;
   toggleSeverityFilter: () => void;
   resetSeverityFilter: () => void;
   enterList: () => void;
@@ -26,6 +27,7 @@ export function useReviewSeverityFilterKeyboard({
   lastFilterIndex,
   resetIndex,
   setFocusedFilterIndex,
+  focusChip,
   toggleSeverityFilter,
   resetSeverityFilter,
   enterList,
@@ -33,9 +35,14 @@ export function useReviewSeverityFilterKeyboard({
 }: UseReviewSeverityFilterKeyboardOptions) {
   const atReset = focusedFilterIndex === resetIndex;
 
+  const focusFilterIndex = (index: number) => {
+    setFocusedFilterIndex(index);
+    focusChip(index)?.focus();
+  };
+
   const resetAndReturnToLastFilter = () => {
     resetSeverityFilter();
-    setFocusedFilterIndex(lastFilterIndex);
+    focusFilterIndex(lastFilterIndex);
   };
 
   const handleEnterOrSpace = () => {
@@ -46,7 +53,7 @@ export function useReviewSeverityFilterKeyboard({
     toggleSeverityFilter();
   };
 
-  useKey("ArrowLeft", () => setFocusedFilterIndex(lastFilterIndex), {
+  useKey("ArrowLeft", () => focusFilterIndex(lastFilterIndex), {
     scope,
     enabled: enabled && atReset,
   });

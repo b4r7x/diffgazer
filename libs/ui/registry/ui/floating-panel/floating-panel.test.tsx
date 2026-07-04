@@ -34,6 +34,31 @@ function mountTriggerRect(node: HTMLElement | null, rect: TriggerRect) {
     }) as DOMRect;
 }
 
+function withResolvedAnimationName(element: HTMLElement, animationName: string) {
+  const originalGetComputedStyle = window.getComputedStyle;
+  window.getComputedStyle = ((target: Element) => {
+    const style = originalGetComputedStyle(target);
+    if (target === element) {
+      return new Proxy(style, {
+        get(current, property, receiver) {
+          if (property === "animationName") return animationName;
+          return Reflect.get(current, property, receiver);
+        },
+      });
+    }
+    return style;
+  }) as typeof window.getComputedStyle;
+  return () => {
+    window.getComputedStyle = originalGetComputedStyle;
+  };
+}
+
+function dispatchAnimationEnd(element: HTMLElement, animationName: string) {
+  const event = new Event("animationend", { bubbles: true });
+  Object.defineProperty(event, "animationName", { value: animationName });
+  element.dispatchEvent(event);
+}
+
 interface HarnessProps {
   initialOpen?: boolean;
   side?: FloatingSide;
@@ -142,17 +167,21 @@ describe("FloatingPanel presence", () => {
     const onExitComplete = vi.fn();
     render(<Harness initialOpen panelLabel="exit-complete" onExitComplete={onExitComplete} />);
     const panel = await screen.findByRole("dialog", { name: "exit-complete" });
+    const restoreAnimationName = withResolvedAnimationName(panel, "panel-exit");
 
-    await act(async () => {
-      screen.getByRole("button", { name: "toggle" }).click();
-    });
-    expect(onExitComplete).not.toHaveBeenCalled();
+    try {
+      await act(async () => {
+        screen.getByRole("button", { name: "toggle" }).click();
+      });
+      expect(onExitComplete).not.toHaveBeenCalled();
 
-    await act(async () => {
-      // fireEvent retained: animationEnd has no userEvent equivalent.
-      fireEvent.animationEnd(panel);
-    });
-    expect(onExitComplete).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        dispatchAnimationEnd(panel, "panel-exit");
+      });
+      expect(onExitComplete).toHaveBeenCalledTimes(1);
+    } finally {
+      restoreAnimationName();
+    }
   });
 
   it("ignores animationend events bubbling from descendants", async () => {
@@ -386,7 +415,7 @@ describe("FloatingPanel prop forwarding", () => {
   });
 });
 
-describe("FloatingPanel dev-mode a11y warning", () => {
+describe("FloatingPanel unlabeled rendering", () => {
   function UnlabeledHarness({ ariaLabelledBy }: { ariaLabelledBy?: string }) {
     const [open] = useState(true);
     const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -523,22 +552,27 @@ describe("FloatingPanel exit fallback timer", () => {
         onExitComplete={onExitComplete}
       />,
     );
-    expect(screen.getByRole("dialog", { name: "fallback" })).toBeInTheDocument();
+    const panel = screen.getByRole("dialog", { name: "fallback" });
+    const restoreAnimationName = withResolvedAnimationName(panel, "panel-exit");
 
-    act(() => {
-      screen.getByRole("button", { name: "toggle" }).click();
-    });
-    expect(screen.getByRole("dialog", { name: "fallback" })).toHaveAttribute(
-      "data-state",
-      "closed",
-    );
+    try {
+      act(() => {
+        screen.getByRole("button", { name: "toggle" }).click();
+      });
+      expect(screen.getByRole("dialog", { name: "fallback" })).toHaveAttribute(
+        "data-state",
+        "closed",
+      );
 
-    act(() => {
-      vi.advanceTimersByTime(50);
-    });
+      act(() => {
+        vi.advanceTimersByTime(50);
+      });
 
-    expect(screen.queryByRole("dialog", { name: "fallback" })).not.toBeInTheDocument();
-    expect(onExitComplete).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("dialog", { name: "fallback" })).not.toBeInTheDocument();
+      expect(onExitComplete).toHaveBeenCalledTimes(1);
+    } finally {
+      restoreAnimationName();
+    }
   });
 });
 
@@ -597,19 +631,23 @@ describe("FloatingPanel mount/remount cycle", () => {
   it("keeps panel mounted with data-state=closed during exit, unmounts on animationend, and remounts cleanly on re-open", async () => {
     render(<Harness initialOpen panelLabel="cycle" />);
     const initialPanel = await screen.findByRole("dialog", { name: "cycle" });
+    const restoreAnimationName = withResolvedAnimationName(initialPanel, "panel-exit");
     expect(initialPanel).toHaveAttribute("data-state", "open");
 
-    await act(async () => {
-      screen.getByRole("button", { name: "toggle" }).click();
-    });
-    expect(initialPanel).toHaveAttribute("data-state", "closed");
-    expect(initialPanel).toBeInTheDocument();
+    try {
+      await act(async () => {
+        screen.getByRole("button", { name: "toggle" }).click();
+      });
+      expect(initialPanel).toHaveAttribute("data-state", "closed");
+      expect(initialPanel).toBeInTheDocument();
 
-    await act(async () => {
-      // fireEvent retained: animationEnd has no userEvent equivalent.
-      fireEvent.animationEnd(initialPanel);
-    });
-    expect(screen.queryByRole("dialog", { name: "cycle" })).not.toBeInTheDocument();
+      await act(async () => {
+        dispatchAnimationEnd(initialPanel, "panel-exit");
+      });
+      expect(screen.queryByRole("dialog", { name: "cycle" })).not.toBeInTheDocument();
+    } finally {
+      restoreAnimationName();
+    }
 
     await act(async () => {
       screen.getByRole("button", { name: "toggle" }).click();

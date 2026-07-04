@@ -53,9 +53,7 @@ export function ReviewSummaryView({
     rightShortcuts: onBack ? SUMMARY_SHORTCUTS_RIGHT : [],
   });
 
-  const buttons: Array<() => void> = [];
-  if (onContinue) buttons.push(onContinue);
-  if (onBack) buttons.push(onBack);
+  const buttonCount = Number(Boolean(onContinue)) + Number(Boolean(onBack));
 
   const [buttonIndex, setButtonIndex] = useState(0);
 
@@ -65,12 +63,7 @@ export function ReviewSummaryView({
       return;
     }
     if (key.rightArrow) {
-      setButtonIndex(Math.min(buttons.length - 1, 1));
-      return;
-    }
-    if (key.return) {
-      const action = buttons[buttonIndex];
-      action?.();
+      setButtonIndex(Math.min(Math.max(buttonCount - 1, 0), 1));
       return;
     }
     if (key.escape && onBack) onBack();

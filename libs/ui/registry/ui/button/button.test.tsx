@@ -12,9 +12,10 @@ describe("Button", () => {
   });
 
   it("fires onClick when clicked", async () => {
+    const user = userEvent.setup();
     const onClick = vi.fn();
     render(<Button onClick={onClick}>Click</Button>);
-    await userEvent.click(screen.getByRole("button"));
+    await user.click(screen.getByRole("button"));
     expect(onClick).toHaveBeenCalled();
   });
 
@@ -42,13 +43,14 @@ describe("Button", () => {
   });
 
   it("does not fire onClick while loading", async () => {
+    const user = userEvent.setup();
     const onClick = vi.fn();
     render(
       <Button loading onClick={onClick}>
         Save
       </Button>,
     );
-    await userEvent.click(screen.getByRole("button"));
+    await user.click(screen.getByRole("button"));
     expect(onClick).not.toHaveBeenCalled();
   });
 
@@ -96,6 +98,7 @@ describe("Button", () => {
   });
 
   it("removes a disabled anchor from the tab order and makes it non-navigable", async () => {
+    const user = userEvent.setup();
     render(
       <>
         <Button as="a" href="/before">
@@ -115,7 +118,7 @@ describe("Button", () => {
     expect(disabled).not.toHaveAttribute("href");
 
     screen.getByRole("link", { name: "Before" }).focus();
-    await userEvent.tab();
+    await user.tab();
 
     expect(screen.getByRole("link", { name: "After" })).toHaveFocus();
     expect(disabled).not.toHaveFocus();

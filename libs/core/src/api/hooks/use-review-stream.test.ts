@@ -157,6 +157,7 @@ describe("useReviewStream", () => {
     });
 
     expect(result.current.state.error).toBe("network failure");
+    expect(result.current.state.errorCode).toBe("STREAM_ERROR");
     expect(result.current.state.isStreaming).toBe(false);
   });
 
@@ -243,6 +244,7 @@ describe("useReviewStream", () => {
     });
 
     expect(result.current.state.isStreaming).toBe(false);
+    expect(result.current.state.errorCode).toBe(ReviewErrorCode.CANCELLED);
     expect(cancelReviewSession).toHaveBeenCalledWith("cancel-review");
 
     await act(async () => {
@@ -414,6 +416,35 @@ describe("useReviewStream", () => {
     expect(resumeResult.ok).toBe(false);
     if (!resumeResult.ok) {
       expect(resumeResult.error.code).toBe(ReviewErrorCode.SESSION_STALE);
+    }
+  });
+
+  it("preserves structured review error codes on stream errors", async () => {
+    const noDiffError: StreamReviewError = {
+      code: ReviewErrorCode.NO_DIFF,
+      message: "No staged changes found.",
+    };
+    const resumeReviewStream = vi
+      .fn<BoundApi["resumeReviewStream"]>()
+      .mockResolvedValue(err(noDiffError));
+    const api = createApi({ resumeReviewStream });
+
+    const { result } = renderHook(() => useReviewStream(), {
+      wrapper: createWrapper(api),
+    });
+
+    let returnedResult: Result<void, StreamReviewError> | undefined;
+    await act(async () => {
+      returnedResult = await result.current.resume("no-diff-review");
+    });
+
+    expect(result.current.state.error).toBe("No staged changes found.");
+    expect(result.current.state.errorCode).toBe(ReviewErrorCode.NO_DIFF);
+    expect(result.current.state.isStreaming).toBe(false);
+    const resumeResult = requireValue(returnedResult, "resume result");
+    expect(resumeResult.ok).toBe(false);
+    if (!resumeResult.ok) {
+      expect(resumeResult.error.code).toBe(ReviewErrorCode.NO_DIFF);
     }
   });
 

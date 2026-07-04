@@ -2,7 +2,6 @@ import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node
 import { basename, join, resolve } from "node:path";
 import { log } from "../logger.js";
 import { collectJsonFiles, ensureExists, resetDir, resolveInside } from "../utils/fs.js";
-import { writeJson } from "../utils/json.js";
 import { assertSafeLibraryId } from "./library-id-validation.js";
 import type { AfterSyncContext, LoadedLibraryArtifacts, SyncOutputPaths } from "./types.js";
 
@@ -174,18 +173,35 @@ export function rewriteSecondaryDemoIndexImports(content: string, libraryId: str
   );
 }
 
-function writeRootMeta(
-  artifacts: LoadedLibraryArtifacts[],
-  contentDir: string,
-  title = "Documentation",
-  extraRootPages: string[] = [],
-): void {
-  const pages = [...artifacts.map((artifact) => `...${artifact.id}`), ...extraRootPages];
-  writeJson(resolve(contentDir, "meta.json"), {
-    title,
-    root: true,
-    pages,
-  });
+export function rewriteDemoIndexForViteGlob(content: string): string {
+  const entries = Array.from(
+    content.matchAll(/^\s+"([^"]+)": lazy\(\(\) => import\("([^"]+)"\)\),$/gm),
+  );
+  if (entries.length === 0) return content;
+
+  return [
+    `import { lazy } from "react"`,
+    `import type { ComponentType, LazyExoticComponent } from "react"`,
+    "",
+    "type DemoModule = { default: ComponentType }",
+    `const demoModules = import.meta.glob<DemoModule>("../../../registry/examples/**/*.tsx")`,
+    "",
+    "function lazyDemo(path: string): LazyExoticComponent<ComponentType> {",
+    "  const load = demoModules[path]",
+    "  if (!load) {",
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: emitted source text for the generated demo-index module, not an interpolation in this file.
+    "    return lazy(() => Promise.reject(new Error(`Missing demo module: ${path}`)))",
+    "  }",
+    "  return lazy(load)",
+    "}",
+    "",
+    "export const demos: Record<string, LazyExoticComponent<ComponentType>> = {",
+    ...entries.map(([, demoName, importPath]) => {
+      return `  "${demoName}": lazyDemo("${importPath}.tsx"),`;
+    }),
+    "}",
+    "",
+  ].join("\n");
 }
 
 function syncRegistries(
@@ -255,19 +271,8 @@ export function runDocsSyncPass(params: {
   origin: string;
   sourceOrigin: string;
   afterSync?: (ctx: AfterSyncContext) => void;
-  rootTitle?: string;
-  extraRootPages?: string[];
 }): void {
-  const {
-    artifacts,
-    primaryArtifact,
-    paths,
-    origin,
-    sourceOrigin,
-    afterSync,
-    rootTitle,
-    extraRootPages,
-  } = params;
+  const { artifacts, primaryArtifact, paths, origin, sourceOrigin, afterSync } = params;
 
   for (const artifact of artifacts) {
     const docsSource = resolve(artifact.artifactRoot, artifact.manifest.docs.contentDir);
@@ -298,8 +303,6 @@ export function runDocsSyncPass(params: {
       ),
     });
   }
-
-  writeRootMeta(artifacts, paths.contentDir, rootTitle, extraRootPages);
 
   log.info(`[docs-sync] Syncing registries (origin asserted: ${origin})...`);
   syncRegistries(artifacts, paths.publicRegistryDir, origin, sourceOrigin);

@@ -7,7 +7,7 @@ export interface IssueHeaderProps {
   title: string;
   severity: ReviewSeverity;
   file: string;
-  line: number;
+  line?: number | null;
   className?: string;
 }
 
@@ -21,10 +21,7 @@ export function IssueHeader({ title, severity, file, line, className }: IssueHea
         {title}
       </Typography>
       <div className="text-xs text-muted-foreground">
-        Location:{" "}
-        <span className="text-foreground">
-          {file}:{line}
-        </span>
+        Location: <span className="text-foreground">{line == null ? file : `${file}:${line}`}</span>
       </div>
     </div>
   );

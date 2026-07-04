@@ -1,7 +1,8 @@
-import { act, renderHook } from "@testing-library/react";
-import { type RefObject, useRef } from "react";
+import { act, render, renderHook } from "@testing-library/react";
+import { createElement, type RefObject, useRef } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { queryTestElement, requireFrameDocument } from "../testing/assertions.js";
+import { useFocusRestore } from "./use-focus-restore.js";
 import { useFocusTrap } from "./use-focus-trap.js";
 
 // File convention: this suite asserts focus-trap focus movement to specific
@@ -102,6 +103,17 @@ describe("useFocusTrap", () => {
         const initialRef = useRef<HTMLElement>(targetEl);
         useFocusTrap(ref, { initialFocus: initialRef });
       });
+
+      expect(document.activeElement).toBe(targetEl);
+    });
+
+    it("does not move focus when the active element is already inside the container on activation", () => {
+      container = createContainer('<button id="a">A</button>', '<button id="b">B</button>');
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      const targetEl = queryTestElement(container, "b");
+      targetEl.focus();
+
+      renderTrap(container);
 
       expect(document.activeElement).toBe(targetEl);
     });
@@ -207,6 +219,30 @@ describe("useFocusTrap", () => {
       expect(document.activeElement).toBe(container.querySelector("#c"));
     });
 
+    it("Tab from a non-tabbable element inside the trap moves to the next tabbable in document order", () => {
+      container = createContainer(
+        '<button id="a">A</button>',
+        '<div id="anchor" tabindex="-1">Anchor</div>',
+        '<button id="b">B</button>',
+        '<button id="c">C</button>',
+      );
+      renderTrap(container);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      const anchor = queryTestElement(container, "anchor");
+      anchor.focus();
+
+      const event = fireTab();
+      expect(event.defaultPrevented).toBe(true);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(container.querySelector("#b"));
+
+      anchor.focus();
+      const shiftEvent = fireTab(true);
+      expect(shiftEvent.defaultPrevented).toBe(true);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(container.querySelector("#a"));
+    });
+
     it("cycles focus within the trap container's owning document", () => {
       const frame = document.createElement("iframe");
       document.body.append(frame);
@@ -291,6 +327,42 @@ describe("useFocusTrap", () => {
       expect(document.activeElement).toBe(container.querySelector("#a"));
 
       rerender({ enabled: false });
+      expect(document.activeElement).toBe(outsideButton);
+
+      outsideButton.remove();
+    });
+
+    it("outer overlay focus restore still works after a mounted trap is disabled", () => {
+      const outsideButton = document.createElement("button");
+      outsideButton.id = "outside";
+      document.body.appendChild(outsideButton);
+      outsideButton.focus();
+
+      container = createContainer('<button id="a">A</button>');
+
+      const { result, rerender } = renderHook(
+        ({ trapEnabled }: { trapEnabled: boolean }) => {
+          const outerRestore = useFocusRestore({ restoreOnUnmount: false });
+          const ref = useRef<HTMLElement>(container);
+          useFocusTrap(ref, { enabled: trapEnabled });
+          return outerRestore;
+        },
+        { initialProps: { trapEnabled: false } },
+      );
+
+      act(() => {
+        expect(result.current.capture()).toBe(outsideButton);
+      });
+
+      rerender({ trapEnabled: true });
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(container.querySelector("#a"));
+
+      rerender({ trapEnabled: false });
+
+      act(() => {
+        expect(result.current.restore()).toBe(true);
+      });
       expect(document.activeElement).toBe(outsideButton);
 
       outsideButton.remove();
@@ -520,6 +592,54 @@ describe("useFocusTrap", () => {
   });
 
   describe("nested trap stack", () => {
+    it("inner trap mounted in the same commit as an outer parent-component trap holds focus", () => {
+      function InnerTrap() {
+        const innerRef = useRef<HTMLDivElement>(null);
+        useFocusTrap(innerRef, { restoreFocus: false });
+
+        return createElement(
+          "div",
+          { ref: innerRef, "data-testid": "inner" },
+          createElement("button", { id: "i1", type: "button" }, "I1"),
+          createElement("button", { id: "i2", type: "button" }, "I2"),
+        );
+      }
+
+      function OuterTrap() {
+        const outerRef = useRef<HTMLDivElement>(null);
+        useFocusTrap(outerRef, { restoreFocus: false });
+
+        return createElement(
+          "div",
+          { ref: outerRef, "data-testid": "outer" },
+          createElement("button", { id: "o1", type: "button" }, "O1"),
+          createElement(InnerTrap),
+          createElement("button", { id: "o2", type: "button" }, "O2"),
+        );
+      }
+
+      const view = render(createElement(OuterTrap));
+      const inner = view.getByTestId("inner");
+
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(inner.querySelector("#i1"));
+
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      const innerSecond = queryTestElement(inner, "i2");
+      innerSecond.focus();
+      expect(document.activeElement).toBe(innerSecond);
+
+      const outsideButton = document.createElement("button");
+      outsideButton.id = "outside";
+      document.body.appendChild(outsideButton);
+      outsideButton.focus();
+
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(inner.querySelector("#i2"));
+
+      outsideButton.remove();
+    });
+
     it("inner trap captures focus while outer trap is suspended, and outer recaptures on inner release", () => {
       // Set up outer trap
       container = createContainer('<button id="o1">O1</button>', '<button id="o2">O2</button>');

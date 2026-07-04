@@ -127,7 +127,7 @@ const REVIEW_SPECIFIC_CODES = [
 ] as const;
 
 export const ReviewErrorSchema = createDomainErrorSchema(REVIEW_SPECIFIC_CODES);
-/** @see diffgazer/apps/server/src/shared/lib/review/types.ts ReviewError (lightweight server-internal variant) */
+/** @see cli/server/src/features/review/engine/types.ts ReviewError (lightweight server-internal variant) */
 export type ReviewError = z.infer<typeof ReviewErrorSchema>;
 
 export const ReviewStreamEventSchema = z.discriminatedUnion("type", [

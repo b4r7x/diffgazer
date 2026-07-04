@@ -4,9 +4,13 @@ import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
-import { Accordion } from "./index";
+import { Accordion, type AccordionMultipleProps, type AccordionSingleProps } from "./index";
 
-function renderAccordion(props: Record<string, unknown> = {}) {
+type AccordionRenderProps =
+  | Partial<Omit<AccordionSingleProps, "children">>
+  | ({ type: "multiple" } & Partial<Omit<AccordionMultipleProps, "children" | "type">>);
+
+function renderAccordion(props: AccordionRenderProps = {}) {
   return render(
     <Accordion {...props}>
       <Accordion.Item value="one">
@@ -33,32 +37,36 @@ function renderAccordion(props: Record<string, unknown> = {}) {
 
 describe("Accordion", () => {
   it("opens an item when its trigger is clicked", async () => {
+    const user = userEvent.setup();
     renderAccordion();
     const trigger = screen.getByRole("button", { name: "Section One" });
     expect(trigger).toHaveAttribute("aria-expanded", "false");
-    await userEvent.click(trigger);
+    await user.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
   });
 
   it("closes an open item when clicked again (collapsible by default)", async () => {
+    const user = userEvent.setup();
     renderAccordion({ defaultValue: "one" });
     const trigger = screen.getByRole("button", { name: "Section One" });
     expect(trigger).toHaveAttribute("aria-expanded", "true");
-    await userEvent.click(trigger);
+    await user.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "false");
   });
 
   it("single mode closes previous item when another is opened", async () => {
+    const user = userEvent.setup();
     renderAccordion({ defaultValue: "one" });
     const triggerOne = screen.getByRole("button", { name: "Section One" });
     const triggerTwo = screen.getByRole("button", { name: "Section Two" });
     expect(triggerOne).toHaveAttribute("aria-expanded", "true");
-    await userEvent.click(triggerTwo);
+    await user.click(triggerTwo);
     expect(triggerOne).toHaveAttribute("aria-expanded", "false");
     expect(triggerTwo).toHaveAttribute("aria-expanded", "true");
   });
 
   it("single mode with collapsible=false prevents closing the open item", async () => {
+    const user = userEvent.setup();
     renderAccordion({ defaultValue: "one", collapsible: false });
     const trigger = screen.getByRole("button", { name: "Section One" });
     expect(trigger).toHaveAttribute("aria-expanded", "true");
@@ -66,24 +74,26 @@ describe("Accordion", () => {
     expect(trigger).toHaveAttribute("aria-disabled", "true");
     trigger.focus();
     expect(trigger).toHaveFocus();
-    await userEvent.click(trigger);
+    await user.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
   });
 
   it("multiple mode allows several items open and toggles independently", async () => {
+    const user = userEvent.setup();
     renderAccordion({ type: "multiple" });
     const triggerOne = screen.getByRole("button", { name: "Section One" });
     const triggerTwo = screen.getByRole("button", { name: "Section Two" });
-    await userEvent.click(triggerOne);
-    await userEvent.click(triggerTwo);
+    await user.click(triggerOne);
+    await user.click(triggerTwo);
     expect(triggerOne).toHaveAttribute("aria-expanded", "true");
     expect(triggerTwo).toHaveAttribute("aria-expanded", "true");
-    await userEvent.click(triggerOne);
+    await user.click(triggerOne);
     expect(triggerOne).toHaveAttribute("aria-expanded", "false");
     expect(triggerTwo).toHaveAttribute("aria-expanded", "true");
   });
 
   it("does not toggle a disabled item", async () => {
+    const user = userEvent.setup();
     render(
       <Accordion>
         <Accordion.Item value="one" disabled>
@@ -96,7 +106,7 @@ describe("Accordion", () => {
     );
     const trigger = screen.getByRole("button", { name: "Disabled" });
     expect(trigger).toBeDisabled();
-    await userEvent.click(trigger);
+    await user.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "false");
   });
 
@@ -117,6 +127,7 @@ describe("Accordion", () => {
   });
 
   it("keeps explicit value undefined controlled instead of adopting internal state", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderAccordion({ value: undefined, onChange });
     const sectionOne = screen.getByRole("button", { name: "Section One" });
@@ -124,34 +135,38 @@ describe("Accordion", () => {
     expect(sectionOne).toHaveAttribute("aria-expanded", "false");
     expect(sectionTwo).toHaveAttribute("aria-expanded", "false");
 
-    await userEvent.click(sectionTwo);
+    await user.click(sectionTwo);
     expect(onChange).toHaveBeenCalledWith("two");
     expect(sectionOne).toHaveAttribute("aria-expanded", "false");
     expect(sectionTwo).toHaveAttribute("aria-expanded", "false");
   });
 
   it("controlled single mode calls onChange with new value", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderAccordion({ value: "one", onChange });
-    await userEvent.click(screen.getByRole("button", { name: "Section Two" }));
+    await user.click(screen.getByRole("button", { name: "Section Two" }));
     expect(onChange).toHaveBeenCalledWith("two");
   });
 
   it("controlled single mode calls onChange with null when collapsing", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderAccordion({ value: "one", onChange });
-    await userEvent.click(screen.getByRole("button", { name: "Section One" }));
+    await user.click(screen.getByRole("button", { name: "Section One" }));
     expect(onChange).toHaveBeenCalledWith(null);
   });
 
   it("controlled multiple mode calls onChange with updated array", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     renderAccordion({ type: "multiple", value: ["one"], onChange });
-    await userEvent.click(screen.getByRole("button", { name: "Section Two" }));
+    await user.click(screen.getByRole("button", { name: "Section Two" }));
     expect(onChange).toHaveBeenCalledWith(["one", "two"]);
   });
 
   it("forwards trigger props and honors preventDefault in consumer click handlers", async () => {
+    const user = userEvent.setup();
     const ref = createRef<HTMLButtonElement>();
     const onClick = vi.fn((event) => event.preventDefault());
 
@@ -170,7 +185,7 @@ describe("Accordion", () => {
 
     const trigger = screen.getByRole("button", { name: "Section One" });
     expect(ref.current).toBe(trigger);
-    await userEvent.click(trigger);
+    await user.click(trigger);
     expect(onClick).toHaveBeenCalledOnce();
     expect(trigger).toHaveAttribute("aria-expanded", "false");
   });
@@ -235,17 +250,19 @@ describe("Accordion", () => {
   });
 
   it("ArrowDown/ArrowUp moves focus between triggers", async () => {
+    const user = userEvent.setup();
     renderAccordion();
     const triggerOne = screen.getByRole("button", { name: "Section One" });
     const triggerTwo = screen.getByRole("button", { name: "Section Two" });
     triggerOne.focus();
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(triggerTwo).toHaveFocus();
-    await userEvent.keyboard("{ArrowUp}");
+    await user.keyboard("{ArrowUp}");
     expect(triggerOne).toHaveFocus();
   });
 
   it("does not handle arrow navigation when focus is inside panel content", async () => {
+    const user = userEvent.setup();
     render(
       <Accordion defaultValue="one">
         <Accordion.Item value="one">
@@ -267,27 +284,29 @@ describe("Accordion", () => {
     const input = screen.getByRole("textbox", { name: "Panel field" });
     input.focus();
 
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
 
     expect(input).toHaveFocus();
     expect(screen.getByRole("button", { name: "Section Two" })).not.toHaveFocus();
   });
 
   it("ArrowDown/ArrowUp wraps around at boundaries", async () => {
+    const user = userEvent.setup();
     renderAccordion();
     const triggerOne = screen.getByRole("button", { name: "Section One" });
     const triggerThree = screen.getByRole("button", { name: "Section Three" });
     triggerOne.focus();
-    await userEvent.keyboard("{ArrowDown}");
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(triggerThree).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(triggerOne).toHaveFocus();
-    await userEvent.keyboard("{ArrowUp}");
+    await user.keyboard("{ArrowUp}");
     expect(triggerThree).toHaveFocus();
   });
 
   it("does not navigate outer triggers when arrow is pressed inside a nested accordion", async () => {
+    const user = userEvent.setup();
     render(
       <Accordion defaultValue="one">
         <Accordion.Item value="one">
@@ -325,12 +344,13 @@ describe("Accordion", () => {
     const outerTwo = screen.getByRole("button", { name: "Outer Two" });
 
     innerA.focus();
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(innerB).toHaveFocus();
     expect(outerTwo).not.toHaveFocus();
   });
 
   it("End on outer accordion focuses the outer last trigger, not a nested trigger", async () => {
+    const user = userEvent.setup();
     render(
       <Accordion defaultValue="one">
         <Accordion.Item value="one">
@@ -368,13 +388,14 @@ describe("Accordion", () => {
     const innerB = screen.getByRole("button", { name: "Inner B" });
 
     outerOne.focus();
-    await userEvent.keyboard("{End}");
+    await user.keyboard("{End}");
 
     expect(outerTwo).toHaveFocus();
     expect(innerB).not.toHaveFocus();
   });
 
   it("ArrowDown on outer trigger skips nested triggers and goes to next outer trigger", async () => {
+    const user = userEvent.setup();
     render(
       <Accordion defaultValue="one">
         <Accordion.Item value="one">
@@ -411,12 +432,13 @@ describe("Accordion", () => {
     const outerTwo = screen.getByRole("button", { name: "Outer Two" });
 
     outerOne.focus();
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
 
     expect(outerTwo).toHaveFocus();
   });
 
   it("keeps aria-disabled non-collapsible triggers in roving order and skips disabled items", async () => {
+    const user = userEvent.setup();
     render(
       <Accordion defaultValue="one" collapsible={false}>
         <Accordion.Item value="one">
@@ -444,10 +466,10 @@ describe("Accordion", () => {
     expect(triggerOne).toHaveAttribute("aria-disabled", "true");
 
     triggerThree.focus();
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(triggerOne).toHaveFocus();
 
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(triggerThree).toHaveFocus();
   });
 });

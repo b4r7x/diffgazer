@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
@@ -95,6 +95,43 @@ describe("useNavigation", () => {
 
     await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowUp}");
     expectActiveOptionText("c");
+  });
+
+  it("ignores Ctrl/Meta/Alt-modified navigation keys without preventing browser defaults", () => {
+    const onHighlightChange = vi.fn();
+    render(<TestList defaultHighlighted="a" onHighlightChange={onHighlightChange} />);
+
+    const listbox = screen.getByRole("listbox", { name: "Items" });
+    listbox.focus();
+
+    for (const eventInit of [
+      { key: "ArrowDown", altKey: true },
+      { key: "ArrowUp", metaKey: true },
+      { key: "Home", ctrlKey: true },
+    ] satisfies KeyboardEventInit[]) {
+      const event = new KeyboardEvent("keydown", {
+        ...eventInit,
+        bubbles: true,
+        cancelable: true,
+      });
+      act(() => {
+        listbox.dispatchEvent(event);
+      });
+      expect(event.defaultPrevented).toBe(false);
+    }
+    expect(listbox.getAttribute("aria-activedescendant")).toBe("item-a");
+    expect(onHighlightChange).not.toHaveBeenCalled();
+
+    const arrowDown = new KeyboardEvent("keydown", {
+      key: "ArrowDown",
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => {
+      listbox.dispatchEvent(arrowDown);
+    });
+    expect(arrowDown.defaultPrevented).toBe(true);
+    expect(listbox.getAttribute("aria-activedescendant")).toBe("item-b");
   });
 
   it("reports non-wrapping boundary callbacks with event and key arguments", async () => {
@@ -242,6 +279,7 @@ describe("useNavigation", () => {
   });
 
   it("falls back to native buttons with data values and ignores nested data-value descendants", async () => {
+    const user = userEvent.setup();
     function ButtonList() {
       const ref = useRef<HTMLDivElement>(null);
       const result = useNavigation({
@@ -265,7 +303,7 @@ describe("useNavigation", () => {
 
     render(<ButtonList />);
     screen.getByRole("button", { name: "One nested" }).focus();
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
 
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Two" }));
   });
@@ -394,6 +432,7 @@ describe("useNavigation", () => {
   });
 
   it("activates focused item with Space in a real DOM focus action list", async () => {
+    const user = userEvent.setup();
     const onFocusedSelect = vi.fn();
     render(
       <div>
@@ -401,7 +440,7 @@ describe("useNavigation", () => {
       </div>,
     );
     screen.getByRole("button", { name: "B" }).focus();
-    await userEvent.keyboard(" ");
+    await user.keyboard(" ");
     expect(onFocusedSelect).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
   });
 
@@ -540,6 +579,7 @@ describe("useNavigation", () => {
   });
 
   it("moves DOM focus when moveFocus is enabled without activating by default", async () => {
+    const user = userEvent.setup();
     function MoveFocusList() {
       const ref = useRef<HTMLDivElement>(null);
       const result = useNavigation({
@@ -568,12 +608,13 @@ describe("useNavigation", () => {
     const first = screen.getByRole("button", { name: "A" });
     first.focus();
 
-    await userEvent.keyboard("{ArrowDown}{End}{Home} {Enter}");
+    await user.keyboard("{ArrowDown}{End}{Home} {Enter}");
 
     expect(document.activeElement).toBe(first);
   });
 
   it("activates the focused value when moveFocus has explicit activation handlers", async () => {
+    const user = userEvent.setup();
     const onSelect = vi.fn();
     const onEnter = vi.fn();
 
@@ -603,7 +644,7 @@ describe("useNavigation", () => {
     render(<MoveFocusActivationList />);
     screen.getByRole("button", { name: "A" }).focus();
 
-    await userEvent.keyboard("{ArrowDown} {Enter}");
+    await user.keyboard("{ArrowDown} {Enter}");
 
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "B" }));
     expect(onEnter).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
@@ -611,12 +652,13 @@ describe("useNavigation", () => {
   });
 
   it("clears highlight when highlight(null) is called and notifies onHighlightChange with null", async () => {
+    const user = userEvent.setup();
     const onHighlightChange = vi.fn();
     render(<TestList defaultHighlighted="b" onHighlightChange={onHighlightChange} />);
 
     expect(screen.getByRole("option", { name: "b" }).getAttribute("aria-selected")).toBe("true");
 
-    await userEvent.click(screen.getByRole("button", { name: "Clear Highlight" }));
+    await user.click(screen.getByRole("button", { name: "Clear Highlight" }));
 
     expect(screen.getByRole("option", { name: "b" }).getAttribute("aria-selected")).toBe("false");
     expect(onHighlightChange).toHaveBeenCalledWith(null);
@@ -646,12 +688,13 @@ describe("useNavigation", () => {
   });
 
   it("exposes highlight and isHighlighted to consumers", async () => {
+    const user = userEvent.setup();
     render(<TestList defaultHighlighted="a" />);
 
     expect(screen.getByRole("option", { name: "a" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByRole("option", { name: "b" }).getAttribute("aria-selected")).toBe("false");
 
-    await userEvent.click(screen.getByRole("button", { name: "Highlight B" }));
+    await user.click(screen.getByRole("button", { name: "Highlight B" }));
 
     expect(screen.getByRole("option", { name: "a" }).getAttribute("aria-selected")).toBe("false");
     expect(screen.getByRole("option", { name: "b" }).getAttribute("aria-selected")).toBe("true");
@@ -723,6 +766,42 @@ describe("useNavigation", () => {
       // Textarea should accept the keys (value changed)
       expect(textarea.value).not.toBe(before);
       expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    it("leaves the caret alone for Home/End in a search input when the list filters to zero items", () => {
+      const onHighlightChange = vi.fn();
+
+      function EmptyListWithSearch() {
+        const ref = useRef<HTMLDivElement>(null);
+        const result = useNavigation({
+          containerRef: ref,
+          role: "option",
+          onHighlightChange,
+          onSelect: vi.fn(),
+        });
+
+        return (
+          <div onKeyDown={result.onKeyDown}>
+            <input type="text" aria-label="Search" defaultValue="hello" />
+            <div ref={ref} role="listbox" aria-label="Items" tabIndex={0} />
+          </div>
+        );
+      }
+
+      render(<EmptyListWithSearch />);
+
+      const input = screen.getByRole("textbox", { name: "Search" }) as HTMLInputElement;
+      input.focus();
+      input.setSelectionRange(2, 2);
+
+      for (const key of ["Home", "End"]) {
+        const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
+        act(() => {
+          input.dispatchEvent(event);
+        });
+        expect(event.defaultPrevented).toBe(false);
+      }
+      expect(onHighlightChange).not.toHaveBeenCalled();
     });
 
     it("does not consume keys originating in contenteditable above the listbox", async () => {

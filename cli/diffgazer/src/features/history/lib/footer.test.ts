@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { getHistoryFooter } from "./history-footer";
+import { getHistoryFooter } from "./footer";
 
 describe("getHistoryFooter", () => {
   test("search zone shows clear-search on the right and only the timeline shortcut", () => {

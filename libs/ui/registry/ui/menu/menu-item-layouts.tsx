@@ -100,7 +100,7 @@ export function DefaultItemLayout({
       {hotkey !== undefined && (
         // The bracketed glyphs stay aria-hidden so they do not pollute the item's
         // name or typeahead; MenuItem exposes the shortcut to AT via
-        // aria-keyshortcuts instead (F-083).
+        // aria-keyshortcuts instead.
         <span
           aria-hidden="true"
           className={

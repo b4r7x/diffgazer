@@ -5,9 +5,13 @@ import type {
   ProgressSubstepData,
 } from "../schemas/presentation/index.js";
 import { truncate } from "../strings.js";
-import { getAgentDetail, mapStepStatus as mapStepStatusCore } from "./display.js";
+import {
+  getAgentDetail,
+  mapStepStatus as mapStepStatusCore,
+  type UIStepStatus,
+} from "./display.js";
 
-const STATUS_TO_PROGRESS: Record<string, ProgressStatus> = {
+const STATUS_TO_PROGRESS: Record<UIStepStatus, ProgressStatus> = {
   pending: "pending",
   running: "active",
   complete: "completed",
@@ -16,7 +20,7 @@ const STATUS_TO_PROGRESS: Record<string, ProgressStatus> = {
 
 function mapStepStatusToProgress(status: StepState["status"]): ProgressStatus {
   const coreStatus = mapStepStatusCore(status);
-  return STATUS_TO_PROGRESS[coreStatus] ?? "pending";
+  return STATUS_TO_PROGRESS[coreStatus];
 }
 
 function mapAgentToSubstepStatus(agentStatus: AgentStatus): ProgressSubstepData["status"] {

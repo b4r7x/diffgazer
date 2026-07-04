@@ -117,9 +117,13 @@ export function getContextPresentation(
   status: ContextStatus,
   errorMessage: string | null,
 ): DiagnosticsPresentation {
-  if (status === "loading") return { label: "Loading...", variant: "info" };
-  if (status === "ready") return { label: "Ready", variant: "success" };
-  if (status === "missing") return { label: "Missing", variant: "warning" };
+  if (status === "loading") {
+    return { label: "Loading...", variant: CONTEXT_VARIANT_BY_STATUS.loading };
+  }
+  if (status === "ready") return { label: "Ready", variant: CONTEXT_VARIANT_BY_STATUS.ready };
+  if (status === "missing") {
+    return { label: "Missing", variant: CONTEXT_VARIANT_BY_STATUS.missing };
+  }
   return { label: `Error: ${errorMessage ?? "unknown"}`, variant: CONTEXT_VARIANT_BY_STATUS.error };
 }
 

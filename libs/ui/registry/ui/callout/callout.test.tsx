@@ -184,6 +184,27 @@ describe("Callout dismiss", () => {
     await user.keyboard("{Enter}");
     expect(screen.queryByText("Alert")).not.toBeInTheDocument();
   });
+
+  it("moves focus to a stable target when the callout is dismissed via keyboard", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <Callout>
+          <Callout.Title>Alert</Callout.Title>
+          <Callout.Dismiss />
+        </Callout>
+        <button type="button">Continue</button>
+      </>,
+    );
+
+    await user.tab();
+    expect(screen.getByRole("button", { name: "Dismiss" })).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+
+    expect(screen.queryByText("Alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue" })).toHaveFocus();
+  });
 });
 
 describe("Callout controlled state", () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { type ComponentProps, type ReactNode, useLayoutEffect, useRef } from "react";
-import { STEP_STATUSES, type StepStatus } from "@/lib/step-status";
+import type { StepStatus } from "@/lib/step-status";
 import {
   NUMBERED_COMPLETED_GLYPH,
   NUMBERED_DISABLED_GLYPH,
@@ -16,8 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useStepperContext, useStepperStepContext } from "./stepper-context";
 
-/** Root provider (manages expansion + variant) */
-export const DEFAULT_STEP_STATUS_LABELS: Record<StepStatus, string> = {
+const DEFAULT_STEP_STATUS_LABELS: Record<StepStatus, string> = {
   completed: "DONE",
   active: "RUN",
   pending: "WAIT",
@@ -60,8 +59,9 @@ export function StepperTrigger({
     useStepperStepContext();
   const labelRef = useRef<HTMLSpanElement>(null);
 
-  const isDisabled = disabledProp || status === "disabled";
-  const isInteractive = status !== "disabled";
+  const isTriggerDisabled = disabledProp === true;
+  const isDisabled = isTriggerDisabled || status === "disabled";
+  const isInteractive = !isDisabled;
   const tabIndex = tabTargetId === stepId && isInteractive ? 0 : -1;
 
   const tagLabel = statusLabels?.[status] ?? DEFAULT_STEP_STATUS_LABELS[status];
@@ -92,7 +92,7 @@ export function StepperTrigger({
       aria-controls={hasContent ? contentId : undefined}
       aria-current={status === "active" ? "step" : undefined}
       aria-disabled={status === "disabled" ? true : undefined}
-      disabled={isDisabled && status !== "disabled" ? true : undefined}
+      disabled={isTriggerDisabled ? true : undefined}
       tabIndex={tabIndex}
     >
       <span className={stepperIndicatorVariants({ variant, status })}>
@@ -169,5 +169,3 @@ export function getStepperIndicatorGlyph(variant: StepperVariant, status: StepSt
   if (variant === "tag") return DEFAULT_STEP_STATUS_LABELS[status];
   return STEP_INDICATOR_GLYPHS[variant][status];
 }
-
-export { STEP_STATUSES };

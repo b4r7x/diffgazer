@@ -22,7 +22,7 @@ export interface ToggleGroupItemProps<TValue extends string = string>
   value: TValue;
   /** Optional trailing count rendered as [label count]. */
   count?: number;
-  /** Disables this item only; remains in the navigation order with aria-disabled. */
+  /** Disables this item only; removed from arrow navigation and focus. */
   disabled?: boolean;
   /** Item label. */
   children: ReactNode;

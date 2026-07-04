@@ -3,6 +3,7 @@ import type {
   ConsumptionLibrary,
   ConsumptionMetadata,
 } from "@diffgazer/registry";
+import { getInstallCommand } from "./library";
 
 /** Keys hooks that require KeyboardProvider and are only available through the npm package. */
 const KEYS_PACKAGE_ONLY = new Set([
@@ -17,9 +18,9 @@ const KEYS_PACKAGE_ONLY = new Set([
 ]);
 
 /**
- * All public registry and package paths are publish-gated as of June 6, 2026.
- * Flipping this to `false` un-gates every gated copy/package availability and
- * drops the gating notes below — it is the single switch for the §10 gating state.
+ * Public package and hosted-registry paths are held behind the pre-release
+ * availability switch as of June 6, 2026. Flipping this to `false` enables
+ * those paths and drops the pre-release notes below.
  *
  * SOURCE-TEXT CONSUMER: scripts/monorepo/check-live-registry.mjs regex-matches
  * the literal `PUBLISH_GATED = true|false` assignment in THIS file to decide
@@ -30,13 +31,13 @@ const KEYS_PACKAGE_ONLY = new Set([
 export const PUBLISH_GATED = true;
 
 export const PUBLISH_GATE_NOTE =
-  "Public npm commands are not live yet. Use a locally packed tarball from this workspace until npm view returns versions for @diffgazer/add, @diffgazer/ui, and @diffgazer/keys.";
+  "Diffgazer packages are not yet published to npm. Until the first release, install from a local checkout of the repository.";
 
 const HOSTED_REGISTRY_GATE_NOTE =
   "The hosted registry is not public yet because r.b4r7.dev does not resolve. Use this source checkout or a local registry preview until the endpoint returns 200.";
 
 const LOCAL_DGADD_GATE_NOTE =
-  "dgadd is not public on npm yet. Pack @diffgazer/add from this workspace, install the tarball in your app, then run this command.";
+  "dgadd is not public on npm yet. Run this command from a local checkout until the first release.";
 
 const KEYS_PACKAGE_GATE_NOTE =
   "Requires KeyboardProvider and the @diffgazer/keys package, which is not public on npm yet.";
@@ -96,12 +97,12 @@ export function getConsumptionMetadata(
         dgadd: isKeysPackageOnly
           ? {
               available: !PUBLISH_GATED,
-              command: `pnpm exec dgadd add ${dgaddName}`,
+              command: getInstallCommand(library, dgaddName) ?? undefined,
               note: PUBLISH_GATED ? KEYS_PACKAGE_GATE_NOTE : undefined,
             }
           : {
               available: true,
-              command: `pnpm exec dgadd add ${dgaddName}`,
+              command: getInstallCommand(library, dgaddName) ?? undefined,
               note: PUBLISH_GATED ? LOCAL_DGADD_GATE_NOTE : undefined,
             },
         package: {
@@ -132,7 +133,7 @@ export function getConsumptionMetadata(
       },
       dgadd: {
         available: true,
-        command: `pnpm exec dgadd add ui/${itemId}`,
+        command: getInstallCommand(library, dgaddName) ?? undefined,
         note: PUBLISH_GATED ? LOCAL_DGADD_GATE_NOTE : undefined,
       },
       package: {
@@ -141,6 +142,6 @@ export function getConsumptionMetadata(
       },
     },
     cssNote:
-      "UI components require Tailwind CSS v4. Local copy mode imports src/styles/styles.css; package mode is publish-gated with @diffgazer/ui CSS.",
+      "UI components require Tailwind CSS v4. Local copy mode imports src/styles/styles.css; package mode uses @diffgazer/ui CSS once packages are available.",
   };
 }

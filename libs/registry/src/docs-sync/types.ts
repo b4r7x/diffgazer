@@ -17,8 +17,6 @@ export interface SyncDocsOptions {
   syncSchemaVersion?: number;
   afterSync?: (ctx: AfterSyncContext) => void;
   outputPaths?: Partial<SyncOutputPathsConfig>;
-  rootTitle?: string;
-  extraRootPages?: string[];
 }
 
 export interface AfterSyncContext {

@@ -232,10 +232,7 @@ export function Radio({
   };
 
   const handleKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (disabled) {
-      e.preventDefault();
-      return;
-    }
+    if (disabled) return;
     onKeyDown?.(e);
     if (e.defaultPrevented) return;
     if (e.key === " ") {

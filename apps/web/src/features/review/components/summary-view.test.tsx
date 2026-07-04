@@ -19,12 +19,13 @@ function renderSummary(props?: {
   droppedBelowThreshold?: number;
   minSeverity?: ReviewIssue["severity"];
   lensStats?: LensStat[];
+  issues?: ReviewIssue[];
 }) {
   return render(
     <KeyboardProvider>
       <FooterProvider>
         <ReviewSummaryView
-          issues={[makeIssue({ id: "1", severity: "high", title: "Issue 1" })]}
+          issues={props?.issues ?? [makeIssue({ id: "1", severity: "high", title: "Issue 1" })]}
           reviewId="review-1"
           droppedBelowThreshold={props?.droppedBelowThreshold}
           minSeverity={props?.minSeverity}
@@ -64,5 +65,22 @@ describe("ReviewSummaryView", () => {
     renderSummary();
 
     expect(screen.queryByRole("note")).not.toBeInTheDocument();
+  });
+
+  it("does not fabricate a top-issue line number when no line is reported", () => {
+    renderSummary({
+      issues: [
+        makeIssue({
+          id: "1",
+          title: "Unknown line issue",
+          file: "src/db.ts",
+          line_start: null,
+          line_end: null,
+        }),
+      ],
+    });
+
+    expect(screen.getByText("src/db.ts")).toBeInTheDocument();
+    expect(screen.queryByText("src/db.ts:0")).not.toBeInTheDocument();
   });
 });

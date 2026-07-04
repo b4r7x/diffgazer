@@ -24,7 +24,7 @@ export const popoverDoc: ComponentDoc = {
     {
       title: "Requires @diffgazer/keys (package mode)",
       content:
-        "Popover's auto-focus on open (focusing the first focusable element in the content) imports from the required @diffgazer/keys peer. Package/npm consumers need @diffgazer/keys as a peer after public packages are published. Before publication, validate package mode with a locally packed @diffgazer/keys tarball and use public package commands only after `npm view @diffgazer/keys version` succeeds. Importing @diffgazer/ui/components/popover without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the focusable helper to local source.",
+        "Popover's auto-focus on open (focusing the first focusable element in the content) imports from the required @diffgazer/keys peer. Package consumers must install @diffgazer/keys with @diffgazer/ui; packages are not yet published to npm, so use a local checkout until the first release. Importing @diffgazer/ui/components/popover without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the focusable helper to local source.",
     },
     {
       title: "Trigger Modes",
@@ -67,7 +67,7 @@ export const popoverDoc: ComponentDoc = {
   ],
   keyboard: {
     description:
-      "Click-mode triggers toggle with pointer or keyboard activation. Escape closes open content and returns focus to the trigger. Dialog and menu content can auto-focus on open.",
+      "Click-mode triggers toggle with pointer or keyboard activation. Escape closes open content and returns focus to the trigger. Dialog and menu content can auto-focus on open. Tab or Shift+Tab from content closes the popover and returns focus to the trigger.",
     keys: [
       { keys: "Enter / Space", action: "Toggles the trigger in click mode." },
       {
@@ -76,8 +76,7 @@ export const popoverDoc: ComponentDoc = {
       },
       {
         keys: "Tab / Shift+Tab",
-        action:
-          "Moves focus normally; click-mode content closes once focus leaves trigger and content.",
+        action: "Closes click-mode content and returns focus to the trigger.",
       },
     ],
     examples: [{ name: "popover-basic", title: "Basic" }],

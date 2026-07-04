@@ -40,6 +40,11 @@ describe("sanitizeTerminalText", () => {
     expect(sanitizeTerminalText(payload)).toBe("\x1b[31mred\x1b[0m");
   });
 
+  it("strips private-prefix CSI sequences ending in m", () => {
+    expect(sanitizeTerminalText("a\x1b[>4;2mb")).toBe("ab");
+    expect(sanitizeTerminalText("a\x1b[?1mb")).toBe("ab");
+  });
+
   it("leaves plain text unchanged", () => {
     expect(sanitizeTerminalText("plain text with unicode żółć")).toBe(
       "plain text with unicode żółć",

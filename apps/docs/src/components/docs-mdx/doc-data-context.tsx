@@ -1,42 +1,8 @@
-import type { CodeBlockLineProps } from "@diffgazer/ui/components/code-block";
 import { createContext, type ReactNode, useContext } from "react";
+import type { HookData } from "@/lib/generated-doc-data";
 import type { ComponentData } from "@/types/data";
 
-export interface HookData {
-  name: string;
-  title: string;
-  description: string;
-  source: { raw: string; highlighted: CodeBlockLineProps[] };
-  docs: {
-    description?: string;
-    usage?: { code?: string; example?: string; lang?: string };
-    parameters?: Array<{
-      name: string;
-      type: string;
-      required: boolean;
-      description: string;
-      defaultValue?: string;
-    }>;
-    returns?: {
-      type: string;
-      description: string;
-      properties?: Array<{
-        name: string;
-        type: string;
-        required: boolean;
-        description: string;
-        defaultValue?: string;
-      }>;
-    };
-    notes?: Array<{ title: string; content: string }>;
-    examples?: Array<{ name: string; title: string }>;
-    tags?: string[];
-  } | null;
-  usageSnippet?: string;
-  usageSnippetHighlighted?: CodeBlockLineProps[];
-  examples: string[];
-  exampleSource: Record<string, { raw: string; highlighted: CodeBlockLineProps[] }>;
-}
+export type { HookData } from "@/lib/generated-doc-data";
 
 export type DocData = { type: "component"; data: ComponentData } | { type: "hook"; data: HookData };
 
@@ -49,7 +15,7 @@ export function DocDataProvider({
   value: DocData | null;
   children: ReactNode;
 }) {
-  return <DocDataContext.Provider value={value}>{children}</DocDataContext.Provider>;
+  return <DocDataContext value={value}>{children}</DocDataContext>;
 }
 
 export function useDocData(): DocData | null {

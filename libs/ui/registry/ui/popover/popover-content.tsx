@@ -2,12 +2,14 @@
 
 import {
   type ComponentPropsWithoutRef,
+  type FocusEvent,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
   type Ref,
   type RefObject,
   useEffect,
+  useLayoutEffect,
   useRef,
 } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
@@ -79,6 +81,8 @@ export function PopoverContent({
   ref,
   onMouseEnter,
   onMouseLeave,
+  onFocusCapture,
+  onBlurCapture,
   onKeyDown,
   "data-slot": dataSlot = "popover-content",
   ...rest
@@ -94,6 +98,8 @@ export function PopoverContent({
     markDismissed,
   } = usePopoverContext();
   const contentRef = useRef<HTMLDivElement>(null);
+  const wasOpenRef = useRef(open);
+  const restoreFocusAfterCloseRef = useRef(false);
   const composedRef = useComposedRefs(contentRef, ref);
 
   const isHover = triggerMode === "hover";
@@ -103,6 +109,45 @@ export function PopoverContent({
   const isMenu = contentRole === "menu";
   const resolvedAriaLabel =
     ariaLabel ?? (isDialog && !ariaLabelledBy ? FALLBACK_POPOVER_DIALOG_LABEL : undefined);
+
+  const isFocusWithinPopover = () => {
+    const content = contentRef.current;
+    const trigger = triggerRef.current;
+    const ownerDocument = content?.ownerDocument ?? trigger?.ownerDocument;
+    const activeElement = ownerDocument?.activeElement;
+    if (!activeElement) return false;
+    return !!content?.contains(activeElement) || !!trigger?.contains(activeElement);
+  };
+
+  const handleExitComplete = () => {
+    if (!restoreFocusAfterCloseRef.current) return;
+    const trigger = triggerRef.current;
+    const ownerDocument = trigger?.ownerDocument ?? contentRef.current?.ownerDocument;
+    const activeElement = ownerDocument?.activeElement;
+    if (activeElement && activeElement !== ownerDocument?.body) {
+      if (trigger?.contains(activeElement)) restoreFocusAfterCloseRef.current = false;
+      return;
+    }
+    trigger?.focus();
+    restoreFocusAfterCloseRef.current = false;
+  };
+
+  useLayoutEffect(() => {
+    const wasOpen = wasOpenRef.current;
+    wasOpenRef.current = open;
+    if (!wasOpen || open) return;
+    const content = contentRef.current;
+    const trigger = triggerRef.current;
+    const ownerDocument = content?.ownerDocument ?? trigger?.ownerDocument;
+    const activeElement = ownerDocument?.activeElement;
+    const focusWithinPopover =
+      !!activeElement && (!!content?.contains(activeElement) || !!trigger?.contains(activeElement));
+    restoreFocusAfterCloseRef.current = focusWithinPopover;
+    if (focusWithinPopover) {
+      trigger?.focus();
+      restoreFocusAfterCloseRef.current = false;
+    }
+  }, [open, triggerRef]);
 
   // useOutsideClick/useEscapeKey read excludeRefs/options through internal refs,
   // so inline arrays/objects here no longer re-register the overlay-stack entry.
@@ -119,26 +164,27 @@ export function PopoverContent({
 
   useEscapeKey(
     (e) => {
-      e.stopPropagation();
-      e.preventDefault();
+      const shouldRestoreFocus = isFocusWithinPopover();
+      if (shouldRestoreFocus) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
       markDismissed();
       onOpenChange(false);
-      triggerRef.current?.focus();
+      if (shouldRestoreFocus) triggerRef.current?.focus();
     },
     open,
     { ref: contentRef, excludeRefs: [triggerRef] },
   );
 
-  // Focus-out dismissal for click-mode popovers: Tabbing past the last focusable
-  // element (or otherwise moving focus outside both content and trigger) closes
-  // the portaled popover instead of leaving it open with focus at the end of the
-  // document. Moving focus between the trigger and content does NOT close it.
+  // Focus-out dismissal for click-mode popovers covers focus moves that do not
+  // start with a Tab keydown inside the content.
   useEffect(() => {
     if (!open || !isClick) return;
     const content = contentRef.current;
     if (!content) return;
 
-    const handleFocusOut = (event: FocusEvent) => {
+    const handleFocusOut = (event: globalThis.FocusEvent) => {
       const next = event.relatedTarget;
       const View = content.ownerDocument.defaultView;
       if (View && next instanceof View.Node) {
@@ -165,14 +211,40 @@ export function PopoverContent({
     if (isHover) onContentLeave();
   };
 
+  const handleFocusCapture = (e: FocusEvent<HTMLDivElement>) => {
+    onFocusCapture?.(e);
+    restoreFocusAfterCloseRef.current = true;
+  };
+
+  const handleBlurCapture = (e: FocusEvent<HTMLDivElement>) => {
+    onBlurCapture?.(e);
+    const next = e.relatedTarget;
+    const content = contentRef.current;
+    const trigger = triggerRef.current;
+    const View = content?.ownerDocument.defaultView ?? trigger?.ownerDocument.defaultView;
+    if (View && next instanceof View.Node && (content?.contains(next) || trigger?.contains(next))) {
+      return;
+    }
+    restoreFocusAfterCloseRef.current = false;
+  };
+
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     onKeyDown?.(e);
     if (e.defaultPrevented) return;
 
     if (e.key === "Escape") {
-      e.stopPropagation();
-      e.preventDefault();
+      const shouldRestoreFocus = isFocusWithinPopover();
+      if (shouldRestoreFocus) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
       markDismissed();
+      onOpenChange(false);
+      if (shouldRestoreFocus) triggerRef.current?.focus();
+      return;
+    }
+
+    if (e.key === "Tab") {
       onOpenChange(false);
       triggerRef.current?.focus();
     }
@@ -192,6 +264,7 @@ export function PopoverContent({
       alignOffset={alignOffset}
       avoidCollisions={avoidCollisions}
       collisionPadding={collisionPadding}
+      onExitComplete={handleExitComplete}
       ref={composedRef}
       id={popoverId}
       role={contentRole}
@@ -201,6 +274,8 @@ export function PopoverContent({
       tabIndex={tabIndex ?? (isDialog ? -1 : undefined)}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onFocusCapture={handleFocusCapture}
+      onBlurCapture={handleBlurCapture}
       onKeyDown={handleKeyDown}
       className={className}
     >

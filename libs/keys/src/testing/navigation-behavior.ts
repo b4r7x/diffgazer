@@ -18,7 +18,7 @@ export interface TestNavigationBehaviorOptions {
   readonly setup: () => RenderResult;
   /** Accessible item names in navigation order. */
   readonly items: readonly string[];
-  /** Initial active index documented by the caller; retained for table readability. */
+  /** Expected active index before each keyboard case runs. */
   readonly initialActive?: number;
   /** Keyboard cases to run. */
   readonly cases: readonly NavigationCase[];
@@ -27,32 +27,36 @@ export interface TestNavigationBehaviorOptions {
 }
 
 function defaultGetActiveIndex(rendered: RenderResult, items: readonly string[]): number {
-  try {
-    const activeDescendantHost = rendered.container.querySelector("[aria-activedescendant]");
-    const activeId = activeDescendantHost?.getAttribute("aria-activedescendant");
+  const activeDescendantHost = rendered.container.querySelector("[aria-activedescendant]");
+  if (activeDescendantHost) {
+    const activeId = activeDescendantHost.getAttribute("aria-activedescendant");
     if (activeId) {
-      const ownerDocument = activeDescendantHost?.ownerDocument ?? document;
-      const target =
-        ownerDocument.getElementById(activeId) ??
-        rendered.container.querySelector(`[data-testid="${activeId}"]`);
+      const target = activeDescendantHost.ownerDocument.getElementById(activeId);
       if (target) {
-        const name = accessibleNameOf(target);
-        const index = items.indexOf(name);
+        const index = getItemIndex(target, items);
         if (index >= 0) {
           return index;
         }
       }
     }
+  }
 
-    const activeElement = (rendered.container.ownerDocument ?? document).activeElement;
-    if (activeElement instanceof HTMLElement) {
-      const name = accessibleNameOf(activeElement);
-      return items.indexOf(name);
-    }
-  } catch {
-    return -1;
+  const activeElement = rendered.container.ownerDocument.activeElement;
+  if (activeElement instanceof HTMLElement) {
+    return getItemIndex(activeElement, items);
   }
   return -1;
+}
+
+function getItemIndex(element: Element, items: readonly string[]): number {
+  const value = element.getAttribute("data-value");
+  if (value !== null) {
+    const index = items.indexOf(value);
+    if (index >= 0) {
+      return index;
+    }
+  }
+  return items.indexOf(accessibleNameOf(element));
 }
 
 function accessibleNameOf(element: Element): string {
@@ -70,7 +74,7 @@ interface PreparedCase extends NavigationCase {
 // Must be called inside a describe() block -- it calls it.each directly.
 /** Defines one generated test per navigation case inside the current describe block. */
 export function testNavigationBehavior(options: TestNavigationBehaviorOptions): void {
-  const { setup, items, cases, getActiveIndex } = options;
+  const { setup, items, initialActive, cases, getActiveIndex } = options;
   const resolveActiveIndex =
     getActiveIndex ?? ((rendered: RenderResult) => defaultGetActiveIndex(rendered, items));
   const prepared: readonly PreparedCase[] = cases.map((entry) => ({
@@ -85,6 +89,13 @@ export function testNavigationBehavior(options: TestNavigationBehaviorOptions): 
   }) => {
     const rendered = setup();
     const user = userEvent.setup();
+
+    if (initialActive !== undefined) {
+      expect(
+        resolveActiveIndex(rendered),
+        `expected initial active index ${initialActive} before ${displayLabel}`,
+      ).toBe(initialActive);
+    }
 
     await user.keyboard(key);
 

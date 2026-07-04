@@ -14,15 +14,15 @@ function makeStep(id: string, status: StepState["status"]): StepState {
 }
 
 describe("isNoDiffError", () => {
-  it("matches both staged and unstaged empty-diff messages", () => {
-    expect(isNoDiffError("No staged changes found")).toBe(true);
-    expect(isNoDiffError("No unstaged changes detected")).toBe(true);
+  it("matches the structured no-diff error code", () => {
+    expect(isNoDiffError(ReviewErrorCode.NO_DIFF)).toBe(true);
   });
 
-  it("returns false for null, empty, or unrelated errors", () => {
+  it("returns false for null, empty, copy text, or unrelated codes", () => {
     expect(isNoDiffError(null)).toBe(false);
     expect(isNoDiffError("")).toBe(false);
-    expect(isNoDiffError("AI provider down")).toBe(false);
+    expect(isNoDiffError("No staged changes found")).toBe(false);
+    expect(isNoDiffError(ReviewErrorCode.AI_ERROR)).toBe(false);
   });
 });
 

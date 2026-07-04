@@ -4,7 +4,7 @@ import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
-import { type KeyboardEvent, useState } from "react";
+import { type KeyboardEvent, useId, useState } from "react";
 
 const LENS_OPTIONS = buildLensOptions();
 
@@ -23,25 +23,31 @@ export function AnalysisStep({
   enabled = true,
   onBoundaryReached,
 }: AnalysisStepProps) {
+  const labelId = useId();
   const [highlighted, setHighlighted] = useState<string | null>(LENS_OPTIONS[0]?.id ?? null);
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (!enabled) return;
-    if (e.key === "Enter" && isLensId(highlighted)) {
-      e.preventDefault();
-      const newLenses = lenses.includes(highlighted)
-        ? lenses.filter((lens) => lens !== highlighted)
-        : [...lenses, highlighted];
-      onLensesChange(newLenses);
-      onCommit?.({ defaultLenses: newLenses });
-      return;
-    }
+    if (e.key !== "Enter") return;
+    if (!(e.target instanceof HTMLElement)) return;
+
+    const value = e.target.closest<HTMLElement>('[role="checkbox"][data-value]')?.dataset.value;
+    if (value === undefined || !isLensId(value)) return;
+
+    e.preventDefault();
+    const newLenses = lenses.includes(value)
+      ? lenses.filter((lens) => lens !== value)
+      : [...lenses, value];
+    onLensesChange(newLenses);
+    onCommit?.({ defaultLenses: newLenses });
   };
 
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <div className="text-sm font-mono text-foreground/60">Review Agents:</div>
+        <div id={labelId} className="text-sm font-mono text-foreground/60">
+          Review Agents:
+        </div>
         <ScrollArea className="max-h-[35vh]">
           <CheckboxGroup
             value={lenses}
@@ -59,6 +65,7 @@ export function AnalysisStep({
               onBoundaryReached?.(toVerticalBoundaryDirection(direction));
             }}
             wrap={false}
+            aria-labelledby={labelId}
             className="space-y-1"
           >
             {LENS_OPTIONS.map((option) => (

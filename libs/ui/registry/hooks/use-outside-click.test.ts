@@ -60,55 +60,61 @@ describe("useOutsideClick", () => {
   }
 
   it("calls handler on outside click", async () => {
+    const user = userEvent.setup();
     const { outside, handler, cleanup } = setup();
-    await userEvent.click(outside);
+    await user.click(outside);
     expect(handler).toHaveBeenCalledOnce();
     cleanup();
   });
 
   it("handles outside targets that stop propagation", async () => {
+    const user = userEvent.setup();
     const { outside, handler, cleanup } = setup();
     outside.addEventListener("mousedown", (event) => event.stopPropagation());
 
-    await userEvent.click(outside);
+    await user.click(outside);
 
     expect(handler).toHaveBeenCalledOnce();
     cleanup();
   });
 
   it("does not call handler on inside click", async () => {
+    const user = userEvent.setup();
     const { inside, handler, cleanup } = setup();
-    await userEvent.click(inside);
+    await user.click(inside);
     expect(handler).not.toHaveBeenCalled();
     cleanup();
   });
 
   it("does not call handler when enabled=false", async () => {
+    const user = userEvent.setup();
     const { outside, handler, cleanup } = setup({ enabled: false });
-    await userEvent.click(outside);
+    await user.click(outside);
     expect(handler).not.toHaveBeenCalled();
     cleanup();
   });
 
   it("does not call handler when clicking on excluded ref", async () => {
+    const user = userEvent.setup();
     const excluded = document.createElement("div");
     document.body.appendChild(excluded);
     const excludeRef = createRef<HTMLElement>() as React.MutableRefObject<HTMLElement | null>;
     excludeRef.current = excluded;
 
     const { handler, cleanup } = setup({ excludeRefs: [excludeRef] });
-    await userEvent.click(excluded);
+    await user.click(excluded);
     expect(handler).not.toHaveBeenCalled();
     excluded.remove();
     cleanup();
   });
 
   it("handles a pointer-supported outside interaction once", async () => {
+    const user = userEvent.setup();
     restorePointerEventSupport();
     restorePointerEventSupport = setPointerEventSupport(true);
     const { outside, handler, cleanup } = setup();
 
-    await userEvent.click(outside);
+    await user.click(outside);
 
     expect(handler).toHaveBeenCalledOnce();
     cleanup();
@@ -125,6 +131,7 @@ describe("useOutsideClick", () => {
   });
 
   it("uses the latest outside-click handler after rerender", async () => {
+    const user = userEvent.setup();
     const inside = document.createElement("div");
     const outside = document.createElement("div");
     document.body.append(inside, outside);
@@ -139,7 +146,7 @@ describe("useOutsideClick", () => {
     });
 
     rerender({ handler: secondHandler });
-    await userEvent.click(outside);
+    await user.click(outside);
 
     expect(secondHandler).toHaveBeenCalledOnce();
     expect(firstHandler).not.toHaveBeenCalled();
@@ -149,6 +156,7 @@ describe("useOutsideClick", () => {
   });
 
   it("does not re-register the stack entry when an inline excludeRefs array changes identity", async () => {
+    const user = userEvent.setup();
     const inside = document.createElement("div");
     const outside = document.createElement("div");
     const excluded = document.createElement("div");
@@ -179,9 +187,9 @@ describe("useOutsideClick", () => {
     expect(removeSpy).not.toHaveBeenCalled();
 
     // The latest excludeRefs is still honored.
-    await userEvent.click(excluded);
+    await user.click(excluded);
     expect(handler).not.toHaveBeenCalled();
-    await userEvent.click(outside);
+    await user.click(outside);
     expect(handler).toHaveBeenCalledOnce();
 
     addSpy.mockRestore();
@@ -192,6 +200,7 @@ describe("useOutsideClick", () => {
   });
 
   it("does not call handler after unmount", async () => {
+    const user = userEvent.setup();
     const inside = document.createElement("div");
     const outside = document.createElement("div");
     document.body.appendChild(inside);
@@ -205,7 +214,7 @@ describe("useOutsideClick", () => {
     const { unmount } = renderHook(() => useOutsideClick(ref, handler, true));
 
     unmount();
-    await userEvent.click(outside);
+    await user.click(outside);
     expect(handler).not.toHaveBeenCalled();
 
     inside.remove();
@@ -213,6 +222,7 @@ describe("useOutsideClick", () => {
   });
 
   it("does not call handler when clicking a child of the ref element", async () => {
+    const user = userEvent.setup();
     const inside = document.createElement("div");
     const child = document.createElement("span");
     inside.appendChild(child);
@@ -225,13 +235,14 @@ describe("useOutsideClick", () => {
 
     renderHook(() => useOutsideClick(ref, handler, true));
 
-    await userEvent.click(child);
+    await user.click(child);
     expect(handler).not.toHaveBeenCalled();
 
     inside.remove();
   });
 
   it("only calls the topmost outside-click layer", async () => {
+    const user = userEvent.setup();
     const lower = document.createElement("div");
     const upper = document.createElement("div");
     const outside = document.createElement("button");
@@ -249,7 +260,7 @@ describe("useOutsideClick", () => {
       useOutsideClick(upperRef, upperHandler, true);
     });
 
-    await userEvent.click(outside);
+    await user.click(outside);
 
     expect(upperHandler).toHaveBeenCalledOnce();
     expect(lowerHandler).not.toHaveBeenCalled();
@@ -260,6 +271,7 @@ describe("useOutsideClick", () => {
   });
 
   it("routes Escape to the topmost enabled layer", async () => {
+    const user = userEvent.setup();
     const lowerHandler = vi.fn();
     const upperHandler = vi.fn();
 
@@ -268,13 +280,26 @@ describe("useOutsideClick", () => {
       useEscapeKey(upperHandler, true);
     });
 
-    await userEvent.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
 
     expect(upperHandler).toHaveBeenCalledOnce();
     expect(lowerHandler).not.toHaveBeenCalled();
   });
 
+  it("ignores Escape dispatched during IME composition", () => {
+    const handler = vi.fn();
+
+    renderHook(() => useEscapeKey(handler, true));
+
+    const event = new KeyboardEvent("keydown", { bubbles: true, key: "Escape" });
+    Object.defineProperty(event, "isComposing", { value: true });
+    document.dispatchEvent(event);
+
+    expect(handler).not.toHaveBeenCalled();
+  });
+
   it("does not handle outside clicks after StrictMode unmount", async () => {
+    const user = userEvent.setup();
     const inside = document.createElement("div");
     const outside = document.createElement("button");
     document.body.append(inside, outside);
@@ -287,17 +312,18 @@ describe("useOutsideClick", () => {
       wrapper: StrictMode,
     });
 
-    await userEvent.click(outside);
+    await user.click(outside);
     expect(handler).toHaveBeenCalledOnce();
 
     unmount();
-    await userEvent.click(outside);
+    await user.click(outside);
     expect(handler).toHaveBeenCalledOnce();
     inside.remove();
     outside.remove();
   });
 
   it("uses the latest Escape handler after rerender", async () => {
+    const user = userEvent.setup();
     const firstHandler = vi.fn();
     const secondHandler = vi.fn();
 
@@ -306,7 +332,7 @@ describe("useOutsideClick", () => {
     });
 
     rerender({ handler: secondHandler });
-    await userEvent.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
 
     expect(secondHandler).toHaveBeenCalledOnce();
     expect(firstHandler).not.toHaveBeenCalled();

@@ -1,6 +1,6 @@
 import { legal } from "fumadocs-mdx:collections/server";
 import { loader } from "fumadocs-core/source";
-import type { LegalPageSlug } from "./legal-slugs";
+import type { LegalPageSlug } from "./slugs";
 
 export const legalSource = loader({
   baseUrl: "/",

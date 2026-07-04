@@ -26,7 +26,7 @@ export const dialogDoc: ComponentDoc = {
     {
       title: "Requires @diffgazer/keys (package mode)",
       content:
-        "DialogContent's focus restore (returning focus to the trigger on close) imports from the required @diffgazer/keys peer. Package/npm consumers need @diffgazer/keys as a peer after public packages are published. Before publication, validate package mode with a locally packed @diffgazer/keys tarball and use public package commands only after `npm view @diffgazer/keys version` succeeds. Importing @diffgazer/ui/components/dialog without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the focus-restore hook to local source.",
+        "DialogContent's focus restore (returning focus to the trigger on close) imports from the required @diffgazer/keys peer. Package consumers need @diffgazer/keys installed alongside @diffgazer/ui. Diffgazer packages are not yet published to npm; until the first release, install from a local checkout of the repository. Importing @diffgazer/ui/components/dialog without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the focus-restore hook to local source.",
     },
     {
       title: "Compound Architecture",
@@ -41,12 +41,12 @@ export const dialogDoc: ComponentDoc = {
     {
       title: "Alert Dialog",
       content:
-        'Set role="alertdialog" and closeOnBackdropClick={false} on DialogContent for destructive confirmations. Screen readers announce it as an alert requiring immediate attention. Per WAI-ARIA APG, alert dialogs should not close on outside interaction, and focus should start on the safest action (e.g., Cancel) using autoFocus.',
+        'Set role="alertdialog" and closeOnBackdropClick={false} on DialogContent for destructive confirmations. Screen readers announce it as an alert requiring immediate attention. Per WAI-ARIA APG, alert dialogs should not close on outside interaction, and focus should start on the safest action (e.g., Cancel) using initialFocus.',
     },
     {
       title: "Escape Interception",
       content:
-        "Pass onEscapeKeyDown to DialogContent to intercept the Escape key. Call e.preventDefault() to keep the dialog open — useful during async operations or form validation.",
+        "Pass onEscapeKeyDown to DialogContent to intercept cancelable Escape dismissal. Call e.preventDefault() to keep the dialog open during async operations or form validation; if the native dialog is force-closed without a cancelable cancel event while React open is still true, the shell reopens it.",
     },
     {
       title: "Preventing Close on Action",
@@ -176,6 +176,13 @@ export const dialogDoc: ComponentDoc = {
         description:
           "When false, clicking the backdrop does not close the dialog (recommended for alertdialog).",
       },
+      initialFocus: {
+        type: "RefObject<HTMLElement | null>",
+        required: false,
+        defaultValue: null,
+        description:
+          "Element ref to focus when the dialog opens. Use it for alertdialog flows where focus should start on the safest action, such as Cancel.",
+      },
       onEscapeKeyDown: {
         type: "(e: SyntheticEvent<HTMLDialogElement>) => void",
         required: false,
@@ -211,7 +218,7 @@ export const dialogDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description:
-          'Optional right-aligned eyebrow tag (e.g. "CONFIRM", "DESTRUCTIVE"). Decorative — rendered aria-hidden so it does not leak into the accessible name.',
+          'Optional right-aligned eyebrow tag (e.g. "CONFIRM", "DESTRUCTIVE"). Rendered as dialog content but outside the heading, so it is excluded from the dialog accessible name.',
       },
     },
     DialogTrigger: {

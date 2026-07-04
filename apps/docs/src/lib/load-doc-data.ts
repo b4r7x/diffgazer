@@ -1,15 +1,33 @@
+import type { HookData } from "@/lib/generated-doc-data";
+import type { ComponentData } from "@/types/data";
+
 const SAFE_NAME = /^[a-z0-9-]+$/;
 
-export async function loadDocData<T>(
+type DocDataByType = {
+  components: ComponentData;
+  hooks: HookData;
+};
+
+type LoadDocDataOptions = {
+  throwIfMissing?: boolean;
+};
+
+export async function loadDocData<T extends keyof DocDataByType>(
   library: string,
-  type: "components" | "hooks",
+  type: T,
   name: string | undefined,
-): Promise<T | null> {
+  options: LoadDocDataOptions = {},
+): Promise<DocDataByType[T] | null> {
   if (!name || !SAFE_NAME.test(name)) return null;
   try {
-    const mod = await import(`../generated/${library}/${type}/${name}.json`);
-    return mod.default as T;
+    const mod: { default: DocDataByType[T] } = await import(
+      `../generated/${library}/${type}/${name}.json`
+    );
+    return mod.default;
   } catch {
+    if (options.throwIfMissing) {
+      throw new Error(`Missing generated docs data: ${library}/${type}/${name}`);
+    }
     return null;
   }
 }

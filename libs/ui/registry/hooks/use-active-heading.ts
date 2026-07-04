@@ -193,16 +193,24 @@ export function useActiveHeading({
     const hasScrollEnd = "onscrollend" in doc;
     let frame = 0;
 
+    const clearSettleTimer = (): void => {
+      if (settleTimerRef.current === 0) return;
+      view.clearTimeout(settleTimerRef.current);
+      settleTimerRef.current = 0;
+    };
+
     const scheduleUpdate = (): void => {
       if (scrollingToRef.current !== null) {
-        if (!hasScrollEnd) {
-          if (settleTimerRef.current !== 0) view.clearTimeout(settleTimerRef.current);
-          settleTimerRef.current = view.setTimeout(() => {
-            settleTimerRef.current = 0;
-            scrollingToRef.current = null;
-            setSettleSignal((n) => n + 1);
-          }, settleDelay);
+        if (hasScrollEnd) {
+          clearSettleTimer();
+          return;
         }
+        clearSettleTimer();
+        settleTimerRef.current = view.setTimeout(() => {
+          settleTimerRef.current = 0;
+          scrollingToRef.current = null;
+          setSettleSignal((n) => n + 1);
+        }, settleDelay);
         return;
       }
 
@@ -215,6 +223,7 @@ export function useActiveHeading({
 
     const handleScrollEnd = (): void => {
       if (scrollingToRef.current === null) return;
+      clearSettleTimer();
       scrollingToRef.current = null;
       update();
     };
@@ -237,7 +246,7 @@ export function useActiveHeading({
       if (hasScrollEnd) scrollTarget.removeEventListener("scrollend", handleScrollEnd);
       mutationObs?.disconnect();
       if (frame !== 0) view.cancelAnimationFrame(frame);
-      if (settleTimerRef.current !== 0) view.clearTimeout(settleTimerRef.current);
+      clearSettleTimer();
     };
   }, [
     doc,

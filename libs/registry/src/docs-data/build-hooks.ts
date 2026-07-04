@@ -15,8 +15,8 @@ export interface HooksConfig {
   filter?: (item: RegistryItem) => boolean;
   mapItem?: (item: RegistryItem) => HookRegistryItem;
   loadHookDoc: (hookName: string) => Promise<import("./types.js").HookDoc | null>;
-  backwardCompatFile?: string;
-  backwardCompatItems?: HookRegistryItem[];
+  aggregateHooksFile?: string;
+  aggregateHooksItems?: HookRegistryItem[];
 }
 
 function defaultHookFilter(item: RegistryItem): boolean {
@@ -106,18 +106,18 @@ export async function buildHooksData(params: {
   const hasIndexPage = existsSync(resolve(hooksConfig.contentDir, "index.mdx"));
   const metaPages = hasIndexPage ? ["index", ...hookPages] : hookPages;
   writeJson(resolve(hooksConfig.contentDir, "meta.json"), { title: "Hooks", pages: metaPages });
-  log.info(`Wrote ${hooksCount} hook MDX pages + meta.json`);
+  log.info(`Wrote meta.json (${hooksCount} hook pages)`);
 
-  if (hooksConfig.backwardCompatFile) {
-    const compatItems = hooksConfig.backwardCompatItems ?? registryHooks;
+  if (hooksConfig.aggregateHooksFile) {
+    const aggregateItems = hooksConfig.aggregateHooksItems ?? registryHooks;
     const basicData = generateHooksSource({
-      items: compatItems,
+      items: aggregateItems,
       rootDir,
       highlighter,
       themeName: DOCS_CODE_THEME_NAME,
     });
-    writeJson(resolve(outputDir, hooksConfig.backwardCompatFile), basicData);
-    log.info(`Wrote ${hooksConfig.backwardCompatFile} (${Object.keys(basicData).length} hooks)`);
+    writeJson(resolve(outputDir, hooksConfig.aggregateHooksFile), basicData);
+    log.info(`Wrote ${hooksConfig.aggregateHooksFile} (${Object.keys(basicData).length} hooks)`);
   }
 
   return { hooksCount, allHooks, registryHooks, errors };

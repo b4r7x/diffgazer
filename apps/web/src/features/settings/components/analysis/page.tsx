@@ -10,6 +10,7 @@ import {
   resolveEffectiveLenses,
 } from "@diffgazer/core/schemas/review";
 import { useKey, useScope } from "@diffgazer/keys";
+import { Callout } from "@diffgazer/ui/components/callout";
 import { useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { useSettingsFormFooter } from "../../hooks/use-settings-form-footer";
@@ -92,7 +93,11 @@ export function SettingsAnalysisPage() {
         />
         {!hasLensSelection && <p className="text-error-text text-xs">Select at least one lens.</p>}
       </div>
-      {error && <p className="text-error-text text-sm">{error}</p>}
+      {error && (
+        <Callout tone="error" live className="text-sm">
+          <Callout.Content>{error}</Callout.Content>
+        </Callout>
+      )}
     </SettingsFormPage>
   );
 }

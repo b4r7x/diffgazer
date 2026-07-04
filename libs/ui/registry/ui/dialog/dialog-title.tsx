@@ -9,8 +9,8 @@ export interface DialogTitleProps extends ComponentProps<"h2"> {
   /** Heading level for the title element. */
   as?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
   /**
-   * Optional right-aligned eyebrow tag (e.g. "CONFIRM", "DESTRUCTIVE"). Decorative - rendered
-   * aria-hidden so it does not leak into the accessible name.
+   * Optional right-aligned eyebrow tag (e.g. "CONFIRM", "DESTRUCTIVE"). Rendered as dialog
+   * content but outside the heading, so it is excluded from the dialog's accessible name.
    */
   meta?: string;
 }
@@ -34,7 +34,7 @@ export function DialogTitle({
   // The dialog's aria-labelledby points at the heading (titleId), so the
   // accessible name is the title text alone. The meta slot renders as a sibling
   // OUTSIDE the heading: visible to AT as page content but excluded from the
-  // dialog's accessible name (F-155).
+  // dialog's accessible name.
   if (!meta) {
     return (
       <Tag

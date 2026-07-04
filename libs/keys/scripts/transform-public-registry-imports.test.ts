@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { RELATIVE_JS_IMPORT_RE } from "@diffgazer/registry";
+import type { RegistryItem } from "@diffgazer/registry/schemas";
+import { RegistrySchema } from "@diffgazer/registry/schemas";
 import { afterEach, describe, expect, it } from "vitest";
 import { requireValue } from "../src/testing/assertions.js";
 import {
@@ -15,23 +17,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const KEYS_ROOT = resolve(__dirname, "..");
 const PUBLIC_DIR = resolve(KEYS_ROOT, "public", "r");
 
-interface RegistryFile {
-  path: string;
-  type: string;
-  target?: string;
-  content?: string;
-}
-
-interface RegistryItem {
-  name: string;
-  type: string;
-  files: RegistryFile[];
-  meta?: { client?: boolean; hidden?: boolean };
-}
-
 function loadPublicItem(name: string): RegistryItem {
   const itemPath = join(PUBLIC_DIR, `${name}.json`);
-  return JSON.parse(readFileSync(itemPath, "utf-8"));
+  return parseRegistryEntry(JSON.parse(readFileSync(itemPath, "utf-8")));
+}
+
+function parseRegistryEntry(raw: unknown): RegistryItem {
+  const [item] = RegistrySchema.parse({ items: [raw] }).items;
+  if (!item) throw new Error("Missing registry item");
+  return item;
 }
 
 describe("public registry import rewriting", () => {
@@ -135,7 +129,11 @@ describe("build-side relative .js assertion", () => {
     dir ??= mkdtempSync(join(tmpdir(), "keys-build-assert-"));
     writeFileSync(
       join(dir, `${name}.json`),
-      JSON.stringify({ files: [{ target: `src/hooks/${name}.ts`, content }] }),
+      JSON.stringify({
+        name,
+        type: "registry:hook",
+        files: [{ path: `src/hooks/${name}.ts`, target: `src/hooks/${name}.ts`, content }],
+      }),
     );
   }
 
@@ -149,6 +147,15 @@ describe("build-side relative .js assertion", () => {
 
   it("passes when generated registry content has no relative .js specifiers", () => {
     writeItem("use-good", 'import { x } from "./utils/x";\n');
+
+    expect(() =>
+      assertNoRelativeJsImports(requireValue(dir, "test registry directory")),
+    ).not.toThrow();
+  });
+
+  it("ignores the generated registry index", () => {
+    dir ??= mkdtempSync(join(tmpdir(), "keys-build-assert-"));
+    writeFileSync(join(dir, "registry.json"), JSON.stringify({ name: "keys", items: [] }));
 
     expect(() =>
       assertNoRelativeJsImports(requireValue(dir, "test registry directory")),

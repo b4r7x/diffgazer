@@ -5,7 +5,7 @@ import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
 /** Allowed progress size values. */
-export type ProgressSize = NonNullable<VariantProps<typeof trackVariants>["size"]>;
+export type ProgressSize = NonNullable<VariantProps<typeof progressVariants>["size"]>;
 
 /** Props for progress. */
 export interface ProgressProps
@@ -19,12 +19,12 @@ export interface ProgressProps
   max?: number;
   /** Height of the progress bar track. */
   size?: ProgressSize;
-  /** value text used by progress. */
+  /** Custom text exposed through aria-valuetext for the current value. */
   valueText?: string;
 }
 
 /** Class variants for track. */
-export const trackVariants = cva(
+export const progressVariants = cva(
   "relative w-full overflow-hidden rounded-sm bg-secondary font-mono",
   {
     variants: {
@@ -62,7 +62,7 @@ export function Progress({
       aria-valuemin={0}
       aria-valuemax={max}
       aria-valuetext={valueText}
-      className={cn(trackVariants({ size }), className)}
+      className={cn(progressVariants({ size }), className)}
     >
       <div
         data-slot="progress-indicator"

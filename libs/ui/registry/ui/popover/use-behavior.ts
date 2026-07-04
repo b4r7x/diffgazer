@@ -3,7 +3,6 @@
 import { type RefObject, useEffect, useRef } from "react";
 import type { PopoverTriggerMode } from "./popover-context";
 
-/** Options for use popover behavior. */
 export interface UsePopoverBehaviorOptions {
   /** Controlled open state. Pair with onOpenChange. */
   open: boolean;
@@ -21,7 +20,6 @@ export interface UsePopoverBehaviorOptions {
   triggerRef?: RefObject<HTMLElement | null>;
 }
 
-/** Return value from use popover behavior. */
 export interface UsePopoverBehaviorReturn {
   /** Called when trigger enter occurs. */
   onTriggerEnter: () => void;
@@ -33,7 +31,7 @@ export interface UsePopoverBehaviorReturn {
   onTriggerClick: () => void;
   /** Called when trigger pointer down occurs. */
   onTriggerPointerDown: () => void;
-  /** mark dismissed used by use popover behavior. */
+  /** Suppresses immediate focus-open after dismissal. */
   markDismissed: () => void;
   /** Called when content enter occurs. */
   onContentEnter: () => void;
@@ -46,7 +44,6 @@ export interface UsePopoverBehaviorReturn {
 // Escape/outside dismissal refocuses the trigger without intending to reopen.
 const FOCUS_OPEN_SUPPRESS_MS = 250;
 
-/** Provides popover behavior behavior. */
 export function usePopoverBehavior({
   open,
   onOpenChange,

@@ -1,5 +1,7 @@
 * text=auto eol=lf
 
 libs/core/src/catalog/catalog-snapshot.ts linguist-generated=true -diff
+libs/core/src/catalog/provider-derived.ts linguist-generated=true -diff
 libs/ui/public/r/** linguist-generated=true
 libs/keys/public/r/** linguist-generated=true
+libs/keys/artifacts/artifacts/** linguist-generated=true

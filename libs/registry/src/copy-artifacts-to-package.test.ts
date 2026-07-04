@@ -96,24 +96,7 @@ describe("copyArtifactsToPackage", () => {
     ).toThrow(expectedMessage);
   });
 
-  it("skips manifest validation when validateManifest is false", () => {
-    const sourceRoot = createTempDir();
-    const packageRoot = createTempDir();
-    const artifactsDir = join(sourceRoot, "dist/artifacts");
-    mkdirSync(artifactsDir, { recursive: true });
-    writeFileSync(join(artifactsDir, "data.json"), "{}");
-
-    copyArtifactsToPackage({
-      sourceRoot,
-      packageRoot,
-      label: "test-lib",
-      validateManifest: false,
-    });
-
-    expect(existsSync(join(packageRoot, "artifacts/data.json"))).toBe(true);
-  });
-
-  it("cleans entire dist/ with parent-dist strategy (default)", () => {
+  it("cleans package dist before copying artifacts", () => {
     const sourceRoot = createTempDir();
     const packageRoot = createTempDir();
     setupSourceArtifacts(sourceRoot);
@@ -130,53 +113,5 @@ describe("copyArtifactsToPackage", () => {
 
     expect(existsSync(join(distDir, "stale.txt"))).toBe(false);
     expect(existsSync(join(packageRoot, "artifacts/artifact-manifest.json"))).toBe(true);
-  });
-
-  it("only cleans artifact dir with artifact-dir strategy", () => {
-    const sourceRoot = createTempDir();
-    const packageRoot = createTempDir();
-    setupSourceArtifacts(sourceRoot);
-
-    const distDir = join(packageRoot, "dist");
-    mkdirSync(distDir, { recursive: true });
-    writeFileSync(join(distDir, "index.js"), "compiled output");
-
-    const targetArtifacts = join(packageRoot, "artifacts");
-    mkdirSync(targetArtifacts, { recursive: true });
-    writeFileSync(join(targetArtifacts, "stale.json"), "old");
-
-    copyArtifactsToPackage({
-      sourceRoot,
-      packageRoot,
-      label: "test-lib",
-      cleanStrategy: "artifact-dir",
-    });
-
-    expect(existsSync(join(distDir, "index.js"))).toBe(true);
-    expect(existsSync(join(targetArtifacts, "stale.json"))).toBe(false);
-    expect(existsSync(join(targetArtifacts, "artifact-manifest.json"))).toBe(true);
-  });
-
-  it("supports custom artifactDir", () => {
-    const sourceRoot = createTempDir();
-    const packageRoot = createTempDir();
-    const customDir = join(sourceRoot, "output/build-artifacts");
-    mkdirSync(customDir, { recursive: true });
-    writeFileSync(join(customDir, "artifact-manifest.json"), "{}");
-    writeFileSync(join(customDir, "fingerprint.sha256"), "abc\n");
-    writeFileSync(join(customDir, "data.json"), '{"custom": true}');
-
-    copyArtifactsToPackage({
-      sourceRoot,
-      packageRoot,
-      label: "test-lib",
-      artifactDir: "output/build-artifacts",
-      packageArtifactDir: "package-artifacts",
-    });
-
-    expect(existsSync(join(packageRoot, "package-artifacts/data.json"))).toBe(true);
-    expect(readFileSync(join(packageRoot, "package-artifacts/data.json"), "utf-8")).toBe(
-      '{"custom": true}',
-    );
   });
 });

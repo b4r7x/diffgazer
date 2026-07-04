@@ -4,7 +4,6 @@ import type { ButtonHTMLAttributes, Ref } from "react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./sidebar-context";
 
-/** Props for sidebar trigger. */
 export interface SidebarTriggerProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLButtonElement>;
@@ -46,7 +45,7 @@ export function SidebarTrigger({
       aria-expanded={isOpen}
       aria-label={ariaLabel ?? labelDefault}
       data-state={visualState}
-      className={cn("inline-flex items-center justify-center font-mono", className)}
+      className={cn("inline-flex min-h-6 min-w-6 items-center justify-center font-mono", className)}
       onClick={handleClick}
     >
       {children ?? <span aria-hidden="true">{isOpen ? "[×]" : "[≡]"}</span>}

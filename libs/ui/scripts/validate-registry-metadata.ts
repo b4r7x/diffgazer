@@ -11,11 +11,7 @@ import {
 } from "./registry/fs.js";
 import { validateRegistryImportClosure } from "./registry/imports.js";
 import { validateOrphanFiles } from "./registry/orphans.js";
-
-interface Registry {
-  $schema?: string;
-  items?: RegistryItem[];
-}
+import { type Registry, UiRegistrySchema } from "./registry/types.js";
 
 interface PackageJson {
   exports?: Record<string, unknown>;
@@ -31,8 +27,21 @@ const REGISTRY_SCHEMA = "https://ui.shadcn.com/schema/registry.json";
 const KEYBOARD_NAVIGATION_INTEGRATION = "keyboard-navigation";
 const ALLOWED_REGISTRY_DEP_ORIGINS = ["https://docs.b4r7.dev", "https://r.b4r7.dev"] as const;
 
-function readJson<T>(relativePath: string): T {
-  return JSON.parse(readFileSync(resolve(ROOT, relativePath), "utf-8")) as T;
+function readJson(relativePath: string): unknown {
+  return JSON.parse(readFileSync(resolve(ROOT, relativePath), "utf-8"));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function readRegistry(): Registry {
+  const data = readJson("registry/registry.json");
+  const registry = UiRegistrySchema.parse(data);
+  return {
+    ...registry,
+    $schema: isRecord(data) && typeof data.$schema === "string" ? data.$schema : undefined,
+  };
 }
 
 function itemExportPath(item: RegistryItem): string | null {
@@ -187,9 +196,9 @@ function validateKeysRequiredPeer(packageJson: PackageJson, items: RegistryItem[
 }
 
 function validate(): string[] {
-  const registry = readJson<Registry>("registry/registry.json");
-  const packageJson = readJson<PackageJson>("package.json");
-  const items = registry.items ?? [];
+  const registry = readRegistry();
+  const packageJson = readJson("package.json") as PackageJson;
+  const items = registry.items;
   const exportsMap = packageJson.exports ?? {};
   const errors: string[] = [];
 

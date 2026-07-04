@@ -57,6 +57,12 @@ export const progressDoc: ComponentDoc = {
         defaultValue: '"md"',
         description: "Height of the progress bar track.",
       },
+      valueText: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Custom text exposed through aria-valuetext for the current value.",
+      },
     },
   },
 };

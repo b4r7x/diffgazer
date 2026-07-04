@@ -112,34 +112,6 @@ describe("settings trust routes — server-scoped project", () => {
     expect(res.status).toBe(404);
   });
 
-  it("GET /trust/list only returns the server-resolved project's trust", async () => {
-    const store = await loadStore();
-    const projectA = store.ensureProjectFile(projectRootA);
-    const projectB = store.ensureProjectFile(projectRootB);
-    expect(projectA.projectId).toBeTruthy();
-    expect(projectB.projectId).toBeTruthy();
-    await store.saveTrust(
-      trustForProject(requireValue(projectA.projectId, "project A id"), projectRootA),
-    );
-    await store.saveTrust(
-      trustForProject(requireValue(projectB.projectId, "project B id"), projectRootB),
-    );
-
-    const app = await loadApp();
-    const res = await app.request("/api/settings/trust/list", {
-      headers: {
-        Host: "localhost:3000",
-        [SHUTDOWN_TOKEN_HEADER]: TEST_TOKEN,
-        [PROJECT_ROOT_HEADER]: projectRootA,
-      },
-    });
-
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { projects: Array<{ projectId: string }> };
-    expect(body.projects).toHaveLength(1);
-    expect(body.projects[0]?.projectId).toBe(projectA.projectId);
-  });
-
   it("requires the shutdown token for trust reads even in standalone dev", async () => {
     delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
     const store = await loadStore();

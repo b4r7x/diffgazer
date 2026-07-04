@@ -3,7 +3,7 @@ title: Interaction States
 description: The three-state interaction model for TUI-style components — hover, highlight, and selected.
 ---
 
-## Three-State Model
+## Three-state model
 
 `@diffgazer/ui` components use three distinct, independent interaction states inspired by terminal UIs:
 
@@ -39,11 +39,11 @@ The `menuItemBase` CVA maps each state to Tailwind classes:
 
 Danger items use `bg-error text-error-foreground` for both focused and selected states.
 
-## Sync on Click
+## Sync on click
 
 When selection is enabled (`selectedId` or `defaultSelectedId`), activating a MenuItem sets **both** selection and highlight. Plain command menus do not persist selected state; activation calls `onSelect` and leaves the keyboard highlight model in charge of the active item.
 
-## AutoFocus
+## autoFocus
 
 Pass `autoFocus` to Menu when it is the primary interaction target on the page. This focuses the container div on mount so keyboard events (ArrowUp/Down, Enter) work immediately without requiring the user to click or tab into the menu first.
 

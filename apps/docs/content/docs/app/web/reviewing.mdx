@@ -8,7 +8,7 @@ The review screen is where you kick off a review of your working changes and wat
 ## Start a review
 
 1. Run `diffgazer` inside the repository you want reviewed. It starts a local server and opens the web app in your browser, landing on the home screen.
-2. Pick what to review from the menu. Choose **Review Unstaged** to review your working-tree changes, or **Review Staged** to review only what you have staged. The keyboard shortcuts are `r` and `R`.
+2. Pick what to review from the menu. Choose **Review Unstaged** to review your working-tree changes, or **Review Staged** to review only what you have staged. Use the arrow keys to move through the menu, then press `Enter` to choose the highlighted item.
 3. The selection creates a review session (`POST /api/review/reviews`) and takes you straight to the live progress screen for that session.
 
 If a provider or model is not set up, the screen tells you what is missing and links you back to provider settings instead of starting. For the full provider, key, and trust walkthrough, see [onboarding](/app/web/onboarding).

@@ -1,3 +1,4 @@
+import { sanitizeTerminalText } from "@diffgazer/core/review";
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
 import { Badge } from "../../../components/ui/badge";
@@ -28,7 +29,8 @@ export function IssuePreviewItem({
   const maxPathLength = Math.max(15, Math.floor(columns * 0.3));
 
   const variant = severityVariant(severity);
-  const pathDisplay = truncatePath(filePath, maxPathLength);
+  const pathDisplay = truncatePath(sanitizeTerminalText(filePath), maxPathLength);
+  const titleDisplay = sanitizeTerminalText(title);
 
   if (isHighlighted) {
     return (
@@ -38,7 +40,7 @@ export function IssuePreviewItem({
           {pathDisplay}
         </Text>
         <Text backgroundColor={tokens.fg} color={tokens.bg} bold>
-          {title}
+          {titleDisplay}
         </Text>
       </Box>
     );
@@ -48,7 +50,7 @@ export function IssuePreviewItem({
     <Box gap={1}>
       <Badge variant={variant}>{severity}</Badge>
       <Text color={tokens.muted}>{pathDisplay}</Text>
-      <Text>{title}</Text>
+      <Text>{titleDisplay}</Text>
     </Box>
   );
 }

@@ -13,7 +13,7 @@ import {
   AccordionTrigger,
   type AccordionTriggerProps,
   type AccordionTriggerVariantProps,
-  triggerVariants,
+  accordionTriggerVariants,
 } from "./accordion-trigger";
 
 /**
@@ -32,7 +32,7 @@ export { AccordionHeader, type AccordionHeaderProps };
 export { AccordionItem, type AccordionItemProps };
 export {
   AccordionTrigger,
-  triggerVariants,
+  accordionTriggerVariants,
   type AccordionTriggerProps,
   type AccordionTriggerVariantProps,
 };

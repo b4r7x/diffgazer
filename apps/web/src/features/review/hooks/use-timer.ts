@@ -27,5 +27,5 @@ export function useTimer({ startTime, running = false }: UseTimerOptions = {}): 
     return () => clearInterval(interval);
   }, [running, startTime]);
 
-  return { elapsed: running ? elapsed : 0 };
+  return { elapsed };
 }

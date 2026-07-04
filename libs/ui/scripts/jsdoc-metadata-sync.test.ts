@@ -52,6 +52,11 @@ type ComponentJsDocCase = {
   propsType: string;
 };
 
+type MemberMetadataExclusion = {
+  member: string;
+  reason: string;
+};
+
 const root = resolve(import.meta.dirname, "..");
 
 const hookCases: HookJsDocCase[] = [
@@ -159,6 +164,105 @@ const componentCases: ComponentJsDocCase[] = [
   },
 ];
 
+const documentedMemberExclusions: Record<string, MemberMetadataExclusion[]> = {
+  "active-heading:UseActiveHeadingOptions": [
+    {
+      member: "ownerDocument",
+      reason:
+        "Advanced document injection hook for iframe/test hosts; the public docs table currently keeps the common consumer API only.",
+    },
+  ],
+  "checkbox:CheckboxGroupProps": [
+    {
+      member: "onKeyDown",
+      reason:
+        "Native event escape hatch is part of the type surface but omitted from the curated public props table.",
+    },
+    {
+      member: "size",
+      reason:
+        "Group-level style token duplicates item styling; metadata ownership is outside this batch.",
+    },
+    {
+      member: "variant",
+      reason:
+        "Group-level style token duplicates item styling; metadata ownership is outside this batch.",
+    },
+    {
+      member: "strikethrough",
+      reason:
+        "Group-level style token duplicates item styling; metadata ownership is outside this batch.",
+    },
+    {
+      member: "className",
+      reason:
+        "React passthrough styling prop is intentionally omitted from the curated public props table.",
+    },
+    {
+      member: "aria-invalid",
+      reason:
+        "ARIA passthrough is covered by accessibility behavior tests; metadata ownership is outside this batch.",
+    },
+    {
+      member: "children",
+      reason:
+        "React composition slot is documented in anatomy/examples rather than the curated group props table.",
+    },
+    {
+      member: "ref",
+      reason: "React ref passthrough is intentionally omitted from the curated public props table.",
+    },
+  ],
+  "menu:MenuProps": [
+    {
+      member: "onKeyDown",
+      reason:
+        "Native event escape hatch is part of the type surface but omitted from the curated public props table.",
+    },
+  ],
+  "radio:RadioGroupProps": [
+    {
+      member: "onKeyDown",
+      reason:
+        "Native event escape hatch is part of the type surface but omitted from the curated public props table.",
+    },
+    {
+      member: "disabled",
+      reason:
+        "Group-level disabled state mirrors item/native behavior; metadata ownership is outside this batch.",
+    },
+    {
+      member: "size",
+      reason:
+        "Group-level style token duplicates item styling; metadata ownership is outside this batch.",
+    },
+    {
+      member: "variant",
+      reason:
+        "Group-level style token duplicates item styling; metadata ownership is outside this batch.",
+    },
+    {
+      member: "aria-invalid",
+      reason:
+        "ARIA passthrough is covered by accessibility behavior tests; metadata ownership is outside this batch.",
+    },
+    {
+      member: "className",
+      reason:
+        "React passthrough styling prop is intentionally omitted from the curated public props table.",
+    },
+    {
+      member: "children",
+      reason:
+        "React composition slot is documented in anatomy/examples rather than the curated group props table.",
+    },
+    {
+      member: "ref",
+      reason: "React ref passthrough is intentionally omitted from the curated public props table.",
+    },
+  ],
+};
+
 function readSource(relativePath: string): ts.SourceFile {
   const fileName = resolve(root, relativePath);
   const source = readFileSync(fileName, "utf8");
@@ -245,6 +349,39 @@ function metadataFields(members: MetadataMember[] | undefined): string[] {
     .map((member) => member.name.replace(/^options\./, "").replace(/^\.\.\./, ""));
 }
 
+function expectMetadataDocumentsJSDocMembers({
+  caseName,
+  typeName,
+  sourceDocs,
+  metadataNames,
+  failures,
+}: {
+  caseName: string;
+  typeName: string;
+  sourceDocs: Map<string, string>;
+  metadataNames: Set<string>;
+  failures: string[];
+}): void {
+  const key = `${caseName}:${typeName}`;
+  const sourceNames = new Set(
+    [...sourceDocs.entries()].filter(([, description]) => description.trim()).map(([name]) => name),
+  );
+  const exclusions = documentedMemberExclusions[key] ?? [];
+  const excludedNames = new Set(exclusions.map((exclusion) => exclusion.member));
+
+  for (const exclusion of exclusions) {
+    if (!exclusion.reason.trim()) failures.push(`${key}.${exclusion.member}: missing rationale`);
+    if (!sourceNames.has(exclusion.member)) failures.push(`${key}.${exclusion.member}: stale`);
+    if (metadataNames.has(exclusion.member))
+      failures.push(`${key}.${exclusion.member}: documented`);
+  }
+
+  for (const name of sourceNames) {
+    if (metadataNames.has(name) || excludedNames.has(name)) continue;
+    failures.push(`${caseName}: ${typeName}.${name}`);
+  }
+}
+
 describe("hook metadata JSDoc sync", () => {
   it("backs documented hook metadata fields with exported JSDoc", () => {
     const failures: string[] = [];
@@ -270,6 +407,55 @@ describe("hook metadata JSDoc sync", () => {
           if (!docs.get(field)) failures.push(`${item.name}: ${item.returnsInterface}.${field}`);
         }
       }
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it("documents every exported JSDoc member in doc metadata", () => {
+    const failures: string[] = [];
+
+    for (const item of hookCases) {
+      const source = readSource(item.sourcePath);
+
+      if (item.optionsInterface) {
+        expectMetadataDocumentsJSDocMembers({
+          caseName: item.name,
+          typeName: item.optionsInterface,
+          sourceDocs: getInterfaceMemberDocs(source, item.optionsInterface),
+          metadataNames: new Set(metadataFields(item.doc.parameters)),
+          failures,
+        });
+      }
+
+      if (item.returnsInterface) {
+        expectMetadataDocumentsJSDocMembers({
+          caseName: item.name,
+          typeName: item.returnsInterface,
+          sourceDocs: getInterfaceMemberDocs(source, item.returnsInterface),
+          metadataNames: new Set(metadataFields(item.doc.returns?.properties)),
+          failures,
+        });
+      }
+    }
+
+    for (const item of componentCases) {
+      const source = readSource(item.sourcePath);
+
+      expectMetadataDocumentsJSDocMembers({
+        caseName: item.name,
+        typeName: item.propsType,
+        sourceDocs: getInterfaceMemberDocs(source, item.propsType),
+        metadataNames: new Set(
+          metadataFields(
+            Object.entries(item.doc.props?.[item.partName] ?? {}).map(([name, value]) => ({
+              name,
+              description: value.description,
+            })),
+          ),
+        ),
+        failures,
+      });
     }
 
     expect(failures).toEqual([]);

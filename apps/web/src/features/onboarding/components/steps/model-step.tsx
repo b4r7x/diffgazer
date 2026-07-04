@@ -7,7 +7,7 @@ import { Input } from "@diffgazer/ui/components/input";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { Spinner } from "@diffgazer/ui/components/spinner";
 import { type ReactNode, useState } from "react";
-import { resolveAvailableValue } from "../../lib/select.js";
+import { resolveAvailableValue } from "../../lib/select";
 
 interface ModelStepProps {
   provider: AIProvider;
@@ -49,6 +49,7 @@ function ModelRadioGroup({
 
   return (
     <RadioGroup
+      aria-label="Available models"
       value={value ?? undefined}
       onChange={handleChange}
       highlighted={enabled ? effectiveHighlighted : null}

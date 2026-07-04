@@ -53,7 +53,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const { data: settings } = useSettings();
   const { mutateAsync: saveSettingsAsync } = useSaveSettings();
 
-  const systemTheme: ResolvedTheme = useSyncExternalStore(
+  const system: ResolvedTheme = useSyncExternalStore(
     subscribeToSystemTheme,
     getSystemTheme,
     () => "dark" as const,
@@ -61,7 +61,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const settingsTheme = settings?.theme ? mapSettingsTheme(settings.theme) : null;
   const effectiveTheme: WebTheme = localOverride ?? settingsTheme ?? fallbackTheme;
-  const resolved = resolveTheme(effectiveTheme, systemTheme);
+  const resolved = resolveTheme(effectiveTheme, system);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", resolved);
@@ -89,9 +89,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     () => ({
       theme: effectiveTheme,
       resolved,
+      system,
       setTheme,
     }),
-    [effectiveTheme, resolved, setTheme],
+    [effectiveTheme, resolved, system, setTheme],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

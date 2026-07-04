@@ -38,6 +38,34 @@ describe("parseDiff", () => {
     expect(result.files[0]?.stats.deletions).toBe(1);
   });
 
+  it("counts added content lines that begin with plus signs", () => {
+    const diff = `diff --git a/file.ts b/file.ts
+--- a/file.ts
++++ b/file.ts
+@@ -1 +1,2 @@
+ line1
++++content`;
+
+    const result = parseDiff(diff);
+
+    expect(result.files[0]?.stats.additions).toBe(1);
+    expect(result.files[0]?.stats.deletions).toBe(0);
+  });
+
+  it("counts deleted content lines that begin with minus signs", () => {
+    const diff = `diff --git a/file.ts b/file.ts
+--- a/file.ts
++++ b/file.ts
+@@ -1,2 +1 @@
+ line1
+---content`;
+
+    const result = parseDiff(diff);
+
+    expect(result.files[0]?.stats.additions).toBe(0);
+    expect(result.files[0]?.stats.deletions).toBe(1);
+  });
+
   it("splits a multi-file diff into one entry per file", () => {
     const diff = `diff --git a/a.ts b/a.ts
 --- a/a.ts

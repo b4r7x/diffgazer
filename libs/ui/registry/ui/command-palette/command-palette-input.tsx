@@ -67,6 +67,7 @@ export function CommandPaletteInput({
         onKeyDown={(e) => {
           onKeyDown?.(e);
           if (e.defaultPrevented) return;
+          if (e.nativeEvent.isComposing || e.keyCode === 229) return;
           if (e.key === "Escape") {
             if (search) {
               e.preventDefault();

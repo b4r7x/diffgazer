@@ -62,6 +62,30 @@ type ExampleRef = {
   name: string;
 };
 
+type DocsLibrary = "ui" | "keys";
+type GeneratedDataType = "components" | "hooks";
+
+type FrontmatterDataRef = {
+  path: string;
+  library: DocsLibrary;
+  type: GeneratedDataType;
+  name: string;
+};
+
+type ScaffoldHeroRef = {
+  path: string;
+  library: DocsLibrary;
+  component: string | null;
+  hero: string;
+};
+
+const DOCS_MDX_DIRS: Array<{ dir: string; library: DocsLibrary }> = [
+  { dir: "libs/ui/docs/content", library: "ui" },
+  { dir: "libs/keys/docs/content", library: "keys" },
+  { dir: "apps/docs/content/docs/ui", library: "ui" },
+  { dir: "apps/docs/content/docs/keys", library: "keys" },
+];
+
 function exampleDirForLibrary(library: "ui" | "keys"): string {
   return library === "ui" ? "libs/ui/registry/examples" : "libs/keys/registry/examples";
 }
@@ -174,11 +198,15 @@ function collectHookPagesWithExamplesSection(): string[] {
 // with example refs but no `component:` resolve to no record at runtime, which
 // silently drops the example; surface that as an unresolvable scope so the
 // guard fails loudly instead of skipping a broken page.
-function frontmatterComponent(source: string): string | null {
+function frontmatterField(source: string, field: "component" | "hook"): string | null {
   const block = source.match(/^---\n([\s\S]*?)\n---/);
   if (!block?.[1]) return null;
-  const field = block[1].match(/^component:\s*"?([a-z0-9-]+)"?\s*$/m);
-  return field?.[1] ?? null;
+  const match = block[1].match(new RegExp(`^${field}:\\s*"?([a-z0-9-]+)"?\\s*$`, "m"));
+  return match?.[1] ?? null;
+}
+
+function frontmatterComponent(source: string): string | null {
+  return frontmatterField(source, "component");
 }
 
 function collectMdxExampleRefs(): ExampleRef[] {
@@ -191,6 +219,82 @@ function collectMdxExampleRefs(): ExampleRef[] {
     }
   }
   return refs;
+}
+
+function collectMdxGeneratedDataRefs(): FrontmatterDataRef[] {
+  const refs: FrontmatterDataRef[] = [];
+  for (const { dir, library } of DOCS_MDX_DIRS) {
+    for (const file of listRepoFiles(dir, ".mdx")) {
+      const source = readAbsolute(file);
+      const path = file.slice(repoRoot.length + 1);
+      const component = frontmatterField(source, "component");
+      const hook = frontmatterField(source, "hook");
+
+      if (component) refs.push({ path, library, type: "components", name: component });
+      if (hook) refs.push({ path, library, type: "hooks", name: hook });
+    }
+  }
+  return refs;
+}
+
+function collectScaffoldHeroRefs(): ScaffoldHeroRef[] {
+  const refs: ScaffoldHeroRef[] = [];
+  for (const { dir, library } of DOCS_MDX_DIRS) {
+    for (const file of listRepoFiles(dir, ".mdx")) {
+      const source = readAbsolute(file);
+      const path = file.slice(repoRoot.length + 1);
+      const component = frontmatterComponent(source);
+
+      for (const match of source.matchAll(/^\s*<ComponentDocScaffold\b[^\n>]*\bhero="([^"]+)"/gm)) {
+        if (match[1]) refs.push({ path, library, component, hero: match[1] });
+      }
+    }
+  }
+  return refs;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readJsonObject(path: string): Record<string, unknown> | null {
+  const value: unknown = JSON.parse(readAbsolute(path));
+  return isRecord(value) ? value : null;
+}
+
+function generatedDataPath(ref: FrontmatterDataRef): string {
+  return resolve(repoRoot, "apps/docs/src/generated", ref.library, ref.type, `${ref.name}.json`);
+}
+
+function readGeneratedData(ref: FrontmatterDataRef): Record<string, unknown> | null {
+  const path = generatedDataPath(ref);
+  if (!existsSync(path)) return null;
+  return readJsonObject(path);
+}
+
+function generatedDataMatchesFrontmatter(ref: FrontmatterDataRef): boolean {
+  return readGeneratedData(ref)?.name === ref.name;
+}
+
+function formatFrontmatterDataRef(ref: FrontmatterDataRef): string {
+  return `${ref.path}: ${ref.library}/${ref.type}/${ref.name}`;
+}
+
+function scaffoldHeroExists(ref: ScaffoldHeroRef): boolean {
+  if (!ref.component) return false;
+  const data = readGeneratedData({
+    path: ref.path,
+    library: ref.library,
+    type: "components",
+    name: ref.component,
+  });
+  const exampleSource = data?.exampleSource;
+  return isRecord(exampleSource) && ref.hero in exampleSource;
+}
+
+function formatScaffoldHeroRef(ref: ScaffoldHeroRef): string {
+  const component = ref.component ?? "(missing component frontmatter)";
+  return `${ref.path}: ${component} hero=${ref.hero}`;
 }
 
 function collectPublicDocsSources(): Array<{ path: string; source: string }> {
@@ -246,7 +350,7 @@ describe("docs example wiring", () => {
     expect(meta.paths.copy.available).toBe(false);
     expect(meta.paths.copy.note).toContain("r.b4r7.dev does not resolve");
     expect(meta.paths.dgadd.command).toBe("pnpm exec dgadd add ui/compose-refs");
-    expect(meta.paths.dgadd.note).toContain("tarball");
+    expect(meta.paths.dgadd.note).toContain("local checkout");
     expect(meta.paths.package.available).toBe(false);
   });
 
@@ -258,7 +362,7 @@ describe("docs example wiring", () => {
     expect(meta.paths.copy.available).toBe(false);
     expect(meta.paths.copy.note).toContain("r.b4r7.dev does not resolve");
     expect(meta.paths.dgadd.command).toBe("pnpm exec dgadd add keys/navigation");
-    expect(meta.paths.dgadd.note).toContain("tarball");
+    expect(meta.paths.dgadd.note).toContain("local checkout");
   });
 
   it("marks provider-backed keys hooks as package-only while keeping package import metadata", () => {
@@ -269,7 +373,7 @@ describe("docs example wiring", () => {
     expect(meta.paths.copy.available).toBe(false);
     expect(meta.paths.dgadd.available).toBe(false);
     expect(meta.paths.package.available).toBe(false);
-    expect(meta.paths.package.note).toContain("not live yet");
+    expect(meta.paths.package.note).toContain("not yet published to npm");
   });
 
   it("uses deterministic docs preview without npx network dependency", () => {
@@ -313,6 +417,18 @@ describe("docs example wiring", () => {
       .map((ref) => `${ref.library}/${ref.item}: ${ref.name}`);
 
     expect(missing).toEqual([]);
+  });
+
+  it("validates frontmatter -> generated data join and hero refs", () => {
+    const missingData = collectMdxGeneratedDataRefs()
+      .filter((ref) => !generatedDataMatchesFrontmatter(ref))
+      .map(formatFrontmatterDataRef);
+    const missingHeroes = collectScaffoldHeroRefs()
+      .filter((ref) => !scaffoldHeroExists(ref))
+      .map(formatScaffoldHeroRef);
+
+    expect(missingData).toEqual([]);
+    expect(missingHeroes).toEqual([]);
   });
 
   it("requires hook pages with example sections to declare source examples", () => {
@@ -447,7 +563,7 @@ describe("docs example wiring", () => {
       }
 
       expect(source, path).toMatch(
-        /npm view|publish-gated|After Publication|after publication|after `@diffgazer\/add` is published|after its npm package is published/,
+        /not yet published to npm|first release|local checkout|npm view|publish-gated|After Publication|after publication|after `@diffgazer\/add` is published|after its npm package is published/,
       );
     }
   });
@@ -557,7 +673,7 @@ describe("docs example wiring", () => {
     expect(cliReadme).toContain("@diffgazer/keys");
 
     for (const readme of [rootReadme, uiReadme, keysReadme, cliReadme]) {
-      expect(readme).toMatch(/publish-gated/);
+      expect(readme).toMatch(/publish-gated|not yet published to npm/);
     }
   });
 });

@@ -61,34 +61,7 @@ export const lightPalette: Palette = {
   statusPending: "#656d76",
 };
 
-// High-contrast: bold, maximally distinct colors for accessibility
-const highContrastPalette: Palette = {
-  bg: "#000000",
-  fg: "#ffffff",
-  blue: "#71b7ff",
-  violet: "#e2b5ff",
-  green: "#26d95a",
-  red: "#ff6a69",
-  yellow: "#f0b72f",
-  border: "#ffffff",
-  muted: "#b3b3b3",
-  success: "#26d95a",
-  warning: "#f0b72f",
-  error: "#ff6a69",
-  info: "#71b7ff",
-  accent: "#e2b5ff",
-  severityBlocker: "#ff6a69",
-  severityHigh: "#ffab33",
-  severityMedium: "#f0b72f",
-  severityLow: "#71b7ff",
-  severityNit: "#b3b3b3",
-  statusRunning: "#71b7ff",
-  statusComplete: "#26d95a",
-  statusPending: "#b3b3b3",
-};
-
 export const palettes: Record<string, Palette> = {
   dark: darkPalette,
   light: lightPalette,
-  "high-contrast": highContrastPalette,
 };

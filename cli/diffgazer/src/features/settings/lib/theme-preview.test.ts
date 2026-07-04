@@ -1,9 +1,13 @@
 import { THEME_TOKEN_KEYS } from "@diffgazer/core/theme";
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { darkPalette, lightPalette } from "../../../theme/palettes";
-import { paletteForTheme, TOKEN_GROUPS } from "./theme-preview.js";
+import { paletteForTheme, TOKEN_GROUPS } from "./theme-preview";
 
 describe("theme preview", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   test("paletteForTheme returns darkPalette for 'dark'", () => {
     expect(paletteForTheme("dark", lightPalette)).toBe(darkPalette);
   });
@@ -12,11 +16,13 @@ describe("theme preview", () => {
     expect(paletteForTheme("light", darkPalette)).toBe(lightPalette);
   });
 
-  test.each([
-    { active: darkPalette, label: "dark" },
-    { active: lightPalette, label: "light" },
-  ])("paletteForTheme on 'auto' returns the terminal-detected $label palette", ({ active }) => {
-    expect(paletteForTheme("auto", active)).toBe(active);
+  test("paletteForTheme on 'auto' returns the terminal-detected palette", () => {
+    vi.stubEnv("COLORFGBG", "0;15");
+
+    const previewPalette = paletteForTheme("auto", darkPalette);
+
+    expect(previewPalette).toBe(lightPalette);
+    expect(previewPalette).not.toBe(darkPalette);
   });
 
   test("TOKEN_GROUPS covers every key in the cross-app vocabulary exactly once", () => {

@@ -245,7 +245,8 @@
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
       "meta": {
         "client": true
@@ -1597,7 +1598,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/select/use-state-machine.ts",
+          "path": "registry/ui/select/use-state.ts",
           "type": "registry:ui"
         }
       ]

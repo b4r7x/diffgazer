@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { computeIntegrity } from "@diffgazer/registry";
 import type { FileOp } from "@diffgazer/registry/cli";
 import type {
   DiffgazerAddConfig,
@@ -6,7 +7,6 @@ import type {
   ManifestOwnedFile,
 } from "../../context.js";
 import { ctx, getRegistry, VERSION } from "../../context.js";
-import { sha256 } from "../../utils/hashing.js";
 import { toPosixPath } from "../../utils/paths.js";
 import { isOwnedFileOp } from "./file-ops.js";
 import type { ResolvedIntegrationSelection } from "./integration.js";
@@ -78,7 +78,7 @@ function buildOwnedFile(
 ): ManifestOwnedFile {
   return {
     path: toManifestPath(op),
-    hash: sha256(op.content),
+    hash: computeIntegrity(op.content),
     item: sourceName,
     registryIntegrity,
     cliVersion: VERSION,
@@ -111,14 +111,14 @@ function buildOwnedFilesByItem(
     for (const sourceName of sourceNames) {
       addOwnedFile(sourceName, op);
     }
-    writtenHashByTargetPath.set(op.targetPath, sha256(op.content));
+    writtenHashByTargetPath.set(op.targetPath, computeIntegrity(op.content));
   }
 
   for (const { op, result } of writeResult.results) {
     const sourceNames = getSourceNames(op);
     if (result !== "skipped" || sourceNames.length === 0) continue;
 
-    const expectedHash = sha256(op.content);
+    const expectedHash = computeIntegrity(op.content);
     if (writtenHashByTargetPath.get(op.targetPath) === expectedHash) {
       for (const sourceName of sourceNames) {
         addOwnedFile(sourceName, op);
@@ -127,7 +127,7 @@ function buildOwnedFilesByItem(
     }
 
     if (!existsSync(op.targetPath)) continue;
-    const onDiskHash = sha256(readFileSync(op.targetPath, "utf-8"));
+    const onDiskHash = computeIntegrity(readFileSync(op.targetPath, "utf-8"));
     if (onDiskHash !== expectedHash) continue;
 
     if (!isManifestTrusted(toManifestPath(op), existingManifest, registryIntegrity)) continue;

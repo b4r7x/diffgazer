@@ -1,8 +1,14 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { dirname, join, posix, resolve } from "node:path";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Registry, RegistryItem } from "@diffgazer/registry/schemas";
+import { REGISTRY_ITEM_TYPE, RegistrySchema } from "@diffgazer/registry/schemas";
 import { describe, expect, it } from "vitest";
-import { extractRelativeImports as extractRegistryRelativeImports } from "./validate-registry-closure.js";
+import {
+  extractRelativeImports as extractRegistryRelativeImports,
+  validatePublicTargetClosure,
+} from "./validate-registry-closure.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const KEYS_ROOT = resolve(__dirname, "..");
@@ -10,35 +16,17 @@ const PUBLIC_DIR = resolve(KEYS_ROOT, "public", "r");
 const REGISTRY_PATH = resolve(KEYS_ROOT, "registry", "registry.json");
 const DEMO_INDEX_PATH = resolve(KEYS_ROOT, "docs", "generated", "demo-index.ts");
 
-interface RegistryFile {
-  path: string;
-  type: string;
-  target?: string;
-  content?: string;
-}
-
-interface RegistryItem {
-  name: string;
-  type: string;
-  files: RegistryFile[];
-  meta?: { client?: boolean; hidden?: boolean };
-}
-
-interface Registry {
-  items: RegistryItem[];
-}
-
 function loadRegistry(): Registry {
-  return JSON.parse(readFileSync(REGISTRY_PATH, "utf-8"));
+  return RegistrySchema.parse(JSON.parse(readFileSync(REGISTRY_PATH, "utf-8")));
 }
 
 function loadPublicItem(name: string): RegistryItem {
   const itemPath = join(PUBLIC_DIR, `${name}.json`);
-  return JSON.parse(readFileSync(itemPath, "utf-8"));
+  return parseRegistryEntry(JSON.parse(readFileSync(itemPath, "utf-8")));
 }
 
 function loadPublicRegistry(): Registry {
-  return JSON.parse(readFileSync(join(PUBLIC_DIR, "registry.json"), "utf-8"));
+  return RegistrySchema.parse(JSON.parse(readFileSync(join(PUBLIC_DIR, "registry.json"), "utf-8")));
 }
 
 function getRegistryItem(registry: Registry, name: string): RegistryItem {
@@ -49,34 +37,10 @@ function getRegistryItem(registry: Registry, name: string): RegistryItem {
   return item;
 }
 
-interface MissingTargetImport {
-  importPath: string;
-  importer: string;
-  resolved: string;
-}
-
-function collectMissingTargetImports(item: RegistryItem): MissingTargetImport[] {
-  const targetPaths = new Set(
-    item.files.map((file) => (file.target ?? file.path).replace(/\.(ts|tsx)$/, "")),
-  );
-  const missing: MissingTargetImport[] = [];
-
-  for (const file of item.files) {
-    if (typeof file.content !== "string") continue;
-
-    const importer = file.target ?? file.path;
-    const targetDir = posix.dirname(importer);
-    for (const importPath of extractRegistryRelativeImports(file.content)) {
-      const resolved = posix
-        .normalize(posix.join(targetDir, importPath))
-        .replace(/\.(ts|tsx)$/, "");
-      if (!targetPaths.has(resolved)) {
-        missing.push({ importPath, importer, resolved });
-      }
-    }
-  }
-
-  return missing;
+function parseRegistryEntry(raw: unknown): RegistryItem {
+  const [item] = RegistrySchema.parse({ items: [raw] }).items;
+  if (!item) throw new Error("Missing registry item");
+  return item;
 }
 
 describe("public registry target paths", () => {
@@ -258,37 +222,39 @@ describe("provider-backed hooks are package-only", () => {
 
 describe("target-path install closure validation", () => {
   it("all public registry items pass target closure check", () => {
-    for (const entry of readdirSync(PUBLIC_DIR)) {
-      if (!entry.endsWith(".json") || entry === "registry.json") continue;
-
-      const item: RegistryItem = JSON.parse(readFileSync(join(PUBLIC_DIR, entry), "utf-8"));
-      if (item.type !== "registry:hook") continue;
-
-      expect(collectMissingTargetImports(item)).toEqual([]);
-    }
+    expect(validatePublicTargetClosure(PUBLIC_DIR)).toEqual([]);
   });
 
   it("detects broken target-path imports in a synthetic bad item", () => {
-    const badItem: RegistryItem = {
-      name: "test-bad",
-      type: "registry:hook",
-      files: [
-        {
-          path: "src/hooks/use-test.ts",
-          target: "src/hooks/use-test.ts",
-          content: 'import { foo } from "./utils/missing";\n',
-          type: "registry:hook",
-        },
-      ],
-    };
+    const publicDir = mkdtempSync(join(tmpdir(), "dg-keys-public-registry-"));
+    try {
+      writeFileSync(
+        join(publicDir, "test-bad.json"),
+        JSON.stringify({
+          name: "test-bad",
+          type: REGISTRY_ITEM_TYPE.hook,
+          files: [
+            {
+              path: "src/hooks/use-test.ts",
+              target: "src/hooks/use-test.ts",
+              content: 'import { foo } from "./utils/missing";\n',
+              type: REGISTRY_ITEM_TYPE.hook,
+            },
+          ],
+        }),
+      );
 
-    expect(collectMissingTargetImports(badItem)).toEqual([
-      {
-        importPath: "./utils/missing",
-        importer: "src/hooks/use-test.ts",
-        resolved: "src/hooks/utils/missing",
-      },
-    ]);
+      expect(validatePublicTargetClosure(publicDir)).toEqual([
+        {
+          code: "PUBLIC_TARGET_CLOSURE",
+          item: "test-bad",
+          message:
+            'Target import "./utils/missing" from src/hooks/use-test.ts does not resolve to any installed file',
+        },
+      ]);
+    } finally {
+      rmSync(publicDir, { recursive: true, force: true });
+    }
   });
 
   it("declares react as a peer dependency and exports the main entry point", () => {

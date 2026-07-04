@@ -207,15 +207,37 @@ describe("createGitService", () => {
       expect(result.value.branch).toBeNull();
     });
 
-    it("returns an error when the git command fails", async () => {
-      setupExecError(new Error("fatal: not a git repository"));
+    it("returns isGitRepo false for a non-repository directory", async () => {
+      setupExecError(
+        new Error("fatal: not a git repository (or any of the parent directories): .git"),
+      );
+      const git = createGitService({ cwd: "/test" });
+
+      const result = await git.getStatus();
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value).toEqual({
+        isGitRepo: false,
+        branch: null,
+        remoteBranch: null,
+        ahead: 0,
+        behind: 0,
+        files: { staged: [], unstaged: [], untracked: [] },
+        hasChanges: false,
+        conflicted: [],
+      });
+    });
+
+    it("returns an error when the git command fails for another reason", async () => {
+      setupExecError(new Error("fatal: index file corrupt"));
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatus();
 
       expect(result.ok).toBe(false);
       if (result.ok) return;
-      expect(result.error.message).toContain("not a git repository");
+      expect(result.error.message).toContain("index file corrupt");
     });
 
     it("ignores porcelain lines shorter than the status prefix", async () => {
@@ -241,6 +263,57 @@ describe("createGitService", () => {
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       expect(result.value.files.unstaged[0]?.path).toBe("żółć/plik.ts");
+    });
+
+    it("parses a staged rename into path and previousPath", async () => {
+      setupExecResult("## main\nR  old.txt -> new.txt\n");
+      const git = createGitService({ cwd: "/test" });
+
+      const result = await git.getStatus();
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.files.staged[0]).toMatchObject({
+        path: "new.txt",
+        previousPath: "old.txt",
+        indexStatus: "R",
+        workTreeStatus: " ",
+      });
+    });
+
+    it("parses a quoted rename with spaces", async () => {
+      setupExecResult('## main\nR  "a b.txt" -> "c d.txt"\n');
+      const git = createGitService({ cwd: "/test" });
+
+      const result = await git.getStatus();
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.files.staged[0]?.path).toBe("c d.txt");
+      expect(result.value.files.staged[0]?.previousPath).toBe("a b.txt");
+    });
+
+    it("preserves a leading/trailing space in an unquoted filename", async () => {
+      setupExecResult("## main\n M report .md \n");
+      const git = createGitService({ cwd: "/test" });
+
+      const result = await git.getStatus();
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.files.unstaged[0]?.path).toBe("report .md ");
+    });
+
+    it("preserves a leading/trailing space in an unquoted rename's paths", async () => {
+      setupExecResult("## main\nR   old.txt -> new.txt \n");
+      const git = createGitService({ cwd: "/test" });
+
+      const result = await git.getStatus();
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.files.staged[0]?.path).toBe("new.txt ");
+      expect(result.value.files.staged[0]?.previousPath).toBe(" old.txt");
     });
 
     it("excludes a git-quoted .diffgazer non-ASCII path from status results", async () => {

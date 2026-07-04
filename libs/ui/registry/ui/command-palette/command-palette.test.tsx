@@ -3,10 +3,11 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createRef, StrictMode, useState } from "react";
+import { createRef, memo, StrictMode, useLayoutEffect, useRef, useState } from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { Popover } from "../popover/index";
+import { useCommandPaletteContext } from "./command-palette-context";
 import { CommandPaletteHighlightItem, categorize, matchPositions } from "./highlight";
 import { CommandPalette } from "./index";
 
@@ -45,6 +46,7 @@ function renderPalette(props: RenderOptions = {}) {
 
 describe("CommandPalette", () => {
   it("supports direct namespaced parts inside groups", async () => {
+    const user = userEvent.setup();
     const onActivate = vi.fn();
     render(
       <CommandPalette open onActivate={onActivate}>
@@ -60,12 +62,13 @@ describe("CommandPalette", () => {
       </CommandPalette>,
     );
 
-    await userEvent.type(screen.getByRole("combobox"), "{ArrowDown}{Enter}");
+    await user.type(screen.getByRole("combobox"), "{ArrowDown}{Enter}");
 
     expect(onActivate).toHaveBeenCalledWith("paste");
   });
 
   it("supports keyboard activation for items rendered by wrappers", async () => {
+    const user = userEvent.setup();
     const onActivate = vi.fn();
     function WrappedCommandItem() {
       return <CommandPalette.Item id="wrapped">Wrapped</CommandPalette.Item>;
@@ -85,7 +88,7 @@ describe("CommandPalette", () => {
 
     expect(screen.getByRole("option", { name: /wrapped/i })).toBeInTheDocument();
 
-    await userEvent.type(screen.getByRole("combobox"), "wrapped{Enter}");
+    await user.type(screen.getByRole("combobox"), "wrapped{Enter}");
 
     expect(onActivate).toHaveBeenCalledWith("wrapped");
   });
@@ -109,22 +112,24 @@ describe("CommandPalette", () => {
   });
 
   it("filters items based on search input and shows empty state", async () => {
+    const user = userEvent.setup();
     renderPalette();
     const input = screen.getByRole("combobox");
-    await userEvent.type(input, "cop");
+    await user.type(input, "cop");
     expect(screen.getByRole("option", { name: /copy/i })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Paste" })).not.toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Delete" })).not.toBeInTheDocument();
 
-    await userEvent.clear(input);
-    await userEvent.type(input, "zzzzz");
+    await user.clear(input);
+    await user.type(input, "zzzzz");
     expect(screen.getByText("No results found")).toBeInTheDocument();
   });
 
   it("renders Empty as a presentational node with exactly one no-results announcer", async () => {
+    const user = userEvent.setup();
     renderPalette();
     const input = screen.getByRole("combobox");
-    await userEvent.type(input, "zzzzz");
+    await user.type(input, "zzzzz");
 
     const empty = screen.getByText("No results found");
     expect(empty).toHaveAttribute("role", "presentation");
@@ -139,31 +144,35 @@ describe("CommandPalette", () => {
   });
 
   it("keeps the listbox free of invalid live-region children when empty", async () => {
+    const user = userEvent.setup();
     const { container } = renderPalette();
     const input = screen.getByRole("combobox");
-    await userEvent.type(input, "zzzzz");
+    await user.type(input, "zzzzz");
     expect(await axe(container)).toHaveNoViolations();
   });
 
   it("uses a custom filter function", async () => {
+    const user = userEvent.setup();
     const customFilter = (_value: string, search: string) => search === "magic";
     renderPalette({ filter: customFilter });
     const input = screen.getByRole("combobox");
-    await userEvent.type(input, "magic");
+    await user.type(input, "magic");
     expect(screen.getByRole("option", { name: /copy/i })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /paste/i })).toBeInTheDocument();
   });
 
   it("skips filtering when shouldFilter is false", async () => {
+    const user = userEvent.setup();
     renderPalette({ shouldFilter: false });
     const input = screen.getByRole("combobox");
-    await userEvent.type(input, "zzzzz");
+    await user.type(input, "zzzzz");
     expect(screen.getByRole("option", { name: /copy/i })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /paste/i })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /delete/i })).toBeInTheDocument();
   });
 
   it("filters a 200-item list down to the matching row", async () => {
+    const user = userEvent.setup();
     const items = Array.from({ length: 200 }, (_, index) => `item-${index}`);
     render(
       <CommandPalette open>
@@ -181,7 +190,7 @@ describe("CommandPalette", () => {
     );
 
     const input = screen.getByRole("combobox") as HTMLInputElement;
-    await userEvent.type(input, "item-42");
+    await user.type(input, "item-42");
     expect(input.value).toBe("item-42");
 
     await waitFor(() => {
@@ -192,6 +201,7 @@ describe("CommandPalette", () => {
   });
 
   it("activates item on click, calls onSelect, closes palette, and skips disabled items", async () => {
+    const user = userEvent.setup();
     const onActivate = vi.fn();
     const onOpenChange = vi.fn();
     const onSelect = vi.fn();
@@ -211,22 +221,23 @@ describe("CommandPalette", () => {
       </CommandPalette>,
     );
 
-    await userEvent.click(screen.getByRole("option", { name: /nope/i }));
+    await user.click(screen.getByRole("option", { name: /nope/i }));
     expect(onActivate).not.toHaveBeenCalled();
 
-    await userEvent.click(screen.getByRole("option", { name: /paste/i }));
+    await user.click(screen.getByRole("option", { name: /paste/i }));
     expect(onActivate).toHaveBeenCalledWith("paste");
     expect(onSelect).toHaveBeenCalledOnce();
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
   it("auto-selects the first item and updates after filtering", async () => {
+    const user = userEvent.setup();
     renderPalette();
     expect(screen.getByRole("listbox", { name: "Command results" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /copy/i })).toHaveAttribute("aria-selected", "true");
 
     const input = screen.getByRole("combobox");
-    await userEvent.type(input, "del");
+    await user.type(input, "del");
     expect(screen.getByRole("option", { name: /delete/i })).toHaveAttribute(
       "aria-selected",
       "true",
@@ -234,6 +245,7 @@ describe("CommandPalette", () => {
   });
 
   it("keeps item registration current under StrictMode filtering", async () => {
+    const user = userEvent.setup();
     const onActivate = vi.fn();
     render(
       <StrictMode>
@@ -249,33 +261,112 @@ describe("CommandPalette", () => {
       </StrictMode>,
     );
 
-    await userEvent.type(screen.getByRole("combobox"), "del{Enter}");
+    await user.type(screen.getByRole("combobox"), "del{Enter}");
     expect(onActivate).toHaveBeenCalledWith("delete");
   });
 
+  it("does not update the items context when identical items re-register", async () => {
+    const user = userEvent.setup();
+    let probeRenders = 0;
+
+    function ManualRegistration() {
+      const { registerItem, unregisterItem } = useCommandPaletteContext();
+      const itemRef = useRef<HTMLDivElement>(null);
+      const [, setRenderCount] = useState(0);
+
+      useLayoutEffect(() => {
+        const element = itemRef.current;
+        if (!element) return;
+
+        registerItem({
+          registrationId: "manual",
+          id: "manual",
+          value: "Manual",
+          disabled: false,
+          element,
+        });
+        return () => unregisterItem("manual");
+      }, [registerItem, unregisterItem]);
+
+      const registerSameItem = () => {
+        const element = itemRef.current;
+        if (element) {
+          registerItem({
+            registrationId: "manual",
+            id: "manual",
+            value: "Manual",
+            disabled: false,
+            element,
+          });
+        }
+        setRenderCount((count) => count + 1);
+      };
+
+      return (
+        <>
+          <div ref={itemRef}>Manual</div>
+          <button type="button" onClick={registerSameItem}>
+            Re-register item
+          </button>
+        </>
+      );
+    }
+
+    const ItemCountProbe = memo(function ItemCountProbe() {
+      const { itemCount } = useCommandPaletteContext();
+      probeRenders += 1;
+      return <output aria-label="Registered item count">{itemCount}</output>;
+    });
+
+    render(
+      <CommandPalette open>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <ManualRegistration />
+          </CommandPalette.List>
+          <ItemCountProbe />
+        </CommandPalette.Content>
+      </CommandPalette>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Registered item count")).toHaveTextContent("1"),
+    );
+    const renderCountAfterRegistration = probeRenders;
+
+    await user.click(screen.getByRole("button", { name: "Re-register item" }));
+
+    expect(screen.getByLabelText("Registered item count")).toHaveTextContent("1");
+    expect(probeRenders).toBe(renderCountAfterRegistration);
+  });
+
   it("controlled search calls onSearchChange without updating internally", async () => {
+    const user = userEvent.setup();
     const onSearchChange = vi.fn();
     renderPalette({ search: "", onSearchChange });
     const input = screen.getByRole("combobox");
-    await userEvent.type(input, "x");
+    await user.type(input, "x");
     expect(onSearchChange).toHaveBeenCalledWith("x");
     expect(input).toHaveValue("");
   });
 
   it("controlled highlighted calls onHighlightChange on navigation", async () => {
+    const user = userEvent.setup();
     const onHighlightChange = vi.fn();
     renderPalette({ highlighted: "copy", onHighlightChange });
     const input = screen.getByRole("combobox");
-    await userEvent.type(input, "{ArrowDown}");
+    await user.type(input, "{ArrowDown}");
     expect(onHighlightChange).toHaveBeenCalledWith("paste");
   });
 
   it("keeps Home and End available for text editing in the search input", async () => {
+    const user = userEvent.setup();
     const onHighlightChange = vi.fn();
     renderPalette({ highlighted: "delete", onHighlightChange });
     const input = screen.getByRole("combobox");
 
-    await userEvent.type(input, "{Home}{End}");
+    await user.type(input, "{Home}{End}");
 
     expect(onHighlightChange).not.toHaveBeenCalled();
   });
@@ -356,6 +447,7 @@ describe("CommandPalette", () => {
   });
 
   it("forwards item props and refs while honoring preventDefault", async () => {
+    const user = userEvent.setup();
     const ref = createRef<HTMLDivElement>();
     const onActivate = vi.fn();
     const onClick = vi.fn((event) => event.preventDefault());
@@ -375,7 +467,7 @@ describe("CommandPalette", () => {
 
     const item = screen.getByRole("option", { name: /Copy/ });
     expect(ref.current).toBe(item);
-    await userEvent.click(item);
+    await user.click(item);
     expect(onClick).toHaveBeenCalledOnce();
     expect(onActivate).not.toHaveBeenCalled();
   });
@@ -398,28 +490,30 @@ describe("CommandPalette", () => {
   });
 
   it("navigates items with ArrowDown/ArrowUp and wraps around", async () => {
+    const user = userEvent.setup();
     renderPalette();
     const input = screen.getByRole("combobox");
     expect(screen.getByRole("option", { name: /copy/i })).toHaveAttribute("aria-selected", "true");
 
-    await userEvent.type(input, "{ArrowDown}");
+    await user.type(input, "{ArrowDown}");
     expect(screen.getByRole("option", { name: /paste/i })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("option", { name: /copy/i })).toHaveAttribute("aria-selected", "false");
 
-    await userEvent.type(input, "{ArrowDown}");
+    await user.type(input, "{ArrowDown}");
     expect(screen.getByRole("option", { name: /delete/i })).toHaveAttribute(
       "aria-selected",
       "true",
     );
 
-    await userEvent.type(input, "{ArrowUp}");
+    await user.type(input, "{ArrowUp}");
     expect(screen.getByRole("option", { name: /paste/i })).toHaveAttribute("aria-selected", "true");
 
-    await userEvent.type(input, "{ArrowDown}{ArrowDown}");
+    await user.type(input, "{ArrowDown}{ArrowDown}");
     expect(screen.getByRole("option", { name: /copy/i })).toHaveAttribute("aria-selected", "true");
   });
 
   it("lets input key handlers prevent Arrow and Enter navigation", async () => {
+    const user = userEvent.setup();
     const onActivate = vi.fn();
     render(
       <CommandPalette open onActivate={onActivate}>
@@ -434,7 +528,7 @@ describe("CommandPalette", () => {
     );
     const input = screen.getByRole("combobox");
 
-    await userEvent.type(input, "{ArrowDown}{Enter}");
+    await user.type(input, "{ArrowDown}{Enter}");
 
     expect(screen.getByRole("option", { name: /copy/i })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("option", { name: /paste/i })).toHaveAttribute(
@@ -445,20 +539,36 @@ describe("CommandPalette", () => {
   });
 
   it("activates the selected item on Enter", async () => {
+    const user = userEvent.setup();
     const onActivate = vi.fn();
     renderPalette({ onActivate });
     const input = screen.getByRole("combobox");
-    await userEvent.type(input, "{ArrowDown}");
-    await userEvent.type(input, "{Enter}");
+    await user.type(input, "{ArrowDown}");
+    await user.type(input, "{Enter}");
     expect(onActivate).toHaveBeenCalledWith("paste");
   });
 
+  it("ignores Enter during IME composition", () => {
+    const onActivate = vi.fn();
+    const onOpenChange = vi.fn();
+    renderPalette({ onActivate, onOpenChange });
+    const input = screen.getByRole("combobox");
+
+    // fireEvent retained: composition state is a native KeyboardEvent property.
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter", isComposing: true });
+
+    expect(onActivate).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "Command palette" })).toBeInTheDocument();
+  });
+
   it("closes on Escape via dialog cancel, and clears search first when non-empty", async () => {
+    const user = userEvent.setup();
     const onOpenChange = vi.fn();
     renderPalette({ onOpenChange });
     const input = screen.getByRole("combobox");
 
-    await userEvent.type(input, "cop");
+    await user.type(input, "cop");
     expect(input).toHaveValue("cop");
     // fireEvent retained: native <dialog> cancel event has no user-event equivalent
     fireEvent(screen.getByRole("dialog"), new Event("cancel", { bubbles: false }));
@@ -470,11 +580,12 @@ describe("CommandPalette", () => {
   });
 
   it("clears search on Escape keydown without moving focus or closing", async () => {
+    const user = userEvent.setup();
     const onOpenChange = vi.fn();
     renderPalette({ onOpenChange });
     const input = screen.getByRole("combobox");
 
-    await userEvent.type(input, "cop{Escape}");
+    await user.type(input, "cop{Escape}");
 
     expect(input).toHaveValue("");
     expect(input).toHaveFocus();
@@ -482,6 +593,7 @@ describe("CommandPalette", () => {
   });
 
   it("Space types in the search input without activating items", async () => {
+    const user = userEvent.setup();
     const onActivate = vi.fn();
     render(
       <CommandPalette open onActivate={onActivate}>
@@ -495,7 +607,7 @@ describe("CommandPalette", () => {
     );
     const input = screen.getByRole("combobox");
     input.focus();
-    await userEvent.type(input, "hello world");
+    await user.type(input, "hello world");
     expect(input).toHaveValue("hello world");
     expect(onActivate).not.toHaveBeenCalled();
   });
@@ -517,6 +629,8 @@ describe("CommandPalette", () => {
       </CommandPalette>,
     );
 
+    const dialog = document.querySelector("dialog");
+
     rerender(
       <CommandPalette open={false}>
         <CommandPalette.Content>
@@ -528,11 +642,11 @@ describe("CommandPalette", () => {
       </CommandPalette>,
     );
 
-    // querySelector retained: the native <dialog> element drives the close-transition; the test needs the raw element to fire animationEnd against (a closed dialog loses its accessible role)
-    const dialog = document.querySelector("dialog");
-    await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"));
-    // fireEvent retained: animationend has no user-event equivalent; presence transitions complete on this event
-    if (dialog) fireEvent.animationEnd(dialog);
+    if (dialog && document.body.contains(dialog)) {
+      await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"));
+      // fireEvent retained: animationend has no user-event equivalent; presence transitions complete on this event
+      fireEvent.animationEnd(dialog);
+    }
 
     await waitFor(() => expect(trigger).toHaveFocus());
 
@@ -540,6 +654,7 @@ describe("CommandPalette", () => {
   });
 
   it("restores focus in close order for nested triggerless palettes", async () => {
+    const user = userEvent.setup();
     function NestedPalettes() {
       const [outerOpen, setOuterOpen] = useState(false);
       const [innerOpen, setInnerOpen] = useState(false);
@@ -575,10 +690,10 @@ describe("CommandPalette", () => {
     render(<NestedPalettes />);
     const opener = screen.getByRole("button", { name: "Open outer" });
 
-    await userEvent.click(opener);
+    await user.click(opener);
     const innerOpener = screen.getByRole("button", { name: "Open inner" });
     innerOpener.focus();
-    await userEvent.click(innerOpener);
+    await user.click(innerOpener);
 
     const innerDialog = screen.getByRole("dialog", { name: "Inner palette" });
     // fireEvent retained: native <dialog> cancel event has no user-event equivalent

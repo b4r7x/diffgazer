@@ -4,11 +4,13 @@ Reusable React UI components for Diffgazer and compatible product surfaces.
 
 ## Consumption Paths
 
-The scoped packages used by this library are publish-gated until `npm view @diffgazer/add`, `npm view @diffgazer/ui`, and `npm view @diffgazer/keys` return versions. Local tarballs are the package-mode validation path before publication. See [Hosted Registry Status](https://github.com/b4r7x/diffgazer/blob/main/PACKAGE_GOVERNANCE.md#hosted-registry-status).
+> **Note:** Diffgazer packages are not yet published to npm. Until the first release, install from a local checkout of the repository.
+
+Choose the path that matches whether your app should own copied source or consume versioned packages.
 
 | Path | What it does | CSS setup |
 |------|-------------|-----------|
-| Manual copy / shadcn (future) | `npx shadcn add https://r.b4r7.dev/r/ui/button.json` (hosted registry not yet live; see [Hosted Registry Status](https://github.com/b4r7x/diffgazer/blob/main/PACKAGE_GOVERNANCE.md#hosted-registry-status)) | Import copied `src/styles/styles.css` |
+| Manual copy / shadcn | `npx shadcn add https://r.b4r7.dev/r/ui/button.json` | Import copied project-root `styles/styles.css` |
 | `dgadd` CLI | `pnpm exec dgadd add ui/button` | Import copied `src/styles/styles.css` |
 | npm package | `npm install @diffgazer/ui @diffgazer/keys` | Import `@diffgazer/ui/sources.css` and `@diffgazer/ui/styles.css` |
 
@@ -21,14 +23,12 @@ pnpm exec dgadd init
 pnpm exec dgadd add ui/button
 ```
 
-Before publication, validate copy mode from this workspace with `pnpm run smoke:cli` or `pnpm run smoke`, or install a locally packed `@diffgazer/add` tarball into a fixture app and run `pnpm exec dgadd`.
-
-`dgadd init` creates `diffgazer.json`, records installer aliases, creates install directories, writes `src/lib/utils.ts`, copies `src/styles/theme.css` and `src/styles/styles.css`, and installs shared dependencies. It does not edit `tsconfig.json`, Vite/Next aliases, or your app CSS entrypoint.
+`dgadd init` creates `diffgazer.json`, records installer aliases, creates install directories, writes `src/lib/utils.ts`, copies theme and aggregate CSS into the configured styles directory, and installs shared dependencies. It does not edit `tsconfig.json`, Vite/Next aliases, or your app CSS entrypoint.
 
 Copied components expect:
 
 - `@/*` mapped to your source directory in TypeScript and your bundler/framework.
-- `src/styles/styles.css` imported from your app CSS, or equivalent manual Tailwind/theme imports.
+- The copied aggregate CSS imported from your app CSS, or equivalent manual Tailwind/theme imports.
 - Tailwind CSS v4 in the consuming app.
 
 For keyboard behavior, `pnpm exec dgadd add ui/menu --integration copy` copies standalone hooks. `pnpm exec dgadd add ui/menu --integration keys` rewrites imports to `@diffgazer/keys` and installs that runtime package.
@@ -40,8 +40,6 @@ Use this when you want versioned package imports and do not need to customize so
 ```bash
 npm install @diffgazer/ui @diffgazer/keys
 ```
-
-Before publication, validate runtime package mode with locally packed tarballs from `@diffgazer/ui` and `@diffgazer/keys`; do not document public npm install as available.
 
 Configure Tailwind CSS v4 from the CSS file that imports Tailwind:
 
@@ -61,15 +59,15 @@ Runtime package mode exports compiled components, hooks, utilities, and CSS. It 
 
 `@diffgazer/ui/styles.css` imports the package theme and component CSS only. It intentionally does not import Tailwind, so every app has exactly one Tailwind import in its own global CSS entrypoint.
 
-### Direct shadcn / manual copy (future, after publication)
+### Direct shadcn / manual copy
 
-The hosted registry at `https://r.b4r7.dev` is not yet live. After publication (see [Hosted Registry Status](https://github.com/b4r7x/diffgazer/blob/main/PACKAGE_GOVERNANCE.md#hosted-registry-status)), the install command will be:
+Install from the hosted registry:
 
 ```bash
 npx shadcn add https://r.b4r7.dev/r/ui/button.json
 ```
 
-Until then, install with `pnpm exec dgadd add ui/button` or copy source directly from `https://github.com/b4r7x/diffgazer/tree/main/libs/ui/registry/ui/button`.
+To copy source without the shadcn CLI, use the source files at `https://github.com/b4r7x/diffgazer/tree/main/libs/ui/registry/ui/button`.
 
 Files install into your configured `components/ui` directory. Configure the `@ui` registry namespace in `components.json`; see docs for setup.
 

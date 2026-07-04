@@ -48,8 +48,8 @@ export function BlockBarSegment({
   const displayChar = char ?? filledChar;
 
   return (
-    <span aria-hidden="true" className={cn(segmentVariants({ variant }), className)} {...props}>
-      {displayChar.repeat(chars)}
+    <span className={cn(segmentVariants({ variant }), className)} {...props}>
+      <span aria-hidden="true">{displayChar.repeat(chars)}</span>
       {children}
     </span>
   );

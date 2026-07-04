@@ -33,11 +33,14 @@ export default function ToastPromise() {
           variant="destructive"
           size="sm"
           onClick={() =>
-            toast.promise(simulateAsync(true), {
-              loading: "Analyzing files...",
-              success: "Done",
-              error: (err) => (err instanceof Error ? err.message : "Unknown error"),
-            })
+            toast
+              .promise(simulateAsync(true), {
+                loading: "Analyzing files...",
+                success: "Done",
+                error: (err) => (err instanceof Error ? err.message : "Unknown error"),
+              })
+              // toast.promise returns a promise that rejects when the input rejects.
+              .catch(() => {})
           }
         >
           Promise (Error)

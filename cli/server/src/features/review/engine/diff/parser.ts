@@ -3,8 +3,8 @@ import { computeTotalStats } from "./total-stats.js";
 import type { DiffHunk, DiffLineType, DiffOperation, FileDiff, ParsedDiff } from "./types.js";
 
 function classifyDiffLine(line: string): DiffLineType {
-  if (line.startsWith("+") && !line.startsWith("+++")) return "addition";
-  if (line.startsWith("-") && !line.startsWith("---")) return "deletion";
+  if (line.startsWith("+") && !isNewFileHeader(line)) return "addition";
+  if (line.startsWith("-") && !isOldFileHeader(line)) return "deletion";
   if (line.startsWith("@@")) return "hunk-header";
   if (line.startsWith("diff ") || line.startsWith("index ")) return "file-header";
   return "context";
@@ -17,6 +17,14 @@ const OLD_FILE_PATTERN = /^--- (?:a\/(.+)|\/dev\/null)$/;
 const OLD_FILE_QUOTED_PATTERN = /^--- "a\/(.+)"$/;
 const NEW_FILE_PATTERN = /^\+\+\+ (?:b\/(.+)|\/dev\/null)$/;
 const NEW_FILE_QUOTED_PATTERN = /^\+\+\+ "b\/(.+)"$/;
+
+function isOldFileHeader(line: string): boolean {
+  return OLD_FILE_PATTERN.test(line) || OLD_FILE_QUOTED_PATTERN.test(line);
+}
+
+function isNewFileHeader(line: string): boolean {
+  return NEW_FILE_PATTERN.test(line) || NEW_FILE_QUOTED_PATTERN.test(line);
+}
 
 function determineOperation(
   oldPath: string | null,
@@ -117,8 +125,7 @@ export function parseDiff(diffText: string): ParsedDiff {
 
       while (
         i < lines.length &&
-        !lines[i]?.startsWith("---") &&
-        !lines[i]?.startsWith('--- "') &&
+        !isOldFileHeader(lines[i] ?? "") &&
         !lines[i]?.startsWith("diff --git ")
       ) {
         const renameLine = lines[i];

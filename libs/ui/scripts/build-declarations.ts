@@ -14,15 +14,15 @@ import { tmpdir } from "node:os";
 import { dirname, relative, resolve } from "node:path";
 import { registryItemToDistKey, resolveKeysHookFiles } from "@diffgazer/registry/build-checks";
 import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
-import type { Registry, RegistryItem } from "./registry/types.js";
+import { type RegistryItem, UiRegistrySchema } from "./registry/types.js";
 
 const packageRoot = resolve(import.meta.dirname, "..");
 const registryRoot = resolve(packageRoot, "registry");
 const distRoot = resolve(packageRoot, "dist");
 const declarationRoot = resolve(distRoot, "_types");
-const registry = JSON.parse(
-  readFileSync(resolve(registryRoot, "registry.json"), "utf-8"),
-) as Registry;
+const registry = UiRegistrySchema.parse(
+  JSON.parse(readFileSync(resolve(registryRoot, "registry.json"), "utf-8")),
+);
 
 const DIFFGAZER_KEYS_HOOK_FILES = resolveKeysHookFiles(registry.items);
 

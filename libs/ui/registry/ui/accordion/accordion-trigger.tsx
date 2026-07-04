@@ -11,7 +11,7 @@ import {
 } from "./accordion-context";
 
 /** Class variants for trigger. */
-export const triggerVariants = cva(
+export const accordionTriggerVariants = cva(
   "flex w-full items-center gap-2 font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:cursor-not-allowed disabled:hover:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
   {
     variants: {
@@ -29,12 +29,12 @@ export const triggerVariants = cva(
 );
 
 /** Props for accordion trigger variant. */
-export type AccordionTriggerVariantProps = VariantProps<typeof triggerVariants>;
+export type AccordionTriggerVariantProps = VariantProps<typeof accordionTriggerVariants>;
 
 /** Props for accordion trigger. */
 export interface AccordionTriggerProps
   extends Omit<ComponentPropsWithRef<"button">, "children">,
-    Omit<VariantProps<typeof triggerVariants>, "disabled"> {
+    Omit<VariantProps<typeof accordionTriggerVariants>, "disabled"> {
   /** Trigger label. */
   children: ReactNode;
   /** Custom handle element. Pass null to hide the chevron entirely. */
@@ -97,7 +97,7 @@ export function AccordionTrigger({
       aria-expanded={isOpen}
       aria-controls={contentId}
       className={cn(
-        triggerVariants({ variant, disabled: isDisabled || isAriaDisabled }),
+        accordionTriggerVariants({ variant, disabled: isDisabled || isAriaDisabled }),
         className,
       )}
     >

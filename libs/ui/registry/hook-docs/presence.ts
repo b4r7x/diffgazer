@@ -20,7 +20,7 @@ return present ? (
       type: "boolean",
       required: true,
       description:
-        "Whether the content should be visible. When true, mounts immediately. When false, keeps mounted until exit animation completes via onAnimationEnd.",
+        "Whether the content should be visible. When true, mounts immediately. When false, keeps mounted until the exit animation resolves or the fallback timer fires.",
     },
     {
       name: "ref",
@@ -29,9 +29,24 @@ return present ? (
       description:
         "Ref to the animated element. When provided, filters bubbling animationend events from child elements. Recommended when the animated element has children with their own CSS animations.",
     },
+    {
+      name: "exitFallbackMs",
+      type: "number",
+      required: false,
+      defaultValue: "250",
+      description:
+        "Max ms to wait for animationend before forcing the closing -> hidden transition. Raise to at least 2x the exit-animation duration when customizing longer animations.",
+    },
+    {
+      name: "onExitComplete",
+      type: "() => void",
+      required: false,
+      description:
+        "Fired after the exit animation resolves, or after exitFallbackMs fires, and the element transitions to hidden.",
+    },
   ],
   returns: {
-    type: "{ present: boolean; exiting: boolean; onAnimationEnd: (e: AnimationEvent) => void; onAnimationCancel: (e: AnimationEvent) => void }",
+    type: "{ present: boolean; exiting: boolean; onAnimationEnd: (e: AnimationEvent) => void }",
     description:
       "Object with present flag for conditional rendering plus optional React-synthetic-event callbacks. When a ref is supplied the hook attaches its own DOM listeners and most consumers only need `present`.",
     properties: [
@@ -54,14 +69,7 @@ return present ? (
         type: "(e: AnimationEvent) => void",
         required: true,
         description:
-          "Optional React-synthetic onAnimationEnd callback. Most consumers can ignore it — when a ref is supplied the hook attaches its own native animationend listener. Filters bubbling events from children when ref is provided.",
-      },
-      {
-        name: "onAnimationCancel",
-        type: "(e: AnimationEvent) => void",
-        required: true,
-        description:
-          "Optional React-synthetic onAnimationCancel callback. Same shape as onAnimationEnd; useful when consumers wire React synthetic events directly instead of relying on the hook's native listener.",
+          "React-synthetic onAnimationEnd callback for consumers that do not pass a ref. When a ref is provided this handler is a no-op; the hook's native listener handles completion and filters bubbling child events.",
       },
     ],
   },

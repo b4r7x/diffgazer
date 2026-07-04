@@ -25,6 +25,7 @@ function createTrackedSession(
     projectPath?: string;
     headCommit?: string;
     statusHash?: string;
+    reviewConfigKey?: string;
     mode?: "staged" | "unstaged";
   } = {},
 ) {
@@ -35,6 +36,7 @@ function createTrackedSession(
     statusHash: options.statusHash ?? "hash",
     statusHashKind: "full",
     mode: options.mode ?? "staged",
+    ...(options.reviewConfigKey === undefined ? {} : { reviewConfigKey: options.reviewConfigKey }),
   });
 }
 
@@ -228,6 +230,35 @@ describe("session cancellation", () => {
     ).toBe(keptByMode.reviewId);
   });
 
+  it("cancels a same-repo session with a different review config using the superseded message", () => {
+    const received: FullReviewStreamEvent[] = [];
+    const session = createTrackedSession("superseded-config", {
+      mode: "unstaged",
+      reviewConfigKey: "l:security",
+    });
+    markReady(session.reviewId);
+    subscribe(session.reviewId, (event) => received.push(event));
+
+    cancelStaleSessionsForProjectMode(
+      "/project",
+      "unstaged",
+      "abc",
+      "hash",
+      "full",
+      "l:correctness",
+    );
+
+    const terminal = received.find((event) => event.type === "error");
+
+    expect(terminal).toBeDefined();
+    if (terminal?.type === "error") {
+      expect(terminal.error.message).toContain("superseded by a review");
+      expect(terminal.error.message).not.toBe(
+        "Review session cancelled because repository state changed.",
+      );
+    }
+  });
+
   it("keeps active sessions when the current git identity is unavailable", () => {
     const session = createTrackedSession("unknown-git-state", { mode: "unstaged" });
     markReady(session.reviewId);
@@ -279,7 +310,22 @@ describe("session bounds and subscriber failures", () => {
     expect(getSession("evict-oldest")).toBeUndefined();
   });
 
-  it("emits a SESSION_TIMEOUT error event when a stale session is cleaned up", () => {
+  it("does not terminate an actively-emitting session older than the timeout window", () => {
+    const received: FullReviewStreamEvent[] = [];
+    const session = createTrackedSession("active-session");
+    subscribe(session.reviewId, (event) => received.push(event));
+
+    vi.advanceTimersByTime(30 * 60 * 1000 + 1);
+    const event = stepEvent();
+    addEvent(session.reviewId, event);
+    vi.advanceTimersByTime(29 * 60 * 1000);
+    cleanupStaleSessions();
+
+    expect(received).toEqual([event]);
+    expect(getSession("active-session")).toBeDefined();
+  });
+
+  it("terminates a session idle past the timeout window with SESSION_TIMEOUT", () => {
     const received: FullReviewStreamEvent[] = [];
     const session = createTrackedSession("timeout-session");
     subscribe(session.reviewId, (event) => received.push(event));

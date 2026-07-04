@@ -95,12 +95,13 @@ export function useReviewLifecycleBase(
   } = useReviewCompletion({
     isStreaming: stream.state.isStreaming,
     error: stream.state.error,
+    errorCode: stream.state.errorCode,
     hasStreamed,
     steps: stream.state.steps,
     onComplete: options.onComplete,
   });
 
-  const isNoDiffError = checkNoDiffError(stream.state.error);
+  const isNoDiffError = checkNoDiffError(stream.state.errorCode);
   const isCheckingForChanges = checkForChanges(stream.state.isStreaming, stream.state.steps);
   const isInitializing = !hasStarted && options.isConfigured && !options.configLoading;
 

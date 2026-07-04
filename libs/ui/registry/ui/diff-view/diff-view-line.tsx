@@ -5,7 +5,7 @@ import type { ChangeType, WordSegment } from "@/lib/diff";
 /** Allowed diff row state values. */
 export type DiffRowState = "added" | "removed" | "context" | "hunk" | "empty";
 
-/** Root <figure> with aria-roledescription="diff". */
+/** Maps parsed change types to row data-state values. */
 export const ROW_STATE: Record<ChangeType, DiffRowState> = {
   add: "added",
   remove: "removed",
@@ -23,7 +23,7 @@ export function resolveSrLabel(
   return undefined;
 }
 
-/** Root <figure> with aria-roledescription="diff". */
+/** Visible gutter marker for each parsed change type. */
 export const LINE_PREFIX: Record<ChangeType, string> = {
   add: "+",
   // U+2212 MINUS SIGN — visually balanced with "+", and copy-paste keeps
@@ -32,7 +32,7 @@ export const LINE_PREFIX: Record<ChangeType, string> = {
   context: " ",
 };
 
-/** Root <figure> with aria-roledescription="diff". */
+/** Formats a parsed hunk range header for display. */
 export function formatHunkHeader(hunk: {
   oldStart: number;
   oldCount: number;
@@ -43,7 +43,7 @@ export function formatHunkHeader(hunk: {
   return `@@ -${hunk.oldStart},${hunk.oldCount} +${hunk.newStart},${hunk.newCount} @@${hunk.heading ? ` ${hunk.heading}` : ""}`;
 }
 
-/** Root <figure> with aria-roledescription="diff". */
+/** Renders line content with optional word-diff marks. */
 export function LineContent({
   content,
   wordSegments,

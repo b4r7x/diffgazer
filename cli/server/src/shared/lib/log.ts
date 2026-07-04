@@ -19,13 +19,51 @@ const resolveThreshold = (): number => {
   return isPackaged() ? LEVEL_ORDER.warn : LEVEL_ORDER.info;
 };
 
+const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
+  Object.prototype.toString.call(value) === "[object Object]";
+
+const normalizeLogValue = (value: unknown, seen: WeakSet<object> = new WeakSet()): unknown => {
+  if (value instanceof Error) {
+    return {
+      name: value.name,
+      message: value.message,
+      stack: value.stack,
+    };
+  }
+  if (Array.isArray(value)) {
+    if (seen.has(value)) return "[Circular]";
+    seen.add(value);
+    const result = value.map((item) => normalizeLogValue(item, seen));
+    seen.delete(value);
+    return result;
+  }
+  if (isPlainRecord(value)) {
+    if (seen.has(value)) return "[Circular]";
+    seen.add(value);
+    const result = Object.fromEntries(
+      Object.entries(value).map(([key, nested]) => [key, normalizeLogValue(nested, seen)]),
+    );
+    seen.delete(value);
+    return result;
+  }
+  return value;
+};
+
+const normalizeLogFields = (fields: Record<string, unknown>): Record<string, unknown> =>
+  Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, normalizeLogValue(value)]));
+
 /**
  * Emits one structured JSON log line. Internal, dependency-free; the embedded
  * server is CLI-internal so this avoids a logging framework on purpose.
  */
 export const log = (level: LogLevel, event: string, fields: Record<string, unknown> = {}): void => {
   if (LEVEL_ORDER[level] < resolveThreshold()) return;
-  const line = JSON.stringify({ level, event, timestamp: new Date().toISOString(), ...fields });
+  const line = JSON.stringify({
+    level,
+    event,
+    timestamp: new Date().toISOString(),
+    ...normalizeLogFields(fields),
+  });
   if (level === "error") {
     console.error(line);
   } else if (level === "warn") {

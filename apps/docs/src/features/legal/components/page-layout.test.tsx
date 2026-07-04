@@ -8,16 +8,15 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MobileNavProvider } from "@/hooks/mobile-nav-context";
 import { stubMatchMedia } from "@/testing/match-media";
-import { LegalPageLayout } from "./legal-page-layout";
 import { LegalSidebar } from "./legal-sidebar";
+import { LegalPageLayout } from "./page-layout";
 
 // Boundary mock: TanStack Router is the external routing library; legal links/current path are controlled here.
 vi.mock("@tanstack/react-router", async () => {
-  const { RouterLinkMock } = await import("@/testing/router-mock");
+  const { RouterLinkMock, useLocationMock } = await import("@/testing/router-mock");
   return {
     Link: RouterLinkMock,
-    useLocation: ({ select }: { select: (location: { pathname: string }) => unknown }) =>
-      select({ pathname: "/privacy" }),
+    ...useLocationMock({ pathname: "/privacy" }),
   };
 });
 

@@ -10,11 +10,24 @@ import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
+import { escapeRegExp } from "../../../testing/escape-regexp";
 import { CliThemeProvider } from "../../../theme/provider";
 import { ModelSelectOverlay } from "./model-select-overlay";
 
+const terminalDimensions = vi.hoisted(() => ({
+  current: { columns: 80, rows: 24 },
+}));
+
+vi.mock("../../../hooks/use-terminal-dimensions", () => ({
+  useTerminalDimensions: () => terminalDimensions.current,
+}));
+
 const ARROW_UP = "\u001b[A";
 const ARROW_DOWN = "\u001b[B";
+
+afterEach(() => {
+  terminalDimensions.current = { columns: 80, rows: 24 };
+});
 
 // Free-first 5-model Gemini layout (3 free, 2 paid), matching the catalog's
 // deterministic free-first ordering. The transform (P1) produces this order; the
@@ -86,6 +99,34 @@ function makeGeminiApi(): BoundApi {
   return { ...createApi({ baseUrl: "http://localhost" }), getProviderModels } satisfies BoundApi;
 }
 
+function getLargeModelName(index: number): string {
+  return `Large Model ${String(index).padStart(2, "0")}`;
+}
+
+function makeLargeCatalog(count = 60): ProviderModelsResponse {
+  return {
+    models: Array.from({ length: count }, (_, index) => ({
+      id: `large-model-${String(index).padStart(2, "0")}`,
+      name: getLargeModelName(index),
+      description: `Context window ${index}`,
+      tier: index % 2 === 0 ? "free" : "paid",
+    })),
+    fetchedAt: new Date().toISOString(),
+    source: "live",
+    cached: false,
+  };
+}
+
+function countRenderedModels(frame: string | undefined, catalog: ProviderModelsResponse): number {
+  const text = frame ?? "";
+  return catalog.models.filter((model) => text.includes(model.name)).length;
+}
+
+function countOverflowIndicators(frame: string | undefined): number {
+  const text = frame ?? "";
+  return Number(text.includes("\u25B2")) + Number(text.includes("\u25BC"));
+}
+
 function Wrapper({ children, api }: { children: ReactNode; api?: BoundApi }) {
   const queryClient = makeQueryClient();
   const boundApi = api ?? makeGeminiApi();
@@ -128,7 +169,7 @@ function countPrefixes(
   unhighlighted: number;
 } {
   if (!frame) return { highlighted: 0, unhighlighted: 0 };
-  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escaped = escapeRegExp(name);
   const highlightedMatches = frame.match(new RegExp(`>\\s+\\[\\s\\]\\s+${escaped}`, "g")) ?? [];
   const unhighlightedMatches =
     frame.match(new RegExp(`(?<!>)\\s\\s+\\[\\s\\]\\s+${escaped}`, "g")) ?? [];
@@ -434,7 +475,7 @@ describe("ModelSelectOverlay selected marker", () => {
 
     const selectedName = geminiName("gemini-2.5-pro");
     const frame = lastFrame() ?? "";
-    const escapedSelected = selectedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escapedSelected = escapeRegExp(selectedName);
 
     // The selected row renders the "[*]" check; every other row renders "[ ]".
     expect(frame.match(new RegExp(`\\[\\*\\]\\s+${escapedSelected}`)) ?? []).toHaveLength(1);
@@ -442,6 +483,72 @@ describe("ModelSelectOverlay selected marker", () => {
       (frame.match(/\[\*\]/g) ?? []).length,
       `only one row should be marked selected. Frame: ${frame}`,
     ).toBe(1);
+  });
+});
+
+describe("ModelSelectOverlay large catalog windowing", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  test("renders only the visible model window and keeps the highlighted row visible while navigating the full list", async () => {
+    terminalDimensions.current = { columns: 80, rows: 19 };
+    const catalog = makeLargeCatalog();
+    const getProviderModels = vi
+      .fn<() => Promise<ProviderModelsResponse>>()
+      .mockResolvedValue(catalog);
+    const activateProvider = vi
+      .fn<(providerId: string, model?: string) => Promise<ActivateProviderResponse>>()
+      .mockResolvedValue({ provider: "gemini", model: "large-model-25" });
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      getProviderModels,
+      activateProvider,
+    } satisfies BoundApi;
+    const onSelect = vi.fn();
+    const expectedViewportRows = 5;
+
+    const { stdin, lastFrame } = render(
+      <Wrapper api={api}>
+        <ModelSelectOverlay
+          open={true}
+          onOpenChange={() => {}}
+          providerId="gemini"
+          onSelect={onSelect}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(
+      () => lastFrame()?.includes(getLargeModelName(expectedViewportRows - 2)) ?? false,
+    );
+
+    expect(countRenderedModels(lastFrame(), catalog) + countOverflowIndicators(lastFrame())).toBe(
+      expectedViewportRows,
+    );
+    expect(lastFrame()).toContain("\u25BC");
+    expect(lastFrame()).not.toContain(getLargeModelName(expectedViewportRows - 1));
+
+    for (let i = 0; i < 25; i += 1) {
+      stdin.write(ARROW_DOWN);
+      await flush();
+    }
+
+    const navigatedFrame = lastFrame();
+    expect(
+      countRenderedModels(navigatedFrame, catalog) + countOverflowIndicators(navigatedFrame),
+    ).toBe(expectedViewportRows);
+    expect(navigatedFrame).toContain("\u25B2");
+    expect(navigatedFrame).toContain("\u25BC");
+    expect(navigatedFrame).toContain(getLargeModelName(25));
+    expect(countPrefixes(navigatedFrame, getLargeModelName(25)).highlighted).toBe(1);
+    expect(navigatedFrame).not.toContain(getLargeModelName(0));
+
+    stdin.write("\r");
+    await flushUntil(() => onSelect.mock.calls.length > 0);
+
+    expect(activateProvider).toHaveBeenCalledWith("gemini", "large-model-25");
+    expect(onSelect).toHaveBeenCalledWith("large-model-25");
   });
 });
 

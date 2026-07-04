@@ -7,7 +7,9 @@ import {
   type ReactNode,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { cn } from "@/lib/utils";
 import { CalloutContext, type CalloutTone } from "./callout-context";
@@ -29,6 +31,49 @@ const TONE_ROLE_LIVE: Record<CalloutTone, "status" | "alert"> = {
   success: "status",
   error: "alert",
 };
+
+const DISMISS_FOCUS_SELECTOR = [
+  "a[href]",
+  "button:not([disabled])",
+  'input:not([type="hidden"]):not([disabled])',
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "[tabindex]:not([disabled])",
+].join(",");
+
+function isHTMLElement(ownerDocument: Document, element: Element | null): element is HTMLElement {
+  const HTMLElementCtor = ownerDocument.defaultView?.HTMLElement;
+  return HTMLElementCtor ? element instanceof HTMLElementCtor : element instanceof HTMLElement;
+}
+
+function isVisibleFocusTarget(element: HTMLElement): boolean {
+  if (element.tabIndex < 0) return false;
+  if (element.closest("[inert]")) return false;
+  if (element.closest('[aria-hidden="true"]')) return false;
+
+  const style = element.ownerDocument.defaultView?.getComputedStyle(element);
+  return !style || (style.display !== "none" && style.visibility !== "hidden");
+}
+
+function findDismissFocusTarget(root: HTMLElement): HTMLElement | null {
+  const ownerDocument = root.ownerDocument;
+  const candidates = Array.from(
+    ownerDocument.body.querySelectorAll<HTMLElement>(DISMISS_FOCUS_SELECTOR),
+  ).filter((candidate) => !root.contains(candidate) && isVisibleFocusTarget(candidate));
+  const NodeCtor = ownerDocument.defaultView?.Node;
+  const followingFlag = NodeCtor?.DOCUMENT_POSITION_FOLLOWING ?? 4;
+  const precedingFlag = NodeCtor?.DOCUMENT_POSITION_PRECEDING ?? 2;
+
+  return (
+    candidates.find((candidate) =>
+      Boolean(root.compareDocumentPosition(candidate) & followingFlag),
+    ) ??
+    candidates.findLast((candidate) =>
+      Boolean(root.compareDocumentPosition(candidate) & precedingFlag),
+    ) ??
+    null
+  );
+}
 
 function hasCalloutIcon(children: ReactNode): boolean {
   let found = false;
@@ -78,13 +123,24 @@ export function Callout({
   children,
   ...props
 }: CalloutProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const composedRef = useComposedRefs(rootRef, ref);
   const [open, setOpen] = useControllableState({
     value: controlledOpen,
     defaultValue: defaultOpen ?? true,
     onChange: onOpenChange,
   });
 
-  const onDismiss = useCallback(() => setOpen(false), [setOpen]);
+  const onDismiss = useCallback(() => {
+    const root = rootRef.current;
+    const activeElement = root ? root.ownerDocument.activeElement : null;
+
+    if (root && isHTMLElement(root.ownerDocument, activeElement) && root.contains(activeElement)) {
+      findDismissFocusTarget(root)?.focus({ preventScroll: true });
+    }
+
+    setOpen(false);
+  }, [setOpen]);
   const contextValue = useMemo(() => ({ tone, onDismiss }), [tone, onDismiss]);
 
   if (!open) return null;
@@ -95,7 +151,7 @@ export function Callout({
   return (
     <CalloutContext value={contextValue}>
       <div
-        ref={ref}
+        ref={composedRef}
         role={role}
         data-slot="callout"
         data-tone={tone}

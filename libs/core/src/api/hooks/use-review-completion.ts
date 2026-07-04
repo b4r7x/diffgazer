@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { StepState } from "../../schemas/events/index.js";
+import { ReviewErrorCode } from "../../schemas/review/index.js";
 
 // Hold the "completing" UI for ~2s so the user perceives the transition rather
 // than a flash. The extra 300ms when the report step has already completed
@@ -10,6 +11,7 @@ const DEFAULT_COMPLETE_DELAY_MS = 2000;
 export interface UseReviewCompletionOptions {
   isStreaming: boolean;
   error: string | null;
+  errorCode: string | null;
   hasStreamed: boolean;
   steps: StepState[];
   onComplete: () => void;
@@ -24,6 +26,7 @@ export interface UseReviewCompletionResult {
 export function useReviewCompletion({
   isStreaming,
   error,
+  errorCode,
   hasStreamed,
   steps,
   onComplete,
@@ -31,13 +34,13 @@ export function useReviewCompletion({
   const [isCompleting, setIsCompleting] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevIsStreamingRef = useRef(false);
-  const stepsRef = useRef(steps);
-  const onCompleteRef = useRef(onComplete);
-  // Stable-ref escape hatch: refs are read ONLY inside the effect, the timer
-  // callback, and event handlers — never during render — so mid-render writes
-  // are safe under concurrent rendering. See AGENTS.md react-useref rules.
-  stepsRef.current = steps;
-  onCompleteRef.current = onComplete;
+  const getCompletionDelay = useEffectEvent(() => {
+    const reportStep = steps.find((s) => s.id === "report");
+    return reportStep?.status === "completed"
+      ? REPORT_COMPLETE_DELAY_MS
+      : DEFAULT_COMPLETE_DELAY_MS;
+  });
+  const emitComplete = useEffectEvent(onComplete);
 
   function clearTimer() {
     if (timerRef.current) {
@@ -50,17 +53,20 @@ export function useReviewCompletion({
     const wasStreaming = prevIsStreamingRef.current;
     prevIsStreamingRef.current = isStreaming;
 
-    if (wasStreaming && !isStreaming && hasStreamed && !error) {
+    if (
+      wasStreaming &&
+      !isStreaming &&
+      hasStreamed &&
+      !error &&
+      errorCode !== ReviewErrorCode.CANCELLED
+    ) {
       setIsCompleting(true);
-
-      const reportStep = stepsRef.current.find((s) => s.id === "report");
-      const reportCompleted = reportStep?.status === "completed";
-      const delayMs = reportCompleted ? REPORT_COMPLETE_DELAY_MS : DEFAULT_COMPLETE_DELAY_MS;
+      const delayMs = getCompletionDelay();
 
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
         setIsCompleting(false);
-        onCompleteRef.current();
+        emitComplete();
       }, delayMs);
     }
 
@@ -70,12 +76,12 @@ export function useReviewCompletion({
         timerRef.current = null;
       }
     };
-  }, [isStreaming, error, hasStreamed]);
+  }, [isStreaming, error, errorCode, hasStreamed]);
 
   function skipDelay() {
     clearTimer();
     setIsCompleting(false);
-    onCompleteRef.current();
+    emitComplete();
   }
 
   function reset() {

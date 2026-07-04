@@ -35,6 +35,11 @@ pulls a GHCR `:prod` image that was promoted from a scanned SHA tag by the
 manual deploy workflow. This project does not keep a production or local
 Docker Compose deploy path.
 
+Production is subdomain-based. Do not mount the docs or landing apps below a
+path prefix such as `/docs` or `/app` unless the app has been built for that
+base path and the proxy preserves the prefix consistently. The registry is the
+only service with a public path contract under `/r/**`.
+
 ---
 
 ## Subdomain Mapping
@@ -135,6 +140,40 @@ labels:
   - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
 ```
 
+### Forwarded headers and streaming
+
+Traefik must forward the original host and scheme to each service so generated
+URLs, security headers, redirects, and server-side rendering see the public
+origin:
+
+```yaml
+labels:
+  - "traefik.http.middlewares.forwarded.headers.customrequestheaders.X-Forwarded-Proto=https"
+```
+
+Coolify's Traefik preserves `Host`, `X-Forwarded-Proto`, and
+`X-Forwarded-Host` for Docker Image resources. If an additional nginx hop is
+added in front of or behind Traefik, it must keep those headers and websocket
+upgrade headers instead of replacing them with container-local values:
+
+```nginx
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    '' close;
+}
+
+proxy_set_header Host $host;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header X-Forwarded-Host $host;
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection $connection_upgrade;
+```
+
+The CLI-embedded review server uses streaming review responses; future proxy
+or websocket paths need these upgrade headers to avoid silently breaking live
+review behavior. These headers are for an explicitly configured extra proxy
+hop only. They are not a reason to expose container ports directly.
+
 ---
 
 ## TLS and HSTS (Defense in Depth)
@@ -160,16 +199,16 @@ HSTS on its own. In addition, they set:
 - `Content-Security-Policy` (per-service)
 - `Permissions-Policy` (restrictive)
 
-### Docs CSP script exception
+### Docs CSP nonce
 
-The docs app currently keeps `script-src 'unsafe-inline'` in its CSP. TanStack
-Start renders hydration scripts through the root `<Scripts />` outlet, and this
-app does not yet wire a per-request nonce into `apps/docs/src/router.tsx`.
-The generated TanStack/React server runtime contains nonce plumbing, but without
-a request-level nonce handoff a static nonce would be weaker than the current
-explicit exception. The exception is limited to scripts; all docs responses,
-including static assets and copied registry JSON under `/r/**`, receive the same
-security headers through `apps/docs/src/server.ts` and Nitro `routeRules`.
+The docs app serves a per-request nonce CSP for scripts:
+`script-src 'self' 'nonce-...'`. The nonce is generated in
+`apps/docs/src/server.ts`, passed to TanStack Start through
+`apps/docs/src/router.tsx` `ssr.nonce`, and checked by
+`apps/docs/scripts/verify-csp.mjs`, which fails the build if `script-src`
+allows inline scripts without a nonce. The remaining inline exception is
+limited to `style-src 'unsafe-inline'` for framework and generated style
+hydration.
 
 ---
 

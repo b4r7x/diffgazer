@@ -24,6 +24,7 @@ function loadFiglet(): Promise<FigletModule> {
     figletPromise = import("figlet")
       .then((mod) => (mod.default ?? mod) as FigletModule)
       .catch(() => {
+        figletPromise = null;
         throw new Error(MISSING_DEPENDENCY_MESSAGE);
       });
   }
@@ -39,6 +40,7 @@ function loadFont(figletModule: FigletModule, font: FigletFont): Promise<void> {
         figletModule.parseFont(font, data);
       })
       .catch(() => {
+        fontPromises.delete(font);
         throw new Error(MISSING_DEPENDENCY_MESSAGE);
       });
     fontPromises.set(font, promise);

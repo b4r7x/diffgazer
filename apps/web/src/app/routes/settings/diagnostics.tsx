@@ -1,3 +1,1 @@
-import { DiagnosticsPage } from "@/features/settings/components/diagnostics/page";
-
-export { DiagnosticsPage as SettingsDiagnosticsPage };
+export { SettingsDiagnosticsPage } from "@/features/settings/components/diagnostics/page";

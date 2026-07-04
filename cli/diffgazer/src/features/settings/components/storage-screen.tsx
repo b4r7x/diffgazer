@@ -15,8 +15,8 @@ import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
-import { useSettingsZone } from "../hooks/use-settings-zone.js";
-import { deriveStorageSaveState } from "../lib/derive-storage-save-state.js";
+import { useSettingsZone } from "../hooks/use-settings-zone";
+import { deriveStorageSaveState } from "../lib/derive-storage-save-state";
 
 export function StorageScreen(): ReactElement {
   const { columns } = useTerminalDimensions();

@@ -12,7 +12,6 @@ import {
 } from "@diffgazer/ui/components/code-block";
 import { Typography } from "@diffgazer/ui/components/typography";
 import type React from "react";
-import { LOCAL_DGADD_PREREQUISITE } from "@/lib/library";
 import type { SourceFile } from "@/types/data";
 import { CopyButton } from "../copy-button";
 import { SourceHeading } from "./source-heading";
@@ -60,7 +59,7 @@ export function SourceViewer({
         <Typography as="p" size="sm" className="mb-3 mt-1">
           {installCommand && (
             <>
-              Install via CLI: <InlineCode>{installCommand}</InlineCode>. {LOCAL_DGADD_PREREQUISITE}
+              Install via CLI: <InlineCode>{installCommand}</InlineCode>.
             </>
           )}
           {installCommand && integrationNote && " "}

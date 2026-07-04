@@ -7,11 +7,11 @@ description: Initialize a project with dgadd and add `@diffgazer/ui` components 
 
 > **Installing via dgadd:** Components are namespaced (`ui/button`, `ui/dialog`). For the full command and flag reference — `init`, `add`, `list`, `diff`, `remove` — see the [dgadd CLI reference](/app/cli).
 
-> **Warning:** `@diffgazer/add`, `@diffgazer/ui`, and `@diffgazer/keys` are publish-gated until the npm `view` checks in PACKAGE_GOVERNANCE.md pass. The package-manager commands below work only after `npm view @diffgazer/add version`, `npm view @diffgazer/ui version`, and `npm view @diffgazer/keys version` succeed. Until then, use the [pre-publication local validation](#pre-publication-local-validation) flow.
+> **Note:** Diffgazer packages are not yet published to npm. Until the first release, install from a local checkout of the repository.
 
-## Install (after publication)
+## Install
 
-Once `@diffgazer/add` is published, run the installer with your package manager and add a component:
+Run the installer with your package manager and add a component:
 
 ```bash
 pnpm dlx @diffgazer/add init
@@ -22,49 +22,6 @@ pnpm dlx @diffgazer/add add ui/button
 npx @diffgazer/add init
 npx @diffgazer/add add ui/button
 ```
-
-Verify availability first with `npm view @diffgazer/add version`. If it is not published yet, use the pre-publication flow below.
-
-## Pre-publication local validation
-
-Until the packages are published, validate `dgadd` from a locally packed tarball.
-
-<Steps>
-
-<Step title="Validate the packaged flow">
-
-Run the package smoke check from this repository:
-
-```bash
-pnpm run smoke:packages
-```
-
-</Step>
-
-<Step title="Pack the local CLI">
-
-To test `dgadd` in a separate fixture app, build and pack `@diffgazer/add` from this repository:
-
-```bash
-pnpm --filter @diffgazer/add build
-pnpm --filter @diffgazer/add pack --pack-destination /tmp/diffgazer-packs
-```
-
-</Step>
-
-<Step title="Install and run in the fixture app">
-
-From the target fixture app, install the tarball and run `dgadd`:
-
-```bash
-pnpm add -D /tmp/diffgazer-packs/diffgazer-add-*.tgz
-pnpm exec dgadd init
-pnpm exec dgadd add ui/button
-```
-
-</Step>
-
-</Steps>
 
 ## Setup
 
@@ -120,7 +77,7 @@ See [TypeScript](/ui/getting-started/typescript) for framework-specific details.
 
 <Step title="Initialize">
 
-With the local tarball installed and the source alias in place, run `init` once and add a component:
+With `dgadd` available and the source alias in place, run `init` once and add a component:
 
 ```bash
 pnpm exec dgadd init

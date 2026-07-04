@@ -7,7 +7,7 @@ export const toggleGroupDoc: ComponentDoc = {
     {
       title: "Requires @diffgazer/keys (package mode)",
       content:
-        "ToggleGroup's arrow-key navigation imports from the required @diffgazer/keys peer. Package/npm consumers need @diffgazer/keys as a peer after public packages are published. Before publication, validate package mode with a locally packed @diffgazer/keys tarball and use public package commands only after `npm view @diffgazer/keys version` succeeds. Importing @diffgazer/ui/components/toggle-group without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the keyboard hooks to local source.",
+        "ToggleGroup's arrow-key navigation imports from the required @diffgazer/keys peer. Package consumers must install @diffgazer/keys with @diffgazer/ui; packages are not yet published to npm, so use a local checkout until the first release. Importing @diffgazer/ui/components/toggle-group without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the keyboard hooks to local source.",
     },
     {
       title: "Compound Component",
@@ -216,7 +216,7 @@ export const toggleGroupDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: "Disables this item only; remains in the navigation order with aria-disabled.",
+        description: "Disables this item only; removed from arrow navigation and focus.",
       },
       children: {
         type: "ReactNode",

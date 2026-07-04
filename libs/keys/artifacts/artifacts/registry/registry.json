@@ -8,11 +8,6 @@
       "type": "registry:hook",
       "title": "Navigation",
       "description": "Standalone keyboard navigation for role-based lists and tabs",
-      "dependencies": [],
-      "registryDependencies": [],
-      "meta": {
-        "client": true
-      },
       "files": [
         {
           "path": "src/hooks/use-navigation.ts",
@@ -44,18 +39,18 @@
           "type": "registry:hook",
           "target": "src/hooks/utils/element-guards.ts"
         }
-      ]
+      ],
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      }
     },
     {
       "name": "focus-restore",
       "type": "registry:hook",
       "title": "Focus Restore",
       "description": "Capture and restore focus around overlays and temporary UI with nested stack safety",
-      "dependencies": [],
-      "registryDependencies": [],
-      "meta": {
-        "client": true
-      },
       "files": [
         {
           "path": "src/hooks/use-focus-restore.ts",
@@ -72,18 +67,18 @@
           "type": "registry:hook",
           "target": "src/hooks/utils/element-guards.ts"
         }
-      ]
+      ],
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      }
     },
     {
       "name": "focus-trap",
       "type": "registry:hook",
       "title": "Focus Trap",
       "description": "Trap Tab focus within a container element",
-      "dependencies": [],
-      "registryDependencies": [],
-      "meta": {
-        "client": true
-      },
       "files": [
         {
           "path": "src/hooks/use-focus-trap.ts",
@@ -110,25 +105,30 @@
           "type": "registry:hook",
           "target": "src/hooks/utils/element-guards.ts"
         }
-      ]
+      ],
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      }
     },
     {
       "name": "scroll-lock",
       "type": "registry:hook",
       "title": "Scroll Lock",
       "description": "Prevent body/element scrolling with reference counting",
-      "dependencies": [],
-      "registryDependencies": [],
-      "meta": {
-        "client": true
-      },
       "files": [
         {
           "path": "src/hooks/use-scroll-lock.ts",
           "type": "registry:hook",
           "target": "src/hooks/use-scroll-lock.ts"
         }
-      ]
+      ],
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      }
     }
   ]
 }

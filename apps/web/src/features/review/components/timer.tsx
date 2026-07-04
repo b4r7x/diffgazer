@@ -1,5 +1,5 @@
 import { formatTime } from "@diffgazer/core/format";
-import { useTimer } from "../hooks/use-timer.js";
+import { useTimer } from "../hooks/use-timer";
 
 export interface TimerProps {
   startTime?: Date;

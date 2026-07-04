@@ -5,11 +5,8 @@ import { typeaheadSearch } from "@/lib/typeahead";
 import type { SelectOptionMetadata } from "./select-context";
 import { getVisibleEnabledOptionEntries } from "./visible-options";
 
-/** Options for use select typeahead. */
 interface UseSelectTypeaheadOptions {
-  /** options used by use select typeahead. */
   options: ReadonlyMap<string, SelectOptionMetadata>;
-  /** search query used by use select typeahead. */
   searchQuery: string;
   /** Controlled highlighted item id. Pair with onHighlightChange. */
   highlighted: string | null;

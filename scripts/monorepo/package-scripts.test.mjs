@@ -66,16 +66,20 @@ test("runArgv passes shell metacharacters as literal argv", () => {
   assert.equal(output.trim(), JSON.stringify(literal));
 });
 
-test("root check covers workflows, docs, and config files", () => {
+test("root check's biome segment excludes markdown, .github, and pnpm-workspace.yaml", () => {
   const checkScript = rootPackageJson.scripts.check;
+  const biomeSegment = checkScript.split("&&")[0];
   assert.match(checkScript, /biome check/);
-  assert.match(checkScript, /\.github/);
-  assert.match(checkScript, /deploy\/PUBLIC_DEPLOYMENT\.md/);
-  assert.match(checkScript, /deploy\/REVERSE_PROXY\.md/);
+  assert.doesNotMatch(biomeSegment, /\.md\b/);
+  assert.doesNotMatch(biomeSegment, /\.github/);
+  assert.doesNotMatch(biomeSegment, /pnpm-workspace\.yaml/);
+  assert.match(biomeSegment, /scripts\/monorepo/);
+  assert.match(biomeSegment, /package\.json/);
+  assert.match(biomeSegment, /turbo\.json/);
+  assert.match(biomeSegment, /biome\.json/);
+  assert.match(biomeSegment, /knip\.jsonc/);
+  assert.match(biomeSegment, /\.dependency-cruiser\.cjs/);
   assert.match(checkScript, /check-deploy-runbooks\.mjs/);
-  assert.match(checkScript, /README\.md/);
-  assert.match(checkScript, /package\.json/);
-  assert.match(checkScript, /turbo\.json/);
   assert.doesNotMatch(checkScript, /biome lint scripts\/monorepo &&/);
 });
 

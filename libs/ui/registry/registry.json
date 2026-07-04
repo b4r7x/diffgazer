@@ -217,7 +217,7 @@
       "title": "Callout",
       "description": "Highlighted message block for tips, warnings, and errors",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["theme", "controllable-state", "utils"],
+      "registryDependencies": ["theme", "controllable-state", "utils", "composed-refs"],
       "meta": {
         "client": true
       },
@@ -1564,7 +1564,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/select/use-state-machine.ts",
+          "path": "registry/ui/select/use-state.ts",
           "type": "registry:ui"
         }
       ]

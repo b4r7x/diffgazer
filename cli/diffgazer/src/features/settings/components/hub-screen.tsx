@@ -15,7 +15,7 @@ import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
-import type { Route } from "../../../lib/routes.js";
+import type { Route } from "../../../lib/routes";
 
 const SETTINGS_ROUTE_MAP: Record<SettingsAction, Route> = {
   trust: { screen: "settings/trust-permissions" },

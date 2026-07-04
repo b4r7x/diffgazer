@@ -146,6 +146,7 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
       </div>
 
       <CheckboxGroup
+        aria-label="Trust permissions"
         ref={listRef}
         value={selectedCapabilities}
         onChange={handleValueChange}

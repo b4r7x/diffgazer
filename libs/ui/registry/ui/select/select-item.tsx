@@ -195,7 +195,9 @@ export function SelectItem<TValue extends string = string>({
         </span>
       )}
       {typeof children === "string" ? (
-        <OverflowText className="flex-1 min-w-0">{children}</OverflowText>
+        <OverflowText className="flex-1 min-w-0" tooltip={false}>
+          {children}
+        </OverflowText>
       ) : (
         // Non-string children skip OverflowText (which requires `children: string`);
         // consumers using JSX labels should ensure their items fit or wrap manually.

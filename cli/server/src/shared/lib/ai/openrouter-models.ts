@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
+import { sanitizeTerminalText } from "@diffgazer/core/review";
 import {
   type OpenRouterModel,
   OpenRouterModelCacheSchema,
@@ -28,11 +29,12 @@ const parseCost = (value: unknown): number => {
 const mapOpenRouterModel = (raw: unknown): OpenRouterModel | null => {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
-  const id = typeof r.id === "string" ? r.id : "";
+  const id = typeof r.id === "string" ? sanitizeTerminalText(r.id) : "";
   if (!id) return null;
 
-  const name = typeof r.name === "string" ? r.name : id;
-  const description = typeof r.description === "string" ? r.description : undefined;
+  const name = typeof r.name === "string" ? sanitizeTerminalText(r.name) : id;
+  const description =
+    typeof r.description === "string" ? sanitizeTerminalText(r.description) : undefined;
 
   const topProvider =
     r.top_provider && typeof r.top_provider === "object"

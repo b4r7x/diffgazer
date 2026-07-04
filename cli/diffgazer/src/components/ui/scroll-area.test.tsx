@@ -1,4 +1,4 @@
-import { Text } from "ink";
+import { Box, Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test } from "vitest";
@@ -162,5 +162,27 @@ describe("ScrollArea autoTail", () => {
     );
     await flush();
     expect(lastFrame()).toContain("item-8");
+  });
+
+  test("scrolls content rendered inside a single column child", async () => {
+    const { stdin, lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <ScrollArea height={3} isActive>
+          <Box flexDirection="column">{items(6)}</Box>
+        </ScrollArea>
+      </CliThemeProvider>,
+    );
+    await flush();
+
+    expect(lastFrame()).toContain("item-0");
+    expect(lastFrame()).toContain("\u25BC");
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("item-1");
+    expect(frame).toContain("item-3");
+    expect(frame).not.toContain("item-0");
   });
 });

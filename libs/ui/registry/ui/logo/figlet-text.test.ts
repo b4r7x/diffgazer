@@ -38,6 +38,32 @@ describe("getFigletText", () => {
     expect(importCount).toBe(1);
   });
 
+  it("retries the figlet import after a rejected load", async () => {
+    let loadAttempts = 0;
+    vi.doMock("figlet", async () => {
+      return {
+        get default() {
+          loadAttempts += 1;
+          if (loadAttempts === 1) {
+            throw new Error("chunk load failed");
+          }
+          return {
+            parseFont: vi.fn(),
+            textSync: vi.fn(() => "OK\n"),
+          };
+        },
+      };
+    });
+
+    const { getFigletText } = await import("./figlet-text");
+
+    await expect(getFigletText("OK", "Small")).rejects.toThrow(/optional peer dependency 'figlet'/);
+    const result = await getFigletText("OK", "Small");
+
+    expect(result.length).toBeGreaterThan(2);
+    expect(loadAttempts).toBe(2);
+  });
+
   it("rejects with a clear message when the optional figlet peer is missing", async () => {
     // Boundary mock: simulates the absent optional peer dependency.
     vi.doMock("figlet", () => {

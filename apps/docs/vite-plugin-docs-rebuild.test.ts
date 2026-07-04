@@ -69,7 +69,7 @@ describe("docsDataRebuild", () => {
     expect(options.env.DIFFGAZER_SKIP_ARTIFACT_PREPARE).toBe("1");
   });
 
-  it("ignores watcher events fired while a rebuild is in flight", async () => {
+  it("runs one pending rebuild for watcher events fired while a rebuild is in flight", async () => {
     const { docsDataRebuild } = await import("./vite-plugin-docs-rebuild");
     const stub = createStubServer();
     const plugin = docsDataRebuild();
@@ -82,16 +82,14 @@ describe("docsDataRebuild", () => {
     expect(execMock).toHaveBeenCalledTimes(1);
 
     // The exec callback has not fired yet, so the rebuild is still in flight.
-    // The watcher guard must drop this event outright rather than queue it.
+    // The watcher guard records one pending rebuild instead of dropping it.
     stub.emit("change", watchedFile);
     vi.advanceTimersByTime(300);
     expect(execMock).toHaveBeenCalledTimes(1);
 
-    // Completing the in-flight rebuild must not trigger a queued rebuild, since
-    // the in-flight event was ignored rather than recorded as pending.
+    // Completing the in-flight rebuild flushes the pending rebuild immediately.
     const [, , callback] = execMock.mock.calls[0];
     callback(null, "", "");
-    vi.advanceTimersByTime(300);
-    expect(execMock).toHaveBeenCalledTimes(1);
+    expect(execMock).toHaveBeenCalledTimes(2);
   });
 });

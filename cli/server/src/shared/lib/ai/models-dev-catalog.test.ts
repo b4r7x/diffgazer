@@ -298,8 +298,8 @@ describe("getProviderModels — three-tier fallback", () => {
 
   it("returns a fetchedAt that satisfies the response contract's ISO datetime shape", async () => {
     // Date.parse accepts non-ISO strings ("2025/01/01", "December 17, 1995"); the
-    // wire contract is z.string().datetime(), so validate against that schema to
-    // catch a parseable-but-non-ISO fetchedAt the looser Date.parse check would miss.
+    // wire contract is z.iso.datetime(), so validate against that schema to catch
+    // a parseable-but-non-ISO fetchedAt the looser Date.parse check would miss.
     vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(MODELS_DEV_SAMPLE));
     const { fetchedAt } = await getProviderModels("gemini");
     expect(ProviderModelsResponseSchema.shape.fetchedAt.safeParse(fetchedAt).success).toBe(true);

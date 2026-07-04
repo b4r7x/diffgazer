@@ -17,14 +17,15 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { registryItemToDistKey, resolveKeysHookFiles } from "@diffgazer/registry/build-checks";
+import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
 import type { Plugin } from "esbuild";
 import { defineConfig } from "tsup";
-import type { Registry } from "./scripts/registry/types.js";
+import { UiRegistrySchema } from "./scripts/registry/types.js";
 
 const registryRoot = resolve(import.meta.dirname, "registry");
-const registry = JSON.parse(
-  readFileSync(resolve(registryRoot, "registry.json"), "utf-8"),
-) as Registry;
+const registry = UiRegistrySchema.parse(
+  JSON.parse(readFileSync(resolve(registryRoot, "registry.json"), "utf-8")),
+);
 
 /** Keys hooks derived from registry refs, with `use-` prefix for hook matching. */
 const DIFFGAZER_KEYS_HOOKS = resolveKeysHookFiles(registry.items);
@@ -36,7 +37,7 @@ const entry: Record<string, string> = {};
 // internal (keys-mirror hooks, shared shims, variant/util helpers), are bundled
 // into shared chunks via splitting, and must not produce orphan dist entries.
 for (const item of registry.items) {
-  if (item.type === "registry:theme" || item.meta?.hidden) continue;
+  if (item.type === REGISTRY_ITEM_TYPE.theme || item.meta?.hidden) continue;
 
   const key = registryItemToDistKey(item);
 
@@ -139,7 +140,7 @@ export default defineConfig({
     // Append component CSS files to styles.css. Theme CSS is already imported
     // by styles.css and must not be appended after normal CSS rules.
     const componentCssFiles = registry.items.flatMap((item) =>
-      item.type === "registry:theme"
+      item.type === REGISTRY_ITEM_TYPE.theme
         ? []
         : item.files
             .map((file: { path: string }) => file.path)
@@ -175,7 +176,7 @@ export default defineConfig({
 
     // Validate that every UI item makes an explicit client/server decision.
     const uiWithoutClient = registry.items.filter(
-      (i) => i.type === "registry:ui" && i.meta?.client == null,
+      (i) => i.type === REGISTRY_ITEM_TYPE.ui && i.meta?.client == null,
     );
     if (uiWithoutClient.length) {
       throw new Error(

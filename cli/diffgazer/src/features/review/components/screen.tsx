@@ -11,14 +11,14 @@ import {
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { Box } from "ink";
 import { type ReactElement, useState } from "react";
-import { Button } from "../../../components/ui/button.js";
-import { Callout } from "../../../components/ui/callout.js";
-import { Spinner } from "../../../components/ui/spinner.js";
+import { Button } from "../../../components/ui/button";
+import { Callout } from "../../../components/ui/callout";
+import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useNavigation } from "../../../hooks/use-navigation";
-import { ReviewContainer } from "./container.js";
-import { ReviewResultsView } from "./results-view.js";
-import { ReviewSummaryView } from "./summary-view.js";
+import { ReviewContainer } from "./container";
+import { ReviewResultsView } from "./results-view";
+import { ReviewSummaryView } from "./summary-view";
 
 interface SavedReviewViewProps {
   saved: SavedReviewData;

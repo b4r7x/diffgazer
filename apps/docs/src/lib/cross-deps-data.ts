@@ -1,18 +1,13 @@
 import type { CodeBlockLineProps } from "@diffgazer/ui/components/code-block";
-import { hooksData, libsData } from "@/generated/library-data";
-
-type SourceEntry = {
-  source: { raw: string; highlighted: CodeBlockLineProps[] };
-};
-type SourceDataMap = Record<string, SourceEntry>;
+import { hooksData, libsData, type SourceDataMap } from "@/lib/generated-doc-data";
 
 function buildDataMap(): Record<string, Record<string, SourceDataMap>> {
   const map: Record<string, Record<string, SourceDataMap>> = {};
   for (const [lib, data] of Object.entries(hooksData)) {
-    map[lib] = { ...map[lib], hook: data as SourceDataMap };
+    map[lib] = { ...map[lib], hook: data };
   }
   for (const [lib, data] of Object.entries(libsData)) {
-    map[lib] = { ...map[lib], lib: data as SourceDataMap };
+    map[lib] = { ...map[lib], lib: data };
   }
   return map;
 }

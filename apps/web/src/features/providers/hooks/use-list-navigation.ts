@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { PROVIDER_FILTERS, type ProviderFilter } from "../lib/filter.js";
+import { PROVIDER_FILTERS, type ProviderFilter } from "../lib/filter";
 
 type FocusZone = "input" | "filters" | "list" | "buttons";
 

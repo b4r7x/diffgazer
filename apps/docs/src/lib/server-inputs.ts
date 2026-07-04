@@ -7,7 +7,7 @@ export const MAX_ROUTE_SLUG_LENGTH = 96;
 
 const docsLibrarySchema = z
   .string()
-  .refine(isDocsLibraryId, { message: "Unknown docs library" })
+  .refine(isDocsLibraryId, { error: "Unknown docs library" })
   .transform((library) => library as DocsLibraryId);
 
 const routeSlugSchema = z
@@ -16,7 +16,7 @@ const routeSlugSchema = z
   .min(1)
   .max(MAX_ROUTE_SLUG_LENGTH)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/u, {
-    message: "Route slugs must be lowercase URL segments",
+    error: "Route slugs must be lowercase URL segments",
   });
 
 const docsShellInputSchema = z

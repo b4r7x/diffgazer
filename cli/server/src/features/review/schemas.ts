@@ -33,7 +33,7 @@ const RepoRelativePathSchema = z
   .string()
   .min(1)
   .max(500)
-  .refine(isRepoRelativePath, { message: "files[] entries must be repo-relative paths" });
+  .refine(isRepoRelativePath, { error: "files[] entries must be repo-relative paths" });
 
 export const CreateReviewBodySchema = z
   .object({
@@ -48,12 +48,9 @@ export const CreateReviewBodySchema = z
     files: z.array(RepoRelativePathSchema).max(200).optional(),
   })
   .refine((data) => data.mode !== "files" || (Array.isArray(data.files) && data.files.length > 0), {
-    message: "files[] must be non-empty when mode is 'files'",
+    error: "files[] must be non-empty when mode is 'files'",
     path: ["files"],
   });
-
-export type CreateReviewBody = z.infer<typeof CreateReviewBodySchema>;
-export type DrilldownRequest = z.infer<typeof DrilldownRequestSchema>;
 
 /**
  * AI response shape for drilldown — derived from the shared DrilldownResultSchema

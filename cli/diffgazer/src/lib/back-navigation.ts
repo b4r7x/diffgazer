@@ -1,5 +1,5 @@
 import { getBackTarget as getBackPath } from "@diffgazer/core/navigation";
-import { isScreenName, type Route, type ScreenName } from "./routes.js";
+import { isScreenName, type Route, type ScreenName } from "./routes";
 
 function screenToPath(screen: ScreenName): string {
   return screen === "home" ? "/" : `/${screen}`;

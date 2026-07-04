@@ -161,10 +161,9 @@ function FieldRoot({
     });
   }, []);
 
-  // aria-labelledby must be present on initial render (no effect dependency), so
-  // fall back to the deterministic default label id until registration corrects
-  // a consumer-supplied id.
-  const labelId = slots.label?.id ?? defaultLabelId;
+  // Only registered labels are exposed to the control; otherwise aria-labelledby
+  // would point at a missing element.
+  const labelId = slots.label?.id;
   const descriptionId = slots.description?.hasContent ? slots.description.id : undefined;
   const errorId = slots.error?.hasContent ? slots.error.id : undefined;
   const describedBy = mergeIds(descriptionId, invalid ? errorId : undefined);

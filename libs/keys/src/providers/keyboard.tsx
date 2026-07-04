@@ -37,7 +37,12 @@ interface HandlerEntry {
   options?: HandlerOptions;
 }
 
+interface ImplicitHandlerEntry extends HandlerEntry {
+  order: string;
+}
+
 type HandlerMap = Map<string, HandlerEntry[]>;
+type ImplicitHandlerMap = Map<string, ImplicitHandlerEntry[]>;
 
 interface ScopeStackEntry {
   name: string;
@@ -49,9 +54,15 @@ const IMPERATIVE_SCOPE_ORDER_PREFIX = "\uffff";
 const REACT_ID_RADIX = 32;
 
 function getScopeOrderSegments(order: string): number[] {
-  return (order.toLowerCase().match(/[0-9a-v]+/g) ?? []).map((segment) =>
+  const withoutMarker = order.replace(/^[:_]*[rR][:_]*/, "");
+  const localIdMatch = withoutMarker.match(/^(.*)H([0-9A-V]+)[:_]*$/);
+  const baseOrder = localIdMatch?.[1] ?? withoutMarker;
+  const segments = (baseOrder.toLowerCase().match(/[0-9a-v]+/g) ?? []).map((segment) =>
     parseInt(segment, REACT_ID_RADIX),
   );
+  const localId = localIdMatch?.[2];
+  if (localId) segments.push(parseInt(localId.toLowerCase(), REACT_ID_RADIX));
+  return segments;
 }
 
 function compareScopeEntries(a: ScopeStackEntry, b: ScopeStackEntry): number {
@@ -100,6 +111,7 @@ export function KeyboardProvider({
   ]);
   const scopeStackRef = useRef(scopeStack);
   const handlers = useRef(new Map<string, HandlerMap>());
+  const implicitHandlers = useRef<ImplicitHandlerMap>(new Map());
   const nextHandlerId = useRef(1);
   const nextScopeId = useRef(1);
 
@@ -147,27 +159,33 @@ export function KeyboardProvider({
     if (!activeRegistrationScope) return;
 
     const scopeHandlers = handlers.current.get(activeRegistrationScope);
-    if (!scopeHandlers) return;
+    const canonicalKeys = new Set([
+      ...(scopeHandlers?.keys() ?? []),
+      ...implicitHandlers.current.keys(),
+    ]);
+    if (canonicalKeys.size === 0) return;
 
     const isEditable = isEditableElement(event.target);
 
-    for (const [canonicalKey, entries] of scopeHandlers) {
+    for (const canonicalKey of canonicalKeys) {
+      const explicitEntries = scopeHandlers?.get(canonicalKey) ?? [];
+      const activeImplicitEntries = (implicitHandlers.current.get(canonicalKey) ?? []).filter(
+        (entry) => getScopeForOrder(entry.order) === activeRegistrationScope,
+      );
+      const entries = [...explicitEntries, ...activeImplicitEntries].sort((a, b) => b.id - a.id);
       const firstEntry = entries[0];
       if (!firstEntry || !eventMatchesParsedHotkey(event, firstEntry.parsed)) continue;
 
-      for (let idx = entries.length - 1; idx >= 0; idx -= 1) {
-        const entry = entries[idx];
-        if (!entry) continue;
+      for (const entry of entries) {
         if (isEditable && !entry.options?.allowInInput) continue;
         if (!isEventWithinContainer(event.target, entry.options)) continue;
-
-        if (entry.options?.preventDefault) {
-          event.preventDefault();
-        }
 
         try {
           const result = entry.handler(event);
           if (result === DECLINE) continue;
+          if (entry.options?.preventDefault) {
+            event.preventDefault();
+          }
         } catch (error) {
           console.error(`[@diffgazer/keys] Handler error for "${canonicalKey}":`, error);
         }
@@ -236,16 +254,54 @@ export function KeyboardProvider({
     [],
   );
 
+  const registerImplicit = useCallback(
+    <S extends string>(
+      order: string,
+      hotkey: ValidateHotkey<S>,
+      handler: KeyHandler,
+      options?: HandlerOptions,
+    ) => {
+      const parsed = parseHotkey(hotkey as string);
+      if (parsed.unknownModifier) {
+        warnUnknownModifier("registerImplicit", hotkey as string);
+      }
+      const canonical = serializeParsedHotkey(parsed);
+      const existingEntries = implicitHandlers.current.get(canonical) ?? [];
+      const entry: ImplicitHandlerEntry = {
+        id: nextHandlerId.current,
+        handler,
+        parsed,
+        options,
+        order,
+      };
+      nextHandlerId.current += 1;
+      implicitHandlers.current.set(canonical, [...existingEntries, entry]);
+
+      return () => {
+        const currentEntries = implicitHandlers.current.get(canonical);
+        if (!currentEntries) return;
+
+        const remainingEntries = currentEntries.filter((candidate) => candidate.id !== entry.id);
+        if (remainingEntries.length === 0) {
+          implicitHandlers.current.delete(canonical);
+        } else {
+          implicitHandlers.current.set(canonical, remainingEntries);
+        }
+      };
+    },
+    [],
+  );
+
   const registryValue = useMemo<KeyboardRegistryContextValue>(
-    () => ({ getActiveScope, getScopeForOrder, pushScope, register }),
-    [getActiveScope, getScopeForOrder, pushScope, register],
+    () => ({ getActiveScope, pushScope, register, registerImplicit }),
+    [getActiveScope, pushScope, register, registerImplicit],
   );
 
   const scopeValue = useMemo<KeyboardScopeContextValue>(() => ({ activeScope }), [activeScope]);
 
   return (
-    <KeyboardRegistryContext.Provider value={registryValue}>
-      <KeyboardScopeContext.Provider value={scopeValue}>{children}</KeyboardScopeContext.Provider>
-    </KeyboardRegistryContext.Provider>
+    <KeyboardRegistryContext value={registryValue}>
+      <KeyboardScopeContext value={scopeValue}>{children}</KeyboardScopeContext>
+    </KeyboardRegistryContext>
   );
 }

@@ -25,10 +25,6 @@ export function syncArtifacts(options = {}) {
   const docsLibraries = readDocsLibrariesConfig(configPath);
   const artifactLibraries = getArtifactLibraries(docsLibraries);
 
-  const authoredRootPages = docsLibraries.libraries
-    .filter((library) => library.enabled && !library.artifactSource)
-    .map((library) => `...${library.id}`);
-
   const syncMode = resolveArtifactSyncMode(env, {
     libraries: artifactLibraries,
     resolveFromDir: docsRoot,
@@ -44,7 +40,6 @@ export function syncArtifacts(options = {}) {
     }),
     sourceOrigin: REGISTRY_ORIGIN,
     mode: syncMode,
-    extraRootPages: authoredRootPages,
   });
 
   const rootMetaContent = `${JSON.stringify(

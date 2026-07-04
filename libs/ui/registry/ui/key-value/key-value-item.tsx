@@ -24,7 +24,7 @@ export interface KeyValueItemProps extends Omit<ComponentPropsWithRef<"dt">, "ch
 }
 
 /** Class variants for label. */
-export const labelVariants = cva("text-muted-foreground", {
+export const keyValueLabelVariants = cva("text-muted-foreground", {
   variants: {
     bordered: {
       true: "pt-4 border-t border-border first:border-t-0 text-xs",
@@ -35,7 +35,7 @@ export const labelVariants = cva("text-muted-foreground", {
 });
 
 /** Class variants for value. */
-export const valueVariants = cva("", {
+export const keyValueValueVariants = cva("", {
   variants: {
     variant: {
       default: "font-bold text-foreground",
@@ -84,12 +84,14 @@ export function KeyValueItem({
     <>
       <dt
         ref={ref}
-        className={cn(labelVariants({ bordered }), className, labelClassName)}
+        className={cn(keyValueLabelVariants({ bordered }), className, labelClassName)}
         {...rest}
       >
         {label}
       </dt>
-      <dd className={cn(valueVariants({ variant, bordered, layout }), valueClassName)}>{value}</dd>
+      <dd className={cn(keyValueValueVariants({ variant, bordered, layout }), valueClassName)}>
+        {value}
+      </dd>
     </>
   );
 }

@@ -35,6 +35,7 @@ export interface OverlayStackOptions {
 }
 
 const DEFAULT_OVERLAY_PRIORITY = 1;
+const CLICK_SWALLOW_TIMEOUT_MS = 750;
 const DOCUMENT_POINTER_LISTENER_OPTIONS: AddEventListenerOptions = { capture: true };
 const outsideClickEntries: OutsideClickEntry[] = [];
 const escapeKeyEntries: EscapeKeyEntry[] = [];
@@ -151,23 +152,60 @@ function isDuplicateTouchFallback(event: Event): boolean {
 // follow-up click exactly once so the press that closed a select/popover cannot
 // also close a dialog under it (backdrop-click path) or activate an underlying
 // link/button (click-through). Radix's "one layer per outside press" contract.
-function swallowNextClick(ownerDocument: Document, View: Window): void {
+function getGestureCleanupTypes(pressType: string) {
+  if (pressType === "pointerdown") {
+    return {
+      nextPressTypes: ["pointerdown"],
+      releaseTypes: ["pointerup", "pointercancel"],
+    };
+  }
+  if (pressType === "touchstart") {
+    return {
+      nextPressTypes: ["touchstart"],
+      releaseTypes: ["touchend", "touchcancel"],
+    };
+  }
+  return {
+    nextPressTypes: ["mousedown"],
+    releaseTypes: ["mouseup"],
+  };
+}
+
+function swallowNextClick(ownerDocument: Document, View: Window, pressType: string): void {
+  const { nextPressTypes, releaseTypes } = getGestureCleanupTypes(pressType);
   let removed = false;
+  let timer: number | undefined;
   const cleanup = () => {
     if (removed) return;
     removed = true;
     ownerDocument.removeEventListener("click", onClickCapture, true);
-    View.clearTimeout(timer);
+    for (const type of nextPressTypes) {
+      ownerDocument.removeEventListener(type, onNextPressCapture, true);
+    }
+    for (const type of releaseTypes) {
+      ownerDocument.removeEventListener(type, onPointerUpCapture, true);
+    }
+    if (timer != null) View.clearTimeout(timer);
   };
   const onClickCapture = (clickEvent: Event) => {
     cleanup();
     clickEvent.preventDefault();
     clickEvent.stopImmediatePropagation();
   };
+  const onNextPressCapture = () => {
+    cleanup();
+  };
+  const onPointerUpCapture = () => {
+    if (timer != null) View.clearTimeout(timer);
+    timer = View.setTimeout(cleanup, CLICK_SWALLOW_TIMEOUT_MS);
+  };
   ownerDocument.addEventListener("click", onClickCapture, true);
-  // Fallback removal if no click follows the press (e.g. touch sequences) so we
-  // never swallow an unrelated later click.
-  const timer = View.setTimeout(cleanup, 0);
+  for (const type of nextPressTypes) {
+    ownerDocument.addEventListener(type, onNextPressCapture, true);
+  }
+  for (const type of releaseTypes) {
+    ownerDocument.addEventListener(type, onPointerUpCapture, true);
+  }
 }
 
 function makeDocumentOutsidePointerHandler(ownerDocument: Document) {
@@ -178,7 +216,7 @@ function makeDocumentOutsidePointerHandler(ownerDocument: Document) {
     const entry = getTopOutsideClickEntry(ownerDocument);
     if (!entry) return;
     if (isInEntry(event, event.target, entry)) return;
-    swallowNextClick(ownerDocument, View);
+    swallowNextClick(ownerDocument, View, event.type);
     entry.handler();
   };
 }
@@ -186,6 +224,7 @@ function makeDocumentOutsidePointerHandler(ownerDocument: Document) {
 function makeDocumentKeyDownHandler(ownerDocument: Document) {
   return (event: KeyboardEvent) => {
     if (event.defaultPrevented || event.key !== "Escape") return;
+    if (event.isComposing || event.keyCode === 229) return;
     const entry = getTopEscapeKeyEntry(ownerDocument);
     if (!entry) return;
     entry.handler(event);
@@ -290,8 +329,11 @@ export function useOutsideClick(
   // Keep the latest excludeRefs without making it an effect dep, so an inline
   // array does not re-register (and reorder) the stack entry every render.
   const excludeRefsRef = useRef<ExcludeRefs>(excludeRefs);
-  excludeRefsRef.current = excludeRefs;
   const priority = options?.priority ?? DEFAULT_OVERLAY_PRIORITY;
+
+  useLayoutEffect(() => {
+    excludeRefsRef.current = excludeRefs;
+  });
 
   useLayoutEffect(() => {
     if (!enabled) return;
@@ -328,7 +370,10 @@ export function useEscapeKey(
   // Keep the latest excludeRefs off the effect deps (inline arrays/objects
   // otherwise re-register the stack entry on every render).
   const excludeRefsRef = useRef<ExcludeRefs>(options?.excludeRefs);
-  excludeRefsRef.current = options?.excludeRefs;
+
+  useLayoutEffect(() => {
+    excludeRefsRef.current = options?.excludeRefs;
+  });
 
   useLayoutEffect(() => {
     if (!enabled) return;

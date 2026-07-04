@@ -3,7 +3,7 @@
  */
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useTimer } from "./use-timer.js";
+import { useTimer } from "./use-timer";
 
 describe("useTimer", () => {
   beforeEach(() => {
@@ -33,7 +33,7 @@ describe("useTimer", () => {
     expect(result.current.elapsed).toBe(500);
   });
 
-  it("falls back to zero when running flips off", () => {
+  it("keeps the last elapsed value when running flips off", () => {
     const startTime = new Date(0);
     vi.setSystemTime(new Date(0));
     const { result, rerender } = renderHook(({ running }) => useTimer({ startTime, running }), {
@@ -46,7 +46,7 @@ describe("useTimer", () => {
     expect(result.current.elapsed).toBe(500);
 
     rerender({ running: false });
-    expect(result.current.elapsed).toBe(0);
+    expect(result.current.elapsed).toBe(500);
   });
 
   it("does nothing while running is false (no interval scheduled)", () => {

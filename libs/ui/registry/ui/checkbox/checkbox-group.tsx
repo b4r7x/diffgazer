@@ -8,6 +8,8 @@ import {
   type Ref,
   useCallback,
   useEffect,
+  useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -16,13 +18,13 @@ import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { useNavigation } from "@/hooks/use-navigation";
-import { isHTMLElementForContainer, resolveAriaInvalid } from "@/lib/aria";
+import { isHTMLElementForContainer, mergeIds, resolveAriaInvalid } from "@/lib/aria";
 import {
   getEnabledSelectableCollectionItems,
   resolveSelectableCollectionItem,
   useSelectableCollection,
 } from "@/lib/selectable-collection";
-import type { SelectableVariant } from "@/lib/selectable-variants";
+import { type SelectableVariant, selectableLabelVariants } from "@/lib/selectable-variants";
 import { cn } from "@/lib/utils";
 import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";
 import type { CheckboxSize } from "./checkbox";
@@ -132,12 +134,18 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
   } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const composedRef = useComposedRefs(containerRef, ref);
+  const generatedId = useId();
+  const labelId = `${generatedId}-label`;
   const hasAutoFocusedRef = useRef(false);
   const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
   // Read through a ref so the dev-mode unregistered-value guard does not pull
   // `items` into the stable `toggle` callback's deps.
   const itemsRef = useRef(items);
-  itemsRef.current = items;
+
+  useLayoutEffect(() => {
+    itemsRef.current = items;
+  });
+
   const [value, setValue] = useControllableState<T[]>({
     value: "value" in props ? (controlledValue ?? []) : undefined,
     controlled: "value" in props,
@@ -159,6 +167,9 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
     getEnabledSelectableCollectionItems(items, disabled).map((item) => item.value),
   );
   const hasValidSelectedValue = value.some((itemValue) => enabledItemValues.has(itemValue));
+  const resolvedAriaLabelledBy = ariaLabel
+    ? undefined
+    : mergeIds(ariaLabelledBy, label ? labelId : undefined);
 
   const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({
     value: controlledHighlighted,
@@ -264,14 +275,26 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
 
   return (
     <CheckboxGroupContext value={contextValue}>
+      {label && (
+        <div
+          id={labelId}
+          data-slot="checkbox-group-label"
+          className={cn(
+            "mb-2 font-mono font-bold text-muted-foreground",
+            selectableLabelVariants({ size }),
+          )}
+        >
+          {label}
+        </div>
+      )}
       {/* biome-ignore lint/a11y/useSemanticElements: role="group" labels the set of related checkboxes; <fieldset> would impose default form styling/structure and break the group layout. */}
       <div
         {...rootProps}
         ref={composedRef}
         role="group"
         data-diffgazer-selectable-owner="checkbox"
-        aria-label={ariaLabel ?? label}
-        aria-labelledby={ariaLabelledBy}
+        aria-label={ariaLabel}
+        aria-labelledby={resolvedAriaLabelledBy}
         aria-disabled={disabled || undefined}
         aria-invalid={resolveAriaInvalid(
           ariaInvalid,

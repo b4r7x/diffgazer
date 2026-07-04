@@ -5,7 +5,7 @@ import {
 } from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 interface ExecutionStepProps {
   value: AgentExecution;
@@ -22,6 +22,7 @@ export function ExecutionStep({
   enabled = true,
   onBoundaryReached,
 }: ExecutionStepProps) {
+  const labelId = useId();
   const [highlighted, setHighlighted] = useState<string | null>(value);
 
   const handleEnter = (nextValue: string) => {
@@ -31,7 +32,9 @@ export function ExecutionStep({
 
   return (
     <div className="space-y-3">
-      <div className="text-sm font-mono text-foreground/60">Agent Execution Mode:</div>
+      <div id={labelId} className="text-sm font-mono text-foreground/60">
+        Agent Execution Mode:
+      </div>
       <RadioGroup
         value={value}
         onChange={(nextValue) => {
@@ -50,6 +53,7 @@ export function ExecutionStep({
         autoFocus={enabled}
         activationMode="manual"
         wrap={false}
+        aria-labelledby={labelId}
         className="space-y-1"
       >
         {AGENT_EXECUTION_OPTIONS.map((option) => (

@@ -15,13 +15,26 @@ const BEL = String.fromCharCode(0x07);
 // OSC-52 clipboard write: ESC ] 52 ; c ; <base64> BEL. Ink passes OSC through to
 // the raw terminal, so the sanitizer must neutralize it before render.
 const OSC52 = `${ESC}]52;c;ZXZpbA==${BEL}`;
+const ARROW_DOWN = "\u001b[B";
 
-function renderPane(issue: ReviewIssue, activeTab: IssueTab = "details") {
+async function flush(times = 4): Promise<void> {
+  for (let i = 0; i < times; i += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+}
+
+function renderPane(
+  issue: ReviewIssue,
+  activeTab: IssueTab = "details",
+  options: { isActive?: boolean; scrollHeight?: number } = {},
+) {
   return render(
     <CliThemeProvider initialTheme="dark">
       <IssueDetailsPane
         issue={issue}
         activeTab={activeTab}
+        isActive={options.isActive}
+        scrollHeight={options.scrollHeight}
         onTabChange={vi.fn()}
         completedSteps={new Set()}
         onToggleStep={vi.fn()}
@@ -81,5 +94,23 @@ describe("IssueDetailsPane (TUI) trace tab gating", () => {
     // SectionHeader renders its label uppercased.
     expect(frame).toContain("AGENT TRACE");
     expect(frame).toContain("inspectScope");
+  });
+});
+
+describe("IssueDetailsPane (TUI) body scroll", () => {
+  test("Down on the focused body sub-zone scrolls the Details tab past its visible height", async () => {
+    const issue = makeIssue({ symptom: "Symptom marker text" });
+    const { stdin, lastFrame } = renderPane(issue, "details", { isActive: true, scrollHeight: 2 });
+    await flush();
+
+    let frame = lastFrame() ?? "";
+    expect(frame).not.toContain("Symptom marker text");
+    expect(frame).toContain("\u25BC");
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+
+    frame = lastFrame() ?? "";
+    expect(frame).toContain("Symptom marker text");
   });
 });

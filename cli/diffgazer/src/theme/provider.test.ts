@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { detectPaletteNameFromColorFgBg } from "./provider.js";
+import { detectPaletteNameFromColorFgBg } from "./provider";
 
 describe("detectPaletteNameFromColorFgBg", () => {
   test.each([

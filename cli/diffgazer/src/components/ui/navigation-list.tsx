@@ -2,7 +2,7 @@ import { moveHighlight } from "@diffgazer/keys";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext, useState } from "react";
-import { collectChildItems } from "../../lib/list-navigation";
+import { collectChildItems } from "../../lib/collect-child-items";
 import type { CliColorTokens } from "../../theme/palettes";
 import { useTheme } from "../../theme/provider";
 

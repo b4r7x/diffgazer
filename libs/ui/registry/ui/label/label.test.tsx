@@ -7,6 +7,7 @@ import { Label } from "./index";
 
 describe("Label", () => {
   it("labels and focuses an external control through htmlFor", async () => {
+    const user = userEvent.setup();
     render(
       <>
         <Label htmlFor="email">Email</Label>
@@ -14,7 +15,7 @@ describe("Label", () => {
       </>,
     );
 
-    await userEvent.click(screen.getByText("Email"));
+    await user.click(screen.getByText("Email"));
 
     expect(screen.getByLabelText("Email")).toHaveFocus();
   });

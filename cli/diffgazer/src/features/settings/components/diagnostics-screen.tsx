@@ -20,7 +20,7 @@ import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
-import { useSettingsZone } from "../hooks/use-settings-zone.js";
+import { useSettingsZone } from "../hooks/use-settings-zone";
 
 export function DiagnosticsScreen(): ReactElement {
   const { columns } = useTerminalDimensions();
@@ -47,6 +47,7 @@ export function DiagnosticsScreen(): ReactElement {
     buttonCount: 2,
     disabled: isRefreshing,
     initialZone: "buttons",
+    hasList: false,
   });
 
   usePageFooter({

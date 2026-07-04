@@ -26,7 +26,7 @@ export type OpenRouterModel = z.infer<typeof OpenRouterModelSchema>;
 
 export const OpenRouterModelCacheSchema = z.object({
   models: z.array(OpenRouterModelSchema),
-  fetchedAt: z.string().datetime(),
+  fetchedAt: z.iso.datetime(),
   keyHash: z.string().optional(),
 });
 
@@ -34,7 +34,7 @@ export type OpenRouterModelCache = z.infer<typeof OpenRouterModelCacheSchema>;
 
 export const OpenRouterModelsResponseSchema = z.object({
   models: z.array(OpenRouterModelSchema),
-  fetchedAt: z.string().datetime(),
+  fetchedAt: z.iso.datetime(),
   cached: z.boolean(),
 });
 
@@ -42,7 +42,7 @@ export type OpenRouterModelsResponse = z.infer<typeof OpenRouterModelsResponseSc
 
 export const ProviderModelsResponseSchema = z.object({
   models: z.array(ModelInfoSchema),
-  fetchedAt: z.string().datetime(),
+  fetchedAt: z.iso.datetime(),
   source: z.enum(["live", "cache", "snapshot"]),
   // `cached` mirrors `source === "cache"`; kept to match the OpenRouter response
   // shape (which has no `source`) so both wire contracts expose one freshness flag.

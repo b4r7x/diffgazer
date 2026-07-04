@@ -54,4 +54,36 @@ describe("log default level", () => {
     log("info", "request", { path: "/api/health" });
     expect(logSpy).toHaveBeenCalledTimes(1);
   });
+
+  it("serializes Error field values with message and stack", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const error = new Error("disk unavailable");
+    error.stack = "Error: disk unavailable\n    at test";
+
+    log("error", "config_write_failed", { error });
+
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    const [line] = errorSpy.mock.calls[0] ?? [];
+    expect(JSON.parse(String(line))).toMatchObject({
+      level: "error",
+      event: "config_write_failed",
+      error: {
+        name: "Error",
+        message: "disk unavailable",
+        stack: "Error: disk unavailable\n    at test",
+      },
+    });
+  });
+
+  it("replaces a circular field reference with a marker instead of throwing", () => {
+    const circular: Record<string, unknown> = { name: "config" };
+    circular.self = circular;
+
+    expect(() => log("info", "config_loaded", { config: circular })).not.toThrow();
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    const [line] = logSpy.mock.calls[0] ?? [];
+    expect(JSON.parse(String(line))).toMatchObject({
+      config: { name: "config", self: "[Circular]" },
+    });
+  });
 });

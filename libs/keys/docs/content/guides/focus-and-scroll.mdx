@@ -46,7 +46,7 @@ interface UseFocusTrapOptions {
 
 ### Independence from KeyboardProvider
 
-`useFocusTrap` attaches its keydown listener directly on the **container element**, not on `window`. It doesn't use `KeyboardContext` at all. This means:
+`useFocusTrap` intercepts Tab/Shift+Tab with a capture-phase keydown listener on the container's document while the trap is active, and uses a capture-phase focusin listener there to recapture escaped focus. It doesn't use `KeyboardContext` at all. This means:
 
 - It works without `KeyboardProvider` in the tree
 - It doesn't interfere with `@diffgazer/keys`'s scope system
@@ -144,11 +144,11 @@ The three hooks you'll typically combine for a modal:
 function Modal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
 
-  useScope("modal", { enabled: open });
+  const scope = useScope("modal", { enabled: open });
   useFocusTrap(ref, { enabled: open });
   useScrollLock({ enabled: open });
 
-  useKey("Escape", onClose);
+  useKey("Escape", onClose, { scope });
 
   if (!open) return null;
   return (

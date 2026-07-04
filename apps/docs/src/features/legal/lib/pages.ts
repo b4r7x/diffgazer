@@ -1,7 +1,7 @@
 import { notFound } from "@tanstack/react-router";
 import type { LegalPageLoaderData } from "@/features/legal/lib/load-legal-page";
 import { buildPageSeo, DEFAULT_SITE_NAME } from "@/lib/seo";
-import type { LegalPageSlug } from "./legal-slugs";
+import type { LegalPageSlug } from "./slugs";
 
 export const LEGAL_PAGES = [
   { slug: "privacy", path: "/privacy", panelLabel: "PRIVACY", label: "Privacy" },
@@ -33,9 +33,9 @@ export function legalRouteOptions(slug: LegalPageSlug) {
 
       if (typeof window !== "undefined") {
         // Dynamic import: a static one would close a module cycle back into
-        // this file (legal-page-view → legal-page-layout → legal-sidebar →
+        // this file (page-view -> page-layout -> legal-sidebar ->
         // LEGAL_LINKS) and TDZ at SSR module init.
-        const { legalClientLoader } = await import("@/features/legal/components/legal-page-view");
+        const { legalClientLoader } = await import("@/features/legal/components/page-view");
         await legalClientLoader.preload(data.path);
       }
 

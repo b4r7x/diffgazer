@@ -307,13 +307,15 @@ export function PopoverTrigger({ children, className, ref }: PopoverTriggerProps
       className: cn(child.props.className, className),
       role: child.props.role ?? (isClick || isNativeInteractive ? undefined : hoverProps.role),
       "aria-describedby": hoverProps["aria-describedby"],
-      onClick: mergeHandlers(child.props.onClick, hoverProps.onClick, true),
+      onClick: mergeHandlers(child.props.onClick, hoverProps.onClick, isClick),
       onPointerDown: mergeHandlers(child.props.onPointerDown, hoverProps.onPointerDown),
       onMouseEnter: mergeHandlers(child.props.onMouseEnter, hoverProps.onMouseEnter),
       onMouseLeave: mergeHandlers(child.props.onMouseLeave, hoverProps.onMouseLeave),
       onFocus: mergeHandlers(child.props.onFocus, hoverProps.onFocus),
       onBlur: mergeHandlers(child.props.onBlur, hoverProps.onBlur),
-      onKeyDown: mergeHandlers(child.props.onKeyDown, hoverProps.onKeyDown, true),
+      onKeyDown: isNativeInteractive
+        ? child.props.onKeyDown
+        : mergeHandlers(child.props.onKeyDown, hoverProps.onKeyDown, true),
       tabIndex: needsTabIndex ? 0 : child.props.tabIndex,
     });
   }

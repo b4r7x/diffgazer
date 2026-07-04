@@ -3,20 +3,20 @@ import { usePageFooter } from "@diffgazer/core/footer";
 import { HISTORY_SEARCH_PLACEHOLDER } from "@diffgazer/core/review";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
-import { EmptyState } from "../../../components/ui/empty-state.js";
-import { Input } from "../../../components/ui/input.js";
-import { Panel } from "../../../components/ui/panel.js";
-import { SectionHeader } from "../../../components/ui/section-header.js";
-import { Spinner } from "../../../components/ui/spinner.js";
+import { EmptyState } from "../../../components/ui/empty-state";
+import { Input } from "../../../components/ui/input";
+import { Panel } from "../../../components/ui/panel";
+import { SectionHeader } from "../../../components/ui/section-header";
+import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions";
-import { useTheme } from "../../../theme/provider.js";
-import { useHistoryScreen } from "../hooks/use-screen.js";
-import { getHistoryFooter } from "../lib/history-footer.js";
-import { HistoryInsightsPane } from "./insights-pane.js";
-import { RunsList } from "./runs-list.js";
-import { SectionsList } from "./sections-list.js";
+import { useTheme } from "../../../theme/provider";
+import { useHistoryScreen } from "../hooks/use-screen";
+import { getHistoryFooter } from "../lib/footer";
+import { HistoryInsightsPane } from "./insights-pane";
+import { RunsList } from "./runs-list";
+import { SectionsList } from "./sections-list";
 
 function getInsightScrollHeight({
   isNarrow,

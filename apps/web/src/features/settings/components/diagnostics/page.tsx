@@ -2,6 +2,7 @@ import {
   type DiagnosticsData,
   deriveDiagnosticsActions,
   getContextActionLabel,
+  getContextPresentation,
   getServerStatusPresentation,
   getSetupPresentation,
   useDiagnosticsData,
@@ -17,6 +18,13 @@ import { useConfigData } from "@/hooks/use-config";
 import { useDiagnosticsKeyboard } from "./use-diagnostics-keyboard";
 
 type OverallState = "loading" | "error" | "empty" | "success";
+
+const OVERALL_STATE_LABELS = {
+  loading: "Checking",
+  error: "Needs attention",
+  empty: "Setup needed",
+  success: "Ready",
+} satisfies Record<OverallState, string>;
 
 function getProviderValue(provider: string | undefined, model: string | undefined): string {
   if (!provider) return "Unavailable";
@@ -42,7 +50,7 @@ function getOverallState({
   return "success";
 }
 
-export function DiagnosticsPage() {
+export function SettingsDiagnosticsPage() {
   const { provider, model } = useConfigData();
   const diagnostics = useDiagnosticsData();
   const {
@@ -71,6 +79,7 @@ export function DiagnosticsPage() {
   const server = getServerStatusPresentation(serverState);
   const setup = getSetupPresentation({ isLoading: initLoading, error: initError, setupStatus });
   const providerValue = getProviderValue(provider, model);
+  const context = getContextPresentation(contextStatus, contextError);
   const contextActionLabel = getContextActionLabel(isRefreshing, contextStatus);
   const serverError = serverState.status === "error" ? serverState.message : null;
   const diagnosticsError = refreshError ?? contextError ?? serverError;
@@ -90,7 +99,9 @@ export function DiagnosticsPage() {
       >
         <Panel.Header className="bg-secondary border-border px-4 py-2">
           <Panel.Title className="text-foreground">System Diagnostics</Panel.Title>
-          <span className="text-xs text-muted-foreground">{overallState}</span>
+          <span className="text-xs text-muted-foreground">
+            {OVERALL_STATE_LABELS[overallState]}
+          </span>
         </Panel.Header>
 
         <Panel.Content
@@ -114,8 +125,8 @@ export function DiagnosticsPage() {
               <span className="text-muted-foreground text-xs uppercase tracking-wider mb-1">
                 Context Snapshot
               </span>
-              <div className="text-white flex items-center gap-2">
-                <span>[{contextStatus}]</span>
+              <div className="text-foreground flex items-center gap-2">
+                <span>{context.label}</span>
                 {contextStatus === "ready" && (
                   <span className="text-xs text-warning-text">
                     {formatTimestampOrNA(contextGeneratedAt, "Unavailable")}

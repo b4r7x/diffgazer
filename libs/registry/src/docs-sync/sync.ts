@@ -18,8 +18,6 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
     syncSchemaVersion = 3,
     afterSync,
     outputPaths: outputPathOverrides,
-    rootTitle,
-    extraRootPages,
   } = options;
 
   const paths = resolveSyncOutputPaths(docsRoot, outputPathOverrides);
@@ -40,13 +38,7 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
     throw new Error(`Primary docs artifact "${primaryLibraryId}" is not configured.`);
   }
 
-  const syncFingerprint = computeSyncFingerprint(
-    origin,
-    syncSchemaVersion,
-    artifacts,
-    extraRootPages ?? [],
-    rootTitle,
-  );
+  const syncFingerprint = computeSyncFingerprint(origin, syncSchemaVersion, artifacts);
   const syncState = readSyncState(paths.stateFilePath);
 
   if (
@@ -70,8 +62,6 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
     origin,
     sourceOrigin,
     afterSync,
-    rootTitle,
-    extraRootPages,
   });
 
   writeSyncState(paths.stateFilePath, {

@@ -8,6 +8,7 @@ import {
   type Ref,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -16,7 +17,7 @@ import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { useNavigation } from "@/hooks/use-navigation";
-import { isHTMLElementForContainer, resolveAriaInvalid } from "@/lib/aria";
+import { isHTMLElementForContainer, mergeIds, resolveAriaInvalid } from "@/lib/aria";
 import {
   getEnabledSelectableCollectionItems,
   getSelectableCollectionItemValue,
@@ -24,7 +25,7 @@ import {
   resolveSelectableCollectionItemValue,
   useSelectableCollection,
 } from "@/lib/selectable-collection";
-import type { SelectableVariant } from "@/lib/selectable-variants";
+import { type SelectableVariant, selectableLabelVariants } from "@/lib/selectable-variants";
 import { cn } from "@/lib/utils";
 import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";
 import type { RadioSize } from "./radio";
@@ -99,9 +100,9 @@ export interface RadioGroupProps<TValue extends string = string> extends RadioGr
   name?: string;
   /** Requires one enabled item to be selected. */
   required?: boolean;
-  /** Visible label associated with the custom radio. */
+  /** Visible group label. */
   label?: string;
-  /** Accessible name when no visible label is supplied. */
+  /** Accessible name for the radiogroup. Overrides the visible label when supplied. */
   "aria-label"?: string;
   /** ID of the element that labels this component. */
   "aria-labelledby"?: string;
@@ -166,6 +167,8 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
   } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const composedRef = useComposedRefs(containerRef, ref);
+  const generatedId = useId();
+  const labelId = `${generatedId}-label`;
   const hasAutoFocusedRef = useRef(false);
   const navigationEventRef = useRef<ReactKeyboardEvent<HTMLDivElement> | null>(null);
   const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
@@ -187,7 +190,15 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
       onChange?.(next as TValue);
     },
   });
-  useFormReset(containerRef, defaultValue, setValue, !("value" in props));
+  useFormReset(
+    containerRef,
+    defaultValue,
+    (value) => {
+      setRequiredInvalid(false);
+      setValue(value);
+    },
+    !("value" in props),
+  );
 
   const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({
     value: controlledHighlighted,
@@ -199,6 +210,9 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
   const enabledItems = getEnabledSelectableCollectionItems(items, disabled);
   const validHighlightedValue = getSelectableCollectionItemValue(enabledItems, highlightedValue);
   const validSelectedValue = getSelectableCollectionItemValue(enabledItems, value);
+  const resolvedAriaLabelledBy = ariaLabel
+    ? undefined
+    : mergeIds(ariaLabelledBy, label ? labelId : undefined);
   const tabTargetValue =
     activationMode === "manual"
       ? resolveSelectableCollectionItemValue(enabledItems, highlightedValue, value)
@@ -343,6 +357,18 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
 
   return (
     <RadioGroupContext value={contextValue}>
+      {label && (
+        <div
+          id={labelId}
+          data-slot="radio-group-label"
+          className={cn(
+            "mb-2 font-mono font-bold text-muted-foreground",
+            selectableLabelVariants({ size }),
+          )}
+        >
+          {label}
+        </div>
+      )}
       {required && !name && (
         <input
           type="checkbox"
@@ -351,7 +377,8 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
           disabled={disabled}
           tabIndex={-1}
           aria-hidden={true}
-          aria-label={ariaLabel ?? label}
+          aria-label={ariaLabel}
+          aria-labelledby={resolvedAriaLabelledBy}
           readOnly
           className="sr-only"
           onInvalid={(event) => {
@@ -366,8 +393,8 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
         ref={composedRef}
         role="radiogroup"
         data-diffgazer-selectable-owner="radio"
-        aria-label={ariaLabel ?? label}
-        aria-labelledby={ariaLabelledBy}
+        aria-label={ariaLabel}
+        aria-labelledby={resolvedAriaLabelledBy}
         aria-orientation={orientation}
         aria-required={required || undefined}
         aria-invalid={resolveAriaInvalid(

@@ -136,7 +136,7 @@ export function Menu<TId extends string = string>({
         }
         if (e.key === "Escape" && onClose) {
           // Consume the Escape so a menu inside a native <dialog> closes only the
-          // menu instead of also firing the dialog's cancel (F-207).
+          // menu instead of also firing the dialog's cancel event.
           e.preventDefault();
           onClose();
         }

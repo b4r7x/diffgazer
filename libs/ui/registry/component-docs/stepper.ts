@@ -43,7 +43,7 @@ export const stepperDoc: ComponentDoc = {
     {
       title: "Live region",
       content:
-        "Active-step transitions are announced via a polite live region: 'Step {n} of {total}: {label}'. Label is sourced from the trigger's text content.",
+        "Active-step transitions are announced via a persistent polite live region: 'Step {n} of {total}: {label}'. Label is sourced from the trigger's text content.",
     },
   ],
   usage: { example: "stepper-default" },

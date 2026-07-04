@@ -1,7 +1,6 @@
 "use client";
 
 import type { RefObject } from "react";
-import { keys } from "../core/keys.js";
 import { dispatchNavigationKey, resolveDirectionKeys } from "../core/navigation-dispatch.js";
 import { useKeyboardRegistryContext } from "../providers/keyboard-context.js";
 import { useKey } from "./use-key.js";
@@ -86,8 +85,15 @@ export function useScopedNavigation<TValue extends string = string>(
   };
 
   const handlers: Record<string, (event: globalThis.KeyboardEvent) => void> = {
-    ...keys(resolvedUpKeys, (e) => dispatch(e.key, e)),
-    ...keys(resolvedDownKeys, (e) => dispatch(e.key, e)),
+    ...Object.fromEntries(
+      resolvedUpKeys.map((key) => [key, (event: globalThis.KeyboardEvent) => dispatch(key, event)]),
+    ),
+    ...Object.fromEntries(
+      resolvedDownKeys.map((key) => [
+        key,
+        (event: globalThis.KeyboardEvent) => dispatch(key, event),
+      ]),
+    ),
     Home: (e) => dispatch("Home", e),
     End: (e) => dispatch("End", e),
   };

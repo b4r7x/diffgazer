@@ -17,6 +17,15 @@ vi.mock("@tanstack/react-router", () => ({
 
 import { HomePagePresentation, type HomePagePresentationProps } from "./presentation";
 
+type Navigate = HomePagePresentationProps["navigate"];
+
+function createNavigateMock() {
+  const mock = vi.fn<(options: object) => Promise<void>>(() => Promise.resolve());
+  const navigate: Navigate = (options) => mock(options);
+
+  return { navigate, mock };
+}
+
 function Wrapper({ children }: { children: ReactNode }) {
   return (
     <FooterProvider>
@@ -45,7 +54,7 @@ function buildProps(overrides: Partial<HomePagePresentationProps> = {}): HomePag
     highlighted: null,
     searchError: undefined,
     onHighlightChange: vi.fn(),
-    navigate: vi.fn() as unknown as HomePagePresentationProps["navigate"],
+    navigate: createNavigateMock().navigate,
     createReview: vi.fn(async () => ({ reviewId: "rev-new" })),
     clearScopedRouteState: vi.fn(),
     shutdown: vi.fn(async (): Promise<ShutdownResult> => ({ status: "closed" })),
@@ -82,26 +91,26 @@ describe("HomePagePresentation — Resume Last Review gating", () => {
   });
 
   it("does not navigate or start a new review when clicking the disabled Resume Last Review item", async () => {
-    const navigate = vi.fn();
+    const navigateMock = createNavigateMock();
     const createReview = vi.fn();
     const props = buildProps({
       resumableSession: null,
-      navigate: navigate as unknown as HomePagePresentationProps["navigate"],
+      navigate: navigateMock.navigate,
       createReview,
     });
     const user = userEvent.setup();
     renderPresentation(props);
     await user.click(screen.getByRole("menuitem", { name: "Resume Last Review" }));
-    expect(navigate).not.toHaveBeenCalled();
+    expect(navigateMock.mock).not.toHaveBeenCalled();
     expect(createReview).not.toHaveBeenCalled();
   });
 
   it("enables and resumes the cached unstaged session", async () => {
-    const navigate = vi.fn();
+    const navigateMock = createNavigateMock();
     const createReview = vi.fn();
     const props = buildProps({
       resumableSession: { reviewId: "rev-unstaged", mode: "unstaged" },
-      navigate: navigate as unknown as HomePagePresentationProps["navigate"],
+      navigate: navigateMock.navigate,
       createReview,
     });
     const user = userEvent.setup();
@@ -109,7 +118,7 @@ describe("HomePagePresentation — Resume Last Review gating", () => {
     const item = screen.getByRole("menuitem", { name: "Resume Last Review" });
     expect(item).not.toHaveAttribute("aria-disabled");
     await user.click(item);
-    expect(navigate).toHaveBeenCalledWith(
+    expect(navigateMock.mock).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "/review/{-$reviewId}",
         params: { reviewId: "rev-unstaged" },
@@ -120,17 +129,17 @@ describe("HomePagePresentation — Resume Last Review gating", () => {
   });
 
   it("enables and resumes the cached staged session", async () => {
-    const navigate = vi.fn();
+    const navigateMock = createNavigateMock();
     const createReview = vi.fn();
     const props = buildProps({
       resumableSession: { reviewId: "rev-staged", mode: "staged" },
-      navigate: navigate as unknown as HomePagePresentationProps["navigate"],
+      navigate: navigateMock.navigate,
       createReview,
     });
     const user = userEvent.setup();
     renderPresentation(props);
     await user.click(screen.getByRole("menuitem", { name: "Resume Last Review" }));
-    expect(navigate).toHaveBeenCalledWith(
+    expect(navigateMock.mock).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "/review/{-$reviewId}",
         params: { reviewId: "rev-staged" },
@@ -155,14 +164,14 @@ describe("HomePagePresentation — startReview error surfacing", () => {
   });
 
   it("surfaces API_KEY_MISSING with an actionable message in the toast", async () => {
-    const navigate = vi.fn();
+    const navigateMock = createNavigateMock();
     const createReview = vi.fn(async () => {
       throw makeApiError("API key not found for provider 'zai'", "API_KEY_MISSING");
     });
     const user = userEvent.setup();
     renderPresentation(
       buildProps({
-        navigate: navigate as unknown as HomePagePresentationProps["navigate"],
+        navigate: navigateMock.navigate,
         createReview,
       }),
     );
@@ -171,7 +180,7 @@ describe("HomePagePresentation — startReview error surfacing", () => {
     expect(
       screen.getByText(/API key not found for provider 'zai'\. Add one in Settings → Providers\./),
     ).toBeInTheDocument();
-    expect(navigate).not.toHaveBeenCalled();
+    expect(navigateMock.mock).not.toHaveBeenCalled();
   });
 
   it("surfaces UNSUPPORTED_PROVIDER as 'Provider Not Configured'", async () => {
@@ -209,26 +218,26 @@ describe("HomePagePresentation — menu parity", () => {
   });
 
   it("navigates to history via the home shortcut", async () => {
-    const navigate = vi.fn();
+    const navigateMock = createNavigateMock();
     const clearScopedRouteState = vi.fn();
     const user = userEvent.setup();
     renderPresentation(
       buildProps({
-        navigate: navigate as unknown as HomePagePresentationProps["navigate"],
+        navigate: navigateMock.navigate,
         clearScopedRouteState,
       }),
     );
     await user.keyboard("h");
-    expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/history" }));
+    expect(navigateMock.mock).toHaveBeenCalledWith(expect.objectContaining({ to: "/history" }));
   });
 
   it("clears each target page's own scoped keys when navigating, never silent no-ops", async () => {
-    const navigate = vi.fn();
+    const navigateMock = createNavigateMock();
     const clearScopedRouteState = vi.fn();
     const user = userEvent.setup();
     renderPresentation(
       buildProps({
-        navigate: navigate as unknown as HomePagePresentationProps["navigate"],
+        navigate: navigateMock.navigate,
         clearScopedRouteState,
       }),
     );
@@ -238,6 +247,15 @@ describe("HomePagePresentation — menu parity", () => {
     expect(clearScopedRouteState).toHaveBeenCalledWith("/history", "run");
     expect(clearScopedRouteState).toHaveBeenCalledWith("/history", "date");
     expect(clearScopedRouteState).not.toHaveBeenCalledWith("/history", "highlighted");
+
+    clearScopedRouteState.mockClear();
+
+    await user.keyboard("s");
+    expect(clearScopedRouteState).toHaveBeenCalledWith("/settings", "highlighted");
+    expect(clearScopedRouteState).toHaveBeenCalledTimes(1);
+    expect(navigateMock.mock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ to: "/settings" }),
+    );
 
     clearScopedRouteState.mockClear();
 
@@ -284,10 +302,10 @@ describe("HomePagePresentation — invalid review id toast", () => {
   });
 
   it("reports an invalid review id exactly once under StrictMode and effect re-runs", async () => {
-    const navigate = vi.fn();
+    const navigateMock = createNavigateMock();
     const props = buildProps({
       searchError: "invalid-review-id",
-      navigate: navigate as unknown as HomePagePresentationProps["navigate"],
+      navigate: navigateMock.navigate,
     });
     // StrictMode double-invokes the report effect on mount; the fired-once ref must
     // survive that so the toast + home redirect fire exactly once (F-181).
@@ -297,20 +315,13 @@ describe("HomePagePresentation — invalid review id toast", () => {
 
     // A fresh navigate identity also re-runs the report effect; without the fired-once
     // ref it would re-toast and re-redirect on every re-render (F-181).
-    rerender(
-      <HomePagePresentation
-        {...props}
-        navigate={vi.fn() as unknown as HomePagePresentationProps["navigate"]}
-      />,
-    );
-    rerender(
-      <HomePagePresentation
-        {...props}
-        navigate={vi.fn() as unknown as HomePagePresentationProps["navigate"]}
-      />,
-    );
+    rerender(<HomePagePresentation {...props} navigate={createNavigateMock().navigate} />);
+    rerender(<HomePagePresentation {...props} navigate={createNavigateMock().navigate} />);
 
     expect(screen.getAllByText("Invalid Review ID")).toHaveLength(1);
-    expect(navigate.mock.calls.filter(([arg]) => arg?.to === "/" && arg?.replace)).toHaveLength(1);
+    expect(navigateMock.mock).toHaveBeenCalledTimes(1);
+    expect(navigateMock.mock).toHaveBeenCalledWith(
+      expect.objectContaining({ replace: true, to: "/" }),
+    );
   });
 });

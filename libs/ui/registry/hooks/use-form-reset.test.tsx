@@ -76,12 +76,13 @@ function MovableResettableInput({
 
 describe("useFormReset", () => {
   it("does not reset when disabled", async () => {
+    const user = userEvent.setup();
     const onReset = vi.fn();
     render(<ResettableInput defaultValue="initial" enabled={false} onReset={onReset} />);
 
     const input = screen.getByRole("textbox", { name: /name/i });
-    await userEvent.clear(input);
-    await userEvent.type(input, "changed");
+    await user.clear(input);
+    await user.type(input, "changed");
 
     screen
       .getByRole("form", { name: /profile/i })
@@ -92,12 +93,13 @@ describe("useFormReset", () => {
   });
 
   it("does nothing when no parent form exists", async () => {
+    const user = userEvent.setup();
     const onReset = vi.fn();
     render(<ResettableInput defaultValue="initial" insideForm={false} onReset={onReset} />);
 
     const input = screen.getByRole("textbox", { name: /name/i });
-    await userEvent.clear(input);
-    await userEvent.type(input, "changed");
+    await user.clear(input);
+    await user.type(input, "changed");
 
     input.dispatchEvent(new Event("reset", { bubbles: true }));
 
@@ -146,6 +148,7 @@ describe("useFormReset", () => {
   });
 
   it("resubscribes when the control moves to another form", async () => {
+    const user = userEvent.setup();
     const onReset = vi.fn();
     const { rerender } = render(
       <MovableResettableInput defaultValue="initial" formName="A" onReset={onReset} />,
@@ -153,8 +156,8 @@ describe("useFormReset", () => {
     const formA = screen.getByRole("form", { name: /profile a/i });
     const input = screen.getByRole("textbox", { name: /name/i });
 
-    await userEvent.clear(input);
-    await userEvent.type(input, "changed");
+    await user.clear(input);
+    await user.type(input, "changed");
 
     rerender(<MovableResettableInput defaultValue="next" formName="B" onReset={onReset} />);
 
@@ -182,6 +185,7 @@ describe("useFormReset", () => {
   });
 
   it("skips reset when the consumer's own handler calls preventDefault", async () => {
+    const user = userEvent.setup();
     const onReset = vi.fn();
     function Cancelable() {
       const ref = useRef<HTMLInputElement>(null);
@@ -204,8 +208,8 @@ describe("useFormReset", () => {
     render(<Cancelable />);
     const input = screen.getByRole("textbox", { name: /name/i });
 
-    await userEvent.clear(input);
-    await userEvent.type(input, "changed");
+    await user.clear(input);
+    await user.type(input, "changed");
 
     screen
       .getByRole("form", { name: /profile/i })

@@ -4,7 +4,7 @@ import {
   buildResponsiveResult,
   getBreakpointTier,
   type ResponsiveResult,
-} from "../lib/breakpoints.js";
+} from "../lib/breakpoints";
 
 interface TerminalDimensions {
   columns: number;

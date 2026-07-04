@@ -56,10 +56,8 @@ export function isSessionTerminationCode(code: string): code is SessionTerminati
   return SESSION_TERMINATION_CODES.has(code);
 }
 
-export function isNoDiffError(error: string | null): boolean {
-  return (
-    error?.includes("No staged changes") === true || error?.includes("No unstaged changes") === true
-  );
+export function isNoDiffError(errorCode: string | null): boolean {
+  return errorCode === ReviewErrorCode.NO_DIFF;
 }
 
 export function isCheckingForChanges(isStreaming: boolean, steps: StepState[]): boolean {

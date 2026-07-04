@@ -30,6 +30,13 @@ export const controllableStateDoc: HookDoc = {
       required: false,
       description: "Called when the value changes, in both controlled and uncontrolled modes.",
     },
+    {
+      name: "controlled",
+      type: "boolean",
+      required: false,
+      description:
+        "Forces controlled-mode detection when value can be undefined but the consumer still owns state.",
+    },
   ],
   returns: {
     type: "[T, (next: T | ((prev: T) => T)) => void, boolean]",

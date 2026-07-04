@@ -1,7 +1,7 @@
 "use client";
 
 import { cva, type VariantProps } from "class-variance-authority";
-import { type ReactNode, useCallback, useState } from "react";
+import { type ReactNode, useCallback, useRef, useState } from "react";
 import { useFocusRestore } from "@/hooks/use-focus-restore";
 import { cn } from "@/lib/utils";
 import { DialogShell } from "../shared/dialog-shell";
@@ -69,14 +69,16 @@ export function CommandPaletteContent({
 }: CommandPaletteContentProps) {
   const { open, onOpenChange, search, onSearchChange, itemCount, inputRef } =
     useCommandPaletteContext();
+  const shellRef = useRef<HTMLDialogElement>(null);
   const [container, setContainer] = useState<Element | null>(null);
-  const focusRestore = useFocusRestore({ restoreOnUnmount: false });
+  const focusRestore = useFocusRestore({ restoreOnUnmount: true });
 
   const resolvedFrame = frame ?? "border";
   const resolvedDensity = density ?? "compact";
 
   // Stable identity for DialogShell's dialogRef callback so the underlying ref isn't re-attached on every render.
   const setDialogRef = useCallback((node: HTMLDialogElement | null) => {
+    shellRef.current = node;
     setContainer(node);
   }, []);
 
@@ -84,6 +86,13 @@ export function CommandPaletteContent({
   const focusSearchInput = useCallback(() => {
     inputRef.current?.focus();
   }, [inputRef]);
+
+  const handleClose = useCallback(() => {
+    const view = shellRef.current?.ownerDocument.defaultView ?? globalThis;
+    view.requestAnimationFrame(() => {
+      focusRestore.restore();
+    });
+  }, [focusRestore]);
 
   return (
     <DialogShell
@@ -93,7 +102,7 @@ export function CommandPaletteContent({
       onAfterShowModal={focusSearchInput}
       onBackdropClick={() => onOpenChange(false)}
       onCancel={() => (search ? onSearchChange("") : onOpenChange(false))}
-      onClose={focusRestore.restore}
+      onClose={handleClose}
       className={cn(commandPaletteContentVariants({ size }), className)}
       data-slot="command-palette-content"
       data-frame={resolvedFrame}

@@ -3,12 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/testing/render";
 
-type QueryStateHandlers = {
-  loading: () => unknown;
-  error: (error: Error) => unknown;
-  success: () => unknown;
-};
-
 const { mockNavigate, mockSaveSettings, mockSettingsQuery, mockIsSaving } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockSaveSettings: vi.fn(),
@@ -28,21 +22,20 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 // Boundary mock: api/hooks is the HTTP-data fetch boundary; we provide canned data and assert on the resulting UI.
-vi.mock("@diffgazer/core/api/hooks", () => ({
-  useSettings: () => mockSettingsQuery.current,
-  useSaveSettings: () => ({
-    isPending: mockIsSaving.current,
-    mutateAsync: mockSaveSettings,
-  }),
-  matchQueryState: (
-    query: { isLoading?: boolean; error?: Error | null },
-    handlers: QueryStateHandlers,
-  ) => {
-    if (query.isLoading) return handlers.loading();
-    if (query.error) return handlers.error(query.error);
-    return handlers.success();
-  },
-}));
+vi.mock("@diffgazer/core/api/hooks", async () => {
+  const actual = await vi.importActual<typeof import("@diffgazer/core/api/hooks")>(
+    "@diffgazer/core/api/hooks",
+  );
+
+  return {
+    ...actual,
+    useSettings: () => mockSettingsQuery.current,
+    useSaveSettings: () => ({
+      isPending: mockIsSaving.current,
+      mutateAsync: mockSaveSettings,
+    }),
+  };
+});
 
 import { SettingsStoragePage } from "./page";
 

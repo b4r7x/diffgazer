@@ -10,6 +10,7 @@ import { Popover } from "../popover/index";
 
 describe("Nested overlay: Popover inside Dialog", () => {
   it("Escape on open popover closes only the popover, not the dialog", async () => {
+    const user = userEvent.setup();
     const onDialogChange = vi.fn();
     const onPopoverChange = vi.fn();
 
@@ -41,7 +42,7 @@ describe("Nested overlay: Popover inside Dialog", () => {
     expect(popover).toHaveAttribute("aria-label", "Nested popover");
     expect(popover).toHaveAttribute("data-state", "open");
 
-    await userEvent.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
 
     expect(onPopoverChange).toHaveBeenCalledWith(false);
     expect(onDialogChange).not.toHaveBeenCalled();
@@ -87,6 +88,7 @@ describe("Nested overlay: Menu inside Dialog", () => {
   });
 
   it("Escape on a submenu closes only the submenu (keydown defaultPrevented), not the dialog", async () => {
+    const user = userEvent.setup();
     const onDialogChange = vi.fn();
 
     render(
@@ -108,7 +110,7 @@ describe("Nested overlay: Menu inside Dialog", () => {
     const dialog = screen.getByRole("dialog", { name: "Submenu dialog" });
     const parentMenu = screen.getByRole("menu", { name: "Actions" });
     await waitFor(() => expect(parentMenu).toHaveFocus());
-    await userEvent.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
 
     const submenu = await waitFor(() => {
       const found = screen.getAllByRole("menu").find((candidate) => candidate !== parentMenu);
@@ -131,6 +133,7 @@ describe("Nested overlay: Menu inside Dialog", () => {
 
 describe("Nested overlay: Dialog inside Dialog", () => {
   it("restores focus to the parent's last focused element after closing the child dialog", async () => {
+    const user = userEvent.setup();
     function NestedDialogs() {
       const [parentOpen, setParentOpen] = useState(false);
       const [childOpen, setChildOpen] = useState(false);
@@ -161,12 +164,12 @@ describe("Nested overlay: Dialog inside Dialog", () => {
 
     render(<NestedDialogs />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Open parent" }));
+    await user.click(screen.getByRole("button", { name: "Open parent" }));
     const childOpener = screen.getByRole("button", { name: "Open child" });
-    await userEvent.click(childOpener);
+    await user.click(childOpener);
 
     const childDialog = screen.getByRole("dialog", { name: "Child dialog" });
-    await userEvent.click(screen.getByRole("button", { name: "Close child" }));
+    await user.click(screen.getByRole("button", { name: "Close child" }));
     await waitFor(() => expect(childDialog).toHaveAttribute("data-state", "closed"));
     // fireEvent retained: animationend has no user-event equivalent; presence transitions complete on this event
     fireEvent.animationEnd(childDialog);
@@ -177,6 +180,7 @@ describe("Nested overlay: Dialog inside Dialog", () => {
   });
 
   it("keeps the topmost stacked dialog focused and interactive", async () => {
+    const user = userEvent.setup();
     const firstAction = vi.fn();
     const secondAction = vi.fn();
 
@@ -209,7 +213,7 @@ describe("Nested overlay: Dialog inside Dialog", () => {
     const secondActionButton = screen.getByRole("button", { name: "Second action" });
 
     await waitFor(() => expect(secondActionButton).toHaveFocus());
-    await userEvent.click(secondActionButton);
+    await user.click(secondActionButton);
 
     expect(secondAction).toHaveBeenCalledOnce();
     expect(firstAction).not.toHaveBeenCalled();

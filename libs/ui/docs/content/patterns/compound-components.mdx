@@ -29,12 +29,9 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
 
 <Dialog>                          {/* Root: manages open state via Context */}
-  <DialogTrigger>                 {/* Opens the dialog */}
-    <Button>Open</Button>
-  </DialogTrigger>
+  <DialogTrigger>Open</DialogTrigger>
   <DialogContent>                 {/* Portal + overlay + modal container */}
     <DialogHeader>                {/* Header wrapper */}
       <DialogTitle>Title</DialogTitle>
@@ -44,9 +41,7 @@ import { Button } from "@/components/ui/button"
       {/* Your content */}
     </DialogBody>
     <DialogFooter>                {/* Action buttons */}
-      <DialogClose>               {/* Closes the dialog */}
-        <Button>Cancel</Button>
-      </DialogClose>
+      <DialogClose>Cancel</DialogClose>
     </DialogFooter>
   </DialogContent>
 </Dialog>
@@ -127,7 +122,7 @@ function DialogTrigger({ children }: DialogTriggerProps) {
 
 This is the same pattern used by Tabs, Menu, NavigationList, and Stepper. The root provides, the children consume.
 
-## Controlled vs Uncontrolled
+## Controlled vs uncontrolled
 
 All compound components support both controlled and uncontrolled usage.
 
@@ -187,9 +182,7 @@ The compound pattern gives you full control over structure. You can:
       {/* No DialogDescription */}
     </DialogHeader>
     <DialogFooter>
-      <DialogClose>
-        <Button>OK</Button>
-      </DialogClose>
+      <DialogClose>OK</DialogClose>
     </DialogFooter>
   </DialogContent>
 </Dialog>
@@ -198,18 +191,18 @@ The compound pattern gives you full control over structure. You can:
 **Wrap sub-components in your own components:**
 
 ```tsx
-function ConfirmDialog({ title, onConfirm, children }) {
+function ConfirmDialog({ title, onConfirm }) {
   return (
     <Dialog>
-      <DialogTrigger>{children}</DialogTrigger>
+      <DialogTrigger>
+        {(props) => <Button {...props}>Open</Button>}
+      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <DialogFooter>
-          <DialogClose>
-            <Button variant="ghost">Cancel</Button>
-          </DialogClose>
+          <DialogClose variant="ghost">Cancel</DialogClose>
           <Button onClick={onConfirm}>Confirm</Button>
         </DialogFooter>
       </DialogContent>
@@ -218,9 +211,11 @@ function ConfirmDialog({ title, onConfirm, children }) {
 }
 ```
 
+`DialogClose` already renders a Button and accepts Button props directly, so pass props such as `variant` to `DialogClose` instead of nesting a `Button`.
+
 Context-only parts such as Dialog body, footer, and close controls can live inside custom wrapper components because those parts read the root context at render time. Metadata-scanned components have a narrower contract: item-defining parts for Tabs, Select, CommandPalette, Menu, NavigationList, RadioGroup, and ToggleGroup must appear as explicit children in that component's JSX tree. Put custom item UI inside the item part instead of using an opaque wrapper that creates items internally.
 
-## Toast: Store and Toaster
+## Toast: store and Toaster
 
 Toast is not a compound component in the current API. It exposes an imperative `toast()` store and a `Toaster` renderer:
 
@@ -234,7 +229,7 @@ toast.success("Saved")
 
 Place one `Toaster` near the app root. Calls to `toast()`, `toast.success()`, `toast.error()`, `toast.warning()`, `toast.info()`, `toast.loading()`, and `toast.promise()` update the shared store. Error toasts persist until dismissed; loading toasts stay open until updated or dismissed.
 
-## Stepper: Direct Content Detection
+## Stepper: direct content detection
 
 Stepper uses context for expansion state, but `StepperStep` only detects `StepperContent` when it is a direct child of that step:
 

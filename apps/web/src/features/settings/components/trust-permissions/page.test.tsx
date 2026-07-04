@@ -18,7 +18,7 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-import { TrustPermissionsPage } from "./page";
+import { SettingsTrustPermissionsPage } from "./page";
 
 const TRUSTED_FIXTURE: TrustConfig = {
   projectId: "project-1",
@@ -93,7 +93,7 @@ function renderPage() {
 
   return render(
     <>
-      <TrustPermissionsPage />
+      <SettingsTrustPermissionsPage />
       <Toaster />
     </>,
     { wrapper: Wrapper },
@@ -112,7 +112,7 @@ async function waitForConfigReady() {
   });
 }
 
-describe("TrustPermissionsPage", () => {
+describe("SettingsTrustPermissionsPage", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
     mockLoadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse(null));

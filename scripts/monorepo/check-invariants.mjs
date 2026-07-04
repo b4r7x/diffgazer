@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
-import { execFileSync, execSync } from "node:child_process";
+import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { listRepoFiles as listTrackedRepoFiles } from "./lib/files.mjs";
 import { readJson } from "./lib/json.mjs";
 import { runValidationChecks } from "./lib/run-checks.mjs";
 
@@ -67,13 +68,6 @@ function parseLines(output) {
   return String(output).trim().split("\n").filter(Boolean);
 }
 
-function runGitLsFiles(rootDir) {
-  return execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], {
-    cwd: rootDir,
-    encoding: "utf8",
-  });
-}
-
 function runGitLsFilesStaged(rootDir) {
   return execSync("git ls-files -s", { cwd: rootDir, encoding: "utf8" });
 }
@@ -94,10 +88,9 @@ function runFind(rootDir, command) {
 }
 
 export function listPackageJsonFiles(rootDir = process.cwd()) {
-  return runGitLsFiles(rootDir)
-    .trim()
-    .split("\n")
-    .filter((path) => path.endsWith("package.json") && !path.includes("node_modules/"));
+  return listTrackedRepoFiles(rootDir).filter(
+    (path) => path.endsWith("package.json") && !path.includes("node_modules/"),
+  );
 }
 
 export function ensureContainsFiles(fileList, required) {

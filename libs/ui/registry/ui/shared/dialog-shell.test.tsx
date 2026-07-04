@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -34,6 +34,20 @@ function fireTabFromActive(ownerDocument: Document, shiftKey = false) {
   });
   ownerDocument.activeElement?.dispatchEvent(event);
   return event;
+}
+
+function mockDialogBounds(dialog: HTMLElement) {
+  vi.spyOn(dialog, "getBoundingClientRect").mockReturnValue({
+    x: 100,
+    y: 100,
+    width: 320,
+    height: 240,
+    top: 100,
+    right: 420,
+    bottom: 340,
+    left: 100,
+    toJSON() {},
+  });
 }
 
 describe("DialogShell", () => {
@@ -134,5 +148,43 @@ describe("DialogShell", () => {
     expect(isHTMLDialogElement(frameDialog)).toBe(true);
     expect(frameDialog).toHaveAttribute("open");
     expect(onBeforeShowModal).toHaveBeenCalledWith(frameDocument);
+  });
+
+  it("does not close when a press starting inside the dialog is released on the backdrop", () => {
+    const onBackdropClick = vi.fn();
+
+    render(
+      <DialogShell open aria-label="Editable shell" onBackdropClick={onBackdropClick}>
+        <button type="button">Select text</button>
+      </DialogShell>,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Editable shell" });
+    const button = screen.getByRole("button", { name: "Select text" });
+    mockDialogBounds(dialog);
+
+    // fireEvent retained: backdrop dismissal depends on exact pointer coordinates.
+    fireEvent.pointerDown(button, { clientX: 200, clientY: 200 });
+    fireEvent.click(dialog, { clientX: 80, clientY: 120 });
+
+    expect(onBackdropClick).not.toHaveBeenCalled();
+  });
+
+  it("reconciles shell state when the native dialog closes without a cancelable cancel", () => {
+    render(
+      <DialogShell open aria-label="Forced shell">
+        <button type="button">Action</button>
+      </DialogShell>,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Forced shell" }) as HTMLDialogElement;
+    expect(dialog.open).toBe(true);
+
+    act(() => {
+      dialog.removeAttribute("open");
+      dialog.dispatchEvent(new Event("close"));
+    });
+
+    expect(dialog.open).toBe(true);
   });
 });

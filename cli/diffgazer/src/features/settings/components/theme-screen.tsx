@@ -14,9 +14,9 @@ import { useNavigation } from "../../../hooks/use-navigation";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import type { CliColorTokens } from "../../../theme/palettes";
 import { useTheme } from "../../../theme/provider";
-import { useSettingsZone } from "../hooks/use-settings-zone.js";
-import { paletteForTheme, TOKEN_GROUPS } from "../lib/theme-preview.js";
-import { type CliTheme, ThemeSelector } from "./theme-selector.js";
+import { useSettingsZone } from "../hooks/use-settings-zone";
+import { paletteForTheme, TOKEN_GROUPS } from "../lib/theme-preview";
+import { type CliTheme, ThemeSelector } from "./theme-selector";
 
 interface PaletteSwatchGridProps {
   tokens: CliColorTokens;

@@ -34,6 +34,7 @@ function renderSidebar(
 
 describe("Sidebar", () => {
   it("toggles open state via SidebarTrigger", async () => {
+    const user = userEvent.setup();
     renderSidebar();
     const trigger = screen.getByRole("button", { name: "Collapse sidebar" });
     const content = screen.getByText("Item 1").closest("[id]") as HTMLElement;
@@ -41,7 +42,7 @@ describe("Sidebar", () => {
     expect(trigger).toHaveAttribute("aria-controls", content.id);
     expect(content).not.toHaveAttribute("aria-hidden");
 
-    await userEvent.click(trigger);
+    await user.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     expect(trigger).toHaveAttribute("aria-label", "Expand sidebar");
   });
@@ -71,6 +72,7 @@ describe("Sidebar", () => {
   });
 
   it("calls custom onClick on trigger alongside toggle", async () => {
+    const user = userEvent.setup();
     const onClick = vi.fn();
     render(
       <Sidebar.Provider>
@@ -79,11 +81,12 @@ describe("Sidebar", () => {
         </Sidebar>
       </Sidebar.Provider>,
     );
-    await userEvent.click(screen.getByRole("button", { name: "Collapse sidebar" }));
+    await user.click(screen.getByRole("button", { name: "Collapse sidebar" }));
     expect(onClick).toHaveBeenCalled();
   });
 
   it("does not toggle when trigger click is prevented", async () => {
+    const user = userEvent.setup();
     render(
       <Sidebar.Provider>
         <Sidebar>
@@ -93,16 +96,17 @@ describe("Sidebar", () => {
     );
     const trigger = screen.getByRole("button", { name: "Collapse sidebar" });
 
-    await userEvent.click(trigger);
+    await user.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
   });
 
   it("respects controlled state prop", async () => {
+    const user = userEvent.setup();
     const onStateChange = vi.fn();
     renderSidebar({ state: "open", onStateChange });
     const trigger = screen.getByRole("button", { name: "Collapse sidebar" });
 
-    await userEvent.click(trigger);
+    await user.click(trigger);
     expect(onStateChange).toHaveBeenCalledWith("rail");
     expect(trigger).toHaveAttribute("aria-expanded", "true");
   });
@@ -113,6 +117,7 @@ describe("Sidebar", () => {
   });
 
   it("toggles open state when used without explicit SidebarProvider", async () => {
+    const user = userEvent.setup();
     render(
       <Sidebar>
         <Sidebar.Trigger>Toggle</Sidebar.Trigger>
@@ -121,11 +126,12 @@ describe("Sidebar", () => {
     const trigger = screen.getByRole("button", { name: "Collapse sidebar" });
     expect(trigger).toHaveAttribute("aria-expanded", "true");
 
-    await userEvent.click(trigger);
+    await user.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "false");
   });
 
   it("honors prevented content keydown before moving focus", async () => {
+    const user = userEvent.setup();
     render(
       <Sidebar.Provider>
         <Sidebar>
@@ -143,11 +149,12 @@ describe("Sidebar", () => {
     const first = screen.getByRole("button", { name: "One" });
     first.focus();
 
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(first).toHaveFocus();
   });
 
   it("navigates between sidebar items that omit an explicit value via derived value", async () => {
+    const user = userEvent.setup();
     render(
       <Sidebar.Provider>
         <Sidebar>
@@ -166,11 +173,12 @@ describe("Sidebar", () => {
     expect(first.getAttribute("data-value")).not.toBe("");
 
     first.focus();
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(second).toHaveFocus();
   });
 
   it("navigates sidebar items without selecting nested data-value descendants", async () => {
+    const user = userEvent.setup();
     render(
       <Sidebar.Provider>
         <Sidebar>
@@ -189,11 +197,12 @@ describe("Sidebar", () => {
     const second = screen.getByRole("button", { name: "Two" });
     first.focus();
 
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(second).toHaveFocus();
   });
 
   it("keeps disabled render-prop items inert and out of tab order", async () => {
+    const user = userEvent.setup();
     const onClick = vi.fn();
     render(
       <Sidebar.Provider>
@@ -213,7 +222,7 @@ describe("Sidebar", () => {
     );
     const item = screen.getByRole("link", { name: "Settings" });
 
-    await userEvent.click(item);
+    await user.click(item);
 
     expect(onClick).not.toHaveBeenCalled();
     expect(item).toHaveAttribute("aria-disabled", "true");
@@ -248,6 +257,7 @@ describe("Sidebar", () => {
   });
 
   it("keeps disabled anchor items inert and out of tab order", async () => {
+    const user = userEvent.setup();
     const onClick = vi.fn();
     render(
       <Sidebar.Provider>
@@ -262,7 +272,7 @@ describe("Sidebar", () => {
     );
     const item = screen.getByRole("link", { name: "Settings" });
 
-    await userEvent.click(item);
+    await user.click(item);
     expect(onClick).not.toHaveBeenCalled();
     expect(item).toHaveAttribute("aria-disabled", "true");
     expect(item).toHaveAttribute("tabindex", "-1");
@@ -320,6 +330,7 @@ describe("SidebarSection collapsible", () => {
   });
 
   it("toggles section open/closed with aria-expanded", async () => {
+    const user = userEvent.setup();
     render(
       <Sidebar.Provider>
         <Sidebar>
@@ -335,11 +346,12 @@ describe("SidebarSection collapsible", () => {
     const title = screen.getByRole("button", { name: "Files" });
     expect(title).toHaveAttribute("aria-expanded", "true");
 
-    await userEvent.click(title);
+    await user.click(title);
     expect(title).toHaveAttribute("aria-expanded", "false");
   });
 
   it("toggles aria-hidden and inert on the section panel when collapsed", async () => {
+    const user = userEvent.setup();
     render(
       <Sidebar.Provider>
         <Sidebar>
@@ -362,7 +374,7 @@ describe("SidebarSection collapsible", () => {
     expect(panel).not.toHaveAttribute("aria-hidden");
     expect(panel).not.toHaveAttribute("inert");
 
-    await userEvent.click(title);
+    await user.click(title);
 
     // Collapsed: panel stays in DOM (so the height/opacity transition can run)
     // but is removed from the a11y tree and the tab order.
@@ -371,6 +383,7 @@ describe("SidebarSection collapsible", () => {
   });
 
   it("keeps a collapsible section open when title click is prevented", async () => {
+    const user = userEvent.setup();
     const onClick = vi.fn((event: { preventDefault: () => void }) => event.preventDefault());
     render(
       <Sidebar.Provider>
@@ -386,7 +399,7 @@ describe("SidebarSection collapsible", () => {
     );
     const title = screen.getByRole("button", { name: "Files" });
 
-    await userEvent.click(title);
+    await user.click(title);
 
     expect(onClick).toHaveBeenCalled();
     expect(title).toHaveAttribute("aria-expanded", "true");

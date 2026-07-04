@@ -39,8 +39,6 @@ import type {
   ProviderModelsErrorCode,
 } from "../../shared/lib/http/error-codes.js";
 
-export { getSetupStatus };
-
 export const getProvidersStatus = (): ProvidersStatusResponse => {
   const providers = getStore().getProviders();
   const activeProvider = providers.find((provider) => provider.isActive)?.provider;

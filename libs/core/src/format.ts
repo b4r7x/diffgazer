@@ -1,5 +1,20 @@
 type TimerFormat = "short" | "long";
 
+const DATE_LABEL_MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
 export function formatTime(ms: number, format: TimerFormat = "short"): string {
   const totalSeconds = Math.floor(ms / 1000);
   const hours = Math.floor(totalSeconds / 3600);
@@ -26,6 +41,20 @@ export function getDateKey(dateStr: string): string {
   return dateStr.slice(0, 10);
 }
 
+function formatDateKeyLabel(dateKey: string, options?: { showYear?: boolean }): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!match) return "Invalid Date";
+
+  const [, year, monthText, dayText] = match;
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const monthLabel = DATE_LABEL_MONTHS[month - 1];
+  if (!monthLabel || day < 1 || day > 31) return "Invalid Date";
+
+  const label = `${monthLabel} ${day}`;
+  return options?.showYear ? `${label}, ${year}` : label;
+}
+
 export function getDateLabel(dateStr: string, options?: { showYear?: boolean }): string {
   const dateKey = getDateKey(dateStr);
   const now = new Date();
@@ -35,9 +64,7 @@ export function getDateLabel(dateStr: string, options?: { showYear?: boolean }):
   if (dateKey === today) return "Today";
   if (dateKey === yesterday) return "Yesterday";
 
-  const formatOptions: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
-  if (options?.showYear) formatOptions.year = "numeric";
-  return new Date(dateStr).toLocaleDateString("en-US", formatOptions);
+  return formatDateKeyLabel(dateKey, options);
 }
 
 export function getTimestamp(dateStr: string): string {

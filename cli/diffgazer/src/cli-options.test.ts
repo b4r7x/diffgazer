@@ -1,7 +1,12 @@
 import { describe, expect, test } from "vitest";
-import { resolveCliAction } from "./cli-options";
+import { HELP_TEXT, resolveCliAction } from "./cli-options";
 
 describe("resolveCliAction", () => {
+  test("help text describes the user-facing modes without internal surface labels", () => {
+    expect(HELP_TEXT).toContain("Review code changes with Diffgazer in your browser or terminal.");
+    expect(HELP_TEXT).not.toContain(["Product", "CLI"].join(" "));
+  });
+
   test("starts the web flow by default and opens the browser", () => {
     expect(resolveCliAction([])).toEqual({
       type: "web",

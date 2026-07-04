@@ -1,23 +1,8 @@
-import type { CodeBlockLineProps } from "@diffgazer/ui/components/code-block";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
-import { hooksData } from "@/generated/library-data";
+import { type HookData, type HookDataMap, hooksData } from "@/lib/generated-doc-data";
+import { hookFileName } from "@/lib/library";
 import { CopyButton } from "./copy-button";
 import { SourceViewer } from "./docs-mdx/source-viewer";
-
-interface HookData {
-  name: string;
-  title: string;
-  description: string;
-  source: {
-    raw: string;
-    highlighted: CodeBlockLineProps[];
-  };
-  files?: Array<{
-    path: string;
-    raw: string;
-    highlighted: CodeBlockLineProps[];
-  }>;
-}
 
 interface HookSourceProps {
   library: string;
@@ -25,7 +10,7 @@ interface HookSourceProps {
 }
 
 export function HookSource({ library, hook }: HookSourceProps) {
-  const data = (hooksData[library] ?? {}) as Record<string, HookData>;
+  const data: HookDataMap = hooksData[library] ?? {};
   const entry = data[hook];
 
   if (!entry) return null;
@@ -38,7 +23,7 @@ export function HookSource({ library, hook }: HookSourceProps) {
 }
 
 interface HookSourceAllProps {
-  data: Record<string, HookData>;
+  data: HookDataMap;
   sectionTitle: string;
   hint: React.ReactNode;
 }
@@ -60,11 +45,16 @@ function HookSourceAll({ data, sectionTitle, hint }: HookSourceAllProps) {
 }
 
 function HookSourceBlock({ hook }: { hook: HookData }) {
-  const fileName = hook.name.startsWith("use-") ? `${hook.name}.ts` : `use-${hook.name}.ts`;
   const files =
     hook.files && hook.files.length > 0
       ? hook.files
-      : [{ path: fileName, raw: hook.source.raw, highlighted: hook.source.highlighted }];
+      : [
+          {
+            path: hookFileName(hook.name),
+            raw: hook.source.raw,
+            highlighted: hook.source.highlighted,
+          },
+        ];
   const isSingleFile = files.length === 1;
 
   return (
@@ -93,6 +83,6 @@ interface LibraryHookSourceProps {
 }
 
 export function LibraryHookSource({ library, sectionTitle, hint }: LibraryHookSourceProps) {
-  const data = (hooksData[library] ?? {}) as Record<string, HookData>;
+  const data: HookDataMap = hooksData[library] ?? {};
   return <HookSourceAll data={data} sectionTitle={sectionTitle} hint={hint} />;
 }

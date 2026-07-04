@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
+import { listRepoFiles } from "./lib/files.mjs";
 import { readJson } from "./lib/json.mjs";
 
 // First-publish allowlist. `diffgazer` is already live on npm; the scoped
@@ -10,13 +11,9 @@ import { readJson } from "./lib/json.mjs";
 const FIRST_PUBLISH_ALLOWLIST = ["diffgazer"];
 
 function listPackageJsonFiles() {
-  const output = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], {
-    encoding: "utf8",
-  });
-  return output
-    .trim()
-    .split("\n")
-    .filter((path) => path.endsWith("package.json") && !path.includes("node_modules/"));
+  return listRepoFiles().filter(
+    (path) => path.endsWith("package.json") && !path.includes("node_modules/"),
+  );
 }
 
 export function isPublicPackage(parsed) {

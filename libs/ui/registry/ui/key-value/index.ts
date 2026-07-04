@@ -5,8 +5,8 @@ import type { KeyValueLayout, KeyValueVariant } from "./key-value-context";
 import {
   KeyValueItem,
   type KeyValueItemProps,
-  labelVariants as keyValueLabelVariants,
-  valueVariants as keyValueValueVariants,
+  keyValueLabelVariants,
+  keyValueValueVariants,
 } from "./key-value-item";
 
 /**

@@ -17,17 +17,17 @@ export const floatingPanelDoc: ComponentDoc = {
     {
       title: "CSS Custom Properties",
       content:
-        "Always writes `--ui-content-transform-origin` derived from the resolved side/align. When `matchTriggerWidth` is true, also writes `--ui-floating-trigger-width`. The `.ui-floating-panel` rule reads `--ui-floating-z` (default `var(--z-popover)`) for its z-index layer, so consumers can scope-override z without className overrides. Consumers can read or override these on the panel or an ancestor.",
+        "Always writes `--ui-content-transform-origin` derived from the resolved side/align plus `--floating-panel-available-height` and `--floating-panel-available-width` for capping overflow. When `matchTriggerWidth` is true, also writes `--ui-floating-trigger-width`. The `.ui-floating-panel` rule reads `--ui-floating-z` (default `var(--z-popover)`) for its z-index layer, so consumers can scope-override z without className overrides. Consumers can read or override these on the panel or an ancestor.",
     },
     {
       title: "Style Merging",
       content:
-        "Caller `style` merges before internal positioning styles. Structural keys (`position`, `top`, `left`, `visibility`, `--ui-content-transform-origin`, `--ui-floating-trigger-width`) cannot be overridden; everything else (background, min-width, border, transform, etc.) passes through.",
+        "Caller `style` merges before internal positioning styles. Structural keys (`position`, `top`, `left`, `visibility`, `--ui-content-transform-origin`, `--floating-panel-available-height`, `--floating-panel-available-width`, `--ui-floating-trigger-width`) cannot be overridden; everything else (background, min-width, border, transform, etc.) passes through.",
     },
     {
       title: "Accessibility",
       content:
-        "FloatingPanel renders a bare div. Consumers must supply a role (e.g. `dialog`, `menu`) and an accessible name (`aria-label` or `aria-labelledby`). Emits a one-time `console.warn` per panel element when neither `role` nor `aria-label`/`aria-labelledby` is supplied.",
+        "FloatingPanel renders a bare div. Consumers must supply a role (e.g. `dialog`, `menu`) and an accessible name (`aria-label` or `aria-labelledby`).",
     },
     {
       title: "Context",
@@ -76,6 +76,16 @@ export const floatingPanelDoc: ComponentDoc = {
     {
       name: "--ui-floating-trigger-width",
       description: "Trigger width in pixels when matchTriggerWidth is true.",
+    },
+    {
+      name: "--floating-panel-available-height",
+      description:
+        "Available height before viewport overflow. Use as max-height with overflow-y: auto.",
+    },
+    {
+      name: "--floating-panel-available-width",
+      description:
+        "Available width before viewport overflow. Use as max-width with overflow-x: auto.",
     },
     {
       name: "--ui-floating-z",

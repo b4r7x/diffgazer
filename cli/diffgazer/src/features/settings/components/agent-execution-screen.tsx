@@ -22,7 +22,7 @@ import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
-import { useSettingsZone } from "../hooks/use-settings-zone.js";
+import { useSettingsZone } from "../hooks/use-settings-zone";
 
 const LIST_SHORTCUTS: Shortcut[] = [
   BACK_SHORTCUT,

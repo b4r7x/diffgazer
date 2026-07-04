@@ -5,7 +5,7 @@ import { DocsPageBody, DocsPageHeader } from "@/components/page-layout";
 import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 import type { LegalPageLoaderData } from "@/features/legal/lib/load-legal-page";
 import { useMDXComponents } from "@/mdx-components";
-import { LegalPageLayout } from "./legal-page-layout";
+import { LegalPageLayout } from "./page-layout";
 
 export const legalClientLoader = browserCollections.legal.createClientLoader({
   component({ frontmatter, default: MDX }) {

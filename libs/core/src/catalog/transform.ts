@@ -1,3 +1,4 @@
+import { sanitizeTerminalText } from "../review/sanitize-terminal.js";
 import type { ModelInfo } from "../schemas/config/models.js";
 import type { AIProvider } from "../schemas/config/providers.js";
 import { formatContextTokens } from "./format.js";
@@ -106,9 +107,9 @@ function describeModel(model: ModelsDevModel): string {
 function toModelInfo(model: ModelsDevModel, overlay: ProviderOverlay): ModelInfo {
   const recommended = model.id === overlay.recommendedModelId;
   return {
-    id: model.id,
-    name: model.name ?? model.id,
-    description: describeModel(model),
+    id: sanitizeTerminalText(model.id),
+    name: sanitizeTerminalText(model.name ?? model.id),
+    description: sanitizeTerminalText(describeModel(model)),
     tier: isModelFreeToUse(model, overlay) ? "free" : "paid",
     ...(recommended ? { recommended: true } : {}),
   };

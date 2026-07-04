@@ -4,7 +4,6 @@ export const SIDEBAR_TREE_CONNECTOR = {
   last: "└─",
 } as const;
 
-/** Root nav element (standalone or within SidebarProvider). Owns variant + autoTone. */
 export const SIDEBAR_TREE_CARET = {
   expanded: "▼",
   collapsed: "▶",

@@ -8,14 +8,10 @@ export function computeSyncFingerprint(
   origin: string,
   syncSchemaVersion: number,
   artifacts: LoadedLibraryArtifacts[],
-  extraRootPages: string[] = [],
-  rootTitle?: string,
 ): string {
   const hash = createHash("sha256");
   hash.update(`origin:${origin}\n`);
   hash.update(`sync-schema:${syncSchemaVersion}\n`);
-  hash.update(`root-title:${rootTitle ?? ""}\n`);
-  hash.update(`extra-root-pages:${extraRootPages.join(",")}\n`);
 
   for (const artifact of artifacts) {
     hash.update(`${artifact.id}:manifest:${artifact.manifestPath}\n`);
@@ -56,7 +52,7 @@ function docsOutputsExist(
   paths: SyncOutputPaths,
   primaryLibraryId: string,
 ): boolean {
-  const required = [resolve(paths.contentDir, "meta.json")];
+  const required: string[] = [];
 
   for (const artifact of artifacts) {
     required.push(resolve(paths.contentDir, artifact.id, "meta.json"));

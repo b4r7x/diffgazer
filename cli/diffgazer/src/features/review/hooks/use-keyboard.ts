@@ -1,7 +1,7 @@
 import { useInput } from "ink";
 
 interface ReviewKeyboardOptions {
-  onIssueNav: (direction: "up" | "down") => void;
+  onIssueNav?: (direction: "up" | "down") => void;
   onZoneSwitch: () => void;
   onTabSwitch?: (tab: number) => void;
   onBack: () => void;
@@ -18,11 +18,11 @@ export function useReviewKeyboard({
   useInput(
     (input, key) => {
       if (input === "j") {
-        onIssueNav("down");
+        onIssueNav?.("down");
         return;
       }
       if (input === "k") {
-        onIssueNav("up");
+        onIssueNav?.("up");
         return;
       }
 

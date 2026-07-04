@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ProviderList } from "@/features/providers/components/list";
-import { PROVIDER_FILTERS, type ProviderFilter } from "../lib/filter.js";
+import { PROVIDER_FILTERS, type ProviderFilter } from "../lib/filter";
 import { useProvidersKeyboard } from "./use-keyboard";
 
 const mockNavigate = vi.fn();

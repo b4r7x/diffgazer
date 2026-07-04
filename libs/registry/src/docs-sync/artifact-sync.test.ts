@@ -211,15 +211,48 @@ describe("sync artifacts helper config parsing", () => {
       tempRoot,
       "libs/ui/dist/artifacts/artifact-manifest.json",
       JSON.stringify({
-        docs: { contentDir: "docs", generatedDir: "generated" },
-        registry: { publicDir: "registry", index: "registry/registry.json" },
+        schemaVersion: 1,
+        library: "ui",
+        package: "@diffgazer/ui",
+        version: "1.0.0",
+        artifactRoot: "dist/artifacts",
+        inputs: ["docs/content"],
+        docs: { contentDir: "docs", metaFile: "docs/meta.json", generatedDir: "generated" },
+        registry: {
+          namespace: "@diffgazer/ui",
+          basePath: "/r/ui",
+          publicDir: "registry",
+          index: "registry/registry.json",
+        },
         generated: { componentList: "generated/component-list.json" },
+        integrity: { algorithm: "sha256", fingerprintFile: "fingerprint.sha256" },
       }),
     );
     writeFile(tempRoot, "libs/ui/dist/artifacts/fingerprint.sha256", "abc\n");
     writeFile(tempRoot, "libs/ui/dist/artifacts/docs/meta.json");
     writeFile(tempRoot, "libs/ui/dist/artifacts/registry/registry.json");
-    writeFile(tempRoot, "libs/keys/dist/artifacts/artifact-manifest.json");
+    writeFile(
+      tempRoot,
+      "libs/keys/dist/artifacts/artifact-manifest.json",
+      JSON.stringify({
+        schemaVersion: 1,
+        library: "keys",
+        package: "@diffgazer/keys",
+        version: "1.0.0",
+        artifactRoot: "dist/artifacts",
+        inputs: ["docs/content"],
+        docs: { contentDir: "docs", metaFile: "docs/meta.json" },
+        registry: {
+          namespace: "@diffgazer/keys",
+          basePath: "/r/keys",
+          publicDir: "registry",
+          index: "registry/registry.json",
+        },
+        integrity: { algorithm: "sha256", fingerprintFile: "fingerprint.sha256" },
+      }),
+    );
+    writeFile(tempRoot, "libs/keys/dist/artifacts/docs/meta.json");
+    writeFile(tempRoot, "libs/keys/dist/artifacts/registry/registry.json");
 
     expect(collectMissingWorkspaceArtifactFiles(tempRoot, libraries)).toEqual([
       {
@@ -240,20 +273,41 @@ describe("sync artifacts helper config parsing", () => {
     ]);
   });
 
-  it("rejects escaped prepared workspace artifact paths", () => {
+  it("reports invalid prepared workspace artifact manifests as missing", () => {
     const tempRoot = makeTempDir();
     const libraries = [{ id: "ui", packageName: "@diffgazer/ui", workspaceDir: "libs/ui" }];
 
     writeFile(
       tempRoot,
       "libs/ui/dist/artifacts/artifact-manifest.json",
-      JSON.stringify({ docs: { contentDir: "../outside" }, registry: { publicDir: "registry" } }),
+      JSON.stringify({
+        schemaVersion: 1,
+        library: "ui",
+        package: "@diffgazer/ui",
+        version: "1.0.0",
+        artifactRoot: "dist/artifacts",
+        inputs: ["docs/content"],
+        docs: { contentDir: "../outside", metaFile: "docs/meta.json" },
+        registry: {
+          namespace: "@diffgazer/ui",
+          basePath: "/r/ui",
+          publicDir: "registry",
+          index: "registry/registry.json",
+        },
+        integrity: { algorithm: "sha256", fingerprintFile: "fingerprint.sha256" },
+      }),
     );
     writeFile(tempRoot, "libs/ui/dist/artifacts/fingerprint.sha256", "abc\n");
 
-    expect(() => collectMissingWorkspaceArtifactFiles(tempRoot, libraries)).toThrow(
-      /ui artifact path escapes/,
-    );
+    expect(collectMissingWorkspaceArtifactFiles(tempRoot, libraries)).toEqual([
+      {
+        id: "ui",
+        path: resolve(tempRoot, "libs/ui/dist/artifacts/artifact-manifest.json"),
+        relativePath: expect.stringContaining(
+          "libs/ui/dist/artifacts/artifact-manifest.json (invalid: docs.contentDir: Path must be relative",
+        ),
+      },
+    ]);
   });
 });
 

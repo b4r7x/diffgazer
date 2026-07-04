@@ -3,7 +3,7 @@
   "title": "useScrollLock",
   "description": "Prevent body or element scrolling with reference counting. Multiple locks on the same element stack.",
   "source": {
-    "raw": "\"use client\";\n\nimport { type RefObject, useEffect, useRef } from \"react\";\n\nconst lockCounts = new WeakMap<Element, number>();\nconst savedOverflow = new WeakMap<Element, string>();\nconst savedPaddingRight = new WeakMap<Element, string>();\n\n/** Options for preventing body or element scrolling. */\nexport interface UseScrollLockOptions {\n  /** Ref to the element to lock. Defaults to `document.body` when omitted. */\n  target?: RefObject<HTMLElement | null>;\n  /** Whether the scroll lock is active. */\n  enabled?: boolean;\n}\n\nfunction measureScrollbarWidth(el: HTMLElement): number {\n  const ownerDocument = el.ownerDocument;\n  const isViewport = el === ownerDocument.body || el === ownerDocument.scrollingElement;\n  if (isViewport) {\n    const view = ownerDocument.defaultView;\n    if (!view) return 0;\n    return view.innerWidth - ownerDocument.documentElement.clientWidth;\n  }\n  return el.offsetWidth - el.clientWidth;\n}\n\nfunction lockElement(el: HTMLElement): () => void {\n  const count = lockCounts.get(el) ?? 0;\n\n  if (count === 0) {\n    savedOverflow.set(el, el.style.overflow);\n    savedPaddingRight.set(el, el.style.paddingRight);\n\n    const scrollbarWidth = measureScrollbarWidth(el);\n    if (scrollbarWidth > 0) {\n      const view = el.ownerDocument.defaultView;\n      const currentPaddingRight = view\n        ? Number.parseFloat(view.getComputedStyle(el).paddingRight) || 0\n        : 0;\n      el.style.paddingRight = `${currentPaddingRight + scrollbarWidth}px`;\n    }\n\n    el.style.overflow = \"hidden\";\n    el.setAttribute(\"data-scroll-locked\", \"\");\n  }\n  lockCounts.set(el, count + 1);\n\n  return () => {\n    const current = lockCounts.get(el) ?? 1;\n    const next = current - 1;\n    if (next <= 0) {\n      lockCounts.delete(el);\n      el.style.overflow = savedOverflow.get(el) ?? \"\";\n      el.style.paddingRight = savedPaddingRight.get(el) ?? \"\";\n      el.removeAttribute(\"data-scroll-locked\");\n      savedOverflow.delete(el);\n      savedPaddingRight.delete(el);\n    } else {\n      lockCounts.set(el, next);\n    }\n  };\n}\n\n// Effect-on-every-render is intentional: React does not re-fire effects when\n// target.current mutates while the ref object stays stable.\n/**\n * Locks scrolling on the target element with shared reference counting and\n * scrollbar-width padding compensation.\n */\nexport function useScrollLock(options: UseScrollLockOptions = {}): void {\n  const { target, enabled = true } = options;\n  const lockedElementRef = useRef<HTMLElement | null>(null);\n  const releaseRef = useRef<(() => void) | null>(null);\n\n  // No dependency array on purpose; see hook-level comment above.\n  useEffect(() => {\n    const nextElement = enabled ? (target?.current ?? document.body) : null;\n    if (lockedElementRef.current === nextElement) return;\n\n    releaseRef.current?.();\n    releaseRef.current = null;\n    lockedElementRef.current = null;\n\n    if (!nextElement) return;\n\n    releaseRef.current = lockElement(nextElement);\n    lockedElementRef.current = nextElement;\n  });\n\n  useEffect(() => {\n    return () => {\n      releaseRef.current?.();\n      releaseRef.current = null;\n      lockedElementRef.current = null;\n    };\n  }, []);\n}\n",
+    "raw": "\"use client\";\n\nimport { type RefObject, useEffect, useRef } from \"react\";\n\nconst lockCounts = new WeakMap<Element, number>();\nconst savedOverflow = new WeakMap<Element, string>();\nconst savedPaddingRight = new WeakMap<Element, string>();\n\n/** Options for preventing body or element scrolling. */\nexport interface UseScrollLockOptions {\n  /** Ref to the element to lock. Defaults to `document.body` when omitted. */\n  target?: RefObject<HTMLElement | null>;\n  /** Whether the scroll lock is active. */\n  enabled?: boolean;\n}\n\nfunction measureScrollbarWidth(el: HTMLElement): number {\n  const ownerDocument = el.ownerDocument;\n  const isViewport = el === ownerDocument.body || el === ownerDocument.scrollingElement;\n  if (isViewport) {\n    const view = ownerDocument.defaultView;\n    if (!view) return 0;\n    return view.innerWidth - ownerDocument.documentElement.clientWidth;\n  }\n  const style = ownerDocument.defaultView?.getComputedStyle(el);\n  const borderLeft = style ? Number.parseFloat(style.borderLeftWidth) || 0 : 0;\n  const borderRight = style ? Number.parseFloat(style.borderRightWidth) || 0 : 0;\n  return Math.max(0, el.offsetWidth - el.clientWidth - borderLeft - borderRight);\n}\n\nfunction lockElement(el: HTMLElement): () => void {\n  const count = lockCounts.get(el) ?? 0;\n\n  if (count === 0) {\n    savedOverflow.set(el, el.style.overflow);\n    savedPaddingRight.set(el, el.style.paddingRight);\n\n    const scrollbarWidth = measureScrollbarWidth(el);\n    if (scrollbarWidth > 0) {\n      const view = el.ownerDocument.defaultView;\n      const currentPaddingRight = view\n        ? Number.parseFloat(view.getComputedStyle(el).paddingRight) || 0\n        : 0;\n      el.style.paddingRight = `${currentPaddingRight + scrollbarWidth}px`;\n    }\n\n    el.style.overflow = \"hidden\";\n    el.setAttribute(\"data-scroll-locked\", \"\");\n  }\n  lockCounts.set(el, count + 1);\n\n  return () => {\n    const current = lockCounts.get(el) ?? 1;\n    const next = current - 1;\n    if (next <= 0) {\n      lockCounts.delete(el);\n      el.style.overflow = savedOverflow.get(el) ?? \"\";\n      el.style.paddingRight = savedPaddingRight.get(el) ?? \"\";\n      el.removeAttribute(\"data-scroll-locked\");\n      savedOverflow.delete(el);\n      savedPaddingRight.delete(el);\n    } else {\n      lockCounts.set(el, next);\n    }\n  };\n}\n\n// Effect-on-every-render is intentional: React does not re-fire effects when\n// target.current mutates while the ref object stays stable.\n/**\n * Locks scrolling on the target element with shared reference counting and\n * scrollbar-width padding compensation.\n */\nexport function useScrollLock(options: UseScrollLockOptions = {}): void {\n  const { target, enabled = true } = options;\n  const lockedElementRef = useRef<HTMLElement | null>(null);\n  const releaseRef = useRef<(() => void) | null>(null);\n\n  // No dependency array on purpose; see hook-level comment above.\n  useEffect(() => {\n    let nextElement: HTMLElement | null = null;\n    if (enabled) {\n      nextElement = target ? target.current : document.body;\n    }\n    if (lockedElementRef.current === nextElement) return;\n\n    releaseRef.current?.();\n    releaseRef.current = null;\n    lockedElementRef.current = null;\n\n    if (!nextElement) return;\n\n    releaseRef.current = lockElement(nextElement);\n    lockedElementRef.current = nextElement;\n  });\n\n  useEffect(() => {\n    return () => {\n      releaseRef.current?.();\n      releaseRef.current = null;\n      lockedElementRef.current = null;\n    };\n  }, []);\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -897,8 +897,299 @@
             "color": "var(--code-variable)"
           },
           {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "style",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "ownerDocument",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "defaultView",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "getComputedStyle",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(el)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 26,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "borderLeft",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " style ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "?",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "Number",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "parseFloat",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "style",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "borderLeftWidth) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "||",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 27,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "borderRight",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " style ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "?",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "Number",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "parseFloat",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "style",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "borderRightWidth) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "||",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 28,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
             "text": "return",
             "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "Math",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "max",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
           },
           {
             "text": " ",
@@ -933,7 +1224,23 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "clientWidth",
+            "text": "clientWidth ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "-",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " borderLeft ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "-",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " borderRight)",
             "color": "var(--code-variable)"
           },
           {
@@ -943,7 +1250,7 @@
         ]
       },
       {
-        "number": 26,
+        "number": 29,
         "content": [
           {
             "text": "}",
@@ -952,11 +1259,11 @@
         ]
       },
       {
-        "number": 27,
+        "number": 30,
         "content": []
       },
       {
-        "number": 28,
+        "number": 31,
         "content": [
           {
             "text": "function",
@@ -1029,7 +1336,7 @@
         ]
       },
       {
-        "number": 29,
+        "number": 32,
         "content": [
           {
             "text": "  ",
@@ -1094,11 +1401,11 @@
         ]
       },
       {
-        "number": 30,
+        "number": 33,
         "content": []
       },
       {
-        "number": 31,
+        "number": 34,
         "content": [
           {
             "text": "  ",
@@ -1135,7 +1442,7 @@
         ]
       },
       {
-        "number": 32,
+        "number": 35,
         "content": [
           {
             "text": "    ",
@@ -1192,7 +1499,7 @@
         ]
       },
       {
-        "number": 33,
+        "number": 36,
         "content": [
           {
             "text": "    ",
@@ -1249,11 +1556,11 @@
         ]
       },
       {
-        "number": 34,
+        "number": 37,
         "content": []
       },
       {
-        "number": 35,
+        "number": 38,
         "content": [
           {
             "text": "    ",
@@ -1298,7 +1605,7 @@
         ]
       },
       {
-        "number": 36,
+        "number": 39,
         "content": [
           {
             "text": "    ",
@@ -1335,7 +1642,7 @@
         ]
       },
       {
-        "number": 37,
+        "number": 40,
         "content": [
           {
             "text": "      ",
@@ -1392,7 +1699,7 @@
         ]
       },
       {
-        "number": 38,
+        "number": 41,
         "content": [
           {
             "text": "      ",
@@ -1425,7 +1732,7 @@
         ]
       },
       {
-        "number": 39,
+        "number": 42,
         "content": [
           {
             "text": "        ",
@@ -1494,7 +1801,7 @@
         ]
       },
       {
-        "number": 40,
+        "number": 43,
         "content": [
           {
             "text": "        ",
@@ -1519,7 +1826,7 @@
         ]
       },
       {
-        "number": 41,
+        "number": 44,
         "content": [
           {
             "text": "      ",
@@ -1592,7 +1899,7 @@
         ]
       },
       {
-        "number": 42,
+        "number": 45,
         "content": [
           {
             "text": "    ",
@@ -1605,11 +1912,11 @@
         ]
       },
       {
-        "number": 43,
+        "number": 46,
         "content": []
       },
       {
-        "number": 44,
+        "number": 47,
         "content": [
           {
             "text": "    ",
@@ -1662,7 +1969,7 @@
         ]
       },
       {
-        "number": 45,
+        "number": 48,
         "content": [
           {
             "text": "    ",
@@ -1719,7 +2026,7 @@
         ]
       },
       {
-        "number": 46,
+        "number": 49,
         "content": [
           {
             "text": "  ",
@@ -1732,7 +2039,7 @@
         ]
       },
       {
-        "number": 47,
+        "number": 50,
         "content": [
           {
             "text": "  ",
@@ -1785,11 +2092,11 @@
         ]
       },
       {
-        "number": 48,
+        "number": 51,
         "content": []
       },
       {
-        "number": 49,
+        "number": 52,
         "content": [
           {
             "text": "  ",
@@ -1826,7 +2133,7 @@
         ]
       },
       {
-        "number": 50,
+        "number": 53,
         "content": [
           {
             "text": "    ",
@@ -1891,7 +2198,7 @@
         ]
       },
       {
-        "number": 51,
+        "number": 54,
         "content": [
           {
             "text": "    ",
@@ -1940,7 +2247,7 @@
         ]
       },
       {
-        "number": 52,
+        "number": 55,
         "content": [
           {
             "text": "    ",
@@ -1977,7 +2284,7 @@
         ]
       },
       {
-        "number": 53,
+        "number": 56,
         "content": [
           {
             "text": "      ",
@@ -2006,7 +2313,7 @@
         ]
       },
       {
-        "number": 54,
+        "number": 57,
         "content": [
           {
             "text": "      ",
@@ -2075,7 +2382,7 @@
         ]
       },
       {
-        "number": 55,
+        "number": 58,
         "content": [
           {
             "text": "      ",
@@ -2144,7 +2451,7 @@
         ]
       },
       {
-        "number": 56,
+        "number": 59,
         "content": [
           {
             "text": "      ",
@@ -2189,7 +2496,7 @@
         ]
       },
       {
-        "number": 57,
+        "number": 60,
         "content": [
           {
             "text": "      ",
@@ -2218,7 +2525,7 @@
         ]
       },
       {
-        "number": 58,
+        "number": 61,
         "content": [
           {
             "text": "      ",
@@ -2247,7 +2554,7 @@
         ]
       },
       {
-        "number": 59,
+        "number": 62,
         "content": [
           {
             "text": "    ",
@@ -2276,7 +2583,7 @@
         ]
       },
       {
-        "number": 60,
+        "number": 63,
         "content": [
           {
             "text": "      ",
@@ -2313,7 +2620,7 @@
         ]
       },
       {
-        "number": 61,
+        "number": 64,
         "content": [
           {
             "text": "    ",
@@ -2326,7 +2633,7 @@
         ]
       },
       {
-        "number": 62,
+        "number": 65,
         "content": [
           {
             "text": "  ",
@@ -2339,7 +2646,7 @@
         ]
       },
       {
-        "number": 63,
+        "number": 66,
         "content": [
           {
             "text": "}",
@@ -2348,11 +2655,11 @@
         ]
       },
       {
-        "number": 64,
+        "number": 67,
         "content": []
       },
       {
-        "number": 65,
+        "number": 68,
         "content": [
           {
             "text": "//",
@@ -2365,7 +2672,7 @@
         ]
       },
       {
-        "number": 66,
+        "number": 69,
         "content": [
           {
             "text": "//",
@@ -2378,7 +2685,7 @@
         ]
       },
       {
-        "number": 67,
+        "number": 70,
         "content": [
           {
             "text": "/**",
@@ -2387,7 +2694,7 @@
         ]
       },
       {
-        "number": 68,
+        "number": 71,
         "content": [
           {
             "text": " * Locks scrolling on the target element with shared reference counting and",
@@ -2396,7 +2703,7 @@
         ]
       },
       {
-        "number": 69,
+        "number": 72,
         "content": [
           {
             "text": " * scrollbar-width padding compensation.",
@@ -2405,7 +2712,7 @@
         ]
       },
       {
-        "number": 70,
+        "number": 73,
         "content": [
           {
             "text": " ",
@@ -2418,7 +2725,7 @@
         ]
       },
       {
-        "number": 71,
+        "number": 74,
         "content": [
           {
             "text": "export",
@@ -2495,7 +2802,7 @@
         ]
       },
       {
-        "number": 72,
+        "number": 75,
         "content": [
           {
             "text": "  ",
@@ -2576,7 +2883,7 @@
         ]
       },
       {
-        "number": 73,
+        "number": 76,
         "content": [
           {
             "text": "  ",
@@ -2657,7 +2964,7 @@
         ]
       },
       {
-        "number": 74,
+        "number": 77,
         "content": [
           {
             "text": "  ",
@@ -2758,11 +3065,11 @@
         ]
       },
       {
-        "number": 75,
+        "number": 78,
         "content": []
       },
       {
-        "number": 76,
+        "number": 79,
         "content": [
           {
             "text": "  //",
@@ -2775,7 +3082,7 @@
         ]
       },
       {
-        "number": 77,
+        "number": 80,
         "content": [
           {
             "text": "  ",
@@ -2812,22 +3119,46 @@
         ]
       },
       {
-        "number": 78,
+        "number": 81,
         "content": [
           {
             "text": "    ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "const",
+            "text": "let",
             "color": "var(--code-keyword)"
+          },
+          {
+            "text": " nextElement",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
           },
           {
             "text": " ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "nextElement",
+            "text": "HTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "|",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
             "color": "var(--code-number)"
           },
           {
@@ -2836,54 +3167,6 @@
           },
           {
             "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " enabled ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "?",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " (",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "target",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": "?.",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "??",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "document",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "body) ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
             "color": "var(--code-operator)"
           },
           {
@@ -2901,7 +3184,102 @@
         ]
       },
       {
-        "number": 79,
+        "number": 82,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (enabled) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 83,
+        "content": [
+          {
+            "text": "      nextElement ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " target ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "?",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "target",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "document",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "body",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 84,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 85,
         "content": [
           {
             "text": "    ",
@@ -2946,11 +3324,11 @@
         ]
       },
       {
-        "number": 80,
+        "number": 86,
         "content": []
       },
       {
-        "number": 81,
+        "number": 87,
         "content": [
           {
             "text": "    ",
@@ -2983,7 +3361,7 @@
         ]
       },
       {
-        "number": 82,
+        "number": 88,
         "content": [
           {
             "text": "    ",
@@ -3020,7 +3398,7 @@
         ]
       },
       {
-        "number": 83,
+        "number": 89,
         "content": [
           {
             "text": "    ",
@@ -3057,11 +3435,11 @@
         ]
       },
       {
-        "number": 84,
+        "number": 90,
         "content": []
       },
       {
-        "number": 85,
+        "number": 91,
         "content": [
           {
             "text": "    ",
@@ -3094,11 +3472,11 @@
         ]
       },
       {
-        "number": 86,
+        "number": 92,
         "content": []
       },
       {
-        "number": 87,
+        "number": 93,
         "content": [
           {
             "text": "    ",
@@ -3139,7 +3517,7 @@
         ]
       },
       {
-        "number": 88,
+        "number": 94,
         "content": [
           {
             "text": "    ",
@@ -3172,7 +3550,7 @@
         ]
       },
       {
-        "number": 89,
+        "number": 95,
         "content": [
           {
             "text": "  ",
@@ -3193,11 +3571,11 @@
         ]
       },
       {
-        "number": 90,
+        "number": 96,
         "content": []
       },
       {
-        "number": 91,
+        "number": 97,
         "content": [
           {
             "text": "  ",
@@ -3234,7 +3612,7 @@
         ]
       },
       {
-        "number": 92,
+        "number": 98,
         "content": [
           {
             "text": "    ",
@@ -3271,7 +3649,7 @@
         ]
       },
       {
-        "number": 93,
+        "number": 99,
         "content": [
           {
             "text": "      ",
@@ -3304,7 +3682,7 @@
         ]
       },
       {
-        "number": 94,
+        "number": 100,
         "content": [
           {
             "text": "      ",
@@ -3341,7 +3719,7 @@
         ]
       },
       {
-        "number": 95,
+        "number": 101,
         "content": [
           {
             "text": "      ",
@@ -3378,7 +3756,7 @@
         ]
       },
       {
-        "number": 96,
+        "number": 102,
         "content": [
           {
             "text": "    ",
@@ -3391,7 +3769,7 @@
         ]
       },
       {
-        "number": 97,
+        "number": 103,
         "content": [
           {
             "text": "  ",
@@ -3412,7 +3790,7 @@
         ]
       },
       {
-        "number": 98,
+        "number": 104,
         "content": [
           {
             "text": "}",
@@ -3421,7 +3799,7 @@
         ]
       },
       {
-        "number": 99,
+        "number": 105,
         "content": []
       }
     ]

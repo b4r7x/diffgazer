@@ -1,10 +1,8 @@
 {
-  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "focusable",
+  "type": "registry:hook",
   "title": "Focusable Utilities",
   "description": "DOM helpers for discovering focusable and tabbable elements",
-  "dependencies": [],
-  "registryDependencies": [],
   "files": [
     {
       "path": "src/dom/focusable.ts",
@@ -19,9 +17,10 @@
       "target": "src/hooks/utils/element-guards.ts"
     }
   ],
+  "dependencies": [],
+  "registryDependencies": [],
   "meta": {
     "client": true,
     "hidden": true
-  },
-  "type": "registry:hook"
+  }
 }

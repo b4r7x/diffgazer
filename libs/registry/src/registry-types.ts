@@ -29,7 +29,7 @@ export const RegistryFileSchema = z.object({
 });
 
 // NOTE: A near-identical installer schema exists in src/cli/registry.ts.
-// Intentionally duplicated because artifact manifests and installer bundles have different validation needs.
+// The two schemas validate different wire formats for artifact manifests and installer bundles.
 export const RegistryItemSchema = z.object({
   name: z.string(),
   type: z.string(),

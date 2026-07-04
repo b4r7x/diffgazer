@@ -10,8 +10,8 @@ import {
   resolveSrLabel,
 } from "./diff-view-line";
 
-/** Root <figure> with aria-roledescription="diff". */
-export function SplitView({
+/** Internal split-mode rows renderer. */
+export function DiffViewSplit({
   parsed,
   showLineNumbers,
   disableWordDiff,

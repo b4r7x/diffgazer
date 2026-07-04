@@ -5,10 +5,13 @@ import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { closestElement } from "../../testing/assertions";
-import { NavigationList } from "./index";
+import { NavigationList, type NavigationListProps } from "./index";
 import { useNavigationListContext } from "./navigation-list-context";
 
-function renderList(props: Record<string, unknown> = {}) {
+type NavigationListRenderProps = Partial<NavigationListProps> &
+  Partial<Record<`data-${string}`, string>>;
+
+function renderList(props: NavigationListRenderProps = {}) {
   return render(
     <NavigationList aria-label="Test nav" {...props}>
       <NavigationList.Item id="one">
@@ -26,6 +29,7 @@ function renderList(props: Record<string, unknown> = {}) {
 
 describe("NavigationList", () => {
   it("supports direct namespaced item parts with rich item UI", async () => {
+    const user = userEvent.setup();
     const onSelect = vi.fn();
     render(
       <NavigationList aria-label="Test nav" onSelect={onSelect}>
@@ -40,13 +44,14 @@ describe("NavigationList", () => {
       </NavigationList>,
     );
 
-    await userEvent.click(screen.getByRole("option", { name: /One/ }));
+    await user.click(screen.getByRole("option", { name: /One/ }));
 
     expect(onSelect).toHaveBeenCalledWith("one");
     expect(screen.getByText("new")).toBeInTheDocument();
   });
 
   it("keeps aria-activedescendant in sync for items rendered by a consumer wrapper", async () => {
+    const user = userEvent.setup();
     function WrappedItem({ id, label }: { id: string; label: string }) {
       return (
         <NavigationList.Item id={id}>
@@ -66,7 +71,7 @@ describe("NavigationList", () => {
     list.focus();
     // Without registration the static walk cannot see WrappedItem, so the second
     // item would never become the active descendant.
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(list).toHaveAttribute(
       "aria-activedescendant",
       screen.getByRole("option", { name: "Two" }).id,
@@ -74,6 +79,7 @@ describe("NavigationList", () => {
   });
 
   it("warns in development when an unregistered item id is activated", async () => {
+    const user = userEvent.setup();
     function GhostActivator() {
       const { activate } = useNavigationListContext();
       return (
@@ -93,7 +99,7 @@ describe("NavigationList", () => {
       </NavigationList>,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "activate ghost" }));
+    await user.click(screen.getByRole("button", { name: "activate ghost" }));
 
     expect(warn).toHaveBeenCalled();
     expect(warn.mock.calls[0]?.[0]).toContain("ghost");
@@ -102,16 +108,18 @@ describe("NavigationList", () => {
   });
 
   it("does not warn when a registered item is activated", async () => {
+    const user = userEvent.setup();
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     renderList();
 
-    await userEvent.click(screen.getByRole("option", { name: /One/ }));
+    await user.click(screen.getByRole("option", { name: /One/ }));
 
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
   });
 
   it("passes native root props and composes key handling with list navigation", async () => {
+    const user = userEvent.setup();
     const ref = createRef<HTMLDivElement>();
     const onClick = vi.fn();
     const onKeyDown = vi.fn();
@@ -128,8 +136,8 @@ describe("NavigationList", () => {
     });
 
     const list = screen.getByRole("listbox");
-    await userEvent.click(list);
-    await userEvent.keyboard("{ArrowDown}");
+    await user.click(list);
+    await user.keyboard("{ArrowDown}");
 
     expect(list).toHaveAttribute("id", "nav-root");
     expect(list).toHaveAttribute("data-state", "ready");
@@ -143,13 +151,15 @@ describe("NavigationList", () => {
   });
 
   it("fires onSelect when an item is clicked", async () => {
+    const user = userEvent.setup();
     const onSelect = vi.fn();
     renderList({ onSelect });
-    await userEvent.click(screen.getByText("One"));
+    await user.click(screen.getByText("One"));
     expect(onSelect).toHaveBeenCalledWith("one");
   });
 
   it("passes item root props and composes item click handlers", async () => {
+    const user = userEvent.setup();
     const onClick = vi.fn();
     render(
       <NavigationList aria-label="Test nav">
@@ -164,7 +174,7 @@ describe("NavigationList", () => {
       </NavigationList>,
     );
 
-    await userEvent.click(screen.getByRole("option", { name: "One" }));
+    await user.click(screen.getByRole("option", { name: "One" }));
 
     const item = screen.getByRole("option", { name: "One" });
     expect(onClick).toHaveBeenCalledOnce();
@@ -173,6 +183,7 @@ describe("NavigationList", () => {
   });
 
   it("lets item click handlers prevent selection", async () => {
+    const user = userEvent.setup();
     const onSelect = vi.fn();
     render(
       <NavigationList aria-label="Test nav" onSelect={onSelect}>
@@ -182,7 +193,7 @@ describe("NavigationList", () => {
       </NavigationList>,
     );
 
-    await userEvent.click(screen.getByRole("option", { name: "One" }));
+    await user.click(screen.getByRole("option", { name: "One" }));
 
     expect(onSelect).not.toHaveBeenCalled();
     expect(screen.getByRole("option", { name: "One" })).toHaveAttribute("aria-selected", "false");
@@ -206,6 +217,7 @@ describe("NavigationList", () => {
   });
 
   it("composes item mouse down handlers", async () => {
+    const user = userEvent.setup();
     const onMouseDown = vi.fn();
     render(
       <NavigationList aria-label="Test nav">
@@ -215,7 +227,7 @@ describe("NavigationList", () => {
       </NavigationList>,
     );
 
-    await userEvent.pointer({
+    await user.pointer({
       target: screen.getByRole("option", { name: "One" }),
       keys: "[MouseLeft]",
     });
@@ -224,9 +236,10 @@ describe("NavigationList", () => {
   });
 
   it("does not fire onSelect when a disabled item is clicked", async () => {
+    const user = userEvent.setup();
     const onSelect = vi.fn();
     renderList({ onSelect });
-    await userEvent.click(screen.getByText("Three"));
+    await user.click(screen.getByText("Three"));
     expect(onSelect).not.toHaveBeenCalled();
   });
 
@@ -256,13 +269,14 @@ describe("NavigationList", () => {
   });
 
   it("does not move keyboard highlight on mouse hover", async () => {
+    const user = userEvent.setup();
     renderList({ defaultHighlighted: "one" });
     const listbox = screen.getByRole("listbox");
     const oneOption = screen.getByRole("option", { name: "One" });
     const twoOption = screen.getByRole("option", { name: "Two" });
 
     expect(listbox).toHaveAttribute("aria-activedescendant", oneOption.id);
-    await userEvent.hover(twoOption);
+    await user.hover(twoOption);
     expect(listbox).toHaveAttribute("aria-activedescendant", oneOption.id);
   });
 
@@ -303,6 +317,7 @@ describe("NavigationList", () => {
   });
 
   it("fires onSelect in controlled mode without internal state change", async () => {
+    const user = userEvent.setup();
     const onSelect = vi.fn();
     const { rerender } = render(
       <NavigationList aria-label="Test nav" selectedId="one" onSelect={onSelect}>
@@ -314,7 +329,7 @@ describe("NavigationList", () => {
         </NavigationList.Item>
       </NavigationList>,
     );
-    await userEvent.click(screen.getByText("Two"));
+    await user.click(screen.getByText("Two"));
     expect(onSelect).toHaveBeenCalledWith("two");
     expect(screen.getByRole("option", { name: "One" })).toHaveAttribute("aria-selected", "true");
 
@@ -337,21 +352,23 @@ describe("NavigationList", () => {
   });
 
   it("moves highlight and activates the highlighted option from the listbox", async () => {
+    const user = userEvent.setup();
     const onSelect = vi.fn();
     const onEnter = vi.fn();
     renderList({ defaultHighlighted: "one", onSelect, onEnter });
     const listbox = screen.getByRole("listbox");
     listbox.focus();
 
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("-two"));
-    await userEvent.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
 
     expect(onSelect).toHaveBeenCalledWith("two");
     expect(onEnter).toHaveBeenCalledWith("two", expect.any(KeyboardEvent));
   });
 
   it("highlights a matching option with typeahead", async () => {
+    const user = userEvent.setup();
     const onHighlightChange = vi.fn();
     render(
       <NavigationList aria-label="Test nav" onHighlightChange={onHighlightChange}>
@@ -369,7 +386,7 @@ describe("NavigationList", () => {
 
     const listbox = screen.getByRole("listbox");
     listbox.focus();
-    await userEvent.keyboard("ch");
+    await user.keyboard("ch");
 
     const charlieOption = screen.getByRole("option", { name: "Charlie" });
     expect(listbox).toHaveAttribute("aria-activedescendant", charlieOption.id);
@@ -377,6 +394,7 @@ describe("NavigationList", () => {
   });
 
   it("skips disabled options and reports non-wrapping boundaries", async () => {
+    const user = userEvent.setup();
     const onNavigationBoundaryReached = vi.fn();
     render(
       <NavigationList
@@ -403,11 +421,11 @@ describe("NavigationList", () => {
     const threeOption = screen.getByRole("option", { name: "Three" });
 
     listbox.focus();
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(listbox).toHaveAttribute("aria-activedescendant", threeOption.id);
     expect(listbox).not.toHaveAttribute("aria-activedescendant", twoOption.id);
 
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(onNavigationBoundaryReached).toHaveBeenLastCalledWith(
       "next",
       expect.any(KeyboardEvent),
@@ -415,10 +433,10 @@ describe("NavigationList", () => {
     );
     expect(listbox).toHaveAttribute("aria-activedescendant", threeOption.id);
 
-    await userEvent.keyboard("{ArrowUp}");
+    await user.keyboard("{ArrowUp}");
     expect(listbox).toHaveAttribute("aria-activedescendant", oneOption.id);
 
-    await userEvent.keyboard("{ArrowUp}");
+    await user.keyboard("{ArrowUp}");
     expect(onNavigationBoundaryReached).toHaveBeenLastCalledWith(
       "previous",
       expect.any(KeyboardEvent),
@@ -716,8 +734,6 @@ describe("NavigationList.Progress", () => {
 });
 
 describe("NavigationList keyboard navigation", () => {
-  const ITEM_IDS = ["one", "two", "three"];
-
   testNavigationBehavior({
     setup: () => {
       const rendered = render(
@@ -750,17 +766,6 @@ describe("NavigationList keyboard navigation", () => {
       { key: "{End}", expectedActiveIndex: 2, label: "End jumps to last" },
       { key: "{Home}", expectedActiveIndex: 0, label: "Home stays at first" },
     ],
-    // Use data-value (the stable item id) as the lookup key — the title prepends a decorative
-    // indicator glyph that the default accessibleName resolver would concatenate with the label.
-    getActiveIndex: (rendered) => {
-      // querySelector retained: the lookup key IS the aria-activedescendant attribute presence (the test verifies ARIA wiring directly, not any listbox role match)
-      const listbox = rendered.container.querySelector("[aria-activedescendant]");
-      const activeId = listbox?.getAttribute("aria-activedescendant");
-      if (!activeId) return -1;
-      const target = (listbox?.ownerDocument ?? document).getElementById(activeId);
-      const value = target?.getAttribute("data-value") ?? "";
-      return ITEM_IDS.indexOf(value);
-    },
   });
 });
 
@@ -809,6 +814,7 @@ describe("NavigationListGroup", () => {
   });
 
   it("click on header toggles expanded/collapsed", async () => {
+    const user = userEvent.setup();
     render(
       <NavigationList aria-label="Test nav">
         <NavigationList.Group label="Section">
@@ -822,10 +828,10 @@ describe("NavigationListGroup", () => {
     const header = screen.getByRole("option", { name: /Section/i });
     expect(screen.getByRole("option", { name: "One" })).toBeInTheDocument();
 
-    await userEvent.click(header);
+    await user.click(header);
     expect(screen.queryByRole("option", { name: "One" })).not.toBeInTheDocument();
 
-    await userEvent.click(header);
+    await user.click(header);
     expect(screen.getByRole("option", { name: "One" })).toBeInTheDocument();
   });
 
@@ -870,6 +876,7 @@ describe("NavigationListGroup", () => {
   });
 
   it("keyboard navigation skips items in a collapsed uncontrolled group", async () => {
+    const user = userEvent.setup();
     render(
       <NavigationList aria-label="Test nav" defaultHighlighted="before">
         <NavigationList.Item id="before">
@@ -890,15 +897,16 @@ describe("NavigationListGroup", () => {
     listbox.focus();
 
     // Collapse the group by clicking the header
-    await userEvent.click(screen.getByRole("option", { name: /Collapsible/i }));
+    await user.click(screen.getByRole("option", { name: /Collapsible/i }));
     expect(screen.queryByRole("option", { name: "Inside" })).not.toBeInTheDocument();
 
     // Arrow down from "before" should skip the collapsed "inside" and land on "after"
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("-after"));
   });
 
   it("keyboard navigation moves through section headers between items", async () => {
+    const user = userEvent.setup();
     render(
       <NavigationList aria-label="Test nav" defaultHighlighted="one">
         <NavigationList.Group label="Section A">
@@ -917,10 +925,10 @@ describe("NavigationListGroup", () => {
     const listbox = screen.getByRole("listbox");
     listbox.focus();
 
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(listbox.getAttribute("aria-activedescendant")).toContain("__section_Section");
 
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("-two"));
   });
 
@@ -947,6 +955,7 @@ describe("NavigationListGroup", () => {
   });
 
   it("tree group header exposes its expansion state in the accessible name and flips on toggle", async () => {
+    const user = userEvent.setup();
     render(
       <NavigationList aria-label="Test nav">
         <NavigationList.Group label="src" variant="tree" headerId="src-group" defaultExpanded>
@@ -960,7 +969,7 @@ describe("NavigationListGroup", () => {
     // Expanded headers offer to collapse; collapsed ones offer to expand.
     expect(screen.getByRole("option", { name: "src, collapse section" })).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("option", { name: "src, collapse section" }));
+    await user.click(screen.getByRole("option", { name: "src, collapse section" }));
     expect(screen.getByRole("option", { name: "src, expand section" })).toBeInTheDocument();
   });
 
@@ -984,6 +993,7 @@ describe("NavigationListGroup", () => {
   });
 
   it("controlled expanded prop works", async () => {
+    const user = userEvent.setup();
     const onExpandedChange = vi.fn();
     const { rerender } = render(
       <NavigationList aria-label="Test nav">
@@ -997,7 +1007,7 @@ describe("NavigationListGroup", () => {
 
     expect(screen.getByRole("option", { name: "One" })).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("option", { name: /Section/i }));
+    await user.click(screen.getByRole("option", { name: /Section/i }));
     expect(onExpandedChange).toHaveBeenCalledWith(false);
     expect(screen.getByRole("option", { name: "One" })).toBeInTheDocument();
 
@@ -1043,6 +1053,7 @@ describe("NavigationListGroup", () => {
   });
 
   it("ArrowRight expands a collapsed tree group header", async () => {
+    const user = userEvent.setup();
     render(
       <NavigationList aria-label="Test nav">
         <NavigationList.Group
@@ -1063,14 +1074,15 @@ describe("NavigationListGroup", () => {
 
     expect(screen.queryByText("Button.tsx")).not.toBeInTheDocument();
 
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("src-group"));
 
-    await userEvent.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
     expect(screen.getByText("Button.tsx")).toBeInTheDocument();
   });
 
   it("ArrowLeft collapses an expanded tree group header", async () => {
+    const user = userEvent.setup();
     render(
       <NavigationList aria-label="Test nav">
         <NavigationList.Group
@@ -1091,14 +1103,15 @@ describe("NavigationListGroup", () => {
 
     expect(screen.getByText("Button.tsx")).toBeInTheDocument();
 
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("src-group"));
 
-    await userEvent.keyboard("{ArrowLeft}");
+    await user.keyboard("{ArrowLeft}");
     expect(screen.queryByText("Button.tsx")).not.toBeInTheDocument();
   });
 
   it("ArrowLeft on a non-group item does nothing special", async () => {
+    const user = userEvent.setup();
     render(
       <NavigationList aria-label="Test nav" defaultHighlighted="one">
         <NavigationList.Group label="src" variant="tree" headerId="src-group">
@@ -1114,12 +1127,13 @@ describe("NavigationListGroup", () => {
 
     expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("-one"));
 
-    await userEvent.keyboard("{ArrowLeft}");
+    await user.keyboard("{ArrowLeft}");
     expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("-one"));
     expect(screen.getByText("Button.tsx")).toBeInTheDocument();
   });
 
   it("Enter toggles tree group header expansion", async () => {
+    const user = userEvent.setup();
     render(
       <NavigationList aria-label="Test nav">
         <NavigationList.Group
@@ -1138,14 +1152,15 @@ describe("NavigationListGroup", () => {
     const listbox = screen.getByRole("listbox");
     listbox.focus();
 
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("src-group"));
 
-    await userEvent.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
     expect(screen.queryByText("Button.tsx")).not.toBeInTheDocument();
   });
 
   it("tree group header does not fire onSelect", async () => {
+    const user = userEvent.setup();
     const onSelect = vi.fn();
     render(
       <NavigationList aria-label="Test nav" onSelect={onSelect}>
@@ -1160,13 +1175,14 @@ describe("NavigationListGroup", () => {
     const listbox = screen.getByRole("listbox");
     listbox.focus();
 
-    await userEvent.keyboard("{ArrowDown}");
-    await userEvent.keyboard("{Enter}");
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("{Enter}");
 
     expect(onSelect).not.toHaveBeenCalled();
   });
 
   it("tree group header is navigable with ArrowDown/ArrowUp", async () => {
+    const user = userEvent.setup();
     render(
       <NavigationList aria-label="Test nav">
         <NavigationList.Item id="before">
@@ -1183,13 +1199,13 @@ describe("NavigationListGroup", () => {
     const listbox = screen.getByRole("listbox");
     listbox.focus();
 
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("-before"));
 
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("src-group"));
 
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("-one"));
   });
 });
@@ -1245,6 +1261,7 @@ describe("NavigationList indicator variants", () => {
   });
 
   it("does not affect keyboard navigation when indicator changes", async () => {
+    const user = userEvent.setup();
     const onSelect = vi.fn();
     render(
       <NavigationList
@@ -1264,8 +1281,8 @@ describe("NavigationList indicator variants", () => {
 
     const listbox = screen.getByRole("listbox");
     listbox.focus();
-    await userEvent.keyboard("{ArrowDown}");
-    await userEvent.keyboard("{Enter}");
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("{Enter}");
 
     expect(onSelect).toHaveBeenCalledWith("two");
   });

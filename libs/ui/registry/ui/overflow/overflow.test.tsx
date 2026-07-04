@@ -1,4 +1,5 @@
 import { act, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Overflow } from "./index";
@@ -56,7 +57,8 @@ describe("OverflowText", () => {
     expect(screen.getByText("Short")).toBeInTheDocument();
   });
 
-  it("exposes tooltip trigger semantics only after text overflows", () => {
+  it("keeps overflowing text tooltip semantics passive and keyboard-reachable", async () => {
+    const user = userEvent.setup();
     render(<OverflowText tooltip>Long label</OverflowText>);
 
     const text = screen.getByText("Long label");
@@ -69,7 +71,13 @@ describe("OverflowText", () => {
 
     act(flushObservers);
 
-    expect(screen.getByRole("button")).toHaveTextContent("Long label");
+    const trigger = screen.getByText("Long label");
+    expect(screen.queryByRole("button", { name: "Long label" })).not.toBeInTheDocument();
+    expect(trigger).toHaveAttribute("tabindex", "0");
+
+    await user.tab();
+    expect(trigger).toHaveFocus();
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Long label");
   });
 });
 

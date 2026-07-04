@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Children,
   isValidElement,
   type KeyboardEvent,
   type ReactNode,
@@ -22,12 +21,16 @@ import { SearchableContent, type SearchableListboxProps } from "./searchable-con
 import type { SelectOptionMetadata } from "./select-context";
 import { useSelectContext } from "./select-context";
 import { SelectSearch } from "./select-search";
-import { isActiveOptionVisible, toOptionId } from "./selection";
+import { containsSelectSearchElement, isActiveOptionVisible, toOptionId } from "./selection";
 import { useSelectTypeahead } from "./use-typeahead";
 import { getVisibleEnabledOptions } from "./visible-options";
 
 function containsRefElement(ref: RefObject<HTMLElement | null>, target: Node | null): boolean {
   return target !== null && (ref.current?.contains(target) ?? false);
+}
+
+function isComposingKeyEvent(event: { isComposing?: boolean; keyCode?: number }): boolean {
+  return event.isComposing === true || event.keyCode === 229;
 }
 
 /** Props for select content. */
@@ -92,7 +95,7 @@ export function SelectContent({
   } = useSelectContext("SelectContent");
   const containerRef = useRef<HTMLDivElement>(null);
   const isDropdown = variant !== "card";
-  const hasSearch = containsSelectSearchElement(children);
+  const hasSearch = containsSelectSearchElement(children, isSelectSearchElement);
   const searchComposedRef = useComposedRefs(selectContentRef, ref);
   const fullComposedRef = useComposedRefs(containerRef, selectContentRef, ref);
   const composedRef = hasSearch ? searchComposedRef : fullComposedRef;
@@ -153,6 +156,7 @@ export function SelectContent({
   }
 
   function handleSearchInputNavigation(e: KeyboardEvent): void {
+    if (isComposingKeyEvent(e)) return;
     if (!SEARCH_INPUT_NAV_KEYS.has(e.key)) return;
 
     if (e.key === "Enter") {
@@ -168,7 +172,10 @@ export function SelectContent({
   }
 
   const initHighlight = () => {
-    if (highlighted !== null) return;
+    if (highlighted !== null) {
+      scrollOptionIntoView(highlighted);
+      return;
+    }
     let selectedValues: string[] = [];
     if (Array.isArray(value)) {
       selectedValues = value;
@@ -177,12 +184,12 @@ export function SelectContent({
     }
     const firstSelected = selectedValues[0];
     if (firstSelected !== undefined && !options.get(firstSelected)?.disabled) {
-      setHighlighted(firstSelected);
+      setHighlightedAndScroll(firstSelected);
       return;
     }
     for (const [itemValue, option] of options) {
       if (!option.disabled) {
-        setHighlighted(itemValue);
+        setHighlightedAndScroll(itemValue);
         return;
       }
     }
@@ -204,13 +211,14 @@ export function SelectContent({
   }, [open]);
 
   useLayoutEffect(() => {
-    if (!open) return;
+    if (!open || !isDropdown) return;
 
     const ownerDocument = containerRef.current?.ownerDocument ?? triggerRef.current?.ownerDocument;
     if (!ownerDocument) return;
 
     const handleDocumentKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      if (isComposingKeyEvent(event)) return;
 
       const NodeCtor = ownerDocument.defaultView?.Node;
       const targetNode = NodeCtor && event.target instanceof NodeCtor ? event.target : null;
@@ -224,13 +232,23 @@ export function SelectContent({
 
     ownerDocument.addEventListener("keydown", handleDocumentKeyDown);
     return () => ownerDocument.removeEventListener("keydown", handleDocumentKeyDown);
-  }, [open, onOpenChange, selectContentRef, triggerRef]);
+  }, [isDropdown, open, onOpenChange, selectContentRef, triggerRef]);
+
+  useLayoutEffect(() => {
+    if (hasSearch || !searchInputRef.current || process.env.NODE_ENV === "production") {
+      return;
+    }
+    console.warn(
+      "Select: Select.Search rendered through a component wrapper cannot be hoisted out of the listbox. Render Select.Search directly, in a Fragment, or in a DOM wrapper.",
+    );
+  }, [hasSearch, searchInputRef]);
 
   const handleKeyDown = (e: KeyboardEvent) => {
     onKeyDown?.(e);
     if (e.defaultPrevented) return;
 
     if (e.key === "Escape") {
+      if (!isDropdown) return;
       e.preventDefault();
       onOpenChange(false);
       triggerRef.current?.focus();
@@ -238,6 +256,7 @@ export function SelectContent({
     }
 
     if (e.key === "Tab") {
+      if (!isDropdown) return;
       if (highlighted !== null && !multiple) selectItem(highlighted);
       onOpenChange(false);
       // Restore focus to the trigger synchronously (mirroring the Escape branch)
@@ -338,14 +357,6 @@ export function SelectContent({
       )}
     </FloatingPanel>
   );
-}
-
-function containsSelectSearchElement(children: ReactNode): boolean {
-  return Children.toArray(children).some((child) => {
-    if (isSelectSearchElement(child)) return true;
-    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
-    return containsSelectSearchElement(child.props.children);
-  });
 }
 
 function isSelectSearchElement(child: ReactNode): boolean {

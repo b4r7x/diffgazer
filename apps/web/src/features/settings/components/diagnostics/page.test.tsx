@@ -3,7 +3,7 @@ import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
@@ -16,7 +16,7 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-import { DiagnosticsPage } from "./page";
+import { SettingsDiagnosticsPage } from "./page";
 
 function makeInitResponse(): Awaited<ReturnType<BoundApi["loadInit"]>> {
   return {
@@ -45,10 +45,26 @@ function makeInitResponse(): Awaited<ReturnType<BoundApi["loadInit"]>> {
 }
 
 function makeContextResponse(): Awaited<ReturnType<BoundApi["getReviewContext"]>> {
+  const generatedAt = "2026-02-09T12:00:00.000Z";
+
   return {
-    meta: { generatedAt: "2026-02-09T12:00:00.000Z" },
-    context: "stub-context",
-  } as unknown as Awaited<ReturnType<BoundApi["getReviewContext"]>>;
+    text: "stub-context",
+    markdown: "stub-context",
+    graph: {
+      generatedAt,
+      root: "/tmp/repo",
+      packages: [],
+      edges: [],
+      fileTree: [],
+      changedFiles: [],
+    },
+    meta: {
+      generatedAt,
+      root: "/tmp/repo",
+      statusHash: "status-hash",
+      charCount: 12,
+    },
+  };
 }
 
 let mockRequest: Mock<BoundApi["request"]>;
@@ -89,7 +105,7 @@ function renderPage() {
     );
   }
 
-  return render(<DiagnosticsPage />, { wrapper: Wrapper });
+  return render(<SettingsDiagnosticsPage />, { wrapper: Wrapper });
 }
 
 async function waitForReady() {
@@ -98,12 +114,17 @@ async function waitForReady() {
   });
 }
 
-describe("DiagnosticsPage keyboard footer navigation", () => {
+async function waitForDiagnosticsActions() {
+  await waitForReady();
+  await waitFor(() => {
+    expect(screen.getByRole("button", { name: "Refresh Diagnostics" })).toHaveFocus();
+  });
+}
+
+describe("SettingsDiagnosticsPage keyboard footer navigation", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
-    mockRequest = vi
-      .fn<BoundApi["request"]>()
-      .mockResolvedValue({ ok: true } as unknown as Response);
+    mockRequest = vi.fn<BoundApi["request"]>().mockResolvedValue(new Response(null));
     mockLoadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse());
     mockGetProviderStatus = vi
       .fn<BoundApi["getProviderStatus"]>()
@@ -116,20 +137,23 @@ describe("DiagnosticsPage keyboard footer navigation", () => {
       .mockResolvedValue(makeContextResponse());
   });
 
-  it("activates diagnostics actions selected with left/right arrows", async () => {
+  it("activates diagnostics actions from the visible action row", async () => {
     const user = userEvent.setup();
     renderPage();
-    await waitForReady();
+    await waitForDiagnosticsActions();
 
     const initialHealthCalls = mockRequest.mock.calls.length;
     const initialContextCalls = mockGetReviewContext.mock.calls.length;
+    const refreshButton = screen.getByRole("button", { name: "Refresh Diagnostics" });
+    const regenerateButton = screen.getByRole("button", { name: "Regenerate Context" });
 
-    await user.keyboard("{ArrowRight}{Enter}");
+    await user.click(regenerateButton);
+
     await waitFor(() => {
       expect(mockRefreshReviewContext).toHaveBeenCalledWith({ force: true });
     });
 
-    await user.keyboard("{ArrowLeft}{Enter}");
+    await user.click(refreshButton);
 
     await waitFor(() => {
       expect(mockRequest.mock.calls.length).toBeGreaterThan(initialHealthCalls);
@@ -140,7 +164,7 @@ describe("DiagnosticsPage keyboard footer navigation", () => {
   it("keeps diagnostics actions active after ArrowUp because there is no content zone", async () => {
     const user = userEvent.setup();
     renderPage();
-    await waitForReady();
+    await waitForDiagnosticsActions();
 
     const initialHealthCalls = mockRequest.mock.calls.length;
     const initialContextCalls = mockGetReviewContext.mock.calls.length;
@@ -197,13 +221,26 @@ describe("DiagnosticsPage keyboard footer navigation", () => {
     expect(mockRequest.mock.calls.length).toBe(initialHealthCalls + 1);
     expect(mockGetReviewContext.mock.calls.length).toBe(initialContextCalls + 1);
 
-    resolveHealth?.({ ok: true } as unknown as Response);
+    resolveHealth?.(new Response(null));
     resolveContext?.(makeContextResponse());
 
     await waitFor(() => {
       expect(diagnosticsPanel).toHaveAttribute("aria-busy", "false");
       expect(screen.getByRole("button", { name: "Refresh Diagnostics" })).toBeEnabled();
     });
+  });
+
+  it("shows diagnostics presentation labels instead of raw state values", async () => {
+    renderPage();
+    await waitForReady();
+
+    const diagnosticsPanel = screen.getByRole("region", { name: /system diagnostics/i });
+
+    await waitFor(() => {
+      expect(within(diagnosticsPanel).getAllByText("Ready").length).toBeGreaterThan(0);
+    });
+    expect(within(diagnosticsPanel).queryByText("[ready]")).not.toBeInTheDocument();
+    expect(within(diagnosticsPanel).queryByText("success")).not.toBeInTheDocument();
   });
 
   it("shows refresh-all failures in the diagnostics page", async () => {

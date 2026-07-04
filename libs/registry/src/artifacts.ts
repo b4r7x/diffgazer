@@ -142,50 +142,31 @@ export function buildRegistryArtifacts(
 export interface CopyArtifactsToPackageOptions {
   sourceRoot: string;
   packageRoot: string;
-  artifactDir?: string;
-  packageArtifactDir?: string;
   label: string;
   rebuildHint?: string;
-  validateManifest?: boolean;
-  cleanStrategy?: "parent-dist" | "artifact-dir";
 }
 
 export function copyArtifactsToPackage(options: CopyArtifactsToPackageOptions): void {
-  const {
-    sourceRoot,
-    packageRoot,
-    artifactDir = DEFAULT_ARTIFACT_ROOT,
-    packageArtifactDir = PACKAGE_ARTIFACT_ROOT,
-    label,
-    rebuildHint,
-    validateManifest: shouldValidateManifest = true,
-    cleanStrategy = "parent-dist",
-  } = options;
+  const { sourceRoot, packageRoot, label, rebuildHint } = options;
 
-  const source = resolve(sourceRoot, artifactDir);
-  const target = resolve(packageRoot, packageArtifactDir);
+  const source = resolve(sourceRoot, DEFAULT_ARTIFACT_ROOT);
+  const target = resolve(packageRoot, PACKAGE_ARTIFACT_ROOT);
 
   if (!existsSync(source)) {
     const hint = rebuildHint ? `\nRun: ${rebuildHint}` : "";
     throw new Error(`${label} artifacts not found at ${source}.${hint}`);
   }
 
-  if (shouldValidateManifest) {
-    ensureExists(resolve(source, ARTIFACT_MANIFEST_FILENAME), `${label} artifact manifest`);
-    ensureExists(resolve(source, ARTIFACT_FINGERPRINT_FILENAME), `${label} artifact fingerprint`);
-  }
+  ensureExists(resolve(source, ARTIFACT_MANIFEST_FILENAME), `${label} artifact manifest`);
+  ensureExists(resolve(source, ARTIFACT_FINGERPRINT_FILENAME), `${label} artifact fingerprint`);
 
-  if (cleanStrategy === "parent-dist") {
-    const parentDist = resolve(packageRoot, "dist");
-    rmSync(parentDist, { recursive: true, force: true });
-    mkdirSync(parentDist, { recursive: true });
-  } else {
-    rmSync(target, { recursive: true, force: true });
-  }
+  const parentDist = resolve(packageRoot, "dist");
+  rmSync(parentDist, { recursive: true, force: true });
+  mkdirSync(parentDist, { recursive: true });
   rmSync(target, { recursive: true, force: true });
 
   cpSync(source, target, { recursive: true, force: true });
-  rewritePackageArtifactManifest(target, packageArtifactDir);
+  rewritePackageArtifactManifest(target, PACKAGE_ARTIFACT_ROOT);
 
   log.info(`[${label}] copied artifacts from ${source}`);
 }

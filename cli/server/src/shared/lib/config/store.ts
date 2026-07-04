@@ -1,4 +1,4 @@
-import { getErrorMessage } from "@diffgazer/core/errors";
+import { createError, getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type {
   AIProvider,
@@ -45,12 +45,7 @@ import {
 import { persistError, resolveSecretEntry, toSecretEntry } from "./secrets-store.js";
 import { createMutex, runConfigTransaction } from "./transaction.js";
 import { createTrustStore, type TrustStore } from "./trust-store.js";
-import type {
-  ConfigState,
-  SecretsState,
-  SecretsStorageError,
-  SecretsStorageErrorCode,
-} from "./types.js";
+import type { ConfigState, SecretsState, SecretsStorageError } from "./types.js";
 
 /**
  * Re-keys persisted review history from one project path to another when a
@@ -472,10 +467,12 @@ export function createConfigStore(): ConfigStore {
       refreshConfigState();
       refreshSecretsState();
       if (!isStorageConfigured(configState)) {
-        return err({
-          code: "STORAGE_NOT_CONFIGURED" as SecretsStorageErrorCode,
-          message: "Secrets storage backend must be configured before saving credentials",
-        });
+        return err(
+          createError(
+            "STORAGE_NOT_CONFIGURED",
+            "Secrets storage backend must be configured before saving credentials",
+          ),
+        );
       }
 
       const { provider, apiKey, model } = input;
@@ -576,10 +573,12 @@ export function createConfigStore(): ConfigStore {
       refreshConfigState();
       refreshSecretsState();
       if (!isStorageConfigured(configState)) {
-        return err({
-          code: "STORAGE_NOT_CONFIGURED" as SecretsStorageErrorCode,
-          message: "Secrets storage backend must be configured before deleting credentials",
-        });
+        return err(
+          createError(
+            "STORAGE_NOT_CONFIGURED",
+            "Secrets storage backend must be configured before deleting credentials",
+          ),
+        );
       }
 
       const providerExists = configState.providers.some((item) => item.provider === providerId);

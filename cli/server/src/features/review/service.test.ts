@@ -261,6 +261,15 @@ describe("createReviewSession", () => {
     if (!result.ok) return;
     trackSessionWithRunner(result.value.reviewId);
     expect(result.value.reviewId).not.toBe("existing-config");
+    expect(existing.isComplete).toBe(true);
+    const terminal = existing.events.find((event) => event.type === "error");
+    expect(terminal).toBeDefined();
+    if (terminal?.type === "error") {
+      expect(terminal.error.message).toContain("superseded by a review");
+      expect(terminal.error.message).not.toBe(
+        "Review session cancelled because repository state changed.",
+      );
+    }
   });
 
   it("returns the existing session when a matching ready session exists", async () => {

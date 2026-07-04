@@ -12,7 +12,7 @@ import { type ReactElement, useState } from "react";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions";
 import { useTheme } from "../../../theme/provider";
 import { useReviewKeyboard } from "../hooks/use-keyboard";
-import { IssueDetailsPane } from "./issue-details-pane";
+import { IssueDetailsPane, type IssueDetailsSubZone } from "./issue-details-pane";
 import { IssueListPane, type IssueListSubZone } from "./issue-list-pane";
 
 export interface ReviewResultsViewProps {
@@ -26,7 +26,6 @@ type Zone = "list" | "details";
 const RESULTS_SHORTCUTS_LEFT: Shortcut[] = [
   { key: "j/k", label: "Navigate" },
   { key: "Tab", label: "Switch Pane" },
-  { key: "1-4", label: "Tabs" },
 ];
 const RESULTS_SHORTCUTS_RIGHT: Shortcut[] = [BACK_SHORTCUT];
 
@@ -41,32 +40,41 @@ export function ReviewResultsView({
   const [selectedIssueId, setSelectedIssueId] = useState<string | undefined>(issues[0]?.id);
   const [activeZone, setActiveZone] = useState<Zone>("list");
   const [listSubZone, setListSubZone] = useState<IssueListSubZone>("issues");
-
-  usePageFooter({
-    shortcuts: RESULTS_SHORTCUTS_LEFT,
-    rightShortcuts: onBack ? RESULTS_SHORTCUTS_RIGHT : [],
-  });
+  const [detailsSubZone, setDetailsSubZone] = useState<IssueDetailsSubZone>("body");
 
   const filteredIssues = filterIssuesBySeverity(issues, severityFilter);
   const selectedIssue = filteredIssues.find((i) => i.id === selectedIssueId);
-  const { activeTab, setActiveTab, completedSteps, toggleStep } =
+  const { activeTab, availableTabs, setActiveTab, completedSteps, toggleStep } =
     useIssueDetailsState(selectedIssue);
+  const canFocusFixPlan = activeTab === "details" && Boolean(selectedIssue?.fixPlan?.length);
+  const effectiveDetailsSubZone = canFocusFixPlan ? detailsSubZone : "body";
+
+  usePageFooter({
+    shortcuts: [...RESULTS_SHORTCUTS_LEFT, { key: `1-${availableTabs.length}`, label: "Tabs" }],
+    rightShortcuts: onBack ? RESULTS_SHORTCUTS_RIGHT : [],
+  });
 
   useReviewKeyboard({
-    onIssueNav(direction) {
-      if (activeZone !== "list" || listSubZone === "filter" || filteredIssues.length === 0) return;
-      const currentIndex = filteredIssues.findIndex((i) => i.id === selectedIssueId);
-      const nextIndex =
-        direction === "down"
-          ? Math.min(currentIndex + 1, filteredIssues.length - 1)
-          : Math.max(currentIndex - 1, 0);
-      const nextIssue = filteredIssues[nextIndex];
-      if (nextIssue) {
-        setSelectedIssueId(nextIssue.id);
-      }
-    },
     onZoneSwitch() {
-      setActiveZone((z) => (z === "list" ? "details" : "list"));
+      if (activeZone === "list") {
+        setDetailsSubZone("body");
+        setActiveZone("details");
+        return;
+      }
+
+      if (canFocusFixPlan && effectiveDetailsSubZone === "body") {
+        setDetailsSubZone("fix-plan");
+        return;
+      }
+
+      setDetailsSubZone("body");
+      setActiveZone("list");
+    },
+    onTabSwitch(tabNumber) {
+      const tab = availableTabs[tabNumber - 1];
+      if (!tab) return;
+      setDetailsSubZone("body");
+      setActiveTab(tab);
     },
     onBack() {
       onBack?.();
@@ -122,6 +130,7 @@ export function ReviewResultsView({
             onTabChange={setActiveTab}
             completedSteps={completedSteps}
             onToggleStep={toggleStep}
+            subZone={effectiveDetailsSubZone}
           />
         </Box>
       </Box>

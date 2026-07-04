@@ -2,7 +2,7 @@ import { InlineCode } from "@diffgazer/ui/components/code-block";
 import { CopyButton } from "@/components/copy-button";
 import { SourceViewer } from "@/components/docs-mdx/source-viewer";
 import { type CrossDepSourceFile, resolveCrossDepFiles } from "@/lib/cross-deps-data";
-import { type DocsLibraryId, getInstallCommand } from "@/lib/library";
+import { type DocsLibraryId, getInstallCommand, hookFileName } from "@/lib/library";
 import type { ComponentData, SourceFile } from "@/types/data";
 import { type HookData, useComponentData, useHookData } from "../doc-data-context";
 import { useCurrentLibrary } from "./use-current-library";
@@ -68,10 +68,15 @@ function ComponentSourceViewer({ data, library }: { data: ComponentData; library
 }
 
 function HookSourceViewer({ data }: { data: HookData }) {
-  const fileName = data.name.startsWith("use-") ? `${data.name}.ts` : `use-${data.name}.ts`;
   return (
     <SourceViewer
-      files={[{ path: fileName, raw: data.source.raw, highlighted: data.source.highlighted }]}
+      files={[
+        {
+          path: hookFileName(data.name),
+          raw: data.source.raw,
+          highlighted: data.source.highlighted,
+        },
+      ]}
       triggerLabel="View hook source"
       copyButton={<CopyButton text={data.source.raw} label={`Copy ${data.title}`} />}
     />

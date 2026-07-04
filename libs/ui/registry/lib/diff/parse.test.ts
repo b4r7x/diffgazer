@@ -73,6 +73,99 @@ describe("parseDiff", () => {
     expect(file.hunks).toHaveLength(1);
   });
 
+  it("treats '--'-prefixed removed lines inside a hunk as removals, not file headers", () => {
+    const patch = [
+      "diff --git a/notes.txt b/notes.txt",
+      "--- a/notes.txt",
+      "+++ b/notes.txt",
+      "@@ -1,3 +1,2 @@",
+      " keep",
+      "--- drop this comment",
+      " end",
+    ].join("\n");
+
+    const [file] = parseDiff(patch);
+    if (!file) throw new Error("expected file");
+    const [hunk] = file.hunks;
+    if (!hunk) throw new Error("expected hunk");
+
+    expect(file.oldPath).toBe("notes.txt");
+    expect(hunk.changes[1]).toMatchObject({
+      type: "remove",
+      content: "-- drop this comment",
+      oldLine: 2,
+    });
+  });
+
+  it("treats '++'-prefixed added lines inside a hunk as additions, not file headers", () => {
+    const patch = [
+      "diff --git a/notes.txt b/notes.txt",
+      "--- a/notes.txt",
+      "+++ b/notes.txt",
+      "@@ -1,2 +1,3 @@",
+      " keep",
+      "+++ keep this flag",
+      " end",
+    ].join("\n");
+
+    const [file] = parseDiff(patch);
+    if (!file) throw new Error("expected file");
+    const [hunk] = file.hunks;
+    if (!hunk) throw new Error("expected hunk");
+
+    expect(file.newPath).toBe("notes.txt");
+    expect(hunk.changes[1]).toMatchObject({
+      type: "add",
+      content: "++ keep this flag",
+      newLine: 2,
+    });
+  });
+
+  it("parses a patch ending with a trailing newline without a phantom context line", () => {
+    const patch = `${[
+      "diff --git a/file.ts b/file.ts",
+      "--- a/file.ts",
+      "+++ b/file.ts",
+      "@@ -1,1 +1,1 @@",
+      "-old",
+      "+new",
+    ].join("\n")}\n`;
+
+    const [file] = parseDiff(patch);
+    if (!file) throw new Error("expected file");
+    const [hunk] = file.hunks;
+    if (!hunk) throw new Error("expected hunk");
+
+    expect(hunk.changes).toHaveLength(2);
+  });
+
+  it("parses a new-file patch without keeping /dev/null as a path", () => {
+    const addedPatch = [
+      "diff --git a/added.ts b/added.ts",
+      "new file mode 100644",
+      "--- /dev/null",
+      "+++ b/added.ts",
+      "@@ -0,0 +1 @@",
+      "+added",
+    ].join("\n");
+    const deletedPatch = [
+      "diff --git a/deleted.ts b/deleted.ts",
+      "deleted file mode 100644",
+      "--- a/deleted.ts",
+      "+++ /dev/null",
+      "@@ -1 +0,0 @@",
+      "-deleted",
+    ].join("\n");
+
+    const [added] = parseDiff(addedPatch);
+    const [deleted] = parseDiff(deletedPatch);
+
+    expect(added?.oldPath).toBeNull();
+    expect(added?.newPath).toBe("added.ts");
+    expect(deleted?.oldPath).toBe("deleted.ts");
+    expect(deleted?.newPath).toBeNull();
+  });
+
   it("returns empty array for empty diff input", () => {
     expect(parseDiff("")).toEqual([]);
   });

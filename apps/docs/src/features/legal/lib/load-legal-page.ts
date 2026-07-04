@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { legalPageSlugSchema } from "./legal-slugs";
+import { legalPageSlugSchema } from "./slugs";
 
 const legalPageInputSchema = z.object({
   slug: legalPageSlugSchema,
@@ -16,7 +16,7 @@ export interface LegalPageLoaderData {
 export const loadLegalPage = createServerFn({ method: "GET" })
   .inputValidator(legalPageInputSchema)
   .handler(async ({ data }): Promise<LegalPageLoaderData | null> => {
-    const { getLegalPage } = await import("@/features/legal/lib/legal-source");
+    const { getLegalPage } = await import("@/features/legal/lib/source");
     const page = getLegalPage(data.slug);
     if (!page) return null;
 

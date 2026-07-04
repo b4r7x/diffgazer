@@ -5,7 +5,7 @@ import {
   type HookRegistryItem,
   kebabToCamelCase,
 } from "@diffgazer/registry";
-import type { RegistryItem } from "@diffgazer/registry/schemas";
+import { REGISTRY_ITEM_TYPE, type RegistryItem } from "@diffgazer/registry/schemas";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
@@ -58,7 +58,7 @@ buildDocsData({
   hooks: {
     contentDir: resolve(ROOT, "docs/content/hooks"),
     extraItems: PROVIDER_HOOKS,
-    filter: (item) => item.type === "registry:hook" && !item.meta?.hidden,
+    filter: (item) => item.type === REGISTRY_ITEM_TYPE.hook && item.meta?.hidden !== true,
     mapItem: (item: RegistryItem): HookRegistryItem => ({
       name: toHookDirName(item.name),
       registryName: item.name,
@@ -67,7 +67,7 @@ buildDocsData({
       files: item.files,
     }),
     loadHookDoc,
-    backwardCompatFile: "keys-hooks.json",
+    aggregateHooksFile: "keys-hooks.json",
   },
   demoIndex: {
     importPathPrefix: "../../registry/examples",

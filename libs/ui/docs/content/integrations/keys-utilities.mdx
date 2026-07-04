@@ -38,7 +38,7 @@ function Dialog({ open }: { open: boolean }) {
 }
 ```
 
-Used internally by `@diffgazer/ui`'s `DialogContent` and `CommandPaletteContent` components.
+`@diffgazer/ui`'s `DialogContent` and `CommandPaletteContent` compose this focus-trap behavior through their shared dialog shell.
 
 ---
 
@@ -102,7 +102,7 @@ const panelRef = useRef<HTMLDivElement>(null)
 useScrollLock({ target: panelRef, enabled: isOpen })
 ```
 
-Used internally by `@diffgazer/ui`'s `DialogContent` component.
+`Dialog` uses a CSS-only `body:has(dialog[open])` scroll lock with `scrollbar-gutter: stable` compensation. Use `useScrollLock` as the standalone alternative for app-owned overlays or custom scroll containers.
 
 ---
 

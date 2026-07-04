@@ -1,5 +1,6 @@
 import { getApiKeyMissingCopy } from "@diffgazer/core/review";
-import { Box } from "ink";
+import { Box, useInput } from "ink";
+import { useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
 import { Panel } from "../../../components/ui/panel";
@@ -18,6 +19,21 @@ export function ApiKeyMissingView({
   onBack,
 }: ApiKeyMissingViewProps) {
   const { title, body } = getApiKeyMissingCopy({ provider, missingModel });
+  const [buttonIndex, setButtonIndex] = useState(0);
+
+  useInput((_input, key) => {
+    if (key.leftArrow || key.upArrow) {
+      setButtonIndex(0);
+      return;
+    }
+    if (key.rightArrow || key.downArrow) {
+      setButtonIndex(1);
+      return;
+    }
+    if (key.escape) {
+      onBack();
+    }
+  });
 
   return (
     <Panel>
@@ -28,10 +44,10 @@ export function ApiKeyMissingView({
             <Callout.Content>{body}</Callout.Content>
           </Callout>
           <Box gap={2}>
-            <Button variant="primary" isActive onPress={onGoToSettings}>
+            <Button variant="primary" isActive={buttonIndex === 0} onPress={onGoToSettings}>
               Go to Settings
             </Button>
-            <Button variant="secondary" onPress={onBack}>
+            <Button variant="secondary" isActive={buttonIndex === 1} onPress={onBack}>
               Back
             </Button>
           </Box>

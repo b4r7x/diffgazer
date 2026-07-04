@@ -1,5 +1,6 @@
 import { createError } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
+import { sanitizeTerminalText } from "@diffgazer/core/review";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type {
   DrilldownResult,
@@ -28,6 +29,18 @@ interface HandleDrilldownOptions {
   signal?: AbortSignal;
 }
 
+function sanitizeDrilldown(response: DrilldownAIResponse): DrilldownAIResponse {
+  return {
+    detailedAnalysis: sanitizeTerminalText(response.detailedAnalysis),
+    rootCause: sanitizeTerminalText(response.rootCause),
+    impact: sanitizeTerminalText(response.impact),
+    suggestedFix: sanitizeTerminalText(response.suggestedFix),
+    patch: response.patch === null ? null : sanitizeTerminalText(response.patch),
+    relatedIssues: response.relatedIssues.map(sanitizeTerminalText),
+    references: response.references.map(sanitizeTerminalText),
+  };
+}
+
 export async function drilldownIssue(
   client: AIClient,
   issue: ReviewIssue,
@@ -54,7 +67,7 @@ export async function drilldownIssue(
   const drilldownResult: DrilldownResult = {
     issueId: issue.id,
     issue,
-    ...result.value,
+    ...sanitizeDrilldown(result.value),
     ...(steps.length > 0 ? { trace: [...steps] } : {}),
   };
 

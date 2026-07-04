@@ -249,8 +249,9 @@ function CountdownLayout(props: ToastProps) {
 function CountdownBar({ id, tone }: { id: string; tone: ToastTone }) {
   const fillRef = useRef<HTMLSpanElement | null>(null);
   const rafRef = useRef<number | null>(null);
-  const { paused } = useToastStore();
+  const { paused, timerVersion } = useToastStore();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: timerVersion is a store revision counter that restarts the countdown animation when timers are recreated.
   useLayoutEffect(() => {
     const fill = fillRef.current;
     if (!fill) return;
@@ -286,7 +287,7 @@ function CountdownBar({ id, tone }: { id: string; tone: ToastTone }) {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     };
-  }, [id, paused]);
+  }, [id, paused, timerVersion]);
 
   return (
     <div

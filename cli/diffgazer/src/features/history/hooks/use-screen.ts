@@ -3,10 +3,10 @@ import { type HistoryScreenState, useHistoryScreenState } from "@diffgazer/core/
 import type { SeverityCounts } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue, ReviewMetadata } from "@diffgazer/core/schemas/review";
 import { useState } from "react";
-import { type MappedRun, nextHistoryZone } from "../lib/history-run-mapping";
+import { getAvailableHistoryZones, type MappedRun, nextHistoryZone } from "../lib/run-mapping";
 import type { HistoryFocusZone } from "../types";
 
-export type { MappedRun } from "../lib/history-run-mapping";
+export type { MappedRun } from "../lib/run-mapping";
 
 export interface UseHistoryScreenResult {
   reviewsQuery: ReturnType<typeof useReviews>;
@@ -48,13 +48,22 @@ export function useHistoryScreen({
   const history = useHistoryScreenState();
 
   const [focusZone, setFocusZoneState] = useState<HistoryFocusZone>("runs");
+  const availableZones = getAvailableHistoryZones({
+    hasRuns: history.mappedRuns.length > 0,
+    hasSelectedRun: history.selectedRunId !== null,
+  });
+  const fallbackFocusZone = availableZones[0] ?? "search";
+  const activeFocusZone = availableZones.includes(focusZone) ? focusZone : fallbackFocusZone;
 
   const setFocusZone = (zone: HistoryFocusZone) => {
-    setFocusZoneState(zone);
+    setFocusZoneState(availableZones.includes(zone) ? zone : activeFocusZone);
   };
 
   const cycleFocusZone = () => {
-    setFocusZoneState((z) => nextHistoryZone(z));
+    setFocusZoneState((z) => {
+      const currentZone = availableZones.includes(z) ? z : fallbackFocusZone;
+      return nextHistoryZone(currentZone, availableZones);
+    });
   };
 
   const handleIssueClick = () => {
@@ -64,7 +73,7 @@ export function useHistoryScreen({
   return {
     reviewsQuery: history.reviewsQuery,
     reviews: history.reviews,
-    focusZone,
+    focusZone: activeFocusZone,
     setFocusZone,
     cycleFocusZone,
     searchQuery: history.searchQuery,

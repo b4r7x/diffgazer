@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { listRepoFiles } from "./lib/files.mjs";
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 
@@ -63,14 +63,6 @@ const SECRET_PATTERNS = [
     valueGroup: 1,
   },
 ];
-
-function listRepoFiles() {
-  const output = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], {
-    encoding: "utf8",
-  });
-
-  return output.trim().split("\n").filter(Boolean);
-}
 
 function shouldSkipFile(path) {
   return SKIPPED_PREFIXES.some((prefix) => path === prefix.slice(0, -1) || path.startsWith(prefix));

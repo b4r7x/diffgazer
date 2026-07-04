@@ -2,13 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, it } from "node:test";
+import { collectTreeParityErrors, computeStrictArtifactFingerprint } from "@diffgazer/registry";
 import { createTempDirs, writeFile } from "./fixture.mjs";
 import { validateArtifactPackSurface } from "./pack-surface.mjs";
 import {
   collectBundleRelativeJsImportErrors,
-  collectTreeParityErrors,
   computeBundleIntegrity,
-  computeStrictArtifactFingerprint,
   validateIntegrityBundle,
   validateLibraryArtifacts,
 } from "./validation.mjs";

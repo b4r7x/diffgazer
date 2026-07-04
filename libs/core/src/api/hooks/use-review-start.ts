@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import type { Result } from "../../result.js";
 import {
   isSessionTerminationCode,
@@ -29,17 +29,15 @@ export function useReviewStart(options: UseReviewStartOptions): UseReviewStartRe
   const [hasStarted, setHasStarted] = useState(false);
   const [hasStreamed, setHasStreamed] = useState(false);
 
-  const resumeRef = useRef(options.resume);
-  const onNotFoundRef = useRef(options.onNotFoundInSession);
-  const onStaleRef = useRef(options.onStaleSession);
-  const currentReviewIdRef = useRef(options.currentReviewId);
-  // Stable-ref escape hatch: refs are read ONLY inside the effect and async
-  // continuation — never during render — so mid-render writes are safe under
-  // concurrent rendering. See AGENTS.md react-useref rules.
-  resumeRef.current = options.resume;
-  onNotFoundRef.current = options.onNotFoundInSession;
-  onStaleRef.current = options.onStaleSession;
-  currentReviewIdRef.current = options.currentReviewId;
+  const getCurrentReviewId = useEffectEvent(() => options.currentReviewId);
+  const resumeReview = useEffectEvent((reviewId: string) => options.resume(reviewId));
+  const handleResumeError = useEffectEvent((reviewId: string, error: StreamReviewError) => {
+    if (isSessionTerminationCode(error.code)) {
+      options.onStaleSession?.(error.code);
+    } else if (error.code === ReviewErrorCode.SESSION_NOT_FOUND) {
+      options.onNotFoundInSession?.(reviewId);
+    }
+  });
 
   useEffect(() => {
     if (options.configLoading || options.settingsLoading || !options.isConfigured) return;
@@ -47,22 +45,18 @@ export function useReviewStart(options: UseReviewStartOptions): UseReviewStartRe
     const reviewId = options.reviewId;
     if (!reviewId) return;
 
-    if (currentReviewIdRef.current === reviewId) return;
+    if (getCurrentReviewId() === reviewId) return;
 
     let ignore = false;
 
     setHasStarted(true);
     setHasStreamed(true);
 
-    void resumeRef.current(reviewId).then((result) => {
+    void resumeReview(reviewId).then((result) => {
       if (ignore) return;
       if (result.ok) return;
 
-      if (isSessionTerminationCode(result.error.code)) {
-        onStaleRef.current?.(result.error.code);
-      } else if (result.error.code === ReviewErrorCode.SESSION_NOT_FOUND) {
-        onNotFoundRef.current?.(reviewId);
-      }
+      handleResumeError(reviewId, result.error);
     });
 
     return () => {

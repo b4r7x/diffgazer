@@ -1,6 +1,10 @@
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { type FileProgress, getPartialFailureWarning } from "@diffgazer/core/review";
+import {
+  type FileProgress,
+  getPartialFailureWarning,
+  sanitizeTerminalText,
+} from "@diffgazer/core/review";
 import type { AgentState } from "@diffgazer/core/schemas/events";
 import type {
   LogEntryData,
@@ -8,7 +12,7 @@ import type {
   Shortcut,
 } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
-import { type ReactElement, useState } from "react";
+import { type ReactElement, useEffect, useState } from "react";
 import { ProgressList } from "../../../components/shared/progress/list";
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
@@ -17,7 +21,6 @@ import { useResponsive } from "../../../hooks/use-terminal-dimensions";
 import { useTheme } from "../../../theme/provider";
 import { ActivityLog } from "./activity-log";
 import { AgentBoard } from "./agent-board";
-import { AgentFilterBar } from "./agent-filter-bar";
 import { ContextSnapshotPreview } from "./context-snapshot-preview";
 import { ReviewMetricsFooter } from "./metrics-footer";
 
@@ -67,13 +70,21 @@ export function ReviewProgressView({
 }: ReviewProgressViewProps): ReactElement {
   const { tokens } = useTheme();
   const { isMedium, isWide } = useResponsive();
-  const [agentFilter, setAgentFilter] = useState<string | null>(null);
+  const [completedAt, setCompletedAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (isStreaming) {
+      setCompletedAt(null);
+      return;
+    }
+    setCompletedAt((current) => current ?? Date.now());
+  }, [isStreaming]);
 
   usePageFooter({
     shortcuts: isStreaming ? STREAMING_SHORTCUTS : COMPLETING_SHORTCUTS,
   });
 
-  const elapsed = startedAt ? Date.now() - startedAt.getTime() : 0;
+  const elapsed = startedAt ? (completedAt ?? Date.now()) - startedAt.getTime() : 0;
 
   const sideBySide = isWide || isMedium;
   const progressWidth = getResponsiveWidth(isWide, isMedium, {
@@ -87,18 +98,7 @@ export function ReviewProgressView({
     narrow: "100%",
   });
 
-  const agentOptions = agents.map((agent) => ({
-    id: agent.id,
-    name: agent.meta.name,
-    badgeLabel: agent.meta.badgeLabel,
-    badgeVariant: agent.meta.badgeVariant,
-  }));
-
   const partialFailure = getPartialFailureWarning(agents, error);
-
-  const filteredEntries = agentFilter
-    ? logEntries.filter((entry) => entry.source === agentFilter)
-    : logEntries;
 
   const progressPane = (
     <Box flexDirection="column" width={progressWidth}>
@@ -139,22 +139,11 @@ export function ReviewProgressView({
         <Text color={tokens.muted}>tail -f agent.log</Text>
       </Box>
 
-      {agents.length > 0 ? (
-        <Box paddingTop={1}>
-          <AgentFilterBar
-            agents={agentOptions}
-            active={agentFilter}
-            onChange={setAgentFilter}
-            isActive={false}
-          />
-        </Box>
-      ) : null}
-
       {partialFailure.hasPartialFailure ? (
         <Box paddingTop={1}>
           <Callout variant="warning">
             <Callout.Title>Partial Analysis</Callout.Title>
-            <Callout.Content>{partialFailure.message}</Callout.Content>
+            <Callout.Content>{sanitizeTerminalText(partialFailure.message)}</Callout.Content>
           </Callout>
         </Box>
       ) : null}
@@ -163,14 +152,14 @@ export function ReviewProgressView({
         <Box flexDirection="column" paddingTop={1}>
           {notices.map((notice) => (
             <Text key={notice} color={tokens.warning}>
-              {notice}
+              {sanitizeTerminalText(notice)}
             </Text>
           ))}
         </Box>
       ) : null}
 
       <Box paddingTop={1}>
-        <ActivityLog entries={filteredEntries} height={progressSteps.length + 8} />
+        <ActivityLog entries={logEntries} height={progressSteps.length + 8} />
       </Box>
     </Box>
   );
@@ -183,7 +172,7 @@ export function ReviewProgressView({
       </Box>
       {error ? (
         <Box marginTop={1} marginLeft={2}>
-          <Text color={tokens.error}>{error}</Text>
+          <Text color={tokens.error}>{sanitizeTerminalText(error)}</Text>
         </Box>
       ) : null}
       {isStreaming && onCancel ? (

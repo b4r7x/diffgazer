@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { LegalPageView } from "@/features/legal/components/legal-page-view";
-import { getLegalPageEntry, legalRouteOptions } from "@/features/legal/lib/legal-pages";
+import { LegalPageView } from "@/features/legal/components/page-view";
+import { getLegalPageEntry, legalRouteOptions } from "@/features/legal/lib/pages";
 
 const page = getLegalPageEntry("terms");
 

@@ -4,14 +4,10 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { Suspense } from "react";
 import { ContentSpinner } from "@/components/content-spinner";
-import {
-  type DocData,
-  DocDataProvider,
-  type HookData,
-  useDocData,
-} from "@/components/docs-mdx/doc-data-context";
+import { type DocData, DocDataProvider, useDocData } from "@/components/docs-mdx/doc-data-context";
 import { DocsContentLayout } from "@/components/layout/content-layout";
 import { DocsPageBody, DocsPageHeader, DocsPageLayout } from "@/components/page-layout";
+import type { HookData } from "@/lib/generated-doc-data";
 import {
   type DocsLibraryId,
   docsPath,
@@ -50,8 +46,8 @@ export const Route = createFileRoute("/$lib/$")({
     if (!data) throw notFound();
 
     const [componentData, hookData] = await Promise.all([
-      loadDocData<ComponentData>(library, "components", data.component),
-      loadDocData<HookData>(library, "hooks", data.hook),
+      loadDocData(library, "components", data.component, { throwIfMissing: true }),
+      loadDocData(library, "hooks", data.hook, { throwIfMissing: true }),
     ]);
 
     if (typeof window !== "undefined") {
@@ -92,14 +88,13 @@ const serverLoader = createServerFn({ method: "GET" })
 
 const clientLoader = browserCollections.docs.createClientLoader({
   component({ toc, frontmatter, default: MDX }) {
-    const showToc = true;
     const docData = useDocData();
     const d = docData?.data;
     const title = d?.title ?? frontmatter.title;
     const description = d?.docs?.description ?? d?.description ?? frontmatter.description;
 
     return (
-      <DocsPageLayout toc={toc} showToc={showToc}>
+      <DocsPageLayout toc={toc}>
         <DocsPageHeader title={title} description={description} tags={d?.docs?.tags} />
         <DocsPageBody>
           <MDX components={useMDXComponents()} />
@@ -178,7 +173,7 @@ function DocsFooterPager({
 
   return (
     <Pager>
-      {previous ? (
+      {previous && (
         <Pager.Link direction="previous">
           {({ className, rel }) => (
             <Link
@@ -195,11 +190,9 @@ function DocsFooterPager({
             </Link>
           )}
         </Pager.Link>
-      ) : (
-        <span className="text-xs font-mono text-muted-foreground">EOF</span>
       )}
 
-      {next && (
+      {next ? (
         <Pager.Link direction="next">
           {({ className, rel }) => (
             <Link
@@ -216,6 +209,8 @@ function DocsFooterPager({
             </Link>
           )}
         </Pager.Link>
+      ) : (
+        <span className="text-xs font-mono text-muted-foreground">EOF</span>
       )}
     </Pager>
   );

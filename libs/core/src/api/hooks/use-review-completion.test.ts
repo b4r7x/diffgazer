@@ -3,6 +3,7 @@
  */
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ReviewErrorCode } from "../../schemas/review/index.js";
 import { type UseReviewCompletionOptions, useReviewCompletion } from "./use-review-completion.js";
 
 function createOptions(
@@ -11,6 +12,7 @@ function createOptions(
   return {
     isStreaming: false,
     error: null,
+    errorCode: null,
     hasStreamed: false,
     steps: [],
     onComplete: vi.fn(),
@@ -71,6 +73,30 @@ describe("useReviewCompletion", () => {
     );
 
     rerender({ ...initialProps, isStreaming: false, error: "something broke" });
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it("does NOT fire onComplete when the stream was cancelled", () => {
+    const onComplete = vi.fn();
+    const initialProps = createOptions({
+      isStreaming: true,
+      hasStreamed: true,
+      error: null,
+      errorCode: null,
+      onComplete,
+    });
+
+    const { rerender } = renderHook(
+      (props: UseReviewCompletionOptions) => useReviewCompletion(props),
+      { initialProps },
+    );
+
+    rerender({ ...initialProps, isStreaming: false, errorCode: ReviewErrorCode.CANCELLED });
 
     act(() => {
       vi.advanceTimersByTime(3000);

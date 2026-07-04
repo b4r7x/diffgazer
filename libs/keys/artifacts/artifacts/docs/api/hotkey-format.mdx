@@ -37,7 +37,9 @@ Joined with `+`. The **last** segment is the key, everything before it is a modi
 
 ## Shifted punctuation aliases
 
-The `+` delimiter makes shifted punctuation like `?` or `+` ambiguous. Use named aliases:
+The `+` delimiter makes shifted punctuation like `?` or `+` ambiguous. Use named aliases.
+
+Strict modifier matching still applies: if a punctuation key requires Shift on the user's layout, include `shift+` in the hotkey.
 
 | Alias | Resolved to |
 |-------|-------------|
@@ -75,6 +77,6 @@ useKey("esc", handleClose);  // same as "Escape"
 
 // Shifted punctuation aliases
 useKey("shift+question", openHelp);  // matches Shift+?
-useKey("mod+plus", zoomIn, { preventDefault: true });  // matches Cmd/Ctrl++
+useKey("mod+shift+plus", zoomIn, { preventDefault: true });  // matches Cmd/Ctrl with the shifted + key
 
 ```

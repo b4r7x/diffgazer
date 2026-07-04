@@ -6,7 +6,7 @@ import type { LensStat } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue, ReviewMode, ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { useEffectEvent, useLayoutEffect, useRef } from "react";
+import { useEffectEvent } from "react";
 import { useConfigData } from "@/hooks/use-config";
 
 function getAlternateReviewMode(mode: ReviewMode): ReviewMode {
@@ -57,15 +57,20 @@ export function useReviewLifecycle({
   const { isConfigured, provider, model, isLoading: configLoading } = useConfigData();
   const createReview = useCreateReview();
 
-  const streamStateRef = useRef<ReviewStreamState | null>(null);
-  const cancelOnServer = (): Promise<string | null> =>
-    base.stream.cancel(streamStateRef.current?.reviewId ?? null);
+  const base = useReviewLifecycleBase({
+    configLoading,
+    isConfigured,
+    reviewId: params.reviewId,
+    onComplete: () => emitComplete(),
+    onNotFoundInSession: (reviewId: string) => emitStreamNotFound(reviewId),
+    onStaleSession: (code) => emitStaleSession(code),
+  });
 
   const emitComplete = useEffectEvent(() => {
-    const s = streamStateRef.current;
+    const s = base.stream.state;
     onComplete?.({
-      issues: s?.issues ?? [],
-      reviewId: s?.reviewId ?? null,
+      issues: s.issues,
+      reviewId: s.reviewId ?? null,
       ...extractOrchestratorStats(s),
     });
   });
@@ -78,22 +83,14 @@ export function useReviewLifecycle({
     }
   });
 
-  const base = useReviewLifecycleBase({
-    configLoading,
-    isConfigured,
-    reviewId: params.reviewId,
-    onComplete: () => emitComplete(),
-    onNotFoundInSession: (reviewId: string) => emitStreamNotFound(reviewId),
-    onStaleSession: (code) => {
-      const copy = sessionTerminationCopy(code);
-      toast.error(copy.title, { message: copy.message });
-      navigate({ to: "/" });
-    },
+  const emitStaleSession = useEffectEvent((code: Parameters<typeof sessionTerminationCopy>[0]) => {
+    const copy = sessionTerminationCopy(code);
+    toast.error(copy.title, { message: copy.message });
+    navigate({ to: "/" });
   });
 
-  useLayoutEffect(() => {
-    streamStateRef.current = base.stream.state;
-  });
+  const cancelOnServer = (): Promise<string | null> =>
+    base.stream.cancel(base.stream.state.reviewId ?? null);
 
   const handleCancel = () => {
     void (async () => {

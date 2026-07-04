@@ -16,7 +16,6 @@ import { AvatarImage } from "./avatar-image";
 
 export type { AvatarStatus };
 
-/** Class variants for avatar. */
 export const avatarVariants = cva(
   "relative inline-flex items-center justify-center border border-foreground/40 font-mono font-medium text-foreground bg-background overflow-hidden shrink-0",
   {
@@ -31,7 +30,6 @@ export const avatarVariants = cva(
   },
 );
 
-/** Props for avatar. */
 export interface AvatarProps extends ComponentProps<"span">, VariantProps<typeof avatarVariants> {
   /** Image URL. Ignored when children are provided. */
   src?: string;

@@ -8,7 +8,7 @@ import { SEVERITY_CONFIG } from "@/components/shared/severity/constants";
 export interface IssuePreviewItemProps {
   title: string;
   file: string;
-  line: number;
+  line?: number | null;
   category: string;
   severity: ReviewSeverity;
   onClick?: () => void;
@@ -28,7 +28,7 @@ function IssuePreviewContent({
 }: {
   title: string;
   file: string;
-  line: number;
+  line?: number | null;
   category: string;
   icon: string;
   color: string;
@@ -52,7 +52,7 @@ function IssuePreviewContent({
             {title}
           </div>
           <div className="text-xs text-muted-foreground font-mono">
-            {file}:{line}
+            {line == null ? file : `${file}:${line}`}
           </div>
         </div>
       </div>

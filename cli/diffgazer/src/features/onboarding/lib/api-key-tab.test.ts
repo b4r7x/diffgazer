@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { apiKeyStepOwnsTab } from "./api-key-tab.js";
+import { apiKeyStepOwnsTab } from "./api-key-tab";
 
 describe("apiKeyStepOwnsTab", () => {
   it("owns Tab on the api-key step while the step body is focused", () => {

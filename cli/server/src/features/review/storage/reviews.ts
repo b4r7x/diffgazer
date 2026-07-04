@@ -15,7 +15,11 @@ import {
 import { atomicWriteFile, isNodeError } from "../../../shared/lib/fs.js";
 import { log } from "../../../shared/lib/log.js";
 import { getGlobalDiffgazerDir } from "../../../shared/lib/paths.js";
-import { lenientReadSavedReview } from "./lenient-read.js";
+import {
+  coerceMetadataVocab,
+  lenientReadSavedReview,
+  normalizeSavedReviewLineFields,
+} from "./lenient-read.js";
 import { createCollection } from "./persistence.js";
 import { withReviewLock } from "./review-lock.js";
 import type { DateFieldsOf, SaveReviewOptions, StoreError } from "./types.js";
@@ -57,20 +61,46 @@ async function writeProjectIndex(projectPath: string, ids: string[]): Promise<vo
   await atomicWriteFile(projectIndexPath(projectPath), JSON.stringify(ids));
 }
 
+const projectIndexLocks = new Map<string, Promise<unknown>>();
+
+function withProjectIndexLock<T>(projectPath: string, fn: () => Promise<T>): Promise<T> {
+  const key = projectIndexPath(projectPath);
+  const prev = projectIndexLocks.get(key) ?? Promise.resolve();
+  const next = prev.then(fn, fn);
+  projectIndexLocks.set(key, next);
+  next.then(
+    () => {
+      if (projectIndexLocks.get(key) === next) projectIndexLocks.delete(key);
+    },
+    () => {
+      if (projectIndexLocks.get(key) === next) projectIndexLocks.delete(key);
+    },
+  );
+  return next;
+}
+
+function writeProjectIndexLocked(projectPath: string, ids: string[]): Promise<void> {
+  return withProjectIndexLock(projectPath, () => writeProjectIndex(projectPath, ids));
+}
+
 async function addToProjectIndex(projectPath: string, reviewId: string): Promise<void> {
-  const ids = await readProjectIndex(projectPath);
-  if (!ids.includes(reviewId)) {
-    ids.push(reviewId);
-    await writeProjectIndex(projectPath, ids);
-  }
+  await withProjectIndexLock(projectPath, async () => {
+    const ids = await readProjectIndex(projectPath);
+    if (!ids.includes(reviewId)) {
+      ids.push(reviewId);
+      await writeProjectIndex(projectPath, ids);
+    }
+  });
 }
 
 async function removeFromProjectIndex(projectPath: string, reviewId: string): Promise<void> {
-  const ids = await readProjectIndex(projectPath);
-  const filtered = ids.filter((id) => id !== reviewId);
-  if (filtered.length !== ids.length) {
-    await writeProjectIndex(projectPath, filtered);
-  }
+  await withProjectIndexLock(projectPath, async () => {
+    const ids = await readProjectIndex(projectPath);
+    const filtered = ids.filter((id) => id !== reviewId);
+    if (filtered.length !== ids.length) {
+      await writeProjectIndex(projectPath, filtered);
+    }
+  });
 }
 
 const reviewStore = createCollection<SavedReview, ReviewMetadata>({
@@ -84,6 +114,8 @@ const reviewStore = createCollection<SavedReview, ReviewMetadata>({
   // Older immutable reviews can hold values the strict write-side schema rejects;
   // salvage them on read so GET opens and DELETE removes them (F-446).
   lenientRead: lenientReadSavedReview,
+  coerceMetadata: coerceMetadataVocab,
+  transformRead: normalizeSavedReviewLineFields,
 });
 
 function migrateReview(review: SavedReview): SavedReview | null {
@@ -120,9 +152,10 @@ function migrateReview(review: SavedReview): SavedReview | null {
 // just-saved drilldown or resurrect a review that was deleted in the meantime.
 function persistMigrationLocked(reviewId: string): Promise<void> {
   return withReviewLock(reviewId, async () => {
-    const current = await reviewStore.read(reviewId);
+    const current = await reviewStore.readDetailed(reviewId);
     if (!current.ok) return;
-    const migrated = migrateReview(current.value);
+    if (current.value.salvaged) return;
+    const migrated = migrateReview(current.value.item);
     if (!migrated) return;
     await reviewStore.write(migrated);
   }).catch((e) => log("warn", "reviews_migration_write_failed", { error: e }));
@@ -179,8 +212,8 @@ export async function saveReview(
 
   const writeResult = await reviewStore.write(savedReview);
   if (!writeResult.ok) return writeResult;
-  // Best-effort: the review file is durably written, so an index write failure
-  // must not fail the save — the index self-heals via listReviews' rebuild.
+  // Best-effort: the review file is durable, so index write failure is logged
+  // without failing the save. Listings rebuild only when the index is absent or unreadable.
   addToProjectIndex(options.projectPath, metadata.id).catch((e) =>
     log("warn", "reviews_index_add_failed", { error: e }),
   );
@@ -244,23 +277,25 @@ async function listFromIndex(projectPath: string, indexedIds: string[]): Promise
   const items: ReviewMetadata[] = [];
   const liveIds: string[] = [];
 
-  for (const id of indexedIds) {
-    const readResult = await reviewStore.read(id);
+  const results = await Promise.all(
+    indexedIds.map(async (id) => ({ id, result: await reviewStore.readMetadata(id) })),
+  );
+  for (const { id, result: readResult } of results) {
     if (!readResult.ok) {
       // Missing file: drop it from the index and keep serving.
       if (readResult.error.code === "NOT_FOUND") continue;
       // Any other read failure means the index can't be trusted; rebuild via scan.
       return { kind: "rebuild" };
     }
-    if (readResult.value.metadata.projectPath !== projectPath) continue;
-    items.push(readResult.value.metadata);
+    if (readResult.value.projectPath !== projectPath) continue;
+    items.push(readResult.value);
     liveIds.push(id);
   }
 
   const warnings: string[] = [];
   if (liveIds.length !== indexedIds.length) {
     try {
-      await writeProjectIndex(projectPath, liveIds);
+      await writeProjectIndexLocked(projectPath, liveIds);
     } catch (error) {
       warnings.push(`[reviews] Failed to rewrite project index: ${getErrorMessage(error)}`);
     }
@@ -301,7 +336,7 @@ export async function listReviews(
 
   if (projectPath && items.length > 0) {
     try {
-      await writeProjectIndex(
+      await writeProjectIndexLocked(
         projectPath,
         items.map((item) => item.id),
       );
@@ -314,14 +349,16 @@ export async function listReviews(
 }
 
 export async function getReview(reviewId: string): Promise<Result<SavedReview, StoreError>> {
-  const result = await reviewStore.read(reviewId);
+  const result = await reviewStore.readDetailed(reviewId);
   if (!result.ok) return result;
 
-  const review = result.value;
+  const review = result.value.item;
   const migrated = migrateReview(review);
   if (migrated) {
-    // Persist migrated data in background through the review lock (fire and forget).
-    void persistMigrationLocked(review.metadata.id);
+    if (!result.value.salvaged) {
+      // Persist migrated data in background through the review lock (fire and forget).
+      void persistMigrationLocked(review.metadata.id);
+    }
     return ok(migrated);
   }
 
@@ -332,15 +369,16 @@ export async function deleteReview(
   reviewId: string,
   projectPath?: string,
 ): Promise<Result<{ existed: boolean }, StoreError>> {
-  if (projectPath) {
+  // Serialize the unlink through the review lock so a background legacy-migration
+  // write enqueued just before this delete cannot rename the file back into place
+  // after it is removed.
+  const result = await withReviewLock(reviewId, () => reviewStore.remove(reviewId));
+  if (result.ok && projectPath) {
     removeFromProjectIndex(projectPath, reviewId).catch((e) =>
       log("warn", "reviews_index_removal_failed", { error: e }),
     );
   }
-  // Serialize the unlink through the review lock so a background legacy-migration
-  // write enqueued just before this delete cannot rename the file back into place
-  // after it is removed.
-  return withReviewLock(reviewId, () => reviewStore.remove(reviewId));
+  return result;
 }
 
 // Move a project's stored review history to a new project path (used when a
@@ -359,12 +397,13 @@ export async function rekeyProjectReviews(
   const rekeyed: string[] = [];
   for (const id of ids) {
     const moved = await withReviewLock(id, async () => {
-      const current = await reviewStore.read(id);
+      const current = await reviewStore.readDetailed(id);
       if (!current.ok) return false;
-      if (current.value.metadata.projectPath !== oldProjectPath) return false;
+      const review = current.value.item;
+      if (review.metadata.projectPath !== oldProjectPath) return false;
       const next: SavedReview = {
-        ...current.value,
-        metadata: { ...current.value.metadata, projectPath: newProjectPath },
+        ...review,
+        metadata: { ...review.metadata, projectPath: newProjectPath },
       };
       const writeResult = await reviewStore.write(next);
       return writeResult.ok;
@@ -389,16 +428,18 @@ async function migrateProjectIndexFile(
   rekeyedIds: string[],
 ): Promise<void> {
   if (rekeyedIds.length > 0) {
-    const existing = await readProjectIndex(newProjectPath);
-    const merged = Array.from(new Set([...existing, ...rekeyedIds]));
     try {
-      await writeProjectIndex(newProjectPath, merged);
+      await withProjectIndexLock(newProjectPath, async () => {
+        const existing = await readProjectIndex(newProjectPath);
+        const merged = Array.from(new Set([...existing, ...rekeyedIds]));
+        await writeProjectIndex(newProjectPath, merged);
+      });
     } catch (e) {
       log("warn", "reviews_rekeyed_index_write_failed", { error: e });
     }
   }
   try {
-    await unlink(projectIndexPath(oldProjectPath));
+    await withProjectIndexLock(oldProjectPath, () => unlink(projectIndexPath(oldProjectPath)));
   } catch (error) {
     if (!isNodeError(error, "ENOENT")) {
       log("warn", "reviews_stale_index_removal_failed", { error });

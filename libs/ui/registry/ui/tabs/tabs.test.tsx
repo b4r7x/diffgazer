@@ -8,9 +8,9 @@ import { axe } from "../../../testing/axe";
 import { requireElement, requireValue } from "../../testing/assertions";
 import { Tabs } from "./index";
 import type { TabsProps } from "./tabs";
-import { TabsTrigger, type TabsTriggerProps } from "./tabs-trigger";
+import type { TabsTriggerProps } from "./tabs-trigger";
 
-function renderTabs(props: Record<string, unknown> = {}) {
+function renderTabs(props: Partial<TabsProps> = {}) {
   return render(
     <Tabs defaultValue="one" {...props}>
       <Tabs.List>
@@ -27,6 +27,7 @@ function renderTabs(props: Record<string, unknown> = {}) {
 
 describe("Tabs", () => {
   it("supports direct namespaced compound parts with custom trigger UI", async () => {
+    const user = userEvent.setup();
     render(
       <Tabs defaultValue="overview">
         <Tabs.List>
@@ -42,7 +43,7 @@ describe("Tabs", () => {
       </Tabs>,
     );
 
-    await userEvent.click(screen.getByRole("tab", { name: "Settings" }));
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
 
     expect(screen.getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("Settings panel")).not.toHaveAttribute("hidden");
@@ -122,8 +123,9 @@ describe("Tabs", () => {
   });
 
   it("selects a tab on click", async () => {
+    const user = userEvent.setup();
     renderTabs();
-    await userEvent.click(screen.getByRole("tab", { name: "Two" }));
+    await user.click(screen.getByRole("tab", { name: "Two" }));
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "false");
     expect(screen.getByText("Content two")).not.toHaveAttribute("hidden");
@@ -131,6 +133,7 @@ describe("Tabs", () => {
   });
 
   it("does not select a disabled tab on click", async () => {
+    const user = userEvent.setup();
     render(
       <Tabs defaultValue="one">
         <Tabs.List>
@@ -143,12 +146,13 @@ describe("Tabs", () => {
         <Tabs.Content value="two">Content two</Tabs.Content>
       </Tabs>,
     );
-    await userEvent.click(screen.getByRole("tab", { name: "Two" }));
+    await user.click(screen.getByRole("tab", { name: "Two" }));
     expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "false");
   });
 
   it("keeps explicit value undefined controlled instead of adopting internal selection", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     render(
       <Tabs value={undefined} onChange={onChange}>
@@ -162,13 +166,14 @@ describe("Tabs", () => {
     );
 
     expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
-    await userEvent.click(screen.getByRole("tab", { name: "Two" }));
+    await user.click(screen.getByRole("tab", { name: "Two" }));
     expect(onChange).toHaveBeenCalledWith("two");
     expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "false");
   });
 
   it("respects controlled value and fires onChange", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     const { rerender } = render(
       <Tabs value="one" onChange={onChange}>
@@ -180,7 +185,7 @@ describe("Tabs", () => {
         <Tabs.Content value="two">Content two</Tabs.Content>
       </Tabs>,
     );
-    await userEvent.click(screen.getByRole("tab", { name: "Two" }));
+    await user.click(screen.getByRole("tab", { name: "Two" }));
     expect(onChange).toHaveBeenCalledWith("two");
     expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
 
@@ -203,33 +208,36 @@ describe("Tabs", () => {
   });
 
   it("moves focus with ArrowRight/ArrowLeft in horizontal mode (automatic)", async () => {
+    const user = userEvent.setup();
     renderTabs();
     screen.getByRole("tab", { name: "One" }).focus();
-    await userEvent.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
     expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus();
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true");
 
-    await userEvent.keyboard("{ArrowLeft}");
+    await user.keyboard("{ArrowLeft}");
     expect(screen.getByRole("tab", { name: "One" })).toHaveFocus();
     expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("moves focus with ArrowDown/ArrowUp in vertical mode (automatic)", async () => {
+    const user = userEvent.setup();
     renderTabs({ orientation: "vertical" });
     screen.getByRole("tab", { name: "One" }).focus();
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus();
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true");
 
-    await userEvent.keyboard("{ArrowUp}");
+    await user.keyboard("{ArrowUp}");
     expect(screen.getByRole("tab", { name: "One" })).toHaveFocus();
     expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("in manual mode, arrow keys move focus but do not select", async () => {
+    const user = userEvent.setup();
     renderTabs({ activationMode: "manual" });
     screen.getByRole("tab", { name: "One" }).focus();
-    await userEvent.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
     expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus();
     expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "false");
@@ -238,6 +246,7 @@ describe("Tabs", () => {
   });
 
   it("in manual mode, restores the selected tab as tabbable when focus leaves the tablist", async () => {
+    const user = userEvent.setup();
     render(
       <>
         <Tabs defaultValue="one" activationMode="manual">
@@ -255,44 +264,47 @@ describe("Tabs", () => {
     const one = screen.getByRole("tab", { name: "One" });
     const two = screen.getByRole("tab", { name: "Two" });
     one.focus();
-    await userEvent.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
     expect(two).toHaveAttribute("tabindex", "0");
 
-    await userEvent.tab();
+    await user.tab();
     expect(screen.getByRole("tabpanel", { name: "One" })).toHaveFocus();
     expect(one).toHaveAttribute("tabindex", "0");
     expect(two).toHaveAttribute("tabindex", "-1");
   });
 
   it("in manual mode, Enter activates the focused tab", async () => {
+    const user = userEvent.setup();
     renderTabs({ activationMode: "manual" });
     screen.getByRole("tab", { name: "One" }).focus();
-    await userEvent.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
     expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus();
-    await userEvent.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("Content two")).not.toHaveAttribute("hidden");
   });
 
   it("wraps focus around by default", async () => {
+    const user = userEvent.setup();
     renderTabs({ activationMode: "manual" });
     screen.getByRole("tab", { name: "One" }).focus();
-    await userEvent.keyboard("{ArrowRight}");
-    await userEvent.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
     expect(screen.getByRole("tab", { name: "Three" })).toHaveFocus();
-    await userEvent.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
     expect(screen.getByRole("tab", { name: "One" })).toHaveFocus();
   });
 
   it("in manual mode, Space activates the focused tab", async () => {
+    const user = userEvent.setup();
     renderTabs({ activationMode: "manual" });
     screen.getByRole("tab", { name: "One" }).focus();
 
-    await userEvent.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowRight}");
     expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus();
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "false");
 
-    await userEvent.keyboard(" ");
+    await user.keyboard(" ");
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("Content two")).not.toHaveAttribute("hidden");
   });
@@ -418,6 +430,7 @@ describe("Tabs", () => {
   });
 
   it("moves selection when the active uncontrolled tab is removed", async () => {
+    const user = userEvent.setup();
     function RemovableTabs() {
       const [showFirst, setShowFirst] = useState(true);
 
@@ -441,12 +454,13 @@ describe("Tabs", () => {
     render(<RemovableTabs />);
     expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
 
-    await userEvent.click(screen.getByRole("button", { name: "Remove first" }));
+    await user.click(screen.getByRole("button", { name: "Remove first" }));
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("tabindex", "0");
   });
 
   it("uses the latest onChange callback after rerender", async () => {
+    const user = userEvent.setup();
     const firstCallback = vi.fn();
     const secondCallback = vi.fn();
     const { rerender } = render(
@@ -471,12 +485,13 @@ describe("Tabs", () => {
       </Tabs>,
     );
 
-    await userEvent.click(screen.getByRole("tab", { name: "Two" }));
+    await user.click(screen.getByRole("tab", { name: "Two" }));
     expect(firstCallback).not.toHaveBeenCalled();
     expect(secondCallback).toHaveBeenCalledWith("two");
   });
 
   it("composes consumer click handlers with internal selection", async () => {
+    const user = userEvent.setup();
     const onClick = vi.fn();
     render(
       <Tabs defaultValue="one">
@@ -491,12 +506,13 @@ describe("Tabs", () => {
       </Tabs>,
     );
 
-    await userEvent.click(screen.getByRole("tab", { name: "Two" }));
+    await user.click(screen.getByRole("tab", { name: "Two" }));
     expect(onClick).toHaveBeenCalled();
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("keeps value strings unchanged while encoding DOM id references", async () => {
+    const user = userEvent.setup();
     const value = "release notes/v1.2?";
     render(
       <Tabs defaultValue={value}>
@@ -517,7 +533,7 @@ describe("Tabs", () => {
     expect(tab).toHaveAttribute("aria-controls", panel.id);
     expect(panel).toHaveAttribute("aria-labelledby", tab.id);
 
-    await userEvent.click(screen.getByRole("tab", { name: "Other" }));
+    await user.click(screen.getByRole("tab", { name: "Other" }));
     expect(screen.getByRole("tab", { name: "Other" })).toHaveAttribute("aria-selected", "true");
   });
 
@@ -566,6 +582,7 @@ describe("Tabs", () => {
   });
 
   it("respects defaultValue once lazy-loaded triggers mount", async () => {
+    const user = userEvent.setup();
     function LazyTabs() {
       const [showTriggers, setShowTriggers] = useState(false);
       return (
@@ -588,7 +605,7 @@ describe("Tabs", () => {
     render(<LazyTabs />);
     expect(screen.queryByRole("tab")).toBeNull();
 
-    await userEvent.click(screen.getByRole("button", { name: "Load triggers" }));
+    await user.click(screen.getByRole("button", { name: "Load triggers" }));
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("Content two")).not.toHaveAttribute("hidden");
   });
@@ -789,6 +806,3 @@ describe("Tabs types", () => {
     expectTypeOf<TabsTriggerProps>().not.toHaveProperty("asChild");
   });
 });
-
-// Reference to keep the import lint clean when only used in types above.
-void TabsTrigger;

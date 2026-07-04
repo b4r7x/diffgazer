@@ -32,7 +32,6 @@ export {
   type RunSummaryParts,
   resolveSelectedDateId,
   resolveSelectedId,
-  resolveSelectedRunId,
   type SeverityPart,
   sortIssuesBySeverity,
 } from "./history.js";

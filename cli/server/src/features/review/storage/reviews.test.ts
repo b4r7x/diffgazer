@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { DrilldownResult, SavedReview } from "@diffgazer/core/schemas/review";
@@ -314,6 +314,31 @@ describe("reviews storage", () => {
     }
   });
 
+  it("does not lose a concurrent index add", async () => {
+    const { saveReview, listReviews } = await loadStorage();
+
+    const first = saveReview(makeSaveOptions({ reviewId: REVIEW_ID, projectPath: "/proj/a" }));
+    const second = saveReview(makeSaveOptions({ reviewId: REVIEW_ID_2, projectPath: "/proj/a" }));
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      expect.objectContaining({ ok: true }),
+      expect.objectContaining({ ok: true }),
+    ]);
+
+    await vi.waitFor(async () => {
+      const ids = await readJson<string[]>(projectIndexPath("/proj/a"));
+      expect(ids).toEqual(expect.arrayContaining([REVIEW_ID, REVIEW_ID_2]));
+    });
+
+    const listed = await listReviews("/proj/a");
+    expect(listed.ok).toBe(true);
+    if (listed.ok) {
+      expect(listed.value.items.map((item) => item.id)).toEqual(
+        expect.arrayContaining([REVIEW_ID, REVIEW_ID_2]),
+      );
+    }
+  });
+
   it.skipIf(process.platform === "win32")(
     "creates the reviews index directory with 0o700 mode under a permissive umask",
     async () => {
@@ -383,6 +408,27 @@ describe("reviews storage", () => {
     const missing = await getReview(REVIEW_ID);
     expect(missing.ok).toBe(false);
     if (!missing.ok) expect(missing.error.code).toBe("NOT_FOUND");
+  });
+
+  it.skipIf(process.platform === "win32")("leaves a review listed when unlink fails", async () => {
+    await writeSavedReview(makeSavedReview());
+    await writeProjectIndexFile("/projects/test", [REVIEW_ID]);
+    const { deleteReview, listReviews } = await loadStorage();
+
+    await chmod(reviewsDir(), 0o500);
+    try {
+      const deleted = await deleteReview(REVIEW_ID, "/projects/test");
+      expect(deleted.ok).toBe(false);
+    } finally {
+      await chmod(reviewsDir(), 0o700);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const listed = await listReviews("/projects/test");
+    expect(listed.ok).toBe(true);
+    if (listed.ok) {
+      expect(listed.value.items.map((item) => item.id)).toContain(REVIEW_ID);
+    }
   });
 
   it("surfaces lazy project index write failures as warnings", async () => {
@@ -617,6 +663,100 @@ describe("reviews storage", () => {
     // DELETE removes the salvaged record (its ownership read succeeds).
     await expect(deleteReview(REVIEW_ID)).resolves.toEqual({ ok: true, value: { existed: true } });
     await expect(stat(reviewPath(REVIEW_ID))).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("preserves a valid stored diff through lenient salvage", async () => {
+    const diff = makeSaveOptions().diff;
+    const rawReview = {
+      metadata: makeSavedReview().metadata,
+      result: {
+        summary: "Legacy review",
+        issues: [
+          makeIssue({ id: "ok", file: "a.ts", severity: "high" }),
+          { ...makeIssue({ id: "bad" }), category: "imaginary" },
+        ],
+      },
+      diff,
+      gitContext: makeSavedReview().gitContext,
+      drilldowns: [],
+    };
+    await mkdir(reviewsDir(), { recursive: true });
+    await writeFile(reviewPath(REVIEW_ID), `${JSON.stringify(rawReview, null, 2)}\n`, "utf-8");
+
+    const { getReview } = await loadStorage();
+    const read = await getReview(REVIEW_ID);
+
+    expect(read.ok).toBe(true);
+    if (read.ok) {
+      expect(read.value.diff).toEqual(diff);
+      expect(read.value.result.issues.map((issue) => issue.id)).toEqual(["ok"]);
+    }
+  });
+
+  it("does not persist a lenient-salvaged record via the migration write-back", async () => {
+    const diff = makeSaveOptions().diff;
+    const rawReview = {
+      metadata: {
+        ...makeSavedReview().metadata,
+        blockerCount: 0,
+        highCount: 0,
+        mediumCount: 0,
+        lowCount: 0,
+        nitCount: 0,
+        issueCount: 2,
+      },
+      result: {
+        summary: "Legacy review",
+        issues: [
+          makeIssue({ id: "ok", file: "a.ts", severity: "high" }),
+          { ...makeIssue({ id: "bad" }), category: "imaginary" },
+        ],
+      },
+      diff,
+      gitContext: makeSavedReview().gitContext,
+      drilldowns: [],
+    };
+    await mkdir(reviewsDir(), { recursive: true });
+    await writeFile(reviewPath(REVIEW_ID), `${JSON.stringify(rawReview, null, 2)}\n`, "utf-8");
+
+    const { getReview } = await loadStorage();
+    const read = await getReview(REVIEW_ID);
+    expect(read.ok).toBe(true);
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const stored = await readJson<typeof rawReview>(reviewPath(REVIEW_ID));
+    expect(stored.diff).toEqual(diff);
+    expect(stored.result.issues.some((issue) => issue.category === "imaginary")).toBe(true);
+  });
+
+  it("serves a strict-valid review with denormalized line fields normalized", async () => {
+    await writeSavedReview(
+      makeSavedReview({
+        result: {
+          summary: "Review summary",
+          issues: [makeIssue({ id: "i1", line_start: 8.9, line_end: 4 })],
+        },
+        drilldowns: [
+          makeDrilldown("i1", "deep"),
+          {
+            ...makeDrilldown("i2", "range"),
+            issue: makeIssue({ id: "i2", line_start: null, line_end: 9 }),
+          },
+        ],
+      }),
+    );
+
+    const { getReview } = await loadStorage();
+    const read = await getReview(REVIEW_ID);
+
+    expect(read.ok).toBe(true);
+    if (read.ok) {
+      expect(read.value.result.issues[0]).toMatchObject({ line_start: 4, line_end: 8 });
+      expect(read.value.drilldowns[1]?.issue).toMatchObject({
+        line_start: null,
+        line_end: null,
+      });
+    }
   });
 
   it("rekeys a project's reviews to a new path and removes the stale index", async () => {

@@ -20,8 +20,8 @@ import {
   parsedDiffIdentity,
   resolveDiffInput,
 } from "@/lib/diff";
-import { SplitView } from "./diff-view-split";
-import { UnifiedView } from "./diff-view-unified";
+import { DiffViewSplit } from "./diff-view-split";
+import { DiffViewUnified } from "./diff-view-unified";
 
 /** Allowed diff view variant values. */
 export type DiffViewVariant = "hairline" | "bare" | "dense" | "viewfinder" | "statusbar";
@@ -105,7 +105,6 @@ type DiffViewResolvedProps = DiffViewBaseProps & {
   diff?: ParsedDiff;
 };
 
-/** Root <figure> with aria-roledescription="diff". */
 interface ActiveHunkState {
   /** parsed identity used by active hunk. */
   parsedIdentity: string;
@@ -245,7 +244,7 @@ export function DiffView(props: DiffViewProps) {
     );
   } else if (mode === "split") {
     body = (
-      <SplitView
+      <DiffViewSplit
         parsed={parsed}
         showLineNumbers={showLineNumbers}
         disableWordDiff={disableWordDiff}
@@ -262,7 +261,7 @@ export function DiffView(props: DiffViewProps) {
     );
   } else {
     body = (
-      <UnifiedView
+      <DiffViewUnified
         parsed={parsed}
         showLineNumbers={showLineNumbers}
         disableWordDiff={disableWordDiff}

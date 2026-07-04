@@ -125,7 +125,7 @@ export function buildTimelineItems(reviews: ReviewMetadata[]): TimelineItem[] {
     if (existing) {
       existing.count++;
     } else {
-      groups.set(key, { label: getDateLabel(review.createdAt), count: 1 });
+      groups.set(key, { label: getDateLabel(key), count: 1 });
     }
   }
 
@@ -153,9 +153,6 @@ export function resolveSelectedId<T extends { id: string }>(
   }
   return items[0]?.id ?? null;
 }
-
-/** History-flavored alias of {@link resolveSelectedId} for the run-selection call sites. */
-export const resolveSelectedRunId = resolveSelectedId;
 
 export const HISTORY_SEARCH_PLACEHOLDER = "Search runs by ID...";
 

@@ -44,6 +44,11 @@ async function loadStore() {
   return getStore();
 }
 
+async function loadSetupStatus() {
+  const { getSetupStatus } = await import("../../shared/lib/config/setup-status.js");
+  return getSetupStatus;
+}
+
 async function configureProvider(
   provider: AIProvider,
   options: { apiKey?: string; model?: string } = {},
@@ -288,7 +293,7 @@ describe("config service", () => {
   });
 
   it("derives setup readiness from settings, provider config, and project trust", async () => {
-    const { getSetupStatus } = await loadService();
+    const getSetupStatus = await loadSetupStatus();
 
     const initial = getSetupStatus(projectRoot);
     expect(initial).toMatchObject({

@@ -5,6 +5,20 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { BaseRegistryBundleSchema, createRegistryLoader } from "../registry.js";
 import { createBundler } from "./bundle.js";
+import { detectNpmImports } from "./detect-imports.js";
+
+describe("detectNpmImports", () => {
+  it("detects packages from multi-line named imports", () => {
+    const source = `
+      import {
+        buttonVariants,
+        type ButtonVariantProps,
+      } from "class-variance-authority";
+    `;
+
+    expect(detectNpmImports(source)).toEqual(["class-variance-authority"]);
+  });
+});
 
 describe("createBundler", () => {
   it("writes bundles whose integrity validates after installer schema parsing", () => {

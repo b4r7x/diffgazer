@@ -45,7 +45,7 @@ export const useFocusTrapDoc: HookDoc = {
     {
       title: "Standalone",
       content:
-        "useFocusTrap does not require KeyboardProvider. It listens for Tab/Shift+Tab directly on the container.",
+        "useFocusTrap does not require KeyboardProvider. It intercepts Tab/Shift+Tab with a capture-phase keydown listener on the container's document while the trap is active, and uses a capture-phase focusin listener there to recapture escaped focus.",
     },
     {
       title: "Tab wrapping",

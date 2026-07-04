@@ -15,6 +15,58 @@ import { SearchInput } from "./model-search-input";
 import { TierFilterTabs } from "./tier-filter-tabs";
 
 type FocusZone = "search" | "filters" | "list";
+const MIN_MODEL_VIEWPORT_SIZE = 4;
+const MODEL_DIALOG_RESERVED_ROWS = 14;
+
+function getModelViewportSize(rows: number, total: number): number {
+  const availableRows = Math.max(MIN_MODEL_VIEWPORT_SIZE, rows - MODEL_DIALOG_RESERVED_ROWS);
+  return Math.min(total, availableRows);
+}
+
+function getCenteredModelWindow({
+  total,
+  highlightedIndex,
+  visibleCount,
+}: {
+  total: number;
+  highlightedIndex: number;
+  visibleCount: number;
+}): { start: number; end: number } {
+  if (total <= visibleCount) return { start: 0, end: total };
+
+  const halfViewport = Math.floor(visibleCount / 2);
+  const maxStart = total - visibleCount;
+  const start = Math.min(Math.max(highlightedIndex - halfViewport, 0), maxStart);
+  return { start, end: start + visibleCount };
+}
+
+function getVisibleModelWindow({
+  total,
+  highlightedIndex,
+  viewportSize,
+}: {
+  total: number;
+  highlightedIndex: number;
+  viewportSize: number;
+}): { start: number; end: number; canScrollUp: boolean; canScrollDown: boolean } {
+  let visibleCount = Math.min(total, viewportSize);
+  let window = getCenteredModelWindow({ total, highlightedIndex, visibleCount });
+  let canScrollUp = window.start > 0;
+  let canScrollDown = window.end < total;
+
+  for (let i = 0; i < 2; i += 1) {
+    const indicatorRows = Number(canScrollUp) + Number(canScrollDown);
+    const nextVisibleCount = Math.max(1, Math.min(total, viewportSize - indicatorRows));
+    if (nextVisibleCount === visibleCount) break;
+
+    visibleCount = nextVisibleCount;
+    window = getCenteredModelWindow({ total, highlightedIndex, visibleCount });
+    canScrollUp = window.start > 0;
+    canScrollDown = window.end < total;
+  }
+
+  return { ...window, canScrollUp, canScrollDown };
+}
 
 function renderModelListBody({
   loading,
@@ -25,6 +77,7 @@ function renderModelListBody({
   safeHighlightIndex,
   selectedId,
   contentWidth,
+  viewportSize,
   tokens,
 }: {
   loading: boolean;
@@ -35,6 +88,7 @@ function renderModelListBody({
   safeHighlightIndex: number;
   selectedId: string | undefined;
   contentWidth: number;
+  viewportSize: number;
   tokens: CliColorTokens;
 }): ReactElement {
   if (loading) {
@@ -50,17 +104,29 @@ function renderModelListBody({
       </Text>
     );
   }
+  const window = getVisibleModelWindow({
+    total: filteredModels.length,
+    highlightedIndex: safeHighlightIndex,
+    viewportSize,
+  });
+  const visibleModels = filteredModels.slice(window.start, window.end);
+
   return (
     <Box flexDirection="column">
-      {filteredModels.map((model, idx) => (
-        <ModelListItem
-          key={model.id}
-          model={model}
-          isHighlighted={focusZone === "list" && idx === safeHighlightIndex}
-          isSelected={model.id === selectedId}
-          maxWidth={contentWidth}
-        />
-      ))}
+      {window.canScrollUp ? <Text color={tokens.muted}>{"\u25B2"}</Text> : null}
+      {visibleModels.map((model, idx) => {
+        const absoluteIndex = window.start + idx;
+        return (
+          <ModelListItem
+            key={model.id}
+            model={model}
+            isHighlighted={focusZone === "list" && absoluteIndex === safeHighlightIndex}
+            isSelected={model.id === selectedId}
+            maxWidth={contentWidth}
+          />
+        );
+      })}
+      {window.canScrollDown ? <Text color={tokens.muted}>{"\u25BC"}</Text> : null}
     </Box>
   );
 }
@@ -81,7 +147,7 @@ export function ModelSelectOverlay({
   onSelect,
 }: ModelSelectOverlayProps): ReactElement {
   const { tokens } = useTheme();
-  const { columns } = useTerminalDimensions();
+  const { columns, rows } = useTerminalDimensions();
   const {
     models,
     loading,
@@ -106,9 +172,6 @@ export function ModelSelectOverlay({
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [highlightIndex, setHighlightIndex] = useState(0);
 
-  // Derive the clamped index during render. Arrow handlers wrap with modulo
-  // against the current filteredModels.length, so the stored highlightIndex
-  // can never persist out of range across user actions.
   const safeHighlightIndex =
     filteredModels.length === 0 ? 0 : Math.min(highlightIndex, filteredModels.length - 1);
 
@@ -144,8 +207,6 @@ export function ModelSelectOverlay({
     );
   }
 
-  // Dialog escape returns to the list first, then closes. Called from an event
-  // handler, so `focusZone` from closure is the latest committed value.
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen && focusZone !== "list") {
       setFocusZone("list");
@@ -200,6 +261,7 @@ export function ModelSelectOverlay({
   );
 
   const contentWidth = Math.min(columns - 8, 70);
+  const modelViewportSize = getModelViewportSize(rows, filteredModels.length);
 
   const compatibilityLabel = isOpenRouter ? getCompatibilityLabel(openRouter) : null;
 
@@ -236,6 +298,7 @@ export function ModelSelectOverlay({
               safeHighlightIndex,
               selectedId,
               contentWidth,
+              viewportSize: modelViewportSize,
               tokens,
             })}
             {saving && <Spinner label="Saving…" />}

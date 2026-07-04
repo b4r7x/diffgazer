@@ -34,8 +34,13 @@ export async function waitForHealthy({
   const deadline = now() + timeoutMs;
 
   while (true) {
+    const remainingMs = deadline - now();
+    if (remainingMs <= 0) {
+      throw new Error(`API server did not become healthy at ${url} within ${timeoutMs}ms.`);
+    }
+
     try {
-      const response = await fetchImpl(url);
+      const response = await fetchImpl(url, { signal: AbortSignal.timeout(remainingMs) });
       if (response.ok) {
         return;
       }

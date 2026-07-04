@@ -13,7 +13,7 @@ Three overloads:
 
 ```tsx
 // Single key
-useKey("Escape", () => close())
+useKey("Escape", handleClose)
 useKey("mod+s", (e) => save(), { preventDefault: true })
 
 // Array of keys
@@ -38,11 +38,11 @@ useKey({
 Pushes a named scope onto the stack. While active, only handlers registered in this scope fire. Pops automatically on unmount.
 
 ```tsx
-import { useScope } from "@diffgazer/keys"
+import { useKey, useScope } from "@diffgazer/keys"
 
 function Modal({ open }: { open: boolean }) {
-  useScope("modal", { enabled: open })
-  useKey("Escape", () => close())
+  const scope = useScope("modal", { enabled: open })
+  useKey("Escape", () => close(), { scope })
 
   if (!open) return null
   return <div>...</div>

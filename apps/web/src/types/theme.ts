@@ -9,5 +9,6 @@ export type ResolvedTheme = Extract<Theme, "dark" | "light">;
 export interface ThemeContextValue {
   theme: WebTheme;
   resolved: ResolvedTheme;
+  system: ResolvedTheme;
   setTheme: (theme: WebTheme) => Promise<void>;
 }

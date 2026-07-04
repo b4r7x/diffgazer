@@ -3,25 +3,33 @@ name: Docker Build
 on:
   pull_request:
     paths:
+      - .dockerignore
       - Dockerfile
       - deploy/**
       - apps/docs/**
       - apps/landing/**
-      - libs/ui/public/r/**
-      - libs/keys/public/r/**
+      - libs/**
+      - cli/**
+      - package.json
       - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - turbo.json
       - .github/workflows/docker-build.yml
   push:
     branches:
       - main
     paths:
+      - .dockerignore
       - Dockerfile
       - deploy/**
       - apps/docs/**
       - apps/landing/**
-      - libs/ui/public/r/**
-      - libs/keys/public/r/**
+      - libs/**
+      - cli/**
+      - package.json
       - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - turbo.json
       - .github/workflows/docker-build.yml
 
 concurrency:

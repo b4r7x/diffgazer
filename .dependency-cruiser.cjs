@@ -47,10 +47,13 @@ module.exports = {
           // crawl (tsPreCompilationDeps:false) does not follow.
           "(^|/)types\\.ts$",
           "(^|/)types/",
+          "^cli/server/src/shared/lib/http/error-codes\\.ts$",
+          "^libs/core/src/schemas/presentation/(timeline|category-stats)\\.ts$",
           // Public package subpath exports and documentation data are consumed
           // through package.json exports or artifact/doc loaders, not the
           // runtime application graph crawled here.
           "^libs/core/src/testing/dom-polyfills\\.ts$",
+          "^libs/core/src/schemas/(git|context)\\.ts$",
           "^libs/keys/docs/hook-docs/[^/]+\\.ts$",
           // Package/app entrypoints and tooling configs are intentionally orphaned.
           "(^|/)src/index\\.tsx?$",
@@ -80,7 +83,7 @@ module.exports = {
           // no-orphans precise for alias-reached web modules instead of disabling it.
           "^apps/web/src/hooks/(use-theme|use-config)\\.tsx$",
           "^apps/web/src/(features/(providers/components/list|history/hooks/use-keyboard|help/components/page)|components/ui/card-layout)\\.tsx?$",
-          "^apps/docs/src/(components/(content-spinner|not-found-state|preview-inset-pane|layout/(tui-fault-panel|tui-bracket-link)|docs-mdx/(markdown-renderers|blocks/steps))|features/theme/components/(diffgazer-preview|variable-diagram)|hooks/(use-copy-feedback|use-demos)|lib/(consumption-metadata|cross-deps-data|docs-chrome|example-frames|resolve-examples))\\.tsx?$",
+          "^apps/docs/src/(components/(content-spinner|not-found-state|preview-inset-pane|shared/chrome-label|layout/(tui-fault-panel|tui-bracket-link)|docs-mdx/(markdown-renderers|blocks/steps))|features/theme/components/(diffgazer-preview|variable-diagram)|hooks/(theme-context|use-demos)|lib/(consumption-metadata|cross-deps-data|docs-chrome|example-frames|generated-doc-data|resolve-examples))\\.tsx?$",
         ],
       },
       to: {},

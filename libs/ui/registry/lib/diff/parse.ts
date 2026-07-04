@@ -80,20 +80,55 @@ const HUNK_RE = /^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@(.*)$/;
 const SKIP_RE =
   /^(index |new file mode|deleted file mode|old mode|new mode|similarity index|rename from|rename to|Binary files|copy from|copy to)/;
 
+function normalizeDiffPath(path: string): string | null {
+  return path === "/dev/null" ? null : path;
+}
+
 /** Parses a unified diff string into per-file diff objects. */
 export function parseDiff(patch: string): ParsedDiff[] {
   const lines = patch.split("\n");
+  if (lines[lines.length - 1] === "") lines.pop();
   const files: ParsedDiff[] = [];
   let current: ParsedDiff | null = null;
   let hunk: DiffHunk | null = null;
   let oldLine = 0;
   let newLine = 0;
+  let remainingOldLines = 0;
+  let remainingNewLines = 0;
 
   for (const line of lines) {
     if (line.startsWith("diff --git ")) {
       if (current) files.push(current);
       current = { oldPath: null, newPath: null, hunks: [] };
       hunk = null;
+      remainingOldLines = 0;
+      remainingNewLines = 0;
+      continue;
+    }
+
+    if (hunk && (remainingOldLines > 0 || remainingNewLines > 0)) {
+      if (line.startsWith("\\")) continue;
+
+      if (line.startsWith("-") && remainingOldLines > 0) {
+        hunk.changes.push({ type: "remove", content: line.slice(1), oldLine, newLine: null });
+        oldLine++;
+        remainingOldLines--;
+        continue;
+      }
+      if (line.startsWith("+") && remainingNewLines > 0) {
+        hunk.changes.push({ type: "add", content: line.slice(1), oldLine: null, newLine });
+        newLine++;
+        remainingNewLines--;
+        continue;
+      }
+      if (remainingOldLines > 0 && remainingNewLines > 0) {
+        const content = line.startsWith(" ") ? line.slice(1) : line;
+        hunk.changes.push({ type: "context", content, oldLine, newLine });
+        oldLine++;
+        newLine++;
+        remainingOldLines--;
+        remainingNewLines--;
+      }
       continue;
     }
 
@@ -101,12 +136,12 @@ export function parseDiff(patch: string): ParsedDiff[] {
 
     if (line.startsWith("--- ")) {
       if (!current) current = { oldPath: null, newPath: null, hunks: [] };
-      current.oldPath = line.replace(/^---\s+(?:a\/)?/, "");
+      current.oldPath = normalizeDiffPath(line.replace(/^---\s+(?:a\/)?/, ""));
       continue;
     }
     if (line.startsWith("+++ ")) {
       if (!current) current = { oldPath: null, newPath: null, hunks: [] };
-      current.newPath = line.replace(/^\+\+\+\s+(?:b\/)?/, "");
+      current.newPath = normalizeDiffPath(line.replace(/^\+\+\+\s+(?:b\/)?/, ""));
       continue;
     }
 
@@ -124,23 +159,8 @@ export function parseDiff(patch: string): ParsedDiff[] {
       current.hunks.push(hunk);
       oldLine = hunk.oldStart;
       newLine = hunk.newStart;
-      continue;
-    }
-
-    if (!hunk) continue;
-    if (line.startsWith("\\")) continue;
-
-    if (line.startsWith("-")) {
-      hunk.changes.push({ type: "remove", content: line.slice(1), oldLine, newLine: null });
-      oldLine++;
-    } else if (line.startsWith("+")) {
-      hunk.changes.push({ type: "add", content: line.slice(1), oldLine: null, newLine });
-      newLine++;
-    } else {
-      const content = line.startsWith(" ") ? line.slice(1) : line;
-      hunk.changes.push({ type: "context", content, oldLine, newLine });
-      oldLine++;
-      newLine++;
+      remainingOldLines = hunk.oldCount;
+      remainingNewLines = hunk.newCount;
     }
   }
 

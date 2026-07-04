@@ -237,9 +237,10 @@ describe("buildCopyBundle", () => {
     ).toThrow(expectedMessage);
   });
 
-  it("items are sorted by name", () => {
+  it("sorts items by locale-independent code-unit name order", () => {
     const root = createTempRoot();
     writeHookFile(root, "use-zebra.ts", "export const useZebra = () => null\n");
+    writeHookFile(root, "use-zed.ts", "export const useZed = () => null\n");
     writeHookFile(root, "use-alpha.ts", "export const useAlpha = () => null\n");
     writeHookFile(root, "use-mid.ts", "export const useMid = () => null\n");
     writeRegistry(root, [
@@ -247,6 +248,11 @@ describe("buildCopyBundle", () => {
         name: "zebra",
         type: "registry:hook",
         files: [{ path: "src/hooks/use-zebra.ts" }],
+      },
+      {
+        name: "Zed",
+        type: "registry:hook",
+        files: [{ path: "src/hooks/use-zed.ts" }],
       },
       {
         name: "alpha",
@@ -270,6 +276,6 @@ describe("buildCopyBundle", () => {
     const output = JSON.parse(readFileSync(outputPath, "utf-8")) as {
       items: Array<{ name: string }>;
     };
-    expect(output.items.map((i) => i.name)).toEqual(["alpha", "mid", "zebra"]);
+    expect(output.items.map((i) => i.name)).toEqual(["Zed", "alpha", "mid", "zebra"]);
   });
 });

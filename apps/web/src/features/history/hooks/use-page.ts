@@ -33,9 +33,7 @@ export function useHistoryPage() {
     const metadata = reviewsById.get(run.id);
     return {
       ...run,
-      provider: "AI",
       summary: metadata ? getRunSummary(metadata) : null,
-      issues: [],
     };
   });
 
@@ -84,8 +82,6 @@ export function useHistoryPage() {
 
   return {
     reviewsQuery: history.reviewsQuery,
-    isLoading: history.isLoading,
-    error: history.error,
     focusZone,
     searchQuery: history.searchQuery,
     searchInputRef,

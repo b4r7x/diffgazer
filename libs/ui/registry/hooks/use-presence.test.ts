@@ -93,6 +93,35 @@ describe("usePresence", () => {
       }
     });
 
+    it("resolves exit via animationend when the element runs multiple exit animations", () => {
+      vi.useFakeTimers();
+      const element = document.createElement("div");
+      document.body.appendChild(element);
+      const restore = withResolvedAnimationName(element, "fade-out, slide-out");
+      const onExitComplete = vi.fn();
+
+      try {
+        const ref = makeElementRef(element);
+        const { result, rerender } = renderHook(
+          ({ open }) => usePresence({ open, ref, exitFallbackMs: 50, onExitComplete }),
+          { initialProps: { open: true } },
+        );
+
+        rerender({ open: false });
+        expect(result.current.present).toBe(true);
+
+        act(() => {
+          dispatchNativeAnimation(element, "animationend", "fade-out");
+        });
+
+        expect(result.current.present).toBe(false);
+        expect(onExitComplete).toHaveBeenCalledOnce();
+      } finally {
+        restore();
+        element.remove();
+      }
+    });
+
     it("ignores native animationend events bubbling from descendants", () => {
       const element = document.createElement("div");
       const child = document.createElement("span");
@@ -181,6 +210,34 @@ describe("usePresence", () => {
       }
     });
 
+    it("completes exit immediately when the element has no exit animation", () => {
+      vi.useFakeTimers();
+      const element = document.createElement("div");
+      document.body.appendChild(element);
+      const onExitComplete = vi.fn();
+
+      try {
+        const ref = makeElementRef(element);
+        const { result, rerender } = renderHook(
+          ({ open }) => usePresence({ open, ref, onExitComplete }),
+          { initialProps: { open: true } },
+        );
+
+        rerender({ open: false });
+
+        expect(result.current.present).toBe(false);
+        expect(result.current.exiting).toBe(false);
+        expect(onExitComplete).toHaveBeenCalledOnce();
+
+        act(() => {
+          vi.advanceTimersByTime(250);
+        });
+        expect(onExitComplete).toHaveBeenCalledOnce();
+      } finally {
+        element.remove();
+      }
+    });
+
     it("fires onExitComplete exactly once on a native animationend", () => {
       const element = document.createElement("div");
       document.body.appendChild(element);
@@ -200,6 +257,35 @@ describe("usePresence", () => {
           dispatchNativeAnimation(element, "animationend", "ui-content-exit-to-top");
         });
 
+        expect(onExitComplete).toHaveBeenCalledOnce();
+      } finally {
+        restore();
+        element.remove();
+      }
+    });
+
+    it("does not fire onExitComplete twice when animationend arrives after the fallback timer", () => {
+      vi.useFakeTimers();
+      const element = document.createElement("div");
+      document.body.appendChild(element);
+      const restore = withResolvedAnimationName(element, "ui-content-exit-to-top");
+      const onExitComplete = vi.fn();
+
+      try {
+        const ref = makeElementRef(element);
+        const { result, rerender } = renderHook(
+          ({ open }) => usePresence({ open, ref, exitFallbackMs: 50, onExitComplete }),
+          { initialProps: { open: true } },
+        );
+
+        rerender({ open: false });
+
+        act(() => {
+          vi.advanceTimersByTime(50);
+          dispatchNativeAnimation(element, "animationend", "ui-content-exit-to-top");
+        });
+
+        expect(result.current.present).toBe(false);
         expect(onExitComplete).toHaveBeenCalledOnce();
       } finally {
         restore();

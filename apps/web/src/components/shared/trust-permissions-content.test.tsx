@@ -1,6 +1,6 @@
 import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
 import { KeyboardProvider, useKey, useScope } from "@diffgazer/keys";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -66,6 +66,16 @@ function PassiveTestHarness({ onListBoundaryNext, children }: PassiveTestHarness
   );
 }
 
+function getTrustPermissionsGroup() {
+  return screen.getByRole("group", { name: /trust permissions/i });
+}
+
+function getReadFilesOption() {
+  return within(getTrustPermissionsGroup()).getByRole("checkbox", {
+    name: /repository access/i,
+  });
+}
+
 describe("TrustPermissionsContent", () => {
   it("moves real keyboard focus between permissions and action buttons", async () => {
     const user = userEvent.setup();
@@ -75,7 +85,7 @@ describe("TrustPermissionsContent", () => {
       </KeyboardProvider>,
     );
 
-    const readFilesOption = screen.getByRole("checkbox", { name: /repository access/i });
+    const readFilesOption = getReadFilesOption();
     const saveButton = screen.getByRole("button", { name: /save changes/i });
     const revokeButton = screen.getByRole("button", { name: /revoke trust/i });
 
@@ -161,7 +171,7 @@ describe("TrustPermissionsContent", () => {
       </KeyboardProvider>,
     );
 
-    const readFilesOption = screen.getByRole("checkbox", { name: /repository access/i });
+    const readFilesOption = getReadFilesOption();
     const saveButton = screen.getByRole("button", { name: /save changes/i });
     const revokeButton = screen.getByRole("button", { name: /revoke trust/i });
 
@@ -189,7 +199,7 @@ describe("TrustPermissionsContent", () => {
       </KeyboardProvider>,
     );
 
-    const readFilesOption = screen.getByRole("checkbox", { name: /repository access/i });
+    const readFilesOption = getReadFilesOption();
     await user.tab();
     await user.keyboard("{ArrowDown}{ArrowRight}");
     expect(screen.getByRole("button", { name: /revoke trust/i })).toHaveFocus();
@@ -221,7 +231,7 @@ describe("TrustPermissionsContent", () => {
       </KeyboardProvider>,
     );
 
-    const readFilesOption = screen.getByRole("checkbox", { name: /repository access/i });
+    const readFilesOption = getReadFilesOption();
     await user.click(readFilesOption);
     expect(readFilesOption).toHaveFocus();
 
@@ -247,7 +257,7 @@ describe("TrustPermissionsContent", () => {
       </KeyboardProvider>,
     );
 
-    const readFilesOption = screen.getByRole("checkbox", { name: /repository access/i });
+    const readFilesOption = getReadFilesOption();
     expect(readFilesOption).toHaveFocus();
     expect(readFilesOption).toHaveAttribute("data-highlighted");
 
@@ -274,7 +284,7 @@ describe("TrustPermissionsContent", () => {
       </KeyboardProvider>,
     );
 
-    const readFilesOption = screen.getByRole("checkbox", { name: /repository access/i });
+    const readFilesOption = getReadFilesOption();
     expect(readFilesOption).toHaveFocus();
 
     await user.keyboard("{ArrowDown}");

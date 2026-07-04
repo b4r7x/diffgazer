@@ -212,7 +212,6 @@ function HistoryPageContent() {
                       <NavigationList.Badge variant="neutral" size="sm">
                         {run.branch}
                       </NavigationList.Badge>
-                      <NavigationList.Subtitle>{run.provider}</NavigationList.Subtitle>
                       <span className="min-w-full line-clamp-2 text-sm text-muted-foreground group-data-[highlighted]:text-primary-foreground/85">
                         {run.summary}
                       </span>

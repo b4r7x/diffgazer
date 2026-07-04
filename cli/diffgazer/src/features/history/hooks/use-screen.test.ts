@@ -2,9 +2,9 @@
  * @vitest-environment jsdom
  */
 
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { useHistoryScreen } from "./use-screen.js";
+import { useHistoryScreen } from "./use-screen";
 
 const useHistoryScreenStateMock = vi.hoisted(() => vi.fn());
 
@@ -14,6 +14,42 @@ vi.mock("@diffgazer/core/review", () => ({
 }));
 
 describe("useHistoryScreen", () => {
+  it("skips run-only zones when cycling focus with no runs", () => {
+    useHistoryScreenStateMock.mockReturnValue({
+      reviewsQuery: { data: { reviews: [] }, isLoading: false, error: null },
+      reviews: [],
+      timelineItems: [],
+      selectedDateId: "all",
+      setSelectedDateId: vi.fn(),
+      searchQuery: "",
+      setSearchQuery: vi.fn(),
+      mappedRuns: [],
+      selectedRunId: null,
+      setSelectedRunId: vi.fn(),
+      selectedRun: null,
+      severityCounts: null,
+      sortedIssues: [],
+      duration: "",
+      hasReviews: false,
+      hasSearchQuery: false,
+      emptyRunsMessage: "No runs yet",
+    });
+
+    const { result } = renderHook(() => useHistoryScreen({ onOpenReview: vi.fn() }));
+
+    expect(result.current.focusZone).toBe("search");
+
+    act(() => {
+      result.current.cycleFocusZone();
+    });
+    expect(result.current.focusZone).toBe("timeline");
+
+    act(() => {
+      result.current.cycleFocusZone();
+    });
+    expect(result.current.focusZone).toBe("search");
+  });
+
   it("opens a saved review by reviewId without starting a new unstaged review", () => {
     const onOpenReview = vi.fn();
     useHistoryScreenStateMock.mockReturnValue({

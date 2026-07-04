@@ -1,6 +1,14 @@
 import { Box, Text, useInput } from "ink";
-import type { ReactNode } from "react";
-import { Children, useState } from "react";
+import type { ReactElement, ReactNode } from "react";
+import {
+  Children,
+  cloneElement,
+  Fragment,
+  isValidElement,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTheme } from "../../theme/provider";
 
 export interface ScrollAreaProps {
@@ -8,6 +16,26 @@ export interface ScrollAreaProps {
   isActive?: boolean;
   autoTail?: boolean;
   children: ReactNode;
+}
+
+interface ColumnChildProps {
+  children?: ReactNode;
+  flexDirection?: string;
+}
+
+function isFlattenableColumnChild(child: ReactNode): child is ReactElement<ColumnChildProps> {
+  if (!isValidElement<ColumnChildProps>(child)) return false;
+  return child.type === Fragment || (child.type === Box && child.props.flexDirection === "column");
+}
+
+function getScrollRows(children: ReactNode, keyPath = ""): ReactNode[] {
+  return Children.toArray(children).flatMap((child, index) => {
+    if (isFlattenableColumnChild(child)) {
+      return getScrollRows(child.props.children, `${keyPath}${index}.`);
+    }
+    if (!isValidElement(child)) return [child];
+    return [cloneElement(child, { key: `${keyPath}${child.key ?? index}` })];
+  });
 }
 
 export function ScrollArea({
@@ -18,24 +46,25 @@ export function ScrollArea({
 }: ScrollAreaProps) {
   const { tokens } = useTheme();
   const [scrollOffset, setScrollOffset] = useState(0);
-  const [prevTotal, setPrevTotal] = useState(0);
+  const previousRowCountRef = useRef(0);
   const [userScrolled, setUserScrolled] = useState(false);
 
-  const childArray = Children.toArray(children);
-  const totalItems = childArray.length;
-  const maxOffset = Math.max(0, totalItems - height);
+  const rows = getScrollRows(children);
+  const maxOffset = Math.max(0, rows.length - height);
   const clampedOffset = Math.min(scrollOffset, maxOffset);
 
-  if (clampedOffset !== scrollOffset) {
-    setScrollOffset(clampedOffset);
-  }
+  useEffect(() => {
+    setScrollOffset((currentOffset) => Math.min(currentOffset, maxOffset));
+  }, [maxOffset]);
 
-  if (totalItems !== prevTotal) {
-    setPrevTotal(totalItems);
-    if (autoTail && totalItems > prevTotal && !userScrolled) {
+  useEffect(() => {
+    const previousRowCount = previousRowCountRef.current;
+    previousRowCountRef.current = rows.length;
+
+    if (autoTail && rows.length > previousRowCount && !userScrolled) {
       setScrollOffset(maxOffset);
     }
-  }
+  }, [autoTail, rows.length, maxOffset, userScrolled]);
 
   useInput(
     (_input, key) => {
@@ -66,13 +95,13 @@ export function ScrollArea({
 
   const canScrollUp = clampedOffset > 0;
   const canScrollDown = clampedOffset < maxOffset;
-  const visibleChildren = childArray.slice(clampedOffset, clampedOffset + height);
+  const visibleRows = rows.slice(clampedOffset, clampedOffset + height);
 
   return (
     <Box flexDirection="column">
       {canScrollUp ? <Text color={tokens.muted}>{"\u25B2"}</Text> : null}
       <Box flexDirection="column" height={height} overflow="hidden">
-        {visibleChildren}
+        {visibleRows}
       </Box>
       {canScrollDown ? <Text color={tokens.muted}>{"\u25BC"}</Text> : null}
     </Box>

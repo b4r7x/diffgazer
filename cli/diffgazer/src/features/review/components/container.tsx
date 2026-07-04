@@ -1,4 +1,8 @@
-import { convertAgentEventsToLogEntries, mapStepsToProgressData } from "@diffgazer/core/review";
+import {
+  convertAgentEventsToLogEntries,
+  mapStepsToProgressData,
+  sanitizeTerminalText,
+} from "@diffgazer/core/review";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { Box } from "ink";
 import { type ReactElement, useEffect, useRef } from "react";
@@ -81,7 +85,7 @@ export function ReviewContainer({ mode, reviewId }: ReviewContainerProps): React
       <Box flexDirection="column" gap={1}>
         <Callout variant="error">
           <Callout.Title>Review failed</Callout.Title>
-          <Callout.Content>{state.error}</Callout.Content>
+          <Callout.Content>{sanitizeTerminalText(state.error)}</Callout.Content>
         </Callout>
         <Box gap={2}>
           <Button variant="secondary" isActive onPress={handleGateBack}>
@@ -135,7 +139,7 @@ export function ReviewContainer({ mode, reviewId }: ReviewContainerProps): React
           reviewId={state.reviewId ?? undefined}
           durationMs={state.startedAt ? Date.now() - state.startedAt.getTime() : undefined}
           onContinue={goToResults}
-          onBack={reset}
+          onBack={handleGateBack}
         />
       );
 

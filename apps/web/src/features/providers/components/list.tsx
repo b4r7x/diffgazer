@@ -17,7 +17,7 @@ import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { KeyboardEvent as ReactKeyboardEvent, RefCallback } from "react";
-import { PROVIDER_FILTER_LABELS, type ProviderFilter } from "../lib/filter.js";
+import { PROVIDER_FILTER_LABELS, type ProviderFilter } from "../lib/filter";
 
 interface ProviderListProps {
   providers: ProviderWithStatus[];

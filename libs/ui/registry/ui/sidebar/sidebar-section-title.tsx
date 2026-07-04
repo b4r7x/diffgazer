@@ -14,7 +14,6 @@ import { useSidebarChrome } from "./sidebar-context";
 import { useSidebarSectionContext } from "./sidebar-section-context";
 import { SIDEBAR_TREE_CARET } from "./sidebar-tree-glyphs";
 
-/** Root nav element (standalone or within SidebarProvider). Owns variant + autoTone. */
 export type SidebarSectionTitleHeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
 /** Props for sidebar section title. */

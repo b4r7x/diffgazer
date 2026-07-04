@@ -6,8 +6,9 @@ import FloatingPanelCustomMenuExample from "./floating-panel-custom-menu";
 
 describe("floating-panel custom menu example", () => {
   it("exposes valid menu→menuitem ownership", async () => {
+    const user = userEvent.setup();
     render(<FloatingPanelCustomMenuExample />);
-    await userEvent.click(screen.getByRole("button", { name: "actions" }));
+    await user.click(screen.getByRole("button", { name: "actions" }));
 
     const menu = screen.getByRole("menu", { name: "Actions" });
     expect(within(menu).getAllByRole("menuitem")).toHaveLength(3);
@@ -33,7 +34,7 @@ describe("floating-panel custom menu example", () => {
     expect(items[0]).toHaveFocus();
 
     await user.keyboard("{Escape}");
-    expect(screen.getByRole("menu")).toHaveAttribute("data-state", "closed");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();
   });
 });

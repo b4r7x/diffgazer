@@ -67,7 +67,7 @@ const RESERVED_PROJECT_IDS = new Set(["__proto__", "constructor", "prototype"]);
 const SafeProjectIdSchema = z
   .string()
   .min(1)
-  .refine((id) => !RESERVED_PROJECT_IDS.has(id), { message: "projectId is reserved" });
+  .refine((id) => !RESERVED_PROJECT_IDS.has(id), { error: "projectId is reserved" });
 
 const ProjectFileSchema = z.object({
   projectId: SafeProjectIdSchema,

@@ -104,7 +104,7 @@ function makeStreamState() {
   };
 }
 
-function renderPage() {
+function renderPage({ strict = false }: { strict?: boolean } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -113,7 +113,7 @@ function renderPage() {
   });
 
   function Wrapper({ children }: { children: ReactNode }) {
-    return (
+    const tree = (
       <QueryClientProvider client={queryClient}>
         <ConfigProvider>
           <KeyboardProvider>
@@ -125,34 +125,8 @@ function renderPage() {
         </ConfigProvider>
       </QueryClientProvider>
     );
-  }
 
-  return render(<ReviewPage />, { wrapper: Wrapper });
-}
-
-function renderPageStrict() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  });
-
-  function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <StrictMode>
-        <QueryClientProvider client={queryClient}>
-          <ConfigProvider>
-            <KeyboardProvider>
-              <FooterProvider>
-                {children}
-                <Toaster />
-              </FooterProvider>
-            </KeyboardProvider>
-          </ConfigProvider>
-        </QueryClientProvider>
-      </StrictMode>
-    );
+    return strict ? <StrictMode>{tree}</StrictMode> : tree;
   }
 
   return render(<ReviewPage />, { wrapper: Wrapper });
@@ -319,7 +293,7 @@ describe("ReviewPage saved review loading", () => {
     // redirect) would re-fire on each re-render (F-304).
     mockUseReview.mockImplementation(() => reviewQuery({ isError: true, error: apiError(500) }));
 
-    const { rerender } = renderPageStrict();
+    const { rerender } = renderPage({ strict: true });
 
     const errorToast = await screen.findByRole("alert");
     expect(errorToast).toHaveTextContent(/error loading review/i);
@@ -481,30 +455,7 @@ describe("ReviewPage reviewId changes", () => {
       };
     });
 
-    function Harness() {
-      return <ReviewPage />;
-    }
-
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-    });
-
-    function Wrapper({ children }: { children: ReactNode }) {
-      return (
-        <QueryClientProvider client={queryClient}>
-          <ConfigProvider>
-            <KeyboardProvider>
-              <FooterProvider>
-                {children}
-                <Toaster />
-              </FooterProvider>
-            </KeyboardProvider>
-          </ConfigProvider>
-        </QueryClientProvider>
-      );
-    }
-
-    const harness = render(<Harness />, { wrapper: Wrapper });
+    const view = renderPage();
 
     await act(() => {
       capturedOnComplete?.();
@@ -529,7 +480,7 @@ describe("ReviewPage reviewId changes", () => {
       },
     });
 
-    harness.rerender(<Harness />);
+    view.rerender(<ReviewPage />);
 
     expect(screen.getByText("Progress Overview")).toBeInTheDocument();
     expect(screen.queryByText(`Review Complete #${FIRST_REVIEW_ID}`)).not.toBeInTheDocument();

@@ -1,6 +1,6 @@
 import type { ComponentProps, ReactNode } from "react";
 
-/** Root <figure>. */
+/** Token rendered by CodeBlockLine when using the `content` token array. */
 export interface CodeBlockToken {
   /** Text content. */
   text: string;
@@ -39,12 +39,12 @@ export interface CodeBlockLineProps extends Omit<ComponentProps<"span">, "conten
   removedLineLabel?: string;
 }
 
-const NON_BREAKING_SPACE = " ";
+const BLANK_SIGN = " ";
 
 function signCharacter(state: CodeBlockLineState | undefined): string {
   if (state === "added") return "+";
   if (state === "removed") return "−";
-  return NON_BREAKING_SPACE;
+  return BLANK_SIGN;
 }
 
 function renderContent(content: string | CodeBlockToken[] | undefined): ReactNode {

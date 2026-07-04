@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { HISTORY_ZONE_ORDER, nextHistoryZone } from "./history-run-mapping";
+import { HISTORY_ZONE_ORDER, nextHistoryZone } from "./run-mapping";
 
 describe("nextHistoryZone", () => {
   test("cycles search -> timeline -> runs -> insights -> search", () => {

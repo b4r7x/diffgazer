@@ -1,8 +1,9 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { isAbsolute, relative, resolve } from "node:path";
+import { resolve } from "node:path";
 import { log } from "../logger.js";
 import type { Registry } from "../registry-types.js";
 import { RegistrySchema } from "../registry-types.js";
+import { isWithinDir } from "../utils/fs.js";
 import { writeJson } from "../utils/json.js";
 import type { ComponentsConfig } from "./build-components.js";
 import { buildComponentsData } from "./build-components.js";
@@ -46,8 +47,7 @@ export interface BuildDocsDataResult {
 async function loadRegistry(registryPath: string, rootDir: string): Promise<Registry> {
   const resolvedRoot = resolve(rootDir);
   const resolvedRegistry = resolve(registryPath);
-  const rel = relative(resolvedRoot, resolvedRegistry);
-  if (rel.startsWith("..") || isAbsolute(rel)) {
+  if (!isWithinDir(resolvedRegistry, resolvedRoot)) {
     throw new Error(`Registry path "${registryPath}" escapes rootDir "${rootDir}"`);
   }
   if (resolvedRegistry.endsWith(".json")) {

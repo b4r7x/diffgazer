@@ -21,17 +21,6 @@ export const SELECTABLE_THEME_OPTIONS = [
   { value: "light", label: "Light", description: "Light background with dark text" },
 ] as const satisfies ReadonlyArray<SettingsOption<SelectableTheme>>;
 
-const TERMINAL_THEME_OPTION = {
-  value: "terminal",
-  label: "Terminal Default",
-  description: "Use terminal default colors",
-} as const satisfies SettingsOption<Extract<Theme, "terminal">>;
-
-export const THEME_OPTIONS = [
-  ...SELECTABLE_THEME_OPTIONS,
-  TERMINAL_THEME_OPTION,
-] as const satisfies ReadonlyArray<SettingsOption<Theme>>;
-
 export const SECRETS_STORAGE_OPTIONS = [
   {
     value: "file",

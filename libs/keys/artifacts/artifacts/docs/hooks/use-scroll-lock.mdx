@@ -17,13 +17,26 @@ Pair it with [`useFocusTrap`](/keys/hooks/use-focus-trap) to hold focus inside a
 
 ## Limitations
 
-`useScrollLock` toggles `overflow: hidden` on the target element with refcounted restore. It does not implement the full `react-remove-scroll` / Radix `useScrollLock` parity surface:
+`useScrollLock` toggles `overflow: hidden` on the target element with refcounted restore. It also compensates for scrollbar width with `padding-right` and marks the locked element with `data-scroll-locked`. It does not implement the full `react-remove-scroll` / Radix `useScrollLock` parity surface:
 
-- **Defaults to the host `document.body`.** In multi-window or iframe setups, pass a ref to the owner document's body explicitly — e.g. `target: useRef(triggerRef.current?.ownerDocument?.body)` — otherwise the lock applies to the wrong document.
+- **Defaults to the host `document.body`.** In multi-window or iframe setups, capture the trigger's owner document after mount and pass a ref to that document's body:
+
+  ```tsx
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const bodyRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    bodyRef.current = triggerRef.current?.ownerDocument.body ?? null;
+  });
+
+  useScrollLock({ target: bodyRef, enabled: open });
+  ```
+
+  Mount order matters: register the effect before calling `useScrollLock` so the target ref is populated before the lock effect runs.
+
 - **No iOS Safari rubber-band guard.** Setting `overflow: hidden` on body does not stop iOS touch scrolling. The page can still pan-scroll on iOS while the lock is active.
-- **No scrollbar-gutter compensation.** Removing the body scrollbar on desktop browsers causes a horizontal layout shift. Apply a `scrollbar-gutter: stable` CSS rule, reserve `padding-right`, or use the native `<dialog>` element (which compensates automatically) when this matters.
 
-Layout-shift and iOS rubber-band compensation are not part of the current surface; the workarounds above cover them.
+iOS rubber-band compensation is not part of the current surface; use a dedicated touch-scroll guard when that behavior matters.
 
 ## Installation
 

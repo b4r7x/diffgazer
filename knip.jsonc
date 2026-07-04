@@ -44,9 +44,6 @@
     "libs/ui/styles/*.css"
   ],
   "ignoreIssues": {
-    // Public history alias retained for the run-selection API; tests assert the
-    // alias remains live while source can share the generic resolver.
-    "libs/core/src/review/history.ts": ["duplicates"],
     "libs/registry/src/manifest.ts": ["types"],
     "libs/ui/theme/index.ts": ["exports"]
   },

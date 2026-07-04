@@ -3,7 +3,7 @@
 import { type RefCallback, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { containsActiveElement } from "../dom/focusable.js";
 import { useFocusZone } from "./use-focus-zone.js";
-import { useKey } from "./use-key.js";
+import { type UseKeyOptions, useKey } from "./use-key.js";
 
 type ActionRowZone = "content" | "actions";
 const ACTION_ROW_ZONES = ["content", "actions"] as const;
@@ -39,6 +39,8 @@ export interface UseActionRowNavigationOptions<
   disabledFocusFallbackRef?: RefObject<HTMLElement | null>;
   /** Limits zone handling to one row subtree. */
   containerRef?: RefObject<HTMLElement | null>;
+  /** Explicit keyboard scope for action-row shortcuts. Omit to use implicit scope ordering. */
+  scope?: UseKeyOptions["scope"];
   /** Allow row shortcuts to run when an editable element is focused. */
   allowInInput?: boolean;
   /** Wrap ArrowLeft/ArrowRight movement across the action ends. */
@@ -137,6 +139,7 @@ export function useActionRowNavigation<Actions extends readonly unknown[] = read
   disabledActions = EMPTY_DISABLED as ActionRowDisabledFlags<Actions>,
   disabledFocusFallbackRef,
   containerRef,
+  scope,
   allowInInput = false,
   wrap = false,
   defaultZone = "content",
@@ -154,6 +157,7 @@ export function useActionRowNavigation<Actions extends readonly unknown[] = read
     initial: defaultZone,
     zones: ACTION_ROW_ZONES,
     enabled,
+    scope,
     containerRef,
     focusWithinOnly: Boolean(containerRef),
     allowInInput,
@@ -197,6 +201,23 @@ export function useActionRowNavigation<Actions extends readonly unknown[] = read
     return el ? containsActiveElement(el) : false;
   }, [focusedIndex]);
 
+  const shouldRepairActionFocus = useCallback(() => {
+    const firstAction = actionRefs.current.values().next().value;
+    const ownerDocument =
+      firstAction?.ownerDocument ??
+      disabledFocusFallbackRef?.current?.ownerDocument ??
+      containerRef?.current?.ownerDocument;
+    if (!ownerDocument) return true;
+
+    const activeElement = ownerDocument.activeElement;
+    if (!activeElement || activeElement === ownerDocument.body) return true;
+
+    for (const action of actionRefs.current.values()) {
+      if (action === activeElement || action.contains(activeElement)) return true;
+    }
+    return false;
+  }, [containerRef, disabledFocusFallbackRef]);
+
   useEffect(() => {
     if (!enabled || defaultZone !== "actions" || !inActions || hasFocusedDefaultRef.current) return;
     const targetIndex = getEnabledTargetIndex(defaultIndex);
@@ -223,6 +244,7 @@ export function useActionRowNavigation<Actions extends readonly unknown[] = read
 
   useEffect(() => {
     if (!enabled || !inActions) return;
+    if (!shouldRepairActionFocus()) return;
     if (isIndexEnabled(focusedIndex, actionCount, disabledKey)) {
       if (!isRegisteredActionFocused()) focusAction(focusedIndex);
       return;
@@ -244,6 +266,7 @@ export function useActionRowNavigation<Actions extends readonly unknown[] = read
     inActions,
     isRegisteredActionFocused,
     setZone,
+    shouldRepairActionFocus,
   ]);
 
   const reset = (initialIndex: number = 0) => {

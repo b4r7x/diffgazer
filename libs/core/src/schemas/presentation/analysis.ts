@@ -13,7 +13,7 @@ const IssuePreviewSchema = z.object({
   id: z.string(),
   title: z.string(),
   file: z.string(),
-  line: z.number(),
+  line: z.number().nullable().optional(),
   category: z.string(),
   severity: ReviewSeveritySchema,
 });
