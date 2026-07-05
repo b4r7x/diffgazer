@@ -67,11 +67,19 @@ function DrawerProbe() {
   );
 }
 
+const TEST_TREE = {
+  name: "Docs",
+  children: [
+    { type: "separator" as const, name: "Components" },
+    { type: "page" as const, name: "Button", url: "/ui/components/button" },
+  ],
+};
+
 function renderSidebarChrome() {
   return render(
     <MobileNavProvider>
       <DrawerProbe />
-      <SidebarChrome library="ui" />
+      <SidebarChrome library="ui" tree={TEST_TREE} />
     </MobileNavProvider>,
   );
 }

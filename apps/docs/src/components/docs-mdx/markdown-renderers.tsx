@@ -17,6 +17,7 @@ import {
   type ReactNode,
   useContext,
 } from "react";
+import { SectionHeading } from "./section-heading";
 
 type CalloutTone = "warning" | "error" | "success" | "info";
 const PreCodeContext = createContext(false);
@@ -61,20 +62,7 @@ function CodeRenderer({ children, className }: { children: ReactNode; className?
 
 export const markdownMdxComponents: MDXComponents = {
   h1: () => null,
-  h2: ({ children, className, id, ...props }) => (
-    <Typography
-      as="h2"
-      size="xl"
-      id={id}
-      className={cn(
-        "font-bold text-foreground mt-10 mb-4 pb-2 border-b border-border scroll-mt-16 first:mt-0",
-        className,
-      )}
-      {...props}
-    >
-      {children}
-    </Typography>
-  ),
+  h2: (props) => <SectionHeading {...props} />,
   h3: ({ children, className, id, ...props }) => (
     <Typography
       as="h3"

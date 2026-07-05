@@ -1,5 +1,5 @@
 import { Button } from "@diffgazer/ui/components/button";
-import { Panel, PanelContent, PanelHeader } from "@diffgazer/ui/components/panel";
+import { Panel, PanelContent, PanelHeader, PanelTitle } from "@diffgazer/ui/components/panel";
 import { orderThemeDocsPrimitives, THEME_DOCS_PLAYGROUND_ORDER } from "@diffgazer/ui/theme";
 import { useState } from "react";
 import { type DocsTheme, useTheme } from "@/hooks/theme-context";
@@ -47,7 +47,7 @@ export function ThemePlayground() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Panel>
           <PanelHeader>
-            <span>Primitives</span>
+            <PanelTitle as="h3">Primitives</PanelTitle>
             <Button variant="ghost" size="sm" onClick={handleReset}>
               Reset
             </Button>
@@ -65,7 +65,9 @@ export function ThemePlayground() {
         </Panel>
 
         <Panel>
-          <PanelHeader>Preview</PanelHeader>
+          <PanelHeader>
+            <PanelTitle as="h3">Preview</PanelTitle>
+          </PanelHeader>
           <PanelContent spacing="none">
             <div data-theme={theme} style={scopedStyle}>
               <PreviewPanel />
@@ -75,7 +77,9 @@ export function ThemePlayground() {
       </div>
 
       <Panel>
-        <PanelHeader>Generated CSS</PanelHeader>
+        <PanelHeader>
+          <PanelTitle as="h3">Generated CSS</PanelTitle>
+        </PanelHeader>
         <PanelContent spacing="none">
           <CssOutput primitives={primitives} defaults={defaults} />
         </PanelContent>

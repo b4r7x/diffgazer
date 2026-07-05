@@ -77,14 +77,16 @@ export function TuiTwoPane({
 
   return (
     <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:grid lg:grid-cols-[18rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:gap-2">
-      {sidebarOpen && (
-        <button
-          type="button"
-          aria-label="Close sidebar navigation"
-          className="fixed inset-0 z-(--z-overlay) bg-(--scrim) lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
+      <button
+        type="button"
+        aria-label="Close sidebar navigation"
+        inert={!sidebarOpen || undefined}
+        className={cn(
+          "fixed inset-0 z-(--z-overlay) bg-(--scrim) transition-opacity duration-300 motion-reduce:transition-none lg:hidden",
+          sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none",
+        )}
+        onClick={closeSidebar}
+      />
 
       <aside
         ref={sidebarRef}
@@ -93,7 +95,7 @@ export function TuiTwoPane({
         aria-busy={sidebarBusy}
         inert={sidebarInert || undefined}
         className={cn(
-          "fixed inset-y-0 left-0 z-(--z-overlay) flex w-72 flex-col transition-transform duration-150 ease-in-out",
+          "fixed inset-y-0 left-0 z-(--z-overlay) flex w-72 flex-col transition-transform duration-300 ease-out motion-reduce:transition-none",
           "lg:static lg:z-auto lg:col-start-1 lg:row-start-1 lg:h-full lg:min-h-0 lg:w-auto lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}

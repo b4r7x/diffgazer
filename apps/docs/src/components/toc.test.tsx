@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import type { TableOfContents } from "fumadocs-core/toc";
 import { describe, expect, it } from "vitest";
+import { SectionHeading } from "./docs-mdx/section-heading";
 import { TableOfContentsPanel } from "./toc";
 
 function renderWithHeadings(
@@ -124,6 +125,17 @@ describe("TableOfContentsPanel", () => {
     const overviewIndent = Number.parseInt(overview.style.paddingLeft, 10);
     const detailsIndent = Number.parseInt(details.style.paddingLeft, 10);
     expect(detailsIndent).toBeGreaterThan(overviewIndent);
+  });
+
+  it("labels a SectionHeading entry without its decorative prompt marker", async () => {
+    render(
+      <main id="main-content">
+        <SectionHeading id="api-reference">API Reference</SectionHeading>
+        <TableOfContentsPanel toc={[]} />
+      </main>,
+    );
+
+    await waitFor(() => expect(tocLinks()).toEqual(["API Reference"]));
   });
 
   it("produces a single TOC link when two headings share one id", async () => {

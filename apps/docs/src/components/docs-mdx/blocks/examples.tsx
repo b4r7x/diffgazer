@@ -1,11 +1,11 @@
 import { CodeBlock, CodeBlockContent, CodeBlockLine } from "@diffgazer/ui/components/code-block";
-import { Typography } from "@diffgazer/ui/components/typography";
 import { CopyButton } from "@/components/copy-button";
 import { DemoPreview } from "@/components/demo-preview";
 import { useDemos } from "@/hooks/use-demos";
 import { resolvePreviewFrame } from "@/lib/example-frames";
 import { resolveExamples } from "@/lib/resolve-examples";
 import { useDocData } from "../doc-data-context";
+import { SectionHeading } from "../section-heading";
 import { useCurrentLibrary } from "./use-current-library";
 
 export function Examples({
@@ -28,16 +28,7 @@ export function Examples({
 
   return (
     <div className="flex flex-col gap-5">
-      {showHeading && (
-        <Typography
-          as="h2"
-          size="xl"
-          id="examples"
-          className="font-bold text-foreground mt-10 mb-4 pb-2 border-b border-border scroll-mt-16"
-        >
-          Examples
-        </Typography>
-      )}
+      {showHeading && <SectionHeading id="examples">Examples</SectionHeading>}
       {examples.map((ex) => {
         const src = d.exampleSource?.[ex.name];
         if (!src) {

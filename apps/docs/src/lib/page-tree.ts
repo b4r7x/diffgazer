@@ -74,6 +74,34 @@ export function findPageNeighbors(tree: PageTree, url: string): PageNeighbors {
 }
 
 /**
+ * Names of the sections a page belongs to in sidebar taxonomy order: the last
+ * separator seen at each level plus any enclosing folder names. This is the
+ * tree's grouping (what the sidebar shows), which can diverge from the URL —
+ * e.g. /ui/changelog sits under the "Project" separator.
+ */
+export function findTreeSectionPath(tree: PageTree, url: string): string[] {
+  const walk = (nodes: PageTreeNode[], ancestors: string[]): string[] | null => {
+    let lastSeparator: string | null = null;
+    for (const node of nodes) {
+      if (node.type === "separator") {
+        lastSeparator = node.name;
+        continue;
+      }
+      const chain = lastSeparator ? [...ancestors, lastSeparator] : ancestors;
+      if (node.type === "page" && node.url === url) {
+        return chain;
+      }
+      if (node.children) {
+        const found = walk(node.children, node.type === "folder" ? [...chain, node.name] : chain);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+  return walk(tree.children, []) ?? [];
+}
+
+/**
  * Groups a mapped page tree into separator-delimited sections. Leading pages
  * before the first separator fall back to a section named after the tree, and
  * empty sections are dropped.

@@ -1,4 +1,3 @@
-import { Typography } from "@diffgazer/ui/components/typography";
 import { AccessibilityNotes } from "./blocks/accessibility-notes";
 import { APIReference } from "./blocks/api-reference";
 import { ConsumptionBlock } from "./blocks/consumption";
@@ -10,19 +9,7 @@ import { ParameterTableBlock } from "./blocks/parameter-table";
 import { ReturnsTable } from "./blocks/returns-table";
 import { SourceViewerBlock } from "./blocks/source-viewer";
 import { UsageSnippet } from "./blocks/usage-snippet";
-
-function SectionHeading({ id, children }: { id: string; children: string }) {
-  return (
-    <Typography
-      as="h2"
-      size="xl"
-      id={id}
-      className="font-bold text-foreground mt-10 mb-4 pb-2 border-b border-border scroll-mt-16"
-    >
-      {children}
-    </Typography>
-  );
-}
+import { SectionHeading } from "./section-heading";
 
 export function ComponentDocScaffold({ hero }: { hero: string }) {
   return (

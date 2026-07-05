@@ -1,7 +1,10 @@
 import { Kbd } from "@diffgazer/ui/components/kbd";
+import { useRouterState } from "@tanstack/react-router";
 import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
+import { FOCUS_RING_CLASS } from "@/components/shared/focus-ring";
 import { useMobileNav } from "@/hooks/mobile-nav-context";
 import { useSearchOpen } from "@/hooks/search-context";
+import { getDocsLibraryConfig, getDocsLibraryFromPathname } from "@/lib/library";
 
 function MobileNavToggle() {
   const { open, setOpen, isDesktop, sidebarEnabled, menuButtonRef } = useMobileNav();
@@ -29,6 +32,9 @@ function MobileNavToggle() {
 
 export function CommandRow() {
   const { setOpen } = useSearchOpen();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const library = getDocsLibraryFromPathname(pathname);
+  const scope = library ? getDocsLibraryConfig(library).displayName : "root";
 
   return (
     <div className="flex shrink-0 items-center border-b border-border bg-background px-4 py-2">
@@ -39,15 +45,15 @@ export function CommandRow() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex min-w-0 flex-1 cursor-text items-center bg-transparent text-left font-mono text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        className={`flex min-w-0 flex-1 cursor-text items-center bg-transparent text-left font-mono text-sm text-muted-foreground transition-colors hover:text-foreground ${FOCUS_RING_CLASS}`}
       >
         <span className="truncate">search docs, components, hooks…</span>
         <Kbd size="sm" className="ml-auto shrink-0 text-muted-foreground">
           /
         </Kbd>
       </button>
-      <span aria-hidden="true" className={`ml-4 shrink-0 ${CHROME_LABEL_CLASS}`}>
-        [MODE: CMD]
+      <span aria-hidden="true" className={`ml-4 hidden shrink-0 md:inline ${CHROME_LABEL_CLASS}`}>
+        [SCOPE: {scope}]
       </span>
     </div>
   );

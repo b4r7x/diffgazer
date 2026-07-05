@@ -31,7 +31,7 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
       sidebar={(closeSidebar) => (
         <DocsSidebar tree={tree} library={library} onNavigate={closeSidebar} />
       )}
-      sidebarHeader={<SidebarChrome library={library} />}
+      sidebarHeader={<SidebarChrome library={library} tree={tree} />}
       sidebarBusy={isDocsRoutePending}
     >
       <main

@@ -12,6 +12,14 @@ function renderComponent(tag: keyof typeof markdownMdxComponents, children: Reac
 }
 
 describe("markdownMdxComponents", () => {
+  it("renders h2 as a section heading that keeps its anchor id and accessible name", () => {
+    const H2 = markdownMdxComponents.h2 as ComponentType<{ id?: string; children?: ReactNode }>;
+    render(<H2 id="usage">Usage</H2>);
+
+    const heading = screen.getByRole("heading", { level: 2, name: "Usage" });
+    expect(heading).toHaveAttribute("id", "usage");
+  });
+
   it("wraps tables in a focusable named scroll region", () => {
     renderComponent(
       "table",

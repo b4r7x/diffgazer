@@ -1,6 +1,6 @@
 import { buttonVariants } from "@diffgazer/ui/components/button";
 import { CodeBlock } from "@diffgazer/ui/components/code-block";
-import { DOT_GRID_CLASS } from "../dot-grid";
+import { DOT_GRID_CLASS } from "@/components/shared/dot-grid";
 
 const REVIEW_LENSES = ["Correctness", "Security", "Performance", "Simplicity", "Tests"];
 

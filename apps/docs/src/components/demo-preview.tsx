@@ -6,12 +6,16 @@ import {
   CodeBlockLine,
   type CodeBlockLineProps,
 } from "@diffgazer/ui/components/code-block";
+import { Panel, PanelFooter } from "@diffgazer/ui/components/panel";
 import { Spinner } from "@diffgazer/ui/components/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@diffgazer/ui/components/tabs";
 import { Typography } from "@diffgazer/ui/components/typography";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { type ComponentType, type LazyExoticComponent, Suspense } from "react";
 import { CopyButton } from "@/components/copy-button";
 import { InsetPreviewPane } from "@/components/preview-inset-pane";
+import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
+import { DOT_GRID_CLASS } from "@/components/shared/dot-grid";
 import { useTheme } from "@/hooks/theme-context";
 import type { PreviewFrame } from "@/lib/example-frames";
 
@@ -42,16 +46,36 @@ function DemoNode({ demo: Demo }: { demo: LazyExoticComponent<ComponentType> | n
 
 function DefaultPreviewPane({
   demo,
+  rawCode,
   theme,
 }: {
   demo: LazyExoticComponent<ComponentType> | null;
+  rawCode: string;
   theme: string;
 }) {
   return (
-    <div data-demo-preview data-theme={theme} className="border border-border bg-secondary/10">
-      <div className="min-h-[200px] flex items-center justify-center px-8 py-12">
-        <DemoNode demo={demo} />
-      </div>
+    <div data-demo-preview data-theme={theme}>
+      <Panel frame="viewfinder">
+        {/* The header slot is used directly (not PanelHeader) so the lone label
+            stays left-aligned; PanelHeader routes a plain child to its right
+            end slot. The slot still gives the viewfinder hairline + density. */}
+        <div data-slot="panel-header">
+          <span className={CHROME_LABEL_CLASS}>Preview</span>
+        </div>
+        <div
+          className={cn(
+            DOT_GRID_CLASS,
+            "flex min-h-[240px] items-center justify-center px-8 py-12",
+          )}
+        >
+          <DemoNode demo={demo} />
+        </div>
+        {rawCode.length > 0 && (
+          <PanelFooter>
+            <CopyButton text={rawCode} label="copy jsx" className="ml-auto uppercase" />
+          </PanelFooter>
+        )}
+      </Panel>
     </div>
   );
 }
@@ -75,9 +99,11 @@ function FillPreviewPane({
 function PreviewPane({
   demo,
   frame,
+  rawCode,
 }: {
   demo: LazyExoticComponent<ComponentType> | null;
   frame: PreviewFrame;
+  rawCode: string;
 }) {
   const { theme } = useTheme();
   if (frame === "inset") {
@@ -88,7 +114,8 @@ function PreviewPane({
     );
   }
   if (frame === "fill") return <FillPreviewPane demo={demo} theme={theme} />;
-  if (frame === "default") return <DefaultPreviewPane demo={demo} theme={theme} />;
+  if (frame === "default")
+    return <DefaultPreviewPane demo={demo} rawCode={rawCode} theme={theme} />;
   frame satisfies never;
   return null;
 }
@@ -131,7 +158,7 @@ export function DemoPreview({ title, demo, code, rawCode, frame = "default" }: D
           </TabsTrigger>
         </TabsList>
         <TabsContent value="preview">
-          <PreviewPane demo={demo} frame={frame} />
+          <PreviewPane demo={demo} frame={frame} rawCode={rawCode} />
         </TabsContent>
         <TabsContent value="code">
           <CodePane code={code} rawCode={rawCode} />

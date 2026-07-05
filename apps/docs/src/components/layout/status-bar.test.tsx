@@ -43,12 +43,31 @@ describe("StatusBar", () => {
     expect(screen.getByRole("link", { name: "Keys" })).not.toHaveAttribute("aria-current");
   });
 
-  it("marks the home link active only on the root path", () => {
-    routerBoundary.pathname = "/";
+  it("marks the Docs link active on app docs pages", () => {
+    routerBoundary.pathname = "/app/getting-started";
     renderStatusBar();
 
     expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Components" })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("link", { name: "Keys" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("marks no nav link active on the root path", () => {
+    routerBoundary.pathname = "/";
+    renderStatusBar();
+
+    expect(screen.getByRole("link", { name: "Docs" })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("link", { name: "Components" })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("link", { name: "Keys" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("points each nav link at its library route", () => {
+    routerBoundary.pathname = "/";
+    renderStatusBar();
+
+    expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/app");
+    expect(screen.getByRole("link", { name: "Components" })).toHaveAttribute("href", "/ui");
+    expect(screen.getByRole("link", { name: "Keys" })).toHaveAttribute("href", "/keys");
   });
 
   it("exposes focusable links inside the Primary navigation landmark", () => {

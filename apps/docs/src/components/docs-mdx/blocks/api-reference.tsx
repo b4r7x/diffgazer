@@ -1,5 +1,7 @@
 import { Typography } from "@diffgazer/ui/components/typography";
+import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 import { useComponentData } from "../doc-data-context";
+import { SectionHeading } from "../section-heading";
 import { PropsTableBlock } from "./props-table";
 
 export function APIReference() {
@@ -15,14 +17,7 @@ export function APIReference() {
 
   return (
     <>
-      <Typography
-        as="h2"
-        size="xl"
-        id="api-reference"
-        className="font-bold text-foreground mt-10 mb-4 pb-2 border-b border-border scroll-mt-16"
-      >
-        API Reference
-      </Typography>
+      <SectionHeading id="api-reference">API Reference</SectionHeading>
       {hasProps && <PropsTableBlock />}
       {dataAttributes.length > 0 && (
         <ReferenceTable
@@ -62,23 +57,23 @@ function ReferenceTable({
 }) {
   return (
     <div className="mt-8">
-      <div className="flex items-center gap-3 mb-3">
-        <Typography
-          as="h3"
-          size="lg"
-          id={title.toLowerCase().replace(/\s+/g, "-")}
-          className="font-bold text-foreground scroll-mt-16"
-        >
-          {title}
-        </Typography>
-        <span className="h-px bg-border flex-1" />
-      </div>
-      <div className="overflow-x-auto border border-border">
-        <table className="w-full text-sm border-collapse">
+      <Typography
+        as="h3"
+        size="sm"
+        id={title.toLowerCase().replace(/\s+/g, "-")}
+        className="mb-3 font-bold text-foreground scroll-mt-16"
+      >
+        {title}
+      </Typography>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-border bg-secondary/40">
+            <tr className="border-b border-border/60">
               {columns.map((column) => (
-                <th key={column} className="px-3 py-2 text-left font-bold text-foreground">
+                <th
+                  key={column}
+                  className={`${CHROME_LABEL_CLASS} px-3 pb-2 text-left align-bottom font-normal`}
+                >
                   {column}
                 </th>
               ))}
@@ -92,8 +87,8 @@ function ReferenceTable({
                     key={`${columns[index]}-${cell}`}
                     className={
                       index === 0
-                        ? "px-3 py-2 align-top font-mono text-xs text-foreground"
-                        : "px-3 py-2 align-top text-muted-foreground"
+                        ? "px-3 py-2.5 align-top break-words font-mono text-xs text-foreground"
+                        : "px-3 py-2.5 align-top break-words text-muted-foreground"
                     }
                   >
                     {cell}

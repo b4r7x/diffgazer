@@ -2,8 +2,8 @@ import { Badge } from "@diffgazer/ui/components/badge";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Input } from "@diffgazer/ui/components/input";
-import { Panel, PanelContent, PanelHeader } from "@diffgazer/ui/components/panel";
-import { DOT_GRID_CLASS } from "../dot-grid";
+import { Panel, PanelContent, PanelHeader, PanelTitle } from "@diffgazer/ui/components/panel";
+import { DOT_GRID_CLASS } from "@/components/shared/dot-grid";
 
 export function PreviewPanel() {
   return (
@@ -32,7 +32,9 @@ export function PreviewPanel() {
       </Callout>
 
       <Panel>
-        <PanelHeader>Panel Title</PanelHeader>
+        <PanelHeader>
+          <PanelTitle as="h4">Panel Title</PanelTitle>
+        </PanelHeader>
         <PanelContent>
           <p className="text-sm text-foreground">Panel content with theme variables applied.</p>
         </PanelContent>

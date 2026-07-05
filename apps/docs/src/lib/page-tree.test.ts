@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   collectLandingSections,
   findPageNeighbors,
+  findTreeSectionPath,
   firstNavigablePage,
   mapPageTreeForLibrary,
   type PageTree,
@@ -357,5 +358,38 @@ describe("collectLandingSections", () => {
     expect(sections[0]?.items).toEqual([
       { name: "Button", url: "@diffgazer/ui/components/button" },
     ]);
+  });
+});
+
+describe("findTreeSectionPath", () => {
+  const tree: PageTree = {
+    name: "Docs",
+    children: [
+      { type: "page", name: "Overview", url: "/ui" },
+      { type: "separator", name: "Project" },
+      { type: "page", name: "Changelog", url: "/ui/changelog" },
+      { type: "separator", name: "Components" },
+      {
+        type: "folder",
+        name: "Forms",
+        children: [{ type: "page", name: "Input", url: "/ui/components/input" }],
+      },
+    ],
+  };
+
+  it("returns the preceding separator name for flat pages", () => {
+    expect(findTreeSectionPath(tree, "/ui/changelog")).toEqual(["Project"]);
+  });
+
+  it("includes folder ancestors under the active separator", () => {
+    expect(findTreeSectionPath(tree, "/ui/components/input")).toEqual(["Components", "Forms"]);
+  });
+
+  it("returns an empty chain for pages before any separator", () => {
+    expect(findTreeSectionPath(tree, "/ui")).toEqual([]);
+  });
+
+  it("returns an empty chain for unknown urls", () => {
+    expect(findTreeSectionPath(tree, "/ui/missing")).toEqual([]);
   });
 });

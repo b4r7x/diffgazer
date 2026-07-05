@@ -1,26 +1,15 @@
 import { KeyValue } from "@diffgazer/ui/components/key-value";
-import { Logo } from "@diffgazer/ui/components/logo";
 import { Panel } from "@diffgazer/ui/components/panel";
-import { HEADING_ASCII } from "@/generated/logo-ascii";
+import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 import { DOCS_CHROME_VERSION, DOCS_REGISTRY_HOST } from "@/lib/docs-chrome";
 
 export function SysInfoPanel() {
   return (
-    <Panel frame="hairline" className="shrink-0 lg:flex">
-      <div className="flex flex-1 flex-col justify-center border-b border-border p-6 lg:border-r lg:border-b-0">
-        <Logo
-          aria-hidden="true"
-          text="Documentation"
-          asciiText={HEADING_ASCII.documentation}
-          className="mb-4 text-3xs leading-[1.2] text-foreground md:text-2xs"
-        />
-        <p className="max-w-2xl font-mono text-sm leading-relaxed text-muted-foreground">
-          Reference for diffgazer's keyboard-first React UI primitives and the headless keys layer
-          they are built on. Copy components in with the CLI or read each library's components,
-          hooks, and guides.
-        </p>
+    <Panel frame="hairline" className="flex w-full shrink-0 flex-col lg:w-64">
+      <div className="shrink-0 border-b border-border px-4 py-2">
+        <span className={CHROME_LABEL_CLASS}>SYS INFO</span>
       </div>
-      <div className="flex w-full flex-col justify-center p-4 font-mono text-sm text-muted-foreground lg:w-64">
+      <div className="flex flex-1 flex-col justify-center p-4 font-mono text-sm text-muted-foreground">
         <KeyValue className="gap-x-4">
           <KeyValue.Item label="STATUS:" value="ONLINE" />
           <KeyValue.Item

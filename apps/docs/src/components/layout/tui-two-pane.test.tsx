@@ -31,14 +31,33 @@ function renderTwoPane() {
   );
 }
 
+const scrim = () => screen.getByRole("button", { name: /close sidebar navigation/i });
+const sidebar = () => screen.getByRole("complementary", { name: "Sidebar navigation" });
+
 describe("TuiTwoPane", () => {
+  it("keeps the scrim mounted and inert while the drawer is closed", async () => {
+    stubControllableMatchMedia({ isDesktop: false });
+    const user = userEvent.setup();
+    renderTwoPane();
+
+    expect(scrim()).toBeInTheDocument();
+    expect(scrim()).toHaveAttribute("inert");
+    expect(sidebar()).toHaveAttribute("inert");
+
+    await user.click(screen.getByRole("button", { name: "Open menu" }));
+
+    expect(scrim()).toBeInTheDocument();
+    expect(scrim()).not.toHaveAttribute("inert");
+    expect(sidebar()).not.toHaveAttribute("inert");
+  });
+
   it("ignores Escape keydowns that were already consumed", async () => {
     stubControllableMatchMedia({ isDesktop: false });
     const user = userEvent.setup();
     renderTwoPane();
 
     await user.click(screen.getByRole("button", { name: "Open menu" }));
-    expect(screen.getByRole("button", { name: /close sidebar navigation/i })).toBeInTheDocument();
+    expect(scrim()).not.toHaveAttribute("inert");
 
     const consumedEscape = new KeyboardEvent("keydown", {
       key: "Escape",
@@ -50,13 +69,12 @@ describe("TuiTwoPane", () => {
       document.dispatchEvent(consumedEscape);
     });
 
-    expect(screen.getByRole("button", { name: /close sidebar navigation/i })).toBeInTheDocument();
+    expect(scrim()).not.toHaveAttribute("inert");
 
     await user.keyboard("{Escape}");
 
-    expect(
-      screen.queryByRole("button", { name: /close sidebar navigation/i }),
-    ).not.toBeInTheDocument();
+    expect(scrim()).toHaveAttribute("inert");
+    expect(sidebar()).toHaveAttribute("inert");
     await waitFor(() => expect(screen.getByRole("button", { name: "Open menu" })).toHaveFocus());
   });
 
@@ -70,9 +88,7 @@ describe("TuiTwoPane", () => {
     await waitFor(() => expect(screen.getByRole("link", { name: "Sidebar item" })).toHaveFocus());
 
     act(() => viewport.setDesktop(true));
-    expect(
-      screen.queryByRole("button", { name: /close sidebar navigation/i }),
-    ).not.toBeInTheDocument();
+    expect(scrim()).toHaveAttribute("inert");
 
     act(() => viewport.setDesktop(false));
     expect(menuButton).not.toHaveFocus();

@@ -1,6 +1,7 @@
 import browserCollections from "fumadocs-mdx:collections/browser";
+import { useKey } from "@diffgazer/keys";
 import { Pager } from "@diffgazer/ui/components/pager";
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { Suspense } from "react";
 import { ContentSpinner } from "@/components/content-spinner";
@@ -88,6 +89,7 @@ const serverLoader = createServerFn({ method: "GET" })
 
 const clientLoader = browserCollections.docs.createClientLoader({
   component({ toc, frontmatter, default: MDX }) {
+    const { lib, _splat } = Route.useParams();
     const docData = useDocData();
     const d = docData?.data;
     const title = d?.title ?? frontmatter.title;
@@ -95,7 +97,13 @@ const clientLoader = browserCollections.docs.createClientLoader({
 
     return (
       <DocsPageLayout toc={toc}>
-        <DocsPageHeader title={title} description={description} tags={d?.docs?.tags} />
+        <DocsPageHeader
+          title={title}
+          description={description}
+          tags={d?.docs?.tags}
+          lib={lib}
+          slug={_splat}
+        />
         <DocsPageBody>
           <MDX components={useMDXComponents()} />
         </DocsPageBody>
@@ -160,7 +168,7 @@ function MdxDocsPage({
   );
 }
 
-function DocsFooterPager({
+export function DocsFooterPager({
   pageUrl,
   tree,
   library,
@@ -169,7 +177,24 @@ function DocsFooterPager({
   tree: PageTree;
   library: DocsLibraryId;
 }) {
+  const navigate = useNavigate();
   const { previous, next } = findPageNeighbors(tree, pageUrl);
+
+  useKey("p", () => {
+    if (!previous) return;
+    void navigate({
+      to: "/$lib/$",
+      params: { lib: library, _splat: routeSplatFromDocsPath(previous.url) },
+    });
+  });
+
+  useKey("n", () => {
+    if (!next) return;
+    void navigate({
+      to: "/$lib/$",
+      params: { lib: library, _splat: routeSplatFromDocsPath(next.url) },
+    });
+  });
 
   return (
     <Pager>

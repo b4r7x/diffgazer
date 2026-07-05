@@ -17,6 +17,7 @@ import {
   routeSlugsFromSourcePath,
   sourceSlugsForLibrary,
 } from "@/lib/library";
+import type { PageTree } from "@/lib/page-tree";
 import { parseLibrarySwitchInput } from "@/lib/server-inputs";
 import {
   SidebarPanelHeader,
@@ -47,7 +48,7 @@ const selectTriggerClassName = cn(
   "hover:bg-secondary/40 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring",
 );
 
-export function SidebarChrome({ library }: { library: DocsLibraryId }) {
+export function SidebarChrome({ library, tree }: { library: DocsLibraryId; tree: PageTree }) {
   const pathname = useLocation({ select: (location) => location.pathname });
   const pendingDocsPathname = usePendingDocsRoute();
   const navigate = useNavigate();
@@ -133,8 +134,8 @@ export function SidebarChrome({ library }: { library: DocsLibraryId }) {
           <SidebarPanelHeaderRow className="min-h-0 gap-2 py-1.5">
             <SidebarPanelHeaderLabel>Path</SidebarPanelHeaderLabel>
             <Breadcrumbs
-              className="min-w-0 flex-1 font-mono text-2xs uppercase tracking-widest"
-              separator="›"
+              tree={tree}
+              className="min-w-0 flex-1"
               onNavigate={() => setMobileNavOpen(false)}
             />
           </SidebarPanelHeaderRow>

@@ -9,9 +9,9 @@ export function ReturnsTable() {
 
   return (
     <div>
-      <div className="mb-3">
-        <span className="text-sm font-mono text-foreground">{type}</span>
-        {description && <span className="text-sm text-muted-foreground"> — {description}</span>}
+      <div className="mb-3 flex flex-wrap items-baseline gap-x-2 text-sm">
+        <span className="break-words font-mono text-info">{type}</span>
+        {description && <span className="text-muted-foreground">{description}</span>}
       </div>
       {properties && properties.length > 0 && <ParameterTable params={properties} />}
     </div>

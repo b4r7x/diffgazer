@@ -2,11 +2,22 @@
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { MobileNavProvider, useMobileNav } from "@/hooks/mobile-nav-context";
 import { SearchProvider, useSearchOpen } from "@/hooks/search-context";
 import { stubMatchMedia } from "@/testing/match-media";
 import { CommandRow } from "./command-row";
+
+const routerBoundary = vi.hoisted(() => ({ pathname: "/" }));
+
+// Boundary mock: TanStack Router is the external routing library; this test controls the location-derived scope label.
+vi.mock("@tanstack/react-router", () => ({
+  useRouterState: ({
+    select,
+  }: {
+    select: (state: { location: { pathname: string } }) => unknown;
+  }) => select({ location: { pathname: routerBoundary.pathname } }),
+}));
 
 function SearchProbe() {
   const { open } = useSearchOpen();
@@ -42,6 +53,7 @@ describe("CommandRow", () => {
 
   it("names the search button from its visible prompt and shows the / binding", () => {
     stubMatchMedia({ isDesktop: true });
+    routerBoundary.pathname = "/";
     render(
       <MobileNavProvider>
         <SearchProvider>
@@ -54,8 +66,34 @@ describe("CommandRow", () => {
     expect(button).toHaveTextContent("search docs, components, hooks…");
     expect(button).toHaveTextContent("/");
     expect(button.textContent).not.toContain("⌘");
+  });
 
-    expect(screen.getByText("[MODE: CMD]")).toHaveAttribute("aria-hidden", "true");
+  it("shows the root scope on the home path", () => {
+    stubMatchMedia({ isDesktop: true });
+    routerBoundary.pathname = "/";
+    render(
+      <MobileNavProvider>
+        <SearchProvider>
+          <CommandRow />
+        </SearchProvider>
+      </MobileNavProvider>,
+    );
+
+    expect(screen.getByText("[SCOPE: root]")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("shows the library scope on a component docs page", () => {
+    stubMatchMedia({ isDesktop: true });
+    routerBoundary.pathname = "/ui/components/button";
+    render(
+      <MobileNavProvider>
+        <SearchProvider>
+          <CommandRow />
+        </SearchProvider>
+      </MobileNavProvider>,
+    );
+
+    expect(screen.getByText("[SCOPE: @diffgazer/ui]")).toBeInTheDocument();
   });
 
   it("shows the mobile menu toggle only after a sidebar registers", async () => {

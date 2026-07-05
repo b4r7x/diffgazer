@@ -21,17 +21,14 @@ export function PropsTable({ componentName, props }: PropsTableProps) {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-1">
-        <Typography
-          as="h3"
-          size="lg"
-          id={componentName.toLowerCase().replace(/\./g, "-")}
-          className="font-bold text-foreground scroll-mt-16"
-        >
-          {componentName}
-        </Typography>
-        <span className="h-px bg-border flex-1" />
-      </div>
+      <Typography
+        as="h3"
+        size="sm"
+        id={componentName.toLowerCase().replace(/\./g, "-")}
+        className="mb-3 font-bold text-foreground scroll-mt-16"
+      >
+        {componentName}
+      </Typography>
       <ParameterTable params={params} />
     </div>
   );

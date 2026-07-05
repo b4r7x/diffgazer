@@ -2,6 +2,7 @@ import { Typography } from "@diffgazer/ui/components/typography";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { TableOfContents } from "fumadocs-core/toc";
 import type { ReactNode } from "react";
+import { CHROME_LABEL_CLASS } from "./shared/chrome-label";
 import { TableOfContentsPanel } from "./toc";
 
 export function DocsPageLayout({
@@ -25,12 +26,22 @@ interface DocsPageHeaderProps {
   title: string;
   description?: string | null;
   tags?: string[];
+  lib?: string;
+  slug?: string;
   className?: string;
 }
 
-export function DocsPageHeader({ title, description, tags, className }: DocsPageHeaderProps) {
+export function DocsPageHeader({
+  title,
+  description,
+  tags,
+  lib,
+  slug,
+  className,
+}: DocsPageHeaderProps) {
   const hasTags = Boolean(tags && tags.length > 0);
   const hasDescription = Boolean(description && description.length > 0);
+  const hasMeta = Boolean(lib && slug);
 
   return (
     <div className={cn("pb-4", className)}>
@@ -41,6 +52,12 @@ export function DocsPageHeader({ title, description, tags, className }: DocsPage
       >
         {title}
       </Typography>
+
+      {hasMeta && (
+        <div className={cn(CHROME_LABEL_CLASS, (hasTags || hasDescription) && "mb-3")}>
+          {`${lib}/${slug}`}
+        </div>
+      )}
 
       {hasTags && (
         <div className={cn("flex flex-wrap gap-2", hasDescription && "mb-3")}>
@@ -65,5 +82,9 @@ export function DocsPageHeader({ title, description, tags, className }: DocsPage
 }
 
 export function DocsPageBody({ children }: { children: ReactNode }) {
-  return <Typography variant="prose">{children}</Typography>;
+  return (
+    <Typography variant="prose" className="[&>*:first-child]:mt-0">
+      {children}
+    </Typography>
+  );
 }

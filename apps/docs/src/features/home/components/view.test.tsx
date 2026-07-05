@@ -1,13 +1,18 @@
 // @vitest-environment jsdom
 
+import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { navigate } = vi.hoisted(() => ({ navigate: vi.fn() }));
 
 // Boundary mock: TanStack Router is the external routing library; home links need deterministic hrefs/current path.
 vi.mock("@tanstack/react-router", async () => {
   const { RouterLinkMock, useLocationMock } = await import("@/testing/router-mock");
   return {
     Link: RouterLinkMock,
+    useNavigate: () => navigate,
     ...useLocationMock({ pathname: "/" }),
   };
 });
@@ -65,15 +70,23 @@ const LIBRARIES: HomeLibrary[] = [
 
 function renderHome() {
   return render(
-    <MobileNavProvider>
-      <HomeView libraries={LIBRARIES} />
-    </MobileNavProvider>,
+    <KeyboardProvider>
+      <MobileNavProvider>
+        <HomeView libraries={LIBRARIES} />
+      </MobileNavProvider>
+    </KeyboardProvider>,
   );
+}
+
+function packageLink(name: RegExp): HTMLElement {
+  const modules = screen.getByRole("navigation", { name: "Documentation packages" });
+  return within(modules).getByRole("link", { name });
 }
 
 beforeEach(() => {
   stubMatchMedia({ isDesktop: true });
   Element.prototype.scrollIntoView = () => {};
+  navigate.mockClear();
 });
 
 describe("HomeView", () => {
@@ -142,5 +155,74 @@ describe("HomeView", () => {
     expect(main).toHaveAttribute("id", "main-content");
     main.focus();
     expect(main).toHaveFocus();
+  });
+
+  it("moves the package highlight down with j and back up with k", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    const app = packageLink(/^diffgazer\b/i);
+    const ui = packageLink(/^@diffgazer\/ui\b/i);
+    expect(app).not.toHaveAttribute("data-highlighted");
+
+    await user.keyboard("j");
+    expect(app).toHaveAttribute("data-highlighted", "");
+
+    await user.keyboard("j");
+    expect(ui).toHaveAttribute("data-highlighted", "");
+    expect(app).not.toHaveAttribute("data-highlighted");
+
+    await user.keyboard("k");
+    expect(app).toHaveAttribute("data-highlighted", "");
+    expect(ui).not.toHaveAttribute("data-highlighted");
+  });
+
+  it("navigates to the highlighted package on Enter", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.keyboard("j");
+    await user.keyboard("{Enter}");
+
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/$lib/$",
+      params: { lib: "app", _splat: "getting-started/installation" },
+    });
+  });
+
+  it("does not navigate on Enter when no package is highlighted", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.keyboard("{Enter}");
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("highlights a package row on hover", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    const ui = packageLink(/^@diffgazer\/ui\b/i);
+    await user.hover(ui);
+    expect(ui).toHaveAttribute("data-highlighted", "");
+  });
+
+  it("ignores j while typing in an editable field", async () => {
+    const user = userEvent.setup();
+    render(
+      <KeyboardProvider>
+        <MobileNavProvider>
+          <input aria-label="probe" />
+          <HomeView libraries={LIBRARIES} />
+        </MobileNavProvider>
+      </KeyboardProvider>,
+    );
+
+    const probe = screen.getByRole("textbox", { name: "probe" });
+    await user.click(probe);
+    await user.keyboard("j");
+
+    expect(packageLink(/^diffgazer\b/i)).not.toHaveAttribute("data-highlighted");
+    expect(probe).toHaveValue("j");
   });
 });
