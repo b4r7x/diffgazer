@@ -1,12 +1,11 @@
 import { matchQueryState } from "@diffgazer/core/api/hooks";
 import { deriveTrustStatus } from "@diffgazer/core/navigation";
-import { HISTORY_SEARCH_PLACEHOLDER } from "@diffgazer/core/review";
+import { formatRunId, HISTORY_SEARCH_PLACEHOLDER } from "@diffgazer/core/review";
 import { isListNavigationKey, toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { SearchInput } from "@diffgazer/ui/components/search-input";
-import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { type KeyboardEvent, useRef } from "react";
 import { CenteredStatus } from "@/components/shared/centered-status";
 import { TrustPanel } from "@/components/shared/trust-panel";
@@ -98,11 +97,7 @@ function HistoryPageContent() {
   const warnings = reviewsQuery.data?.warnings ?? [];
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden px-4 pb-2">
-      <div className="flex items-center gap-6 mb-0 text-sm select-none shrink-0">
-        <span className="py-2 text-sm font-medium">Runs</span>
-      </div>
-
+    <div className="flex flex-col flex-1 overflow-hidden px-4 pt-2 pb-2">
       {warnings.length > 0 ? (
         <output className="shrink-0 mb-1 text-sm text-warning-text">
           {warnings.length} saved review{warnings.length === 1 ? "" : "s"} could not be read.
@@ -139,12 +134,12 @@ function HistoryPageContent() {
           aria-label="Review sections"
           data-pane="timeline"
           data-focused={focusZone === "timeline" || undefined}
-          className="w-48 flex flex-col shrink-0 overflow-hidden border border-border data-[focused]:border-info focus:outline-none"
+          className="mt-3 w-48 flex flex-col shrink-0 border border-border data-[focused]:border-info focus:outline-none"
         >
-          <SectionHeader as="h2" variant="muted" bordered className="mb-0 p-3 border-border">
+          <Panel.Label variant="border" aria-hidden="true">
             Sections
-          </SectionHeader>
-          <div className="flex-1 overflow-y-auto p-2">
+          </Panel.Label>
+          <div className="flex-1 overflow-y-auto px-2 pb-2 pt-3">
             <TimelineList
               items={timelineItems}
               selectedId={selectedDateId}
@@ -161,19 +156,17 @@ function HistoryPageContent() {
 
         <Panel
           as="section"
+          aria-label="Review runs"
           data-pane="runs"
           data-focused={focusZone === "runs" || undefined}
-          className="flex-1 min-w-0 flex flex-col overflow-hidden border border-border data-[focused]:border-info focus:outline-none"
+          className="mt-3 flex-1 min-w-0 flex flex-col border border-border data-[focused]:border-info focus:outline-none"
         >
-          <SectionHeader
-            as="h2"
-            variant="muted"
-            bordered
-            className="mb-0 flex justify-between overflow-hidden p-3 border-border"
-          >
-            <span className="truncate">Runs</span>
-            <span className="shrink-0 ml-2">Sort: Recent</span>
-          </SectionHeader>
+          <Panel.Label variant="border" aria-hidden="true">
+            Runs
+          </Panel.Label>
+          <div className="flex justify-end px-3 pt-3">
+            <span className="text-2xs text-muted-foreground font-mono">Sort: Recent</span>
+          </div>
           <div className="flex-1 overflow-y-auto p-2">
             {mappedRuns.length > 0 ? (
               <NavigationList
@@ -238,10 +231,13 @@ function HistoryPageContent() {
           aria-label="Review insights"
           data-pane="insights"
           data-focused={focusZone === "insights" || undefined}
-          className="w-80 min-h-0 flex flex-col shrink-0 overflow-hidden border border-border data-[focused]:border-info focus:outline-none"
+          className="mt-3 w-80 min-h-0 flex flex-col shrink-0 border border-border data-[focused]:border-info focus:outline-none"
         >
+          <Panel.Label variant="border" aria-hidden="true">
+            Insights{selectedRun ? ` · ${formatRunId(selectedRun.id)}` : ""}
+          </Panel.Label>
           <HistoryInsightsPane
-            runId={selectedRun ? `#${selectedRun.id.slice(0, 4)}` : null}
+            runId={selectedRun?.id ?? null}
             severityCounts={hasReviews ? severityCounts : null}
             issues={hasReviews ? sortedIssues : []}
             duration={duration}

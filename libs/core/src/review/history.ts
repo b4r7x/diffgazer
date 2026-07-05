@@ -18,8 +18,12 @@ export interface RunSummaryParts {
   issueCount: number;
 }
 
+export function formatRunId(id: string): string {
+  return `#${id.slice(0, 4)}`;
+}
+
 export function getRunDisplayId(metadata: ReviewMetadata): string {
-  return `#${metadata.id.slice(0, 4)}`;
+  return formatRunId(metadata.id);
 }
 
 export function getRunBranchLabel(metadata: ReviewMetadata): string {

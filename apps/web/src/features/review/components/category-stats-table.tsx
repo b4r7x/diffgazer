@@ -1,12 +1,12 @@
-import type { CategoryStats } from "@diffgazer/core/schemas/presentation";
+import type { CategoryStats as CoreCategoryStats } from "@diffgazer/core/schemas/presentation";
 import { cn } from "@diffgazer/ui/lib/utils";
 
-export type { CategoryStats };
+export type CategoryStats = CoreCategoryStats & { color: string };
 
-export interface CategoryStatsTableProps {
+export type CategoryStatsTableProps = {
   categories: CategoryStats[];
   className?: string;
-}
+};
 
 export function CategoryStatsTable({ categories, className }: CategoryStatsTableProps) {
   return (
@@ -26,12 +26,7 @@ export function CategoryStatsTable({ categories, className }: CategoryStatsTable
               index < categories.length - 1 && "border-b border-border/50",
             )}
           >
-            <td className="py-3 pl-2 flex items-center gap-2">
-              <span className={cn("text-base", category.iconColor)} aria-hidden="true">
-                {category.icon}
-              </span>
-              {category.name}
-            </td>
+            <td className={cn("py-3 pl-2", category.color)}>{category.name}</td>
             <td className="py-3 text-right font-bold pr-2">{category.count}</td>
           </tr>
         ))}

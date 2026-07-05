@@ -90,7 +90,7 @@ export function SeverityFilterGroup({
         className="gap-2"
         wrap={false}
       >
-        {SEVERITY_ORDER.map((sev, index) => {
+        {SEVERITY_ORDER.map((sev) => {
           const count = counts[sev];
           const label = SEVERITY_LABELS[sev];
           const isActive = activeFilter.has(sev);
@@ -102,7 +102,6 @@ export function SeverityFilterGroup({
               className={cn(
                 "h-5 min-h-0 min-w-fit px-1.5 text-xs inline-flex items-center whitespace-nowrap tabular-nums",
                 isActive && SEVERITY_CONFIG[sev].color,
-                isFocused && focusedIndex === index && "border-info bg-secondary",
               )}
             >
               <span aria-hidden="true">
@@ -124,10 +123,8 @@ export function SeverityFilterGroup({
           onFocus={() => onFocusedIndexChange?.(resetIndex)}
           onKeyDown={onKeyDown}
           aria-label="Reset severity filter"
-          className={cn(
-            "h-5 min-h-0 min-w-fit px-1.5 text-xs focus-visible:ring-0 focus-visible:outline-none",
-            isResetFocused && "border-info bg-secondary",
-          )}
+          highlighted={isResetFocused}
+          className="h-5 min-h-0 min-w-fit px-1.5 text-xs"
           bracket
         >
           Reset

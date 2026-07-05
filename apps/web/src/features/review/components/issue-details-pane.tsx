@@ -1,6 +1,6 @@
 import { type DetailsEmptyKind, getDetailsEmptyCopy } from "@diffgazer/core/review";
 import { isIssueTab, type IssueTab as TabId } from "@diffgazer/core/schemas/presentation";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import type { EvidenceRef, ReviewIssue } from "@diffgazer/core/schemas/review";
 import { CodeBlock, type CodeBlockLineState } from "@diffgazer/ui/components/code-block";
 import { DiffView, parseDiff } from "@diffgazer/ui/components/diff-view";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
@@ -9,7 +9,7 @@ import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@diffgazer/ui/components/tabs";
 import { cn } from "@diffgazer/ui/lib/utils";
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import { FixPlanChecklist } from "./fix-plan-checklist";
 import { IssueHeader } from "./issue-header";
 
@@ -19,9 +19,11 @@ export interface IssueDetailsPaneProps {
   issue: ReviewIssue | null;
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
+  onTabsBoundaryReached?: (direction: "previous" | "next") => void;
   completedSteps: Set<number>;
   onToggleStep: (step: number) => void;
   focusedStepIndex?: number | null;
+  paneRef?: Ref<HTMLElement>;
   scrollAreaRef?: Ref<HTMLDivElement>;
   isFocused: boolean;
   emptyKind?: DetailsEmptyKind;
@@ -32,9 +34,11 @@ export function IssueDetailsPane({
   issue,
   activeTab,
   onTabChange,
+  onTabsBoundaryReached,
   completedSteps,
   onToggleStep,
   focusedStepIndex,
+  paneRef,
   scrollAreaRef,
   isFocused,
   emptyKind,
@@ -49,16 +53,7 @@ export function IssueDetailsPane({
 
   if (!issue) {
     return (
-      <Panel
-        as="aside"
-        aria-label="Issue details"
-        data-pane="details"
-        data-focused={isFocused || undefined}
-        className={cn(
-          "w-3/5 flex flex-col min-h-0 overflow-hidden border border-border data-[focused]:border-info",
-          className,
-        )}
-      >
+      <DetailsPanel paneRef={paneRef} isFocused={isFocused} className={className}>
         <div className="flex flex-1 min-h-0 flex-col px-3 py-2">
           <ScrollArea
             ref={scrollAreaRef}
@@ -77,24 +72,19 @@ export function IssueDetailsPane({
             </EmptyState>
           </ScrollArea>
         </div>
-      </Panel>
+      </DetailsPanel>
     );
   }
 
   return (
-    <Panel
-      as="aside"
-      aria-label="Issue details"
-      data-pane="details"
-      data-focused={isFocused || undefined}
-      className={cn(
-        "w-3/5 flex flex-col min-h-0 overflow-hidden border border-border data-[focused]:border-info",
-        className,
-      )}
-    >
+    <DetailsPanel paneRef={paneRef} isFocused={isFocused} className={className}>
       <div className="flex flex-1 min-h-0 flex-col px-3">
         <Tabs value={activeTab} onChange={handleTabChange} className="flex flex-1 min-h-0 flex-col">
-          <TabsList className="border-b border-border pb-2 pt-2 mb-4">
+          <TabsList
+            loop={false}
+            onNavigationBoundaryReached={(direction) => onTabsBoundaryReached?.(direction)}
+            className="border-b border-border pb-2 pt-3 mb-4"
+          >
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="explain">Explain</TabsTrigger>
             {hasTrace && <TabsTrigger value="trace">Trace</TabsTrigger>}
@@ -115,7 +105,9 @@ export function IssueDetailsPane({
               line={issue.line_start}
             />
 
-            <TabsContent value="details" className="mt-0">
+            {/* The pane's ScrollArea is the zone focus target; the tabpanels and
+                code blocks inside it stay click-focusable but are not tab stops. */}
+            <TabsContent value="details" tabIndex={-1} className="mt-0">
               <DetailsTabContent
                 issue={issue}
                 completedSteps={completedSteps}
@@ -124,7 +116,7 @@ export function IssueDetailsPane({
               />
             </TabsContent>
 
-            <TabsContent value="explain" className="mt-0">
+            <TabsContent value="explain" tabIndex={-1} className="mt-0">
               <div className="text-sm text-foreground/80">
                 <p className="mb-4">{issue.rationale}</p>
                 <p>{issue.recommendation}</p>
@@ -132,19 +124,50 @@ export function IssueDetailsPane({
             </TabsContent>
 
             {hasTrace && (
-              <TabsContent value="trace" className="mt-0">
+              <TabsContent value="trace" tabIndex={-1} className="mt-0">
                 <TraceTabContent issue={issue} />
               </TabsContent>
             )}
 
             {hasPatch && issue.suggested_patch && (
-              <TabsContent value="patch" className="mt-0">
-                <PatchTabContent patch={issue.suggested_patch} />
+              <TabsContent value="patch" tabIndex={-1} className="mt-0">
+                <PatchTabContent patch={issue.suggested_patch} evidence={issue.evidence} />
               </TabsContent>
             )}
           </ScrollArea>
         </Tabs>
       </div>
+    </DetailsPanel>
+  );
+}
+
+function DetailsPanel({
+  paneRef,
+  isFocused,
+  className,
+  children,
+}: {
+  paneRef?: Ref<HTMLElement>;
+  isFocused: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Panel
+      as="aside"
+      ref={paneRef}
+      aria-label="Issue details"
+      data-pane="details"
+      data-focused={isFocused || undefined}
+      className={cn(
+        "mt-3 w-3/5 flex flex-col min-h-0 border border-border data-[focused]:border-info",
+        className,
+      )}
+    >
+      <Panel.Label variant="border" aria-hidden="true">
+        Details
+      </Panel.Label>
+      {children}
     </Panel>
   );
 }
@@ -162,14 +185,36 @@ function getPatchLineState(line: string): CodeBlockLineState | undefined {
   return undefined;
 }
 
-function PatchTabContent({ patch }: { patch: string }) {
+const DIFF_MARKER_RE = /^(\+|-|@@)/m;
+
+function getPlainSnippetBeforeSide(patch: string, evidence: EvidenceRef[]) {
+  const codeExcerpts = evidence
+    .filter((e) => e.type === "code" && e.excerpt)
+    .map((e) => e.excerpt);
+
+  if (codeExcerpts.length === 1) return codeExcerpts[0];
+
+  const patchLines = new Set(patch.split(/\r?\n/).filter((line) => line.length > 0));
+  return codeExcerpts.find((excerpt) =>
+    excerpt.split(/\r?\n/).some((line) => patchLines.has(line)),
+  );
+}
+
+function PatchTabContent({ patch, evidence }: { patch: string; evidence: EvidenceRef[] }) {
   if (canRenderStructuredPatch(patch)) {
-    return <DiffView patch={patch} />;
+    return <DiffView patch={patch} label="Suggested patch" />;
+  }
+
+  if (!DIFF_MARKER_RE.test(patch)) {
+    const original = getPlainSnippetBeforeSide(patch, evidence);
+    if (original) {
+      return <DiffView before={original} after={patch} label="Suggested patch" />;
+    }
   }
 
   return (
     <CodeBlock label="Suggested patch">
-      <CodeBlock.Content>
+      <CodeBlock.Content tabIndex={-1}>
         {patch.split("\n").map((line, index) => (
           <CodeBlock.Line
             key={`${index}-${line}`}
@@ -211,7 +256,7 @@ function DetailsTabContent({
         {evidenceLines.length > 0 && (
           <div className="mt-2">
             <CodeBlock label="Evidence">
-              <CodeBlock.Content>
+              <CodeBlock.Content tabIndex={-1}>
                 {evidenceLines.map((line) => (
                   <CodeBlock.Line
                     key={line.key}

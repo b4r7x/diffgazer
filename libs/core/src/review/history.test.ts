@@ -4,6 +4,7 @@ import {
   buildHistoryRunSummary,
   buildTimelineItems,
   filterReviewsForHistory,
+  formatRunId,
   getEmptyRunsMessage,
   getRunBranchLabel,
   getRunDisplayId,
@@ -75,6 +76,7 @@ describe("getRunBranchLabel + getRunDisplayId", () => {
   });
 
   it("displays a short id with a leading hash", () => {
+    expect(formatRunId("abcdef00-0000-4000-8000-000000000000")).toBe("#abcd");
     expect(
       getRunDisplayId(makeReviewMetadata({ id: "abcdef00-0000-4000-8000-000000000000" })),
     ).toBe("#abcd");

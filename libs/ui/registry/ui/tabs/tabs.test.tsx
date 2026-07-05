@@ -295,6 +295,61 @@ describe("Tabs", () => {
     expect(screen.getByRole("tab", { name: "One" })).toHaveFocus();
   });
 
+  it("fires onNavigationBoundaryReached at the edges when loop is false", async () => {
+    const user = userEvent.setup();
+    const onNavigationBoundaryReached = vi.fn();
+    render(
+      <Tabs defaultValue="one" activationMode="manual">
+        <Tabs.List loop={false} onNavigationBoundaryReached={onNavigationBoundaryReached}>
+          <Tabs.Trigger value="one">One</Tabs.Trigger>
+          <Tabs.Trigger value="two">Two</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="one">Content one</Tabs.Content>
+        <Tabs.Content value="two">Content two</Tabs.Content>
+      </Tabs>,
+    );
+
+    screen.getByRole("tab", { name: "One" }).focus();
+    await user.keyboard("{ArrowLeft}");
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith(
+      "previous",
+      expect.any(KeyboardEvent),
+      "ArrowLeft",
+    );
+    expect(screen.getByRole("tab", { name: "One" })).toHaveFocus();
+
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus();
+    await user.keyboard("{ArrowRight}");
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith(
+      "next",
+      expect.any(KeyboardEvent),
+      "ArrowRight",
+    );
+    expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus();
+    expect(onNavigationBoundaryReached).toHaveBeenCalledTimes(2);
+  });
+
+  it("wraps by default without firing onNavigationBoundaryReached", async () => {
+    const user = userEvent.setup();
+    const onNavigationBoundaryReached = vi.fn();
+    render(
+      <Tabs defaultValue="one" activationMode="manual">
+        <Tabs.List onNavigationBoundaryReached={onNavigationBoundaryReached}>
+          <Tabs.Trigger value="one">One</Tabs.Trigger>
+          <Tabs.Trigger value="two">Two</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="one">Content one</Tabs.Content>
+        <Tabs.Content value="two">Content two</Tabs.Content>
+      </Tabs>,
+    );
+
+    screen.getByRole("tab", { name: "One" }).focus();
+    await user.keyboard("{ArrowLeft}");
+    expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus();
+    expect(onNavigationBoundaryReached).not.toHaveBeenCalled();
+  });
+
   it("in manual mode, Space activates the focused tab", async () => {
     const user = userEvent.setup();
     renderTabs({ activationMode: "manual" });

@@ -1,12 +1,9 @@
-import type { ProgressStatus, ProgressSubstepData } from "@diffgazer/core/schemas/presentation";
-import { Stepper, StepperSubstep, type SubstepStatus } from "@diffgazer/ui/components/stepper";
-import type { ReactNode } from "react";
+import type { ProgressStatus } from "@diffgazer/core/schemas/presentation";
+import { Stepper } from "@diffgazer/ui/components/stepper";
 
 export interface ProgressStepProps {
   label: string;
   status: ProgressStatus;
-  substeps?: ProgressSubstepData[];
-  children?: ReactNode;
   stepId?: string;
 }
 
@@ -16,33 +13,12 @@ const STEP_STATUS_LABELS: Record<ProgressStatus, string> = {
   pending: "WAIT",
 };
 
-const SUBSTEP_STATUS_LABELS: Record<SubstepStatus, string> = {
-  pending: "",
-  active: "analyzing...",
-  completed: "done",
-  error: "failed",
-};
-
-export function ProgressStep({ label, status, substeps, children, stepId }: ProgressStepProps) {
-  const hasContent = Boolean(children || (substeps && substeps.length > 0));
-
+export function ProgressStep({ label, status, stepId }: ProgressStepProps) {
   return (
-    <Stepper.Step stepId={stepId ?? label} status={status}>
-      <Stepper.Trigger disabled={!hasContent} statusLabels={STEP_STATUS_LABELS}>
+    <Stepper.Step stepId={stepId ?? label} status={status} className="py-1">
+      <Stepper.Trigger disabled statusLabels={STEP_STATUS_LABELS}>
         {label}
       </Stepper.Trigger>
-      {hasContent && (
-        <Stepper.Content>
-          {substeps && substeps.length > 0 && (
-            <div className="space-y-1 mb-2">
-              {substeps.map(({ id, progress: _progress, ...substep }) => (
-                <StepperSubstep key={id} statusLabels={SUBSTEP_STATUS_LABELS} {...substep} />
-              ))}
-            </div>
-          )}
-          {children}
-        </Stepper.Content>
-      )}
     </Stepper.Step>
   );
 }

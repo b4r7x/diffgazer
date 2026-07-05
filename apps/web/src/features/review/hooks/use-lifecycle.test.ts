@@ -158,6 +158,28 @@ describe("useReviewLifecycle Back from terminal screens", () => {
   });
 });
 
+describe("useReviewLifecycle Back from a running review", () => {
+  beforeEach(() => {
+    mockNavigate.mockReset();
+    mockCreateReview.mockReset();
+    mockUseReviewLifecycleBase.mockReset();
+    mockToastError.mockReset();
+  });
+
+  it("navigates home without cancelling the server session so it stays resumable", () => {
+    const base = makeBaseReturn();
+    base.stream.state.isStreaming = true;
+    mockUseReviewLifecycleBase.mockReturnValue(base);
+
+    const { result } = renderReviewLifecycle("unstaged");
+
+    result.current.handleBack();
+
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
+    expect(base.stream.cancel).not.toHaveBeenCalled();
+  });
+});
+
 describe("useReviewLifecycle terminal session messages", () => {
   beforeEach(() => {
     mockNavigate.mockReset();

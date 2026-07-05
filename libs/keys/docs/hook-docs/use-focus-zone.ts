@@ -64,6 +64,21 @@ export const useFocusZoneDoc: HookDoc = {
         "Zone order for Tab/Shift+Tab cycling. When omitted, Tab/Shift+Tab are not handled and follow native browser behavior.",
     },
     {
+      name: "tabCycleScope",
+      type: '"containers" | "document"',
+      required: false,
+      defaultValue: '"containers"',
+      description:
+        'Where Tab/Shift+Tab cycling claims the Tab key. "containers" cycles only while focus is inside a registered zone container and declines elsewhere so native Tab proceeds (document-wide only when no containment is resolvable). "document" cycles from anywhere in the document except editable targets, which keep native Tab.',
+    },
+    {
+      name: "tabCycleBoundary",
+      type: "FocusZoneTargetRef",
+      required: false,
+      description:
+        "Optional document-scope boundary. When it resolves to an element, Tab is claimed only while focus is inside that element; outside it native Tab proceeds. No effect when omitted or null.",
+    },
+    {
       name: "scope",
       type: "string | null",
       required: false,

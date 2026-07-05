@@ -5,7 +5,7 @@ import {
   useIssueDetailsState,
 } from "@diffgazer/core/review";
 import type { Shortcut, UISeverityFilter } from "@diffgazer/core/schemas/presentation";
-import { BACK_SHORTCUT } from "@diffgazer/core/schemas/presentation";
+import { BACK_SHORTCUT, SWITCH_PANE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
 import { type ReactElement, useState } from "react";
@@ -25,7 +25,7 @@ type Zone = "list" | "details";
 
 const RESULTS_SHORTCUTS_LEFT: Shortcut[] = [
   { key: "j/k", label: "Navigate" },
-  { key: "Tab", label: "Switch Pane" },
+  SWITCH_PANE_SHORTCUT,
 ];
 const RESULTS_SHORTCUTS_RIGHT: Shortcut[] = [BACK_SHORTCUT];
 
@@ -88,12 +88,13 @@ export function ReviewResultsView({
   const paneHeight = Math.max(rows - 8, 8);
   const listScrollHeight = isNarrow ? Math.max(Math.floor(paneHeight / 2), 6) : paneHeight;
   const detailScrollHeight = isNarrow ? Math.max(Math.floor(paneHeight / 2), 6) : paneHeight;
+  const reviewIdLabel = reviewId == null ? "#unknown" : `#${reviewId}`;
 
   return (
     <Box flexDirection="column">
       <Box paddingX={1}>
         <Text color={tokens.accent} bold>
-          {`Review #${reviewId ?? "unknown"}`}
+          {`Review ${reviewIdLabel}`}
         </Text>
       </Box>
       <Box flexDirection={isNarrow ? "column" : "row"} marginTop={1}>

@@ -30,6 +30,7 @@ export function ReviewContainer({ mode, onComplete, onStreamNotFound }: ReviewCo
     provider,
     model,
     handleCancel,
+    handleBack,
     handleViewResults,
     handleSetupProvider,
     handleSwitchMode,
@@ -86,6 +87,7 @@ export function ReviewContainer({ mode, onComplete, onStreamNotFound }: ReviewCo
       error={state.error}
       onViewResults={canViewResults ? handleViewResults : undefined}
       onCancel={handleCancel}
+      onBack={handleBack}
     />
   );
 }

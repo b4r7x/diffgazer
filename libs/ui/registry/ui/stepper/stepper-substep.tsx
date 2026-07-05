@@ -86,11 +86,12 @@ export function StepperSubstep({
       >
         {tag}
       </Badge>
-      <span>{label}</span>
+      <span className="shrink-0">{label}</span>
       {statusText && (
         <span
+          title={statusText}
           className={cn(
-            "ml-auto text-xs",
+            "ml-auto min-w-0 truncate text-xs",
             detail ? "text-muted-foreground" : substepLabelVariants({ status }),
           )}
         >

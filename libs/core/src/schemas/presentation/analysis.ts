@@ -2,7 +2,7 @@ import { z } from "zod";
 import { ReviewSeveritySchema } from "../review/issues.js";
 
 const AnalysisStatsSchema = z.object({
-  runId: z.string(),
+  runId: z.string().nullable(),
   totalIssues: z.number(),
   filesAnalyzed: z.number(),
   blockerCount: z.number(),

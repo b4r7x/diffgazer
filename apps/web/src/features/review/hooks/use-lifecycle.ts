@@ -103,6 +103,12 @@ export function useReviewLifecycle({
     })();
   };
 
+  // Leaves the review screen without touching the server session: the run keeps
+  // streaming server-side and stays resumable from home's "Resume Last Review".
+  const handleBack = () => {
+    navigate({ to: "/" });
+  };
+
   const handleViewResults = () => {
     base.completion.skipDelay();
   };
@@ -141,6 +147,7 @@ export function useReviewLifecycle({
     provider,
     model,
     handleCancel,
+    handleBack,
     handleViewResults,
     handleSetupProvider,
     handleSwitchMode,

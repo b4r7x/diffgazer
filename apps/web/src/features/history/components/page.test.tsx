@@ -1,6 +1,6 @@
 import type { BoundApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
-import { FooterProvider } from "@diffgazer/core/footer";
+import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
 import type { InitResponse } from "@diffgazer/core/schemas/config";
 import type { ReviewIssue, ReviewMetadata, ReviewResponse } from "@diffgazer/core/schemas/review";
 import { makeReviewMetadata } from "@diffgazer/core/testing/factories";
@@ -10,8 +10,10 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { Footer } from "@/components/layout/footer";
 import { ConfigProvider } from "@/hooks/use-config";
 import { clearScopedRouteState } from "@/hooks/use-scoped-route-state";
+import { MAIN_CONTENT_ID } from "@/lib/main-content";
 
 const { mockNavigate } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
@@ -143,6 +145,11 @@ function renderHistoryPage(ui: ReactNode = <HistoryPage />) {
   }
 
   return { ...render(ui, { wrapper: Wrapper }), queryClient };
+}
+
+function FooterView() {
+  const { shortcuts, rightShortcuts } = useFooterData();
+  return <Footer shortcuts={shortcuts} rightShortcuts={rightShortcuts} />;
 }
 
 async function focusRunsList() {
@@ -364,6 +371,24 @@ describe("HistoryPage keyboard navigation", () => {
     expect(within(activeRun).getByText(/2 nit/i)).toBeInTheDocument();
   });
 
+  it("keeps the selected run marked as selected when focus moves to the insights pane", async () => {
+    const user = userEvent.setup();
+    renderHistoryPage();
+
+    const runsList = await focusRunsList();
+    const [selectedRun] = within(runsList).getAllByRole("option");
+    if (selectedRun === undefined) {
+      throw new Error("Expected at least one review run option");
+    }
+    await waitFor(() => expect(selectedRun).toHaveAttribute("data-highlighted"));
+
+    await user.keyboard("{Tab}");
+
+    await waitFor(() => expect(selectedRun).not.toHaveAttribute("data-highlighted"));
+    expect(selectedRun).toHaveAttribute("aria-selected", "true");
+    expect(selectedRun).toHaveAttribute("data-selected");
+  });
+
   it("never marks more than one panel as focused as Tab moves the focus zone", async () => {
     const user = userEvent.setup();
     renderHistoryPage();
@@ -391,29 +416,78 @@ describe("HistoryPage keyboard navigation", () => {
     await waitFor(() => expect(focusedPanels().length).toBeLessThanOrEqual(1));
   });
 
-  it("does not swallow Tab while focus is outside the history zones", async () => {
+  it("tags each pane frame with its corner label", async () => {
+    renderHistoryPage();
+
+    await screen.findByRole("listbox", { name: /review runs/i });
+
+    expect(
+      within(screen.getByRole("complementary", { name: "Review sections" })).getByText("Sections"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("region", { name: "Review runs" })).getByText("Runs"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("complementary", { name: "Review insights" })).getByText(/^Insights/),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps native Tab on the skip link outside main while cycling history panes inside main", async () => {
     renderHistoryPage(
       <>
-        <a href="#main">Skip to content</a>
-        <HistoryPage />
+        <a href={`#${MAIN_CONTENT_ID}`}>Skip to content</a>
+        <main id={MAIN_CONTENT_ID}>
+          <HistoryPage />
+        </main>
       </>,
     );
 
     const runsList = await screen.findByRole("listbox", { name: /review runs/i });
-    await waitFor(() => expect(runsList).toBeInTheDocument());
+    const sectionsList = screen.getByRole("listbox", { name: /review sections/i });
+    sectionsList.focus();
+    await waitFor(() => expect(sectionsList).toHaveFocus());
 
     const skipLink = screen.getByRole("link", { name: "Skip to content" });
     skipLink.focus();
     expect(skipLink).toHaveFocus();
 
-    // fireEvent retained: low-level Tab dispatch asserts the global key handler's preventDefault contract.
+    // fireEvent retained: low-level Tab dispatch asserts the main boundary declines Tab on the skip link.
     const prevented = !fireEvent.keyDown(window, { key: "Tab", code: "Tab" });
     expect(prevented).toBe(false);
 
-    runsList.focus();
-    // fireEvent retained: low-level Tab dispatch asserts the scoped cycle prevents native tabbing inside a focus zone.
+    sectionsList.focus();
+    // fireEvent retained: low-level Tab dispatch asserts the document-scope cycle claims Tab inside main.
     const preventedInside = !fireEvent.keyDown(window, { key: "Tab", code: "Tab" });
     expect(preventedInside).toBe(true);
+
+    await waitFor(() => expect(runsList).toHaveFocus());
+  });
+
+  it("keeps native Tab inside the search input", async () => {
+    const user = userEvent.setup();
+    renderHistoryPage();
+
+    const search = await screen.findByPlaceholderText(/search runs by id/i);
+    await user.click(search);
+    await waitFor(() => expect(search).toHaveFocus());
+
+    // fireEvent retained: low-level Tab dispatch asserts editable targets keep native Tab (no preventDefault).
+    const prevented = !fireEvent.keyDown(search, { key: "Tab", code: "Tab" });
+    expect(prevented).toBe(false);
+  });
+
+  it("advertises the canonical Switch Pane label in the footer", async () => {
+    renderHistoryPage(
+      <>
+        <HistoryPage />
+        <FooterView />
+      </>,
+    );
+
+    await focusRunsList();
+
+    expect(await screen.findByText("Switch Pane")).toBeInTheDocument();
+    expect(screen.queryByText("Switch Focus")).not.toBeInTheDocument();
   });
 
   it("does not include runs or insights in the Tab cycle when there are no runs", async () => {

@@ -17,4 +17,15 @@ describe("TimelineList", () => {
     expect(screen.getByRole("option", { name: "All" })).toHaveAccessibleDescription("3 runs");
     expect(screen.getByRole("option", { name: "Yesterday" })).toHaveAccessibleDescription("1 run");
   });
+
+  it("keeps the selected section exposed as selected when keyboard focus is elsewhere", () => {
+    render(
+      <TimelineList items={items} selectedId="today" onSelect={vi.fn()} keyboardEnabled={false} />,
+    );
+
+    const selected = screen.getByRole("option", { name: "Today" });
+    expect(selected).toHaveAttribute("aria-selected", "true");
+    expect(selected).toHaveAttribute("data-selected");
+    expect(selected).not.toHaveAttribute("data-highlighted");
+  });
 });

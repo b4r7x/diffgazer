@@ -11,7 +11,6 @@ const ProgressSubstepDataSchema = z.object({
   label: z.string(),
   status: z.enum(LIFECYCLE_STATUSES),
   detail: z.string().optional(),
-  progress: z.number().min(0).max(100).optional(),
 });
 export type ProgressSubstepData = z.infer<typeof ProgressSubstepDataSchema>;
 

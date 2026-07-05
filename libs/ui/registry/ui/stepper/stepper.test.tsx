@@ -236,6 +236,28 @@ describe("Stepper", () => {
     expect(screen.getByText("custom detail")).toBeInTheDocument();
   });
 
+  it("exposes the full substep status text via title so truncation never hides it", () => {
+    const detail = "65% — Waiting for model response — 30s";
+    render(
+      <Stepper defaultExpandedIds={["s1"]}>
+        <Stepper.Step stepId="s1" status="active">
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+          <Stepper.Content>
+            <Stepper.Substep tag="A" label="Substep A" status="active" detail={detail} />
+            <Stepper.Substep
+              tag="B"
+              label="Substep B"
+              status="active"
+              statusLabels={{ active: "analyzing..." }}
+            />
+          </Stepper.Content>
+        </Stepper.Step>
+      </Stepper>,
+    );
+    expect(screen.getByText(detail)).toHaveAttribute("title", detail);
+    expect(screen.getByText("analyzing...")).toHaveAttribute("title", "analyzing...");
+  });
+
   it("places a single tab stop on the active step (roving tabIndex)", async () => {
     const user = userEvent.setup();
     render(

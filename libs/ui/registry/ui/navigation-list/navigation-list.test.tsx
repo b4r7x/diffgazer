@@ -297,6 +297,15 @@ describe("NavigationList", () => {
     expect(screen.getByRole("option", { name: "One" })).toHaveAttribute("data-highlighted");
   });
 
+  it("keeps the selected item exposed as selected without the active visual when unfocused", () => {
+    renderList({ selectedId: "one", highlighted: "one", focused: false });
+
+    const selectedOption = screen.getByRole("option", { name: "One" });
+    expect(selectedOption).toHaveAttribute("aria-selected", "true");
+    expect(selectedOption).toHaveAttribute("data-selected");
+    expect(selectedOption).not.toHaveAttribute("data-highlighted");
+  });
+
   it("does not render disabled item as selected via controlled selectedId", () => {
     renderList({ selectedId: "three", focused: true });
 

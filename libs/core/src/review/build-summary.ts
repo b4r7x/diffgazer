@@ -69,8 +69,6 @@ export function buildCategoryStats(issues: ReviewIssue[]): CategoryStats[] {
   return Object.entries(counts).map(([category, count]) => ({
     id: category,
     name: capitalize(category),
-    icon: "",
     count,
-    change: 0,
   }));
 }

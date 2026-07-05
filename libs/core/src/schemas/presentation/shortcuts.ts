@@ -38,9 +38,8 @@ export const SETTINGS_SHORTCUTS: Shortcut[] = [
   { key: "Esc", label: "Back" },
 ];
 
-// The two most common footer fragments, previously re-typed inline across both
-// surfaces. Both web and CLI consume these single constants.
 export const BACK_SHORTCUT: Shortcut = { key: "Esc", label: "Back" };
+export const SWITCH_PANE_SHORTCUT: Shortcut = { key: "Tab", label: "Switch Pane" };
 export const NAVIGATE_SHORTCUT: Shortcut = { key: "↑/↓", label: "Navigate" };
 export const BACK_SHORTCUTS: Shortcut[] = [BACK_SHORTCUT];
 
@@ -51,7 +50,7 @@ export const HELP_SHORTCUTS: Shortcut[] = [
   { key: "↑/↓", label: "Navigate Menus and Lists" },
   { key: "Enter", label: "Select / Confirm" },
   { key: "Esc", label: "Go Back" },
-  { key: "Tab", label: "Switch Pane" },
+  SWITCH_PANE_SHORTCUT,
   { key: "1-4", label: "Switch Tab (in Review)" },
   { key: "j/k", label: "Scroll Content" },
   { key: "s", label: "Open Settings" },

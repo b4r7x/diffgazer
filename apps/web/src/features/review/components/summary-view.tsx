@@ -15,16 +15,11 @@ import {
   ReviewCompleteSummary,
 } from "@/features/review/components/review-complete-summary";
 
-interface CategoryMeta {
-  icon: string;
-  iconColor: string;
-}
+const DEFAULT_CATEGORY_COLOR = "text-info-text";
 
-const DEFAULT_CATEGORY_META: CategoryMeta = { icon: "code", iconColor: "text-info-text" };
-
-const CATEGORY_META: Record<string, CategoryMeta> = {
-  security: { icon: "shield", iconColor: "text-error-text" },
-  performance: { icon: "zap", iconColor: "text-warning-text" },
+const CATEGORY_COLORS: Record<string, string> = {
+  security: "text-error-text",
+  performance: "text-warning-text",
 };
 
 function isInteractiveTarget(target: EventTarget | null): boolean {
@@ -59,10 +54,12 @@ export function ReviewSummaryView({
   const hiddenNotice = buildHiddenIssuesNotice(droppedBelowThreshold, minSeverity);
   const lensRows = buildLensSummaryRows(lensStats);
 
-  const categoryStats: CategoryStats[] = buildCategoryStats(issues).map((stat) => {
-    const meta = CATEGORY_META[stat.id] ?? DEFAULT_CATEGORY_META;
-    return { ...stat, icon: meta.icon, iconColor: meta.iconColor };
-  });
+  const categoryStats: CategoryStats[] = buildCategoryStats(issues).map((stat) => ({
+    id: stat.id,
+    name: stat.name,
+    count: stat.count,
+    color: CATEGORY_COLORS[stat.id] ?? DEFAULT_CATEGORY_COLOR,
+  }));
 
   const topIssues: IssuePreview[] = issues.slice(0, 3).map((issue) => ({
     id: issue.id,
@@ -74,7 +71,7 @@ export function ReviewSummaryView({
   }));
 
   const stats = {
-    runId: reviewId ?? "unknown",
+    runId: reviewId,
     totalIssues: summary.total,
     filesAnalyzed: summary.filesAnalyzed,
     blockerCount: summary.blockerCount,

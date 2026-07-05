@@ -1,4 +1,5 @@
 import { FooterProvider } from "@diffgazer/core/footer";
+import { formatRunId } from "@diffgazer/core/review";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { KeyboardProvider } from "@diffgazer/keys";
@@ -186,7 +187,7 @@ describe("ReviewPage saved review loading", () => {
 
     renderPage();
 
-    expect(await screen.findByText("Review #review-saved")).toBeInTheDocument();
+    expect(await screen.findByText("Review #revi")).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /saved result issue/i })).toHaveAttribute(
       "aria-selected",
       "true",
@@ -218,7 +219,7 @@ describe("ReviewPage saved review loading", () => {
 
     renderPage();
 
-    expect(screen.getByText("Progress Overview")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Progress" })).toBeInTheDocument();
   });
 
   it("streams when the saved review returns 404", async () => {
@@ -234,7 +235,7 @@ describe("ReviewPage saved review loading", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("Progress Overview")).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Progress" })).toBeInTheDocument();
     });
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -257,7 +258,7 @@ describe("ReviewPage saved review loading", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("Progress Overview")).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Progress" })).toBeInTheDocument();
     });
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -377,7 +378,7 @@ describe("ReviewPage stale live session falls back to saved review", () => {
     renderPage();
 
     // Initially streaming
-    expect(screen.getByText("Progress Overview")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Progress" })).toBeInTheDocument();
 
     // Simulate stream 404 -- onNotFoundInSession fires from use-review-start
     await act(() => {
@@ -385,7 +386,7 @@ describe("ReviewPage stale live session falls back to saved review", () => {
     });
 
     // Falls back to saved review results
-    expect(await screen.findByText(`Review #${STALE_REVIEW_ID}`)).toBeInTheDocument();
+    expect(await screen.findByText("Review #3333")).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /saved fallback issue/i })).toBeInTheDocument();
     expect(mockNavigate).not.toHaveBeenCalledWith({ to: "/" });
   });
@@ -400,7 +401,7 @@ describe("ReviewPage stale live session falls back to saved review", () => {
 
     renderPage();
 
-    expect(screen.getByText("Progress Overview")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Progress" })).toBeInTheDocument();
 
     // Simulate stream 404
     await act(() => {
@@ -460,7 +461,9 @@ describe("ReviewPage reviewId changes", () => {
     await act(() => {
       capturedOnComplete?.();
     });
-    expect(await screen.findByText(`Review Complete #${FIRST_REVIEW_ID}`)).toBeInTheDocument();
+    expect(
+      await screen.findByText(`Review Complete ${formatRunId(FIRST_REVIEW_ID)}`),
+    ).toBeInTheDocument();
 
     routeState.params = { reviewId: SECOND_REVIEW_ID };
     mockUseReviewLifecycleBase.mockReturnValue({
@@ -482,8 +485,10 @@ describe("ReviewPage reviewId changes", () => {
 
     view.rerender(<ReviewPage />);
 
-    expect(screen.getByText("Progress Overview")).toBeInTheDocument();
-    expect(screen.queryByText(`Review Complete #${FIRST_REVIEW_ID}`)).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Progress" })).toBeInTheDocument();
+    expect(
+      screen.queryByText(`Review Complete ${formatRunId(FIRST_REVIEW_ID)}`),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("First review issue")).not.toBeInTheDocument();
   });
 });
@@ -536,13 +541,15 @@ describe("ReviewPage live review phase transitions", () => {
   it("transitions from streaming to summary when onComplete fires", async () => {
     renderPage();
 
-    expect(screen.getByText("Progress Overview")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Progress" })).toBeInTheDocument();
 
     await act(() => {
       capturedOnComplete?.();
     });
 
-    expect(await screen.findByText(`Review Complete #${LIVE_REVIEW_ID}`)).toBeInTheDocument();
+    expect(
+      await screen.findByText(`Review Complete ${formatRunId(LIVE_REVIEW_ID)}`),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /view results/i })).toBeInTheDocument();
   });
 
@@ -555,11 +562,15 @@ describe("ReviewPage live review phase transitions", () => {
       capturedOnComplete?.();
     });
 
-    expect(await screen.findByText(`Review Complete #${LIVE_REVIEW_ID}`)).toBeInTheDocument();
+    expect(
+      await screen.findByText(`Review Complete ${formatRunId(LIVE_REVIEW_ID)}`),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /view results/i }));
 
-    expect(await screen.findByText(`Review #${LIVE_REVIEW_ID}`)).toBeInTheDocument();
-    expect(screen.queryByText(`Review Complete #${LIVE_REVIEW_ID}`)).not.toBeInTheDocument();
+    expect(await screen.findByText("Review #2222")).toBeInTheDocument();
+    expect(
+      screen.queryByText(`Review Complete ${formatRunId(LIVE_REVIEW_ID)}`),
+    ).not.toBeInTheDocument();
   });
 });

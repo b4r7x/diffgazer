@@ -138,7 +138,7 @@ export const stepperLabelVariants = cva("text-[13px] leading-[1.4] font-medium",
 export const stepperTriggerVariants = cva(
   "flex items-start gap-2.5 appearance-none bg-transparent border-0 p-0 text-left w-full " +
     "font-[inherit] cursor-pointer rounded-none " +
-    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground " +
+    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring " +
     "disabled:cursor-not-allowed " +
     "aria-disabled:cursor-not-allowed aria-disabled:opacity-60",
 );

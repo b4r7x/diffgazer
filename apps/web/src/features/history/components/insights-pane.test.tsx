@@ -11,7 +11,7 @@ describe("HistoryInsightsPane", () => {
     expect(screen.getByText(/select a run to view insights/i)).toBeInTheDocument();
   });
 
-  it("renders run metadata, severity breakdown, and issue list when a run is selected", () => {
+  it("renders severity breakdown and issue list when a run is selected", () => {
     const counts: SeverityCounts = { blocker: 0, high: 1, medium: 0, low: 0, nit: 0 };
     render(
       <HistoryInsightsPane
@@ -21,7 +21,6 @@ describe("HistoryInsightsPane", () => {
         duration="4m 12s"
       />,
     );
-    expect(screen.getByText(/run-42/i)).toBeInTheDocument();
     expect(screen.getByText(/severity breakdown/i)).toBeInTheDocument();
     expect(screen.getByText("1 Issues")).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /wrong value/i })).toBeInTheDocument();

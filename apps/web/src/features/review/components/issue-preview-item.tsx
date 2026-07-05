@@ -92,7 +92,7 @@ export function IssuePreviewItem({
         onClick={onClick}
         className={cn(
           sharedClassName,
-          "h-auto justify-between rounded-none hover:bg-secondary focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info",
+          "h-auto justify-between rounded-none hover:bg-secondary focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
         )}
       >
         <IssuePreviewContent {...contentProps} isClickable />

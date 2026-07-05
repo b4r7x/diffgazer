@@ -1,4 +1,4 @@
-import { selectDetailsEmptyKind } from "@diffgazer/core/review";
+import { formatRunId, selectDetailsEmptyKind } from "@diffgazer/core/review";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { IssueDetailsPane } from "@/features/review/components/issue-details-pane";
 import { IssueListPane } from "@/features/review/components/issue-list-pane";
@@ -29,9 +29,12 @@ export function ReviewResultsView({ issues, reviewId, initialIssueId }: ReviewRe
     filterRef,
     handleFilterKeyDown,
     handleSeverityFilterBoundary,
+    handleDetailsTabsBoundary,
     highlightedIssueId,
     handleListFocus,
     listRef,
+    listBodyRef,
+    detailsPaneRef,
     detailsScrollRef,
     completedSteps,
     handleToggleStep,
@@ -42,7 +45,9 @@ export function ReviewResultsView({ issues, reviewId, initialIssueId }: ReviewRe
   return (
     <div className="flex flex-col flex-1 overflow-hidden px-4 pb-2 font-mono">
       <div className="flex items-center gap-4 py-2 mb-2 shrink-0">
-        <span className="text-sm font-medium text-accent">Review #{reviewId ?? "unknown"}</span>
+        <span className="text-sm font-medium text-accent">
+          Review {reviewId ? formatRunId(reviewId) : "#unknown"}
+        </span>
       </div>
       {/* The issue list + details split is a genuinely two-dimensional layout
           (WCAG 1.4.10 exception), so this region keeps a minimum width while the
@@ -71,16 +76,18 @@ export function ReviewResultsView({ issues, reviewId, initialIssueId }: ReviewRe
             isFilterFocused: focusZone === "filters",
             onFilterKeyDown: handleFilterKeyDown,
           }}
-          refs={{ filterRef, listRef }}
+          refs={{ filterRef, listRef, listBodyRef }}
           ui={{ isFocused: focusZone === "list" }}
         />
         <IssueDetailsPane
           issue={selectedIssue}
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          onTabsBoundaryReached={handleDetailsTabsBoundary}
           completedSteps={completedSteps}
           onToggleStep={handleToggleStep}
           focusedStepIndex={focusedStepIndex}
+          paneRef={detailsPaneRef}
           scrollAreaRef={detailsScrollRef}
           isFocused={focusZone === "details"}
           emptyKind={detailsEmptyKind}

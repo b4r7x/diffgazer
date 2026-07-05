@@ -2,7 +2,7 @@
 
 import { type RefObject, useEffect, useEffectEvent, useRef, useState } from "react";
 import { DECLINE } from "../core/normalize-key-input.js";
-import { isHTMLElement } from "../dom/element-guards.js";
+import { isEditableElement, isHTMLElement } from "../dom/element-guards.js";
 import { containsActiveElement, getFirstFocusableElement, isFocusable } from "../dom/focusable.js";
 import type { UseKeyOptions } from "./use-key.js";
 import { useKey } from "./use-key.js";
@@ -31,6 +31,19 @@ export interface UseFocusZoneOptions<T extends string> {
   transitions?: ZoneTransition<T>;
   /** Zone order for Tab/Shift+Tab cycling; omitted means native Tab behavior. */
   tabCycle?: readonly T[];
+  /**
+   * Where Tab/Shift+Tab cycling claims the Tab key. `"containers"` cycles only
+   * while focus is inside a registered zone container and declines elsewhere so
+   * native Tab proceeds (falling back to a document-wide cycle when no
+   * containment is resolvable); `"document"` cycles from anywhere in the
+   * document except editable targets, which keep native Tab.
+   */
+  tabCycleScope?: "containers" | "document";
+  /**
+   * In document scope, Tab is claimed only while focus is inside this element.
+   * Outside it, native Tab proceeds. No effect when unset or null.
+   */
+  tabCycleBoundary?: FocusZoneTargetRef;
   /** Keyboard scope name to push while the focus zone is active; null skips registration. */
   scope?: string | null;
   /** Optional DOM subtree used to scope registered focus-zone keys. */
@@ -138,6 +151,8 @@ export function useFocusZone<T extends string>(
     onEnterZone,
     transitions,
     tabCycle,
+    tabCycleScope = "containers",
+    tabCycleBoundary,
     scope,
     containerRef,
     focusWithinOnly,
@@ -214,15 +229,28 @@ export function useFocusZone<T extends string>(
   });
 
   const handleTabCycle = useEffectEvent((delta: 1 | -1, event: KeyboardEvent) => {
-    const containers = getTabContainers();
-    if (containers) {
-      const target = event.target;
-      const inside = containers.some(
-        (container) =>
-          (isHTMLElement(target) && container.contains(target)) || containsActiveElement(container),
-      );
-      // Outside every container: decline so native Tab proceeds (no preventDefault).
-      if (!inside) return DECLINE;
+    const target = event.composedPath()[0] ?? event.target;
+    if (tabCycleScope === "document") {
+      // Editable targets keep native Tab even when allowInInput lets keys through.
+      if (isEditableElement(target)) return DECLINE;
+      const boundary = resolveFocusTargetRef(tabCycleBoundary);
+      if (boundary) {
+        const insideBoundary =
+          (isHTMLElement(target) && boundary.contains(target)) ||
+          containsActiveElement(boundary);
+        if (!insideBoundary) return DECLINE;
+      }
+    } else {
+      const containers = getTabContainers();
+      if (containers) {
+        const inside = containers.some(
+          (container) =>
+            (isHTMLElement(target) && container.contains(target)) ||
+            containsActiveElement(container),
+        );
+        // Outside every container: decline so native Tab proceeds (no preventDefault).
+        if (!inside) return DECLINE;
+      }
     }
     event.preventDefault();
     cycleZone(delta);

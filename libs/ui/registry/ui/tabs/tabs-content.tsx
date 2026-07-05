@@ -49,7 +49,7 @@ export function TabsContent<TValue extends string = string>({
       hidden={!isActive}
       tabIndex={isActive ? 0 : undefined}
       className={cn(
-        "mt-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-offset-2",
+        "mt-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
         className,
       )}
       {...rest}

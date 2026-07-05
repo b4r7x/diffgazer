@@ -1,6 +1,7 @@
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
+import type { AgentState } from "@diffgazer/core/schemas/events";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Footer } from "@/components/layout/footer";
@@ -19,6 +20,24 @@ import {
 function FooterView() {
   const { shortcuts, rightShortcuts } = useFooterData();
   return <Footer shortcuts={shortcuts} rightShortcuts={rightShortcuts} />;
+}
+
+function makeAgent(overrides: Partial<AgentState> = {}): AgentState {
+  return {
+    id: "guardian",
+    meta: {
+      id: "guardian",
+      lens: "security",
+      name: "Guardian",
+      badgeLabel: "SEC",
+      badgeVariant: "warning",
+      description: "",
+    },
+    status: "running",
+    progress: 40,
+    issueCount: 0,
+    ...overrides,
+  };
 }
 
 function makeProgressData(overrides: Partial<ReviewProgressData> = {}): ReviewProgressData {
@@ -46,6 +65,7 @@ function renderView(props: Partial<ReviewProgressViewProps> = {}) {
           error={props.error}
           onViewResults={props.onViewResults}
           onCancel={props.onCancel}
+          onBack={props.onBack}
         />
         <FooterView />
       </FooterProvider>
@@ -57,16 +77,16 @@ describe("ReviewProgressView", () => {
   it("publishes only available progress shortcuts", async () => {
     renderView();
 
-    expect(await screen.findByText("Switch Pane")).toBeInTheDocument();
+    expect(await screen.findAllByText("Switch Pane")).toHaveLength(2);
+    expect(screen.getByText("Tab")).toBeInTheDocument();
+    expect(screen.getByText("←/→")).toBeInTheDocument();
     expect(screen.queryByText("View Results")).not.toBeInTheDocument();
-    expect(screen.queryByText("Cancel")).not.toBeInTheDocument();
+    expect(screen.queryByText("Back")).not.toBeInTheDocument();
   });
 
   it("omits View Results shortcut when onViewResults is not provided", async () => {
     renderView({ isRunning: true, onCancel: vi.fn() });
 
-    // The visible Cancel button (F-352) renders while streaming; the footer also
-    // carries the "Cancel" Kbd hint, so disambiguate by role.
     expect(await screen.findByRole("button", { name: "Cancel" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "View Results" })).not.toBeInTheDocument();
   });
@@ -81,6 +101,31 @@ describe("ReviewProgressView", () => {
     await user.click(cancel);
 
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancels the run with c while running", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+
+    renderView({ isRunning: true, onCancel });
+
+    await user.keyboard("c");
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not cancel with c when focus is on a button", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+
+    renderView({ isRunning: true, onCancel });
+
+    const cancel = await screen.findByRole("button", { name: "Cancel" });
+    cancel.focus();
+
+    await user.keyboard("c");
+
+    expect(onCancel).not.toHaveBeenCalled();
   });
 
   it("renders a clickable View Results button after completion", async () => {
@@ -101,27 +146,23 @@ describe("ReviewProgressView", () => {
     expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
   });
 
+  it("ignores c when the run is not active", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+
+    renderView({ isRunning: false, onCancel });
+
+    await user.keyboard("c");
+
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
   it("announces the mid-run partial-analysis warning when it appears", () => {
     renderView({
       isRunning: true,
       error: null,
       data: makeProgressData({
-        agents: [
-          {
-            id: "guardian",
-            meta: {
-              id: "guardian",
-              lens: "security",
-              name: "Guardian",
-              badgeLabel: "SEC",
-              badgeVariant: "warning",
-              description: "",
-            },
-            status: "error",
-            progress: 100,
-            issueCount: 0,
-          },
-        ],
+        agents: [makeAgent({ status: "error", progress: 100 })],
       }),
       onCancel: vi.fn(),
     });
@@ -137,12 +178,25 @@ describe("ReviewProgressView", () => {
     const onViewResults = vi.fn();
 
     // Simulate error state: not running, error present, no onViewResults provided
-    renderView({ isRunning: false, error: "API key error", onCancel: vi.fn() });
+    renderView({ isRunning: false, error: "API key error", onBack: vi.fn() });
 
-    await screen.findByText("Cancel");
+    await screen.findByText("Back");
     await user.keyboard("{Enter}");
 
     expect(onViewResults).not.toHaveBeenCalled();
+  });
+
+  it("returns home from the error screen via Back to Home without cancelling", async () => {
+    const user = userEvent.setup();
+    const onBack = vi.fn();
+    const onCancel = vi.fn();
+
+    renderView({ isRunning: false, error: "Provider request failed", onBack, onCancel });
+
+    await user.click(screen.getByRole("button", { name: "Back to Home" }));
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onCancel).not.toHaveBeenCalled();
   });
 
   it("announces stream errors in an alert live region", () => {
@@ -166,7 +220,123 @@ describe("ReviewProgressView", () => {
     ).toBeInTheDocument();
   });
 
-  it("auto-expands the review step when agent substeps become available", async () => {
+  it("exposes the progress and live activity log panes as named regions", () => {
+    renderView();
+
+    expect(screen.getByRole("region", { name: "Progress" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Live Activity Log" })).toBeInTheDocument();
+  });
+
+  it("cycles pane focus with Tab from anywhere in the document", async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    const progressPane = screen.getByRole("region", { name: "Progress" });
+    const logPane = screen.getByRole("region", { name: "Live Activity Log" });
+    await waitFor(() => expect(progressPane).toHaveAttribute("data-focused"));
+
+    // Move focus outside both pane containers; document-scope Tab must still cycle.
+    (document.activeElement as HTMLElement | null)?.blur();
+    expect(document.body).toHaveFocus();
+
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(logPane).toHaveAttribute("data-focused"));
+    expect(screen.getByRole("log")).toHaveFocus();
+    expect(progressPane).not.toHaveAttribute("data-focused");
+
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+    await waitFor(() => expect(progressPane).toHaveAttribute("data-focused"));
+    expect(logPane).not.toHaveAttribute("data-focused");
+    expect(progressPane.matches(":focus-within")).toBe(true);
+  });
+
+  it("focuses the agent filter chips with f", async () => {
+    const user = userEvent.setup();
+    renderView({
+      data: makeProgressData({ agents: [makeAgent()] }),
+    });
+
+    await user.keyboard("f");
+
+    await waitFor(() => expect(screen.getByRole("radio", { name: "All" })).toHaveFocus());
+    expect(screen.getByRole("region", { name: "Live Activity Log" })).toHaveAttribute(
+      "data-focused",
+    );
+  });
+
+  it("returns to the pane cycle with Tab from the agent filters", async () => {
+    const user = userEvent.setup();
+    renderView({
+      data: makeProgressData({ agents: [makeAgent()] }),
+    });
+
+    await user.keyboard("f");
+    await waitFor(() => expect(screen.getByRole("radio", { name: "All" })).toHaveFocus());
+
+    await user.keyboard("{Tab}");
+
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Progress" })).toHaveAttribute("data-focused"),
+    );
+  });
+
+  it("advertises the Filter shortcut while running", async () => {
+    renderView({ isRunning: true, onCancel: vi.fn() });
+
+    expect(await screen.findByText("Filter")).toBeInTheDocument();
+    expect(screen.getByText("f")).toBeInTheDocument();
+  });
+
+  it("leaves native Tab available on the error screen", async () => {
+    const user = userEvent.setup();
+    renderView({ isRunning: false, error: "API key error", onBack: vi.fn() });
+
+    const back = await screen.findByRole("button", { name: "Back to Home" });
+    const configure = screen.getByRole("button", { name: "Configure Provider" });
+    back.focus();
+
+    // fireEvent retained: low-level Tab dispatch asserts the error state does not prevent native Tab.
+    const prevented = !fireEvent.keyDown(back, { key: "Tab", code: "Tab" });
+    expect(prevented).toBe(false);
+
+    await user.tab();
+    expect(configure).toHaveFocus();
+  });
+
+  it("does not advertise pane switching on the error screen", async () => {
+    renderView({ isRunning: false, error: "Provider request failed", onBack: vi.fn() });
+
+    expect(await screen.findByRole("button", { name: "Back to Home" })).toBeInTheDocument();
+    expect(screen.queryByText("Switch Pane")).not.toBeInTheDocument();
+  });
+
+  it("fires onViewResults with Enter while the log scroll area has focus", async () => {
+    const user = userEvent.setup();
+    const onViewResults = vi.fn();
+
+    renderView({ isRunning: false, onViewResults });
+
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
+
+    await user.keyboard("{Enter}");
+
+    expect(onViewResults).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks the log pane focused when pointer focus lands inside it", async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    const logPane = screen.getByRole("region", { name: "Live Activity Log" });
+    expect(logPane).not.toHaveAttribute("data-focused");
+
+    await user.click(screen.getByRole("radio", { name: "All" }));
+
+    await waitFor(() => expect(logPane).toHaveAttribute("data-focused"));
+  });
+
+  it("shows agents once on the agent board instead of expandable step substeps", () => {
     renderView({
       isRunning: true,
       data: makeProgressData({
@@ -176,24 +346,29 @@ describe("ReviewProgressView", () => {
             id: "review",
             label: "Review",
             status: "active",
-            substeps: [{ id: "security", tag: "SEC", label: "Security", status: "active" }],
+            substeps: [{ id: "guardian", tag: "SEC", label: "Guardian", status: "active" }],
           },
         ],
+        agents: [makeAgent()],
       }),
     });
 
-    expect(await screen.findByText("Security")).toBeVisible();
+    expect(screen.getByRole("progressbar", { name: "Guardian progress" })).toBeInTheDocument();
+    const reviewStep = screen.getByRole("button", { name: /Review/ });
+    expect(reviewStep).toBeDisabled();
+    expect(reviewStep).not.toHaveAttribute("aria-expanded");
   });
 
-  it("runs progress shortcuts when result and cancel actions are available", async () => {
+  it("runs progress shortcuts when result and back actions are available", async () => {
     const user = userEvent.setup();
     const onViewResults = vi.fn();
     const onCancel = vi.fn();
+    const onBack = vi.fn();
 
-    renderView({ onViewResults, onCancel });
+    renderView({ isRunning: true, onViewResults, onCancel, onBack });
 
     expect(await screen.findByRole("button", { name: "View Results" })).toBeInTheDocument();
-    expect(screen.getByText("Cancel")).toBeInTheDocument();
+    expect(screen.getByText("Back")).toBeInTheDocument();
 
     await user.keyboard("{Enter}");
     await user.keyboard("{Escape}");
@@ -201,6 +376,8 @@ describe("ReviewProgressView", () => {
     // call-count IS the contract: each shortcut keypress must fire its handler exactly once (no double-fire across the Enter+Escape sequence)
     expect(onViewResults).toHaveBeenCalledTimes(1);
     // call-count IS the contract: each shortcut keypress must fire its handler exactly once
-    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onBack).toHaveBeenCalledTimes(1);
+    // Escape must never cancel the run; only the visible [Cancel] button does.
+    expect(onCancel).not.toHaveBeenCalled();
   });
 });

@@ -140,11 +140,18 @@ export function NavigationListItem({
     hasDescriptionChild(children, NavigationListSubtitle) ? `${descId}-sub` : undefined,
   );
 
-  const activeBarColorClass =
-    indicator === "bar" ? "bg-primary-foreground/40" : "bg-primary-foreground";
-  const indicatorColorClass = isActive
-    ? activeBarColorClass
-    : "bg-transparent group-hover:bg-muted";
+  // Selected rows keep a muted marker while the active visual is elsewhere
+  // (unfocused list or another highlighted row), mirroring the TUI's
+  // always-rendered selected-marker cell.
+  const showsSelectedMarker = isSelected && !isActive;
+
+  let indicatorColorClass = "bg-transparent group-hover:bg-muted";
+  if (isActive) {
+    indicatorColorClass =
+      indicator === "bar" ? "bg-primary-foreground/40" : "bg-primary-foreground";
+  } else if (showsSelectedMarker) {
+    indicatorColorClass = "bg-accent";
+  }
 
   const handleClick = (event: MouseEvent<HTMLDivElement>) => {
     onClick?.(event);
@@ -192,7 +199,7 @@ export function NavigationListItem({
         onFocus={handleFocus}
         className={cn(
           itemVariants({ active: isActive, disabled, tree: isTree || undefined }),
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
+          showsSelectedMarker && !isTree && "bg-secondary",
           className,
         )}
       >
@@ -210,6 +217,7 @@ export function NavigationListItem({
             className={cn(
               "flex-1 flex items-center rounded-sm",
               isActive ? "bg-primary text-primary-foreground" : "hover:bg-secondary",
+              showsSelectedMarker && "bg-secondary",
             )}
           >
             <div className="flex-1 grid grid-cols-[1fr_auto] auto-rows-auto gap-y-0.5 py-0.5 px-1">

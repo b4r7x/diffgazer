@@ -58,8 +58,8 @@ describe("buildCategoryStats", () => {
     const stats = buildCategoryStats(issues);
 
     expect(stats).toEqual([
-      { id: "security", name: "Security", icon: "", count: 2, change: 0 },
-      { id: "performance", name: "Performance", icon: "", count: 1, change: 0 },
+      { id: "security", name: "Security", count: 2 },
+      { id: "performance", name: "Performance", count: 1 },
     ]);
   });
 

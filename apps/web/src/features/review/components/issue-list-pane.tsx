@@ -1,6 +1,5 @@
 import { calculateSeverityCounts } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { isListNavigationKey } from "@diffgazer/keys";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import { Panel } from "@diffgazer/ui/components/panel";
@@ -37,6 +36,7 @@ interface IssueListFilter {
 interface IssueListRefs {
   filterRef?: Ref<HTMLDivElement>;
   listRef?: Ref<HTMLDivElement>;
+  listBodyRef?: Ref<HTMLDivElement>;
 }
 
 interface IssueListUi {
@@ -66,7 +66,7 @@ export function IssueListPane({
     isFilterFocused,
     onFilterKeyDown,
   },
-  refs: { filterRef, listRef },
+  refs: { filterRef, listRef, listBodyRef },
   ui: { isFocused, title = "Issues", className },
 }: IssueListPaneProps) {
   const counts = calculateSeverityCounts(allIssues);
@@ -88,12 +88,14 @@ export function IssueListPane({
       data-pane="list"
       data-focused={isPaneFocused || undefined}
       className={cn(
-        "w-2/5 flex flex-col min-h-0 overflow-hidden border border-border data-[focused]:border-info",
+        "mt-3 w-2/5 flex flex-col min-h-0 border border-border data-[focused]:border-info",
         className,
       )}
     >
-      <div className="px-3 pb-4 pt-2">
-        <div className="text-accent font-bold mb-2">{title}</div>
+      <Panel.Label variant="border" aria-hidden="true">
+        {title} · {allIssues.length}
+      </Panel.Label>
+      <div className="px-3 pb-4 pt-3">
         <SeverityFilterGroup
           counts={counts}
           activeFilter={severityFilter}
@@ -104,15 +106,11 @@ export function IssueListPane({
           focusedIndex={focusedFilterIndex}
           onFocusedIndexChange={onFocusedFilterIndexChange}
           ref={filterRef}
-          onKeyDown={(event) => {
-            onFilterKeyDown?.(event);
-            if (event.defaultPrevented) return;
-            if (!isFilterFocused) event.preventDefault();
-          }}
+          onKeyDown={onFilterKeyDown}
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-hide">
+      <div ref={listBodyRef} className="flex flex-1 flex-col overflow-y-auto scrollbar-hide">
         <NavigationList
           ref={listRef}
           aria-label={title}
@@ -120,10 +118,6 @@ export function IssueListPane({
           highlighted={highlightedIssueId}
           onFocus={onListFocus}
           onKeyDown={(event) => {
-            if (!isFocused && isListNavigationKey(event.key)) {
-              event.preventDefault();
-              return;
-            }
             // With an empty list the auto-focused listbox swallows ArrowUp before
             // it can reach the zone-escape, so steer the boundary up to the filters
             // here, ahead of the listbox's own navigation handler.
@@ -152,10 +146,7 @@ export function IssueListPane({
                 key={issue.id}
                 id={issue.id}
                 density="compact"
-                className={cn(
-                  "border-b border-border last:border-b-0",
-                  !isFocused && selectedIssueId === issue.id && "border-l-2 border-l-info/60",
-                )}
+                className="border-b border-border last:border-b-0"
               >
                 <NavigationList.Title className="min-w-0">
                   <span className="sr-only">{issue.severity} severity: </span>
@@ -179,7 +170,7 @@ export function IssueListPane({
           })}
         </NavigationList>
         {issues.length === 0 && (
-          <EmptyState variant="inline" size="sm" live>
+          <EmptyState live className="flex-1">
             {emptyMessage}
           </EmptyState>
         )}

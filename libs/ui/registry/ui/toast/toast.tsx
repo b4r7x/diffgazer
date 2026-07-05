@@ -112,7 +112,7 @@ function CloseButton({
       className={cn(
         "min-h-6 min-w-6 p-1 flex items-center justify-center text-xs leading-none",
         "text-muted hover:text-foreground cursor-pointer",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
       )}
       aria-label={dismissLabel ?? `Dismiss: ${title}`}
     >

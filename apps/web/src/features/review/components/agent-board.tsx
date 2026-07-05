@@ -1,15 +1,9 @@
-import { getAgentDetail, getAgentStatusMeta } from "@diffgazer/core/review";
+import { getAgentDetail } from "@diffgazer/core/review";
 import type { AgentState } from "@diffgazer/core/schemas/events";
 import { Badge } from "@diffgazer/ui/components/badge";
+import { Progress } from "@diffgazer/ui/components/progress";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
-import { cn } from "@diffgazer/ui/lib/utils";
-
-const AGENT_STATUS_BARS = {
-  queued: "bg-border",
-  running: "bg-info",
-  complete: "bg-success",
-  error: "bg-error",
-} as const;
+import { Fragment } from "react";
 
 interface AgentBoardProps {
   agents: AgentState[];
@@ -23,37 +17,28 @@ export function AgentBoard({ agents }: AgentBoardProps) {
       <SectionHeader variant="muted" bordered>
         Agent Board
       </SectionHeader>
-      <div className="space-y-2">
+      <div className="grid grid-cols-[auto_minmax(0,auto)_7rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5">
         {agents.map((agent) => {
-          const status = getAgentStatusMeta(agent.status);
+          const detail = getAgentDetail(agent);
           return (
-            <div key={agent.id} className="border border-border bg-secondary/20 p-2">
-              <div className="flex items-center gap-2">
-                <Badge variant={agent.meta.badgeVariant ?? "info"} size="sm">
-                  {agent.meta.badgeLabel}
-                </Badge>
-                <span className="text-sm font-bold text-foreground">{agent.meta.name}</span>
-                <Badge variant={status.variant} size="sm" className="ml-auto">
-                  {status.label}
-                </Badge>
-              </div>
-              <div className="text-xs text-muted-foreground mt-1 truncate">
-                {getAgentDetail(agent)}
-              </div>
-              <div
-                role="progressbar"
-                aria-valuenow={Math.round(agent.progress)}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label={`${agent.meta.name} progress`}
-                className="mt-2 h-1 w-full bg-border"
+            <Fragment key={agent.id}>
+              <Badge
+                variant={agent.meta.badgeVariant ?? "info"}
+                size="sm"
+                className="min-w-[48px] justify-center"
               >
-                <div
-                  className={cn("h-1 transition-all", AGENT_STATUS_BARS[agent.status])}
-                  style={{ width: `${Math.max(0, Math.min(100, agent.progress))}%` }}
-                />
-              </div>
-            </div>
+                {agent.meta.badgeLabel}
+              </Badge>
+              <span className="text-sm font-bold text-foreground">{agent.meta.name}</span>
+              <Progress
+                value={agent.progress}
+                size="sm"
+                aria-label={`${agent.meta.name} progress`}
+              />
+              <span className="text-xs text-muted-foreground truncate" title={detail}>
+                {detail}
+              </span>
+            </Fragment>
           );
         })}
       </div>

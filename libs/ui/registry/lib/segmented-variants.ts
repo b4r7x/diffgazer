@@ -35,7 +35,7 @@ export const segmentedItemVariants = cva(
   [
     "relative inline-flex items-center justify-center whitespace-nowrap font-mono",
     "cursor-pointer select-none bg-transparent transition-colors motion-reduce:transition-none",
-    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
+    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
     "disabled:cursor-not-allowed disabled:opacity-50",
     // Tabs emit data-state="active"; ToggleGroup emits data-state="on" — one
     // shared selected-state style reads both per the data-attribute vocabulary.

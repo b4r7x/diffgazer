@@ -41,15 +41,13 @@ export function HistoryInsightsPane({
   className,
 }: HistoryInsightsPaneProps) {
   if (!runId) {
-    return <EmptyState className={className}>Select a run to view insights</EmptyState>;
+    return (
+      <EmptyState className={cn("flex-1", className)}>Select a run to view insights</EmptyState>
+    );
   }
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col overflow-hidden", className)}>
-      <SectionHeader as="h2" variant="muted" bordered className="mb-0 p-3 border-border">
-        Insights: Run {runId}
-      </SectionHeader>
-
       <ScrollArea className="flex-1 min-h-0 p-4 pr-2 space-y-6">
         {severityCounts && (
           <div>

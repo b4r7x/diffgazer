@@ -1,16 +1,20 @@
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
 import { getPartialFailureWarning } from "@diffgazer/core/review";
 import type { AgentState } from "@diffgazer/core/schemas/events";
-import type { BadgeVariant, ReviewProgressMetrics } from "@diffgazer/core/schemas/presentation";
+import type {
+  BadgeVariant,
+  ProgressStepData,
+  ReviewProgressMetrics,
+} from "@diffgazer/core/schemas/presentation";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
-import { SectionHeader } from "@diffgazer/ui/components/section-header";
+import { Panel } from "@diffgazer/ui/components/panel";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { ProgressList, type ProgressStepData } from "@/components/shared/progress/list";
+import { ProgressList } from "@/components/shared/progress/list";
 import { useReviewProgressKeyboard } from "../hooks/use-progress-keyboard";
 import { ActivityLog, type LogEntryData } from "./activity-log";
 import { AgentBoard } from "./agent-board";
@@ -33,6 +37,7 @@ export interface ReviewProgressViewProps {
   error?: string | null;
   onViewResults?: () => void;
   onCancel?: () => void;
+  onBack?: () => void;
 }
 
 interface AgentOption {
@@ -80,11 +85,11 @@ function AgentFilterBar({
 function ErrorDisplay({
   error,
   isApiKeyError,
-  onCancel,
+  onBack,
 }: {
   error: string;
   isApiKeyError: boolean;
-  onCancel?: () => void;
+  onBack?: () => void;
 }) {
   const navigate = useNavigate();
 
@@ -101,7 +106,7 @@ function ErrorDisplay({
           </div>
         )}
         <div className={cn("flex gap-3 justify-center", !isApiKeyError && "mt-4")}>
-          <Button variant="secondary" bracket onClick={onCancel}>
+          <Button variant="secondary" bracket onClick={onBack}>
             Back to Home
           </Button>
           {isApiKeyError && (
@@ -122,40 +127,33 @@ function ErrorDisplay({
 
 const API_KEY_ERROR_PATTERN = /api.?key/i;
 
-function isReviewStepReadyToExpand(steps: ProgressStepData[]): boolean {
-  const reviewStep = steps.find((s) => s.id === "review");
-  return reviewStep?.status === "active" && !!reviewStep.substeps && reviewStep.substeps.length > 0;
-}
-
 export function ReviewProgressView({
   data,
   isRunning,
   error,
   onViewResults,
   onCancel,
+  onBack,
 }: ReviewProgressViewProps) {
   const { steps, entries, agents, metrics, startTime, contextSnapshot, notices } = data;
-  const [expandedStepId, setExpandedStepId] = useState<string | null>(null);
-  const [hasAutoExpanded, setHasAutoExpanded] = useState(false);
   const [agentFilter, setAgentFilter] = useState<string | null>(null);
+  const hasError = Boolean(error);
 
-  const { focusPane } = useReviewProgressKeyboard({ onViewResults, onCancel });
-
-  // Auto-expand the review step the first render it becomes expandable, derived
-  // during render (no state-sync effect). The latch keeps a manual collapse from
-  // being re-expanded on later renders.
-  if (!hasAutoExpanded && isReviewStepReadyToExpand(steps)) {
-    setHasAutoExpanded(true);
-    setExpandedStepId("review");
-  }
+  const {
+    focusPane,
+    progressPaneRef,
+    progressScrollRef,
+    logPaneRef,
+    agentFilterRef,
+    logContentRef,
+  } = useReviewProgressKeyboard({
+    onViewResults,
+    onBack,
+    onCancel: isRunning ? onCancel : undefined,
+    hasError,
+  });
 
   const isApiKeyError = error ? API_KEY_ERROR_PATTERN.test(error) : false;
-
-  const expandedIds = expandedStepId ? [expandedStepId] : [];
-
-  const handleStepToggle = (id: string) => {
-    setExpandedStepId((prev) => (prev === id ? null : id));
-  };
 
   const agentOptions = agents.map((agent) => ({
     id: agent.id,
@@ -171,87 +169,100 @@ export function ReviewProgressView({
     : entries;
 
   return (
-    <div className="flex flex-1 overflow-hidden px-4">
-      <div
-        className={cn(
-          "w-1/3 flex flex-col border-r border-border px-4 min-h-0 overflow-y-auto scrollbar-hide",
-          focusPane === "progress" && "ring-1 ring-info ring-inset",
-        )}
+    <div className="flex flex-1 gap-4 overflow-hidden px-4 pt-4 pb-4">
+      <Panel
+        ref={progressPaneRef}
+        as="section"
+        aria-label="Progress"
+        data-pane="progress"
+        data-focused={focusPane === "progress" || undefined}
+        className="w-1/3 flex flex-col min-h-0 border border-border data-[focused]:border-info"
       >
-        <div className="flex-1 overflow-y-auto scrollbar-hide pr-2">
-          <div className="mb-8 pt-2">
-            <SectionHeader variant="muted" className="mb-4">
-              Progress Overview
-            </SectionHeader>
-            <ProgressList steps={steps} expandedIds={expandedIds} onToggle={handleStepToggle} />
-          </div>
+        <Panel.Label variant="border" aria-hidden="true">
+          Progress
+        </Panel.Label>
+
+        <div
+          ref={progressScrollRef}
+          tabIndex={-1}
+          className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-4 pt-4 focus:outline-none"
+        >
+          <ProgressList steps={steps} className="mb-8" />
 
           <AgentBoard agents={agents} />
 
           {contextSnapshot && !isRunning && <ContextSnapshotPreview snapshot={contextSnapshot} />}
         </div>
 
-        <ReviewMetricsFooter metrics={metrics} startTime={startTime} isRunning={isRunning} />
+        <div className="shrink-0 px-4">
+          <ReviewMetricsFooter metrics={metrics} startTime={startTime} isRunning={isRunning} />
 
-        {(onViewResults || (isRunning && onCancel)) && !error && (
-          <div className="shrink-0 flex flex-wrap gap-3 pb-4">
-            {isRunning && onCancel && (
-              <Button variant="secondary" bracket onClick={onCancel}>
-                Cancel
-              </Button>
-            )}
-            {onViewResults && (
-              <Button variant="outline" bracket onClick={onViewResults}>
-                View Results
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
+          {(onViewResults || (isRunning && onCancel)) && !error && (
+            <div className="flex flex-wrap gap-3 pb-4">
+              {isRunning && onCancel && (
+                <Button variant="secondary" bracket onClick={onCancel}>
+                  Cancel
+                </Button>
+              )}
+              {onViewResults && (
+                <Button variant="outline" bracket onClick={onViewResults}>
+                  View Results
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </Panel>
 
-      <div
-        className={cn(
-          "w-2/3 flex flex-col pl-6 overflow-hidden",
-          focusPane === "log" && "ring-1 ring-info ring-inset",
-        )}
+      <Panel
+        ref={logPaneRef}
+        as="section"
+        aria-label="Live Activity Log"
+        data-pane="log"
+        data-focused={focusPane === "log" || focusPane === "filters" || undefined}
+        className="flex-1 flex flex-col min-h-0 border border-border data-[focused]:border-info"
       >
-        <div className="flex justify-between items-end mb-2 pt-2 border-b border-border pb-2">
-          <SectionHeader variant="muted" className="mb-0">
-            Live Activity Log
-          </SectionHeader>
-          <span className="text-2xs text-muted-foreground font-mono">tail -f agent.log</span>
+        <Panel.Label variant="border" aria-hidden="true">
+          Live Activity Log
+        </Panel.Label>
+
+        <div ref={agentFilterRef} className="flex items-start justify-between gap-3 px-4 pt-3">
+          <AgentFilterBar agents={agentOptions} active={agentFilter} onChange={setAgentFilter} />
+          <span className="shrink-0 text-2xs text-muted-foreground font-mono">
+            tail -f agent.log
+          </span>
         </div>
 
-        <AgentFilterBar agents={agentOptions} active={agentFilter} onChange={setAgentFilter} />
+        <div ref={logContentRef} className="flex flex-1 min-h-0 flex-col">
+          {partialFailure.hasPartialFailure && (
+            <div className="px-4 pb-2">
+              <Callout tone="warning" live>
+                <Callout.Title>Partial Analysis</Callout.Title>
+                <Callout.Content>{partialFailure.message}</Callout.Content>
+              </Callout>
+            </div>
+          )}
 
-        {partialFailure.hasPartialFailure && (
-          <div className="pb-2">
-            <Callout tone="warning" live>
-              <Callout.Title>Partial Analysis</Callout.Title>
-              <Callout.Content>{partialFailure.message}</Callout.Content>
-            </Callout>
-          </div>
-        )}
+          {notices.length > 0 && (
+            <output className="shrink-0 px-4 pb-2 text-sm text-warning-text">
+              {notices.map((notice) => (
+                <div key={notice}>{notice}</div>
+              ))}
+            </output>
+          )}
 
-        {notices.length > 0 && (
-          <output className="shrink-0 pb-2 text-sm text-warning-text">
-            {notices.map((notice) => (
-              <div key={notice}>{notice}</div>
-            ))}
-          </output>
-        )}
-
-        {error ? (
-          <ErrorDisplay error={error} isApiKeyError={isApiKeyError} onCancel={onCancel} />
-        ) : (
-          <ActivityLog
-            entries={filteredEntries}
-            showCursor={isRunning}
-            autoScroll={true}
-            className="flex-1"
-          />
-        )}
-      </div>
+          {error ? (
+            <ErrorDisplay error={error} isApiKeyError={isApiKeyError} onBack={onBack} />
+          ) : (
+            <ActivityLog
+              entries={filteredEntries}
+              showCursor={isRunning}
+              autoScroll={true}
+              className="flex-1 min-h-0 px-2 pb-2"
+            />
+          )}
+        </div>
+      </Panel>
     </div>
   );
 }

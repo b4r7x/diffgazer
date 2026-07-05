@@ -20,13 +20,14 @@ function renderSummary(props?: {
   minSeverity?: ReviewIssue["severity"];
   lensStats?: LensStat[];
   issues?: ReviewIssue[];
+  reviewId?: string | null;
 }) {
   return render(
     <KeyboardProvider>
       <FooterProvider>
         <ReviewSummaryView
           issues={props?.issues ?? [makeIssue({ id: "1", severity: "high", title: "Issue 1" })]}
-          reviewId="review-1"
+          reviewId={props?.reviewId === undefined ? "review-1" : props.reviewId}
           droppedBelowThreshold={props?.droppedBelowThreshold}
           minSeverity={props?.minSeverity}
           lensStats={props?.lensStats}
@@ -39,6 +40,33 @@ function renderSummary(props?: {
 }
 
 describe("ReviewSummaryView", () => {
+  it("shortens the run id in the heading", () => {
+    renderSummary({ reviewId: "7685a1b2-0000-4000-8000-000000000000" });
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Review Complete #7685");
+  });
+
+  it("falls back to #unknown in the heading when the review id is missing", () => {
+    renderSummary({ reviewId: null });
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Review Complete #unknown");
+  });
+
+  it("renders category names in the stats table without literal icon words", () => {
+    renderSummary({
+      issues: [
+        makeIssue({ id: "1", category: "security", title: "Security issue" }),
+        makeIssue({ id: "2", category: "performance", title: "Performance issue" }),
+      ],
+    });
+
+    expect(screen.getByText("Security")).toBeInTheDocument();
+    expect(screen.getByText("Performance")).toBeInTheDocument();
+    expect(screen.queryByText("shield")).not.toBeInTheDocument();
+    expect(screen.queryByText("zap")).not.toBeInTheDocument();
+    expect(screen.queryByText("code")).not.toBeInTheDocument();
+  });
+
   it("renders the hidden-count notice naming the severity threshold", () => {
     renderSummary({ droppedBelowThreshold: 3, minSeverity: "low" });
 

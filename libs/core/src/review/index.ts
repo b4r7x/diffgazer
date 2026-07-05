@@ -18,6 +18,7 @@ export {
   buildHistoryRunSummary,
   buildTimelineItems,
   filterReviewsForHistory,
+  formatRunId,
   getEmptyRunsMessage,
   getRunBranchLabel,
   getRunDisplayId,

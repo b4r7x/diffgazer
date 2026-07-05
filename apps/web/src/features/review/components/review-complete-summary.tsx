@@ -3,6 +3,7 @@ import type {
   IssuePreview,
   SeverityCounts,
 } from "@diffgazer/core/schemas/presentation";
+import { formatRunId } from "@diffgazer/core/review";
 import { pluralize } from "@diffgazer/core/strings";
 import { Button } from "@diffgazer/ui/components/button";
 import { Panel, PanelContent } from "@diffgazer/ui/components/panel";
@@ -34,11 +35,13 @@ export function ReviewCompleteSummary({
   onBack,
   className,
 }: ReviewCompleteSummaryProps) {
+  const runLabel = stats.runId ? formatRunId(stats.runId) : "#unknown";
+
   return (
     <div className={cn("flex flex-col gap-6", className)}>
       <div className="border-l-4 border-success pl-6 py-2 bg-secondary/20">
         <Typography as="h1" size="2xl" className="text-success-text mb-2">
-          Review Complete #{stats.runId}
+          Review Complete {runLabel}
         </Typography>
         <p className="text-sm text-muted-foreground">
           Found <span className="text-foreground font-bold">{stats.totalIssues} issues</span> across{" "}

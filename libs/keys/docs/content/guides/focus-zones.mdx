@@ -123,7 +123,11 @@ tabCycle: ["sidebar", "content"],
 tabCycle: ["content", "sidebar"],
 ```
 
-Tab and Shift+Tab always call `preventDefault` to avoid moving browser focus out of the app.
+When every cycled zone resolves a container (via `focus.targets` or an explicit `containerRef`), Tab only cycles — and only calls `preventDefault` — while focus is inside one of those containers; outside them the event declines so native Tab keeps working. Without any resolvable container the cycle claims Tab document-wide.
+
+Pass `tabCycleScope: "document"` to opt in to document-wide cycling even when containers are resolvable — useful for screen-level layouts where Tab always means "switch pane". Editable targets keep native Tab in this mode, so typing in an input is never trapped.
+
+Use `tabCycleBoundary` with document scope when only one page region should claim Tab. If the boundary resolves to an element, Tab cycles only while focus is inside that element; outside it, native Tab proceeds. If the boundary is omitted or resolves `null`, document-scope cycling stays document-wide.
 
 ## Controlled mode
 

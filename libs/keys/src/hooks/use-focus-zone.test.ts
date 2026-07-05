@@ -373,6 +373,213 @@ describe("useFocusZone", () => {
     });
   });
 
+  describe('tab cycling with tabCycleScope="document"', () => {
+    function DocumentScopeHost({
+      allowInInput,
+      boundary,
+    }: {
+      allowInInput?: boolean;
+      boundary?: "element" | "null";
+    }) {
+      const boundaryRef = useRef<HTMLDivElement>(null);
+      const mainRef = useRef<HTMLDivElement>(null);
+      const sidebarRef = useRef<HTMLDivElement>(null);
+      const footerRef = useRef<HTMLDivElement>(null);
+      const nullBoundary = () => null;
+      let tabCycleBoundary: typeof boundaryRef | typeof nullBoundary | undefined;
+      if (boundary === "element") {
+        tabCycleBoundary = boundaryRef;
+      } else if (boundary === "null") {
+        tabCycleBoundary = nullBoundary;
+      }
+      const focusZone = useFocusZone({
+        initial: "main",
+        zones: ["main", "sidebar", "footer"],
+        tabCycle: ["main", "sidebar", "footer"],
+        tabCycleScope: "document",
+        tabCycleBoundary,
+        allowInInput,
+        focus: {
+          targets: {
+            main: mainRef,
+            sidebar: sidebarRef,
+            footer: footerRef,
+          },
+        },
+      });
+
+      return createElement(
+        "div",
+        null,
+        createElement("button", { type: "button" }, "Outside"),
+        createElement("input", { "aria-label": "Outside input" }),
+        createElement(
+          "div",
+          { ref: boundaryRef },
+          createElement(
+            "div",
+            { ref: mainRef },
+            createElement("button", { type: "button" }, "Main action"),
+          ),
+          createElement(
+            "div",
+            { ref: sidebarRef },
+            createElement("button", { type: "button" }, "Sidebar action"),
+          ),
+          createElement(
+            "div",
+            { ref: footerRef },
+            createElement("button", { type: "button" }, "Footer action"),
+          ),
+        ),
+        createElement("output", { "aria-label": "Active zone" }, focusZone.zone),
+      );
+    }
+
+    it("cycles zones and moves focus to the zone target when Tab originates outside every container", () => {
+      render(createElement(DocumentScopeHost), { wrapper });
+
+      screen.getByRole("button", { name: "Outside" }).focus();
+
+      let event: KeyboardEvent | undefined;
+      act(() => {
+        event = fireKey("Tab");
+      });
+      expect(event?.defaultPrevented).toBe(true);
+      expect(screen.getByLabelText("Active zone").textContent).toBe("sidebar");
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Sidebar action" }));
+    });
+
+    it("cycles backward with Shift+Tab when focus is outside every container", () => {
+      render(createElement(DocumentScopeHost), { wrapper });
+
+      screen.getByRole("button", { name: "Outside" }).focus();
+
+      let event: KeyboardEvent | undefined;
+      act(() => {
+        event = fireKey("Tab", { shiftKey: true });
+      });
+      expect(event?.defaultPrevented).toBe(true);
+      expect(screen.getByLabelText("Active zone").textContent).toBe("footer");
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Footer action" }));
+    });
+
+    it("keeps native Tab behavior on editable targets even with allowInInput", async () => {
+      const user = userEvent.setup();
+      render(createElement(DocumentScopeHost, { allowInInput: true }), { wrapper });
+
+      const input = screen.getByRole("textbox", { name: "Outside input" });
+      input.focus();
+      await user.keyboard("{Tab}");
+
+      expect(screen.getByLabelText("Active zone").textContent).toBe("main");
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Main action" }));
+    });
+
+    it("keeps native Tab behavior from an editable target inside an open shadow root", () => {
+      function ShadowInputHost() {
+        const hostRef = useRef<HTMLDivElement>(null);
+        const mainRef = useRef<HTMLDivElement>(null);
+        const sidebarRef = useRef<HTMLDivElement>(null);
+        const focusZone = useFocusZone({
+          initial: "main",
+          zones: ["main", "sidebar"],
+          tabCycle: ["main", "sidebar"],
+          tabCycleScope: "document",
+          allowInInput: true,
+          focus: {
+            targets: {
+              main: mainRef,
+              sidebar: sidebarRef,
+            },
+          },
+        });
+
+        useEffect(() => {
+          const host = hostRef.current;
+          if (!host || host.shadowRoot) return;
+
+          const shadowRoot = host.attachShadow({ mode: "open" });
+          const input = document.createElement("input");
+          input.setAttribute("aria-label", "Shadow input");
+          shadowRoot.append(input);
+        }, []);
+
+        return createElement(
+          "div",
+          null,
+          createElement("div", { ref: hostRef, "data-shadow-host": "true" }),
+          createElement(
+            "div",
+            { ref: mainRef },
+            createElement("button", { type: "button" }, "Main action"),
+          ),
+          createElement(
+            "div",
+            { ref: sidebarRef },
+            createElement("button", { type: "button" }, "Sidebar action"),
+          ),
+          createElement("output", { "aria-label": "Active zone" }, focusZone.zone),
+        );
+      }
+
+      render(createElement(ShadowInputHost), { wrapper });
+
+      const host = document.querySelector("[data-shadow-host='true']");
+      const input = host?.shadowRoot?.querySelector("input");
+      if (!input) throw new Error("Expected the shadow input to render");
+
+      input.focus();
+      const event = new KeyboardEvent("keydown", {
+        key: "Tab",
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+      });
+      input.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(screen.getByLabelText("Active zone").textContent).toBe("main");
+    });
+
+    it("declines Tab while focus is outside the document-scope boundary", () => {
+      render(createElement(DocumentScopeHost, { boundary: "element" }), { wrapper });
+
+      screen.getByRole("button", { name: "Outside" }).focus();
+
+      const event = fireKey("Tab");
+      expect(event.defaultPrevented).toBe(false);
+      expect(screen.getByLabelText("Active zone").textContent).toBe("main");
+    });
+
+    it("claims Tab and cycles while focus is inside the document-scope boundary", () => {
+      render(createElement(DocumentScopeHost, { boundary: "element" }), { wrapper });
+
+      screen.getByRole("button", { name: "Main action" }).focus();
+
+      let event: KeyboardEvent | undefined;
+      act(() => {
+        event = fireKey("Tab");
+      });
+      expect(event?.defaultPrevented).toBe(true);
+      expect(screen.getByLabelText("Active zone").textContent).toBe("sidebar");
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Sidebar action" }));
+    });
+
+    it("cycles document-wide when the document-scope boundary resolves null", () => {
+      render(createElement(DocumentScopeHost, { boundary: "null" }), { wrapper });
+
+      screen.getByRole("button", { name: "Outside" }).focus();
+
+      let event: KeyboardEvent | undefined;
+      act(() => {
+        event = fireKey("Tab");
+      });
+      expect(event?.defaultPrevented).toBe(true);
+      expect(screen.getByLabelText("Active zone").textContent).toBe("sidebar");
+    });
+  });
+
   describe("enabled flag", () => {
     it("ignores all keyboard handling when disabled", () => {
       const { result } = renderHook(

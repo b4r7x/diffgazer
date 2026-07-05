@@ -1,6 +1,10 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import type { IssueTab, Shortcut } from "@diffgazer/core/schemas/presentation";
-import { BACK_SHORTCUT, SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
+import {
+  BACK_SHORTCUT,
+  SEVERITY_ORDER,
+  SWITCH_PANE_SHORTCUT,
+} from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import {
   findNavigationItemByValue,
@@ -13,6 +17,7 @@ import { useCanGoBack, useLocation, useRouter } from "@tanstack/react-router";
 import { type KeyboardEvent, useRef, useState } from "react";
 import { RESET_FILTER_VALUE } from "@/features/review/components/severity-filter-group";
 import { resolveBackAction } from "@/lib/back-navigation";
+import { getMainContent } from "@/lib/main-content";
 import { useReviewDetailsTabKeyboard } from "./use-details-tab-keyboard";
 import { useIssueDetailsTabs } from "./use-issue-details-tabs";
 import { useIssueSelection } from "./use-issue-selection";
@@ -44,6 +49,7 @@ function getReviewResultsFooter(
 ): { shortcuts: Shortcut[]; rightShortcuts: Shortcut[] } {
   if (focusZone === "filters") {
     const shortcuts: Shortcut[] = [
+      SWITCH_PANE_SHORTCUT,
       { key: "←/→", label: "Move Filter" },
       { key: "Enter/Space", label: "Toggle Filter" },
     ];
@@ -58,12 +64,15 @@ function getReviewResultsFooter(
   if (focusZone === "details") {
     if (!hasSelectedIssue) {
       return {
-        shortcuts: [{ key: "←", label: "Issue List" }],
-        rightShortcuts: [BACK_SHORTCUT],
+        shortcuts: [SWITCH_PANE_SHORTCUT, { key: "←", label: "Issue List" }],
+        rightShortcuts: [{ key: "Esc", label: "Issue List" }],
       };
     }
 
-    const shortcuts: Shortcut[] = [{ key: getTabKeyHint(availableTabs), label: "Switch Tab" }];
+    const shortcuts: Shortcut[] = [
+      SWITCH_PANE_SHORTCUT,
+      { key: getTabKeyHint(availableTabs), label: "Switch Tab" },
+    ];
     if (hasFixPlanSteps) {
       shortcuts.push(
         { key: "j/k", label: "Move Step" },
@@ -73,12 +82,13 @@ function getReviewResultsFooter(
     shortcuts.push({ key: "←", label: "Issue List" });
     return {
       shortcuts,
-      rightShortcuts: [BACK_SHORTCUT],
+      rightShortcuts: [{ key: "Esc", label: "Issue List" }],
     };
   }
 
   return {
     shortcuts: [
+      SWITCH_PANE_SHORTCUT,
       { key: "j/k", label: "Select Issue" },
       { key: "→", label: "Issue Details" },
     ],
@@ -107,6 +117,8 @@ export function useReviewResultsKeyboard({
   const { pathname } = useLocation();
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const filterRef = useRef<HTMLDivElement>(null);
+  const listBodyRef = useRef<HTMLDivElement>(null);
+  const detailsPaneRef = useRef<HTMLElement>(null);
 
   const {
     severityFilter,
@@ -157,6 +169,8 @@ export function useReviewResultsKeyboard({
     onZoneChange: setFocusZone,
     scope: REVIEW_SCOPE,
     tabCycle: ["filters", "list", "details"],
+    tabCycleScope: "document",
+    tabCycleBoundary: getMainContent,
     focus: {
       autoFocus: true,
       targets: {
@@ -174,8 +188,14 @@ export function useReviewResultsKeyboard({
             })[0] ??
             filterRef.current,
         },
-        list: listRef,
-        details: detailsScrollRef,
+        // Container refs cover the whole pane region (list body, details pane
+        // root) so focus landing anywhere inside — tab triggers, tabpanel, code
+        // blocks — syncs the zone. The list container deliberately excludes the
+        // filter row: it belongs to the filters zone, and zone containers must
+        // stay disjoint or moving filters -> list would leave DOM focus on a
+        // filter chip (focus repair skips containers that already hold focus).
+        list: { container: listBodyRef, target: listRef },
+        details: { container: detailsPaneRef, target: detailsScrollRef },
       },
     },
     transitions: ({ zone, key }) => {
@@ -216,26 +236,29 @@ export function useReviewResultsKeyboard({
     setFocusZone("list");
   };
 
+  // The severity ToggleGroup claims vertical arrows as extra horizontal moves,
+  // so they must be intercepted before its navigation handler: ArrowDown stays
+  // a zone move into the list and ArrowUp stays inert instead of moving chips.
   const handleFilterKeyDown = (event: KeyboardEvent) => {
-    if (focusZone !== "filters") {
-      event.preventDefault();
-      return;
-    }
-
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setFocusZone("list");
       return;
     }
-
     if (event.key === "ArrowUp") {
       event.preventDefault();
     }
   };
 
+  // Escape layering: from the details zone Escape steps back to the issue
+  // list; from the list/filters zones it leaves the screen.
   useKey(
     "Escape",
     () => {
+      if (focusZone === "details") {
+        setFocusZone("list");
+        return;
+      }
       const action = resolveBackAction(pathname, canGoBack);
       if (action.type === "navigate") {
         void router.navigate({ to: action.to });
@@ -245,6 +268,10 @@ export function useReviewResultsKeyboard({
     },
     { scope: REVIEW_SCOPE },
   );
+
+  const handleDetailsTabsBoundary = (direction: "previous" | "next") => {
+    if (direction === "previous") setFocusZone("list");
+  };
 
   const handleSeverityFilterBoundary = (direction: "previous" | "next") => {
     if (direction !== "next") return;
@@ -326,9 +353,12 @@ export function useReviewResultsKeyboard({
     filterRef,
     handleFilterKeyDown,
     handleSeverityFilterBoundary,
+    handleDetailsTabsBoundary,
     highlightedIssueId,
     handleListFocus,
     listRef,
+    listBodyRef,
+    detailsPaneRef,
     detailsScrollRef,
     completedSteps,
     handleToggleStep,

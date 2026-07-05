@@ -80,13 +80,13 @@ export function ReviewSummaryView({
   const lensRows = buildLensSummaryRows(lensStats);
 
   const width = Math.min(columns, 100);
-  const runId = reviewId ?? "unknown";
+  const reviewIdLabel = reviewId == null ? "#unknown" : `#${reviewId}`;
 
   return (
     <Box justifyContent="center" flexGrow={1}>
       <Box flexDirection="column" width={width} gap={1}>
         <Box flexDirection="column">
-          <SectionHeader bordered>{`Review Complete #${runId}`}</SectionHeader>
+          <SectionHeader bordered>{`Review Complete ${reviewIdLabel}`}</SectionHeader>
           <Box flexDirection="column" paddingTop={1}>
             <Box>
               <Text color={tokens.muted}>Found </Text>

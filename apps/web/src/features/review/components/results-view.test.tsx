@@ -7,14 +7,19 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Footer } from "@/components/layout/footer";
+import { MAIN_CONTENT_ID } from "@/lib/main-content";
 
 // Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
+const { backMock, navigateMock } = vi.hoisted(() => ({
+  backMock: vi.fn(),
+  navigateMock: vi.fn(),
+}));
 vi.mock("@tanstack/react-router", () => ({
   useRouter: () => ({
     history: {
-      back: vi.fn(),
+      back: backMock,
     },
-    navigate: vi.fn(),
+    navigate: navigateMock,
   }),
   useCanGoBack: () => false,
   useLocation: () => ({ pathname: "/review/test-id" }),
@@ -237,35 +242,143 @@ describe("ReviewResultsView keyboard regression", () => {
     expect(firstStep).not.toBeChecked();
   });
 
-  it("does not swallow Tab while focus is outside the review zones", async () => {
+  it("keeps native Tab on the skip link outside main while cycling panes inside main", async () => {
     render(
       <KeyboardProvider>
         <FooterProvider>
-          <a href="#main">Skip to content</a>
-          <ReviewResultsView
-            issues={[createReviewIssue("issue-1", "Issue one")]}
-            reviewId="review-1"
-          />
+          <a href={`#${MAIN_CONTENT_ID}`}>Skip to content</a>
+          <main id={MAIN_CONTENT_ID}>
+            <ReviewResultsView
+              issues={[createReviewIssue("issue-1", "Issue one")]}
+              reviewId="review-1"
+            />
+          </main>
           <FooterView />
         </FooterProvider>
       </KeyboardProvider>,
     );
 
-    // Wait for the screen to mount so the focus-zone containers are registered.
-    await waitFor(() => expect(screen.getByRole("listbox")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
 
     const skipLink = screen.getByRole("link", { name: "Skip to content" });
     skipLink.focus();
     expect(skipLink).toHaveFocus();
 
-    // fireEvent retained: low-level Tab dispatch asserts the global key handler's preventDefault contract.
+    // fireEvent retained: low-level Tab dispatch asserts the main boundary declines Tab on the skip link.
     const prevented = !fireEvent.keyDown(window, { key: "Tab", code: "Tab" });
     expect(prevented).toBe(false);
 
     screen.getByRole("listbox").focus();
-    // fireEvent retained: low-level Tab dispatch asserts the scoped cycle prevents native tabbing inside a focus zone.
+    // fireEvent retained: low-level Tab dispatch asserts the document-scope cycle claims Tab inside main.
     const preventedInside = !fireEvent.keyDown(window, { key: "Tab", code: "Tab" });
     expect(preventedInside).toBe(true);
+
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
+    );
+  });
+
+  it("keeps native Tab inside editable targets", async () => {
+    render(
+      <KeyboardProvider>
+        <FooterProvider>
+          <ReviewResultsView
+            issues={[createReviewIssue("issue-1", "Issue one")]}
+            reviewId="review-1"
+          />
+          <input aria-label="Notes" />
+          <FooterView />
+        </FooterProvider>
+      </KeyboardProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+
+    const input = screen.getByRole("textbox", { name: "Notes" });
+    input.focus();
+    expect(input).toHaveFocus();
+
+    // fireEvent retained: low-level Tab dispatch asserts editable targets keep native Tab (no preventDefault).
+    const prevented = !fireEvent.keyDown(input, { key: "Tab", code: "Tab" });
+    expect(prevented).toBe(false);
+  });
+
+  it("cycles panes with Tab from anywhere, including a focused tab trigger", async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+
+    await user.keyboard("{Tab}");
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
+    );
+
+    // Land focus on a tab trigger; Tab must still cycle to the next pane.
+    await user.click(screen.getByRole("tab", { name: "Explain" }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Explain" })).toHaveFocus());
+
+    await user.keyboard("{Tab}");
+    const filterGroup = screen.getByRole("group", { name: "Severity filter" });
+    await waitFor(() =>
+      expect(filterGroup).toContainElement(document.activeElement as HTMLElement | null),
+    );
+
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+  });
+
+  it("treats focus landing on a tab trigger as the details zone", async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    expect(await screen.findByText("Select Issue")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Explain" }));
+
+    // The footer follows the zone, so it must switch to details hints.
+    expect(await screen.findByText("Switch Tab")).toBeInTheDocument();
+    expect(screen.queryByText("Select Issue")).not.toBeInTheDocument();
+  });
+
+  it("returns to the issue list when ArrowLeft hits the leftmost tab trigger", async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+
+    const detailsTab = screen.getByRole("tab", { name: "Details" });
+    await user.click(detailsTab);
+    await waitFor(() => expect(detailsTab).toHaveFocus());
+
+    await user.keyboard("{ArrowLeft}");
+
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+    // The boundary must not loop the tab strip to the last tab.
+    expect(detailsTab).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("layers Escape: details returns to the issue list, list leaves the screen", async () => {
+    const user = userEvent.setup();
+    renderView();
+    navigateMock.mockClear();
+    backMock.mockClear();
+
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
+    );
+
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+    expect(navigateMock).not.toHaveBeenCalled();
+    expect(backMock).not.toHaveBeenCalled();
+
+    await user.keyboard("{Escape}");
+
+    expect(navigateMock).toHaveBeenCalledWith({ to: "/" });
   });
 
   it("renders footer hints for the active results zone", async () => {
@@ -273,12 +386,17 @@ describe("ReviewResultsView keyboard regression", () => {
     renderView();
 
     expect(await screen.findByText("Select Issue")).toBeInTheDocument();
+    expect(screen.getByText("Switch Pane")).toBeInTheDocument();
     expect(screen.getByText("Back")).toBeInTheDocument();
 
     await user.keyboard("{ArrowRight}");
 
     expect(await screen.findByText("Switch Tab")).toBeInTheDocument();
     expect(screen.getByText("1-4")).toBeInTheDocument();
+    expect(screen.getByText("Switch Pane")).toBeInTheDocument();
+    // In the details zone Esc steps back to the issue list, not off the screen.
+    expect(screen.queryByText("Back")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Issue List").length).toBeGreaterThan(0);
   });
 
   it("scrolls issue details with up and down arrows after moving focus into details", async () => {

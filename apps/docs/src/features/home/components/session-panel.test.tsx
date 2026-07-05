@@ -74,6 +74,7 @@ describe("SessionPanel", () => {
     await runAnimation();
     expect(screen.getByText("diffgazer")).toBeInTheDocument();
 
+    // fireEvent retained: fake timers drive the replay animation; userEvent click hangs waiting on timer advancement.
     fireEvent.click(screen.getByRole("button", { name: /replay/i }));
 
     // Replay resets the command back to an empty, un-typed line.
@@ -87,6 +88,7 @@ describe("SessionPanel", () => {
     mockReducedMotion(true);
     render(<SessionPanel />);
 
+    // fireEvent retained: fake timers drive the replay animation; userEvent click hangs waiting on timer advancement.
     fireEvent.click(screen.getByRole("button", { name: /replay/i }));
 
     expect(screen.getByText("diffgazer")).toBeInTheDocument();

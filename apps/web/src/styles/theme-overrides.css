@@ -7,7 +7,10 @@
  * mappings, .ui-base, scrollbars, animations, radius, custom-variant) is
  * inherited, not re-stated. */
 
-:root,
+/* Scoped to [data-theme="dark"] only: a bare `:root` here would outrank the
+   lib's [data-theme="light"] block (equal specificity, later source order) and
+   keep the dark palette applied even in light mode. index.html sets
+   data-theme="dark" as the pre-mount default so first paint stays GitHub-dark. */
 [data-theme="dark"] {
   /* GitHub-dark primitive overrides (lib ships monochrome values) */
   --base-bg: #0d1117;
@@ -22,8 +25,11 @@
   --base-input-bg: #010409;
   --base-selection: #1f2428;
 
-  /* Semantic remaps that diverge from the lib dark block */
+  /* Semantic remaps that diverge from the lib dark block. --primary and
+     --primary-foreground are a pair: highlighted rows read dark-on-info
+     (GitHub-style selection), not the lib's white-on-highlight. */
   --primary: var(--base-info);
+  --primary-foreground: var(--base-bg);
   --accent: var(--base-accent);
   --accent-foreground: var(--base-bg);
   --ring: var(--base-info);

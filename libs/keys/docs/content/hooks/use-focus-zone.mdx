@@ -33,7 +33,7 @@ For movement **within** a single list, use [`useNavigation`](/keys/hooks/use-nav
 | Key | Behavior |
 |-----|----------|
 | Arrow keys | Run `transitions({ zone, key })`; return the target zone to move, or `null` to block. Arrow handling is inert when no `transitions` function is supplied. |
-| `Tab` / `Shift+Tab` | Cycle forward / backward through `tabCycle`. When `tabCycle` is omitted, Tab keeps native browser behavior. |
+| `Tab` / `Shift+Tab` | Cycle forward / backward through `tabCycle`. When `tabCycle` is omitted, Tab keeps native browser behavior. `tabCycleScope` controls where the cycle claims the key: `"containers"` (default) only while focus is inside a registered zone container, `"document"` from anywhere except editable targets. In document scope, `tabCycleBoundary` can limit claiming to one DOM subtree. |
 
 When the `focus` option is set, changing zones moves DOM focus to the zone's target (a ref, a getter, or a `{ container, target }` pair). Initial mount does not steal focus unless `autoFocus` is `true`. `getZoneProps(zone)` returns `data-focused` for styling the active region.
 
@@ -52,6 +52,10 @@ When the `focus` option is set, changing zones moves DOM focus to the zone's tar
 - **`focus` with `{ container, target }`.** The pair form skips focus repair while focus is already inside `container`, which avoids yanking focus away from a control the user is interacting with.
 
 > **Hazard: `tabCycle` can swallow Tab document-wide.** `tabCycle` registers window-level `Tab`/`Shift+Tab` handlers. The cycle is only scoped to the layout when the hook can resolve a containing element — either every cycled zone supplies a `focus.targets` container, or you pass an explicit `containerRef`. With containment resolvable, Tab only cycles (and only calls `preventDefault`) while focus is inside one of those containers; outside them it declines so native Tab keeps reaching the skip link, header controls, toasts, and other tabbable elements. If you configure `tabCycle` with **no** `focus.targets` containers and **no** `containerRef`, Tab is intercepted across the whole document for as long as the zone is mounted — a WCAG 2.1.1 hazard. Always anchor every cycled zone to a container.
+>
+> For screen-level layouts where Tab is deliberately the "switch pane" key everywhere, opt in with `tabCycleScope: "document"`. It makes the intercept explicit rather than accidental: Tab cycles zones from anywhere in the document while the zone's scope is active, moves focus to the active zone's target, and still leaves native Tab intact on editable targets so typing in inputs is never trapped.
+>
+> Add `tabCycleBoundary` when document-scope cycling should only apply inside one region, such as a page's `<main>`. While focus is outside the resolved boundary, native Tab proceeds. Omitting the option or returning `null` keeps the document-wide behavior.
 
 ## Related
 

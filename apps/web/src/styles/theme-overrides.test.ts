@@ -40,13 +40,19 @@ describe("theme override domain token parity", () => {
   ] as const)("declares every severity and status token in the %s theme block", async (theme) => {
     const css = await loadThemeOverridesCss();
     const selector =
-      theme === "dark"
-        ? String.raw`:root,\s*\[data-theme="dark"\]`
-        : String.raw`\[data-theme="light"\]`;
+      theme === "dark" ? String.raw`\[data-theme="dark"\]` : String.raw`\[data-theme="light"\]`;
     const block = getThemeBlock(css, selector);
 
     for (const token of DOMAIN_TOKEN_KEYS) {
       expectDeclaration(block, tokenKeyToCssVariable(token));
     }
+  });
+
+  it("does not declare overrides under :root, which would beat the lib light theme", async () => {
+    const css = await loadThemeOverridesCss();
+    // This file loads after @diffgazer/ui/styles.css, so a `:root` selector here
+    // outranks the lib's [data-theme="light"] block and forces dark tokens in
+    // light mode. Overrides must stay scoped to data-theme selectors.
+    expect(css).not.toMatch(/(?:^|[\n,{])\s*:root\b/);
   });
 });

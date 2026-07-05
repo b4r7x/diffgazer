@@ -7,9 +7,11 @@ interface HeaderProps {
   providerName: string;
   providerStatus: ProviderDisplayStatus;
   onBack?: () => void;
+  /** Wordmark size: dense work screens (review, history) render it smaller. */
+  wordmark?: "full" | "compact";
 }
 
-export function Header({ providerName, providerStatus, onBack }: HeaderProps) {
+export function Header({ providerName, providerStatus, onBack, wordmark = "full" }: HeaderProps) {
   return (
     <header className="relative p-4 pb-2 shrink-0">
       {onBack && (
@@ -34,10 +36,17 @@ export function Header({ providerName, providerStatus, onBack }: HeaderProps) {
         <span className="text-muted-foreground capitalize">{providerStatus}</span>
       </output>
 
-      <div className="flex flex-col items-center pt-4 md:pt-6">
-        <DiffgazerWordmark />
+      <div className={cn("flex flex-col items-center", wordmark === "full" && "pt-4 md:pt-6")}>
+        <DiffgazerWordmark size={wordmark} />
 
-        <div className="text-center text-muted-foreground text-sm select-none">─ ✦ ─ ✧ ─</div>
+        <div
+          className={cn(
+            "text-center text-muted-foreground select-none",
+            wordmark === "full" ? "text-sm" : "text-xs",
+          )}
+        >
+          ─ ✦ ─ ✧ ─
+        </div>
       </div>
     </header>
   );
@@ -58,15 +67,16 @@ const WORDMARK_ASCII = [
   "                                                                ",
 ].join("\n");
 
-function DiffgazerWordmark() {
+function DiffgazerWordmark({ size }: { size: "full" | "compact" }) {
   return (
     <Logo
       text={WORDMARK_TEXT.toUpperCase()}
       asciiText={WORDMARK_ASCII}
       className={cn(
         "text-info-text font-bold",
-        "text-3xs md:text-2xs lg:text-xs",
-        "[zoom:0.8] md:[zoom:1] lg:[zoom:1.2]",
+        size === "full"
+          ? "text-3xs md:text-2xs lg:text-xs [zoom:0.8] md:[zoom:1] lg:[zoom:1.2]"
+          : "text-3xs md:text-3xs lg:text-2xs",
       )}
     />
   );

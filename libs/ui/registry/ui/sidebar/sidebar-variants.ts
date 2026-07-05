@@ -35,7 +35,7 @@ export const sidebarItemVariants = cva(
     // group/item is consumed by the marker glyph in sidebar-item (hover preview).
     "group/item flex items-center gap-2 w-full min-w-0 px-2 py-1 text-sm",
     "cursor-pointer transition-colors motion-reduce:transition-none",
-    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground",
+    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring",
     "disabled:cursor-not-allowed",
     "aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
     "no-underline",

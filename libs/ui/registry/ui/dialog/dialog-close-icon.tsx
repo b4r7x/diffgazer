@@ -36,7 +36,7 @@ export function DialogCloseIcon({
         "absolute top-[var(--dialog-close-btn-inset)] right-[var(--dialog-close-btn-inset)] z-10",
         "inline-flex items-center justify-center w-7 h-7 rounded-sm font-mono text-base leading-none",
         "text-muted-foreground hover:text-foreground transition-colors cursor-pointer",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
         className,
       )}
       onClick={handleClick}

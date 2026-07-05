@@ -43,6 +43,28 @@ describe("IssueListPane row highlight inversion", () => {
     expect(activeRow).toHaveAttribute("data-highlighted");
     expect(inactiveRow).not.toHaveAttribute("data-highlighted");
   });
+
+  it("keeps the selected row marked as selected when focus moves to another pane", () => {
+    render(
+      <IssueListPane
+        listState={{
+          issues,
+          allIssues: issues,
+          selectedIssueId: "issue-1",
+          highlightedIssueId: "issue-1",
+        }}
+        callbacks={{ onSelectIssue: vi.fn() }}
+        filter={{ severityFilter: new Set(), onSeverityFilterChange: vi.fn() }}
+        refs={{}}
+        ui={{ isFocused: false }}
+      />,
+    );
+
+    const selectedRow = screen.getByRole("option", { name: /avoid unsafe cast/i });
+    expect(selectedRow).toHaveAttribute("aria-selected", "true");
+    expect(selectedRow).toHaveAttribute("data-selected");
+    expect(selectedRow).not.toHaveAttribute("data-highlighted");
+  });
 });
 
 describe("IssueListPane severity accessibility", () => {
@@ -87,6 +109,34 @@ describe("IssueListPane severity accessibility", () => {
 
     expect(screen.getByText("src/db.ts")).toBeVisible();
     expect(screen.queryByText("src/db.ts:null")).not.toBeInTheDocument();
+  });
+
+  it("tags the pane frame with the issue count", () => {
+    render(
+      <IssueListPane
+        listState={{ issues, allIssues: issues, selectedIssueId: null }}
+        callbacks={{ onSelectIssue: vi.fn() }}
+        filter={{ severityFilter: new Set(), onSeverityFilterChange: vi.fn() }}
+        refs={{}}
+        ui={{ isFocused: true }}
+      />,
+    );
+
+    expect(screen.getByText("Issues · 2")).toBeInTheDocument();
+  });
+
+  it("shows the no-issues empty state as a live status region", () => {
+    render(
+      <IssueListPane
+        listState={{ issues: [], allIssues: [], selectedIssueId: null }}
+        callbacks={{ onSelectIssue: vi.fn() }}
+        filter={{ severityFilter: new Set(), onSeverityFilterChange: vi.fn() }}
+        refs={{}}
+        ui={{ isFocused: true }}
+      />,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent("No issues found");
   });
 
   it("announces the filter-to-empty state as a live status region", () => {

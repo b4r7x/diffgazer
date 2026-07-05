@@ -112,6 +112,37 @@ describe("ThemeProvider", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
+  it("applies the persisted localStorage theme before settings arrive", () => {
+    mockMatchMedia(true); // system = dark
+    localStorageStore.set("diffgazer-theme", "light");
+
+    render(
+      <ThemeProvider>
+        <div />
+      </ThemeProvider>,
+    );
+
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+  });
+
+  it("prefers the saved settings theme over a stale localStorage value", () => {
+    localStorageStore.set("diffgazer-theme", "dark");
+    mockUseSettings.mockReturnValue({
+      data: { theme: "light" },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(
+      <ThemeProvider>
+        <div />
+      </ThemeProvider>,
+    );
+
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+  });
+
   it("applies the dark theme when the system prefers dark", () => {
     mockMatchMedia(true); // system = dark
     render(

@@ -137,7 +137,8 @@ export function ScrollArea({
       onKeyDown={canKeyboardScroll ? handleKeyDown : onKeyDown}
       className={cn(
         scrollAreaVariants({ orientation }),
-        canKeyboardScroll && "focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        canKeyboardScroll &&
+          "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-[-2px]",
         className,
       )}
       {...props}

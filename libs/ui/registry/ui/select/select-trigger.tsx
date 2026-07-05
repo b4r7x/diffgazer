@@ -13,7 +13,7 @@ import { useSelectTypeahead } from "./use-typeahead";
 import { getVisibleEnabledOptions } from "./visible-options";
 
 const selectTriggerVariants = cva(
-  "flex items-center justify-between w-full px-3 py-2 text-sm font-mono cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
+  "flex items-center justify-between w-full px-3 py-2 text-sm font-mono cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
   {
     variants: {
       variant: {

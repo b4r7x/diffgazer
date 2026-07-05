@@ -34,7 +34,7 @@ export const tabsDoc: ComponentDoc = {
   ],
   keyboard: {
     description:
-      "TabsList has built-in keyboard navigation via @diffgazer/keys. ArrowLeft/ArrowRight (horizontal) or ArrowUp/ArrowDown (vertical) navigate between tabs. Home/End jump to first/last tab. Enter/Space activate the focused tab.",
+      "TabsList has built-in keyboard navigation via @diffgazer/keys. ArrowLeft/ArrowRight (horizontal) or ArrowUp/ArrowDown (vertical) navigate between tabs. Home/End jump to first/last tab. Enter/Space activate the focused tab. With loop disabled, arrow navigation stops at the edges and fires onNavigationBoundaryReached for composite focus handoff.",
     keys: [
       {
         keys: "ArrowLeft / ArrowRight",
@@ -124,6 +124,13 @@ export const tabsDoc: ComponentDoc = {
         required: false,
         defaultValue: "true",
         description: "When true, arrow navigation wraps from last to first trigger and vice versa.",
+      },
+      onNavigationBoundaryReached: {
+        type: '(direction: "previous" | "next", event: KeyboardEvent, key: string) => void',
+        required: false,
+        defaultValue: null,
+        description:
+          "Fired when arrow navigation reaches the first/last trigger with loop disabled.",
       },
       children: {
         type: "ReactNode",

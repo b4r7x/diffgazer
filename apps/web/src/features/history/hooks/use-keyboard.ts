@@ -1,9 +1,14 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import { BACK_SHORTCUT, NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
+import {
+  BACK_SHORTCUT,
+  NAVIGATE_SHORTCUT,
+  SWITCH_PANE_SHORTCUT,
+} from "@diffgazer/core/schemas/presentation";
 import { useFocusZone, useKey, useScopedNavigation } from "@diffgazer/keys";
 import { useNavigate } from "@tanstack/react-router";
 import type { RefObject } from "react";
 import type { HistoryFocusZone } from "@/features/history/types";
+import { getMainContent } from "@/lib/main-content";
 
 const ZONES = ["timeline", "runs", "insights", "search"] as const;
 const HISTORY_SCOPE = "history";
@@ -40,7 +45,7 @@ export function getHistoryFooter(focusZone: HistoryFocusZone) {
   if (focusZone === "timeline") {
     return {
       shortcuts: [
-        { key: "Tab", label: "Switch Focus" },
+        SWITCH_PANE_SHORTCUT,
         NAVIGATE_SHORTCUT,
         { key: "Enter/Space", label: "Select Date" },
         { key: "/", label: "Search" },
@@ -52,7 +57,7 @@ export function getHistoryFooter(focusZone: HistoryFocusZone) {
   if (focusZone === "insights") {
     return {
       shortcuts: [
-        { key: "Tab", label: "Switch Focus" },
+        SWITCH_PANE_SHORTCUT,
         NAVIGATE_SHORTCUT,
         { key: "Enter/Space", label: "Open Issue" },
         { key: "←", label: "Runs" },
@@ -64,7 +69,7 @@ export function getHistoryFooter(focusZone: HistoryFocusZone) {
 
   return {
     shortcuts: [
-      { key: "Tab", label: "Switch Focus" },
+      SWITCH_PANE_SHORTCUT,
       NAVIGATE_SHORTCUT,
       { key: "Enter/Space", label: "Open Review" },
       { key: "/", label: "Search" },
@@ -96,6 +101,8 @@ export function useHistoryKeyboard({
     onZoneChange: (zone) => setFocusZone(zone),
     scope: HISTORY_SCOPE,
     tabCycle,
+    tabCycleScope: "document",
+    tabCycleBoundary: getMainContent,
     focus: {
       autoFocus: true,
       targets: {

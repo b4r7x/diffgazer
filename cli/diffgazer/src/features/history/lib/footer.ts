@@ -1,6 +1,7 @@
 import {
   BACK_SHORTCUTS,
   NAVIGATE_SHORTCUT,
+  SWITCH_PANE_SHORTCUT,
   type Shortcut,
 } from "@diffgazer/core/schemas/presentation";
 import type { HistoryFocusZone } from "../types";
@@ -23,7 +24,7 @@ export function getHistoryFooter(focusZone: HistoryFocusZone): HistoryFooter {
   if (focusZone === "timeline") {
     return {
       shortcuts: [
-        { key: "Tab", label: "Switch Focus" },
+        SWITCH_PANE_SHORTCUT,
         NAVIGATE_SHORTCUT,
         { key: "Enter", label: "Select Date" },
         { key: "/", label: "Search" },
@@ -35,7 +36,7 @@ export function getHistoryFooter(focusZone: HistoryFocusZone): HistoryFooter {
   if (focusZone === "insights") {
     return {
       shortcuts: [
-        { key: "Tab", label: "Switch Focus" },
+        SWITCH_PANE_SHORTCUT,
         { key: "Enter", label: "Open Review" },
         { key: "/", label: "Search" },
       ],
@@ -45,7 +46,7 @@ export function getHistoryFooter(focusZone: HistoryFocusZone): HistoryFooter {
 
   return {
     shortcuts: [
-      { key: "Tab", label: "Switch Focus" },
+      SWITCH_PANE_SHORTCUT,
       NAVIGATE_SHORTCUT,
       { key: "Enter", label: "Open Review" },
       { key: "o", label: "Open Review" },

@@ -16,6 +16,12 @@ import { useTabsContext } from "./tabs-context";
 export interface TabsListProps extends ComponentProps<"div"> {
   /** When true, arrow navigation wraps from last to first trigger and vice versa. */
   loop?: boolean;
+  /** Fired when arrow navigation reaches the first/last trigger with loop disabled. */
+  onNavigationBoundaryReached?: (
+    direction: "previous" | "next",
+    event: globalThis.KeyboardEvent,
+    key: string,
+  ) => void;
 }
 
 /** Container for tab triggers. */
@@ -25,6 +31,7 @@ export function TabsList({
   loop = true,
   onBlur,
   onKeyDown,
+  onNavigationBoundaryReached,
   ref,
   ...rest
 }: TabsListProps) {
@@ -49,6 +56,7 @@ export function TabsList({
     scopeToContainer: true,
     highlighted: (activationMode === "automatic" ? value : tabbableValue) || undefined,
     onHighlightChange: handleHighlightChange,
+    onNavigationBoundaryReached,
     ...(activationMode !== "automatic" && {
       onEnter: onChange,
       onSelect: onChange,
