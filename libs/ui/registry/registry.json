@@ -953,6 +953,7 @@
       "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "theme",
+        "icons",
         "listbox",
         "selectable-collection",
         "outside-click",
@@ -1676,10 +1677,6 @@
         },
         {
           "path": "registry/ui/sidebar/sidebar-item-badge.tsx",
-          "type": "registry:ui"
-        },
-        {
-          "path": "registry/ui/sidebar/sidebar-tree-glyphs.ts",
           "type": "registry:ui"
         },
         {

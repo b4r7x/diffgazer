@@ -16,7 +16,7 @@ component: "sidebar"
 
 ## Variants
 
-Seven active-marker variants — caret, inverted, bar, bracket, block, terminal, and tree — share row metrics so glyph slots stay aligned. Switch between them below to compare the active state and the prominent section-title style. `terminal` is the TUI rail: a continuous 1px hairline down the rows, a `>` prompt on the active item, and no background fill. `tree` renders ▼/▶ section headers and ├─/└─ item connectors with a left guide; the active item gets a soft background fill.
+Five active-marker variants — caret, inverted, bar, terminal, and tree — share one rule: structure is permanent, markers appear on the active row. `caret` and `terminal` reserve a chevron marker slot that stays invisible at rest, previews dim on hover, and lights to foreground on the active item — `terminal` adds the TUI rail, a continuous 1px hairline down the rows with no background fill. `tree` renders bold section headers with stroke-chevron folds and draws its connectors — trunk, tick, corner — as a single CSS hairline; the active item's tick gains a soft background fill. Switch between them below to compare.
 
 <Example name="sidebar-variants" />
 

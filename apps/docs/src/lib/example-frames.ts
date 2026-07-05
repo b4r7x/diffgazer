@@ -16,8 +16,6 @@ const INSET_EXAMPLES = new Set<string>([
   "sidebar-variants",
   "sidebar-collapsible",
   "sidebar-variant-bar",
-  "sidebar-variant-block",
-  "sidebar-variant-bracket",
   "sidebar-variant-caret",
   "sidebar-variant-inverted",
   "sidebar-variant-tree",

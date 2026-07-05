@@ -23,6 +23,7 @@ import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { useOutsideClick } from "@/hooks/use-outside-click";
 import { cn } from "@/lib/utils";
 import { FloatingPanel } from "../floating-panel/floating-panel";
+import { Chevron } from "../icons/chevron";
 import { Menu as MenuRoot } from "./menu";
 import { useMenuContext } from "./menu-context";
 
@@ -92,7 +93,6 @@ export function MenuSub({
   return <MenuSubContext value={ctx}>{children}</MenuSubContext>;
 }
 
-const SUB_CHEVRON = "▶";
 const INDICATOR_ACTIVE = "▌";
 const INDICATOR_IDLE = ">";
 
@@ -229,9 +229,7 @@ export function MenuSubTrigger({
       <span className={cn("tracking-wide flex-1", !isFocused && "group-hover:text-foreground")}>
         {children}
       </span>
-      <span aria-hidden="true" className="ml-2 shrink-0 text-xs">
-        {SUB_CHEVRON}
-      </span>
+      <Chevron size="sm" className="ml-2" />
     </div>
   );
 }

@@ -11,14 +11,14 @@ import {
   SidebarSectionTitle,
 } from "@/components/ui/sidebar";
 
-// `block` variant — items use a soft fill on active rather than the `▸` glyph
-// prefix; the section title's own chevron (▾/▸) is the single disclosure cue
-// per group, avoiding double-decoration. Items wrapped in
-// `<SidebarSectionContent>` are the only ones that honor the section's open
-// state — items rendered outside that wrapper stay visible regardless.
+// `bar` variant — items use a soft fill plus a 2px left edge on active rather
+// than the chevron marker prefix; the section title's own chevron is the
+// single disclosure cue per group, avoiding double-decoration. Items wrapped
+// in `<SidebarSectionContent>` are the only ones that honor the section's
+// open state — items rendered outside that wrapper stay visible regardless.
 export default function SidebarCollapsible() {
   return (
-    <Sidebar variant="block" className="h-full">
+    <Sidebar variant="bar" className="h-full">
       <SidebarHeader>
         <span className="text-sm font-mono font-bold">File Browser</span>
       </SidebarHeader>

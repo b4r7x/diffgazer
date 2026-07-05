@@ -225,9 +225,7 @@ function SectionHeader({
         isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground/80",
       )}
     >
-      <span aria-hidden="true" className="text-2xs">
-        {expanded ? "▼" : "▶"}
-      </span>
+      <Chevron open={expanded} size="sm" />
       <span aria-hidden="true">{label}</span>
       {count !== undefined && <span aria-hidden="true">({count})</span>}
     </div>

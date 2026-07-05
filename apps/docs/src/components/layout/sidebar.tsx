@@ -161,7 +161,7 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
               </SidebarSectionTitle>
             ) : null}
 
-            <SidebarSectionContent className="border-border/75">
+            <SidebarSectionContent>
               {section.items.map((item) => {
                 const url = item.url ?? "";
                 const label = sidebarItemLabel(section.title, indexUrl, item);

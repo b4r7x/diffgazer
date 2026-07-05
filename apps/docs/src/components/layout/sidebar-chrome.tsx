@@ -96,14 +96,6 @@ export function SidebarChrome({ library }: { library: DocsLibraryId }) {
             className={cn(selectTriggerClassName, switching && "pointer-events-none opacity-50")}
             aria-disabled={switching || undefined}
             aria-label="Select documentation library"
-            handle={
-              <span
-                aria-hidden="true"
-                className="shrink-0 font-mono text-2xs text-muted-foreground"
-              >
-                ▼
-              </span>
-            }
           >
             <span className="truncate">
               <span className="text-muted-foreground">[ </span>

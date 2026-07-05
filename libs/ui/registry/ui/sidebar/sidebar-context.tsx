@@ -42,12 +42,12 @@ export function useOptionalSidebar() {
 /** Context value shared by sidebar chrome. */
 export interface SidebarChromeContextValue {
   /**
-   * Visual variant. "caret" prefixes each item with ▸; "inverted" full-bleeds the active row
-   * with bg-foreground; "bar" draws a 1px left border on active; "bracket" prefixes items with
-   * [*]/[ ]; "block" applies a soft bg-foreground/8 fill on active; "terminal" prefixes active
-   * items with a `>` prompt and draws a 1px hairline left rail with no background fill; "tree"
-   * renders ▼/▶ section headers and ├─/└─ connectors with a left guide and soft active fill.
-   * Propagated to items via context and exposed as data-variant on the nav root.
+   * Visual variant. "caret" reserves a chevron marker slot shown on the active row;
+   * "inverted" full-bleeds the active row with bg-foreground; "bar" draws a 2px left edge with
+   * a soft fill on active; "terminal" shows the chevron prompt on the active item and draws a
+   * 1px hairline left rail with no background fill; "tree" renders bold section headers with
+   * stroke-chevron folds and single-hairline connectors (trunk/tick/corner) with a soft active
+   * fill. Propagated to items via context and exposed as data-variant on the nav root.
    */
   variant: SidebarVariant;
   /**

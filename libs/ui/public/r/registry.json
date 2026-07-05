@@ -973,6 +973,7 @@
       "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
+        "https://r.b4r7.dev/r/ui/icons.json",
         "https://r.b4r7.dev/r/ui/listbox.json",
         "https://r.b4r7.dev/r/ui/selectable-collection.json",
         "https://r.b4r7.dev/r/ui/outside-click.json",
@@ -1713,10 +1714,6 @@
         },
         {
           "path": "registry/ui/sidebar/sidebar-item-badge.tsx",
-          "type": "registry:ui"
-        },
-        {
-          "path": "registry/ui/sidebar/sidebar-tree-glyphs.ts",
           "type": "registry:ui"
         },
         {

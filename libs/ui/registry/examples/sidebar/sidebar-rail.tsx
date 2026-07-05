@@ -13,55 +13,31 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 
-// In rail mode (48px), each item collapses to an icon-only row centered in the
-// rail. `<SidebarItemLabel>` is hidden via the nav's `data-state="rail"`
-// group; the icon stand-in (any first child that is not a label/badge) stays
-// visible. Section titles and the variant glyph (▸) also hide. SidebarItem
-// auto-preserves the accessible name by rendering an sr-only copy of the label
-// content while collapsed, so no manual wiring is needed. The `title` attribute
-// is optional and only drives the native tooltip on hover.
+// In rail mode (48px) each item collapses to an icon-only row: the label and
+// section titles hide via the nav's `data-state="rail"` group while the glyph
+// tile stays visible. SidebarItem preserves the accessible name automatically
+// by rendering an sr-only copy of the label while collapsed; `title` only adds
+// the native hover tooltip.
 export default function SidebarRail() {
   return (
     <SidebarProvider defaultState="rail">
       <div className="flex items-stretch h-80 bg-background">
-        <Sidebar variant="block">
+        <Sidebar variant="bar">
           <SidebarHeader>
             <span className="text-xs font-mono font-bold">DG</span>
           </SidebarHeader>
           <SidebarContent>
             <SidebarSection>
               <SidebarSectionTitle>getting-started</SidebarSectionTitle>
-              <SidebarItem title="install">
-                <RailIcon>i</RailIcon>
-                <SidebarItemLabel>install</SidebarItemLabel>
-              </SidebarItem>
-              <SidebarItem active title="quickstart">
-                <RailIcon>q</RailIcon>
-                <SidebarItemLabel>quickstart</SidebarItemLabel>
-              </SidebarItem>
-              <SidebarItem title="theming">
-                <RailIcon>t</RailIcon>
-                <SidebarItemLabel>theming</SidebarItemLabel>
-              </SidebarItem>
+              <RailItem glyph="↓" label="install" />
+              <RailItem glyph="»" label="quickstart" active />
+              <RailItem glyph="◐" label="theming" />
             </SidebarSection>
             <SidebarSection>
-              <SidebarSectionTitle>primitives</SidebarSectionTitle>
-              <SidebarItem title="dialog">
-                <RailIcon>D</RailIcon>
-                <SidebarItemLabel>dialog</SidebarItemLabel>
-              </SidebarItem>
-              <SidebarItem title="toggle-group">
-                <RailIcon>T</RailIcon>
-                <SidebarItemLabel>toggle-group</SidebarItemLabel>
-              </SidebarItem>
-              <SidebarItem title="stepper">
-                <RailIcon>S</RailIcon>
-                <SidebarItemLabel>stepper</SidebarItemLabel>
-              </SidebarItem>
-              <SidebarItem title="sidebar">
-                <RailIcon>N</RailIcon>
-                <SidebarItemLabel>sidebar</SidebarItemLabel>
-              </SidebarItem>
+              <SidebarSectionTitle>cli</SidebarSectionTitle>
+              <RailItem glyph="+" label="add" />
+              <RailItem glyph="−" label="remove" />
+              <RailItem glyph="±" label="diff" />
             </SidebarSection>
           </SidebarContent>
         </Sidebar>
@@ -82,16 +58,17 @@ export default function SidebarRail() {
   );
 }
 
-// Single-letter icon stand-in matching the R1 preview. Real consumers replace
-// with Lucide / inline SVG; the 4ch width holds the icon centered without
-// shifting layout when label/glyph show in `open` state.
-function RailIcon({ children }: { children: string }) {
+// Glyph tile icon stand-in — swap for Lucide / inline SVG in real consumers.
+function RailItem({ glyph, label, active }: { glyph: string; label: string; active?: boolean }) {
   return (
-    <span
-      aria-hidden="true"
-      className="inline-flex items-center justify-center w-4 text-foreground font-bold"
-    >
-      {children}
-    </span>
+    <SidebarItem active={active} title={label}>
+      <span
+        aria-hidden="true"
+        className="flex size-6 shrink-0 items-center justify-center rounded-sm border border-border"
+      >
+        {glyph}
+      </span>
+      <SidebarItemLabel>{label}</SidebarItemLabel>
+    </SidebarItem>
   );
 }

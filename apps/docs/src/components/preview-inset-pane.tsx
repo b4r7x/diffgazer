@@ -49,19 +49,19 @@ function FauxDocsTopbar() {
   return (
     <div
       aria-hidden="true"
-      className="sticky top-0 z-10 h-10 px-4 flex items-center justify-between border-b border-border/60 bg-background/90 backdrop-blur text-xs text-muted-foreground"
+      className="sticky top-0 z-10 h-11 px-4 flex items-center gap-6 border-b border-border bg-background/90 backdrop-blur text-xs text-muted-foreground"
     >
-      <span className="inline-flex items-center gap-2 text-foreground font-bold uppercase tracking-widest">
+      <span className="inline-flex shrink-0 items-center gap-2 text-foreground font-bold uppercase tracking-widest">
         <span className="w-2.5 h-2.5 bg-foreground" />
         Diffgazer
       </span>
-      <span className="inline-flex gap-4">
+      <span className="hidden @[560px]/pane:inline-flex gap-4">
         <span className="text-foreground">Docs</span>
         <span>Registry</span>
         <span>Changelog</span>
       </span>
-      <span className="flex items-center justify-between min-w-[180px] h-5 px-2 border border-border/60 bg-secondary/30">
-        <span>Search docs…</span>
+      <span className="ml-auto hidden @[440px]/pane:flex min-w-0 max-w-[200px] flex-1 items-center justify-between gap-2 h-5 px-2 border border-border/60 bg-secondary/30">
+        <span className="truncate">Search docs…</span>
         <Kbd size="sm">⌘K</Kbd>
       </span>
     </div>
@@ -89,7 +89,7 @@ function FauxDocsBody({ children }: { children: ReactNode }) {
           </div>
           {children}
         </div>
-        <aside className="hidden @[520px]/inset:block sticky top-10 pl-3 border-l border-border/60 text-muted-foreground text-xs">
+        <aside className="hidden @[520px]/inset:block sticky top-11 pl-3 border-l border-border/60 text-muted-foreground text-xs">
           <p className="uppercase tracking-widest text-2xs mb-2.5">On this page</p>
           <ul className="space-y-1">
             <li className="text-foreground">Overview</li>
@@ -106,11 +106,13 @@ export function InsetPreviewPane({ demo }: { demo: LazyExoticComponent<Component
   return (
     <div className="border border-border bg-background overflow-hidden">
       <InsetToolbar />
-      <div className="grid grid-cols-[minmax(248px,max-content)_1fr] h-[440px]">
+      {/* The rail is exactly sidebar-width (w-64) so demos sit flush against
+          the rail border and a wider demo can never crush the faux page. */}
+      <div className="grid grid-cols-[16rem_1fr] h-[440px]">
         <div className="border-r border-border flex flex-col items-stretch bg-background overflow-auto scrollbar-thin [&>*]:min-w-0">
           <DemoSlot demo={demo} />
         </div>
-        <div className="flex flex-col min-w-0 bg-background relative">
+        <div className="@container/pane flex flex-col min-w-0 bg-background relative">
           <FauxDocsTopbar />
           <FauxDocsBody>
             <p className="text-muted-foreground text-xs leading-7 max-w-[60ch]">

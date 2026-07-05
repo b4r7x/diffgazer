@@ -250,8 +250,8 @@ describe("Sidebar", () => {
     const item = screen.getByRole("link", { name: "Dashboard" });
 
     expect(item).not.toHaveAttribute("itemprefix");
-    // Default caret variant: the prefix carries the ▸ glyph into the custom element.
-    expect(item.textContent).toContain("▸");
+    // Default caret variant: the prefix carries the chevron marker into the custom element.
+    expect(item.querySelector("svg")).not.toBeNull();
     expect(errorSpy).not.toHaveBeenCalled();
     errorSpy.mockRestore();
   });
@@ -456,9 +456,7 @@ describe("SidebarSection collapsible", () => {
 });
 
 describe("Sidebar variants", () => {
-  function renderWithVariant(
-    variant: "caret" | "inverted" | "bar" | "bracket" | "block" | "terminal" | "tree",
-  ) {
+  function renderWithVariant(variant: "caret" | "inverted" | "bar" | "terminal" | "tree") {
     return render(
       <Sidebar variant={variant}>
         <Sidebar.Content>
@@ -499,15 +497,15 @@ describe("Sidebar variants", () => {
     expect(screen.getByRole("navigation")).toHaveAttribute("data-variant", "inverted");
   });
 
-  it("caret variant marks the active item and renders the ▸ glyph prefix", () => {
+  it("caret variant marks the active item and reserves the chevron marker slot", () => {
     renderWithVariant("caret");
     const active = screen.getByRole("button", { name: /Quickstart/i });
     expect(active).toHaveAttribute("aria-current", "page");
     expect(active).toHaveAttribute("data-selected");
-    expect(active.textContent).toContain("▸");
-    // Glyph stays on inactive rows too for the caret variant.
+    expect(active.querySelector("svg")).not.toBeNull();
+    // Marker slot stays reserved on inactive rows; data-selected drives visibility.
     const inactive = screen.getByRole("button", { name: /Install/i });
-    expect(inactive.textContent).toContain("▸");
+    expect(inactive.querySelector("svg")).not.toBeNull();
     expect(inactive).not.toHaveAttribute("aria-current");
   });
 
@@ -527,53 +525,31 @@ describe("Sidebar variants", () => {
     expect(active.textContent).not.toMatch(/[▸▾[\]*]/);
   });
 
-  it("bracket variant renders [*] on active and [ ] on inactive items", () => {
-    renderWithVariant("bracket");
-    const active = screen.getByRole("button", { name: /Quickstart/i });
-    const inactive = screen.getByRole("button", { name: /Install/i });
-    expect(active).toHaveAttribute("aria-current", "page");
-    expect(active.textContent).toContain("[*]");
-    expect(inactive.textContent).toContain("[ ]");
-  });
-
-  it("block variant marks the active item without a glyph prefix", () => {
-    renderWithVariant("block");
-    const active = screen.getByRole("button", { name: "Quickstart" });
-    expect(active).toHaveAttribute("aria-current", "page");
-    expect(active).toHaveAttribute("data-selected");
-    expect(active.textContent).not.toMatch(/[▸▾[\]*]/);
-  });
-
-  it("terminal variant renders the > prompt only on the active item", () => {
+  it("terminal variant reserves the chevron prompt slot and marks the active item", () => {
     renderWithVariant("terminal");
     const active = screen.getByRole("button", { name: /Quickstart/i });
     const inactive = screen.getByRole("button", { name: /Install/i });
     expect(active).toHaveAttribute("aria-current", "page");
     expect(active).toHaveAttribute("data-selected");
-    expect(active.textContent).toContain(">");
-    expect(inactive.textContent).not.toContain(">");
-    expect(active.textContent).not.toMatch(/[▸▾[\]*]/);
+    expect(active.querySelector("svg")).not.toBeNull();
+    expect(inactive.querySelector("svg")).not.toBeNull();
+    expect(inactive).not.toHaveAttribute("data-selected");
   });
 
-  function expectTreeConnectorGlyphs(item: HTMLElement) {
-    expect(item.textContent).toContain("├─");
-    expect(item.textContent).toContain("└─");
-  }
-
-  it("tree variant renders caret section headers and branch connectors on items", () => {
+  it("tree variant renders a chevron fold handle and no connector glyphs in text", () => {
     renderWithVariant("tree");
     expect(screen.getByRole("navigation")).toHaveAttribute("data-variant", "tree");
-    expect(screen.getByRole("heading", { name: /Section/i }).textContent).toContain("▼");
+    const heading = screen.getByRole("heading", { name: /Section/i });
+    expect(heading.querySelector("svg")).not.toBeNull();
+    expect(heading.textContent).not.toMatch(/[▼▶]/);
 
     const quickstart = screen.getByRole("button", { name: /Quickstart/i });
-    expectTreeConnectorGlyphs(screen.getByRole("button", { name: /Install/i }));
-    expectTreeConnectorGlyphs(quickstart);
-    expectTreeConnectorGlyphs(screen.getByRole("button", { name: /Theming/i }));
+    expect(quickstart.textContent).not.toMatch(/[├└─]/);
     expect(quickstart).toHaveAttribute("aria-current", "page");
     expect(quickstart).toHaveAttribute("data-selected");
   });
 
-  it("tree variant renders connectors on fragment-composed items", () => {
+  it("tree variant keeps fragment-composed items as direct siblings for the connector corner", () => {
     function FragmentItems() {
       return (
         <>
@@ -595,15 +571,16 @@ describe("Sidebar variants", () => {
       </Sidebar>,
     );
 
-    expectTreeConnectorGlyphs(screen.getByRole("button", { name: /Alpha/i }));
-    expectTreeConnectorGlyphs(screen.getByRole("button", { name: /Beta/i }));
+    // The └ corner is :last-child driven, so fragments must keep items direct siblings.
+    expect(screen.getByRole("button", { name: /Beta/i }).matches(":last-child")).toBe(true);
+    expect(screen.getByRole("button", { name: /Alpha/i }).matches(":last-child")).toBe(false);
   });
 
   it("keeps a single Primary nav landmark and h3 section title across variants", () => {
-    renderWithVariant("bracket");
+    renderWithVariant("bar");
     const nav = screen.getByRole("navigation");
     expect(nav).toHaveAccessibleName("Primary");
-    expect(nav).toHaveAttribute("data-variant", "bracket");
+    expect(nav).toHaveAttribute("data-variant", "bar");
     expect(screen.getByRole("heading", { level: 3, name: "Section" })).toBeInTheDocument();
   });
 });
@@ -650,6 +627,21 @@ describe("Sidebar Cmd/Ctrl+B hotkey", () => {
       );
     });
     expect(onStateChange).toHaveBeenLastCalledWith("hidden");
+  });
+
+  it("does not bind the hotkey for a provider-less Sidebar", () => {
+    render(
+      <Sidebar>
+        <Sidebar.Content>
+          <Sidebar.Item as="button">Item</Sidebar.Item>
+        </Sidebar.Content>
+      </Sidebar>,
+    );
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "b", metaKey: true }));
+    });
+    expect(screen.getByRole("navigation")).toHaveAttribute("data-state", "open");
   });
 
   it("does not toggle when focus is in an editable target", () => {

@@ -114,4 +114,16 @@ describe("DocsSidebar navigation", () => {
     expect(routerBoundary.navigations).toEqual(["/ui/components/callout"]);
     expect(onNavigate).toHaveBeenCalledTimes(1);
   });
+
+  it("does not react to the global Cmd/Ctrl+B sidebar hotkey", async () => {
+    const user = userEvent.setup();
+    renderSidebar();
+
+    await user.keyboard("{Meta>}b{/Meta}");
+
+    expect(screen.getByRole("navigation", { name: "Primary" })).toHaveAttribute(
+      "data-state",
+      "open",
+    );
+  });
 });

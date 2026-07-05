@@ -11,9 +11,9 @@ import type {
 } from "react";
 import { isValidElement, useId } from "react";
 import { cn } from "@/lib/utils";
+import { Chevron } from "../icons/chevron";
 import { useOptionalSidebar, useSidebarChrome } from "./sidebar-context";
 import { resolveSidebarIntent, type SidebarIntent } from "./sidebar-intent";
-import { SIDEBAR_TREE_CONNECTOR } from "./sidebar-tree-glyphs";
 import { type SidebarVariant, sidebarItemVariants } from "./sidebar-variants";
 
 /** Props for sidebar item render. */
@@ -42,7 +42,7 @@ export interface SidebarItemRenderProps {
   "data-disabled"?: "";
   /** Tab index applied to the rendered element. */
   tabIndex?: number;
-  /** Tree connector / variant glyph prefix for custom link renderers. */
+  /** Variant marker glyph prefix for custom link renderers. */
   itemPrefix?: ReactNode;
 }
 
@@ -122,57 +122,20 @@ function flattenText(node: ReactNode): string {
 }
 
 function VariantGlyph({ variant, active }: { variant: SidebarVariant; active: boolean }) {
-  if (variant === "caret") {
+  // The slot is always rendered so active/inactive rows never reflow.
+  if (variant === "caret" || variant === "terminal") {
     return (
-      <span
-        aria-hidden="true"
-        className="inline-block w-[1ch] shrink-0 text-muted-foreground tabular-nums group-data-[state=rail]/sidebar:hidden"
-      >
-        ▸
-      </span>
-    );
-  }
-  if (variant === "bracket") {
-    return (
-      <span
-        aria-hidden="true"
+      <Chevron
         className={cn(
-          "shrink-0 tabular-nums group-data-[state=rail]/sidebar:hidden",
-          active ? "text-foreground" : "text-muted-foreground",
+          "transition-colors motion-reduce:transition-none group-data-[state=rail]/sidebar:hidden",
+          active
+            ? "text-foreground"
+            : "text-transparent group-hover/item:text-muted-foreground group-focus-visible/item:text-muted-foreground",
         )}
-      >
-        {active ? "[*]" : "[ ]"}
-      </span>
-    );
-  }
-  if (variant === "terminal") {
-    return (
-      <span
-        aria-hidden="true"
-        className="inline-block w-[1ch] shrink-0 text-foreground tabular-nums group-data-[state=rail]/sidebar:hidden"
-      >
-        {active ? ">" : " "}
-      </span>
+      />
     );
   }
   return null;
-}
-
-// Connector glyphs toggle via CSS last-child, so tree items must be direct
-// siblings of their container; a non-item element after the last item (or a
-// per-item wrapper element) would mislabel the connectors.
-function TreeConnector({ variant }: { variant: SidebarVariant }) {
-  if (variant !== "tree") return null;
-
-  return (
-    <span
-      aria-hidden="true"
-      className="mr-2 shrink-0 text-muted-foreground tabular-nums group-data-[state=rail]/sidebar:hidden"
-    >
-      <span className="group-last/tree-item:hidden">{SIDEBAR_TREE_CONNECTOR.branch}</span>
-      <span className="hidden group-last/tree-item:inline">{SIDEBAR_TREE_CONNECTOR.last}</span>
-    </span>
-  );
 }
 
 function IntentDot({ intent }: { intent: SidebarIntent }) {
@@ -211,11 +174,7 @@ export function SidebarItem(props: SidebarItemProps): ReactNode {
     };
 
   const sharedProps = {
-    className: cn(
-      variant === "tree" && "group/tree-item",
-      sidebarItemVariants({ variant }),
-      props.className,
-    ),
+    className: cn(sidebarItemVariants({ variant }), props.className),
     "aria-current": active ? ("page" as const) : undefined,
     "aria-disabled": disabled || undefined,
     "data-selected": active ? ("" as const) : undefined,
@@ -227,7 +186,6 @@ export function SidebarItem(props: SidebarItemProps): ReactNode {
   };
 
   const glyph = <VariantGlyph variant={variant} active={active} />;
-  const treeConnector = <TreeConnector variant={variant} />;
   const dot = resolvedIntent ? <IntentDot intent={resolvedIntent} /> : null;
   // Rail mode display:none-hides the visible label/badge, leaving an icon-only
   // row with no accessible name. In rail state, render an sr-only copy of the
@@ -240,7 +198,6 @@ export function SidebarItem(props: SidebarItemProps): ReactNode {
     <>
       {railNameNode}
       {dot}
-      {treeConnector}
       {glyph}
     </>
   );

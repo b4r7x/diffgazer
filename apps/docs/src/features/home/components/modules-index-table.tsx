@@ -1,3 +1,4 @@
+import { Chevron } from "@diffgazer/ui/components/icons";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { Link } from "@tanstack/react-router";
 import type { DocsLibraryId } from "@/lib/library";
@@ -43,12 +44,7 @@ export function ModulesIndexTable({ libraries }: { libraries: HomeLibrary[] }) {
             className="group flex items-center border border-transparent px-2 py-3 font-mono text-sm transition-colors hover:border-border hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <div className="flex w-1/2 min-w-0 items-center sm:w-1/3">
-              <span
-                className="mr-2 text-muted-foreground transition-colors group-hover:text-foreground"
-                aria-hidden="true"
-              >
-                ▶
-              </span>
+              <Chevron className="mr-2 text-muted-foreground transition-colors group-hover:text-foreground" />
               <span className="truncate font-bold text-foreground">{library.displayName}</span>
             </div>
             <div className="hidden w-1/4 truncate pr-4 text-muted-foreground sm:block">

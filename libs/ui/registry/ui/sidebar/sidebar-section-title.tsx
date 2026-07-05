@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils";
 import { Chevron } from "../icons/chevron";
 import { useSidebarChrome } from "./sidebar-context";
 import { useSidebarSectionContext } from "./sidebar-section-context";
-import { SIDEBAR_TREE_CARET } from "./sidebar-tree-glyphs";
 
 export type SidebarSectionTitleHeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
@@ -54,13 +53,7 @@ export function SidebarSectionTitle({
   const { collapsible, open, onToggle, titleId, panelId } = useSidebarSectionContext();
   const { variant } = useSidebarChrome();
   const isTree = variant === "tree";
-  const defaultHandle = isTree ? (
-    <span aria-hidden="true" className="text-2xs">
-      {open ? SIDEBAR_TREE_CARET.expanded : SIDEBAR_TREE_CARET.collapsed}
-    </span>
-  ) : (
-    <Chevron open={open} size="sm" />
-  );
+  const defaultHandle = <Chevron open={open} size="sm" />;
   const resolvedHandle = handle === undefined ? defaultHandle : handle;
   const headingClassName = isTree ? TREE_HEADING_CLASS_NAME : HEADING_CLASS_NAME;
   const isInteractive = collapsible || !!onClick;

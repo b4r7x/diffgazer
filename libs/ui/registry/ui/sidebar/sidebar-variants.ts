@@ -1,14 +1,7 @@
 import { cva } from "class-variance-authority";
 
 /** Allowed sidebar variant values. */
-export type SidebarVariant =
-  | "caret"
-  | "inverted"
-  | "bar"
-  | "bracket"
-  | "block"
-  | "terminal"
-  | "tree";
+export type SidebarVariant = "caret" | "inverted" | "bar" | "terminal" | "tree";
 
 /** Class variants for sidebar container. */
 export const sidebarContainerVariants = cva(
@@ -39,7 +32,8 @@ export const sidebarContainerVariants = cva(
 /** Class variants for sidebar item. */
 export const sidebarItemVariants = cva(
   [
-    "flex items-center gap-2 w-full min-w-0 px-2 py-1 text-sm",
+    // group/item is consumed by the marker glyph in sidebar-item (hover preview).
+    "group/item flex items-center gap-2 w-full min-w-0 px-2 py-1 text-sm",
     "cursor-pointer transition-colors motion-reduce:transition-none",
     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground",
     "disabled:cursor-not-allowed",
@@ -53,9 +47,11 @@ export const sidebarItemVariants = cva(
   {
     variants: {
       variant: {
+        // Marker glyphs for caret/terminal render in sidebar-item's
+        // VariantGlyph, not here.
         caret: [
           "text-foreground/70 hover:text-foreground hover:bg-foreground/5",
-          "data-[selected]:text-foreground data-[selected]:font-semibold",
+          "data-[selected]:text-foreground",
           "data-[selected]:hover:bg-foreground/5",
         ].join(" "),
         inverted: [
@@ -78,20 +74,10 @@ export const sidebarItemVariants = cva(
           "data-[selected]:hover:bg-foreground data-[selected]:hover:text-background",
         ].join(" "),
         bar: [
-          "border-l border-transparent -ml-px pl-[calc(0.5rem+3px)]",
+          "border-l-2 border-transparent -ml-[2px] pl-[calc(0.5rem+3px)] group-data-[state=rail]/sidebar:ml-0",
           "text-foreground/70 hover:text-foreground hover:bg-foreground/5",
-          "data-[selected]:text-foreground data-[selected]:font-semibold data-[selected]:border-l-foreground",
+          "data-[selected]:text-foreground data-[selected]:border-l-foreground",
           "data-[selected]:bg-foreground/5 data-[selected]:hover:bg-foreground/5",
-        ].join(" "),
-        bracket: [
-          "text-foreground/70 hover:text-foreground hover:bg-foreground/5",
-          "data-[selected]:text-foreground data-[selected]:font-semibold",
-          "data-[selected]:hover:bg-foreground/5",
-        ].join(" "),
-        block: [
-          "text-foreground/70 hover:text-foreground hover:bg-foreground/5",
-          "data-[selected]:bg-foreground/8 data-[selected]:text-foreground data-[selected]:font-semibold",
-          "data-[selected]:hover:bg-foreground/10",
         ].join(" "),
         // Terminal/TUI rail: every row carries a faint 1px left rail so stacked
         // items form one continuous hairline (the "grid" of the CLI aesthetic).
@@ -99,14 +85,20 @@ export const sidebarItemVariants = cva(
         // foreground — no background fill, austere by design. -ml-px collapses
         // the row border onto the section gutter so the rail stays 1px wide.
         terminal: [
-          "border-l border-border -ml-px pl-[calc(0.5rem+3px)]",
+          "border-l border-border -ml-px pl-[calc(0.5rem+3px)] group-data-[state=rail]/sidebar:ml-0",
           "text-foreground/60 hover:text-foreground hover:border-foreground/40",
           "data-[selected]:text-foreground data-[selected]:border-l-foreground",
           "data-[selected]:hover:border-l-foreground",
         ].join(" "),
+        // Connectors are drawn per item in sidebar.css. They rely on contiguous
+        // rows (py, no gap) for an unbroken trunk, and on pl-6 clearing the
+        // tick while aligning item text with a collapsible section title's text
+        // (px-2 + 12px chevron + gap-1 = 24px). Non-collapsible titles have no
+        // chevron and sit at 8px, so items indent past them.
         tree: [
+          "relative pl-6 py-1.5 group-data-[state=rail]/sidebar:pl-0",
           "text-foreground/70 hover:text-foreground hover:bg-foreground/5",
-          "data-[selected]:bg-foreground/8 data-[selected]:text-foreground data-[selected]:font-semibold",
+          "data-[selected]:bg-foreground/8 data-[selected]:text-foreground",
           "data-[selected]:hover:bg-foreground/10",
         ].join(" "),
       },

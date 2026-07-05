@@ -10,6 +10,9 @@ export function TreeSidebarShell({
   innerRef?: Ref<HTMLDivElement>;
 }) {
   return (
+    // A provider-less Sidebar never binds the global Cmd/Ctrl+B hotkey, so the
+    // docs chrome nav stays inert while sidebar demos on the page own it
+    // (guarded by sidebar.navigation.test).
     <Sidebar variant="tree" embedded className="h-full w-full">
       <SidebarContent className="overflow-hidden p-0">
         <ScrollArea className="h-full">

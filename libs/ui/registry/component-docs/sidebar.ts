@@ -2,7 +2,7 @@ import type { ComponentDoc } from "./types";
 
 export const sidebarDoc: ComponentDoc = {
   description:
-    "Full-height navigation sidebar with tri-state visibility (open/rail/hidden), seven active-marker variants, collapsible sections, optional intent tones, mobile sheet, and a configurable global hotkey. Composable parts plus two context providers.",
+    "Full-height navigation sidebar with tri-state visibility (open/rail/hidden), five active-marker variants, collapsible sections, optional intent tones, mobile sheet, and a configurable global hotkey. Composable parts plus two context providers.",
   anatomy: [
     {
       name: "SidebarProvider",
@@ -64,17 +64,17 @@ export const sidebarDoc: ComponentDoc = {
     {
       title: "Global hotkey",
       content:
-        'SidebarProvider binds a configurable global shortcut. Cmd/Ctrl+<key> cycles open ↔ rail; Shift+Cmd/Ctrl+<key> toggles hidden. Default key is "b" (VS Code convention). Pass shortcutKey={null} to disable. Editable targets (input/textarea/contenteditable/select) skip the handler.',
+        'An explicit SidebarProvider binds a configurable global shortcut. Cmd/Ctrl+<key> cycles open ↔ rail; Shift+Cmd/Ctrl+<key> toggles hidden. Default key is "b" (VS Code convention). Pass shortcutKey={null} to disable. A Sidebar used without a provider never binds the hotkey — global keys are an app-level contract, so opt in by mounting the provider. Editable targets (input/textarea/contenteditable/select) skip the handler.',
     },
     {
       title: "SidebarProvider vs standalone",
       content:
-        "Wrap Sidebar in SidebarProvider when you need to control state from outside the sidebar or react to it elsewhere (e.g. a header trigger). When Sidebar is used without a provider it instantiates one internally. Read state from any descendant via useSidebar().",
+        "Wrap Sidebar in SidebarProvider when you need to control state from outside the sidebar, react to it elsewhere (e.g. a header trigger), or enable the global hotkey. When Sidebar is used without a provider it instantiates one internally without the hotkey. Read state from any descendant via useSidebar().",
     },
     {
       title: "Visual variants",
       content:
-        "Seven active-marker variants share row metrics (24px line height, JBMono 12px) so glyph slots stay aligned: caret (▸ glyph prefix; active = font-semibold), inverted (full-bleed bg-foreground row), bar (1px border-l on active), bracket ([*]/[ ] glyph prefix), block (soft bg-foreground/8 fill on active), terminal (`>` prompt prefix on active; 1px hairline left rail, no bg fill), tree (▼/▶ section headers; ├─/└─ item connectors with left guide; active = soft bg fill). Selected via <Sidebar variant=…> and propagated to items via context. Exposed as data-variant on the nav root.",
+        "Five active-marker variants share one rule — structure is permanent, markers appear on the active row: caret (reserved chevron marker slot; invisible at rest, dim on hover, foreground on active), inverted (full-bleed bg-foreground row), bar (2px border-l plus soft fill on active), terminal (chevron prompt on active; 1px hairline left rail, no bg fill), tree (bold section headers with stroke-chevron folds; single-hairline CSS connectors — trunk/tick/corner — with soft active fill). Selected via <Sidebar variant=…> and propagated to items via context. Exposed as data-variant on the nav root.",
     },
     {
       title: "Auto-tone (intent dot)",
@@ -94,7 +94,7 @@ export const sidebarDoc: ComponentDoc = {
     {
       title: "Item render props",
       content:
-        "SidebarItem supports a render-prop children for custom elements (e.g. framework Link components). The render function receives ref, className, disabled, aria-current, aria-disabled, data-selected, data-intent, data-value, onClick, tabIndex, and itemPrefix — a ReactNode carrying the intent dot, tree connector, and variant glyph. Destructure itemPrefix and render it as the element's leading content; never spread it onto the element.",
+        "SidebarItem supports a render-prop children for custom elements (e.g. framework Link components). The render function receives ref, className, disabled, aria-current, aria-disabled, data-selected, data-intent, data-value, onClick, tabIndex, and itemPrefix — a ReactNode carrying the intent dot and variant glyph. Destructure itemPrefix and render it as the element's leading content; never spread it onto the element.",
     },
     {
       title: "SSR persistence",
@@ -108,8 +108,6 @@ export const sidebarDoc: ComponentDoc = {
     { name: "sidebar-variant-caret", title: "Variant — caret" },
     { name: "sidebar-variant-inverted", title: "Variant — inverted" },
     { name: "sidebar-variant-bar", title: "Variant — bar" },
-    { name: "sidebar-variant-bracket", title: "Variant — bracket" },
-    { name: "sidebar-variant-block", title: "Variant — block" },
     { name: "sidebar-variant-tree", title: "Variant — tree" },
     { name: "sidebar-collapsible", title: "Collapsible sections" },
     { name: "sidebar-rail", title: "Rail mode" },
@@ -160,7 +158,7 @@ export const sidebarDoc: ComponentDoc = {
     {
       attribute: "data-variant",
       appliesTo: "Sidebar",
-      values: '"caret" | "inverted" | "bar" | "bracket" | "block" | "terminal" | "tree"',
+      values: '"caret" | "inverted" | "bar" | "terminal" | "tree"',
       description: "Active-marker variant applied to the nav root and consumed by descendants.",
     },
     {
@@ -197,11 +195,11 @@ export const sidebarDoc: ComponentDoc = {
   props: {
     Sidebar: {
       variant: {
-        type: '"caret" | "inverted" | "bar" | "bracket" | "block" | "terminal" | "tree"',
+        type: '"caret" | "inverted" | "bar" | "terminal" | "tree"',
         required: false,
         defaultValue: '"caret"',
         description:
-          'Visual variant. "caret" prefixes each item with ▸; "inverted" full-bleeds the active row with bg-foreground; "bar" draws a 1px left border on active; "bracket" prefixes items with [*]/[ ]; "block" applies a soft bg-foreground/8 fill on active; "terminal" prefixes active items with a `>` prompt and draws a 1px hairline left rail with no background fill; "tree" renders ▼/▶ section headers and ├─/└─ connectors with a left guide and soft active fill. Propagated to items via context and exposed as data-variant on the nav root.',
+          'Visual variant. "caret" reserves a chevron marker slot shown on the active row; "inverted" full-bleeds the active row with bg-foreground; "bar" draws a 2px left edge with a soft fill on active; "terminal" shows the chevron prompt on the active item and draws a 1px hairline left rail with no background fill; "tree" renders bold section headers with stroke-chevron folds and single-hairline connectors with a soft active fill. Propagated to items via context and exposed as data-variant on the nav root.',
       },
       autoTone: {
         type: "boolean",
@@ -400,7 +398,7 @@ export const sidebarDoc: ComponentDoc = {
         required: true,
         defaultValue: null,
         description:
-          "Item content or a render function (for framework Link components) that receives ref, className, disabled, aria-current, aria-disabled, data-selected, data-intent, data-value, onClick, tabIndex, and itemPrefix. itemPrefix is a ReactNode (intent dot, tree connector, variant glyph) that must be rendered as the element's leading content, never spread onto the element.",
+          "Item content or a render function (for framework Link components) that receives ref, className, disabled, aria-current, aria-disabled, data-selected, data-intent, data-value, onClick, tabIndex, and itemPrefix. itemPrefix is a ReactNode (intent dot, variant glyph) that must be rendered as the element's leading content, never spread onto the element.",
       },
     },
     "Sidebar.ItemLabel": {

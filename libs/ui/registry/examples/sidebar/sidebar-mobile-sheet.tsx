@@ -16,10 +16,12 @@ import {
  * `isMobile=true` so the sheet branch renders regardless of viewport width —
  * useful for previewing the mobile experience on a docs page. In real apps
  * leave `breakpoint` at the default (1024) and let the viewport drive it.
+ * `shortcutKey={null}` releases the global Cmd/Ctrl+B hotkey so the sheet
+ * does not pop open when several sidebar demos share one docs page.
  */
 export default function SidebarMobileSheet() {
   return (
-    <SidebarProvider breakpoint={9999} defaultState="hidden">
+    <SidebarProvider breakpoint={9999} defaultState="hidden" shortcutKey={null}>
       <div className="flex flex-col gap-3 p-4 bg-background">
         <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
           <SidebarTrigger className="border border-border px-2 py-1" />
