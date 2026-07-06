@@ -37,6 +37,7 @@ export {
   useRefreshReviewContext,
   useReview,
   useReviewContext,
+  useReviewSessionCache,
   useReviews,
 } from "./review.js";
 export { useServerStatus, useShutdown } from "./server.js";

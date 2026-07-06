@@ -93,11 +93,6 @@ export const SavedReviewSchema = z.object({
 });
 export type SavedReview = z.infer<typeof SavedReviewSchema>;
 
-export const CreateReviewResponseSchema = z.object({
-  reviewId: UuidSchema,
-});
-export type CreateReviewResponse = z.infer<typeof CreateReviewResponseSchema>;
-
 export const ReviewsResponseSchema = z.object({
   reviews: z.array(ReviewMetadataSchema),
   warnings: z.array(z.string()).optional(),
@@ -112,7 +107,7 @@ export type ReviewResponse = z.infer<typeof ReviewResponseSchema>;
 export const ActiveReviewSessionSchema = z.object({
   reviewId: UuidSchema,
   mode: ReviewModeSchema,
-  startedAt: z.string(),
+  startedAt: z.iso.datetime(),
   headCommit: z.string(),
   statusHash: z.string(),
 });
@@ -122,3 +117,14 @@ export const ActiveReviewSessionResponseSchema = z.object({
   session: ActiveReviewSessionSchema.nullable(),
 });
 export type ActiveReviewSessionResponse = z.infer<typeof ActiveReviewSessionResponseSchema>;
+
+export const CreateReviewResponseSchema = z
+  .object({
+    reviewId: UuidSchema,
+    session: ActiveReviewSessionSchema,
+  })
+  .refine((response) => response.reviewId === response.session.reviewId, {
+    path: ["session", "reviewId"],
+    message: "session.reviewId must match reviewId",
+  });
+export type CreateReviewResponse = z.infer<typeof CreateReviewResponseSchema>;

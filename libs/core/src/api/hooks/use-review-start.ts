@@ -11,6 +11,7 @@ export interface UseReviewStartOptions {
   configLoading: boolean;
   settingsLoading: boolean;
   isConfigured: boolean;
+  allowResumeWithoutSetup?: boolean;
   reviewId?: string;
   currentReviewId?: string | null;
   resume: (id: string) => Promise<Result<void, StreamReviewError>>;
@@ -40,7 +41,8 @@ export function useReviewStart(options: UseReviewStartOptions): UseReviewStartRe
   });
 
   useEffect(() => {
-    if (options.configLoading || options.settingsLoading || !options.isConfigured) return;
+    const canResume = options.isConfigured || options.allowResumeWithoutSetup;
+    if (options.configLoading || options.settingsLoading || !canResume) return;
 
     const reviewId = options.reviewId;
     if (!reviewId) return;
@@ -56,13 +58,25 @@ export function useReviewStart(options: UseReviewStartOptions): UseReviewStartRe
       if (ignore) return;
       if (result.ok) return;
 
+      if (
+        isSessionTerminationCode(result.error.code) ||
+        result.error.code === ReviewErrorCode.SESSION_NOT_FOUND
+      ) {
+        setHasStreamed(false);
+      }
       handleResumeError(reviewId, result.error);
     });
 
     return () => {
       ignore = true;
     };
-  }, [options.configLoading, options.settingsLoading, options.isConfigured, options.reviewId]);
+  }, [
+    options.configLoading,
+    options.settingsLoading,
+    options.isConfigured,
+    options.allowResumeWithoutSetup,
+    options.reviewId,
+  ]);
 
   return { hasStarted, hasStreamed, setHasStarted, setHasStreamed };
 }

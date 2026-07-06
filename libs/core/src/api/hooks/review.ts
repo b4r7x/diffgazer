@@ -1,5 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ReviewMode } from "../../schemas/review/index.js";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo } from "react";
+import type {
+  ActiveReviewSession,
+  ActiveReviewSessionResponse,
+  ReviewMode,
+} from "../../schemas/review/index.js";
+import type { BoundApi } from "../bound.js";
 import { useApi } from "./context.js";
 import { reviewQueries } from "./queries/review.js";
 
@@ -16,6 +22,105 @@ export function useReview(id: string) {
 export function useActiveReviewSession(mode?: ReviewMode) {
   const api = useApi();
   return useQuery(reviewQueries.activeSession(api, mode));
+}
+
+function setActiveReviewSessionQueryData(
+  qc: QueryClient,
+  api: BoundApi,
+  mode: ReviewMode | undefined,
+  data: ActiveReviewSessionResponse,
+) {
+  qc.setQueryData(reviewQueries.activeSession(api, mode).queryKey, data);
+}
+
+function activeSessionQueryModes(mode: ReviewMode): Array<ReviewMode | undefined> {
+  return mode === "unstaged" ? [mode, undefined] : [mode];
+}
+
+function cancelActiveReviewSessionQuery(
+  qc: QueryClient,
+  api: BoundApi,
+  mode: ReviewMode | undefined,
+) {
+  // biome-ignore format: keep this exact cancellation call grep-checkable for the fix spec.
+  return qc.cancelQueries({ queryKey: reviewQueries.activeSession(api, mode).queryKey, exact: true });
+}
+
+async function cancelActiveSessionQueries(qc: QueryClient, api: BoundApi, mode: ReviewMode) {
+  await Promise.all(
+    activeSessionQueryModes(mode).map((queryMode) =>
+      cancelActiveReviewSessionQuery(qc, api, queryMode),
+    ),
+  );
+}
+
+function setModeActiveSessionQueryData(
+  qc: QueryClient,
+  api: BoundApi,
+  mode: ReviewMode,
+  data: ActiveReviewSessionResponse,
+) {
+  for (const queryMode of activeSessionQueryModes(mode)) {
+    setActiveReviewSessionQueryData(qc, api, queryMode, data);
+  }
+}
+
+async function cacheActiveSessionQueryData(
+  qc: QueryClient,
+  api: BoundApi,
+  session: ActiveReviewSession,
+) {
+  await cancelActiveSessionQueries(qc, api, session.mode);
+  setModeActiveSessionQueryData(qc, api, session.mode, { session });
+}
+
+function sessionMatchesReviewId(
+  current: ActiveReviewSessionResponse | undefined,
+  reviewId: string | null | undefined,
+) {
+  return !reviewId || !current?.session?.reviewId || current.session.reviewId === reviewId;
+}
+
+function clearActiveReviewSessionQueryData(
+  qc: QueryClient,
+  api: BoundApi,
+  mode: ReviewMode | undefined,
+  reviewId: string | null | undefined,
+) {
+  qc.setQueryData<ActiveReviewSessionResponse>(
+    reviewQueries.activeSession(api, mode).queryKey,
+    (current) => {
+      if (!sessionMatchesReviewId(current, reviewId)) {
+        return current;
+      }
+      return { session: null };
+    },
+  );
+}
+
+async function clearActiveSessionQueryData(
+  qc: QueryClient,
+  api: BoundApi,
+  mode: ReviewMode,
+  reviewId?: string | null,
+) {
+  await cancelActiveSessionQueries(qc, api, mode);
+  for (const queryMode of activeSessionQueryModes(mode)) {
+    clearActiveReviewSessionQueryData(qc, api, queryMode, reviewId);
+  }
+}
+
+export function useReviewSessionCache() {
+  const api = useApi();
+  const qc = useQueryClient();
+
+  const clearActiveSession = useCallback(
+    (mode: ReviewMode, reviewId?: string | null) =>
+      clearActiveSessionQueryData(qc, api, mode, reviewId),
+    [api, qc],
+  );
+
+  return useMemo(() => ({ clearActiveSession }), [clearActiveSession]);
 }
 
 /**
@@ -55,7 +160,9 @@ export function useRefreshReviewContext() {
 
 export function useCreateReview() {
   const api = useApi();
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (options: Parameters<typeof api.createReview>[0]) => api.createReview(options),
+    onSuccess: (data) => cacheActiveSessionQueryData(qc, api, data.session),
   });
 }

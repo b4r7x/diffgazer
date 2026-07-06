@@ -10,11 +10,13 @@ const DEFAULT_COMPLETE_DELAY_MS = 2000;
 
 export interface UseReviewCompletionOptions {
   isStreaming: boolean;
+  isComplete: boolean;
   error: string | null;
   errorCode: string | null;
   hasStreamed: boolean;
   steps: StepState[];
   onComplete: () => void;
+  onStreamComplete?: () => void;
 }
 
 export interface UseReviewCompletionResult {
@@ -25,11 +27,13 @@ export interface UseReviewCompletionResult {
 
 export function useReviewCompletion({
   isStreaming,
+  isComplete,
   error,
   errorCode,
   hasStreamed,
   steps,
   onComplete,
+  onStreamComplete,
 }: UseReviewCompletionOptions): UseReviewCompletionResult {
   const [isCompleting, setIsCompleting] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -50,38 +54,61 @@ export function useReviewCompletion({
   }
 
   useEffect(() => {
-    const wasStreaming = prevIsStreamingRef.current;
-    prevIsStreamingRef.current = isStreaming;
-
-    if (
-      wasStreaming &&
-      !isStreaming &&
-      hasStreamed &&
-      !error &&
-      errorCode !== ReviewErrorCode.CANCELLED
-    ) {
-      setIsCompleting(true);
-      const delayMs = getCompletionDelay();
-
-      timerRef.current = setTimeout(() => {
-        timerRef.current = null;
-        setIsCompleting(false);
-        emitComplete();
-      }, delayMs);
-    }
-
     return () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
       }
     };
-  }, [isStreaming, error, errorCode, hasStreamed]);
+  }, []);
+
+  useEffect(() => {
+    const wasStreaming = prevIsStreamingRef.current;
+    prevIsStreamingRef.current = isStreaming;
+
+    const didFinishStream =
+      wasStreaming &&
+      !isStreaming &&
+      hasStreamed &&
+      isComplete &&
+      !error &&
+      errorCode !== ReviewErrorCode.CANCELLED;
+
+    if (didFinishStream) {
+      onStreamComplete?.();
+      setIsCompleting(true);
+      const delayMs = getCompletionDelay();
+
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        setIsCompleting(false);
+        emitComplete();
+      }, delayMs);
+      return;
+    }
+
+    if (
+      timerRef.current &&
+      (isStreaming ||
+        !isComplete ||
+        error ||
+        errorCode === ReviewErrorCode.CANCELLED ||
+        !hasStreamed)
+    ) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+      setIsCompleting(false);
+    }
+  }, [isStreaming, isComplete, error, errorCode, hasStreamed, onStreamComplete]);
 
   function skipDelay() {
     clearTimer();
     setIsCompleting(false);
-    emitComplete();
+    onComplete();
   }
 
   function reset() {

@@ -1,14 +1,418 @@
-@import "tailwindcss";
-/* Package consumers get no Tailwind @source scanning of @diffgazer/ui, so the
-   compiled component CSS (styles.css) must be imported explicitly alongside the
-   theme tokens — otherwise DiffView, CodeBlock, etc. render unstyled. */
-@import "@diffgazer/ui/sources.css";
+/* styles.css bundles the design tokens (its first line is @import "./theme.css")
+   plus the compiled component contracts (Panel, DiffView, …) the hero composes.
+   A single top-of-file @import keeps every nested @import valid — a second
+   sibling @import after these rules would be dropped by the CSS import rule. */
 @import "@diffgazer/ui/styles.css";
-@source "../";
 
-body {
-  min-height: 100vh;
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: var(--base-font-mono);
+/* ============================================================
+   Fonts
+   ============================================================ */
+@font-face {
+  font-family: "Departure Mono";
+  src: url("/fonts/DepartureMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
 }
+
+/* ============================================================
+   Token bridge — concept vars mapped onto @diffgazer/ui primitives.
+   Scene inversion flips data-theme alongside data-scene-theme, so --dim,
+   --muted, --selection, --hairline and --danger track the active tier from
+   theme.css. Diff colors and --warning stay literal: theme.css exposes no
+   --diff-* tokens, and the medium-severity amber is intentionally constant
+   across tiers. --background/--foreground/--surface-1/--radius/--border come
+   straight from theme.css.
+   ============================================================ */
+:root {
+  --mono: var(--base-font-mono);
+  --display: "Departure Mono", var(--base-font-mono);
+  --diff-add: #56d364;
+  --diff-remove: #ff7b72;
+  --diff-hunk: #79b8ff;
+  --warning: #d29922;
+  --dim: var(--base-dim);
+  --muted: var(--base-muted);
+  --selection: var(--base-selection);
+  --danger: var(--base-danger);
+  --hairline: color-mix(in oklab, var(--base-border) 60%, transparent);
+}
+html[data-scene-theme="light"] {
+  --hairline: color-mix(in oklab, var(--base-border) 70%, transparent);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--mono);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.7s ease, color 0.7s ease;
+  overflow-x: hidden;
+}
+::selection { background: var(--selection); }
+a { color: inherit; text-decoration: none; }
+:focus-visible { outline: 2px solid var(--foreground); outline-offset: 2px; border-radius: 2px; }
+
+/* Native cursor hidden only when the custom reticle is active */
+html.reticle-on, html.reticle-on a, html.reticle-on button { cursor: none; }
+
+/* ============================================================
+   Layers
+   ============================================================ */
+#field { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+main { position: relative; z-index: 10; }
+
+/* ============================================================
+   Corner HUD — the viewport is the viewfinder
+   ============================================================ */
+.hud { position: fixed; z-index: 60; font-size: 12px; letter-spacing: 0.18em; mix-blend-mode: normal; }
+.hud-tl { top: 22px; left: 26px; font-family: var(--display); font-weight: 400; font-size: 14px; letter-spacing: 0.2em; }
+.hud-tr { top: 16px; right: 20px; display: flex; gap: 2px; }
+.hud-bl { bottom: 18px; left: 26px; color: var(--muted); display: flex; gap: 10px; align-items: center; font-family: var(--display); }
+.hud-br { bottom: 16px; right: 20px; }
+.hud a { padding: 6px 8px; color: var(--dim); transition: color 0.15s ease; }
+.hud a:hover { color: var(--foreground); }
+.hud .bracket { color: var(--muted); transition: color 0.15s ease; }
+.hud a:hover .bracket { color: var(--foreground); }
+.hud-install {
+  display: inline-flex; align-items: center; height: 34px; padding: 0 14px;
+  background: var(--foreground); color: var(--background); font-weight: 700; font-size: 12px;
+  letter-spacing: 0.08em; border-radius: var(--radius);
+  transition: background-color 0.7s ease, color 0.7s ease, transform 0.15s ease;
+}
+.hud-install:hover { transform: translateY(-1px); }
+#osd-spin { color: var(--diff-hunk); }
+
+/* Fixed viewport corner brackets */
+.vp-corner { position: fixed; z-index: 55; width: 18px; height: 18px; border: 0 solid var(--muted);
+  opacity: 0.6; pointer-events: none; transition: border-color 0.7s ease; }
+.vp-tl { top: 14px; left: 14px; border-top-width: 2px; border-left-width: 2px; }
+.vp-tr { top: 14px; right: 14px; border-top-width: 2px; border-right-width: 2px; }
+.vp-bl { bottom: 14px; left: 14px; border-bottom-width: 2px; border-left-width: 2px; }
+.vp-br { bottom: 14px; right: 14px; border-bottom-width: 2px; border-right-width: 2px; }
+
+/* ============================================================
+   Custom cursor reticle
+   ============================================================ */
+#reticle { position: fixed; z-index: 100; top: 0; left: 0; width: 34px; height: 34px;
+  pointer-events: none; opacity: 0; transition: opacity 0.3s ease; }
+#reticle.on { opacity: 1; }
+#reticle .dot { position: absolute; top: 50%; left: 50%; width: 3px; height: 3px;
+  background: var(--foreground); transform: translate(-50%, -50%); }
+#reticle.lock .dot { opacity: 0; }
+#reticle .rc { position: absolute; width: 9px; height: 9px; border: 0 solid var(--foreground); }
+#reticle .rc1 { top: 0; left: 0; border-top-width: 1.5px; border-left-width: 1.5px; }
+#reticle .rc2 { top: 0; right: 0; border-top-width: 1.5px; border-right-width: 1.5px; }
+#reticle .rc3 { bottom: 0; left: 0; border-bottom-width: 1.5px; border-left-width: 1.5px; }
+#reticle .rc4 { bottom: 0; right: 0; border-bottom-width: 1.5px; border-right-width: 1.5px; }
+
+/* ============================================================
+   Scenes
+   ============================================================ */
+.scene { position: relative; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.scene-inner { width: min(1200px, calc(100vw - 48px)); margin: 0 auto; position: relative; }
+
+/* Giant type */
+.giant {
+  font-family: var(--display); font-weight: 400; font-synthesis: none;
+  letter-spacing: 0.01em; line-height: 1.02; text-transform: uppercase;
+  font-size: clamp(34px, 6.4vw, 96px);
+}
+.giant .dim-line { color: var(--muted); }
+.sub { color: var(--dim); margin-top: 22px; font-size: clamp(15px, 1.4vw, 18px); }
+.sub strong { color: var(--foreground); font-weight: 500; }
+.sub .swap s { color: var(--dim); text-decoration: none; transition: color 0.4s ease; }
+.sub .swap s.lit { color: var(--diff-remove); text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.sub .swap ins { color: var(--diff-add); text-decoration: none; }
+
+/* Scramble char reveal — pixel-hard, no blur (chars injected by JS) */
+.focus-text .ch { display: inline-block; opacity: 0; }
+.focus-text .ch.on { opacity: 1; }
+
+/* Line-mask reveal for section headings */
+.mask-line { display: block; overflow: hidden; }
+.mask-line > span { display: block; transform: translateY(110%); transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.in .mask-line > span { transform: none; }
+.mask-line:nth-child(2) > span { transition-delay: 0.08s; }
+.mask-line:nth-child(3) > span { transition-delay: 0.16s; }
+
+.reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.in .reveal, .reveal.in { opacity: 1; transform: none; }
+.reveal[data-delay="1"] { transition-delay: 0.1s; }
+.reveal[data-delay="2"] { transition-delay: 0.2s; }
+.reveal[data-delay="3"] { transition-delay: 0.3s; }
+
+/* Giant ghost word bleeding offscreen (behind content) */
+.ghost-word { position: absolute; z-index: -1; font-family: var(--display); font-weight: 400; letter-spacing: 0;
+  font-size: clamp(120px, 22vw, 320px); line-height: 1; color: transparent;
+  -webkit-text-stroke: 1px color-mix(in oklab, var(--muted) 34%, transparent);
+  user-select: none; pointer-events: none; white-space: nowrap; }
+
+/* ============================================================
+   Scene 1 — hero / aperture
+   ============================================================ */
+#s1 .scene-inner { display: flex; flex-direction: column; align-items: center; text-align: center; padding: clamp(88px, 11vh, 132px) 0 72px; }
+/* The Gaze — a real diff under the lens, floating in perspective */
+.gaze3d-stage { perspective: 1400px; width: min(800px, 100%); margin: 0 auto clamp(64px, 10vh, 128px); position: relative; }
+/* The Gaze — a DiffView under a Panel viewfinder lens. Frame corners, row grid,
+   diff tints and +/− marker colors come from @diffgazer/ui (the Panel viewfinder
+   + DiffView data-attribute contracts). Only the 3D tilt, the moving scan band,
+   the scan-reveal row states and the anchored callouts are local chrome. */
+.gaze3d { --panel-bg: color-mix(in oklab, var(--surface-1) 94%, transparent);
+  transform: rotateX(var(--gx, 0deg)) rotateY(var(--gy, 0deg));
+  will-change: transform; text-align: left; }
+.gaze-diff { position: relative; }
+.gaze-diff [data-slot="diff-view-caption"] { align-items: center; }
+.stats { color: var(--muted); margin-left: 10px; }
+.stats .add { color: var(--diff-add); }
+.stats .rem { color: var(--diff-remove); }
+.gz-status { display: inline-flex; gap: 8px; align-items: center; margin-left: auto;
+  color: var(--muted); letter-spacing: 0.12em; font-size: 11px; text-transform: uppercase;
+  font-family: var(--display); }
+.gz-status .spin { color: var(--diff-hunk); }
+
+/* Scan-reveal: changed rows start clear and light up as the scan passes over
+   them; the persistent hunk tint and marker colors stay from the DiffView. */
+.gaze-diff [data-row][data-state="added"],
+.gaze-diff [data-row][data-state="removed"] { background: transparent; }
+.gaze-diff [data-row][data-state="added"].lit { background: var(--diff-added-bg); }
+.gaze-diff [data-row][data-state="removed"].lit { background: var(--diff-removed-bg); }
+.gaze-diff [data-row].locked { background: color-mix(in oklab, var(--foreground) 7%, transparent); }
+
+.scan { position: absolute; left: -20px; right: -20px; top: 0; height: 22px; opacity: 0;
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease;
+  pointer-events: none; z-index: 2; }
+.scan.visible { opacity: 1; }
+.scan span { position: absolute; width: 10px; height: 10px; border: 0 solid var(--diff-hunk); }
+.scan .vf-tl { top: 0; left: 0; border-top-width: 1.5px; border-left-width: 1.5px; }
+.scan .vf-tr { top: 0; right: 0; border-top-width: 1.5px; border-right-width: 1.5px; }
+.scan .vf-bl { bottom: 0; left: 0; border-bottom-width: 1.5px; border-left-width: 1.5px; }
+.scan .vf-br { bottom: 0; right: 0; border-bottom-width: 1.5px; border-right-width: 1.5px; }
+/* findings as instrument callouts, anchored to code lines */
+.callout { position: absolute; left: calc(100% + 26px); width: 220px; opacity: 0; text-align: left;
+  transform: translateX(-6px); transition: opacity 0.4s ease, transform 0.4s ease; }
+.callout.on { opacity: 1; transform: none; }
+.callout::before { content: ""; position: absolute; top: 11px; right: 100%; width: 16px; height: 1px;
+  background: var(--border); }
+.callout .co-line1 { display: flex; gap: 8px; align-items: center; }
+.callout .co-title { font-size: 12px; color: var(--foreground); margin-top: 7px; line-height: 1.5; }
+.callout .co-loc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+@media (max-width: 1240px) { .callout { display: none; } }
+#s1 h1 { margin-top: 0; font-size: clamp(28px, 4.8vw, 72px); mix-blend-mode: difference; }
+.focus-text .word { display: inline-block; white-space: nowrap; }
+[data-magnetic] { will-change: transform; }
+#s1 .sub { max-width: 44ch; }
+.install-row { display: flex; gap: 10px; margin-top: 40px; flex-wrap: wrap; justify-content: center; align-items: center; }
+.install-cmd {
+  display: flex; align-items: center; gap: 12px; height: 46px; padding: 0 20px;
+  border: 1px solid var(--hairline); border-radius: var(--radius); font-size: 14px;
+  background: color-mix(in oklab, var(--surface-1) 88%, transparent);
+}
+.install-cmd .prompt { color: var(--muted); }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 13px; height: 46px; padding: 0 18px;
+  border-radius: var(--radius); cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--hairline); background: transparent; color: var(--foreground);
+  transition: background-color 0.15s ease;
+}
+.btn:hover { background: var(--selection); }
+.btn .bracket { color: var(--muted); }
+.btn:hover .bracket { color: var(--foreground); }
+.scroll-hint { position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%);
+  color: var(--muted); font-size: 11px; letter-spacing: 0.3em; animation: hintpulse 2.4s ease infinite; }
+@keyframes hintpulse { 50% { opacity: 0.35; } }
+
+/* ============================================================
+   Scene 2 — one command / terminal in 3D
+   ============================================================ */
+#s2 .scene-inner { display: grid; grid-template-columns: 5fr 7fr; gap: clamp(32px, 5vw, 80px); align-items: center; }
+.term-wrap { perspective: 1400px; }
+.terminal {
+  background: var(--surface-1); border: 1px solid var(--hairline); border-radius: var(--radius);
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.3, 1);
+  will-change: transform;
+}
+.term-head { display: flex; align-items: center; gap: 6px; padding: 12px 16px;
+  border-bottom: 1px solid var(--hairline); font-size: 12px; }
+.term-dot { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--muted); }
+.term-title { margin: 0 auto; color: var(--muted); }
+.term-body { padding: 20px; font-size: clamp(13px, 1.15vw, 15px); line-height: 2.0; min-height: 176px; }
+.term-line { display: block; min-height: 2em; white-space: pre-wrap; }
+.term-line.ready { color: var(--diff-add); }
+
+/* ============================================================
+   Scene 3 — pipeline (pinned)
+   ============================================================ */
+#s3-wrap { height: 230vh; position: relative; }
+#s3 { position: sticky; top: 0; height: 100vh; display: flex; align-items: center; overflow: hidden; }
+.review-panel { background: color-mix(in oklab, var(--surface-1) 92%, transparent); }
+.review-panel .panel-header { display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; padding: 12px 16px 10px; border-bottom: 1px solid var(--hairline);
+  font-size: 13px; }
+.review-panel .panel-footer { display: flex; align-items: center; justify-content: space-between;
+  gap: 6px 16px; flex-wrap: wrap; padding: 10px 16px; border-top: 1px solid var(--hairline);
+  font-size: 12px; color: var(--muted); }
+.rp-body { padding: 6px 16px 10px; }
+.rp-step { display: flex; align-items: baseline; gap: 12px; padding: 10px 0; font-size: 14px;
+  border-top: 1px solid var(--hairline); color: var(--muted); transition: color 0.3s ease; }
+.rp-step:first-child { border-top: none; }
+.rp-step .g { width: 16px; flex: none; }
+.rp-step.run { color: var(--foreground); }
+.rp-step.run .g { color: var(--diff-hunk); }
+.rp-step.done { color: var(--foreground); }
+.rp-step.done .g { color: var(--diff-add); }
+.rp-step .t { margin-left: auto; color: var(--muted); font-size: 12px; opacity: 0; transition: opacity 0.3s ease; }
+.rp-step.done .t { opacity: 1; }
+#rp-findings { overflow: hidden; }
+.rp-find { display: flex; align-items: center; gap: 10px; padding: 7px 0 7px 28px; font-size: 13px;
+  opacity: 0; transform: translateY(6px); transition: opacity 0.4s ease, transform 0.4s ease; }
+.rp-find.on { opacity: 1; transform: none; }
+.rp-find .ft { color: var(--dim); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rp-find .fl { margin-left: auto; color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+.gaze-status { display: inline-flex; gap: 8px; align-items: center; color: var(--muted);
+  letter-spacing: 0.12em; font-size: 11px; text-transform: uppercase; }
+#rp-glyph { color: var(--muted); }
+#rp-glyph.run { color: var(--diff-hunk); }
+#rp-glyph.done { color: var(--diff-add); }
+
+/* ============================================================
+   Scene 4 — findings (light inversion)
+   ============================================================ */
+#s4 { padding: 12vh 0; }
+#s4 .ghost-word { top: -0.18em; right: -6vw; }
+.sev { display: inline-flex; align-items: center; height: 20px; padding: 0 8px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  border-radius: 0.125rem; border: 1px solid; flex: none; }
+.sev-blocker { background: var(--danger); color: var(--background); border-color: var(--danger); }
+.sev-high { color: var(--danger); border-color: var(--danger); background: color-mix(in oklab, var(--danger) 10%, transparent); }
+.sev-medium { color: var(--warning); border-color: var(--warning); background: color-mix(in oklab, var(--warning) 10%, transparent); }
+html[data-scene-theme="light"] .sev-high { color: #8c1d18; border-color: #8c1d18; background: #ffebe9; }
+html[data-scene-theme="light"] .sev-medium { color: #6f4700; border-color: #6f4700; background: #fff3c4; }
+.sev-low { color: var(--dim); border-color: var(--muted); }
+.sev-nit { color: var(--muted); border-color: var(--hairline); }
+html[data-scene-theme="light"] .sev-low { color: #4b5563; border-color: #57606a; background: #f6f8fa; }
+html[data-scene-theme="light"] .sev-nit { color: #4b5563; border-color: #6e7781; background: #ffffff; }
+.sev-legend { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 26px; }
+
+.findings-panel { margin-top: 44px; display: grid; grid-template-columns: 11fr 9fr;
+  background: var(--surface-1); border: 1px solid var(--hairline); border-radius: var(--radius); overflow: hidden; }
+.findings-list { border-right: 1px solid var(--hairline); display: flex; flex-direction: column; }
+.finding-row { flex: 1 1 auto; width: 100%; min-height: 46px; display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+  font-size: 13px; border-bottom: 1px solid var(--hairline); cursor: pointer;
+  transition: background-color 0.15s ease; border-left: 0; border-right: 0; border-top: 0;
+  background: transparent; color: inherit; font: inherit; text-align: left; }
+.finding-row:last-child { border-bottom: none; }
+.finding-row .title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--dim); }
+.finding-row .loc { margin-left: auto; color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+html[data-scene-theme="light"] .finding-row .title,
+html[data-scene-theme="light"] .fd-body,
+html[data-scene-theme="light"] .fd-tag { color: #4b5563; }
+html[data-scene-theme="light"] .finding-row .loc,
+html[data-scene-theme="light"] .findings-foot,
+html[data-scene-theme="light"] .fd-fix .fix-label { color: #57606a; }
+.finding-row[data-highlighted] { background: var(--selection); }
+.finding-row[data-highlighted] .title { color: var(--foreground); }
+.finding-detail { padding: 20px 22px; font-size: 13px; min-height: 340px; }
+html[data-scene-theme="light"] .finding-detail { color: #24292f; }
+.finding-detail .fd-title { font-weight: 700; font-size: 14px; }
+.fd-meta { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+.fd-tag { font-size: 10.5px; color: var(--dim); border: 1px solid var(--hairline); border-radius: 0.125rem; padding: 1px 7px; }
+.fd-body { color: var(--dim); margin-top: 14px; line-height: 1.7; }
+.fd-fix { margin-top: 14px; border: 1px solid var(--hairline); border-radius: var(--radius); font-size: 12.5px; overflow: hidden; }
+.fd-fix .fix-label { padding: 5px 10px; border-bottom: 1px solid var(--hairline);
+  color: var(--muted); font-size: 10.5px; letter-spacing: 0.18em; text-transform: uppercase; }
+.fd-fix pre { padding: 10px 12px; white-space: pre; overflow-x: auto; line-height: 1.6; font-family: var(--mono); }
+.fd-fix .add { color: color-mix(in oklab, var(--diff-add) 70%, var(--foreground)); }
+html[data-scene-theme="light"] .fd-fix .add { color: #1a7f37; }
+.fd-fix .rem { color: var(--diff-remove); }
+html[data-scene-theme="light"] .fd-fix .rem { color: #cf222e; }
+.findings-foot { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 12px;
+  padding: 9px 16px; border-top: 1px solid var(--hairline); font-size: 12px; color: var(--muted); }
+.kbd { display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--hairline); background: var(--selection); border-radius: 0.125rem;
+  padding: 1px 6px; font-size: 11px; min-width: 20px; color: var(--foreground); }
+
+/* ============================================================
+   Scene 6 — install / figlet
+   ============================================================ */
+#s6 .scene-inner { text-align: center; padding: 10vh 0 12vh; }
+#figlet { display: inline-block; text-align: left; font-size: clamp(6px, 1.35vw, 16px);
+  line-height: 1.25; white-space: pre; color: var(--foreground); user-select: none; }
+#figlet .fl { display: block; overflow: hidden; }
+#figlet .fl > span { display: block; transform: translateY(110%); transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1); }
+#s6.in #figlet .fl > span { transform: none; }
+#figlet .fl:nth-child(2) > span { transition-delay: 0.06s; }
+#figlet .fl:nth-child(3) > span { transition-delay: 0.12s; }
+#figlet .fl:nth-child(4) > span { transition-delay: 0.18s; }
+#figlet .fl:nth-child(5) > span { transition-delay: 0.24s; }
+#figlet .fl:nth-child(6) > span { transition-delay: 0.3s; }
+#s6 .note { margin-top: 18px; color: var(--muted); font-size: 13px; }
+.foot-links { margin-top: 56px; display: flex; justify-content: center; gap: 26px;
+  font-size: 12px; color: var(--muted); }
+.foot-links a:hover { color: var(--foreground); }
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (max-width: 920px) {
+  #s2 .scene-inner, .findings-panel { grid-template-columns: 1fr; }
+  .findings-list { border-right: none; border-bottom: 1px solid var(--hairline); }
+  #s3-wrap { height: auto; }
+  #s3 { position: relative; height: auto; padding: 18vh 0; }
+  .hud-tr { gap: 0; }
+  .hud-tr a { padding: 6px 5px; font-size: 11px; letter-spacing: 0.1em; }
+  .hud-bl { display: none; }
+}
+
+/* ============================================================
+   Reduced motion
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+  html { scroll-behavior: auto; }
+  .focus-text .ch { opacity: 1; filter: none; transform: none; animation: none; }
+  .mask-line > span, .reveal { transform: none; opacity: 1; transition: none; }
+  #figlet .fl > span { transform: none; transition: none; }
+  #reticle { display: none; }
+}
+
+/* Mobile refinements */
+@media (max-width: 700px) {
+  .gaze3d-head { flex-wrap: wrap; row-gap: 4px; }
+  .review-panel .panel-header { font-size: 12px; }
+  .rp-step .l { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rp-find .ft { max-width: 46vw; }
+}
+
+/* Mobile: native cursor (no reticle), compact finding rows */
+@media (max-width: 920px) {
+  #reticle { display: none !important; }
+  html.reticle-on,
+  html.reticle-on a,
+  html.reticle-on button { cursor: auto; }
+}
+@media (max-width: 700px) {
+  .finding-row .loc { display: none; }
+  .finding-detail { min-height: 0; }
+}
+
+/* Hero diff: restore breathing room over the compact contract defaults */
+.gaze-diff .diff-num { min-width: 40px; padding-right: 10px; }
+.gaze-diff .diff-marker { width: 22px; }
+.gaze-diff [data-row] { line-height: 1.6; padding-inline: 14px; }
+.gaze-diff { font-size: 13px; }
+/* The landing's global reset (unlayered) beats the package's @layer rules,
+   so the contract's own paddings are restated here for the hero. */
+.gaze-diff [data-slot="diff-view-caption"] { padding: 9px 14px; }
+.gaze-diff [data-slot="diff-view-rows"] { padding-block: 4px; }
+
+/* HUD logo: the figlet wordmark, scaled down */
+.hud-tl { padding: 0; }
+.logo-figlet { margin: 0; font-family: var(--mono); font-size: 4.2px; line-height: 1.2;
+  letter-spacing: 0; color: var(--foreground); white-space: pre; }
+@media (max-width: 920px) { .logo-figlet { font-size: 3.4px; } }

@@ -1,11 +1,13 @@
 /// <reference types="@chialab/vitest-axe/matchers" />
-import "@testing-library/jest-dom/vitest";
 import matchers from "@chialab/vitest-axe";
-import { cleanup } from "@testing-library/react";
-import { afterEach, expect } from "vitest";
+import { expect } from "vitest";
 
 expect.extend(matchers);
 
-afterEach(() => {
-  cleanup();
+// jsdom has no canvas backend and logs a "Not implemented" error whenever
+// getContext is called. Return null instead so the field cleanly no-ops.
+Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
+  value: () => null,
+  writable: true,
+  configurable: true,
 });

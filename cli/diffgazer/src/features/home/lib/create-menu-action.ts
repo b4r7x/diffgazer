@@ -43,6 +43,7 @@ export function createHomeMenuAction({
             screen: "review",
             reviewId: activeSession.reviewId,
             mode: activeSession.mode,
+            live: true,
           });
         } else {
           navigate({ screen: "review" });

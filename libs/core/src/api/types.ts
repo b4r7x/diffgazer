@@ -47,6 +47,7 @@ export interface ApiClient {
     path: string,
     params?: Record<string, string>,
     schema?: ResponseValidator<T>,
+    options?: Omit<RequestOptions, "body" | "params">,
   ) => Promise<T>;
   post: <T>(
     path: string,

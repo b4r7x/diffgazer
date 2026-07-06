@@ -1,3 +1,4 @@
+import { FooterProvider } from "@diffgazer/core/footer";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { CliThemeProvider } from "../../../theme/provider";
@@ -29,7 +30,9 @@ describe("ApiKeyMissingView (TUI)", () => {
     const onBack = vi.fn();
     const { stdin, lastFrame } = render(
       <CliThemeProvider initialTheme="dark">
-        <ApiKeyMissingView provider="gemini" onGoToSettings={onGoToSettings} onBack={onBack} />
+        <FooterProvider initialShortcuts={[]}>
+          <ApiKeyMissingView provider="gemini" onGoToSettings={onGoToSettings} onBack={onBack} />
+        </FooterProvider>
       </CliThemeProvider>,
     );
 

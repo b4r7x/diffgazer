@@ -1,4 +1,6 @@
+import { usePageFooter } from "@diffgazer/core/footer";
 import { getApiKeyMissingCopy } from "@diffgazer/core/review";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Box, useInput } from "ink";
 import { useState } from "react";
 import { Button } from "../../../components/ui/button";
@@ -12,6 +14,12 @@ export interface ApiKeyMissingViewProps {
   onBack: () => void;
 }
 
+const ACTION_SHORTCUTS: Shortcut[] = [
+  { key: "Left/Right", label: "Actions" },
+  { key: "Enter", label: "Select" },
+];
+const BACK_SHORTCUTS: Shortcut[] = [{ key: "Esc", label: "Back" }];
+
 export function ApiKeyMissingView({
   provider,
   missingModel = false,
@@ -20,6 +28,7 @@ export function ApiKeyMissingView({
 }: ApiKeyMissingViewProps) {
   const { title, body } = getApiKeyMissingCopy({ provider, missingModel });
   const [buttonIndex, setButtonIndex] = useState(0);
+  usePageFooter({ shortcuts: ACTION_SHORTCUTS, rightShortcuts: BACK_SHORTCUTS });
 
   useInput((_input, key) => {
     if (key.leftArrow || key.upArrow) {

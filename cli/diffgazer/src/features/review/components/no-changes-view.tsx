@@ -1,4 +1,6 @@
+import { usePageFooter } from "@diffgazer/core/footer";
 import { getNoChangesCopy } from "@diffgazer/core/review";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { Box, useInput } from "ink";
 import { useState } from "react";
@@ -12,9 +14,16 @@ export interface NoChangesViewProps {
   onBack: () => void;
 }
 
+const ACTION_SHORTCUTS: Shortcut[] = [
+  { key: "Left/Right", label: "Actions" },
+  { key: "Enter", label: "Select" },
+];
+const BACK_SHORTCUTS: Shortcut[] = [{ key: "Esc", label: "Back" }];
+
 export function NoChangesView({ mode, onSwitchMode, onBack }: NoChangesViewProps) {
   const { title, message, switchLabel } = getNoChangesCopy(mode);
   const [buttonIndex, setButtonIndex] = useState(0);
+  usePageFooter({ shortcuts: ACTION_SHORTCUTS, rightShortcuts: BACK_SHORTCUTS });
 
   useInput((_input, key) => {
     if (key.leftArrow || key.upArrow) {

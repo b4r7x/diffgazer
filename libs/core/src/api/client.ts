@@ -105,8 +105,9 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       path: string,
       params?: Record<string, string>,
       schema?: ResponseValidator<T>,
+      options?: Omit<RequestOptions, "body" | "params">,
     ): Promise<T> => {
-      const response = await send("GET", path, { params });
+      const response = await send("GET", path, { params, ...options });
       return parse<T>(response, schema);
     },
     post: async <T>(

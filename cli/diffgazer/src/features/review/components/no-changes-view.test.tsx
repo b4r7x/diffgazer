@@ -1,3 +1,4 @@
+import { FooterProvider } from "@diffgazer/core/footer";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { CliThemeProvider } from "../../../theme/provider";
@@ -27,7 +28,9 @@ describe("NoChangesView (TUI)", () => {
   test("renders the shared no-diff copy for file mode", () => {
     const { lastFrame } = render(
       <CliThemeProvider initialTheme="dark">
-        <NoChangesView mode="files" onSwitchMode={vi.fn()} onBack={vi.fn()} />
+        <FooterProvider initialShortcuts={[]}>
+          <NoChangesView mode="files" onSwitchMode={vi.fn()} onBack={vi.fn()} />
+        </FooterProvider>
       </CliThemeProvider>,
     );
     const frame = lastFrame() ?? "";
@@ -42,7 +45,9 @@ describe("NoChangesView (TUI)", () => {
     const onBack = vi.fn();
     const { stdin } = render(
       <CliThemeProvider initialTheme="dark">
-        <NoChangesView mode="files" onSwitchMode={onSwitchMode} onBack={onBack} />
+        <FooterProvider initialShortcuts={[]}>
+          <NoChangesView mode="files" onSwitchMode={onSwitchMode} onBack={onBack} />
+        </FooterProvider>
       </CliThemeProvider>,
     );
 

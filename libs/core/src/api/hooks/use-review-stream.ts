@@ -15,6 +15,7 @@ import { useApi } from "./context.js";
 
 export interface ReviewStreamState extends ReviewState {
   reviewId: string | null;
+  hasCompleted: boolean;
   /** Non-blocking server notices (e.g. the streamed event-cap warning). */
   notices: string[];
 }
@@ -28,6 +29,7 @@ function createInitialStreamState(): ReviewStreamState {
   return {
     ...createInitialReviewState(),
     reviewId: null,
+    hasCompleted: false,
     notices: [],
   };
 }
@@ -40,16 +42,28 @@ function streamReducer(state: ReviewStreamState, action: StreamAction): ReviewSt
       return { ...state, notices: [...state.notices, action.notice] };
     case "START":
     case "RESET":
-      return { ...reviewReducer(state, action), reviewId: null, notices: [] };
+      return { ...reviewReducer(state, action), reviewId: null, hasCompleted: false, notices: [] };
   }
 
   if (action.type === "EVENT" && action.event.type === "review_started") {
     const newState = reviewReducer(state, action);
-    return { ...newState, reviewId: action.event.reviewId, notices: state.notices };
+    return {
+      ...newState,
+      reviewId: action.event.reviewId,
+      hasCompleted: state.hasCompleted,
+      notices: state.notices,
+    };
   }
 
   const next = reviewReducer(state, action);
-  return next === state ? state : { ...next, reviewId: state.reviewId, notices: state.notices };
+  return next === state
+    ? state
+    : {
+        ...next,
+        reviewId: state.reviewId,
+        hasCompleted: action.type === "COMPLETE_WITH_RESULT" ? true : state.hasCompleted,
+        notices: state.notices,
+      };
 }
 
 export function useReviewStream() {

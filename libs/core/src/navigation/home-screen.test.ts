@@ -2,11 +2,36 @@ import { describe, expect, it } from "vitest";
 import { resolveHomeMenuActivation, selectResumableSession } from "./home-screen.js";
 
 describe("selectResumableSession", () => {
-  it("prefers the unstaged session over the staged one", () => {
+  it("selects a newer staged session over an older unstaged session", () => {
     expect(
       selectResumableSession(
-        { reviewId: "rev-unstaged", mode: "unstaged" },
-        { reviewId: "rev-staged", mode: "staged" },
+        {
+          reviewId: "rev-unstaged",
+          mode: "unstaged",
+          startedAt: "2026-01-01T00:00:00.000Z",
+        },
+        {
+          reviewId: "rev-staged",
+          mode: "staged",
+          startedAt: "2026-01-01T00:01:00.000Z",
+        },
+      ),
+    ).toEqual({ reviewId: "rev-staged", mode: "staged" });
+  });
+
+  it("selects a newer unstaged session over an older staged session", () => {
+    expect(
+      selectResumableSession(
+        {
+          reviewId: "rev-unstaged",
+          mode: "unstaged",
+          startedAt: "2026-01-01T00:01:00.000Z",
+        },
+        {
+          reviewId: "rev-staged",
+          mode: "staged",
+          startedAt: "2026-01-01T00:00:00.000Z",
+        },
       ),
     ).toEqual({ reviewId: "rev-unstaged", mode: "unstaged" });
   });
@@ -23,7 +48,12 @@ describe("selectResumableSession", () => {
   });
 
   it("rejects a session whose mode is not a known review mode", () => {
-    expect(selectResumableSession({ reviewId: "rev", mode: "bogus" }, null)).toBeNull();
+    expect(
+      selectResumableSession(
+        { reviewId: "rev-invalid", mode: "bogus", startedAt: "2026-01-01T00:01:00.000Z" },
+        { reviewId: "rev-staged", mode: "staged", startedAt: "2026-01-01T00:00:00.000Z" },
+      ),
+    ).toEqual({ reviewId: "rev-staged", mode: "staged" });
   });
 });
 

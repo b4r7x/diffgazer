@@ -1,10 +1,12 @@
+import { usePageFooter } from "@diffgazer/core/footer";
 import {
   convertAgentEventsToLogEntries,
   mapStepsToProgressData,
   sanitizeTerminalText,
 } from "@diffgazer/core/review";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
-import { Box } from "ink";
+import { Box, useInput } from "ink";
 import { type ReactElement, useEffect, useRef } from "react";
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
@@ -20,35 +22,86 @@ import { ReviewSummaryView } from "./summary-view";
 interface ReviewContainerProps {
   mode?: ReviewMode;
   reviewId?: string;
+  allowResumeWithoutSetup?: boolean;
 }
 
-export function ReviewContainer({ mode, reviewId }: ReviewContainerProps): ReactElement {
+const BACK_SHORTCUTS: Shortcut[] = [{ key: "Esc", label: "Back" }];
+
+function ReviewLoadingView({ message }: { message: string }): ReactElement {
+  usePageFooter({ shortcuts: [] });
+
+  return (
+    <Box>
+      <Spinner label={message} />
+    </Box>
+  );
+}
+
+function ReviewTerminalErrorView({
+  error,
+  onBack,
+}: {
+  error: string;
+  onBack: () => void;
+}): ReactElement {
+  usePageFooter({ shortcuts: [], rightShortcuts: BACK_SHORTCUTS });
+  useInput(
+    (_input, key) => {
+      if (key.escape) {
+        onBack();
+      }
+    },
+    { isActive: true },
+  );
+
+  return (
+    <Box flexDirection="column" gap={1}>
+      <Callout variant="error">
+        <Callout.Title>Review failed</Callout.Title>
+        <Callout.Content>{sanitizeTerminalText(error)}</Callout.Content>
+      </Callout>
+      <Box gap={2}>
+        <Button variant="secondary" isActive onPress={onBack}>
+          Back
+        </Button>
+      </Box>
+    </Box>
+  );
+}
+
+export function ReviewContainer({
+  mode,
+  reviewId,
+  allowResumeWithoutSetup = false,
+}: ReviewContainerProps): ReactElement {
   const { navigate, goBack } = useNavigation();
   const { state, start, cancel, goToSummary, goToResults, reset } = useReviewLifecycle({
     mode,
     reviewId,
+    allowResumeWithoutSetup,
   });
 
   function handleGateBack() {
-    reset();
+    reset({ clearActiveSession: true });
     goBack();
+  }
+
+  function handleRunningBack() {
+    reset();
+    navigate({ screen: "home" });
   }
 
   const hasStarted = useRef(false);
 
   useEffect(() => {
-    if (mode && !reviewId && !hasStarted.current) {
+    if (mode && !reviewId && state.gate === "running" && !hasStarted.current) {
       hasStarted.current = true;
-      start(mode);
+      void start(mode);
     }
-  }, [mode, reviewId, start]);
+  }, [mode, reviewId, start, state.gate]);
 
   if (state.gate === "loading") {
-    return (
-      <Box>
-        <Spinner label={state.loadingMessage ?? "Loading review..."} />
-      </Box>
-    );
+    return <ReviewLoadingView message={state.loadingMessage ?? "Loading review..."} />;
   }
 
   if (state.gate === "unconfigured") {
@@ -72,37 +125,27 @@ export function ReviewContainer({ mode, reviewId }: ReviewContainerProps): React
       <NoChangesView
         mode={currentMode}
         onSwitchMode={() => {
-          reset();
-          start(otherMode);
+          reset({ clearActiveSession: true });
+          void start(otherMode);
         }}
         onBack={handleGateBack}
       />
     );
   }
 
-  if (state.error && state.phase !== "streaming" && state.phase !== "completing") {
+  if (state.gate === "terminal-error") {
     return (
-      <Box flexDirection="column" gap={1}>
-        <Callout variant="error">
-          <Callout.Title>Review failed</Callout.Title>
-          <Callout.Content>{sanitizeTerminalText(state.error)}</Callout.Content>
-        </Callout>
-        <Box gap={2}>
-          <Button variant="secondary" isActive onPress={handleGateBack}>
-            Back
-          </Button>
-        </Box>
-      </Box>
+      <ReviewTerminalErrorView error={state.error ?? "Review failed."} onBack={handleGateBack} />
     );
+  }
+
+  if (state.error && state.phase !== "streaming" && state.phase !== "completing") {
+    return <ReviewTerminalErrorView error={state.error} onBack={handleGateBack} />;
   }
 
   switch (state.phase) {
     case "loading":
-      return (
-        <Box>
-          <Spinner label="Starting review..." />
-        </Box>
-      );
+      return <ReviewLoadingView message="Starting review..." />;
 
     case "streaming":
     case "completing":
@@ -124,6 +167,7 @@ export function ReviewContainer({ mode, reviewId }: ReviewContainerProps): React
               navigate({ screen: "home" });
             });
           }}
+          onBack={state.phase === "streaming" ? handleRunningBack : undefined}
           issuesFound={state.issues.length}
           startedAt={state.startedAt}
           reviewId={state.reviewId}

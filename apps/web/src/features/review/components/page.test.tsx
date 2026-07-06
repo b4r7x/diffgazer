@@ -18,17 +18,24 @@ type ReviewQueryState = {
   isSuccess: boolean;
 };
 
-const { mockBack, mockNavigate, mockUseReview, mockUseReviewLifecycleBase, routeState } =
-  vi.hoisted(() => ({
-    mockBack: vi.fn(),
-    mockNavigate: vi.fn(),
-    mockUseReview: vi.fn(),
-    mockUseReviewLifecycleBase: vi.fn(),
-    routeState: {
-      params: {} as { reviewId?: string },
-      search: {} as { mode?: ReviewMode; live?: boolean },
-    },
-  }));
+const {
+  mockBack,
+  mockClearActiveSession,
+  mockNavigate,
+  mockUseReview,
+  mockUseReviewLifecycleBase,
+  routeState,
+} = vi.hoisted(() => ({
+  mockBack: vi.fn(),
+  mockClearActiveSession: vi.fn(),
+  mockNavigate: vi.fn(),
+  mockUseReview: vi.fn(),
+  mockUseReviewLifecycleBase: vi.fn(),
+  routeState: {
+    params: {} as { reviewId?: string },
+    search: {} as { mode?: ReviewMode; live?: boolean },
+  },
+}));
 
 // Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 vi.mock("@tanstack/react-router", () => ({
@@ -46,33 +53,46 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 // Boundary mock: api/hooks is the HTTP-data fetch boundary; we provide canned data and assert on the resulting UI.
-vi.mock("@diffgazer/core/api/hooks", () => ({
-  configQueries: {
-    all: () => ["config"],
-  },
-  useActivateProvider: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
-  useDeleteProviderCredentials: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
-  useInit: () => ({
-    data: {
-      config: { provider: "gemini", model: "gemini-2.5-flash" },
-      providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
-      project: { projectId: "project-1", path: "/repo", trust: null },
-      setup: { isConfigured: true, isReady: true, missing: [] },
+vi.mock("@diffgazer/core/api/hooks", async () => {
+  const { makeCreateReviewResponse } = await vi.importActual<
+    typeof import("@diffgazer/core/testing/factories")
+  >("@diffgazer/core/testing/factories");
+
+  return {
+    configQueries: {
+      all: () => ["config"],
     },
-    error: null,
-    isLoading: false,
-  }),
-  useProviderStatus: () => ({
-    data: [{ provider: "gemini", hasApiKey: true, isActive: true }],
-    error: null,
-    isLoading: false,
-  }),
-  useReview: mockUseReview,
-  useReviewContext: () => ({ data: null }),
-  useReviewLifecycleBase: mockUseReviewLifecycleBase,
-  useCreateReview: () => ({ mutateAsync: vi.fn(async () => ({ reviewId: "rev-alternate" })) }),
-  useSaveConfig: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
-}));
+    useActivateProvider: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
+    useDeleteProviderCredentials: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
+    useInit: () => ({
+      data: {
+        config: { provider: "gemini", model: "gemini-2.5-flash" },
+        providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
+        project: { projectId: "project-1", path: "/repo", trust: null },
+        setup: { isConfigured: true, isReady: true, missing: [] },
+      },
+      error: null,
+      isLoading: false,
+    }),
+    useProviderStatus: () => ({
+      data: [{ provider: "gemini", hasApiKey: true, isActive: true }],
+      error: null,
+      isLoading: false,
+    }),
+    useReview: mockUseReview,
+    useReviewContext: () => ({ data: null }),
+    useReviewLifecycleBase: mockUseReviewLifecycleBase,
+    useReviewSessionCache: () => ({
+      clearActiveSession: mockClearActiveSession,
+    }),
+    useCreateReview: () => ({
+      mutateAsync: vi.fn(async ({ mode }: { mode: ReviewMode }) =>
+        makeCreateReviewResponse({ reviewId: "rev-alternate", session: { mode } }),
+      ),
+    }),
+    useSaveConfig: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
+  };
+});
 
 import { ReviewPage } from "./page";
 
@@ -138,6 +158,7 @@ function resetReviewMocks() {
   routeState.params = {};
   routeState.search = {};
   mockBack.mockReset();
+  mockClearActiveSession.mockReset();
   mockNavigate.mockReset();
   mockNavigate.mockResolvedValue(undefined);
   mockUseReview.mockReset();
@@ -388,6 +409,7 @@ describe("ReviewPage stale live session falls back to saved review", () => {
     // Falls back to saved review results
     expect(await screen.findByText("Review #3333")).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /saved fallback issue/i })).toBeInTheDocument();
+    expect(mockClearActiveSession).toHaveBeenCalledWith("staged", STALE_REVIEW_ID);
     expect(mockNavigate).not.toHaveBeenCalledWith({ to: "/" });
   });
 
@@ -411,6 +433,7 @@ describe("ReviewPage stale live session falls back to saved review", () => {
     // Should show exactly one error toast and navigate home -- not loop
     const errorToast = await screen.findByRole("alert");
     expect(errorToast).toHaveTextContent(/live session has expired/i);
+    expect(mockClearActiveSession).toHaveBeenCalledWith("staged", STALE_REVIEW_ID);
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
     });
@@ -464,6 +487,7 @@ describe("ReviewPage reviewId changes", () => {
     expect(
       await screen.findByText(`Review Complete ${formatRunId(FIRST_REVIEW_ID)}`),
     ).toBeInTheDocument();
+    expect(mockClearActiveSession).toHaveBeenCalledWith("unstaged", FIRST_REVIEW_ID);
 
     routeState.params = { reviewId: SECOND_REVIEW_ID };
     mockUseReviewLifecycleBase.mockReturnValue({
@@ -550,6 +574,7 @@ describe("ReviewPage live review phase transitions", () => {
     expect(
       await screen.findByText(`Review Complete ${formatRunId(LIVE_REVIEW_ID)}`),
     ).toBeInTheDocument();
+    expect(mockClearActiveSession).toHaveBeenCalledWith("unstaged", LIVE_REVIEW_ID);
     expect(screen.getByRole("button", { name: /view results/i })).toBeInTheDocument();
   });
 

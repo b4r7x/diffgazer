@@ -48,7 +48,7 @@ only service with a public path contract under `/r/**`.
 |---|---|---|---|---|
 | `r.b4r7.dev` | registry | 8080 | `ghcr.io/b4r7x/diffgazer-registry:prod` | Static JSON (shadcn registry) |
 | `docs.b4r7.dev` | docs | 3000 | `ghcr.io/b4r7x/diffgazer-docs:prod` | Node.js SSR (TanStack Start + Nitro) |
-| `diffgazer.b4r7.dev` | landing | 8080 | `ghcr.io/b4r7x/diffgazer-landing:prod` | Static SPA (Vite + React) |
+| `diffgazer.b4r7.dev` | landing | 8080 | `ghcr.io/b4r7x/diffgazer-landing:prod` | Static site (Vite + vanilla TS) |
 
 ---
 

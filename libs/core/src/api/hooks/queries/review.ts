@@ -24,7 +24,7 @@ export const reviewQueries = {
   activeSession: (api: BoundApi, mode?: ReviewMode) =>
     queryOptions({
       queryKey: [...reviewQueries.all(), "active-session", mode] as const,
-      queryFn: () => api.getActiveReviewSession(mode),
+      queryFn: ({ signal }) => api.getActiveReviewSession(mode, signal),
       staleTime: 0,
     }),
 

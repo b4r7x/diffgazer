@@ -1,12 +1,16 @@
 import { isApiError } from "@diffgazer/core/api";
 import type { ReviewStreamState } from "@diffgazer/core/api/hooks";
-import { useCreateReview, useReviewLifecycleBase } from "@diffgazer/core/api/hooks";
+import {
+  useCreateReview,
+  useReviewLifecycleBase,
+  useReviewSessionCache,
+} from "@diffgazer/core/api/hooks";
 import { sessionTerminationCopy } from "@diffgazer/core/review";
 import type { LensStat } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue, ReviewMode, ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { useEffectEvent } from "react";
+import { useEffect } from "react";
 import { useConfigData } from "@/hooks/use-config";
 
 function getAlternateReviewMode(mode: ReviewMode): ReviewMode {
@@ -56,41 +60,59 @@ export function useReviewLifecycle({
   const params = useParams({ strict: false });
   const { isConfigured, provider, model, isLoading: configLoading } = useConfigData();
   const createReview = useCreateReview();
+  const reviewSessionCache = useReviewSessionCache();
+
+  function clearActiveSession(reviewId: string | null | undefined) {
+    if (reviewId) {
+      reviewSessionCache.clearActiveSession(mode, reviewId);
+    }
+  }
 
   const base = useReviewLifecycleBase({
     configLoading,
     isConfigured,
     reviewId: params.reviewId,
-    onComplete: () => emitComplete(),
+    onStreamComplete: () => clearActiveSession(base.stream.state.reviewId ?? params.reviewId),
+    onComplete: emitComplete,
     onNotFoundInSession: (reviewId: string) => emitStreamNotFound(reviewId),
     onStaleSession: (code) => emitStaleSession(code),
   });
+  const activeReviewId = base.stream.state.reviewId ?? params.reviewId ?? null;
 
-  const emitComplete = useEffectEvent(() => {
+  useEffect(() => {
+    if (base.checks.isNoDiffError && activeReviewId) {
+      reviewSessionCache.clearActiveSession(mode, activeReviewId);
+    }
+  }, [base.checks.isNoDiffError, activeReviewId, mode, reviewSessionCache]);
+
+  function emitComplete() {
     const s = base.stream.state;
+    clearActiveSession(s.reviewId ?? activeReviewId);
     onComplete?.({
       issues: s.issues,
       reviewId: s.reviewId ?? null,
       ...extractOrchestratorStats(s),
     });
-  });
+  }
 
-  const emitStreamNotFound = useEffectEvent((reviewId: string) => {
+  function emitStreamNotFound(reviewId: string) {
+    clearActiveSession(reviewId);
     if (onStreamNotFound) {
       onStreamNotFound(reviewId);
     } else {
       navigate({ to: "/" });
     }
-  });
+  }
 
-  const emitStaleSession = useEffectEvent((code: Parameters<typeof sessionTerminationCopy>[0]) => {
+  function emitStaleSession(code: Parameters<typeof sessionTerminationCopy>[0]) {
     const copy = sessionTerminationCopy(code);
+    clearActiveSession(activeReviewId);
     toast.error(copy.title, { message: copy.message });
     navigate({ to: "/" });
-  });
+  }
 
   const cancelOnServer = (): Promise<string | null> =>
-    base.stream.cancel(base.stream.state.reviewId ?? null);
+    base.stream.cancel(base.stream.state.reviewId ?? params.reviewId ?? null);
 
   const handleCancel = () => {
     void (async () => {
@@ -99,13 +121,17 @@ export function useReviewLifecycle({
         toast.error("Cancel failed", { message: error });
         return;
       }
+      clearActiveSession(activeReviewId);
       navigate({ to: "/" });
     })();
   };
 
-  // Leaves the review screen without touching the server session: the run keeps
-  // streaming server-side and stays resumable from home's "Resume Last Review".
+  // Leaves a running review without touching the server session, so it remains
+  // resumable from home's "Resume Last Review".
   const handleBack = () => {
+    if (base.checks.isTerminalStreamError) {
+      clearActiveSession(activeReviewId);
+    }
     navigate({ to: "/" });
   };
 
@@ -115,14 +141,24 @@ export function useReviewLifecycle({
 
   const handleSetupProvider = () => {
     void (async () => {
-      await cancelOnServer();
+      const error = await cancelOnServer();
+      if (error) {
+        toast.error("Cancel failed", { message: error });
+        return;
+      }
+      clearActiveSession(activeReviewId);
       navigate({ to: "/settings/providers" });
     })();
   };
 
   const handleSwitchMode = () => {
     void (async () => {
-      await cancelOnServer();
+      const cancelError = await cancelOnServer();
+      if (cancelError) {
+        toast.error("Cancel failed", { message: cancelError });
+        return;
+      }
+      clearActiveSession(activeReviewId);
       const alternateMode = getAlternateReviewMode(mode);
       try {
         const { reviewId } = await createReview.mutateAsync({ mode: alternateMode });

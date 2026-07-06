@@ -9,21 +9,44 @@ interface ResumableSession {
   mode: ResumableMode;
 }
 
-/**
- * Selects the session to resume, preferring the unstaged session over the
- * staged one and validating that the reported mode is a known review mode.
- */
-export function selectResumableSession(
-  unstagedSession: { reviewId: string; mode: string } | null | undefined,
-  stagedSession: { reviewId: string; mode: string } | null | undefined,
-): ResumableSession | null {
-  const preferred = unstagedSession ?? stagedSession;
-  if (!preferred) {
+interface ResumableSessionCandidate {
+  reviewId: string;
+  mode: string;
+  startedAt?: string;
+}
+
+interface RankedResumableSession extends ResumableSession {
+  startedAtTime: number;
+}
+
+function toRankedResumableSession(
+  session: ResumableSessionCandidate | null | undefined,
+): RankedResumableSession | null {
+  if (!session || (session.mode !== "unstaged" && session.mode !== "staged")) {
     return null;
   }
-  return preferred.mode === "unstaged" || preferred.mode === "staged"
-    ? { reviewId: preferred.reviewId, mode: preferred.mode }
-    : null;
+
+  const startedAtTime = session.startedAt ? Date.parse(session.startedAt) : 0;
+  return {
+    reviewId: session.reviewId,
+    mode: session.mode,
+    startedAtTime: Number.isNaN(startedAtTime) ? 0 : startedAtTime,
+  };
+}
+
+export function selectResumableSession(
+  unstagedSession: ResumableSessionCandidate | null | undefined,
+  stagedSession: ResumableSessionCandidate | null | undefined,
+): ResumableSession | null {
+  const candidates = [unstagedSession, stagedSession]
+    .map(toRankedResumableSession)
+    .filter((session): session is RankedResumableSession => session !== null)
+    .sort((a, b) => b.startedAtTime - a.startedAtTime);
+  const newest = candidates[0];
+  if (!newest) {
+    return null;
+  }
+  return { reviewId: newest.reviewId, mode: newest.mode };
 }
 
 export type NavigableMenuAction = Extract<MenuAction, "history" | "settings" | "help">;

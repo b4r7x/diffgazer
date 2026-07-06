@@ -233,8 +233,17 @@ describe("createReviewSession", () => {
     trackSessionWithRunner(result.value.reviewId);
     const session = getSession(result.value.reviewId);
     expect(session).toBeDefined();
+    expect(result.value.session).toBe(session);
     expect(session?.isReady).toBe(true);
     expect(session?.mode).toBe("unstaged");
+    expect(
+      getActiveSessionForProject(projectRoot, {
+        headCommit: "abc123",
+        statusHash: "hash123",
+        statusHashKind: "full",
+        mode: "unstaged",
+      }),
+    ).toBe(result.value.session);
   });
 
   it("does not reuse an existing session when reviewConfigKey differs", async () => {
@@ -273,16 +282,17 @@ describe("createReviewSession", () => {
   });
 
   it("returns the existing session when a matching ready session exists", async () => {
+    const reviewConfigKey = buildReviewConfigKey({
+      lenses: ["correctness"],
+      minSeverity: "low",
+    });
     const existing = createSession("existing-dedup", {
       projectPath: projectRoot,
       headCommit: "abc123",
       statusHash: "hash123",
       statusHashKind: "full" as const,
       mode: "unstaged",
-      reviewConfigKey: buildReviewConfigKey({
-        lenses: ["correctness"],
-        minSeverity: "low",
-      }),
+      reviewConfigKey,
     });
     trackSession(existing.reviewId);
     markReady(existing.reviewId);
@@ -295,6 +305,17 @@ describe("createReviewSession", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.reviewId).toBe("existing-dedup");
+    expect(result.value.session).toBe(existing);
+    expect(
+      getActiveSessionForProject(projectRoot, {
+        headCommit: "abc123",
+        statusHash: "hash123",
+        statusHashKind: "full",
+        mode: "unstaged",
+        scopeKey: "",
+        reviewConfigKey,
+      }),
+    ).toBe(result.value.session);
   });
 
   it("returns an error when getHeadCommit fails", async () => {

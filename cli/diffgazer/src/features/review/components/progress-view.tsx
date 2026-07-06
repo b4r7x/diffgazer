@@ -11,7 +11,7 @@ import type {
   ProgressStepData,
   Shortcut,
 } from "@diffgazer/core/schemas/presentation";
-import { Box, Text } from "ink";
+import { Box, Text, useInput } from "ink";
 import { type ReactElement, useEffect, useState } from "react";
 import { ProgressList } from "../../../components/shared/progress/list";
 import { Button } from "../../../components/ui/button";
@@ -33,6 +33,7 @@ export interface ReviewProgressViewProps {
   error: string | null;
   notices: string[];
   onCancel?: () => void;
+  onBack?: () => void;
   onViewResults?: () => void;
   issuesFound: number;
   startedAt: Date | null;
@@ -40,8 +41,9 @@ export interface ReviewProgressViewProps {
   contextSnapshot?: ReviewContextResponse | null;
 }
 
-const STREAMING_SHORTCUTS: Shortcut[] = [];
+const STREAMING_SHORTCUTS: Shortcut[] = [{ key: "Enter", label: "Cancel" }];
 const COMPLETING_SHORTCUTS: Shortcut[] = [{ key: "Enter", label: "View Results" }];
+const BACK_SHORTCUTS: Shortcut[] = [{ key: "Esc", label: "Back" }];
 
 function getResponsiveWidth(
   isWide: boolean,
@@ -53,6 +55,19 @@ function getResponsiveWidth(
   return widths.narrow;
 }
 
+function getProgressShortcuts({
+  isStreaming,
+  hasCancel,
+  hasViewResults,
+}: {
+  isStreaming: boolean;
+  hasCancel: boolean;
+  hasViewResults: boolean;
+}): Shortcut[] {
+  if (isStreaming) return hasCancel ? STREAMING_SHORTCUTS : [];
+  return hasViewResults ? COMPLETING_SHORTCUTS : [];
+}
+
 export function ReviewProgressView({
   progressSteps,
   agents,
@@ -62,6 +77,7 @@ export function ReviewProgressView({
   error,
   notices,
   onCancel,
+  onBack,
   onViewResults,
   issuesFound,
   startedAt,
@@ -72,6 +88,15 @@ export function ReviewProgressView({
   const { isMedium, isWide } = useResponsive();
   const [completedAt, setCompletedAt] = useState<number | null>(null);
 
+  useInput(
+    (_input, key) => {
+      if (key.escape) {
+        onBack?.();
+      }
+    },
+    { isActive: Boolean(onBack) },
+  );
+
   useEffect(() => {
     if (isStreaming) {
       setCompletedAt(null);
@@ -80,8 +105,15 @@ export function ReviewProgressView({
     setCompletedAt((current) => current ?? Date.now());
   }, [isStreaming]);
 
+  const shortcuts = getProgressShortcuts({
+    isStreaming,
+    hasCancel: Boolean(onCancel),
+    hasViewResults: Boolean(onViewResults),
+  });
+
   usePageFooter({
-    shortcuts: isStreaming ? STREAMING_SHORTCUTS : COMPLETING_SHORTCUTS,
+    shortcuts,
+    rightShortcuts: onBack ? BACK_SHORTCUTS : [],
   });
 
   const elapsed = startedAt ? (completedAt ?? Date.now()) - startedAt.getTime() : 0;
@@ -176,10 +208,15 @@ export function ReviewProgressView({
         </Box>
       ) : null}
       {isStreaming && onCancel ? (
-        <Box marginTop={1}>
+        <Box marginTop={1} gap={2}>
           <Button variant="destructive" isActive onPress={onCancel}>
             Cancel
           </Button>
+          {onBack ? (
+            <Button variant="secondary" onPress={onBack}>
+              Back
+            </Button>
+          ) : null}
         </Box>
       ) : null}
       {!isStreaming && onViewResults ? (

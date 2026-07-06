@@ -19,7 +19,7 @@
     },
     "@diffgazer/landing#build": {
       "dependsOn": ["^build"],
-      "env": ["VITE_DOCS_ORIGIN"],
+      "env": ["VITE_DOCS_ORIGIN", "VITE_GITHUB_URL"],
       "outputs": ["dist/**"]
     },
     "@diffgazer/web#build": {

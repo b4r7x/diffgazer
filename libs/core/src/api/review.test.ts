@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createApiClient } from "./client.js";
 import {
   type CreateReviewOptions,
   createReview,
@@ -6,6 +7,7 @@ import {
   resumeReviewStream,
 } from "./review.js";
 import { createMockClient as createClient } from "./test-helpers.js";
+import { isApiError } from "./types.js";
 
 // Compile-time contract: CreateReviewOptions.lenses/profile accept only the
 // domain enums, not arbitrary strings.
@@ -123,9 +125,16 @@ describe("resumeReviewStream", () => {
 });
 
 describe("createReview", () => {
-  it("creates a review with the supplied mode, lenses, profile, and files and returns the new id", async () => {
+  it("creates a review with the supplied mode, lenses, profile, and files and returns the new session", async () => {
     const client = createClient();
-    vi.mocked(client.post).mockResolvedValue({ reviewId: "new-review-id" });
+    const session = {
+      reviewId: "11111111-1111-4111-8111-111111111111",
+      mode: "staged",
+      startedAt: "2026-01-01T00:00:00.000Z",
+      headCommit: "abc123",
+      statusHash: "hash123",
+    };
+    vi.mocked(client.post).mockResolvedValue({ reviewId: session.reviewId, session });
 
     const result = await createReview(client, {
       mode: "staged",
@@ -134,7 +143,7 @@ describe("createReview", () => {
       files: ["a.ts"],
     });
 
-    expect(result).toEqual({ reviewId: "new-review-id" });
+    expect(result).toEqual({ reviewId: session.reviewId, session });
     expect(client.post).toHaveBeenCalledWith(
       "/api/review/reviews",
       {
@@ -146,15 +155,30 @@ describe("createReview", () => {
       undefined,
       expect.any(Function),
     );
+
+    const validate = vi.mocked(client.post).mock.calls[0]?.[3];
+    expect(validate).toBeDefined();
+    expect(() => validate?.({ reviewId: session.reviewId, session })).not.toThrow();
+    expect(() => validate?.({ reviewId: session.reviewId })).toThrow();
+    expect(() =>
+      validate?.({
+        reviewId: session.reviewId,
+        session: {
+          ...session,
+          reviewId: "22222222-2222-4222-8222-222222222222",
+        },
+      }),
+    ).toThrow();
   });
 });
 
 describe("getActiveReviewSession", () => {
   it("fetches the active session with or without a mode filter", async () => {
     const withModeClient = createClient();
+    const signal = new AbortController().signal;
     vi.mocked(withModeClient.get).mockResolvedValue({
       session: {
-        reviewId: "r-1",
+        reviewId: "11111111-1111-4111-8111-111111111111",
         mode: "staged",
         startedAt: new Date().toISOString(),
         headCommit: "abc123",
@@ -162,13 +186,14 @@ describe("getActiveReviewSession", () => {
       },
     });
 
-    const withMode = await getActiveReviewSession(withModeClient, "staged");
+    const withMode = await getActiveReviewSession(withModeClient, "staged", signal);
 
-    expect(withMode.session?.reviewId).toBe("r-1");
+    expect(withMode.session?.reviewId).toBe("11111111-1111-4111-8111-111111111111");
     expect(withModeClient.get).toHaveBeenCalledWith(
       "/api/review/sessions/active",
       { mode: "staged" },
       expect.any(Function),
+      { signal },
     );
 
     const withoutModeClient = createClient();
@@ -184,14 +209,29 @@ describe("getActiveReviewSession", () => {
     );
   });
 
-  it("validates the response shape, rejecting a session payload that drifts from the contract", async () => {
-    const client = createClient();
-    vi.mocked(client.get).mockResolvedValue({ session: null });
+  it("normalizes invalid active-session payloads into ApiError", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ session: { reviewId: "r-1" } }));
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal("fetch", fetchMock);
 
-    await getActiveReviewSession(client);
+    const client = createApiClient({ baseUrl: "http://localhost:3000" });
+    const signal = new AbortController().signal;
+    let error: unknown;
+    try {
+      await getActiveReviewSession(client, "staged", signal);
+    } catch (caught) {
+      error = caught;
+    } finally {
+      vi.stubGlobal("fetch", originalFetch);
+    }
 
-    const validate = vi.mocked(client.get).mock.calls[0]?.[2];
-    expect(validate).toBeDefined();
-    expect(() => validate?.({ session: { reviewId: "r-1" } })).toThrow();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:3000/api/review/sessions/active?mode=staged",
+      expect.objectContaining({ method: "GET", signal }),
+    );
+    expect(isApiError(error)).toBe(true);
+    if (!isApiError(error)) throw new Error("Expected ApiError");
+    expect(error.status).toBe(422);
+    expect(error.code).toBe("INVALID_RESPONSE");
   });
 });

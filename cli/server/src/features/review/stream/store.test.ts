@@ -26,6 +26,7 @@ function createTrackedSession(
     headCommit?: string;
     statusHash?: string;
     reviewConfigKey?: string;
+    scopeKey?: string;
     mode?: "staged" | "unstaged";
   } = {},
 ) {
@@ -37,6 +38,7 @@ function createTrackedSession(
     statusHashKind: "full",
     mode: options.mode ?? "staged",
     ...(options.reviewConfigKey === undefined ? {} : { reviewConfigKey: options.reviewConfigKey }),
+    ...(options.scopeKey === undefined ? {} : { scopeKey: options.scopeKey }),
   });
 }
 
@@ -577,6 +579,30 @@ describe("shutdownSessions", () => {
 });
 
 describe("scoped active-session lookup", () => {
+  it("returns the newest matching session for mode-only lookup and keeps scoped lookup exact", () => {
+    const olderFull = createTrackedSession("older-full", { mode: "unstaged" });
+    markReady(olderFull.reviewId);
+    vi.advanceTimersByTime(1);
+    const newerScoped = createTrackedSession("newer-scoped", {
+      mode: "unstaged",
+      scopeKey: "f:src/app.ts",
+    });
+    markReady(newerScoped.reviewId);
+
+    const lookup = {
+      headCommit: "abc",
+      statusHash: "hash",
+      statusHashKind: "full" as const,
+      mode: "unstaged" as const,
+    };
+
+    expect(getActiveSessionForProject("/project", lookup)).toBe(newerScoped);
+    expect(getActiveSessionForProject("/project", { ...lookup, scopeKey: "" })).toBe(olderFull);
+    expect(getActiveSessionForProject("/project", { ...lookup, scopeKey: "f:src/app.ts" })).toBe(
+      newerScoped,
+    );
+  });
+
   it("matches a scoped session by mode only (no scope key) so a reload can resume it", () => {
     const session = createSession("scoped", {
       projectPath: "/scoped",

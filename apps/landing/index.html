@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="dark" data-scene-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -19,9 +19,6 @@
     <meta name="twitter:title" content="Diffgazer — Local AI Code Review" />
     <meta name="twitter:description" content="Diffgazer starts an embedded localhost server, opens a local web workspace, and sends review prompts only to your chosen model provider." />
     <meta name="twitter:image" content="https://diffgazer.b4r7.dev/og.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -40,7 +37,169 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <canvas id="field" aria-hidden="true"></canvas>
+
+    <!-- Corner HUD -->
+    <span class="vp-corner vp-tl" aria-hidden="true"></span>
+    <span class="vp-corner vp-tr" aria-hidden="true"></span>
+    <span class="vp-corner vp-bl" aria-hidden="true"></span>
+    <span class="vp-corner vp-br" aria-hidden="true"></span>
+    <a class="hud hud-tl" href="#s1" data-hover aria-label="Diffgazer"><pre class="logo-figlet" aria-hidden="true">  _____ _____ ______ ______ _____           ____________ _____
+ |  __ \_   _|  ____|  ____/ ____|   /\    |___  /  ____|  __ \
+ | |  | || | | |__  | |__ | |  __   /  \      / /| |__  | |__) |
+ | |  | || | |  __| |  __|| | |_ | / /\ \    / / |  __| |  _  /
+ | |__| || |_| |    | |   | |__| |/ ____ \  / /__| |____| | \ \
+ |_____/_____|_|    |_|    \_____/_/    \_\/_____|______|_|  \_\</pre></a>
+    <div class="hud hud-tr">
+      <a href="https://docs.b4r7.dev" data-hover data-link="docs"><span class="bracket">[&nbsp;</span>docs<span class="bracket">&nbsp;]</span></a>
+      <a href="https://github.com/b4r7x/diffgazer" data-hover data-link="github"><span class="bracket">[&nbsp;</span>github<span class="bracket">&nbsp;]</span></a>
+    </div>
+    <div class="hud hud-bl" aria-hidden="true"><span id="osd-spin">⣾</span><span id="osd-label">01 / GAZE</span><span id="osd-pct">000%</span></div>
+    <a class="hud hud-br hud-install" href="#s6" data-hover data-magnetic>install</a>
+
+    <!-- Custom cursor -->
+    <div id="reticle" aria-hidden="true">
+      <span class="dot"></span>
+      <span class="rc rc1"></span><span class="rc rc2"></span><span class="rc rc3"></span><span class="rc rc4"></span>
+    </div>
+
+    <main>
+      <!-- ============ SCENE 1 — APERTURE ============ -->
+      <section class="scene" id="s1" data-osd="01 / GAZE">
+        <div class="scene-inner">
+          <div class="gaze3d-stage">
+            <div class="gaze3d" id="gaze3d" data-slot="panel" data-frame="hairline" data-density="default">
+              <figure class="gaze-diff" id="gz-diff-view" data-slot="diff-view" data-variant="statusbar" data-density="compact" aria-roledescription="diff" aria-labelledby="gz-caption">
+                <div class="scan" id="gz-scan" aria-hidden="true">
+                  <span class="vf-tl"></span><span class="vf-tr"></span><span class="vf-bl"></span><span class="vf-br"></span>
+                </div>
+                <figcaption class="gaze3d-head" id="gz-caption" data-slot="diff-view-caption">
+                  <span>src/utils/score.ts<span class="stats"><span class="add">+5</span> <span class="rem">−2</span> · 1 hunk</span></span>
+                  <span class="gz-status"><span class="spin" id="gz-spin">⣾</span> <span id="gz-status">scanning</span></span>
+                </figcaption>
+                <div class="scrollbar-thin" id="gz-diff" data-slot="diff-view-rows" data-line-numbers="true" tabindex="0" aria-label="Example diff rows">
+                  <span data-row data-state="hunk"><span class="diff-num"></span><span class="diff-num"></span><span class="diff-marker"></span><span class="diff-code">@@ -1,7 +1,10 @@</span></span>
+                  <span data-row data-state="context"><span class="diff-num">1</span><span class="diff-num">1</span><span class="diff-marker"> </span><span class="diff-code">import type { Review } from "../types"</span></span>
+                  <span data-row data-state="removed" data-target="0"><span class="diff-num">3</span><span class="diff-num"></span><span class="diff-marker">−</span><span class="diff-code">export function calculateScore(review: Review): number {</span></span>
+                  <span data-row data-state="removed"><span class="diff-num">4</span><span class="diff-num"></span><span class="diff-marker">−</span><span class="diff-code">  return review.findings.length * 10</span></span>
+                  <span data-row data-state="added"><span class="diff-num"></span><span class="diff-num">3</span><span class="diff-marker">+</span><span class="diff-code">export function calculateScore(review: Review, weights: Weights): number {</span></span>
+                  <span data-row data-state="added"><span class="diff-num"></span><span class="diff-num">4</span><span class="diff-marker">+</span><span class="diff-code">  return review.findings.reduce((total, finding) => {</span></span>
+                  <span data-row data-state="added"><span class="diff-num"></span><span class="diff-num">5</span><span class="diff-marker">+</span><span class="diff-code">    const weight = weights[finding.severity] ?? 1</span></span>
+                  <span data-row data-state="added"><span class="diff-num"></span><span class="diff-num">6</span><span class="diff-marker">+</span><span class="diff-code">    return total + weight</span></span>
+                  <span data-row data-state="added"><span class="diff-num"></span><span class="diff-num">7</span><span class="diff-marker">+</span><span class="diff-code">  }, 0)</span></span>
+                  <span data-row data-state="context"><span class="diff-num">5</span><span class="diff-num">8</span><span class="diff-marker"> </span><span class="diff-code">}</span></span>
+                  <span data-row data-state="context" data-target="1"><span class="diff-num">7</span><span class="diff-num">10</span><span class="diff-marker"> </span><span class="diff-code">export function isPassingScore(score: number): boolean {</span></span>
+                </div>
+              </figure>
+            </div>
+            <div class="callout" id="gz-co-0"></div>
+            <div class="callout" id="gz-co-1"></div>
+          </div>
+          <h1 class="giant focus-text" id="h1">Local AI code review.</h1>
+          <p class="sub reveal" data-delay="2" aria-label="One command. Your machine.">One command. Your <span class="swap" id="swap" aria-hidden="true"><s>cloud.</s> <ins></ins></span></p>
+          <div class="install-row reveal" data-delay="3">
+            <div class="install-cmd"><span class="prompt">$</span> npm install -g diffgazer</div>
+            <button class="btn copy-btn" data-copy="npm install -g diffgazer" data-hover data-magnetic aria-label="Copy install command"><span class="bracket">[&nbsp;</span><span class="copy-label">copy</span><span class="bracket">&nbsp;]</span></button>
+          </div>
+        </div>
+        <div class="scroll-hint">SCROLL</div>
+      </section>
+
+      <!-- ============ SCENE 2 — ONE COMMAND ============ -->
+      <section class="scene" id="s2" data-osd="02 / RUN">
+        <div class="scene-inner">
+          <div>
+            <h2 class="giant" style="font-size:clamp(36px,5.5vw,84px)">
+              <span class="mask-line"><span>One</span></span>
+              <span class="mask-line"><span>command.</span></span>
+            </h2>
+            <p class="sub reveal" data-delay="2">It opens a review workspace<br />in your browser.</p>
+          </div>
+          <div class="term-wrap reveal" data-delay="1">
+            <figure class="terminal" id="terminal">
+              <div class="term-head">
+                <span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span>
+                <span class="term-title">~/your-repo</span>
+              </div>
+              <div class="term-body">
+                <span class="term-line" data-line="$ diffgazer"></span>
+                <span class="term-line" data-line="→ Review workspace ready"></span>
+                <span class="term-line" data-line="→ Opening browser…"></span>
+                <span class="term-line ready" data-line="● Watching your diff."></span>
+              </div>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SCENE 3 — PIPELINE (pinned) ============ -->
+      <div id="s3-wrap">
+        <section class="scene" id="s3" data-osd="03 / PIPELINE">
+          <div class="scene-inner" style="max-width:820px">
+            <div class="eyebrow">review pipeline</div>
+            <h2 class="giant" style="font-size:clamp(24px,3.4vw,52px);margin-bottom:36px">Four steps, streamed.</h2>
+            <figure class="panel review-panel" id="review-panel">
+              <div class="panel-header">
+                <span>REVIEW <span style="color:var(--muted)">~/acme-api · staged</span></span>
+                <span class="gaze-status"><span id="rp-glyph">○</span> <span id="rp-status">queued</span></span>
+              </div>
+              <div class="rp-body">
+                <div class="rp-step" data-i="0"><span class="g">○</span><span class="l">Collect diff</span><span class="t"></span></div>
+                <div class="rp-step" data-i="1"><span class="g">○</span><span class="l">Project context</span><span class="t"></span></div>
+                <div class="rp-step" data-i="2"><span class="g">○</span><span class="l">Review issues</span><span class="t"></span></div>
+                <div id="rp-findings"></div>
+                <div class="rp-step" data-i="3"><span class="g">○</span><span class="l">Generate report</span><span class="t"></span></div>
+              </div>
+              <div class="panel-footer"><span id="rp-foot">scroll to run the review</span><span id="rp-meta"></span></div>
+            </figure>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============ SCENE 4 — FINDINGS (light) ============ -->
+      <section class="scene" id="s4" data-osd="04 / FINDINGS" data-theme-scene="light">
+        <div class="scene-inner">
+          <span class="ghost-word" aria-hidden="true">FIND</span>
+          <h2 class="giant" style="font-size:clamp(36px,5.5vw,84px)">
+            <span class="mask-line"><span>Findings,</span></span>
+            <span class="mask-line"><span class="dim-line">ranked.</span></span>
+          </h2>
+          <div class="sev-legend reveal" data-delay="1">
+            <span class="sev sev-blocker">blocker</span>
+            <span class="sev sev-high">high</span>
+            <span class="sev sev-medium">medium</span>
+            <span class="sev sev-low">low</span>
+            <span class="sev sev-nit">nit</span>
+          </div>
+          <div class="findings-panel reveal" data-delay="2" id="findings-panel">
+            <div class="findings-list" id="findings-list" role="tablist" aria-label="Example findings" aria-orientation="vertical"></div>
+            <div class="finding-detail" id="finding-detail" tabindex="0"></div>
+            <div class="findings-foot">
+              <span><span class="kbd">j</span> <span class="kbd">k</span> navigate</span>
+              <span id="findings-summary"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SCENE 6 — INSTALL ============ -->
+      <section class="scene" id="s6" data-osd="05 / INSTALL">
+        <div class="scene-inner">
+          <pre id="figlet" aria-label="Diffgazer"><span class="fl"><span>  _____ _____ ______ ______ _____           ____________ _____  </span></span><span class="fl"><span> |  __ \_   _|  ____|  ____/ ____|   /\    |___  /  ____|  __ \ </span></span><span class="fl"><span> | |  | || | | |__  | |__ | |  __   /  \      / /| |__  | |__) |</span></span><span class="fl"><span> | |  | || | |  __| |  __|| | |_ | / /\ \    / / |  __| |  _  / </span></span><span class="fl"><span> | |__| || |_| |    | |   | |__| |/ ____ \  / /__| |____| | \ \ </span></span><span class="fl"><span> |_____/_____|_|    |_|    \_____/_/    \_\/_____|______|_|  \_\</span></span></pre>
+          <div class="install-row reveal" data-delay="1">
+            <div class="install-cmd"><span class="prompt">$</span> npm install -g diffgazer</div>
+            <button class="btn copy-btn" data-copy="npm install -g diffgazer" data-hover data-magnetic aria-label="Copy install command"><span class="bracket">[&nbsp;</span><span class="copy-label">copy</span><span class="bracket">&nbsp;]</span></button>
+          </div>
+          <p class="note reveal" data-delay="2">Node 22+. Run it in a repo with changes.<br />Only the diff and the prompt leave your machine — to the provider you pick:<br />Gemini · Z.ai · OpenRouter · Groq · Cerebras.</p>
+          <div class="foot-links reveal" data-delay="3">
+            <a href="https://docs.b4r7.dev" data-hover data-link="docs">Documentation</a>
+            <a href="https://github.com/b4r7x/diffgazer" data-hover data-link="github">GitHub</a>
+            <a href="https://github.com/b4r7x/diffgazer/blob/main/LICENSE" data-hover data-link="license">MIT License</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

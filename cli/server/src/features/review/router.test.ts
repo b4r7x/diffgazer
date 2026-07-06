@@ -5,6 +5,7 @@ import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api/protocol";
 import type { Result } from "@diffgazer/core/result";
 import { err, ok } from "@diffgazer/core/result";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
+import { CreateReviewResponseSchema, ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { StatusHashResult } from "../../shared/lib/git/service.js";
@@ -33,7 +34,9 @@ beforeEach(async () => {
 afterEach(async () => {
   delete process.env.DIFFGAZER_HOME;
   delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
+  vi.doUnmock("../../shared/lib/ai/client.js");
   vi.doUnmock("../../shared/lib/git/service.js");
+  vi.doUnmock("./service.js");
   await rm(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });
   await rm(projectA, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });
   await rm(projectB, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });
@@ -181,6 +184,49 @@ describe("review router project boundaries", () => {
 });
 
 describe("POST /api/review/reviews", () => {
+  it("returns the active session metadata for the created review", async () => {
+    const startedAt = new Date("2026-01-01T00:00:00.000Z");
+    const session = {
+      reviewId: REVIEW_A,
+      mode: "staged",
+      startedAt,
+      headCommit: "abc123",
+      statusHash: "status",
+    };
+    vi.doMock("../../shared/lib/ai/client.js", () => ({
+      initializeAIClient: () => ok({ provider: "gemini" }),
+    }));
+    vi.doMock("./service.js", () => ({
+      createReviewSession: vi.fn(async () => ok({ reviewId: REVIEW_A, session })),
+    }));
+    await configureSetup(projectA);
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/reviews", {
+      method: "POST",
+      headers: {
+        [PROJECT_ROOT_HEADER]: projectA,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ mode: "staged" }),
+    });
+
+    const body = await response.json();
+    const expected = {
+      reviewId: REVIEW_A,
+      session: {
+        reviewId: REVIEW_A,
+        mode: "staged",
+        startedAt: startedAt.toISOString(),
+        headCommit: "abc123",
+        statusHash: "status",
+      },
+    };
+
+    expect(response.status).toBe(200);
+    expect(CreateReviewResponseSchema.parse(body)).toEqual(expected);
+  });
+
   it("requires setup before accepting requests", async () => {
     await trustProject(projectA);
     const app = await createReviewApp();
@@ -475,9 +521,10 @@ describe("DELETE /api/review/sessions/:id cancel contract", () => {
     await expect(response.json()).resolves.toEqual({ cancelled: true, reason: "already-complete" });
   });
 
-  it("returns cancelled:true with reason cancelled for an active session", async () => {
+  it("returns cancelled:true and notifies subscribers with CANCELLED for an active session", async () => {
     await trustProject(projectA);
-    const { createSession } = await import("./stream/store.js");
+    const received: FullReviewStreamEvent[] = [];
+    const { createSession, markReady, subscribe } = await import("./stream/store.js");
     createSession(REVIEW_A, {
       projectPath: projectA,
       headCommit: "abc123",
@@ -485,6 +532,8 @@ describe("DELETE /api/review/sessions/:id cancel contract", () => {
       statusHashKind: "full" as const,
       mode: "unstaged",
     });
+    markReady(REVIEW_A);
+    subscribe(REVIEW_A, (event) => received.push(event));
     const app = await createReviewApp();
 
     const response = await app.request(`/api/review/sessions/${REVIEW_A}`, {
@@ -494,6 +543,7 @@ describe("DELETE /api/review/sessions/:id cancel contract", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ cancelled: true, reason: "cancelled" });
+    expect(received).toMatchObject([{ type: "error", error: { code: ReviewErrorCode.CANCELLED } }]);
   });
 });
 

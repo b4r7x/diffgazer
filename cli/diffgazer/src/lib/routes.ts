@@ -1,7 +1,7 @@
 export type Route =
   | { screen: "home" }
   | { screen: "onboarding" }
-  | { screen: "review"; reviewId?: string; mode?: "unstaged" | "staged" }
+  | { screen: "review"; reviewId?: string; mode?: "unstaged" | "staged"; live?: boolean }
   | { screen: "history" }
   | { screen: "help" }
   | { screen: "settings" }

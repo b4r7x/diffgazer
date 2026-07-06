@@ -71,7 +71,7 @@ function SavedReviewErrorView({
   onBack: () => void;
 }): ReactElement {
   useBackHandler({ isActive: true });
-  usePageFooter({ shortcuts: [] });
+  usePageFooter({ shortcuts: [], rightShortcuts: [{ key: "Esc", label: "Back" }] });
 
   return (
     <Box flexDirection="column" gap={1}>
@@ -93,10 +93,12 @@ export function ReviewScreen(): ReactElement {
 
   const routeMode: ReviewMode = route.screen === "review" && route.mode ? route.mode : "unstaged";
   const reviewId = route.screen === "review" ? route.reviewId : undefined;
+  const isLiveRoute = route.screen === "review" && route.live === true;
 
-  const savedReview = useReview(reviewId ?? "");
+  const shouldLoadSavedReview = Boolean(reviewId && !isLiveRoute);
+  const savedReview = useReview(shouldLoadSavedReview ? (reviewId ?? "") : "");
 
-  if (reviewId) {
+  if (reviewId && shouldLoadSavedReview) {
     let status: SavedReviewQueryState["status"] = "pending";
     if (savedReview.isSuccess) {
       status = "success";
@@ -126,5 +128,7 @@ export function ReviewScreen(): ReactElement {
     }
   }
 
-  return <ReviewContainer mode={routeMode} reviewId={reviewId} />;
+  return (
+    <ReviewContainer mode={routeMode} reviewId={reviewId} allowResumeWithoutSetup={isLiveRoute} />
+  );
 }

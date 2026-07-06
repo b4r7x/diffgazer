@@ -42,7 +42,7 @@ resources, or mutable tags such as `latest` and `main`.
 
 | Item | Where it belongs |
 |---|---|
-| Public origins such as `REGISTRY_ORIGIN`, `VITE_PUBLIC_ORIGIN`, `VITE_DOCS_ORIGIN` | Docker build args or public workflow configuration |
+| Public origins such as `REGISTRY_ORIGIN`, `VITE_PUBLIC_ORIGIN`, `VITE_DOCS_ORIGIN`, `VITE_GITHUB_URL` | Docker build args or public workflow configuration |
 | GHCR image names and public domains | Repository docs and workflow files |
 | `COOLIFY_TOKEN` | GitHub `production` environment secret |
 | `COOLIFY_WEBHOOK_DOCS`, `COOLIFY_WEBHOOK_REGISTRY`, `COOLIFY_WEBHOOK_LANDING` | GitHub `production` environment secrets |

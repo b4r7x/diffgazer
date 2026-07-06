@@ -137,12 +137,21 @@ export async function getReview(client: ApiClient, id: string): Promise<ReviewRe
 export async function getActiveReviewSession(
   client: ApiClient,
   mode?: ReviewMode,
+  signal?: AbortSignal,
 ): Promise<ActiveReviewSessionResponse> {
-  return client.get<ActiveReviewSessionResponse>(
-    "/api/review/sessions/active",
-    mode ? { mode } : undefined,
-    (body) => ActiveReviewSessionResponseSchema.parse(body),
-  );
+  const params = mode ? { mode } : undefined;
+  const validate = (body: unknown) => ActiveReviewSessionResponseSchema.parse(body);
+  if (signal) {
+    return client.get<ActiveReviewSessionResponse>(
+      "/api/review/sessions/active",
+      params,
+      validate,
+      {
+        signal,
+      },
+    );
+  }
+  return client.get<ActiveReviewSessionResponse>("/api/review/sessions/active", params, validate);
 }
 
 export async function getReviewContext(client: ApiClient): Promise<ReviewContextResponse> {
@@ -172,7 +181,8 @@ export const bindReview = (client: ApiClient) => ({
   resumeReviewStream: (options: ResumeReviewOptions) => resumeReviewStream(client, options),
   getReviews: (projectPath?: string) => getReviews(client, projectPath),
   getReview: (id: string) => getReview(client, id),
-  getActiveReviewSession: (mode?: ReviewMode) => getActiveReviewSession(client, mode),
+  getActiveReviewSession: (mode?: ReviewMode, signal?: AbortSignal) =>
+    getActiveReviewSession(client, mode, signal),
   getReviewContext: () => getReviewContext(client),
   refreshReviewContext: (options?: { force?: boolean }) => refreshReviewContext(client, options),
   deleteReview: (id: string) => deleteReview(client, id),

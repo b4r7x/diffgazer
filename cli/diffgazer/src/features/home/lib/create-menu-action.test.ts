@@ -83,7 +83,7 @@ describe("createHomeMenuAction", () => {
     });
     withSession.dispatch("resume-review");
     expect(withSession.routes).toEqual([
-      { screen: "review", reviewId: "active-review", mode: "staged" },
+      { screen: "review", reviewId: "active-review", mode: "staged", live: true },
     ]);
   });
 

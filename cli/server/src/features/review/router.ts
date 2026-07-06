@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { createError, getErrorMessage } from "@diffgazer/core/errors";
 import { err } from "@diffgazer/core/result";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
+import type { ActiveReviewSession, CreateReviewResponse } from "@diffgazer/core/schemas/review";
 import { zValidator } from "@hono/zod-validator";
 import { type Context, Hono } from "hono";
 import { initializeAIClient } from "../../shared/lib/ai/client.js";
@@ -39,7 +40,8 @@ import {
 } from "./storage/reviews.js";
 import { resumeStreamById } from "./stream/resume.js";
 import {
-  cancelSession,
+  type ActiveSession,
+  cancelSessionForUser,
   deleteSession,
   getActiveSessionForProject,
   getSession,
@@ -58,6 +60,16 @@ const drilldownLimit = createRateLimitMiddleware("review:drilldown", {
   maxRequests: 20,
   windowMs: 60_000,
 });
+
+function toActiveReviewSessionResponse(session: ActiveSession): ActiveReviewSession {
+  return {
+    reviewId: session.reviewId,
+    mode: session.mode,
+    startedAt: session.startedAt.toISOString(),
+    headCommit: session.headCommit,
+    statusHash: session.statusHash,
+  };
+}
 
 reviewRouter.post(
   "/reviews",
@@ -86,7 +98,11 @@ reviewRouter.post(
       return errorResponse(c, result.error.message, result.error.code, 500);
     }
 
-    return c.json({ reviewId: result.value.reviewId });
+    const response: CreateReviewResponse = {
+      reviewId: result.value.reviewId,
+      session: toActiveReviewSessionResponse(result.value.session),
+    };
+    return c.json(response);
   },
 );
 
@@ -129,15 +145,7 @@ reviewRouter.get(
       return c.json({ session: null });
     }
 
-    return c.json({
-      session: {
-        reviewId: session.reviewId,
-        mode: session.mode,
-        startedAt: session.startedAt.toISOString(),
-        headCommit: session.headCommit,
-        statusHash: session.statusHash,
-      },
-    });
+    return c.json({ session: toActiveReviewSessionResponse(session) });
   },
 );
 
@@ -154,7 +162,7 @@ reviewRouter.delete(
     if (session.isComplete) {
       return c.json({ cancelled: true, reason: "already-complete" });
     }
-    cancelSession(id);
+    cancelSessionForUser(id);
     return c.json({ cancelled: true, reason: "cancelled" });
   },
 );

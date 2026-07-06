@@ -67,7 +67,7 @@
       "entry": ["src/main.tsx", "src/app/routes/**/*.tsx"]
     },
     "apps/landing": {
-      "entry": ["src/main.tsx", "index.html"]
+      "entry": ["src/main.ts", "index.html"]
     },
     "apps/docs": {
       "entry": [

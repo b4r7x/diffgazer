@@ -11,6 +11,7 @@ function createOptions(
 ): UseReviewCompletionOptions {
   return {
     isStreaming: false,
+    isComplete: false,
     error: null,
     errorCode: null,
     hasStreamed: false,
@@ -44,7 +45,7 @@ describe("useReviewCompletion", () => {
 
     expect(result.current.isCompleting).toBe(false);
 
-    rerender({ ...initialProps, isStreaming: false });
+    rerender({ ...initialProps, isStreaming: false, isComplete: true });
 
     expect(result.current.isCompleting).toBe(true);
     expect(onComplete).not.toHaveBeenCalled();
@@ -55,6 +56,66 @@ describe("useReviewCompletion", () => {
 
     expect(result.current.isCompleting).toBe(false);
     // call-count IS the contract: onComplete must fire exactly once when the completion delay elapses (no double-fire from timer + state change)
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("fires onStreamComplete immediately when streaming stops", () => {
+    const onComplete = vi.fn();
+    const onStreamComplete = vi.fn();
+    const initialProps = createOptions({
+      isStreaming: true,
+      hasStreamed: true,
+      onComplete,
+      onStreamComplete,
+    });
+
+    const { rerender } = renderHook(
+      (props: UseReviewCompletionOptions) => useReviewCompletion(props),
+      { initialProps },
+    );
+
+    rerender({ ...initialProps, isStreaming: false, isComplete: true });
+
+    expect(onStreamComplete).toHaveBeenCalledTimes(1);
+    expect(onComplete).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the delayed completion timer when onStreamComplete changes after streaming stops", () => {
+    const onComplete = vi.fn();
+    const firstStreamComplete = vi.fn();
+    const secondStreamComplete = vi.fn();
+    const initialProps = createOptions({
+      isStreaming: true,
+      hasStreamed: true,
+      onComplete,
+      onStreamComplete: firstStreamComplete,
+    });
+
+    const { rerender } = renderHook(
+      (props: UseReviewCompletionOptions) => useReviewCompletion(props),
+      { initialProps },
+    );
+
+    rerender({ ...initialProps, isStreaming: false, isComplete: true });
+    rerender({
+      ...initialProps,
+      isStreaming: false,
+      isComplete: true,
+      onStreamComplete: secondStreamComplete,
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    expect(firstStreamComplete).toHaveBeenCalledTimes(1);
+    expect(secondStreamComplete).not.toHaveBeenCalled();
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
@@ -72,7 +133,7 @@ describe("useReviewCompletion", () => {
       { initialProps },
     );
 
-    rerender({ ...initialProps, isStreaming: false, error: "something broke" });
+    rerender({ ...initialProps, isStreaming: false, isComplete: true, error: "something broke" });
 
     act(() => {
       vi.advanceTimersByTime(3000);
@@ -96,7 +157,12 @@ describe("useReviewCompletion", () => {
       { initialProps },
     );
 
-    rerender({ ...initialProps, isStreaming: false, errorCode: ReviewErrorCode.CANCELLED });
+    rerender({
+      ...initialProps,
+      isStreaming: false,
+      isComplete: true,
+      errorCode: ReviewErrorCode.CANCELLED,
+    });
 
     act(() => {
       vi.advanceTimersByTime(3000);
@@ -118,7 +184,7 @@ describe("useReviewCompletion", () => {
       { initialProps },
     );
 
-    rerender({ ...initialProps, isStreaming: false });
+    rerender({ ...initialProps, isStreaming: false, isComplete: true });
     expect(result.current.isCompleting).toBe(true);
 
     act(() => {
@@ -137,6 +203,36 @@ describe("useReviewCompletion", () => {
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
+  it("skipDelay calls the current render onComplete callback", () => {
+    const firstComplete = vi.fn();
+    const secondComplete = vi.fn();
+    const initialProps = createOptions({
+      isStreaming: true,
+      hasStreamed: true,
+      onComplete: firstComplete,
+    });
+
+    const { result, rerender } = renderHook(
+      (props: UseReviewCompletionOptions) => useReviewCompletion(props),
+      { initialProps },
+    );
+
+    rerender({ ...initialProps, isStreaming: false, isComplete: true });
+    rerender({
+      ...initialProps,
+      isStreaming: false,
+      isComplete: true,
+      onComplete: secondComplete,
+    });
+
+    act(() => {
+      result.current.skipDelay();
+    });
+
+    expect(firstComplete).not.toHaveBeenCalled();
+    expect(secondComplete).toHaveBeenCalledTimes(1);
+  });
+
   it("reset clears completing state and cancels timer", () => {
     const onComplete = vi.fn();
     const initialProps = createOptions({
@@ -150,7 +246,7 @@ describe("useReviewCompletion", () => {
       { initialProps },
     );
 
-    rerender({ ...initialProps, isStreaming: false });
+    rerender({ ...initialProps, isStreaming: false, isComplete: true });
     expect(result.current.isCompleting).toBe(true);
 
     act(() => {
@@ -163,6 +259,32 @@ describe("useReviewCompletion", () => {
       vi.advanceTimersByTime(3000);
     });
 
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it("does NOT fire completion callbacks when streaming stops without a completion signal", () => {
+    const onComplete = vi.fn();
+    const onStreamComplete = vi.fn();
+    const initialProps = createOptions({
+      isStreaming: true,
+      hasStreamed: true,
+      onComplete,
+      onStreamComplete,
+    });
+
+    const { result, rerender } = renderHook(
+      (props: UseReviewCompletionOptions) => useReviewCompletion(props),
+      { initialProps },
+    );
+
+    rerender({ ...initialProps, isStreaming: false, isComplete: false });
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(result.current.isCompleting).toBe(false);
+    expect(onStreamComplete).not.toHaveBeenCalled();
     expect(onComplete).not.toHaveBeenCalled();
   });
 });

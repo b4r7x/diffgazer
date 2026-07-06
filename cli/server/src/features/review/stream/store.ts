@@ -353,13 +353,32 @@ export function cancelSession(
   reviewId: string,
   options?: { message?: string; reason?: string },
 ): void {
+  cancelSessionWithError(reviewId, {
+    code: ReviewErrorCode.SESSION_STALE,
+    message: options?.message ?? "Review session cancelled because repository state changed.",
+    reason: options?.reason ?? "session_stale",
+  });
+}
+
+export function cancelSessionForUser(reviewId: string): void {
+  cancelSessionWithError(reviewId, {
+    code: ReviewErrorCode.CANCELLED,
+    message: "Review session cancelled by user.",
+    reason: "user_cancelled",
+  });
+}
+
+function cancelSessionWithError(
+  reviewId: string,
+  error: { code: ReviewErrorCode; message: string; reason: string },
+): void {
   const session = activeSessions.get(reviewId);
   if (!session || session.isComplete) return;
 
   terminateSession(session, {
-    code: ReviewErrorCode.SESSION_STALE,
-    message: options?.message ?? "Review session cancelled because repository state changed.",
-    reason: options?.reason ?? "session_stale",
+    code: error.code,
+    message: error.message,
+    reason: error.reason,
   });
   setTimeout(
     () => {
@@ -445,26 +464,32 @@ export function getActiveSessionForProject(
   if (options.statusHashKind === "unavailable") {
     return undefined;
   }
+  let newestSession: ActiveSession | undefined;
   for (const session of activeSessions.values()) {
-    if (
+    const matches =
       session.projectPath === projectPath &&
       session.headCommit === options.headCommit &&
       session.statusHash === options.statusHash &&
       session.statusHashKind === options.statusHashKind &&
       session.mode === options.mode &&
-      // scopeKey is exact-matched for dedupe, but the active-session lookup omits
-      // it so a client reloading during a files/lenses/profile-scoped review can
-      // still discover and resume it.
-      (options.scopeKey === undefined || session.scopeKey === options.scopeKey) &&
       (options.reviewConfigKey === undefined ||
         session.reviewConfigKey === options.reviewConfigKey) &&
       !session.isComplete &&
-      session.isReady
-    ) {
+      session.isReady;
+    if (!matches) {
+      continue;
+    }
+    if (options.scopeKey !== undefined) {
+      if (session.scopeKey !== options.scopeKey) {
+        continue;
+      }
       return session;
     }
+    if (!newestSession || session.startedAt > newestSession.startedAt) {
+      newestSession = session;
+    }
   }
-  return undefined;
+  return newestSession;
 }
 
 export function getSession(reviewId: string): ActiveSession | undefined {

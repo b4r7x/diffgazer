@@ -1,10 +1,11 @@
 # @diffgazer/landing
 
-Private static Vite landing page for the public Diffgazer marketing surface. It imports only `@diffgazer/ui` theme CSS and display primitives (`Button`, `Card`, `CodeBlock`, `DiffView`, `Kbd`); it carries no product runtime logic, docs utilities, or direct `@diffgazer/keys` dependency.
+Private static Vite landing page for the public Diffgazer marketing surface. It is vanilla HTML/TS and imports only `@diffgazer/ui/styles.css` for theme tokens and the Panel/DiffView data-attribute contracts; it carries no product runtime logic, docs utilities, React runtime, Tailwind setup, or direct `@diffgazer/keys` dependency.
 
 ## Environment
 
 `VITE_DOCS_ORIGIN` sets the documentation link target. It defaults to `https://docs.b4r7.dev`.
+`VITE_GITHUB_URL` sets the GitHub and license link target. It defaults to `https://github.com/b4r7x/diffgazer`.
 
 ## Commands
 

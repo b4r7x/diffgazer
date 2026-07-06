@@ -1,4 +1,9 @@
-import type { ReviewIssue, ReviewMetadata } from "../schemas/review/index.js";
+import type {
+  ActiveReviewSession,
+  CreateReviewResponse,
+  ReviewIssue,
+  ReviewMetadata,
+} from "../schemas/review/index.js";
 
 export function makeIssue(overrides: Partial<ReviewIssue> = {}): ReviewIssue {
   return {
@@ -38,5 +43,34 @@ export function makeReviewMetadata(overrides: Partial<ReviewMetadata> = {}): Rev
     fileCount: 1,
     durationMs: 1200,
     ...overrides,
+  };
+}
+
+export function makeActiveReviewSession(
+  overrides: Partial<ActiveReviewSession> = {},
+): ActiveReviewSession {
+  return {
+    reviewId: "11111111-1111-4111-8111-111111111111",
+    mode: "unstaged",
+    startedAt: "2026-01-01T00:00:00.000Z",
+    headCommit: "abc123",
+    statusHash: "hash123",
+    ...overrides,
+  };
+}
+
+type CreateReviewResponseOverrides = Partial<Omit<CreateReviewResponse, "session">> & {
+  session?: Partial<ActiveReviewSession>;
+};
+
+export function makeCreateReviewResponse(
+  overrides: CreateReviewResponseOverrides = {},
+): CreateReviewResponse {
+  const reviewId =
+    overrides.reviewId ?? overrides.session?.reviewId ?? "11111111-1111-4111-8111-111111111111";
+
+  return {
+    reviewId,
+    session: makeActiveReviewSession({ ...overrides.session, reviewId }),
   };
 }
