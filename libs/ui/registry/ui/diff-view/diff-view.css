@@ -119,9 +119,10 @@
     white-space: nowrap;
   }
 
-  /* Rows container — grid + subgrid + horizontal scroll. Each row declares
-     `min-width: max-content` so long lines extend the row past the
-     container width and trigger horizontal scroll. */
+  /* Rows container — grid + subgrid + horizontal scroll. The [code] track grows
+     to the widest line's content (see .diff-code), so the grid overflows the
+     container and every subgrid row (grid-column: 1 / -1) spans the full
+     scrollable width — keeping each row's state tint continuous when scrolled. */
   [data-slot="diff-view-rows"] {
     display: grid;
     grid-template-columns:
@@ -229,7 +230,11 @@
     white-space: pre;
     padding-inline-end: 1ch;
     padding-inline-start: 0.5ch;
-    min-width: 0;
+    /* Keep the code cell's intrinsic (content) minimum — do NOT collapse it to
+       min-width: 0. It is the only content-sized cell in the [code] 1fr track,
+       so its min-content is what grows that track (and every subgrid row spanning
+       it) to the widest line. Collapsing it strands the row state tints at the
+       visible width when the diff is scrolled horizontally. */
   }
 
   [data-row][data-state="hunk"] .diff-code {

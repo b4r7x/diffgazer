@@ -401,15 +401,26 @@ html[data-scene-theme="light"] .fd-fix .rem { color: #cf222e; }
   .finding-detail { min-height: 0; }
 }
 
-/* Hero diff: restore breathing room over the compact contract defaults */
-.gaze-diff .diff-num { min-width: 40px; padding-right: 10px; }
-.gaze-diff .diff-marker { width: 22px; }
+/* Hero diff: restore breathing room over the compact contract defaults.
+   DiffView rows are subgrids, so column sizing must live on the rows-grid
+   TRACKS. A cell wider than its shared track (e.g. a 22px .diff-marker in the
+   1.25ch [marker] track) can't grow that track — it only overflows into the
+   code cell and glues the +/− glyph to non-indented lines. Size the tracks. */
+.gaze-diff [data-slot="diff-view-rows"] {
+  grid-template-columns:
+    [num-l] minmax(26px, max-content)
+    [num-r] minmax(26px, max-content)
+    [marker] 22px
+    [code] 1fr;
+  padding-block: 4px;
+}
+.gaze-diff .diff-num { padding-right: 10px; }
 .gaze-diff [data-row] { line-height: 1.6; padding-inline: 14px; }
 .gaze-diff { font-size: 13px; }
 /* The landing's global reset (unlayered) beats the package's @layer rules,
    so the contract's own paddings are restated here for the hero. */
 .gaze-diff [data-slot="diff-view-caption"] { padding: 9px 14px; }
-.gaze-diff [data-slot="diff-view-rows"] { padding-block: 4px; }
+.gaze-diff .diff-code { padding-inline-start: 0.5ch; padding-inline-end: 1ch; }
 
 /* HUD logo: the figlet wordmark, scaled down */
 .hud-tl { padding: 0; }

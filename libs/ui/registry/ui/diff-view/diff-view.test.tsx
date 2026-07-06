@@ -761,3 +761,22 @@ describe("diff signal contrast (parsed from CSS)", () => {
     });
   }
 });
+
+describe("row tints under horizontal scroll (parsed from CSS)", () => {
+  // jsdom has no layout engine — offsetWidth/scrollWidth are always 0 — so the
+  // "row spans the full scrollable width" regression cannot be asserted by
+  // rendering. Guard the CSS invariant that produces it instead: the code cell
+  // must keep its intrinsic content minimum. If it collapses to min-width:0, the
+  // [code] track and every subgrid row stop at the visible width, stranding the
+  // row state tints on bare background once the diff is scrolled horizontally.
+  const DIFF_CSS = readFileSync(
+    resolve(fileURLToPath(import.meta.url), "../diff-view.css"),
+    "utf8",
+  ).replace(/\/\*[\s\S]*?\*\//g, "");
+
+  it("does not collapse the code cell minimum, so row tints span the scroll width", () => {
+    const codeRule = /\.diff-code\s*\{[^}]*white-space[^}]*\}/.exec(DIFF_CSS)?.[0];
+    expect(codeRule).toBeDefined();
+    expect(codeRule).not.toMatch(/min-width:\s*0/);
+  });
+});
