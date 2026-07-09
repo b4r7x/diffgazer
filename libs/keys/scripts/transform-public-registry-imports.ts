@@ -131,8 +131,8 @@ export function transformKeysPublicRegistryImports(outputDir: string): void {
     if (!entry.endsWith(".json") || entry === "registry.json") continue;
 
     const itemPath = join(outputDir, entry);
-    const item = parseRegistryEntry(JSON.parse(readFileSync(itemPath, "utf-8")));
-    let changed = false;
+    const rawItem: unknown = JSON.parse(readFileSync(itemPath, "utf-8"));
+    const item = parseRegistryEntry(rawItem);
 
     const pathMap = new Map<string, string>();
     for (const file of item.files) {
@@ -141,8 +141,9 @@ export function transformKeysPublicRegistryImports(outputDir: string): void {
       }
     }
 
-    for (const file of item.files) {
-      if (typeof file.content !== "string") continue;
+    const rewrittenContent = new Map<number, string>();
+    item.files.forEach((file, index) => {
+      if (typeof file.content !== "string") return;
 
       let nextContent = transformKeysPublicRegistryImportContent(file.content);
 
@@ -150,14 +151,20 @@ export function transformKeysPublicRegistryImports(outputDir: string): void {
         nextContent = rewriteImportsForTargetLayout(nextContent, file.path, file.target, pathMap);
       }
 
-      if (nextContent === file.content) continue;
+      if (nextContent !== file.content) rewrittenContent.set(index, nextContent);
+    });
 
-      file.content = nextContent;
-      changed = true;
+    if (rewrittenContent.size === 0) continue;
+
+    // Write back onto raw JSON; reserializing the parsed item would strip keys the schema omits.
+    if (!isRecord(rawItem) || !Array.isArray(rawItem.files)) {
+      throw new Error(`Registry item ${entry} is not a shadcn item object`);
+    }
+    for (const [index, content] of rewrittenContent) {
+      const rawFile = rawItem.files[index];
+      if (isRecord(rawFile)) rawFile.content = content;
     }
 
-    if (changed) {
-      writeFileSync(itemPath, `${JSON.stringify(item, null, 2)}\n`);
-    }
+    writeFileSync(itemPath, `${JSON.stringify(rawItem, null, 2)}\n`);
   }
 }

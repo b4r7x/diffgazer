@@ -29,8 +29,6 @@ describe("config API functions", () => {
 
     await getProviderStatus(client);
 
-    // The validator passed to the client is what guards against server drift;
-    // the real client invokes it, so assert it rejects an out-of-contract body.
     const validate = vi.mocked(client.get).mock.calls[0]?.[2];
     expect(validate).toBeDefined();
     expect(() => validate?.({ providers: [{ provider: "not-a-provider" }] })).toThrow();

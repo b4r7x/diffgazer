@@ -129,7 +129,6 @@ interface DetailItemLayoutProps {
   isSelected: boolean;
   /** Controlled value. */
   value?: ReactNode;
-  /** value class name used by detail item layout. */
   valueClassName: string;
   /** Icon content rendered by the component. */
   icon?: ReactNode;

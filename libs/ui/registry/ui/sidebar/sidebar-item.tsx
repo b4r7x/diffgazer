@@ -52,7 +52,6 @@ interface SidebarItemSharedProps {
   active?: boolean;
   /** Controlled value. */
   value?: string;
-  /** intent used by sidebar item shared. */
   intent?: SidebarIntent;
   /** Sidebar subparts (Header, Content, Footer, Trigger). */
   children: ReactNode | ((props: SidebarItemRenderProps) => ReactNode);

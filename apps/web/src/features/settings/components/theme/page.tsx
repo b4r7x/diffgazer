@@ -1,5 +1,5 @@
 import { getErrorMessage } from "@diffgazer/core/errors";
-import { deriveSaveState } from "@diffgazer/core/forms";
+import { deriveSaveState, useSubmitGuard } from "@diffgazer/core/forms";
 import { isSelectableTheme, SELECTABLE_THEME_OPTIONS } from "@diffgazer/core/schemas/config";
 import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { useKey, useScope } from "@diffgazer/keys";
@@ -21,13 +21,34 @@ function resolveTheme(theme: WebTheme, system: ResolvedTheme): ResolvedTheme {
 
 export function SettingsThemePage() {
   const { theme: savedTheme, system, setTheme } = useTheme();
+  const navigate = useNavigate();
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const { isSubmitting, withGuard } = useSubmitGuard();
+
+  // Save state must live above the `key={savedTheme}` remount, or the error and
+  // pending guard reset each time the provider rolls the effective theme.
+  const saveAndExit = (theme: WebTheme) => {
+    void withGuard(async () => {
+      setSaveError(null);
+      try {
+        await setTheme(theme);
+        navigate({ to: "/settings" });
+      } catch (error) {
+        const message = getErrorMessage(error, "Could not persist theme settings.");
+        setSaveError(message);
+        toast.error("Failed to Save Theme", { message });
+      }
+    });
+  };
 
   return (
     <SettingsThemeEditor
       key={savedTheme}
       savedTheme={savedTheme}
       system={system}
-      setTheme={setTheme}
+      saveError={saveError}
+      isSaving={isSubmitting}
+      onSave={saveAndExit}
     />
   );
 }
@@ -35,15 +56,22 @@ export function SettingsThemePage() {
 interface SettingsThemeEditorProps {
   savedTheme: WebTheme;
   system: ResolvedTheme;
-  setTheme: (theme: WebTheme) => Promise<void>;
+  saveError: string | null;
+  isSaving: boolean;
+  onSave: (theme: WebTheme) => void;
 }
 
-function SettingsThemeEditor({ savedTheme, system, setTheme }: SettingsThemeEditorProps) {
+function SettingsThemeEditor({
+  savedTheme,
+  system,
+  saveError,
+  isSaving,
+  onSave,
+}: SettingsThemeEditorProps) {
   const navigate = useNavigate();
   const [selectedTheme, setSelectedTheme] = useState<WebTheme>(savedTheme);
   const [focusedTheme, setFocusedTheme] = useState<WebTheme | null>(savedTheme);
   const [hoveredTheme, setHoveredTheme] = useState<WebTheme | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   const previewTheme = hoveredTheme ?? focusedTheme ?? selectedTheme;
   const previewResolved = resolveTheme(previewTheme, system);
@@ -52,28 +80,16 @@ function SettingsThemeEditor({ savedTheme, system, setTheme }: SettingsThemeEdit
   const { canSave } = deriveSaveState<WebTheme>({
     persisted: savedTheme,
     choice: selectedTheme,
-    saving: false,
+    saving: isSaving,
     fallback: savedTheme,
   });
   const isSaveDisabled = !canSave;
 
   const handleCancel = () => navigate({ to: "/settings" });
 
-  const saveAndExit = async (theme: WebTheme) => {
-    setSaveError(null);
-    try {
-      await setTheme(theme);
-      navigate({ to: "/settings" });
-    } catch (error) {
-      const message = getErrorMessage(error, "Could not persist theme settings.");
-      setSaveError(message);
-      toast.error("Failed to Save Theme", { message });
-    }
-  };
-
   const handleSave = () => {
     if (!canSave) return;
-    void saveAndExit(selectedTheme);
+    onSave(selectedTheme);
   };
 
   const footer = useSettingsFormFooter({
@@ -101,7 +117,7 @@ function SettingsThemeEditor({ savedTheme, system, setTheme }: SettingsThemeEdit
   const handleEnterOnList = (value: string) => {
     if (!isSelectableTheme(value)) return;
     selectTheme(value);
-    void saveAndExit(value);
+    onSave(value);
   };
 
   const themeOptions = SELECTABLE_THEME_OPTIONS.map((option) => option.value);

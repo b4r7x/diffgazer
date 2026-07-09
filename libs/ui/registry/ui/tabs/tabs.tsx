@@ -15,7 +15,11 @@ import {
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import type { SegmentedSize, SegmentedVariant } from "@/lib/segmented-variants";
-import { useSelectableCollection } from "@/lib/selectable-collection";
+import {
+  isSelectableElementSkipped,
+  isSelectableItemEligible,
+  useSelectableCollection,
+} from "@/lib/selectable-collection";
 import { cn } from "@/lib/utils";
 import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";
 import { TabsContent } from "./tabs-content";
@@ -51,6 +55,10 @@ interface TabTriggerElementProps {
   disabled?: boolean;
   /** Tabs.List and Tabs.Content subparts. */
   children?: ReactNode;
+  /** Native visibility props the seed mirrors so hidden triggers are not seeded as enabled. */
+  hidden?: boolean;
+  inert?: boolean;
+  "aria-hidden"?: boolean | "true" | "false";
 }
 
 interface TabSeed {
@@ -59,20 +67,32 @@ interface TabSeed {
   triggerValues: string[];
 }
 
-// First-render/SSR seed for directly-composed parts: registration effects have
-// not run yet, so resolve a sensible selected tab from the static child tree.
-// Once items mount, the context registrations below are authoritative and also
-// cover parts rendered through consumer wrapper components.
-function collectTabSeed(children: ReactNode): TabSeed {
+// SSR-seed mirror of the shared isSelectableElementSkipped DOM predicate; runs
+// before any element mounts.
+function isTabSeedElementSkipped(props: TabTriggerElementProps): boolean {
+  return (
+    props.hidden === true ||
+    props.inert === true ||
+    props["aria-hidden"] === true ||
+    props["aria-hidden"] === "true"
+  );
+}
+
+// SSR/first-render seed before registration effects run: resolve a selected tab
+// from the static child tree. A skipped ancestor carries down so
+// hidden/inert/aria-hidden wrappers exclude their triggers.
+function collectTabSeed(children: ReactNode, skippedAncestor = false): TabSeed {
   const seed: TabSeed = { enabledValues: [], panelValues: [], triggerValues: [] };
 
   Children.forEach(children, (child) => {
     if (!isValidElement<TabTriggerElementProps>(child)) return;
     if (child.type === TabsRoot) return;
 
+    const skipped = skippedAncestor || isTabSeedElementSkipped(child.props);
+
     if (child.type === TabsTrigger && typeof child.props.value === "string") {
       seed.triggerValues.push(child.props.value);
-      if (!child.props.disabled) seed.enabledValues.push(child.props.value);
+      if (!child.props.disabled && !skipped) seed.enabledValues.push(child.props.value);
       return;
     }
 
@@ -80,7 +100,7 @@ function collectTabSeed(children: ReactNode): TabSeed {
       seed.panelValues.push(child.props.value);
     }
 
-    const nested = collectTabSeed(child.props.children);
+    const nested = collectTabSeed(child.props.children, skipped);
     seed.enabledValues.push(...nested.enabledValues);
     seed.panelValues.push(...nested.panelValues);
     seed.triggerValues.push(...nested.triggerValues);
@@ -123,13 +143,19 @@ function TabsRoot<TValue extends string = string>(props: TabsProps<TValue>) {
       registeredTriggers.length ? registeredTriggers.map((item) => item.value) : seed.triggerValues,
     [registeredTriggers, seed.triggerValues],
   );
-  const enabledValues = useMemo(
-    () =>
-      registeredTriggers.length
-        ? registeredTriggers.filter((item) => !item.disabled).map((item) => item.value)
-        : seed.enabledValues,
-    [registeredTriggers, seed.enabledValues],
-  );
+  const enabledValues = useMemo(() => {
+    if (!registeredTriggers.length) return seed.enabledValues;
+    // When an ancestor hides the whole tablist, keep its internal selection rather
+    // than collapsing it; only exclude hidden/inert/aria-hidden triggers while the
+    // tablist itself is reachable. The MutationObserver watches only this subtree,
+    // so an ancestor toggling visibility resettles this on the next trigger
+    // (un)registration, which any real show/hide of a Tabs subtree emits.
+    const root = rootRef.current;
+    const tablistHidden = root !== null && isSelectableElementSkipped(root);
+    return registeredTriggers
+      .filter((item) => (tablistHidden ? !item.disabled : isSelectableItemEligible(item)))
+      .map((item) => item.value);
+  }, [registeredTriggers, seed.enabledValues]);
   const panelValues = useMemo(
     () => (registeredPanels.length ? registeredPanels.map((item) => item.value) : seed.panelValues),
     [registeredPanels, seed.panelValues],
@@ -138,22 +164,20 @@ function TabsRoot<TValue extends string = string>(props: TabsProps<TValue>) {
     value: "value" in props ? (controlledValue ?? "") : undefined,
     controlled: "value" in props,
     defaultValue: defaultValue ?? "",
-    // TValue is a string subtype; downstream context uses string for runtime DOM matching.
+    // TValue is a string subtype; downstream context matches on string at runtime.
     onChange: onChange as ((value: string) => void) | undefined,
   });
   const [focusedValue, setFocusedValue] = useState<string | null>(null);
   const firstEnabledTab = enabledValues[0] ?? "";
   const resolvedValue = enabledValues.includes(value) ? value : firstEnabledTab;
 
-  // A non-empty value that no registered trigger owns silently falls back to the
-  // first enabled tab; warn in development so the gap surfaces.
+  // Warn in dev when a non-empty value owns no registered trigger (it silently
+  // falls back to the first enabled tab).
   useEffect(() => {
     if (process.env.NODE_ENV === "production" || value === "") return;
-    // Defer to the next frame so a trigger registered by a wrapper component (its
-    // registration runs in a layout effect, after this render computed the seed)
-    // joins triggerValues before we warn. A change to triggerValues cancels this
-    // frame via cleanup and reschedules with the registered set, so the surviving
-    // frame always sees the settled values — avoiding a false first-render warning.
+    // Defer a frame so wrapper-rendered triggers (registered in a layout effect)
+    // join triggerValues before warning; a triggerValues change reschedules, so the
+    // surviving frame sees settled values and avoids a false first-render warning.
     const view = rootRef.current?.ownerDocument.defaultView ?? globalThis;
     const frame = view.requestAnimationFrame(() => {
       warnUnregisteredValue("Tabs", value, triggerValues);

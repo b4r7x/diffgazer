@@ -17,15 +17,13 @@ export default function CalloutControlled() {
         <Callout.Dismiss />
       </Callout>
 
-      {!open && (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="font-mono text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
-          [ show callout ]
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="font-mono text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+      >
+        [ show callout ]
+      </button>
     </div>
   );
 }

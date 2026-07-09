@@ -26,7 +26,7 @@
     "knip": "knip --no-config-hints",
     "verify": "sh scripts/monorepo/run-with-artifacts.sh sh -c 'pnpm run verify:monorepo && pnpm run validate:artifacts:check && pnpm run secret-scan && pnpm run check && pnpm run test:scripts && turbo run type-check && turbo run test && turbo run test:types && pnpm run smoke && pnpm run bench'",
     "test-ci": "sh scripts/monorepo/run-with-artifacts.sh sh -c 'pnpm run validate:artifacts:check && pnpm run secret-scan && pnpm run check && turbo run type-check && turbo run test && turbo run test:types && pnpm run test:scripts && DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke && DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench && pnpm run verify:monorepo'",
-    "release-check": "sh scripts/monorepo/run-with-artifacts.sh sh -c 'pnpm run validate:artifacts:check && pnpm run secret-scan && pnpm run check && pnpm run test:scripts && turbo run type-check && turbo run test && turbo run test:types && DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke && DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench && pnpm --filter @diffgazer/add pack --dry-run && pnpm --filter @diffgazer/ui pack --dry-run && pnpm --filter @diffgazer/keys pack --dry-run && pnpm --filter diffgazer pack --dry-run && pnpm run verify:monorepo && git diff --check'",
+    "release-check": "sh scripts/monorepo/run-with-artifacts.sh sh -c 'pnpm audit --prod --audit-level=high && pnpm run secret-scan && pnpm run build && pnpm run check:packages && pnpm run validate:artifacts:check && pnpm run check && pnpm run test:scripts && turbo run type-check && turbo run test && turbo run test:types && DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke && DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench && pnpm run registry:live-check && pnpm --filter @diffgazer/add pack --dry-run && pnpm --filter @diffgazer/ui pack --dry-run && pnpm --filter @diffgazer/keys pack --dry-run && pnpm --filter diffgazer pack --dry-run && pnpm run verify:monorepo && git diff --check'",
     "verify:monorepo": "node scripts/monorepo/check-invariants.mjs",
     "prepare:library-artifacts": "pnpm --filter @diffgazer/core generate:catalog-snapshot && biome format --write libs/core/src/catalog/catalog-snapshot.ts libs/core/src/catalog/provider-derived.ts && pnpm --filter @diffgazer/registry build && pnpm --filter @diffgazer/keys build && pnpm --filter @diffgazer/ui build && pnpm --filter @diffgazer/add generate:bundles && node --import tsx cli/add/scripts/copy-generated.ts",
     "prepare:artifacts": "pnpm run prepare:library-artifacts && DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm --filter @diffgazer/docs prepare:generated",
@@ -85,7 +85,8 @@
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "turbo": "^2.9.14",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.0",
+    "yaml": "^2.9.0"
   },
   "type": "module",
   "pnpm": {
@@ -103,9 +104,10 @@
       "postcss": "^8.5.14",
       "picomatch": "^4.0.4",
       "rollup": "^4.59.0",
-      "vite": "^7.3.2",
+      "vite": "^7.3.5",
       "jiti": "^2.7.0",
-      "undici": "^7.24.0",
+      "undici": "^7.28.0",
+      "hono": "^4.12.25",
       "ws": "^8.21.0",
       "fast-uri": ">=3.1.2",
       "express-rate-limit": ">=8.2.2",

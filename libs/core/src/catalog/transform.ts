@@ -7,26 +7,15 @@ import type { ModelsDevCatalog, ModelsDevModel } from "./schema.js";
 
 type PricingTier = "free" | "paid" | "unknown";
 
-/**
- * Minimum `limit.output` a model needs to emit a structured review object. Below
- * this floor live only embedding (output 1) and prompt-guard (output 512) models;
- * the smallest real review-capable chat model sits an order of magnitude above it.
- */
+// Min limit.output to emit a review object; below it sit only embedding (1) and guard (512) models.
 const REVIEW_OUTPUT_FLOOR = 1024;
 
-/** Derived from the models.dev sticker price only. Absent cost => 'unknown'. */
 function pricingTierOf(model: ModelsDevModel): PricingTier {
   if (!model.cost) return "unknown";
   return model.cost.input === 0 && model.cost.output === 0 ? "free" : "paid";
 }
 
-/**
- * True when a model can actually produce a review. Excludes audio-output models
- * (TTS) via `modalities.output` and embedding/guard models via the output floor —
- * both data the snapshot/live catalog already carry. The live catalog tags audio
- * output; the offline snapshot strips modalities, so the output floor stays the
- * load-bearing guard there.
- */
+/** True when a model can produce a review: excludes audio-output (TTS) via modalities and embedding/guard models via the output floor. */
 export function canRunReview(model: ModelsDevModel): boolean {
   const outputModalities = model.modalities?.output;
   if (outputModalities && !outputModalities.includes("text")) return false;
@@ -35,11 +24,7 @@ export function canRunReview(model: ModelsDevModel): boolean {
   return true;
 }
 
-/**
- * Resolve a selected model's documented token limits from a merged catalog, so a
- * request budget can be clamped to what the provider accepts. Returns an empty
- * object when the model is absent (the caller falls back to its default budget).
- */
+/** A selected model's documented token limits from the merged catalog; empty object when the model is absent. */
 export function findModelLimit(
   catalog: ModelsDevCatalog,
   provider: AIProvider,
@@ -62,12 +47,9 @@ function matchesSelector(model: ModelsDevModel, overlay: ProviderOverlay): boole
 }
 
 /**
- * Resolve the public 2-value tier. A provider whose whole plan is paid
- * (hasFreeTier:false) is never free — even a 0/0 sticker price there is a
- * subscription-included price, not a free tier (zai-coding). Otherwise a model
- * is free when it is genuinely zero-priced, OR the provider's whole free quota
- * covers it ('all'), OR it is a priced model the curated selector covers. Priced
- * models not in the selector default to paid — never falsely claiming free.
+ * Public 2-value tier. hasFreeTier:false is never free — a 0/0 price there is
+ * subscription-included, not a free tier (zai-coding). Otherwise free when
+ * zero-priced, OR freeTier 'all', OR covered by the curated selector; else paid.
  */
 export function isModelFreeToUse(model: ModelsDevModel, overlay: ProviderOverlay): boolean {
   if (!overlay.hasFreeTier) return false;
@@ -77,10 +59,9 @@ export function isModelFreeToUse(model: ModelsDevModel, overlay: ProviderOverlay
 }
 
 /**
- * Rank a model's freshness as a comparable epoch. `last_updated` is the dominant
- * signal: any model carrying one outranks a model that only has `release_date`,
- * so the two date fields are never compared against each other. Within a tier,
- * the newer timestamp wins; a model with neither date sorts oldest.
+ * Freshness as a comparable (tier, epoch): any last_updated outranks a
+ * release_date-only entry, so the two date fields are never compared against
+ * each other. Newer wins within a tier; neither date sorts oldest.
  */
 function freshnessRank(model: ModelsDevModel): { tier: number; epoch: number } {
   if (model.last_updated) return { tier: 2, epoch: Date.parse(model.last_updated) || 0 };
@@ -104,10 +85,19 @@ function describeModel(model: ModelsDevModel): string {
   return model.name ?? model.id;
 }
 
+/**
+ * A model id is a persisted/API identity and the picker's selection key — it MUST
+ * survive verbatim. Sanitizing it could collapse two distinct ids into one, so an
+ * id that sanitization would alter is rejected rather than mutated.
+ */
+function hasDisplaySafeId(model: ModelsDevModel): boolean {
+  return sanitizeTerminalText(model.id) === model.id;
+}
+
 function toModelInfo(model: ModelsDevModel, overlay: ProviderOverlay): ModelInfo {
   const recommended = model.id === overlay.recommendedModelId;
   return {
-    id: sanitizeTerminalText(model.id),
+    id: model.id,
     name: sanitizeTerminalText(model.name ?? model.id),
     description: sanitizeTerminalText(describeModel(model)),
     tier: isModelFreeToUse(model, overlay) ? "free" : "paid",
@@ -115,11 +105,7 @@ function toModelInfo(model: ModelsDevModel, overlay: ProviderOverlay): ModelInfo
   };
 }
 
-/**
- * Merge every source provider in `modelsDevIds` into one model list, deduped by
- * the inner `model.id`. Duplicate ids collapse to the freshest entry (see
- * isFresher). Source providers absent from the catalog are skipped.
- */
+/** Merge every source provider in `modelsDevIds` into one list, deduped by `model.id`; duplicates collapse to the freshest (see isFresher). Missing sources are skipped. */
 export function mergeModelsAcrossSources(
   catalog: ModelsDevCatalog,
   modelsDevIds: readonly string[],
@@ -147,17 +133,13 @@ function compareStrings(a: string, b: string): number {
   return 0;
 }
 
-/**
- * Merge every source provider in overlay.modelsDevIds into one ModelInfo[].
- * Duplicate ids collapse to the freshest entry. Output is deterministic and
- * locale-independent: free models first, then by name (case-insensitive), id as
- * the final tiebreak.
- */
+/** Merge overlay.modelsDevIds into a deterministic ModelInfo[]: free first, then by name (case-insensitive), id as the final tiebreak. */
 export function catalogToModelInfo(catalog: ModelsDevCatalog, provider: AIProvider): ModelInfo[] {
   const overlay = PROVIDER_OVERLAY[provider];
 
   return mergeModelsAcrossSources(catalog, overlay.modelsDevIds)
     .filter(canRunReview)
+    .filter(hasDisplaySafeId)
     .map((model) => toModelInfo(model, overlay))
     .sort((a, b) => {
       const aFree = a.tier === "free" ? 0 : 1;

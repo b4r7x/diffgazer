@@ -9,8 +9,7 @@ const KEY_ALIASES: Record<string, string> = {
   right: "arrowright",
   esc: "escape",
   space: " ",
-  // Shifted punctuation aliases — lets hotkey strings reference these
-  // characters by name when '+' is the modifier delimiter.
+  // Name aliases for chars unusable literally when '+' is the modifier delimiter.
   question: "?",
   plus: "+",
   exclamation: "!",
@@ -81,9 +80,8 @@ export interface ParsedHotkey {
 function splitHotkey(hotkey: string): { mods: string[]; rawKey: string } {
   const rawParts = hotkey.split("+");
   let rawKey = rawParts.pop() ?? "";
-  // When split produces an empty last segment (hotkey ends with "+" or is
-  // just "+"), the actual key is "+". The empty entry before it came from the
-  // delimiter, not a modifier, so drop trailing empty parts.
+  // Trailing "+" (or bare "+") splits to an empty key: the key is "+"; drop the
+  // delimiter-produced empty parts so they aren't read as modifiers.
   if (rawKey === "" && rawParts.length > 0) {
     rawKey = "+";
     while (rawParts.length > 0 && rawParts[rawParts.length - 1] === "") {
@@ -166,8 +164,6 @@ export function serializeParsedHotkey(parsed: ParsedHotkey): string {
   if (parsed.meta) mods.push("meta");
   if (parsed.shift) mods.push("shift");
   if (parsed.alt) mods.push("alt");
-  // Keep unknown-modifier segments in the canonical key so a typo'd hotkey
-  // cannot collide with a legitimate one that shares the same final key.
   return [...mods.sort(), ...[...parsed.unknownModifiers].sort(), parsed.key].join("+");
 }
 

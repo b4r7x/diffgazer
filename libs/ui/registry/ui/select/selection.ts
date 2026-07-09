@@ -16,13 +16,11 @@ export function getNodeText(node: ReactNode): string | undefined {
   return undefined;
 }
 
-/** to selected array utility. */
 export function toSelectedArray(value: string | null | string[], multiple: boolean): string[] {
   if (multiple) return Array.isArray(value) ? value : [];
   return value === null ? [] : [value as string];
 }
 
-/** to option id utility. */
 export function toOptionId(listboxId: string, value: string): string {
   const encoded = Array.from(value, (char) => char.codePointAt(0)?.toString(36) ?? "0").join("-");
   return `${listboxId}-opt-${encoded || "empty"}`;

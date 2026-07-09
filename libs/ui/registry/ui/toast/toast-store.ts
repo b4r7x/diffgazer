@@ -54,9 +54,7 @@ const MAX_TOASTS = 5;
 export type ToastPauseCause = "hover" | "focus" | "document-hidden";
 
 interface StoreState {
-  /** toasts used by store. */
   toasts: Toast[];
-  /** dismissing ids used by store. */
   dismissingIds: Set<string>;
   pauseCauses: Set<ToastPauseCause>;
   paused: boolean;

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { queryTestElement, requireFrameDocument } from "../testing/assertions.js";
 import {
+  containsActiveElement,
   getFirstFocusableElement,
   getFocusableElements,
   getTabbableElements,
@@ -233,26 +234,44 @@ describe("focusable utilities", () => {
 
     it("returns true for negative-tabindex programmatic focus targets", () => {
       const c = mount('<div id="a" tabindex="-1">A</div>');
-      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(isFocusable(queryTestElement(c, "#a"))).toBe(true);
     });
 
     it("returns true for summary elements", () => {
       const c = mount('<details><summary id="a">Details</summary></details>');
-      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(isFocusable(queryTestElement(c, "#a"))).toBe(true);
     });
 
     it("returns false for disabled buttons", () => {
       const c = mount('<button id="a" disabled>A</button>');
-      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(isFocusable(queryTestElement(c, "#a"))).toBe(false);
     });
 
     it("returns false for elements inside an inert ancestor", () => {
       const c = mount('<div inert><button id="a">A</button></div>');
-      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(isFocusable(queryTestElement(c, "#a"))).toBe(false);
+    });
+
+    it("treats a shadow child as unreachable when the host is hidden, inert, or aria-hidden", () => {
+      const c = mount("<div id='host'></div>");
+      const host = queryTestElement(c, "#host");
+      const shadowRoot = host.attachShadow({ mode: "open" });
+      const child = document.createElement("button");
+      child.textContent = "Shadow child";
+      shadowRoot.append(child);
+
+      expect(isFocusable(child)).toBe(true);
+
+      host.setAttribute("aria-hidden", "true");
+      expect(isFocusable(child)).toBe(false);
+      host.removeAttribute("aria-hidden");
+
+      host.setAttribute("inert", "");
+      expect(isFocusable(child)).toBe(false);
+      host.removeAttribute("inert");
+
+      host.style.display = "none";
+      expect(isFocusable(child)).toBe(false);
     });
 
     it("works with elements from another document realm", () => {
@@ -266,6 +285,31 @@ describe("focusable utilities", () => {
 
       expect(isFocusable(button)).toBe(true);
       expect(getFocusableElements(root)).toEqual([button]);
+    });
+  });
+
+  describe("containsActiveElement", () => {
+    it("reports containment when focus lives inside an open shadow root", () => {
+      const c = mount("<div id='host'></div>");
+      const host = queryTestElement(c, "#host");
+      const shadowRoot = host.attachShadow({ mode: "open" });
+      const child = document.createElement("button");
+      shadowRoot.append(child);
+
+      child.focus();
+
+      expect(containsActiveElement(host)).toBe(true);
+      expect(containsActiveElement(c)).toBe(true);
+    });
+
+    it("returns false when the deep active element is outside the element", () => {
+      const c = mount("<button id='inside'>Inside</button>");
+      const inside = queryTestElement(c, "#inside");
+      const outside = document.createElement("button");
+      document.body.append(outside);
+
+      outside.focus();
+      expect(containsActiveElement(inside)).toBe(false);
     });
   });
 });

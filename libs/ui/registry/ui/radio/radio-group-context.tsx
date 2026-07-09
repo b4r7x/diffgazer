@@ -27,7 +27,6 @@ export interface RadioGroupContextValue {
   size: RadioSize;
   /** Indicator style. */
   variant: SelectableVariant;
-  /** highlighted value. */
   highlightedValue: string | null;
   /** Shared hidden native input name for grouped form submission. */
   name?: string;
@@ -35,7 +34,6 @@ export interface RadioGroupContextValue {
   required?: boolean;
   /** Called when required invalid occurs. */
   onRequiredInvalid: () => void;
-  /** tab target value. */
   tabTargetValue: string | null;
 }
 

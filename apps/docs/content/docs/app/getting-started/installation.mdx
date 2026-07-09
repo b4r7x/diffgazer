@@ -3,11 +3,11 @@ title: Installation
 description: Install the Diffgazer CLI globally, then verify it runs.
 ---
 
-Diffgazer is a single global binary. It needs Node.js 22 or newer (see the `engines` field in its `package.json`). The public `diffgazer` package is live; run `npm view diffgazer version engines --json` if you want to verify the published version and Node floor before installing.
+Diffgazer is a single global binary published as the `diffgazer` npm package. Node floors move with releases, so run `npm view diffgazer version engines --json` to confirm the current published version and its exact Node floor before installing.
 
 ## Requirements
 
-- Node.js 22 or newer.
+- A supported Node.js runtime; verify the exact floor for the published version with `npm view` as above.
 - A `git` binary on your PATH. Diffgazer shells out to `git` to read your status and diffs, so reviews fail if `git` is missing or you run it outside a repository.
 - At least one model provider key. Diffgazer brings no model of its own; you supply one. See [providers and models](/app/concepts/providers-and-models).
 

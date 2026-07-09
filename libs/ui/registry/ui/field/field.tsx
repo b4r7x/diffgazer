@@ -32,36 +32,19 @@ interface FieldSlotRegistration {
   hasContent: boolean;
 }
 
-/** Context value shared by field. */
 interface FieldContextValue {
-  /** Override the auto-generated id used by the wrapped control, label, description, and error. */
   controlId: string;
-  /** DOM id for default label. */
   defaultLabelId: string;
-  /** DOM id for default description. */
   defaultDescriptionId: string;
-  /** DOM id for default error. */
   defaultErrorId: string;
-  /**
-   * Marks the control as invalid; sets aria-invalid and surfaces Field.Error in
-   * aria-describedby.
-   */
   invalid: boolean;
-  /** Marks the control as required and shows a required indicator next to Field.Label. */
   required: boolean | undefined;
-  /** Disables the control and applies data-disabled to the field root. */
   disabled: boolean | undefined;
-  /** Ref for the control element. */
   controlRef: RefObject<HTMLElement | null>;
-  /** DOM id for label. */
   labelId: string | undefined;
-  /** described by used by field. */
   describedBy: string | undefined;
-  /** Registers control id with field. */
   registerControlId: (id: string | null) => void;
-  /** Registers slot with field. */
   registerSlot: (slot: FieldSlot, registration: FieldSlotRegistration) => void;
-  /** Unregisters slot from field. */
   unregisterSlot: (slot: FieldSlot) => void;
 }
 
@@ -95,6 +78,60 @@ function isLabelableElement(element: HTMLElement | null): boolean {
   return element !== null && LABELABLE_TAGS.has(element.tagName);
 }
 
+interface FieldChildProps {
+  id?: string;
+  children?: ReactNode;
+}
+
+interface FieldSeed {
+  slots: Partial<Record<FieldSlot, FieldSlotRegistration>>;
+  directSlots: Set<FieldSlot>;
+  controlId: string | null;
+  hasDirectControl: boolean;
+}
+
+/**
+ * Resolves slot/control ids from direct children during render so SSR and the first client
+ * paint carry the same ARIA relationships the effects establish after hydration. Wrapped or
+ * dynamic children fall back to the effect registrations.
+ */
+function seedFieldFromChildren(
+  children: ReactNode,
+  ids: { label: string; description: string; error: string },
+  invalid: boolean,
+): FieldSeed {
+  const slots: Partial<Record<FieldSlot, FieldSlotRegistration>> = {};
+  const directSlots = new Set<FieldSlot>();
+  let controlId: string | null = null;
+  let hasDirectControl = false;
+
+  Children.forEach(children, (child) => {
+    if (!isValidElement<FieldChildProps>(child)) return;
+    if (child.type === FieldLabel) {
+      directSlots.add("label");
+      slots.label = { id: child.props.id ?? ids.label, hasContent: true };
+    } else if (child.type === FieldDescription) {
+      directSlots.add("description");
+      slots.description = {
+        id: child.props.id ?? ids.description,
+        hasContent: hasRenderableContent(child.props.children),
+      };
+    } else if (child.type === FieldError) {
+      directSlots.add("error");
+      slots.error = {
+        id: child.props.id ?? ids.error,
+        hasContent: hasRenderableContent(child.props.children) && invalid,
+      };
+    } else if (child.type === FieldControl) {
+      hasDirectControl = true;
+      const control = child.props.children;
+      controlId = isValidElement<FieldChildProps>(control) ? (control.props.id ?? null) : null;
+    }
+  });
+
+  return { slots, directSlots, controlId, hasDirectControl };
+}
+
 /** Props for field root. */
 export interface FieldRootProps extends ComponentProps<"div"> {
   /** Override the auto-generated id used by the wrapped control, label, description, and error. */
@@ -110,10 +147,6 @@ export interface FieldRootProps extends ComponentProps<"div"> {
   disabled?: boolean;
 }
 
-/**
- * Form field primitives that wire labels, controls, descriptions, and validation messages
- * without owning the actual input component.
- */
 function FieldRoot({
   controlId,
   invalid = false,
@@ -134,9 +167,17 @@ function FieldRoot({
   const [registeredControlId, setRegisteredControlId] = useState<string | null>(null);
   const [slots, setSlots] = useState<Partial<Record<FieldSlot, FieldSlotRegistration>>>({});
 
-  // A consumer id on the Control child wins; FieldControl reports the resolved
-  // id so Field.Label's htmlFor follows the real control.
-  const resolvedControlId = registeredControlId ?? baseControlId;
+  const seed = seedFieldFromChildren(
+    children,
+    { label: defaultLabelId, description: defaultDescriptionId, error: defaultErrorId },
+    invalid,
+  );
+
+  // A consumer id on the Control child wins. A direct control is authoritative
+  // from render; a wrapped control reports its resolved id through the effect.
+  const resolvedControlId = seed.hasDirectControl
+    ? (seed.controlId ?? baseControlId)
+    : (registeredControlId ?? baseControlId);
 
   const registerControlId = useCallback((id: string | null) => {
     setRegisteredControlId((prev) => (prev === id ? prev : id));
@@ -161,11 +202,18 @@ function FieldRoot({
     });
   }, []);
 
-  // Only registered labels are exposed to the control; otherwise aria-labelledby
-  // would point at a missing element.
-  const labelId = slots.label?.id;
-  const descriptionId = slots.description?.hasContent ? slots.description.id : undefined;
-  const errorId = slots.error?.hasContent ? slots.error.id : undefined;
+  // Direct children win from render; wrapped children fall back to their effect
+  // registration. Only labels present in the tree are exposed, otherwise
+  // aria-labelledby would point at a missing element.
+  const labelSlot = seed.directSlots.has("label") ? seed.slots.label : slots.label;
+  const descriptionSlot = seed.directSlots.has("description")
+    ? seed.slots.description
+    : slots.description;
+  const errorSlot = seed.directSlots.has("error") ? seed.slots.error : slots.error;
+
+  const labelId = labelSlot?.id;
+  const descriptionId = descriptionSlot?.hasContent ? descriptionSlot.id : undefined;
+  const errorId = errorSlot?.hasContent ? errorSlot.id : undefined;
   const describedBy = mergeIds(descriptionId, invalid ? errorId : undefined);
 
   const contextValue = useMemo<FieldContextValue>(
@@ -222,10 +270,6 @@ export interface FieldLabelProps extends LabelHTMLAttributes<HTMLLabelElement> {
   ref?: Ref<HTMLLabelElement>;
 }
 
-/**
- * Form field primitives that wire labels, controls, descriptions, and validation messages
- * without owning the actual input component.
- */
 function FieldLabel({ className, children, ref, id, onClick, ...props }: FieldLabelProps) {
   const { controlId, required, defaultLabelId, controlRef, registerSlot, unregisterSlot } =
     useFieldContext("Field.Label");
@@ -239,8 +283,7 @@ function FieldLabel({ className, children, ref, id, onClick, ...props }: FieldLa
   const handleClick = (event: ReactMouseEvent<HTMLLabelElement>) => {
     onClick?.(event);
     if (event.defaultPrevented) return;
-    // Native htmlFor only activates labelable elements; div-based controls
-    // (Checkbox/Radio) need a manual focus + activation to restore label-click parity.
+    // htmlFor only activates labelable elements; div-based Checkbox/Radio need manual focus+click.
     const control = controlRef.current;
     if (control && !isLabelableElement(control)) {
       event.preventDefault();
@@ -271,21 +314,13 @@ function FieldLabel({ className, children, ref, id, onClick, ...props }: FieldLa
   );
 }
 
-/** Props for field control child. */
 interface FieldControlChildProps {
-  /** ID applied to the rendered element. */
   id?: string;
-  /** Disables the control and applies data-disabled to the field root. */
   disabled?: boolean;
-  /** Marks the control as required and shows a required indicator next to Field.Label. */
   required?: boolean;
-  /** ARIA invalid state forwarded to the rendered control. */
   "aria-invalid"?: AriaAttributes["aria-invalid"];
-  /** ID of the element that describes this component. */
   "aria-describedby"?: string;
-  /** ID of the element that labels this component. */
   "aria-labelledby"?: string;
-  /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLElement>;
 }
 
@@ -301,10 +336,6 @@ export interface FieldControlProps {
   ref?: Ref<HTMLElement>;
 }
 
-/**
- * Form field primitives that wire labels, controls, descriptions, and validation messages
- * without owning the actual input component.
- */
 function FieldControl({ children, ref }: FieldControlProps) {
   const {
     controlId,
@@ -343,10 +374,6 @@ function FieldControl({ children, ref }: FieldControlProps) {
 /** Props for field description. */
 export interface FieldDescriptionProps extends ComponentProps<"p"> {}
 
-/**
- * Form field primitives that wire labels, controls, descriptions, and validation messages
- * without owning the actual input component.
- */
 function FieldDescription({ className, children, ref, ...props }: FieldDescriptionProps) {
   const { defaultDescriptionId, registerSlot, unregisterSlot } =
     useFieldContext("Field.Description");
@@ -376,10 +403,6 @@ function FieldDescription({ className, children, ref, ...props }: FieldDescripti
 /** Props for field error. */
 export interface FieldErrorProps extends ComponentProps<"p"> {}
 
-/**
- * Form field primitives that wire labels, controls, descriptions, and validation messages
- * without owning the actual input component.
- */
 function FieldError({ className, children, ref, ...props }: FieldErrorProps) {
   const { defaultErrorId, invalid, registerSlot, unregisterSlot } = useFieldContext("Field.Error");
   const hasChildren = hasRenderableContent(children);

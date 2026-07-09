@@ -41,6 +41,26 @@ describe("focus restore utilities", () => {
     expect(getRestorableFocusTarget()).toBe(null);
   });
 
+  it("captures and restores focus inside an open shadow root", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const shadowRoot = host.attachShadow({ mode: "open" });
+    const shadowButton = document.createElement("button");
+    shadowButton.textContent = "Shadow";
+    shadowRoot.append(shadowButton);
+
+    shadowButton.focus();
+
+    expect(document.activeElement).toBe(host);
+    expect(getRestorableFocusTarget()).toBe(shadowButton);
+
+    const other = button("Other");
+    other.focus();
+
+    expect(restoreFocus(shadowButton)).toBe(true);
+    expect(host.shadowRoot?.activeElement).toBe(shadowButton);
+  });
+
   it("captures and restores focus in the provided ownerDocument", () => {
     const frame = document.createElement("iframe");
     document.body.append(frame);

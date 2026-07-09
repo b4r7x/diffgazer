@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -7,6 +7,7 @@ import {
   assertHeadOk,
   assertRegistryContentFresh,
   publicRegistryIsGated,
+  registryFreshnessTargets,
   requiredEndpoints,
   sha256Hex,
 } from "./check-live-registry.mjs";
@@ -17,6 +18,13 @@ test("required endpoints include the keys registry route", () => {
 
 test("required endpoints include the published editor schema", () => {
   assert.ok(requiredEndpoints.some((url) => url.endsWith("/schema/diffgazer.json")));
+});
+
+test("every required endpoint maps to a committed freshness artifact", () => {
+  assert.deepEqual(
+    requiredEndpoints.slice().sort(),
+    registryFreshnessTargets.map((target) => target.url).sort(),
+  );
 });
 
 test("assertHeadOk rejects non-200 responses", async () => {
@@ -70,4 +78,31 @@ test("assertRegistryContentFresh rejects promoted SHA drift", async () => {
 
   assert.equal(sha256Hex(localBody), sha256Hex('{"name":"local"}\n'));
   assert.notEqual(sha256Hex(localBody), sha256Hex(liveBody));
+});
+
+test("assertRegistryContentFresh resolves when every mapped body matches its source", async () => {
+  const bodyByUrl = new Map(
+    registryFreshnessTargets.map((target) => [target.url, readFileSync(target.path, "utf8")]),
+  );
+
+  await assertRegistryContentFresh(async (url) => ({
+    ok: true,
+    text: async () => bodyByUrl.get(url),
+  }));
+});
+
+test("assertRegistryContentFresh catches drift on a non-UI-index endpoint", async () => {
+  const bodyByUrl = new Map(
+    registryFreshnessTargets.map((target) => [target.url, readFileSync(target.path, "utf8")]),
+  );
+  const keysUrl = "https://r.b4r7.dev/r/keys/navigation.json";
+
+  await assert.rejects(
+    () =>
+      assertRegistryContentFresh(async (url) => ({
+        ok: true,
+        text: async () => (url === keysUrl ? "stale\n" : bodyByUrl.get(url)),
+      })),
+    /SHA mismatch for .*keys\/navigation\.json/,
+  );
 });

@@ -14,8 +14,6 @@ export const reviewQueries = {
 
   detail: (api: BoundApi, id: string) =>
     queryOptions({
-      // "detail" discriminator keeps per-review entries from colliding with the
-      // sibling literal keys ("list", "active-session", "context").
       queryKey: [...reviewQueries.all(), "detail", id] as const,
       queryFn: () => api.getReview(id),
       staleTime: 60_000,
@@ -28,10 +26,8 @@ export const reviewQueries = {
       staleTime: 0,
     }),
 
-  // The server returns the CURRENT workspace context snapshot; there is no
-  // per-review context route, so the key carries no reviewId. Partitioning by a
-  // reviewId the queryFn ignores would let a stale refetch relabel today's
-  // snapshot as an old review's.
+  // Key carries no reviewId: the queryFn ignores it, so a reviewId in the key
+  // would let a stale refetch relabel the current snapshot as an old review's.
   context: (api: BoundApi) =>
     queryOptions({
       queryKey: [...reviewQueries.all(), "context"] as const,

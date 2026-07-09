@@ -117,34 +117,43 @@ function resolveWorkspaceRoots(globs: string[]): WorkspaceRoot[] {
   });
 }
 
+async function isRealpathContained(
+  absolutePath: string,
+  normalizedProject: string,
+): Promise<boolean> {
+  const real = await realpath(absolutePath).catch(() => path.resolve(absolutePath));
+  return real === normalizedProject || real.startsWith(normalizedProject + path.sep);
+}
+
 async function filterEscapedRoots(
   roots: WorkspaceRoot[],
-  projectPath: string,
+  normalizedProject: string,
 ): Promise<WorkspaceRoot[]> {
-  const normalizedProject = await realpath(projectPath).catch(() => path.resolve(projectPath));
   const results: WorkspaceRoot[] = [];
   for (const root of roots) {
     const resolved = path.resolve(normalizedProject, root.dir);
-    const real = await realpath(resolved).catch(() => resolved);
-    if (real === normalizedProject || real.startsWith(normalizedProject + path.sep)) {
+    if (await isRealpathContained(resolved, normalizedProject)) {
       results.push(root);
     }
   }
   return results;
 }
 
-async function getWorkspaceRoots(projectPath: string): Promise<WorkspaceRoot[]> {
+async function getWorkspaceRoots(
+  projectPath: string,
+  normalizedProject: string,
+): Promise<WorkspaceRoot[]> {
   const yamlPath = path.join(projectPath, "pnpm-workspace.yaml");
   try {
     const content = await readFile(yamlPath, "utf8");
     const globs = parseWorkspaceYaml(content);
     if (globs.length > 0) {
-      return await filterEscapedRoots(resolveWorkspaceRoots(globs), projectPath);
+      return await filterEscapedRoots(resolveWorkspaceRoots(globs), normalizedProject);
     }
   } catch {
     // pnpm-workspace.yaml not found — fall through to defaults
   }
-  return FALLBACK_WORKSPACE_ROOTS;
+  return await filterEscapedRoots(FALLBACK_WORKSPACE_ROOTS, normalizedProject);
 }
 
 function collectDependencies(pkgJson: {
@@ -165,8 +174,12 @@ async function readWorkspacePackage(
   projectPath: string,
   dir: string,
   kind: WorkspacePackage["kind"],
+  normalizedProject: string,
 ): Promise<WorkspacePackage | null> {
-  const pkgJson = await readPackageManifest(path.join(projectPath, dir, "package.json"));
+  const manifestPath = path.join(projectPath, dir, "package.json");
+  if (!(await isRealpathContained(manifestPath, normalizedProject))) return null;
+
+  const pkgJson = await readPackageManifest(manifestPath);
   if (!pkgJson?.name) return null;
 
   return {
@@ -178,7 +191,8 @@ async function readWorkspacePackage(
 }
 
 export async function discoverWorkspacePackages(projectPath: string): Promise<WorkspacePackage[]> {
-  const roots = await getWorkspaceRoots(projectPath);
+  const normalizedProject = await realpath(projectPath).catch(() => path.resolve(projectPath));
+  const roots = await getWorkspaceRoots(projectPath, normalizedProject);
 
   const packages: WorkspacePackage[] = [];
   const seenPackageDirs = new Set<string>();
@@ -199,16 +213,18 @@ export async function discoverWorkspacePackages(projectPath: string): Promise<Wo
     }
 
     if (root.includeSelf) {
-      addPackage(await readWorkspacePackage(projectPath, root.dir, root.kind));
+      addPackage(await readWorkspacePackage(projectPath, root.dir, root.kind, normalizedProject));
     }
     if (!root.includeChildren) continue;
 
     const entries = await readFileDirectory(absoluteRoot);
     for (const entry of entries) {
       if (!entry.isDirectory) continue;
-      addPackage(
-        await readWorkspacePackage(projectPath, path.join(root.dir, entry.name), root.kind),
-      );
+      const childDir = path.join(root.dir, entry.name);
+      if (!(await isRealpathContained(path.join(projectPath, childDir), normalizedProject))) {
+        continue;
+      }
+      addPackage(await readWorkspacePackage(projectPath, childDir, root.kind, normalizedProject));
     }
   }
 

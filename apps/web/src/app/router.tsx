@@ -10,7 +10,7 @@ import { lazy } from "react";
 import { z } from "zod";
 import { RouteLoadingFallback } from "@/components/layout/route-loading-fallback";
 import { requireConfigured, requireNotConfigured } from "../lib/config-guards";
-import { RootLayout } from "./routes/__root";
+import { NotFoundPage, RootLayout } from "./routes/__root";
 import { HomePage } from "./routes/home";
 import { ReviewPage } from "./routes/review";
 
@@ -214,6 +214,7 @@ const routeTree = rootRoute.addChildren([
 export const router = createRouter({
   routeTree,
   defaultPendingComponent: RouteLoadingFallback,
+  defaultNotFoundComponent: NotFoundPage,
   defaultPendingMs: 100,
   defaultPendingMinMs: 300,
 });

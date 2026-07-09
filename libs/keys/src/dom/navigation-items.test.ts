@@ -190,6 +190,59 @@ describe("navigation item utilities", () => {
     ]);
   });
 
+  it("excludes hidden, inert, and aria-hidden items between visible siblings", () => {
+    const options = mountContainer("listbox");
+    appendElement(options, { role: "option", value: "a" });
+    appendElement(options, { role: "option", value: "hidden", attributes: { hidden: "" } });
+    appendElement(options, { role: "option", value: "inert", attributes: { inert: "" } });
+    appendElement(options, {
+      role: "option",
+      value: "aria-hidden",
+      attributes: { "aria-hidden": "true" },
+    });
+    appendElement(options, { role: "option", value: "b" });
+
+    expect(values(getNavigationItems(options, { type: "option" }))).toEqual(["a", "b"]);
+    expect(values(getNavigationItems(options, { type: "option", skipDisabled: false }))).toEqual([
+      "a",
+      "b",
+    ]);
+  });
+
+  it("excludes items under hidden, inert, and aria-hidden ancestors", () => {
+    const options = mountContainer("listbox");
+    appendElement(options, { role: "option", value: "a" });
+    const hiddenGroup = appendElement(options, { attributes: { hidden: "" } });
+    appendElement(hiddenGroup, { role: "option", value: "under-hidden" });
+    const inertGroup = appendElement(options, { attributes: { inert: "" } });
+    appendElement(inertGroup, { role: "option", value: "under-inert" });
+    const ariaHiddenGroup = appendElement(options, { attributes: { "aria-hidden": "true" } });
+    appendElement(ariaHiddenGroup, { role: "option", value: "under-aria-hidden" });
+    appendElement(options, { role: "option", value: "b" });
+
+    expect(values(getNavigationItems(options, { type: "option" }))).toEqual(["a", "b"]);
+  });
+
+  it("excludes items under aria-disabled and data-disabled ancestors by default", () => {
+    const options = mountContainer("listbox");
+    appendElement(options, { role: "option", value: "a" });
+    const ariaDisabledGroup = appendElement(options, {
+      attributes: { "aria-disabled": "true" },
+    });
+    appendElement(ariaDisabledGroup, { role: "option", value: "under-aria-disabled" });
+    const dataDisabledGroup = appendElement(options, { attributes: { "data-disabled": "" } });
+    appendElement(dataDisabledGroup, { role: "option", value: "under-data-disabled" });
+    appendElement(options, { role: "option", value: "b" });
+
+    expect(values(getNavigationItems(options, { type: "option" }))).toEqual(["a", "b"]);
+    expect(values(getNavigationItems(options, { type: "option", skipDisabled: false }))).toEqual([
+      "a",
+      "under-aria-disabled",
+      "under-data-disabled",
+      "b",
+    ]);
+  });
+
   it("scopes owned roles to the outer listbox, menu, radiogroup, and tablist", () => {
     const cases: Array<{
       type: NavigationItemType;
@@ -274,14 +327,11 @@ describe("navigation item utilities", () => {
 
   it("returns mixed-selector items sorted by DOM order", () => {
     const container = mountContainer("listbox");
-    // role item first in DOM
     appendElement(container, { role: "option", value: "role-first" });
-    // data-contract item second in DOM
     appendElement(container, {
       value: "contract-second",
       attributes: { [NAVIGATION_ITEM_ATTRIBUTE]: "option" },
     });
-    // role item third in DOM
     appendElement(container, { role: "option", value: "role-third" });
 
     expect(values(getNavigationItems(container, { type: "option" }))).toEqual([
@@ -293,7 +343,6 @@ describe("navigation item utilities", () => {
 
   it("deduplicates elements matched by multiple selectors", () => {
     const container = mountContainer("listbox");
-    // Element matches both data-contract and role selectors
     appendElement(container, {
       role: "option",
       value: "both",

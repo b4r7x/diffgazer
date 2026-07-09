@@ -1,5 +1,5 @@
 import { testNavigationBehavior } from "@diffgazer/keys/testing/navigation-behavior";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -259,6 +259,47 @@ describe("Accordion", () => {
     expect(triggerTwo).toHaveFocus();
     await user.keyboard("{ArrowUp}");
     expect(triggerOne).toHaveFocus();
+  });
+
+  it("moves focus between triggers when the accordion is inside an open shadow root (F-068)", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const shadowRoot = host.attachShadow({ mode: "open" });
+    const mountPoint = document.createElement("div");
+    shadowRoot.append(mountPoint);
+
+    render(
+      <Accordion>
+        <Accordion.Item value="one">
+          <Accordion.Header>
+            <Accordion.Trigger>Section One</Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content>Content One</Accordion.Content>
+        </Accordion.Item>
+        <Accordion.Item value="two">
+          <Accordion.Header>
+            <Accordion.Trigger>Section Two</Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content>Content Two</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+      { container: mountPoint },
+    );
+
+    const triggerOne = within(mountPoint).getByRole("button", { name: "Section One" });
+    const triggerTwo = within(mountPoint).getByRole("button", { name: "Section Two" });
+
+    triggerOne.focus();
+    expect(shadowRoot.activeElement).toBe(triggerOne);
+
+    act(() => {
+      triggerOne.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, composed: true }),
+      );
+    });
+
+    expect(shadowRoot.activeElement).toBe(triggerTwo);
+    host.remove();
   });
 
   it("does not handle arrow navigation when focus is inside panel content", async () => {
@@ -586,13 +627,8 @@ describe("Accordion keyboard navigation", () => {
 });
 
 describe("Accordion prefers-reduced-motion", () => {
-  // The grid-template-rows transition that animates expand/collapse must be
-  // suppressed under prefers-reduced-motion. Tailwind v4 compiles
-  // `motion-reduce:transition-none` to a @media (prefers-reduced-motion: reduce)
-  // rule that sets transition-property: none. jsdom does not evaluate @media
-  // in stylesheets, so the underlying declaration is injected unconditionally
-  // at the top level to simulate matchMedia returning true; getComputedStyle
-  // then reports the suppressed transition.
+  // jsdom does not evaluate @media, so inject motion-reduce:transition-none
+  // unconditionally to simulate prefers-reduced-motion.
   let styleElement: HTMLStyleElement | null = null;
 
   beforeAll(() => {

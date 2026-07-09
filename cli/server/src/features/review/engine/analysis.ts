@@ -44,6 +44,25 @@ function countDiffLines(diff: ParsedDiff): number {
   return diff.files.reduce((sum, file) => sum + file.rawDiff.split("\n").length, 0);
 }
 
+// Namespace ids by lens so the same raw id from independent lenses stays a
+// distinct selection identity across the cross-lens merge (ids survive dedupe,
+// which keys on file/line/title); a deterministic `#n` suffix separates
+// same-raw-id duplicates within one lens.
+function ensureUniqueIssueIds(issues: ReviewIssue[], lensId: Lens["id"]): ReviewIssue[] {
+  const seen = new Set<string>();
+  return issues.map((issue) => {
+    const namespacedId = `${lensId}:${issue.id}`;
+    let uniqueId = namespacedId;
+    let attempt = 2;
+    while (seen.has(uniqueId)) {
+      uniqueId = `${namespacedId}#${attempt}`;
+      attempt++;
+    }
+    seen.add(uniqueId);
+    return { ...issue, id: uniqueId };
+  });
+}
+
 export async function runLensAnalysis(
   client: AIClient,
   lens: Lens,
@@ -104,7 +123,6 @@ export async function runLensAnalysis(
       parentSpanId,
     });
 
-    // Honest diff-coverage progress (the lens only reads the diff, no file read).
     onEvent({
       type: "file_progress",
       agent: agentId,
@@ -154,8 +172,6 @@ export async function runLensAnalysis(
     spanId,
   });
 
-  // Neutral elapsed-time progress while the single model call is in flight — no
-  // fabricated stage claims about what the model is internally doing.
   let progressTimer: ReturnType<typeof setInterval> | null = null;
   const timerStart = Date.now();
   progressTimer = setInterval(() => {
@@ -198,14 +214,16 @@ export async function runLensAnalysis(
   }
 
   const diffFilePaths = new Set(diff.files.map((f) => f.filePath));
-  const processedIssues = result.value.issues
-    .filter((issue: ReviewIssue) => diffFilePaths.has(issue.file))
-    .map((issue: ReviewIssue) => normalizeIssueLineFields(issue))
-    .map((issue: ReviewIssue) => ensureIssueEvidence(issue, diff))
-    .map((issue: ReviewIssue) => sanitizeIssue(issue));
+  const processedIssues = ensureUniqueIssueIds(
+    result.value.issues
+      .filter((issue: ReviewIssue) => diffFilePaths.has(issue.file))
+      .map((issue: ReviewIssue) => normalizeIssueLineFields(issue))
+      .map((issue: ReviewIssue) => ensureIssueEvidence(issue, diff))
+      .map((issue: ReviewIssue) => sanitizeIssue(issue)),
+    lens.id,
+  );
 
-  // Stream only issues that meet the resolved severity threshold so the live
-  // counter never ticks for nits the final result silently discards.
+  // Stream only issues meeting the threshold; the full set is still returned.
   const streamedIssues = severityFilter
     ? processedIssues.filter((issue) =>
         severityMeetsMinimum(issue.severity, severityFilter.minSeverity),

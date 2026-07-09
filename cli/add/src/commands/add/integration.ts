@@ -51,15 +51,26 @@ export function applyIntegrationDeps(
 
 async function promptIntegrationMode(skipPrompts: boolean): Promise<ResolvedIntegrationMode> {
   if (skipPrompts) return "copy";
-  const selectedMode = await promptSelect("Choose keyboard integration mode:", [
-    { value: "copy", label: "Copy hooks", hint: "Copy local navigation hooks from keys registry" },
-    {
-      value: "@diffgazer/keys",
-      label: "Keys package",
-      hint: "Use package imports from @diffgazer/keys",
-    },
-  ]);
-  return selectedMode as ResolvedIntegrationMode;
+  const selectedMode = await promptSelect(
+    "Choose keyboard integration mode:",
+    [
+      {
+        value: "copy",
+        label: "Copy hooks",
+        hint: "Copy local navigation hooks from keys registry",
+      },
+      {
+        value: "@diffgazer/keys",
+        label: "Keys package",
+        hint: "Use package imports from @diffgazer/keys",
+      },
+    ],
+    "Pass --integration copy|keys|none to choose without a prompt, or run in an interactive terminal.",
+  );
+  if (selectedMode === "copy" || selectedMode === "@diffgazer/keys") {
+    return selectedMode;
+  }
+  throw new Error(`Unexpected keyboard integration selection: ${selectedMode}`);
 }
 
 export async function resolveIntegrations(

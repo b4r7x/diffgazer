@@ -173,8 +173,6 @@ describe("useNavigation", () => {
         role: "option",
         defaultHighlighted: "c",
         wrap: false,
-        // fresh inline closure on every render; it must not become stale and
-        // must not break navigation through repeated re-registration.
         onNavigationBoundaryReached: (direction) => spy(direction, tick),
       });
 
@@ -215,10 +213,8 @@ describe("useNavigation", () => {
     await user.click(screen.getByRole("listbox", { name: "Items" }));
 
     await user.keyboard("{ArrowDown}");
-    // latest closure fires (tick === 2), proving no stale capture from re-registration
     expect(spy).toHaveBeenLastCalledWith("next", 2);
 
-    // navigation still works after the churn
     await user.keyboard("{ArrowUp}");
     expectActiveOptionText("b");
   });
@@ -742,11 +738,9 @@ describe("useNavigation", () => {
       input.setSelectionRange(0, 0);
 
       const user = userEvent.setup();
-      // Move caret to the right (end). If we swallow ArrowRight, caret would not move.
       await user.keyboard("{ArrowRight}{End}");
 
       expect(input.selectionStart).toBe(input.value.length);
-      // Listbox should not have advanced highlight
       expect(
         screen.getByRole("listbox", { name: "Items" }).getAttribute("aria-activedescendant"),
       ).toBe("item-a");
@@ -763,7 +757,6 @@ describe("useNavigation", () => {
       const before = textarea.value;
       await user.keyboard(" {Enter}");
 
-      // Textarea should accept the keys (value changed)
       expect(textarea.value).not.toBe(before);
       expect(onSelect).not.toHaveBeenCalled();
     });
@@ -871,6 +864,189 @@ describe("useNavigation", () => {
       const user = userEvent.setup();
       await user.keyboard("{ArrowDown}");
       expect(document.activeElement).toBe(screen.getByRole("checkbox", { name: "B" }));
+    });
+  });
+
+  it("does not diverge highlight from focus on native disabled controls in moveFocus mode", async () => {
+    const onHighlightChange = vi.fn();
+    function DisabledNativeList() {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "button",
+        defaultHighlighted: "a",
+        moveFocus: true,
+        skipDisabled: false,
+        onHighlightChange,
+      });
+      return (
+        <div ref={ref} role="group" aria-label="Actions" tabIndex={0} onKeyDown={result.onKeyDown}>
+          <button type="button" data-value="a">
+            A
+          </button>
+          <button type="button" data-value="b" disabled>
+            B
+          </button>
+        </div>
+      );
+    }
+
+    render(<DisabledNativeList />);
+    const first = screen.getByRole("button", { name: "A" });
+    first.focus();
+
+    const user = userEvent.setup();
+    await user.keyboard("{ArrowDown}");
+
+    expect(document.activeElement).toBe(first);
+    expect(onHighlightChange).not.toHaveBeenCalled();
+  });
+
+  it("steps past a native disabled control in moveFocus mode to reach the next enabled item", async () => {
+    const onHighlightChange = vi.fn();
+    function DisabledMiddleList() {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "button",
+        defaultHighlighted: "a",
+        moveFocus: true,
+        skipDisabled: false,
+        wrap: false,
+        onHighlightChange,
+      });
+      return (
+        <div ref={ref} role="group" aria-label="Actions" tabIndex={0} onKeyDown={result.onKeyDown}>
+          <button type="button" data-value="a">
+            A
+          </button>
+          <button type="button" data-value="b" disabled>
+            B
+          </button>
+          <button type="button" data-value="c">
+            C
+          </button>
+        </div>
+      );
+    }
+
+    render(<DisabledMiddleList />);
+    const first = screen.getByRole("button", { name: "A" });
+    const last = screen.getByRole("button", { name: "C" });
+    first.focus();
+
+    const user = userEvent.setup();
+    await user.keyboard("{ArrowDown}");
+
+    expect(document.activeElement).toBe(last);
+    expect(onHighlightChange).toHaveBeenLastCalledWith("c");
+  });
+
+  it("steps Home/End past native disabled edge controls in moveFocus mode", async () => {
+    const onHighlightChange = vi.fn();
+    function DisabledEdgeList() {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "button",
+        moveFocus: true,
+        skipDisabled: false,
+        onHighlightChange,
+      });
+      return (
+        <div ref={ref} role="group" aria-label="Actions" tabIndex={0} onKeyDown={result.onKeyDown}>
+          <button type="button" data-value="a" disabled>
+            A
+          </button>
+          <button type="button" data-value="b">
+            B
+          </button>
+          <button type="button" data-value="c" disabled>
+            C
+          </button>
+        </div>
+      );
+    }
+
+    render(<DisabledEdgeList />);
+    const middle = screen.getByRole("button", { name: "B" });
+    middle.focus();
+
+    const user = userEvent.setup();
+    await user.keyboard("{Home}");
+    expect(document.activeElement).toBe(middle);
+    expect(onHighlightChange).toHaveBeenLastCalledWith("b");
+
+    await user.keyboard("{End}");
+    expect(document.activeElement).toBe(middle);
+    expect(onHighlightChange).toHaveBeenLastCalledWith("b");
+  });
+
+  describe("non-navigation control activation", () => {
+    function EmptyListWithCreate({ onSelect }: { onSelect: (value: string) => void }) {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "option",
+        onSelect,
+      });
+      return (
+        <div onKeyDown={result.onKeyDown}>
+          <button type="button">Create</button>
+          <div ref={ref} role="listbox" aria-label="Items" tabIndex={0} />
+        </div>
+      );
+    }
+
+    it("does not suppress Enter/Space on a non-navigation button beside an empty list", () => {
+      const onSelect = vi.fn();
+      render(<EmptyListWithCreate onSelect={onSelect} />);
+
+      const create = screen.getByRole("button", { name: "Create" });
+      create.focus();
+
+      for (const key of ["Enter", " "]) {
+        const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
+        act(() => {
+          create.dispatchEvent(event);
+        });
+        expect(event.defaultPrevented).toBe(false);
+      }
+      expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    it("does not suppress Home/End on a non-navigation button beside an empty list", () => {
+      const onSelect = vi.fn();
+      render(<EmptyListWithCreate onSelect={onSelect} />);
+
+      const create = screen.getByRole("button", { name: "Create" });
+      create.focus();
+
+      for (const key of ["Home", "End"]) {
+        const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
+        act(() => {
+          create.dispatchEvent(event);
+        });
+        expect(event.defaultPrevented).toBe(false);
+      }
+      expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    it("does not suppress move keys on a non-navigation button beside an empty list", () => {
+      const onSelect = vi.fn();
+      render(<EmptyListWithCreate onSelect={onSelect} />);
+
+      const create = screen.getByRole("button", { name: "Create" });
+      create.focus();
+
+      for (const key of ["ArrowUp", "ArrowDown"]) {
+        const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
+        act(() => {
+          create.dispatchEvent(event);
+        });
+        expect(event.defaultPrevented).toBe(false);
+      }
+      expect(onSelect).not.toHaveBeenCalled();
     });
   });
 

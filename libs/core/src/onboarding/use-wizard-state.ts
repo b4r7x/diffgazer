@@ -18,11 +18,7 @@ export interface UseWizardStateOptions {
   callbacks?: WizardSaveCallbacks;
   /** Surface-specific work after a successful complete (refresh, guard cache, navigate). */
   onComplete?: () => Promise<void> | void;
-  /**
-   * Terminal report channel for an abandon-cleanup failure. The wizard runs
-   * cleanup on unmount, so this routes to a mount-independent surface (toast)
-   * rather than component-local error state.
-   */
+  /** Terminal report channel for an abandon-cleanup failure; runs on unmount, so it routes to a mount-independent surface, not component state. */
   onCleanupError?: (message: string) => void;
 }
 
@@ -61,6 +57,7 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
   const [error, setError] = useState<string | null>(null);
   const [earlySaveError, setEarlySaveError] = useState<string | null>(null);
   const earlySavedProviderRef = useRef<AIProvider | null>(null);
+  const pendingSaveRef = useRef<Promise<void> | null>(null);
 
   const currentStep = getStepAt(stepIndex);
   const isFirst = isFirstStepIndex(stepIndex);
@@ -77,9 +74,7 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
     const nextStep = getStepAt(stepIndex + 1);
 
     // Early-save credentials before the model step for providers that need an
-    // API key to fetch models (e.g. OpenRouter). Persist the storage choice
-    // first so a fresh install (secretsStorage === null) does not reject the
-    // credential save with STORAGE_NOT_CONFIGURED.
+    // API key to fetch models (e.g. OpenRouter).
     if (
       nextStep === "model" &&
       wizardData.provider === "openrouter" &&
@@ -88,15 +83,20 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
     ) {
       setIsEarlySaving(true);
       setEarlySaveError(null);
-      runEarlySave(wizardData, callbacks)
-        .then(() => {
-          earlySavedProviderRef.current = wizardData.provider;
-          setStepIndex((prev) => prev + 1);
-        })
+      // Track the in-flight commit so a racing abandon-cleanup can await it and not leak credentials.
+      const savePromise = runEarlySave(wizardData, callbacks).then(() => {
+        earlySavedProviderRef.current = wizardData.provider;
+      });
+      pendingSaveRef.current = savePromise;
+      savePromise
+        .then(() => setStepIndex((prev) => prev + 1))
         .catch((cause) => {
           setEarlySaveError(getErrorMessage(cause, "Failed to save credentials"));
         })
-        .finally(() => setIsEarlySaving(false));
+        .finally(() => {
+          pendingSaveRef.current = null;
+          setIsEarlySaving(false);
+        });
       return;
     }
 
@@ -117,10 +117,7 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
     setWizardData((prev) => ({
       ...prev,
       provider,
-      // Treat an empty `defaultModel` as "no default" (e.g. OpenRouter): the
-      // user must explicitly pick a model on the next step. Using `||` keeps
-      // parity with the pre-extraction web hook and avoids leaking "" into
-      // downstream validation that expects a non-empty model ID.
+      // Empty defaultModel (e.g. OpenRouter) means "no default"; `||` yields null, never leaking "" downstream.
       model: info?.defaultModel || null,
       apiKey: "",
       inputMethod: "paste",
@@ -146,14 +143,18 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
   };
 
   const cleanupEarlySave = useCallback(async () => {
+    // Wait for any in-flight early save to settle before deleting, so we observe
+    // whether the credentials landed rather than racing the write.
+    const pending = pendingSaveRef.current;
+    if (pending) await pending.catch(() => {});
+
     const provider = earlySavedProviderRef.current;
     if (!provider || !callbacks) return;
     try {
       await callbacks.deleteCredentials(provider);
       earlySavedProviderRef.current = null;
     } catch (cause) {
-      // Runs on wizard unmount: report terminally through the surface's channel,
-      // never rethrow into the voided caller or set unmounting-component state.
+      // Runs on unmount: report terminally; never rethrow or set unmounting-component state.
       onCleanupError?.(
         `${CLEANUP_ERROR_PREFIX}: ${getErrorMessage(cause, "Retry to remove them.")}`,
       );
@@ -182,8 +183,7 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
 }
 
 async function runEarlySave(data: WizardData, callbacks: WizardSaveCallbacks): Promise<void> {
-  // Persist the storage choice first so the credential save is not rejected
-  // with STORAGE_NOT_CONFIGURED on a fresh install (secretsStorage starts null).
+  // Persist storage first, or a fresh install (secretsStorage null) rejects the credential save with STORAGE_NOT_CONFIGURED.
   await callbacks.saveSettings({ secretsStorage: data.secretsStorage });
   await callbacks.saveConfig(buildConfigPayload(data));
 }

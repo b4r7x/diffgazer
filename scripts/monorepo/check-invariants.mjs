@@ -34,6 +34,14 @@ const ALLOWED_NESTED_PACKAGE_FILES = [
   "libs/keys/examples/playground/package.json",
 ];
 
+// Pinned, not derived: a derived scan stops covering a package the moment its publish metadata is removed.
+const PUBLISHABLE_PACKAGE_FILES = [
+  "cli/add/package.json",
+  "cli/diffgazer/package.json",
+  "libs/keys/package.json",
+  "libs/ui/package.json",
+];
+
 const LICENSE_MARKERS = {
   MIT: "MIT License",
   "Apache-2.0": "Apache License",
@@ -508,6 +516,68 @@ export function checkNoPublishableInternalDocsManifest(context) {
   );
 }
 
+export function checkPublishMetadataPolicy(context) {
+  const violations = [];
+
+  for (const path of PUBLISHABLE_PACKAGE_FILES) {
+    const pkg = readJsonInRoot(context, path);
+    const problems = [];
+
+    if (pkg.private) {
+      problems.push("private: true");
+    }
+    if (pkg.publishConfig?.access !== "public") {
+      problems.push(`publishConfig.access: ${pkg.publishConfig?.access}`);
+    }
+    if (pkg.publishConfig?.provenance !== true) {
+      problems.push(`publishConfig.provenance: ${pkg.publishConfig?.provenance}`);
+    }
+    if (!pkg.engines?.node) {
+      problems.push("engines.node missing");
+    }
+    if (!pkg.license) {
+      problems.push("license missing");
+    }
+    if (!pkg.author) {
+      problems.push("author missing");
+    }
+
+    if (problems.length) {
+      violations.push(`${path}: ${problems.join(", ")}`);
+    }
+  }
+
+  return invariantResult(
+    "publishable packages set publish metadata policy",
+    violations.length === 0,
+    violations.join("; "),
+  );
+}
+
+export function checkPublishablePackagesMatchFixedList(context) {
+  const derived = getPublishablePackages(context)
+    .map(([file]) => file)
+    .sort();
+  const expected = PUBLISHABLE_PACKAGE_FILES.slice().sort();
+  const problems = [];
+
+  const missingFromFixedList = derived.filter((file) => !expected.includes(file));
+  if (missingFromFixedList.length) {
+    problems.push(`missing from fixed list: ${missingFromFixedList.join(", ")}`);
+  }
+
+  const staleFixedListEntries = expected.filter((file) => !derived.includes(file));
+  if (staleFixedListEntries.length) {
+    problems.push(`fixed list not publishable: ${staleFixedListEntries.join(", ")}`);
+  }
+
+  return invariantResult(
+    "publishable package set matches fixed policy list",
+    problems.length === 0,
+    problems.join("; "),
+  );
+}
+
 export function checkPublishablePackagesShareEngineFloor(context) {
   const engineFloors = getPublishablePackages(context).map(([file, parsed]) => ({
     file,
@@ -542,6 +612,194 @@ export function checkWebBuildUsesTurbo(context) {
   );
 }
 
+function sliceDocSection(text, heading) {
+  const marker = `## ${heading}`;
+  const start = text.indexOf(marker);
+  if (start === -1) return null;
+  const after = text.slice(start + marker.length);
+  const next = after.search(/\n## /);
+  return next === -1 ? after : after.slice(0, next);
+}
+
+function extractReportingChannels(text) {
+  const channels = new Set();
+  const advisoryUrl = /https:\/\/github\.com\/[^\s)]+\/security\/advisories\/new/gi;
+  const email = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
+  for (const match of text.matchAll(advisoryUrl)) channels.add(match[0].toLowerCase());
+  for (const match of text.matchAll(email)) channels.add(match[0].toLowerCase());
+  return channels;
+}
+
+function compareReportingChannels(label, channels, rootChannels, violations, requireEvery) {
+  for (const channel of channels) {
+    if (!rootChannels.has(channel)) {
+      violations.push(`${label}: unexpected ${channel}`);
+    }
+  }
+  if (!requireEvery) return;
+  for (const channel of rootChannels) {
+    if (!channels.has(channel)) {
+      violations.push(`${label}: missing ${channel}`);
+    }
+  }
+}
+
+function collectReportingChannelDrift(context, docPath, rootChannels, violations, requireEvery) {
+  if (!existsInRoot(context, docPath)) return;
+
+  const channels = extractReportingChannels(readTextInRoot(context, docPath));
+  compareReportingChannels(docPath, channels, rootChannels, violations, requireEvery);
+}
+
+function extractReadmeSecurityMetadata(text) {
+  const match = text.match(/^\s*[-*]\s*\*\*Security:\*\*\s*(.+)$/im);
+  return match ? match[1] : null;
+}
+
+function collectReadmeSecurityChannelDrift(context, readmePath, rootChannels, violations) {
+  if (!existsInRoot(context, readmePath)) return;
+
+  const securityLine = extractReadmeSecurityMetadata(readTextInRoot(context, readmePath));
+  if (securityLine == null) return;
+
+  const channels = extractReportingChannels(securityLine);
+  compareReportingChannels(`${readmePath} Security`, channels, rootChannels, violations, true);
+}
+
+export function checkSecurityReportingChannelsAgree(context) {
+  const rootChannels = extractReportingChannels(readTextInRoot(context, "SECURITY.md"));
+  const violations = [];
+
+  collectReportingChannelDrift(context, "SUPPORT.md", rootChannels, violations, false);
+  for (const pkgFile of PUBLISHABLE_PACKAGE_FILES) {
+    const securityPath = pkgFile.replace(/package\.json$/, "SECURITY.md");
+    collectReportingChannelDrift(context, securityPath, rootChannels, violations, true);
+    const supportPath = pkgFile.replace(/package\.json$/, "SUPPORT.md");
+    collectReportingChannelDrift(context, supportPath, rootChannels, violations, false);
+    const readmePath = pkgFile.replace(/package\.json$/, "README.md");
+    collectReadmeSecurityChannelDrift(context, readmePath, rootChannels, violations);
+  }
+
+  return invariantResult(
+    "security and support reporting channels match root policy",
+    violations.length === 0,
+    violations.slice(0, 10).join("; "),
+  );
+}
+
+function getRootOverrides(context) {
+  const pkg = readJsonInRoot(context, "package.json");
+  return pkg.pnpm?.overrides ?? pkg.overrides ?? {};
+}
+
+function normalizeOverrideVersion(value) {
+  return value.replace(/^npm:[^@]+@/, "");
+}
+
+function parseDocumentedOverridePins(sectionText) {
+  const version = "((?:\\^|~|>=|<=|>|<|=|npm:|v?\\d)[^`]*)";
+  const toForm = new RegExp(`\`([^\`]+)\`(?:\\s+pinned)?\\s+to\\s+\`${version}\``, "g");
+  const parenForm = new RegExp(`\`([^\`]+)\`\\s+(?:alias\\s+)?\\(\`${version}\``, "g");
+
+  const pins = [];
+  for (const match of sectionText.matchAll(toForm)) {
+    pins.push({ name: match[1], version: match[2] });
+  }
+  for (const match of sectionText.matchAll(parenForm)) {
+    pins.push({ name: match[1], version: match[2] });
+  }
+  return pins;
+}
+
+export function checkDependencyOverridesDocumented(context) {
+  const overrides = getRootOverrides(context);
+  const overrideNames = Object.keys(overrides);
+  if (overrideNames.length === 0) {
+    return invariantResult("dependency overrides match governance doc", true);
+  }
+
+  const section = existsInRoot(context, "PACKAGE_GOVERNANCE.md")
+    ? sliceDocSection(readTextInRoot(context, "PACKAGE_GOVERNANCE.md"), "Dependency Governance")
+    : null;
+  if (!section) {
+    return invariantResult(
+      "dependency overrides match governance doc",
+      false,
+      "PACKAGE_GOVERNANCE.md Dependency Governance section missing",
+    );
+  }
+
+  const normalized = new Map(
+    overrideNames.map((name) => [name, normalizeOverrideVersion(overrides[name])]),
+  );
+  const problems = [];
+
+  for (const [name, value] of normalized) {
+    if (!section.includes(`\`${name}\``)) {
+      problems.push(`override ${name} not documented`);
+      continue;
+    }
+    if (!section.includes(`\`${value}\``)) {
+      problems.push(`override ${name} version ${value} not documented`);
+    }
+  }
+
+  for (const pin of parseDocumentedOverridePins(section)) {
+    if (!normalized.has(pin.name)) {
+      problems.push(`documented pin ${pin.name} has no root override`);
+      continue;
+    }
+    if (normalized.get(pin.name) !== pin.version) {
+      problems.push(
+        `documented pin ${pin.name} ${pin.version} != override ${normalized.get(pin.name)}`,
+      );
+    }
+  }
+
+  return invariantResult(
+    "dependency overrides match governance doc",
+    problems.length === 0,
+    problems.slice(0, 10).join("; "),
+  );
+}
+
+export function checkLicensedPackagesInGovernanceSplit(context) {
+  if (!existsInRoot(context, "PACKAGE_GOVERNANCE.md")) {
+    return invariantResult("licensed packages appear in governance split", true);
+  }
+
+  const section = sliceDocSection(readTextInRoot(context, "PACKAGE_GOVERNANCE.md"), "Licensing");
+  if (!section) {
+    return invariantResult(
+      "licensed packages appear in governance split",
+      false,
+      "Licensing section missing",
+    );
+  }
+
+  const lines = section.split("\n");
+  const bulletFor = (marker) => lines.find((line) => line.includes(marker)) ?? "";
+  const missing = [];
+
+  for (const [file, parsed] of context.parsedPackages) {
+    if (!/^(apps|cli|libs)\/[^/]+\/package\.json$/.test(file)) continue;
+
+    const marker = LICENSE_MARKERS[parsed.license] ? `**${parsed.license}**` : null;
+    if (!marker) continue;
+
+    const dir = file.replace(/\/package\.json$/, "");
+    if (!bulletFor(marker).includes(dir)) {
+      missing.push(`${dir} (${parsed.license})`);
+    }
+  }
+
+  return invariantResult(
+    "licensed packages appear in governance split",
+    missing.length === 0,
+    missing.slice(0, 10).join(", "),
+  );
+}
+
 export const INVARIANT_CHECKS = [
   checkRootWorkspaceFile,
   checkRootPolicyFiles,
@@ -563,9 +821,14 @@ export const INVARIANT_CHECKS = [
   checkDiffgazerCliPackageMetadata,
   checkAddCliPackageMetadata,
   checkNoPublishableInternalDocsManifest,
+  checkPublishMetadataPolicy,
+  checkPublishablePackagesMatchFixedList,
   checkPublishablePackagesShareEngineFloor,
   checkTurboDocsBuildIncludesOutput,
   checkWebBuildUsesTurbo,
+  checkSecurityReportingChannelsAgree,
+  checkDependencyOverridesDocumented,
+  checkLicensedPackagesInGovernanceSplit,
 ];
 
 function commandOutputsFor(rootDir, overrides = {}) {

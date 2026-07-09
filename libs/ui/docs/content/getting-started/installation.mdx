@@ -11,17 +11,14 @@ description: Initialize a project with dgadd and add `@diffgazer/ui` components 
 
 ## Install
 
-Run the installer with your package manager and add a component:
+From a local checkout of the repository, run the installer and add a component:
 
 ```bash
-pnpm dlx @diffgazer/add init
-pnpm dlx @diffgazer/add add ui/button
+pnpm exec dgadd init
+pnpm exec dgadd add ui/button
 ```
 
-```bash
-npx @diffgazer/add init
-npx @diffgazer/add add ui/button
-```
+The one-shot `pnpm dlx`/`npx @diffgazer/add` commands become available after the package is published — see [Package managers](#package-managers).
 
 ## Setup
 
@@ -128,7 +125,7 @@ pnpm exec dgadd add ui/menu --integration keys
 
 `copy` installs local hook source. `keys` imports hooks from `@diffgazer/keys`.
 
-## Package managers
+## Package managers (future) [#package-managers]
 
 Use these one-shot commands only after `@diffgazer/add` is published:
 

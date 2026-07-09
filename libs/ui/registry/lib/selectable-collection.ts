@@ -17,6 +17,24 @@ export interface SelectableCollectionItem {
 const DOCUMENT_POSITION_PRECEDING = 2;
 const DOCUMENT_POSITION_FOLLOWING = 4;
 
+/**
+ * True when a `hidden`, `inert`, or `aria-hidden="true"` self-or-ancestor
+ * removes the element from selection. Mirrors what keyboard navigation skips so
+ * selection and fallback derivation never land on an unreachable item.
+ */
+export function isSelectableElementSkipped(element: HTMLElement): boolean {
+  return (
+    element.closest("[hidden]") !== null ||
+    element.closest("[inert]") !== null ||
+    element.closest('[aria-hidden="true"]') !== null
+  );
+}
+
+/** True when an item is enabled, mounted, and not skipped by hidden/inert/aria-hidden. */
+export function isSelectableItemEligible(item: SelectableCollectionItem): boolean {
+  return !item.disabled && item.element !== null && !isSelectableElementSkipped(item.element);
+}
+
 function compareSelectableItems(a: SelectableCollectionItem, b: SelectableCollectionItem) {
   if (!a.element || !b.element || a.element === b.element) return 0;
 
@@ -52,9 +70,7 @@ export function getEnabledSelectableCollectionItems(
   disabled: boolean,
 ) {
   if (disabled) return [];
-  return sortSelectableCollectionItems(items).filter(
-    (item) => !item.disabled && item.element !== null,
-  );
+  return sortSelectableCollectionItems(items).filter(isSelectableItemEligible);
 }
 
 /** Finds the enabled item for a public value. */
@@ -79,9 +95,7 @@ export function resolveSelectableCollectionItem(
   items: SelectableCollectionItem[],
   ...values: Array<string | null | undefined>
 ): SelectableCollectionItem | null {
-  const enabledItems = sortSelectableCollectionItems(items).filter(
-    (item) => !item.disabled && item.element !== null,
-  );
+  const enabledItems = sortSelectableCollectionItems(items).filter(isSelectableItemEligible);
 
   for (const value of values) {
     const item = getSelectableCollectionItemByValue(enabledItems, value);
@@ -103,10 +117,12 @@ export function resolveSelectableCollectionItemValue(
 export function useSelectableCollection(containerRef: RefObject<HTMLElement | null>) {
   const [items, setItems] = useState<SelectableCollectionItem[]>([]);
 
-  const syncOrder = useCallback(() => {
+  const syncOrder = useCallback((skipAttributeChanged = false) => {
     setItems((current) => {
       const sorted = sortSelectableCollectionItems(current);
-      return areSelectableItemsEqual(current, sorted) ? current : sorted;
+      if (!areSelectableItemsEqual(current, sorted)) return sorted;
+      // Order unchanged, but force a new ref on attribute toggle so eligibility consumers re-read live skip state.
+      return skipAttributeChanged ? [...current] : current;
     });
   }, []);
 
@@ -115,8 +131,15 @@ export function useSelectableCollection(containerRef: RefObject<HTMLElement | nu
     const View = container?.ownerDocument.defaultView;
     if (!container || !View?.MutationObserver) return;
 
-    const observer = new View.MutationObserver(syncOrder);
-    observer.observe(container, { childList: true, subtree: true });
+    const observer = new View.MutationObserver((records) => {
+      syncOrder(records.some((record) => record.type === "attributes"));
+    });
+    observer.observe(container, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["hidden", "inert", "aria-hidden"],
+    });
 
     return () => observer.disconnect();
   }, [containerRef, syncOrder]);

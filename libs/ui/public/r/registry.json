@@ -924,6 +924,7 @@
       "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
+        "https://r.b4r7.dev/r/ui/aria.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
         "https://r.b4r7.dev/r/ui/compose-refs.json",
@@ -2228,6 +2229,7 @@
       "dependencies": [],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
+        "https://r.b4r7.dev/r/ui/aria.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/ui/floating-panel.json",
         "https://r.b4r7.dev/r/ui/outside-click.json",

@@ -11,6 +11,7 @@ import {
   assertNoRelativeJsImports,
   rewriteImportsForTargetLayout,
   transformKeysPublicRegistryImportContent,
+  transformKeysPublicRegistryImports,
 } from "./transform-public-registry-imports.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -36,6 +37,15 @@ describe("public registry import rewriting", () => {
   for (const itemName of publicItems) {
     describe(itemName, () => {
       const item = loadPublicItem(itemName);
+
+      it("keeps the shadcn $schema metadata", () => {
+        const raw: unknown = JSON.parse(
+          readFileSync(join(PUBLIC_DIR, `${itemName}.json`), "utf-8"),
+        );
+        expect(raw).toMatchObject({
+          $schema: "https://ui.shadcn.com/schema/registry-item.json",
+        });
+      });
 
       it("has no relative .js imports in content", () => {
         for (const file of item.files) {
@@ -114,6 +124,51 @@ describe("public registry import parser coverage", () => {
         'const required = require("./utils/required");',
       ].join("\n"),
     );
+  });
+});
+
+describe("transformKeysPublicRegistryImports metadata preservation", () => {
+  let dir: string | null = null;
+
+  afterEach(() => {
+    if (dir) rmSync(dir, { recursive: true, force: true });
+    dir = null;
+  });
+
+  it("preserves top-level $schema metadata when rewriting changed item content", () => {
+    dir = mkdtempSync(join(tmpdir(), "keys-transform-meta-"));
+    writeFileSync(
+      join(dir, "registry.json"),
+      JSON.stringify({
+        $schema: "https://ui.shadcn.com/schema/registry.json",
+        name: "keys",
+        items: [],
+      }),
+    );
+    writeFileSync(
+      join(dir, "use-demo.json"),
+      JSON.stringify({
+        $schema: "https://ui.shadcn.com/schema/registry-item.json",
+        name: "use-demo",
+        type: "registry:hook",
+        files: [
+          {
+            path: "src/hooks/use-demo.ts",
+            target: "src/hooks/use-demo.ts",
+            content: 'import { x } from "./utils/x.js";\n',
+            type: "registry:hook",
+          },
+        ],
+      }),
+    );
+
+    transformKeysPublicRegistryImports(dir);
+
+    const raw: unknown = JSON.parse(readFileSync(join(dir, "use-demo.json"), "utf-8"));
+    expect(raw).toMatchObject({
+      $schema: "https://ui.shadcn.com/schema/registry-item.json",
+      files: [{ content: 'import { x } from "./utils/x";\n' }],
+    });
   });
 });
 

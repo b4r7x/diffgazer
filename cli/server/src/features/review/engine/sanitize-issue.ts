@@ -3,14 +3,18 @@ import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 
 /**
  * Strips terminal escape/control sequences (CWE-150) from every model-controlled
- * free-text field of a review issue at the server output-ingestion boundary, so
- * both the SSE stream and the persisted review are safe to render in the Ink TUI
- * (which passes OSC sequences through untouched).
+ * free-text display field of a review issue at the server output-ingestion
+ * boundary, so both the SSE stream and the persisted review are safe to render in
+ * the Ink TUI (which passes OSC sequences through untouched).
+ *
+ * `id` is deliberately left raw: it is a selection identity (React key, navigation
+ * target, details lookup), never terminal-rendered, and sanitizing it would
+ * collapse two distinct findings whose ids differ only in control bytes into one
+ * selection identity.
  */
 export function sanitizeIssue(issue: ReviewIssue): ReviewIssue {
   return {
     ...issue,
-    id: sanitizeTerminalText(issue.id),
     file: sanitizeTerminalText(issue.file),
     title: sanitizeTerminalText(issue.title),
     rationale: sanitizeTerminalText(issue.rationale),

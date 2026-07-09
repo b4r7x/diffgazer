@@ -4,13 +4,13 @@ import { basename, dirname, join } from "node:path";
 import { ok } from "@diffgazer/core/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Boundary mock: git/service wraps the `git` CLI subprocess (external-process boundary); tests provide canned status/diff/blame responses so context snapshot behavior can be exercised without a real repository.
+// Boundary mock: git/service wraps the `git` CLI subprocess; tests feed canned status/diff responses.
 vi.mock("../../../shared/lib/git/service.js", () => ({
   createGitService: vi.fn(),
 }));
 
 const writeOrder: string[] = [];
-// Boundary mock: filesystem helper wraps atomic writes; tests delegate to the real implementation while recording commit order.
+// Boundary mock: filesystem helper; delegates to the real atomic write while recording commit order.
 vi.mock("../../../shared/lib/fs.js", async () => {
   const actual = await vi.importActual<typeof import("../../../shared/lib/fs.js")>(
     "../../../shared/lib/fs.js",
@@ -119,6 +119,94 @@ describe("loadContextSnapshot", () => {
 
     await expect(loadContextSnapshot(contextDir)).resolves.toBeNull();
   });
+
+  it.skipIf(process.platform === "win32")(
+    "does not read a cache file that symlinks outside the context directory",
+    async () => {
+      const outsideRoot = await mkdtemp(join(tmpdir(), "diffgazer-outside-"));
+      try {
+        const contextDir = join(projectRoot, ".diffgazer");
+        await mkdir(contextDir, { recursive: true });
+        await writeFile(join(outsideRoot, "secret.md"), "SECRET_EXTERNAL_CACHE_MARKER", "utf-8");
+        await symlink(join(outsideRoot, "secret.md"), join(contextDir, "context.md"));
+        await writeJson(join(contextDir, "context.json"), {
+          generatedAt: "2025-01-01",
+          root: projectRoot,
+          packages: [],
+          edges: [],
+          fileTree: [],
+          changedFiles: [],
+        });
+        await writeJson(join(contextDir, "context.meta.json"), {
+          generatedAt: "2025-01-01",
+          root: projectRoot,
+          statusHash: "hash-1",
+          charCount: 10,
+        });
+
+        await expect(loadContextSnapshot(contextDir)).resolves.toBeNull();
+      } finally {
+        await rm(outsideRoot, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it("returns null for a cache trio whose stored root belongs to a different checkout", async () => {
+    const foreignRoot = await mkdtemp(join(tmpdir(), "diffgazer-foreign-"));
+    try {
+      const contextDir = join(projectRoot, ".diffgazer");
+      await mkdir(contextDir, { recursive: true });
+      await writeFile(join(contextDir, "context.md"), "# foreign", "utf-8");
+      await writeJson(join(contextDir, "context.json"), {
+        generatedAt: "2025-01-01",
+        root: foreignRoot,
+        packages: [],
+        edges: [],
+        fileTree: [],
+        changedFiles: [],
+      });
+      await writeJson(join(contextDir, "context.meta.json"), {
+        generatedAt: "2025-01-01",
+        root: foreignRoot,
+        statusHash: "hash-1",
+        charCount: 9,
+      });
+
+      await expect(loadContextSnapshot(contextDir)).resolves.toBeNull();
+    } finally {
+      await rm(foreignRoot, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "does not read context files through a symlinked .diffgazer directory",
+    async () => {
+      const outsideRoot = await mkdtemp(join(tmpdir(), "diffgazer-outside-"));
+      try {
+        await writeFile(join(outsideRoot, "context.md"), "SECRET_EXTERNAL_CACHE_MARKER", "utf-8");
+        await writeJson(join(outsideRoot, "context.json"), {
+          generatedAt: "2025-01-01",
+          root: projectRoot,
+          packages: [],
+          edges: [],
+          fileTree: [],
+          changedFiles: [],
+        });
+        await writeJson(join(outsideRoot, "context.meta.json"), {
+          generatedAt: "2025-01-01",
+          root: projectRoot,
+          statusHash: "hash-1",
+          charCount: 10,
+        });
+        const contextDir = join(projectRoot, ".diffgazer");
+        await symlink(outsideRoot, contextDir);
+
+        await expect(loadContextSnapshot(contextDir)).resolves.toBeNull();
+      } finally {
+        await rm(outsideRoot, { recursive: true, force: true });
+      }
+    },
+  );
 
   it("returns null when cached snapshot JSON has the wrong shape", async () => {
     const contextDir = join(projectRoot, ".diffgazer");
@@ -262,7 +350,6 @@ describe("buildProjectContextSnapshot", () => {
   });
 
   it("truncates file tree when node count exceeds cap", async () => {
-    // Create enough files to exceed the 1000-node cap
     for (let i = 0; i < 1100; i++) {
       await writeProjectFile(`files/file-${String(i).padStart(4, "0")}.ts`, "");
     }
@@ -274,7 +361,6 @@ describe("buildProjectContextSnapshot", () => {
   });
 
   it("truncates context markdown when byte size exceeds cap", async () => {
-    // Create a large README to push total context beyond 50KB
     const largeContent = "X".repeat(60_000);
     await writeProjectFile(
       "package.json",
@@ -297,7 +383,6 @@ describe("buildProjectContextSnapshot", () => {
   });
 
   it("rejects workspace globs that escape the project root", async () => {
-    // Place a sibling directory with a package.json that should NOT be discovered
     const siblingDir = join(dirname(projectRoot), "sibling-project");
     await mkdir(join(siblingDir, "evil-pkg"), { recursive: true });
     await writeJson(join(siblingDir, "evil-pkg", "package.json"), {
@@ -305,7 +390,6 @@ describe("buildProjectContextSnapshot", () => {
       version: "1.0.0",
     });
 
-    // The project has a workspace.yaml with a glob that tries to escape
     await writeProjectFile("package.json", JSON.stringify({ name: "safe-root", version: "1.0.0" }));
     await writeProjectFile(
       "pnpm-workspace.yaml",
@@ -319,8 +403,83 @@ describe("buildProjectContextSnapshot", () => {
     expect(packageNames).toContain("@safe/web");
     expect(packageNames).not.toContain("@evil/pkg");
 
-    // Cleanup sibling
     await rm(siblingDir, { recursive: true, force: true });
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "does not embed a README that symlinks outside the project root",
+    async () => {
+      const outsideRoot = await mkdtemp(join(tmpdir(), "diffgazer-outside-"));
+      try {
+        await writeProjectFile(
+          "package.json",
+          JSON.stringify({ name: "safe-root", version: "1.0.0" }),
+        );
+        await writeFile(join(outsideRoot, "README.md"), "SECRET_EXTERNAL_README_MARKER", "utf-8");
+        await symlink(join(outsideRoot, "README.md"), join(projectRoot, "README.md"));
+
+        const result = await buildProjectContextSnapshot(projectRoot, { force: true });
+
+        expect(result.markdown).not.toContain("SECRET_EXTERNAL_README_MARKER");
+        expect(result.markdown).not.toContain("## README (excerpt)");
+      } finally {
+        await rm(outsideRoot, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it.skipIf(process.platform === "win32")(
+    "refuses to build when the context cache directory symlinks outside the project root",
+    async () => {
+      const outsideRoot = await mkdtemp(join(tmpdir(), "diffgazer-outside-"));
+      try {
+        await writeProjectFile(
+          "package.json",
+          JSON.stringify({ name: "safe-root", version: "1.0.0" }),
+        );
+        await symlink(outsideRoot, join(projectRoot, ".diffgazer"));
+
+        await expect(buildProjectContextSnapshot(projectRoot, { force: true })).rejects.toThrow(
+          /outside the project root/,
+        );
+        await expect(readFile(join(outsideRoot, "context.md"), "utf-8")).rejects.toThrow();
+      } finally {
+        await rm(outsideRoot, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it("rebuilds instead of reusing a cached snapshot generated for a different root", async () => {
+    const foreignRoot = await mkdtemp(join(tmpdir(), "diffgazer-foreign-"));
+    try {
+      await writeProjectFile("package.json", JSON.stringify({ name: "current", version: "1.0.0" }));
+      const contextDir = join(projectRoot, ".diffgazer");
+      await mkdir(contextDir, { recursive: true });
+      await writeFile(join(contextDir, "context.md"), "# foreign-cache", "utf-8");
+      await writeJson(join(contextDir, "context.json"), {
+        generatedAt: "2025-01-01",
+        root: foreignRoot,
+        packages: [],
+        edges: [],
+        fileTree: [],
+        changedFiles: [],
+      });
+      await writeJson(join(contextDir, "context.meta.json"), {
+        generatedAt: "2025-01-01",
+        root: foreignRoot,
+        statusHash: "hash-1",
+        headCommit: "HEAD",
+        charCount: 15,
+      });
+
+      const rebuilt = await buildProjectContextSnapshot(projectRoot);
+
+      expect(rebuilt.markdown).not.toBe("# foreign-cache");
+      expect(rebuilt.markdown).toContain("- Name: current");
+      expect(rebuilt.meta.root).toBe(projectRoot);
+    } finally {
+      await rm(foreignRoot, { recursive: true, force: true });
+    }
   });
 
   it.skipIf(process.platform === "win32")(
@@ -340,8 +499,7 @@ describe("buildProjectContextSnapshot", () => {
   );
 
   it("truncates oversized context markdown on a boundary without replacement characters", async () => {
-    // A multi-byte character (ż = 2 bytes) repeated past the byte cap would split
-    // mid-character at a raw byte offset, appending U+FFFD garbage.
+    // ż is 2 bytes; a raw byte-offset cut would split it into U+FFFD garbage.
     const multiByteContent = "ż".repeat(40_000);
     await writeProjectFile("package.json", JSON.stringify({ name: "wide", version: "1.0.0" }));
     await writeProjectFile("README.md", multiByteContent);
@@ -356,10 +514,9 @@ describe("buildProjectContextSnapshot", () => {
   it("serializes concurrent builds per project root, never interleaving their writes", async () => {
     await writeProjectFile("package.json", JSON.stringify({ name: "race", version: "1.0.0" }));
 
-    // Park the first build at its very first await (getStatusHash, which runs
-    // before any trio write). If the builds are NOT serialized, the second
-    // build's getStatusHash fires while the first is still parked. The lock must
-    // hold the second build off entirely until the first fully completes.
+    // Park the first build at its first await (getStatusHash, before any write).
+    // Without serialization the second build's getStatusHash fires while the
+    // first is parked; the lock must hold it off until the first completes.
     const order: string[] = [];
     let releaseFirstHash: () => void = () => {};
     const firstHashGate = new Promise<void>((resolve) => {
@@ -389,9 +546,6 @@ describe("buildProjectContextSnapshot", () => {
     const first = buildProjectContextSnapshot(projectRoot, { force: true });
     const second = buildProjectContextSnapshot(projectRoot, { force: true });
 
-    // Wait until the first build is parked inside getStatusHash, then let the
-    // loop drain: a non-serialized second build would reach its own
-    // getStatusHash by now while the first is still gated.
     await firstParked;
     await new Promise((resolve) => setImmediate(resolve));
     expect(order).toEqual(["hash-start-1"]);
@@ -399,8 +553,6 @@ describe("buildProjectContextSnapshot", () => {
     releaseFirstHash();
     await Promise.all([first, second]);
 
-    // Second build's git work only began after the first build's hash settled,
-    // proving full serialization (no interleaved trio writes).
     expect(order).toEqual(["hash-start-1", "hash-end-1", "hash-start-2", "hash-end-2"]);
 
     const contextDir = join(projectRoot, ".diffgazer");
@@ -408,7 +560,7 @@ describe("buildProjectContextSnapshot", () => {
     const meta = await readJson<{ statusHash: string; charCount: number }>(
       join(contextDir, "context.meta.json"),
     );
-    // The persisted trio is single-generation: meta describes the markdown beside it.
+    // Persisted trio is single-generation: meta describes the markdown beside it.
     expect(meta.charCount).toBe(markdown.length);
     expect(meta.statusHash).toBe("hash-2");
   });
@@ -416,8 +568,6 @@ describe("buildProjectContextSnapshot", () => {
   it("writes context.meta.json last so a reader never sees newer meta with older content", async () => {
     await writeProjectFile("package.json", JSON.stringify({ name: "order", version: "1.0.0" }));
 
-    // The trio is committed through atomicWriteFile; record the order it is
-    // called in to prove meta lands after the markdown/json it describes.
     writeOrder.length = 0;
     await buildProjectContextSnapshot(projectRoot, { force: true });
 

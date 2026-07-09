@@ -1,8 +1,8 @@
-import { moveHighlight } from "@diffgazer/keys";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext } from "react";
 import { collectChildItems } from "../../lib/collect-child-items";
+import { useListNavigation } from "../../lib/use-list-navigation";
 import type { CliColorTokens } from "../../theme/palettes";
 import { useTheme } from "../../theme/provider";
 
@@ -109,21 +109,12 @@ function NavigationListRoot({
 }: NavigationListProps) {
   const { tokens } = useTheme();
   const items = collectChildItems(children, extractNavigationListItem);
-  const selectableItems = items.filter((item) => !item.disabled);
-  const [internalHighlightedId, setInternalHighlightedId] = useState<string | null>(null);
-  const uncontrolledHighlightedId =
-    internalHighlightedId !== null &&
-    selectableItems.some((item) => item.id === internalHighlightedId)
-      ? internalHighlightedId
-      : (selectableItems[0]?.id ?? "");
-  const currentHighlightedId = controlledHighlightedId ?? uncontrolledHighlightedId;
-
-  function moveBy(direction: 1 | -1) {
-    const result = moveHighlight(items, currentHighlightedId, direction, wrap);
-    if (!result) return;
-    setInternalHighlightedId(result.id);
-    onHighlightChange?.(result.id);
-  }
+  const { currentHighlightedId, moveBy, selectItem } = useListNavigation({
+    items,
+    highlightedId: controlledHighlightedId,
+    onHighlightChange,
+    wrap,
+  });
 
   useInput(
     (_input, key) => {
@@ -136,7 +127,7 @@ function NavigationListRoot({
         return;
       }
       if (key.return) {
-        const item = selectableItems.find((i) => i.id === currentHighlightedId);
+        const item = selectItem(currentHighlightedId);
         if (item) {
           onSelect?.(item.id);
         }

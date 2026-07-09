@@ -15,7 +15,7 @@ const docsPageTree: PageTree = {
   ],
 };
 
-// Boundary mock: TanStack Start server functions cross the server/client boundary.
+// Stubs the TanStack Start server-fn boundary; a null loader result = page absent from source (404).
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const chain = {
@@ -23,7 +23,7 @@ vi.mock("@tanstack/react-start", () => ({
       handler:
         () =>
         async ({ data }: { data?: Record<string, unknown> } = {}) => {
-          if (data && "slug" in data) {
+          if (data && ("slug" in data || "routeSlugs" in data)) {
             return null;
           }
           if (data && "library" in data) {
@@ -63,6 +63,16 @@ describe("docs route not-found handling", () => {
 
   it("renders the docs not-found state for invalid docs slugs instead of the root error boundary", async () => {
     renderRoute("/ui/BadSlug");
+
+    expect(
+      await screen.findByRole("heading", { name: "Documentation page not found" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Something went wrong" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Page not found" })).not.toBeInTheDocument();
+  });
+
+  it("renders the docs not-found state for a lowercase page missing from the source", async () => {
+    renderRoute("/ui/missing-page");
 
     expect(
       await screen.findByRole("heading", { name: "Documentation page not found" }),

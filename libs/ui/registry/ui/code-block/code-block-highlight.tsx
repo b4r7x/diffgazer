@@ -58,7 +58,6 @@ export interface CodeBlockHighlightProps extends Omit<CodeBlockContentProps, "ch
    * CodeBlock.Line for each row.
    */
   lineStates?: Record<number, CodeBlockLineState>;
-  /** lowlight used by code block highlight. */
   lowlight?: LowlightInstance;
 }
 

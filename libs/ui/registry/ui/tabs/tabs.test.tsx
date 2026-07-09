@@ -68,8 +68,8 @@ describe("Tabs", () => {
       </Tabs>,
     );
 
-    // Without registration the controlled value would silently fall back to the
-    // first tab because the static children walk cannot see through WrappedTab.
+    // The static children walk cannot see through WrappedTab; without registration
+    // the controlled value would fall back to the first tab.
     expect(screen.getByRole("tab", { name: "Second" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: "First" })).toHaveAttribute("aria-selected", "false");
     expect(screen.getByText("Second panel")).not.toHaveAttribute("hidden");
@@ -92,7 +92,6 @@ describe("Tabs", () => {
     await waitFor(() => expect(warn).toHaveBeenCalled());
     expect(warn.mock.calls[0]?.[0]).toContain("ghost");
     expect(warn.mock.calls[0]?.[0]).toContain("Tabs");
-    // The unregistered value still resolves to the first enabled tab (no crash).
     expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
 
     warn.mockRestore();
@@ -115,8 +114,7 @@ describe("Tabs", () => {
       </Tabs>,
     );
 
-    // Flush the deferred dev-warn frame: the wrapper triggers register before it
-    // fires, so no warning should appear for the legitimately-rendered value.
+    // Flush the deferred dev-warn frame; wrapper triggers register before it fires.
     await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
@@ -457,6 +455,96 @@ describe("Tabs", () => {
     expect(screen.getByText("Content two")).not.toHaveAttribute("hidden");
   });
 
+  describe("skipped-trigger selection fallback", () => {
+    function expectSecondTriggerSelected(container: HTMLElement) {
+      const first = requireElement(
+        container.querySelector('[role="tab"][data-value="one"]'),
+        "first trigger",
+      );
+      const second = requireElement(
+        container.querySelector('[role="tab"][data-value="two"]'),
+        "second trigger",
+      );
+      expect(first).toHaveAttribute("aria-selected", "false");
+      expect(first).toHaveAttribute("tabindex", "-1");
+      expect(second).toHaveAttribute("aria-selected", "true");
+      expect(second).toHaveAttribute("tabindex", "0");
+    }
+
+    it("skips a hidden first trigger when resolving an invalid controlled fallback", () => {
+      const { container } = render(
+        <Tabs value="missing">
+          <Tabs.List>
+            <Tabs.Trigger value="one" hidden>
+              One
+            </Tabs.Trigger>
+            <Tabs.Trigger value="two">Two</Tabs.Trigger>
+          </Tabs.List>
+          <Tabs.Content value="one">Content one</Tabs.Content>
+          <Tabs.Content value="two">Content two</Tabs.Content>
+        </Tabs>,
+      );
+      expectSecondTriggerSelected(container);
+    });
+
+    it("skips an inert first trigger when resolving an invalid controlled fallback", () => {
+      const { container } = render(
+        <Tabs value="missing">
+          <Tabs.List>
+            <Tabs.Trigger value="one" inert>
+              One
+            </Tabs.Trigger>
+            <Tabs.Trigger value="two">Two</Tabs.Trigger>
+          </Tabs.List>
+          <Tabs.Content value="one">Content one</Tabs.Content>
+          <Tabs.Content value="two">Content two</Tabs.Content>
+        </Tabs>,
+      );
+      expectSecondTriggerSelected(container);
+    });
+
+    it("skips an aria-hidden first trigger when resolving an invalid controlled fallback", () => {
+      const { container } = render(
+        <Tabs value="missing">
+          <Tabs.List>
+            <Tabs.Trigger value="one" aria-hidden="true">
+              One
+            </Tabs.Trigger>
+            <Tabs.Trigger value="two">Two</Tabs.Trigger>
+          </Tabs.List>
+          <Tabs.Content value="one">Content one</Tabs.Content>
+          <Tabs.Content value="two">Content two</Tabs.Content>
+        </Tabs>,
+      );
+      expectSecondTriggerSelected(container);
+    });
+
+    it("seeds past a hidden first trigger before effects register tabs", () => {
+      const markup = renderToString(
+        <Tabs>
+          <Tabs.List>
+            <Tabs.Trigger value="one" hidden>
+              One
+            </Tabs.Trigger>
+            <Tabs.Trigger value="two">Two</Tabs.Trigger>
+          </Tabs.List>
+          <Tabs.Content value="two">Content two</Tabs.Content>
+        </Tabs>,
+      );
+
+      const container = document.createElement("div");
+      container.innerHTML = markup;
+      const tabs = within(container).getAllByRole("tab", { hidden: true });
+      const selected = tabs.filter((tab) => tab.getAttribute("aria-selected") === "true");
+      const tabbable = tabs.filter((tab) => tab.getAttribute("tabindex") === "0");
+
+      expect(tabs).toHaveLength(2);
+      expect(selected).toHaveLength(1);
+      expect(selected[0]).toHaveTextContent("Two");
+      expect(tabbable).toEqual(selected);
+    });
+  });
+
   it("renders one tabbable enabled tab before effects register tabs", () => {
     const markup = renderToString(
       <Tabs>
@@ -626,6 +714,27 @@ describe("Tabs", () => {
     expect(missingPanel).not.toHaveAttribute("aria-labelledby");
   });
 
+  it("merges an external aria-labelledby with the generated trigger id (F-083)", () => {
+    render(
+      <Tabs defaultValue="one">
+        <Tabs.List>
+          <Tabs.Trigger value="one">One</Tabs.Trigger>
+        </Tabs.List>
+        <span id="panel-extra-label">Additional context</span>
+        <Tabs.Content value="one" aria-labelledby="panel-extra-label">
+          Content one
+        </Tabs.Content>
+      </Tabs>,
+    );
+
+    const tab = screen.getByRole("tab", { name: "One" });
+    const panel = screen.getByRole("tabpanel");
+    const labelledBy = panel.getAttribute("aria-labelledby")?.split(/\s+/) ?? [];
+
+    expect(labelledBy).toContain(tab.id);
+    expect(labelledBy).toContain("panel-extra-label");
+  });
+
   it("does not crash when rendered without triggers or defaultValue", () => {
     render(
       <Tabs>
@@ -712,8 +821,6 @@ describe("Tabs variants", () => {
         <Tabs.Content value="b">Beta content</Tabs.Content>
       </Tabs>,
     );
-    // The sliding indicator is a presentational element with no ARIA role; its
-    // per-variant presence is the public DOM contract that tabs.css positions.
     expect(container.querySelectorAll('[data-slot="tabs-pill"]').length).toBe(1);
   });
 
@@ -770,8 +877,6 @@ describe("Tabs variants", () => {
         <Tabs.Content value="b">Beta content</Tabs.Content>
       </Tabs>,
     );
-    // Like the pill, the floating underline is a presentational, role-less
-    // element; its per-variant presence is the documented DOM contract.
     expect(container.querySelectorAll('[data-slot="tabs-underline"]').length).toBe(1);
   });
 
@@ -800,9 +905,8 @@ describe("Tabs variants", () => {
         <Tabs.Content value="b">Beta content</Tabs.Content>
       </Tabs>,
     );
-    // Both triggers carry the bracket marker spans (so width stays steady),
-    // but only the active one has data-state="active" set — the CSS opacity rule
-    // on group-data-[state=active]/segmented-item reveals them visually.
+    // Both triggers carry the bracket spans (width stays steady); CSS reveals them
+    // only on the active one.
     const activeTrigger = screen.getByRole("tab", { name: /beta/i });
     const inactiveTrigger = screen.getByRole("tab", { name: /alpha/i });
     expect(activeTrigger).toHaveAttribute("data-state", "active");
@@ -842,7 +946,6 @@ describe("Tabs types", () => {
     type Trigger = TabsTriggerProps<"preview" | "code">;
 
     expectTypeOf<Trigger["value"]>().toEqualTypeOf<"preview" | "code">();
-    // "tests" is not part of the union; the prop type must reject it.
     expectTypeOf<"tests">().not.toMatchTypeOf<Trigger["value"]>();
     expectTypeOf<"preview">().toMatchTypeOf<Trigger["value"]>();
   });
@@ -853,9 +956,8 @@ describe("Tabs types", () => {
   });
 
   it("does not expose a polymorphic render or asChild escape hatch on Tabs.Trigger", () => {
-    // WAI-ARIA forbids a role="tab" from navigating URLs — Tabs.Trigger must
-    // not be swappable into <a> via render/asChild. Verify the prop type does
-    // not include either key.
+    // WAI-ARIA forbids role="tab" from navigating URLs, so Tabs.Trigger must not
+    // be swappable into <a> via render/asChild.
     expectTypeOf<TabsTriggerProps>().toHaveProperty("value");
     expectTypeOf<TabsTriggerProps>().not.toHaveProperty("render");
     expectTypeOf<TabsTriggerProps>().not.toHaveProperty("asChild");

@@ -131,7 +131,7 @@ export function writeViteFixture(fixture, options = {}) {
       {
         compilerOptions: {
           target: "ES2022",
-          lib: ["DOM", "DOM.Iterable", "ES2022"],
+          lib: ["DOM", "DOM.Iterable", "ES2023"],
           module: "ESNext",
           moduleResolution: "Bundler",
           jsx: "react-jsx",
@@ -255,7 +255,7 @@ export function writeNextFixture(fixture, options = {}) {
       {
         compilerOptions: {
           target: "ES2022",
-          lib: ["DOM", "DOM.Iterable", "ES2022"],
+          lib: ["DOM", "DOM.Iterable", "ES2023"],
           module: "ESNext",
           moduleResolution: "Bundler",
           jsx: "preserve",
@@ -409,9 +409,8 @@ export function parsePackOutput(raw) {
   throw new Error(`Could not parse pnpm pack --json output:\n${raw.slice(0, 1000)}`);
 }
 
-// pnpm pack --json reports `filename` as either an absolute path or a bare
-// filename depending on version/destination; resolve both forms against packDir
-// so callers always get the real tarball path.
+// pnpm pack --json reports `filename` as an absolute path or a bare filename depending on
+// version/destination; resolve both forms against packDir.
 export function packWorkspacePackage(root, workspacePackage, packDir) {
   const packOutput = execFileSync(
     "pnpm",

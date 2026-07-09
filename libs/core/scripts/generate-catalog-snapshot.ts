@@ -33,6 +33,16 @@ const wantedSourceIds = new Set<string>([
 const dropUndefined = <T extends object>(obj: T): T =>
   Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
 
+// True unless the model declares an output modality that lacks "text" — audio
+// (TTS), image, or video-only models that can never emit a review object.
+// trimModel drops `modalities`, so this pre-trim filter is the only place the
+// offline snapshot can shed them; left in, their output limit clears the runtime
+// review floor and they surface as selectable review models (F-084).
+function producesTextOutput(model: ModelsDevModel): boolean {
+  const output = model.modalities?.output;
+  return !output || output.includes("text");
+}
+
 // Keep only the fields the transform/capabilities layer reads (design D6 "used
 // fields"). modalities, knowledge, and the cache_read/cache_write prices have
 // zero production consumers, so they stay out of the bundled snapshot.
@@ -89,6 +99,7 @@ for (const [id, provider] of sortKeys(parsed)) {
   if (!wantedSourceIds.has(id)) continue;
   const models: Record<string, ModelsDevModel> = {};
   for (const [modelId, model] of sortKeys(provider.models)) {
+    if (!producesTextOutput(model)) continue;
     models[modelId] = trimModel(model);
   }
   trimmed[id] = { ...provider, models };

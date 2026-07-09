@@ -16,6 +16,9 @@ describe("validateDependencyProtocol", () => {
   });
 
   const rejectedDeps = [
+    { dep: "-foo", reason: "leading-dash option-shaped name" },
+    { dep: "--force", reason: "double-dash flag" },
+    { dep: "-foo@1.0.0", reason: "option-shaped name with version" },
     { dep: "file:../local-pkg", reason: "file: protocol" },
     { dep: "file:/absolute/path", reason: "file: with absolute path" },
     { dep: "git+ssh://git@github.com:user/repo.git", reason: "git+ssh protocol" },

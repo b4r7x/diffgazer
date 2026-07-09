@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api/protocol";
@@ -84,6 +84,26 @@ function requestOptions(projectRoot: string): RequestInit {
   return { headers: { [PROJECT_ROOT_HEADER]: projectRoot } };
 }
 
+async function writeContextTrio(contextDir: string, root: string, markdown: string): Promise<void> {
+  const graph = {
+    generatedAt: "2025-01-01",
+    root,
+    packages: [],
+    edges: [],
+    fileTree: [],
+    changedFiles: [],
+  };
+  const meta = {
+    generatedAt: "2025-01-01",
+    root,
+    statusHash: "status",
+    charCount: markdown.length,
+  };
+  await writeFile(join(contextDir, "context.md"), markdown, "utf-8");
+  await writeFile(join(contextDir, "context.json"), JSON.stringify(graph), "utf-8");
+  await writeFile(join(contextDir, "context.meta.json"), JSON.stringify(meta), "utf-8");
+}
+
 function installGitServiceMock() {
   const gitService = {
     getHeadCommit: vi.fn<() => Promise<Result<string, { message: string }>>>(async () =>
@@ -94,8 +114,7 @@ function installGitServiceMock() {
       hash: "status",
     })),
   };
-  // Boundary mock: subprocess — review routes read repository freshness through
-  // createGitService, whose implementation wraps git CLI subprocess calls.
+  // Boundary mock: createGitService wraps git CLI subprocess calls.
   vi.doMock("../../shared/lib/git/service.js", () => ({
     createGitService: () => gitService,
   }));
@@ -246,8 +265,6 @@ describe("POST /api/review/reviews", () => {
     expect(body.error.code).toBe("SETUP_REQUIRED");
   });
 
-  // This test verifies the 503 error response format (JSON, not SSE) because
-  // setup is not configured. It does not reach the actual POST handler logic.
   it("does not return SSE content type", async () => {
     await trustProject(projectA);
     const app = await createReviewApp();
@@ -688,6 +705,59 @@ describe("GET /api/review/sessions/active", () => {
     expect(response.status).toBe(200);
     expect(body.session?.reviewId).toBe(REVIEW_A);
   });
+});
+
+describe("GET /api/review/context read-path security", () => {
+  it("serves a cached snapshot whose stored root matches the project", async () => {
+    await configureSetup(projectA);
+    const contextDir = join(projectA, ".diffgazer");
+    await mkdir(contextDir, { recursive: true });
+    await writeContextTrio(contextDir, projectA, "# current project context");
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/context", requestOptions(projectA));
+    const body = (await response.json()) as { markdown: string };
+
+    expect(response.status).toBe(200);
+    expect(body.markdown).toContain("# current project context");
+  });
+
+  it("returns 404 for a cache trio whose stored root belongs to a different checkout", async () => {
+    await configureSetup(projectA);
+    const contextDir = join(projectA, ".diffgazer");
+    await mkdir(contextDir, { recursive: true });
+    await writeContextTrio(contextDir, projectB, "# foreign checkout context");
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/context", requestOptions(projectA));
+    const body = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(404);
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "does not serve context files through a symlinked .diffgazer directory",
+    async () => {
+      const outsideRoot = await mkdtemp(join(tmpdir(), "diffgazer-review-router-outside-"));
+      try {
+        // Symlink `.diffgazer` before setup so trust is written through the link
+        // and repo-access passes, leaving the context guard as the only refusal.
+        await symlink(outsideRoot, join(projectA, ".diffgazer"));
+        await configureSetup(projectA);
+        await writeContextTrio(outsideRoot, projectA, "SECRET_EXTERNAL_CONTEXT_MARKER");
+        const app = await createReviewApp();
+
+        const response = await app.request("/api/review/context", requestOptions(projectA));
+        const text = await response.text();
+
+        expect(response.status).toBe(404);
+        expect(text).not.toContain("SECRET_EXTERNAL_CONTEXT_MARKER");
+      } finally {
+        await rm(outsideRoot, { recursive: true, force: true });
+      }
+    },
+  );
 });
 
 describe("review router param validation", () => {

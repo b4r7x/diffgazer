@@ -62,8 +62,17 @@ export function heading(msg: string): void {
   console.log(`  ${pc.bold(msg)}`);
 }
 
+function canPrompt(): boolean {
+  return !isSilent && Boolean(process.stdin.isTTY) && Boolean(process.stdout.isTTY);
+}
+
 export async function promptConfirm(message: string, initialValue = true): Promise<boolean> {
-  if (isSilent) return initialValue;
+  if (!canPrompt()) {
+    throw new Error(
+      `${message} This action needs confirmation, but the terminal is non-interactive. ` +
+        "Re-run with --yes to proceed without prompting, or run in an interactive terminal.",
+    );
+  }
 
   const result = await clack.confirm({ message, initialValue });
   if (clack.isCancel(result)) {
@@ -75,8 +84,13 @@ export async function promptConfirm(message: string, initialValue = true): Promi
 export async function promptSelect(
   message: string,
   options: { value: string; label: string; hint?: string }[],
+  flagGuidance = "Pass the choice explicitly with the matching flag, or run in an interactive terminal.",
 ): Promise<string> {
-  if (isSilent) return options[0]?.value ?? "";
+  if (!canPrompt()) {
+    throw new Error(
+      `${message} This action needs a selection, but the terminal is non-interactive. ${flagGuidance}`,
+    );
+  }
 
   const result = await clack.select({ message, options });
   if (clack.isCancel(result)) {

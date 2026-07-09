@@ -217,18 +217,20 @@ The root `package.json` carries a `pnpm.overrides` block to keep shared transiti
 - `tailwindcss` pinned to `^4.3.0` so `apps/web` and `apps/docs` resolve to one minor (no `4.2.x` / `4.3.x` split).
 - `postcss` pinned to `^8.5.14` so transitive Vite/Tailwind resolvers share one patch line.
 - `picomatch` pinned to `^4.0.4` so Vite, Vitest, Fumadocs, and Tailwind plugins share one version.
-- `vitest` pinned to `^4.1.0`, `@testing-library/react` to `^16.3.2`, `@testing-library/jest-dom` to `^6.9.1`, `jsdom` to `^28.1.0`, and `@vitejs/plugin-react` to `^5.1.3` so every workspace that imports a test tool resolves to one shared version of each (no `vitest 4.0` / `4.1`, `jsdom 27` / `28`, `@testing-library/react 16.0` / `16.2` / `16.3`, or `@vitejs/plugin-react 5.0` / `5.1` split).
+- `vitest` pinned to `^4.1.0`, `@testing-library/react` to `^16.3.2`, `@testing-library/jest-dom` to `^6.9.1`, `jsdom` to `^28.1.0`, `@vitejs/plugin-react` to `^5.1.3`, and `axe-core` to `^4.11.4` so every workspace that imports a test tool resolves to one shared version of each (no `vitest 4.0` / `4.1`, `jsdom 27` / `28`, `@testing-library/react 16.0` / `16.2` / `16.3`, or `@vitejs/plugin-react 5.0` / `5.1` split).
+- `jiti` (`^2.7.0`), `hono` (`^4.12.25`), and `ws` (`^8.21.0`) are pinned so the config loader, the embedded server framework, and the WebSocket dependency each resolve to one version across the workspace and its dev/build tooling.
 
 The `@tanstack/react-router` range is kept aligned across `apps/web` and `apps/docs` (both declare `^1.158.1`) so the two TanStack-Router consumers track one router minor; it is not overridden because the rest of the TanStack Start surface in `apps/docs` resolves its router transitively.
 
 Security-driven overrides — each clears one or more advisories from `pnpm audit --prod --audit-level=moderate`:
 
 - `rollup` pinned to `^4.59.0` to patch GHSA `1113515` (Arbitrary File Write via Path Traversal, high). Reached transitively through `apps/docs > @tailwindcss/vite > vite > rollup`. Sunset when `@tailwindcss/vite` ships a `vite` peer that resolves rollup `>= 4.59.0` naturally.
-- `vite` pinned to `^7.3.2` to patch GHSA `1116232` (`server.fs.deny` bypass with queries, high), `1116235` (Arbitrary File Read via dev-server WebSocket, high), and `1116230` (Path Traversal in optimized deps `.map` handling, moderate). Reached transitively through `apps/docs > @tailwindcss/vite > vite`. Sunset when `@tailwindcss/vite` declares a `vite` peer floor at `>= 7.3.2`.
-- `undici` pinned to `^7.24.0` to patch GHSA `1114591`, `1114637`, `1114639` (WebSocket frame/length and decompression issues, high), plus `1114593`, `1114641`, `1114643` (HTTP smuggling, CRLF injection, DeduplicationHandler memory, moderate). Reached transitively through `apps/docs > @tanstack/react-start > @tanstack/start-plugin-core > cheerio > undici`. Sunset when `cheerio` ships with `undici >= 7.24.0`.
-- `path-to-regexp` pinned to `^8.4.0` to patch GHSA `1115573` (DoS via sequential optional groups, high) and `1115582` (ReDoS via multiple wildcards, moderate). Reached transitively through `apps/docs > fumadocs-core > path-to-regexp`. Sunset when `fumadocs-core` declares `path-to-regexp >= 8.4.0`.
+- `vite` pinned to `^7.3.5` to patch GHSA `1116232` (`server.fs.deny` bypass with queries, high), `1116235` (Arbitrary File Read via dev-server WebSocket, high), and `1116230` (Path Traversal in optimized deps `.map` handling, moderate). Reached transitively through `apps/docs > @tailwindcss/vite > vite`. The advisories were patched at `7.3.2`; the pin tracks the current patch. Sunset when `@tailwindcss/vite` declares a `vite` peer floor at `>= 7.3.5`.
+- `undici` pinned to `^7.28.0` to patch GHSA `1114591`, `1114637`, `1114639` (WebSocket frame/length and decompression issues, high), plus `1114593`, `1114641`, `1114643` (HTTP smuggling, CRLF injection, DeduplicationHandler memory, moderate). Reached transitively through `apps/docs > @tanstack/react-start > @tanstack/start-plugin-core > cheerio > undici`. Sunset when `cheerio` ships with `undici >= 7.28.0`.
 
-Note: `@tanstack/start-server-core` is NOT pinned because the natural transitive resolution from `@tanstack/react-start` is required to keep `@tanstack/start-plugin-core` and `@tanstack/start-server-core` version-compatible. The moderate advisories that this pin would have cleared (GHSA 1118887 + 3 h3 transitives) remain visible in `pnpm audit --audit-level=moderate` output; they do not fail CI under the HIGH-only gate.
+Additional minimum-version floors added during dependency audit passes hold transitive packages at their patched releases without a full `^` pin: `h3` and its `h3-v2` alias (`>=2.0.1-rc.18`, reached through `apps/docs > @tanstack/react-start`), `fast-uri` (`>=3.1.2`), `express-rate-limit` (`>=8.2.2`), and `qs` (`>=6.15.2`). Drop each once its transitive parent resolves a patched version naturally.
+
+Note: `@tanstack/start-server-core` is NOT pinned because the natural transitive resolution from `@tanstack/react-start` is required to keep `@tanstack/start-plugin-core` and `@tanstack/start-server-core` version-compatible. Its moderate advisory (GHSA 1118887) remains visible in `pnpm audit --audit-level=moderate` output and does not fail CI under the HIGH-only gate; the related h3 advisories are cleared by the `h3` / `h3-v2` floor above rather than by pinning `@tanstack/start-server-core`.
 
 Workspace package manifests should keep declared ranges compatible with the override (e.g., declare `^25.2.3` for `@types/node` rather than `^22`), so an override removal does not silently regress a package to an older major.
 
@@ -257,7 +259,7 @@ pnpm audit --prod --audit-level=moderate
 
 ## Security and Support Packaging
 
-All public package tarballs include package-local `SECURITY.md` and `SUPPORT.md` files in addition to README and license files. The root `SECURITY.md` and `SUPPORT.md` remain the canonical repository policy copies; package-local files carry the same reporting URLs with package-specific triage language.
+All public package tarballs include package-local `SECURITY.md` and `SUPPORT.md` files in addition to README and license files. The root `SECURITY.md` and `SUPPORT.md` remain the canonical repository policy copies. Every security policy doc — the root `SECURITY.md` and each package-local `SECURITY.md` — routes vulnerability reports through both canonical channels: the GitHub private advisory URL and the `b4r7dev@gmail.com` email fallback, differing only in package-specific triage language. Support docs (`SUPPORT.md`) reference security only briefly, so they must not introduce a reporting channel outside root policy but may name a subset of the canonical channels. The `check-invariants` script fails if any `SECURITY.md` omits a canonical channel or any `SUPPORT.md` introduces an off-policy channel. It also enforces README metadata parity: each package README `**Security:**` metadata link must carry every canonical channel, matching what `checkSecurityReportingChannelsAgree` requires of the security docs.
 
 ## Consumption Contracts
 
@@ -309,7 +311,7 @@ After deployment or ungating, hosted-registry availability is verified by:
 3. `curl -fI https://r.b4r7.dev/r/ui/button.json` returns `200`.
 4. `curl -fI https://r.b4r7.dev/r/keys/navigation.json` returns `200`.
 
-Once those checks pass, un-gate the hosted-shadcn install snippets in `README.md`, `libs/ui/README.md`, `libs/keys/README.md`, and `apps/docs/content/docs/**/*.mdx`, and remove the "future" preambles introduced by T-DIST-DEPLOY.
+Once those checks pass, un-gate the hosted-shadcn install snippets in `README.md`, `libs/ui/README.md`, `libs/keys/README.md`, and `apps/docs/content/docs/**/*.mdx`, and remove the "future" preambles added while the hosted registry was gated.
 
 The committed registry JSON under `libs/ui/public/r` and `libs/keys/public/r` uses the shadcn registry schemas from `https://ui.shadcn.com/schema/`. The Diffgazer config schema is `https://r.b4r7.dev/schema/diffgazer.json`; `dgadd init` writes that URL into consumer `diffgazer.json` files via `REGISTRY_ORIGIN`. The schema file is generated at `apps/docs/public/schema/diffgazer.json` from the `cli/add` config contract, not by the registry item build.
 
@@ -324,6 +326,6 @@ The committed registry JSON under `libs/ui/public/r` and `libs/keys/public/r` us
 Diffgazer ships under a two-license split that matches each package's distribution model.
 
 - **MIT** covers `libs/keys`, `libs/ui`, `libs/registry`, `cli/add` (`@diffgazer/add`), and the root repository LICENSE. These packages are intended for copy-paste shadcn-style consumption and npm install paths, so MIT keeps integration friction minimal and matches the dominant license in the surrounding ecosystem.
-- **Apache-2.0** covers `cli/diffgazer`. The end-user CLI carries explicit patent grant and attribution requirements that suit a distributable binary entry point.
+- **Apache-2.0** covers `cli/diffgazer`, together with the private `cli/server` (`@diffgazer/server`) and `libs/core` (`@diffgazer/core`) packages bundled into that binary via tsup `noExternal`. All three declare `Apache-2.0` and carry their own Apache `LICENSE` file. The end-user CLI carries explicit patent grant and attribution requirements that suit a distributable binary entry point.
 
 Every published package directory contains its own `LICENSE` file so the license travels with both npm tarballs and direct registry copies. The root `LICENSE` mirrors `libs/ui/LICENSE` (MIT) and applies to non-package source, documentation, and tooling. Contributions are accepted under the license of the directory they touch; cross-license movement requires an explicit relicensing note in the changeset.

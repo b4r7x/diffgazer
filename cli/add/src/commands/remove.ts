@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { computeIntegrity } from "@diffgazer/registry";
 import { createRemoveCommand, findOrphanedNpmDeps } from "@diffgazer/registry/cli";
 import { ctx, type ManifestItem, type ResolvedConfig } from "../context.js";
@@ -84,8 +84,8 @@ interface ExpansionPlan {
   blocked: Array<{ name: string; dependents: string[] }>;
 }
 
-// Cascade orphan transitives whose dependents are all being removed, then
-// surface explicitly-requested items that retained installed items still need.
+// Cascade orphan transitives whose dependents are all being removed, then block
+// explicitly-requested items that retained installed items still need.
 function expandRemoval(cwd: string, requestedNames: string[]): ExpansionPlan {
   const manifest = loadManifest(cwd);
   const requestedPublicNames = new Set(requestedNames.map((n) => parseInstallName(n).publicName));
@@ -93,8 +93,8 @@ function expandRemoval(cwd: string, requestedNames: string[]): ExpansionPlan {
   const manifestAbsent = Object.keys(manifest).length === 0;
 
   for (const name of requestedPublicNames) {
-    // When manifest is absent, include the requested name anyway so the
-    // downstream file-resolution logic can reconstruct paths from the registry.
+    // With no manifest, include the requested name so downstream file resolution
+    // can reconstruct paths from the registry.
     if (manifest[name] || manifestAbsent) removed.add(name);
   }
 
@@ -130,20 +130,55 @@ function manifestItemsForResolve(cwd: string): ReturnType<typeof getNamespacedIt
     .map(getNamespacedItem);
 }
 
-function removeOwnedCssChunks(
+interface OwnedCssRemovalPlan {
+  writes: Array<{ targetPath: string; content: string }>;
+  preservedNotices: string[];
+  // Removed items whose drifted chunk was preserved; kept in the manifest so the
+  // leftover block stays targetable by a later `remove <item> --force`.
+  retainedNames: string[];
+  // Per retained item, the chunk hashes actually preserved on disk, used to trim
+  // `cssChunks` so a deleted pristine sibling chunk is dropped, not reported as drift.
+  retainedChunkHashesByName: Map<string, string[]>;
+}
+
+// Surfaces a preserved (drifted) CSS chunk with the same "use --force to
+// override" guidance the remove workflow emits for edited owned source files.
+function cssDriftNotice(
+  hash: string,
+  preRemovalChunksByItem: Map<string, string[]>,
+  stylesPath: string,
+): string {
+  const owners = [...preRemovalChunksByItem]
+    .filter(([, hashes]) => hashes.includes(hash))
+    .map(([name]) => name);
+  const label = owners.length > 0 ? owners.join(", ") : "CSS chunk";
+  return `Skipping ${label}: ${stylesPath} chunk has been modified (use --force to override). Keeping ${label} tracked so the edited chunk is not orphaned; re-run remove with --force to delete it.`;
+}
+
+// Plans the styles.css mutation without touching disk so the workflow can
+// preview it under --dry-run. Without `force`, a drifted chunk is preserved and
+// reported via a skip notice.
+export function planOwnedCssChunkRemoval(
   cwd: string,
   config: ResolvedConfig,
   removedNames: string[],
   preRemovalChunksByItem: Map<string, string[]>,
-): void {
-  if (removedNames.length === 0) return;
+  force: boolean,
+): OwnedCssRemovalPlan {
+  const empty: OwnedCssRemovalPlan = {
+    writes: [],
+    preservedNotices: [],
+    retainedNames: [],
+    retainedChunkHashesByName: new Map(),
+  };
+  if (removedNames.length === 0) return empty;
+  const stylesPath = config.tailwind?.css;
+  if (!stylesPath) return empty;
   const installedHashes = readInstalledCssChunkHashes(cwd, config);
-  if (installedHashes.size === 0) return;
+  if (installedHashes.size === 0) return empty;
 
   // onAfterRemove fires before updateManifest, so the live manifest still lists
-  // the removed items and cannot tell kept chunks from removed ones. Compute the
-  // kept and removed chunk sets from the pre-removal snapshot captured during
-  // expandRequestedNames instead.
+  // the removed items; derive kept vs removed chunks from the pre-removal snapshot.
   const removedSet = new Set(removedNames);
   const keptChunkHashes = new Set<string>();
   const chunksOfRemovedItems = new Set<string>();
@@ -158,33 +193,47 @@ function removeOwnedCssChunks(
       candidates.add(hash);
     }
   }
-  if (candidates.size === 0) return;
+  if (candidates.size === 0) return empty;
 
-  const result = removeCssChunks(candidates, cwd, config);
-  if (result.fileOp) writeFileSync(result.fileOp.targetPath, result.fileOp.content);
+  const result = removeCssChunks(candidates, cwd, config, force);
+  const preservedNotices = result.modifiedHashes.map((hash) =>
+    cssDriftNotice(hash, preRemovalChunksByItem, stylesPath),
+  );
+  const modifiedHashes = new Set(result.modifiedHashes);
+  const retainedChunkHashesByName = new Map<string, string[]>();
+  const retainedNames = removedNames.filter((name) => {
+    const preserved = (preRemovalChunksByItem.get(name) ?? []).filter((hash) =>
+      modifiedHashes.has(hash),
+    );
+    if (preserved.length === 0) return false;
+    retainedChunkHashesByName.set(name, preserved);
+    return true;
+  });
+  const writes = result.fileOp
+    ? [{ targetPath: result.fileOp.targetPath, content: result.fileOp.content }]
+    : [];
+  return { writes, preservedNotices, retainedNames, retainedChunkHashesByName };
 }
 
-// The remove workflow invokes its callbacks in phases that cannot pass state to
-// one another through arguments:
-//   - `getAllItems` runs with no cwd; the workflow calls `requireConfig(cwd)`
-//     first, so the active cwd captured there is the one to resolve against.
-//   - `onAfterRemove` runs before `updateManifest`, so pre-removal cssChunks are
-//     snapshotted during `expandRequestedNames` and read back later.
-// The registry command factory (B7-owned) cannot thread a per-call context
-// through these callbacks, so the state lives in one object instead of loose
-// module-level bindings. `beginInvocation` resets it on the first callback
-// (`requireConfig`) so a previous `dgadd remove` run can never bleed cwd or
-// chunk snapshots into the next within a long-lived process.
+// The registry command factory cannot thread a per-call context through its
+// phased callbacks (getAllItems runs with no cwd; onAfterRemove runs before
+// updateManifest), so state lives in one object rather than module-level
+// bindings. `beginInvocation` MUST reset it on the first callback (requireConfig)
+// so a previous `dgadd remove` run cannot bleed cwd or chunk snapshots into the
+// next within a long-lived process.
 export interface RemoveWorkflowContext {
   readonly activeCwd: string | null;
   readonly preRemovalChunksByItem: Map<string, string[]>;
+  readonly retainedChunkHashesByName: Map<string, string[]>;
   beginInvocation(cwd: string): void;
   snapshotPreRemovalChunks(chunksByItem: Map<string, string[]>): void;
+  retainDriftedChunkHashes(chunkHashesByName: Map<string, string[]>): void;
 }
 
 export function createRemoveWorkflowContext(): RemoveWorkflowContext {
   let activeCwd: string | null = null;
   let preRemovalChunksByItem = new Map<string, string[]>();
+  let retainedChunkHashesByName = new Map<string, string[]>();
   return {
     get activeCwd() {
       return activeCwd;
@@ -192,12 +241,19 @@ export function createRemoveWorkflowContext(): RemoveWorkflowContext {
     get preRemovalChunksByItem() {
       return preRemovalChunksByItem;
     },
+    get retainedChunkHashesByName() {
+      return retainedChunkHashesByName;
+    },
     beginInvocation(cwd) {
       activeCwd = cwd;
       preRemovalChunksByItem = new Map();
+      retainedChunkHashesByName = new Map();
     },
     snapshotPreRemovalChunks(chunksByItem) {
       preRemovalChunksByItem = chunksByItem;
+    },
+    retainDriftedChunkHashes(chunkHashesByName) {
+      retainedChunkHashesByName = chunkHashesByName;
     },
   };
 }
@@ -217,6 +273,37 @@ function resolveKeyName(itemName: string): string | null {
   if (parsed.namespace === "keys") return parsed.name;
   if (getKeysHookNames().has(itemName)) return itemName;
   return null;
+}
+
+function toPublicName(itemName: string): string {
+  return parseInstallName(itemName).publicName;
+}
+
+// Trims records kept only for a drifted CSS chunk down to chunk tracking plus
+// provenance. Their source files were deleted, so keeping `files` would make
+// `dgadd diff` report spurious drift; `cssChunks` is narrowed to the hashes
+// actually preserved on disk so a deleted pristine sibling chunk is dropped too.
+export function retainCssChunkTrackingOnly(
+  cwd: string,
+  preservedChunksByName: Map<string, string[]>,
+): void {
+  if (preservedChunksByName.size === 0) return;
+  const result = ctx.config.loadConfig(cwd);
+  if (!result.ok) return;
+  const manifest = result.config.installedComponents;
+  if (!manifest) return;
+  for (const [name, preservedHashes] of preservedChunksByName) {
+    const record = manifest[name];
+    if (!record) continue;
+    const trimmed: ManifestItem = { installedAt: record.installedAt };
+    if (record.installedAs) trimmed.installedAs = record.installedAs;
+    if (record.integrationMode) trimmed.integrationMode = record.integrationMode;
+    const preserved = new Set(preservedHashes);
+    const retainedChunks = (record.cssChunks ?? []).filter((hash) => preserved.has(hash));
+    if (retainedChunks.length > 0) trimmed.cssChunks = retainedChunks;
+    manifest[name] = trimmed;
+  }
+  ctx.config.writeConfig(cwd, result.config);
 }
 
 const removeWorkflow = createRemoveWorkflowContext();
@@ -266,8 +353,18 @@ export const removeCommand = createRemoveCommand({
     resolveProjectPath(cwd, config.stylesFsPath),
   ],
   updateManifest: ({ cwd, removedNames }) => {
-    const names = removedNames.map((name) => parseInstallName(name).publicName);
+    // Items whose drifted chunk was preserved stay tracked (trimmed to chunk
+    // tracking, see retainCssChunkTrackingOnly) so the block stays targetable.
+    const preservedByPublicName = new Map(
+      [...removeWorkflow.retainedChunkHashesByName].map(([name, hashes]) => [
+        toPublicName(name),
+        hashes,
+      ]),
+    );
+    const retained = new Set(preservedByPublicName.keys());
+    const names = removedNames.map(toPublicName).filter((name) => !retained.has(name));
     ctx.config.updateManifest(cwd, undefined, names);
+    retainCssChunkTrackingOnly(cwd, preservedByPublicName);
   },
   findOrphanedDeps: ({ removedNames, cwd, config }) => {
     const checker = ctx.createChecker(cwd, config.componentsFsPath);
@@ -287,7 +384,19 @@ export const removeCommand = createRemoveCommand({
     removeWorkflow.snapshotPreRemovalChunks(readPreRemovalChunks(cwd));
     return expandRemoval(cwd, names);
   },
-  onAfterRemove: ({ cwd, config, removedNames }) => {
-    removeOwnedCssChunks(cwd, config, removedNames, removeWorkflow.preRemovalChunksByItem);
+  onAfterRemove: ({ cwd, config, removedNames, force }) => {
+    const plan = planOwnedCssChunkRemoval(
+      cwd,
+      config,
+      removedNames,
+      removeWorkflow.preRemovalChunksByItem,
+      force,
+    );
+    removeWorkflow.retainDriftedChunkHashes(plan.retainedChunkHashesByName);
+    return {
+      writes: plan.writes,
+      preservedNotices: plan.preservedNotices,
+      retainedNames: plan.retainedNames,
+    };
   },
 });

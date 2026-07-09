@@ -3,11 +3,12 @@ import { type AnimationEvent, createRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { usePresence } from "./use-presence";
 
-// usePresence callbacks read .target and .animationName from React's animation
-// event; a minimal stub is sufficient here, since the rest of the synthetic
-// event shape is unused.
-function animationEvent(target: EventTarget | null, animationName: string = ""): AnimationEvent {
-  return { target, animationName } as unknown as AnimationEvent;
+function animationEvent(
+  target: EventTarget | null,
+  animationName: string = "",
+  currentTarget: EventTarget | null = target,
+): AnimationEvent {
+  return { target, currentTarget, animationName } as unknown as AnimationEvent;
 }
 
 function makeElementRef(element: HTMLElement): React.MutableRefObject<HTMLElement | null> {
@@ -16,8 +17,7 @@ function makeElementRef(element: HTMLElement): React.MutableRefObject<HTMLElemen
   return ref;
 }
 
-// jsdom's AnimationEvent constructor doesn't accept the animationName option,
-// so build the native event manually for tests exercising the DOM-listener path.
+// jsdom's AnimationEvent constructor ignores animationName, so build the event manually.
 function dispatchNativeAnimation(
   element: HTMLElement,
   type: "animationend" | "animationcancel",
@@ -177,11 +177,7 @@ describe("usePresence", () => {
     });
 
     it("ignores stray animationcancel from the previous enter animation", () => {
-      // Repro: when data-state flips to "closed" the browser cancels the enter
-      // animation and queues an animationcancel with the enter animationName.
-      // Without the animationName filter, that stray event triggered the exit
-      // before the exit animation could play, popping the panel away with no
-      // fade and leaving a one-frame border artifact below the trigger.
+      // Swapping enter→exit keyframes makes the browser fire animationcancel with the enter name.
       const element = document.createElement("div");
       document.body.appendChild(element);
       const restore = withResolvedAnimationName(element, "ui-content-exit-to-top");
@@ -339,8 +335,6 @@ describe("usePresence", () => {
         rerender({ open: false });
         unmount();
 
-        // After unmount, neither a dispatched event nor the fallback timer
-        // should reach onExitComplete (listeners removed, timer cleared).
         act(() => {
           dispatchNativeAnimation(element, "animationend", "ui-content-exit-to-top");
           vi.advanceTimersByTime(100);
@@ -384,6 +378,27 @@ describe("usePresence", () => {
         result.current.onAnimationEnd(animationEvent(null));
       });
       expect(result.current.exiting).toBe(false);
+      expect(result.current.present).toBe(false);
+    });
+
+    it("ignores returned onAnimationEnd events bubbling from descendants (no ref)", () => {
+      const wrapper = document.createElement("div");
+      const child = document.createElement("span");
+      const { result, rerender } = renderHook(({ open }) => usePresence({ open }), {
+        initialProps: { open: true },
+      });
+
+      rerender({ open: false });
+      expect(result.current.present).toBe(true);
+
+      act(() => {
+        result.current.onAnimationEnd(animationEvent(child, "", wrapper));
+      });
+      expect(result.current.present).toBe(true);
+
+      act(() => {
+        result.current.onAnimationEnd(animationEvent(wrapper, "", wrapper));
+      });
       expect(result.current.present).toBe(false);
     });
   });

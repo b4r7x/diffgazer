@@ -5,6 +5,7 @@ import {
   type RefObject,
   useCallback,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -12,7 +13,10 @@ import {
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useNavigation } from "@/hooks/use-navigation";
 import { matchesSearch } from "@/lib/search";
-import { sortSelectableCollectionItems } from "@/lib/selectable-collection";
+import {
+  isSelectableItemEligible,
+  sortSelectableCollectionItems,
+} from "@/lib/selectable-collection";
 
 /** Context value shared by command palette. */
 export interface CommandPaletteContextValue {
@@ -40,7 +44,6 @@ export interface CommandPaletteContextValue {
    * (or id).
    */
   filter: (value: string, search: string) => boolean;
-  /** item count used by command palette. */
   itemCount: number;
   /** DOM id for list. */
   listId: string;
@@ -48,7 +51,6 @@ export interface CommandPaletteContextValue {
   listRef: RefObject<HTMLDivElement | null>;
   /** Ref for the input element. */
   inputRef: RefObject<HTMLInputElement | null>;
-  /** nav key down used by command palette. */
   navKeyDown: (event: ReactKeyboardEvent) => void;
   /** Registers item with command palette. */
   registerItem: (item: CommandPaletteItemRegistration) => void;
@@ -141,11 +143,29 @@ export function useCommandPaletteState({
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const paletteId = useId();
+
+  // hidden/inert/aria-hidden toggles do not change the registered items array, so
+  // force a fresh reference on those mutations or activeItems keeps stale eligibility.
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const list = listRef.current;
+    const view = list?.ownerDocument.defaultView;
+    if (!list || !view?.MutationObserver) return;
+
+    const observer = new view.MutationObserver(() => {
+      setRegisteredItems((current) => [...current]);
+    });
+    observer.observe(list, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["hidden", "inert", "aria-hidden"],
+    });
+
+    return () => observer.disconnect();
+  }, [isOpen]);
+
   const activeItems = useMemo(
-    () =>
-      sortSelectableCollectionItems(registeredItems).filter(
-        (item) => !item.disabled && item.element !== null,
-      ),
+    () => sortSelectableCollectionItems(registeredItems).filter(isSelectableItemEligible),
     [registeredItems],
   );
   const itemCallbacks = useMemo(
@@ -268,7 +288,6 @@ export interface CommandPaletteItemMetadata {
 export interface CommandPaletteItemRegistration extends CommandPaletteItemMetadata {
   /** DOM id for registration. */
   registrationId: string;
-  /** element used by command palette item registration. */
   element: HTMLElement | null;
 }
 

@@ -105,8 +105,6 @@ export function IssueDetailsPane({
               line={issue.line_start}
             />
 
-            {/* The pane's ScrollArea is the zone focus target; the tabpanels and
-                code blocks inside it stay click-focusable but are not tab stops. */}
             <TabsContent value="details" tabIndex={-1} className="mt-0">
               <DetailsTabContent
                 issue={issue}
@@ -188,9 +186,7 @@ function getPatchLineState(line: string): CodeBlockLineState | undefined {
 const DIFF_MARKER_RE = /^(\+|-|@@)/m;
 
 function getPlainSnippetBeforeSide(patch: string, evidence: EvidenceRef[]) {
-  const codeExcerpts = evidence
-    .filter((e) => e.type === "code" && e.excerpt)
-    .map((e) => e.excerpt);
+  const codeExcerpts = evidence.filter((e) => e.type === "code" && e.excerpt).map((e) => e.excerpt);
 
   if (codeExcerpts.length === 1) return codeExcerpts[0];
 

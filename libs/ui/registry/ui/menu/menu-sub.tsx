@@ -96,7 +96,6 @@ export function MenuSub({
 const INDICATOR_ACTIVE = "▌";
 const INDICATOR_IDLE = ">";
 
-/** menu sub trigger base API. */
 export const menuSubTriggerBase = cva(
   "cursor-pointer w-full transition-colors px-4 py-3 flex items-center font-mono duration-75",
   {

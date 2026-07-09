@@ -33,7 +33,6 @@ export interface CodeBlockContextValue {
    * ("{language} code").
    */
   language: string | undefined;
-  /** fallback name used by code block. */
   fallbackName: string;
 }
 

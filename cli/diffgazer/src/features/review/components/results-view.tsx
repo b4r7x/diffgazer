@@ -43,6 +43,10 @@ export function ReviewResultsView({
   const [detailsSubZone, setDetailsSubZone] = useState<IssueDetailsSubZone>("body");
 
   const filteredIssues = filterIssuesBySeverity(issues, severityFilter);
+  const firstVisibleIssue = filteredIssues[0];
+  if (firstVisibleIssue && !filteredIssues.some((issue) => issue.id === selectedIssueId)) {
+    setSelectedIssueId(firstVisibleIssue.id);
+  }
   const selectedIssue = filteredIssues.find((i) => i.id === selectedIssueId);
   const { activeTab, availableTabs, setActiveTab, completedSteps, toggleStep } =
     useIssueDetailsState(selectedIssue);

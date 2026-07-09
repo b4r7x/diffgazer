@@ -36,6 +36,51 @@ export function isNode(
   return Boolean(ownerView && value instanceof ownerView.Node);
 }
 
+/** Returns the shadow host when a node lives in a shadow root, else null. */
+export function getShadowHost(node: Node): Element | null {
+  const view = getOwnerView(node);
+  const root = node.getRootNode();
+  return view && root instanceof view.ShadowRoot ? root.host : null;
+}
+
+/** Returns the deepest active element, descending through open shadow roots. */
+export function getDeepActiveElement(root: Document | ShadowRoot): Element | null {
+  let active = root.activeElement;
+  while (active?.shadowRoot?.activeElement) {
+    active = active.shadowRoot.activeElement;
+  }
+  return active;
+}
+
+/** Returns true when `container` contains `target` in the composed tree, across shadow boundaries. */
+export function composedContains(container: Node, target: Node | null): boolean {
+  let node: Node | null = target;
+  while (node) {
+    if (container.contains(node)) return true;
+    node = getShadowHost(node);
+  }
+  return false;
+}
+
+/** Returns the nearest self-or-ancestor matching `selector` in the composed tree, across shadow boundaries. */
+export function composedClosest(element: Element, selector: string): Element | null {
+  let current: Element | null = element;
+  while (current) {
+    const match = current.closest(selector);
+    if (match) return match;
+    current = getShadowHost(current);
+  }
+  return null;
+}
+
+/**
+ * Returns the deepest composed event target, past the retargeted shadow host.
+ * Empty `composedPath()` (before dispatch) falls back to `event.target`.
+ */
+export function getComposedEventTarget(event: Event): EventTarget | null {
+  return event.composedPath()[0] ?? event.target;
+}
+
 /**
  * Returns true for form-like or editable elements that can own keyboard input,
  * including select and non-text input types.
@@ -43,7 +88,9 @@ export function isNode(
 export function isInputElement(target: EventTarget | null): boolean {
   if (!isHTMLElement(target)) return false;
   const tag = target.tagName.toLowerCase();
-  return tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable;
+  return Boolean(
+    tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable,
+  );
 }
 
 const NON_EDITABLE_INPUT_TYPES = new Set([

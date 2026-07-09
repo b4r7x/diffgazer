@@ -3,15 +3,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runInitWorkflow } from "@diffgazer/registry/cli";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { buildInitPlannedPaths, KNOWN_LOCKFILES } from "./init.js";
+import { ctx, VERSION } from "../context.js";
+import { buildInitPlannedPaths, KNOWN_LOCKFILES, writeInitConfig } from "./init.js";
 
 let root: string;
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), "dgadd-init-rollback-"));
-  // Plant a `src/` dir so `detectProject` reports `sourceDir === "src"` and
-  // plannedPaths target the standard `src/components/ui`, `src/hooks`, etc.
-  // Matches what `dgadd init` does in real shadcn-style projects.
+  // src/ so detectProject reports sourceDir === "src" and plannedPaths target src/*.
   mkdirSync(join(root, "src"), { recursive: true });
 });
 
@@ -60,10 +59,6 @@ describe("dgadd init rollback after install side effects", () => {
         detectProject: () => ({ display: [] }),
         plannedPaths: (cwd) => buildInitPlannedPaths(cwd, { componentsDir: "src/components/ui" }),
         createFiles: () => [],
-        // Simulate `pnpm install` mutating package.json AND creating a fresh
-        // lockfile. dgadd init declares both in plannedPaths so a later
-        // writeConfig failure must restore the file content and remove the
-        // freshly-created lockfile.
         afterFiles: async (cwd) => {
           const mutated = `${JSON.stringify(
             { name: "fixture", type: "module", dependencies: { clsx: "^2.0.0" } },
@@ -126,5 +121,79 @@ describe("dgadd init rollback after install side effects", () => {
 
     expect(readFileSync(join(root, "package.json"), "utf-8")).toBe(originalPackageJson);
     expect(readFileSync(join(root, "pnpm-lock.yaml"), "utf-8")).toBe(originalLockfile);
+  });
+});
+
+describe("dgadd init --force manifest ownership preservation", () => {
+  const priorConfig = {
+    $schema: "https://example.test/schema/diffgazer.json",
+    version: "0.0.0-prior",
+    aliases: {
+      components: "@/components/ui",
+      utils: "@/lib/utils",
+      lib: "@/lib",
+      hooks: "@/hooks",
+    },
+    componentsFsPath: "src/components/ui",
+    libFsPath: "src/lib",
+    hooksFsPath: "src/hooks",
+    rsc: false,
+    tailwind: { css: "src/styles/styles.css" },
+    installedComponents: {
+      "ui/button": {
+        installedAt: "2026-01-01T00:00:00.000Z",
+        installedAs: "explicit",
+        cssChunks: ["0123456789abcdef"],
+        files: [
+          { path: "src/components/ui/button.tsx", hash: "deadbeefcafef00d", item: "ui/button" },
+        ],
+      },
+    },
+  };
+
+  function seedInstalledProject(withPriorConfig: boolean): void {
+    writeFileSync(
+      join(root, "package.json"),
+      `${JSON.stringify({ name: "fixture", type: "module" }, null, 2)}\n`,
+    );
+    writeFileSync(
+      join(root, "tsconfig.json"),
+      `${JSON.stringify({ compilerOptions: { paths: { "@/*": ["./src/*"] } } }, null, 2)}\n`,
+    );
+    if (withPriorConfig) {
+      writeFileSync(join(root, "diffgazer.json"), `${JSON.stringify(priorConfig, null, 2)}\n`);
+    }
+  }
+
+  test("carries installedComponents across a forced re-init so remove/diff still see ownership", () => {
+    seedInstalledProject(true);
+
+    writeInitConfig(root, { componentsDir: "src/components/ui" });
+
+    const manifest = ctx.config.getManifestItems(root);
+    expect(manifest, "the ownership ledger remove/diff read must survive re-init").toBeDefined();
+    const entry = manifest?.["ui/button"];
+    expect(entry?.files?.[0]?.hash).toBe("deadbeefcafef00d");
+    expect(entry?.cssChunks).toEqual(["0123456789abcdef"]);
+
+    const rewritten = ctx.config.loadConfig(root);
+    if (!rewritten.ok) throw new Error("expected the rewritten config to load");
+    expect(rewritten.config.version).toBe(VERSION);
+  });
+
+  test("drops the manifest only when --reset-manifest is explicitly passed", () => {
+    seedInstalledProject(true);
+
+    writeInitConfig(root, { componentsDir: "src/components/ui", resetManifest: true });
+
+    expect(ctx.config.getManifestItems(root)).toBeUndefined();
+  });
+
+  test("does not fabricate a manifest on a fresh init with no prior ledger", () => {
+    seedInstalledProject(false);
+
+    writeInitConfig(root, { componentsDir: "src/components/ui" });
+
+    expect(ctx.config.getManifestItems(root)).toBeUndefined();
   });
 });

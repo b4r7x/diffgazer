@@ -1,8 +1,8 @@
-import { moveHighlight } from "@diffgazer/keys";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext } from "react";
 import { collectChildItems } from "../../lib/collect-child-items";
+import { useListNavigation } from "../../lib/use-list-navigation";
 import type { CliColorTokens } from "../../theme/palettes";
 import { useTheme } from "../../theme/provider";
 
@@ -131,27 +131,12 @@ function MenuRoot<Id extends string = string>({
 }: MenuProps<Id>) {
   const { tokens } = useTheme();
   const items = collectChildItems(children, extractMenuItem);
-  const selectableItems = items.filter((item) => !item.disabled);
-  const [internalHighlightedId, setInternalHighlightedId] = useState<string | null>(null);
-  const uncontrolledHighlightedId =
-    internalHighlightedId !== null &&
-    selectableItems.some((item) => item.id === internalHighlightedId)
-      ? internalHighlightedId
-      : (selectableItems[0]?.id ?? "");
-  const currentHighlightedId = controlledHighlightedId ?? uncontrolledHighlightedId;
-
-  function moveBy(direction: 1 | -1) {
-    const result = moveHighlight(items, currentHighlightedId, direction, wrap);
-    if (!result) return;
-    setInternalHighlightedId(result.id);
-    onHighlightChange?.(result.id as Id);
-  }
-
-  function selectItem(id: string) {
-    const item = items.find((i) => i.id === id);
-    if (!item || item.disabled) return;
-    onSelect?.(id as Id);
-  }
+  const { currentHighlightedId, moveBy, selectItem } = useListNavigation({
+    items,
+    highlightedId: controlledHighlightedId,
+    onHighlightChange: (id) => onHighlightChange?.(id as Id),
+    wrap,
+  });
 
   useInput(
     (input, key) => {
@@ -164,7 +149,10 @@ function MenuRoot<Id extends string = string>({
         return;
       }
       if (key.return) {
-        selectItem(currentHighlightedId);
+        const item = selectItem(currentHighlightedId);
+        if (item) {
+          onSelect?.(item.id as Id);
+        }
         return;
       }
       if (key.escape) {
@@ -172,9 +160,9 @@ function MenuRoot<Id extends string = string>({
         return;
       }
       if (input.length === 1) {
-        for (const item of selectableItems) {
-          if (item.hotkey != null && String(item.hotkey) === input) {
-            selectItem(item.id);
+        for (const item of items) {
+          if (item.hotkey != null && String(item.hotkey) === input && selectItem(item.id)) {
+            onSelect?.(item.id as Id);
             return;
           }
         }

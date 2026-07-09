@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -191,6 +191,43 @@ describe("createCollection", () => {
       value: { items: [makeItem().metadata], warnings: [] },
     });
   });
+
+  it("keeps absolute daemon paths out of client-facing store error messages", async () => {
+    const collection = makeCollection();
+
+    const missing = await collection.read(TEST_ID);
+    expect(missing.ok).toBe(false);
+    if (!missing.ok) {
+      expect(missing.error.code).toBe("NOT_FOUND");
+      expect(missing.error.message).not.toContain(tempRoot);
+      expect(missing.error.message).not.toContain(collectionDir);
+    }
+
+    await writeRawItem(TEST_ID, "{invalid json");
+    const corrupt = await collection.read(TEST_ID);
+    expect(corrupt.ok).toBe(false);
+    if (!corrupt.ok) expect(corrupt.error.message).not.toContain(tempRoot);
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "scrubs the absolute path from a permission-denied write error",
+    async () => {
+      const collection = makeCollection();
+      await collection.ensureDir();
+      await chmod(collectionDir, 0o500);
+      try {
+        const result = await collection.write(makeItem());
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.code).toBe("PERMISSION_ERROR");
+          expect(result.error.message).not.toContain(tempRoot);
+          expect(result.error.message).not.toContain(collectionDir);
+        }
+      } finally {
+        await chmod(collectionDir, 0o700);
+      }
+    },
+  );
 
   it("returns WRITE_ERROR when the collection directory cannot be created", async () => {
     const blockedPath = join(tempRoot, "blocked");

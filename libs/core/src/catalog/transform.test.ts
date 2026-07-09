@@ -62,7 +62,6 @@ describe("isModelFreeToUse", () => {
       ...PROVIDER_OVERLAY.gemini,
       freeTier: { families: ["gemini-flash"] },
     };
-    // gemini-2.5-flash carries family 'gemini-flash' and a positive price.
     expect(isModelFreeToUse(byId("gemini-2.5-flash", "gemini"), overlay)).toBe(true);
   });
   it("a priced model whose family is not listed in freeTier.families is paid", () => {
@@ -70,7 +69,6 @@ describe("isModelFreeToUse", () => {
       ...PROVIDER_OVERLAY.gemini,
       freeTier: { families: ["gemini-flash"] },
     };
-    // gemini-2.5-pro carries family 'gemini-pro', absent from the selector.
     expect(isModelFreeToUse(byId("gemini-2.5-pro", "gemini"), overlay)).toBe(false);
   });
 });
@@ -86,8 +84,6 @@ describe("catalogToModelInfo", () => {
     expect(flash.recommended).toBe(true);
     expect(flash.name).toBe("Gemini 2.5 Flash");
     expect(flash.description.length).toBeGreaterThan(0);
-    // Description context label uses the same M/K formatting as the capability
-    // card (formatContextTokens), so the two never disagree on one number.
     expect(flash.description).toContain("1M context");
     const pro3 = requireValue(
       models.find((m) => m.id === "gemini-3-pro-preview"),
@@ -99,20 +95,16 @@ describe("catalogToModelInfo", () => {
 
   it("filters out the embedding model (output limit below the review floor)", () => {
     const models = catalogToModelInfo(catalog, "gemini");
-    // gemini-embedding-001 has limit.output 1 — it can never emit a review object,
-    // so it must not appear in the picker data.
     expect(models.find((m) => m.id === "gemini-embedding-001")).toBeUndefined();
   });
 
   it("filters out an audio-output (TTS) model via modalities", () => {
     const models = catalogToModelInfo(catalog, "gemini");
-    // gemini-2.5-flash-preview-tts has a usable output limit but outputs audio.
     expect(models.find((m) => m.id === "gemini-2.5-flash-preview-tts")).toBeUndefined();
   });
 
   it("describes a model's context with the same K label as the capability card", () => {
     const models = catalogToModelInfo(catalog, "groq");
-    // groq's llama model has a 131072 context => '131K context.', not an M label.
     const llama = requireValue(
       models.find((m) => m.id === "meta-llama/llama-4-scout-17b-16e-instruct"),
       "Groq Llama model info",
@@ -151,6 +143,56 @@ describe("catalogToModelInfo", () => {
     expect(model?.description).toBe("gemini-2.5-flash");
   });
 
+  it("keeps the raw model id verbatim while sanitizing only the display label", () => {
+    const styledName = parseModelsDevCatalog({
+      google: {
+        id: "google",
+        models: {
+          flash: {
+            id: "gemini-2.5-flash",
+            name: "Gemini \x1b]8;;https://evil.example\x07Flash\x1b]8;;\x07",
+            cost: { input: 1, output: 1 },
+            limit: { output: 8192 },
+          },
+        },
+      },
+    });
+    const [model] = catalogToModelInfo(styledName, "gemini");
+    expect(model?.id).toBe("gemini-2.5-flash");
+    expect(model?.name).toBe("Gemini Flash");
+  });
+
+  it("drops a model whose id needs destructive sanitization instead of mutating its identity", () => {
+    const hostile = parseModelsDevCatalog({
+      google: {
+        id: "google",
+        models: {
+          clean: {
+            id: "gemini-flash",
+            name: "Clean",
+            cost: { input: 1, output: 1 },
+            limit: { output: 8192 },
+          },
+          hostile: {
+            id: "gemini-\x07flash",
+            name: "Hostile",
+            cost: { input: 1, output: 1 },
+            limit: { output: 8192 },
+          },
+        },
+      },
+    });
+    const ids = catalogToModelInfo(hostile, "gemini").map((m) => m.id);
+    expect(ids).toContain("gemini-flash");
+    expect(ids).not.toContain("gemini-\x07flash");
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("produces a unique id per model (no post-transform id collisions)", () => {
+    const ids = catalogToModelInfo(catalog, "gemini").map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
   it("orders Gemini free-first, then deterministically by name (pinned overlay order)", () => {
     const ids = catalogToModelInfo(catalog, "gemini").map((m) => m.id);
     const freeIds = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"];
@@ -161,13 +203,10 @@ describe("catalogToModelInfo", () => {
         expect(ids.indexOf(free)).toBeLessThan(ids.indexOf(paid));
       }
     }
-    // Ordering is stable across runs (deterministic).
     expect(catalogToModelInfo(catalog, "gemini").map((m) => m.id)).toEqual(ids);
   });
 
   it("merges by id across alias modelsDevIds, keeping the freshest last_updated entry", () => {
-    // Two source providers carry the same model id; the newer last_updated wins.
-    // Exercises the REAL merge the transform uses, not a re-implementation.
     const aliased = parseModelsDevCatalog({
       google: {
         id: "google",
@@ -208,18 +247,14 @@ describe("catalogToModelInfo", () => {
     const merged = mergeModelsAcrossSources(aliased, ["google", "google-extra"]);
     const byId = new Map(merged.map((m) => [m.id, m]));
 
-    // Duplicate id collapses to the freshest entry across both source providers.
     expect(byId.get("dup-model")?.name).toBe("New Name");
     expect(byId.get("dup-model")?.last_updated).toBe("2025-12-01");
-    // Non-duplicate ids from each source survive untouched.
     expect(byId.get("google-only")?.name).toBe("Google Only");
     expect(byId.get("extra-only")?.name).toBe("Extra Only");
     expect(merged).toHaveLength(3);
   });
 
   it("ranks a real last_updated above an entry carrying only a newer release_date", () => {
-    // A model with an authoritative last_updated must win over a same-id entry
-    // whose only date is release_date, even when that release_date string is later.
     const aliased = parseModelsDevCatalog({
       google: {
         id: "google",

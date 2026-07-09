@@ -1,11 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { createRef } from "react";
+import { renderToString } from "react-dom/server";
 import { assertType, describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
 import { Panel, type PanelProps } from "./index";
 
 function getRoot(container: HTMLElement): HTMLElement {
-  // querySelector retained: panel's data-slot is a public styling hook and the root may intentionally render without a landmark role.
   const root = container.querySelector('[data-slot="panel"]');
   if (!(root instanceof HTMLElement)) throw new Error("Panel root not found");
   return root;
@@ -76,6 +76,36 @@ describe("Panel", () => {
     expect(screen.getByRole("region", { name: "Wrapped" })).toBe(root);
   });
 
+  it("does not attribute a nested Panel's title to an outer Panel with no title of its own", () => {
+    const { container } = render(
+      <Panel>
+        <Panel.Content>
+          <Panel>
+            <Panel.Header>
+              <Panel.Title>Inner</Panel.Title>
+            </Panel.Header>
+          </Panel>
+        </Panel.Content>
+      </Panel>,
+    );
+
+    const roots = container.querySelectorAll('[data-slot="panel"]');
+    const outer = roots[0];
+    const inner = roots[1];
+    if (!(outer instanceof HTMLElement) || !(inner instanceof HTMLElement)) {
+      throw new Error("Expected two panel roots");
+    }
+
+    expect(outer.tagName).toBe("DIV");
+    expect(outer).not.toHaveAttribute("aria-labelledby");
+    expect(outer).not.toHaveAttribute("aria-label");
+
+    const title = screen.getByRole("heading", { name: "Inner" });
+    expect(inner.tagName).toBe("SECTION");
+    expect(inner).toHaveAttribute("aria-labelledby", title.id);
+    expect(screen.getByRole("region", { name: "Inner" })).toBe(inner);
+  });
+
   it("renders as <section> when aria-label is provided", () => {
     const { container } = render(
       <Panel aria-label="Release">
@@ -104,12 +134,34 @@ describe("Panel", () => {
     expect(root).toHaveAttribute("aria-describedby", description?.id);
   });
 
+  it("merges a caller aria-describedby with the Panel.Description id", () => {
+    const { container } = render(
+      <Panel aria-describedby="external-hint">
+        <Panel.Header>
+          <Panel.Title>Release</Panel.Title>
+          <Panel.Description>0.1.0</Panel.Description>
+        </Panel.Header>
+      </Panel>,
+    );
+
+    const root = getRoot(container);
+    const description = container.querySelector('[data-slot="panel-description"]');
+    expect(description?.id).toBeTruthy();
+    expect(root).toHaveAttribute("aria-describedby", `external-hint ${description?.id}`);
+  });
+
+  it("preserves a caller aria-describedby when no Panel.Description is present", () => {
+    const { container } = render(
+      <Panel aria-describedby="external-hint">
+        <Panel.Content>Body</Panel.Content>
+      </Panel>,
+    );
+
+    const root = getRoot(container);
+    expect(root).toHaveAttribute("aria-describedby", "external-hint");
+  });
+
   it("polymorphic-ref type narrows by the `as` value (compile-time)", () => {
-    // PanelProps<T> is a single generic, not a 4-branch union. This means
-    // PanelProps<"div"> has a div-specific ref (HTMLDivElement) and accepts
-    // div-specific props, while PanelProps<"aside"> uses the HTMLElement
-    // base. The old union shape erased polymorphic-ref correlation; the
-    // new shape preserves it. The assertions below must type-check.
     const divProps: PanelProps<"div"> = {
       as: "div",
       ref: createRef<HTMLDivElement>(),
@@ -123,7 +175,6 @@ describe("Panel", () => {
     assertType<PanelProps<"div">>(divProps);
     assertType<PanelProps<"aside">>(asideProps);
 
-    // Default generic is "div" — explicit-vs-default must agree on shape.
     const defaultProps: PanelProps = { ref: createRef<HTMLDivElement>() };
     assertType<PanelProps>(defaultProps);
 
@@ -369,7 +420,6 @@ describe("Panel", () => {
       </Panel>,
     );
 
-    // querySelector retained: panel label's data-slot is the public styling hook under test.
     const label = container.querySelector('[data-slot="panel-label"]');
     expect(label).not.toBeNull();
     expect(label).toHaveTextContent("[ 01 / FS_TREE ]");
@@ -398,5 +448,53 @@ describe("Panel", () => {
       </Panel>,
     );
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("emits <section> and aria-labelledby on the SSR string when Panel.Title is present", () => {
+    const html = renderToString(
+      <Panel>
+        <Panel.Header>
+          <Panel.Title>SSR release</Panel.Title>
+        </Panel.Header>
+      </Panel>,
+    );
+
+    expect(html).toContain("<section");
+    expect(html).toContain("aria-labelledby=");
+    expect(html).toContain("SSR release");
+  });
+
+  it("emits aria-describedby on the SSR string when Panel.Description is present", () => {
+    const html = renderToString(
+      <Panel>
+        <Panel.Header>
+          <Panel.Title>SSR release</Panel.Title>
+          <Panel.Description>SSR description</Panel.Description>
+        </Panel.Header>
+      </Panel>,
+    );
+
+    expect(html).toContain("aria-describedby=");
+    expect(html).toContain("SSR description");
+  });
+
+  it("wires the same title/description idrefs on SSR and after client render", () => {
+    const tree = (
+      <Panel>
+        <Panel.Header>
+          <Panel.Title id="stable-title">Stable</Panel.Title>
+          <Panel.Description id="stable-description">Stable body</Panel.Description>
+        </Panel.Header>
+      </Panel>
+    );
+
+    const html = renderToString(tree);
+    expect(html).toContain('aria-labelledby="stable-title"');
+    expect(html).toContain('aria-describedby="stable-description"');
+
+    const { container } = render(tree);
+    const root = getRoot(container);
+    expect(root).toHaveAttribute("aria-labelledby", "stable-title");
+    expect(root).toHaveAttribute("aria-describedby", "stable-description");
   });
 });

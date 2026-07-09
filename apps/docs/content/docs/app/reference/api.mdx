@@ -45,6 +45,8 @@ Config writes use JSON body validation and body-size limits. Provider model rout
 
 The server derives project identity itself when saving trust. Client-supplied identity fields are not trusted. Command execution trust is currently stripped to `false` because command execution is not supported.
 
+Unlike the rest of the API, the three trust routes always require the internal shutdown token header, independent of packaged mode. When no token is configured they fail closed with `401`, so a split-dev server started without `DIFFGAZER_SHUTDOWN_TOKEN` cannot read, save, or delete trust at all.
+
 ## Git
 
 | Method | Path | Purpose |

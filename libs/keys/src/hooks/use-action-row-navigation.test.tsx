@@ -1,9 +1,9 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { testNavigationBehavior } from "../testing/navigation-behavior.js";
-import { KeyboardWrapper } from "../testing/test-utils.js";
+import { fireKey, KeyboardWrapper } from "../testing/test-utils.js";
 import {
   type UseActionRowNavigationOptions,
   type UseActionRowNavigationReturn,
@@ -369,10 +369,101 @@ describe("useActionRowNavigation", () => {
 
     await waitFor(() => expectFocused(getButton("Cancel")));
 
-    // Focus is already on the Cancel button via the action row navigation.
-    // Enter should still fire onAction.
     await user.keyboard("{Enter}");
     expect(onAction).toHaveBeenCalledWith(0);
+  });
+
+  it("returns DOM focus to content when exiting the actions zone via ArrowUp", async () => {
+    const { user } = renderActionRow();
+
+    await waitFor(() => expectFocused(getButton("Cancel")));
+
+    await user.keyboard("{ArrowUp}");
+
+    await waitFor(() => expectFocused(screen.getByLabelText("Content fallback")));
+  });
+
+  describe("keyboard default prevention", () => {
+    function pressKey(key: string, options?: Partial<KeyboardEventInit>): KeyboardEvent {
+      let event!: KeyboardEvent;
+      act(() => {
+        event = fireKey(key, options);
+      });
+      return event;
+    }
+
+    it("prevents native defaults for handled action-row arrows", async () => {
+      renderActionRow({ wrap: true });
+
+      await waitFor(() => expectFocused(getButton("Cancel")));
+
+      expect(pressKey("ArrowRight").defaultPrevented).toBe(true);
+      expect(pressKey("ArrowLeft").defaultPrevented).toBe(true);
+      expect(pressKey("ArrowUp").defaultPrevented).toBe(true);
+    });
+
+    it("prevents default when entering actions from content via ArrowDown", async () => {
+      renderActionRow({ defaultZone: "content" });
+
+      expect(pressKey("ArrowDown").defaultPrevented).toBe(true);
+      await waitFor(() => expectFocused(getButton("Cancel")));
+    });
+
+    it("declines ArrowUp so native default is preserved when canExitActions is false", async () => {
+      renderActionRow({ canExitActions: false });
+
+      await waitFor(() => expectFocused(getButton("Cancel")));
+
+      expect(pressKey("ArrowUp").defaultPrevented).toBe(false);
+    });
+  });
+
+  it("declines action activation when focus returned to content after entering actions", async () => {
+    const onAction = vi.fn();
+    function RowWithTitle() {
+      const containerRef = useRef<HTMLDivElement>(null);
+      const row = useActionRowNavigation({
+        enabled: true,
+        actionCount: 2,
+        defaultZone: "content",
+        containerRef,
+        onAction,
+      });
+      return (
+        <div ref={containerRef}>
+          <button type="button">Title</button>
+          <button type="button" {...row.getActionProps(0)}>
+            Cancel
+          </button>
+          <button type="button" {...row.getActionProps(1)}>
+            Save
+          </button>
+        </div>
+      );
+    }
+
+    render(
+      <KeyboardWrapper>
+        <RowWithTitle />
+      </KeyboardWrapper>,
+    );
+    const user = userEvent.setup();
+
+    const title = getButton("Title");
+    title.focus();
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() => expectFocused(getButton("Cancel")));
+
+    title.focus();
+    expectFocused(title);
+
+    const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    act(() => {
+      title.dispatchEvent(event);
+    });
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(onAction).not.toHaveBeenCalled();
   });
 
   describe("types", () => {
@@ -384,8 +475,6 @@ describe("useActionRowNavigation", () => {
       expectTypeOf<NonNullable<Options["disabledActions"]>>().toEqualTypeOf<
         readonly [boolean, boolean]
       >();
-      // Tuple index narrowing: onAction/onNavigate accept only 0 | 1 (not number).
-      // We assert by checking that number is NOT assignable to the parameter.
       expectTypeOf<number>().not.toMatchTypeOf<Parameters<Options["onAction"]>[0]>();
       expectTypeOf<0>().toMatchTypeOf<Parameters<Options["onAction"]>[0]>();
       expectTypeOf<1>().toMatchTypeOf<Parameters<Options["onAction"]>[0]>();
@@ -423,13 +512,10 @@ describe("useActionRowNavigation", () => {
       type ThreeActions = readonly [() => void, () => void, () => void];
       type Return = UseActionRowNavigationReturn<ThreeActions>;
 
-      // focusedIndex is narrowed to the tuple's valid indices, not bare number.
       expectTypeOf<Return["focusedIndex"]>().toEqualTypeOf<0 | 1 | 2>();
       expectTypeOf<Return["getActionProps"]>().parameter(0).toEqualTypeOf<0 | 1 | 2>();
       expectTypeOf<Return["enterActions"]>().parameter(0).toEqualTypeOf<0 | 1 | 2 | undefined>();
 
-      // Type-only: never executed, so the out-of-range calls only need to fail
-      // type-checking (the @ts-expect-error comments assert that).
       function _typeAssertions(row: Return) {
         row.getActionProps(0);
         row.getActionProps(2);

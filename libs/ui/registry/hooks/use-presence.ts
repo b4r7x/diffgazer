@@ -37,8 +37,7 @@ export function usePresence({
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
   const exitCompletedRef = useRef(false);
-  // Pinned exit animation names filter the stray animationcancel that fires
-  // when CSS swaps the enter keyframe for the exit keyframe mid-transition.
+  // Pinned exit names filter the stray animationcancel fired when CSS swaps enter→exit keyframes.
   const exitAnimationNamesRef = useRef<readonly string[]>([]);
   const completeExitFromEffect = useEffectEvent(() => {
     if (phaseRef.current !== "closing" || exitCompletedRef.current) return;
@@ -47,9 +46,7 @@ export function usePresence({
     onExitComplete?.();
   });
 
-  // Storing information from previous renders (React docs pattern): adjust
-  // phase synchronously when `open` flips, skipping the stale commit an effect
-  // would cause.
+  // Adjust phase during render (React's store-prev-render pattern), not in an effect that stale-commits.
   if (open !== prevOpen) {
     setPrevOpen(open);
     if (open || phase === "open") exitCompletedRef.current = false;
@@ -73,6 +70,7 @@ export function usePresence({
 
   function onAnimationEnd(e: AnimationEvent) {
     if (ref) return; // native listener handles it
+    if (e.target !== e.currentTarget) return; // ignore animations bubbling from descendants
     if (!matchesExitAnimation(e.animationName)) return;
     commitExit();
   }
@@ -92,11 +90,8 @@ export function usePresence({
       completeExitFromEffect();
       return;
     }
-    // Native listener: React 19 does not expose animation cancellation through
-    // synthetic event props, and
-    // testing-library's fireEvent.animationEnd on portaled descendants does
-    // not reach React's delegated listener — so animation-driven unmount
-    // must come from the DOM, not from React's synthetic event system.
+    // React 19 doesn't expose animationcancel via synthetic props, and fireEvent doesn't reach
+    // portaled descendants — drive animation-based unmount from the DOM, not synthetic events.
     const handleAnimation = (event: globalThis.AnimationEvent) => {
       if (event.target !== element) return;
       const expected = exitAnimationNamesRef.current;

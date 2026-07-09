@@ -21,29 +21,17 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 /** Reject a live payload smaller than this fraction of the known baseline. */
 const SHRINK_GUARD_RATIO = 0.5;
 
-/** Exported as a test seam: colocated tests round-trip the on-disk cache shape. */
 export const ModelsDevCatalogCacheSchema = z.object({
   catalog: ModelsDevCatalogSchema,
   fetchedAt: z.iso.datetime(),
 });
 type ModelsDevCatalogCache = z.infer<typeof ModelsDevCatalogCacheSchema>;
 
-/**
- * The validated catalog from the most recent successful parse, keyed by the cache
- * generation's `fetchedAt`. The disk cache holds the full ~2 MB multi-provider
- * payload; re-running `ModelsDevCatalogSchema.safeParse` over all of it on every
- * request (a picker open fans out one request per enabled provider) is the hot-path
- * cost. Each `persistDiskCache` stamps a new ISO `fetchedAt`, so the timestamp
- * identifies a generation: a cheap raw read plus a `fetchedAt` match lets repeated
- * requests reuse the parsed catalog and skip the full revalidation.
- */
+// Reuse the parsed catalog within a cache generation (keyed by fetchedAt) instead
+// of re-parsing the ~2 MB payload on every per-provider request.
 let parsedCacheMemo: ModelsDevCatalogCache | null = null;
 
-/**
- * Test seam: clears the per-generation parse memo so tests that reuse a
- * same-millisecond `fetchedAt` across distinct catalogs do not see a stale hit.
- * Production never needs this — each persisted generation carries a new timestamp.
- */
+// Test seam: distinct catalogs sharing a same-millisecond fetchedAt would otherwise hit the stale memo.
 export const resetCatalogParseMemo = (): void => {
   parsedCacheMemo = null;
 };
@@ -54,13 +42,6 @@ const peekFetchedAt = (raw: unknown): string | undefined => {
   return typeof value === "string" ? value : undefined;
 };
 
-/**
- * Reads the cache via `readJsonFileSyncSafe` and resolves the same
- * missing/corrupt/ok distinction the disk-cache primitives provide, but memoizes
- * the expensive full-catalog parse per cache generation. The distinction is
- * preserved exactly so the corrupt-quarantine and shrink-guard-baseline logic is
- * unchanged.
- */
 const loadCacheStateMemoized = (path: string): DiskCacheState<ModelsDevCatalogCache> => {
   const read = readJsonFileSyncSafe<unknown>(path);
   if (read.status === "missing") return { status: "missing" };
@@ -122,19 +103,14 @@ const isOffline = (): boolean => {
   return flag !== undefined && flag !== "" && flag !== "0" && flag.toLowerCase() !== "false";
 };
 
-/**
- * The single live-fetch + parse + shrink/corruption-guard step. Exported as a
- * deliberate test seam so the guards can be exercised directly; production reaches
- * it only through `getProviderModels`.
- */
+// Live fetch + parse + shrink/corruption guard. Exported as a test seam; production reaches it via getProviderModels.
 export const fetchModelsDevCatalog = async (options?: {
   baselineModelCount?: number;
 }): Promise<Result<ModelsDevCatalog, { message: string }>> => {
   let response: Response;
   try {
-    // `redirect: "error"` pins the destination to models.dev: a 3xx to a foreign
-    // (or internal/link-local) host must fail rather than be followed, parsed, and
-    // persisted into the shared on-disk cache.
+    // redirect: "error" pins the destination to models.dev — a 3xx to a foreign or
+    // link-local host MUST fail, not be followed and persisted into the shared cache.
     response = await fetch(MODELS_DEV_URL, {
       signal: AbortSignal.timeout(10_000),
       redirect: "error",
@@ -154,9 +130,8 @@ export const fetchModelsDevCatalog = async (options?: {
   const liveCount = countModels(catalog);
   const rawCount = countRawModels(payload);
 
-  // Corruption guard: if per-model parsing silently dropped most of the upstream
-  // payload, the post-parse count alone cannot see the mass-drop. Refuse a fetch
-  // whose survivors fell far below the raw upstream size.
+  // Corruption guard: the post-parse count can't see a mass silent drop, so compare
+  // survivors against the raw upstream size.
   if (rawCount > 0 && liveCount < rawCount * SHRINK_GUARD_RATIO) {
     return err({
       message: `models.dev catalog corruption-guard tripped: ${liveCount} of ${rawCount} raw models survived parsing`,
@@ -174,22 +149,13 @@ export const fetchModelsDevCatalog = async (options?: {
   return ok(catalog);
 };
 
-/**
- * The catalog function's result is exactly the slim HTTP response contract; alias
- * the Zod-derived `ProviderModelsResponse` so the wire shape has a single source
- * of truth and `service.ts` can return this value without a parallel type.
- */
 export type ProviderModelsResult = ProviderModelsResponse;
 
 type ResultSource = ProviderModelsResult["source"];
 
-/**
- * Build a provider result only when the catalog actually yields models for the
- * provider. Returns null for a structurally-valid-but-provider-missing catalog so
- * the caller can fall through to the next tier instead of serving a blank picker.
- * `cached` is derived from `source`, never hand-passed, so an inconsistent
- * source/cached pair cannot be constructed.
- */
+// Returns null when the catalog yields no models for the provider so the caller
+// falls through to the next tier instead of serving a blank picker. `cached` is
+// derived from `source` so the pair can't be constructed inconsistently.
 const resultIfNonEmpty = (
   catalog: ModelsDevCatalog,
   provider: AIProvider,
@@ -207,25 +173,16 @@ const snapshotResult = (provider: AIProvider): ProviderModelsResult => ({
   cached: false,
 });
 
-/**
- * models.dev keeps its own three-tier orchestration rather than routing through the
- * shared `withTtlAndFallback` (the D6 unification helper that OpenRouter uses). It
- * deliberately reuses the cache *primitives* (`readJsonFileSyncSafe` via
- * `loadCacheStateMemoized`, `persistDiskCache` via `persistIfNotDroppingProviders`)
- * and the shared `isEntryFresh` predicate, but the orchestration here models
- * behavior the two-tier helper does not: a third bundled-snapshot tier, a
- * per-provider non-empty fall-through (never a blank picker), a single-provider-drop
- * poison guard on persistence, and a corrupt-cache quarantine that still seeds a shrink-guard
- * baseline. Forcing it through `withTtlAndFallback` would lose those. See design.md
- * D6 for the recorded exception.
- */
+// Keeps its own three-tier orchestration instead of the shared withTtlAndFallback:
+// it adds a bundled-snapshot tier, per-provider non-empty fall-through, a
+// single-provider-drop poison guard, and a corrupt-cache quarantine that still
+// seeds a shrink-guard baseline. See design.md D6 for the recorded exception.
 export const getProviderModels = async (providerId: AIProvider): Promise<ProviderModelsResult> => {
   const path = getGlobalModelsDevCatalogPath();
   const cacheState = loadCacheStateMemoized(path);
 
   // A present-but-unloadable cache must not be mistaken for a baseline-free first
-  // run: quarantine it and use the bundled snapshot count as the emergency floor,
-  // so the next fetch is still shrink-guarded.
+  // run: quarantine it so the next fetch is still shrink-guarded against the snapshot floor.
   if (cacheState.status === "corrupt") {
     try {
       const backupPath = quarantineCorruptFile(path);
@@ -243,11 +200,8 @@ export const getProviderModels = async (providerId: AIProvider): Promise<Provide
 
   if (isOffline()) {
     if (cache) {
-      // The fresh-cache tier above already returned for a TTL-fresh hit, so a cache
-      // served here is stale-beyond-TTL. The `source` tag stays "cache" (a new tag
-      // would ripple through the cross-package ProviderModelsResponse enum and every
-      // consumer); `fetchedAt` is the honest staleness signal the response already
-      // carries, and this log makes the stale offline serve observable server-side.
+      // A cache served here is stale-beyond-TTL (the fresh tier above already returned
+      // for a fresh hit); fetchedAt carries the honest staleness signal.
       const stale = resultIfNonEmpty(cache.catalog, providerId, cache.fetchedAt, "cache");
       if (stale) {
         log("info", "models_dev_catalog_offline_stale_serve", {
@@ -260,9 +214,8 @@ export const getProviderModels = async (providerId: AIProvider): Promise<Provide
     return snapshotResult(providerId);
   }
 
-  // Shrink-guard against the prior trusted cache when we have one. When the cache
-  // exists but could not be loaded, fall back to the bundled snapshot count as an
-  // emergency baseline rather than running the fetch with no shrink protection.
+  // Shrink-guard baseline: the trusted cache, or the snapshot count when a corrupt
+  // cache left us none, rather than fetching with no shrink protection.
   let baselineModelCount = 0;
   if (cache) {
     baselineModelCount = countModels(cache.catalog);
@@ -278,8 +231,7 @@ export const getProviderModels = async (providerId: AIProvider): Promise<Provide
       persistIfNotDroppingProviders(path, fetchResult.value, cache, fetchedAt);
       return live;
     }
-    // The fetch is healthy overall but yields no models for this provider; fall
-    // through to the cache/snapshot rather than persisting a poisoned catalog.
+    // Healthy fetch but no models for this provider: fall through rather than persist a poisoned catalog.
   }
 
   if (cache) {
@@ -289,13 +241,9 @@ export const getProviderModels = async (providerId: AIProvider): Promise<Provide
   return snapshotResult(providerId);
 };
 
-/**
- * Persist a freshly fetched catalog, but never overwrite a trusted cache with one
- * that drops an enabled overlay provider the trusted cache still had — a single
- * upstream drop would otherwise poison the shared on-disk cache. The write is
- * best-effort: a disk failure must never fail a request whose data is in hand,
- * and must never reflect the cache path to the HTTP client.
- */
+// MUST NOT overwrite a trusted cache with one that drops an enabled overlay provider
+// the trusted cache still had — a single upstream drop would poison the shared cache.
+// Best-effort write: a disk failure must not fail a request whose data is in hand.
 const persistIfNotDroppingProviders = (
   path: string,
   catalog: ModelsDevCatalog,
@@ -315,8 +263,6 @@ const persistIfNotDroppingProviders = (
   const entry: ModelsDevCatalogCache = { catalog, fetchedAt };
   try {
     persistDiskCache(path, entry);
-    // The just-written generation is the freshest parse: seed the memo so the
-    // immediate follow-up request reuses it instead of re-validating from disk.
     parsedCacheMemo = entry;
   } catch (error) {
     log("warn", "models_dev_catalog_persist_failed", { error: getErrorMessage(error) });

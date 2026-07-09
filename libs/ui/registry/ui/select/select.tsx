@@ -106,17 +106,11 @@ const selectRootVariants = cva("relative", {
   defaultVariants: { variant: "default" },
 });
 
-/** Options for derived select state. */
 interface DerivedSelectStateOptions {
-  /** open controlled used by derived select state. */
   openControlled: boolean;
-  /** value controlled used by derived select state. */
   valueControlled: boolean;
-  /** highlighted controlled used by derived select state. */
   highlightedControlled: boolean;
-  /** searchable used by derived select state. */
   searchable: boolean;
-  /** seed options used by derived select state. */
   seedOptions: ReadonlyMap<string, SelectOptionMetadata>;
 }
 

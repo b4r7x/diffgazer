@@ -17,7 +17,6 @@ export function getItemState(options: {
   return "normal";
 }
 
-/** menu item base API. */
 export const menuItemBase = cva("cursor-pointer w-full transition-colors", {
   variants: {
     menuVariant: {
@@ -62,7 +61,6 @@ export const menuItemBase = cva("cursor-pointer w-full transition-colors", {
   defaultVariants: { menuVariant: "default", state: "normal", colorVariant: "default" },
 });
 
-/** menu item indicator API. */
 export const menuItemIndicator = cva(
   "pr-4 shrink-0 inline-flex items-center justify-center self-center leading-none font-mono text-xs",
   {
@@ -76,7 +74,6 @@ export const menuItemIndicator = cva(
   },
 );
 
-/** menu item label API. */
 export const menuItemLabel = cva("tracking-wide", {
   variants: {
     idle: {
@@ -87,7 +84,6 @@ export const menuItemLabel = cva("tracking-wide", {
   defaultVariants: { idle: false },
 });
 
-/** menu item value API. */
 export const menuItemValue = cva("font-mono text-xs", {
   variants: {
     valueVariant: {

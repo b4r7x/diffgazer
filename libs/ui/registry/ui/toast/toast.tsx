@@ -28,7 +28,6 @@ interface ToastProps extends ToastType {
   onDismiss: (id: string) => void;
   /** Called when remove occurs. */
   onRemove: (id: string) => void;
-  /** dismissing used by toast. */
   dismissing?: boolean;
 }
 

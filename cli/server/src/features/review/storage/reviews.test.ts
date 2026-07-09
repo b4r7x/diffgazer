@@ -19,9 +19,8 @@ beforeEach(async () => {
 
 afterEach(async () => {
   delete process.env.DIFFGAZER_HOME;
-  // listReviews/getReview persist the project index and migrations as fire-and-forget
-  // writes that can still be recreating .index/ when teardown runs; retry past the
-  // resulting ENOTEMPTY race.
+  // Fire-and-forget index/migration writes may still be recreating .index/ at teardown;
+  // retry past the resulting ENOTEMPTY race.
   await rm(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });
 });
 
@@ -34,6 +33,10 @@ const reviewPath = (id: string): string => join(reviewsDir(), `${id}.json`);
 const projectIndexPath = (projectPath: string): string => {
   const hash = createHash("sha256").update(projectPath).digest("hex").slice(0, 16);
   return join(reviewsDir(), ".index", `${hash}.json`);
+};
+const projectReconcileMarkerPath = (projectPath: string): string => {
+  const hash = createHash("sha256").update(projectPath).digest("hex").slice(0, 16);
+  return join(reviewsDir(), ".index", `${hash}.reconcile`);
 };
 
 async function readJson<T>(filePath: string): Promise<T> {
@@ -52,6 +55,11 @@ async function readSavedReview(id: string): Promise<SavedReview> {
 async function writeProjectIndexFile(projectPath: string, ids: string[]): Promise<void> {
   await mkdir(join(reviewsDir(), ".index"), { recursive: true });
   await writeFile(projectIndexPath(projectPath), JSON.stringify(ids), "utf-8");
+}
+
+async function writeReconcileMarker(projectPath: string): Promise<void> {
+  await mkdir(join(reviewsDir(), ".index"), { recursive: true });
+  await writeFile(projectReconcileMarkerPath(projectPath), "", "utf-8");
 }
 
 async function waitForSavedReview(
@@ -210,10 +218,8 @@ describe("reviews storage", () => {
     if (filtered.ok) expect(filtered.value.items.map((item) => item.id)).toEqual([REVIEW_ID]);
   });
 
-  it("serves a valid project index and does not fall back to the full directory scan", async () => {
-    // Disk holds two reviews for /proj/a, but the index lists only the first.
-    // The single-path index branch is authoritative: it must serve exactly the
-    // indexed review and never run the full scan (which would surface the second).
+  it("reconciles a durably-saved review the stale index omits and self-heals the index", async () => {
+    // Index lists only REVIEW_ID with a reconcile marker set (F-097).
     await writeSavedReview(
       makeSavedReview({
         metadata: {
@@ -235,6 +241,34 @@ describe("reviews storage", () => {
       }),
     );
     await writeProjectIndexFile("/proj/a", [REVIEW_ID]);
+    await writeReconcileMarker("/proj/a");
+
+    const { listReviews } = await loadStorage();
+    const result = await listReviews("/proj/a");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.items.map((item) => item.id)).toEqual([REVIEW_ID_2, REVIEW_ID]);
+    await expect(readJson<string[]>(projectIndexPath("/proj/a"))).resolves.toEqual(
+      expect.arrayContaining([REVIEW_ID, REVIEW_ID_2]),
+    );
+    await expect(stat(projectReconcileMarkerPath("/proj/a"))).rejects.toThrow();
+  });
+
+  it("surfaces a corrupt orphan as a listing warning instead of dropping it silently", async () => {
+    await writeSavedReview(
+      makeSavedReview({
+        metadata: {
+          ...makeSavedReview().metadata,
+          id: REVIEW_ID,
+          projectPath: "/proj/a",
+          createdAt: "2024-01-01T00:00:00.000Z",
+        },
+      }),
+    );
+    await writeProjectIndexFile("/proj/a", [REVIEW_ID]);
+    await writeReconcileMarker("/proj/a");
+    await writeFile(reviewPath(REVIEW_ID_2), "{ not json", "utf-8");
 
     const { listReviews } = await loadStorage();
     const result = await listReviews("/proj/a");
@@ -242,7 +276,86 @@ describe("reviews storage", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.items.map((item) => item.id)).toEqual([REVIEW_ID]);
-    // The index file was not rewritten from a full scan.
+    expect(result.value.warnings.some((w) => w.includes(REVIEW_ID_2))).toBe(true);
+  });
+
+  it("serves a single-project listing without reading other projects' index files", async () => {
+    // F-097 perf guard: listing /proj/a must not fan out into /proj/b's index.
+    await writeSavedReview(
+      makeSavedReview({
+        metadata: {
+          ...makeSavedReview().metadata,
+          id: REVIEW_ID,
+          projectPath: "/proj/a",
+          createdAt: "2024-01-01T00:00:00.000Z",
+        },
+      }),
+    );
+    await writeSavedReview(
+      makeSavedReview({
+        metadata: {
+          ...makeSavedReview().metadata,
+          id: REVIEW_ID_2,
+          projectPath: "/proj/b",
+          createdAt: "2025-06-01T00:00:00.000Z",
+        },
+      }),
+    );
+    await writeProjectIndexFile("/proj/a", [REVIEW_ID]);
+    await writeProjectIndexFile("/proj/b", [REVIEW_ID_2]);
+
+    // fs/promises named exports are not spyable, so wrap readFile for the fresh module
+    // graph the dynamic import builds; reads pass through, only paths are recorded.
+    const actual = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
+    const readFileSpy = vi.fn(actual.readFile);
+    vi.doMock("node:fs/promises", () => ({ ...actual, readFile: readFileSpy }));
+
+    try {
+      const { listReviews } = await loadStorage();
+      const result = await listReviews("/proj/a");
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.items.map((item) => item.id)).toEqual([REVIEW_ID]);
+
+      const otherIndex = projectIndexPath("/proj/b");
+      const readOtherIndex = readFileSpy.mock.calls.some((call) => call[0] === otherIndex);
+      expect(readOtherIndex).toBe(false);
+    } finally {
+      vi.doUnmock("node:fs/promises");
+    }
+  });
+
+  it("keeps the index authoritative and skips orphan reads when it covers every review", async () => {
+    await writeSavedReview(
+      makeSavedReview({
+        metadata: {
+          ...makeSavedReview().metadata,
+          id: REVIEW_ID,
+          projectPath: "/proj/a",
+          createdAt: "2024-01-01T00:00:00.000Z",
+        },
+      }),
+    );
+    await writeSavedReview(
+      makeSavedReview({
+        metadata: {
+          ...makeSavedReview().metadata,
+          id: REVIEW_ID_2,
+          projectPath: "/proj/b",
+          createdAt: "2025-06-01T00:00:00.000Z",
+        },
+      }),
+    );
+    await writeProjectIndexFile("/proj/a", [REVIEW_ID]);
+    await writeProjectIndexFile("/proj/b", [REVIEW_ID_2]);
+
+    const { listReviews } = await loadStorage();
+    const result = await listReviews("/proj/a");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.items.map((item) => item.id)).toEqual([REVIEW_ID]);
     await expect(readJson<string[]>(projectIndexPath("/proj/a"))).resolves.toEqual([REVIEW_ID]);
   });
 
@@ -257,7 +370,7 @@ describe("reviews storage", () => {
         },
       }),
     );
-    // REVIEW_ID_2 is indexed but its review file was never written (e.g. deleted).
+    // REVIEW_ID_2 is indexed but its review file was never written.
     await writeProjectIndexFile("/proj/a", [REVIEW_ID, REVIEW_ID_2]);
 
     const { listReviews } = await loadStorage();
@@ -290,7 +403,6 @@ describe("reviews storage", () => {
         },
       }),
     );
-    // No index file on disk → full-scan path.
 
     const { listReviews } = await loadStorage();
     const fromScan = await listReviews("/proj/a");
@@ -298,13 +410,11 @@ describe("reviews storage", () => {
     expect(fromScan.ok).toBe(true);
     if (!fromScan.ok) return;
     expect(fromScan.value.items.map((item) => item.id)).toEqual([REVIEW_ID_2, REVIEW_ID]);
-    // The scan rebuilt the index with both ids.
     await expect(readJson<string[]>(projectIndexPath("/proj/a"))).resolves.toEqual([
       REVIEW_ID_2,
       REVIEW_ID,
     ]);
 
-    // The index path now returns the identical listing.
     const fromIndex = await listReviews("/proj/a");
     expect(fromIndex.ok).toBe(true);
     if (fromIndex.ok) {
@@ -431,7 +541,7 @@ describe("reviews storage", () => {
     }
   });
 
-  it("surfaces lazy project index write failures as warnings", async () => {
+  it("scrubs the daemon path from a project index build failure warning", async () => {
     const review = makeSavedReview({
       metadata: {
         ...makeSavedReview().metadata,
@@ -440,19 +550,32 @@ describe("reviews storage", () => {
     });
     await writeSavedReview(review);
 
+    const indexPath = projectIndexPath("/proj/index-fail");
     const atomicWrite = await import("../../../shared/lib/fs.js");
     const writeSpy = vi
       .spyOn(atomicWrite, "atomicWriteFile")
-      .mockRejectedValueOnce(new Error("disk full"));
+      .mockRejectedValueOnce(new Error(`EACCES: permission denied, open '${indexPath}'`));
+    const logModule = await import("../../../shared/lib/log.js");
+    const logSpy = vi.spyOn(logModule, "log").mockImplementation(() => {});
 
     const { listReviews } = await loadStorage();
     const result = await listReviews("/proj/index-fail");
 
-    writeSpy.mockRestore();
-
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.value.warnings).toContain("[reviews] Failed to build project index: disk full");
+    if (result.ok) {
+      expect(result.value.warnings).toContain("[reviews] Failed to build project index");
+      for (const warning of result.value.warnings) {
+        expect(warning).not.toContain(tempHome);
+      }
+    }
+    expect(logSpy).toHaveBeenCalledWith(
+      "warn",
+      "reviews_index_build_failed",
+      expect.objectContaining({ error: expect.any(Error) }),
+    );
+
+    writeSpy.mockRestore();
+    logSpy.mockRestore();
   });
 
   it("adds and replaces drilldowns in the saved review", async () => {
@@ -499,23 +622,58 @@ describe("reviews storage", () => {
     const result = await saveReview(makeSaveOptions({ reviewId: REVIEW_ID }));
 
     expect(result.ok).toBe(true);
-    // The review file itself was written durably and is openable.
     const stored = await getReview(REVIEW_ID);
     expect(stored.ok).toBe(true);
     if (stored.ok) expect(stored.value.metadata.id).toBe(REVIEW_ID);
 
-    // The index write is fire-and-forget; its rejection handler warns on a later
-    // microtask, so wait for the structured warn before asserting.
-    await vi.waitFor(() => {
-      expect(logSpy).toHaveBeenCalledWith(
-        "warn",
-        "reviews_index_add_failed",
-        expect.objectContaining({ error: expect.any(Error) }),
-      );
-    });
+    expect(logSpy).toHaveBeenCalledWith(
+      "warn",
+      "reviews_index_add_failed",
+      expect.objectContaining({ error: expect.any(Error) }),
+    );
 
     logSpy.mockRestore();
     writeSpy.mockRestore();
+  });
+
+  it("keeps a saved review discoverable when the project index append fails", async () => {
+    await writeSavedReview(
+      makeSavedReview({
+        metadata: {
+          ...makeSavedReview().metadata,
+          id: REVIEW_ID_2,
+          projectPath: "/proj/index-fail",
+        },
+      }),
+    );
+    await writeProjectIndexFile("/proj/index-fail", [REVIEW_ID_2]);
+
+    const atomicWrite = await import("../../../shared/lib/fs.js");
+    const real = atomicWrite.atomicWriteFile;
+    const writeSpy = vi
+      .spyOn(atomicWrite, "atomicWriteFile")
+      .mockImplementation(async (filePath, content, mode) => {
+        if (filePath.includes(`${join("triage-reviews", ".index")}`)) {
+          throw new Error("disk full");
+        }
+        return real(filePath, content, mode);
+      });
+
+    const { saveReview, listReviews } = await loadStorage();
+    const saved = await saveReview(
+      makeSaveOptions({ reviewId: REVIEW_ID, projectPath: "/proj/index-fail" }),
+    );
+    expect(saved.ok).toBe(true);
+
+    const listed = await listReviews("/proj/index-fail");
+    writeSpy.mockRestore();
+
+    expect(listed.ok).toBe(true);
+    if (listed.ok) {
+      expect(listed.value.items.map((item) => item.id)).toEqual(
+        expect.arrayContaining([REVIEW_ID, REVIEW_ID_2]),
+      );
+    }
   });
 
   it("does not resurrect a legacy review deleted during its background migration write", async () => {
@@ -537,11 +695,9 @@ describe("reviews storage", () => {
     // getReview enqueues a background migration write through the review lock.
     const read = await getReview(REVIEW_ID);
     expect(read.ok).toBe(true);
-    // Delete before the background write's re-read writes back the migrated value.
+    // Delete before that write's re-read runs; the re-read must observe NOT_FOUND.
     await deleteReview(REVIEW_ID, "/projects/test");
 
-    // Let the locked migration write settle; the re-read must observe the deletion
-    // (NOT_FOUND) and skip the write rather than recreating the file.
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     await expect(stat(reviewPath(REVIEW_ID))).rejects.toMatchObject({ code: "ENOENT" });
@@ -564,8 +720,8 @@ describe("reviews storage", () => {
     const { withReviewLock } = await import("./review-lock.js");
     const { getReview, addDrilldownToReview } = await loadStorage();
 
-    // Hold the review lock so the migration write getReview enqueues stalls behind
-    // this gate. The drilldown save (which does not take the lock) lands first.
+    // Hold the review lock so the migration write getReview enqueues stalls behind this
+    // gate, letting the drilldown save (which does not take the lock) land first.
     let releaseGate = (): void => {};
     const gate = new Promise<void>((resolve) => {
       releaseGate = resolve;
@@ -576,12 +732,11 @@ describe("reviews storage", () => {
     const read = await getReview(REVIEW_ID);
     expect(read.ok).toBe(true);
 
-    // Save the drilldown while the migration is still blocked.
     const saved = await addDrilldownToReview(REVIEW_ID, makeDrilldown("i1", "deep dive"));
     expect(saved.ok).toBe(true);
 
-    // Release the gate: the queued migration re-reads inside the lock and must pick
-    // up the drilldown rather than overwriting with its stale pre-drilldown snapshot.
+    // Released: the queued migration re-reads inside the lock and must pick up the
+    // drilldown rather than overwrite with its stale pre-drilldown snapshot.
     releaseGate();
     await gateHeld;
 
@@ -590,14 +745,10 @@ describe("reviews storage", () => {
       (review) => review.metadata.highCount === 1 && review.drilldowns.length === 1,
     );
     expect(final.drilldowns[0]).toMatchObject({ issueId: "i1", detailedAnalysis: "deep dive" });
-    // The migration still applied its severity-count fix.
     expect(final.metadata).toMatchObject({ highCount: 1, mediumCount: 1 });
   });
 
   it("opens, lists, and deletes a 0.1.3-era review with invalid line numbers and an out-of-range drilldown", async () => {
-    // A raw record the strict write-side schema would reject: zero/negative/float/
-    // inverted issue lines, an out-of-range drilldown line, and one issue carrying
-    // an unknown category (salvaged-and-dropped by the lenient read).
     const rawReview = {
       metadata: {
         ...makeSavedReview().metadata,
@@ -609,8 +760,7 @@ describe("reviews storage", () => {
         issues: [
           makeIssue({ id: "ok", file: "a.ts", line_start: 4.7, line_end: 2, severity: "high" }),
           makeIssue({ id: "zero", file: "b.ts", line_start: 0, line_end: -3 }),
-          // Unknown category — the lenient read drops this issue instead of voiding
-          // the whole record.
+          // Unknown category — the lenient read drops this issue, not the whole record.
           { ...makeIssue({ id: "bad" }), category: "imaginary" },
         ],
       },
@@ -624,31 +774,27 @@ describe("reviews storage", () => {
     };
     await mkdir(reviewsDir(), { recursive: true });
     await writeFile(reviewPath(REVIEW_ID), `${JSON.stringify(rawReview, null, 2)}\n`, "utf-8");
-    // A second file that is genuinely JSON-corrupt — it must surface as a warning,
-    // not be salvaged.
+    // A genuinely JSON-corrupt file — surfaced as a warning, not salvaged.
     await writeFile(reviewPath(REVIEW_ID_2), "{ not json", "utf-8");
 
     const { getReview, deleteReview, listReviews } = await loadStorage();
 
-    // GET opens the record with the valid issues normalized.
     const read = await getReview(REVIEW_ID);
     expect(read.ok).toBe(true);
     if (read.ok) {
       const ids = read.value.result.issues.map((issue) => issue.id);
       expect(ids).toEqual(["ok", "zero"]);
       const first = read.value.result.issues[0];
-      // Inverted float range is floored and swapped to a valid ascending range.
+      // Inverted float range floored and swapped to ascending.
       expect(first?.line_start).toBe(2);
       expect(first?.line_end).toBe(4);
       const second = read.value.result.issues[1];
-      // Non-positive line fields are nulled.
+      // Non-positive line fields nulled.
       expect(second?.line_start).toBeNull();
       expect(second?.line_end).toBeNull();
-      // The salvaged drilldown opens too.
       expect(read.value.drilldowns).toHaveLength(1);
     }
 
-    // The listing keeps the salvageable record and surfaces the corrupt one.
     const listed = await listReviews("/legacy/proj");
     expect(listed.ok).toBe(true);
     if (listed.ok) {
@@ -660,7 +806,6 @@ describe("reviews storage", () => {
       expect(allListed.value.warnings.some((w) => w.includes(REVIEW_ID_2))).toBe(true);
     }
 
-    // DELETE removes the salvaged record (its ownership read succeeds).
     await expect(deleteReview(REVIEW_ID)).resolves.toEqual({ ok: true, value: { existed: true } });
     await expect(stat(reviewPath(REVIEW_ID))).rejects.toMatchObject({ code: "ENOENT" });
   });
@@ -783,11 +928,9 @@ describe("reviews storage", () => {
     expect(underNew.ok).toBe(true);
     if (underNew.ok) expect(underNew.value.items.map((item) => item.id)).toEqual([REVIEW_ID]);
 
-    // The stored review now carries the new path.
     await expect(readSavedReview(REVIEW_ID)).resolves.toMatchObject({
       metadata: { projectPath: "/new/path" },
     });
-    // The old-hash index file is gone.
     await expect(stat(projectIndexPath("/old/path"))).rejects.toMatchObject({ code: "ENOENT" });
   });
 });

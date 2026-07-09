@@ -30,8 +30,6 @@ export async function getProviderStatus(
 }
 
 export async function getOpenRouterModels(client: ApiClient): Promise<OpenRouterModelsResponse> {
-  // OpenRouter's model catalog is externally controlled and changes often, so
-  // validate the payload shape rather than trusting the response type.
   return client.get<OpenRouterModelsResponse>(
     "/api/config/provider/openrouter/models",
     undefined,
@@ -43,8 +41,6 @@ export async function getProviderModels(
   client: ApiClient,
   providerId: string,
 ): Promise<ProviderModelsResponse> {
-  // The catalog is models.dev-backed and changes often, so validate the slim
-  // payload shape rather than trusting the response type.
   return client.get<ProviderModelsResponse>(
     `/api/config/provider/${providerId}/models`,
     undefined,

@@ -2,7 +2,7 @@
 
 import { type KeyboardEvent, type RefObject, useState } from "react";
 import { dispatchNavigationKey, resolveDirectionKeys } from "../core/navigation-dispatch.js";
-import { isEditableElement } from "../dom/element-guards.js";
+import { getOwnerView, isEditableElement, isNode } from "../dom/element-guards.js";
 import { containsActiveElement } from "../dom/focusable.js";
 import {
   getFocusedNavigationValue,
@@ -77,7 +77,7 @@ interface UseNavigationCoreReturn<TValue extends string = string> {
   isHighlighted: (value: TValue) => boolean;
   highlight: (value: TValue | null) => void;
   move: (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => void;
-  focusIndex: (index: number) => void;
+  focusIndex: (index: number) => boolean;
   handleSelect: (event: globalThis.KeyboardEvent) => void;
   handleEnter: (event: globalThis.KeyboardEvent) => void;
   getElements: () => HTMLElement[];
@@ -169,17 +169,22 @@ export function useNavigationCore<TValue extends string = string>({
     return null;
   };
 
-  const focusIndex = (index: number) => {
-    const elements = getElements();
+  const focusIndex = (index: number, knownElements?: HTMLElement[]): boolean => {
+    const elements = knownElements ?? getElements();
     const el = elements[index];
-    if (!el) return;
+    if (!el) return false;
     const nextValue = el.dataset.value;
-    if (nextValue === undefined) return;
+    if (nextValue === undefined) return false;
 
     el.scrollIntoView?.({ block: "nearest" });
-    if (moveFocus) el.focus();
+    if (moveFocus) {
+      el.focus();
+      // Native disabled controls can't take DOM focus; report failure to step past.
+      if (!containsActiveElement(el)) return false;
+    }
     // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.
     setFocusedValue(nextValue as TValue);
+    return true;
   };
 
   const move = (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => {
@@ -187,15 +192,20 @@ export function useNavigationCore<TValue extends string = string>({
     if (elements.length === 0) return;
 
     const current = getFocusedIndex();
-    const rawNext = current + delta;
-    const next = wrapIndex(rawNext, elements.length, wrap);
-    if (next === null) {
-      const direction = delta < 0 ? "previous" : "next";
-      if (event && key) onNavigationBoundaryReached?.(direction, event, key);
-      return;
+    let rawNext = current + delta;
+    // Bounded by item count so an all-disabled wrap list can't loop forever.
+    for (let attempts = 0; attempts < elements.length; attempts += 1) {
+      const next = wrapIndex(rawNext, elements.length, wrap);
+      if (next === null) {
+        const direction = delta < 0 ? "previous" : "next";
+        if (event && key) onNavigationBoundaryReached?.(direction, event, key);
+        return;
+      }
+      if (next === current) return;
+      if (focusIndex(next, elements)) return;
+      if (!moveFocus) return;
+      rawNext = next + delta;
     }
-
-    focusIndex(next);
   };
 
   const handleSelect = (event: globalThis.KeyboardEvent) => {
@@ -233,6 +243,7 @@ export function useNavigation<TValue extends string = string>(
   options: UseNavigationOptions<TValue>,
 ): UseNavigationReturn<TValue> {
   const {
+    containerRef,
     enabled = true,
     preventDefault = true,
     orientation = "vertical",
@@ -263,31 +274,31 @@ export function useNavigation<TValue extends string = string>(
 
     const key = event.key;
     const isMoveKey = resolvedUpKeys.includes(key) || resolvedDownKeys.includes(key);
-    const isSpecialKey =
-      key === "Home" ||
-      key === "End" ||
-      (key === "Enter" && handlesEnter) ||
-      (key === " " && handlesSpace);
+    const isActivationKey = (key === "Enter" && handlesEnter) || (key === " " && handlesSpace);
+    const isSpecialKey = key === "Home" || key === "End" || isActivationKey;
     if (!isMoveKey && !isSpecialKey) return;
 
     const elements = getElements();
+    const target = event.target;
+    const isOwnItem =
+      isNode(target, getOwnerView(containerRef.current)) &&
+      elements.some((el) => el === target || el.contains(target));
 
-    // Editable target guard: when an editable element bubbles a key into a wrapper
-    // that ALSO owns the navigation container, let the native control handle the key.
-    // We only skip when:
-    //   1) the event target is editable,
-    //   2) the target is NOT itself a navigation item,
-    //   3) currentTarget is an ancestor of the items (natural bubble case),
-    //      so the user did not explicitly forward the event from the editable.
-    if (isEditableElement(event.target)) {
-      const target = event.target as HTMLElement;
-      const isOwnItem = elements.some((el) => el === target || el.contains(target));
+    // Editable non-item bubbling into a wrapper that owns the items: let native handle it.
+    if (isEditableElement(target)) {
       const currentTarget = event.currentTarget;
       const ownsItems =
         currentTarget != null &&
         elements.length > 0 &&
         elements.every((el) => currentTarget.contains(el));
       if (!isOwnItem && (ownsItems || elements.length === 0)) return;
+    }
+
+    // Don't swallow Enter/Space/Home/End for a non-navigation control beside the list.
+    if (!isOwnItem) {
+      const fromContainer = target === containerRef.current || target === event.currentTarget;
+      const noItemToActOn = isActivationKey || elements.length === 0;
+      if (!fromContainer && noItemToActOn) return;
     }
 
     if (preventDefault) event.preventDefault();

@@ -1,4 +1,5 @@
-import { containsActiveElement, documentOrder } from "./focusable.js";
+import { composedClosest } from "./element-guards.js";
+import { containsActiveElement, documentOrder, isReachable } from "./focusable.js";
 
 /** Data attribute used by @diffgazer/keys to mark navigable DOM items. */
 export const NAVIGATION_ITEM_ATTRIBUTE = "data-diffgazer-navigation-item";
@@ -18,7 +19,10 @@ export type NavigationItemType =
 export interface NavigationItemQuery {
   /** Item role or data-contract type to query. */
   type: NavigationItemType;
-  /** Exclude aria-disabled, data-disabled, and native disabled items. */
+  /**
+   * Exclude items that expose or inherit a disabled state: aria-disabled,
+   * data-disabled, or native disabled on the item or an ancestor.
+   */
   skipDisabled?: boolean;
   /** Exclude items owned by nested composite containers. */
   scopeToContainer?: boolean;
@@ -28,6 +32,12 @@ export interface NavigationItemQuery {
 
 function disabledSelector(skipDisabled: boolean): string {
   return skipDisabled ? ':not([aria-disabled="true"]):not([data-disabled]):not(:disabled)' : "";
+}
+
+/** True when an aria-disabled/data-disabled ancestor (not the element itself) disables the item. */
+function hasDisabledAncestor(element: HTMLElement): boolean {
+  const disabledContainer = composedClosest(element, '[aria-disabled="true"],[data-disabled]');
+  return disabledContainer !== null && disabledContainer !== element;
 }
 
 function findElements(container: HTMLElement, selector: string): HTMLElement[] {
@@ -52,9 +62,7 @@ function queryAllMatchingGroups(
     }
   }
 
-  // querySelectorAll returns elements in DOM order within each selector,
-  // but merged results from multiple selectors may interleave. Sort by
-  // DOM order using the realm-safe comparator shared with focusable.
+  // Merged results from multiple selectors may interleave; restore DOM order.
   if (merged.length > 1) {
     merged.sort(documentOrder);
   }
@@ -125,7 +133,10 @@ function isOwnedByContainer(
 
 /**
  * Finds navigable descendants matching the role/data contract in DOM order.
- * Disabled items are skipped by default.
+ * Items hidden by `hidden`, `inert`, or `aria-hidden="true"` (self or ancestor,
+ * across shadow boundaries) are always excluded because they are not
+ * accessibility-reachable. Disabled items and items under an
+ * aria-disabled/data-disabled ancestor are skipped by default.
  */
 export function getNavigationItems(
   container: HTMLElement | null,
@@ -133,12 +144,16 @@ export function getNavigationItems(
 ): HTMLElement[] {
   if (!container) return [];
 
+  const skipDisabled = query.skipDisabled ?? true;
+
   return queryAllMatchingGroups(
     container,
-    buildNavigationSelectors(query.type, query.skipDisabled ?? true),
+    buildNavigationSelectors(query.type, skipDisabled),
     (element) =>
       matchesNavigationDataContract(element, query.type) &&
-      isOwnedByContainer(element, container, query),
+      isOwnedByContainer(element, container, query) &&
+      isReachable(element) &&
+      (!skipDisabled || !hasDisabledAncestor(element)),
   );
 }
 

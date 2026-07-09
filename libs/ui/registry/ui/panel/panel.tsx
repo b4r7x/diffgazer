@@ -1,8 +1,11 @@
 "use client";
 
 import {
+  Children,
   type ComponentPropsWithRef,
   type ElementType,
+  isValidElement,
+  type ReactNode,
   useCallback,
   useId,
   useMemo,
@@ -10,11 +13,9 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 import { PanelContext, type PanelContextValue } from "./panel-context";
+import { PanelDescription } from "./panel-description";
+import { PanelTitle } from "./panel-title";
 
-/**
- * Root container. Polymorphic via `as` (div, article, section, aside). Switches to <section>
- * automatically when Panel.Title or aria-label is present.
- */
 export type PanelElement = "div" | "article" | "section" | "aside";
 
 /** Allowed panel frame values. */
@@ -24,7 +25,6 @@ export type PanelTone = "info" | "success" | "warning" | "error" | "accent";
 /** Allowed panel density values. */
 export type PanelDensity = "default" | "compact";
 
-/** Props for panel own. */
 interface PanelOwnProps {
   /**
    * Visual chrome. Hairline = soft border + marker bar; rail = inline-start rail only;
@@ -64,6 +64,7 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
     children,
     "aria-label": ariaLabel,
     "aria-labelledby": ariaLabelledBy,
+    "aria-describedby": ariaDescribedBy,
     ...rest
   } = props as PanelProps<PanelElement>;
 
@@ -71,9 +72,8 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
   const titleId = `${id}-title`;
   const descriptionId = `${id}-description`;
 
-  // PanelTitle/PanelDescription register their RESOLVED id (consumer id wins)
-  // on mount, so a title wrapped in a layout div or consumer component still
-  // wires the panel's name. Registration replaces a brittle children-tree walk.
+  // Registration (consumer id wins) covers titles wrapped in layout/consumer
+  // components; the static child scan seeds SSR and the first client render.
   const [registeredTitleId, setRegisteredTitleId] = useState<string | null>(null);
   const [registeredDescriptionId, setRegisteredDescriptionId] = useState<string | null>(null);
 
@@ -111,8 +111,10 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
     ],
   );
 
-  const hasRenderableTitle = registeredTitleId !== null;
-  const hasRenderableDescription = registeredDescriptionId !== null;
+  const resolvedTitleId = registeredTitleId ?? findPanelChildId(children, PanelTitle, titleId);
+  const resolvedDescriptionId =
+    registeredDescriptionId ?? findPanelChildId(children, PanelDescription, descriptionId);
+  const hasRenderableTitle = resolvedTitleId !== null;
   const hasAriaName = isNonEmptyString(ariaLabel) || isNonEmptyString(ariaLabelledBy);
   const isNamedRegion = hasRenderableTitle || hasAriaName;
 
@@ -123,12 +125,10 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
   const accessibleName = resolvePanelAccessibleName({
     ariaLabel,
     ariaLabelledBy,
-    titleId: registeredTitleId ?? titleId,
+    titleId: resolvedTitleId ?? titleId,
     hasRenderableTitle,
   });
-  const resolvedAriaDescribedBy = hasRenderableDescription
-    ? (registeredDescriptionId ?? descriptionId)
-    : undefined;
+  const resolvedAriaDescribedBy = mergeAriaIds(ariaDescribedBy, resolvedDescriptionId);
 
   return (
     <PanelContext value={contextValue}>
@@ -160,6 +160,33 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+// Resolved id of the first PanelTitle/PanelDescription in the tree (consumer id
+// wins), used to seed aria wiring before registration effects run.
+function findPanelChildId(
+  children: ReactNode,
+  target: typeof PanelTitle | typeof PanelDescription,
+  fallbackId: string,
+): string | null {
+  for (const child of Children.toArray(children)) {
+    if (!isValidElement<{ id?: unknown; children?: ReactNode }>(child)) continue;
+    if (child.type === target) {
+      return typeof child.props.id === "string" ? child.props.id : fallbackId;
+    }
+    // Nested <Panel> subtrees own their own PanelContext; their titles/descriptions
+    // register only to that inner panel, so the outer root must not claim them.
+    if (child.type === Panel) continue;
+    const nested = findPanelChildId(child.props.children, target, fallbackId);
+    if (nested !== null) return nested;
+  }
+  return null;
+}
+
+function mergeAriaIds(external: string | undefined, ownId: string | null): string | undefined {
+  const externalId = isNonEmptyString(external) ? external : undefined;
+  if (externalId && ownId) return `${externalId} ${ownId}`;
+  return externalId ?? ownId ?? undefined;
 }
 
 function resolvePanelAccessibleName({

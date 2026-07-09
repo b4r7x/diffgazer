@@ -10,7 +10,6 @@ import { Kbd } from "../kbd/kbd";
  * or outset), and an optional header marker bar spanning the title and description.
  */
 export interface KeyboardHint {
-  /** key used by keyboard hint. */
   key: string;
   /** Accessible label text. */
   label: string;
@@ -18,7 +17,6 @@ export interface KeyboardHint {
 
 /** Props for dialog keyboard hints. */
 export interface DialogKeyboardHintsProps extends ComponentProps<"div"> {
-  /** hints used by dialog keyboard hints. */
   hints: KeyboardHint[];
   /** Size variant. */
   size?: "sm" | "md";

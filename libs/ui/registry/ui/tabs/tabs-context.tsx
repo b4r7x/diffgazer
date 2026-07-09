@@ -23,15 +23,12 @@ export interface TabsContextValue {
   tabsId: string;
   /** Controlled active tab value. Pair with onChange. */
   value: string;
-  /** tabbable value. */
   tabbableValue: string;
   /** Fired when the active tab changes. */
   onChange: (value: string) => void;
   /** Called when focus change occurs. */
   onFocusChange: (value: string | null) => void;
-  /** panel values. */
   panelValues: string[];
-  /** trigger values. */
   triggerValues: string[];
   /** Tab list axis. Switches arrow-key navigation direction and aria-orientation. */
   orientation: "horizontal" | "vertical";

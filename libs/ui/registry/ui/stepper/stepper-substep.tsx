@@ -10,13 +10,11 @@ import type { SubstepStatus } from "./stepper-context";
 export interface SubstepData {
   /** ID applied to the rendered element. */
   id: string;
-  /** tag used by substep. */
   tag: string;
   /** Accessible label text. */
   label: string;
   /** Current status value. */
   status: SubstepStatus;
-  /** detail used by substep. */
   detail?: string;
 }
 

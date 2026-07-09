@@ -27,7 +27,6 @@ export type CheckboxGroupContextValue = {
   variant: SelectableVariant;
   /** Applies muted line-through styling to the label when checked. */
   strikethrough: boolean;
-  /** highlighted value. */
   highlightedValue: string | null;
   /** Shared hidden native input name for grouped form submission. */
   name?: string;

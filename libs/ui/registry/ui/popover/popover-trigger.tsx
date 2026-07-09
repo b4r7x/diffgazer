@@ -15,6 +15,7 @@ import {
   useEffect,
 } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
+import { mergeIds } from "@/lib/aria";
 import { cn } from "@/lib/utils";
 import { type PopoverPopupRole, usePopoverContext } from "./popover-context";
 
@@ -69,47 +70,26 @@ export interface PopoverTriggerProps {
   ref?: Ref<HTMLElement>;
 }
 
-/** Props for hover trigger element. */
 interface HoverTriggerElementProps {
-  /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLElement>;
-  /** Additional class names merged onto the rendered element. */
   className?: string;
-  /** Selection mode. */
   type?: string;
-  /** ARIA role applied to the rendered element. */
   role?: string;
-  /** Tab index applied to the rendered element. */
   tabIndex?: number;
-  /** Popover.Trigger and Popover.Content subparts. */
   children?: ReactNode;
-  /** ARIA expanded state forwarded to the rendered element. */
   "aria-expanded"?: boolean;
-  /** ARIA popup type forwarded to the rendered element. */
   "aria-haspopup"?: PopoverPopupRole;
-  /** ID of the element controlled by the rendered element. */
   "aria-controls"?: string;
-  /** ID of the element that describes this component. */
   "aria-describedby"?: string;
-  /** Accessible name when no visible label is supplied. */
   "aria-label"?: string;
-  /** ARIA hidden state forwarded to the rendered element. */
   "aria-hidden"?: boolean;
-  /** Called when click occurs. */
   onClick?: MouseEventHandler<HTMLElement>;
-  /** Called when pointer down occurs. */
   onPointerDown?: PointerEventHandler<HTMLElement>;
-  /** Called when mouse enter occurs. */
   onMouseEnter?: MouseEventHandler<HTMLElement>;
-  /** Called when mouse leave occurs. */
   onMouseLeave?: MouseEventHandler<HTMLElement>;
-  /** Called when focus occurs. */
   onFocus?: FocusEventHandler<HTMLElement>;
-  /** Called when blur occurs. */
   onBlur?: FocusEventHandler<HTMLElement>;
-  /** Called when key down occurs. */
   onKeyDown?: KeyboardEventHandler<HTMLElement>;
-  /** Disables interaction. */
   disabled?: boolean;
 }
 
@@ -167,9 +147,8 @@ export function PopoverTrigger({ children, className, ref }: PopoverTriggerProps
   const isRenderProp = typeof children === "function";
   const hoverClassName = isRenderProp ? className : cn("inline-flex", className);
 
-  // Hover-mode popover opened via tap (touch) or focus has no hover-leave to
-  // dismiss it. Mirror click-mode useOutsideClick semantics so any pointerdown
-  // outside the trigger and portaled content closes the popover.
+  // Tap/focus-opened hover popovers have no hover-leave; dismiss on any
+  // pointerdown outside the trigger and portaled content.
   useEffect(() => {
     if (isClick || !open || !enabled) return;
     const trigger = triggerRef.current;
@@ -192,21 +171,18 @@ export function PopoverTrigger({ children, className, ref }: PopoverTriggerProps
     onOpenChange(!open);
   };
 
-  // Touch devices have no hover. Without an explicit handler the passive <span>
-  // wrapper would be unreachable on touch. Only touch pointers toggle here —
-  // mouse/pen flow through the regular onClick/onMouseEnter handlers below to
-  // avoid double-firing.
+  // Touch has no hover, so the passive <span> wrapper needs an explicit toggle.
+  // Only touch toggles here; mouse/pen go through onClick/onMouseEnter to avoid
+  // double-firing.
   const handlePassiveTouchPointerDown: PointerEventHandler<HTMLElement> = (event) => {
     if (!enabled) return;
-    // Suppress the focus-open that immediately follows this pointer interaction.
     onTriggerPointerDown();
     if (event.pointerType !== "touch") return;
     onOpenChange(!open);
   };
 
   const handleHoverPointerDown: PointerEventHandler<HTMLElement> = () => {
-    // Suppress the focus-open that immediately follows a pointer interaction so
-    // the click toggle owns the open/close decision.
+    // Suppress the focus-open that follows a pointer so the click toggle owns it.
     onTriggerPointerDown();
   };
 
@@ -306,7 +282,7 @@ export function PopoverTrigger({ children, className, ref }: PopoverTriggerProps
       ref: composedRef,
       className: cn(child.props.className, className),
       role: child.props.role ?? (isClick || isNativeInteractive ? undefined : hoverProps.role),
-      "aria-describedby": hoverProps["aria-describedby"],
+      "aria-describedby": mergeIds(child.props["aria-describedby"], hoverProps["aria-describedby"]),
       onClick: mergeHandlers(child.props.onClick, hoverProps.onClick, isClick),
       onPointerDown: mergeHandlers(child.props.onPointerDown, hoverProps.onPointerDown),
       onMouseEnter: mergeHandlers(child.props.onMouseEnter, hoverProps.onMouseEnter),

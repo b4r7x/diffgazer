@@ -1,17 +1,32 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { requireAttribute } from "../../testing/assertions";
 import { expectFieldDescribedBy, expectFieldInvalid } from "../../testing/form-behavior";
 import { Checkbox } from "../checkbox/index";
 import { Input, InputGroup } from "../input/index";
+import { Radio } from "../radio/index";
 import { Select } from "../select/index";
 import { Textarea } from "../textarea/index";
 import { Field } from "./index";
 
 describe("Field", () => {
+  const ssrContainers: HTMLElement[] = [];
+
+  function mountStaticMarkup(html: string) {
+    const container = document.createElement("div");
+    container.innerHTML = html;
+    document.body.appendChild(container);
+    ssrContainers.push(container);
+    return container;
+  }
+
+  afterEach(() => {
+    while (ssrContainers.length > 0) ssrContainers.pop()?.remove();
+  });
+
   it("wires required, invalid, description, and error state to the control", () => {
     render(
       <Field invalid required>
@@ -453,7 +468,7 @@ describe("Field", () => {
     expect(input).toHaveAttribute("aria-labelledby", fieldLabel.id);
   });
 
-  it("keeps native label wiring in SSR output without aria-labelledby", () => {
+  it("wires native label and aria-labelledby to the control in SSR output before hydration", () => {
     const html = renderToStaticMarkup(
       <Field controlId="ssr-test">
         <Field.Label>Username</Field.Label>
@@ -462,9 +477,73 @@ describe("Field", () => {
         </Field.Control>
       </Field>,
     );
+    mountStaticMarkup(html);
 
-    expect(html).toContain('for="ssr-test"');
-    expect(html).not.toMatch(/aria-labelledby="[^"]+"/);
+    const input = screen.getByRole("textbox", { name: "Username" });
+    expect(input).toHaveAttribute("id", "ssr-test");
+    expect(input).toHaveAttribute("aria-labelledby", "ssr-test-label");
+    expect(screen.getByText("Username")).toHaveAttribute("for", "ssr-test");
+  });
+
+  it("names a div-based Checkbox via aria-labelledby in SSR output before hydration", () => {
+    const html = renderToStaticMarkup(
+      <Field controlId="accept">
+        <Field.Label>Accept terms</Field.Label>
+        <Field.Control>
+          <Checkbox />
+        </Field.Control>
+      </Field>,
+    );
+    mountStaticMarkup(html);
+
+    expect(screen.getByRole("checkbox", { name: "Accept terms" })).toBeInTheDocument();
+  });
+
+  it("names a div-based Radio via aria-labelledby in SSR output before hydration", () => {
+    const html = renderToStaticMarkup(
+      <Field controlId="plan">
+        <Field.Label>Pro plan</Field.Label>
+        <Field.Control>
+          <Radio />
+        </Field.Control>
+      </Field>,
+    );
+    mountStaticMarkup(html);
+
+    expect(screen.getByRole("radio", { name: "Pro plan" })).toBeInTheDocument();
+  });
+
+  it("wires aria-describedby to the control in SSR output for description and error", () => {
+    const html = renderToStaticMarkup(
+      <Field invalid controlId="email">
+        <Field.Label>Email</Field.Label>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+        <Field.Description>Use your work email.</Field.Description>
+        <Field.Error>Email is required.</Field.Error>
+      </Field>,
+    );
+    mountStaticMarkup(html);
+
+    const input = screen.getByRole("textbox", { name: "Email" });
+    expect(input).toHaveAccessibleDescription("Use your work email. Email is required.");
+  });
+
+  it("follows a child control's own id from the label in SSR output before hydration", () => {
+    const html = renderToStaticMarkup(
+      <Field controlId="field-default">
+        <Field.Label>Project name</Field.Label>
+        <Field.Control>
+          <Input id="custom" />
+        </Field.Control>
+      </Field>,
+    );
+    mountStaticMarkup(html);
+
+    const input = screen.getByRole("textbox", { name: "Project name" });
+    expect(input).toHaveAttribute("id", "custom");
+    expect(screen.getByText("Project name")).toHaveAttribute("for", "custom");
   });
 
   it("omits aria-describedby when FieldDescription is not rendered", () => {

@@ -45,11 +45,11 @@ export interface SelectContentProps {
   side?: FloatingSide;
   /** Alignment relative to the anchor. */
   align?: FloatingAlign;
-  /** side offset used by select content. */
+  /** Offset in px between the trigger and the dropdown panel (default 4). */
   sideOffset?: number;
-  /** collision padding used by select content. */
+  /** Minimum px gap kept from the viewport edge during collision avoidance (default 8). */
   collisionPadding?: number;
-  /** portal container used by select content. */
+  /** Portal container the dropdown mounts into; defaults to document.body. */
   portalContainer?: Element | null;
   /** Live-region results-count text for searchable selects. Defaults to `${count} results`. */
   getResultsLabel?: (count: number) => string;
@@ -66,8 +66,7 @@ export function SelectContent({
   onKeyDown,
   side = "bottom",
   align = "start",
-  // Tighter than FloatingPanel's default (6) so the dropdown reads as visually
-  // attached to the trigger. Override per-instance via the prop.
+  // Tighter than FloatingPanel's default 6 so the dropdown reads as attached to the trigger.
   sideOffset = 4,
   collisionPadding = 8,
   portalContainer,
@@ -92,6 +91,7 @@ export function SelectContent({
     searchQuery,
     required,
     ariaInvalid,
+    ariaDescribedBy,
   } = useSelectContext("SelectContent");
   const containerRef = useRef<HTMLDivElement>(null);
   const isDropdown = variant !== "card";
@@ -111,11 +111,8 @@ export function SelectContent({
     scopeToContainer: true,
   });
 
-  // Bring a newly highlighted option into view for the non-arrow paths
-  // (typeahead, searchable arrow nav). The arrow path inside useNavigation
-  // already scrolls; these two end at setHighlighted, so without this an
-  // off-screen active descendant stays invisible (the activedescendant
-  // analogue of WCAG 2.4.11), mirroring use-listbox's typeahead scroll.
+  // Non-arrow highlight paths (typeahead, searchable arrows) must scroll the
+  // active descendant into view (WCAG 2.4.11); useNavigation scrolls the arrow path.
   const scrollOptionIntoView = useCallback(
     (optionValue: string) => {
       const node = containerRef.current?.ownerDocument.getElementById(
@@ -195,9 +192,8 @@ export function SelectContent({
     }
   };
 
-  // Read current highlight/value/options through an Effect Event so the focus +
-  // init only runs on the open transition. Keying it to initHighlight's identity
-  // re-fired on unrelated re-renders while open and re-stole focus from the user.
+  // Effect Event so open-init reads current values without re-firing (and
+  // re-stealing focus) on unrelated re-renders while open.
   const runOpenInit = useEffectEvent(() => {
     if (!searchInputRef.current) {
       containerRef.current?.focus();
@@ -259,11 +255,8 @@ export function SelectContent({
       if (!isDropdown) return;
       if (highlighted !== null && !multiple) selectItem(highlighted);
       onOpenChange(false);
-      // Restore focus to the trigger synchronously (mirroring the Escape branch)
-      // for every mode — multiple and searchable null-highlight never run the
-      // single-select commit that refocuses, so without this Tab would leave
-      // focus in the portaled panel and drop to the end of <body>. The default
-      // Tab action then advances from the trigger to the next element.
+      // Restore focus synchronously for modes that skip the single-select commit,
+      // or Tab would leave focus in the portaled panel and drop to <body>.
       triggerRef.current?.focus();
       return;
     }
@@ -275,9 +268,8 @@ export function SelectContent({
     }
 
     const isModified = e.ctrlKey || e.metaKey || e.altKey;
-    // Space extends an in-progress typeahead query (e.g. "new y") instead of
-    // selecting: run typeahead first for Space so a non-empty buffer suppresses
-    // the Space-select that navKeyDown would otherwise dispatch.
+    // Run typeahead before navKeyDown for Space so an in-progress query ("new y")
+    // extends the buffer instead of selecting.
     if (e.key === " " && !isModified && handleTypeahead(e.key)) return;
     navKeyDown(e);
     if (e.key !== " " && !isModified) handleTypeahead(e.key);
@@ -298,7 +290,11 @@ export function SelectContent({
   } satisfies SearchableListboxProps;
   const listboxProps = hasSearch
     ? listboxPropsBase
-    : { ...listboxPropsBase, onKeyDown: handleKeyDown };
+    : {
+        ...listboxPropsBase,
+        "aria-describedby": ariaDescribedBy || undefined,
+        onKeyDown: handleKeyDown,
+      };
   const contentBody = hasSearch ? (
     <SearchableContent listboxProps={listboxProps} ref={containerRef}>
       {children}
@@ -372,9 +368,8 @@ function MatchCount({
   searchQuery: string;
   getResultsLabel?: (count: number) => string;
 }) {
-  // Mount the live region unconditionally (empty until a query exists) so it is
-  // present in the DOM before its first announcement — a region that enters the
-  // DOM already containing text is often not announced by SR/browser pairs.
+  // Mount the live region empty before any query: a region that enters the DOM
+  // already containing text is often not announced by SR/browser pairs.
   let count = 0;
   for (const option of options.values()) {
     if (matchesSearch(option.label, searchQuery)) count++;

@@ -4,12 +4,15 @@ import { type ReactNode, useEffect, useRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { DECLINE } from "../core/normalize-key-input.js";
 import { useScope } from "../hooks/use-scope.js";
+import { requireFrameDocument } from "../testing/assertions.js";
 import { KeyboardWrapper, fireKey as pressKey } from "../testing/test-utils.js";
 import { useKeyboardContext, useKeyboardRegistryContext } from "./keyboard-context.js";
 
-function fireKeyFrom(element: Element, key: string) {
+function fireKeyFrom(element: Element, key: string, options?: Partial<KeyboardEventInit>) {
   act(() => {
-    element.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    element.dispatchEvent(
+      new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...options }),
+    );
   });
 }
 
@@ -353,8 +356,7 @@ describe("KeyboardProvider", () => {
     function Consumer() {
       const { register } = useKeyboardContext();
       useEffect(() => {
-        // Unknown modifiers are rejected by ValidateHotkey, so the dynamic
-        // escape hatch reaches the runtime registration-time warn.
+        // string type bypasses ValidateHotkey to reach the runtime registration-time warn.
         const hotkey: string = "Hyper+a";
         return register("global", hotkey, handler);
       }, []);
@@ -373,7 +375,6 @@ describe("KeyboardProvider", () => {
     act(() => pressKey("a"));
     act(() => pressKey("a"));
 
-    // The warn fired only at registration; dispatch never re-parses the string.
     expect(warn).toHaveBeenCalledTimes(1);
     expect(handler).not.toHaveBeenCalled();
 
@@ -393,8 +394,6 @@ describe("KeyboardProvider", () => {
     function Consumer() {
       const { register } = useKeyboardContext();
       useEffect(() => {
-        // The unknown-modifier segment must keep the typo'd hotkey on a
-        // distinct canonical key so it cannot share the "a" entry list.
         const typoHotkey: string = "Hyper+a";
         if (typoFirst) {
           const unregisterTypo = register("global", typoHotkey, typo);
@@ -445,7 +444,7 @@ describe("KeyboardProvider", () => {
     expect(errorHandler).toHaveBeenCalledOnce();
 
     act(() => pressKey("a"));
-    // call-count IS the contract: a thrown handler must not leave the dispatcher stuck — the next event still reaches the same handler (count increments to 2)
+    // count 2 proves a thrown handler didn't wedge the dispatcher
     expect(errorHandler).toHaveBeenCalledTimes(2);
 
     vi.restoreAllMocks();
@@ -489,7 +488,7 @@ describe("KeyboardProvider", () => {
 
     act(() => popRefA.current());
     act(() => pressKey("b"));
-    // call-count IS the contract: popping ConsumerA's same-named scope must NOT affect ConsumerB's independent scope (handlerB still fires, count is 2)
+    // count 2 proves popping A's same-named scope didn't disturb B's independent scope
     expect(handlerB).toHaveBeenCalledTimes(2);
   });
 
@@ -582,16 +581,14 @@ describe("KeyboardProvider", () => {
 
     act(() => popManual());
     act(() => pressKey("a"));
-    // call-count IS the contract: popping the manual scope must restore routing to the panel scope (panelHandler fires again, count is 2)
+    // count 2 proves popping manual restored routing to the panel scope
     expect(panelHandler).toHaveBeenCalledTimes(2);
   });
 
   it("activates the later-mounted scope across sibling branches under client useId encoding", () => {
-    // Precedence is a depth-major comparison of parsed React `useId` segments.
-    // Under the sequential ids React generates on the client, a scope deep
-    // inside the EARLIER sibling yields to a shallow scope in the LATER sibling
-    // (the later sibling's id segment is larger). The SSR-id case below shows
-    // the same comparison resolving the other way (deepest-wins).
+    // Depth-major comparison of parsed React useId segments. With client sequential
+    // ids, a deep scope in the EARLIER sibling yields to a shallow scope in the LATER
+    // sibling (larger id segment); the SSR case below resolves the other way (deepest-wins).
     const deepHandler = vi.fn();
     const shallowHandler = vi.fn();
 
@@ -768,6 +765,122 @@ describe("KeyboardProvider", () => {
 
     insideButton.focus();
     await user.keyboard("{ArrowDown}");
+    expect(handler).toHaveBeenCalledOnce();
+  });
+
+  it("fires focus-scoped handlers when a composed event originates inside a shadow-root container", () => {
+    const handler = vi.fn();
+    let innerTarget: HTMLButtonElement | null = null;
+
+    function Consumer() {
+      const { register } = useKeyboardContext();
+      const containerRef = useRef<HTMLElement | null>(null);
+      const hostRef = useRef<HTMLDivElement>(null);
+      useEffect(() => {
+        const host = hostRef.current;
+        if (!host) return;
+        const root = host.attachShadow({ mode: "open" });
+        const container = document.createElement("div");
+        innerTarget = document.createElement("button");
+        container.append(innerTarget);
+        root.append(container);
+        containerRef.current = container;
+      }, []);
+      useEffect(() => {
+        return register("global", "ArrowDown", handler, {
+          containerRef,
+          focusWithinOnly: true,
+        });
+      }, [register]);
+      return <div ref={hostRef} />;
+    }
+
+    renderInProvider(<Consumer />);
+
+    if (!innerTarget) throw new Error("shadow target missing");
+
+    // The browser retargets `event.target` to the shadow host, which lives
+    // outside the container; only the composed path reveals the real target
+    // inside the container so containment must be judged from it.
+    fireKeyFrom(innerTarget, "ArrowDown", { composed: true });
+    expect(handler).toHaveBeenCalledOnce();
+  });
+
+  it("skips handlers for Shadow DOM text inputs unless allowInInput is set", () => {
+    const blocked = vi.fn();
+    const allowed = vi.fn();
+    let shadowInput: HTMLInputElement | null = null;
+
+    function Consumer() {
+      const { register } = useKeyboardContext();
+      const hostRef = useRef<HTMLDivElement>(null);
+      useEffect(() => {
+        register("global", "a", blocked);
+        register("global", "Escape", allowed, { allowInInput: true });
+      }, [register]);
+      useEffect(() => {
+        const host = hostRef.current;
+        if (!host) return;
+        const root = host.attachShadow({ mode: "open" });
+        shadowInput = document.createElement("input");
+        root.append(shadowInput);
+      }, []);
+      return <div ref={hostRef} />;
+    }
+
+    render(
+      <KeyboardWrapper>
+        <Consumer />
+      </KeyboardWrapper>,
+    );
+
+    if (!shadowInput) throw new Error("shadow input missing");
+
+    // Composed path reveals the shadow input; event.target is retargeted to the host.
+    fireKeyFrom(shadowInput, "a", { composed: true });
+    expect(blocked).not.toHaveBeenCalled();
+
+    fireKeyFrom(shadowInput, "Escape", { composed: true });
+    expect(allowed).toHaveBeenCalledOnce();
+  });
+
+  it("binds to the rendered document's window so iframe key events are handled and parent events ignored", () => {
+    const frame = document.createElement("iframe");
+    document.body.append(frame);
+    const frameDocument = requireFrameDocument(frame);
+    const frameWindow = frameDocument.defaultView;
+    if (!frameWindow) throw new Error("iframe window missing");
+
+    const container = frameDocument.createElement("div");
+    frameDocument.body.append(container);
+
+    const handler = vi.fn();
+
+    function Consumer() {
+      const { register } = useKeyboardContext();
+      useEffect(() => register("global", "a", handler), [register]);
+      return <div>frame consumer</div>;
+    }
+
+    render(
+      <KeyboardWrapper>
+        <Consumer />
+      </KeyboardWrapper>,
+      { container },
+    );
+
+    act(() => {
+      frameWindow.dispatchEvent(
+        new frameWindow.KeyboardEvent("keydown", { key: "a", bubbles: true, cancelable: true }),
+      );
+    });
+    expect(handler).toHaveBeenCalledOnce();
+
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "a", bubbles: true, cancelable: true }),
+      );
+    });
     expect(handler).toHaveBeenCalledOnce();
   });
 });

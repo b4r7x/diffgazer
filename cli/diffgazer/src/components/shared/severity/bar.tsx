@@ -1,3 +1,4 @@
+import { SEVERITY_LABELS } from "@diffgazer/core/schemas/presentation";
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
 import { useTheme } from "../../../theme/provider";
@@ -18,7 +19,7 @@ export function SeverityBar({ severity, count, total }: SeverityBarProps) {
   const filled = total > 0 ? Math.round((count / total) * BAR_WIDTH) : 0;
   const bar = "\u2588".repeat(filled);
 
-  const label = severity.padEnd(8);
+  const label = SEVERITY_LABELS[severity].padEnd(8);
 
   return (
     <Box gap={1}>

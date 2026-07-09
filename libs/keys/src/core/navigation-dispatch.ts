@@ -26,7 +26,7 @@ export function dispatchNavigationKey(
     resolvedUpKeys: readonly string[];
     resolvedDownKeys: readonly string[];
     move: (dir: 1 | -1) => void;
-    focusIndex: (index: number) => void;
+    focusIndex: (index: number) => boolean;
     handleSelect?: (event: globalThis.KeyboardEvent) => void;
     handleEnter?: (event: globalThis.KeyboardEvent) => void;
     total: number;
@@ -45,12 +45,16 @@ export function dispatchNavigationKey(
 
   switch (key) {
     case "Home":
-      ctx.focusIndex(0);
+      // Step forward so a native-disabled first item is skipped, matching arrow stepping.
+      for (let index = 0; index < ctx.total; index += 1) {
+        if (ctx.focusIndex(index)) break;
+      }
       return true;
-    case "End": {
-      if (ctx.total > 0) ctx.focusIndex(ctx.total - 1);
+    case "End":
+      for (let index = ctx.total - 1; index >= 0; index -= 1) {
+        if (ctx.focusIndex(index)) break;
+      }
       return true;
-    }
     case "Enter":
       if (!ctx.handleEnter) return false;
       ctx.handleEnter(ctx.nativeEvent);

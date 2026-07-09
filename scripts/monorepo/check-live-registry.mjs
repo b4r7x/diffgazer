@@ -6,16 +6,28 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(import.meta.dirname, "../..");
 const metadataPath = resolve(root, "apps/docs/src/lib/consumption-metadata.ts");
-const localRegistryPath = resolve(root, "libs/ui/public/r/registry.json");
 
-export const requiredEndpoints = [
-  "https://r.b4r7.dev/r/ui/registry.json",
-  "https://r.b4r7.dev/r/ui/button.json",
-  "https://r.b4r7.dev/r/keys/navigation.json",
-  // dgadd init writes this schema URL into every consumer config; a deploy that
-  // drops the /schema/ mount must fail the live-check, not 404 silently.
-  "https://r.b4r7.dev/schema/diffgazer.json",
+// Each hosted URL maps to the committed artifact it must stay byte-for-byte identical to once live.
+export const registryFreshnessTargets = [
+  {
+    url: "https://r.b4r7.dev/r/ui/registry.json",
+    path: resolve(root, "libs/ui/public/r/registry.json"),
+  },
+  {
+    url: "https://r.b4r7.dev/r/ui/button.json",
+    path: resolve(root, "libs/ui/public/r/button.json"),
+  },
+  {
+    url: "https://r.b4r7.dev/r/keys/navigation.json",
+    path: resolve(root, "libs/keys/public/r/navigation.json"),
+  },
+  {
+    url: "https://r.b4r7.dev/schema/diffgazer.json",
+    path: resolve(root, "apps/docs/public/schema/diffgazer.json"),
+  },
 ];
+
+export const requiredEndpoints = registryFreshnessTargets.map((target) => target.url);
 
 export function sha256Hex(text) {
   return createHash("sha256").update(text).digest("hex");
@@ -33,25 +45,21 @@ export async function assertHeadOk(url, fetchImpl = fetch) {
 }
 
 export async function assertRegistryContentFresh(fetchImpl = fetch) {
-  const localBody = await readFile(localRegistryPath, "utf8");
-  const localHash = sha256Hex(localBody);
-  const liveUrl = "https://r.b4r7.dev/r/ui/registry.json";
-  const response = await fetchImpl(liveUrl, { signal: AbortSignal.timeout(10_000) });
-  if (!response.ok) {
-    throw new Error(`${liveUrl} returned ${response.status}`);
-  }
-  const liveHash = sha256Hex(await response.text());
-  if (localHash !== liveHash) {
-    throw new Error(
-      `Hosted registry content SHA mismatch (local ${localHash.slice(0, 12)}… vs live ${liveHash.slice(0, 12)}…)`,
-    );
+  for (const { url, path } of registryFreshnessTargets) {
+    const localHash = sha256Hex(await readFile(path, "utf8"));
+    const response = await fetchImpl(url, { signal: AbortSignal.timeout(10_000) });
+    if (!response.ok) {
+      throw new Error(`${url} returned ${response.status}`);
+    }
+    const liveHash = sha256Hex(await response.text());
+    if (localHash !== liveHash) {
+      throw new Error(
+        `Hosted registry content SHA mismatch for ${url} (local ${localHash.slice(0, 12)}… vs live ${liveHash.slice(0, 12)}…)`,
+      );
+    }
   }
 }
 
-// Source-text coupling: the docs app's PUBLISH_GATED constant decides whether CI
-// skips the live host check. A future rename/move of that assignment must not
-// silently flip this to "not gated" (a hard live-host dependency on every run),
-// so require the literal to exist and fail loudly otherwise.
 export async function publicRegistryIsGated(metadataFilePath = metadataPath) {
   const source = await readFile(metadataFilePath, "utf8");
   const match = source.match(/\bPUBLISH_GATED\s*=\s*(true|false)\b/);

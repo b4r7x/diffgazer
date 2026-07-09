@@ -3,7 +3,7 @@ title: KeyboardProvider
 description: Context provider that enables scoped keyboard handling for `@diffgazer/keys` hooks.
 ---
 
-Context provider that enables scoped keyboard handling. Wraps your app (or a subtree) and listens for `keydown` events on `window`.
+Context provider that enables scoped keyboard handling. Wraps your app (or a subtree) and listens for `keydown` events on the provider document's window.
 
 ```tsx
 import { KeyboardProvider } from "@diffgazer/keys";
@@ -30,9 +30,9 @@ function App() {
 - Skips events where `event.defaultPrevented` is already `true`.
 - Skips handlers for text-editable targets (text-like `input`, `textarea`, and editable content) unless `allowInInput` is set. Non-text controls such as `select`, checkbox, radio, range, and button inputs are allowed by default.
 - When a handler specifies `containerRef` + `focusWithinOnly`, only fires if the event target is inside that container.
-- Handler priority: iterates entries from **last-registered to first**. The first handled match wins; a handler can return `false` to decline the match and continue to the next lower-priority handler. If `preventDefault` is enabled for that handler, the event is still prevented before the handler returns.
+- Handler priority: iterates entries from **last-registered to first**. The first handler that does not decline wins; a handler can return `false` to decline the match and continue to the next lower-priority handler.
+- `preventDefault`: when a handler with `preventDefault` enabled accepts the match (returns anything other than `false`), `event.preventDefault()` runs **after** that handler returns. A declining handler never prevents the default, so native behavior survives until a handler actually handles the key.
 - Errors in handlers are caught and logged: `[@diffgazer/keys] Handler error for "${hotkey}": ...`
-- When `preventDefault` is set on a handler's options, `event.preventDefault()` is called before the handler runs.
 
 ## Provider-Aware Hooks
 

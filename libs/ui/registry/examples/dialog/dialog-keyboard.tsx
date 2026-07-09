@@ -1,6 +1,5 @@
 "use client";
 
-import { useNavigation } from "@diffgazer/keys";
 import { useRef } from "react";
 import {
   Dialog,
@@ -14,6 +13,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+// @hidden-imports-ok — demo imports the useNavigation re-export from the hidden use-navigation hook registry item
+import { useNavigation } from "@/hooks/use-navigation";
 
 export default function DialogKeyboard() {
   const containerRef = useRef<HTMLDivElement>(null);

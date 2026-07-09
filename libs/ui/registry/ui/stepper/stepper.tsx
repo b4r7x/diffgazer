@@ -12,7 +12,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useSelectableCollection } from "@/lib/selectable-collection";
+import { isSelectableItemEligible, useSelectableCollection } from "@/lib/selectable-collection";
 import { isStepInteractive, type StepStatus } from "@/lib/step-status";
 import { type StepperVariant, stepperRootVariants } from "@/lib/stepper-variants";
 import { cn } from "@/lib/utils";
@@ -44,10 +44,20 @@ interface StepDescriptor {
 
 type StepRegistrationDescriptor = Omit<StepDescriptor, "disabled">;
 
-// First-render/SSR seed for directly-composed steps: registration effects have
-// not run yet, so resolve the active step from the static child tree. Once the
-// steps mount, the registrations below are authoritative and also cover steps
-// (or triggers) rendered through consumer wrapper components.
+// SSR-seed mirror of the shared `isSelectableElementSkipped` DOM predicate,
+// reading element props before any step mounts.
+function isStepSeedElementSkipped(props: StepperStepProps): boolean {
+  return (
+    props.hidden === true ||
+    props.inert === true ||
+    props["aria-hidden"] === true ||
+    props["aria-hidden"] === "true"
+  );
+}
+
+// SSR/first-render seed resolving steps from the static child tree before
+// registration effects run; registrations below are then authoritative and
+// also cover steps composed through consumer wrappers.
 function collectStepSeed(children: ReactNode): StepDescriptor[] {
   return Children.toArray(children).flatMap((child) => {
     if (!isValidElement(child) || child.type !== StepperStep) return [];
@@ -58,7 +68,8 @@ function collectStepSeed(children: ReactNode): StepDescriptor[] {
         id: props.stepId,
         status: props.status,
         label: trigger.label,
-        disabled: !isStepInteractive(props.status) || trigger.disabled,
+        disabled:
+          !isStepInteractive(props.status) || trigger.disabled || isStepSeedElementSkipped(props),
       },
     ];
   });
@@ -99,10 +110,9 @@ export function Stepper({
 
   const listRef = useRef<HTMLOListElement>(null);
 
-  // Steps register through the selectable collection (DOM-ordered), while their
-  // status/label travel in a side state map keyed by registrationId so the active
-  // step and live-region announcement track the rendered order, including steps
-  // or triggers composed through consumer wrappers.
+  // Steps register through the selectable collection (DOM-ordered); their
+  // status/label travel in a side map keyed by registrationId so the active
+  // step and live-region announcement track rendered order.
   const [stepMeta, setStepMeta] = useState<
     Record<string, { status: StepStatus; label: string | undefined }>
   >({});
@@ -181,29 +191,35 @@ export function Stepper({
               id: item.value,
               status: meta?.status ?? "pending",
               label: meta?.label,
-              disabled: item.disabled,
+              // Combines status/prop-disabled with hidden/inert/aria-hidden skip
+              // eligibility so tab target and first-active never land on an
+              // unreachable step.
+              disabled: !isSelectableItemEligible(item),
             };
           })
         : seed,
     [registeredSteps, stepMeta, seed],
   );
   const tabTargetId = useMemo(() => {
-    const interactive = steps.filter((step) => !step.disabled && isStepInteractive(step.status));
+    const interactive = steps.filter((step) => !step.disabled);
     const target = interactive.find((step) => step.status === "active") ?? interactive[0];
     return target?.id ?? null;
   }, [steps]);
 
-  // Note: Stepper implements its own roving focus instead of using
-  // @diffgazer/keys useNavigation. The navigation contract differs: Stepper
-  // items use `data-step-id` attribute selectors and filter by
-  // `aria-disabled`, while useNavigation uses `data-value` + role-based
-  // selectors. Routing through useNavigation would require rewriting the
-  // step trigger data contract, which is a public API change.
+  // Own roving focus rather than @diffgazer/keys useNavigation: Stepper uses
+  // `data-step-id` selectors + `aria-disabled` filtering, while useNavigation
+  // uses `data-value` + role selectors. Routing through it would rewrite the
+  // step trigger data contract (a public API change).
   const moveFocus = (next: (count: number, current: number) => number) => {
     const list = listRef.current;
     if (!list) return false;
     const triggers = Array.from(list.querySelectorAll<HTMLButtonElement>("[data-step-id]")).filter(
-      (el) => el.getAttribute("aria-disabled") !== "true" && !el.disabled,
+      (el) =>
+        el.getAttribute("aria-disabled") !== "true" &&
+        !el.disabled &&
+        // Mirror isSelectableElementSkipped: a hidden/inert/aria-hidden step
+        // never receives roving arrow focus.
+        el.closest('[hidden],[inert],[aria-hidden="true"]') === null,
     );
     if (triggers.length === 0) return false;
     const activeElement = list.ownerDocument.activeElement;
@@ -222,8 +238,8 @@ export function Stepper({
     if (event.defaultPrevented) return;
 
     const target = event.target as HTMLElement | null;
-    // Only react when focus is on one of our triggers (so editable targets
-    // in step content keep their native handling).
+    // Only react on our triggers so editable targets in step content keep
+    // native handling.
     if (!target?.hasAttribute("data-step-id")) return;
 
     switch (event.key) {

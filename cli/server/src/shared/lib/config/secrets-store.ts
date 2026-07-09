@@ -1,7 +1,6 @@
-import { getErrorMessage } from "@diffgazer/core/errors";
 import type { AIProvider, CredentialRef } from "@diffgazer/core/schemas/config";
 import { PROVIDER_ENV_VARS } from "@diffgazer/core/schemas/config";
-import type { SecretEntry, SecretsStorageError, SecretsStorageErrorCode } from "./types.js";
+import type { SecretEntry } from "./types.js";
 
 /** Normalize a credential input (string or CredentialRef) into a SecretEntry for persistence. */
 export function toSecretEntry(
@@ -33,11 +32,4 @@ export function resolveSecretEntry(entry: SecretEntry): string | null {
   if (typeof entry === "string") return entry;
   if (entry.kind === "env") return process.env[entry.varName] ?? null;
   return null;
-}
-
-export function persistError(operation: string, cause: unknown): SecretsStorageError {
-  return {
-    code: "PERSIST_FAILED" as SecretsStorageErrorCode,
-    message: `Failed to persist ${operation}: ${getErrorMessage(cause)}`,
-  };
 }

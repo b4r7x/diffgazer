@@ -1,4 +1,4 @@
-import { act, render, renderHook } from "@testing-library/react";
+import { act, render, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type RefObject, useRef } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { queryTestElement, requireFrameDocument } from "../testing/assertions.js";
@@ -390,6 +390,63 @@ describe("useFocusTrap", () => {
 
       frame.remove();
     });
+
+    it("restores focus to the original opener when restoreFocus toggles false to true", () => {
+      const outsideButton = document.createElement("button");
+      outsideButton.id = "outside";
+      document.body.appendChild(outsideButton);
+      outsideButton.focus();
+
+      container = createContainer('<button id="a">A</button>', '<button id="b">B</button>');
+      const { rerender, unmount } = renderHook(
+        ({ restoreFocus }) => {
+          const ref = useRef<HTMLElement>(container);
+          useFocusTrap(ref, { restoreFocus });
+        },
+        { initialProps: { restoreFocus: false } },
+      );
+
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(container.querySelector("#a"));
+
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      const second = queryTestElement(container, "b");
+      second.focus();
+
+      rerender({ restoreFocus: true });
+      expect(document.activeElement).toBe(second);
+
+      unmount();
+      expect(document.activeElement).toBe(outsideButton);
+
+      outsideButton.remove();
+    });
+
+    it("does not restore focus when restoreFocus toggles true to false", () => {
+      const outsideButton = document.createElement("button");
+      outsideButton.id = "outside";
+      document.body.appendChild(outsideButton);
+      outsideButton.focus();
+
+      container = createContainer('<button id="a">A</button>');
+      const { rerender, unmount } = renderHook(
+        ({ restoreFocus }) => {
+          const ref = useRef<HTMLElement>(container);
+          useFocusTrap(ref, { restoreFocus });
+        },
+        { initialProps: { restoreFocus: true } },
+      );
+
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(container.querySelector("#a"));
+
+      rerender({ restoreFocus: false });
+      unmount();
+
+      expect(document.activeElement).not.toBe(outsideButton);
+
+      outsideButton.remove();
+    });
   });
 
   describe("enabled option", () => {
@@ -641,15 +698,12 @@ describe("useFocusTrap", () => {
     });
 
     it("inner trap captures focus while outer trap is suspended, and outer recaptures on inner release", () => {
-      // Set up outer trap
       container = createContainer('<button id="o1">O1</button>', '<button id="o2">O2</button>');
       const outerEl = container;
       const outerRef: RefObject<HTMLElement | null> = { current: outerEl };
       const innerEl = createContainer('<button id="i1">I1</button>', '<button id="i2">I2</button>');
       const innerRef: RefObject<HTMLElement | null> = { current: innerEl };
 
-      // Render both traps in a single component to share the React tree.
-      // The inner trap is toggled via a prop.
       const { rerender } = renderHook(
         ({ innerEnabled }: { innerEnabled: boolean }) => {
           useFocusTrap(outerRef, { restoreFocus: false });
@@ -658,18 +712,14 @@ describe("useFocusTrap", () => {
         { initialProps: { innerEnabled: false } },
       );
 
-      // Outer trap has focus
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(outerEl.querySelector("#o1"));
 
-      // Enable inner trap
       rerender({ innerEnabled: true });
 
-      // Inner trap should capture focus
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(innerEl.querySelector("#i1"));
 
-      // Tab inside inner trap should wrap within inner, not escape to outer
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       const innerLast = queryTestElement(innerEl, "i2");
       innerLast.focus();
@@ -678,8 +728,6 @@ describe("useFocusTrap", () => {
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(innerEl.querySelector("#i1"));
 
-      // Focus escaping to outside should be recaptured by the inner trap,
-      // not the outer (outer is suspended).
       const outsideButton = document.createElement("button");
       outsideButton.id = "outside";
       document.body.appendChild(outsideButton);
@@ -687,13 +735,10 @@ describe("useFocusTrap", () => {
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(innerEl.querySelector("#i1"));
 
-      // Disable inner trap — outer should recapture focus
       rerender({ innerEnabled: false });
 
-      // Focus should be back in the outer trap's container
       expect(outerEl.contains(document.activeElement)).toBe(true);
 
-      // Tab should now work within outer trap
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       const outerLast = queryTestElement(outerEl, "o2");
       outerLast.focus();
@@ -704,6 +749,61 @@ describe("useFocusTrap", () => {
 
       outsideButton.remove();
       innerEl.remove();
+    });
+
+    it("makes an earlier-DOM disjoint trap active when it opens after a later-DOM trap", () => {
+      const earlier = createContainer('<button id="e1">E1</button>', '<button id="e2">E2</button>');
+      const later = createContainer('<button id="l1">L1</button>', '<button id="l2">L2</button>');
+      const earlierRef: RefObject<HTMLElement | null> = { current: earlier };
+      const laterRef: RefObject<HTMLElement | null> = { current: later };
+
+      const { rerender } = renderHook(
+        ({ earlierEnabled }: { earlierEnabled: boolean }) => {
+          useFocusTrap(laterRef, { restoreFocus: false });
+          useFocusTrap(earlierRef, { restoreFocus: false, enabled: earlierEnabled });
+        },
+        { initialProps: { earlierEnabled: false } },
+      );
+
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(later.querySelector("#l1"));
+
+      rerender({ earlierEnabled: true });
+
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(earlier.querySelector("#e1"));
+
+      const outsideButton = document.createElement("button");
+      outsideButton.id = "outside";
+      document.body.appendChild(outsideButton);
+      outsideButton.focus();
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(earlier.querySelector("#e1"));
+
+      outsideButton.remove();
+      earlier.remove();
+      later.remove();
+    });
+  });
+
+  describe("visibility recapture", () => {
+    it("recaptures focus when the focused element is hidden via a style mutation", async () => {
+      container = createContainer('<button id="a">A</button>', '<button id="b">B</button>');
+      renderTrap(container, { restoreFocus: false });
+
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      const second = queryTestElement(container, "b");
+      second.focus();
+      expect(document.activeElement).toBe(second);
+
+      act(() => {
+        second.style.display = "none";
+      });
+
+      await waitFor(() => {
+        // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+        expect(document.activeElement).toBe(container.querySelector("#a"));
+      });
     });
   });
 
@@ -718,8 +818,6 @@ describe("useFocusTrap", () => {
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#a"));
 
-      // Focus escapes outside the container — the document-level focusin
-      // listener should recapture back to the last in-trap element.
       outsideButton.focus();
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#a"));
@@ -730,7 +828,6 @@ describe("useFocusTrap", () => {
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#b"));
 
-      // Tab from in-trap should still wrap correctly after a prior escape.
       const event = fireTab();
       expect(event.defaultPrevented).toBe(true);
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
@@ -778,13 +875,11 @@ describe("useFocusTrap", () => {
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(frameDocument.activeElement).toBe(container.querySelector("#a"));
 
-      // Tab in the host document must NOT be intercepted by the iframe trap.
       hostOutside.focus();
       expect(document.activeElement).toBe(hostOutside);
       const hostEvent = fireTabFromActive(document);
       expect(hostEvent.defaultPrevented).toBe(false);
 
-      // Tab inside the iframe document IS intercepted.
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       const frameLast = queryTestElement(container, "b");
       frameLast.focus();
@@ -809,22 +904,17 @@ describe("useFocusTrap", () => {
 
       const { unmount } = renderTrap(container, { restoreFocus: false });
 
-      // Trap activation focuses the container after assigning tabindex=-1.
       expect(document.activeElement).toBe(container);
 
-      // Focus escapes; document-level focusin recaptures to the container.
       outsideButton.focus();
       expect(document.activeElement).toBe(container);
 
-      // Tab from outside the trap is intercepted via document-level capture and
-      // refocuses the container (since it is the only focusable target).
       outsideButton.focus();
       const tabEvent = fireTabFromActive(document);
       expect(tabEvent.defaultPrevented).toBe(true);
       expect(document.activeElement).toBe(container);
 
       unmount();
-      // Trap teardown removes the temporary tabindex it assigned.
       expect(container.hasAttribute("tabindex")).toBe(false);
 
       outsideButton.remove();

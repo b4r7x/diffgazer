@@ -120,13 +120,10 @@ export function Toaster({ position = "bottom-right", hotkey = "F8" }: ToasterPro
   useToastContainer(visibleToasts, dismissingIds, containerRef, isTopToaster);
   const hasToasts = visibleToasts.length > 0;
 
-  // Persistent visually-hidden polite live region (the Radix announcer pattern):
-  // mounted with the container so the live region exists before its first
-  // announcement, then each newly added non-error toast's text is written into
-  // it. Error toasts render role="alert" (assertive) and announce reliably on
-  // insertion, so routing them through the polite region too would double-
-  // announce; the polite region covers the role="status" toasts whose mount-
-  // with-content node is unreliable across SR/browser pairs.
+  // Persistent visually-hidden polite live region (Radix announcer pattern):
+  // exists before its first announcement, then each new non-error toast's text
+  // is written in. Error toasts already announce via role="alert"; routing them
+  // here too would double-announce.
   const [announcements, setAnnouncements] = useState<ToastAnnouncement[]>([]);
   const announcedIds = useRef<Set<string>>(new Set());
   const announcementSequence = useRef(0);
@@ -183,7 +180,12 @@ export function Toaster({ position = "bottom-right", hotkey = "F8" }: ToasterPro
     const ownerDocument = element?.ownerDocument;
     if (!ownerDocument) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== hotkey || isEditableElement(event.target)) return;
+      if (event.key !== hotkey) return;
+      // Shadow DOM retargets event.target to the host on the document listener;
+      // composedPath()[0] is the real inner target so a focused input/select in
+      // an open shadow tree still defers the shortcut.
+      const target = event.composedPath()[0] ?? event.target;
+      if (isEditableElement(target)) return;
       const region = containerRef.current;
       if (!region) return;
       event.preventDefault();
@@ -193,21 +195,15 @@ export function Toaster({ position = "bottom-right", hotkey = "F8" }: ToasterPro
     return () => ownerDocument.removeEventListener("keydown", onKeyDown);
   }, [hotkey, isTopToaster]);
 
-  // Native <dialog>.showModal() raises the dialog into the browser top-layer,
-  // which `z-index` cannot beat. Opting the container into the Popover API
-  // puts the toast in the same top-layer. The attribute is set imperatively
-  // (not in JSX) so that browsers without Popover support — and test
-  // environments without the polyfill — continue to follow the original
-  // `position: fixed` + `z-index` path instead of being hidden by the UA
-  // stylesheet's `display: none` default.
+  // <dialog>.showModal() raises the dialog into the browser top-layer, which
+  // z-index cannot beat; opting the container into the Popover API puts the
+  // toast in the same top-layer. Set imperatively (not in JSX) so browsers/tests
+  // without Popover support keep the plain fixed+z-index path instead of being
+  // hidden by the UA stylesheet's display:none.
   //
-  // The popover is re-asserted both when the toast set transitions from empty
-  // to non-empty AND whenever a dialog opens above it: the top-layer is ordered
-  // by insertion time, and `showModal()` appends a dialog ABOVE a pre-existing
-  // manual popover (manual popovers are exempt from showModal's hide-all). A
-  // MutationObserver on `dialog[open]` re-runs hidePopover/showPopover so the
-  // region rejoins the top-layer above the dialog, keeping toasts visible,
-  // interactive, and announced for the whole dialog session.
+  // showModal() appends a dialog ABOVE a pre-existing manual popover (which is
+  // exempt from its hide-all), so a MutationObserver on dialog[open] re-runs
+  // hidePopover/showPopover to rejoin the top-layer above the dialog.
   useEffect(() => {
     if (!hasToasts) return;
     const element = containerRef.current;
@@ -258,10 +254,9 @@ export function Toaster({ position = "bottom-right", hotkey = "F8" }: ToasterPro
       onFocus={() => pause("focus")}
       onBlur={handleBlur}
       className={cn(
-        // UA stylesheet for [popover] applies inset:0, margin:auto, fit-content
-        // sizing, plus a default border/padding/background. Override those so
-        // the existing corner positioning and transparent backdrop survive
-        // when popover mode activates, without changing the non-popover path.
+        // Override the UA [popover] stylesheet (inset:0, margin:auto, fit-content,
+        // border/padding/background) so corner positioning and the transparent
+        // backdrop survive when popover mode activates.
         "fixed z-[var(--z-toast)] flex gap-2 pointer-events-none outline-none",
         "[&[popover]]:m-0 [&[popover]]:p-0 [&[popover]]:max-w-none [&[popover]]:max-h-none [&[popover]]:w-auto [&[popover]]:h-auto",
         "[&[popover]]:bg-transparent [&[popover]]:border-0 [&[popover]]:overflow-visible",

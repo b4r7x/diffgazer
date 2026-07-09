@@ -1,8 +1,9 @@
 "use client";
 
-import { useNavigation } from "@diffgazer/keys";
 import { useRef, useState } from "react";
 import { SearchInput } from "@/components/ui/search-input";
+// @hidden-imports-ok — demo imports the useNavigation re-export from the hidden use-navigation hook registry item
+import { useNavigation } from "@/hooks/use-navigation";
 
 const items = ["Components", "Hooks", "Utilities", "Themes", "Plugins"];
 const listboxId = "search-results";
@@ -30,7 +31,7 @@ export default function SearchInputKeyboard() {
         value={query}
         onChange={(v) => {
           setQuery(v);
-          highlight("");
+          highlight(null);
         }}
         placeholder="Search items..."
         role="combobox"
@@ -40,7 +41,7 @@ export default function SearchInputKeyboard() {
         aria-autocomplete="list"
         onEscape={() => {
           setQuery("");
-          highlight("");
+          highlight(null);
         }}
         onEnter={() => {
           if (highlighted) setQuery(highlighted);

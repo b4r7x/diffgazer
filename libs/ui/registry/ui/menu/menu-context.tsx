@@ -26,9 +26,7 @@ export interface MenuContextValue {
    * column, for menus where each item carries a status or summary value.
    */
   variant: "default" | "detail";
-  /** id prefix used by menu. */
   idPrefix: string;
-  /** item role used by menu. */
   itemRole: "menuitem" | "menuitemradio";
   /** Registers item with menu. */
   registerItem: (

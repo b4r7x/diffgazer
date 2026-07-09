@@ -1,22 +1,11 @@
-// dependency-cruiser config for the Diffgazer monorepo.
+// dependency-cruiser config: encodes the AGENTS.md layer boundaries plus no-circular/no-orphans across
+// the workspace. Run from repo root via `pnpm run depcruise` against `apps cli libs`.
 //
-// The repo is Biome-only with no ESLint boundary plugin, so dependency-cruiser
-// is the standalone tool that encodes the AGENTS.md layer boundaries plus
-// no-circular and no-orphans across the whole workspace. Run from the repo root
-// via `pnpm run depcruise` against `apps cli libs`.
-//
-// Cross-feature enforcement uses two matching strategies because the surfaces
-// import differently. The `@/`-alias surfaces (apps/web, apps/docs) are matched
-// by import SPECIFIER (`^@/features/...`): a single root crawl cannot resolve the
-// same `@` alias per app, so specifier matching is the reliable mechanism. The
-// relative-import surfaces (cli/server, cli/diffgazer) are matched by RESOLVED
-// path (`^cli/<surface>/src/features/...`) because their cross-feature reaches go
-// through `../sibling/` specifiers that only show up after resolution. Workspace
-// `@diffgazer/*` deps resolve into excluded build output, so the cross-package
-// rules (core-not-app-or-cli, landing-only-ui) match specifiers too.
-//
-// Circular detection runs on runtime deps only (tsPreCompilationDeps:false):
-// type-only cycles are erased at compile time and do not break module init.
+// Cross-feature matching uses two strategies: `@/`-alias surfaces (apps/web, apps/docs) match by import
+// SPECIFIER because a single root crawl cannot resolve the same `@` alias per app; relative-import
+// surfaces (cli/server, cli/diffgazer) match by RESOLVED path. Workspace `@diffgazer/*` deps resolve into
+// excluded build output, so the cross-package rules match specifiers too. Circular detection runs on
+// runtime deps only (tsPreCompilationDeps:false); type-only cycles are erased at compile time.
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
@@ -82,8 +71,9 @@ module.exports = {
           // A single root crawl cannot resolve the same @ alias per app, so keep
           // no-orphans precise for alias-reached web modules instead of disabling it.
           "^apps/web/src/hooks/(use-theme|use-config)\\.tsx$",
+          "^apps/web/src/lib/main-content\\.ts$",
           "^apps/web/src/(features/(providers/components/list|history/hooks/use-keyboard|help/components/page)|components/ui/card-layout)\\.tsx?$",
-          "^apps/docs/src/(components/(content-spinner|not-found-state|preview-inset-pane|shared/chrome-label|layout/(tui-fault-panel|tui-bracket-link)|docs-mdx/(markdown-renderers|blocks/steps))|features/theme/components/(diffgazer-preview|variable-diagram)|hooks/(theme-context|use-demos)|lib/(consumption-metadata|cross-deps-data|docs-chrome|example-frames|generated-doc-data|resolve-examples))\\.tsx?$",
+          "^apps/docs/src/(components/(content-spinner|not-found-state|preview-inset-pane|shared/(chrome-label|dot-grid|focus-ring)|layout/(tui-fault-panel|tui-bracket-link)|docs-mdx/(markdown-renderers|blocks/steps))|features/theme/components/(diffgazer-preview|variable-diagram)|hooks/(theme-context|use-demos)|lib/(consumption-metadata|cross-deps-data|docs-chrome|example-frames|generated-doc-data|resolve-examples))\\.tsx?$",
         ],
       },
       to: {},

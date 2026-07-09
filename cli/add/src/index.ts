@@ -8,12 +8,21 @@ import { listCommand } from "./commands/list.js";
 import { removeCommand } from "./commands/remove.js";
 import { VERSION } from "./context.js";
 
+// Boolean global options may precede the shorthand item, so shorthand detection
+// skips them before inspecting the first positional token. Keep in sync if a
+// value-taking global option is added.
+const GLOBAL_BOOLEAN_FLAGS = new Set(["-s", "--silent"]);
+const SHORTHAND_ITEM_RE = /^(ui|keys)\/[^/]+$/;
+
 function normalizeShadcnStyleArgs(argv: string[]): string[] {
   const userArgs = argv.slice(2);
-  const firstArg = userArgs[0];
-  if (!firstArg || firstArg.startsWith("-")) return userArgs;
-  if (!/^(ui|keys)\/[^/]+$/.test(firstArg)) return userArgs;
-  return ["add", ...userArgs];
+  let index = 0;
+  while (index < userArgs.length && GLOBAL_BOOLEAN_FLAGS.has(userArgs[index] ?? "")) {
+    index += 1;
+  }
+  const candidate = userArgs[index];
+  if (!candidate || !SHORTHAND_ITEM_RE.test(candidate)) return userArgs;
+  return [...userArgs.slice(0, index), "add", ...userArgs.slice(index)];
 }
 
 const program = createCli({

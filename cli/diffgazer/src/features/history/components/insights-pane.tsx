@@ -1,3 +1,4 @@
+import { sanitizeTerminalText } from "@diffgazer/core/review";
 import { SEVERITY_ORDER, type SeverityCounts } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { capitalize } from "@diffgazer/core/strings";
@@ -61,7 +62,7 @@ export function HistoryInsightsPane({
 
   return (
     <Box flexDirection="column" padding={1}>
-      <SectionHeader variant="muted">{`Insights: Run ${runId}`}</SectionHeader>
+      <SectionHeader variant="muted">{`Insights: Run ${sanitizeTerminalText(runId)}`}</SectionHeader>
       <ScrollArea height={scrollHeight} isActive={isActive}>
         {severityList.length > 0 ? (
           <Box marginTop={1} flexDirection="column">
@@ -81,7 +82,7 @@ export function HistoryInsightsPane({
                   {issue.line_start != null ? `L:${issue.line_start}` : ""}
                 </Text>
                 <Text color={tokens.fg} wrap="truncate">
-                  {issue.title}
+                  {sanitizeTerminalText(issue.title)}
                 </Text>
               </Box>
             ))}

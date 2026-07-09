@@ -25,13 +25,10 @@ export interface ToggleGroupContextValue {
   size: SegmentedSize;
   /** Visual style variant. */
   variant: SegmentedVariant;
-  /** highlighted value. */
   highlightedValue: string | null;
   /** Ref for the container element. */
   containerRef: RefObject<HTMLDivElement | null>;
-  /** uses button semantics used by toggle group. */
   usesButtonSemantics: boolean;
-  /** tab target value. */
   tabTargetValue: string | null;
   /** Registers item with toggle group. */
   registerItem: (

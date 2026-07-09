@@ -14,9 +14,7 @@ describe("CATALOG_SNAPSHOT", () => {
   it("covers every enabled provider's source ids", () => {
     for (const overlay of Object.values(PROVIDER_OVERLAY)) {
       if (!overlay.enabled) continue;
-      // openrouter's model LIST is served by its own live key-gated route, so the
-      // snapshot picker never reads it; its source is still bundled (and asserted
-      // below) because resolveProviderDisplayName reads its provider-level `name`.
+      // openrouter's list is live-only; its source is bundled solely for the provider name (asserted below).
       if (overlay.sdkKind === "openrouter") continue;
       for (const sourceId of overlay.modelsDevIds) {
         expect(CATALOG_SNAPSHOT[sourceId], `snapshot missing source ${sourceId}`).toBeDefined();
@@ -29,8 +27,6 @@ describe("CATALOG_SNAPSHOT", () => {
   });
 
   it("retains provider-level `name` (the primary display-name source, Decision A)", () => {
-    // Without overlay.displayName, AVAILABLE_PROVIDERS resolves the name from the
-    // models.dev provider `name` in the snapshot, so it must survive the trim.
     for (const overlay of Object.values(PROVIDER_OVERLAY)) {
       if (!overlay.enabled || overlay.sdkKind === "openrouter") continue;
       const sourceId = requireValue(overlay.modelsDevIds[0], "provider source id");
@@ -47,6 +43,22 @@ describe("CATALOG_SNAPSHOT", () => {
       expect(ids, `${provider} snapshot must include default ${overlay.defaultModel}`).toContain(
         overlay.defaultModel,
       );
+    }
+  });
+
+  it("excludes audio-only (TTS) models from the derived picker (F-084)", () => {
+    const audioOnlyByProvider: Partial<Record<AIProvider, string[]>> = {
+      gemini: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
+      groq: ["canopylabs/orpheus-arabic-saudi", "canopylabs/orpheus-v1-english"],
+    };
+    for (const [provider, forbidden] of Object.entries(audioOnlyByProvider) as [
+      AIProvider,
+      string[],
+    ][]) {
+      const ids = catalogToModelInfo(CATALOG_SNAPSHOT, provider).map((m) => m.id);
+      for (const id of forbidden) {
+        expect(ids, `${provider} picker must exclude audio-only ${id}`).not.toContain(id);
+      }
     }
   });
 

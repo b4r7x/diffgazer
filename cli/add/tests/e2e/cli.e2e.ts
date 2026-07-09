@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 let root: string;
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
 
-function runDgadd(args: string[], opts?: { silent?: boolean }): string {
+function runDgadd(args: string[], opts?: { silent?: boolean; env?: NodeJS.ProcessEnv }): string {
   const silent = opts?.silent ?? true;
   return execFileSync(
     process.execPath,
@@ -19,7 +19,7 @@ function runDgadd(args: string[], opts?: { silent?: boolean }): string {
       ...(silent ? ["--silent"] : []),
       ...args,
     ],
-    { cwd: repoRoot, encoding: "utf-8" },
+    { cwd: repoRoot, encoding: "utf-8", env: opts?.env ?? process.env },
   );
 }
 
@@ -120,6 +120,75 @@ describe("add command", () => {
     expect(() =>
       runDgadd(["add", "keys/focusable", "--cwd", root, "--yes", "--skip-install"]),
     ).toThrow(/not found/);
+  });
+
+  test("hidden internal ui items cannot be installed directly", () => {
+    expect(() => runDgadd(["add", "ui/portal", "--cwd", root, "--yes", "--skip-install"])).toThrow(
+      /not found in public registry/,
+    );
+    expect(existsSync(join(root, "src/components/ui/shared/portal.tsx"))).toBe(false);
+  });
+
+  test("add --all installs hidden internals only as transitive dependencies", () => {
+    mkdirSync(join(root, "src/styles"), { recursive: true });
+    writeFileSync(join(root, "src/styles/styles.css"), '@import "./theme.css";\n');
+
+    runDgadd(["add", "--all", "--cwd", root, "--yes", "--skip-install"]);
+
+    const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    const installed = config.installedComponents as Record<string, { installedAs: string }>;
+    expect(installed["ui/portal"]?.installedAs).toBe("transitive");
+    expect(installed["ui/dialog-shell"]?.installedAs).toBe("transitive");
+    expect(installed["ui/dialog"]?.installedAs).toBe("explicit");
+  });
+
+  test("no-overwrite re-add preserves ownership of a locally modified owned file", () => {
+    mkdirSync(join(root, "src/styles"), { recursive: true });
+    writeFileSync(join(root, "src/styles/styles.css"), '@import "./theme.css";\n');
+    runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
+
+    const readDialogFiles = (): string[] => {
+      const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+      return (config.installedComponents["ui/dialog"].files as Array<{ path: string }>).map(
+        (file) => file.path,
+      );
+    };
+    const before = readDialogFiles();
+    expect(before).toContain("src/components/ui/dialog/index.ts");
+
+    const modified = join(root, "src/components/ui/dialog/index.ts");
+    writeFileSync(modified, `${readFileSync(modified, "utf-8")}\n// user drift\n`);
+
+    runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
+
+    const after = readDialogFiles();
+    expect(new Set(after)).toEqual(new Set(before));
+    expect(after).toContain("src/components/ui/dialog/index.ts");
+    expect(readFileSync(modified, "utf-8")).toContain("// user drift");
+  });
+
+  test("shorthand item install works after a global --silent option", () => {
+    runDgadd(["--silent", "ui/button", "--cwd", root, "--yes", "--skip-install"], {
+      silent: false,
+    });
+    expect(existsSync(join(root, "src/components/ui/button/button.tsx"))).toBe(true);
+  });
+
+  test("shorthand item install works after a global -s option", () => {
+    runDgadd(["-s", "keys/navigation", "--cwd", root, "--yes", "--skip-install"], {
+      silent: false,
+    });
+    expect(existsSync(join(root, "src/hooks/use-navigation.ts"))).toBe(true);
+  });
+
+  test("init --silent --yes fails and rolls back when dependency install fails", () => {
+    rmSync(join(root, "diffgazer.json"), { force: true });
+    // Empty PATH so no package manager resolves and the default install fails.
+    expect(() =>
+      runDgadd(["init", "--cwd", root, "--yes"], { env: { ...process.env, PATH: "" } }),
+    ).toThrow();
+    expect(existsSync(join(root, "diffgazer.json"))).toBe(false);
+    expect(existsSync(join(root, "src/lib/utils.ts"))).toBe(false);
   });
 
   test("bare names without namespace prefix are rejected", () => {
@@ -709,6 +778,31 @@ describe("css chunk drift detection", () => {
     expect(output).toMatch(/dialog::backdrop/);
     expect(output).toMatch(/Summary:.*changed/);
   });
+
+  test("add --overwrite repairs a diff-detected CSS chunk drift", () => {
+    runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
+
+    const stylesPath = join(root, "src/styles/styles.css");
+    const original = readFileSync(stylesPath, "utf-8");
+
+    // Edit inside the chunk body, marker hashes intact, so diff reports drift.
+    const drifted = original.replace(/(dialog::backdrop)/, "/* user drift inside chunk */\n$1");
+    expect(drifted).not.toBe(original);
+    writeFileSync(stylesPath, drifted);
+
+    const driftReport = runDgadd(["diff", "--cwd", root], { silent: false });
+    expect(driftReport).toMatch(/styles\.css~chunk-[a-f0-9]{16}/);
+
+    runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install", "--overwrite"]);
+
+    const repaired = readFileSync(stylesPath, "utf-8");
+    expect(repaired).not.toMatch(/user drift inside chunk/);
+    expect(repaired).toMatch(/dialog::backdrop/);
+    expect(repaired).toMatch(/@import "\.\/theme\.css";/);
+
+    const cleanReport = runDgadd(["diff", "--cwd", root], { silent: false });
+    expect(cleanReport).not.toMatch(/styles\.css~chunk-/);
+  });
 });
 
 describe("css chunk ownership on remove", () => {
@@ -722,9 +816,8 @@ describe("css chunk ownership on remove", () => {
     runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
 
     const manifest = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    // dialog.css is keyed under its owning registry item (a transitive); pull
-    // whichever manifest entry recorded chunks so the assertion does not bind
-    // to which item happens to own the shared CSS today.
+    // Pull whichever entry recorded chunks so the assertion does not bind to the
+    // item that happens to own the shared CSS today.
     const chunkOwnerEntry = Object.entries(
       manifest.installedComponents as Record<string, { cssChunks?: string[] }>,
     ).find(([, record]) => (record.cssChunks ?? []).length > 0);
@@ -734,9 +827,8 @@ describe("css chunk ownership on remove", () => {
     }
     const ownerHashes = chunkOwnerEntry[1].cssChunks ?? [];
 
-    // Grant the same chunk hashes to ui/button (explicit, so it is preserved
-    // when ui/dialog is removed). Models two registry items emitting identical
-    // CSS — the chunk must survive removal of the first co-owner.
+    // Give ui/button (explicit, preserved) the same hashes: two items emitting
+    // identical CSS, so the chunk must survive removal of the first co-owner.
     manifest.installedComponents["ui/button"].cssChunks = [...ownerHashes];
     writeFileSync(join(root, "diffgazer.json"), JSON.stringify(manifest, null, 2));
 
@@ -763,6 +855,73 @@ describe("css chunk ownership on remove", () => {
 
     const cssAfter = readFileSync(join(root, "src/styles/styles.css"), "utf-8");
     expect(cssAfter).not.toMatch(/dialog::backdrop/);
+    expect((cssAfter.match(markerPattern) ?? []).length).toBe(0);
+  });
+
+  test("edited chunk is preserved on remove without --force and stays re-targetable", () => {
+    runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
+
+    // Discover the chunk owner so the assertions do not bind to its name.
+    const beforeManifest = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    const chunkOwnerEntry = Object.entries(
+      beforeManifest.installedComponents as Record<string, { cssChunks?: string[] }>,
+    ).find(([, record]) => (record.cssChunks ?? []).length > 0);
+    if (!chunkOwnerEntry) {
+      throw new Error("Expected at least one item to record cssChunks.");
+    }
+    const [chunkOwner, ownerRecord] = chunkOwnerEntry;
+    const ownerHashes = ownerRecord.cssChunks ?? [];
+
+    const stylesPath = join(root, "src/styles/styles.css");
+    const edited = readFileSync(stylesPath, "utf-8").replace(
+      /(dialog::backdrop)/,
+      "/* user tuned */\n$1",
+    );
+    writeFileSync(stylesPath, edited);
+
+    const output = runDgadd(["remove", "ui/dialog", "--cwd", root, "--yes"], { silent: false });
+    expect(output).toMatch(/chunk has been modified \(use --force to override\)/);
+
+    const cssAfter = readFileSync(stylesPath, "utf-8");
+    expect(cssAfter).toMatch(/user tuned/);
+    expect(cssAfter).toMatch(/dialog::backdrop/);
+
+    // Retained owner stays tracked (trimmed to chunk tracking) so the block is
+    // re-targetable by a later force remove instead of orphaned.
+    const afterRemove = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    const retained = afterRemove.installedComponents?.[chunkOwner];
+    expect(retained, `expected ${chunkOwner} to stay tracked for its preserved chunk`).toBeTruthy();
+    expect(retained.cssChunks).toEqual(ownerHashes);
+    expect(retained.files).toBeUndefined();
+
+    runDgadd(["remove", chunkOwner, "--cwd", root, "--yes", "--force"]);
+
+    const cssFinal = readFileSync(stylesPath, "utf-8");
+    expect(cssFinal).not.toMatch(/user tuned/);
+    expect(cssFinal).not.toMatch(/dialog::backdrop/);
+    const markerPattern = /\/\* dgadd:css [a-f0-9]{16}(?: \S+)? \*\//g;
+    expect((cssFinal.match(markerPattern) ?? []).length).toBe(0);
+
+    const finalManifest = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    expect(finalManifest.installedComponents?.[chunkOwner]).toBeUndefined();
+  });
+
+  test("edited chunk is removed on remove with --force", () => {
+    runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
+
+    const stylesPath = join(root, "src/styles/styles.css");
+    const edited = readFileSync(stylesPath, "utf-8").replace(
+      /(dialog::backdrop)/,
+      "/* user tuned */\n$1",
+    );
+    writeFileSync(stylesPath, edited);
+
+    runDgadd(["remove", "ui/dialog", "--cwd", root, "--yes", "--force"]);
+
+    const cssAfter = readFileSync(stylesPath, "utf-8");
+    expect(cssAfter).not.toMatch(/user tuned/);
+    expect(cssAfter).not.toMatch(/dialog::backdrop/);
+    const markerPattern = /\/\* dgadd:css [a-f0-9]{16}(?: \S+)? \*\//g;
     expect((cssAfter.match(markerPattern) ?? []).length).toBe(0);
   });
 });

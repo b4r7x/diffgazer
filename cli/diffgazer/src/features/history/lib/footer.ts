@@ -1,8 +1,8 @@
 import {
   BACK_SHORTCUTS,
   NAVIGATE_SHORTCUT,
-  SWITCH_PANE_SHORTCUT,
   type Shortcut,
+  SWITCH_PANE_SHORTCUT,
 } from "@diffgazer/core/schemas/presentation";
 import type { HistoryFocusZone } from "../types";
 

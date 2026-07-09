@@ -8,7 +8,6 @@ export type SidebarState = "open" | "rail" | "hidden";
 
 /** Context value shared by sidebar. */
 export interface SidebarContextValue {
-  /** state used by sidebar. */
   state: SidebarState;
   /** DOM id for content. */
   contentId: string;

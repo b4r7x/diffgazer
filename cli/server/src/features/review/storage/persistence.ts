@@ -5,6 +5,7 @@ import { err, ok, type Result } from "@diffgazer/core/result";
 import { UuidSchema } from "@diffgazer/core/schemas/fields";
 import type { ZodType } from "zod";
 import { atomicWriteFile as atomicWrite, isNodeError } from "../../../shared/lib/fs.js";
+import { log } from "../../../shared/lib/log.js";
 import type { Collection, CollectionConfig, StoreError, StoreErrorCode } from "./types.js";
 
 interface ExtendedCollectionConfig<T, M> extends CollectionConfig<T, M> {
@@ -33,18 +34,32 @@ const validateSchema = <T, E>(
 
 const createStoreError = createError<StoreErrorCode>;
 
+// Return a path-free client message; log the raw cause (which carries the absolute
+// daemon path) server-side so clients never see host filesystem internals.
+function storeIoError(
+  code: StoreErrorCode,
+  message: string,
+  path: string,
+  cause: unknown,
+): StoreError {
+  log("warn", "review_store_io_error", { code, path, cause: getErrorMessage(cause) });
+  return createStoreError(code, message);
+}
+
 async function safeReadFile(path: string, name: string): Promise<Result<string, StoreError>> {
   try {
     const content = await readFile(path, "utf-8");
     return ok(content);
   } catch (error) {
     if (isNodeError(error, "ENOENT")) {
-      return err(createStoreError("NOT_FOUND", `${name} not found: ${path}`));
+      return err(createStoreError("NOT_FOUND", `${name} not found`));
     }
     if (isNodeError(error, "EACCES")) {
-      return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
+      return err(
+        storeIoError("PERMISSION_ERROR", `Permission denied reading ${name}`, path, error),
+      );
     }
-    return err(createStoreError("PARSE_ERROR", `Failed to read ${name}`, getErrorMessage(error)));
+    return err(storeIoError("PARSE_ERROR", `Failed to read ${name}`, path, error));
   }
 }
 
@@ -54,11 +69,16 @@ async function ensureDirectory(dirPath: string, name: string): Promise<Result<vo
     return ok(undefined);
   } catch (error) {
     if (isNodeError(error, "EACCES")) {
-      return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${dirPath}`));
+      return err(
+        storeIoError(
+          "PERMISSION_ERROR",
+          `Permission denied creating ${name} directory`,
+          dirPath,
+          error,
+        ),
+      );
     }
-    return err(
-      createStoreError("WRITE_ERROR", `Failed to create ${name} directory`, getErrorMessage(error)),
-    );
+    return err(storeIoError("WRITE_ERROR", `Failed to create ${name} directory`, dirPath, error));
   }
 }
 
@@ -72,9 +92,11 @@ async function safeAtomicWrite(
     return ok(undefined);
   } catch (error) {
     if (isNodeError(error, "EACCES")) {
-      return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
+      return err(
+        storeIoError("PERMISSION_ERROR", `Permission denied writing ${name}`, path, error),
+      );
     }
-    return err(createStoreError("WRITE_ERROR", `Failed to write ${name}`, getErrorMessage(error)));
+    return err(storeIoError("WRITE_ERROR", `Failed to write ${name}`, path, error));
   }
 }
 
@@ -135,9 +157,8 @@ export function createCollection<T, M>(
     const readResult = await safeReadFile(path, name);
     if (!readResult.ok) return readResult;
 
-    // JSON corruption is unrecoverable and still surfaces as a PARSE_ERROR (and a
-    // listing warning); only a schema-validation failure on otherwise-valid JSON
-    // is salvaged through the lenient read so immutable old records open and delete.
+    // Only a schema-validation failure on valid JSON is salvaged; JSON corruption
+    // stays a PARSE_ERROR.
     const parseResult = safeParseJson(readResult.value, (message) =>
       createStoreError("PARSE_ERROR", `${name}: ${message}`),
     );
@@ -194,11 +215,16 @@ export function createCollection<T, M>(
         return ok({ items: [], warnings });
       }
       if (isNodeError(error, "EACCES")) {
-        return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${dir}`));
+        return err(
+          storeIoError(
+            "PERMISSION_ERROR",
+            `Permission denied reading ${name} directory`,
+            dir,
+            error,
+          ),
+        );
       }
-      return err(
-        createStoreError("PARSE_ERROR", `Failed to read ${name} directory`, getErrorMessage(error)),
-      );
+      return err(storeIoError("PARSE_ERROR", `Failed to read ${name} directory`, dir, error));
     }
 
     const jsonFiles = files.filter((f) => f.endsWith(".json"));
@@ -229,11 +255,11 @@ export function createCollection<T, M>(
         return ok({ existed: false });
       }
       if (isNodeError(error, "EACCES")) {
-        return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
+        return err(
+          storeIoError("PERMISSION_ERROR", `Permission denied deleting ${name}`, path, error),
+        );
       }
-      return err(
-        createStoreError("WRITE_ERROR", `Failed to delete ${name}`, getErrorMessage(error)),
-      );
+      return err(storeIoError("WRITE_ERROR", `Failed to delete ${name}`, path, error));
     }
   }
 

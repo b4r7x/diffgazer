@@ -16,7 +16,6 @@ export interface SelectContextValue {
   open: boolean;
   /** Disable the trigger and prevent open. */
   disabled: boolean;
-  /** searchable used by select. */
   searchable: boolean;
   /** Called when open state changes. */
   onOpenChange: (open: boolean) => void;
@@ -24,7 +23,6 @@ export interface SelectContextValue {
   value: string | null | string[];
   /** Enable multi-select. value/onChange become string[]. */
   multiple: boolean;
-  /** search query used by select. */
   searchQuery: string;
   /** Called when search change occurs. */
   onSearchChange: (query: string) => void;
@@ -32,13 +30,11 @@ export interface SelectContextValue {
   highlighted: string | null;
   /** Updates highlighted. */
   setHighlighted: (value: string | null) => void;
-  /** select item used by select. */
   selectItem: (value: string) => void;
   /** Registers option with select. */
   registerOption: (value: string, metadata: SelectOptionMetadata) => void;
   /** Unregisters option from select. */
   unregisterOption: (value: string) => void;
-  /** options used by select. */
   options: ReadonlyMap<string, SelectOptionMetadata>;
   /** Ref for the trigger element. */
   triggerRef: RefObject<HTMLButtonElement | null>;
@@ -55,11 +51,8 @@ export interface SelectContextValue {
   listboxId: string;
   /** DOM id for trigger. */
   triggerId: string;
-  /** ARIA invalid used by select. */
   ariaInvalid: AriaAttributes["aria-invalid"] | undefined;
-  /** ARIA described by used by select. */
   ariaDescribedBy: string | undefined;
-  /** ARIA labelled by used by select. */
   ariaLabelledBy: string | undefined;
   /** Mark the select as required for native form validation. */
   required: boolean | undefined;

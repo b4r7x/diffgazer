@@ -34,12 +34,9 @@ export interface SidebarProviderProps {
 
 export const SIDEBAR_STATE_COOKIE = "dg_sidebar_state";
 
-// keys' isEditableElement excludes <select> (a list control, not a text editor);
-// the sidebar shortcut must still defer to a focused select, so this thin
-// wrapper adds that case while keeping isEditableElement's correct exclusion of
-// non-editable input types (button/checkbox/radio/submit). The HTMLSelectElement
-// constructor is resolved through the target's ownerDocument.defaultView rather
-// than the bare global so cross-document focus is handled correctly.
+// keys' isEditableElement excludes <select>; the shortcut must still defer to a
+// focused select. HTMLSelectElement is resolved via the target's ownerDocument
+// so cross-document focus works.
 function isShortcutEditableTarget(target: EventTarget | null): boolean {
   if (isEditableElement(target)) return true;
   const view = (target as { ownerDocument?: Document } | null)?.ownerDocument?.defaultView;
@@ -79,7 +76,11 @@ export function SidebarProvider({
     const handler = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() !== normalizedKey) return;
       if (!(event.metaKey || event.ctrlKey)) return;
-      if (isShortcutEditableTarget(event.target)) return;
+      // Shadow DOM retargets event.target to the host on the window listener;
+      // composedPath()[0] is the real inner target so a focused input/select in
+      // an open shadow tree still defers the shortcut.
+      const target = event.composedPath()[0] ?? event.target;
+      if (isShortcutEditableTarget(target)) return;
       event.preventDefault();
       if (event.shiftKey) {
         toggleHidden();
@@ -105,9 +106,8 @@ export function SidebarProvider({
 
   return (
     <SidebarContext value={contextValue}>
-      {/* Zero-footprint anchor: resolves the owning window so the global
-          shortcut listener binds to the sidebar's ownerDocument.defaultView
-          instead of assuming the top-level window. */}
+      {/* Anchor: resolves the owning window so the shortcut listener binds to
+          the sidebar's ownerDocument.defaultView, not the top-level window. */}
       <span ref={anchorRef} hidden aria-hidden="true" />
       {children}
     </SidebarContext>

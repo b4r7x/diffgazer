@@ -57,6 +57,7 @@ export function SelectSearch({
     variant,
     searchInputRef,
     ariaInvalid,
+    ariaDescribedBy,
     ariaLabelledBy,
     required,
     options,
@@ -86,6 +87,7 @@ export function SelectSearch({
         aria-expanded={open}
         aria-activedescendant={activeDescendant}
         aria-autocomplete="list"
+        aria-describedby={ariaDescribedBy || undefined}
         aria-required={required}
         aria-invalid={ariaInvalid}
         value={searchQuery}

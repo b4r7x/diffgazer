@@ -1098,23 +1098,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         release_date: "2025-06-17",
         last_updated: "2025-06-17",
       },
-      "gemini-2.5-flash-preview-tts": {
-        id: "gemini-2.5-flash-preview-tts",
-        name: "Gemini 2.5 Flash Preview TTS",
-        family: "gemini-flash",
-        cost: {
-          input: 0.5,
-          output: 10,
-        },
-        limit: {
-          context: 8192,
-          output: 16384,
-        },
-        tool_call: false,
-        reasoning: false,
-        release_date: "2025-05-01",
-        last_updated: "2025-05-01",
-      },
       "gemini-2.5-pro": {
         id: "gemini-2.5-pro",
         name: "Gemini 2.5 Pro",
@@ -1132,23 +1115,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         reasoning: true,
         release_date: "2025-03-20",
         last_updated: "2025-06-05",
-      },
-      "gemini-2.5-pro-preview-tts": {
-        id: "gemini-2.5-pro-preview-tts",
-        name: "Gemini 2.5 Pro Preview TTS",
-        family: "gemini-flash",
-        cost: {
-          input: 1,
-          output: 20,
-        },
-        limit: {
-          context: 8192,
-          output: 16384,
-        },
-        tool_call: false,
-        reasoning: false,
-        release_date: "2025-05-01",
-        last_updated: "2025-05-01",
       },
       "gemini-3-flash-preview": {
         id: "gemini-3-flash-preview",
@@ -1397,40 +1363,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         reasoning: false,
         release_date: "2024-09",
         last_updated: "2024-09",
-      },
-      "canopylabs/orpheus-arabic-saudi": {
-        id: "canopylabs/orpheus-arabic-saudi",
-        name: "Orpheus Arabic Saudi",
-        family: "canopylabs",
-        cost: {
-          input: 40,
-          output: 0,
-        },
-        limit: {
-          context: 4000,
-          output: 50000,
-        },
-        tool_call: false,
-        reasoning: false,
-        release_date: "2025-12-16",
-        last_updated: "2025-12-16",
-      },
-      "canopylabs/orpheus-v1-english": {
-        id: "canopylabs/orpheus-v1-english",
-        name: "Orpheus V1 English",
-        family: "canopylabs",
-        cost: {
-          input: 0,
-          output: 0,
-        },
-        limit: {
-          context: 4000,
-          output: 50000,
-        },
-        tool_call: false,
-        reasoning: false,
-        release_date: "2025-12-19",
-        last_updated: "2025-12-19",
       },
       "deepseek-r1-distill-llama-70b": {
         id: "deepseek-r1-distill-llama-70b",

@@ -27,7 +27,6 @@ export type SelectValueDisplay = "count" | "list" | "truncate";
 export interface SelectValueRenderProps {
   /** Marks the item as selected. */
   selected: string[];
-  /** labels used by select value. */
   labels: ReadonlyMap<string, string>;
 }
 

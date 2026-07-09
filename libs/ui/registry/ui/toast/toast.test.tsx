@@ -5,10 +5,8 @@ import { Dialog } from "../dialog/index";
 import { Toaster, toast } from "./index";
 import { dismiss, remove, useToastStore } from "./toast-store";
 
-// The Toaster mounts a persistent visually-hidden polite live region that
-// mirrors each new toast's text (F-229). It is a duplicate of the visible
-// toast content for screen readers, so text queries ignore it — exactly as
-// they ignore script/style — to assert against the rendered toast.
+// The Toaster's persistent polite live region (F-229) duplicates visible toast
+// text for screen readers, so text queries ignore it like script/style.
 const DEFAULT_IGNORE = "script, style";
 const TOAST_IGNORE = `${DEFAULT_IGNORE}, [data-slot="toast-announcer"], [data-slot="toast-announcer"] *`;
 const LAZY_CHUNK_TIMEOUT_MS = 8_000;
@@ -41,10 +39,9 @@ interface PopoverStub {
   restore: () => void;
 }
 
-// Boundary mock: jsdom does not implement HTMLElement.prototype.popover /
-// showPopover() / hidePopover() / :popover-open. Stub them so we can verify the
-// Toaster's feature-detection branch on a supporting browser. The non-supporting
-// branch stays covered by every other test.
+// jsdom implements no popover / showPopover / hidePopover / :popover-open, so
+// stub them to exercise the Toaster's supporting-browser branch. Every other
+// test covers the non-supporting branch.
 function installPopoverStub(): PopoverStub {
   const Proto = HTMLElement.prototype;
   const popoverDesc = Object.getOwnPropertyDescriptor(Proto, "popover");
@@ -209,9 +206,6 @@ describe("Toast", () => {
     expect(screen.getByText("FYI")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("Failed!");
 
-    // querySelector: data-tone is the public attribute contract — the role
-    // queries above prove ARIA semantics; this is a structural check on the
-    // tone tagging used by CSS selectors and downstream tooling.
     const success = document.querySelector('[data-slot="toast"][data-tone="success"]');
     expect(success).not.toBeNull();
     expect(success).toHaveTextContent("Saved!");
@@ -435,9 +429,6 @@ describe("Toast", () => {
       toast("Background toast", { id: "dialog-toast" });
     });
 
-    // The toast region now re-asserts itself above the dialog, so Escape can
-    // reach it; consuming the keypress (preventDefault) keeps the dialog open
-    // and stops keys-style scopes from double-firing.
     const event = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
     act(() => {
       document.dispatchEvent(event);
@@ -456,7 +447,6 @@ describe("Toast", () => {
 
   it("does not double-fire a window-level Escape listener when a toast is dismissed", () => {
     const scopeEscape = vi.fn();
-    // A @diffgazer/keys-style window listener that skips already-handled events.
     const onWindowKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
       if (event.key === "Escape") scopeEscape();
@@ -495,7 +485,6 @@ describe("Toast", () => {
   it("announces new non-error toasts through a persistent polite live region (F-229)", () => {
     const { container } = render(<Toaster />);
     const announcer = container.querySelector('[data-slot="toast-announcer"]');
-    // The live region exists before any toast and is polite.
     expect(announcer).not.toBeNull();
     expect(announcer).toHaveAttribute("aria-live", "polite");
     expect(announcer?.textContent).toBe("");
@@ -569,6 +558,35 @@ describe("Toast", () => {
       document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "F8", bubbles: true }));
     });
     expect(regionHasFocus()).toBe(true);
+  });
+
+  it("ignores the hotkey for an editable target inside an open shadow root (F-064)", () => {
+    render(<Toaster hotkey="F8" />);
+    act(() => {
+      toast("Reachable toast", { action: <button type="button">Undo</button> });
+    });
+
+    const region = screen.getByRole("region", { name: "Notifications" });
+    const regionHasFocus = () =>
+      document.activeElement === region || region.contains(document.activeElement);
+
+    const host = document.createElement("div");
+    document.body.append(host);
+    const shadowRoot = host.attachShadow({ mode: "open" });
+    const input = document.createElement("input");
+    shadowRoot.append(input);
+    input.focus();
+
+    // A composed keydown surfaces the host as event.target on the document
+    // listener; only composedPath()[0] reveals the editable shadow input.
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "F8", bubbles: true, composed: true }),
+      );
+    });
+
+    expect(regionHasFocus()).toBe(false);
+    host.remove();
   });
 
   it("renders a toast triggered while a modal dialog is open", () => {
@@ -656,9 +674,8 @@ describe("Toast", () => {
       const showCallsBeforeDialog = stub.getShowCalls();
       expect(showCallsBeforeDialog).toBeGreaterThanOrEqual(1);
 
-      // Opening a dialog after the toast exists must re-run hidePopover+showPopover
-      // so the region rejoins the top-layer above the dialog (F-450). The
-      // MutationObserver callback runs as a microtask, so flush one.
+      // The MutationObserver re-runs hidePopover+showPopover as a microtask
+      // (F-450), so flush one.
       rerender(<Harness dialogOpen />);
       await act(async () => {
         await Promise.resolve();
@@ -765,8 +782,6 @@ describe("Toast", () => {
     });
     expect(screen.queryByText("First")).not.toBeInTheDocument();
 
-    // Cursor leaves the (now empty) region; without the fix, resume() never
-    // fires and the next toast inherits a frozen timer.
     act(() => {
       // fireEvent retained: hover under fake timers; userEvent uses real timers internally.
       fireEvent.mouseLeave(region);
@@ -931,10 +946,6 @@ describe("Toast", () => {
 
   describe("variant layouts", () => {
     function findToast(text: string) {
-      // querySelector: the toast root carries the data-variant attribute used
-      // by CSS and downstream tooling; ARIA queries don't expose attribute
-      // values. Looking up by visible text first guarantees we read the
-      // current toast regardless of layout shape.
       return screen.getByText(text).closest('[data-slot="toast"]');
     }
 
@@ -959,8 +970,6 @@ describe("Toast", () => {
     });
 
     it('variant="hud" auto-dismisses even when an action is supplied (HUD drops the action, so persistence rule does not apply)', () => {
-      // HUD ignores `action`, so the toast must follow the default auto-dismiss
-      // behavior — not inherit the action-persists rule from card/countdown.
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       try {
         render(<Toaster />);
@@ -1086,7 +1095,6 @@ describe("Toast", () => {
         toast("Synced", { variant: "countdown", duration: 5000 });
       });
 
-      // Let the loop run a few frames so it is genuinely spinning.
       act(() => {
         vi.advanceTimersByTime(64);
       });
@@ -1105,7 +1113,6 @@ describe("Toast", () => {
       });
       expect(rafSpy.mock.calls.length).toBe(callsAtPause);
 
-      // Unpausing resumes the countdown loop.
       act(() => {
         // fireEvent retained: hover under fake timers; userEvent uses real timers internally.
         fireEvent.mouseLeave(region);

@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, unlink } from "node:fs/promises";
+import { mkdir, readdir, readFile, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
-import { getErrorMessage } from "@diffgazer/core/errors";
 import { ok, type Result } from "@diffgazer/core/result";
+import { UuidSchema } from "@diffgazer/core/schemas/fields";
 import { calculateSeverityCounts } from "@diffgazer/core/schemas/presentation";
 import {
   type DrilldownResult,
@@ -41,9 +41,19 @@ const REVIEWS_DIR = join(getGlobalDiffgazerDir(), "triage-reviews");
 const PROJECT_INDEX_DIR = join(REVIEWS_DIR, ".index");
 const getReviewFile = (reviewId: string): string => join(REVIEWS_DIR, `${reviewId}.json`);
 
+function projectHash(projectPath: string): string {
+  return createHash("sha256").update(projectPath).digest("hex").slice(0, 16);
+}
+
 function projectIndexPath(projectPath: string): string {
-  const hash = createHash("sha256").update(projectPath).digest("hex").slice(0, 16);
-  return join(PROJECT_INDEX_DIR, `${hash}.json`);
+  return join(PROJECT_INDEX_DIR, `${projectHash(projectPath)}.json`);
+}
+
+// Staleness signal gating the cross-project orphan reconcile: dropped when a saved
+// review could neither be indexed nor cleared by invalidation. Absent it, listings
+// serve straight from the per-project index (F-097).
+function projectReconcileMarkerPath(projectPath: string): string {
+  return join(PROJECT_INDEX_DIR, `${projectHash(projectPath)}.reconcile`);
 }
 
 async function readProjectIndex(projectPath: string): Promise<string[]> {
@@ -103,6 +113,83 @@ async function removeFromProjectIndex(projectPath: string, reviewId: string): Pr
   });
 }
 
+// Drop the index file so the next listing rebuilds from a full scan. A stale-but-
+// readable index would otherwise be served as authoritative and hide a durable save.
+async function invalidateProjectIndex(projectPath: string): Promise<void> {
+  await withProjectIndexLock(projectPath, async () => {
+    try {
+      await unlink(projectIndexPath(projectPath));
+    } catch (error) {
+      if (!isNodeError(error, "ENOENT")) throw error;
+    }
+  });
+}
+
+async function markProjectReconcile(projectPath: string): Promise<void> {
+  await mkdir(PROJECT_INDEX_DIR, { recursive: true, mode: 0o700 });
+  await atomicWriteFile(projectReconcileMarkerPath(projectPath), "");
+}
+
+async function hasReconcileMarker(projectPath: string): Promise<boolean> {
+  try {
+    await stat(projectReconcileMarkerPath(projectPath));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function clearReconcileMarker(projectPath: string): Promise<void> {
+  try {
+    await unlink(projectReconcileMarkerPath(projectPath));
+  } catch (error) {
+    if (!isNodeError(error, "ENOENT")) throw error;
+  }
+}
+
+const isValidUuid = (id: string): boolean => UuidSchema.safeParse(id).success;
+
+// Review ids with a JSON file on disk, gated through UuidSchema to match the
+// full-scan list() (so stray json is never read). An unreadable dir yields [].
+async function readReviewDirIds(): Promise<string[]> {
+  try {
+    const files = await readdir(REVIEWS_DIR);
+    return files
+      .filter((f) => f.endsWith(".json"))
+      .map((f) => f.slice(0, -".json".length))
+      .filter(isValidUuid);
+  } catch {
+    return [];
+  }
+}
+
+// Union of every review id across all project index files. Reconciliation treats
+// only ids absent from this set as orphans.
+async function readAllIndexedIds(): Promise<Set<string>> {
+  const indexed = new Set<string>();
+  let files: string[];
+  try {
+    files = await readdir(PROJECT_INDEX_DIR);
+  } catch {
+    return indexed;
+  }
+  await Promise.all(
+    files
+      .filter((f) => f.endsWith(".json"))
+      .map(async (f) => {
+        try {
+          const parsed = JSON.parse(await readFile(join(PROJECT_INDEX_DIR, f), "utf-8"));
+          if (Array.isArray(parsed)) {
+            for (const id of parsed) if (typeof id === "string") indexed.add(id);
+          }
+        } catch {
+          // Unreadable index just leaves its reviews eligible for orphan reconcile.
+        }
+      }),
+  );
+  return indexed;
+}
+
 const reviewStore = createCollection<SavedReview, ReviewMetadata>({
   name: "review",
   dir: REVIEWS_DIR,
@@ -111,8 +198,8 @@ const reviewStore = createCollection<SavedReview, ReviewMetadata>({
   metadataSchema: ReviewMetadataSchema,
   getMetadata: (review) => review.metadata,
   getId: (review) => review.metadata.id,
-  // Older immutable reviews can hold values the strict write-side schema rejects;
-  // salvage them on read so GET opens and DELETE removes them (F-446).
+  // Salvage older immutable reviews the strict write-side schema rejects, so GET
+  // opens and DELETE removes them (F-446).
   lenientRead: lenientReadSavedReview,
   coerceMetadata: coerceMetadataVocab,
   transformRead: normalizeSavedReviewLineFields,
@@ -147,9 +234,8 @@ function migrateReview(review: SavedReview): SavedReview | null {
   };
 }
 
-// Persist a legacy-migration result under the review's lock, re-reading the
-// current file inside the lock so the background write can never overwrite a
-// just-saved drilldown or resurrect a review that was deleted in the meantime.
+// Re-read inside the lock so this background write can never overwrite a just-saved
+// drilldown or resurrect a review deleted in the meantime.
 function persistMigrationLocked(reviewId: string): Promise<void> {
   return withReviewLock(reviewId, async () => {
     const current = await reviewStore.readDetailed(reviewId);
@@ -212,11 +298,27 @@ export async function saveReview(
 
   const writeResult = await reviewStore.write(savedReview);
   if (!writeResult.ok) return writeResult;
-  // Best-effort: the review file is durable, so index write failure is logged
-  // without failing the save. Listings rebuild only when the index is absent or unreadable.
-  addToProjectIndex(options.projectPath, metadata.id).catch((e) =>
-    log("warn", "reviews_index_add_failed", { error: e }),
-  );
+  // The review file is the durable record; the index is a derived discovery cache.
+  // On append failure, drop the now-stale index so the next listing rebuilds it from
+  // a full scan; the durable save still succeeds.
+  try {
+    await addToProjectIndex(options.projectPath, metadata.id);
+  } catch (error) {
+    log("warn", "reviews_index_add_failed", { error });
+    const invalidated = await invalidateProjectIndex(options.projectPath)
+      .then(() => true)
+      .catch((e) => {
+        log("warn", "reviews_index_invalidate_failed", { error: e });
+        return false;
+      });
+    // If invalidation also failed, the stale index would hide this durable save; drop
+    // a reconcile marker so the next listing merges it back in.
+    if (!invalidated) {
+      await markProjectReconcile(options.projectPath).catch((e) =>
+        log("warn", "reviews_index_mark_reconcile_failed", { error: e }),
+      );
+    }
+  }
   return ok(metadata);
 }
 
@@ -255,7 +357,6 @@ async function migrateMetadataList(items: ReviewMetadata[]): Promise<ReviewMetad
 
         const migrated = migrateReview(reviewResult.value);
         if (migrated) {
-          // Persist in background through the review lock (fire and forget).
           void persistMigrationLocked(metadata.id);
           return migrated.metadata;
         }
@@ -270,35 +371,85 @@ type IndexListing =
   | { kind: "served"; items: ReviewMetadata[]; warnings: string[] }
   | { kind: "rebuild" };
 
-// Serve a project listing from the index's per-review reads. Drops entries whose
-// review file is gone (rewriting the index) and falls back to a full scan only on
-// an index read-error so the two paths never both run for one call.
+// Surface reviews on disk but absent from every index (save-time append and its
+// invalidation both failed) so index-served history no longer depends on a successful
+// save-time index write (F-097). A corrupt orphan becomes a listing warning, mirroring
+// the full-scan list() path, rather than being dropped silently.
+async function reconcileOrphans(
+  projectPath: string,
+): Promise<{ matched: ReviewMetadata[]; warnings: string[] }> {
+  const [dirIds, indexedEverywhere] = await Promise.all([readReviewDirIds(), readAllIndexedIds()]);
+  const orphanIds = dirIds.filter((id) => !indexedEverywhere.has(id));
+  if (orphanIds.length === 0) return { matched: [], warnings: [] };
+
+  const results = await Promise.all(
+    orphanIds.map(async (id) => ({ id, result: await reviewStore.readMetadata(id) })),
+  );
+  const matched: ReviewMetadata[] = [];
+  const warnings: string[] = [];
+  for (const { id, result } of results) {
+    if (!result.ok) {
+      warnings.push(`[reviews] Failed to read ${id}: ${result.error.message}`);
+      continue;
+    }
+    if (result.value.projectPath !== projectPath) continue;
+    matched.push(result.value);
+  }
+  return { matched, warnings };
+}
+
+// Serve a listing from the index's per-review reads. Drops entries whose review file
+// is gone, merges orphans only when the reconcile marker flags a prior stale save,
+// rewrites the index when either changes it, and falls back to a full scan only on an
+// index read-error (so the two paths never both run for one call).
 async function listFromIndex(projectPath: string, indexedIds: string[]): Promise<IndexListing> {
   const items: ReviewMetadata[] = [];
-  const liveIds: string[] = [];
+  const indexIds: string[] = [];
 
   const results = await Promise.all(
     indexedIds.map(async (id) => ({ id, result: await reviewStore.readMetadata(id) })),
   );
   for (const { id, result: readResult } of results) {
     if (!readResult.ok) {
-      // Missing file: drop it from the index and keep serving.
+      // Missing file: drop from the index and keep serving.
       if (readResult.error.code === "NOT_FOUND") continue;
       // Any other read failure means the index can't be trusted; rebuild via scan.
       return { kind: "rebuild" };
     }
     if (readResult.value.projectPath !== projectPath) continue;
     items.push(readResult.value);
-    liveIds.push(id);
+    indexIds.push(id);
   }
 
-  const warnings: string[] = [];
-  if (liveIds.length !== indexedIds.length) {
+  // A healthy per-project index is authoritative: reconcile orphans against every
+  // index only when the marker flags a prior stale save, so normal listings never pay
+  // the O(projects) cross-project scan.
+  const needsReconcile = await hasReconcileMarker(projectPath);
+  const reconciled: { matched: ReviewMetadata[]; warnings: string[] } = needsReconcile
+    ? await reconcileOrphans(projectPath)
+    : { matched: [], warnings: [] };
+  for (const metadata of reconciled.matched) {
+    items.push(metadata);
+    indexIds.push(metadata.id);
+  }
+
+  const warnings: string[] = [...reconciled.warnings];
+  let rewriteFailed = false;
+  if (indexIds.length !== indexedIds.length || reconciled.matched.length > 0) {
     try {
-      await writeProjectIndexLocked(projectPath, liveIds);
+      await writeProjectIndexLocked(projectPath, indexIds);
     } catch (error) {
-      warnings.push(`[reviews] Failed to rewrite project index: ${getErrorMessage(error)}`);
+      log("warn", "reviews_index_rewrite_failed", { error });
+      warnings.push("[reviews] Failed to rewrite project index");
+      rewriteFailed = true;
     }
+  }
+  // Reconcile merged anything durably saved but missing here; drop the marker to
+  // restore the fast path. Keep it on a rewrite failure so the next listing retries.
+  if (needsReconcile && !rewriteFailed) {
+    await clearReconcileMarker(projectPath).catch((error) =>
+      log("warn", "reviews_index_clear_reconcile_failed", { error }),
+    );
   }
 
   return {
@@ -311,8 +462,6 @@ async function listFromIndex(projectPath: string, indexedIds: string[]): Promise
 export async function listReviews(
   projectPath?: string,
 ): Promise<Result<{ items: ReviewMetadata[]; warnings: string[] }, StoreError>> {
-  // Index path: when a project index exists and reads cleanly, serve from it
-  // without touching the full directory scan.
   if (projectPath) {
     const indexedIds = await readProjectIndex(projectPath);
     if (indexedIds.length > 0) {
@@ -324,8 +473,7 @@ export async function listReviews(
     }
   }
 
-  // Full-scan path: global listing, index miss, or index read-error. Rebuild the
-  // project index from the scan.
+  // Full-scan path (global listing, index miss, or read-error); rebuild the index.
   const result = await reviewStore.list();
   if (!result.ok) return result;
 
@@ -341,7 +489,8 @@ export async function listReviews(
         items.map((item) => item.id),
       );
     } catch (error) {
-      warnings.push(`[reviews] Failed to build project index: ${getErrorMessage(error)}`);
+      log("warn", "reviews_index_build_failed", { error });
+      warnings.push("[reviews] Failed to build project index");
     }
   }
 
@@ -356,7 +505,6 @@ export async function getReview(reviewId: string): Promise<Result<SavedReview, S
   const migrated = migrateReview(review);
   if (migrated) {
     if (!result.value.salvaged) {
-      // Persist migrated data in background through the review lock (fire and forget).
       void persistMigrationLocked(review.metadata.id);
     }
     return ok(migrated);
@@ -369,9 +517,8 @@ export async function deleteReview(
   reviewId: string,
   projectPath?: string,
 ): Promise<Result<{ existed: boolean }, StoreError>> {
-  // Serialize the unlink through the review lock so a background legacy-migration
-  // write enqueued just before this delete cannot rename the file back into place
-  // after it is removed.
+  // Serialize the unlink through the review lock so a background migration write
+  // enqueued just before this delete cannot write the file back after removal.
   const result = await withReviewLock(reviewId, () => reviewStore.remove(reviewId));
   if (result.ok && projectPath) {
     removeFromProjectIndex(projectPath, reviewId).catch((e) =>
@@ -381,10 +528,9 @@ export async function deleteReview(
   return result;
 }
 
-// Move a project's stored review history to a new project path (used when a
-// repository directory is moved/renamed). Rewrites each matching review's
-// metadata.projectPath under its lock and migrates the sha256(projectPath) index
-// file to the new key.
+// Move a project's stored review history to a new path (repo dir moved/renamed):
+// rewrite each matching review's metadata.projectPath under its lock and migrate the
+// sha256(projectPath) index file to the new key.
 export async function rekeyProjectReviews(
   oldProjectPath: string,
   newProjectPath: string,

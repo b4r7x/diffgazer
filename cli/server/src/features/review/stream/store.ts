@@ -44,7 +44,9 @@ export function buildScopeKey(params: {
 }): string {
   const parts: string[] = [];
   if (params.files && params.files.length > 0) {
-    parts.push(`f:${[...params.files].sort().join(",")}`);
+    // JSON-encode the file list so filenames containing the "," or "|" delimiters
+    // cannot make two different selections collapse onto the same scope key.
+    parts.push(`f:${JSON.stringify([...params.files].sort())}`);
   }
   if (params.lenses && params.lenses.length > 0) {
     parts.push(`l:${[...params.lenses].sort().join(",")}`);
@@ -73,20 +75,22 @@ export function buildReviewConfigKey(params: {
   return parts.join("|");
 }
 
+// A `status-only` session cannot prove its diff content is unchanged (the repo hash
+// stays constant across edits that keep the same porcelain status line), so it must
+// never be deduped onto or cancelled by identity — treated like `unavailable` for matching.
+function isContentBlindStatusOnly(statusHashKind: StatusHashKind): boolean {
+  return statusHashKind === "status-only";
+}
+
 const MAX_SESSIONS = 50;
 const MAX_EVENTS_PER_SESSION = 10_000;
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 const activeSessions = new Map<string, ActiveSession>();
 
-/**
- * Builds the non-terminal notice replayed/streamed to the client when the
- * per-session event cap is hit and progress events start being dropped. It is a
- * `chunk` event because that is the only union member with a free-text payload
- * and a no-op effect on UI step/agent state. The client forwards it through the
- * `onChunk` option (libs/core api/review.ts → use-review-stream.ts) and surfaces
- * it as a user-visible notice, so the truncation is observable instead of silent.
- */
+// Non-terminal cap notice. A `chunk` because that is the only union member with a
+// free-text payload and no effect on UI step/agent state; the client surfaces it as a
+// user-visible notice so the truncation is observable.
 const CAP_WARNING_CONTENT = `[diffgazer] Event cap (${MAX_EVENTS_PER_SESSION}) reached; subsequent progress events may be incomplete.`;
 
 function capWarningEvent(): FullReviewStreamEvent {
@@ -99,13 +103,9 @@ function isCapWarningEvent(event: FullReviewStreamEvent | undefined): boolean {
 
 type StoreEventResult = { stored: true } | { stored: false; firstDrop: boolean };
 
-/**
- * Appends an event to the session buffer, bounding growth at
- * `MAX_EVENTS_PER_SESSION`. Terminal events overwrite the last slot so the
- * outcome is always observable. Non-terminal events past the cap are dropped;
- * the first such drop is reported via `firstDrop` so the caller can emit a
- * single client-facing cap notice.
- */
+// Append to the session buffer, bounded at MAX_EVENTS_PER_SESSION. Terminal events
+// past the cap overwrite an older slot so the outcome stays observable; non-terminal
+// ones are dropped, and the first drop is reported via `firstDrop`.
 function storeSessionEvent(session: ActiveSession, event: FullReviewStreamEvent): StoreEventResult {
   session.lastEventAt = new Date();
   if (session.events.length < MAX_EVENTS_PER_SESSION) {
@@ -126,11 +126,9 @@ function storeSessionEvent(session: ActiveSession, event: FullReviewStreamEvent)
     return { stored: false, firstDrop };
   }
 
-  // Terminal events must always be observable. They overwrite an older progress
-  // slot rather than the final slot, because once the cap is hit the final slot
-  // holds the cap warning (appended by addEvent). Overwriting it would hide the
-  // truncation notice from late SSE replays. When no warning has been appended
-  // yet, the final slot is a progress event and is safe to overwrite.
+  // Overwrite an older slot, not the final one: once the cap is hit the final slot may
+  // hold the cap warning, and overwriting it would hide the truncation notice from late
+  // SSE replays.
   const lastIndex = session.events.length - 1;
   const overwriteIndex = isCapWarningEvent(session.events[lastIndex])
     ? Math.max(lastIndex - 1, 0)
@@ -201,12 +199,9 @@ function evictOldestSession(): void {
   }
 }
 
-/**
- * Terminates sessions idle past {@link SESSION_TIMEOUT_MS}, emitting a
- * SESSION_TIMEOUT error on each one's SSE stream. Runs on the 5-minute cleanup
- * interval; exported so the timeout-emission path is drivable in tests (the
- * module-eval interval itself is not intercepted by vitest fake timers).
- */
+// Terminate sessions idle past SESSION_TIMEOUT_MS with a SESSION_TIMEOUT error. Runs on
+// the 5-minute cleanup interval; exported so the timeout path is drivable in tests (the
+// module-eval interval is not intercepted by vitest fake timers).
 export function cleanupStaleSessions(): void {
   const now = Date.now();
   for (const [id, session] of activeSessions) {
@@ -228,12 +223,9 @@ let cleanupInterval: ReturnType<typeof setInterval> | null = setInterval(
 );
 cleanupInterval.unref();
 
-/**
- * Tears down all in-memory session state for server shutdown/SIGTERM and test
- * teardown: clears the stale-session cleanup interval, aborts every active
- * session's in-flight review work, emits a terminal error to its subscribers,
- * and clears subscribers/listeners so no SSE client keeps the process alive.
- */
+// Tear down all in-memory session state for shutdown/SIGTERM and test teardown: clear
+// the cleanup interval, abort in-flight work, emit a terminal error to subscribers, and
+// clear subscribers/listeners so no SSE client keeps the process alive.
 export function shutdownSessions(): void {
   if (cleanupInterval) {
     clearInterval(cleanupInterval);
@@ -322,10 +314,8 @@ export function addEvent(reviewId: string, event: FullReviewStreamEvent): void {
     return;
   }
 
-  // Event was dropped at the cap. On the first drop, surface a single
-  // non-terminal notice so the client knows the stream is incomplete instead
-  // of the events vanishing silently. The notice is stored (one-time overflow
-  // past the cap) so late SSE replays still see it, then streamed live.
+  // First drop at the cap: store one notice (one-time overflow past the cap) so late
+  // SSE replays see it, then stream it live.
   if (result.firstDrop) {
     const notice = capWarningEvent();
     session.events.push(notice);
@@ -407,6 +397,9 @@ export function cancelStaleSessionsForProjectMode(
     if (session.isComplete) continue;
     if (session.projectPath !== projectPath) continue;
     if (session.mode !== mode) continue;
+    // A content-blind status-only session has no verifiable identity, so it is
+    // neither cancelled as stale nor kept as a proof of unchanged state.
+    if (isContentBlindStatusOnly(session.statusHashKind)) continue;
     // Only same-kind hashes are comparable; a content-blind hash cannot prove a
     // content-full session changed, so leave cross-kind sessions untouched.
     if (session.statusHashKind !== statusHashKind) continue;
@@ -466,6 +459,11 @@ export function getActiveSessionForProject(
   }
   let newestSession: ActiveSession | undefined;
   for (const session of activeSessions.values()) {
+    // A status-only session cannot prove its diff content is unchanged, so it
+    // must never be served as a dedupe/reload match.
+    if (isContentBlindStatusOnly(session.statusHashKind)) {
+      continue;
+    }
     const matches =
       session.projectPath === projectPath &&
       session.headCommit === options.headCommit &&

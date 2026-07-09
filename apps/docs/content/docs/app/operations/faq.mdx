@@ -7,7 +7,7 @@ These are the questions people ask most often, with a link to the page that cove
 
 ### Does my code leave my machine?
 
-No. Diffgazer runs an embedded server on your own machine and reviews your code locally, so your source and your API keys never reach a service we run. The only thing that ever crosses the network is the review request you send to your own model provider, under your own account, when you ask for a review. See [Privacy and security](/app/concepts/privacy) for how that holds up layer by layer.
+Only when you ask for a review, and only to the model provider you chose. Diffgazer runs an embedded server on your own machine and never relays anything through a service we run, so your source and your API keys stay off our infrastructure. But a review request is not empty: it carries your diff and the prompt built around it straight to your provider, under your own account and that provider's data policy. Nothing leaves until you start a review. See [Privacy and security](/app/concepts/privacy) for how that holds up layer by layer.
 
 ### Which providers can I use?
 

@@ -1,4 +1,4 @@
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, relative } from "node:path";
 import pc from "picocolors";
 import { cleanEmptyDirs, ensureWithinAnyDir } from "../fs.js";
@@ -52,6 +52,17 @@ export interface ExpandRequestedNamesResult {
   blocked: BlockedRemoval[];
 }
 
+export interface DerivedRemovalPlan {
+  // Files to rewrite (e.g. styles.css with removed chunks stripped). Applied
+  // only after validation against the allowed base dirs.
+  writes: Array<{ targetPath: string; content: string }>;
+  // Notices for artifacts kept because their on-disk content drifted.
+  preservedNotices: string[];
+  // Names kept tracked because a derived artifact was preserved; excluded from
+  // the "Removed …" summary so it does not contradict the preservation notice.
+  retainedNames?: string[];
+}
+
 export interface RunRemoveWorkflowOptions<TItem, TConfig> {
   cwd: string;
   names: string[];
@@ -77,17 +88,23 @@ export interface RunRemoveWorkflowOptions<TItem, TConfig> {
   resolveAllowedBaseDirs: (ctx: { cwd: string; config: TConfig }) => string[];
   updateManifest: (ctx: { cwd: string; removedNames: string[] }) => void;
   findOrphanedDeps?: (ctx: { removedNames: string[]; cwd: string; config: TConfig }) => string[];
-  // Expands user-requested names with cascade-orphaned transitives and surfaces
-  // items kept because a retained item still depends on them. Reported items are
-  // skipped, not failed.
+  // Expands requested names with cascade-orphaned transitives; items still
+  // depended on are reported as skipped, not failed.
   expandRequestedNames?: (ctx: {
     cwd: string;
     config: TConfig;
     names: string[];
   }) => ExpandRequestedNamesResult;
-  // Runs after file removal completes successfully. Used for derived artifacts
-  // (e.g. CSS chunks) whose ownership is tracked in the manifest.
-  onAfterRemove?: (ctx: { cwd: string; config: TConfig; removedNames: string[] }) => void;
+  // Plans derived-artifact mutations once the removed set is known; the workflow
+  // previews them under --dry-run and applies them on a real run. The callback
+  // MUST NOT write to disk itself.
+  onAfterRemove?: (ctx: {
+    cwd: string;
+    config: TConfig;
+    removedNames: string[];
+    force: boolean;
+    // biome-ignore lint/suspicious/noConfusingVoidType: `void` (not `undefined`) keeps a plain `() => void` handler assignable here; the callback may return a plan or nothing.
+  }) => DerivedRemovalPlan | void;
 }
 
 interface ResolveCtx<TItem, TConfig> {
@@ -198,19 +215,46 @@ function deleteFiles(cwd: string, files: Set<string>, allowedBaseDirs: string[])
   return { removed, failures };
 }
 
-async function confirmRemoval(files: Set<string>, yes: boolean, dryRun: boolean): Promise<boolean> {
-  if (dryRun) {
-    info("(dry run - no changes made)");
-    return false;
-  }
-  if (yes) return true;
+// Previews (dry-run) or applies the derived-artifact mutations. Writes are
+// validated against the allowed base dirs so a callback can never rewrite a
+// file outside the owned directories.
+function runDerivedRemoval<TItem, TConfig>(
+  options: RunRemoveWorkflowOptions<TItem, TConfig>,
+  config: TConfig,
+  removedNames: string[],
+): string[] {
+  const plan = options.onAfterRemove?.({
+    cwd: options.cwd,
+    config,
+    removedNames,
+    force: options.force,
+  });
+  if (!plan) return [];
 
-  const proceed = await promptConfirm(`Remove ${files.size} file(s)?`, false);
-  if (!proceed) {
-    info("Cancelled.");
-    return false;
+  for (const notice of plan.preservedNotices) info(notice);
+
+  if (options.dryRun) {
+    for (const write of plan.writes) {
+      info(`Would update ${relative(options.cwd, write.targetPath)}`);
+    }
+    return plan.retainedNames ?? [];
   }
-  return true;
+
+  const allowedBaseDirs = options.resolveAllowedBaseDirs({ cwd: options.cwd, config });
+  for (const write of plan.writes) {
+    ensureWithinAnyDir(write.targetPath, allowedBaseDirs);
+    writeFileSync(write.targetPath, write.content);
+  }
+  return plan.retainedNames ?? [];
+}
+
+function announcedRemovedNames(removedNames: string[], retainedNames: string[]): string[] {
+  const retained = new Set(retainedNames);
+  return removedNames.filter((name) => !retained.has(name));
+}
+
+function joinAnnounced(names: string[]): string {
+  return names.length > 0 ? ` (${names.join(", ")})` : "";
 }
 
 function reportOrphanedDeps<TConfig>(opts: {
@@ -226,23 +270,26 @@ function reportOrphanedDeps<TConfig>(opts: {
   }
 }
 
-function finalizeRemoval<TConfig>(opts: {
-  cwd: string;
-  names: string[];
-  removed: number;
-  dirs: Set<string>;
-  config: TConfig;
-  updateManifest: (ctx: { cwd: string; removedNames: string[] }) => void;
-  findOrphanedDeps?: (ctx: { removedNames: string[]; cwd: string; config: TConfig }) => string[];
-  onAfterRemove?: (ctx: { cwd: string; config: TConfig; removedNames: string[] }) => void;
-}): void {
-  cleanEmptyDirs([...opts.dirs]);
-  opts.onAfterRemove?.({ cwd: opts.cwd, config: opts.config, removedNames: opts.names });
-  opts.updateManifest({ cwd: opts.cwd, removedNames: opts.names });
-  reportOrphanedDeps(opts);
+function finalizeRemoval<TItem, TConfig>(
+  options: RunRemoveWorkflowOptions<TItem, TConfig>,
+  config: TConfig,
+  removed: number,
+  dirs: Set<string>,
+  removedNames: string[],
+): void {
+  cleanEmptyDirs([...dirs]);
+  const retainedNames = runDerivedRemoval(options, config, removedNames);
+  options.updateManifest({ cwd: options.cwd, removedNames });
+  reportOrphanedDeps({
+    cwd: options.cwd,
+    names: removedNames,
+    config,
+    findOrphanedDeps: options.findOrphanedDeps,
+  });
 
   newline();
-  success(`Removed ${opts.removed} file(s) (${opts.names.join(", ")}).`);
+  const announced = announcedRemovedNames(removedNames, retainedNames);
+  success(`Removed ${removed} file(s)${joinAnnounced(announced)}.`);
   newline();
 }
 
@@ -283,8 +330,20 @@ async function executeRemoval<TItem, TConfig>(
 ): Promise<void> {
   const { cwd, yes, dryRun } = options;
   showRemovePreview(cwd, files);
-  const shouldProceed = await confirmRemoval(files, yes, dryRun);
-  if (!shouldProceed) return;
+
+  if (dryRun) {
+    runDerivedRemoval(options, config, removedNames);
+    info("(dry run - no changes made)");
+    return;
+  }
+
+  if (!yes) {
+    const proceed = await promptConfirm(`Remove ${files.size} file(s)?`, false);
+    if (!proceed) {
+      info("Cancelled.");
+      return;
+    }
+  }
 
   const allowedBaseDirs = options.resolveAllowedBaseDirs({ cwd, config });
   const { removed, failures } = deleteFiles(cwd, files, allowedBaseDirs);
@@ -296,16 +355,7 @@ async function executeRemoval<TItem, TConfig>(
     return;
   }
 
-  finalizeRemoval({
-    cwd,
-    names: removedNames,
-    removed,
-    dirs,
-    config,
-    updateManifest: options.updateManifest,
-    findOrphanedDeps: options.findOrphanedDeps,
-    onAfterRemove: options.onAfterRemove,
-  });
+  finalizeRemoval(options, config, removed, dirs, removedNames);
 }
 
 function reportBlocked(blocked: BlockedRemoval[]): void {
@@ -345,7 +395,7 @@ export async function runRemoveWorkflow<TItem, TConfig>(
   if (files.size === 0 && removedNames.length > 0) {
     // All owned files are already gone (stale entries). Clean up the manifest.
     if (!options.dryRun) {
-      options.onAfterRemove?.({ cwd: options.cwd, config, removedNames });
+      const retainedNames = runDerivedRemoval(options, config, removedNames);
       options.updateManifest({ cwd: options.cwd, removedNames });
       reportOrphanedDeps({
         cwd: options.cwd,
@@ -354,13 +404,16 @@ export async function runRemoveWorkflow<TItem, TConfig>(
         findOrphanedDeps: options.findOrphanedDeps,
       });
       newline();
+      const announced = announcedRemovedNames(removedNames, retainedNames);
       success(
-        `Cleaned ${removedNames.length} stale manifest entry/entries (${removedNames.join(", ")}).`,
+        `Cleaned ${announced.length} stale manifest entry/entries${joinAnnounced(announced)}.`,
       );
       newline();
     } else {
+      const retainedNames = runDerivedRemoval(options, config, removedNames);
+      const announced = announcedRemovedNames(removedNames, retainedNames);
       info(
-        `Would clean ${removedNames.length} stale manifest entry/entries (${removedNames.join(", ")}).`,
+        `Would clean ${announced.length} stale manifest entry/entries${joinAnnounced(announced)}.`,
       );
       info("(dry run - no changes made)");
     }

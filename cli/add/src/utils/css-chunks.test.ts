@@ -4,7 +4,11 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { buildStylesContent } from "../commands/init.js";
 import { getRegistry, type ResolvedConfig } from "../context.js";
-import { buildExpectedChunkContentsForItem, planComponentCss } from "./css-chunks.js";
+import {
+  buildExpectedChunkContentsForItem,
+  planComponentCss,
+  removeCssChunks,
+} from "./css-chunks.js";
 
 let root: string;
 
@@ -13,6 +17,23 @@ const TAILWIND_CSS_IMPORT_RE =
 
 function countOccurrences(content: string, needle: string): number {
   return content.split(needle).length - 1;
+}
+
+function styledConfig(): ResolvedConfig {
+  return {
+    aliases: {
+      components: "@/components/ui",
+      utils: "@/lib/utils",
+      lib: "@/lib",
+      hooks: "@/hooks",
+    },
+    rsc: false,
+    componentsFsPath: "src/components/ui",
+    hooksFsPath: "src/hooks",
+    libFsPath: "src/lib",
+    stylesFsPath: "src/styles",
+    tailwind: { css: "src/styles/styles.css" },
+  };
 }
 
 beforeEach(() => {
@@ -101,6 +122,56 @@ describe("planComponentCss", () => {
     ).toBe(1);
   });
 
+  test("leaves a present-but-drifted chunk untouched without --overwrite", () => {
+    mkdirSync(join(root, "src/styles"), { recursive: true });
+    const stylesPath = join(root, "src/styles/styles.css");
+    writeFileSync(stylesPath, "/* base */\n");
+
+    const config = styledConfig();
+    const initial = planComponentCss(["dialog-shell"], root, config);
+    if (!initial.fileOp) throw new Error("Expected dialog-shell to add a CSS chunk.");
+    writeFileSync(stylesPath, initial.fileOp.content);
+    const [hash] = initial.chunksByItem.get("ui/dialog-shell") ?? [];
+    if (!hash) throw new Error("Expected dialog-shell to record a chunk hash.");
+
+    const drifted = readFileSync(stylesPath, "utf-8").replace(
+      `/* dgadd:css-end ${hash} */`,
+      `  --user-drift: teal;\n/* dgadd:css-end ${hash} */`,
+    );
+    writeFileSync(stylesPath, drifted);
+
+    const replan = planComponentCss(["dialog-shell"], root, config, false);
+    expect(replan.fileOp, "a drifted chunk is not repaired without --overwrite").toBeNull();
+  });
+
+  test("repairs a present-but-drifted chunk under --overwrite while preserving other content", () => {
+    mkdirSync(join(root, "src/styles"), { recursive: true });
+    const stylesPath = join(root, "src/styles/styles.css");
+    writeFileSync(stylesPath, "/* base */\n.brand { color: red; }\n");
+
+    const config = styledConfig();
+    const initial = planComponentCss(["dialog-shell"], root, config);
+    if (!initial.fileOp) throw new Error("Expected dialog-shell to add a CSS chunk.");
+    writeFileSync(stylesPath, initial.fileOp.content);
+    const [hash] = initial.chunksByItem.get("ui/dialog-shell") ?? [];
+    if (!hash) throw new Error("Expected dialog-shell to record a chunk hash.");
+
+    const pristineBody = readFileSync(stylesPath, "utf-8");
+    const drifted = pristineBody.replace(
+      `/* dgadd:css-end ${hash} */`,
+      `  --user-drift: teal;\n/* dgadd:css-end ${hash} */`,
+    );
+    writeFileSync(stylesPath, drifted);
+
+    const replan = planComponentCss(["dialog-shell"], root, config, true);
+    expect(replan.fileOp, "a drifted chunk is repaired under --overwrite").not.toBeNull();
+    if (!replan.fileOp) throw new Error("Expected a repair fileOp.");
+
+    expect(replan.fileOp.content).not.toContain("--user-drift: teal;");
+    expect(replan.fileOp.content).toContain(".brand { color: red; }");
+    expect(countOccurrences(replan.fileOp.content, `/* dgadd:css ${hash} */`)).toBe(1);
+  });
+
   test("shipped styles seed and CSS chunks do not import Tailwind", () => {
     const registry = getRegistry();
     const cssPayloads = [
@@ -119,5 +190,67 @@ describe("planComponentCss", () => {
         .filter(({ content }) => TAILWIND_CSS_IMPORT_RE.test(content))
         .map(({ label }) => label),
     ).toEqual([]);
+  });
+});
+
+describe("removeCssChunks", () => {
+  function seedChunk(config: ResolvedConfig): { stylesPath: string; hash: string } {
+    mkdirSync(join(root, "src/styles"), { recursive: true });
+    const stylesPath = join(root, "src/styles/styles.css");
+    writeFileSync(stylesPath, "/* base */\n");
+    const plan = planComponentCss(["dialog-shell"], root, config);
+    if (!plan.fileOp) throw new Error("Expected dialog-shell to add a CSS chunk.");
+    writeFileSync(stylesPath, plan.fileOp.content);
+    const [hash] = plan.chunksByItem.get("ui/dialog-shell") ?? [];
+    if (!hash) throw new Error("Expected dialog-shell to record a chunk hash.");
+    return { stylesPath, hash };
+  }
+
+  function editChunkBody(stylesPath: string, hash: string): void {
+    const edited = readFileSync(stylesPath, "utf-8").replace(
+      `/* dgadd:css-end ${hash} */`,
+      `  --user-edit: teal;\n/* dgadd:css-end ${hash} */`,
+    );
+    writeFileSync(stylesPath, edited);
+  }
+
+  test("removes a pristine managed chunk", () => {
+    const config = styledConfig();
+    const { hash } = seedChunk(config);
+
+    const result = removeCssChunks(new Set([hash]), root, config);
+
+    expect(result.fileOp).not.toBeNull();
+    expect(result.removedHashes).toContain(hash);
+    expect(result.modifiedHashes).toEqual([]);
+    expect(result.fileOp?.content).not.toContain(hash);
+  });
+
+  test("preserves an edited chunk instead of deleting the user's work", () => {
+    const config = styledConfig();
+    const { stylesPath, hash } = seedChunk(config);
+    editChunkBody(stylesPath, hash);
+
+    const result = removeCssChunks(new Set([hash]), root, config);
+
+    expect(result.fileOp, "a drifted chunk must not produce a deleting mutation").toBeNull();
+    expect(result.removedHashes).toEqual([]);
+    expect(result.modifiedHashes).toContain(hash);
+
+    if (result.fileOp) writeFileSync(stylesPath, result.fileOp.content);
+    expect(readFileSync(stylesPath, "utf-8")).toContain("--user-edit: teal;");
+  });
+
+  test("force removes an edited chunk when the user overrides", () => {
+    const config = styledConfig();
+    const { stylesPath, hash } = seedChunk(config);
+    editChunkBody(stylesPath, hash);
+
+    const result = removeCssChunks(new Set([hash]), root, config, true);
+
+    expect(result.fileOp).not.toBeNull();
+    expect(result.removedHashes).toContain(hash);
+    expect(result.fileOp?.content).not.toContain(hash);
+    expect(result.fileOp?.content).not.toContain("--user-edit: teal;");
   });
 });

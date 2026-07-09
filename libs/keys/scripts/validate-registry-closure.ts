@@ -3,6 +3,7 @@ import { dirname, join, posix, resolve } from "node:path";
 import { extractImportSpecifiers, RELATIVE_JS_IMPORT_RE } from "@diffgazer/registry";
 import type { Registry, RegistryItem } from "@diffgazer/registry/schemas";
 import { REGISTRY_ITEM_TYPE, RegistrySchema } from "@diffgazer/registry/schemas";
+import { createKeysSourceContentTransform } from "./transform-public-registry-imports.js";
 
 interface ValidationError {
   code: string;
@@ -235,6 +236,54 @@ function validateNoJsImportsInPublicContent(publicDir: string): ValidationError[
   return errors;
 }
 
+function validateContentFreshness(publicDir: string, registryRoot: string): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const transform = createKeysSourceContentTransform(registryRoot);
+
+  for (const entry of readdirSync(publicDir)) {
+    if (!entry.endsWith(".json") || entry === "registry.json") continue;
+
+    const itemPath = join(publicDir, entry);
+    let item: RegistryItem;
+    try {
+      item = parseRegistryEntry(JSON.parse(readFileSync(itemPath, "utf-8")));
+    } catch {
+      errors.push(validationError("REGISTRY_STALE_CONTENT", entry, `Failed to parse ${entry}`));
+      continue;
+    }
+
+    for (const file of item.files) {
+      if (typeof file.content !== "string") continue;
+
+      const sourcePath = resolve(registryRoot, file.path);
+      if (!existsSync(sourcePath)) {
+        errors.push(
+          validationError(
+            "REGISTRY_STALE_CONTENT",
+            item.name,
+            `Source file not found for embedded content: ${file.path}`,
+          ),
+        );
+        continue;
+      }
+
+      const source = readFileSync(sourcePath, "utf-8");
+      const expected = transform({ itemName: item.name, filePath: file.path, content: source });
+      if (expected !== file.content) {
+        errors.push(
+          validationError(
+            "REGISTRY_STALE_CONTENT",
+            item.name,
+            `Embedded content for ${file.path} is stale; run "pnpm --filter @diffgazer/keys build:shadcn" to regenerate`,
+          ),
+        );
+      }
+    }
+  }
+
+  return errors;
+}
+
 export function validateRegistryClosure(registryPath: string): boolean {
   const registryRoot = resolve(registryPath, "..", "..");
 
@@ -255,6 +304,7 @@ export function validateRegistryClosure(registryPath: string): boolean {
   if (existsSync(publicDir)) {
     errors.push(...validatePublicTargetClosure(publicDir));
     errors.push(...validateNoJsImportsInPublicContent(publicDir));
+    errors.push(...validateContentFreshness(publicDir, registryRoot));
   }
 
   if (errors.length === 0) {
@@ -284,9 +334,13 @@ export function validateRegistryClosure(registryPath: string): boolean {
   return false;
 }
 
-export { validatePublicTargetClosure, validateNoJsImportsInPublicContent, extractRelativeImports };
+export {
+  validatePublicTargetClosure,
+  validateNoJsImportsInPublicContent,
+  validateContentFreshness,
+  extractRelativeImports,
+};
 
-// Run validation if invoked directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   const registryPath = resolve(import.meta.dirname, "..", "registry", "registry.json");
   const success = validateRegistryClosure(registryPath);

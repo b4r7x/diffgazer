@@ -16,7 +16,6 @@ const TONE_RULES: ReadonlyArray<readonly [RegExp, CommandPaletteItemTone]> = [
   [/^(run|exec|build|test|deploy|create|new|add|export|import|copy)\b/i, "action"],
 ];
 
-/** categorize utility. */
 export function categorize(value: string): CommandPaletteItemTone {
   const trimmed = value.trim();
   for (const [pattern, tone] of TONE_RULES) {
@@ -25,7 +24,6 @@ export function categorize(value: string): CommandPaletteItemTone {
   return "neutral";
 }
 
-/** match positions utility. */
 export function matchPositions(value: string, search: string): number[] {
   if (!search) return [];
   const lowerValue = value.toLowerCase();

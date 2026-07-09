@@ -2,7 +2,7 @@
 
 import { type RefObject, useEffect, useEffectEvent, useRef, useState } from "react";
 import { DECLINE } from "../core/normalize-key-input.js";
-import { isEditableElement, isHTMLElement } from "../dom/element-guards.js";
+import { getComposedEventTarget, isEditableElement, isHTMLElement } from "../dom/element-guards.js";
 import { containsActiveElement, getFirstFocusableElement, isFocusable } from "../dom/focusable.js";
 import type { UseKeyOptions } from "./use-key.js";
 import { useKey } from "./use-key.js";
@@ -193,7 +193,6 @@ export function useFocusZone<T extends string>(
     const cycle = validatedTabCycle;
     const idx = cycle.indexOf(currentZone);
     if (idx === -1) {
-      // Current zone is not part of the cycle; Tab enters the cycle from either end.
       const next = delta > 0 ? cycle[0] : cycle[cycle.length - 1];
       if (next) setZoneValue(next);
       return;
@@ -212,9 +211,6 @@ export function useFocusZone<T extends string>(
     preventDefault,
   });
 
-  // Resolve every container that anchors this focus zone (per-zone focus targets
-  // plus an explicit containerRef). Returns null when no containment is
-  // resolvable, in which case Tab keeps its legacy document-wide cycle.
   const getTabContainers = useEffectEvent((): HTMLElement[] | null => {
     const containers: HTMLElement[] = [];
     if (focus) {
@@ -229,15 +225,13 @@ export function useFocusZone<T extends string>(
   });
 
   const handleTabCycle = useEffectEvent((delta: 1 | -1, event: KeyboardEvent) => {
-    const target = event.composedPath()[0] ?? event.target;
+    const target = getComposedEventTarget(event);
     if (tabCycleScope === "document") {
-      // Editable targets keep native Tab even when allowInInput lets keys through.
       if (isEditableElement(target)) return DECLINE;
       const boundary = resolveFocusTargetRef(tabCycleBoundary);
       if (boundary) {
         const insideBoundary =
-          (isHTMLElement(target) && boundary.contains(target)) ||
-          containsActiveElement(boundary);
+          (isHTMLElement(target) && boundary.contains(target)) || containsActiveElement(boundary);
         if (!insideBoundary) return DECLINE;
       }
     } else {
@@ -248,7 +242,6 @@ export function useFocusZone<T extends string>(
             (isHTMLElement(target) && container.contains(target)) ||
             containsActiveElement(container),
         );
-        // Outside every container: decline so native Tab proceeds (no preventDefault).
         if (!inside) return DECLINE;
       }
     }
@@ -293,10 +286,6 @@ export function useFocusZone<T extends string>(
 
   const attachedFocusinDocsRef = useRef(new Map<Document, (event: FocusEvent) => void>());
 
-  // The listener set is reconciled when the resolvable document set actually
-  // changes (e.g. a cross-document target mounts late). A keystroke never changes
-  // that set, so the listener is not churned per keypress; per-event container
-  // resolution lives in `syncZoneFromFocusTarget`.
   const reconcileFocusinListeners = useEffectEvent(() => {
     const attached = attachedFocusinDocsRef.current;
     if (!enabled || !focus) {

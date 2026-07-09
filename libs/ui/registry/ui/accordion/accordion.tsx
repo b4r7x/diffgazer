@@ -16,9 +16,7 @@ export type {
 const ACCORDION_ROOT_ATTRIBUTE = "data-diffgazer-accordion-root";
 
 function getNavigableTriggers(container: HTMLElement | null): HTMLElement[] {
-  // Use skipDisabled: false because aria-disabled non-collapsible triggers
-  // remain in the roving tab order per APG. Filter explicit HTML/data-disabled
-  // ourselves.
+  // aria-disabled non-collapsible triggers stay in the roving order (APG); only real disabled are filtered here.
   return getNavigationItems(container, {
     type: "button",
     skipDisabled: false,
@@ -31,8 +29,16 @@ function getNavigableTriggers(container: HTMLElement | null): HTMLElement[] {
   });
 }
 
+function getDeepActiveElement(root: Document): Element | null {
+  let active = root.activeElement;
+  while (active?.shadowRoot?.activeElement) {
+    active = active.shadowRoot.activeElement;
+  }
+  return active;
+}
+
 function containsActiveElement(el: HTMLElement): boolean {
-  const activeElement = el.ownerDocument.activeElement;
+  const activeElement = getDeepActiveElement(el.ownerDocument);
   const View = el.ownerDocument.defaultView;
   return Boolean(View && activeElement instanceof View.HTMLElement && el.contains(activeElement));
 }

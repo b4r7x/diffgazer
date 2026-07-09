@@ -98,14 +98,12 @@ export function migrateSecretsStorage(
       const previousResult = readKeyringSecret(getApiKeyName(providerId));
       if (!previousResult.ok) return previousResult;
 
-      // Phase 1: Write secret to keyring
       const writeResult = writeKeyringSecret(getApiKeyName(providerId), apiKey);
       if (!writeResult.ok) {
         rollbackKeyringWrites(writtenProviders);
         return writeResult;
       }
 
-      // Phase 2: Verify the secret can be read back
       const verifyResult = readKeyringSecret(getApiKeyName(providerId));
       if (!verifyResult.ok || verifyResult.value !== apiKey) {
         rollbackKeyringWrites(writtenProviders);
@@ -154,7 +152,6 @@ export function migrateSecretsStorage(
     const keyringMigrated: string[] = [];
     for (const provider of configState.providers) {
       if (!provider.hasApiKey) continue;
-      // Skip providers that have env refs -- already handled above
       if (nextSecrets[provider.provider]) continue;
       const secretResult = readKeyringSecret(getApiKeyName(provider.provider));
       if (!secretResult.ok) return secretResult;

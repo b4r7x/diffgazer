@@ -215,7 +215,6 @@ export function Button(props: ButtonProps): ReactNode {
     });
   }
 
-  // The render-function form is handled above, so props is narrowed and children is element content here.
   const content = props.children;
 
   const spinnerSize: "sm" | "md" | "lg" =

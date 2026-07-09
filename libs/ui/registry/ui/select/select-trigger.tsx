@@ -75,11 +75,10 @@ export function SelectTrigger({
       ? toOptionId(listboxId, highlighted)
       : undefined;
   const composedDescribedBy = mergeIds(ariaDescribedByProp, ariaDescribedBy);
-  const composedLabelledBy = ariaLabelledByProp ?? ariaLabelledBy;
+  const composedLabelledBy = mergeIds(ariaLabelledByProp, ariaLabelledBy);
 
-  // APG closed-combobox table. The open listbox owns navigation/typeahead, so
-  // these only apply while closed; the searchable trigger is a plain toggle (its
-  // search input is the combobox), so Home/End/typeahead are skipped there.
+  // APG closed-combobox keys: only while closed (the open listbox owns nav) and
+  // not searchable (its search input is the combobox).
   const highlightFirstOrLast = (edge: "first" | "last") => {
     const visible = getVisibleEnabledOptions(options, searchQuery);
     const target = edge === "first" ? visible[0] : visible.at(-1);

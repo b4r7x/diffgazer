@@ -10,6 +10,22 @@ import { CodeBlock } from "./index";
 
 const lowlight = createLowlight(common);
 
+interface Deferred {
+  promise: Promise<void>;
+  resolve: () => void;
+  reject: (error: unknown) => void;
+}
+
+function createDeferred(): Deferred {
+  let resolve: () => void = () => {};
+  let reject: (error: unknown) => void = () => {};
+  const promise = new Promise<void>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 describe("CodeBlock", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -213,10 +229,6 @@ describe("CodeBlock", () => {
     });
 
     it('propagates chrome="dots" via data-chrome regardless of variant', () => {
-      // jsdom does not compute CSS, so we assert the DOM contract that the
-      // code-block/code-block.css selector targets: the figure carries
-      // data-chrome="dots" on a non-terminal variant, which is the public
-      // hook the chrome styles attach to.
       const { container } = render(
         <CodeBlock variant="hairline" chrome="dots">
           <CodeBlock.Header>
@@ -453,11 +465,50 @@ describe("CodeBlock", () => {
 
       await waitFor(() => expect(button).toHaveTextContent("Done"));
     });
+
+    it("does not announce a stale success after the latest copy fails", async () => {
+      const user = setupClipboardUser();
+      const attemptA = createDeferred();
+      const attemptB = createDeferred();
+      writeText.mockReturnValueOnce(attemptA.promise).mockReturnValueOnce(attemptB.promise);
+      const onCopy = vi.fn();
+      const onCopyError = vi.fn();
+
+      const { container } = render(
+        <CodeBlock>
+          <CodeBlock.Header>
+            <CodeBlock.CopyButton source="x" onCopy={onCopy} onCopyError={onCopyError} />
+          </CodeBlock.Header>
+          <CodeBlock.Content>{"x"}</CodeBlock.Content>
+        </CodeBlock>,
+      );
+
+      const button = screen.getByRole("button", { name: "Copy code to clipboard" });
+      const live = container.querySelector('[aria-live="polite"]');
+
+      await user.click(button);
+      await user.click(button);
+
+      await act(async () => {
+        attemptB.reject(new Error("denied"));
+        await attemptB.promise.catch(() => {});
+      });
+      await waitFor(() => expect(onCopyError).toHaveBeenCalledTimes(1));
+      expect(button).toHaveAttribute("data-state", "idle");
+      expect(live?.textContent).toBe("");
+
+      await act(async () => {
+        attemptA.resolve();
+        await attemptA.promise;
+      });
+
+      expect(onCopy).not.toHaveBeenCalled();
+      expect(button).toHaveAttribute("data-state", "idle");
+      expect(live?.textContent).toBe("");
+    });
   });
 
-  // jsdom does not compute syntax-highlight colors, so highlighting is verified
-  // by its observable DOM effect: lowlight splits a line's source into token
-  // <span> elements inside <code>, whereas plain text stays a single text node.
+  // lowlight splits highlighted source into token <span>s inside <code>; plain text stays one text node.
   function codeTokenCount(line: Element): number {
     return line.querySelector("code")?.querySelectorAll("span").length ?? 0;
   }
@@ -532,7 +583,6 @@ describe("CodeBlock", () => {
       expect(lines[1]).toHaveAttribute("data-line-state", "removed");
       expect(lines[0]?.querySelector('[data-slot="code-block-line-sign"]')?.textContent).toBe("+");
       expect(lines[1]?.querySelector('[data-slot="code-block-line-sign"]')?.textContent).toBe("−");
-      // Highlighting still tokenizes the code on diff-state rows.
       expect(codeTokenCount(requireElement(lines[0], "added diff line"))).toBeGreaterThan(0);
       expect(codeTokenCount(requireElement(lines[1], "removed diff line"))).toBeGreaterThan(0);
     });

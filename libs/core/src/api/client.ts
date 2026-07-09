@@ -33,17 +33,6 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     projectHeaders[PROJECT_ROOT_HEADER] = projectRoot;
   }
 
-  /**
-   * Parses a JSON response body.
-   *
-   * Contract: when a `validate` function (e.g. a Zod schema's `.parse`) is
-   * supplied, the body is validated and a failed validation is surfaced as a
-   * structured `ApiError` (HTTP 422) rather than leaking the validator's own
-   * error to the call site. When `validate` is omitted, the body is trusted as
-   * `T` — the caller asserts the response shape and owns the risk of a
-   * malformed payload. Prefer passing a schema for endpoints whose payload is
-   * dynamic or externally controlled.
-   */
   async function parse<T>(response: Response, validate?: ResponseValidator<T>): Promise<T> {
     const body = await response.json().catch(() => null);
     if (body === null) {

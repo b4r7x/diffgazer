@@ -11,7 +11,12 @@ import {
 } from "react";
 import type { KeyHandler } from "../core/normalize-key-input.js";
 import { DECLINE } from "../core/normalize-key-input.js";
-import { getOwnerView, isEditableElement, isNode } from "../dom/element-guards.js";
+import {
+  getComposedEventTarget,
+  getOwnerView,
+  isEditableElement,
+  isNode,
+} from "../dom/element-guards.js";
 import {
   eventMatchesParsedHotkey,
   type ParsedHotkey,
@@ -114,6 +119,7 @@ export function KeyboardProvider({
   const implicitHandlers = useRef<ImplicitHandlerMap>(new Map());
   const nextHandlerId = useRef(1);
   const nextScopeId = useRef(1);
+  const sentinelRef = useRef<HTMLSpanElement>(null);
 
   const activeScope = scopeStack[scopeStack.length - 1]?.name ?? null;
 
@@ -165,7 +171,8 @@ export function KeyboardProvider({
     ]);
     if (canonicalKeys.size === 0) return;
 
-    const isEditable = isEditableElement(event.target);
+    const target = getComposedEventTarget(event);
+    const isEditable = isEditableElement(target);
 
     for (const canonicalKey of canonicalKeys) {
       const explicitEntries = scopeHandlers?.get(canonicalKey) ?? [];
@@ -178,7 +185,7 @@ export function KeyboardProvider({
 
       for (const entry of entries) {
         if (isEditable && !entry.options?.allowInInput) continue;
-        if (!isEventWithinContainer(event.target, entry.options)) continue;
+        if (!isEventWithinContainer(target, entry.options)) continue;
 
         try {
           const result = entry.handler(event);
@@ -194,15 +201,16 @@ export function KeyboardProvider({
     }
   });
 
-  // The keydown listener is installed on `window`, so it only captures events
-  // from the provider's own document; cross-document scenarios (iframes,
-  // multi-window) need a provider per document.
+  // Bind to the window of the document the provider renders into (via the
+  // sentinel's owner document), so an iframe-mounted provider handles that
+  // document's keys instead of the top-level window's.
   useEffect(() => {
+    const view = getOwnerView(sentinelRef.current) ?? window;
     function onKeyDown(event: KeyboardEvent) {
       handleKeyDown(event);
     }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    view.addEventListener("keydown", onKeyDown);
+    return () => view.removeEventListener("keydown", onKeyDown);
   }, []);
 
   const register = useCallback(
@@ -301,7 +309,10 @@ export function KeyboardProvider({
 
   return (
     <KeyboardRegistryContext value={registryValue}>
-      <KeyboardScopeContext value={scopeValue}>{children}</KeyboardScopeContext>
+      <KeyboardScopeContext value={scopeValue}>
+        <span ref={sentinelRef} aria-hidden="true" hidden />
+        {children}
+      </KeyboardScopeContext>
     </KeyboardRegistryContext>
   );
 }

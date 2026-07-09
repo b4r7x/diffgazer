@@ -11,7 +11,7 @@ import {
 } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { getEncodedListboxItemId, type ListboxMetadataItem, useListbox } from "@/hooks/use-listbox";
-import { useSelectableCollection } from "@/lib/selectable-collection";
+import { isSelectableItemEligible, useSelectableCollection } from "@/lib/selectable-collection";
 import { cn } from "@/lib/utils";
 import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";
 import {
@@ -100,7 +100,11 @@ export function NavigationList({
     unregisterItem,
   } = useSelectableCollection(containerRef);
   const items = useMemo<ListboxMetadataItem[]>(
-    () => registeredItems.map((item) => ({ id: item.value, disabled: item.disabled })),
+    () =>
+      registeredItems.map((item) => ({
+        id: item.value,
+        disabled: !isSelectableItemEligible(item),
+      })),
     [registeredItems],
   );
 

@@ -13,7 +13,6 @@ import { ThemeProvider } from "@/hooks/use-theme";
 
 const mockNavigate = vi.fn();
 
-// Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
@@ -170,8 +169,6 @@ describe("SettingsThemePage keyboard behavior", () => {
     renderPage();
     await waitForThemeReady();
 
-    // Real ThemeProvider syncs documentElement to the resolved theme; pin it
-    // here so we can prove the preview wrapper changes independently.
     document.documentElement.setAttribute("data-theme", "dark");
 
     const preview = screen.getByRole("region", { name: /theme preview/i });
@@ -240,5 +237,47 @@ describe("SettingsThemePage keyboard behavior", () => {
 
     expect(darkRadio).toHaveAttribute("aria-checked", "true");
     expect(saveButton).toBeEnabled();
+  });
+
+  it("keeps the failed-save error visible after the optimistic theme rolls back", async () => {
+    mockSaveSettings.mockRejectedValue(new Error("Network unreachable"));
+    const user = userEvent.setup();
+    renderPage();
+    await waitForThemeReady();
+
+    await user.keyboard("{ArrowDown}{Enter}");
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Network unreachable");
+    expect(screen.getByRole("radio", { name: /auto/i })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("alert")).toHaveTextContent("Network unreachable");
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("ignores an overlapping theme save while one is still pending", async () => {
+    let resolveSave: (() => void) | undefined;
+    mockSaveSettings.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSave = () => resolve(undefined);
+        }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await waitForThemeReady();
+
+    await user.keyboard("{ArrowDown}{Enter}");
+    await waitFor(() => expect(mockSaveSettings).toHaveBeenCalledTimes(1));
+
+    // A save while one is in flight must be ignored, or a stale completion
+    // could navigate or roll back over the newer state.
+    await user.keyboard("{Enter}");
+    expect(mockSaveSettings).toHaveBeenCalledTimes(1);
+    expect(mockSaveSettings).toHaveBeenCalledWith({ theme: "dark" });
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    resolveSave?.();
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledTimes(1));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
   });
 });

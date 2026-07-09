@@ -21,7 +21,6 @@ export function useAvatarGroupContext() {
 
 /** Context value shared by avatar. */
 export interface AvatarContextValue {
-  /** image status used by avatar. */
   imageStatus: AvatarStatus;
   /** Updates image status. */
   setImageStatus: (status: AvatarStatus) => void;

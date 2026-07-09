@@ -9,7 +9,6 @@ import { CodeBlockLine } from "./code-block-line";
 export interface CodeBlockContentProps extends ComponentProps<"div"> {
   /** Auto-split mode only. Renders a line-number gutter for string children. */
   showLineNumbers?: boolean;
-  /** line count used by code block content. */
   lineCount?: number;
 }
 

@@ -2,6 +2,22 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useCopyToClipboard } from "./use-copy-to-clipboard";
 
+interface Deferred {
+  promise: Promise<void>;
+  resolve: () => void;
+  reject: (error: unknown) => void;
+}
+
+function createDeferred(): Deferred {
+  let resolve: () => void = () => {};
+  let reject: (error: unknown) => void = () => {};
+  const promise = new Promise<void>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 describe("useCopyToClipboard", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -80,7 +96,6 @@ describe("useCopyToClipboard", () => {
     act(() => {
       vi.advanceTimersByTime(1500);
     });
-    // Still copied: the second copy restarted the 2000ms window.
     expect(result.current.copied).toBe(true);
 
     act(() => {
@@ -114,6 +129,61 @@ describe("useCopyToClipboard", () => {
     clearSpy.mockClear();
     unmount();
     expect(clearSpy).toHaveBeenCalled();
+  });
+
+  it("keeps the latest attempt's outcome when an older copy settles afterward", async () => {
+    const deferredA = createDeferred();
+    const deferredB = createDeferred();
+    const write = vi.fn((text: string) => (text === "A" ? deferredA : deferredB).promise);
+    const onCopy = vi.fn();
+    const onError = vi.fn();
+    const { result } = renderHook(() => useCopyToClipboard({ write, onCopy, onError }));
+
+    const attemptA = result.current.copy("A");
+    const attemptB = result.current.copy("B");
+
+    await act(async () => {
+      deferredB.resolve();
+      await attemptB;
+    });
+    expect(result.current.status).toBe("copied");
+    expect(onCopy).toHaveBeenCalledExactlyOnceWith("B");
+
+    await act(async () => {
+      deferredA.reject(new Error("stale"));
+      await attemptA;
+    });
+    expect(result.current.status).toBe("copied");
+    expect(onError).not.toHaveBeenCalled();
+    expect(onCopy).toHaveBeenCalledExactlyOnceWith("B");
+  });
+
+  it("keeps a failed latest attempt when an older successful copy settles afterward", async () => {
+    const deferredA = createDeferred();
+    const deferredB = createDeferred();
+    const write = vi.fn((text: string) => (text === "A" ? deferredA : deferredB).promise);
+    const onCopy = vi.fn();
+    const onError = vi.fn();
+    const { result } = renderHook(() => useCopyToClipboard({ write, onCopy, onError }));
+
+    const attemptA = result.current.copy("A");
+    const attemptB = result.current.copy("B");
+
+    const error = new Error("denied");
+    await act(async () => {
+      deferredB.reject(error);
+      await attemptB;
+    });
+    expect(result.current.status).toBe("failed");
+    expect(onError).toHaveBeenCalledExactlyOnceWith(error);
+
+    await act(async () => {
+      deferredA.resolve();
+      await attemptA;
+    });
+    expect(result.current.status).toBe("failed");
+    expect(onCopy).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledExactlyOnceWith(error);
   });
 
   it("defaults to navigator.clipboard.writeText", async () => {

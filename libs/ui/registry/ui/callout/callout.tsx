@@ -46,6 +46,21 @@ function isHTMLElement(ownerDocument: Document, element: Element | null): elemen
   return HTMLElementCtor ? element instanceof HTMLElementCtor : element instanceof HTMLElement;
 }
 
+function getDeepActiveElement(ownerDocument: Document): Element | null {
+  let active = ownerDocument.activeElement;
+  while (active?.shadowRoot?.activeElement) {
+    active = active.shadowRoot.activeElement;
+  }
+  return active;
+}
+
+function getFocusSearchScope(root: HTMLElement): ParentNode {
+  const rootNode = root.getRootNode();
+  const view = root.ownerDocument.defaultView;
+  if (view && rootNode instanceof view.ShadowRoot) return rootNode;
+  return root.ownerDocument.body;
+}
+
 function isVisibleFocusTarget(element: HTMLElement): boolean {
   if (element.tabIndex < 0) return false;
   if (element.closest("[inert]")) return false;
@@ -58,7 +73,7 @@ function isVisibleFocusTarget(element: HTMLElement): boolean {
 function findDismissFocusTarget(root: HTMLElement): HTMLElement | null {
   const ownerDocument = root.ownerDocument;
   const candidates = Array.from(
-    ownerDocument.body.querySelectorAll<HTMLElement>(DISMISS_FOCUS_SELECTOR),
+    getFocusSearchScope(root).querySelectorAll<HTMLElement>(DISMISS_FOCUS_SELECTOR),
   ).filter((candidate) => !root.contains(candidate) && isVisibleFocusTarget(candidate));
   const NodeCtor = ownerDocument.defaultView?.Node;
   const followingFlag = NodeCtor?.DOCUMENT_POSITION_FOLLOWING ?? 4;
@@ -133,7 +148,7 @@ export function Callout({
 
   const onDismiss = useCallback(() => {
     const root = rootRef.current;
-    const activeElement = root ? root.ownerDocument.activeElement : null;
+    const activeElement = root ? getDeepActiveElement(root.ownerDocument) : null;
 
     if (root && isHTMLElement(root.ownerDocument, activeElement) && root.contains(activeElement)) {
       findDismissFocusTarget(root)?.focus({ preventScroll: true });

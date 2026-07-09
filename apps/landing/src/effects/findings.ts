@@ -2,7 +2,8 @@ import { type DemoFinding, demoFindings, formatFindingSummary } from "../demo";
 import { observeOnce } from "../observe";
 import { type Cleanup, createEffectScope, type Flags, getFlags, sleep } from "../util";
 
-const escapeHtml = (value: string): string => value.replace(/</g, "&lt;");
+const INTERACTIVE_TARGET =
+  "a[href], button, input, textarea, select, [contenteditable]:not([contenteditable='false']), [tabindex]";
 
 function createRow(finding: DemoFinding, index: number): HTMLButtonElement {
   const row = document.createElement("button");
@@ -61,14 +62,41 @@ export function initFindings(
   function renderDetail(index: number): void {
     const d = demoFindings[index];
     if (!d || !detail) return;
-    const fix = d.fix
-      .map(([kind, line]) => `<span class="${kind}">${escapeHtml(line)}</span>`)
-      .join("\n");
-    detail.innerHTML = `
-    <div class="fd-title">${d.title}</div>
-    <div class="fd-meta"><span class="sev sev-${d.severity}">${d.severity}</span><span class="fd-tag">${d.tag}</span></div>
-    <p class="fd-body">${d.body}</p>
-    <div class="fd-fix"><div class="fix-label">suggested fix</div><pre>${fix}</pre></div>`;
+
+    const title = document.createElement("div");
+    title.className = "fd-title";
+    title.textContent = d.title;
+
+    const meta = document.createElement("div");
+    meta.className = "fd-meta";
+    const severity = document.createElement("span");
+    severity.className = `sev sev-${d.severity}`;
+    severity.textContent = d.severity;
+    const tag = document.createElement("span");
+    tag.className = "fd-tag";
+    tag.textContent = d.tag;
+    meta.append(severity, tag);
+
+    const body = document.createElement("p");
+    body.className = "fd-body";
+    body.textContent = d.body;
+
+    const fix = document.createElement("div");
+    fix.className = "fd-fix";
+    const fixLabel = document.createElement("div");
+    fixLabel.className = "fix-label";
+    fixLabel.textContent = "suggested fix";
+    const pre = document.createElement("pre");
+    d.fix.forEach(([kind, line], i) => {
+      if (i > 0) pre.append("\n");
+      const span = document.createElement("span");
+      span.className = kind;
+      span.textContent = line;
+      pre.append(span);
+    });
+    fix.append(fixLabel, pre);
+
+    detail.replaceChildren(title, meta, body, fix);
     detail.setAttribute("aria-labelledby", `finding-tab-${index}`);
   }
 
@@ -116,13 +144,15 @@ export function initFindings(
   document.addEventListener(
     "keydown",
     (event) => {
+      if (event.key !== "j" && event.key !== "k") return;
       const target = event.target;
-      if (target instanceof Element && target.closest("input, textarea")) return;
+      const withinWidget = target instanceof Element && panel.contains(target);
+      if (!withinWidget && target instanceof Element && target.closest(INTERACTIVE_TARGET)) return;
       const rect = panel.getBoundingClientRect();
       if (rect.bottom < 0 || rect.top > innerHeight) return;
-      if (event.key === "j") highlight(Math.min(last, current + 1));
-      else if (event.key === "k") highlight(Math.max(0, current - 1));
-      else return;
+      const next = event.key === "j" ? Math.min(last, current + 1) : Math.max(0, current - 1);
+      highlight(next);
+      if (withinWidget) rows[next]?.focus();
       event.preventDefault();
     },
     { signal: scope.signal },

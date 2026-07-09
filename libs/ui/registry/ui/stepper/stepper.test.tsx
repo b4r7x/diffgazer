@@ -28,6 +28,13 @@ function renderStepper(props: Partial<StepperProps> = {}) {
   );
 }
 
+function requireStepTrigger(container: HTMLElement, stepId: string) {
+  return requireElement(
+    container.querySelector<HTMLButtonElement>(`[data-step-id="${stepId}"]`),
+    `step trigger ${stepId}`,
+  );
+}
+
 describe("Stepper", () => {
   it("expands step content when trigger is clicked", async () => {
     const user = userEvent.setup();
@@ -232,7 +239,6 @@ describe("Stepper", () => {
       </Stepper>,
     );
     expect(screen.getByText("analyzing...")).toBeInTheDocument();
-    // detail wins over statusLabels fallback
     expect(screen.getByText("custom detail")).toBeInTheDocument();
   });
 
@@ -347,6 +353,33 @@ describe("Stepper", () => {
     expect(s3).toHaveFocus();
   });
 
+  it("arrow navigation skips an aria-hidden active step's trigger", async () => {
+    const user = userEvent.setup();
+    render(
+      <Stepper>
+        <Stepper.Step stepId="s1" status="completed">
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s2" status="active" aria-hidden="true">
+          <Stepper.Trigger>Step 2</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s3" status="pending">
+          <Stepper.Trigger>Step 3</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    );
+
+    const s1 = screen.getByRole("button", { name: /Step 1/ });
+    const s3 = screen.getByRole("button", { name: /Step 3/ });
+
+    s1.focus();
+    await user.keyboard("{ArrowDown}");
+    expect(s3).toHaveFocus(); // Step 2 is aria-hidden — skipped
+
+    await user.keyboard("{ArrowUp}");
+    expect(s1).toHaveFocus();
+  });
+
   it("marks disabled steps with aria-disabled and excludes them from tab order", () => {
     render(
       <Stepper>
@@ -390,6 +423,66 @@ describe("Stepper", () => {
 
     await user.tab();
     expect(s1).toHaveFocus();
+  });
+
+  it("tab target skips a hidden active step", () => {
+    const { container } = render(
+      <Stepper>
+        <Stepper.Step stepId="s1" status="active" hidden>
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s2" status="pending">
+          <Stepper.Trigger>Step 2</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s3" status="pending">
+          <Stepper.Trigger>Step 3</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    );
+
+    expect(requireStepTrigger(container, "s1")).toHaveAttribute("tabIndex", "-1");
+    expect(requireStepTrigger(container, "s2")).toHaveAttribute("tabIndex", "0");
+    expect(requireStepTrigger(container, "s3")).toHaveAttribute("tabIndex", "-1");
+  });
+
+  it("tab target skips an inert active step", () => {
+    const { container } = render(
+      <Stepper>
+        <Stepper.Step stepId="s1" status="active" inert>
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s2" status="pending">
+          <Stepper.Trigger>Step 2</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s3" status="pending">
+          <Stepper.Trigger>Step 3</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    );
+
+    expect(requireStepTrigger(container, "s1")).toHaveAttribute("tabIndex", "-1");
+    expect(requireStepTrigger(container, "s2")).toHaveAttribute("tabIndex", "0");
+    expect(requireStepTrigger(container, "s3")).toHaveAttribute("tabIndex", "-1");
+  });
+
+  it("tab target skips an aria-hidden active step", () => {
+    const { container } = render(
+      <Stepper>
+        <Stepper.Step stepId="s1" status="active" aria-hidden="true">
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s2" status="pending">
+          <Stepper.Trigger>Step 2</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s3" status="pending">
+          <Stepper.Trigger>Step 3</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    );
+
+    expect(requireStepTrigger(container, "s1")).toHaveAttribute("tabIndex", "-1");
+    expect(requireStepTrigger(container, "s2")).toHaveAttribute("tabIndex", "0");
+    expect(requireStepTrigger(container, "s3")).toHaveAttribute("tabIndex", "-1");
   });
 
   it("renders a polite live region with the active step announcement", () => {
@@ -454,16 +547,10 @@ describe("Stepper", () => {
       </Stepper>,
     );
 
-    // The static child walk cannot see through WrappedStep; registration keeps the
-    // live-region position and label correct.
     expect(screen.getByRole("status")).toHaveTextContent("Step 2 of 3: Step 2");
   });
 });
 
-// ============================================================================
-// Variant matrix — each variant renders a distinct indicator per state. We
-// assert text content of the indicator span, not Tailwind classes.
-// ============================================================================
 describe("Stepper variant indicators", () => {
   const STATIC_VARIANTS = [
     "ascii",
@@ -487,8 +574,8 @@ describe("Stepper variant indicators", () => {
       const trigger = screen.getByRole("button", { name: new RegExp(`Label-${status}`) });
       const expected = getStepperIndicatorGlyph(variant, status);
       if (variant === "ascii" && status === "active") {
-        // The blinking cursor is rendered as `[` + `~` + `]` across nested
-        // spans — text content normalises to "[~]" without spaces.
+        // Blinking cursor renders as `[`+`~`+`]` across nested spans; text
+        // content normalises to "[~]".
         expect(trigger).toHaveTextContent("[~]");
       } else {
         expect(trigger).toHaveTextContent(expected);
@@ -534,7 +621,6 @@ describe("Stepper variant indicators", () => {
   });
 
   it("getStepperIndicatorGlyph returns the canonical glyph per (variant, status) cell", () => {
-    // Spot-check a few cells — full dictionary is exercised above.
     expect(getStepperIndicatorGlyph("ascii", "completed")).toBe("[x]");
     expect(getStepperIndicatorGlyph("ascii", "pending")).toBe("[ ]");
     expect(getStepperIndicatorGlyph("bullet", "active")).toBe("›");
@@ -558,12 +644,9 @@ describe("Stepper variant indicators", () => {
 });
 
 describe("Stepper prefers-reduced-motion", () => {
-  // The grid-template-rows transition that animates expand/collapse must be
-  // suppressed under prefers-reduced-motion. The active-substep pulse is
-  // gated by Tailwind's motion-safe variant. jsdom does not evaluate @media
-  // in stylesheets, so Tailwind's compiled declarations are injected
-  // unconditionally to simulate matchMedia returning true; getComputedStyle
-  // then reports the suppressed transition and absent animation.
+  // jsdom evaluates no @media, so Tailwind's motion-reduce/motion-safe rules are
+  // injected unconditionally to simulate matchMedia true; getComputedStyle then
+  // reports the suppressed transition and absent animation.
   let styleElement: HTMLStyleElement | null = null;
 
   beforeAll(() => {

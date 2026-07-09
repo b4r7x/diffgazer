@@ -38,10 +38,9 @@ function preservedCssChunks(
   return merged.size > 0 ? [...merged] : undefined;
 }
 
-// Adoption policy: a skipped file is only adopted into a new item's ownership
-// when an existing manifest entry already owns the same path with the SAME
-// registryIntegrity. A version mismatch refuses adoption rather than silently
-// claiming files written by an older CLI/registry combination.
+// A skipped file is adopted only when an existing manifest entry owns the same
+// path with the SAME registryIntegrity; a mismatch MUST refuse adoption rather
+// than claim files written by an older CLI/registry combination.
 function isManifestTrusted(
   manifestPath: string,
   manifest: NonNullable<DiffgazerAddConfig["installedComponents"]>,
@@ -86,6 +85,14 @@ function buildOwnedFile(
   };
 }
 
+function ownedFileFor(
+  manifest: NonNullable<DiffgazerAddConfig["installedComponents"]>,
+  sourceName: string,
+  manifestPath: string,
+): ManifestOwnedFile | undefined {
+  return manifest[sourceName]?.files?.find((file) => file.path === manifestPath);
+}
+
 function buildOwnedFilesByItem(
   cwd: string,
   writeResult: { results: Array<{ op: FileOp; result: "written" | "skipped" | "overwritten" }> },
@@ -96,13 +103,16 @@ function buildOwnedFilesByItem(
   const writtenHashByTargetPath = new Map<string, string>();
   const existingManifest = ctx.config.getManifestItems(cwd) ?? {};
 
+  function pushOwnedFile(sourceName: string, path: string, file: ManifestOwnedFile): void {
+    const existingFiles = byItem.get(sourceName) ?? [];
+    if (existingFiles.some((entry) => entry.path === path)) return;
+    existingFiles.push(file);
+    byItem.set(sourceName, existingFiles);
+  }
+
   function addOwnedFile(sourceName: string, op: FileOp): void {
     const path = toManifestPath(op);
-    const existingFiles = byItem.get(sourceName) ?? [];
-    if (existingFiles.some((file) => file.path === path)) return;
-
-    existingFiles.push(buildOwnedFile(op, sourceName, registryIntegrity, mode));
-    byItem.set(sourceName, existingFiles);
+    pushOwnedFile(sourceName, path, buildOwnedFile(op, sourceName, registryIntegrity, mode));
   }
 
   for (const { op, result } of writeResult.results) {
@@ -118,6 +128,7 @@ function buildOwnedFilesByItem(
     const sourceNames = getSourceNames(op);
     if (result !== "skipped" || sourceNames.length === 0) continue;
 
+    const manifestPath = toManifestPath(op);
     const expectedHash = computeIntegrity(op.content);
     if (writtenHashByTargetPath.get(op.targetPath) === expectedHash) {
       for (const sourceName of sourceNames) {
@@ -126,13 +137,30 @@ function buildOwnedFilesByItem(
       continue;
     }
 
+    // For paths this item already owns, preserve the recorded ownership entry
+    // verbatim even if the on-disk body drifted, so a locally modified owned file
+    // is not stripped from the manifest. Unowned pre-existing files still go
+    // through the stricter hash-matched adoption below.
+    const ownedEntries = sourceNames
+      .map(
+        (sourceName) =>
+          [sourceName, ownedFileFor(existingManifest, sourceName, manifestPath)] as const,
+      )
+      .filter((entry): entry is [string, ManifestOwnedFile] => entry[1] !== undefined);
+    for (const [sourceName, existingFile] of ownedEntries) {
+      pushOwnedFile(sourceName, manifestPath, existingFile);
+    }
+    const ownedNames = new Set(ownedEntries.map(([sourceName]) => sourceName));
+    const unowned = sourceNames.filter((sourceName) => !ownedNames.has(sourceName));
+    if (unowned.length === 0) continue;
+
     if (!existsSync(op.targetPath)) continue;
     const onDiskHash = computeIntegrity(readFileSync(op.targetPath, "utf-8"));
     if (onDiskHash !== expectedHash) continue;
 
-    if (!isManifestTrusted(toManifestPath(op), existingManifest, registryIntegrity)) continue;
+    if (!isManifestTrusted(manifestPath, existingManifest, registryIntegrity)) continue;
 
-    for (const sourceName of sourceNames) {
+    for (const sourceName of unowned) {
       addOwnedFile(sourceName, op);
     }
   }

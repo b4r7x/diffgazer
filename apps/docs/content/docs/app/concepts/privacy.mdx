@@ -3,7 +3,7 @@ title: Privacy and security
 description: How Diffgazer handles source, credentials, and provider requests.
 ---
 
-Diffgazer runs an embedded local server and reviews your code on your own machine, so your source and API keys never reach a service we run. A network request leaves your computer only when you ask for a review. At that point, the diff and prompt content go to the model provider you chose, under that provider's policy.
+Diffgazer runs an embedded local server and reviews your code on your own machine, so your source and API keys never reach a service we run. Your code leaves only when you ask for a review: at that point the diff and the prompt built around it go to the model provider you chose, under that provider's policy. One other kind of request goes out before that — while you set a provider up, Diffgazer asks for that provider's list of models so the picker can show real options — but it never carries your code. Neither request passes through a Diffgazer-hosted relay.
 
 ## Localhost binding and the host allowlist
 
@@ -54,11 +54,22 @@ This is what makes "Diffgazer reads your code" an explicit decision per reposito
 
 ## What leaves the machine
 
-After all of the above, exactly one thing crosses the network boundary, and only when you ask for a review: the request to the model provider you chose. Diffgazer builds a client for your active provider, one of Google Gemini, Z.AI, Z.AI Coding Plan, OpenRouter, Groq, or Cerebras, using the API key and model you configured, and sends the review prompt directly to that provider's endpoint. There is no Diffgazer-hosted relay in the path; the call goes from your machine to the provider you picked.
+Two kinds of request cross the network boundary: the review request itself, and the model-catalog requests Diffgazer makes while you set a provider up. Neither passes through a Diffgazer-hosted relay.
 
-That means your diff and the prompt built around it go to your provider under your account, governed by your provider's data policy, not ours. We never see it. If you want the request itself to leave less behind, that is a question of which provider and model you choose, which is covered in [Providers and models](/app/concepts/providers-and-models).
+### The review request, when you ask for one
 
-> Note: A provider may use what you send according to its own terms. Diffgazer keeps the data local up to the moment you send a review, but it cannot control what happens on the provider side. Choose a provider whose data policy you are comfortable with.
+When you run a review, Diffgazer builds a client for your active provider, one of Google Gemini, Z.AI, Z.AI Coding Plan, OpenRouter, Groq, or Cerebras, using the API key and model you configured, and sends the review prompt directly to that provider's endpoint. Your diff and the prompt built around it go to your provider under your account, governed by your provider's data policy, not ours. We never see it. If you want the request itself to leave less behind, that is a question of which provider and model you choose, which is covered in [Providers and models](/app/concepts/providers-and-models).
+
+### Model-catalog requests, during setup
+
+Before any review, opening the model picker for a provider makes Diffgazer fetch that provider's model list so the picker shows models your account can actually use. This runs during setup, ahead of your first review, and what it sends depends on the provider:
+
+- For every provider except OpenRouter, Diffgazer reads the public models.dev catalog at `https://models.dev/api.json`. That request carries no key and no code; it is a plain read of an external catalog shared across providers. Setting `DIFFGAZER_OFFLINE` skips the live fetch and serves cached or bundled catalog data instead, so no catalog request leaves for these providers.
+- For OpenRouter, Diffgazer calls `https://openrouter.ai/api/v1/models` with your OpenRouter API key, so the returned list is scoped to your account. This is the one setup request that carries a credential, and `DIFFGAZER_OFFLINE` does not cover it: the flag governs only the models.dev catalog, so choosing OpenRouter and opening the picker still reaches OpenRouter even when the flag is set.
+
+Both catalogs are cached for a day, so the picker does not re-fetch on every open, and neither request includes your source or your diff.
+
+> Note: A provider may use what you send according to its own terms. Diffgazer keeps your code local up to the moment you send a review, but it cannot control what happens on the provider side. Choose a provider whose data policy you are comfortable with.
 
 ## Related
 

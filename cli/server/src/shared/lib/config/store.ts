@@ -42,24 +42,57 @@ import {
   reconcileKeyringSecrets,
   rollbackKeyringWrites,
 } from "./secrets-migration.js";
-import { persistError, resolveSecretEntry, toSecretEntry } from "./secrets-store.js";
+import { resolveSecretEntry, toSecretEntry } from "./secrets-store.js";
 import { createMutex, runConfigTransaction } from "./transaction.js";
 import { createTrustStore, type TrustStore } from "./trust-store.js";
-import type { ConfigState, SecretsState, SecretsStorageError } from "./types.js";
+import type {
+  ConfigState,
+  SecretsState,
+  SecretsStorageError,
+  SecretsStorageErrorCode,
+} from "./types.js";
 
-/**
- * Re-keys persisted review history from one project path to another when a
- * trusted repository directory is moved (F-447). The real implementation lives
- * in the review storage feature; `shared/` must not import `features/`, so the
- * feature registers it here at startup. Defaults to a no-op so the config store
- * works in isolation (and in tests that do not exercise review re-keying).
- */
+// Re-keys review history on a project move (F-447). `shared/` must not import
+// `features/`, so the review feature registers its implementation here at startup;
+// defaults to a no-op.
 type ReviewRekeyHandler = (oldProjectPath: string, newProjectPath: string) => void;
 let reviewRekeyHandler: ReviewRekeyHandler = () => {};
 
 export function setReviewRekeyHandler(handler: ReviewRekeyHandler): void {
   reviewRekeyHandler = handler;
 }
+
+// Log the raw cause (which carries the absolute path) server-side and return a
+// path-free message so API clients never receive host paths or filenames (F-085).
+const persistFailure = (operation: "config" | "secrets", cause: unknown): SecretsStorageError => {
+  log("error", "config_persist_failed", { operation, error: getErrorMessage(cause) });
+  return createError<SecretsStorageErrorCode>("PERSIST_FAILED", `Failed to persist ${operation}`);
+};
+
+// Delete keyring entries shadowed by an env sidecar ref (F-105): reads resolve the
+// sidecar env ref first, so a stale `api_key_<provider>` from an interrupted literal->env
+// switch would linger unreferenced. Keyring mode only, probing env-sidecar providers.
+const deleteShadowedKeyringEntries = (secrets: SecretsState): void => {
+  for (const [providerId, entry] of Object.entries(secrets.providers)) {
+    if (typeof entry === "string" || entry.kind !== "env") continue;
+    const existing = readKeyringSecret(getApiKeyName(providerId));
+    if (!existing.ok) {
+      log("warn", "keyring_shadow_reconcile_failed", {
+        providerId,
+        error: existing.error.message,
+      });
+      continue;
+    }
+    if (existing.value === null) continue;
+    const deleteResult = deleteKeyringSecret(getApiKeyName(providerId));
+    if (!deleteResult.ok) {
+      log("warn", "keyring_shadow_delete_failed", {
+        providerId,
+        error: deleteResult.error.message,
+      });
+    }
+  }
+};
 
 export interface ConfigStore {
   getSettings(): SettingsConfig;
@@ -87,22 +120,10 @@ export interface ConfigStore {
   deleteProviderCredentials(providerId: AIProvider): Promise<Result<boolean, SecretsStorageError>>;
 }
 
-/**
- * Composes the config store from the stateless persistence/migration helpers
- * (`persistence.ts`, `providers-store.ts`, `secrets-migration.ts`, `secrets-store.ts`,
- * `keyring.ts`) and the one cleanly separable stateful slice, `trust-store.ts`.
- *
- * `config-persistence` and `providers-store` are deliberately retained inline
- * here rather than extracted. `configState` and `secretsState` are a single shared
- * mutable aggregate: `updateSettings` (storage migration) and the provider-
- * credential methods (`saveProviderCredentials`/`activateProvider`/
- * `deleteProviderCredentials`) both mutate `configState.providers` and
- * `secretsState.providers` and depend on the same mtime-guarded persist
- * wrappers. Splitting them into separate stateful factories would require
- * threading that mutable state across module boundaries as injected
- * dependencies, which leaks state and weakens SRP rather than improving it. The
- * only state slice that does not touch config/secrets — trust — was extracted.
- */
+// config and secrets state stay inline (not extracted like trust): they are one shared
+// mutable aggregate that updateSettings and the provider-credential methods both mutate
+// through the same mtime-guarded persist wrappers, so splitting them would just thread
+// mutable state across module boundaries.
 export function createConfigStore(): ConfigStore {
   let configState: ConfigState = loadConfig();
   let secretsState: SecretsState = loadSecrets();
@@ -111,9 +132,8 @@ export function createConfigStore(): ConfigStore {
   let configMtimeMs: number | null = getFileMtimeMs(getGlobalConfigPath());
   let secretsMtimeMs: number | null = getFileMtimeMs(getGlobalSecretsPath());
 
-  // Serializes config/secrets mutations so two concurrent API calls never
-  // interleave at their await points (F-167) and each one observes the settled
-  // state of the previous mutation.
+  // Serialize config/secrets mutations so concurrent API calls never interleave at
+  // their await points and each observes the previous mutation's settled state (F-167).
   const mutex = createMutex();
 
   const initialStorage = effectiveStorage(configState);
@@ -164,25 +184,22 @@ export function createConfigStore(): ConfigStore {
     syncLoadedProviders();
   };
 
-  // The provider entries and settings as they stood before the current mutation,
-  // captured at transaction snapshot time. persistConfig diffs against these to
-  // tell which providers/settings fields THIS instance changed (overwrite disk)
-  // from those it left untouched (yield to a concurrent instance's disk write) —
-  // F-359.
+  // Pre-mutation snapshot persistConfig diffs against to tell which providers/settings
+  // THIS instance changed (overwrite disk) from those it left untouched (yield to a
+  // concurrent instance's write) — F-359.
   let providersBeforeMutation: ProviderStatus[] = configState.providers.map((p) => ({ ...p }));
   let settingsBeforeMutation: SettingsConfig = { ...configState.settings };
 
   const persistConfig = async (): Promise<Result<void, SecretsStorageError>> => {
     try {
-      // Merge at write time at per-provider and per-settings-field granularity so
-      // a change another instance persisted during this window — a known provider,
-      // an id only it knows, or a different settings field — is not erased by this
-      // instance's full provider array or stale settings object.
+      // Merge at per-provider and per-settings-field granularity so a change another
+      // instance persisted during this window is not erased by this instance's full
+      // provider array or stale settings object.
       await persistConfigMergedAsync(configState, providersBeforeMutation, settingsBeforeMutation);
       configMtimeMs = getFileMtimeMs(getGlobalConfigPath());
       return ok(undefined);
     } catch (cause) {
-      return err(persistError("config", cause));
+      return err(persistFailure("config", cause));
     }
   };
 
@@ -199,7 +216,7 @@ export function createConfigStore(): ConfigStore {
       secretsMtimeMs = getFileMtimeMs(getGlobalSecretsPath());
       return ok(undefined);
     } catch (cause) {
-      return err(persistError("secrets", cause));
+      return err(persistFailure("secrets", cause));
     }
   };
 
@@ -224,18 +241,15 @@ export function createConfigStore(): ConfigStore {
     }
   };
 
-  // Records the pre-mutation provider entries and settings so the next
-  // persistConfig can merge at per-provider and per-settings-field granularity
-  // (F-359). Called at each mutation's snapshot point, after the disk refresh and
-  // before configState is mutated.
+  // Called at each mutation's snapshot point (after disk refresh, before mutation) to
+  // record the pre-mutation state persistConfig later merges against (F-359).
   const markConfigBeforeMutation = (): void => {
     providersBeforeMutation = configState.providers.map((p) => ({ ...p }));
     settingsBeforeMutation = { ...configState.settings };
   };
 
-  // Transaction discipline for config-only mutations (settings, provider
-  // activation): refresh from disk → snapshot for rollback → mutate → persist
-  // config → restore the snapshot if the disk write fails.
+  // Config-only mutations (settings, provider activation): refresh → snapshot → mutate
+  // → persist → restore the snapshot if the disk write fails.
   const configTransactionDeps = {
     refresh: refreshConfigState,
     snapshot: () => {
@@ -248,14 +262,10 @@ export function createConfigStore(): ConfigStore {
     persist: persistConfig,
   };
 
-  // Complete an interrupted secrets-storage migration left by a crash between the
-  // config write and the file/keyring cleanup (F-449). In keyring mode, move any
-  // literal entries still in secrets.json into the keyring and rewrite the file
-  // without them so the keyring becomes the single credential source as the docs
-  // promise. In file mode, delete any orphaned keyring entries left when the
-  // keyring→file copy persisted but the keyring deletion never ran, so the file
-  // stays the single credential source. Best-effort: a keyring failure leaves the
-  // existing state intact and readable.
+  // Complete an interrupted secrets-storage migration (crash between the config write
+  // and the file/keyring cleanup, F-449). Keyring mode: move stranded secrets.json
+  // literals into the keyring and rewrite the file without them. File mode: delete
+  // orphaned keyring entries. Best-effort — a keyring failure leaves state intact.
   const startupStorage = effectiveStorage(configState);
   if (startupStorage === "keyring") {
     const reconciled = reconcileKeyringSecrets(secretsState);
@@ -270,6 +280,7 @@ export function createConfigStore(): ConfigStore {
       });
       log("info", "secrets_reconciled", { migrated: reconciled.value.migrated.join(",") });
     }
+    deleteShadowedKeyringEntries(secretsState);
   } else if (startupStorage === "file") {
     const orphans = findOrphanedKeyringEntries(configState);
     if (!orphans.ok) {
@@ -492,11 +503,28 @@ export function createConfigStore(): ConfigStore {
         }
       } else {
         if (typeof entry !== "string" && entry.kind === "env") {
+          // Switching to an env credential must delete this provider's keyring literal,
+          // or the sidecar env ref (resolved first on read) leaves it shadowed (F-105).
+          // Capture for rollback, persist the sidecar, then delete — a crash between is
+          // repaired at startup.
+          const previousKeyringResult = readKeyringSecret(getApiKeyName(provider));
+          if (!previousKeyringResult.ok) return previousKeyringResult;
+          previousKeyringValue = previousKeyringResult.value;
+
           secretsState.providers[provider] = entry;
           const secretsResult = await persistFileSecrets();
           if (!secretsResult.ok) {
             secretsState = secretsBackup;
             return secretsResult;
+          }
+
+          if (previousKeyringValue !== null) {
+            const deleteResult = deleteKeyringSecret(getApiKeyName(provider));
+            if (!deleteResult.ok) {
+              await restoreSecretsState(secretsBackup);
+              return deleteResult;
+            }
+            touchedKeyring = true;
           }
         } else {
           const previousKeyringResult = readKeyringSecret(getApiKeyName(provider));
@@ -654,9 +682,7 @@ export function createConfigStore(): ConfigStore {
   };
 }
 
-// Lazy singleton — avoids filesystem reads at import time. Safe as a single
-// instance because Node's event loop is single-threaded, so there is no
-// concurrent first-call race to guard against.
+// Lazy singleton — avoids filesystem reads at import time.
 let _store: ConfigStore | null = null;
 
 export function getStore(): ConfigStore {

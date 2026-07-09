@@ -50,7 +50,6 @@ export interface PopoverContentProps
    * content itself for role="dialog" without a focusable child).
    */
   autoFocus?: boolean;
-  /** portal container used by popover content. */
   portalContainer?: Element | null;
   /** Accessible name when no visible label is supplied. */
   "aria-label"?: string;
@@ -295,7 +294,6 @@ interface PopoverAutoFocusProps {
   contentRef: RefObject<HTMLDivElement | null>;
   /** When false, the popover never opens and trigger handlers are no-ops. */
   enabled: boolean;
-  /** fallback to container used by popover auto focus. */
   fallbackToContainer: boolean;
 }
 

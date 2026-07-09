@@ -1,7 +1,7 @@
 "use client";
 
 import { type RefObject, useEffect, useRef } from "react";
-import { getOwnerView, isNode } from "../dom/element-guards.js";
+import { getOwnerView, isHTMLElement, isNode } from "../dom/element-guards.js";
 import { restoreFocus as restoreFocusTarget } from "../dom/focus-restore.js";
 import {
   documentOrder,
@@ -38,11 +38,8 @@ interface ActiveTrap {
   release: () => void;
 }
 
-// Per-document trap stacks: only the top (last) entry in each document captures focus.
-// When a new trap activates, the previous top is suspended (listeners removed).
-// When the top trap releases, the next-in-stack is re-armed (listeners re-attached).
+// Per-document trap stacks: only the top entry captures focus.
 const trapStacks = new WeakMap<Document, TrapEntry[]>();
-const DOCUMENT_POSITION_FOLLOWING = 0x04;
 
 function getTrapStack(ownerDocument: Document): TrapEntry[] {
   let stack = trapStacks.get(ownerDocument);
@@ -61,7 +58,7 @@ function armEntry(entry: TrapEntry): void {
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ["disabled", "hidden", "tabindex", "aria-hidden", "inert"],
+    attributeFilter: ["disabled", "hidden", "tabindex", "aria-hidden", "inert", "style", "class"],
   });
   entry.suspended = false;
 }
@@ -76,7 +73,6 @@ function suspendEntry(entry: TrapEntry): void {
 
 function resumeEntry(entry: TrapEntry): void {
   armEntry(entry);
-  // Recapture focus into the resumed trap's container
   const target =
     entry.container.contains(entry.lastFocused) &&
     entry.lastFocused.isConnected &&
@@ -87,11 +83,10 @@ function resumeEntry(entry: TrapEntry): void {
 }
 
 function shouldInsertBefore(incoming: TrapEntry, existing: TrapEntry): boolean {
-  if (incoming.container === existing.container) return false;
-  if (incoming.container.contains(existing.container)) return true;
-  if (existing.container.contains(incoming.container)) return false;
-  return Boolean(
-    incoming.container.compareDocumentPosition(existing.container) & DOCUMENT_POSITION_FOLLOWING,
+  // Splice an incoming ancestor before its existing descendant so the descendant
+  // stays on top; otherwise activation order makes the new trap the top.
+  return (
+    incoming.container !== existing.container && incoming.container.contains(existing.container)
   );
 }
 
@@ -156,8 +151,6 @@ function getTabbableFromAnchor(
   return documentOrderEls[0] ?? null;
 }
 
-// Effect-on-every-render is intentional: React does not re-fire effects when
-// containerRef.current mutates while the ref object stays stable.
 /**
  * Keeps Tab and Shift+Tab focus inside a container while active, with nested
  * trap stacking and optional focus restoration on release.
@@ -169,40 +162,44 @@ export function useFocusTrap(
   const { initialFocus, restoreFocus = true, enabled = true } = options;
   const activeTrapRef = useRef<ActiveTrap | null>(null);
   const trapEntryRef = useRef<TrapEntry | null>(null);
-  // useFocusRestore manages the focus-restore stack so nested overlays
-  // restore correctly. Restoration itself happens in this hook's release()
-  // so listeners are detached BEFORE focus moves out of the container --
-  // otherwise the document-level focusin recapture re-traps the restored
-  // target. `restoreOnUnmount: false` prevents the stack hook from moving
-  // focus during its own unmount cleanup.
+  // Detach listeners BEFORE focus moves out in release(), or the document-level
+  // focusin recapture re-traps the restored target. restoreOnUnmount:false keeps
+  // this stack hook from moving focus during its own unmount cleanup.
   const { capture, restore } = useFocusRestore({
     enabled: restoreFocus,
     restoreOnUnmount: false,
   });
 
-  // No dependency array on purpose; see hook-level comment above.
+  // No dependency array on purpose: React does not re-fire effects when
+  // containerRef.current mutates while the ref object stays stable.
   useEffect(() => {
     const nextContainer = enabled ? containerRef.current : null;
-    if (
-      activeTrapRef.current?.container === nextContainer &&
-      activeTrapRef.current.restoreFocus === restoreFocus
-    ) {
+    const active = activeTrapRef.current;
+    if (active && active.container === nextContainer) {
+      // restoreFocus is release-time policy; update in place instead of tearing
+      // down (which would recapture the interior as the restore target, not the opener).
+      active.restoreFocus = restoreFocus;
       return;
     }
 
-    activeTrapRef.current?.release();
+    active?.release();
     activeTrapRef.current = null;
 
     if (!nextContainer) return;
     const container = nextContainer;
     const ownerDocument = container.ownerDocument;
+    // Capture the opener before focus moves inside, so a false-to-true toggle can still restore to it.
+    const activeAtActivation = ownerDocument.activeElement;
+    const opener =
+      isHTMLElement(activeAtActivation) && !isInsideContainer(container, activeAtActivation)
+        ? activeAtActivation
+        : null;
     const restoreTarget = capture(ownerDocument);
 
     const hadTabIndex = container.hasAttribute("tabindex");
     const originalTabIndex = container.getAttribute("tabindex");
     if (!hadTabIndex) container.setAttribute("tabindex", "-1");
 
-    // lastFocused is set after initial focus below
     let lastFocused: HTMLElement = container;
 
     const recapture = () => {
@@ -217,7 +214,6 @@ export function useFocusTrap(
       const target = event.target;
       if (isInsideContainer(container, target)) {
         lastFocused = target;
-        // Keep the stack entry in sync so resume() can use it
         if (trapEntryRef.current) trapEntryRef.current.lastFocused = target;
         return;
       }
@@ -272,9 +268,8 @@ export function useFocusTrap(
       recapture();
     });
 
-    // Build the stack entry and push it BEFORE attaching listeners or
-    // focusing. pushTrap suspends the previous top trap so its focusin
-    // handler does not recapture focus away from this new trap.
+    // Push BEFORE arming/focusing: pushTrap suspends the previous top so its
+    // focusin handler does not recapture focus away from this new trap.
     const entry: TrapEntry = {
       container,
       ownerDocument,
@@ -302,20 +297,16 @@ export function useFocusTrap(
       entry.lastFocused = lastFocused;
     }
 
-    activeTrapRef.current = {
+    const activeTrap: ActiveTrap = {
       container,
       restoreFocus,
       release: () => {
-        // Detach own listeners BEFORE removing from the stack. removeTrap
-        // calls resumeEntry on the outer trap which focuses into the outer
-        // container — if our focusin listener is still attached, it would
-        // see that focus escaped and recapture, fighting the outer trap.
+        // Detach own listeners BEFORE removeTrap resumes the outer trap; otherwise
+        // our focusin sees the outer trap's refocus as an escape and fights it.
         ownerDocument.removeEventListener("keydown", handleKeyDown, true);
         ownerDocument.removeEventListener("focusin", handleFocusIn, true);
         observer.disconnect();
 
-        // Remove from stack. This re-arms the outer trap (if any) which
-        // recaptures focus into its container.
         removeTrap(entry);
         trapEntryRef.current = null;
 
@@ -325,13 +316,14 @@ export function useFocusTrap(
           container.setAttribute("tabindex", originalTabIndex);
         }
 
-        if (restoreFocus) {
+        if (activeTrap.restoreFocus) {
           const hasOuterTrap = getTrapStack(ownerDocument).length > 0;
           const restored = restore();
-          if (!restored && !hasOuterTrap) restoreFocusTarget(restoreTarget);
+          if (!restored && !hasOuterTrap) restoreFocusTarget(restoreTarget ?? opener);
         }
       },
     };
+    activeTrapRef.current = activeTrap;
   });
 
   useEffect(() => {

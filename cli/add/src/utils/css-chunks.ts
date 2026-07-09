@@ -7,14 +7,10 @@ import type { ResolvedConfig } from "../context.js";
 import { ctx } from "../context.js";
 import { resolveProjectPath, toPosixPath } from "./paths.js";
 
-// Sentinel markers wrap each registry-emitted CSS chunk so re-runs detect
-// installed chunks structurally rather than via substring inclusion.
-//
-// Substring matching breaks under whitespace edits, comment insertion, or
-// reordering performed by the user or by formatter tools (Prettier, Stylelint).
-// Hashing the chunk content (not the marker block) keeps the fingerprint
-// stable when the user edits *around* the markers but never matches when the
-// chunk content itself has drifted, in which case we re-append.
+// Sentinel markers wrap each chunk so re-runs detect installed chunks
+// structurally, not by substring (which breaks under whitespace/comment/reorder
+// edits from users or formatters). The hash is over the chunk content, not the
+// marker block, so it stays stable when the user edits around the markers.
 const MARKER_PREFIX = "/* dgadd:css ";
 const MARKER_SUFFIX = " */";
 const END_MARKER_PREFIX = "/* dgadd:css-end ";
@@ -90,10 +86,35 @@ export interface ComponentCssPlan {
   chunksByItem: Map<string, string[]>;
 }
 
+// A present chunk whose on-disk body drifted from its marker hash; rewritten to
+// registry content only under --overwrite.
+interface DriftedChunkRepair {
+  content: string;
+  slice: CssChunkSlice;
+}
+
+function collectDriftedChunkRepairs(
+  chunks: ItemCssChunk[],
+  installed: Set<string>,
+  slices: CssChunkSlice[],
+  existing: string,
+): DriftedChunkRepair[] {
+  const slicesByHash = new Map(slices.map((slice) => [slice.hash, slice]));
+  const repairs: DriftedChunkRepair[] = [];
+  for (const chunk of chunks) {
+    if (!installed.has(chunk.hash)) continue;
+    const slice = slicesByHash.get(chunk.hash);
+    if (!slice || isChunkPristine(existing, slice)) continue;
+    repairs.push({ content: chunk.content, slice });
+  }
+  return repairs;
+}
+
 export function planComponentCss(
   resolved: string[],
   cwd: string,
   config: ResolvedConfig,
+  overwrite = false,
 ): ComponentCssPlan {
   const chunksByItem = new Map<string, string[]>();
   const chunks = collectComponentCssChunks(resolved);
@@ -117,15 +138,26 @@ export function planComponentCss(
   const existing = existsSync(targetPath) ? readFileSync(targetPath, "utf-8") : "";
   const installed = existingChunkHashes(existing);
   const missing = chunks.filter((chunk) => !installed.has(chunk.hash));
-  if (missing.length === 0) return { fileOp: null, chunksByItem };
+  const repairs = overwrite
+    ? collectDriftedChunkRepairs(chunks, installed, findChunkSlices(existing), existing)
+    : [];
+  if (missing.length === 0 && repairs.length === 0) return { fileOp: null, chunksByItem };
+
+  let updated = existing;
+  for (const { content, slice } of [...repairs].sort((a, b) => b.slice.start - a.slice.start)) {
+    updated = `${updated.slice(0, slice.start)}${wrapChunk(content)}${updated.slice(slice.end)}`;
+  }
+  if (missing.length > 0) {
+    updated = appendCssChunks(
+      updated,
+      missing.map((c) => wrapChunk(c.content)),
+    );
+  }
 
   return {
     fileOp: {
       targetPath,
-      content: appendCssChunks(
-        existing,
-        missing.map((c) => wrapChunk(c.content)),
-      ),
+      content: updated,
       relativePath: basename(cssPath),
       installDir: toPosixPath(dirname(cssPath)),
       overwrite: true,
@@ -153,6 +185,23 @@ function findChunkSlices(content: string): CssChunkSlice[] {
   return slices;
 }
 
+// Body between the markers, stripped of the bracketing newlines wrapChunk
+// inserts, so it matches what chunkHash was computed on at install time.
+function extractChunkBody(content: string, slice: CssChunkSlice): string {
+  const bodyStart = slice.start + startMarker(slice.hash).length;
+  const bodyEnd = slice.end - endMarker(slice.hash).length;
+  let body = content.slice(bodyStart, bodyEnd);
+  if (body.startsWith("\n")) body = body.slice(1);
+  if (body.endsWith("\n")) body = body.slice(0, -1);
+  return body;
+}
+
+// Pristine when the current body still hashes to the value in its marker; a
+// drifted body means an edit inside the region that removal would discard.
+function isChunkPristine(content: string, slice: CssChunkSlice): boolean {
+  return chunkHash(extractChunkBody(content, slice)) === slice.hash;
+}
+
 function trimSurroundingBlanks(
   content: string,
   start: number,
@@ -168,24 +217,38 @@ function trimSurroundingBlanks(
 export interface CssRemovalResult {
   fileOp: FileOp | null;
   removedHashes: string[];
+  // Requested chunks whose body drifted; preserved (never in `fileOp`) unless
+  // `force`, so an edit inside a managed chunk is not silently deleted.
+  modifiedHashes: string[];
 }
 
 export function removeCssChunks(
   hashesToRemove: Set<string>,
   cwd: string,
   config: ResolvedConfig,
+  force = false,
 ): CssRemovalResult {
   if (!config.tailwind?.css || hashesToRemove.size === 0) {
-    return { fileOp: null, removedHashes: [] };
+    return { fileOp: null, removedHashes: [], modifiedHashes: [] };
   }
 
   const cssPath = toPosixPath(config.tailwind.css);
   const targetPath = resolveProjectPath(cwd, cssPath);
-  if (!existsSync(targetPath)) return { fileOp: null, removedHashes: [] };
+  if (!existsSync(targetPath)) return { fileOp: null, removedHashes: [], modifiedHashes: [] };
 
   const content = readFileSync(targetPath, "utf-8");
-  const slices = findChunkSlices(content).filter((slice) => hashesToRemove.has(slice.hash));
-  if (slices.length === 0) return { fileOp: null, removedHashes: [] };
+  const candidates = findChunkSlices(content).filter((slice) => hashesToRemove.has(slice.hash));
+
+  const slices: CssChunkSlice[] = [];
+  const modifiedHashes: string[] = [];
+  for (const slice of candidates) {
+    if (force || isChunkPristine(content, slice)) {
+      slices.push(slice);
+    } else {
+      modifiedHashes.push(slice.hash);
+    }
+  }
+  if (slices.length === 0) return { fileOp: null, removedHashes: [], modifiedHashes };
 
   slices.sort((a, b) => b.start - a.start);
   let updated = content;
@@ -205,6 +268,7 @@ export function removeCssChunks(
       overwrite: true,
     },
     removedHashes: slices.map((s) => s.hash),
+    modifiedHashes,
   };
 }
 
@@ -215,10 +279,7 @@ export function readInstalledCssChunkHashes(cwd: string, config: ResolvedConfig)
   return existingChunkHashes(readFileSync(targetPath, "utf-8"));
 }
 
-// Returns a hash -> chunk content map for every dgadd-managed chunk currently
-// in the project's styles.css. The content is the body between the start and
-// end markers, stripped of the single bracketing newlines that wrapChunk
-// inserts, so it matches what chunkHash was computed on at install time.
+// hash -> marker-body content for every dgadd-managed chunk in styles.css.
 export function extractCssChunkContents(cwd: string, config: ResolvedConfig): Map<string, string> {
   const contents = new Map<string, string>();
   if (!config.tailwind?.css) return contents;
@@ -227,19 +288,13 @@ export function extractCssChunkContents(cwd: string, config: ResolvedConfig): Ma
 
   const file = readFileSync(targetPath, "utf-8");
   for (const slice of findChunkSlices(file)) {
-    const bodyStart = slice.start + startMarker(slice.hash).length;
-    const bodyEnd = slice.end - endMarker(slice.hash).length;
-    let body = file.slice(bodyStart, bodyEnd);
-    if (body.startsWith("\n")) body = body.slice(1);
-    if (body.endsWith("\n")) body = body.slice(0, -1);
-    contents.set(slice.hash, body);
+    contents.set(slice.hash, extractChunkBody(file, slice));
   }
   return contents;
 }
 
-// For a given registry item, returns its expected chunk hash -> trimmed CSS
-// content map. Mirrors collectComponentCssChunks' per-file computation so the
-// hashes match what add records in the manifest.
+// Expected chunk hash -> trimmed CSS map for an item. Mirrors
+// collectComponentCssChunks so the hashes match what add records in the manifest.
 export function buildExpectedChunkContentsForItem(itemName: string): Map<string, string> {
   const expected = new Map<string, string>();
   const item = ctx.items.getOrThrow(itemName);

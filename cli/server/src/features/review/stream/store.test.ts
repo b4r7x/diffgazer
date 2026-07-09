@@ -3,6 +3,7 @@ import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   addEvent,
+  buildScopeKey,
   cancelSession,
   cancelStaleSessionsForProjectMode,
   cleanupStaleSessions,
@@ -75,8 +76,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-// Tear down the module-level stale-cleanup interval so it never outlives the
-// suite. Idempotent, so it is safe even if a test already called it.
+// Tear down the module-level stale-cleanup interval so it never outlives the suite.
 afterAll(() => {
   shutdownSessions();
 });
@@ -302,7 +302,7 @@ describe("session bounds and subscriber failures", () => {
       createTrackedSession(`evict-${i}`);
     }
 
-    // This 51st session triggers eviction of the oldest (victim)
+    // The 51st session triggers eviction of the oldest (victim).
     vi.advanceTimersByTime(1);
     createTrackedSession("evict-trigger");
 
@@ -332,8 +332,6 @@ describe("session bounds and subscriber failures", () => {
     const session = createTrackedSession("timeout-session");
     subscribe(session.reviewId, (event) => received.push(event));
 
-    // Advance the clock past the 30-minute SESSION_TIMEOUT_MS, then run the
-    // stale-session sweep the cleanup interval drives in production.
     vi.advanceTimersByTime(30 * 60 * 1000 + 1);
     cleanupStaleSessions();
 
@@ -344,8 +342,6 @@ describe("session bounds and subscriber failures", () => {
   });
 
   it("continues dispatching when an async subscriber rejects", async () => {
-    // The contract under test is the public observable behavior (the second
-    // subscriber still receives the event), not the dispatch error the impl logs.
     const received: FullReviewStreamEvent[] = [];
     const session = createTrackedSession("subscriber-rejects");
     subscribe(session.reviewId, async () => {
@@ -380,12 +376,10 @@ describe("session bounds and subscriber failures", () => {
   });
 
   it("preserves the cap warning in the buffer after a terminal event overflows the cap", () => {
-    // The contract under test is that the buffered cap notice survives terminal
-    // replacement so a late SSE subscriber replaying session.events sees both.
     const session = createTrackedSession("cap-then-terminal");
 
-    // Fill to the cap, then overflow with a non-terminal event so the warning
-    // is appended as the final slot, then emit the terminal complete event.
+    // Fill to the cap, overflow with a non-terminal event (appends the warning as the
+    // final slot), then emit the terminal complete event.
     for (let index = 0; index < 10_000; index += 1) {
       addEvent(session.reviewId, stepEvent("review"));
     }
@@ -394,24 +388,22 @@ describe("session bounds and subscriber failures", () => {
 
     const stored = receivedEvents(session.reviewId);
 
-    // Late SSE subscriber replays the buffer and must see the terminal result...
+    // A late SSE replay must see both the terminal result...
     const terminals = stored.filter((event) => event.type === "complete");
     expect(terminals).toHaveLength(1);
     expect(terminals[0]).toMatchObject({ type: "complete", reviewId: session.reviewId });
 
-    // ...AND the cap warning that progress events were truncated.
+    // ...and the cap warning.
     const notices = stored.filter((event) => event.type === "chunk");
     expect(notices).toHaveLength(1);
     expect(notices[0]?.content).toContain("may be incomplete");
   });
 
   it("emits one client-facing cap notice when non-terminal events are dropped past the cap", () => {
-    // The contract under test is the client-facing notice, not the log line.
     const received: FullReviewStreamEvent[] = [];
     const session = createTrackedSession("event-cap-notice");
     subscribe(session.reviewId, (event) => received.push(event));
 
-    // Fill to the cap, then push three more non-terminal events that overflow.
     for (let index = 0; index < 10_003; index += 1) {
       addEvent(session.reviewId, stepEvent("review"));
     }
@@ -422,10 +414,10 @@ describe("session bounds and subscriber failures", () => {
     expect(notices).toHaveLength(1);
     expect(notices[0]?.content).toContain("may be incomplete");
 
-    // The notice is buffered exactly once so late SSE replays observe it too.
+    // Buffered exactly once so late SSE replays observe it too.
     const stored = receivedEvents(session.reviewId).filter((event) => event.type === "chunk");
     expect(stored).toHaveLength(1);
-    // The cap still bounds growth: real events (10k) + one notice overflow slot.
+    // Cap still bounds growth: 10k real events + one notice overflow slot.
     expect(receivedEvents(session.reviewId)).toHaveLength(10_001);
   });
 });
@@ -485,8 +477,6 @@ describe("onSessionComplete", () => {
   });
 
   it("isolates listener errors without preventing other listeners from running", () => {
-    // The observable contract is that the second listener still runs after the
-    // first one throws.
     const session = createTrackedSession("on-complete-error-isolation");
     let secondRan = false;
     onSessionComplete(session.reviewId, () => {
@@ -544,7 +534,6 @@ describe("shutdownSessions", () => {
     shutdownSessions();
     expect(clearSpy).toHaveBeenCalledTimes(1);
 
-    // A second call must be a no-op (the interval handle was already released).
     shutdownSessions();
     expect(clearSpy).toHaveBeenCalledTimes(1);
 
@@ -559,13 +548,10 @@ describe("shutdownSessions", () => {
 
     shutdownSessions();
 
-    // The in-flight review work is aborted...
     expect(session.controller.signal.aborted).toBe(true);
-    // ...the subscriber sees a terminal server-shutdown error...
     expect(received).toMatchObject([
       { type: "error", error: { code: ReviewErrorCode.SERVER_SHUTDOWN } },
     ]);
-    // ...and the session is removed so no SSE client keeps the process alive.
     expect(getSession(session.reviewId)).toBeUndefined();
     expect(
       getActiveSessionForProject("/project", {
@@ -615,8 +601,8 @@ describe("scoped active-session lookup", () => {
     createdSessionIds.add("scoped");
     markReady("scoped");
 
-    // A mode-only lookup (no scope key) resolves the scoped session — this is the
-    // /sessions/active reload path that must not miss a scoped review (F-163).
+    // A mode-only lookup must resolve the scoped session (the /sessions/active reload
+    // path that must not miss a scoped review, F-163).
     expect(
       getActiveSessionForProject("/scoped", {
         headCommit: "head",
@@ -626,7 +612,7 @@ describe("scoped active-session lookup", () => {
       })?.reviewId,
     ).toBe(session.reviewId);
 
-    // The same scope key still resolves the session.
+    // The same scope key still resolves it.
     expect(
       getActiveSessionForProject("/scoped", {
         headCommit: "head",
@@ -680,7 +666,6 @@ describe("scoped active-session lookup", () => {
       }),
     ).toBeUndefined();
 
-    // The same full-kind hash resolves it.
     expect(
       getActiveSessionForProject("/kinds", {
         headCommit: "head",
@@ -689,5 +674,78 @@ describe("scoped active-session lookup", () => {
         mode: "unstaged",
       })?.reviewId,
     ).toBe(session.reviewId);
+  });
+});
+
+describe("buildScopeKey", () => {
+  it("distinguishes file selections whose names contain the join delimiter", () => {
+    // "a,b" as one file must not collide with the two files "a" and "b": a
+    // naive comma-join collapses both to `f:a,b` and returns the wrong review.
+    expect(buildScopeKey({ files: ["a,b"] })).not.toBe(buildScopeKey({ files: ["a", "b"] }));
+    expect(buildScopeKey({ files: ["a|b"] })).not.toBe(buildScopeKey({ files: ["a", "b"] }));
+    // The key is order-independent so the same selection always dedupes.
+    expect(buildScopeKey({ files: ["b", "a"] })).toBe(buildScopeKey({ files: ["a", "b"] }));
+  });
+});
+
+describe("content-blind status-only sessions are non-dedupable", () => {
+  it("never serves a status-only file-scoped session, so edits get a fresh review", () => {
+    const scopeKey = buildScopeKey({ files: ["src/app.ts"] });
+    const session = createSession("status-only-file", {
+      projectPath: "/blind",
+      headCommit: "head",
+      statusHash: "blind-hash",
+      statusHashKind: "status-only",
+      mode: "unstaged",
+      scopeKey,
+    });
+    createdSessionIds.add("status-only-file");
+    markReady(session.reviewId);
+
+    // The status-only repo hash cannot prove the selected file's content is
+    // unchanged, so an exact-identity dedupe lookup must NOT reuse this session.
+    expect(
+      getActiveSessionForProject("/blind", {
+        headCommit: "head",
+        statusHash: "blind-hash",
+        statusHashKind: "status-only",
+        mode: "unstaged",
+        scopeKey,
+      }),
+    ).toBeUndefined();
+
+    // A mode-only reload lookup must not resurface it either.
+    expect(
+      getActiveSessionForProject("/blind", {
+        headCommit: "head",
+        statusHash: "blind-hash",
+        statusHashKind: "status-only",
+        mode: "unstaged",
+      }),
+    ).toBeUndefined();
+  });
+
+  it("never serves a status-only repo-wide session, so unstaged edits get a fresh review", () => {
+    const session = createSession("status-only-repo", {
+      projectPath: "/blind-repo",
+      headCommit: "head",
+      statusHash: "blind-hash",
+      statusHashKind: "status-only",
+      mode: "unstaged",
+    });
+    createdSessionIds.add("status-only-repo");
+    markReady(session.reviewId);
+
+    // The repo hash degraded to status-only (a staged diff exceeded the read limit) but
+    // stays constant across unstaged edits with the same status line, so reusing this
+    // session would serve a stale review.
+    expect(
+      getActiveSessionForProject("/blind-repo", {
+        headCommit: "head",
+        statusHash: "blind-hash",
+        statusHashKind: "status-only",
+        mode: "unstaged",
+      }),
+    ).toBeUndefined();
   });
 });

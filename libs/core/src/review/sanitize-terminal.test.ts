@@ -35,9 +35,16 @@ describe("sanitizeTerminalText", () => {
     expect(sanitizeTerminalText(payload)).toBe("abc");
   });
 
-  it("preserves inert SGR color sequences", () => {
+  it("strips SGR color sequences (styling is applied via Ink props, not text)", () => {
     const payload = "\x1b[31mred\x1b[0m";
-    expect(sanitizeTerminalText(payload)).toBe("\x1b[31mred\x1b[0m");
+    const result = sanitizeTerminalText(payload);
+    expect(result).toBe("red");
+    expect(result).not.toContain("\x1b");
+  });
+
+  it("strips the conceal SGR sequence so hidden text stays visible", () => {
+    const payload = "\x1b[8msecret\x1b[28m tail";
+    expect(sanitizeTerminalText(payload)).toBe("secret tail");
   });
 
   it("strips private-prefix CSI sequences ending in m", () => {

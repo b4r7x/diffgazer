@@ -26,6 +26,24 @@ import {
 } from "./integration.js";
 import { buildManifestMetadata, updateOwnedManifestEntries } from "./manifest.js";
 
+// Hidden items not depended upon by any other item are opt-in leaf add-ons
+// (directly installable, kept out of the public index); hidden items that ARE
+// depended upon are pure transitive internals and MUST NOT be installable.
+function installableAddonNames(): string[] {
+  const items = ctx.registry.getAllItems();
+  const dependedUpon = new Set(
+    items.flatMap((item) => item.registryDependencies ?? []).map((dep) => dep.split("/").pop()),
+  );
+  return items
+    .filter(
+      (item) =>
+        item.meta?.hidden === true &&
+        item.type === REGISTRY_ITEM_TYPE.ui &&
+        !dependedUpon.has(item.name),
+    )
+    .map((item) => `ui/${item.name}`);
+}
+
 function logIntegrationMode(mode: ResolvedIntegrationSelection["mode"]): void {
   if (mode === "copy") info("Including integration: keyboard-navigation (copy hooks)");
   if (mode === "@diffgazer/keys")
@@ -43,9 +61,10 @@ function collectFileOps(
   config: ResolvedConfig,
   selection: ResolvedIntegrationSelection,
   neededKeysHooks: string[],
+  overwrite: boolean,
 ): CollectedFileOps {
   const fileOps = buildComponentFileOps(resolved, cwd, config, selection.mode);
-  const cssPlan = planComponentCss(resolved, cwd, config);
+  const cssPlan = planComponentCss(resolved, cwd, config, overwrite);
   if (cssPlan.fileOp) fileOps.push(cssPlan.fileOp);
   if (selection.hasKeyboardIntegration && selection.mode === "copy") {
     fileOps.push(...buildKeysFileOps(neededKeysHooks, cwd, config));
@@ -93,15 +112,9 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
   emptyRequestedMessage: "No items specified. Usage: dgadd add ui/button keys/navigation",
   allIgnoresSpecifiedWarning: "--all flag ignores specified item names.",
   requireConfig: ctx.items.requireConfig,
-  getPublicNames: () => [
-    ...new Set([
-      ...publicAvailableNames(),
-      ...ctx.registry
-        .getAllItems()
-        .filter((item) => item.meta?.hidden === true && item.type !== REGISTRY_ITEM_TYPE.hook)
-        .map((item) => `ui/${item.name}`),
-    ]),
-  ],
+  // Public index plus opt-in leaf add-ons; gates both --all and explicit names
+  // so neither reaches pure transitive internals.
+  getPublicNames: () => [...new Set([...publicAvailableNames(), ...installableAddonNames()])],
   validateRequestedNames: validateInstallableNames,
   extraOptions: [
     {
@@ -142,7 +155,14 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
       ...namesByNamespace.ui.map((name) => `ui/${name}`),
       ...namesByNamespace.keys.map((name) => `keys/${name}`),
     ]);
-    const collected = collectFileOps(resolved, cwd, config, selection, neededKeysHooks);
+    const collected = collectFileOps(
+      resolved,
+      cwd,
+      config,
+      selection,
+      neededKeysHooks,
+      Boolean(opts.overwrite),
+    );
 
     return {
       resolvedNames: [
@@ -178,10 +198,8 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
 
 addBaseCommand.description("Add ui/* components or keys/* hooks to your project");
 
-// Surface the derived --keys-version default in --help without eager-reading the
-// generated keys-version.json at import time (that would crash every subcommand
-// when the file is absent). addHelpText runs only when help is rendered, and the
-// read is guarded so a missing generated file still prints help.
+// Guarded and deferred to help render: eager-reading the generated
+// keys-version.json at import time would crash every subcommand when it is absent.
 addBaseCommand.addHelpText("after", () => {
   try {
     return `\nDefault --keys-version: ${getDefaultKeysVersionSpec()} (caret range of the bundled @diffgazer/keys release)`;

@@ -1,11 +1,12 @@
+import { createError, getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type { TrustConfig } from "@diffgazer/core/schemas/config";
 import { getFileMtimeMs } from "../fs.js";
+import { log } from "../log.js";
 import { getGlobalTrustPath } from "../paths.js";
 import { loadTrust, persistTrustRecordAsync, persistTrustRemovalAsync } from "./persistence.js";
-import { persistError } from "./secrets-store.js";
 import { createMutex, runConfigTransaction } from "./transaction.js";
-import type { SecretsStorageError, TrustState } from "./types.js";
+import type { SecretsStorageError, SecretsStorageErrorCode, TrustState } from "./types.js";
 
 export interface TrustStore {
   getTrust(projectId: string): TrustConfig | null;
@@ -14,11 +15,10 @@ export interface TrustStore {
   removeTrust(projectId: string): Promise<Result<boolean, SecretsStorageError>>;
 }
 
-/**
- * Owns trust state: persistent project trust (file-backed) plus per-session
- * trust. This is the one cleanly separable concern in the config store — it does
- * not touch config/secrets/provider state, so it lives in its own module.
- */
+// Owns persistent (file-backed) and per-session trust. A session grant shadows a
+// persistent record for the same project and does not survive restarts, so downgrading
+// to session trust also clears the persistent record — a restart cannot resurrect the
+// older persistent grant (F-045).
 export function createTrustStore(): TrustStore {
   let trustState: TrustState = loadTrust();
   const sessionTrust: Record<string, TrustConfig> = {};
@@ -39,9 +39,8 @@ export function createTrustStore(): TrustStore {
     trustMtimeMs = currentMtime;
   };
 
-  // Record-granular persist: re-reads trust.json and merges the single mutated
-  // record before the atomic write, so a record another instance wrote during
-  // this window is never erased (F-359).
+  // Record-granular persist: the write re-reads and merges the single mutated record,
+  // so a record another instance wrote during this window is never erased (F-359).
   const persistTrustWith = async (
     write: () => Promise<void>,
   ): Promise<Result<void, SecretsStorageError>> => {
@@ -51,7 +50,10 @@ export function createTrustStore(): TrustStore {
       trustMtimeMs = getFileMtimeMs(getGlobalTrustPath());
       return ok(undefined);
     } catch (cause) {
-      return err(persistError("trust", cause));
+      // Log the raw cause (carries the absolute path) server-side; return a path-free
+      // message (F-085).
+      log("error", "trust_persist_failed", { error: getErrorMessage(cause) });
+      return err(createError<SecretsStorageErrorCode>("PERSIST_FAILED", "Failed to persist trust"));
     }
   };
 
@@ -75,8 +77,32 @@ export function createTrustStore(): TrustStore {
 
   const saveTrust = (config: TrustConfig): Promise<Result<TrustConfig, SecretsStorageError>> => {
     if (config.trustMode === "session") {
-      sessionTrust[config.projectId] = config;
-      return Promise.resolve(ok(config));
+      // Drop the persistent record, then record the session grant (F-045). Apply the
+      // session grant only after the removal persists: on failure the transaction
+      // restores the persistent record and returns err, so getTrust must not report a
+      // session grant that was never persisted.
+      return mutex.run(async () => {
+        refreshTrustState();
+        if (!(config.projectId in trustState.projects)) {
+          sessionTrust[config.projectId] = config;
+          return ok(config);
+        }
+        const result = await runConfigTransaction(
+          {
+            ...transactionDeps,
+            refresh: () => {},
+            persist: () => persistTrustWith(() => persistTrustRemovalAsync(config.projectId)),
+          },
+          () => {
+            delete trustState.projects[config.projectId];
+            return ok(config);
+          },
+        );
+        if (result.ok) {
+          sessionTrust[config.projectId] = config;
+        }
+        return result;
+      });
     }
     return mutex.run(() =>
       runConfigTransaction(
@@ -97,10 +123,6 @@ export function createTrustStore(): TrustStore {
       // Session trust is purely in-memory, so its removal needs no disk refresh.
       const removedSession = projectId in sessionTrust;
       if (removedSession) delete sessionTrust[projectId];
-      // Refresh once, then decide persistent membership against that single
-      // freshly-read state; only the persistent path enters the transaction (which
-      // reuses the same state without refreshing again), so there is no redundant
-      // double refresh on the removal path.
       refreshTrustState();
       if (!(projectId in trustState.projects)) return Promise.resolve(ok(removedSession));
       return runConfigTransaction(

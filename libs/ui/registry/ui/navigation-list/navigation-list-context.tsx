@@ -15,7 +15,6 @@ export type NavigationListIndicator = "bar" | "bar-thick" | "arrow" | "bracket";
 export interface GroupHeaderRegistration {
   /** Toggles the group header registration item. */
   toggle: () => void;
-  /** expanded used by group header registration. */
   expanded: boolean;
 }
 
@@ -36,7 +35,6 @@ export interface NavigationListContextValue {
    * when focus is elsewhere).
    */
   focused: boolean;
-  /** id prefix used by navigation list. */
   idPrefix: string;
   /** Visual indicator style for the active/selected item. */
   indicator: NavigationListIndicator;
@@ -53,7 +51,6 @@ export interface NavigationListContextValue {
   registerGroupHeader: (id: string, registration: GroupHeaderRegistration) => void;
   /** Unregisters group header from navigation list. */
   unregisterGroupHeader: (id: string) => void;
-  /** group headers used by navigation list. */
   groupHeaders: Map<string, GroupHeaderRegistration>;
 }
 

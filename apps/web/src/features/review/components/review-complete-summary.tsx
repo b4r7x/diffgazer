@@ -1,9 +1,9 @@
+import { formatRunId } from "@diffgazer/core/review";
 import type {
   AnalysisStats,
   IssuePreview,
   SeverityCounts,
 } from "@diffgazer/core/schemas/presentation";
-import { formatRunId } from "@diffgazer/core/review";
 import { pluralize } from "@diffgazer/core/strings";
 import { Button } from "@diffgazer/ui/components/button";
 import { Panel, PanelContent } from "@diffgazer/ui/components/panel";

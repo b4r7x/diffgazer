@@ -134,8 +134,6 @@ describe("CommandPalette", () => {
     const empty = screen.getByText("No results found");
     expect(empty).toHaveAttribute("role", "presentation");
 
-    // Only the Content live region announces the no-results transition; the
-    // presentational Empty node is not a live region.
     const liveRegions = screen
       .getAllByText(/no results/i)
       .filter((node) => node.getAttribute("aria-live") !== null);
@@ -444,6 +442,52 @@ describe("CommandPalette", () => {
       </CommandPalette>,
     );
     expect(screen.getByRole("combobox")).not.toHaveAttribute("aria-activedescendant");
+  });
+
+  it.each<[string, { hidden?: boolean; inert?: boolean; "aria-hidden"?: boolean }]>([
+    ["hidden", { hidden: true }],
+    ["inert", { inert: true }],
+    ["aria-hidden", { "aria-hidden": true }],
+  ])("skips a %s first item when resolving the fallback active descendant", (_attribute, itemProps) => {
+    render(
+      <CommandPalette open>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item {...itemProps} id="first">
+              First
+            </CommandPalette.Item>
+            <CommandPalette.Item id="second">Second</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    );
+
+    const input = screen.getByRole("combobox");
+    const second = screen.getByRole("option", { name: "Second" });
+    expect(input).toHaveAttribute("aria-activedescendant", second.id);
+  });
+
+  it("re-resolves the fallback active descendant when an item is hidden after mount", async () => {
+    render(
+      <CommandPalette open>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="first">First</CommandPalette.Item>
+            <CommandPalette.Item id="second">Second</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    );
+
+    const input = screen.getByRole("combobox");
+    const first = screen.getByRole("option", { name: "First" });
+    const second = screen.getByRole("option", { name: "Second" });
+    expect(input).toHaveAttribute("aria-activedescendant", first.id);
+
+    first.setAttribute("hidden", "");
+    await waitFor(() => expect(input).toHaveAttribute("aria-activedescendant", second.id));
   });
 
   it("forwards item props and refs while honoring preventDefault", async () => {
@@ -829,7 +873,6 @@ describe("CommandPalette", () => {
     });
 
     it("matchPositions falls back to fuzzy non-contiguous indices", () => {
-      // "hwl" is not contiguous in "Hello World" but each char appears in order.
       expect(matchPositions("Hello World", "hwl")).toEqual([0, 6, 9]);
     });
 
@@ -890,8 +933,6 @@ describe("CommandPalette", () => {
       );
 
       const item = await screen.findByRole("option", { name: /delete branch/i });
-      // The <strong> node must still be in the rendered output — the highlight
-      // wrapper must not strip mixed children to gain match marks.
       expect(item.querySelector("strong")).not.toBeNull();
       expect(item.querySelector("strong")?.textContent).toBe("branch");
     });
@@ -912,7 +953,6 @@ describe("CommandPalette", () => {
     );
     const item = screen.getByRole("option", { name: /switch theme/i });
     expect(item).toHaveAttribute("aria-selected", "true");
-    // The shortcut span must still render its consumer text — no ↵ swap.
     const shortcut = item.querySelector('[data-slot="command-palette-item-shortcut"]');
     expect(shortcut?.textContent).toBe("⌘T");
     expect(item.textContent).not.toContain("↵");
@@ -998,11 +1038,8 @@ describe("CommandPalette", () => {
 });
 
 describe("CommandPalette CSS contract", () => {
-  // command-palette.css declares frame/density/heading/item rules inside
-  // @layer components. jsdom's CSSOM does not apply rules nested inside
-  // @layer (and does not support pseudo-element getComputedStyle), so these
-  // tests assert the public CSS contract by parsing the source CSS for the
-  // selectors and declarations that frame/viewfinder/terminal/disabled depend on.
+  // jsdom's CSSOM ignores rules nested in @layer and pseudo-element styles, so
+  // assert the CSS contract by parsing the source selectors/declarations directly.
   const CSS_PATH = resolve(fileURLToPath(import.meta.url), "../command-palette.css");
   let css = "";
 

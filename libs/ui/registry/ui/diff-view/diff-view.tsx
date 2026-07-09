@@ -97,7 +97,6 @@ export type DiffViewProps = (DiffInputPatch | DiffInputCompare | DiffInputParsed
 // The public union keeps diff inputs mutually exclusive; this flattened shape
 // lets the body destructure every key (including the diff discriminants) so the
 // remaining `...rest` carries only genuine <figure> attributes to spread.
-/** Props for diff view resolved. */
 type DiffViewResolvedProps = DiffViewBaseProps & {
   patch?: string;
   before?: string;
@@ -106,9 +105,7 @@ type DiffViewResolvedProps = DiffViewBaseProps & {
 };
 
 interface ActiveHunkState {
-  /** parsed identity used by active hunk. */
   parsedIdentity: string;
-  /** Controlled value. */
   value: string;
 }
 
@@ -190,11 +187,8 @@ export function DiffView(props: DiffViewProps) {
 
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Escape") {
-      // Only consume the keypress when an active selection was actually
-      // cleared — symmetric with the j/k path's preventDefault default — so a
-      // bare Escape (no active hunk) still reaches an outer keys-style scope
-      // (e.g. the review-results back binding), but clearing a hunk does not
-      // also navigate the user off the screen.
+      // Only consume Escape when it actually clears a hunk, so a bare Escape still
+      // reaches an outer scope (e.g. the review-results back binding).
       if (activeHunk !== null) {
         e.preventDefault();
         e.stopPropagation();

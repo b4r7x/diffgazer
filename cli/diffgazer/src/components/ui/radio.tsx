@@ -1,8 +1,8 @@
-import { moveHighlight } from "@diffgazer/keys";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext, useState } from "react";
 import { collectChildItems } from "../../lib/collect-child-items";
+import { useListNavigation } from "../../lib/use-list-navigation";
 import type { CliColorTokens } from "../../theme/palettes";
 import { useTheme } from "../../theme/provider";
 
@@ -123,35 +123,24 @@ function RadioGroupRoot({
     id: item.value,
     disabled: disabled || item.disabled,
   }));
-  const selectableItems = navigableItems.filter((item) => !item.disabled);
 
   const [internalValue, setInternalValue] = useState(defaultValue ?? "");
-  const [internalHighlightedValue, setInternalHighlightedValue] = useState<string | null>(null);
+  const {
+    currentHighlightedId: highlightedValue,
+    moveBy,
+    selectItem,
+  } = useListNavigation({ items: navigableItems, onHighlightChange, wrap });
 
   const selectedValue = value ?? internalValue;
-  const highlightedValue =
-    internalHighlightedValue !== null &&
-    selectableItems.some((item) => item.id === internalHighlightedValue)
-      ? internalHighlightedValue
-      : (selectableItems[0]?.id ?? "");
-
-  function moveBy(direction: 1 | -1) {
-    const result = moveHighlight(navigableItems, highlightedValue, direction, wrap);
-    if (!result) return;
-    setInternalHighlightedValue(result.id);
-    onHighlightChange?.(result.id);
-  }
 
   function selectCurrent() {
-    const item = items.find(
-      (candidate) => candidate.value === highlightedValue && !candidate.disabled,
-    );
+    const item = selectItem(highlightedValue);
     if (!item) return;
 
     if (value === undefined) {
-      setInternalValue(item.value);
+      setInternalValue(item.id);
     }
-    onChange?.(item.value);
+    onChange?.(item.id);
   }
 
   const isVertical = orientation === "vertical";

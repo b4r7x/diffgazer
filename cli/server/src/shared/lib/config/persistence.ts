@@ -34,12 +34,9 @@ const isValidAIProvider = (value: string): value is AIProvider => {
   return AI_PROVIDERS.includes(value as AIProvider);
 };
 
-// Record-level tolerance (F-445): the config/secrets files are parsed element-
-// wise, not whole-file. The top-level container is read loosely so a single
-// unknown provider/settings/secret value never resets the file; only JSON
-// corruption quarantines. Per-field/per-entry schemas validate each record. Each
-// container slot falls back independently, so a malformed providers array never
-// also discards valid settings (and vice versa).
+// Record-level tolerance (F-445): the container is read loosely so one unknown
+// value never resets the file; only JSON corruption quarantines. Per-field/per-entry
+// schemas validate each record, and each slot falls back independently.
 const RawConfigContainerSchema = z.object({
   settings: z.record(z.string(), z.unknown()).catch({}).optional(),
   providers: z.array(z.unknown()).catch([]).optional(),
@@ -152,11 +149,8 @@ const loadOrQuarantine = <T>(filePath: string, label: string, schema: z.ZodType<
   return null;
 };
 
-/**
- * Reads a record-tolerant file: returns the raw parsed JSON, quarantining ONLY
- * when JSON.parse fails. Schema validation is left to the caller's per-record
- * parse so a single unknown value never resets the whole file (F-445).
- */
+// Returns raw parsed JSON, quarantining ONLY on JSON.parse failure; per-record
+// validation is left to the caller so one unknown value never resets the file (F-445).
 const loadRawOrQuarantine = (filePath: string, label: string): unknown => {
   const result = readJsonFileSyncSafe<unknown>(filePath);
   if (result.status === "ok") return result.data;
@@ -171,10 +165,8 @@ interface ParsedProviders {
   unknown: unknown[];
 }
 
-// Parse the providers array element-wise: each entry that validates against the
-// current schema becomes a typed provider; entries that do not (a provider id or
-// shape this binary does not know) are carried opaquely so persist re-emits them
-// instead of destroying a newer binary's state (F-445). Defaults fill the gaps.
+// Element-wise parse: valid entries become typed providers; unknown ones are carried
+// opaquely so persist re-emits them instead of destroying a newer binary's state (F-445).
 const parseProviders = (rawProviders: unknown[]): ParsedProviders => {
   const byId = new Map<string, ProviderStatus>();
   const unknown: unknown[] = [];
@@ -200,9 +192,8 @@ interface ParsedSettings {
   unknown: Record<string, unknown>;
 }
 
-// Parse settings field-wise: each known field that validates is taken, otherwise
-// it falls back to the default for that field; unrecognized fields are preserved
-// for round-trip. One bad value never resets every setting (F-445).
+// Field-wise parse: invalid known fields fall back to their default, unrecognized
+// fields are preserved for round-trip, so one bad value never resets every setting (F-445).
 const parseSettings = (rawSettings: Record<string, unknown>): ParsedSettings => {
   const settings = { ...DEFAULT_SETTINGS };
   const unknown: Record<string, unknown> = {};
@@ -245,9 +236,7 @@ export const loadSecrets = (): SecretsState => {
   const container = RawSecretsContainerSchema.safeParse(raw);
   const storedProviders = container.success ? (container.data.providers ?? {}) : {};
 
-  // Parse each secret entry on its own: literal keys and env refs are typed,
-  // unknown ref kinds (a newer reference type) are carried opaquely so they
-  // round-trip on persist instead of failing the whole file (F-445).
+  // Per-entry parse: unknown ref kinds are carried opaquely to round-trip on persist (F-445).
   const migrated: SecretsState["providers"] = {};
   const unknown: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(storedProviders)) {
@@ -298,9 +287,7 @@ export const loadTrust = (): TrustState => {
   return { projects: validated };
 };
 
-// Builds the on-disk config shape, re-emitting the opaque unknown settings
-// fields and provider entries a newer binary wrote so they survive a round-trip
-// through this binary (F-445).
+// Re-emits opaque unknown settings/provider entries a newer binary wrote so they round-trip (F-445).
 const serializeConfig = (
   settings: SettingsConfig,
   providers: ProviderStatus[],
@@ -322,10 +309,9 @@ export const persistConfig = (state: ConfigState): void => {
 const providerEntriesEqual = (a: ProviderStatus, b: ProviderStatus): boolean =>
   a.hasApiKey === b.hasApiKey && a.isActive === b.isActive && a.model === b.model;
 
-// Merge the settings object against disk field-by-field like providers: a field
-// this instance changed (current value differs from the pre-mutation snapshot)
-// overwrites disk; a field it left untouched yields to the freshly-read disk
-// value so a concurrent instance's change to a DIFFERENT field survives (F-359).
+// Field-by-field merge against disk: a field this instance changed (differs from the
+// pre-mutation snapshot) overwrites disk; an untouched field yields to the freshly-read
+// disk value so a concurrent instance's change to a different field survives (F-359).
 const mergeSettings = (
   state: SettingsConfig,
   previous: SettingsConfig,
@@ -339,29 +325,17 @@ const mergeSettings = (
   return merged;
 };
 
-// Merge unknown (round-tripped) settings keys per key against disk: this binary
-// never mutates fields it does not recognize, so every key it carries is by
-// definition unchanged and yields to the freshly-read disk value, mirroring the
-// per-field merge so a concurrent instance's unknown-key write survives (F-359).
+// This binary never mutates unrecognized keys, so they always yield to the
+// freshly-read disk value, letting a concurrent instance's unknown-key write survive (F-359).
 const mergeUnknownSettings = (
   disk: Record<string, unknown> | undefined,
 ): Record<string, unknown> | undefined =>
   disk && Object.keys(disk).length > 0 ? { ...disk } : undefined;
 
-/**
- * Persists config state, re-reading config.json immediately before the atomic
- * write and merging at record granularity (F-359): per-provider entries and the
- * settings object field-by-field. Because every load materializes all known
- * provider ids, an absent-id append can never carry a concurrent instance's
- * change to a known provider; instead each provider this instance did not change
- * (its current entry still matches `previousProviders`, the pre-mutation
- * snapshot) yields to the freshly-read disk entry, so another instance's
- * hasApiKey/isActive/model change written during this window survives. Providers
- * this instance did change overwrite disk; ids only this instance knows are
- * appended. Settings merge the same way against `previousSettings`: a field this
- * instance changed overwrites disk, an untouched field yields to the freshly-read
- * disk value, so two instances editing different settings fields don't clobber.
- */
+// Re-reads config.json before the atomic write and merges at record granularity
+// (F-359): a provider this instance didn't change (still matches previousProviders)
+// yields to the freshly-read disk entry so a concurrent change survives; changed
+// providers overwrite disk; unknown ids are appended. Settings merge the same way.
 export const persistConfigMergedAsync = (
   state: ConfigState,
   previousProviders: ProviderStatus[],
@@ -415,12 +389,8 @@ export const persistTrust = (state: TrustState): void => {
   writeJsonFileSync(TRUST_PATH(), state, 0o600);
 };
 
-/**
- * Persists a single trust record, re-reading trust.json immediately before the
- * atomic write and merging at record granularity (F-359). A record another
- * diffgazer instance persisted during this instance's read-modify-write window
- * survives because the merge starts from the freshly-read disk state.
- */
+// Re-reads trust.json before the atomic write so a record another instance persisted
+// during this read-modify-write window survives (F-359).
 export const persistTrustRecordAsync = (config: TrustConfig): Promise<void> => {
   const disk = loadTrust();
   disk.projects[config.projectId] = config;
@@ -478,12 +448,9 @@ export const readProjectFile = (
   const loaded = loadOrQuarantine(projectInfoPath, "project file", ProjectFileSchema);
   if (!loaded) return null;
   if (!projectFileMatchesRoot(loaded, projectRoot)) {
-    // The directory moved: project.json travels with the repo so its stored
-    // repoRoot is stale by construction. Keep the identity (projectId) and
-    // re-point repoRoot at the current root instead of quarantining (F-447).
-    // Trust stays gated — the trust record still names the old root, so the
-    // trust-guard 403s until the user explicitly re-confirms, preserving the
-    // anti-trust-transfer property — but the user's own review history follows.
+    // The repo moved: keep the projectId identity and re-point repoRoot instead of
+    // quarantining (F-447). Trust stays gated on the old root (trust-guard 403s until
+    // re-confirmed), preserving anti-trust-transfer, but review history follows.
     const oldRepoRoot = loaded.repoRoot;
     const moved: ProjectFile = { ...loaded, repoRoot: projectRoot };
     writeJsonFileSync(projectInfoPath, moved, 0o600);

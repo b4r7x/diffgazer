@@ -7,6 +7,7 @@ import { REGISTRY_ITEM_TYPE, RegistrySchema } from "@diffgazer/registry/schemas"
 import { describe, expect, it } from "vitest";
 import {
   extractRelativeImports as extractRegistryRelativeImports,
+  validateContentFreshness,
   validatePublicTargetClosure,
 } from "./validate-registry-closure.js";
 
@@ -47,9 +48,6 @@ describe("public registry target paths", () => {
   const registry = loadRegistry();
   const publicRegistry = loadPublicRegistry();
 
-  // The source registry is the single source of truth for install layout.
-  // The public registry must mirror it exactly (hidden items are excluded
-  // from the public index but still have per-item JSON files).
   const visibleItems = registry.items.filter((item) => !item.meta?.hidden);
   for (const sourceItem of visibleItems) {
     const expectedTargets = sourceItem.files.map((file) => file.target ?? file.path).sort();
@@ -250,6 +248,40 @@ describe("target-path install closure validation", () => {
           item: "test-bad",
           message:
             'Target import "./utils/missing" from src/hooks/use-test.ts does not resolve to any installed file',
+        },
+      ]);
+    } finally {
+      rmSync(publicDir, { recursive: true, force: true });
+    }
+  });
+
+  it("current public registry embedded content is fresh against source", () => {
+    expect(validateContentFreshness(PUBLIC_DIR, KEYS_ROOT)).toEqual([]);
+  });
+
+  it("detects stale embedded content that diverges from source", () => {
+    const publicDir = mkdtempSync(join(tmpdir(), "dg-keys-freshness-"));
+    try {
+      const item = loadPublicItem("focus-trap");
+      const firstFile = item.files[0];
+      if (!firstFile || typeof firstFile.content !== "string") {
+        throw new Error("focus-trap item is missing embedded content");
+      }
+      const staleItem = {
+        ...item,
+        files: [
+          { ...firstFile, content: `${firstFile.content}// stale drift\n` },
+          ...item.files.slice(1),
+        ],
+      };
+      writeFileSync(join(publicDir, "focus-trap.json"), JSON.stringify(staleItem));
+
+      expect(validateContentFreshness(publicDir, KEYS_ROOT)).toEqual([
+        {
+          code: "REGISTRY_STALE_CONTENT",
+          item: "focus-trap",
+          message:
+            'Embedded content for src/hooks/use-focus-trap.ts is stale; run "pnpm --filter @diffgazer/keys build:shadcn" to regenerate',
         },
       ]);
     } finally {

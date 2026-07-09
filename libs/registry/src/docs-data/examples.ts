@@ -2,12 +2,15 @@ import { existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { log } from "../logger.js";
 
+const TEST_EXAMPLE_FILE = /\.(?:test|spec)\.tsx$/i;
+const TEST_EXAMPLE_KEY = /\.(?:test|spec)$/i;
+
 export function findExamples(examplesDir: string, itemName: string): string[] {
   const itemDir = resolve(examplesDir, itemName);
   if (!existsSync(itemDir)) return [];
 
   return readdirSync(itemDir)
-    .filter((fileName) => fileName.endsWith(".tsx"))
+    .filter((fileName) => fileName.endsWith(".tsx") && !TEST_EXAMPLE_FILE.test(fileName))
     .map((fileName) => fileName.replace(".tsx", ""))
     .sort();
 }
@@ -25,6 +28,11 @@ export function generateDemoIndex(config: {
   for (const item of items) {
     const examples = findExamplesFn(examplesDir, item.name);
     for (const exampleName of examples) {
+      if (TEST_EXAMPLE_KEY.test(exampleName)) {
+        throw new Error(
+          `Demo index cannot reference test/spec example "${exampleName}" from "${item.name}"`,
+        );
+      }
       const existing = seenKeys.get(exampleName);
       if (existing) {
         log.warn(

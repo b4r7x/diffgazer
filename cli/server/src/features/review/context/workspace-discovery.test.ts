@@ -27,6 +27,11 @@ async function writePackage(relativePath: string, name: string): Promise<void> {
   );
 }
 
+async function writeExternalPackage(absoluteDir: string, name: string): Promise<void> {
+  await mkdir(absoluteDir, { recursive: true });
+  await writeFile(join(absoluteDir, "package.json"), JSON.stringify({ name, version: "1.0.0" }));
+}
+
 describe("discoverWorkspacePackages", () => {
   it("includes exact pnpm workspace package entries", async () => {
     await writeProjectFile(
@@ -76,6 +81,57 @@ describe("discoverWorkspacePackages", () => {
       await writePackage("apps/web", "@diffgazer/web");
       await writePackage(join(outsideRoot, "escaped"), "@diffgazer/escaped");
       await symlink(join(outsideRoot, "escaped"), join(projectRoot, "outside"));
+
+      const packages = await discoverWorkspacePackages(projectRoot);
+
+      expect(packages.map((pkg) => pkg.name)).toEqual(["@diffgazer/web"]);
+    } finally {
+      await rm(outsideRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("ignores fallback workspace roots that symlink outside the project root", async () => {
+    const outsideRoot = await mkdtemp(join(tmpdir(), "diffgazer-outside-"));
+    try {
+      await writeExternalPackage(join(outsideRoot, "external"), "@diffgazer/external");
+      await symlink(outsideRoot, join(projectRoot, "apps"));
+      await writePackage("packages/local", "@diffgazer/local");
+
+      const packages = await discoverWorkspacePackages(projectRoot);
+
+      expect(packages.map((pkg) => pkg.name)).toEqual(["@diffgazer/local"]);
+    } finally {
+      await rm(outsideRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("ignores child package directories that symlink outside the project root", async () => {
+    const outsideRoot = await mkdtemp(join(tmpdir(), "diffgazer-outside-"));
+    try {
+      await writeProjectFile("pnpm-workspace.yaml", ["packages:", '  - "apps/*"', ""].join("\n"));
+      await writePackage("apps/web", "@diffgazer/web");
+      await writeExternalPackage(join(outsideRoot, "evil"), "@diffgazer/evil");
+      await symlink(join(outsideRoot, "evil"), join(projectRoot, "apps", "evil"));
+
+      const packages = await discoverWorkspacePackages(projectRoot);
+
+      expect(packages.map((pkg) => pkg.name)).toEqual(["@diffgazer/web"]);
+    } finally {
+      await rm(outsideRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("ignores a symlinked package.json inside a contained child directory", async () => {
+    const outsideRoot = await mkdtemp(join(tmpdir(), "diffgazer-outside-"));
+    try {
+      await writeProjectFile("pnpm-workspace.yaml", ["packages:", '  - "apps/*"', ""].join("\n"));
+      await writePackage("apps/web", "@diffgazer/web");
+      await mkdir(join(projectRoot, "apps", "leaky"), { recursive: true });
+      await writeExternalPackage(join(outsideRoot, "external"), "@diffgazer/external");
+      await symlink(
+        join(outsideRoot, "external", "package.json"),
+        join(projectRoot, "apps", "leaky", "package.json"),
+      );
 
       const packages = await discoverWorkspacePackages(projectRoot);
 

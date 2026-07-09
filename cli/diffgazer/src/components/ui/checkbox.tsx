@@ -1,8 +1,8 @@
-import { moveHighlight } from "@diffgazer/keys";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext, useState } from "react";
 import { collectChildItems } from "../../lib/collect-child-items";
+import { useListNavigation } from "../../lib/use-list-navigation";
 import type { CliColorTokens } from "../../theme/palettes";
 import { useTheme } from "../../theme/provider";
 
@@ -121,34 +121,23 @@ function CheckboxGroupRoot<T extends string = string>({
     id: item.value,
     disabled: disabled || item.disabled,
   }));
-  const selectableItems = navigableItems.filter((item) => !item.disabled);
 
   const [internalValue, setInternalValue] = useState<string[]>(defaultValue ?? []);
-  const [internalHighlightedValue, setInternalHighlightedValue] = useState<string | null>(null);
+  const {
+    currentHighlightedId: highlightedValue,
+    moveBy,
+    selectItem,
+  } = useListNavigation({ items: navigableItems, onHighlightChange, wrap });
 
   const checkedValues = value ?? internalValue;
-  const highlightedValue =
-    internalHighlightedValue !== null &&
-    selectableItems.some((item) => item.id === internalHighlightedValue)
-      ? internalHighlightedValue
-      : (selectableItems[0]?.id ?? "");
-
-  function moveBy(direction: 1 | -1) {
-    const result = moveHighlight(navigableItems, highlightedValue, direction, wrap);
-    if (!result) return;
-    setInternalHighlightedValue(result.id);
-    onHighlightChange?.(result.id);
-  }
 
   function toggleCurrent() {
-    const item = items.find(
-      (candidate) => candidate.value === highlightedValue && !candidate.disabled,
-    );
+    const item = selectItem(highlightedValue);
     if (!item) return;
 
-    const nextValues = checkedValues.includes(item.value)
-      ? checkedValues.filter((v) => v !== item.value)
-      : [...checkedValues, item.value];
+    const nextValues = checkedValues.includes(item.id)
+      ? checkedValues.filter((v) => v !== item.id)
+      : [...checkedValues, item.id];
 
     if (value === undefined) {
       setInternalValue(nextValues);

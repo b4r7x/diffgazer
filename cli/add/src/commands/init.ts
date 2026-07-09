@@ -4,7 +4,6 @@ import {
   heading,
   installDepsWithSpinner,
   REGISTRY_ORIGIN,
-  warn,
   writeFileSafe,
 } from "@diffgazer/registry/cli";
 import { z } from "zod";
@@ -12,13 +11,13 @@ import { ctx, getRegistry, VERSION } from "../context.js";
 import { detectProject } from "../utils/detect.js";
 import { assertInsideProject, resolveInstallPath, resolveProjectPath } from "../utils/paths.js";
 
-// The init command declares `--components-dir <path>` (defaulted) and
-// `--allow-missing-alias`. Commander hands callbacks a loosely-typed options
-// bag, so validate the init-specific fields at the boundary instead of casting.
+// Commander hands callbacks a loosely-typed options bag; validate the
+// init-specific fields at the boundary instead of casting.
 const InitOptionsSchema = z
   .object({
     componentsDir: z.string().default("src/components/ui"),
     allowMissingAlias: z.boolean().optional(),
+    resetManifest: z.boolean().optional(),
   })
   .passthrough();
 
@@ -28,14 +27,9 @@ function parseInitOptions(opts: Record<string, unknown>): InitOptions {
   return InitOptionsSchema.parse(opts);
 }
 
-/**
- * Lockfile names tracked across the package managers dgadd supports. Every name
- * here is declared as a planned path so that if a `pnpm/yarn/npm/bun install`
- * during init creates or mutates one, a later `writeConfig` failure rolls it
- * back to its pre-init state (either restored content or removed if freshly
- * created). Keep in sync with the lockfile table in
- * `@diffgazer/registry/cli` `detect.ts`.
- */
+// Declared as planned paths so an install during init that creates or mutates a
+// lockfile is rolled back on a later writeConfig failure. Keep in sync with the
+// lockfile table in `@diffgazer/registry/cli` detect.ts.
 export const KNOWN_LOCKFILES = [
   "pnpm-lock.yaml",
   "yarn.lock",
@@ -44,14 +38,8 @@ export const KNOWN_LOCKFILES = [
   "package-lock.json",
 ] as const;
 
-/**
- * Compute every path that init may create, write, or touch — including the
- * package manager mutation surfaces (`package.json` + the configured lockfile)
- * so a `writeConfig` failure after `afterFiles` rolls them back.
- *
- * Exported so a behavior test can lock in the install-side-effect rollback
- * contract end-to-end alongside the workflow.
- */
+// Every path init may create, write, or touch — including package.json and the
+// lockfiles — so a writeConfig failure after afterFiles rolls them back.
 export function buildInitPlannedPaths(cwd: string, opts: Record<string, unknown>): string[] {
   const { componentsDir, libDir, stylesDir, hooksDir } = derivePaths(
     cwd,
@@ -119,6 +107,45 @@ export function buildStylesContent(registry: ReturnType<typeof getRegistry>): st
   return `${registry.styles.trimEnd()}\n`;
 }
 
+// init --force re-derives config choices but carries installedComponents across
+// so add/diff/remove do not orphan already-installed files; only --reset-manifest
+// drops the ledger.
+export function writeInitConfig(cwd: string, opts: Record<string, unknown>): void {
+  const initOptions = parseInitOptions(opts);
+  const { project, componentsDir, libDir, stylesDir, hooksDir } = derivePaths(
+    cwd,
+    initOptions.componentsDir,
+  );
+
+  const stripSource = (p: string) => {
+    const prefix = project.sourceDir === "." ? "" : `${project.sourceDir}/`;
+    return prefix && p.startsWith(prefix) ? p.slice(prefix.length) : p;
+  };
+  const aliasPath = (path: string) => `${project.importAliasPrefix}/${path}`;
+  const aliases = {
+    components: aliasPath(stripSource(componentsDir)),
+    utils: aliasPath(`${stripSource(libDir)}/utils`),
+    lib: aliasPath(stripSource(libDir)),
+    hooks: aliasPath(stripSource(hooksDir)),
+  };
+
+  const existing = ctx.config.loadConfig(cwd);
+  const installedComponents =
+    initOptions.resetManifest || !existing.ok ? undefined : existing.config.installedComponents;
+
+  ctx.config.writeConfig(cwd, {
+    $schema: `${REGISTRY_ORIGIN}/schema/diffgazer.json`,
+    version: VERSION,
+    aliases,
+    componentsFsPath: componentsDir,
+    libFsPath: libDir,
+    hooksFsPath: hooksDir,
+    rsc: project.rsc,
+    tailwind: { css: `${stylesDir}/styles.css` },
+    ...(installedComponents ? { installedComponents } : {}),
+  });
+}
+
 export const initCommand = createInitCommand({
   configFileName: "diffgazer.json",
   loadConfig: ctx.config.loadConfig,
@@ -131,6 +158,11 @@ export const initCommand = createInitCommand({
     {
       flags: "--allow-missing-alias",
       description: "Initialize even when the app has no TypeScript/bundler source alias",
+    },
+    {
+      flags: "--reset-manifest",
+      description:
+        "Discard the tracked installed-component ownership ledger instead of preserving it (orphans previously installed files)",
     },
   ],
   detectProject: (cwd, opts) => {
@@ -190,42 +222,21 @@ export const initCommand = createInitCommand({
       ),
     ];
   },
+  // Throw on install failure so the workflow rolls back the freshly created files
+  // and config instead of leaving a written diffgazer.json with missing deps.
   afterFiles: async (cwd) => {
     const project = detectProject(cwd);
     heading("Installing dependencies...");
     const deps = ["class-variance-authority", "clsx", "tailwind-merge"];
     const ok = await installDepsWithSpinner(project.packageManager, deps, cwd);
-    if (!ok) warn("You can install them manually later.");
+    if (!ok) {
+      throw new Error(
+        "Failed to install dependencies (class-variance-authority, clsx, tailwind-merge). " +
+          "Re-run with --skip-install to write files without installing, then install them manually.",
+      );
+    }
   },
-  writeConfig: (cwd, opts) => {
-    const { project, componentsDir, libDir, stylesDir, hooksDir } = derivePaths(
-      cwd,
-      parseInitOptions(opts).componentsDir,
-    );
-
-    const stripSource = (p: string) => {
-      const prefix = project.sourceDir === "." ? "" : `${project.sourceDir}/`;
-      return prefix && p.startsWith(prefix) ? p.slice(prefix.length) : p;
-    };
-    const aliasPath = (path: string) => `${project.importAliasPrefix}/${path}`;
-    const aliases = {
-      components: aliasPath(stripSource(componentsDir)),
-      utils: aliasPath(`${stripSource(libDir)}/utils`),
-      lib: aliasPath(stripSource(libDir)),
-      hooks: aliasPath(stripSource(hooksDir)),
-    };
-
-    ctx.config.writeConfig(cwd, {
-      $schema: `${REGISTRY_ORIGIN}/schema/diffgazer.json`,
-      version: VERSION,
-      aliases,
-      componentsFsPath: componentsDir,
-      libFsPath: libDir,
-      hooksFsPath: hooksDir,
-      rsc: project.rsc,
-      tailwind: { css: `${stylesDir}/styles.css` },
-    });
-  },
+  writeConfig: (cwd, opts) => writeInitConfig(cwd, opts),
   nextSteps: [
     "Add @import './styles/styles.css' to your main CSS file.",
     "Then add items with: dgadd add ui/button or dgadd add keys/navigation.",

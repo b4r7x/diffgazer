@@ -1,4 +1,11 @@
-import { isHTMLElement, isHTMLInputElement } from "./element-guards.js";
+import {
+  composedClosest,
+  composedContains,
+  getDeepActiveElement,
+  getShadowHost,
+  isHTMLElement,
+  isHTMLInputElement,
+} from "./element-guards.js";
 
 const FOCUSABLE_SELECTOR = [
   "a[href]",
@@ -17,35 +24,46 @@ const FOCUSABLE_SELECTOR = [
   "[tabindex]:not([disabled])",
 ].join(",");
 
+function getComposedParentElement(element: Element): Element | null {
+  return element.parentElement ?? getShadowHost(element);
+}
+
 function isHidden(element: HTMLElement): boolean {
-  let current: HTMLElement | null = element;
+  let current: Element | null = element;
   while (current) {
     const style = current.ownerDocument.defaultView?.getComputedStyle(current);
     if (style && (style.display === "none" || style.visibility === "hidden")) {
       return true;
     }
-    current = current.parentElement;
+    current = getComposedParentElement(current);
   }
   return false;
 }
 
 function isInert(element: HTMLElement): boolean {
-  return element.closest("[inert]") !== null;
+  return composedClosest(element, "[inert]") !== null;
 }
 
 function isAriaHidden(element: HTMLElement): boolean {
-  // Any aria-hidden="true" ancestor hides the whole subtree. Per ARIA,
-  // aria-hidden="false" does not re-expose content hidden by an ancestor.
-  return element.closest('[aria-hidden="true"]') !== null;
+  // Per ARIA, aria-hidden="false" does NOT re-expose content hidden by an aria-hidden="true" ancestor.
+  return composedClosest(element, '[aria-hidden="true"]') !== null;
+}
+
+/**
+ * Returns false when a hidden, inert, or aria-hidden="true" self-or-ancestor
+ * (across shadow boundaries) removes the element from keyboard reach. Shared
+ * with navigation discovery so it skips the same unreachable items focus does.
+ */
+export function isReachable(element: HTMLElement): boolean {
+  return !isHidden(element) && !isInert(element) && !isAriaHidden(element);
 }
 
 function isInsideDisabledFieldset(element: HTMLElement): boolean {
   let fieldset = element.closest<HTMLFieldSetElement>("fieldset[disabled]");
   while (fieldset) {
-    // Element is inside a disabled fieldset; check it isn't inside the first <legend>.
     const legend = fieldset.querySelector(":scope > legend");
     if (legend?.contains(element)) {
-      // descendants of the first legend are not disabled per spec; keep searching upward
+      // Descendants of the first <legend> are not disabled per spec; keep searching upward.
       fieldset = fieldset.parentElement?.closest<HTMLFieldSetElement>("fieldset[disabled]") ?? null;
       continue;
     }
@@ -61,9 +79,7 @@ function isInsideDisabledFieldset(element: HTMLElement): boolean {
 export function isFocusable(element: HTMLElement | null): boolean {
   if (!isHTMLElement(element)) return false;
   if (!element.matches(FOCUSABLE_SELECTOR)) return false;
-  if (isHidden(element)) return false;
-  if (isInert(element)) return false;
-  if (isAriaHidden(element)) return false;
+  if (!isReachable(element)) return false;
   if (isInsideDisabledFieldset(element)) return false;
   return true;
 }
@@ -138,8 +154,8 @@ export function getFirstFocusableElement(container: HTMLElement | null): HTMLEle
   return getFocusableElements(container)[0] ?? null;
 }
 
-/** Returns true when the element contains its owner document's active element. */
+/** Returns true when the element contains its owner document's deep active element, across shadow roots. */
 export function containsActiveElement(element: HTMLElement): boolean {
-  const activeElement = element.ownerDocument.activeElement;
-  return isHTMLElement(activeElement) && element.contains(activeElement);
+  const activeElement = getDeepActiveElement(element.ownerDocument);
+  return isHTMLElement(activeElement) && composedContains(element, activeElement);
 }

@@ -159,6 +159,29 @@ describe("Popover", () => {
       expect(trigger).toHaveAttribute("aria-describedby", tooltip.id);
     });
 
+    it("merges an external aria-describedby with the tooltip description id (F-009)", () => {
+      render(
+        <Popover triggerMode="hover" delayMs={200}>
+          <Popover.Trigger>
+            <span aria-describedby="external-desc">Hover me</span>
+          </Popover.Trigger>
+          <Popover.Content>Tooltip body</Popover.Content>
+        </Popover>,
+      );
+      const trigger = screen.getByText("Hover me");
+
+      // fireEvent retained: fake timers in use — user-event hover requires real timers
+      fireEvent.mouseEnter(trigger);
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+
+      const tooltip = screen.getByRole("tooltip");
+      const describedBy = trigger.getAttribute("aria-describedby")?.split(/\s+/) ?? [];
+      expect(describedBy).toContain("external-desc");
+      expect(describedBy).toContain(tooltip.id);
+    });
+
     it("closes after closeDelay on mouse leave", () => {
       render(
         <Popover triggerMode="hover" delayMs={200} closeDelayMs={100}>
@@ -197,7 +220,6 @@ describe("Popover", () => {
       // fireEvent retained: fake timers in use.
       fireEvent.focus(trigger);
 
-      // No timer advance: focus must open instantly.
       expect(screen.getByRole("tooltip")).toBeInTheDocument();
     });
 
@@ -695,9 +717,8 @@ describe("Popover menu focus", () => {
 });
 
 describe("Popover hover-mode touch", () => {
-  // The top-level beforeEach overrides PointerEvent with a stub that drops
-  // pointerType. These tests rely on pointerType to distinguish touch from
-  // mouse, so restore the jsdom-native PointerEvent for the block.
+  // These tests need pointerType to tell touch from mouse, so restore the
+  // jsdom-native PointerEvent that the top-level beforeEach stubs out.
   beforeEach(() => {
     restorePointerEventSupport();
   });
@@ -903,14 +924,10 @@ describe("Popover cross-document behavior", () => {
 });
 
 describe("Popover respects prefers-reduced-motion", () => {
-  // jsdom does not evaluate @media in stylesheets and does not compile the
-  // Tailwind `ui-floating-panel[data-state="open"]` rules from theme-base.css
-  // into the CSSOM (those rules are compiled at build time, not parsed by
-  // jsdom). So a true behavior assertion on `panel.animationName` is not
-  // observable here. The fixture lifts the reduced-motion `:root` overrides
-  // out of their @media wrapper to simulate the user preference; the
-  // assertion reads the resolved variables that the production stylesheet
-  // would read from the same panel element.
+  // jsdom evaluates no @media and does not compile the Tailwind motion rules,
+  // so animationName is not observable. The fixture lifts the reduced-motion
+  // :root overrides out of their @media wrapper; the assertion reads the
+  // resolved variables the production stylesheet would read.
   applyReducedMotionFixture();
 
   it("neutralizes directional enter and exit motion when the open popover is shown", async () => {

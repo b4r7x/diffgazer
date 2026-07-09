@@ -15,11 +15,18 @@ export function useIssueSelection({
 }: UseIssueSelectionOptions) {
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(initialIssueId ?? null);
   const [prevSourceKey, setPrevSourceKey] = useState(sourceKey);
+  const [prevRouteIssueId, setPrevRouteIssueId] = useState(initialIssueId ?? null);
   const listRef = useRef<HTMLDivElement>(null);
 
   if (prevSourceKey !== sourceKey) {
     setPrevSourceKey(sourceKey);
     setSelectedIssueId(null);
+  }
+
+  const routeIssueId = initialIssueId ?? null;
+  if (prevRouteIssueId !== routeIssueId) {
+    setPrevRouteIssueId(routeIssueId);
+    if (routeIssueId !== null) setSelectedIssueId(routeIssueId);
   }
 
   const effectiveSelectedId = resolveSelectedId(selectedIssueId, filteredIssues);

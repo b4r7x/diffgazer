@@ -2,6 +2,7 @@
 
 import { type ComponentProps, useId, useLayoutEffect, useRef } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
+import { mergeIds } from "@/lib/aria";
 import { cn } from "@/lib/utils";
 import { getTabPanelId, getTabTriggerId, useTabsContext } from "./tabs-context";
 
@@ -17,6 +18,7 @@ export function TabsContent<TValue extends string = string>({
   children,
   className,
   ref,
+  "aria-labelledby": ariaLabelledBy,
   ...rest
 }: TabsContentProps<TValue>) {
   const {
@@ -43,7 +45,7 @@ export function TabsContent<TValue extends string = string>({
       ref={composedRef}
       role="tabpanel"
       id={getTabPanelId(tabsId, value)}
-      aria-labelledby={triggerId}
+      aria-labelledby={mergeIds(triggerId, ariaLabelledBy)}
       data-state={isActive ? "active" : "inactive"}
       data-orientation={orientation}
       hidden={!isActive}

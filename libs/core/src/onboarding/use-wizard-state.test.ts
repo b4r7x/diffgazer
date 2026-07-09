@@ -31,6 +31,14 @@ function advanceToEarlySave(result: { current: ReturnType<typeof useWizardState>
   act(() => result.current.next()); // provider -> api-key
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
 describe("useWizardState", () => {
   it("starts on the first step with default data", () => {
     const { result } = renderHook(() => useWizardState());
@@ -108,9 +116,6 @@ describe("useWizardState", () => {
   });
 
   it("setProvider sets model to null when the provider has an empty defaultModel", () => {
-    // OpenRouter ships with `defaultModel: ""` because the user must pick a
-    // model on the next step. The wizard must treat an empty default as
-    // "no default" and surface `null`, not `""`.
     const target = AVAILABLE_PROVIDERS.find((p) => p.id === "openrouter");
     if (!target) throw new Error("expected openrouter provider in fixtures");
     expect(target.defaultModel).toBe("");
@@ -190,6 +195,38 @@ describe("useWizardState", () => {
     expect(onCleanupError).toHaveBeenCalledWith(
       expect.stringContaining("Failed to remove saved credentials"),
     );
+  });
+
+  it("cleanupEarlySave waits for an in-flight early save before deleting the abandoned credentials", async () => {
+    const saveConfigGate = deferred<void>();
+    const callbacks = makeCallbacks({
+      saveConfig: vi.fn(() => saveConfigGate.promise),
+    });
+
+    const { result } = renderHook(() => useWizardState({ initial: OPENROUTER_DATA, callbacks }));
+
+    advanceToEarlySave(result);
+
+    act(() => result.current.next());
+    expect(result.current.isEarlySaving).toBe(true);
+    expect(callbacks.deleteCredentials).not.toHaveBeenCalled();
+
+    let cleanupDone = false;
+    const cleanupPromise = result.current.cleanupEarlySave().then(() => {
+      cleanupDone = true;
+    });
+
+    await Promise.resolve();
+    expect(callbacks.deleteCredentials).not.toHaveBeenCalled();
+    expect(cleanupDone).toBe(false);
+
+    await act(async () => {
+      saveConfigGate.resolve();
+      await cleanupPromise;
+    });
+
+    expect(callbacks.deleteCredentials).toHaveBeenCalledWith("openrouter");
+    expect(cleanupDone).toBe(true);
   });
 
   it("complete persists settings then config, runs onComplete, and resolves true", async () => {

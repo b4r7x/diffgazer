@@ -48,6 +48,7 @@ export function useCopyToClipboard(
   const { resetMs = DEFAULT_RESET_MS, write = defaultWrite, onCopy, onError } = options;
   const [status, setStatus] = useState<CopyStatus>("idle");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const attemptRef = useRef(0);
 
   useEffect(() => {
     return () => {
@@ -64,13 +65,18 @@ export function useCopyToClipboard(
   };
 
   const copy = async (text: string): Promise<boolean> => {
+    attemptRef.current += 1;
+    const attemptId = attemptRef.current;
     try {
       await write(text);
+      // Stale attempt: a newer copy superseded this one — leave its status/callbacks alone.
+      if (attemptId !== attemptRef.current) return true;
       setStatus("copied");
       scheduleReset();
       onCopy?.(text);
       return true;
     } catch (error) {
+      if (attemptId !== attemptRef.current) return false;
       setStatus("failed");
       scheduleReset();
       onError?.(error);

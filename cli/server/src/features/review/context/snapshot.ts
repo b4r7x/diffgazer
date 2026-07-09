@@ -1,4 +1,4 @@
-import { mkdir, readFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import type {
   ProjectContextGraph,
@@ -23,15 +23,28 @@ import {
 const MAX_CONTEXT_BYTES = 50_000;
 const DEFAULT_TREE_DEPTH = 5;
 
-// Truncate `text` so its UTF-8 encoding fits within `maxBytes`, cutting on a
-// newline boundary when one exists in range and otherwise on a code-point
-// boundary — never mid-character (which would append a U+FFFD replacement).
+// Resolve through symlinks and check `targetPath` stays inside the trusted root.
+// A not-yet-existent path resolves to null and counts as contained.
+async function resolvesWithinRoot(targetPath: string, normalizedRoot: string): Promise<boolean> {
+  const real = await realpath(targetPath).catch(() => null);
+  if (real === null) return true;
+  return real === normalizedRoot || real.startsWith(normalizedRoot + path.sep);
+}
+
+// Realpath-compare a cached snapshot's stored root against the current project
+// root so a foreign in-repo cache for a different checkout is not reused.
+async function cachedRootMatchesProject(root: string, normalizedRoot: string): Promise<boolean> {
+  const real = await realpath(root).catch(() => path.resolve(root));
+  return real === normalizedRoot;
+}
+
+// Truncate to fit `maxBytes` of UTF-8, cutting on a newline or code-point
+// boundary — never mid-character (would append a U+FFFD replacement).
 function truncateToByteLimit(text: string, maxBytes: number): string {
   const buffer = Buffer.from(text, "utf-8");
   if (buffer.byteLength <= maxBytes) return text;
 
-  // Back off to the start of the truncated code point: continuation bytes
-  // are 0b10xxxxxx (0x80–0xBF).
+  // Back off over UTF-8 continuation bytes (0b10xxxxxx).
   let end = maxBytes;
   while (end > 0 && ((buffer[end] ?? 0) & 0xc0) === 0x80) {
     end -= 1;
@@ -45,14 +58,37 @@ function truncateToByteLimit(text: string, maxBytes: number): string {
   return buffer.subarray(0, end).toString("utf-8");
 }
 
+// Build writes the trio as regular files, so a symlink at a fixed cache path is
+// a planted escape — skip it rather than follow the link on read.
+async function isSymlinkedCacheFile(filePath: string): Promise<boolean> {
+  const stats = await lstat(filePath).catch(() => null);
+  return stats?.isSymbolicLink() ?? false;
+}
+
 export async function loadContextSnapshot(
   contextDir: string,
 ): Promise<ProjectContextSnapshot | null> {
+  // Cache lives at `<projectRoot>/.diffgazer`; mirror the build path's guards so
+  // this read follows neither a symlinked `.diffgazer` nor a planted foreign trio.
+  const projectRoot = path.dirname(contextDir);
+  const normalizedRoot = await realpath(projectRoot).catch(() => path.resolve(projectRoot));
+  if (!(await resolvesWithinRoot(contextDir, normalizedRoot))) {
+    log("warn", "context_snapshot_escaping_dir", { contextDir });
+    return null;
+  }
   try {
     const markdownPath = path.join(contextDir, "context.md");
+    const graphPath = path.join(contextDir, "context.json");
+    const metaPath = path.join(contextDir, "context.meta.json");
+    for (const cachePath of [markdownPath, graphPath, metaPath]) {
+      if (await isSymlinkedCacheFile(cachePath)) {
+        log("warn", "context_snapshot_symlinked_cache_file", { contextDir });
+        return null;
+      }
+    }
     const markdown = await readFile(markdownPath, "utf8");
-    const graphRaw = await readFile(path.join(contextDir, "context.json"), "utf8");
-    const metaRaw = await readFile(path.join(contextDir, "context.meta.json"), "utf8");
+    const graphRaw = await readFile(graphPath, "utf8");
+    const metaRaw = await readFile(metaPath, "utf8");
     const parsed = ProjectContextSnapshotSchema.safeParse({
       markdown,
       graph: JSON.parse(graphRaw),
@@ -68,6 +104,13 @@ export async function loadContextSnapshot(
       log("warn", "context_snapshot_invalid", { contextDir, issues });
       return null;
     }
+    if (
+      !(await cachedRootMatchesProject(parsed.data.meta.root, normalizedRoot)) ||
+      !(await cachedRootMatchesProject(parsed.data.graph.root, normalizedRoot))
+    ) {
+      log("warn", "context_snapshot_root_mismatch", { contextDir });
+      return null;
+    }
     return parsed.data;
   } catch (error) {
     if (error instanceof Error) {
@@ -79,9 +122,8 @@ export async function loadContextSnapshot(
 
 const snapshotLocks = new Map<string, Promise<unknown>>();
 
-// Serialize builds per project root so POST /context/refresh and the review
-// pipeline's own build cannot interleave their sequential writes and persist a
-// mixed-generation trio (markdown from one build, meta/statusHash from another).
+// Serialize builds per root so concurrent builds never interleave their
+// sequential writes into a mixed-generation trio.
 function withSnapshotLock<T>(projectPath: string, fn: () => Promise<T>): Promise<T> {
   const prev = snapshotLocks.get(projectPath) ?? Promise.resolve();
   const next = prev.then(fn, fn);
@@ -108,7 +150,11 @@ async function buildSnapshot(
   projectPath: string,
   options: { force?: boolean },
 ): Promise<ProjectContextSnapshot> {
+  const normalizedRoot = await realpath(projectPath).catch(() => path.resolve(projectPath));
   const contextDir = path.join(projectPath, ".diffgazer");
+  if (!(await resolvesWithinRoot(contextDir, normalizedRoot))) {
+    throw new Error("Context cache directory resolves outside the project root");
+  }
   await mkdir(contextDir, { recursive: true, mode: 0o700 });
 
   const gitService = createGitService({ cwd: projectPath });
@@ -137,10 +183,15 @@ async function buildSnapshot(
     counter: treeCounter,
   });
 
-  const packageJson = await readPackageManifest(path.join(projectPath, "package.json"));
+  const packageJsonPath = path.join(projectPath, "package.json");
+  const packageJson = (await resolvesWithinRoot(packageJsonPath, normalizedRoot))
+    ? await readPackageManifest(packageJsonPath)
+    : null;
 
   const readmePath = path.join(projectPath, "README.md");
-  const readmeRaw = await readFile(readmePath, "utf8").catch(() => "");
+  const readmeRaw = (await resolvesWithinRoot(readmePath, normalizedRoot))
+    ? await readFile(readmePath, "utf8").catch(() => "")
+    : "";
   const readmeLines = readmeRaw ? readmeRaw.split("\n").slice(0, 40).join("\n") : "";
 
   const markdownSections: string[] = [];

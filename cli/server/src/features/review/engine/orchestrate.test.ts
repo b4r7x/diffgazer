@@ -82,7 +82,10 @@ describe("orchestrateReview", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.issues.map((issue) => issue.id)).toEqual(["dup-1", "low-1"]);
+      expect(result.value.issues.map((issue) => issue.id)).toEqual([
+        "correctness:dup-1",
+        "security:low-1",
+      ]);
       expect(result.value.issues.map((issue) => issue.severity)).toEqual(["high", "low"]);
       expect(result.value.summary).toContain("Correctness summary");
       expect(result.value.summary).toContain("Security summary");
@@ -187,7 +190,7 @@ describe("orchestrateReview", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.issues.map((issue) => issue.id)).toEqual(["high-1"]);
+      expect(result.value.issues.map((issue) => issue.id)).toEqual(["correctness:high-1"]);
     }
   });
 
@@ -216,7 +219,6 @@ describe("orchestrateReview", () => {
         "security",
         "performance",
       ]);
-      // Abort rejections map to CANCELLED, not NETWORK_ERROR.
       expect(result.value.failedLenses.every((lens) => lens.errorCode === "CANCELLED")).toBe(true);
     }
   });
@@ -245,7 +247,6 @@ describe("orchestrateReview", () => {
 
   it("reports droppedDuplicates and droppedBelowThreshold on orchestrator_complete", async () => {
     const events: Array<Record<string, unknown>> = [];
-    // A duplicate pair (same file/line/title) and a separate nit below threshold.
     const sharedIssue = makeIssue({
       id: "dup-1",
       file: "src/a.ts",
@@ -275,7 +276,6 @@ describe("orchestrateReview", () => {
 
     expect(result.ok).toBe(true);
     const complete = events.find((event) => event.type === "orchestrator_complete");
-    // The duplicate (dup-2) is deduped; the nit is below the "low" threshold.
     expect(complete).toMatchObject({
       droppedDuplicates: 1,
       droppedBelowThreshold: 1,

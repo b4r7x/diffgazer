@@ -250,7 +250,6 @@ describe("Sidebar", () => {
     const item = screen.getByRole("link", { name: "Dashboard" });
 
     expect(item).not.toHaveAttribute("itemprefix");
-    // Default caret variant: the prefix carries the chevron marker into the custom element.
     expect(item.querySelector("svg")).not.toBeNull();
     expect(errorSpy).not.toHaveBeenCalled();
     errorSpy.mockRestore();
@@ -370,14 +369,13 @@ describe("SidebarSection collapsible", () => {
     const panelId = requireAttribute(title, "aria-controls");
     const panel = requireElement(document.getElementById(panelId), "sidebar panel");
 
-    // Open by default: no aria-hidden, no inert.
     expect(panel).not.toHaveAttribute("aria-hidden");
     expect(panel).not.toHaveAttribute("inert");
 
     await user.click(title);
 
-    // Collapsed: panel stays in DOM (so the height/opacity transition can run)
-    // but is removed from the a11y tree and the tab order.
+    // Collapsed: panel stays in DOM for the transition but leaves the a11y tree
+    // and tab order.
     expect(panel).toHaveAttribute("aria-hidden", "true");
     expect(panel).toHaveAttribute("inert");
   });
@@ -503,7 +501,6 @@ describe("Sidebar variants", () => {
     expect(active).toHaveAttribute("aria-current", "page");
     expect(active).toHaveAttribute("data-selected");
     expect(active.querySelector("svg")).not.toBeNull();
-    // Marker slot stays reserved on inactive rows; data-selected drives visibility.
     const inactive = screen.getByRole("button", { name: /Install/i });
     expect(inactive.querySelector("svg")).not.toBeNull();
     expect(inactive).not.toHaveAttribute("aria-current");
@@ -571,7 +568,7 @@ describe("Sidebar variants", () => {
       </Sidebar>,
     );
 
-    // The └ corner is :last-child driven, so fragments must keep items direct siblings.
+    // The └ corner is :last-child driven, so fragments must keep items siblings.
     expect(screen.getByRole("button", { name: /Beta/i }).matches(":last-child")).toBe(true);
     expect(screen.getByRole("button", { name: /Alpha/i }).matches(":last-child")).toBe(false);
   });
@@ -690,13 +687,48 @@ describe("Sidebar Cmd/Ctrl+B hotkey", () => {
     }
     expect(onStateChange).not.toHaveBeenCalled();
   });
+
+  it("does not toggle for an editable target inside an open shadow root", () => {
+    const onStateChange = vi.fn();
+    render(
+      <Sidebar.Provider defaultState="open" onStateChange={onStateChange}>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    );
+
+    const host = document.createElement("div");
+    document.body.append(host);
+    const shadowRoot = host.attachShadow({ mode: "open" });
+    const input = document.createElement("input");
+    shadowRoot.append(input);
+    input.focus();
+
+    // A composed keydown surfaces the host as event.target on the window
+    // listener; only composedPath()[0] reveals the editable shadow input.
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "b",
+          metaKey: true,
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    });
+
+    expect(onStateChange).not.toHaveBeenCalled();
+    host.remove();
+  });
 });
 
 describe("Sidebar rail-mode naming", () => {
-  // jsdom loads no stylesheet, so the Tailwind `group-data-[state=rail]/sidebar:hidden`
-  // toggle never applies and the visible label would double the sr-only copy in
-  // the computed name. Replicate just that rule (via an attribute selector jsdom
-  // can match) so the computed accessible name matches the real browser.
+  // jsdom loads no stylesheet, so the Tailwind rail-hide toggle never applies
+  // and the visible label would double the sr-only copy in the computed name.
+  // Replicate that rule via an attribute selector jsdom can match.
   function applyRailHideStyle() {
     const style = document.createElement("style");
     style.textContent =
@@ -725,9 +757,6 @@ describe("Sidebar rail-mode naming", () => {
     );
 
     expect(screen.getByRole("navigation")).toHaveAttribute("data-state", "rail");
-    // The sr-only copy keeps the name while the visible label is display:none in
-    // rail mode. The decorative aria-hidden icon glyph is excluded, so the name
-    // is exactly the label content — no glyph leakage.
     expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
 

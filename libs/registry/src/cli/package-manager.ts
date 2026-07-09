@@ -40,8 +40,11 @@ export function normalizeVersionSpec(raw: unknown, packageName = "package"): str
   return spec;
 }
 
-/** Reject dependency strings that use protocols, absolute paths, or path traversal. */
+/** Reject dependency strings that are option-shaped, use protocols, absolute paths, or path traversal. */
 export function validateDependencyProtocol(dep: string): void {
+  if (dep.startsWith("-")) {
+    throw new Error(`Rejected dependency "${dep}": option-shaped names are not allowed.`);
+  }
   const lower = dep.toLowerCase();
   for (const protocol of REJECTED_PROTOCOLS) {
     if (lower.startsWith(protocol)) {

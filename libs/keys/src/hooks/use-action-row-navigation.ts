@@ -1,6 +1,7 @@
 "use client";
 
 import { type RefCallback, type RefObject, useCallback, useEffect, useRef, useState } from "react";
+import { DECLINE } from "../core/normalize-key-input.js";
 import { containsActiveElement } from "../dom/focusable.js";
 import { useFocusZone } from "./use-focus-zone.js";
 import { type UseKeyOptions, useKey } from "./use-key.js";
@@ -9,16 +10,14 @@ type ActionRowZone = "content" | "actions";
 const ACTION_ROW_ZONES = ["content", "actions"] as const;
 const EMPTY_DISABLED: readonly boolean[] = [];
 
-// Tuple-aware index narrowing. For a tuple like [a, b] this yields `0 | 1`;
-// for `readonly unknown[]` (default) it stays `number`.
+// Tuple-aware index: [a, b] -> 0 | 1; readonly unknown[] -> number.
 type ActionRowIndex<Actions extends readonly unknown[]> = number extends Actions["length"]
   ? number
   : {
       [K in keyof Actions]: K extends `${infer N extends number}` ? N : never;
     }[number];
 
-// Tuple-aware disabled-flags shape. For a tuple it preserves length and
-// per-position position; for arrays it stays `readonly boolean[]`.
+// Tuple-aware disabled flags: fixed length per position; array -> readonly boolean[].
 type ActionRowDisabledFlags<Actions extends readonly unknown[]> = number extends Actions["length"]
   ? readonly boolean[]
   : { readonly [K in keyof Actions]: boolean };
@@ -35,7 +34,12 @@ export interface UseActionRowNavigationOptions<
   onAction: (index: ActionRowIndex<Actions>) => void;
   /** Per-index disabled flags; disabled actions are skipped and ignored on activation. */
   disabledActions?: ActionRowDisabledFlags<Actions>;
-  /** Receives focus when entering actions but no action is enabled. */
+  /**
+   * Content focus target used both when entering actions with no action enabled
+   * and when ArrowUp exits the actions zone back to content. Provide it (or another
+   * content focus target) so exiting returns focus to row content; without it,
+   * exiting only blurs the action and focus lands on `document.body`.
+   */
   disabledFocusFallbackRef?: RefObject<HTMLElement | null>;
   /** Limits zone handling to one row subtree. */
   containerRef?: RefObject<HTMLElement | null>;
@@ -113,7 +117,11 @@ export interface UseActionRowNavigationReturn<
    * action. Returns the focused index, or null when no action is enabled.
    */
   enterActions: (index?: ActionRowIndex<Actions>) => number | null;
-  /** Returns to the content zone when `canExitActions` is true. */
+  /**
+   * Returns to the content zone when `canExitActions` is true, moving DOM focus
+   * to `disabledFocusFallbackRef` when supplied (otherwise the focused action is
+   * blurred and focus falls back to `document.body`).
+   */
   exitActions: () => void;
   /** Returns to content and resets the focused action index. */
   reset: (initialIndex?: ActionRowIndex<Actions>) => void;
@@ -284,8 +292,7 @@ export function useActionRowNavigation<Actions extends readonly unknown[] = read
 
     setZone("actions");
     focusAction(targetIndex);
-    // targetIndex is bounded to 0..actionCount-1 by getEnabledTargetIndex,
-    // so it is always a valid Actions index when Actions is a tuple.
+    // bounded to 0..actionCount-1 by getEnabledTargetIndex
     onNavigate?.(targetIndex as ActionRowIndex<Actions>);
     return targetIndex;
   };
@@ -294,17 +301,20 @@ export function useActionRowNavigation<Actions extends readonly unknown[] = read
     if (!canExitActions) return;
     setZone("content");
     setFocusedIndex(0);
+    focusDisabledFallback();
     onNavigationBoundaryReached?.("previous");
   };
 
-  const keyOptions = focusZone.getKeyOptions("actions");
-  const enterOptions = focusZone.getKeyOptions("content");
+  const keyOptions = focusZone.getKeyOptions("actions", { preventDefault: true });
+  const enterOptions = focusZone.getKeyOptions("content", { preventDefault: true });
 
-  const activateFocusedAction = (event: KeyboardEvent) => {
-    if (!isIndexEnabled(focusedIndex, actionCount, disabledKey)) return;
-    event.preventDefault();
-    // focusedIndex is guarded by isIndexEnabled (0..actionCount-1).
-    onAction(focusedIndex as ActionRowIndex<Actions>);
+  const activateFocusedAction = () => {
+    // Zone can stay "actions" after focus left (Shift+Tab/mouse); decline to avoid a stale onAction.
+    if (isIndexEnabled(focusedIndex, actionCount, disabledKey) && isRegisteredActionFocused()) {
+      onAction(focusedIndex as ActionRowIndex<Actions>);
+      return;
+    }
+    return DECLINE;
   };
 
   useKey(
@@ -314,9 +324,13 @@ export function useActionRowNavigation<Actions extends readonly unknown[] = read
       if (nextIndex !== null && nextIndex !== focusedIndex) {
         focusAction(nextIndex);
         onNavigate?.(nextIndex as ActionRowIndex<Actions>);
-      } else if (nextIndex === focusedIndex) {
-        onNavigationBoundaryReached?.("previous");
+        return;
       }
+      if (nextIndex === focusedIndex) {
+        onNavigationBoundaryReached?.("previous");
+        return;
+      }
+      return DECLINE;
     },
     keyOptions,
   );
@@ -328,15 +342,36 @@ export function useActionRowNavigation<Actions extends readonly unknown[] = read
       if (nextIndex !== null && nextIndex !== focusedIndex) {
         focusAction(nextIndex);
         onNavigate?.(nextIndex as ActionRowIndex<Actions>);
-      } else if (nextIndex === focusedIndex) {
-        onNavigationBoundaryReached?.("next");
+        return;
       }
+      if (nextIndex === focusedIndex) {
+        onNavigationBoundaryReached?.("next");
+        return;
+      }
+      return DECLINE;
     },
     keyOptions,
   );
 
-  useKey("ArrowDown", () => enterActions(0), enterOptions);
-  useKey("ArrowUp", exitActions, keyOptions);
+  useKey(
+    "ArrowDown",
+    () => {
+      if (enterActions(0) !== null) return;
+      return DECLINE;
+    },
+    enterOptions,
+  );
+  useKey(
+    "ArrowUp",
+    () => {
+      if (canExitActions) {
+        exitActions();
+        return;
+      }
+      return DECLINE;
+    },
+    keyOptions,
+  );
   useKey("Enter", activateFocusedAction, keyOptions);
   useKey(" ", activateFocusedAction, keyOptions);
 
@@ -355,8 +390,7 @@ export function useActionRowNavigation<Actions extends readonly unknown[] = read
 
   return {
     inActions,
-    // focusedIndex is bounded to 0..actionCount-1 by the navigation logic, so it
-    // is always a valid Actions index when Actions is a tuple.
+    // bounded to 0..actionCount-1 by the navigation logic
     focusedIndex: focusedIndex as ActionRowIndex<Actions>,
     isFocusedActionDisabled: !isIndexEnabled(focusedIndex, actionCount, disabledKey),
     enterActions,

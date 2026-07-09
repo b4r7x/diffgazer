@@ -12,8 +12,6 @@ import type { SelectItemProps } from "./select-item";
 const PICK_FRUIT = "Pick a fruit";
 
 function getSelectTrigger() {
-  // The trigger no longer falls back to an accessible name of "Select" (F-010),
-  // so query the structural slot instead of a hardcoded name.
   const trigger = document.querySelector<HTMLElement>('[data-slot="select-trigger"]');
   if (!trigger) throw new Error("Expected a SelectTrigger to be rendered");
   return trigger;
@@ -204,9 +202,8 @@ describe("Select selection", () => {
       seen.push(useSelectContext("Probe"));
       return null;
     }
-    // Children are held constant so the only thing changing across re-renders is
-    // the inline onChange identity — this isolates the F-054 regression (the
-    // memo busting on consumer onChange via useControllableState's setValue deps).
+    // Constant children isolate F-054: only the inline onChange identity changes
+    // across re-renders.
     const content = (
       <>
         <Select.Trigger>
@@ -232,9 +229,6 @@ describe("Select selection", () => {
     const before = seen.length;
     const initialContext = seen.at(-1);
     await user.click(screen.getByRole("button", { name: "rerender" }));
-    // Probe sits in a stable children element, so it re-renders ONLY if the
-    // SelectContext value identity changed. A stable context means no extra
-    // Probe render — and any render it does do reports the same object.
     expect(seen.length).toBe(before);
     expect(seen.at(-1)).toBe(initialContext);
   });
@@ -593,7 +587,6 @@ describe("Select search position", () => {
     renderSearchPositioned();
     const search = getSearchInput();
     const listbox = screen.getByRole("listbox");
-    // listbox precedes the search row in DOM order.
     expect(listbox.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
@@ -601,7 +594,6 @@ describe("Select search position", () => {
     renderSearchPositioned("top");
     const search = getSearchInput();
     const listbox = screen.getByRole("listbox");
-    // search row precedes the listbox in DOM order.
     expect(listbox.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
   });
 });
@@ -1209,7 +1201,6 @@ describe("Select open-focus stability", () => {
     outside.focus();
     expect(outside).toHaveFocus();
 
-    // Re-render while still open with new inline children — focus must not move.
     rerender(<Harness extra="y" />);
     expect(screen.getByRole("button", { name: "Outside" })).toHaveFocus();
   });
@@ -1409,6 +1400,84 @@ describe("Select accessibility", () => {
     const fieldLabel = screen.getByText("Region");
     expect(searchInput).toHaveAttribute("aria-labelledby", fieldLabel.id);
     expect(searchInput).not.toHaveAttribute("aria-label");
+  });
+
+  it("merges a Field label with a trigger-level aria-labelledby via mergeIds (F-040)", () => {
+    render(
+      <>
+        <span id="extra-label">Preferred</span>
+        <Field>
+          <Field.Label>Region</Field.Label>
+          <Field.Control>
+            <Select variant="card">
+              <Select.Trigger aria-labelledby="extra-label">
+                <Select.Value placeholder="Pick a region" />
+              </Select.Trigger>
+              <Select.Content>
+                <Select.Item value="us">United States</Select.Item>
+              </Select.Content>
+            </Select>
+          </Field.Control>
+        </Field>
+      </>,
+    );
+
+    const fieldLabel = screen.getByText("Region");
+    expect(getSelectTrigger()).toHaveAttribute("aria-labelledby", `extra-label ${fieldLabel.id}`);
+  });
+
+  it("wires Field description and error ids onto the search input while searching (F-062)", () => {
+    render(
+      <Field invalid>
+        <Field.Label>Region</Field.Label>
+        <Field.Control>
+          <Select variant="card" defaultOpen>
+            <Select.Trigger>
+              <Select.Value placeholder="Pick a region" />
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Search />
+              <Select.Item value="us">United States</Select.Item>
+            </Select.Content>
+          </Select>
+        </Field.Control>
+        <Field.Description>Pick your billing region</Field.Description>
+        <Field.Error>Region is required</Field.Error>
+      </Field>,
+    );
+
+    const searchInput = screen.getByRole("combobox", { name: "Region" });
+    const description = screen.getByText("Pick your billing region");
+    const error = screen.getByText("Region is required");
+    expect(searchInput).toHaveAttribute("aria-describedby", `${description.id} ${error.id}`);
+    expect(searchInput).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("wires Field description and error ids onto the open non-search listbox (F-066)", () => {
+    render(
+      <Field invalid>
+        <Field.Label>Region</Field.Label>
+        <Field.Control>
+          <Select variant="card" required defaultOpen>
+            <Select.Trigger>
+              <Select.Value placeholder="Pick a region" />
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="us">United States</Select.Item>
+            </Select.Content>
+          </Select>
+        </Field.Control>
+        <Field.Description>Pick your billing region</Field.Description>
+        <Field.Error>Region is required</Field.Error>
+      </Field>,
+    );
+
+    const listbox = screen.getByRole("listbox");
+    const description = screen.getByText("Pick your billing region");
+    const error = screen.getByText("Region is required");
+    expect(listbox).toHaveAttribute("aria-describedby", `${description.id} ${error.id}`);
+    expect(listbox).toHaveAttribute("aria-invalid", "true");
+    expect(listbox).toHaveAttribute("aria-required", "true");
   });
 });
 
@@ -1645,13 +1714,9 @@ describe("Select form submission", () => {
 });
 
 describe("Select respects prefers-reduced-motion", () => {
-  // jsdom does not evaluate @media in stylesheets and does not compile the
-  // Tailwind `ui-floating-panel[data-state="open"]` rules from theme-base.css
-  // into the CSSOM. So a true behavior assertion on `listbox.animationName`
-  // is not observable here. The fixture lifts the reduced-motion `:root`
-  // overrides out of their @media wrapper to simulate the user preference;
-  // the assertion reads the resolved variables that the production
-  // stylesheet would read from the listbox element.
+  // jsdom evaluates no @media and does not compile the Tailwind open-state rules,
+  // so animationName is not observable. The fixture lifts the reduced-motion
+  // :root overrides out of @media; the assertions read the resolved variables.
   applyReducedMotionFixture();
 
   it("neutralizes dropdown enter and exit motion when the listbox is open", async () => {
@@ -1789,7 +1854,6 @@ describe("Select indirect composition (registration)", () => {
       </Select>,
     );
 
-    // The trigger value display resolves "banana" -> "Banana" from registered metadata.
     expect(getSelectTrigger().textContent).toContain("Banana");
   });
 
@@ -1861,13 +1925,11 @@ describe("Select unified label derivation (JSX children)", () => {
     const searchInput = getSearchInput();
 
     await user.type(searchInput, "banana");
-    // Activedescendant resolves to a mounted option.
     const active = searchInput.getAttribute("aria-activedescendant");
     expect(active).toBeTruthy();
     expect(document.getElementById(active as string)).not.toBeNull();
 
     await user.clear(searchInput);
-    // Typing the raw value string must not match the visible-text labels.
     await user.type(searchInput, "apple");
     expect(screen.queryByRole("option", { name: /apple/i })).toBeInTheDocument();
     await user.clear(searchInput);

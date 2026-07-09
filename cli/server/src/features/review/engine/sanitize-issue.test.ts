@@ -6,9 +6,9 @@ const ESC = "\u001b";
 const OSC52 = `${ESC}]52;c;payload\u0007`;
 
 describe("sanitizeIssue", () => {
-  it("strips OSC and CSI escape sequences from file, id, evidence, and trace fields", () => {
+  it("strips OSC and CSI escape sequences from file, evidence, and trace fields", () => {
     const issue = makeIssue({
-      id: `issue${OSC52}`,
+      id: "issue",
       file: `src/app.ts${OSC52}`,
       evidence: [
         {
@@ -57,5 +57,17 @@ describe("sanitizeIssue", () => {
         },
       ],
     });
+  });
+
+  it("preserves distinct raw issue ids that would collapse under sanitization", () => {
+    const rawA = `issue${OSC52}`;
+    const rawB = `issue${ESC}]52;c;other`;
+
+    const a = sanitizeIssue(makeIssue({ id: rawA }));
+    const b = sanitizeIssue(makeIssue({ id: rawB }));
+
+    expect(a.id).toBe(rawA);
+    expect(b.id).toBe(rawB);
+    expect(a.id).not.toBe(b.id);
   });
 });

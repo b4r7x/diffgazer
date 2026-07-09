@@ -109,12 +109,10 @@ describe("runLensAnalysis", () => {
     expect(eventTypes.filter((t) => t === "file_start")).toHaveLength(2);
     expect(eventTypes.filter((t) => t === "file_complete")).toHaveLength(2);
 
-    // Honest diff-coverage events replace the fabricated readFileContext tool run.
     expect(eventTypes.filter((t) => t === "file_progress")).toHaveLength(2);
     expect(eventTypes.filter((t) => t === "tool_start")).toHaveLength(0);
     expect(eventTypes.filter((t) => t === "tool_end")).toHaveLength(0);
 
-    // No emitted event claims a file read or a concrete model stage.
     const messages = events
       .map((e) => {
         if ("message" in e) return e.message;
@@ -160,11 +158,9 @@ describe("runLensAnalysis", () => {
     const result = await promise;
 
     expect(result.ok).toBe(true);
-    // The nit is below the "low" threshold: it does not stream and does not count.
     expect(events.filter((e) => e.type === "issue_found")).toHaveLength(1);
     const complete = events.find((e) => e.type === "agent_complete");
     expect(complete && "issueCount" in complete ? complete.issueCount : -1).toBe(1);
-    // The full set is still returned for the orchestrator to aggregate.
     if (result.ok) expect(result.value.issues).toHaveLength(2);
   });
 
@@ -186,6 +182,31 @@ describe("runLensAnalysis", () => {
     const found = events.find((e) => e.type === "issue_found");
     const streamedRationale = found && "issue" in found ? found.issue.rationale : "";
     expect(streamedRationale).not.toContain("\x1b");
+  });
+
+  it("gives two issues sharing a raw id distinct selectable identities", async () => {
+    const diff = makeAnalysisDiff(1);
+    const issues = [makeLensIssue("dupe", "src/file-0.ts"), makeLensIssue("dupe", "src/file-0.ts")];
+    const client = makeMockAIClient(ok({ summary: "Found 2 issues", issues }));
+    const events: Array<AgentStreamEvent | StepEvent> = [];
+    const onEvent = (e: AgentStreamEvent | StepEvent) => events.push(e);
+
+    const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, onEvent, makeContext());
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const ids = result.value.issues.map((issue) => issue.id);
+    expect(ids).toHaveLength(2);
+    expect(new Set(ids).size).toBe(2);
+    expect(ids[0]).toBe("correctness:dupe");
+
+    const streamedIds = events
+      .filter((e) => e.type === "issue_found")
+      .map((e) => ("issue" in e ? e.issue.id : ""));
+    expect(streamedIds).toEqual(ids);
   });
 
   it("normalizes inverted and non-positive line numbers instead of failing the lens", async () => {
@@ -278,7 +299,7 @@ describe("runLensAnalysis", () => {
   });
 
   it("filters out issues referencing files not in the reviewed diff", async () => {
-    const diff = makeAnalysisDiff(1); // Only src/file-0.ts
+    const diff = makeAnalysisDiff(1);
     const validIssue = makeLensIssue("1", "src/file-0.ts");
     const hallucinatedIssue = makeLensIssue("2", "src/nonexistent.ts");
     const client = makeMockAIClient(
@@ -313,10 +334,8 @@ describe("runLensAnalysis", () => {
 
     const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, onEvent, makeContext());
 
-    // Await the rejection immediately so it doesn't leak as unhandled
     await expect(promise).rejects.toThrow("Network failure");
 
-    // Timer should be cleaned up - advancing time further should not add progress events
     const eventCountBefore = events.filter((e) => e.type === "agent_progress").length;
     await vi.advanceTimersByTimeAsync(15000);
     const eventCountAfter = events.filter((e) => e.type === "agent_progress").length;

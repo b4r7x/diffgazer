@@ -87,12 +87,24 @@ This repository is one workspace with a single root install and lockfile.
 
 ### Copy-first mode (`dgadd`)
 
+`dgadd` is publish-gated, so there is no `dgadd` bin at the workspace root. Before publication, pack the CLI and install the tarball into the target app, which is what puts `dgadd` on `pnpm exec`.
+
+From this repository:
+
 ```bash
+pnpm --filter @diffgazer/add build
+pnpm --filter @diffgazer/add pack --pack-destination /tmp/diffgazer-packs
+```
+
+From the target app:
+
+```bash
+pnpm add -D /tmp/diffgazer-packs/diffgazer-add-*.tgz
 pnpm exec dgadd init
 pnpm exec dgadd add ui/button keys/navigation
 ```
 
-Copy mode installs source files the consuming app owns. UI components require Tailwind CSS v4 and the copied `src/styles/styles.css`. Keys standalone hooks require no CSS setup. After `@diffgazer/add` is published, use `npx @diffgazer/add` instead of `pnpm exec dgadd`.
+Copy mode installs source files the consuming app owns. UI components require Tailwind CSS v4 and the copied `src/styles/styles.css`. Keys standalone hooks require no CSS setup. After `@diffgazer/add` is published, use `npx @diffgazer/add` instead of the local tarball. See [cli/add/README.md](./cli/add/README.md#before-publication) for the full command reference.
 
 ### Runtime package mode
 
@@ -111,7 +123,7 @@ npx shadcn add https://r.b4r7.dev/r/ui/button.json
 npx shadcn add https://r.b4r7.dev/r/keys/navigation.json
 ```
 
-Until then, use `pnpm exec dgadd add ui/button keys/navigation` or `npm install` against locally packed tarballs.
+Until then, install the locally packed `@diffgazer/add` tarball into the target app and run `pnpm exec dgadd add ui/button keys/navigation` (see [Copy-first mode](#copy-first-mode-dgadd)), or `npm install` against locally packed `@diffgazer/ui` and `@diffgazer/keys` tarballs.
 
 Versioning, release gates, migration expectations, and artifact ownership are documented in [PACKAGE_GOVERNANCE.md](./PACKAGE_GOVERNANCE.md).
 

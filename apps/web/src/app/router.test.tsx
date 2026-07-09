@@ -8,9 +8,11 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { act, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RouteLoadingFallback } from "@/components/layout/route-loading-fallback";
 import { router } from "./router";
+import { NotFoundPage } from "./routes/__root";
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -31,8 +33,7 @@ function createTestRouter({
     path: "/",
     component: () => <div>home ready</div>,
   });
-  // Uses a path from the production route tree because the Register declaration
-  // in router.tsx types `navigate` against the registered router's paths.
+  // Path must exist in the production route tree: Register types navigate against it.
   const guardedRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/history",
@@ -166,9 +167,6 @@ describe("route document titles", () => {
   });
 
   it("writes the matched route's title to document.title on navigation", async () => {
-    // A mirror router carrying the same head() declarations, with HeadContent
-    // rendered in the root, proves the title plumbing writes document.title as
-    // the user navigates between views.
     const root = createRootRoute({
       component: () => (
         <>
@@ -198,5 +196,36 @@ describe("route document titles", () => {
 
     await titleRouter.navigate({ to: "/settings/theme" });
     await waitFor(() => expect(document.title).toBe("Theme — Diffgazer"));
+  });
+});
+
+describe("not-found routing", () => {
+  it("wires the app-owned not-found component into the router", () => {
+    expect(router.options.defaultNotFoundComponent).toBe(NotFoundPage);
+  });
+
+  it("renders the app recovery state for an unmatched URL and offers a route home", async () => {
+    const user = userEvent.setup();
+    const rootRoute = createRootRoute({ component: Outlet });
+    const homeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/",
+      component: () => <div>home ready</div>,
+    });
+    const notFoundRouter = createRouter({
+      routeTree: rootRoute.addChildren([homeRoute]),
+      history: createMemoryHistory({ initialEntries: ["/stale-bookmark"] }),
+      defaultNotFoundComponent: NotFoundPage,
+    });
+
+    render(<RouterProvider router={notFoundRouter} />);
+    await waitFor(() => expect(screen.getByText("Page not found")).toBeInTheDocument());
+
+    const homeLink = screen.getByRole("link", { name: /go home/i });
+    expect(homeLink).toHaveAttribute("href", "/");
+
+    await user.click(homeLink);
+    await waitFor(() => expect(screen.getByText("home ready")).toBeInTheDocument());
+    expect(screen.queryByText("Page not found")).not.toBeInTheDocument();
   });
 });

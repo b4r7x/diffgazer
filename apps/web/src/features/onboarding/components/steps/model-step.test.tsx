@@ -169,6 +169,116 @@ describe("ModelStep", () => {
     expect(input).toHaveValue("gemini-custom");
   });
 
+  it("commits the typed model on Enter when the catalog resolves with no models", async () => {
+    const user = userEvent.setup();
+    const onCommit = vi.fn();
+    const getProviderModels = vi.fn<() => Promise<ProviderModelsResponse>>().mockResolvedValue({
+      models: [],
+      fetchedAt: new Date().toISOString(),
+      source: "snapshot",
+      cached: false,
+    });
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      getProviderModels,
+    } satisfies BoundApi;
+
+    function Harness() {
+      const [model, setModel] = useState<string | null>(null);
+      return <ModelStep provider="gemini" value={model} onChange={setModel} onCommit={onCommit} />;
+    }
+
+    render(<Harness />, { wrapper: makeWrapper(api) });
+
+    const input = await screen.findByRole("textbox", { name: "Model ID" });
+    await user.type(input, "gemini-custom");
+    await user.keyboard("{Enter}");
+
+    expect(onCommit).toHaveBeenCalledWith("gemini-custom");
+  });
+
+  it("does not commit on Enter when the manual model-id input is empty", async () => {
+    const user = userEvent.setup();
+    const onCommit = vi.fn();
+    const getProviderModels = vi.fn<() => Promise<ProviderModelsResponse>>().mockResolvedValue({
+      models: [],
+      fetchedAt: new Date().toISOString(),
+      source: "snapshot",
+      cached: false,
+    });
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      getProviderModels,
+    } satisfies BoundApi;
+
+    render(<ModelStep provider="gemini" value={null} onChange={vi.fn()} onCommit={onCommit} />, {
+      wrapper: makeWrapper(api),
+    });
+
+    const input = await screen.findByRole("textbox", { name: "Model ID" });
+    input.focus();
+    await user.keyboard("{Enter}");
+
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  it("trims and commits the typed model on Enter when the catalog fails to load", async () => {
+    const user = userEvent.setup();
+    const onCommit = vi.fn();
+    const getProviderModels = vi
+      .fn<() => Promise<ProviderModelsResponse>>()
+      .mockRejectedValue(new Error("network down"));
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      getProviderModels,
+    } satisfies BoundApi;
+
+    function Harness() {
+      const [model, setModel] = useState<string | null>(null);
+      return <ModelStep provider="gemini" value={model} onChange={setModel} onCommit={onCommit} />;
+    }
+
+    render(<Harness />, { wrapper: makeWrapper(api) });
+
+    const input = await screen.findByRole("textbox", { name: "Model ID" });
+    await user.type(input, "  gemini-custom  ");
+    await user.keyboard("{Enter}");
+
+    expect(onCommit).toHaveBeenCalledWith("gemini-custom");
+  });
+
+  it("does not commit the manual model on Enter while the footer owns actions", async () => {
+    const user = userEvent.setup();
+    const onCommit = vi.fn();
+    const getProviderModels = vi.fn<() => Promise<ProviderModelsResponse>>().mockResolvedValue({
+      models: [],
+      fetchedAt: new Date().toISOString(),
+      source: "snapshot",
+      cached: false,
+    });
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      getProviderModels,
+    } satisfies BoundApi;
+
+    render(
+      <ModelStep
+        provider="gemini"
+        value="gemini-custom"
+        onChange={vi.fn()}
+        onCommit={onCommit}
+        enabled={false}
+      />,
+      { wrapper: makeWrapper(api) },
+    );
+
+    const input = await screen.findByRole("textbox", { name: "Model ID" });
+    input.focus();
+    await user.keyboard("{Enter}");
+
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
   it("offers a manual OpenRouter model-id input when the catalog resolves with no models", async () => {
     const user = userEvent.setup();
     const mockGetOpenRouterModels = vi

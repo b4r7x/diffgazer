@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it } from "vitest";
 import {
+  getComposedEventTarget,
   getOwnerView,
   isEditableElement,
   isHTMLDialogElement,
@@ -91,10 +92,8 @@ describe("isInputElement", () => {
     expect(isInputElement(document.createElement(tag))).toBe(expected);
   });
 
-  it("does not classify a plain <div> as an input element", () => {
-    // jsdom's isContentEditable is undefined, so the return is not strictly false.
-    // In real browsers this returns false.
-    expect(isInputElement(document.createElement("div"))).toBeFalsy();
+  it("returns a strict boolean false for a plain <div>", () => {
+    expect(isInputElement(document.createElement("div"))).toBe(false);
   });
 
   it("returns false for a null target", () => {
@@ -134,7 +133,7 @@ describe("isEditableElement", () => {
     div.setAttribute("contenteditable", "true");
     document.body.append(div);
     try {
-      // jsdom does not implement isContentEditable; we use the attribute
+      // jsdom does not implement isContentEditable; fall back to the attribute.
       expect(isEditableElement(div)).toBe(true);
     } finally {
       div.remove();
@@ -165,5 +164,31 @@ describe("isEditableElement", () => {
     input.type = "text";
     input.disabled = true;
     expect(isEditableElement(input)).toBe(false);
+  });
+});
+
+describe("getComposedEventTarget", () => {
+  it("returns the deepest shadow target instead of the retargeted host", () => {
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const shadowRoot = host.attachShadow({ mode: "open" });
+    const input = document.createElement("input");
+    shadowRoot.appendChild(input);
+
+    let captured: EventTarget | null = null;
+    const onKeyDown = (event: Event) => {
+      captured = getComposedEventTarget(event);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    input.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, composed: true }));
+    document.removeEventListener("keydown", onKeyDown);
+
+    expect(captured).toBe(input);
+    host.remove();
+  });
+
+  it("falls back to event.target when composedPath is empty", () => {
+    const event = new KeyboardEvent("keydown");
+    expect(getComposedEventTarget(event)).toBe(event.target);
   });
 });

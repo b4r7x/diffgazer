@@ -904,6 +904,7 @@
       "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "theme",
+        "aria",
         "controllable-state",
         "@diffgazer-keys/navigation",
         "compose-refs",
@@ -2317,7 +2318,7 @@
     },
     {
       "name": "sidebar-variants",
-      "type": "registry:lib",
+      "type": "registry:ui",
       "title": "Sidebar Variants",
       "description": "Shared CVA visual contracts for the Sidebar primitive (container + item, six active-marker variants).",
       "dependencies": ["class-variance-authority"],
@@ -2329,14 +2330,13 @@
       "files": [
         {
           "path": "registry/ui/sidebar/sidebar-variants.ts",
-          "type": "registry:lib",
-          "target": "src/components/ui/sidebar/sidebar-variants.ts"
+          "type": "registry:ui"
         }
       ]
     },
     {
       "name": "sidebar-intent",
-      "type": "registry:lib",
+      "type": "registry:ui",
       "title": "Sidebar Intent",
       "description": "Sidebar item intent type and built-in dictionary mapping nav values to intent (info/success/warning/danger/accent/neutral).",
       "dependencies": [],
@@ -2348,8 +2348,7 @@
       "files": [
         {
           "path": "registry/ui/sidebar/sidebar-intent.ts",
-          "type": "registry:lib",
-          "target": "src/components/ui/sidebar/sidebar-intent.ts"
+          "type": "registry:ui"
         }
       ]
     },
@@ -2575,6 +2574,7 @@
       "dependencies": [],
       "registryDependencies": [
         "theme",
+        "aria",
         "controllable-state",
         "floating-panel",
         "outside-click",

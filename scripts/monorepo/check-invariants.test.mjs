@@ -3,7 +3,11 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, test } from "node:test";
-import { INVARIANT_CHECKS, runInvariantChecks } from "./check-invariants.mjs";
+import {
+  checkSecurityReportingChannelsAgree,
+  INVARIANT_CHECKS,
+  runInvariantChecks,
+} from "./check-invariants.mjs";
 
 const PACKAGE_FILES = [
   "apps/docs/package.json",
@@ -125,6 +129,8 @@ function createConformingFixture() {
 
   createWorkspacePackage(root, "libs/ui/package.json", {
     name: "@diffgazer/ui",
+    author: "diffgazer",
+    license: "MIT",
     repository: {
       url: "git+https://github.com/b4r7x/diffgazer.git",
       directory: "libs/ui",
@@ -142,13 +148,15 @@ function createConformingFixture() {
       "./sources.css": "./sources.css",
       "./styles.css": "./styles.css",
     },
-    publishConfig: { access: "public" },
+    publishConfig: { access: "public", provenance: true },
     engines: { node: ">=22.0.0" },
   });
   writePackagePolicyFiles(root, "libs/ui");
 
   createWorkspacePackage(root, "libs/keys/package.json", {
     name: "@diffgazer/keys",
+    author: "diffgazer",
+    license: "MIT",
     repository: {
       url: "git+https://github.com/b4r7x/diffgazer.git",
       directory: "libs/keys",
@@ -157,13 +165,15 @@ function createConformingFixture() {
     sideEffects: false,
     files: ["dist", "README.md", "LICENSE", "SECURITY.md", "SUPPORT.md"],
     exports: { ".": "./dist/index.js" },
-    publishConfig: { access: "public" },
+    publishConfig: { access: "public", provenance: true },
     engines: { node: ">=22.0.0" },
   });
   writePackagePolicyFiles(root, "libs/keys");
 
   createWorkspacePackage(root, "cli/diffgazer/package.json", {
     name: "diffgazer",
+    author: "diffgazer",
+    license: "Apache-2.0",
     bin: { diffgazer: "bin/diffgazer.js" },
     repository: {
       url: "git+https://github.com/b4r7x/diffgazer.git",
@@ -171,13 +181,15 @@ function createConformingFixture() {
     },
     homepage: "https://github.com/b4r7x/diffgazer/tree/main/cli/diffgazer",
     files: ["dist", "bin/diffgazer.js", "README.md", "LICENSE", "SECURITY.md", "SUPPORT.md"],
-    publishConfig: { access: "public" },
+    publishConfig: { access: "public", provenance: true },
     engines: { node: ">=22.0.0" },
   });
   writePackagePolicyFiles(root, "cli/diffgazer", "Apache License\n");
 
   createWorkspacePackage(root, "cli/add/package.json", {
     name: "@diffgazer/add",
+    author: "diffgazer",
+    license: "MIT",
     bin: { dgadd: "dist/index.js" },
     repository: {
       url: "git+https://github.com/b4r7x/diffgazer.git",
@@ -185,7 +197,7 @@ function createConformingFixture() {
     },
     homepage: "https://github.com/b4r7x/diffgazer/tree/main/cli/add",
     files: ["dist", "README.md", "LICENSE", "SECURITY.md", "SUPPORT.md"],
-    publishConfig: { access: "public" },
+    publishConfig: { access: "public", provenance: true },
     engines: { node: ">=22.0.0" },
   });
   writePackagePolicyFiles(root, "cli/add");
@@ -325,6 +337,23 @@ const failureCases = [
       })),
   },
   {
+    name: "publishable packages set publish metadata policy",
+    mutate: (root) =>
+      updatePackage(root, "libs/ui/package.json", (pkg) => ({
+        ...pkg,
+        publishConfig: { access: "public" },
+      })),
+  },
+  {
+    name: "publishable package set matches fixed policy list",
+    mutate: (root) =>
+      updatePackage(root, "libs/registry/package.json", (pkg) => {
+        const rest = { ...pkg };
+        delete rest.private;
+        return { ...rest, publishConfig: { access: "public", provenance: true } };
+      }),
+  },
+  {
     name: "publishable packages share one engines.node",
     mutate: (root) =>
       updatePackage(root, "cli/add/package.json", (pkg) => ({
@@ -347,6 +376,38 @@ const failureCases = [
         scripts: { ...pkg.scripts, "web:build": "vite build" },
       })),
   },
+  {
+    name: "security and support reporting channels match root policy",
+    mutate: (root) =>
+      writeText(
+        root,
+        "cli/add/SECURITY.md",
+        "Report through https://github.com/b4r7x/diffgazer/security/advisories/new\n",
+      ),
+  },
+  {
+    name: "dependency overrides match governance doc",
+    mutate: (root) => {
+      updatePackage(root, "package.json", (pkg) => ({
+        ...pkg,
+        pnpm: { overrides: { leftpad: "^1.0.0" } },
+      }));
+      writeText(
+        root,
+        "PACKAGE_GOVERNANCE.md",
+        "## Dependency Governance\n\nNo pins documented here.\n\n## Licensing\n",
+      );
+    },
+  },
+  {
+    name: "licensed packages appear in governance split",
+    mutate: (root) =>
+      writeText(
+        root,
+        "PACKAGE_GOVERNANCE.md",
+        "## Licensing\n\n- **MIT** covers `libs/keys`.\n- **Apache-2.0** covers `cli/diffgazer`.\n",
+      ),
+  },
 ];
 
 test("failure fixtures cover every exported invariant check", () => {
@@ -367,3 +428,132 @@ for (const [index, fixtureCase] of failureCases.entries()) {
     assert.equal(result.ok, false);
   });
 }
+
+const ROOT_REPORTING_POLICY =
+  "Report through https://github.com/b4r7x/diffgazer/security/advisories/new or email b4r7dev@gmail.com.\n";
+const PUBLISHABLE_SECURITY_DIRS = ["cli/add", "cli/diffgazer", "libs/keys", "libs/ui"];
+
+function writeReportingPolicyEverywhere(root, policy = ROOT_REPORTING_POLICY) {
+  writeText(root, "SECURITY.md", ROOT_REPORTING_POLICY);
+  writeText(root, "SUPPORT.md", policy);
+  for (const dir of PUBLISHABLE_SECURITY_DIRS) {
+    writeText(root, `${dir}/SECURITY.md`, policy);
+    writeText(root, `${dir}/SUPPORT.md`, policy);
+  }
+}
+
+test("security reporting parity fails when a package omits a root reporting channel", () => {
+  const root = createConformingFixture();
+  writeReportingPolicyEverywhere(root);
+  for (const dir of PUBLISHABLE_SECURITY_DIRS) {
+    writeText(
+      root,
+      `${dir}/SECURITY.md`,
+      "Report through https://github.com/b4r7x/diffgazer/security/advisories/new\n",
+    );
+  }
+
+  const result = resultByName(
+    runFixture(root, { checks: [checkSecurityReportingChannelsAgree] }),
+    "security and support reporting channels match root policy",
+  );
+
+  assert.equal(result.ok, false);
+});
+
+test("security reporting parity fails when a support doc introduces an off-policy channel", () => {
+  const root = createConformingFixture();
+  writeReportingPolicyEverywhere(root);
+  writeText(
+    root,
+    "libs/keys/SUPPORT.md",
+    "Report through https://github.com/b4r7x/diffgazer/security/advisories/new or email rogue@example.com.\n",
+  );
+
+  const result = resultByName(
+    runFixture(root, { checks: [checkSecurityReportingChannelsAgree] }),
+    "security and support reporting channels match root policy",
+  );
+
+  assert.equal(result.ok, false);
+});
+
+test("security reporting parity allows a support doc to reference a subset of root channels", () => {
+  const root = createConformingFixture();
+  writeReportingPolicyEverywhere(root);
+  writeText(
+    root,
+    "libs/keys/SUPPORT.md",
+    "Report through https://github.com/b4r7x/diffgazer/security/advisories/new\n",
+  );
+
+  const result = resultByName(
+    runFixture(root, { checks: [checkSecurityReportingChannelsAgree] }),
+    "security and support reporting channels match root policy",
+  );
+
+  assert.equal(result.ok, true);
+});
+
+test("security reporting parity passes when every security and support doc carries each root channel", () => {
+  const root = createConformingFixture();
+  writeReportingPolicyEverywhere(root);
+
+  const result = resultByName(
+    runFixture(root, { checks: [checkSecurityReportingChannelsAgree] }),
+    "security and support reporting channels match root policy",
+  );
+
+  assert.equal(result.ok, true);
+});
+
+test("security reporting parity fails when a package README Security link omits a root channel", () => {
+  const root = createConformingFixture();
+  writeReportingPolicyEverywhere(root);
+  writeText(
+    root,
+    "libs/ui/README.md",
+    "## Repository metadata\n\n- **Security:** https://github.com/b4r7x/diffgazer/security/advisories/new\n",
+  );
+
+  const result = resultByName(
+    runFixture(root, { checks: [checkSecurityReportingChannelsAgree] }),
+    "security and support reporting channels match root policy",
+  );
+
+  assert.equal(result.ok, false);
+});
+
+test("security reporting parity fails when a package README Security link introduces an off-policy channel", () => {
+  const root = createConformingFixture();
+  writeReportingPolicyEverywhere(root);
+  writeText(
+    root,
+    "libs/ui/README.md",
+    "## Repository metadata\n\n- **Security:** https://github.com/b4r7x/diffgazer/security/advisories/new or rogue@example.com\n",
+  );
+
+  const result = resultByName(
+    runFixture(root, { checks: [checkSecurityReportingChannelsAgree] }),
+    "security and support reporting channels match root policy",
+  );
+
+  assert.equal(result.ok, false);
+});
+
+test("security reporting parity passes when a package README Security link carries each root channel", () => {
+  const root = createConformingFixture();
+  writeReportingPolicyEverywhere(root);
+  writeText(
+    root,
+    "libs/ui/README.md",
+    "## Repository metadata\n\n- **Security:** https://github.com/b4r7x/diffgazer/security/advisories/new or b4r7dev@gmail.com\n",
+  );
+
+  const result = resultByName(
+    runFixture(root, { checks: [checkSecurityReportingChannelsAgree] }),
+    "security and support reporting channels match root policy",
+  );
+
+  assert.equal(result.ok, true);
+});

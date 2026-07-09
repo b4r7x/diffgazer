@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 
 /** Options for use spinner animation. */
 interface UseSpinnerAnimationOptions {
-  /** total frames used by use spinner animation. */
   totalFrames: number;
   /**
    * Frame interval in milliseconds. Overrides the variant default (snake 100, braille 80, dots

@@ -6,7 +6,7 @@ import { Badge } from "@diffgazer/ui/components/badge";
 import { Input } from "@diffgazer/ui/components/input";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { Spinner } from "@diffgazer/ui/components/spinner";
-import { type ReactNode, useState } from "react";
+import { type KeyboardEvent, type ReactNode, useState } from "react";
 import { resolveAvailableValue } from "../../lib/select";
 
 interface ModelStepProps {
@@ -145,6 +145,15 @@ export function ModelStep({
     : "Enter a model ID manually:";
   const ariaLabel = isOpenRouter ? "OpenRouter model ID" : "Model ID";
 
+  const handleManualEntryKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter" || !enabled) return;
+    const trimmed = (value ?? "").trim();
+    if (!trimmed) return;
+    event.preventDefault();
+    if (trimmed !== value) onChange(trimmed);
+    onCommit?.(trimmed);
+  };
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -165,6 +174,7 @@ export function ModelStep({
           aria-label={ariaLabel}
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleManualEntryKeyDown}
           placeholder={manualEntryPlaceholder}
         />
       </div>
@@ -182,6 +192,7 @@ export function ModelStep({
           aria-label={ariaLabel}
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleManualEntryKeyDown}
           placeholder={manualEntryPlaceholder}
         />
       </div>

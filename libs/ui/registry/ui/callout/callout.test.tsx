@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
@@ -29,9 +29,6 @@ describe("Callout structure", () => {
     );
     const root = container.firstElementChild as HTMLElement;
     expect(root).toHaveAttribute("data-frame", "rail");
-    // The actual border collapse + inline-start rail is owned by
-    // callout/callout.css, keyed off [data-frame="rail"]. We assert the
-    // public contract (the attribute), not the CSS file's class names.
   });
 
   it("bar frame renders a tone marker bar matching Dialog marker='bar'", () => {
@@ -153,9 +150,6 @@ describe("Callout dismiss", () => {
     const dismiss = screen.getByRole("button", { name: "Dismiss" });
     expect(dismiss).toHaveAttribute("aria-label", "Dismiss");
     expect(dismiss).toHaveAttribute("data-slot", "callout-dismiss");
-    // The 24×24 footprint with 4px padding is documented in the anatomy
-    // notes and visually owned by Tailwind utilities; size assertions belong
-    // in visual regression, not unit tests.
   });
 
   it("uses visible text children as the dismiss accessible name (no clobbering aria-label)", () => {
@@ -204,6 +198,39 @@ describe("Callout dismiss", () => {
 
     expect(screen.queryByText("Alert")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue" })).toHaveFocus();
+  });
+
+  it("repairs focus to a stable target after dismiss inside an open shadow root (F-070)", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const shadowRoot = host.attachShadow({ mode: "open" });
+    const mountPoint = document.createElement("div");
+    shadowRoot.append(mountPoint);
+
+    render(
+      <Callout>
+        <Callout.Title>Alert</Callout.Title>
+        <Callout.Dismiss />
+      </Callout>,
+      { container: mountPoint },
+    );
+
+    const recovery = document.createElement("button");
+    recovery.type = "button";
+    recovery.textContent = "Continue";
+    shadowRoot.append(recovery);
+
+    const dismiss = within(mountPoint).getByRole("button", { name: "Dismiss" });
+    dismiss.focus();
+    expect(shadowRoot.activeElement).toBe(dismiss);
+
+    act(() => {
+      dismiss.click();
+    });
+
+    expect(within(mountPoint).queryByText("Alert")).not.toBeInTheDocument();
+    expect(shadowRoot.activeElement).toBe(recovery);
+    host.remove();
   });
 });
 

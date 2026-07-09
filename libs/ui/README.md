@@ -10,7 +10,7 @@ Choose the path that matches whether your app should own copied source or consum
 
 | Path | What it does | CSS setup |
 |------|-------------|-----------|
-| Manual copy / shadcn | `npx shadcn add https://r.b4r7.dev/r/ui/button.json` | Import copied project-root `styles/styles.css` |
+| Manual copy / shadcn (future) | `npx shadcn add https://r.b4r7.dev/r/ui/button.json` — gated until the hosted registry is live | Import copied project-root `styles/styles.css` |
 | `dgadd` CLI | `pnpm exec dgadd add ui/button` | Import copied `src/styles/styles.css` |
 | npm package | `npm install @diffgazer/ui @diffgazer/keys` | Import `@diffgazer/ui/sources.css` and `@diffgazer/ui/styles.css` |
 
@@ -59,13 +59,15 @@ Runtime package mode exports compiled components, hooks, utilities, and CSS. It 
 
 `@diffgazer/ui/styles.css` imports the package theme and component CSS only. It intentionally does not import Tailwind, so every app has exactly one Tailwind import in its own global CSS entrypoint.
 
-### Direct shadcn / manual copy
+### Direct shadcn / manual copy (future, after publication)
 
-Install from the hosted registry:
+The hosted registry at `https://r.b4r7.dev` is not yet live. After publication (see [Hosted Registry Status](https://github.com/b4r7x/diffgazer/blob/main/PACKAGE_GOVERNANCE.md#hosted-registry-status)), install from the hosted registry:
 
 ```bash
 npx shadcn add https://r.b4r7.dev/r/ui/button.json
 ```
+
+Until then, use the `dgadd` CLI (`pnpm exec dgadd add ui/button`) or the runtime package (`npm install @diffgazer/ui`).
 
 To copy source without the shadcn CLI, use the source files at `https://github.com/b4r7x/diffgazer/tree/main/libs/ui/registry/ui/button`.
 
@@ -181,5 +183,5 @@ Internet Explorer, legacy (EdgeHTML) Edge, and Safari below 16.4 are not support
 
 - **Source:** https://github.com/b4r7x/diffgazer/tree/main/libs/ui
 - **Homepage:** https://github.com/b4r7x/diffgazer/tree/main/libs/ui
-- **Security:** https://github.com/b4r7x/diffgazer/security/advisories/new
+- **Security:** https://github.com/b4r7x/diffgazer/security/advisories/new or b4r7dev@gmail.com
 - **Support:** https://github.com/b4r7x/diffgazer/issues

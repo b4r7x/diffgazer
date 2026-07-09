@@ -3,7 +3,7 @@
   "title": "useFocusTrap",
   "description": "Trap Tab/Shift+Tab focus within a container element. Auto-focuses first focusable element on mount, restores focus on unmount.",
   "source": {
-    "raw": "\"use client\";\n\nimport { type RefObject, useEffect, useRef } from \"react\";\nimport { getOwnerView, isNode } from \"../dom/element-guards.js\";\nimport { restoreFocus as restoreFocusTarget } from \"../dom/focus-restore.js\";\nimport {\n  documentOrder,\n  getFocusableElements,\n  getTabbableElements,\n  isFocusable,\n} from \"../dom/focusable.js\";\nimport { useFocusRestore } from \"./use-focus-restore.js\";\n\n/** Options for trapping Tab focus inside a container. */\nexport interface UseFocusTrapOptions {\n  /** Element that receives focus when the trap activates. */\n  initialFocus?: RefObject<HTMLElement | null>;\n  /** Restore focus to the previously focused element when the trap releases. */\n  restoreFocus?: boolean;\n  /** Whether the focus trap is active. */\n  enabled?: boolean;\n}\n\ninterface TrapEntry {\n  container: HTMLElement;\n  ownerDocument: Document;\n  initialFocus: RefObject<HTMLElement | null> | undefined;\n  lastFocused: HTMLElement;\n  handleKeyDown: (event: KeyboardEvent) => void;\n  handleFocusIn: (event: FocusEvent) => void;\n  observer: MutationObserver;\n  suspended: boolean;\n}\n\ninterface ActiveTrap {\n  container: HTMLElement;\n  restoreFocus: boolean;\n  release: () => void;\n}\n\n// Per-document trap stacks: only the top (last) entry in each document captures focus.\n// When a new trap activates, the previous top is suspended (listeners removed).\n// When the top trap releases, the next-in-stack is re-armed (listeners re-attached).\nconst trapStacks = new WeakMap<Document, TrapEntry[]>();\nconst DOCUMENT_POSITION_FOLLOWING = 0x04;\n\nfunction getTrapStack(ownerDocument: Document): TrapEntry[] {\n  let stack = trapStacks.get(ownerDocument);\n  if (!stack) {\n    stack = [];\n    trapStacks.set(ownerDocument, stack);\n  }\n  return stack;\n}\n\nfunction armEntry(entry: TrapEntry): void {\n  if (!entry.suspended) return;\n  entry.ownerDocument.addEventListener(\"keydown\", entry.handleKeyDown, true);\n  entry.ownerDocument.addEventListener(\"focusin\", entry.handleFocusIn, true);\n  entry.observer.observe(entry.container, {\n    childList: true,\n    subtree: true,\n    attributes: true,\n    attributeFilter: [\"disabled\", \"hidden\", \"tabindex\", \"aria-hidden\", \"inert\"],\n  });\n  entry.suspended = false;\n}\n\nfunction suspendEntry(entry: TrapEntry): void {\n  if (entry.suspended) return;\n  entry.ownerDocument.removeEventListener(\"keydown\", entry.handleKeyDown, true);\n  entry.ownerDocument.removeEventListener(\"focusin\", entry.handleFocusIn, true);\n  entry.observer.disconnect();\n  entry.suspended = true;\n}\n\nfunction resumeEntry(entry: TrapEntry): void {\n  armEntry(entry);\n  // Recapture focus into the resumed trap's container\n  const target =\n    entry.container.contains(entry.lastFocused) &&\n    entry.lastFocused.isConnected &&\n    isFocusable(entry.lastFocused)\n      ? entry.lastFocused\n      : pickInitialTarget(entry.container, entry.initialFocus);\n  target.focus();\n}\n\nfunction shouldInsertBefore(incoming: TrapEntry, existing: TrapEntry): boolean {\n  if (incoming.container === existing.container) return false;\n  if (incoming.container.contains(existing.container)) return true;\n  if (existing.container.contains(incoming.container)) return false;\n  return Boolean(\n    incoming.container.compareDocumentPosition(existing.container) & DOCUMENT_POSITION_FOLLOWING,\n  );\n}\n\nfunction pushTrap(entry: TrapEntry): boolean {\n  const stack = getTrapStack(entry.ownerDocument);\n  const previousTop = stack.at(-1);\n  const insertIndex = stack.findIndex((existing) => shouldInsertBefore(entry, existing));\n  if (insertIndex === -1) stack.push(entry);\n  else stack.splice(insertIndex, 0, entry);\n\n  const nextTop = stack.at(-1);\n  if (previousTop && previousTop !== nextTop) suspendEntry(previousTop);\n  return nextTop === entry;\n}\n\nfunction removeTrap(entry: TrapEntry): void {\n  const stack = getTrapStack(entry.ownerDocument);\n  const index = stack.indexOf(entry);\n  if (index < 0) return;\n  const wasTop = index === stack.length - 1;\n  stack.splice(index, 1);\n  if (wasTop) {\n    const newTop = stack.at(-1);\n    if (newTop) resumeEntry(newTop);\n  }\n}\n\nfunction pickInitialTarget(\n  container: HTMLElement,\n  initialFocus: RefObject<HTMLElement | null> | undefined,\n): HTMLElement {\n  const requested = initialFocus?.current;\n  if (requested && container.contains(requested) && isFocusable(requested)) return requested;\n  return getFocusableElements(container)[0] ?? container;\n}\n\nfunction isInsideContainer(\n  container: HTMLElement,\n  target: EventTarget | null,\n): target is HTMLElement {\n  const View = getOwnerView(container);\n  return isNode(target, View) && container.contains(target);\n}\n\nfunction getTabbableFromAnchor(\n  tabbableEls: HTMLElement[],\n  activeElement: HTMLElement,\n  shiftKey: boolean,\n): HTMLElement | null {\n  const documentOrderEls = [...tabbableEls].sort(documentOrder);\n  if (shiftKey) {\n    for (let index = documentOrderEls.length - 1; index >= 0; index -= 1) {\n      const candidate = documentOrderEls[index];\n      if (candidate && documentOrder(candidate, activeElement) < 0) return candidate;\n    }\n    return documentOrderEls.at(-1) ?? null;\n  }\n\n  for (const candidate of documentOrderEls) {\n    if (documentOrder(activeElement, candidate) < 0) return candidate;\n  }\n  return documentOrderEls[0] ?? null;\n}\n\n// Effect-on-every-render is intentional: React does not re-fire effects when\n// containerRef.current mutates while the ref object stays stable.\n/**\n * Keeps Tab and Shift+Tab focus inside a container while active, with nested\n * trap stacking and optional focus restoration on release.\n */\nexport function useFocusTrap(\n  containerRef: RefObject<HTMLElement | null>,\n  options: UseFocusTrapOptions = {},\n): void {\n  const { initialFocus, restoreFocus = true, enabled = true } = options;\n  const activeTrapRef = useRef<ActiveTrap | null>(null);\n  const trapEntryRef = useRef<TrapEntry | null>(null);\n  // useFocusRestore manages the focus-restore stack so nested overlays\n  // restore correctly. Restoration itself happens in this hook's release()\n  // so listeners are detached BEFORE focus moves out of the container --\n  // otherwise the document-level focusin recapture re-traps the restored\n  // target. `restoreOnUnmount: false` prevents the stack hook from moving\n  // focus during its own unmount cleanup.\n  const { capture, restore } = useFocusRestore({\n    enabled: restoreFocus,\n    restoreOnUnmount: false,\n  });\n\n  // No dependency array on purpose; see hook-level comment above.\n  useEffect(() => {\n    const nextContainer = enabled ? containerRef.current : null;\n    if (\n      activeTrapRef.current?.container === nextContainer &&\n      activeTrapRef.current.restoreFocus === restoreFocus\n    ) {\n      return;\n    }\n\n    activeTrapRef.current?.release();\n    activeTrapRef.current = null;\n\n    if (!nextContainer) return;\n    const container = nextContainer;\n    const ownerDocument = container.ownerDocument;\n    const restoreTarget = capture(ownerDocument);\n\n    const hadTabIndex = container.hasAttribute(\"tabindex\");\n    const originalTabIndex = container.getAttribute(\"tabindex\");\n    if (!hadTabIndex) container.setAttribute(\"tabindex\", \"-1\");\n\n    // lastFocused is set after initial focus below\n    let lastFocused: HTMLElement = container;\n\n    const recapture = () => {\n      const target =\n        container.contains(lastFocused) && lastFocused.isConnected && isFocusable(lastFocused)\n          ? lastFocused\n          : pickInitialTarget(container, initialFocus);\n      target.focus();\n    };\n\n    const handleFocusIn = (event: FocusEvent) => {\n      const target = event.target;\n      if (isInsideContainer(container, target)) {\n        lastFocused = target;\n        // Keep the stack entry in sync so resume() can use it\n        if (trapEntryRef.current) trapEntryRef.current.lastFocused = target;\n        return;\n      }\n      recapture();\n    };\n\n    const handleKeyDown = (event: KeyboardEvent) => {\n      if (event.key !== \"Tab\") return;\n\n      const focusableEls = getTabbableElements(container);\n      if (focusableEls.length === 0) {\n        event.preventDefault();\n        if (ownerDocument.activeElement !== container) container.focus();\n        return;\n      }\n\n      const first = focusableEls[0];\n      const last = focusableEls[focusableEls.length - 1];\n      const activeElement = ownerDocument.activeElement;\n\n      if (!isInsideContainer(container, activeElement)) {\n        event.preventDefault();\n        (event.shiftKey ? last : first)?.focus();\n        return;\n      }\n\n      if (!focusableEls.includes(activeElement as HTMLElement)) {\n        event.preventDefault();\n        const anchorTarget = isInsideContainer(container, activeElement)\n          ? getTabbableFromAnchor(focusableEls, activeElement, event.shiftKey)\n          : null;\n        (anchorTarget ?? (event.shiftKey ? last : first))?.focus();\n        return;\n      }\n\n      if (event.shiftKey) {\n        if (activeElement === first) {\n          event.preventDefault();\n          last?.focus();\n        }\n      } else {\n        if (activeElement === last) {\n          event.preventDefault();\n          first?.focus();\n        }\n      }\n    };\n\n    const observer = new MutationObserver(() => {\n      if (lastFocused.isConnected && container.contains(lastFocused) && isFocusable(lastFocused))\n        return;\n      recapture();\n    });\n\n    // Build the stack entry and push it BEFORE attaching listeners or\n    // focusing. pushTrap suspends the previous top trap so its focusin\n    // handler does not recapture focus away from this new trap.\n    const entry: TrapEntry = {\n      container,\n      ownerDocument,\n      initialFocus,\n      lastFocused,\n      handleKeyDown,\n      handleFocusIn,\n      observer,\n      suspended: true,\n    };\n    trapEntryRef.current = entry;\n    const isTopTrap = pushTrap(entry);\n\n    if (isTopTrap) {\n      armEntry(entry);\n      if (!isInsideContainer(container, ownerDocument.activeElement)) {\n        pickInitialTarget(container, initialFocus).focus();\n      }\n      lastFocused = isInsideContainer(container, ownerDocument.activeElement)\n        ? ownerDocument.activeElement\n        : pickInitialTarget(container, initialFocus);\n      entry.lastFocused = lastFocused;\n    } else if (isInsideContainer(container, ownerDocument.activeElement)) {\n      lastFocused = ownerDocument.activeElement;\n      entry.lastFocused = lastFocused;\n    }\n\n    activeTrapRef.current = {\n      container,\n      restoreFocus,\n      release: () => {\n        // Detach own listeners BEFORE removing from the stack. removeTrap\n        // calls resumeEntry on the outer trap which focuses into the outer\n        // container — if our focusin listener is still attached, it would\n        // see that focus escaped and recapture, fighting the outer trap.\n        ownerDocument.removeEventListener(\"keydown\", handleKeyDown, true);\n        ownerDocument.removeEventListener(\"focusin\", handleFocusIn, true);\n        observer.disconnect();\n\n        // Remove from stack. This re-arms the outer trap (if any) which\n        // recaptures focus into its container.\n        removeTrap(entry);\n        trapEntryRef.current = null;\n\n        if (!hadTabIndex) {\n          container.removeAttribute(\"tabindex\");\n        } else if (originalTabIndex !== null) {\n          container.setAttribute(\"tabindex\", originalTabIndex);\n        }\n\n        if (restoreFocus) {\n          const hasOuterTrap = getTrapStack(ownerDocument).length > 0;\n          const restored = restore();\n          if (!restored && !hasOuterTrap) restoreFocusTarget(restoreTarget);\n        }\n      },\n    };\n  });\n\n  useEffect(() => {\n    return () => {\n      const activeTrap = activeTrapRef.current;\n      if (!activeTrap) return;\n      activeTrapRef.current = null;\n      activeTrap.release();\n    };\n  }, []);\n}\n",
+    "raw": "\"use client\";\n\nimport { type RefObject, useEffect, useRef } from \"react\";\nimport { getOwnerView, isHTMLElement, isNode } from \"../dom/element-guards.js\";\nimport { restoreFocus as restoreFocusTarget } from \"../dom/focus-restore.js\";\nimport {\n  documentOrder,\n  getFocusableElements,\n  getTabbableElements,\n  isFocusable,\n} from \"../dom/focusable.js\";\nimport { useFocusRestore } from \"./use-focus-restore.js\";\n\n/** Options for trapping Tab focus inside a container. */\nexport interface UseFocusTrapOptions {\n  /** Element that receives focus when the trap activates. */\n  initialFocus?: RefObject<HTMLElement | null>;\n  /** Restore focus to the previously focused element when the trap releases. */\n  restoreFocus?: boolean;\n  /** Whether the focus trap is active. */\n  enabled?: boolean;\n}\n\ninterface TrapEntry {\n  container: HTMLElement;\n  ownerDocument: Document;\n  initialFocus: RefObject<HTMLElement | null> | undefined;\n  lastFocused: HTMLElement;\n  handleKeyDown: (event: KeyboardEvent) => void;\n  handleFocusIn: (event: FocusEvent) => void;\n  observer: MutationObserver;\n  suspended: boolean;\n}\n\ninterface ActiveTrap {\n  container: HTMLElement;\n  restoreFocus: boolean;\n  release: () => void;\n}\n\n// Per-document trap stacks: only the top entry captures focus.\nconst trapStacks = new WeakMap<Document, TrapEntry[]>();\n\nfunction getTrapStack(ownerDocument: Document): TrapEntry[] {\n  let stack = trapStacks.get(ownerDocument);\n  if (!stack) {\n    stack = [];\n    trapStacks.set(ownerDocument, stack);\n  }\n  return stack;\n}\n\nfunction armEntry(entry: TrapEntry): void {\n  if (!entry.suspended) return;\n  entry.ownerDocument.addEventListener(\"keydown\", entry.handleKeyDown, true);\n  entry.ownerDocument.addEventListener(\"focusin\", entry.handleFocusIn, true);\n  entry.observer.observe(entry.container, {\n    childList: true,\n    subtree: true,\n    attributes: true,\n    attributeFilter: [\"disabled\", \"hidden\", \"tabindex\", \"aria-hidden\", \"inert\", \"style\", \"class\"],\n  });\n  entry.suspended = false;\n}\n\nfunction suspendEntry(entry: TrapEntry): void {\n  if (entry.suspended) return;\n  entry.ownerDocument.removeEventListener(\"keydown\", entry.handleKeyDown, true);\n  entry.ownerDocument.removeEventListener(\"focusin\", entry.handleFocusIn, true);\n  entry.observer.disconnect();\n  entry.suspended = true;\n}\n\nfunction resumeEntry(entry: TrapEntry): void {\n  armEntry(entry);\n  const target =\n    entry.container.contains(entry.lastFocused) &&\n    entry.lastFocused.isConnected &&\n    isFocusable(entry.lastFocused)\n      ? entry.lastFocused\n      : pickInitialTarget(entry.container, entry.initialFocus);\n  target.focus();\n}\n\nfunction shouldInsertBefore(incoming: TrapEntry, existing: TrapEntry): boolean {\n  // Splice an incoming ancestor before its existing descendant so the descendant\n  // stays on top; otherwise activation order makes the new trap the top.\n  return (\n    incoming.container !== existing.container && incoming.container.contains(existing.container)\n  );\n}\n\nfunction pushTrap(entry: TrapEntry): boolean {\n  const stack = getTrapStack(entry.ownerDocument);\n  const previousTop = stack.at(-1);\n  const insertIndex = stack.findIndex((existing) => shouldInsertBefore(entry, existing));\n  if (insertIndex === -1) stack.push(entry);\n  else stack.splice(insertIndex, 0, entry);\n\n  const nextTop = stack.at(-1);\n  if (previousTop && previousTop !== nextTop) suspendEntry(previousTop);\n  return nextTop === entry;\n}\n\nfunction removeTrap(entry: TrapEntry): void {\n  const stack = getTrapStack(entry.ownerDocument);\n  const index = stack.indexOf(entry);\n  if (index < 0) return;\n  const wasTop = index === stack.length - 1;\n  stack.splice(index, 1);\n  if (wasTop) {\n    const newTop = stack.at(-1);\n    if (newTop) resumeEntry(newTop);\n  }\n}\n\nfunction pickInitialTarget(\n  container: HTMLElement,\n  initialFocus: RefObject<HTMLElement | null> | undefined,\n): HTMLElement {\n  const requested = initialFocus?.current;\n  if (requested && container.contains(requested) && isFocusable(requested)) return requested;\n  return getFocusableElements(container)[0] ?? container;\n}\n\nfunction isInsideContainer(\n  container: HTMLElement,\n  target: EventTarget | null,\n): target is HTMLElement {\n  const View = getOwnerView(container);\n  return isNode(target, View) && container.contains(target);\n}\n\nfunction getTabbableFromAnchor(\n  tabbableEls: HTMLElement[],\n  activeElement: HTMLElement,\n  shiftKey: boolean,\n): HTMLElement | null {\n  const documentOrderEls = [...tabbableEls].sort(documentOrder);\n  if (shiftKey) {\n    for (let index = documentOrderEls.length - 1; index >= 0; index -= 1) {\n      const candidate = documentOrderEls[index];\n      if (candidate && documentOrder(candidate, activeElement) < 0) return candidate;\n    }\n    return documentOrderEls.at(-1) ?? null;\n  }\n\n  for (const candidate of documentOrderEls) {\n    if (documentOrder(activeElement, candidate) < 0) return candidate;\n  }\n  return documentOrderEls[0] ?? null;\n}\n\n/**\n * Keeps Tab and Shift+Tab focus inside a container while active, with nested\n * trap stacking and optional focus restoration on release.\n */\nexport function useFocusTrap(\n  containerRef: RefObject<HTMLElement | null>,\n  options: UseFocusTrapOptions = {},\n): void {\n  const { initialFocus, restoreFocus = true, enabled = true } = options;\n  const activeTrapRef = useRef<ActiveTrap | null>(null);\n  const trapEntryRef = useRef<TrapEntry | null>(null);\n  // Detach listeners BEFORE focus moves out in release(), or the document-level\n  // focusin recapture re-traps the restored target. restoreOnUnmount:false keeps\n  // this stack hook from moving focus during its own unmount cleanup.\n  const { capture, restore } = useFocusRestore({\n    enabled: restoreFocus,\n    restoreOnUnmount: false,\n  });\n\n  // No dependency array on purpose: React does not re-fire effects when\n  // containerRef.current mutates while the ref object stays stable.\n  useEffect(() => {\n    const nextContainer = enabled ? containerRef.current : null;\n    const active = activeTrapRef.current;\n    if (active && active.container === nextContainer) {\n      // restoreFocus is release-time policy; update in place instead of tearing\n      // down (which would recapture the interior as the restore target, not the opener).\n      active.restoreFocus = restoreFocus;\n      return;\n    }\n\n    active?.release();\n    activeTrapRef.current = null;\n\n    if (!nextContainer) return;\n    const container = nextContainer;\n    const ownerDocument = container.ownerDocument;\n    // Capture the opener before focus moves inside, so a false-to-true toggle can still restore to it.\n    const activeAtActivation = ownerDocument.activeElement;\n    const opener =\n      isHTMLElement(activeAtActivation) && !isInsideContainer(container, activeAtActivation)\n        ? activeAtActivation\n        : null;\n    const restoreTarget = capture(ownerDocument);\n\n    const hadTabIndex = container.hasAttribute(\"tabindex\");\n    const originalTabIndex = container.getAttribute(\"tabindex\");\n    if (!hadTabIndex) container.setAttribute(\"tabindex\", \"-1\");\n\n    let lastFocused: HTMLElement = container;\n\n    const recapture = () => {\n      const target =\n        container.contains(lastFocused) && lastFocused.isConnected && isFocusable(lastFocused)\n          ? lastFocused\n          : pickInitialTarget(container, initialFocus);\n      target.focus();\n    };\n\n    const handleFocusIn = (event: FocusEvent) => {\n      const target = event.target;\n      if (isInsideContainer(container, target)) {\n        lastFocused = target;\n        if (trapEntryRef.current) trapEntryRef.current.lastFocused = target;\n        return;\n      }\n      recapture();\n    };\n\n    const handleKeyDown = (event: KeyboardEvent) => {\n      if (event.key !== \"Tab\") return;\n\n      const focusableEls = getTabbableElements(container);\n      if (focusableEls.length === 0) {\n        event.preventDefault();\n        if (ownerDocument.activeElement !== container) container.focus();\n        return;\n      }\n\n      const first = focusableEls[0];\n      const last = focusableEls[focusableEls.length - 1];\n      const activeElement = ownerDocument.activeElement;\n\n      if (!isInsideContainer(container, activeElement)) {\n        event.preventDefault();\n        (event.shiftKey ? last : first)?.focus();\n        return;\n      }\n\n      if (!focusableEls.includes(activeElement as HTMLElement)) {\n        event.preventDefault();\n        const anchorTarget = isInsideContainer(container, activeElement)\n          ? getTabbableFromAnchor(focusableEls, activeElement, event.shiftKey)\n          : null;\n        (anchorTarget ?? (event.shiftKey ? last : first))?.focus();\n        return;\n      }\n\n      if (event.shiftKey) {\n        if (activeElement === first) {\n          event.preventDefault();\n          last?.focus();\n        }\n      } else {\n        if (activeElement === last) {\n          event.preventDefault();\n          first?.focus();\n        }\n      }\n    };\n\n    const observer = new MutationObserver(() => {\n      if (lastFocused.isConnected && container.contains(lastFocused) && isFocusable(lastFocused))\n        return;\n      recapture();\n    });\n\n    // Push BEFORE arming/focusing: pushTrap suspends the previous top so its\n    // focusin handler does not recapture focus away from this new trap.\n    const entry: TrapEntry = {\n      container,\n      ownerDocument,\n      initialFocus,\n      lastFocused,\n      handleKeyDown,\n      handleFocusIn,\n      observer,\n      suspended: true,\n    };\n    trapEntryRef.current = entry;\n    const isTopTrap = pushTrap(entry);\n\n    if (isTopTrap) {\n      armEntry(entry);\n      if (!isInsideContainer(container, ownerDocument.activeElement)) {\n        pickInitialTarget(container, initialFocus).focus();\n      }\n      lastFocused = isInsideContainer(container, ownerDocument.activeElement)\n        ? ownerDocument.activeElement\n        : pickInitialTarget(container, initialFocus);\n      entry.lastFocused = lastFocused;\n    } else if (isInsideContainer(container, ownerDocument.activeElement)) {\n      lastFocused = ownerDocument.activeElement;\n      entry.lastFocused = lastFocused;\n    }\n\n    const activeTrap: ActiveTrap = {\n      container,\n      restoreFocus,\n      release: () => {\n        // Detach own listeners BEFORE removeTrap resumes the outer trap; otherwise\n        // our focusin sees the outer trap's refocus as an escape and fights it.\n        ownerDocument.removeEventListener(\"keydown\", handleKeyDown, true);\n        ownerDocument.removeEventListener(\"focusin\", handleFocusIn, true);\n        observer.disconnect();\n\n        removeTrap(entry);\n        trapEntryRef.current = null;\n\n        if (!hadTabIndex) {\n          container.removeAttribute(\"tabindex\");\n        } else if (originalTabIndex !== null) {\n          container.setAttribute(\"tabindex\", originalTabIndex);\n        }\n\n        if (activeTrap.restoreFocus) {\n          const hasOuterTrap = getTrapStack(ownerDocument).length > 0;\n          const restored = restore();\n          if (!restored && !hasOuterTrap) restoreFocusTarget(restoreTarget ?? opener);\n        }\n      },\n    };\n    activeTrapRef.current = activeTrap;\n  });\n\n  useEffect(() => {\n    return () => {\n      const activeTrap = activeTrapRef.current;\n      if (!activeTrap) return;\n      activeTrapRef.current = null;\n      activeTrap.release();\n    };\n  }, []);\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -124,6 +124,14 @@
           },
           {
             "text": " getOwnerView",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " isHTMLElement",
             "color": "var(--code-variable)"
           },
           {
@@ -1120,39 +1128,13 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " Per-document trap stacks: only the top (last) entry in each document captures focus.",
+            "text": " Per-document trap stacks: only the top entry captures focus.",
             "color": "var(--code-comment)"
           }
         ]
       },
       {
         "number": 42,
-        "content": [
-          {
-            "text": "//",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " When a new trap activates, the previous top is suspended (listeners removed).",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 43,
-        "content": [
-          {
-            "text": "//",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " When the top trap releases, the next-in-stack is re-armed (listeners re-attached).",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 44,
         "content": [
           {
             "text": "const",
@@ -1229,48 +1211,11 @@
         ]
       },
       {
-        "number": 45,
-        "content": [
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "DOCUMENT_POSITION_FOLLOWING",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "0x04",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 46,
+        "number": 43,
         "content": []
       },
       {
-        "number": 47,
+        "number": 44,
         "content": [
           {
             "text": "function",
@@ -1327,7 +1272,7 @@
         ]
       },
       {
-        "number": 48,
+        "number": 45,
         "content": [
           {
             "text": "  ",
@@ -1372,7 +1317,7 @@
         ]
       },
       {
-        "number": 49,
+        "number": 46,
         "content": [
           {
             "text": "  ",
@@ -1401,7 +1346,7 @@
         ]
       },
       {
-        "number": 50,
+        "number": 47,
         "content": [
           {
             "text": "    stack ",
@@ -1422,7 +1367,7 @@
         ]
       },
       {
-        "number": 51,
+        "number": 48,
         "content": [
           {
             "text": "    ",
@@ -1459,7 +1404,7 @@
         ]
       },
       {
-        "number": 52,
+        "number": 49,
         "content": [
           {
             "text": "  ",
@@ -1472,7 +1417,7 @@
         ]
       },
       {
-        "number": 53,
+        "number": 50,
         "content": [
           {
             "text": "  ",
@@ -1493,7 +1438,7 @@
         ]
       },
       {
-        "number": 54,
+        "number": 51,
         "content": [
           {
             "text": "}",
@@ -1502,11 +1447,11 @@
         ]
       },
       {
-        "number": 55,
+        "number": 52,
         "content": []
       },
       {
-        "number": 56,
+        "number": 53,
         "content": [
           {
             "text": "function",
@@ -1563,7 +1508,7 @@
         ]
       },
       {
-        "number": 57,
+        "number": 54,
         "content": [
           {
             "text": "  ",
@@ -1604,7 +1549,7 @@
         ]
       },
       {
-        "number": 58,
+        "number": 55,
         "content": [
           {
             "text": "  ",
@@ -1689,7 +1634,7 @@
         ]
       },
       {
-        "number": 59,
+        "number": 56,
         "content": [
           {
             "text": "  ",
@@ -1774,7 +1719,7 @@
         ]
       },
       {
-        "number": 60,
+        "number": 57,
         "content": [
           {
             "text": "  ",
@@ -1831,7 +1776,7 @@
         ]
       },
       {
-        "number": 61,
+        "number": 58,
         "content": [
           {
             "text": "    childList",
@@ -1856,7 +1801,7 @@
         ]
       },
       {
-        "number": 62,
+        "number": 59,
         "content": [
           {
             "text": "    subtree",
@@ -1881,7 +1826,7 @@
         ]
       },
       {
-        "number": 63,
+        "number": 60,
         "content": [
           {
             "text": "    attributes",
@@ -1906,7 +1851,7 @@
         ]
       },
       {
-        "number": 64,
+        "number": 61,
         "content": [
           {
             "text": "    attributeFilter",
@@ -2013,6 +1958,46 @@
             "color": "var(--code-operator)"
           },
           {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "style",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "class",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
             "text": "]",
             "color": "var(--code-variable)"
           },
@@ -2023,7 +2008,7 @@
         ]
       },
       {
-        "number": 65,
+        "number": 62,
         "content": [
           {
             "text": "  ",
@@ -2044,7 +2029,7 @@
         ]
       },
       {
-        "number": 66,
+        "number": 63,
         "content": [
           {
             "text": "  ",
@@ -2081,7 +2066,7 @@
         ]
       },
       {
-        "number": 67,
+        "number": 64,
         "content": [
           {
             "text": "}",
@@ -2090,11 +2075,11 @@
         ]
       },
       {
-        "number": 68,
+        "number": 65,
         "content": []
       },
       {
-        "number": 69,
+        "number": 66,
         "content": [
           {
             "text": "function",
@@ -2151,7 +2136,7 @@
         ]
       },
       {
-        "number": 70,
+        "number": 67,
         "content": [
           {
             "text": "  ",
@@ -2188,7 +2173,7 @@
         ]
       },
       {
-        "number": 71,
+        "number": 68,
         "content": [
           {
             "text": "  ",
@@ -2273,7 +2258,7 @@
         ]
       },
       {
-        "number": 72,
+        "number": 69,
         "content": [
           {
             "text": "  ",
@@ -2358,7 +2343,7 @@
         ]
       },
       {
-        "number": 73,
+        "number": 70,
         "content": [
           {
             "text": "  ",
@@ -2395,7 +2380,7 @@
         ]
       },
       {
-        "number": 74,
+        "number": 71,
         "content": [
           {
             "text": "  ",
@@ -2432,7 +2417,7 @@
         ]
       },
       {
-        "number": 75,
+        "number": 72,
         "content": [
           {
             "text": "}",
@@ -2441,11 +2426,11 @@
         ]
       },
       {
-        "number": 76,
+        "number": 73,
         "content": []
       },
       {
-        "number": 77,
+        "number": 74,
         "content": [
           {
             "text": "function",
@@ -2502,7 +2487,7 @@
         ]
       },
       {
-        "number": 78,
+        "number": 75,
         "content": [
           {
             "text": "  ",
@@ -2523,20 +2508,7 @@
         ]
       },
       {
-        "number": 79,
-        "content": [
-          {
-            "text": "  //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " Recapture focus into the resumed trap's container",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 80,
+        "number": 76,
         "content": [
           {
             "text": "  ",
@@ -2565,7 +2537,7 @@
         ]
       },
       {
-        "number": 81,
+        "number": 77,
         "content": [
           {
             "text": "    ",
@@ -2614,7 +2586,7 @@
         ]
       },
       {
-        "number": 82,
+        "number": 78,
         "content": [
           {
             "text": "    ",
@@ -2647,7 +2619,7 @@
         ]
       },
       {
-        "number": 83,
+        "number": 79,
         "content": [
           {
             "text": "    ",
@@ -2676,7 +2648,7 @@
         ]
       },
       {
-        "number": 84,
+        "number": 80,
         "content": [
           {
             "text": "      ",
@@ -2705,7 +2677,7 @@
         ]
       },
       {
-        "number": 85,
+        "number": 81,
         "content": [
           {
             "text": "      ",
@@ -2766,7 +2738,7 @@
         ]
       },
       {
-        "number": 86,
+        "number": 82,
         "content": [
           {
             "text": "  ",
@@ -2795,7 +2767,7 @@
         ]
       },
       {
-        "number": 87,
+        "number": 83,
         "content": [
           {
             "text": "}",
@@ -2804,11 +2776,11 @@
         ]
       },
       {
-        "number": 88,
+        "number": 84,
         "content": []
       },
       {
-        "number": 89,
+        "number": 85,
         "content": [
           {
             "text": "function",
@@ -2885,18 +2857,53 @@
         ]
       },
       {
-        "number": 90,
+        "number": 86,
+        "content": [
+          {
+            "text": "  //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Splice an incoming ancestor before its existing descendant so the descendant",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 87,
+        "content": [
+          {
+            "text": "  //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " stays on top; otherwise activation order makes the new trap the top.",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 88,
         "content": [
           {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "if",
+            "text": "return",
             "color": "var(--code-keyword)"
           },
           {
             "text": " (",
+            "color": "var(--code-variable)"
+          }
+        ]
+      },
+      {
+        "number": 89,
+        "content": [
+          {
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -2912,7 +2919,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "===",
+            "text": "!==",
             "color": "var(--code-operator)"
           },
           {
@@ -2928,40 +2935,15 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "container) ",
+            "text": "container ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "return",
-            "color": "var(--code-keyword)"
+            "text": "&&",
+            "color": "var(--code-operator)"
           },
           {
             "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "false",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 91,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "if",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " (",
             "color": "var(--code-variable)"
           },
           {
@@ -2997,184 +2979,13 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "container)) ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "return",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "true",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 92,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "if",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " (",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "existing",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "container",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "contains",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "incoming",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "container)) ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "return",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "false",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 93,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "return",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "Boolean",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
+            "text": "container)",
             "color": "var(--code-variable)"
           }
         ]
       },
       {
-        "number": 94,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "incoming",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "container",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "compareDocumentPosition",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "existing",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "container) ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "&",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "DOCUMENT_POSITION_FOLLOWING",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 95,
+        "number": 90,
         "content": [
           {
             "text": "  )",
@@ -3187,7 +2998,7 @@
         ]
       },
       {
-        "number": 96,
+        "number": 91,
         "content": [
           {
             "text": "}",
@@ -3196,11 +3007,11 @@
         ]
       },
       {
-        "number": 97,
+        "number": 92,
         "content": []
       },
       {
-        "number": 98,
+        "number": 93,
         "content": [
           {
             "text": "function",
@@ -3257,7 +3068,7 @@
         ]
       },
       {
-        "number": 99,
+        "number": 94,
         "content": [
           {
             "text": "  ",
@@ -3314,7 +3125,7 @@
         ]
       },
       {
-        "number": 100,
+        "number": 95,
         "content": [
           {
             "text": "  ",
@@ -3379,7 +3190,7 @@
         ]
       },
       {
-        "number": 101,
+        "number": 96,
         "content": [
           {
             "text": "  ",
@@ -3472,7 +3283,7 @@
         ]
       },
       {
-        "number": 102,
+        "number": 97,
         "content": [
           {
             "text": "  ",
@@ -3529,7 +3340,7 @@
         ]
       },
       {
-        "number": 103,
+        "number": 98,
         "content": [
           {
             "text": "  ",
@@ -3586,11 +3397,11 @@
         ]
       },
       {
-        "number": 104,
+        "number": 99,
         "content": []
       },
       {
-        "number": 105,
+        "number": 100,
         "content": [
           {
             "text": "  ",
@@ -3655,7 +3466,7 @@
         ]
       },
       {
-        "number": 106,
+        "number": 101,
         "content": [
           {
             "text": "  ",
@@ -3700,7 +3511,7 @@
         ]
       },
       {
-        "number": 107,
+        "number": 102,
         "content": [
           {
             "text": "  ",
@@ -3729,7 +3540,7 @@
         ]
       },
       {
-        "number": 108,
+        "number": 103,
         "content": [
           {
             "text": "}",
@@ -3738,11 +3549,11 @@
         ]
       },
       {
-        "number": 109,
+        "number": 104,
         "content": []
       },
       {
-        "number": 110,
+        "number": 105,
         "content": [
           {
             "text": "function",
@@ -3799,7 +3610,7 @@
         ]
       },
       {
-        "number": 111,
+        "number": 106,
         "content": [
           {
             "text": "  ",
@@ -3856,7 +3667,7 @@
         ]
       },
       {
-        "number": 112,
+        "number": 107,
         "content": [
           {
             "text": "  ",
@@ -3909,7 +3720,7 @@
         ]
       },
       {
-        "number": 113,
+        "number": 108,
         "content": [
           {
             "text": "  ",
@@ -3950,7 +3761,7 @@
         ]
       },
       {
-        "number": 114,
+        "number": 109,
         "content": [
           {
             "text": "  ",
@@ -4023,7 +3834,7 @@
         ]
       },
       {
-        "number": 115,
+        "number": 110,
         "content": [
           {
             "text": "  ",
@@ -4068,7 +3879,7 @@
         ]
       },
       {
-        "number": 116,
+        "number": 111,
         "content": [
           {
             "text": "  ",
@@ -4089,7 +3900,7 @@
         ]
       },
       {
-        "number": 117,
+        "number": 112,
         "content": [
           {
             "text": "    ",
@@ -4154,7 +3965,7 @@
         ]
       },
       {
-        "number": 118,
+        "number": 113,
         "content": [
           {
             "text": "    ",
@@ -4183,7 +3994,7 @@
         ]
       },
       {
-        "number": 119,
+        "number": 114,
         "content": [
           {
             "text": "  ",
@@ -4196,7 +4007,7 @@
         ]
       },
       {
-        "number": 120,
+        "number": 115,
         "content": [
           {
             "text": "}",
@@ -4205,11 +4016,11 @@
         ]
       },
       {
-        "number": 121,
+        "number": 116,
         "content": []
       },
       {
-        "number": 122,
+        "number": 117,
         "content": [
           {
             "text": "function",
@@ -4230,7 +4041,7 @@
         ]
       },
       {
-        "number": 123,
+        "number": 118,
         "content": [
           {
             "text": "  container",
@@ -4255,7 +4066,7 @@
         ]
       },
       {
-        "number": 124,
+        "number": 119,
         "content": [
           {
             "text": "  initialFocus",
@@ -4324,7 +4135,7 @@
         ]
       },
       {
-        "number": 125,
+        "number": 120,
         "content": [
           {
             "text": "):",
@@ -4349,7 +4160,7 @@
         ]
       },
       {
-        "number": 126,
+        "number": 121,
         "content": [
           {
             "text": "  ",
@@ -4398,7 +4209,7 @@
         ]
       },
       {
-        "number": 127,
+        "number": 122,
         "content": [
           {
             "text": "  ",
@@ -4467,7 +4278,7 @@
         ]
       },
       {
-        "number": 128,
+        "number": 123,
         "content": [
           {
             "text": "  ",
@@ -4512,7 +4323,7 @@
         ]
       },
       {
-        "number": 129,
+        "number": 124,
         "content": [
           {
             "text": "}",
@@ -4521,11 +4332,11 @@
         ]
       },
       {
-        "number": 130,
+        "number": 125,
         "content": []
       },
       {
-        "number": 131,
+        "number": 126,
         "content": [
           {
             "text": "function",
@@ -4546,7 +4357,7 @@
         ]
       },
       {
-        "number": 132,
+        "number": 127,
         "content": [
           {
             "text": "  container",
@@ -4571,7 +4382,7 @@
         ]
       },
       {
-        "number": 133,
+        "number": 128,
         "content": [
           {
             "text": "  target",
@@ -4612,7 +4423,7 @@
         ]
       },
       {
-        "number": 134,
+        "number": 129,
         "content": [
           {
             "text": "):",
@@ -4645,7 +4456,7 @@
         ]
       },
       {
-        "number": 135,
+        "number": 130,
         "content": [
           {
             "text": "  ",
@@ -4690,7 +4501,7 @@
         ]
       },
       {
-        "number": 136,
+        "number": 131,
         "content": [
           {
             "text": "  ",
@@ -4751,7 +4562,7 @@
         ]
       },
       {
-        "number": 137,
+        "number": 132,
         "content": [
           {
             "text": "}",
@@ -4760,11 +4571,11 @@
         ]
       },
       {
-        "number": 138,
+        "number": 133,
         "content": []
       },
       {
-        "number": 139,
+        "number": 134,
         "content": [
           {
             "text": "function",
@@ -4785,7 +4596,7 @@
         ]
       },
       {
-        "number": 140,
+        "number": 135,
         "content": [
           {
             "text": "  tabbableEls",
@@ -4814,7 +4625,7 @@
         ]
       },
       {
-        "number": 141,
+        "number": 136,
         "content": [
           {
             "text": "  activeElement",
@@ -4839,7 +4650,7 @@
         ]
       },
       {
-        "number": 142,
+        "number": 137,
         "content": [
           {
             "text": "  shiftKey",
@@ -4864,7 +4675,7 @@
         ]
       },
       {
-        "number": 143,
+        "number": 138,
         "content": [
           {
             "text": "):",
@@ -4905,7 +4716,7 @@
         ]
       },
       {
-        "number": 144,
+        "number": 139,
         "content": [
           {
             "text": "  ",
@@ -4962,7 +4773,7 @@
         ]
       },
       {
-        "number": 145,
+        "number": 140,
         "content": [
           {
             "text": "  ",
@@ -4983,7 +4794,7 @@
         ]
       },
       {
-        "number": 146,
+        "number": 141,
         "content": [
           {
             "text": "    ",
@@ -5092,7 +4903,7 @@
         ]
       },
       {
-        "number": 147,
+        "number": 142,
         "content": [
           {
             "text": "      ",
@@ -5129,7 +4940,7 @@
         ]
       },
       {
-        "number": 148,
+        "number": 143,
         "content": [
           {
             "text": "      ",
@@ -5198,7 +5009,7 @@
         ]
       },
       {
-        "number": 149,
+        "number": 144,
         "content": [
           {
             "text": "    ",
@@ -5211,7 +5022,7 @@
         ]
       },
       {
-        "number": 150,
+        "number": 145,
         "content": [
           {
             "text": "    ",
@@ -5272,7 +5083,7 @@
         ]
       },
       {
-        "number": 151,
+        "number": 146,
         "content": [
           {
             "text": "  ",
@@ -5285,11 +5096,11 @@
         ]
       },
       {
-        "number": 152,
+        "number": 147,
         "content": []
       },
       {
-        "number": 153,
+        "number": 148,
         "content": [
           {
             "text": "  ",
@@ -5334,7 +5145,7 @@
         ]
       },
       {
-        "number": 154,
+        "number": 149,
         "content": [
           {
             "text": "    ",
@@ -5395,7 +5206,7 @@
         ]
       },
       {
-        "number": 155,
+        "number": 150,
         "content": [
           {
             "text": "  ",
@@ -5408,7 +5219,7 @@
         ]
       },
       {
-        "number": 156,
+        "number": 151,
         "content": [
           {
             "text": "  ",
@@ -5449,7 +5260,7 @@
         ]
       },
       {
-        "number": 157,
+        "number": 152,
         "content": [
           {
             "text": "}",
@@ -5458,37 +5269,11 @@
         ]
       },
       {
-        "number": 158,
+        "number": 153,
         "content": []
       },
       {
-        "number": 159,
-        "content": [
-          {
-            "text": "//",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " Effect-on-every-render is intentional: React does not re-fire effects when",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 160,
-        "content": [
-          {
-            "text": "//",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " containerRef.current mutates while the ref object stays stable.",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 161,
+        "number": 154,
         "content": [
           {
             "text": "/**",
@@ -5497,7 +5282,7 @@
         ]
       },
       {
-        "number": 162,
+        "number": 155,
         "content": [
           {
             "text": " * Keeps Tab and Shift+Tab focus inside a container while active, with nested",
@@ -5506,7 +5291,7 @@
         ]
       },
       {
-        "number": 163,
+        "number": 156,
         "content": [
           {
             "text": " * trap stacking and optional focus restoration on release.",
@@ -5515,7 +5300,7 @@
         ]
       },
       {
-        "number": 164,
+        "number": 157,
         "content": [
           {
             "text": " ",
@@ -5528,7 +5313,7 @@
         ]
       },
       {
-        "number": 165,
+        "number": 158,
         "content": [
           {
             "text": "export",
@@ -5557,7 +5342,7 @@
         ]
       },
       {
-        "number": 166,
+        "number": 159,
         "content": [
           {
             "text": "  containerRef",
@@ -5606,7 +5391,7 @@
         ]
       },
       {
-        "number": 167,
+        "number": 160,
         "content": [
           {
             "text": "  options",
@@ -5643,7 +5428,7 @@
         ]
       },
       {
-        "number": 168,
+        "number": 161,
         "content": [
           {
             "text": "):",
@@ -5668,7 +5453,7 @@
         ]
       },
       {
-        "number": 169,
+        "number": 162,
         "content": [
           {
             "text": "  ",
@@ -5777,7 +5562,7 @@
         ]
       },
       {
-        "number": 170,
+        "number": 163,
         "content": [
           {
             "text": "  ",
@@ -5858,7 +5643,7 @@
         ]
       },
       {
-        "number": 171,
+        "number": 164,
         "content": [
           {
             "text": "  ",
@@ -5939,85 +5724,46 @@
         ]
       },
       {
-        "number": 172,
+        "number": 165,
         "content": [
           {
             "text": "  //",
             "color": "var(--code-operator)"
           },
           {
-            "text": " useFocusRestore manages the focus-restore stack so nested overlays",
+            "text": " Detach listeners BEFORE focus moves out in release(), or the document-level",
             "color": "var(--code-comment)"
           }
         ]
       },
       {
-        "number": 173,
+        "number": 166,
         "content": [
           {
             "text": "  //",
             "color": "var(--code-operator)"
           },
           {
-            "text": " restore correctly. Restoration itself happens in this hook's release()",
+            "text": " focusin recapture re-traps the restored target. restoreOnUnmount:false keeps",
             "color": "var(--code-comment)"
           }
         ]
       },
       {
-        "number": 174,
+        "number": 167,
         "content": [
           {
             "text": "  //",
             "color": "var(--code-operator)"
           },
           {
-            "text": " so listeners are detached BEFORE focus moves out of the container --",
+            "text": " this stack hook from moving focus during its own unmount cleanup.",
             "color": "var(--code-comment)"
           }
         ]
       },
       {
-        "number": 175,
-        "content": [
-          {
-            "text": "  //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " otherwise the document-level focusin recapture re-traps the restored",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 176,
-        "content": [
-          {
-            "text": "  //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " target. `restoreOnUnmount: false` prevents the stack hook from moving",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 177,
-        "content": [
-          {
-            "text": "  //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " focus during its own unmount cleanup.",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 178,
+        "number": 168,
         "content": [
           {
             "text": "  ",
@@ -6090,7 +5836,7 @@
         ]
       },
       {
-        "number": 179,
+        "number": 169,
         "content": [
           {
             "text": "    enabled",
@@ -6111,7 +5857,7 @@
         ]
       },
       {
-        "number": 180,
+        "number": 170,
         "content": [
           {
             "text": "    restoreOnUnmount",
@@ -6136,7 +5882,7 @@
         ]
       },
       {
-        "number": 181,
+        "number": 171,
         "content": [
           {
             "text": "  ",
@@ -6157,24 +5903,37 @@
         ]
       },
       {
-        "number": 182,
+        "number": 172,
         "content": []
       },
       {
-        "number": 183,
+        "number": 173,
         "content": [
           {
             "text": "  //",
             "color": "var(--code-operator)"
           },
           {
-            "text": " No dependency array on purpose; see hook-level comment above.",
+            "text": " No dependency array on purpose: React does not re-fire effects when",
             "color": "var(--code-comment)"
           }
         ]
       },
       {
-        "number": 184,
+        "number": 174,
+        "content": [
+          {
+            "text": "  //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " containerRef.current mutates while the ref object stays stable.",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 175,
         "content": [
           {
             "text": "  ",
@@ -6211,7 +5970,7 @@
         ]
       },
       {
-        "number": 185,
+        "number": 176,
         "content": [
           {
             "text": "    ",
@@ -6280,27 +6039,34 @@
         ]
       },
       {
-        "number": 186,
+        "number": 177,
         "content": [
           {
             "text": "    ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "if",
+            "text": "const",
             "color": "var(--code-keyword)"
           },
           {
-            "text": " (",
+            "text": " ",
             "color": "var(--code-variable)"
-          }
-        ]
-      },
-      {
-        "number": 187,
-        "content": [
+          },
           {
-            "text": "      ",
+            "text": "active",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
             "color": "var(--code-variable)"
           },
           {
@@ -6313,10 +6079,43 @@
           },
           {
             "text": "current",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 178,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (active ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "&&",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "active",
             "color": "var(--code-number)"
           },
           {
-            "text": "?.",
+            "text": ".",
             "color": "var(--code-operator)"
           },
           {
@@ -6328,32 +6127,50 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " nextContainer ",
+            "text": " nextContainer) ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "&&",
+            "text": "{",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 188,
+        "number": 179,
+        "content": [
+          {
+            "text": "      //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " restoreFocus is release-time policy; update in place instead of tearing",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 180,
+        "content": [
+          {
+            "text": "      //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " down (which would recapture the interior as the restore target, not the opener).",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 181,
         "content": [
           {
             "text": "      ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "activeTrapRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current",
+            "text": "active",
             "color": "var(--code-number)"
           },
           {
@@ -6365,30 +6182,21 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "===",
+            "text": "=",
             "color": "var(--code-operator)"
           },
           {
             "text": " restoreFocus",
             "color": "var(--code-variable)"
-          }
-        ]
-      },
-      {
-        "number": 189,
-        "content": [
-          {
-            "text": "    ) ",
-            "color": "var(--code-variable)"
           },
           {
-            "text": "{",
+            "text": ";",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 190,
+        "number": 182,
         "content": [
           {
             "text": "      ",
@@ -6405,7 +6213,7 @@
         ]
       },
       {
-        "number": 191,
+        "number": 183,
         "content": [
           {
             "text": "    ",
@@ -6418,26 +6226,18 @@
         ]
       },
       {
-        "number": 192,
+        "number": 184,
         "content": []
       },
       {
-        "number": 193,
+        "number": 185,
         "content": [
           {
             "text": "    ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "activeTrapRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current",
+            "text": "active",
             "color": "var(--code-number)"
           },
           {
@@ -6459,7 +6259,7 @@
         ]
       },
       {
-        "number": 194,
+        "number": 186,
         "content": [
           {
             "text": "    ",
@@ -6496,11 +6296,11 @@
         ]
       },
       {
-        "number": 195,
+        "number": 187,
         "content": []
       },
       {
-        "number": 196,
+        "number": 188,
         "content": [
           {
             "text": "    ",
@@ -6533,7 +6333,7 @@
         ]
       },
       {
-        "number": 197,
+        "number": 189,
         "content": [
           {
             "text": "    ",
@@ -6570,7 +6370,7 @@
         ]
       },
       {
-        "number": 198,
+        "number": 190,
         "content": [
           {
             "text": "    ",
@@ -6619,7 +6419,185 @@
         ]
       },
       {
-        "number": 199,
+        "number": 191,
+        "content": [
+          {
+            "text": "    //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Capture the opener before focus moves inside, so a false-to-true toggle can still restore to it.",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 192,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "activeAtActivation",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "ownerDocument",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "activeElement",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 193,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "opener",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 194,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "isHTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(activeAtActivation) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "&&",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "isInsideContainer",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(container",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " activeAtActivation)",
+            "color": "var(--code-variable)"
+          }
+        ]
+      },
+      {
+        "number": 195,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "?",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " activeAtActivation",
+            "color": "var(--code-variable)"
+          }
+        ]
+      },
+      {
+        "number": 196,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 197,
         "content": [
           {
             "text": "    ",
@@ -6664,11 +6642,11 @@
         ]
       },
       {
-        "number": 200,
+        "number": 198,
         "content": []
       },
       {
-        "number": 201,
+        "number": 199,
         "content": [
           {
             "text": "    ",
@@ -6737,7 +6715,7 @@
         ]
       },
       {
-        "number": 202,
+        "number": 200,
         "content": [
           {
             "text": "    ",
@@ -6806,7 +6784,7 @@
         ]
       },
       {
-        "number": 203,
+        "number": 201,
         "content": [
           {
             "text": "    ",
@@ -6887,24 +6865,11 @@
         ]
       },
       {
-        "number": 204,
+        "number": 202,
         "content": []
       },
       {
-        "number": 205,
-        "content": [
-          {
-            "text": "    //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " lastFocused is set after initial focus below",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 206,
+        "number": 203,
         "content": [
           {
             "text": "    ",
@@ -6949,11 +6914,11 @@
         ]
       },
       {
-        "number": 207,
+        "number": 204,
         "content": []
       },
       {
-        "number": 208,
+        "number": 205,
         "content": [
           {
             "text": "    ",
@@ -7006,7 +6971,7 @@
         ]
       },
       {
-        "number": 209,
+        "number": 206,
         "content": [
           {
             "text": "      ",
@@ -7035,7 +7000,7 @@
         ]
       },
       {
-        "number": 210,
+        "number": 207,
         "content": [
           {
             "text": "        ",
@@ -7096,7 +7061,7 @@
         ]
       },
       {
-        "number": 211,
+        "number": 208,
         "content": [
           {
             "text": "          ",
@@ -7113,7 +7078,7 @@
         ]
       },
       {
-        "number": 212,
+        "number": 209,
         "content": [
           {
             "text": "          ",
@@ -7150,7 +7115,7 @@
         ]
       },
       {
-        "number": 213,
+        "number": 210,
         "content": [
           {
             "text": "      ",
@@ -7179,7 +7144,7 @@
         ]
       },
       {
-        "number": 214,
+        "number": 211,
         "content": [
           {
             "text": "    ",
@@ -7192,11 +7157,11 @@
         ]
       },
       {
-        "number": 215,
+        "number": 212,
         "content": []
       },
       {
-        "number": 216,
+        "number": 213,
         "content": [
           {
             "text": "    ",
@@ -7269,7 +7234,7 @@
         ]
       },
       {
-        "number": 217,
+        "number": 214,
         "content": [
           {
             "text": "      ",
@@ -7318,7 +7283,7 @@
         ]
       },
       {
-        "number": 218,
+        "number": 215,
         "content": [
           {
             "text": "      ",
@@ -7355,7 +7320,7 @@
         ]
       },
       {
-        "number": 219,
+        "number": 216,
         "content": [
           {
             "text": "        lastFocused ",
@@ -7376,20 +7341,7 @@
         ]
       },
       {
-        "number": 220,
-        "content": [
-          {
-            "text": "        //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " Keep the stack entry in sync so resume() can use it",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 221,
+        "number": 217,
         "content": [
           {
             "text": "        ",
@@ -7450,7 +7402,7 @@
         ]
       },
       {
-        "number": 222,
+        "number": 218,
         "content": [
           {
             "text": "        ",
@@ -7467,7 +7419,7 @@
         ]
       },
       {
-        "number": 223,
+        "number": 219,
         "content": [
           {
             "text": "      ",
@@ -7480,7 +7432,7 @@
         ]
       },
       {
-        "number": 224,
+        "number": 220,
         "content": [
           {
             "text": "      ",
@@ -7501,7 +7453,7 @@
         ]
       },
       {
-        "number": 225,
+        "number": 221,
         "content": [
           {
             "text": "    ",
@@ -7514,11 +7466,11 @@
         ]
       },
       {
-        "number": 226,
+        "number": 222,
         "content": []
       },
       {
-        "number": 227,
+        "number": 223,
         "content": [
           {
             "text": "    ",
@@ -7591,7 +7543,7 @@
         ]
       },
       {
-        "number": 228,
+        "number": 224,
         "content": [
           {
             "text": "      ",
@@ -7652,11 +7604,11 @@
         ]
       },
       {
-        "number": 229,
+        "number": 225,
         "content": []
       },
       {
-        "number": 230,
+        "number": 226,
         "content": [
           {
             "text": "      ",
@@ -7701,7 +7653,7 @@
         ]
       },
       {
-        "number": 231,
+        "number": 227,
         "content": [
           {
             "text": "      ",
@@ -7754,7 +7706,7 @@
         ]
       },
       {
-        "number": 232,
+        "number": 228,
         "content": [
           {
             "text": "        ",
@@ -7783,7 +7735,7 @@
         ]
       },
       {
-        "number": 233,
+        "number": 229,
         "content": [
           {
             "text": "        ",
@@ -7840,7 +7792,7 @@
         ]
       },
       {
-        "number": 234,
+        "number": 230,
         "content": [
           {
             "text": "        ",
@@ -7857,7 +7809,7 @@
         ]
       },
       {
-        "number": 235,
+        "number": 231,
         "content": [
           {
             "text": "      ",
@@ -7870,11 +7822,11 @@
         ]
       },
       {
-        "number": 236,
+        "number": 232,
         "content": []
       },
       {
-        "number": 237,
+        "number": 233,
         "content": [
           {
             "text": "      ",
@@ -7919,7 +7871,7 @@
         ]
       },
       {
-        "number": 238,
+        "number": 234,
         "content": [
           {
             "text": "      ",
@@ -7988,7 +7940,7 @@
         ]
       },
       {
-        "number": 239,
+        "number": 235,
         "content": [
           {
             "text": "      ",
@@ -8037,11 +7989,11 @@
         ]
       },
       {
-        "number": 240,
+        "number": 236,
         "content": []
       },
       {
-        "number": 241,
+        "number": 237,
         "content": [
           {
             "text": "      ",
@@ -8082,7 +8034,7 @@
         ]
       },
       {
-        "number": 242,
+        "number": 238,
         "content": [
           {
             "text": "        ",
@@ -8111,7 +8063,7 @@
         ]
       },
       {
-        "number": 243,
+        "number": 239,
         "content": [
           {
             "text": "        (",
@@ -8164,7 +8116,7 @@
         ]
       },
       {
-        "number": 244,
+        "number": 240,
         "content": [
           {
             "text": "        ",
@@ -8181,7 +8133,7 @@
         ]
       },
       {
-        "number": 245,
+        "number": 241,
         "content": [
           {
             "text": "      ",
@@ -8194,11 +8146,11 @@
         ]
       },
       {
-        "number": 246,
+        "number": 242,
         "content": []
       },
       {
-        "number": 247,
+        "number": 243,
         "content": [
           {
             "text": "      ",
@@ -8255,7 +8207,7 @@
         ]
       },
       {
-        "number": 248,
+        "number": 244,
         "content": [
           {
             "text": "        ",
@@ -8284,7 +8236,7 @@
         ]
       },
       {
-        "number": 249,
+        "number": 245,
         "content": [
           {
             "text": "        ",
@@ -8333,7 +8285,7 @@
         ]
       },
       {
-        "number": 250,
+        "number": 246,
         "content": [
           {
             "text": "          ",
@@ -8386,7 +8338,7 @@
         ]
       },
       {
-        "number": 251,
+        "number": 247,
         "content": [
           {
             "text": "          ",
@@ -8411,7 +8363,7 @@
         ]
       },
       {
-        "number": 252,
+        "number": 248,
         "content": [
           {
             "text": "        (anchorTarget ",
@@ -8472,7 +8424,7 @@
         ]
       },
       {
-        "number": 253,
+        "number": 249,
         "content": [
           {
             "text": "        ",
@@ -8489,7 +8441,7 @@
         ]
       },
       {
-        "number": 254,
+        "number": 250,
         "content": [
           {
             "text": "      ",
@@ -8502,11 +8454,11 @@
         ]
       },
       {
-        "number": 255,
+        "number": 251,
         "content": []
       },
       {
-        "number": 256,
+        "number": 252,
         "content": [
           {
             "text": "      ",
@@ -8539,7 +8491,7 @@
         ]
       },
       {
-        "number": 257,
+        "number": 253,
         "content": [
           {
             "text": "        ",
@@ -8568,7 +8520,7 @@
         ]
       },
       {
-        "number": 258,
+        "number": 254,
         "content": [
           {
             "text": "          ",
@@ -8597,7 +8549,7 @@
         ]
       },
       {
-        "number": 259,
+        "number": 255,
         "content": [
           {
             "text": "          ",
@@ -8626,7 +8578,7 @@
         ]
       },
       {
-        "number": 260,
+        "number": 256,
         "content": [
           {
             "text": "        ",
@@ -8639,7 +8591,7 @@
         ]
       },
       {
-        "number": 261,
+        "number": 257,
         "content": [
           {
             "text": "      ",
@@ -8668,7 +8620,7 @@
         ]
       },
       {
-        "number": 262,
+        "number": 258,
         "content": [
           {
             "text": "        ",
@@ -8697,7 +8649,7 @@
         ]
       },
       {
-        "number": 263,
+        "number": 259,
         "content": [
           {
             "text": "          ",
@@ -8726,7 +8678,7 @@
         ]
       },
       {
-        "number": 264,
+        "number": 260,
         "content": [
           {
             "text": "          ",
@@ -8755,7 +8707,7 @@
         ]
       },
       {
-        "number": 265,
+        "number": 261,
         "content": [
           {
             "text": "        ",
@@ -8768,7 +8720,7 @@
         ]
       },
       {
-        "number": 266,
+        "number": 262,
         "content": [
           {
             "text": "      ",
@@ -8781,7 +8733,7 @@
         ]
       },
       {
-        "number": 267,
+        "number": 263,
         "content": [
           {
             "text": "    ",
@@ -8794,11 +8746,11 @@
         ]
       },
       {
-        "number": 268,
+        "number": 264,
         "content": []
       },
       {
-        "number": 269,
+        "number": 265,
         "content": [
           {
             "text": "    ",
@@ -8867,7 +8819,7 @@
         ]
       },
       {
-        "number": 270,
+        "number": 266,
         "content": [
           {
             "text": "      ",
@@ -8936,7 +8888,7 @@
         ]
       },
       {
-        "number": 271,
+        "number": 267,
         "content": [
           {
             "text": "        ",
@@ -8953,7 +8905,7 @@
         ]
       },
       {
-        "number": 272,
+        "number": 268,
         "content": [
           {
             "text": "      ",
@@ -8974,7 +8926,7 @@
         ]
       },
       {
-        "number": 273,
+        "number": 269,
         "content": [
           {
             "text": "    ",
@@ -8995,50 +8947,37 @@
         ]
       },
       {
-        "number": 274,
+        "number": 270,
         "content": []
       },
       {
-        "number": 275,
+        "number": 271,
         "content": [
           {
             "text": "    //",
             "color": "var(--code-operator)"
           },
           {
-            "text": " Build the stack entry and push it BEFORE attaching listeners or",
+            "text": " Push BEFORE arming/focusing: pushTrap suspends the previous top so its",
             "color": "var(--code-comment)"
           }
         ]
       },
       {
-        "number": 276,
+        "number": 272,
         "content": [
           {
             "text": "    //",
             "color": "var(--code-operator)"
           },
           {
-            "text": " focusing. pushTrap suspends the previous top trap so its focusin",
+            "text": " focusin handler does not recapture focus away from this new trap.",
             "color": "var(--code-comment)"
           }
         ]
       },
       {
-        "number": 277,
-        "content": [
-          {
-            "text": "    //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " handler does not recapture focus away from this new trap.",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 278,
+        "number": 273,
         "content": [
           {
             "text": "    ",
@@ -9087,7 +9026,7 @@
         ]
       },
       {
-        "number": 279,
+        "number": 274,
         "content": [
           {
             "text": "      container",
@@ -9100,7 +9039,7 @@
         ]
       },
       {
-        "number": 280,
+        "number": 275,
         "content": [
           {
             "text": "      ownerDocument",
@@ -9113,7 +9052,7 @@
         ]
       },
       {
-        "number": 281,
+        "number": 276,
         "content": [
           {
             "text": "      initialFocus",
@@ -9126,7 +9065,7 @@
         ]
       },
       {
-        "number": 282,
+        "number": 277,
         "content": [
           {
             "text": "      lastFocused",
@@ -9139,7 +9078,7 @@
         ]
       },
       {
-        "number": 283,
+        "number": 278,
         "content": [
           {
             "text": "      handleKeyDown",
@@ -9152,7 +9091,7 @@
         ]
       },
       {
-        "number": 284,
+        "number": 279,
         "content": [
           {
             "text": "      handleFocusIn",
@@ -9165,7 +9104,7 @@
         ]
       },
       {
-        "number": 285,
+        "number": 280,
         "content": [
           {
             "text": "      observer",
@@ -9178,7 +9117,7 @@
         ]
       },
       {
-        "number": 286,
+        "number": 281,
         "content": [
           {
             "text": "      suspended",
@@ -9203,7 +9142,7 @@
         ]
       },
       {
-        "number": 287,
+        "number": 282,
         "content": [
           {
             "text": "    ",
@@ -9216,7 +9155,7 @@
         ]
       },
       {
-        "number": 288,
+        "number": 283,
         "content": [
           {
             "text": "    ",
@@ -9249,7 +9188,7 @@
         ]
       },
       {
-        "number": 289,
+        "number": 284,
         "content": [
           {
             "text": "    ",
@@ -9294,11 +9233,11 @@
         ]
       },
       {
-        "number": 290,
+        "number": 285,
         "content": []
       },
       {
-        "number": 291,
+        "number": 286,
         "content": [
           {
             "text": "    ",
@@ -9319,7 +9258,7 @@
         ]
       },
       {
-        "number": 292,
+        "number": 287,
         "content": [
           {
             "text": "      ",
@@ -9340,7 +9279,7 @@
         ]
       },
       {
-        "number": 293,
+        "number": 288,
         "content": [
           {
             "text": "      ",
@@ -9393,7 +9332,7 @@
         ]
       },
       {
-        "number": 294,
+        "number": 289,
         "content": [
           {
             "text": "        ",
@@ -9434,7 +9373,7 @@
         ]
       },
       {
-        "number": 295,
+        "number": 290,
         "content": [
           {
             "text": "      ",
@@ -9447,7 +9386,7 @@
         ]
       },
       {
-        "number": 296,
+        "number": 291,
         "content": [
           {
             "text": "      lastFocused ",
@@ -9492,7 +9431,7 @@
         ]
       },
       {
-        "number": 297,
+        "number": 292,
         "content": [
           {
             "text": "        ",
@@ -9521,7 +9460,7 @@
         ]
       },
       {
-        "number": 298,
+        "number": 293,
         "content": [
           {
             "text": "        ",
@@ -9558,7 +9497,7 @@
         ]
       },
       {
-        "number": 299,
+        "number": 294,
         "content": [
           {
             "text": "      ",
@@ -9591,7 +9530,7 @@
         ]
       },
       {
-        "number": 300,
+        "number": 295,
         "content": [
           {
             "text": "    ",
@@ -9656,7 +9595,7 @@
         ]
       },
       {
-        "number": 301,
+        "number": 296,
         "content": [
           {
             "text": "      lastFocused ",
@@ -9689,7 +9628,7 @@
         ]
       },
       {
-        "number": 302,
+        "number": 297,
         "content": [
           {
             "text": "      ",
@@ -9722,7 +9661,7 @@
         ]
       },
       {
-        "number": 303,
+        "number": 298,
         "content": [
           {
             "text": "    ",
@@ -9735,26 +9674,42 @@
         ]
       },
       {
-        "number": 304,
+        "number": 299,
         "content": []
       },
       {
-        "number": 305,
+        "number": 300,
         "content": [
           {
             "text": "    ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "activeTrapRef",
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "activeTrap",
             "color": "var(--code-number)"
           },
           {
-            "text": ".",
+            "text": ":",
             "color": "var(--code-operator)"
           },
           {
-            "text": "current ",
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "ActiveTrap",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
             "color": "var(--code-variable)"
           },
           {
@@ -9772,7 +9727,7 @@
         ]
       },
       {
-        "number": 306,
+        "number": 301,
         "content": [
           {
             "text": "      container",
@@ -9785,7 +9740,7 @@
         ]
       },
       {
-        "number": 307,
+        "number": 302,
         "content": [
           {
             "text": "      restoreFocus",
@@ -9798,7 +9753,7 @@
         ]
       },
       {
-        "number": 308,
+        "number": 303,
         "content": [
           {
             "text": "      ",
@@ -9839,59 +9794,33 @@
         ]
       },
       {
-        "number": 309,
+        "number": 304,
         "content": [
           {
             "text": "        //",
             "color": "var(--code-operator)"
           },
           {
-            "text": " Detach own listeners BEFORE removing from the stack. removeTrap",
+            "text": " Detach own listeners BEFORE removeTrap resumes the outer trap; otherwise",
             "color": "var(--code-comment)"
           }
         ]
       },
       {
-        "number": 310,
+        "number": 305,
         "content": [
           {
             "text": "        //",
             "color": "var(--code-operator)"
           },
           {
-            "text": " calls resumeEntry on the outer trap which focuses into the outer",
+            "text": " our focusin sees the outer trap's refocus as an escape and fights it.",
             "color": "var(--code-comment)"
           }
         ]
       },
       {
-        "number": 311,
-        "content": [
-          {
-            "text": "        //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " container — if our focusin listener is still attached, it would",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 312,
-        "content": [
-          {
-            "text": "        //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " see that focus escaped and recapture, fighting the outer trap.",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 313,
+        "number": 306,
         "content": [
           {
             "text": "        ",
@@ -9956,7 +9885,7 @@
         ]
       },
       {
-        "number": 314,
+        "number": 307,
         "content": [
           {
             "text": "        ",
@@ -10021,7 +9950,7 @@
         ]
       },
       {
-        "number": 315,
+        "number": 308,
         "content": [
           {
             "text": "        ",
@@ -10050,37 +9979,11 @@
         ]
       },
       {
-        "number": 316,
+        "number": 309,
         "content": []
       },
       {
-        "number": 317,
-        "content": [
-          {
-            "text": "        //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " Remove from stack. This re-arms the outer trap (if any) which",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 318,
-        "content": [
-          {
-            "text": "        //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " recaptures focus into its container.",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 319,
+        "number": 310,
         "content": [
           {
             "text": "        ",
@@ -10101,7 +10004,7 @@
         ]
       },
       {
-        "number": 320,
+        "number": 311,
         "content": [
           {
             "text": "        ",
@@ -10138,11 +10041,11 @@
         ]
       },
       {
-        "number": 321,
+        "number": 312,
         "content": []
       },
       {
-        "number": 322,
+        "number": 313,
         "content": [
           {
             "text": "        ",
@@ -10171,7 +10074,7 @@
         ]
       },
       {
-        "number": 323,
+        "number": 314,
         "content": [
           {
             "text": "          ",
@@ -10216,7 +10119,7 @@
         ]
       },
       {
-        "number": 324,
+        "number": 315,
         "content": [
           {
             "text": "        ",
@@ -10269,7 +10172,7 @@
         ]
       },
       {
-        "number": 325,
+        "number": 316,
         "content": [
           {
             "text": "          ",
@@ -10318,7 +10221,7 @@
         ]
       },
       {
-        "number": 326,
+        "number": 317,
         "content": [
           {
             "text": "        ",
@@ -10331,11 +10234,11 @@
         ]
       },
       {
-        "number": 327,
+        "number": 318,
         "content": []
       },
       {
-        "number": 328,
+        "number": 319,
         "content": [
           {
             "text": "        ",
@@ -10346,7 +10249,19 @@
             "color": "var(--code-keyword)"
           },
           {
-            "text": " (restoreFocus) ",
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "activeTrap",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "restoreFocus) ",
             "color": "var(--code-variable)"
           },
           {
@@ -10356,7 +10271,7 @@
         ]
       },
       {
-        "number": 329,
+        "number": 320,
         "content": [
           {
             "text": "          ",
@@ -10425,7 +10340,7 @@
         ]
       },
       {
-        "number": 330,
+        "number": 321,
         "content": [
           {
             "text": "          ",
@@ -10470,7 +10385,7 @@
         ]
       },
       {
-        "number": 331,
+        "number": 322,
         "content": [
           {
             "text": "          ",
@@ -10513,7 +10428,15 @@
             "color": "var(--code-function)"
           },
           {
-            "text": "(restoreTarget)",
+            "text": "(restoreTarget ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "??",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " opener)",
             "color": "var(--code-variable)"
           },
           {
@@ -10523,7 +10446,7 @@
         ]
       },
       {
-        "number": 332,
+        "number": 323,
         "content": [
           {
             "text": "        ",
@@ -10536,7 +10459,7 @@
         ]
       },
       {
-        "number": 333,
+        "number": 324,
         "content": [
           {
             "text": "      ",
@@ -10549,7 +10472,7 @@
         ]
       },
       {
-        "number": 334,
+        "number": 325,
         "content": [
           {
             "text": "    ",
@@ -10562,7 +10485,40 @@
         ]
       },
       {
-        "number": 335,
+        "number": 326,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "activeTrapRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " activeTrap",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 327,
         "content": [
           {
             "text": "  ",
@@ -10583,11 +10539,11 @@
         ]
       },
       {
-        "number": 336,
+        "number": 328,
         "content": []
       },
       {
-        "number": 337,
+        "number": 329,
         "content": [
           {
             "text": "  ",
@@ -10624,7 +10580,7 @@
         ]
       },
       {
-        "number": 338,
+        "number": 330,
         "content": [
           {
             "text": "    ",
@@ -10661,7 +10617,7 @@
         ]
       },
       {
-        "number": 339,
+        "number": 331,
         "content": [
           {
             "text": "      ",
@@ -10710,7 +10666,7 @@
         ]
       },
       {
-        "number": 340,
+        "number": 332,
         "content": [
           {
             "text": "      ",
@@ -10743,7 +10699,7 @@
         ]
       },
       {
-        "number": 341,
+        "number": 333,
         "content": [
           {
             "text": "      ",
@@ -10780,7 +10736,7 @@
         ]
       },
       {
-        "number": 342,
+        "number": 334,
         "content": [
           {
             "text": "      ",
@@ -10809,7 +10765,7 @@
         ]
       },
       {
-        "number": 343,
+        "number": 335,
         "content": [
           {
             "text": "    ",
@@ -10822,7 +10778,7 @@
         ]
       },
       {
-        "number": 344,
+        "number": 336,
         "content": [
           {
             "text": "  ",
@@ -10843,7 +10799,7 @@
         ]
       },
       {
-        "number": 345,
+        "number": 337,
         "content": [
           {
             "text": "}",
@@ -10852,7 +10808,7 @@
         ]
       },
       {
-        "number": 346,
+        "number": 338,
         "content": []
       }
     ]

@@ -153,7 +153,12 @@ export interface RemoveCommandConfig<TItem, TConfig> {
     config: TConfig;
     names: string[];
   }) => ExpandRequestedNamesResult;
-  onAfterRemove?: (ctx: { cwd: string; config: TConfig; removedNames: string[] }) => void;
+  onAfterRemove?: (ctx: {
+    cwd: string;
+    config: TConfig;
+    removedNames: string[];
+    force: boolean;
+  }) => void;
 }
 
 function buildRemoveAction<TItem, TConfig>(config: RemoveCommandConfig<TItem, TConfig>) {
@@ -209,16 +214,10 @@ export interface InitCommandConfig<TConfig> {
     opts: SharedCommandOptions,
   ) => { display: Array<[label: string, value: string]> };
   /**
-   * Required preflight: declare every path that `createFiles`, `afterFiles`, and
-   * `writeConfig` may create, write, or touch (directories end with `/`). The
-   * workflow snapshots only those paths to support rollback without scanning
-   * the project tree. The config file path is snapshotted automatically.
-   *
-   * Must include any file mutated as a side effect of the install step (e.g.
-   * `package.json` and the active lockfile) so a `writeConfig` failure after
-   * `afterFiles` does not silently leak package manager mutations to disk.
-   * Making this required (no fallback) is intentional: a forgotten callsite
-   * must be a compile error, not a silent rollback hole.
+   * Declare every path `createFiles`, `afterFiles`, and `writeConfig` may touch
+   * (directories end with `/`); the workflow snapshots only these for rollback.
+   * MUST include install side-effect files (e.g. `package.json`, the lockfile)
+   * or a later `writeConfig` failure silently leaks package-manager mutations.
    */
   plannedPaths: (cwd: string, opts: SharedCommandOptions) => string[];
   createFiles: (

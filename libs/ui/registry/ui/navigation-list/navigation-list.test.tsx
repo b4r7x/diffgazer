@@ -69,8 +69,6 @@ describe("NavigationList", () => {
 
     const list = screen.getByRole("listbox");
     list.focus();
-    // Without registration the static walk cannot see WrappedItem, so the second
-    // item would never become the active descendant.
     await user.keyboard("{ArrowDown}");
     expect(list).toHaveAttribute(
       "aria-activedescendant",
@@ -473,6 +471,69 @@ describe("NavigationList", () => {
       expect(listbox).toHaveFocus();
       expect(listbox).toHaveAttribute("aria-activedescendant", twoOption.id);
     });
+  });
+
+  it("excludes a hidden first item from listbox metadata so autoFocus skips it", async () => {
+    render(
+      <NavigationList aria-label="Test nav" autoFocus>
+        <NavigationList.Item id="one" hidden>
+          <NavigationList.Title>One</NavigationList.Title>
+        </NavigationList.Item>
+        <NavigationList.Item id="two">
+          <NavigationList.Title>Two</NavigationList.Title>
+        </NavigationList.Item>
+      </NavigationList>,
+    );
+
+    const listbox = screen.getByRole("listbox");
+    await waitFor(() =>
+      expect(listbox).toHaveAttribute(
+        "aria-activedescendant",
+        screen.getByRole("option", { name: "Two" }).id,
+      ),
+    );
+  });
+
+  it("excludes an inert first item from listbox metadata so autoFocus skips it", async () => {
+    render(
+      <NavigationList aria-label="Test nav" autoFocus>
+        <NavigationList.Item id="one" inert>
+          <NavigationList.Title>One</NavigationList.Title>
+        </NavigationList.Item>
+        <NavigationList.Item id="two">
+          <NavigationList.Title>Two</NavigationList.Title>
+        </NavigationList.Item>
+      </NavigationList>,
+    );
+
+    const listbox = screen.getByRole("listbox");
+    await waitFor(() =>
+      expect(listbox).toHaveAttribute(
+        "aria-activedescendant",
+        screen.getByRole("option", { name: "Two" }).id,
+      ),
+    );
+  });
+
+  it("excludes an aria-hidden first item from listbox metadata so autoFocus skips it", async () => {
+    render(
+      <NavigationList aria-label="Test nav" autoFocus>
+        <NavigationList.Item id="one" aria-hidden="true">
+          <NavigationList.Title>One</NavigationList.Title>
+        </NavigationList.Item>
+        <NavigationList.Item id="two">
+          <NavigationList.Title>Two</NavigationList.Title>
+        </NavigationList.Item>
+      </NavigationList>,
+    );
+
+    const listbox = screen.getByRole("listbox");
+    await waitFor(() =>
+      expect(listbox).toHaveAttribute(
+        "aria-activedescendant",
+        screen.getByRole("option", { name: "Two" }).id,
+      ),
+    );
   });
 
   it("only references mounted description elements", () => {
@@ -905,11 +966,9 @@ describe("NavigationListGroup", () => {
     const listbox = screen.getByRole("listbox");
     listbox.focus();
 
-    // Collapse the group by clicking the header
     await user.click(screen.getByRole("option", { name: /Collapsible/i }));
     expect(screen.queryByRole("option", { name: "Inside" })).not.toBeInTheDocument();
 
-    // Arrow down from "before" should skip the collapsed "inside" and land on "after"
     await user.keyboard("{ArrowDown}");
     expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("-after"));
   });
@@ -975,7 +1034,6 @@ describe("NavigationListGroup", () => {
       </NavigationList>,
     );
 
-    // Expanded headers offer to collapse; collapsed ones offer to expand.
     expect(screen.getByRole("option", { name: "src, collapse section" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("option", { name: "src, collapse section" }));

@@ -9,9 +9,7 @@ export interface NavigationListGroupContextValue {
    * hierarchy with ASCII connectors.
    */
   variant: "tree" | "section";
-  /** depth used by navigation list group. */
   depth: number;
-  /** line prefix used by navigation list group. */
   linePrefix: string;
 }
 
