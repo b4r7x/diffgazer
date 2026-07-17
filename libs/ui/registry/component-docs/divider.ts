@@ -17,7 +17,7 @@ export const dividerDoc: ComponentDoc = {
     {
       title: "Decorative vs Semantic",
       content:
-        'By default, decorative is true — the divider renders with role="none" so screen readers skip it. Most dividers are visual rhythm, not meaningful content boundaries. Set decorative={false} when the separator marks a real structural boundary between distinct page sections.',
+        'By default, decorative is true — the divider renders with role="none" so screen readers skip it. Most dividers are visual rhythm, not meaningful content boundaries. Set decorative={false} when the separator marks a real structural boundary between distinct page sections, and provide an explicit aria-label. Visible children do not name a separator.',
     },
   ],
   usage: { example: "divider-default" },
@@ -44,11 +44,18 @@ export const dividerDoc: ComponentDoc = {
         description: "Layout axis. Vertical requires the parent to define a height.",
       },
       decorative: {
-        type: "boolean",
+        type: "true | false",
         required: false,
         defaultValue: "true",
         description:
-          'Renders with role="none" and aria-hidden when true. Set to false for meaningful section boundaries; renders role="separator" with aria-orientation.',
+          'Renders with role="none" and aria-hidden when true. Set to false for meaningful section boundaries; semantic separators require an explicit aria-label.',
+      },
+      "aria-label": {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description:
+          "Accessible name required for semantic separators. Visible children do not provide the separator name.",
       },
       children: {
         type: "ReactNode",

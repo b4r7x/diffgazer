@@ -33,7 +33,7 @@ export const PUBLISH_GATED = true;
 export const PUBLISH_GATE_NOTE =
   "Diffgazer packages are not yet published to npm. Until the first release, install from a local checkout of the repository.";
 
-const HOSTED_REGISTRY_GATE_NOTE =
+export const HOSTED_REGISTRY_GATE_NOTE =
   "The hosted registry is not public yet because r.b4r7.dev does not resolve. Use this source checkout or a local registry preview until the endpoint returns 200.";
 
 const LOCAL_DGADD_GATE_NOTE =

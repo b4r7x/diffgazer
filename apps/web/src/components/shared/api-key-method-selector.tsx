@@ -18,6 +18,7 @@ interface ApiKeyMethodSelectorProps {
   focused: FocusElement;
   onFocus: (element: FocusElement) => void;
   onKeySubmit: () => void;
+  onMethodCommit: (method: InputMethod) => void;
   onInputMethodKeyDown?: (event: KeyboardEvent, method: InputMethod) => void;
   getMethodOptionProps?: (method: InputMethod) => {
     ref: RefCallback<HTMLDivElement>;
@@ -41,6 +42,7 @@ export function ApiKeyMethodSelector({
   focused,
   onFocus,
   onKeySubmit,
+  onMethodCommit,
   onInputMethodKeyDown,
   getMethodOptionProps,
   invalid = false,
@@ -60,6 +62,7 @@ export function ApiKeyMethodSelector({
       aria-label="API key input method"
       value={method}
       onChange={handleMethodChange}
+      onEnter={onMethodCommit}
       highlighted={highlightedMethod}
       onHighlightChange={(nextMethod) => {
         if (isInputMethod(nextMethod)) onFocus(nextMethod);
@@ -91,7 +94,11 @@ export function ApiKeyMethodSelector({
           {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only convenience zone that forwards clicks on the padding to the keyboard-accessible InputGroup below; the input itself owns all keyboard interaction. */}
           {/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard users focus the wrapped InputGroup directly, so a duplicate key handler on this padding wrapper would be redundant. */}
           <div
+            onMouseDown={(event) => {
+              if (method !== "paste") event.preventDefault();
+            }}
             onClick={() => {
+              if (method !== "paste") return;
               onFocus("input");
               inputRef.current?.focus();
             }}

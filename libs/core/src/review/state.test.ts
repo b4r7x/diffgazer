@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import type { AgentStreamEvent, StepEvent } from "../schemas/events/index.js";
+import {
+  type AgentStreamEvent,
+  AgentStreamEventSchema,
+  type StepEvent,
+} from "../schemas/events/index.js";
 import { ReviewErrorCode } from "../schemas/review/index.js";
 import {
   createInitialReviewState,
+  getReviewEventSequence,
+  isReviewEventSequenceContinuation,
   type ReviewAction,
+  type ReviewEvent,
   type ReviewState,
   reviewReducer,
 } from "./state.js";
@@ -147,7 +154,7 @@ describe("review-state", () => {
     expect(cancelled.errorCode).toBe(ReviewErrorCode.CANCELLED);
   });
 
-  it("tracks agent queue, execution, tools, errors, and completion", () => {
+  it("tracks agent queue, execution, errors, and completion", () => {
     const queueEvent: AgentStreamEvent = {
       type: "agent_queued",
       agent: detective,
@@ -181,26 +188,6 @@ describe("review-state", () => {
         },
         {
           type: "EVENT",
-          event: {
-            type: "tool_start",
-            agent: "detective",
-            tool: "searchCode",
-            input: "query",
-            timestamp: ts,
-          },
-        },
-        {
-          type: "EVENT",
-          event: {
-            type: "tool_result",
-            agent: "detective",
-            tool: "searchCode",
-            summary: "",
-            timestamp: ts,
-          },
-        },
-        {
-          type: "EVENT",
           event: { type: "agent_error", agent: "detective", error: "Timeout", timestamp: ts },
         },
         { type: "EVENT", event: { type: "agent_start", agent: guardian, timestamp: ts } },
@@ -219,7 +206,6 @@ describe("review-state", () => {
       progress: 100,
       error: "Timeout",
       currentAction: "Failed",
-      lastToolCall: "searchCode",
     });
     expect(state.agents[1]).toMatchObject({
       id: "guardian",
@@ -229,7 +215,7 @@ describe("review-state", () => {
     });
   });
 
-  it("keeps current agent action when progress has no message and clears it for empty tool summaries", () => {
+  it("keeps the current agent action when progress has no message", () => {
     const state = reduce(
       [
         { type: "EVENT", event: { type: "agent_start", agent: optimizer, timestamp: ts } },
@@ -237,22 +223,12 @@ describe("review-state", () => {
           type: "EVENT",
           event: { type: "agent_progress", agent: "optimizer", progress: 50, timestamp: ts },
         },
-        {
-          type: "EVENT",
-          event: {
-            type: "tool_result",
-            agent: "optimizer",
-            tool: "readFileContext",
-            summary: "",
-            timestamp: ts,
-          },
-        },
       ],
       startedState(),
     );
 
     expect(state.agents[0]).toMatchObject({ progress: 50 });
-    expect(state.agents[0]?.currentAction).toBeUndefined();
+    expect(state.agents[0]?.currentAction).toBe("Starting...");
   });
 
   it("tracks file progress from file_progress events, deduplication, and issues", () => {
@@ -317,7 +293,6 @@ describe("review-state", () => {
           type: "EVENT",
           event: {
             type: "orchestrator_complete",
-            summary: "Done",
             totalIssues: 2,
             lensStats: [],
             filesAnalyzed: 12,
@@ -340,7 +315,6 @@ describe("review-state", () => {
       type: "EVENT",
       event: {
         type: "orchestrator_complete",
-        summary: "Done",
         totalIssues: 0,
         lensStats: [],
         filesAnalyzed: 0,
@@ -348,6 +322,27 @@ describe("review-state", () => {
       },
     });
     expect(unchangedTotal.fileProgress.total).toBe(12);
+  });
+
+  it("records prompt coverage without leaving a completed file marked current", () => {
+    const state = reviewReducer(startedState(), {
+      type: "EVENT",
+      event: {
+        type: "file_progress",
+        agent: "detective",
+        file: "src/app.ts",
+        completed: 5,
+        total: 5,
+        timestamp: ts,
+      },
+    });
+
+    expect(state.fileProgress).toMatchObject({
+      total: 5,
+      current: 5,
+      currentFile: null,
+      completed: ["src/app.ts"],
+    });
   });
 
   it("ignores agent-scoped file completions for global file progress", () => {
@@ -415,9 +410,9 @@ describe("review-state", () => {
       timestamp: `${ts}#${index}`,
     });
     const streaming = reviewReducer(createInitialReviewState(), { type: "START" });
-    const state = reduce(
+    const stateBeforeTrim = reduce(
       Array.from(
-        { length: 5001 },
+        { length: 5000 },
         (_, index): ReviewAction => ({
           type: "EVENT",
           event: eventAt(index),
@@ -425,11 +420,77 @@ describe("review-state", () => {
       ),
       streaming,
     );
+    const state = reduce(
+      Array.from(
+        { length: 50 },
+        (_, offset): ReviewAction => ({
+          type: "EVENT",
+          event: eventAt(5000 + offset),
+        }),
+      ),
+      stateBeforeTrim,
+    );
+    const previousSequence = getReviewEventSequence(stateBeforeTrim.events);
+    const sequence = getReviewEventSequence(state.events);
+    if (!previousSequence || !sequence) throw new Error("Expected tagged event histories");
 
     expect(state.events).toHaveLength(5000);
-    expect(state.events[0]).toEqual(eventAt(1));
-    expect(state.events.at(-1)).toEqual(eventAt(5000));
+    expect(state.events[0]).toEqual(eventAt(50));
+    expect(state.events.at(-1)).toEqual(eventAt(5049));
     expect(state.events).not.toContainEqual(eventAt(0));
+    expect(sequence).toMatchObject({
+      firstIndex: 50,
+      nextIndex: 5050,
+      stream: previousSequence.stream,
+    });
+    expect(isReviewEventSequenceContinuation(previousSequence, sequence, state.events)).toBe(true);
+  });
+
+  it("uses branch-safe tokens without attaching lineage to event arrays or payloads", () => {
+    const base = createInitialReviewState();
+    const detectiveEvent: ReviewEvent = {
+      type: "agent_thinking",
+      agent: "detective",
+      thought: "detective branch",
+      timestamp: ts,
+    };
+    const guardianEvent: ReviewEvent = {
+      type: "agent_thinking",
+      agent: "guardian",
+      thought: "guardian branch",
+      timestamp: ts,
+    };
+    const sharedTail: ReviewEvent = {
+      type: "agent_thinking",
+      agent: "detective",
+      thought: "shared tail",
+      timestamp: ts,
+    };
+    const branchA = reviewReducer(base, { type: "EVENT", event: detectiveEvent });
+    const repeatedBranchA = reviewReducer(base, { type: "EVENT", event: detectiveEvent });
+    const branchB = reviewReducer(base, { type: "EVENT", event: guardianEvent });
+    const branchATail = reviewReducer(branchA, { type: "EVENT", event: sharedTail });
+    const branchBTail = reviewReducer(branchB, { type: "EVENT", event: sharedTail });
+    const sequenceA = getReviewEventSequence(branchA.events);
+    const repeatedSequenceA = getReviewEventSequence(repeatedBranchA.events);
+    const sequenceB = getReviewEventSequence(branchB.events);
+    const sequenceATail = getReviewEventSequence(branchATail.events);
+    const sequenceBTail = getReviewEventSequence(branchBTail.events);
+    if (!sequenceA || !repeatedSequenceA || !sequenceB || !sequenceATail || !sequenceBTail) {
+      throw new Error("Expected tagged event histories");
+    }
+
+    expect(sequenceA.token).toBe(repeatedSequenceA.token);
+    expect(sequenceA.token).not.toBe(sequenceB.token);
+    expect(sequenceATail.token).not.toBe(sequenceBTail.token);
+    expect(isReviewEventSequenceContinuation(sequenceA, sequenceB, branchB.events)).toBe(false);
+    expect(
+      isReviewEventSequenceContinuation(sequenceATail, sequenceBTail, branchBTail.events),
+    ).toBe(false);
+    expect(Object.keys(sequenceA.token)).toEqual([]);
+    expect("parent" in sequenceA.token).toBe(false);
+    expect(Object.getOwnPropertySymbols(branchA.events)).toEqual([]);
+    expect(JSON.parse(JSON.stringify(branchA.events))).toEqual(branchA.events);
   });
 
   it("tracks multiple concurrent agents independently", () => {
@@ -452,13 +513,108 @@ describe("review-state", () => {
   });
 
   describe("EVENT routing", () => {
-    it("routes step events to step handling", () => {
-      const state = reviewReducer(startedState(), {
-        type: "EVENT",
-        event: { type: "step_start", step: "review", timestamp: ts } satisfies StepEvent,
-      });
+    it("routes every step event variant to step handling", () => {
+      const events = [
+        {
+          type: "review_started",
+          reviewId: "review-routed",
+          filesTotal: 7,
+          timestamp: ts,
+        },
+        { type: "step_start", step: "diff", timestamp: ts },
+        { type: "step_complete", step: "context", timestamp: ts },
+        {
+          type: "step_error",
+          step: "report",
+          error: "Report failed",
+          timestamp: ts,
+        },
+      ] satisfies StepEvent[];
 
-      expect(state.steps.find((step) => step.id === "review")?.status).toBe("active");
+      const state = reduce(
+        events.map((event) => ({ type: "EVENT", event })),
+        reviewReducer(createInitialReviewState(), { type: "START" }),
+      );
+
+      expect(state.fileProgress.total).toBe(7);
+      expect(state.startedAt?.getTime()).toBe(new Date(ts).getTime());
+      expect(state.steps.find((step) => step.id === "diff")?.status).toBe("active");
+      expect(state.steps.find((step) => step.id === "context")?.status).toBe("completed");
+      expect(state.steps.find((step) => step.id === "report")?.status).toBe("error");
+      expect(state.error).toBe("Report failed");
+      expect(state.events.slice(-events.length)).toEqual(events);
+    });
+
+    it("does not route any agent event variant through step handling", () => {
+      const events = [
+        {
+          type: "orchestrator_start",
+          agents: [detective],
+          concurrency: 1,
+          timestamp: ts,
+        },
+        { type: "agent_queued", agent: detective, position: 1, total: 1, timestamp: ts },
+        {
+          type: "file_start",
+          file: "src/app.ts",
+          index: 0,
+          total: 1,
+          scope: "orchestrator",
+          timestamp: ts,
+        },
+        {
+          type: "file_complete",
+          file: "src/app.ts",
+          index: 0,
+          total: 1,
+          scope: "orchestrator",
+          timestamp: ts,
+        },
+        { type: "agent_start", agent: detective, timestamp: ts },
+        {
+          type: "agent_thinking",
+          agent: "detective",
+          thought: "Reviewing",
+          timestamp: ts,
+        },
+        {
+          type: "agent_progress",
+          agent: "detective",
+          progress: 50,
+          message: "Halfway",
+          timestamp: ts,
+        },
+        { type: "agent_error", agent: "detective", error: "Failed", timestamp: ts },
+        {
+          type: "file_progress",
+          agent: "detective",
+          file: "src/app.ts",
+          completed: 1,
+          total: 1,
+          timestamp: ts,
+        },
+        issueFound("routed-issue", "Routed issue", "detective"),
+        { type: "agent_complete", agent: "detective", issueCount: 1, timestamp: ts },
+        {
+          type: "orchestrator_complete",
+          totalIssues: 1,
+          lensStats: [],
+          filesAnalyzed: 1,
+          timestamp: ts,
+        },
+      ] satisfies AgentStreamEvent[];
+      const schemaTypes = AgentStreamEventSchema.options.flatMap((option) => [
+        ...option.shape.type.values,
+      ]);
+
+      expect(events.map((event) => event.type)).toEqual(schemaTypes);
+      for (const event of events) {
+        const initial = startedState();
+        const state = reviewReducer(initial, { type: "EVENT", event });
+
+        expect(state.steps).toEqual(initial.steps);
+        expect(state.events.at(-1)).toEqual(event);
+      }
     });
 
     it("routes orchestrator-scoped file events to file progress", () => {
@@ -478,35 +634,11 @@ describe("review-state", () => {
       expect(state.agents).toEqual([]);
     });
 
-    it("routes tool events to the originating agent action", () => {
-      const state = reduce(
-        [
-          { type: "EVENT", event: { type: "agent_start", agent: detective, timestamp: ts } },
-          {
-            type: "EVENT",
-            event: {
-              type: "tool_call",
-              agent: "detective",
-              tool: "grep",
-              input: "needle",
-              timestamp: ts,
-            },
-          },
-        ],
-        startedState(),
-      );
-
-      expect(state.agents.find((agent) => agent.id === "detective")?.currentAction).toBe(
-        "Using tool: grep",
-      );
-    });
-
     it("routes orchestrator_complete with a file count to the total", () => {
       const state = reviewReducer(startedState(), {
         type: "EVENT",
         event: {
           type: "orchestrator_complete",
-          summary: "Done",
           totalIssues: 0,
           lensStats: [],
           filesAnalyzed: 9,

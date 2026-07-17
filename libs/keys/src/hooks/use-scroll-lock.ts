@@ -68,8 +68,9 @@ function lockElement(el: HTMLElement): () => void {
 // Effect-on-every-render is intentional: React does not re-fire effects when
 // target.current mutates while the ref object stays stable.
 /**
- * Locks scrolling on the target element with shared reference counting and
- * scrollbar-width padding compensation.
+ * Locks scrolling by mutating the target element's overflow and padding, with
+ * scrollbar-width compensation and shared reference counting. It installs no
+ * event listeners.
  */
 export function useScrollLock(options: UseScrollLockOptions = {}): void {
   const { target, enabled = true } = options;

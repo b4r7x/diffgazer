@@ -19,8 +19,15 @@ vi.mock("@tanstack/react-router", async () => {
     useRouterState: ({
       select,
     }: {
-      select: (state: { location: { pathname: string } }) => unknown;
-    }) => select({ location: { pathname: "/" } }),
+      select: (state: {
+        location: { pathname: string };
+        matches: Array<{ routeId: string; status: string }>;
+      }) => unknown;
+    }) =>
+      select({
+        location: { pathname: "/" },
+        matches: [{ routeId: "/", status: "success" }],
+      }),
     useNavigate: () => vi.fn(),
   };
 });
@@ -46,7 +53,14 @@ describe("TuiShell", () => {
         <KeyboardProvider>
           <SearchProvider>
             <TuiShell>
-              <TuiTwoPane sidebar={() => <a href="/ui">Sidebar item</a>}>
+              <TuiTwoPane
+                sidebar={() => (
+                  <>
+                    <a href="/ui">First sidebar item</a>
+                    <a href="/keys">Last sidebar item</a>
+                  </>
+                )}
+              >
                 <p>Body</p>
               </TuiTwoPane>
             </TuiShell>
@@ -67,11 +81,28 @@ describe("TuiShell", () => {
     expect(commandRow).toHaveAttribute("inert");
     expect(footerBar).toHaveAttribute("inert");
 
+    const skipLink = screen.getByRole("link", { name: "Skip to content" });
+    const firstSidebarLink = screen.getByRole("link", { name: "First sidebar item" });
+    const lastSidebarLink = screen.getByRole("link", { name: "Last sidebar item" });
+    const scrim = screen.getByRole("button", { name: /close sidebar navigation/i });
+    expect(skipLink.closest("[inert]")).not.toBeNull();
+    await waitFor(() => expect(firstSidebarLink).toHaveFocus());
+
+    lastSidebarLink.focus();
+    await user.tab();
+    expect(scrim).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(lastSidebarLink).toHaveFocus();
+
+    skipLink.focus();
+    await waitFor(() => expect(lastSidebarLink).toHaveFocus());
+
     await user.keyboard("{Escape}");
 
     expect(statusBar).not.toHaveAttribute("inert");
     expect(commandRow).not.toHaveAttribute("inert");
     expect(footerBar).not.toHaveAttribute("inert");
+    expect(skipLink.closest("[inert]")).toBeNull();
     await waitFor(() => expect(menuButton).toHaveFocus());
   });
 });

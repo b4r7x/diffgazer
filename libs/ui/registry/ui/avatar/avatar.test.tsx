@@ -140,6 +140,35 @@ describe("Avatar", () => {
     expect(screen.getByLabelText("2 more")).toBeInTheDocument();
   });
 
+  it.each([
+    { max: 2.9, visible: ["A", "B"], hidden: ["C", "D"], overflow: 2 },
+    { max: -1, visible: [], hidden: ["A", "B", "C", "D"], overflow: 4 },
+    { max: Number.NaN, visible: [], hidden: ["A", "B", "C", "D"], overflow: 4 },
+    {
+      max: Number.POSITIVE_INFINITY,
+      visible: [],
+      hidden: ["A", "B", "C", "D"],
+      overflow: 4,
+    },
+  ])("normalizes max=$max before deriving overflow", ({ max, visible, hidden, overflow }) => {
+    render(
+      <Avatar.Group size="md" max={max}>
+        <Avatar fallback="A" />
+        <Avatar fallback="B" />
+        <Avatar fallback="C" />
+        <Avatar fallback="D" />
+      </Avatar.Group>,
+    );
+
+    for (const fallback of visible) {
+      expect(screen.getByText(fallback)).toBeInTheDocument();
+    }
+    for (const fallback of hidden) {
+      expect(screen.queryByText(fallback)).not.toBeInTheDocument();
+    }
+    expect(screen.getByLabelText(`${overflow} more`)).toHaveTextContent(`+${overflow}`);
+  });
+
   it("passes axe accessibility check", async () => {
     const { container } = render(<Avatar alt="Jane Doe" fallback="JD" />);
     expect(await axe(container)).toHaveNoViolations();

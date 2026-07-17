@@ -5,7 +5,8 @@ export const outsideClickDoc: HookDoc = {
     "Detect clicks outside a referenced element. Useful for closing dropdowns, popovers, and modals when the user clicks elsewhere.",
   usage: {
     code: `const ref = useRef<HTMLDivElement>(null);
-useOutsideClick(ref, () => setOpen(false));`,
+const triggerRef = useRef<HTMLButtonElement>(null);
+useOutsideClick(ref, () => setOpen(false), open, [triggerRef], { priority: 2 });`,
     lang: "tsx",
   },
   parameters: [
@@ -37,18 +38,30 @@ useOutsideClick(ref, () => setOpen(false));`,
       description:
         "Additional refs to exclude from outside-click detection. Clicks on elements within these refs will not trigger the handler. Useful for excluding trigger elements when content renders in a portal.",
     },
+    {
+      name: "options",
+      type: "OverlayStackOptions",
+      required: false,
+      description:
+        "Fifth positional argument. Its priority sets this outside-pointer layer's overlay-stack precedence. The inside boundary remains ref and the fourth excludeRefs argument.",
+    },
   ],
   returns: {
     type: "void",
     description:
-      "This hook does not return a value. It attaches and cleans up a mousedown event listener.",
+      "This hook does not return a value. It attaches and cleans up capture-phase pointerdown, with capture-phase touchstart and mousedown fallbacks.",
     properties: [],
   },
   notes: [
     {
       title: "Event Type",
       content:
-        "Uses mousedown (not click) to detect outside interactions before the click completes. This prevents edge cases where the target element is removed before the click event fires.",
+        "Uses capture-phase pointerdown when available, with capture-phase touchstart and mousedown fallbacks, to detect outside interactions before the click completes.",
+    },
+    {
+      title: "Conditional content",
+      content:
+        "Pass the same open state as enabled when the referenced element mounts conditionally. The hook reconciles late ref attachment, node replacement, and owner-document changes after each commit.",
     },
     {
       title: "Used By",

@@ -22,7 +22,7 @@ export const labelDoc: ComponentDoc = {
     {
       title: "Disabled State",
       content:
-        "Label automatically dims when its associated form control is disabled. In wrapper mode, has-[:disabled] detects a disabled descendant. In standalone mode (sibling placement), peer-disabled detects a disabled peer element.",
+        "Wrapper mode automatically dims when it contains a disabled form control. Standalone mode does not inspect sibling controls; apply any disabled appearance explicitly through className.",
     },
   ],
   usage: { example: "label-default" },

@@ -70,19 +70,24 @@ export function initHud(
   cleanups.push(cleanupLabel);
 
   cleanups.push(
-    observeEach(root.querySelectorAll("[data-osd]"), (target) => {
-      const section = target as HTMLElement;
-      setLabel(section.dataset.osd ?? "");
-      const light = section.dataset.themeScene === "light";
-      const html = document.documentElement;
-      html.dataset.sceneTheme = light ? "light" : "dark";
-      html.dataset.theme = light ? "light" : "dark";
-    }),
+    observeEach(
+      root.querySelectorAll("[data-osd]"),
+      (target) => {
+        const section = target as HTMLElement;
+        setLabel(section.dataset.osd ?? "");
+        const light = section.dataset.themeScene === "light";
+        const html = document.documentElement;
+        html.dataset.sceneTheme = light ? "light" : "dark";
+        html.dataset.theme = light ? "light" : "dark";
+      },
+      { threshold: 0, rootMargin: "0px 0px -50% 0px" },
+    ),
   );
 
   cleanups.push(
     observeEach(root.querySelectorAll(".scene"), (target) => target.classList.add("in"), {
-      threshold: 0.3,
+      threshold: 0,
+      rootMargin: "0px 0px -10% 0px",
       once: true,
     }),
   );

@@ -211,6 +211,80 @@ describe("withTtlAndFallback", () => {
     if (!result.ok) expect(result.error.message).toBe("upstream down");
   });
 
+  it("does not persist or return an unusable successful fetch", async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      value: { payload: [], fetchedAt: fresh(), keyHash: "MINE" } satisfies Entry,
+    });
+    const result = await withTtlAndFallback({
+      path: cachePath(),
+      schema: EntrySchema,
+      ttlMs: ttl,
+      fetcher,
+      isCacheUsable: (c) => c.payload.length > 0,
+      keyHashOf: (c) => c.keyHash,
+      currentKeyHash: "MINE",
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.message).toBe("Fetched cache entry is unusable");
+    expect(fs.existsSync(cachePath())).toBe(false);
+  });
+
+  it("returns a matching usable stale cache for an unusable successful fetch", async () => {
+    const cached: Entry = {
+      payload: ["cached"],
+      fetchedAt: stale(),
+      keyHash: "MINE",
+    };
+    persistDiskCache(cachePath(), cached);
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      value: { payload: [], fetchedAt: fresh(), keyHash: "MINE" } satisfies Entry,
+    });
+    const result = await withTtlAndFallback({
+      path: cachePath(),
+      schema: EntrySchema,
+      ttlMs: ttl,
+      fetcher,
+      isCacheUsable: (c) => c.payload.length > 0,
+      keyHashOf: (c) => c.keyHash,
+      currentKeyHash: "MINE",
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.cached).toBe(true);
+      expect(result.value.entry).toEqual(cached);
+    }
+    expect(loadDiskCache(cachePath(), EntrySchema)).toEqual(cached);
+  });
+
+  it("errors when an unusable successful fetch has no matching usable stale cache", async () => {
+    persistDiskCache(cachePath(), {
+      payload: ["other-key"],
+      fetchedAt: stale(),
+      keyHash: "OTHER",
+    } satisfies Entry);
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      value: { payload: [], fetchedAt: fresh(), keyHash: "MINE" } satisfies Entry,
+    });
+    const result = await withTtlAndFallback({
+      path: cachePath(),
+      schema: EntrySchema,
+      ttlMs: ttl,
+      fetcher,
+      isCacheUsable: (c) => c.payload.length > 0,
+      keyHashOf: (c) => c.keyHash,
+      currentKeyHash: "MINE",
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.message).toBe("Fetched cache entry is unusable");
+    expect(loadDiskCache(cachePath(), EntrySchema)?.payload).toEqual(["other-key"]);
+  });
+
   it("falls back to a usable cache on fetch failure", async () => {
     persistDiskCache(cachePath(), { payload: ["usable"], fetchedAt: stale() } satisfies Entry);
     const fetcher = vi.fn().mockResolvedValue({ ok: false, error: { message: "down" } });

@@ -101,16 +101,22 @@ export function CommandPaletteHighlightItem({
   value,
   label,
   children,
+  "aria-label": ariaLabel,
   ...rest
 }: CommandPaletteHighlightItemProps) {
   const { search } = useCommandPaletteContext();
   const renderedChildren = children ?? label;
   const childrenIsPureText = children !== undefined && isPureText(children);
-  const labelText = label ?? (childrenIsPureText ? extractText(children) : "");
-  const searchValue = value ?? labelText;
-  const resolvedTone = tone ?? categorize(labelText);
+  const labelText = label ?? (childrenIsPureText ? extractText(children) : undefined);
+  const searchValue = value ?? (labelText || undefined);
+  const resolvedTone = tone ?? categorize(labelText ?? "");
   return (
-    <CommandPaletteItem {...rest} value={searchValue} tone={resolvedTone}>
+    <CommandPaletteItem
+      {...rest}
+      value={searchValue}
+      tone={resolvedTone}
+      aria-label={ariaLabel ?? label}
+    >
       {childrenIsPureText && search
         ? renderWithMatches(extractText(children), search)
         : renderedChildren}

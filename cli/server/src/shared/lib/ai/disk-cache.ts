@@ -8,6 +8,23 @@ interface DatedEntry {
   fetchedAt: string;
 }
 
+export function createSingleFlight<T>(): (key: string, run: () => Promise<T>) => Promise<T> {
+  const inFlight = new Map<string, Promise<T>>();
+
+  return async (key, run) => {
+    const active = inFlight.get(key);
+    if (active) return active;
+
+    const flight = run();
+    inFlight.set(key, flight);
+    try {
+      return await flight;
+    } finally {
+      if (inFlight.get(key) === flight) inFlight.delete(key);
+    }
+  };
+}
+
 export const loadDiskCache = <T extends DatedEntry>(
   path: string,
   schema: z.ZodType<T>,
@@ -71,8 +88,16 @@ export const withTtlAndFallback = async <T extends DatedEntry>(
   if (cache && cacheWasFresh && cacheUsable && keyMatches)
     return ok({ entry: cache, cached: true, cacheWasFresh });
 
+  const usableStaleCache =
+    cache !== null && !cacheWasFresh && cacheUsable && keyMatches ? cache : null;
   const fetchResult = await fetcher();
   if (fetchResult.ok) {
+    const fetchedEntryUsable = isCacheUsable === undefined || isCacheUsable(fetchResult.value);
+    if (!fetchedEntryUsable) {
+      if (usableStaleCache) return ok({ entry: usableStaleCache, cached: true, cacheWasFresh });
+      return err({ message: "Fetched cache entry is unusable" });
+    }
+
     // Best-effort persist: a cache-write failure (EACCES/ENOSPC) must never fail a
     // request whose data is already in hand — the same contract the models.dev path
     // documents and implements.
@@ -87,6 +112,6 @@ export const withTtlAndFallback = async <T extends DatedEntry>(
   // On a fetch failure the cache is the last resort, but only if it is one we
   // would actually serve fresh: an unusable cache (e.g. missing the gating field)
   // must surface the fetch error, not be served as a silent degraded fallback.
-  if (cache && keyMatches && cacheUsable) return ok({ entry: cache, cached: true, cacheWasFresh });
+  if (usableStaleCache) return ok({ entry: usableStaleCache, cached: true, cacheWasFresh });
   return err({ message: fetchResult.error.message });
 };

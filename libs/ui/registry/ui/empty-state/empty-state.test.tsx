@@ -15,6 +15,7 @@ describe("EmptyState", () => {
     render(<EmptyState live>No results</EmptyState>);
 
     expect(screen.getByRole("status")).toHaveTextContent("No results");
+    expect(screen.getByRole("status")).toHaveAttribute("aria-atomic", "true");
   });
 
   it("releases the live region when live toggles back off", () => {

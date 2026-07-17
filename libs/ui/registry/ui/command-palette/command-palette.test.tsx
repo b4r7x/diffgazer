@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { createRef, memo, StrictMode, useLayoutEffect, useRef, useState } from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
+import { commandPaletteDoc } from "../../component-docs/command-palette";
 import { Popover } from "../popover/index";
 import { useCommandPaletteContext } from "./command-palette-context";
 import { CommandPaletteHighlightItem, categorize, matchPositions } from "./highlight";
@@ -349,6 +350,21 @@ describe("CommandPalette", () => {
     expect(input).toHaveValue("");
   });
 
+  it("filters from the controlled live search value documented in the API guide", () => {
+    const filteringNote = commandPaletteDoc.notes?.find(
+      (note) => note.title === "Built-in Filtering",
+    );
+    expect(filteringNote?.content).toContain("live search value");
+    expect(filteringNote?.content).toContain("controlled `search` prop");
+    expect(filteringNote?.content).not.toContain("deferred");
+
+    renderPalette({ search: "copy" });
+
+    expect(screen.getByRole("option", { name: /copy/i })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /paste/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /delete/i })).not.toBeInTheDocument();
+  });
+
   it("controlled highlighted calls onHighlightChange on navigation", async () => {
     const user = userEvent.setup();
     const onHighlightChange = vi.fn();
@@ -362,9 +378,23 @@ describe("CommandPalette", () => {
     const user = userEvent.setup();
     const onHighlightChange = vi.fn();
     renderPalette({ highlighted: "delete", onHighlightChange });
-    const input = screen.getByRole("combobox");
+    const input = screen.getByRole<HTMLInputElement>("combobox");
 
-    await user.type(input, "{Home}{End}");
+    expect(commandPaletteDoc.keyboard?.keys).not.toContainEqual(
+      expect.objectContaining({ keys: "Home / End" }),
+    );
+    expect(commandPaletteDoc.keyboard?.description).toContain(
+      "Home and End retain their native search-input editing behavior",
+    );
+
+    await user.type(input, "copy");
+    onHighlightChange.mockClear();
+
+    await user.keyboard("{Home}");
+    expect(input.selectionStart).toBe(0);
+
+    await user.keyboard("{End}");
+    expect(input.selectionStart).toBe(4);
 
     expect(onHighlightChange).not.toHaveBeenCalled();
   });
@@ -889,6 +919,7 @@ describe("CommandPalette", () => {
       );
 
       const item = await screen.findByRole("option", { name: /delete branch/i });
+      expect(item).not.toHaveAttribute("aria-label");
       expect(item).toHaveAttribute("data-tone", "destructive");
       const marks = item.querySelectorAll('mark[data-slot="command-palette-item-match"]');
       expect(marks.length).toBe(3);
@@ -933,8 +964,103 @@ describe("CommandPalette", () => {
       );
 
       const item = await screen.findByRole("option", { name: /delete branch/i });
+      expect(item).toHaveAttribute("aria-label", "Delete branch");
+      expect(item).toHaveAccessibleName("Delete branch");
       expect(item.querySelector("strong")).not.toBeNull();
       expect(item.querySelector("strong")?.textContent).toBe("branch");
+    });
+
+    it("falls back to id when rich children have no searchable label", async () => {
+      render(
+        <CommandPalette open search="delete-branch">
+          <CommandPalette.Content>
+            <CommandPalette.Input />
+            <CommandPalette.List>
+              <CommandPaletteHighlightItem id="delete-branch">
+                <span>Delete branch</span>
+              </CommandPaletteHighlightItem>
+            </CommandPalette.List>
+          </CommandPalette.Content>
+        </CommandPalette>,
+      );
+
+      expect(await screen.findByRole("option", { name: "Delete branch" })).toBeInTheDocument();
+    });
+
+    it("falls back to id without dropping icon-plus-text children", async () => {
+      render(
+        <CommandPalette open search="remove-branch">
+          <CommandPalette.Content>
+            <CommandPalette.Input />
+            <CommandPalette.List>
+              <CommandPaletteHighlightItem id="remove-branch">
+                <svg aria-hidden="true" data-testid="branch-icon" />
+                Delete branch
+              </CommandPaletteHighlightItem>
+            </CommandPalette.List>
+          </CommandPalette.Content>
+        </CommandPalette>,
+      );
+
+      expect(await screen.findByRole("option", { name: "Delete branch" })).toBeInTheDocument();
+      expect(screen.getByTestId("branch-icon")).toBeInTheDocument();
+    });
+
+    it("uses an explicit value to filter rich children", async () => {
+      render(
+        <CommandPalette open search="remove branch">
+          <CommandPalette.Content>
+            <CommandPalette.Input />
+            <CommandPalette.List>
+              <CommandPaletteHighlightItem id="rm" value="remove branch">
+                <span>Delete branch</span>
+              </CommandPaletteHighlightItem>
+            </CommandPalette.List>
+          </CommandPalette.Content>
+        </CommandPalette>,
+      );
+
+      expect(await screen.findByRole("option", { name: "Delete branch" })).toBeInTheDocument();
+    });
+
+    it("uses label as the accessible name for icon-only content", () => {
+      render(
+        <CommandPalette open>
+          <CommandPalette.Content>
+            <CommandPalette.Input />
+            <CommandPalette.List>
+              <CommandPaletteHighlightItem id="rm" label="Delete branch">
+                <svg aria-hidden="true" />
+              </CommandPaletteHighlightItem>
+            </CommandPalette.List>
+          </CommandPalette.Content>
+        </CommandPalette>,
+      );
+
+      const item = screen.getByRole("option", { name: "Delete branch" });
+      expect(item).toHaveAttribute("aria-label", "Delete branch");
+    });
+
+    it("keeps an explicit accessible name ahead of the label fallback", () => {
+      render(
+        <CommandPalette open>
+          <CommandPalette.Content>
+            <CommandPalette.Input />
+            <CommandPalette.List>
+              <CommandPaletteHighlightItem
+                id="rm"
+                label="Delete branch"
+                aria-label="Delete the current branch"
+              >
+                <svg aria-hidden="true" />
+              </CommandPaletteHighlightItem>
+            </CommandPalette.List>
+          </CommandPalette.Content>
+        </CommandPalette>,
+      );
+
+      const item = screen.getByRole("option", { name: "Delete the current branch" });
+      expect(item).toHaveAttribute("aria-label", "Delete the current branch");
     });
   });
 

@@ -17,6 +17,7 @@ export function DocsNotFoundBlock({ tree, library }: DocsNotFoundBlockProps) {
       <NotFoundState
         title="Documentation page not found"
         description="The page you requested does not exist or was moved."
+        actionLabel="OPEN_DOCS"
         primaryAction={
           <TuiBracketLink
             variant="primary"

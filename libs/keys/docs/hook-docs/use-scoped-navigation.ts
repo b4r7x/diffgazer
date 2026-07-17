@@ -42,13 +42,15 @@ export const useScopedNavigationDoc: HookDoc = {
       name: "onSelect",
       type: "(value: string, event: KeyboardEvent) => void",
       required: false,
-      description: "Called when an item is selected via Space key.",
+      description:
+        "Called when Space selects the highlighted item, and as the Enter fallback when onEnter is not provided.",
     },
     {
       name: "onEnter",
       type: "(value: string, event: KeyboardEvent) => void",
       required: false,
-      description: "Called when Enter is pressed on the highlighted item.",
+      description:
+        "Called when Enter is pressed on the highlighted item. When provided, it overrides the onSelect Enter fallback.",
     },
     {
       name: "wrap",

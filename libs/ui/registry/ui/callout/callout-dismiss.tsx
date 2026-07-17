@@ -1,6 +1,7 @@
 "use client";
 
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { hasAccessibleTextContent } from "@/lib/accessible-text";
 import { cn } from "@/lib/utils";
 import { useCalloutContext } from "./callout-context";
 
@@ -11,14 +12,24 @@ export interface CalloutDismissProps extends ButtonHTMLAttributes<HTMLButtonElem
 }
 
 /** Close button (24×24 with 4px padding) */
-export function CalloutDismiss({ children, className, onClick, ...props }: CalloutDismissProps) {
+export function CalloutDismiss({
+  children,
+  className,
+  onClick,
+  "aria-label": ariaLabel,
+  "aria-labelledby": ariaLabelledBy,
+  ...props
+}: CalloutDismissProps) {
   const { onDismiss } = useCalloutContext();
+  const fallbackLabel =
+    ariaLabel || ariaLabelledBy || hasAccessibleTextContent(children) ? undefined : "Dismiss";
 
   return (
     <button
       type="button"
       data-slot="callout-dismiss"
-      aria-label={children ? undefined : "Dismiss"}
+      aria-label={ariaLabel || fallbackLabel}
+      aria-labelledby={ariaLabelledBy}
       onClick={(e) => {
         onClick?.(e);
         if (!e.defaultPrevented) onDismiss();

@@ -19,7 +19,13 @@ function requestContext(pathname: string, options: { method?: string; accept?: s
 interface SessionsModule {
   createSession: (
     reviewId: string,
-    options: { projectPath: string; headCommit: string; statusHash: string; mode: string },
+    options: {
+      projectPath: string;
+      headCommit: string;
+      statusHash: string;
+      mode: string;
+      monotonicNow?: () => number;
+    },
   ) => unknown;
   markReady: (reviewId: string) => void;
   subscribe: (
@@ -27,6 +33,8 @@ interface SessionsModule {
     callback: (event: FullReviewStreamEvent) => void,
   ) => (() => void) | null;
   getSession: (reviewId: string) => unknown;
+  shutdownSessions: () => void;
+  startSessionMaintenance: () => void;
 }
 
 // The embedded server's stop() reaches the session registry through the
@@ -108,7 +116,7 @@ describe("createEmbeddedServer startup failures", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
 
     const server = createEmbeddedServer({ port: 0, onFailure });
-    server.start();
+    await expect(server.start()).rejects.toThrow("Web assets not found");
 
     await vi.waitFor(() => {
       expect(onFailure).toHaveBeenCalledWith(expect.stringContaining("Web assets not found"));
@@ -146,6 +154,7 @@ describe("createEmbeddedServer restart after a failed listen", () => {
         close: (cb?: () => void) => cb?.(),
       };
     });
+    const startSessionMaintenance = vi.fn();
 
     vi.doMock("node:fs", async (importOriginal) => {
       const actual = await importOriginal<typeof import("node:fs")>();
@@ -156,6 +165,7 @@ describe("createEmbeddedServer restart after a failed listen", () => {
     vi.doMock("@diffgazer/server", () => ({
       createApp: () => ({ get: () => undefined, use: () => undefined, fetch: () => undefined }),
       shutdownSessions: () => undefined,
+      startSessionMaintenance,
     }));
 
     const { createEmbeddedServer: createServer } = await import("./embedded");
@@ -163,7 +173,7 @@ describe("createEmbeddedServer restart after a failed listen", () => {
     const onReady = vi.fn();
     const server = createServer({ port: 3000, onFailure, onReady });
 
-    server.start();
+    const firstStart = server.start();
     await vi.waitFor(() => expect(serve).toHaveBeenCalledTimes(1));
 
     // Simulate the bind failure the first listen attempt hits (EADDRINUSE).
@@ -173,14 +183,75 @@ describe("createEmbeddedServer restart after a failed listen", () => {
       message: "address in use",
     } as NodeJS.ErrnoException);
     expect(onFailure).toHaveBeenCalledWith(expect.stringContaining("already in use"));
+    await expect(firstStart).rejects.toThrow("already in use");
 
     // The port is now free: a second start() must attempt to listen again.
-    server.start();
+    const secondStart = server.start();
     await vi.waitFor(() => expect(serve).toHaveBeenCalledTimes(2));
+    let restartSettled = false;
+    void secondStart.finally(() => {
+      restartSettled = true;
+    });
+    await Promise.resolve();
+    expect(restartSettled).toBe(false);
 
     // Once the second listen succeeds, the controller reports ready.
     captured.readyCallback?.({ port: 3000 });
+    await expect(secondStart).resolves.toBeUndefined();
     expect(onReady).toHaveBeenCalledWith("http://localhost:3000");
+
+    await server.stop();
+    const thirdStart = server.start();
+    await vi.waitFor(() => expect(serve).toHaveBeenCalledTimes(3));
+    captured.readyCallback?.({ port: 3000 });
+    await expect(thirdStart).resolves.toBeUndefined();
+    expect(startSessionMaintenance).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("embedded session maintenance lifecycle", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.resetModules();
+  });
+
+  it("re-arms one maintenance interval after shutdown and times out one idle session once", async () => {
+    vi.useFakeTimers();
+    vi.resetModules();
+    const sessions = await loadSessions();
+
+    expect(vi.getTimerCount()).toBe(1);
+    sessions.shutdownSessions();
+    expect(vi.getTimerCount()).toBe(0);
+
+    sessions.startSessionMaintenance();
+    sessions.startSessionMaintenance();
+    expect(vi.getTimerCount()).toBe(1);
+
+    let monotonicNow = 0;
+    const reviewId = "post-restart-idle";
+    sessions.createSession(reviewId, {
+      projectPath: "/tmp/project",
+      headCommit: "head",
+      statusHash: "status",
+      mode: "staged",
+      monotonicNow: () => monotonicNow,
+    });
+    const received: FullReviewStreamEvent[] = [];
+    sessions.subscribe(reviewId, (event) => received.push(event));
+    monotonicNow = 30 * 60 * 1000 + 1;
+
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+
+    expect(received).toEqual([
+      expect.objectContaining({
+        type: "error",
+        error: expect.objectContaining({ code: ReviewErrorCode.SESSION_TIMEOUT }),
+      }),
+    ]);
+    expect(sessions.getSession(reviewId)).toBeUndefined();
+    expect(vi.getTimerCount()).toBe(1);
+    sessions.shutdownSessions();
   });
 });
 

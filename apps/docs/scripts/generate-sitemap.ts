@@ -1,10 +1,20 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEFAULT_PUBLIC_ORIGIN, resolvePublicOrigin } from "../src/lib/public-origin.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DOCS_ROOT = resolve(HERE, "..");
-export const DEFAULT_ORIGIN = "https://docs.b4r7.dev";
+const require = createRequire(import.meta.url);
+export const DEFAULT_ORIGIN = DEFAULT_PUBLIC_ORIGIN;
 export const DOCS_CONTENT_ROOT = resolve(DOCS_ROOT, "content/docs");
 
 export interface PreRenderPage {
@@ -130,19 +140,33 @@ function buildSitemapXml(pages: PreRenderPage[], origin: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
 }
 
-export function resolveOrigin(): string {
-  const raw = process.env.VITE_PUBLIC_ORIGIN;
-  if (typeof raw === "string" && raw.length > 0) {
-    return raw.replace(/\/+$/, "");
+export function resolveOrigin(envDir = DOCS_ROOT): string {
+  let configuredOrigin = process.env.VITE_PUBLIC_ORIGIN;
+  if (configuredOrigin === undefined) {
+    const { loadEnv } = require("vite") as typeof import("vite");
+    configuredOrigin = loadEnv("production", envDir, "VITE_").VITE_PUBLIC_ORIGIN;
   }
-  return DEFAULT_ORIGIN;
+  return resolvePublicOrigin(configuredOrigin);
+}
+
+export function resolveGeneratorOutputDir(args: string[], cwd = process.cwd()): string | undefined {
+  const outputDirs = args.filter((arg) => arg !== "--");
+  if (outputDirs.length === 0) return undefined;
+  if (outputDirs.length > 1) {
+    throw new Error("Expected at most one generator output directory");
+  }
+  const outputDir = outputDirs[0];
+  return outputDir === undefined ? undefined : resolve(cwd, outputDir);
 }
 
 function buildRobotsTxt(origin: string): string {
   return `# https://www.robotstxt.org/robotstxt.html\nUser-agent: *\nDisallow:\n\nSitemap: ${origin}/sitemap.xml\n`;
 }
 
-export function writeSitemap(outDir = resolve(DOCS_ROOT, ".output/public")): {
+export function writeSitemap(
+  outDir = resolve(DOCS_ROOT, ".output/public"),
+  origin = resolveOrigin(),
+): {
   target: string;
   robotsTarget: string;
   count: number;
@@ -150,7 +174,6 @@ export function writeSitemap(outDir = resolve(DOCS_ROOT, ".output/public")): {
   if (!existsSync(outDir)) {
     mkdirSync(outDir, { recursive: true });
   }
-  const origin = resolveOrigin();
   const pages = getPreRenderPages();
   const xml = buildSitemapXml(pages, origin);
   const sitemapTarget = join(outDir, "sitemap.xml");
@@ -163,10 +186,11 @@ export function writeSitemap(outDir = resolve(DOCS_ROOT, ".output/public")): {
   return { target: sitemapTarget, robotsTarget, count: pages.length };
 }
 
-const invokedDirectly = import.meta.url === `file://${process.argv[1]}`;
+const invokedDirectly =
+  process.argv[1] !== undefined &&
+  realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
 if (invokedDirectly) {
-  const outDirArg = process.argv[2];
-  const outDir = outDirArg ? resolve(process.cwd(), outDirArg) : undefined;
+  const outDir = resolveGeneratorOutputDir(process.argv.slice(2));
   const { target, robotsTarget, count } = writeSitemap(outDir);
   console.log(`[sitemap] wrote ${count} urls to ${target}`);
   console.log(`[robots] wrote ${robotsTarget}`);

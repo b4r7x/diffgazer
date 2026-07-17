@@ -158,16 +158,19 @@ See [Dark Mode](/ui/theme/dark-mode) for theme switching implementation.
 
 ## Font
 
-`@diffgazer/ui` uses JetBrains Mono for the terminal aesthetic. Add this once in your app `<head>`:
+`@diffgazer/ui` uses JetBrains Mono for the terminal aesthetic. Self-host a licensed font file from your app's static assets:
 
-```html
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link
-  rel="stylesheet"
-  href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap"
-/>
+```css
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono.woff2") format("woff2");
+}
 ```
+
+This same-origin setup works with a `font-src 'self'` Content Security Policy. A hosted font provider is an optional external-service tradeoff: allow its font and stylesheet origins in your CSP and account for the added visitor request. See [Typography](/ui/theme/typography#font-configuration) for the complete font contract.
 
 Apply the base styles to your root element:
 

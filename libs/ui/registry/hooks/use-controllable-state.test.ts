@@ -44,6 +44,33 @@ describe("useControllableState", () => {
     expect(onChange).toHaveBeenCalledWith(42);
   });
 
+  it("resets uncontrolled state without calling onChange", () => {
+    const onChange = vi.fn();
+    const { result } = renderHook(() =>
+      useControllableState({ defaultValue: "initial", onChange }),
+    );
+
+    act(() => result.current[1]("changed"));
+    expect(onChange).toHaveBeenCalledOnce();
+
+    act(() => result.current[3]("initial"));
+
+    expect(result.current[0]).toBe("initial");
+    expect(onChange).toHaveBeenCalledOnce();
+  });
+
+  it("does not apply the reset setter in controlled mode", () => {
+    const onChange = vi.fn();
+    const { result } = renderHook(() =>
+      useControllableState({ value: "controlled", defaultValue: "initial", onChange }),
+    );
+
+    act(() => result.current[3]("initial"));
+
+    expect(result.current[0]).toBe("controlled");
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it("does not call onChange for no-op uncontrolled updates", () => {
     const onChange = vi.fn();
     const { result } = renderHook(() => useControllableState({ defaultValue: "a", onChange }));

@@ -4,6 +4,7 @@ import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { HTTPException } from "hono/http-exception";
 import { configRouter } from "./features/config/router.js";
 import { gitRouter } from "./features/git/router.js";
 import { healthRouter } from "./features/health.js";
@@ -13,7 +14,7 @@ import { settingsRouter } from "./features/settings/router.js";
 import { shutdownRouter } from "./features/shutdown/router.js";
 import { setReviewRekeyHandler } from "./shared/lib/config/store.js";
 import { safeTokenMatch } from "./shared/lib/crypto.js";
-import { errorResponse } from "./shared/lib/http/response.js";
+import { errorResponse, httpExceptionResponse } from "./shared/lib/http/response.js";
 import { log } from "./shared/lib/log.js";
 import { isPackaged } from "./shared/lib/paths.js";
 import { type RequestLoggerEnv, requestLogger } from "./shared/middlewares/request-logger.js";
@@ -57,13 +58,9 @@ export const createApp = (): Hono<AppEnv> => {
 
   // Wire the config store's move hook to the review-storage re-key helper so a
   // moved repo's review history follows the move (F-447). `shared/` cannot import
-  // `features/`, so the composition root registers it here. Fire-and-forget: a
-  // re-key failure must not break the request that triggered the move.
-  setReviewRekeyHandler((oldPath, newPath) => {
-    rekeyProjectReviews(oldPath, newPath).catch((error) => {
-      log("warn", "review_rekey_failed", { error: getErrorMessage(error) });
-    });
-  });
+  // `features/`, so the composition root registers it here. Project persistence
+  // commits the new root only when this migration reports complete.
+  setReviewRekeyHandler(rekeyProjectReviews);
 
   // Split dev (not packaged, no configured token) intentionally leaves the
   // /api/* token gate open; the residual exposure is a hostile localhost origin
@@ -98,7 +95,13 @@ export const createApp = (): Hono<AppEnv> => {
 
   app.use("/api/*", async (c, next) => {
     const origin = c.req.header("origin");
-    if (origin && !isLocalhostOrigin(origin) && UNSAFE_METHODS.has(c.req.method)) {
+    const token = process.env.DIFFGAZER_SHUTDOWN_TOKEN?.trim();
+    const isTokenlessDevelopment = !isPackaged() && !token;
+    if (
+      origin &&
+      !isLocalhostOrigin(origin) &&
+      (isTokenlessDevelopment || UNSAFE_METHODS.has(c.req.method))
+    ) {
       return errorResponse(c, "Forbidden", ErrorCode.FORBIDDEN, 403);
     }
     return next();
@@ -160,6 +163,11 @@ export const createApp = (): Hono<AppEnv> => {
   // does throw is an unexpected bug, so this only logs and returns a generic 500;
   // branching on AppError.code here would be dead code.
   app.onError((err, c) => {
+    if (err instanceof HTTPException) {
+      const response = httpExceptionResponse(c, err);
+      if (response) return response;
+    }
+
     // The requestLogger tail still runs (onError resolves the middleware chain),
     // so it logs the completed request and re-sets the id header. Log only the
     // crash diagnostic the tail cannot provide.

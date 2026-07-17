@@ -11,6 +11,8 @@ export function ThemeToggle() {
   return (
     <button
       type="button"
+      data-docs-theme-toggle=""
+      suppressHydrationWarning
       onClick={toggleTheme}
       aria-label={`Switch to ${nextTheme} theme`}
       className={cn(

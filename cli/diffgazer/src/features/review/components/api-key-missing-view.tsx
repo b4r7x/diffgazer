@@ -1,5 +1,6 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import { getApiKeyMissingCopy } from "@diffgazer/core/review";
+import { getApiKeyMissingCopy, sanitizeTerminalText } from "@diffgazer/core/review";
+import type { SetupStatus } from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Box, useInput } from "ink";
 import { useState } from "react";
@@ -9,8 +10,23 @@ import { Panel } from "../../../components/ui/panel";
 
 export interface ApiKeyMissingViewProps {
   provider?: string;
-  missingModel?: boolean;
+  missing: Readonly<SetupStatus["missing"]>;
   onGoToSettings: () => void;
+  onBack: () => void;
+}
+
+export interface ConfigurationErrorViewProps {
+  error: string;
+  onRetry: () => void;
+  onBack: () => void;
+}
+
+interface ReviewGateViewProps {
+  title: string;
+  body: string;
+  variant: "error" | "warning";
+  primaryLabel: string;
+  onPrimary: () => void;
   onBack: () => void;
 }
 
@@ -22,11 +38,45 @@ const BACK_SHORTCUTS: Shortcut[] = [{ key: "Esc", label: "Back" }];
 
 export function ApiKeyMissingView({
   provider,
-  missingModel = false,
+  missing,
   onGoToSettings,
   onBack,
 }: ApiKeyMissingViewProps) {
-  const { title, body } = getApiKeyMissingCopy({ provider, missingModel });
+  const { title, body } = getApiKeyMissingCopy({ provider, missing });
+
+  return (
+    <ReviewGateView
+      title={title}
+      body={body}
+      variant="warning"
+      primaryLabel="Go to Settings"
+      onPrimary={onGoToSettings}
+      onBack={onBack}
+    />
+  );
+}
+
+export function ConfigurationErrorView({ error, onRetry, onBack }: ConfigurationErrorViewProps) {
+  return (
+    <ReviewGateView
+      title="Configuration Unavailable"
+      body={`Diffgazer could not load the current configuration. ${sanitizeTerminalText(error)}`}
+      variant="error"
+      primaryLabel="Retry"
+      onPrimary={onRetry}
+      onBack={onBack}
+    />
+  );
+}
+
+function ReviewGateView({
+  title,
+  body,
+  variant,
+  primaryLabel,
+  onPrimary,
+  onBack,
+}: ReviewGateViewProps) {
   const [buttonIndex, setButtonIndex] = useState(0);
   usePageFooter({ shortcuts: ACTION_SHORTCUTS, rightShortcuts: BACK_SHORTCUTS });
 
@@ -48,13 +98,13 @@ export function ApiKeyMissingView({
     <Panel>
       <Panel.Content>
         <Box flexDirection="column" gap={1}>
-          <Callout variant="warning">
+          <Callout variant={variant}>
             <Callout.Title>{title}</Callout.Title>
             <Callout.Content>{body}</Callout.Content>
           </Callout>
           <Box gap={2}>
-            <Button variant="primary" isActive={buttonIndex === 0} onPress={onGoToSettings}>
-              Go to Settings
+            <Button variant="primary" isActive={buttonIndex === 0} onPress={onPrimary}>
+              {primaryLabel}
             </Button>
             <Button variant="secondary" isActive={buttonIndex === 1} onPress={onBack}>
               Back

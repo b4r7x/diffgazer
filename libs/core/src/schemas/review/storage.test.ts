@@ -1,5 +1,61 @@
 import { describe, expect, it } from "vitest";
-import { CreateReviewResponseSchema, ReviewMetadataSchema } from "./storage.js";
+import {
+  CreateReviewResponseSchema,
+  ParsedDiffSchema,
+  ReviewCursorSchema,
+  ReviewListWarningSchema,
+  ReviewMetadataSchema,
+  ReviewsResponseSchema,
+  SavedReviewSchema,
+} from "./storage.js";
+
+describe("ParsedDiffSchema ownership", () => {
+  it("is the schema used by stored reviews", () => {
+    expect(SavedReviewSchema.shape.diff.unwrap()).toBe(ParsedDiffSchema);
+  });
+});
+
+describe("ReviewCursorSchema", () => {
+  const cursor = "dg1_eyJvcGFxdWUiOiJjdXJzb3IifQ";
+
+  it("accepts opaque pagination cursors in review responses", () => {
+    expect(ReviewCursorSchema.parse(cursor)).toBe(cursor);
+    expect(ReviewsResponseSchema.parse({ reviews: [], nextCursor: cursor })).toEqual({
+      reviews: [],
+      nextCursor: cursor,
+    });
+  });
+
+  it.each([
+    "550e8400-e29b-41d4-a716-446655440000",
+    "dg1_not+base64url",
+    `dg1_${"a".repeat(509)}`,
+  ])("rejects a non-opaque or malformed cursor: %s", (value) => {
+    expect(ReviewCursorSchema.safeParse(value).success).toBe(false);
+  });
+});
+
+describe("ReviewListWarningSchema", () => {
+  const reviewId = "550e8400-e29b-41d4-a716-446655440000";
+
+  it.each([
+    { kind: "unreadable_review", reviewId },
+    { kind: "invalid_issues_dropped", reviewId, count: 2 },
+    { kind: "index_build_failed" },
+    { kind: "index_rewrite_failed" },
+  ])("accepts the $kind warning", (warning) => {
+    expect(ReviewListWarningSchema.parse(warning)).toEqual(warning);
+  });
+
+  it.each([
+    { kind: "unreadable_review" },
+    { kind: "invalid_issues_dropped", reviewId, count: 0 },
+    { kind: "index_build_failed", reviewId },
+    "[reviews] Failed to build project index",
+  ])("rejects an invalid warning payload", (warning) => {
+    expect(ReviewListWarningSchema.safeParse(warning).success).toBe(false);
+  });
+});
 
 describe("ReviewMetadataSchema transform — mode backwards compat", () => {
   const baseMetadata = {
@@ -54,6 +110,11 @@ describe("ReviewMetadataSchema transform — mode backwards compat", () => {
     expect(result.mediumCount).toBe(0);
     expect(result.lowCount).toBe(0);
     expect(result.nitCount).toBe(0);
+  });
+
+  it("accepts zero monotonic duration and rejects a negative duration", () => {
+    expect(ReviewMetadataSchema.safeParse({ ...baseMetadata, durationMs: 0 }).success).toBe(true);
+    expect(ReviewMetadataSchema.safeParse({ ...baseMetadata, durationMs: -1 }).success).toBe(false);
   });
 });
 

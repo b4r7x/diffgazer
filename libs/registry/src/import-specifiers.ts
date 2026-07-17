@@ -1,3 +1,10 @@
+import {
+  getStaticModuleSpecifier,
+  isToken,
+  type SourceToken,
+  tokenizeSource,
+} from "./import-specifier-lexer.js";
+
 export type ImportSpecifierKind =
   | "import"
   | "export"
@@ -11,135 +18,159 @@ export interface ImportSpecifier {
   isTypeOnly: boolean;
 }
 
-const IMPORT_PATTERNS: Array<{
-  kind: ImportSpecifierKind;
-  pattern: RegExp;
-  specifierGroup: number;
-  typeOnlyGroup?: number;
-}> = [
-  {
-    kind: "import",
-    pattern: /\bimport\s+(type\s+)?[^;]*?\s+from\s+["']([^"']+)["']/g,
-    specifierGroup: 2,
-    typeOnlyGroup: 1,
-  },
-  {
-    kind: "export",
-    pattern: /\bexport\s+(type\s+)?[^;]*?\s+from\s+["']([^"']+)["']/g,
-    specifierGroup: 2,
-    typeOnlyGroup: 1,
-  },
-  {
-    kind: "dynamic-import",
-    pattern: /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g,
-    specifierGroup: 1,
-  },
-  {
-    kind: "require",
-    pattern: /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g,
-    specifierGroup: 1,
-  },
-  {
-    kind: "side-effect",
-    pattern: /\bimport\s+["']([^"']+)["']/g,
-    specifierGroup: 1,
-  },
-];
+export interface StaticNamedImport {
+  /** Half-open range covering the import declaration, including its semicolon when present. */
+  declarationStart: number;
+  declarationEnd: number;
+  /** Half-open range containing the raw text between the named-import braces. */
+  specifiersStart: number;
+  specifiersEnd: number;
+  specifier: string;
+  quote: '"' | "'";
+  typePrefix: "" | "type ";
+  isTypeOnly: boolean;
+}
 
 export function stripTemplateLiterals(source: string): string {
   return source.replace(/`(?:\\[\s\S]|[^`\\])*`/g, "``");
 }
 
-function findQuotedLiteralEnd(source: string, start: number, quote: '"' | "'" | "`"): number {
-  let index = start + 1;
-  while (index < source.length) {
-    const char = source[index];
-    if (char === "\\") {
-      index += 2;
-      continue;
+function findFromSpecifier(
+  tokens: SourceToken[],
+  start: number,
+): { token: Extract<SourceToken, { kind: "string" }>; index: number } | undefined {
+  for (let index = start; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (isToken(token, "punctuator", ";")) return undefined;
+    const specifier = tokens[index + 1];
+    if (isToken(token, "identifier", "from") && specifier?.kind === "string") {
+      return { token: specifier, index: index + 1 };
     }
-    index += 1;
-    if (char === quote) return index;
   }
-  return source.length;
+  return undefined;
 }
 
-function stripCommentsAndTemplateLiterals(source: string): string {
-  const output: string[] = [];
-  let index = 0;
+function findNamedImportClose(tokens: SourceToken[], openIndex: number): SourceToken | undefined {
+  for (let index = openIndex + 1; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (isToken(token, "punctuator", "}")) return token;
+    if (isToken(token, "punctuator", ";")) return undefined;
+  }
+  return undefined;
+}
 
-  while (index < source.length) {
-    const char = source[index];
-    if (char === undefined) break;
-    const next = source[index + 1];
+export function extractStaticNamedImports(source: string): StaticNamedImport[] {
+  const tokens = tokenizeSource(source);
+  const declarations: StaticNamedImport[] = [];
 
-    if (char === '"' || char === "'") {
-      const end = findQuotedLiteralEnd(source, index, char);
-      output.push(source.slice(index, end));
-      index = end;
-      continue;
-    }
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (!token || !isToken(token, "identifier", "import")) continue;
+    const previous = tokens[index - 1];
+    if (isToken(previous, "punctuator", ".") || isToken(previous, "punctuator", "?.")) continue;
 
-    if (char === "`") {
-      const end = findQuotedLiteralEnd(source, index, char);
-      output.push("``");
-      index = end;
-      continue;
-    }
+    const next = tokens[index + 1];
+    const isTypeOnly = isToken(next, "identifier", "type");
+    const openIndex = isTypeOnly ? index + 2 : index + 1;
+    const open = tokens[openIndex];
+    if (!open || !isToken(open, "punctuator", "{")) continue;
+    const close = findNamedImportClose(tokens, openIndex);
+    const from = findFromSpecifier(tokens, openIndex + 1);
+    if (!close || !from || close.end > from.token.start) continue;
+    const semicolon = tokens[from.index + 1];
 
-    if (char === "/" && next === "/") {
-      output.push("  ");
-      index += 2;
-      while (index < source.length && source[index] !== "\n" && source[index] !== "\r") {
-        output.push(" ");
-        index += 1;
-      }
-      continue;
-    }
-
-    if (char === "/" && next === "*") {
-      output.push("  ");
-      index += 2;
-      while (index < source.length) {
-        if (source[index] === "*" && source[index + 1] === "/") {
-          output.push("  ");
-          index += 2;
-          break;
-        }
-        const commentChar = source[index];
-        if (commentChar === undefined) break;
-        output.push(commentChar === "\n" || commentChar === "\r" ? commentChar : " ");
-        index += 1;
-      }
-      continue;
-    }
-
-    output.push(char);
-    index += 1;
+    declarations.push({
+      declarationStart: token.start,
+      declarationEnd:
+        semicolon && isToken(semicolon, "punctuator", ";") ? semicolon.end : from.token.end,
+      specifiersStart: open.end,
+      specifiersEnd: close.start,
+      specifier: from.token.value,
+      quote: from.token.quote,
+      typePrefix: isTypeOnly ? "type " : "",
+      isTypeOnly,
+    });
   }
 
-  return output.join("");
+  return declarations;
 }
 
 export function extractImportSpecifiers(source: string): ImportSpecifier[] {
-  const cleaned = stripCommentsAndTemplateLiterals(source);
-  const specifiers: ImportSpecifier[] = [];
+  const tokens = tokenizeSource(source);
+  const imports: ImportSpecifier[] = [];
+  const exports: ImportSpecifier[] = [];
+  const dynamicImports: ImportSpecifier[] = [];
+  const requires: ImportSpecifier[] = [];
+  const sideEffects: ImportSpecifier[] = [];
 
-  for (const { kind, pattern, specifierGroup, typeOnlyGroup } of IMPORT_PATTERNS) {
-    pattern.lastIndex = 0;
-    let match = pattern.exec(cleaned);
-    while (match !== null) {
-      const specifier = match[specifierGroup];
-      if (specifier) {
-        specifiers.push({
-          specifier,
-          kind,
-          isTypeOnly: typeOnlyGroup !== undefined && match[typeOnlyGroup] !== undefined,
-        });
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    const previous = tokens[index - 1];
+
+    if (
+      isToken(token, "identifier", "import") &&
+      !isToken(previous, "punctuator", ".") &&
+      !isToken(previous, "punctuator", "?.")
+    ) {
+      const next = tokens[index + 1];
+      if (next?.kind === "string") {
+        sideEffects.push({ specifier: next.value, kind: "side-effect", isTypeOnly: false });
+        continue;
       }
-      match = pattern.exec(cleaned);
+      const dynamicSpecifierValue = getStaticModuleSpecifier(tokens[index + 2]);
+      if (isToken(next, "punctuator", "(") && dynamicSpecifierValue !== undefined) {
+        dynamicImports.push({
+          specifier: dynamicSpecifierValue,
+          kind: "dynamic-import",
+          isTypeOnly: false,
+        });
+        continue;
+      }
+      if (
+        next?.kind === "identifier" ||
+        isToken(next, "punctuator", "{") ||
+        isToken(next, "punctuator", "*")
+      ) {
+        const specifier = findFromSpecifier(tokens, index + 2)?.token;
+        if (specifier) {
+          imports.push({
+            specifier: specifier.value,
+            kind: "import",
+            isTypeOnly: isToken(next, "identifier", "type"),
+          });
+        }
+      }
+      continue;
+    }
+
+    if (isToken(token, "identifier", "export")) {
+      const next = tokens[index + 1];
+      const isTypeOnly = isToken(next, "identifier", "type");
+      const exportedShape = isTypeOnly ? tokens[index + 2] : next;
+      if (isToken(exportedShape, "punctuator", "{") || isToken(exportedShape, "punctuator", "*")) {
+        const specifier = findFromSpecifier(tokens, index + 2)?.token;
+        if (specifier) {
+          exports.push({ specifier: specifier.value, kind: "export", isTypeOnly });
+        }
+      }
+      continue;
+    }
+
+    const requiredSpecifierValue = getStaticModuleSpecifier(tokens[index + 2]);
+    if (
+      isToken(token, "identifier", "require") &&
+      !isToken(previous, "punctuator", ".") &&
+      !isToken(previous, "punctuator", "?.") &&
+      isToken(tokens[index + 1], "punctuator", "(") &&
+      requiredSpecifierValue !== undefined
+    ) {
+      requires.push({
+        specifier: requiredSpecifierValue,
+        kind: "require",
+        isTypeOnly: false,
+      });
     }
   }
 
-  return specifiers;
+  return [...imports, ...exports, ...dynamicImports, ...requires, ...sideEffects];
 }

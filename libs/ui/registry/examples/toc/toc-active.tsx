@@ -9,7 +9,12 @@ const sections = [
   { id: "npm", title: "npm", depth: 3 },
   { id: "pnpm", title: "pnpm", depth: 3 },
   { id: "usage", title: "Usage", depth: 2 },
-];
+] as const;
+
+const headingByDepth = {
+  2: "h2",
+  3: "h3",
+} as const;
 
 export default function TocActive() {
   const ids = sections.map((s) => s.id);
@@ -37,17 +42,20 @@ export default function TocActive() {
       </Toc>
 
       <div className="flex flex-col gap-16">
-        {sections.map((section) => (
-          <section key={section.id}>
-            <h2 id={section.id} className="mb-4 text-lg font-medium text-foreground">
-              {section.title}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Content for the {section.title.toLowerCase()} section. Scroll to see the active
-              heading update in the sidebar.
-            </p>
-          </section>
-        ))}
+        {sections.map((section) => {
+          const Heading = headingByDepth[section.depth];
+          return (
+            <section key={section.id}>
+              <Heading id={section.id} className="mb-4 text-lg font-medium text-foreground">
+                {section.title}
+              </Heading>
+              <p className="text-sm text-muted-foreground">
+                Content for the {section.title.toLowerCase()} section. Scroll to see the active
+                heading update in the sidebar.
+              </p>
+            </section>
+          );
+        })}
       </div>
     </div>
   );

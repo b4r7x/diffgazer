@@ -6,7 +6,8 @@ import {
   type WriteFilesResult,
   writeFilesWithRollback,
 } from "../file-write-rollback.js";
-import { installDepsWithRollback } from "../install-deps.js";
+import { installDeps } from "../install-deps.js";
+import { restorePackageManagerFiles, snapshotPackageManagerFiles } from "../package-manager.js";
 import { heading, info, newline, promptConfirm, success, warn } from "../terminal.js";
 
 export interface ApplyInstallPlanOptions {
@@ -48,14 +49,29 @@ function handleDryRun(options: ApplyInstallPlanOptions): void {
 async function writeAndInstall(options: ApplyInstallPlanOptions): Promise<void> {
   const { cwd, overwrite, skipInstall = false, fileOps, missingDeps } = options;
 
+  const packageManagerSnapshot = snapshotPackageManagerFiles(cwd);
   heading(options.headingMessage);
   const writeResult = writeFilesWithRollback(fileOps, overwrite);
   try {
-    await installOrSkip(missingDeps, cwd, writeResult, skipInstall);
+    await installOrSkip(missingDeps, cwd, skipInstall);
     await options.onApplied?.(writeResult);
   } catch (error) {
-    warn("Rolling back written files due to install-plan finalization failure...");
+    warn("Rolling back install-plan changes after failure...");
+    let packageManagerRollbackFailed = false;
+    let packageManagerRollbackError: unknown;
+    try {
+      restorePackageManagerFiles(packageManagerSnapshot);
+    } catch (rollbackError) {
+      packageManagerRollbackFailed = true;
+      packageManagerRollbackError = rollbackError;
+    }
     rollbackFiles(writeResult.newFiles, writeResult.backups, writeResult.createdDirs);
+    if (packageManagerRollbackFailed) {
+      throw new AggregateError(
+        [error, packageManagerRollbackError],
+        "Install-plan failed and package-manager rollback was incomplete.",
+      );
+    }
     throw error;
   }
 
@@ -67,20 +83,23 @@ async function writeAndInstall(options: ApplyInstallPlanOptions): Promise<void> 
 async function installOrSkip(
   missingDeps: string[],
   cwd: string,
-  writeResult: WriteFilesResult,
   skipInstall: boolean,
 ): Promise<void> {
   const skip = skipInstall || isTruthyFlag(process.env.CLI_SKIP_INSTALL);
   if (!skip) {
-    await installDepsWithRollback(missingDeps, cwd, writeResult);
+    await installDeps(missingDeps, cwd);
     return;
   }
-  if (missingDeps.length > 0) showSkippedDeps(missingDeps, skipInstall);
+  if (missingDeps.length > 0) {
+    showSkippedDependencies(missingDeps, skipInstall ? "--skip-install" : "CLI_SKIP_INSTALL");
+  }
 }
 
-function showSkippedDeps(missingDeps: string[], fromFlag: boolean): void {
+export function showSkippedDependencies(
+  missingDeps: readonly string[],
+  reason: "--skip-install" | "CLI_SKIP_INSTALL",
+): void {
   heading("Dependency installation skipped");
-  const reason = fromFlag ? "--skip-install" : "CLI_SKIP_INSTALL";
   info(`Skipped via ${reason}. Install these packages manually when ready:`);
   for (const dep of missingDeps) info(`  ${dep}`);
 }

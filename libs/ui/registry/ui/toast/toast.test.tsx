@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { act, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
+import { toastDoc } from "../../component-docs/toast";
 import { Dialog } from "../dialog/index";
 import { Toaster, toast } from "./index";
 import { dismiss, remove, useToastStore } from "./toast-store";
@@ -10,6 +13,10 @@ import { dismiss, remove, useToastStore } from "./toast-store";
 const DEFAULT_IGNORE = "script, style";
 const TOAST_IGNORE = `${DEFAULT_IGNORE}, [data-slot="toast-announcer"], [data-slot="toast-announcer"] *`;
 const LAZY_CHUNK_TIMEOUT_MS = 8_000;
+const compoundComponentsGuide = readFileSync(
+  resolve(import.meta.dirname, "../../../docs/content/patterns/compound-components.mdx"),
+  "utf8",
+);
 
 function StoreReader({ onRead }: { onRead: (ids: string[]) => void }) {
   const { toasts } = useToastStore();
@@ -178,6 +185,21 @@ describe("Toast", () => {
   });
 
   it("auto-dismisses error tone with explicit duration", () => {
+    const persistenceNote = toastDoc.notes?.find((note) => note.title === "Error Toasts Persist");
+    const toneDescription = toastDoc.props?.["toast (function)"]?.tone?.description;
+    const durationDescription = toastDoc.props?.["toast (function)"]?.duration?.description;
+
+    expect(persistenceNote?.content).toContain("persist when duration is omitted");
+    expect(persistenceNote?.content).toContain("explicit positive duration");
+    expect(toneDescription).toContain("persist when duration is omitted");
+    expect(durationDescription).toContain("explicit positive duration");
+    expect(compoundComponentsGuide).toContain(
+      "Error and loading toasts persist when `duration` is omitted.",
+    );
+    expect(compoundComponentsGuide).toContain(
+      "A positive explicit duration schedules auto-dismissal.",
+    );
+
     render(<Toaster />);
     act(() => {
       toast.error("Error occurred", { duration: 2000 });
@@ -560,6 +582,37 @@ describe("Toast", () => {
     expect(regionHasFocus()).toBe(true);
   });
 
+  it("does not claim a hotkey already handled by a non-editable control", () => {
+    render(
+      <div>
+        <button type="button" onKeyDown={(event) => event.preventDefault()}>
+          Application shortcut
+        </button>
+        <Toaster hotkey="F8" />
+      </div>,
+    );
+    act(() => {
+      toast("Reachable toast", { action: <button type="button">Undo</button> });
+    });
+
+    const button = screen.getByRole("button", { name: "Application shortcut" });
+    const region = screen.getByRole("region", { name: "Notifications" });
+    button.focus();
+    const event = new KeyboardEvent("keydown", {
+      key: "F8",
+      bubbles: true,
+      cancelable: true,
+    });
+
+    act(() => {
+      button.dispatchEvent(event);
+    });
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(button).toHaveFocus();
+    expect(region).not.toHaveFocus();
+  });
+
   it("ignores the hotkey for an editable target inside an open shadow root (F-064)", () => {
     render(<Toaster hotkey="F8" />);
     act(() => {
@@ -799,13 +852,30 @@ describe("Toast", () => {
     expect(screen.queryByText("Second")).not.toBeInTheDocument();
   });
 
-  it("lets a consumer override the dismiss button accessible name (F-010)", () => {
+  it("documents and renders localized dismiss and tone labels (F-010)", () => {
+    const toastProps = toastDoc.props?.["toast (function)"];
+    expect(toastProps?.dismissLabel).toEqual({
+      type: "string",
+      required: false,
+      defaultValue: '"Dismiss: " + title',
+      description: "Accessible name for the dismiss button.",
+    });
+    expect(toastProps?.toneLabel).toEqual({
+      type: "string",
+      required: false,
+      defaultValue: "the tone value",
+      description: "Screen-reader tone text announced before the toast title.",
+    });
+
     render(<Toaster />);
     act(() => {
-      toast("Saved", { dismissLabel: "Zamknij" });
+      toast("Saved", { dismissLabel: "Zamknij", toneLabel: "Informacja" });
     });
+    const status = screen.getByRole("status");
     expect(screen.getByRole("button", { name: "Zamknij" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Dismiss/ })).not.toBeInTheDocument();
+    expect(status).toHaveTextContent("Informacja:");
+    expect(status).not.toHaveTextContent("info:");
   });
 
   it("pauses auto-dismiss while document is hidden and resumes on return", () => {
@@ -970,6 +1040,11 @@ describe("Toast", () => {
     });
 
     it('variant="hud" auto-dismisses even when an action is supplied (HUD drops the action, so persistence rule does not apply)', () => {
+      const durationDescription = toastDoc.props?.["toast (function)"]?.duration?.description;
+
+      expect(durationDescription).toContain("rendered action");
+      expect(durationDescription).toContain("`hud` variant does not render actions");
+
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       try {
         render(<Toaster />);
@@ -991,16 +1066,25 @@ describe("Toast", () => {
     });
 
     it('variant="hud" silently drops the action prop', () => {
-      render(<Toaster />);
-      act(() => {
-        toast("Saved", {
-          variant: "hud",
-          action: <button type="button">Undo</button>,
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      try {
+        render(<Toaster />);
+        act(() => {
+          toast("Saved", {
+            variant: "hud",
+            action: <button type="button">Undo</button>,
+          });
         });
-      });
-      const root = findToast("Saved");
-      expect(root?.querySelector('[data-slot="toast-action"]')).toBeNull();
-      expect(root?.textContent).not.toContain("Undo");
+        const root = findToast("Saved");
+        expect(root?.querySelector('[data-slot="toast-action"]')).toBeNull();
+        expect(root?.textContent).not.toContain("Undo");
+        expect(warn).not.toHaveBeenCalled();
+        expect(toastDoc.props?.["toast (function)"]?.action?.description).toContain(
+          "silently omits",
+        );
+      } finally {
+        warn.mockRestore();
+      }
     });
 
     it('variant="viewfinder" renders four corner spans', () => {

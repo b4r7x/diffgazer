@@ -3,18 +3,33 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/testing/render";
 
-const { mockNavigate, mockSaveSettings, mockSettingsQuery, mockIsSaving } = vi.hoisted(() => ({
-  mockNavigate: vi.fn(),
-  mockSaveSettings: vi.fn(),
+interface HoistedMocks {
+  mockNavigate: ReturnType<typeof vi.fn>;
+  mockSaveSettings: ReturnType<typeof vi.fn>;
   mockSettingsQuery: {
     current: {
-      data: { secretsStorage: "file" },
-      error: null,
-      isLoading: false,
+      data: { secretsStorage: "file" | "keyring" };
+      error: Error | null;
+      isLoading: boolean;
+    };
+  };
+  mockIsSaving: { current: boolean };
+}
+
+const { mockNavigate, mockSaveSettings, mockSettingsQuery, mockIsSaving } = vi.hoisted(
+  (): HoistedMocks => ({
+    mockNavigate: vi.fn(),
+    mockSaveSettings: vi.fn(),
+    mockSettingsQuery: {
+      current: {
+        data: { secretsStorage: "file" },
+        error: null,
+        isLoading: false,
+      },
     },
-  },
-  mockIsSaving: { current: false },
-}));
+    mockIsSaving: { current: false },
+  }),
+);
 
 // Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 vi.mock("@tanstack/react-router", () => ({
@@ -77,6 +92,24 @@ describe("SettingsStoragePage keyboard behavior", () => {
     expect(save).not.toHaveFocus();
   });
 
+  it("keeps radio focus and ArrowDown navigation after pointer re-entry from footer actions", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const fileRadio = screen.getByRole("radio", { name: /file storage/i });
+    const keyringRadio = screen.getByRole("radio", { name: /system keyring/i });
+    await waitFor(() => expect(fileRadio).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}{ArrowDown}");
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
+
+    await user.click(fileRadio);
+    expect(fileRadio).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(keyringRadio).toHaveFocus();
+  });
+
   it("focuses and activates save after the storage choice changes", async () => {
     const user = userEvent.setup();
     renderPage();
@@ -89,5 +122,19 @@ describe("SettingsStoragePage keyboard behavior", () => {
 
     expect(screen.getByRole("button", { name: "Save" })).toHaveFocus();
     expect(mockSaveSettings).toHaveBeenCalledWith({ secretsStorage: "keyring" });
+  });
+
+  it("renders query errors in the form shell without mounting storage content", () => {
+    mockSettingsQuery.current = {
+      data: { secretsStorage: "file" },
+      error: new Error("Unable to load settings"),
+      isLoading: false,
+    };
+
+    renderPage();
+
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.getByRole("alert")).toHaveTextContent("Unable to load settings");
+    expect(screen.queryByText("Changes will take effect immediately after saving.")).toBeNull();
   });
 });

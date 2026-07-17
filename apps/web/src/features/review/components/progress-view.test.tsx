@@ -1,4 +1,10 @@
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
+import {
+  createInitialReviewState,
+  type ReviewEvent,
+  type ReviewState,
+  reviewReducer,
+} from "@diffgazer/core/review";
 import type { AgentState } from "@diffgazer/core/schemas/events";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -11,6 +17,7 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
 }));
 
+import { ActivityLog } from "./activity-log";
 import {
   type ReviewProgressData,
   ReviewProgressView,
@@ -43,7 +50,7 @@ function makeAgent(overrides: Partial<AgentState> = {}): AgentState {
 function makeProgressData(overrides: Partial<ReviewProgressData> = {}): ReviewProgressData {
   return {
     steps: [{ id: "parse", label: "Parse diff", status: "completed" }],
-    entries: [],
+    events: [],
     agents: [],
     metrics: {
       filesProcessed: 0,
@@ -52,6 +59,44 @@ function makeProgressData(overrides: Partial<ReviewProgressData> = {}): ReviewPr
     },
     notices: [],
     ...overrides,
+  };
+}
+
+type ThinkingAgent = Extract<ReviewEvent, { type: "agent_thinking" }>["agent"];
+
+function makeLogEvents(count: number, agent: ThinkingAgent = "detective"): ReviewEvent[] {
+  return Array.from({ length: count }, (_, index) => ({
+    type: "agent_thinking",
+    agent,
+    thought: `event-${index}`,
+    timestamp: "2026-01-01T00:00:00.000Z",
+  }));
+}
+
+function createTaggedLogState(events: readonly ReviewEvent[]): ReviewState {
+  return events.reduce(
+    (state, event) => reviewReducer(state, { type: "EVENT", event }),
+    createInitialReviewState(),
+  );
+}
+
+function appendLogEvent(state: ReviewState, event: ReviewEvent): ReviewState {
+  return reviewReducer(state, { type: "EVENT", event });
+}
+
+function trackEventReads(events: ReviewEvent[]) {
+  let readCount = 0;
+  return {
+    events: new Proxy(events, {
+      get(target, property, receiver) {
+        if (typeof property === "string" && /^\d+$/.test(property)) readCount += 1;
+        return Reflect.get(target, property, receiver);
+      },
+    }) as readonly ReviewEvent[],
+    getReadCount: () => readCount,
+    resetReadCount: () => {
+      readCount = 0;
+    },
   };
 }
 
@@ -66,6 +111,7 @@ function renderView(props: Partial<ReviewProgressViewProps> = {}) {
           onViewResults={props.onViewResults}
           onCancel={props.onCancel}
           onBack={props.onBack}
+          cancelDisabled={props.cancelDisabled}
         />
         <FooterView />
       </FooterProvider>
@@ -74,6 +120,28 @@ function renderView(props: Partial<ReviewProgressViewProps> = {}) {
 }
 
 describe("ReviewProgressView", () => {
+  it.each([
+    {
+      errorCode: "MODEL_ERROR",
+      message: "1 agent failed: Guardian. Results may be incomplete.",
+    },
+    {
+      errorCode: "RATE_LIMITED",
+      message: "1 agent failed (rate limited): Guardian. Results may be incomplete.",
+    },
+  ])("renders the warning classified by latest $errorCode lens stats", ({ errorCode, message }) => {
+    renderView({
+      data: makeProgressData({
+        agents: [makeAgent({ status: "error" })],
+        lensStats: [{ lensId: "security", issueCount: 0, status: "failed", errorCode }],
+      }),
+    });
+
+    const status = screen.getByText("Partial Analysis").closest('[role="status"]');
+    if (!status) throw new Error("Partial Analysis callout did not render as a live status region");
+    expect(status).toHaveTextContent(message);
+  });
+
   it("publishes only available progress shortcuts", async () => {
     renderView();
 
@@ -112,6 +180,24 @@ describe("ReviewProgressView", () => {
     await user.keyboard("c");
 
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables pending cancellation while keeping Back active", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    const onBack = vi.fn();
+
+    renderView({ isRunning: true, onCancel, onBack, cancelDisabled: true });
+
+    const cancel = await screen.findByRole("button", { name: "Cancel" });
+    expect(cancel).toBeDisabled();
+
+    await user.click(cancel);
+    await user.keyboard("c");
+    await user.keyboard("{Escape}");
+
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(onBack).toHaveBeenCalledTimes(1);
   });
 
   it("does not cancel with c when focus is on a button", async () => {
@@ -225,6 +311,237 @@ describe("ReviewProgressView", () => {
 
     expect(screen.getByRole("region", { name: "Progress" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Live Activity Log" })).toBeInTheDocument();
+  });
+
+  it("bounds a 5,000-event log while Home and End retain full-history navigation", async () => {
+    const user = userEvent.setup();
+    renderView({
+      isRunning: true,
+      data: makeProgressData({ events: makeLogEvents(5_000) }),
+    });
+
+    const log = screen.getByRole("log");
+    Object.defineProperty(log, "scrollHeight", { configurable: true, value: 1_000 });
+    expect(screen.getByText("event-4999")).toBeInTheDocument();
+    expect(screen.getAllByText(/^event-/)).toHaveLength(200);
+
+    log.scrollTop = 1_000;
+    log.focus();
+    await user.keyboard("{Home}");
+    await waitFor(() => expect(screen.getByText("event-0")).toBeInTheDocument());
+    expect(log.scrollTop).toBe(0);
+    expect(screen.queryByText("event-4999")).not.toBeInTheDocument();
+    expect(screen.getAllByText(/^event-/)).toHaveLength(200);
+
+    await user.keyboard("{End}");
+    await waitFor(() => expect(screen.getByText("event-4999")).toBeInTheDocument());
+    expect(log.scrollTop).toBe(1_000);
+    expect(screen.queryByText("event-0")).not.toBeInTheDocument();
+    expect(screen.getAllByText(/^event-/)).toHaveLength(200);
+  });
+
+  it("shows the oldest retained page when the paged-back window is fully evicted", async () => {
+    const user = userEvent.setup();
+    const events = makeLogEvents(5_000);
+    let state = createTaggedLogState(events);
+    const { rerender } = render(<ActivityLog events={state.events} />);
+    const log = screen.getByRole("log");
+
+    log.focus();
+    await user.keyboard("{Home}");
+    expect(screen.getByText("event-0")).toBeInTheDocument();
+
+    for (let offset = 0; offset < 200; offset += 1) {
+      state = appendLogEvent(state, {
+        type: "agent_thinking",
+        agent: "detective",
+        thought: `event-${5_000 + offset}`,
+        timestamp: "2026-01-01T00:00:00.000Z",
+      });
+    }
+    rerender(<ActivityLog events={state.events} />);
+
+    expect(screen.getByText("event-200")).toBeInTheDocument();
+    expect(screen.getByText("event-399")).toBeInTheDocument();
+    expect(screen.queryByText("event-400")).not.toBeInTheDocument();
+    expect(screen.getAllByText(/^event-/)).toHaveLength(200);
+  });
+
+  it("keeps a full paged-back window after a partial ring eviction", async () => {
+    const user = userEvent.setup();
+    let state = createTaggedLogState(makeLogEvents(5_000));
+    const { rerender } = render(<ActivityLog events={state.events} />);
+    const log = screen.getByRole("log");
+
+    log.focus();
+    await user.keyboard("{Home}");
+    expect(screen.getByText("event-0")).toBeInTheDocument();
+
+    for (let offset = 0; offset < 50; offset += 1) {
+      state = appendLogEvent(state, {
+        type: "agent_thinking",
+        agent: "detective",
+        thought: `event-${5_000 + offset}`,
+        timestamp: "2026-01-01T00:00:00.000Z",
+      });
+    }
+    rerender(<ActivityLog events={state.events} />);
+
+    expect(screen.getByText("event-50")).toBeInTheDocument();
+    expect(screen.getByText("event-249")).toBeInTheDocument();
+    expect(screen.queryByText("event-250")).not.toBeInTheDocument();
+    expect(screen.getAllByText(/^event-/)).toHaveLength(200);
+  });
+
+  it("renders untagged reorder and reset replacements exactly with duplicate identities", () => {
+    const event = (thought: string): ReviewEvent => ({
+      type: "agent_thinking",
+      agent: "detective",
+      thought,
+      timestamp: "2026-01-01T00:00:00.000Z",
+    });
+    const first = event("order-first");
+    const duplicate = event("order-duplicate");
+    const alpha = event("order-alpha");
+    const middle = event("order-middle");
+    const omega = event("order-omega");
+    const last = event("order-last");
+    const { rerender } = render(
+      <ActivityLog events={[first, duplicate, alpha, middle, duplicate, omega, last]} />,
+    );
+
+    rerender(<ActivityLog events={[first, duplicate, omega, middle, duplicate, alpha, last]} />);
+    expect(screen.getAllByText(/^order-/).map((row) => row.textContent)).toEqual([
+      "order-first",
+      "order-duplicate",
+      "order-omega",
+      "order-middle",
+      "order-duplicate",
+      "order-alpha",
+      "order-last",
+    ]);
+
+    rerender(
+      <ActivityLog
+        events={[
+          first,
+          event("order-new-a"),
+          event("order-new-b"),
+          middle,
+          event("order-new-c"),
+          event("order-new-d"),
+          last,
+        ]}
+      />,
+    );
+    expect(screen.getAllByText(/^order-/).map((row) => row.textContent)).toEqual([
+      "order-first",
+      "order-new-a",
+      "order-new-b",
+      "order-middle",
+      "order-new-c",
+      "order-new-d",
+      "order-last",
+    ]);
+  });
+
+  it("keeps sparse agent matches reachable outside the unfiltered tail window", async () => {
+    const user = userEvent.setup();
+    const events = makeLogEvents(5_000, "guardian");
+    events[0] = {
+      type: "agent_thinking",
+      agent: "detective",
+      thought: "event-0-detective",
+      timestamp: "2026-01-01T00:00:00.000Z",
+    };
+    const detective = makeAgent({
+      id: "detective",
+      meta: {
+        id: "detective",
+        lens: "correctness",
+        name: "Detective",
+        badgeLabel: "DET",
+        badgeVariant: "info",
+        description: "Finds bugs",
+      },
+    });
+
+    renderView({
+      isRunning: true,
+      data: makeProgressData({ agents: [detective], events }),
+    });
+
+    await user.click(screen.getByRole("radio", { name: /Detective/ }));
+
+    expect(screen.getByText("event-0-detective")).toBeInTheDocument();
+    expect(screen.getAllByText(/^event-/)).toHaveLength(1);
+  });
+
+  it("indexes a sparse agent filter once and pages it without rescanning history", async () => {
+    const user = userEvent.setup();
+    const rawEvents = makeLogEvents(5_000, "guardian");
+    for (let index = 9; index < rawEvents.length; index += 10) {
+      rawEvents[index] = {
+        type: "agent_thinking",
+        agent: "detective",
+        thought: `detective-${index}`,
+        timestamp: "2026-01-01T00:00:00.000Z",
+      };
+    }
+    const tracked = trackEventReads(rawEvents);
+    render(<ActivityLog events={tracked.events} sourceFilter="Detective" />);
+    const log = screen.getByRole("log");
+
+    expect(screen.getByText("detective-4999")).toBeInTheDocument();
+    expect(screen.getAllByText(/^detective-/)).toHaveLength(200);
+    expect(tracked.getReadCount()).toBeLessThan(5_500);
+
+    tracked.resetReadCount();
+    log.focus();
+    await user.keyboard("{Home}");
+    expect(screen.getByText("detective-9")).toBeInTheDocument();
+    expect(screen.getByText("detective-1999")).toBeInTheDocument();
+    expect(tracked.getReadCount()).toBeLessThan(450);
+
+    tracked.resetReadCount();
+    await user.keyboard("{PageDown}");
+    expect(screen.getByText("detective-2009")).toBeInTheDocument();
+    expect(screen.getByText("detective-3999")).toBeInTheDocument();
+    expect(tracked.getReadCount()).toBeLessThan(450);
+
+    tracked.resetReadCount();
+    await user.keyboard("{PageUp}");
+    expect(screen.getByText("detective-9")).toBeInTheDocument();
+    expect(tracked.getReadCount()).toBeLessThan(450);
+  });
+
+  it("autoscrolls after an appended tail row is mounted", async () => {
+    const initialEvents = makeLogEvents(2);
+    const { rerender } = render(<ActivityLog events={initialEvents} />);
+    const log = screen.getByRole("log");
+    Object.defineProperty(log, "scrollHeight", {
+      configurable: true,
+      get: () => (log.textContent?.includes("event-2") ? 300 : 200),
+    });
+    Object.defineProperty(log, "clientHeight", { configurable: true, value: 100 });
+    log.scrollTop = 0;
+
+    rerender(
+      <ActivityLog
+        events={[
+          ...initialEvents,
+          {
+            type: "agent_thinking",
+            agent: "detective",
+            thought: "event-2",
+            timestamp: "2026-01-01T00:00:00.000Z",
+          },
+        ]}
+      />,
+    );
+
+    await waitFor(() => expect(log.scrollTop).toBe(300));
+    expect(screen.getByText("event-2")).toBeInTheDocument();
   });
 
   it("cycles pane focus with Tab from anywhere in the document", async () => {

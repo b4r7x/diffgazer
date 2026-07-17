@@ -18,6 +18,7 @@ import { IssueListPane, type IssueListSubZone } from "./issue-list-pane";
 export interface ReviewResultsViewProps {
   issues: ReviewIssue[];
   reviewId?: string | null;
+  initialIssueId?: string;
   onBack?: () => void;
 }
 
@@ -32,12 +33,17 @@ const RESULTS_SHORTCUTS_RIGHT: Shortcut[] = [BACK_SHORTCUT];
 export function ReviewResultsView({
   issues,
   reviewId,
+  initialIssueId,
   onBack,
 }: ReviewResultsViewProps): ReactElement {
   const { tokens } = useTheme();
   const { columns, rows, isNarrow, isMedium } = useResponsive();
   const [severityFilter, setSeverityFilter] = useState<UISeverityFilter>(() => new Set());
-  const [selectedIssueId, setSelectedIssueId] = useState<string | undefined>(issues[0]?.id);
+  const [selectedIssueId, setSelectedIssueId] = useState<string | undefined>(() =>
+    initialIssueId && issues.some((issue) => issue.id === initialIssueId)
+      ? initialIssueId
+      : issues[0]?.id,
+  );
   const [activeZone, setActiveZone] = useState<Zone>("list");
   const [listSubZone, setListSubZone] = useState<IssueListSubZone>("issues");
   const [detailsSubZone, setDetailsSubZone] = useState<IssueDetailsSubZone>("body");
@@ -50,13 +56,15 @@ export function ReviewResultsView({
   const selectedIssue = filteredIssues.find((i) => i.id === selectedIssueId);
   const { activeTab, availableTabs, setActiveTab, completedSteps, toggleStep } =
     useIssueDetailsState(selectedIssue);
+  const visibleTabs = selectedIssue ? availableTabs : [];
   const canFocusFixPlan = activeTab === "details" && Boolean(selectedIssue?.fixPlan?.length);
   const effectiveDetailsSubZone = canFocusFixPlan ? detailsSubZone : "body";
 
-  usePageFooter({
-    shortcuts: [...RESULTS_SHORTCUTS_LEFT, { key: `1-${availableTabs.length}`, label: "Tabs" }],
-    rightShortcuts: onBack ? RESULTS_SHORTCUTS_RIGHT : [],
-  });
+  const shortcuts =
+    visibleTabs.length === 0
+      ? RESULTS_SHORTCUTS_LEFT
+      : [...RESULTS_SHORTCUTS_LEFT, { key: `1-${visibleTabs.length}`, label: "Tabs" }];
+  usePageFooter({ shortcuts, rightShortcuts: onBack ? RESULTS_SHORTCUTS_RIGHT : [] });
 
   useReviewKeyboard({
     onZoneSwitch() {
@@ -75,7 +83,7 @@ export function ReviewResultsView({
       setActiveZone("list");
     },
     onTabSwitch(tabNumber) {
-      const tab = availableTabs[tabNumber - 1];
+      const tab = visibleTabs[tabNumber - 1];
       if (!tab) return;
       setDetailsSubZone("body");
       setActiveTab(tab);
@@ -89,6 +97,7 @@ export function ReviewResultsView({
   const listWidth = isMedium
     ? Math.max(Math.floor(columns * 0.35), 26)
     : Math.max(Math.floor(columns * 0.4), 30);
+  const listContentWidth = Math.max((isNarrow ? columns : listWidth) - 4, 1);
   const paneHeight = Math.max(rows - 8, 8);
   const listScrollHeight = isNarrow ? Math.max(Math.floor(paneHeight / 2), 6) : paneHeight;
   const detailScrollHeight = isNarrow ? Math.max(Math.floor(paneHeight / 2), 6) : paneHeight;
@@ -104,6 +113,7 @@ export function ReviewResultsView({
       <Box flexDirection={isNarrow ? "column" : "row"} marginTop={1}>
         <Box
           width={isNarrow ? undefined : listWidth}
+          flexShrink={isNarrow ? undefined : 0}
           borderStyle="single"
           borderColor={activeZone === "list" ? tokens.accent : tokens.border}
         >
@@ -115,6 +125,7 @@ export function ReviewResultsView({
             onHighlightChange={setSelectedIssueId}
             isActive={activeZone === "list"}
             height={listScrollHeight}
+            contentWidth={listContentWidth}
             severityFilter={severityFilter}
             onSeverityFilterChange={setSeverityFilter}
             subZone={listSubZone}

@@ -109,7 +109,7 @@ jobs:
           expected_jobs=(
             "Full History Secret Scan"
             "Build, Verify, and Pack"
-            "Docs E2E (Playwright + axe + visual)"
+            "Browser E2E (Playwright + axe + visual)"
           )
           for expected_job in "${expected_jobs[@]}"; do
             conclusion="$(awk -F '\t' -v job="${expected_job}" '$1 == job { print $2 }' <<< "${jobs}" | tail -n 1)"
@@ -166,6 +166,22 @@ jobs:
       - name: Set up Docker Buildx
         if: ${{ contains(matrix.service.targets, inputs.target) }}
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2e3ecddb7b43c4e34e7e # v3.10.0
+
+      - name: Stamp public source identity
+        if: >-
+          ${{ contains(matrix.service.targets, inputs.target)
+            && matrix.service.name != 'registry' }}
+        env:
+          SERVICE_NAME: ${{ matrix.service.name }}
+          SOURCE_TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          case "${SERVICE_NAME}" in
+            docs) destination="apps/docs/public/source-tag" ;;
+            landing) destination="apps/landing/public/source-tag" ;;
+            *) echo "::error::Unsupported identity surface: ${SERVICE_NAME}"; exit 1 ;;
+          esac
+          printf '%s\n' "${SOURCE_TAG}" > "${destination}"
 
       - name: Log in to GHCR
         if: ${{ contains(matrix.service.targets, inputs.target) }}
@@ -241,7 +257,7 @@ jobs:
 
       - name: Promote scanned images and trigger Coolify
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
 
           require_env() {
             name="$1"
@@ -282,7 +298,7 @@ jobs:
             if [ "${ROLLBACK}" = "true" ]; then
               if ! docker buildx imagetools inspect "${IMAGE_OWNER}/${image}:${SOURCE_TAG}" > /dev/null 2>&1; then
                 echo "::error::No GHCR image ${IMAGE_OWNER}/${image}:${SOURCE_TAG} to roll back to."
-                exit 1
+                return 1
               fi
             fi
             docker buildx imagetools create \
@@ -293,10 +309,19 @@ jobs:
           trigger() {
             name="$1"
             webhook="$2"
+            if [ "$#" -ge 3 ]; then
+              source_ref="$3"
+            else
+              source_ref="${SOURCE_TAG}"
+            fi
+            payload="{\"image_tag\":\"prod\",\"surface\":\"${name}\"}"
+            if [ -n "${source_ref}" ]; then
+              payload="{\"image_tag\":\"prod\",\"source_sha\":\"${source_ref}\",\"surface\":\"${name}\"}"
+            fi
             curl -fsS -X POST "$webhook" \
               -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
               -H "Content-Type: application/json" \
-              -d "{\"image_tag\":\"prod\",\"source_sha\":\"${SOURCE_TAG}\",\"surface\":\"${name}\"}"
+              -d "${payload}"
           }
 
           require_selected_secrets
@@ -304,22 +329,23 @@ jobs:
 
           case "${DEPLOY_TARGET}" in
             docs-registry)
-              promote diffgazer-docs
-              promote diffgazer-registry
-              trigger docs "${COOLIFY_WEBHOOK_DOCS}"
-              trigger registry "${COOLIFY_WEBHOOK_REGISTRY}"
+              selected_services=(docs registry)
+              selected_images=(diffgazer-docs diffgazer-registry)
+              selected_webhooks=("${COOLIFY_WEBHOOK_DOCS}" "${COOLIFY_WEBHOOK_REGISTRY}")
               ;;
             landing)
-              promote diffgazer-landing
-              trigger landing "${COOLIFY_WEBHOOK_LANDING}"
+              selected_services=(landing)
+              selected_images=(diffgazer-landing)
+              selected_webhooks=("${COOLIFY_WEBHOOK_LANDING}")
               ;;
             all)
-              promote diffgazer-docs
-              promote diffgazer-registry
-              promote diffgazer-landing
-              trigger docs "${COOLIFY_WEBHOOK_DOCS}"
-              trigger registry "${COOLIFY_WEBHOOK_REGISTRY}"
-              trigger landing "${COOLIFY_WEBHOOK_LANDING}"
+              selected_services=(docs registry landing)
+              selected_images=(diffgazer-docs diffgazer-registry diffgazer-landing)
+              selected_webhooks=(
+                "${COOLIFY_WEBHOOK_DOCS}"
+                "${COOLIFY_WEBHOOK_REGISTRY}"
+                "${COOLIFY_WEBHOOK_LANDING}"
+              )
               ;;
             *)
               echo "::error::Unknown deploy target: ${DEPLOY_TARGET}"
@@ -327,38 +353,84 @@ jobs:
               ;;
           esac
 
-      - name: Verify selected public endpoints
-        env:
-          # Hard-gate the live-check: assert every required registry endpoint
-          # (incl. /r/keys/navigation.json and the editor schema URL) AND that the
-          # served registry bytes match the committed contract at the deployed SHA.
-          DIFFGAZER_LIVE_REGISTRY_REQUIRED: "1"
-        run: |
-          set -euo pipefail
+          declare -A previous_digests=()
+          declare -A images_by_service=()
+          declare -A webhooks_by_service=()
+          declare -a changed_services=()
+
+          for index in "${!selected_services[@]}"; do
+            service="${selected_services[index]}"
+            image="${selected_images[index]}"
+            webhook="${selected_webhooks[index]}"
+            digest="$(docker buildx imagetools inspect \
+              --format '{{.Manifest.Digest}}' \
+              "${IMAGE_OWNER}/${image}:prod")"
+            if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "::error::Could not capture current production digest for ${service}."
+              exit 1
+            fi
+            previous_digests["${service}"]="${digest}"
+            images_by_service["${service}"]="${image}"
+            webhooks_by_service["${service}"]="${webhook}"
+          done
+
+          rollback_deployment() {
+            original_status=$?
+            trap - EXIT
+            trap '' HUP INT TERM
+            set +e
+
+            for ((index=${#changed_services[@]} - 1; index >= 0; index--)); do
+              service="${changed_services[index]}"
+              image="${images_by_service[${service}]}"
+              digest="${previous_digests[${service}]}"
+              webhook="${webhooks_by_service[${service}]}"
+
+              if ! docker buildx imagetools create \
+                --tag "${IMAGE_OWNER}/${image}:prod" \
+                "${IMAGE_OWNER}/${image}@${digest}"; then
+                echo "::error::Failed to restore ${service} to ${digest}."
+                continue
+              fi
+              if ! trigger "${service}" "${webhook}" ""; then
+                echo "::error::Restored ${service} to ${digest}, but its rollback trigger failed."
+              fi
+            done
+
+            exit "${original_status}"
+          }
+          trap rollback_deployment EXIT
+          trap 'exit 129' HUP
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+
+          for index in "${!selected_services[@]}"; do
+            service="${selected_services[index]}"
+            changed_services+=("${service}")
+            promote "${selected_images[index]}"
+          done
+
+          for index in "${!selected_services[@]}"; do
+            trigger "${selected_services[index]}" "${selected_webhooks[index]}"
+          done
+
           sleep 30
 
-          check() {
-            curl -fsS --retry 5 --retry-delay 15 "$1" > /dev/null
-          }
+          node scripts/monorepo/verify-deployed-source-tags.mjs
 
-          # Registry endpoints + content freshness come from the single committed
-          # definition in check-live-registry.mjs; only HTML origins it does not
-          # cover stay as plain curls here.
           case "${DEPLOY_TARGET}" in
             docs-registry)
-              node scripts/monorepo/check-live-registry.mjs
-              check https://docs.b4r7.dev
+              DIFFGAZER_LIVE_REGISTRY_REQUIRED=1 node scripts/monorepo/check-live-registry.mjs
               ;;
             landing)
-              check https://diffgazer.b4r7.dev
               ;;
             all)
-              node scripts/monorepo/check-live-registry.mjs
-              check https://docs.b4r7.dev
-              check https://diffgazer.b4r7.dev
+              DIFFGAZER_LIVE_REGISTRY_REQUIRED=1 node scripts/monorepo/check-live-registry.mjs
               ;;
             *)
               echo "::error::Unknown deploy target: ${DEPLOY_TARGET}"
               exit 1
               ;;
           esac
+
+          trap - EXIT HUP INT TERM

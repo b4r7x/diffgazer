@@ -44,7 +44,10 @@ export type AgentExecution = z.infer<typeof AgentExecutionSchema>;
 
 export const SettingsConfigSchema = z.object({
   theme: ThemeSchema,
-  defaultLenses: z.array(LensIdSchema),
+  defaultLenses: z
+    .array(LensIdSchema)
+    .min(1)
+    .overwrite((lenses) => [...new Set(lenses)]),
   defaultProfile: ProfileIdSchema.nullable(),
   severityThreshold: ReviewSeveritySchema,
   secretsStorage: SecretsStorageSchema.nullable(),

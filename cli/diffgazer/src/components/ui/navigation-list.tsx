@@ -2,7 +2,7 @@ import { Box, Text, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext } from "react";
 import { collectChildItems } from "../../lib/collect-child-items";
-import { useListNavigation } from "../../lib/use-list-navigation";
+import { type ListNavigationItem, useListNavigation } from "../../lib/use-list-navigation";
 import type { CliColorTokens } from "../../theme/palettes";
 import { useTheme } from "../../theme/provider";
 
@@ -13,6 +13,7 @@ export interface NavigationListProps {
   onHighlightChange?: (id: string) => void;
   wrap?: boolean;
   isActive?: boolean;
+  navigationItems?: ListNavigationItem[];
   children: ReactNode;
 }
 
@@ -105,10 +106,12 @@ function NavigationListRoot({
   onHighlightChange,
   wrap = true,
   isActive = true,
+  navigationItems,
   children,
 }: NavigationListProps) {
   const { tokens } = useTheme();
-  const items = collectChildItems(children, extractNavigationListItem);
+  const renderedItems = collectChildItems(children, extractNavigationListItem);
+  const items = navigationItems ?? renderedItems;
   const { currentHighlightedId, moveBy, selectItem } = useListNavigation({
     items,
     highlightedId: controlledHighlightedId,

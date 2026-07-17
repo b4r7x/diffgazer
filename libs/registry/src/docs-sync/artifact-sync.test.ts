@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -9,8 +9,8 @@ import {
   getArtifactLibraries,
   parseDocsLibrariesConfig,
   readDocsLibrariesConfig,
-  resolveArtifactSyncMode,
 } from "./artifact-sync.js";
+import { syncDocsFromArtifacts } from "./sync.js";
 
 const tempDirs: string[] = [];
 
@@ -32,12 +32,12 @@ const VALID_CONFIG = {
     {
       id: "ui",
       enabled: true,
-      artifactSource: { workspaceDir: "libs/ui", packageName: "@diffgazer/ui" },
+      artifactSource: { workspaceDir: "libs/ui" },
     },
     {
       id: "keys",
       enabled: true,
-      artifactSource: { workspaceDir: "libs/keys", packageName: "@diffgazer/keys" },
+      artifactSource: { workspaceDir: "libs/keys" },
     },
   ],
 };
@@ -59,24 +59,9 @@ describe("sync artifacts helper config parsing", () => {
 
     expect(parsed.primaryLibraryId).toBe("ui");
     expect(artifactLibraries).toEqual([
-      { id: "ui", packageName: "@diffgazer/ui", workspaceDir: "libs/ui" },
-      { id: "keys", packageName: "@diffgazer/keys", workspaceDir: "libs/keys" },
+      { id: "ui", workspaceDir: "libs/ui" },
+      { id: "keys", workspaceDir: "libs/keys" },
     ]);
-  });
-
-  it("rejects malformed artifact library config", () => {
-    const broken = {
-      ...VALID_CONFIG,
-      libraries: VALID_CONFIG.libraries.map((library) =>
-        library.id === "ui"
-          ? { ...library, artifactSource: { workspaceDir: "libs/ui", packageName: "" } }
-          : library,
-      ),
-    };
-
-    expect(() => parseDocsLibrariesConfig(broken)).toThrow(
-      /docs libraries config libraries\[0\]\.artifactSource\.packageName must be a non-empty string/,
-    );
   });
 
   it("rejects unsafe artifact library ids and workspace paths", () => {
@@ -91,7 +76,7 @@ describe("sync artifacts helper config parsing", () => {
           library.id === "ui"
             ? {
                 ...library,
-                artifactSource: { workspaceDir: "../libs/ui", packageName: "@diffgazer/ui" },
+                artifactSource: { workspaceDir: "../libs/ui" },
               }
             : library,
         ),
@@ -99,112 +84,51 @@ describe("sync artifacts helper config parsing", () => {
     ).toThrow(
       /docs libraries config libraries\[0\]\.artifactSource\.workspaceDir must be a relative path without '\.\.' segments/,
     );
+  });
 
+  it("rejects duplicate library ids from different artifact sources", () => {
     expect(() =>
       parseDocsLibrariesConfig({
         ...VALID_CONFIG,
-        libraries: VALID_CONFIG.libraries.map((library) =>
-          library.id === "ui"
-            ? {
-                ...library,
-                artifactSource: { workspaceDir: "libs/ui", packageName: "../outside" },
-              }
-            : library,
-        ),
-      }),
-    ).toThrow(
-      /docs libraries config libraries\[0\]\.artifactSource\.packageName must be an npm package name/,
-    );
-  });
-
-  it("switches sync mode based on DIFFGAZER_DEV", () => {
-    expect(resolveArtifactSyncMode({})).toBe("package");
-    expect(resolveArtifactSyncMode({ DIFFGAZER_DEV: "1" })).toBe("workspace");
-  });
-
-  it("auto-falls back to workspace when local artifact packages are not resolvable", () => {
-    const mode = resolveArtifactSyncMode(
-      {},
-      {
         libraries: [
-          { id: "ui", packageName: "@diffgazer/ui", workspaceDir: "libs/ui" },
-          { id: "keys", packageName: "@diffgazer/keys-artifacts", workspaceDir: "libs/keys" },
+          VALID_CONFIG.libraries[0],
+          {
+            id: "ui",
+            enabled: true,
+            artifactSource: { workspaceDir: "libs/ui-copy" },
+          },
         ],
-        resolvePackage: (packageName) => packageName !== "@diffgazer/ui",
-      },
-    );
-
-    expect(mode).toBe("workspace");
+      }),
+    ).toThrow(/docs libraries config libraries\[1\]\.id duplicates library id "ui"/);
   });
 
-  it("auto-falls back to workspace in CI when artifact packages are not resolvable", () => {
-    const mode = resolveArtifactSyncMode(
-      { CI: "true" },
-      {
-        libraries: [{ id: "ui", packageName: "@diffgazer/ui", workspaceDir: "libs/ui" }],
-        resolvePackage: () => false,
-      },
-    );
+  it("rejects duplicate direct-sync ids before loading artifacts or resetting outputs", () => {
+    const tempRoot = makeTempDir();
+    const sentinelPath = resolve(tempRoot, "docs/content/docs/ui/sentinel.mdx");
+    writeFile(tempRoot, "docs/content/docs/ui/sentinel.mdx", "keep\n");
 
-    expect(mode).toBe("workspace");
-  });
+    expect(() =>
+      syncDocsFromArtifacts({
+        docsRoot: resolve(tempRoot, "docs"),
+        workspaceRoot: resolve(tempRoot, "workspace"),
+        libraries: [
+          { id: "ui", workspaceDir: "libs/ui" },
+          { id: "ui", workspaceDir: "libs/ui-copy" },
+        ],
+        primaryLibraryId: "ui",
+        origin: "https://registry.example.test",
+        sourceOrigin: "https://registry.example.test",
+      }),
+    ).toThrow('Duplicate library id "ui".');
 
-  it("does not force package mode in CI when artifact packages are resolvable", () => {
-    const mode = resolveArtifactSyncMode(
-      { CI: "true" },
-      {
-        libraries: [{ id: "ui", packageName: "@diffgazer/ui", workspaceDir: "libs/ui" }],
-        resolvePackage: () => true,
-      },
-    );
-
-    expect(mode).toBe("package");
-  });
-
-  it("honors DIFFGAZER_ARTIFACT_SYNC_MODE override for workspace and package", () => {
-    expect(
-      resolveArtifactSyncMode(
-        { DIFFGAZER_ARTIFACT_SYNC_MODE: "workspace" },
-        { resolvePackage: () => true },
-      ),
-    ).toBe("workspace");
-    expect(
-      resolveArtifactSyncMode(
-        { DIFFGAZER_ARTIFACT_SYNC_MODE: "package" },
-        { resolvePackage: () => false },
-      ),
-    ).toBe("package");
-  });
-
-  it("throws on an invalid DIFFGAZER_ARTIFACT_SYNC_MODE value", () => {
-    expect(() => resolveArtifactSyncMode({ DIFFGAZER_ARTIFACT_SYNC_MODE: "bogus" })).toThrow(
-      /DIFFGAZER_ARTIFACT_SYNC_MODE must be "workspace" or "package", got "bogus"/,
-    );
-  });
-
-  it("yields package for empty libraries", () => {
-    expect(resolveArtifactSyncMode({}, { libraries: [], resolvePackage: () => false })).toBe(
-      "package",
-    );
-  });
-
-  it("keeps package mode when local artifact packages are resolvable", () => {
-    const mode = resolveArtifactSyncMode(
-      {},
-      {
-        libraries: [{ id: "ui", packageName: "@diffgazer/ui", workspaceDir: "libs/ui" }],
-        resolvePackage: () => true,
-      },
-    );
-
-    expect(mode).toBe("package");
+    expect(readFileSync(sentinelPath, "utf8")).toBe("keep\n");
   });
 
   it("reports missing prepared workspace artifact files", () => {
     const tempRoot = makeTempDir();
     const libraries = [
-      { id: "ui", packageName: "@diffgazer/ui", workspaceDir: "libs/ui" },
-      { id: "keys", packageName: "@diffgazer/keys", workspaceDir: "libs/keys" },
+      { id: "ui", workspaceDir: "libs/ui" },
+      { id: "keys", workspaceDir: "libs/keys" },
     ];
 
     writeFile(
@@ -275,7 +199,7 @@ describe("sync artifacts helper config parsing", () => {
 
   it("reports invalid prepared workspace artifact manifests as missing", () => {
     const tempRoot = makeTempDir();
-    const libraries = [{ id: "ui", packageName: "@diffgazer/ui", workspaceDir: "libs/ui" }];
+    const libraries = [{ id: "ui", workspaceDir: "libs/ui" }];
 
     writeFile(
       tempRoot,
@@ -325,7 +249,7 @@ describe("sync artifacts helper output validation", () => {
     const errors = collectArtifactSyncValidationErrors({
       docsRoot: tempRoot,
       primaryLibraryId: "keys",
-      libraries: [{ id: "ui", packageName: "@diffgazer/ui", workspaceDir: "libs/ui" }],
+      libraries: [{ id: "ui", workspaceDir: "libs/ui" }],
     });
 
     expect(errors).toContain(
@@ -340,7 +264,7 @@ describe("sync artifacts helper output validation", () => {
     const errors = collectArtifactSyncValidationErrors({
       docsRoot: tempRoot,
       primaryLibraryId: "ui",
-      libraries: [{ id: "../ui", packageName: "@diffgazer/ui", workspaceDir: "libs/ui" }],
+      libraries: [{ id: "../ui", workspaceDir: "libs/ui" }],
     });
 
     expect(errors).toEqual(['Library id "../ui" must be a safe library id']);
@@ -367,7 +291,7 @@ describe("sync artifacts helper output validation", () => {
     const errors = collectArtifactSyncValidationErrors({
       docsRoot: tempRoot,
       primaryLibraryId: "ui",
-      libraries: [{ id: "ui", packageName: "@diffgazer/ui", workspaceDir: "libs/ui" }],
+      libraries: [{ id: "ui", workspaceDir: "libs/ui" }],
       artifacts: [
         {
           id: "ui",
@@ -383,6 +307,42 @@ describe("sync artifacts helper output validation", () => {
 
     expect(errors).toContain(
       "ui generated sync: artifact differs from source for component-list.json",
+    );
+  });
+
+  it("reports stale copied assets after a manifest removes its asset declaration", () => {
+    const tempRoot = makeTempDir();
+    const artifactRoot = resolve(tempRoot, "artifact");
+
+    writeFile(tempRoot, "content/docs/meta.json");
+    writeFile(tempRoot, "src/generated/demo-loaders.ts", "export {}\n");
+    writeFile(tempRoot, "content/docs/ui/meta.json");
+    writeFile(tempRoot, "public/r/ui/registry.json", '{"items":[]}\n');
+    writeFile(tempRoot, "src/generated/ui/component-list.json", "[]\n");
+    writeFile(tempRoot, "public/library-assets/ui/logo.svg", "<svg />\n");
+    writeFile(artifactRoot, "docs/meta.json");
+    writeFile(artifactRoot, "registry/registry.json", '{"items":[]}\n');
+    writeFile(artifactRoot, "generated/component-list.json", "[]\n");
+
+    const errors = collectArtifactSyncValidationErrors({
+      docsRoot: tempRoot,
+      primaryLibraryId: "ui",
+      libraries: [{ id: "ui", workspaceDir: "libs/ui" }],
+      artifacts: [
+        {
+          id: "ui",
+          artifactRoot,
+          manifest: {
+            docs: { contentDir: "docs", generatedDir: "generated" },
+            registry: { publicDir: "registry" },
+          },
+          generatedFiles: ["generated/component-list.json"],
+        },
+      ],
+    });
+
+    expect(errors).toContain(
+      `ui assets sync: stale output directory ${resolve(tempRoot, "public/library-assets/ui")}`,
     );
   });
 
@@ -455,8 +415,8 @@ describe("sync artifacts helper output validation", () => {
       docsRoot: tempRoot,
       primaryLibraryId: "ui",
       libraries: [
-        { id: "ui", packageName: "@diffgazer/ui", workspaceDir: "libs/ui" },
-        { id: "keys", packageName: "@diffgazer/keys", workspaceDir: "libs/keys" },
+        { id: "ui", workspaceDir: "libs/ui" },
+        { id: "keys", workspaceDir: "libs/keys" },
       ],
       artifacts: [
         {
@@ -503,8 +463,8 @@ describe("sync artifacts helper output validation", () => {
       docsRoot: tempRoot,
       primaryLibraryId: "ui",
       libraries: [
-        { id: "ui", packageName: "@diffgazer/ui", workspaceDir: "libs/ui" },
-        { id: "keys", packageName: "@diffgazer/keys", workspaceDir: "libs/keys" },
+        { id: "ui", workspaceDir: "libs/ui" },
+        { id: "keys", workspaceDir: "libs/keys" },
       ],
       artifacts: [
         {
@@ -540,7 +500,7 @@ describe("sync artifacts helper output validation", () => {
     const errors = collectArtifactSyncValidationErrors({
       docsRoot: tempRoot,
       primaryLibraryId: "ui",
-      libraries: [{ id: "ui", packageName: "@diffgazer/ui", workspaceDir: "libs/ui" }],
+      libraries: [{ id: "ui", workspaceDir: "libs/ui" }],
       artifacts: [
         {
           id: "ui",
@@ -564,7 +524,7 @@ describe("sync artifacts helper output validation", () => {
       assertArtifactSyncOutputs({
         docsRoot: tempRoot,
         primaryLibraryId: "ui",
-        libraries: [{ id: "ui", packageName: "@diffgazer/ui", workspaceDir: "libs/ui" }],
+        libraries: [{ id: "ui", workspaceDir: "libs/ui" }],
       }),
     ).toThrow(/Artifact sync validation failed in docs host\./);
   });

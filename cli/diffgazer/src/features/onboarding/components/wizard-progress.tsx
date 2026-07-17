@@ -1,3 +1,4 @@
+import { getOnboardingProgressLabel } from "@diffgazer/core/onboarding";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { useTheme } from "../../../theme/provider";
@@ -5,10 +6,23 @@ import { useTheme } from "../../../theme/provider";
 interface WizardProgressProps {
   steps: string[];
   currentStep: number;
+  compact?: boolean;
 }
 
-export function WizardProgress({ steps, currentStep }: WizardProgressProps): ReactElement {
+export function WizardProgress({
+  steps,
+  currentStep,
+  compact = false,
+}: WizardProgressProps): ReactElement {
   const { tokens } = useTheme();
+
+  if (compact) {
+    return (
+      <Text color={tokens.accent} bold>
+        [○] {getOnboardingProgressLabel(currentStep)}
+      </Text>
+    );
+  }
 
   return (
     <Box gap={2}>

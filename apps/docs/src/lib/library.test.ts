@@ -5,7 +5,11 @@ import { render, screen } from "@testing-library/react";
 import { createElement, Suspense } from "react";
 import { describe, expect, it } from "vitest";
 import { demoLoaders } from "@/generated/demo-loaders";
-import { getConsumptionMetadata } from "@/lib/consumption-metadata";
+import {
+  getConsumptionMetadata,
+  HOSTED_REGISTRY_GATE_NOTE,
+  PUBLISH_GATED,
+} from "@/lib/consumption-metadata";
 import {
   getDocsLibraryConfig,
   getInstallCommand,
@@ -623,5 +627,33 @@ describe("docs-library source path mapping", () => {
     for (const readme of [rootReadme, uiReadme, keysReadme, cliReadme]) {
       expect(readme).toMatch(/publish-gated|not yet published to npm/);
     }
+  });
+
+  it("keeps the keys README hosted-registry command behind the publish gate", () => {
+    const keysReadme = readRepoFile("libs/keys/README.md");
+    const installation = readRepoFile("libs/keys/docs/content/getting-started/installation.mdx");
+    const shadcnCommand = "npx shadcn add https://r.b4r7.dev/r/keys/navigation.json";
+
+    if (PUBLISH_GATED) {
+      expect(keysReadme).toContain(HOSTED_REGISTRY_GATE_NOTE);
+      expect(installation).toContain(HOSTED_REGISTRY_GATE_NOTE);
+      expect(keysReadme).not.toContain(shadcnCommand);
+      expect(installation).not.toContain(shadcnCommand);
+      return;
+    }
+
+    expect(keysReadme).toContain(shadcnCommand);
+    expect(installation).toContain(shadcnCommand);
+  });
+
+  it("keeps the publish gate as one exported boolean declaration", () => {
+    const source = readRepoFile("apps/docs/src/lib/consumption-metadata.ts");
+    const declarations = source.match(
+      /^export[ \t]+const[ \t]+PUBLISH_GATED[ \t]*=[ \t]*(true|false)[ \t]*;[ \t]*$/gm,
+    );
+
+    expect(declarations?.map((declaration) => declaration.trim())).toEqual([
+      `export const PUBLISH_GATED = ${PUBLISH_GATED};`,
+    ]);
   });
 });

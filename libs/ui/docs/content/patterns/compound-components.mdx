@@ -227,7 +227,7 @@ toast.success("Saved")
 <Toaster position="bottom-right" />
 ```
 
-Place one `Toaster` near the app root. Calls to `toast()`, `toast.success()`, `toast.error()`, `toast.warning()`, `toast.info()`, `toast.loading()`, and `toast.promise()` update the shared store. Error toasts persist until dismissed; loading toasts stay open until updated or dismissed.
+Place one `Toaster` near the app root. Calls to `toast()`, `toast.success()`, `toast.error()`, `toast.warning()`, `toast.info()`, `toast.loading()`, and `toast.promise()` update the shared store. Error and loading toasts persist when `duration` is omitted. A positive explicit duration schedules auto-dismissal.
 
 ## Stepper: direct content detection
 

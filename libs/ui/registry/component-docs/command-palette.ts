@@ -17,7 +17,7 @@ export const commandPaletteDoc: ComponentDoc = {
     {
       title: "Built-in Filtering",
       content:
-        "Items are filtered automatically as you type. Each item matches against its `value` prop (falls back to `id`). Pass `shouldFilter={false}` to disable and handle filtering yourself. Pass a custom `filter` function to override the default case-insensitive includes match. Filtering reads from a deferred copy of the search query so the input stays synchronous during large-list reflows.",
+        "Items are filtered automatically as you type. Each item matches against its `value` prop (falls back to `id`). Pass `shouldFilter={false}` to disable and handle filtering yourself. Pass a custom `filter` function to override the default case-insensitive includes match. Filtering uses the live search value, including the controlled `search` prop when provided.",
     },
     {
       title: "Composition Contract",
@@ -78,10 +78,9 @@ export const commandPaletteDoc: ComponentDoc = {
   ],
   keyboard: {
     description:
-      "Arrow keys navigate items (with wrapping), Enter activates the highlighted item. Escape clears search first, then closes the palette. Hovering (mousemove) over an item also moves the highlight, so mouse and keyboard share a single selection model. Navigation is handled internally via @diffgazer/keys's useNavigation hook.",
+      "Arrow keys navigate items (with wrapping), Enter activates the highlighted item. Home and End retain their native search-input editing behavior and do not move the highlight. Escape clears search first, then closes the palette. Hovering (mousemove) over an item also moves the highlight, so mouse and keyboard share a single selection model. Navigation is handled internally via @diffgazer/keys's useNavigation hook.",
     keys: [
       { keys: "ArrowUp / ArrowDown", action: "Moves highlight through enabled visible items." },
-      { keys: "Home / End", action: "Moves highlight to the first or last enabled visible item." },
       { keys: "Enter", action: "Activates the highlighted item." },
       { keys: "Escape", action: "Clears the search query first, then closes the palette." },
     ],
@@ -262,6 +261,12 @@ export const commandPaletteDoc: ComponentDoc = {
       },
     },
     CommandPaletteInput: {
+      label: {
+        type: "string",
+        required: false,
+        defaultValue: '"Command search"',
+        description: "Accessible label for the search input.",
+      },
       placeholder: {
         type: "string",
         required: false,

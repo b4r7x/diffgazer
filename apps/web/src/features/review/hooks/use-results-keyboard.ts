@@ -173,6 +173,7 @@ export function useReviewResultsKeyboard({
     tabCycleBoundary: getMainContent,
     focus: {
       autoFocus: true,
+      preventScroll: false,
       targets: {
         filters: {
           container: filterRef,
@@ -310,7 +311,7 @@ export function useReviewResultsKeyboard({
           fixPlan: selectedIssue.fixPlan.map((step, index) => ({ ...step, step: index })),
         };
 
-  const { focusedStepIndex } = useReviewDetailsTabKeyboard({
+  const { focusedStepIndex, setFocusedStepIndex } = useReviewDetailsTabKeyboard({
     scope: REVIEW_SCOPE,
     enabled: focusZone === "details",
     selectedIssue: selectedIssueForKeyboard,
@@ -363,5 +364,6 @@ export function useReviewResultsKeyboard({
     completedSteps,
     handleToggleStep,
     focusedStepIndex,
+    setFocusedStepIndex,
   };
 }

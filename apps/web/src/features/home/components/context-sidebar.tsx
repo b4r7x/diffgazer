@@ -7,17 +7,28 @@ interface ContextSidebarProps {
   context: ContextInfo;
   isTrusted: boolean;
   projectPath?: string;
+  pending?: boolean;
 }
 
-export function ContextSidebar({ context, isTrusted, projectPath }: ContextSidebarProps) {
+export function ContextSidebar({
+  context,
+  isTrusted,
+  projectPath,
+  pending = false,
+}: ContextSidebarProps) {
   const navigate = useNavigate();
+
+  const navigateUnlessPending = (to: "/settings/providers" | "/settings/trust-permissions") => {
+    if (pending) return;
+    navigate({ to });
+  };
 
   return (
     <Panel className="w-full max-w-md lg:w-80 h-fit shrink-0">
       <Panel.Header>
         <Panel.Title>Context</Panel.Title>
       </Panel.Header>
-      <Panel.Content>
+      <Panel.Content inert={pending || undefined}>
         {isTrusted ? (
           context.trustedDir && (
             <InfoField label="Trusted" color="blue">
@@ -28,7 +39,7 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
           <InfoField
             label="Not trusted"
             color="yellow"
-            onClick={() => navigate({ to: "/settings/trust-permissions" })}
+            onClick={() => navigateUnlessPending("/settings/trust-permissions")}
             ariaLabel="Grant trust permissions"
           >
             <span className="break-all font-mono opacity-90">{projectPath}</span>
@@ -39,7 +50,7 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
           <InfoField
             label="Provider"
             color="violet"
-            onClick={() => navigate({ to: "/settings/providers" })}
+            onClick={() => navigateUnlessPending("/settings/providers")}
             ariaLabel="Configure provider settings"
           >
             <span className="opacity-90">

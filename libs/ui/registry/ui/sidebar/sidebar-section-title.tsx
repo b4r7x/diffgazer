@@ -7,6 +7,7 @@ import {
   type MouseEventHandler,
   type ReactNode,
   type Ref,
+  useLayoutEffect,
 } from "react";
 import { cn } from "@/lib/utils";
 import { Chevron } from "../icons/chevron";
@@ -48,15 +49,23 @@ export function SidebarSectionTitle({
   onClick,
   handle,
   headingLevel = "h3",
+  id,
   ...rest
 }: SidebarSectionTitleProps) {
-  const { collapsible, open, onToggle, titleId, panelId } = useSidebarSectionContext();
+  const { collapsible, open, onToggle, titleId, registerTitle, unregisterTitle, panelId } =
+    useSidebarSectionContext();
   const { variant } = useSidebarChrome();
   const isTree = variant === "tree";
   const defaultHandle = <Chevron open={open} size="sm" />;
   const resolvedHandle = handle === undefined ? defaultHandle : handle;
   const headingClassName = isTree ? TREE_HEADING_CLASS_NAME : HEADING_CLASS_NAME;
   const isInteractive = collapsible || !!onClick;
+  const resolvedTitleId = id ?? titleId;
+
+  useLayoutEffect(() => {
+    registerTitle(resolvedTitleId);
+    return () => unregisterTitle(resolvedTitleId);
+  }, [resolvedTitleId, registerTitle, unregisterTitle]);
 
   if (isInteractive) {
     const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
@@ -66,7 +75,7 @@ export function SidebarSectionTitle({
 
     return createElement(
       headingLevel,
-      { ref, id: titleId, className: cn(headingClassName, className) },
+      { ref, id: resolvedTitleId, className: cn(headingClassName, className) },
       <button
         {...(rest as ComponentProps<"button">)}
         type="button"
@@ -91,7 +100,7 @@ export function SidebarSectionTitle({
 
   return createElement(
     headingLevel,
-    { ...rest, ref, id: titleId, className: cn(headingClassName, className) },
+    { ...rest, ref, id: resolvedTitleId, className: cn(headingClassName, className) },
     children,
   );
 }

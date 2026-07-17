@@ -6,7 +6,7 @@ import { useState } from "react";
 function App() {
   const [modalOpen, setModalOpen] = useState(false);
 
-  useKey("ctrl+k", () => setModalOpen(true));
+  useKey("ctrl+k", () => setModalOpen(true), { preventDefault: true });
 
   return (
     <div>

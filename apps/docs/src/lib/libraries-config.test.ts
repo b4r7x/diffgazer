@@ -29,4 +29,34 @@ describe("DocsLibrariesConfigSchema", () => {
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.path).toEqual(["primaryLibraryId"]);
   });
+
+  it("rejects a config whose primary library is disabled", () => {
+    const result = DocsLibrariesConfigSchema.safeParse({
+      primaryLibraryId: "ui",
+      libraries: [{ ...baseLibrary, enabled: false }],
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toContainEqual(
+      expect.objectContaining({
+        path: ["primaryLibraryId"],
+        message: "primaryLibraryId must refer to an enabled library",
+      }),
+    );
+  });
+
+  it("rejects duplicate library ids", () => {
+    const result = DocsLibrariesConfigSchema.safeParse({
+      primaryLibraryId: "ui",
+      libraries: [baseLibrary, { ...baseLibrary, displayName: "Duplicate UI" }],
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toContainEqual(
+      expect.objectContaining({
+        path: ["libraries"],
+        message: "libraries[].id values must be unique",
+      }),
+    );
+  });
 });

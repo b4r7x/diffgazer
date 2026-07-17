@@ -21,9 +21,12 @@ export interface UseReviewCompletionOptions {
 
 export interface UseReviewCompletionResult {
   isCompleting: boolean;
+  completedAt: Date | null;
   skipDelay: () => void;
   reset: () => void;
 }
+
+type CompletionState = { status: "idle" } | { status: "delaying" | "completed"; completedAt: Date };
 
 export function useReviewCompletion({
   isStreaming,
@@ -35,9 +38,9 @@ export function useReviewCompletion({
   onComplete,
   onStreamComplete,
 }: UseReviewCompletionOptions): UseReviewCompletionResult {
-  const [isCompleting, setIsCompleting] = useState(false);
+  const [completion, setCompletion] = useState<CompletionState>({ status: "idle" });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevIsStreamingRef = useRef(false);
+  const handledCompletionRef = useRef(false);
   const getCompletionDelay = useEffectEvent(() => {
     const reportStep = steps.find((s) => s.id === "report");
     return reportStep?.status === "completed"
@@ -63,20 +66,17 @@ export function useReviewCompletion({
   }, []);
 
   useEffect(() => {
-    const wasStreaming = prevIsStreamingRef.current;
-    prevIsStreamingRef.current = isStreaming;
-
-    const didFinishStream =
-      wasStreaming &&
+    const canComplete =
       !isStreaming &&
       hasStreamed &&
       isComplete &&
       !error &&
       errorCode !== ReviewErrorCode.CANCELLED;
 
-    if (didFinishStream) {
+    if (canComplete && !handledCompletionRef.current) {
+      handledCompletionRef.current = true;
+      setCompletion({ status: "delaying", completedAt: new Date() });
       onStreamComplete?.();
-      setIsCompleting(true);
       const delayMs = getCompletionDelay();
 
       if (timerRef.current) {
@@ -85,10 +85,16 @@ export function useReviewCompletion({
       }
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
-        setIsCompleting(false);
+        setCompletion((current) =>
+          current.status === "delaying" ? { ...current, status: "completed" } : current,
+        );
         emitComplete();
       }, delayMs);
       return;
+    }
+
+    if (!isComplete || !hasStreamed) {
+      handledCompletionRef.current = false;
     }
 
     if (
@@ -101,21 +107,28 @@ export function useReviewCompletion({
     ) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
-      setIsCompleting(false);
+      setCompletion({ status: "idle" });
     }
   }, [isStreaming, isComplete, error, errorCode, hasStreamed, onStreamComplete]);
 
   function skipDelay() {
     clearTimer();
-    setIsCompleting(false);
+    setCompletion((current) =>
+      current.status === "delaying" ? { ...current, status: "completed" } : current,
+    );
     onComplete();
   }
 
   function reset() {
     clearTimer();
-    prevIsStreamingRef.current = false;
-    setIsCompleting(false);
+    handledCompletionRef.current = false;
+    setCompletion({ status: "idle" });
   }
 
-  return { isCompleting, skipDelay, reset };
+  return {
+    isCompleting: completion.status === "delaying",
+    completedAt: completion.status === "idle" ? null : completion.completedAt,
+    skipDelay,
+    reset,
+  };
 }

@@ -22,7 +22,7 @@ export function TimelineList({
   onBoundaryReached,
   className,
 }: TimelineListProps) {
-  const handleSelect = (id: string | null) => {
+  const handleHighlightChange = (id: string | null) => {
     if (id === null) return;
     onSelect(id);
   };
@@ -40,8 +40,7 @@ export function TimelineList({
       }}
       selectedId={selectedId}
       highlighted={keyboardEnabled ? selectedId : null}
-      onSelect={handleSelect}
-      onHighlightChange={handleSelect}
+      onHighlightChange={handleHighlightChange}
       onNavigationBoundaryReached={(direction) => {
         onBoundaryReached?.(toVerticalBoundaryDirection(direction));
       }}

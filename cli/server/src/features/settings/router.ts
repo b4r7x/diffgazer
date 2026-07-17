@@ -7,7 +7,8 @@ import { getStore } from "../../shared/lib/config/store.js";
 import { safeTokenMatch } from "../../shared/lib/crypto.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
-import { cancelSessionsForProject } from "../../shared/lib/session-registry.js";
+import { storeErrorStatus } from "../../shared/lib/http/store-error.js";
+import { revokeProjectSessions } from "../../shared/lib/session-registry.js";
 import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
 import { SettingsSchema } from "./schemas.js";
 
@@ -36,7 +37,12 @@ settingsRouter.post(
     const patch = c.req.valid("json");
     const result = await getStore().updateSettings(patch);
     if (!result.ok) {
-      return errorResponse(c, result.error.message, result.error.code, 400);
+      return errorResponse(
+        c,
+        result.error.message,
+        result.error.code,
+        storeErrorStatus(result.error.code),
+      );
     }
     return c.json(result.value);
   },
@@ -86,10 +92,15 @@ settingsRouter.post(
 
     const result = await getStore().saveTrust(trustConfig);
     if (!result.ok) {
-      return errorResponse(c, result.error.message, result.error.code, 400);
+      return errorResponse(
+        c,
+        result.error.message,
+        result.error.code,
+        storeErrorStatus(result.error.code),
+      );
     }
     if (existingTrust?.capabilities.readFiles && !trustConfig.capabilities.readFiles) {
-      cancelSessionsForProject(projectRoot, {
+      revokeProjectSessions(projectRoot, {
         message: "Review session cancelled because repository trust was revoked.",
         reason: "trust_revoked",
       });
@@ -106,10 +117,15 @@ settingsRouter.delete("/trust", requireTrustRouteToken, async (c) => {
   }
   const result = await getStore().removeTrust(project.projectId);
   if (!result.ok) {
-    return errorResponse(c, result.error.message, result.error.code, 400);
+    return errorResponse(
+      c,
+      result.error.message,
+      result.error.code,
+      storeErrorStatus(result.error.code),
+    );
   }
   if (result.value) {
-    cancelSessionsForProject(projectRoot, {
+    revokeProjectSessions(projectRoot, {
       message: "Review session cancelled because repository trust was revoked.",
       reason: "trust_revoked",
     });

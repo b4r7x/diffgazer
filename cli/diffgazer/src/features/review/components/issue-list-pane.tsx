@@ -21,6 +21,7 @@ export interface IssueListPaneProps {
   onHighlightChange?: (id: string) => void;
   isActive?: boolean;
   height?: number;
+  contentWidth: number;
   severityFilter: UISeverityFilter;
   onSeverityFilterChange: (filter: UISeverityFilter) => void;
   subZone?: IssueListSubZone;
@@ -35,6 +36,7 @@ export function IssueListPane({
   onHighlightChange,
   isActive = false,
   height = 15,
+  contentWidth,
   severityFilter,
   onSeverityFilterChange,
   subZone: externalSubZone,
@@ -45,6 +47,7 @@ export function IssueListPane({
   const [trackedIssueCount, setTrackedIssueCount] = useState(issues.length);
   const [internalSubZone, setInternalSubZone] = useState<IssueListSubZone>("issues");
   const subZone = externalSubZone ?? internalSubZone;
+  const effectiveSubZone = issues.length === 0 ? "filter" : subZone;
   const setSubZone = onSubZoneChange ?? setInternalSubZone;
   const counts = calculateSeverityCounts(allIssues);
 
@@ -55,18 +58,11 @@ export function IssueListPane({
 
   useInput(
     (input, key) => {
-      if (subZone === "filter") {
-        if (key.downArrow) {
+      if (effectiveSubZone === "filter") {
+        if (key.downArrow && issues.length > 0) {
           setSubZone("issues");
         }
         // Left/right/enter/space handled by SeverityFilterGroup.
-        return;
-      }
-
-      if (issues.length === 0) {
-        if (key.upArrow) {
-          setSubZone("filter");
-        }
         return;
       }
 
@@ -114,7 +110,7 @@ export function IssueListPane({
             currentFilter={severityFilter}
             onFilterChange={onSeverityFilterChange}
             issueCounts={counts}
-            isActive={isActive && subZone === "filter"}
+            isActive={isActive && effectiveSubZone === "filter"}
           />
         </Box>
         <Text color={tokens.muted}>No issues match filter</Text>
@@ -135,7 +131,7 @@ export function IssueListPane({
           currentFilter={severityFilter}
           onFilterChange={onSeverityFilterChange}
           issueCounts={counts}
-          isActive={isActive && subZone === "filter"}
+          isActive={isActive && effectiveSubZone === "filter"}
         />
       </Box>
       <Box flexDirection="column">
@@ -152,8 +148,9 @@ export function IssueListPane({
                   severity={issue.severity}
                   filePath={issue.file}
                   title={issue.title}
+                  contentWidth={contentWidth}
                   isHighlighted={
-                    isActive && subZone === "issues" && absoluteIndex === highlightedIndex
+                    isActive && effectiveSubZone === "issues" && absoluteIndex === highlightedIndex
                   }
                 />
               </Box>

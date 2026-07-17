@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STEP_LABELS, STEP_TITLES } from "./steps.js";
+import { getOnboardingProgressLabel, STEP_LABELS, STEP_TITLES } from "./steps.js";
 import { WIZARD_STEPS } from "./types.js";
 
 describe("onboarding step copy", () => {
@@ -15,5 +15,11 @@ describe("onboarding step copy", () => {
     expect(STEP_TITLES.provider).toBe("AI Provider");
     expect(STEP_LABELS.model).toBe("Model");
     expect(STEP_LABELS.execution).toBe("Execution");
+  });
+
+  it("formats a compact current-step label without splitting step names", () => {
+    expect(getOnboardingProgressLabel(0)).toBe("Step 1 of 6: Storage");
+    expect(getOnboardingProgressLabel(2)).toBe("Step 3 of 6: API Key");
+    expect(getOnboardingProgressLabel(5)).toBe("Step 6 of 6: Execution");
   });
 });

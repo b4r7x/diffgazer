@@ -12,6 +12,14 @@ export interface CreateHighlighterOptions {
 
 export type DocsHighlighter = Awaited<ReturnType<typeof createHighlighterCore>>;
 
+/** Maps supported registry source extensions to their Shiki grammar. */
+export function getSourceHighlightLanguage(path: string): HighlightLanguage {
+  const lowerPath = path.toLowerCase();
+  if (lowerPath.endsWith(".css")) return "css";
+  if (lowerPath.endsWith(".ts")) return "typescript";
+  return "tsx";
+}
+
 function tokensToCodeBlockLines(lines: ThemedToken[][]): CodeBlockLine[] {
   return lines.map((lineTokens, i) => ({
     number: i + 1,
@@ -52,4 +60,16 @@ export function highlightCode(
     theme: themeName,
   });
   return tokensToCodeBlockLines(result);
+}
+
+export function highlightSourceFile(
+  highlighter: DocsHighlighter,
+  path: string,
+  raw: string,
+  themeName: string,
+): { raw: string; highlighted: CodeBlockLine[] } {
+  return {
+    raw,
+    highlighted: highlightCode(highlighter, raw, getSourceHighlightLanguage(path), themeName),
+  };
 }

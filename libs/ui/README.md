@@ -12,7 +12,7 @@ Choose the path that matches whether your app should own copied source or consum
 |------|-------------|-----------|
 | Manual copy / shadcn (future) | `npx shadcn add https://r.b4r7.dev/r/ui/button.json` — gated until the hosted registry is live | Import copied project-root `styles/styles.css` |
 | `dgadd` CLI | `pnpm exec dgadd add ui/button` | Import copied `src/styles/styles.css` |
-| npm package | `npm install @diffgazer/ui @diffgazer/keys` | Import `@diffgazer/ui/sources.css` and `@diffgazer/ui/styles.css` |
+| Runtime npm package (local tarball) | Install locally packed `@diffgazer/ui` and `@diffgazer/keys` tarballs | Import `@diffgazer/ui/sources.css` and `@diffgazer/ui/styles.css` |
 
 ### Copy-first registry mode
 
@@ -33,13 +33,11 @@ Copied components expect:
 
 For keyboard behavior, `pnpm exec dgadd add ui/menu --integration copy` copies standalone hooks. `pnpm exec dgadd add ui/menu --integration keys` rewrites imports to `@diffgazer/keys` and installs that runtime package.
 
-### Runtime package mode
+### Runtime package mode from local tarballs
 
 Use this when you want versioned package imports and do not need to customize source:
 
-```bash
-npm install @diffgazer/ui @diffgazer/keys
-```
+Follow the canonical [local build, pack, and tarball installation procedure](https://github.com/b4r7x/diffgazer/blob/main/PACKAGE_GOVERNANCE.md#local-runtime-package-installation-before-publication). Public npm-registry installation examples stay gated until `npm view @diffgazer/ui version` and `npm view @diffgazer/keys version` both succeed.
 
 Configure Tailwind CSS v4 from the CSS file that imports Tailwind:
 
@@ -67,9 +65,19 @@ The hosted registry at `https://r.b4r7.dev` is not yet live. After publication (
 npx shadcn add https://r.b4r7.dev/r/ui/button.json
 ```
 
-Until then, use the `dgadd` CLI (`pnpm exec dgadd add ui/button`) or the runtime package (`npm install @diffgazer/ui`).
+Until then, run `dgadd` from a local checkout (`pnpm exec dgadd add ui/button`) or use the
+[local runtime package procedure](https://github.com/b4r7x/diffgazer/blob/main/PACKAGE_GOVERNANCE.md#local-runtime-package-installation-before-publication).
 
-To copy source without the shadcn CLI, use the source files at `https://github.com/b4r7x/diffgazer/tree/main/libs/ui/registry/ui/button`.
+For a dependency-closed local archive, open the Button docs page, choose **Copy Full Source**,
+save the copied registry-item JSON as `button.registry.json`, and run:
+
+```bash
+npx shadcn add ./button.registry.json
+```
+
+The archive includes Button's transitive UI and keys files and applies the same local-import
+rewrites as `dgadd --integration copy`. The GitHub component folder alone is not a complete copy
+bundle.
 
 Files install into your configured `components/ui` directory. Configure the `@ui` registry namespace in `components.json`; see docs for setup.
 
@@ -92,10 +100,19 @@ npm install figlet
 
 Without `figlet` installed, importing `@diffgazer/ui/components/logo/figlet` still succeeds. The failure surfaces at call time: `getFigletText()` rejects with an error whose message mentions the `optional peer dependency 'figlet'`. All other `@diffgazer/ui` entries work unchanged.
 
-`lowlight` is an optional peer dependency used only for syntax highlighting in `./components/code-block`. The component loads `lowlight` lazily, so install it only if you render highlighted code:
+`lowlight` is an optional peer dependency used only with `./components/code-block/highlight`. The base `./components/code-block` entry does not need `lowlight`. Install it when you use the highlight entry, create the language set you need, and pass the instance to `CodeBlockHighlight`:
 
 ```bash
 npm install lowlight
+```
+
+```tsx
+import { CodeBlockHighlight } from "@diffgazer/ui/components/code-block/highlight"
+import { common, createLowlight } from "lowlight"
+
+const lowlight = createLowlight(common)
+
+<CodeBlockHighlight code="const value = 1" language="typescript" lowlight={lowlight} />
 ```
 
 ### Optional peers by entry
@@ -105,7 +122,7 @@ Only install the optional peer an entry needs:
 | Optional peer | Entries that need it |
 | --- | --- |
 | `figlet` | `./components/logo/figlet` (lazy; the default `./components/logo` does not need it) |
-| `lowlight` | `./components/code-block` (lazy) |
+| `lowlight` | `./components/code-block/highlight` (caller-created instance) |
 
 ## Entries
 
@@ -141,7 +158,11 @@ field. Import the specific subpath you need (listed below); `exports`-aware tool
 - React DOM `>=19.2.0`
 - `@diffgazer/keys >= 0.2.0` (required — keyboard-backed entries import it at module top; see Keyboard Dependencies)
 - `figlet >= 1.10.0` (optional — only `./components/logo/figlet`)
-- `lowlight >= 3.0.0` (optional — only `./components/code-block`)
+- `lowlight >= 3.0.0` (optional — only `./components/code-block/highlight`)
+
+`pnpm validate:release-docs` checks that this README plus the package and public-docs changelog
+entries match the `@diffgazer/keys` peer floor in `package.json`. It also imports the public
+FloatingPanel subpath and checks the runtime symbols named in the 0.2.0 release note.
 
 ## Versioning and Migration
 
@@ -154,6 +175,11 @@ pnpm exec dgadd add ui/button --overwrite
 
 Review copied source in your own git diff before keeping updates.
 
+When an overwrite retires or renames registry files, `dgadd` removes pristine files that no
+installed item still uses. Shared files are retained for their remaining owners. Locally modified
+retired files are preserved and remain explicitly tracked as retired drift, so `dgadd diff` shows
+them and `dgadd remove <item> --force` can remove them later.
+
 ## Supported browsers
 
 `@diffgazer/ui` ships modern CSS and inherits the Tailwind CSS v4 baseline. The supported floor is:
@@ -165,7 +191,7 @@ Review copied source in your own git diff before keeping updates.
 | Safari  | 16.4            |
 | Firefox | 128             |
 
-The declared `browserslist` field in `package.json` matches this floor. Bundlers that read `browserslist` (esbuild, Lightning CSS, swc, browserslist-loaded postcss plugins) target the same versions automatically.
+The declared `browserslist` field in `package.json` matches this floor. Lightning CSS, SWC, and PostCSS integrations target it when they are configured to discover browserslist from the consuming app or package root. esbuild does not read browserslist automatically and defaults to `esnext`; configure its `target` explicitly or use an integration that translates browserslist targets for it.
 
 ### Cosmetic degradations within the supported floor
 

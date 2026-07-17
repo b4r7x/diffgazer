@@ -18,7 +18,7 @@ export const iconsDoc: ComponentDoc = {
     {
       title: "Accessibility",
       content:
-        'All icons render with aria-hidden="true" since they are decorative. Always pair with a text label for screen readers.',
+        'Chevron defaults to `aria-hidden="true"` for decorative use. For a meaningful standalone icon, set `aria-hidden={false}`, `role="img"`, and an accessible name such as `aria-label`.',
     },
     {
       title: "Reusability",

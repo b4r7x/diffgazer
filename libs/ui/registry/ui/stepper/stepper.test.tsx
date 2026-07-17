@@ -221,6 +221,25 @@ describe("Stepper", () => {
     expect(screen.getByRole("button", { name: /Step 2/ })).toHaveTextContent("WORK");
   });
 
+  it.each([
+    "ascii",
+    "numbered",
+    "bullet",
+    "progress",
+  ] as const)("uses provided statusLabels as the %s indicator's screen-reader text", (variant) => {
+    render(
+      <Stepper variant={variant}>
+        <Stepper.Step stepId="s1" status="completed">
+          <Stepper.Trigger statusLabels={{ completed: "Succeeded:" }}>Step 1</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    );
+
+    const trigger = screen.getByRole("button", { name: /Step 1/ });
+    expect(trigger).toHaveAccessibleName(/Succeeded:.*Step 1/);
+    expect(trigger).not.toHaveAccessibleName(/Completed:/);
+  });
+
   it("uses provided statusLabels for substep fallback text", () => {
     render(
       <Stepper defaultExpandedIds={["s1"]}>

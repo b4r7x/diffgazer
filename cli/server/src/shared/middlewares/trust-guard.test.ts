@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api/protocol";
@@ -40,7 +40,7 @@ describe("requireRepoAccess", () => {
 
   beforeEach(() => {
     diffgazerHome = mkdtempSync(join(tmpdir(), "diffgazer-trust-home-"));
-    projectRoot = mkdtempSync(join(tmpdir(), "diffgazer-trust-project-"));
+    projectRoot = realpathSync.native(mkdtempSync(join(tmpdir(), "diffgazer-trust-project-")));
     mkdirSync(join(projectRoot, ".git"));
     process.env.DIFFGAZER_HOME = diffgazerHome;
     process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT = "1";

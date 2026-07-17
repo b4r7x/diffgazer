@@ -218,6 +218,35 @@ describe("DiffView", () => {
     expect(figure).toHaveAttribute("aria-roledescription", "diff");
   });
 
+  it("uses an explicit aria-label for a path-bearing diff without hiding its caption", async () => {
+    const { container } = render(<DiffView diff={ONE_HUNK} aria-label="Pull request changes" />);
+
+    const figure = screen.getByRole("figure", { name: "Pull request changes" });
+    expect(figure).toHaveAttribute("aria-label", "Pull request changes");
+    expect(figure).not.toHaveAttribute("aria-labelledby");
+    expect(getCaption(container)).toHaveTextContent("src/app.ts");
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("forwards both external names while aria-labelledby names a path-bearing diff", async () => {
+    const { container } = render(
+      <>
+        <span id="reviewed-diff-name">Reviewed changes</span>
+        <DiffView
+          diff={ONE_HUNK}
+          aria-label="Pull request changes"
+          aria-labelledby="reviewed-diff-name"
+        />
+      </>,
+    );
+
+    const figure = screen.getByRole("figure", { name: "Reviewed changes" });
+    expect(figure).toHaveAttribute("aria-labelledby", "reviewed-diff-name");
+    expect(figure).toHaveAttribute("aria-label", "Pull request changes");
+    expect(getCaption(container)).toHaveTextContent("src/app.ts");
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
   it("forwards refs to the diff figure and uses `label` as the accessible name when no figcaption renders", () => {
     // A diff without paths suppresses the figcaption, so the `label` prop becomes
     // the figure's aria-label (the accessible-name contract under test).
@@ -237,14 +266,70 @@ describe("DiffView", () => {
     expect(screen.getByText("a.ts → b.ts")).toBeInTheDocument();
   });
 
+  it("renders a clean filename caption for timestamped unified-diff headers", () => {
+    const patch = [
+      "--- a/src/app.ts\t2026-07-15 09:30:00.000000000 +0200",
+      "+++ b/src/app.ts\t2026-07-15 09:31:00.000000000 +0200",
+      "@@ -1 +1 @@",
+      "-before",
+      "+after",
+    ].join("\n");
+
+    render(<DiffView patch={patch} />);
+
+    expect(screen.getByText("src/app.ts", { selector: "figcaption" })).toHaveTextContent(
+      /^src\/app\.ts$/,
+    );
+  });
+
   it("shows 'No changes' when diff has no hunks", () => {
     render(<DiffView diff={NO_CHANGES} />);
-    expect(screen.getByRole("status")).toHaveTextContent("No changes");
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("No changes");
+    expect(status).not.toHaveClass("sr-only");
+  });
+
+  it("retains the empty status owner while a nonempty diff becomes empty", () => {
+    const { container, rerender } = render(<DiffView diff={ONE_HUNK} />);
+    const status = screen.getByRole("status");
+    const observer = new MutationObserver(() => {});
+    observer.observe(status, { childList: true, characterData: true, subtree: true });
+
+    expect(status).toHaveClass("sr-only");
+    expect(status).toBeEmptyDOMElement();
+
+    rerender(<DiffView diff={NO_CHANGES} />);
+    const mutations = observer.takeRecords();
+    observer.disconnect();
+
+    expect(container.querySelector('[data-slot="diff-view-empty"]')).toBe(status);
+    expect(status).not.toHaveClass("sr-only");
+    expect(status).toHaveTextContent("No changes");
+    expect(mutations.some((mutation) => mutation.target === status)).toBe(true);
+  });
+
+  it("renders EOF newline-only changes instead of the empty state", () => {
+    render(<DiffView before={"alpha\n"} after="alpha" />);
+
+    expect(screen.queryByText("No changes")).not.toBeInTheDocument();
+    expect(screen.getByText("\\ No newline at end of file")).toBeInTheDocument();
   });
 
   it("renders hunk headers with correct format", () => {
     render(<DiffView diff={ONE_HUNK} />);
     expect(screen.getByText("@@ -1,3 +1,4 @@ function main")).toBeInTheDocument();
+  });
+
+  it.each([
+    { before: "", after: "created\n", header: "@@ -0,0 +1,1 @@" },
+    { before: "deleted\n", after: "", header: "@@ -1,1 +0,0 @@" },
+  ])("renders a zero-based absent side in creation and deletion headers", ({
+    before,
+    after,
+    header,
+  }) => {
+    render(<DiffView before={before} after={after} />);
+    expect(screen.getByText(header)).toBeInTheDocument();
   });
 
   it("renders added and removed line content (word-diff may split text)", () => {
@@ -397,6 +482,7 @@ describe("DiffView", () => {
     const [addedHunk] = added.hunks;
     if (!addedHunk) throw new Error("expected added hunk");
     expect(addedHunk.oldCount).toBe(0);
+    expect(addedHunk.oldStart).toBe(0);
     expect(addedHunk.newCount).toBe(1);
     expect(addedHunk.changes).toEqual([
       { type: "add", content: "alpha", oldLine: null, newLine: 1 },
@@ -407,6 +493,7 @@ describe("DiffView", () => {
     if (!removedHunk) throw new Error("expected removed hunk");
     expect(removedHunk.oldCount).toBe(1);
     expect(removedHunk.newCount).toBe(0);
+    expect(removedHunk.newStart).toBe(0);
     expect(removedHunk.changes).toEqual([
       { type: "remove", content: "alpha", oldLine: 1, newLine: null },
     ]);

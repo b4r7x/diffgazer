@@ -1,6 +1,16 @@
-import { type DetailsEmptyKind, getDetailsEmptyCopy } from "@diffgazer/core/review";
+import {
+  type DetailsEmptyKind,
+  getDetailsEmptyCopy,
+  type IssueDetailsPresentation,
+  toIssueDetailsPresentation,
+} from "@diffgazer/core/review";
 import { isIssueTab, type IssueTab as TabId } from "@diffgazer/core/schemas/presentation";
-import type { EvidenceRef, ReviewIssue } from "@diffgazer/core/schemas/review";
+import {
+  type EvidencePresentation,
+  type EvidenceRef,
+  type ReviewIssue,
+  toEvidencePresentation,
+} from "@diffgazer/core/schemas/review";
 import { CodeBlock, type CodeBlockLineState } from "@diffgazer/ui/components/code-block";
 import { DiffView, parseDiff } from "@diffgazer/ui/components/diff-view";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
@@ -23,6 +33,7 @@ export interface IssueDetailsPaneProps {
   completedSteps: Set<number>;
   onToggleStep: (step: number) => void;
   focusedStepIndex?: number | null;
+  onFocusedStepIndexChange?: (stepIndex: number) => void;
   paneRef?: Ref<HTMLElement>;
   scrollAreaRef?: Ref<HTMLDivElement>;
   isFocused: boolean;
@@ -38,6 +49,7 @@ export function IssueDetailsPane({
   completedSteps,
   onToggleStep,
   focusedStepIndex,
+  onFocusedStepIndexChange,
   paneRef,
   scrollAreaRef,
   isFocused,
@@ -76,6 +88,8 @@ export function IssueDetailsPane({
     );
   }
 
+  const presentation = toIssueDetailsPresentation(issue);
+
   return (
     <DetailsPanel paneRef={paneRef} isFocused={isFocused} className={className}>
       <div className="flex flex-1 min-h-0 flex-col px-3">
@@ -101,8 +115,7 @@ export function IssueDetailsPane({
             <IssueHeader
               title={issue.title}
               severity={issue.severity}
-              file={issue.file}
-              line={issue.line_start}
+              presentation={presentation}
             />
 
             <TabsContent value="details" tabIndex={-1} className="mt-0">
@@ -111,6 +124,8 @@ export function IssueDetailsPane({
                 completedSteps={completedSteps}
                 onToggleStep={onToggleStep}
                 focusedStepIndex={focusedStepIndex}
+                onFocusedStepIndexChange={onFocusedStepIndexChange}
+                presentation={presentation}
               />
             </TabsContent>
 
@@ -129,7 +144,11 @@ export function IssueDetailsPane({
 
             {hasPatch && issue.suggested_patch && (
               <TabsContent value="patch" tabIndex={-1} className="mt-0">
-                <PatchTabContent patch={issue.suggested_patch} evidence={issue.evidence} />
+                <PatchTabContent
+                  patch={issue.suggested_patch}
+                  targetFile={issue.file}
+                  evidence={issue.evidence}
+                />
               </TabsContent>
             )}
           </ScrollArea>
@@ -185,24 +204,32 @@ function getPatchLineState(line: string): CodeBlockLineState | undefined {
 
 const DIFF_MARKER_RE = /^(\+|-|@@)/m;
 
-function getPlainSnippetBeforeSide(patch: string, evidence: EvidenceRef[]) {
-  const codeExcerpts = evidence.filter((e) => e.type === "code" && e.excerpt).map((e) => e.excerpt);
-
-  if (codeExcerpts.length === 1) return codeExcerpts[0];
-
+function getPlainSnippetBeforeSide(patch: string, targetFile: string, evidence: EvidenceRef[]) {
   const patchLines = new Set(patch.split(/\r?\n/).filter((line) => line.length > 0));
-  return codeExcerpts.find((excerpt) =>
-    excerpt.split(/\r?\n/).some((line) => patchLines.has(line)),
-  );
+  return evidence
+    .filter(
+      (item): item is EvidenceRef & { type: "code"; file: string } =>
+        item.type === "code" && item.file === targetFile && item.excerpt.length > 0,
+    )
+    .map((item) => item.excerpt)
+    .find((excerpt) => excerpt.split(/\r?\n/).some((line) => patchLines.has(line)));
 }
 
-function PatchTabContent({ patch, evidence }: { patch: string; evidence: EvidenceRef[] }) {
+function PatchTabContent({
+  patch,
+  targetFile,
+  evidence,
+}: {
+  patch: string;
+  targetFile: string;
+  evidence: EvidenceRef[];
+}) {
   if (canRenderStructuredPatch(patch)) {
     return <DiffView patch={patch} label="Suggested patch" />;
   }
 
   if (!DIFF_MARKER_RE.test(patch)) {
-    const original = getPlainSnippetBeforeSide(patch, evidence);
+    const original = getPlainSnippetBeforeSide(patch, targetFile, evidence);
     if (original) {
       return <DiffView before={original} after={patch} label="Suggested patch" />;
     }
@@ -229,40 +256,45 @@ function DetailsTabContent({
   completedSteps,
   onToggleStep,
   focusedStepIndex,
+  onFocusedStepIndexChange,
+  presentation,
 }: {
   issue: ReviewIssue;
   completedSteps: Set<number>;
   onToggleStep: (step: number) => void;
   focusedStepIndex?: number | null;
+  onFocusedStepIndexChange?: (stepIndex: number) => void;
+  presentation: IssueDetailsPresentation;
 }) {
-  const evidenceLines = issue.evidence
-    .filter((e) => e.type === "code" && e.excerpt)
-    .map((e, index) => ({
-      key: index,
-      number: e.range?.start,
-      content: e.excerpt,
-      state: "highlight" as CodeBlockLineState,
-    }));
+  const evidence = issue.evidence.map((item, ordinal) =>
+    toEvidencePresentation(item, issue.file, ordinal),
+  );
+  const codeEvidence = evidence.filter(
+    (item): item is Extract<EvidencePresentation, { kind: "code" }> => item.kind === "code",
+  );
+  const referenceEvidence = evidence.filter((item) => item.kind === "reference");
 
   return (
     <>
       <div className="mb-6">
         <SectionHeader>SYMPTOM</SectionHeader>
         <p className="text-sm leading-relaxed text-foreground/80">{issue.symptom}</p>
-        {evidenceLines.length > 0 && (
-          <div className="mt-2">
-            <CodeBlock label="Evidence">
-              <CodeBlock.Content tabIndex={-1}>
-                {evidenceLines.map((line) => (
-                  <CodeBlock.Line
-                    key={line.key}
-                    number={line.number}
-                    content={line.content}
-                    state={line.state}
-                  />
-                ))}
-              </CodeBlock.Content>
-            </CodeBlock>
+        {codeEvidence.length > 0 && (
+          <section aria-label="Evidence" tabIndex={-1} className="mt-2 space-y-3">
+            {codeEvidence.map((item) => (
+              <CodeEvidence
+                key={`${item.type}:${item.ordinal}`}
+                item={item}
+                endLine={issue.evidence[item.ordinal]?.range?.end}
+              />
+            ))}
+          </section>
+        )}
+        {referenceEvidence.length > 0 && (
+          <div className="mt-3 space-y-3">
+            {referenceEvidence.map((item) => (
+              <EvidenceReference key={`${item.type}:${item.ordinal}`} item={item} />
+            ))}
           </div>
         )}
       </div>
@@ -272,14 +304,15 @@ function DetailsTabContent({
         <p className="text-sm leading-relaxed text-foreground/80">{issue.whyItMatters}</p>
       </div>
 
-      {issue.fixPlan && issue.fixPlan.length > 0 && (
+      {presentation.fixPlan.length > 0 && (
         <div className="mb-6">
           <SectionHeader>FIX PLAN</SectionHeader>
           <FixPlanChecklist
-            steps={issue.fixPlan}
+            steps={presentation.fixPlan}
             completedSteps={completedSteps}
             onToggle={onToggleStep}
             focusedStepIndex={focusedStepIndex}
+            onFocusedIndexChange={onFocusedStepIndexChange}
           />
         </div>
       )}
@@ -302,8 +335,9 @@ function DetailsTabContent({
         <div className="mb-6">
           <SectionHeader>TESTS TO ADD</SectionHeader>
           <ul className="list-disc pl-4 space-y-1">
-            {issue.testsToAdd.map((test) => (
-              <li key={test} className="text-sm leading-relaxed text-foreground/80">
+            {issue.testsToAdd.map((test, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: test text can repeat; backend order is the rendered identity.
+              <li key={index} className="text-sm leading-relaxed text-foreground/80">
                 {test}
               </li>
             ))}
@@ -311,6 +345,75 @@ function DetailsTabContent({
         </div>
       )}
     </>
+  );
+}
+
+const EMPTY_EVIDENCE_EXCERPT = "(empty excerpt)";
+
+function CodeEvidence({
+  item,
+  endLine,
+}: {
+  item: Extract<EvidencePresentation, { kind: "code" }>;
+  endLine?: number;
+}) {
+  const lines = item.excerpt.length > 0 ? item.excerpt.split(/\r?\n/) : [EMPTY_EVIDENCE_EXCERPT];
+
+  return (
+    <div className="border-l-2 border-border pl-3">
+      <div className="flex flex-wrap items-baseline gap-x-2">
+        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          {item.label}
+        </span>
+        <span className="text-sm font-medium text-foreground">{item.title}</span>
+      </div>
+      <div className="text-xs text-muted-foreground">
+        Source: <span className="font-mono text-foreground/80">{item.sourceText}</span>
+      </div>
+      <div className="mb-1 text-xs text-muted-foreground">
+        File: <span className="font-mono text-foreground/80">{item.file}</span>
+      </div>
+      <CodeBlock label={`${item.label}: ${item.title}`}>
+        <CodeBlock.Content tabIndex={-1}>
+          {lines.map((line, offset) => (
+            <CodeBlock.Line
+              key={`${item.ordinal}:${offset}`}
+              number={
+                item.startLine === undefined ||
+                (endLine !== undefined && item.startLine + offset > endLine)
+                  ? undefined
+                  : item.startLine + offset
+              }
+              content={line}
+              state="highlight"
+            />
+          ))}
+        </CodeBlock.Content>
+      </CodeBlock>
+    </div>
+  );
+}
+
+function EvidenceReference({
+  item,
+}: {
+  item: Extract<EvidencePresentation, { kind: "reference" }>;
+}) {
+  return (
+    <section aria-label={`${item.label}: ${item.title}`} className="border-l-2 border-border pl-3">
+      <div className="flex flex-wrap items-baseline gap-x-2">
+        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          {item.label}
+        </span>
+        <span className="text-sm font-medium text-foreground">{item.title}</span>
+      </div>
+      <div className="text-xs text-muted-foreground">
+        Source: <span className="font-mono text-foreground/80">{item.sourceText}</span>
+      </div>
+      <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">
+        {item.excerpt}
+      </p>
+    </section>
   );
 }
 

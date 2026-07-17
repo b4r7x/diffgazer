@@ -1,4 +1,4 @@
-import { isAbsolute, relative, resolve } from "node:path";
+import { posix, relative, resolve, win32 } from "node:path";
 import { ensureWithinDir } from "@diffgazer/registry/cli";
 
 export function toPosixPath(path: string): string {
@@ -8,21 +8,20 @@ export function toPosixPath(path: string): string {
     .join("/");
 }
 
-export function normalizeManifestPath(cwd: string, absolutePath: string): string {
-  const rel = relative(cwd, absolutePath);
-  if (rel.startsWith("..") || isAbsolute(rel)) {
-    throw new Error(`Manifest path "${absolutePath}" escapes project root "${cwd}".`);
+export function normalizeProjectRelativePath(path: string): string {
+  if (posix.isAbsolute(path) || win32.isAbsolute(path)) {
+    throw new Error(`Project paths must be relative, received "${path}".`);
   }
-  return toPosixPath(rel);
+  return toPosixPath(path);
+}
+
+export function normalizeManifestPath(cwd: string, absolutePath: string): string {
+  ensureWithinDir(absolutePath, cwd);
+  return toPosixPath(relative(cwd, absolutePath));
 }
 
 export function resolveProjectPath(cwd: string, relativePath: string): string {
-  const normalizedPath = toPosixPath(relativePath);
-  const isWindowsAbsolute = /^[a-zA-Z]:\//.test(normalizedPath) || normalizedPath.startsWith("//");
-  if (isAbsolute(relativePath) || isAbsolute(normalizedPath) || isWindowsAbsolute) {
-    throw new Error(`Project paths must be relative, received "${relativePath}".`);
-  }
-
+  const normalizedPath = normalizeProjectRelativePath(relativePath);
   const target = resolve(cwd, normalizedPath);
   ensureWithinDir(target, cwd);
   return target;

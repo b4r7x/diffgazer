@@ -20,12 +20,33 @@ function deriveServerState(
   return { status: "connected" };
 }
 
-export function useServerStatus(): { state: ServerState; retry: () => Promise<unknown> } {
+function deriveLatestServerState(
+  isFetching: boolean,
+  error: Error | null,
+  isSuccess: boolean,
+): ServerState {
+  if (isFetching) return { status: "checking" };
+  if (error) return { status: "error", message: error.message };
+  if (isSuccess) return { status: "connected" };
+  return { status: "checking" };
+}
+
+interface ServerStatusResult {
+  /** Latched state used by app shells to keep a previously connected tree mounted. */
+  state: ServerState;
+  /** State of the latest health request, including a failed refetch over cached data. */
+  latestState: ServerState;
+  retry: () => Promise<unknown>;
+}
+
+export function useServerStatus(): ServerStatusResult {
   const api = useApi();
   const query = useQuery(serverQueries.health(api));
+  const hasSuccessfulHealth = query.data === true;
 
   return {
-    state: deriveServerState(query.isLoading, query.error, query.data !== undefined),
+    state: deriveServerState(query.isLoading, query.error, hasSuccessfulHealth),
+    latestState: deriveLatestServerState(query.isFetching, query.error, query.isSuccess),
     retry: () => query.refetch({ throwOnError: true }),
   };
 }

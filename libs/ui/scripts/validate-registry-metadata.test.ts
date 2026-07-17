@@ -195,6 +195,16 @@ function runValidator(root: string) {
   }
 }
 
+function writePublicItem(root: string, content: string, hidden = false) {
+  mkdirSync(resolve(root, "public/r"), { recursive: true });
+  writeJson(resolve(root, "public/r/keys-leak.json"), {
+    name: "keys-leak",
+    type: "registry:ui",
+    ...(hidden ? { meta: { hidden: true } } : {}),
+    files: [{ path: "keys-leak.ts", content }],
+  });
+}
+
 afterEach(() => {
   if (fixtureRoot) rmSync(fixtureRoot, { recursive: true, force: true });
   fixtureRoot = null;
@@ -237,5 +247,62 @@ describe("validate-registry-metadata", () => {
     const output = runValidator(createKeysMissingPeerFixture());
 
     expect(output).toContain('package.json peerDependencies must declare "@diffgazer/keys"');
+  });
+
+  it("rejects every unsupported root keys import form in public copy content", () => {
+    const root = createKeysRequiredPeerFixture();
+    writePublicItem(
+      root,
+      [
+        'import keys from "@diffgazer/keys";',
+        'import * as namespace from "@diffgazer/keys";',
+        'import "@diffgazer/keys";',
+        'export * from "@diffgazer/keys";',
+        'const dynamic = import("@diffgazer/keys");',
+        'const required = require("@diffgazer/keys");',
+      ].join("\n"),
+    );
+
+    const output = runValidator(root);
+
+    expect(output).toContain(
+      "unsupported @diffgazer/keys root import (import, export, dynamic-import, require, side-effect)",
+    );
+  });
+
+  it("rejects unsupported root keys imports in hidden public dependencies", () => {
+    const root = createKeysRequiredPeerFixture();
+    writePublicItem(
+      root,
+      [
+        'import keys from "@diffgazer/keys";',
+        'const dynamic = import("@diffgazer/keys");',
+        'const required = require("@diffgazer/keys");',
+      ].join("\n"),
+      true,
+    );
+
+    const output = runValidator(root);
+
+    expect(output).toContain(
+      "unsupported @diffgazer/keys root import (import, dynamic-import, require)",
+    );
+  });
+
+  it("detects executable template root imports without flagging raw template text", () => {
+    const root = createKeysRequiredPeerFixture();
+    writePublicItem(
+      root,
+      [
+        "const directDynamic = import(`@diffgazer/keys`);",
+        "const directRequired = require(`@diffgazer/keys`);",
+        `const interpolated = \`\${import("@diffgazer/keys")}:\${require("@diffgazer/keys")}\`;`,
+        'const raw = `import("@diffgazer/keys"); require("@diffgazer/keys");`;',
+      ].join("\n"),
+    );
+
+    const output = runValidator(root);
+
+    expect(output).toContain("unsupported @diffgazer/keys root import (dynamic-import, require)");
   });
 });

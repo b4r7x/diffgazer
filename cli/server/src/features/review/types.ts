@@ -1,9 +1,8 @@
 import type { ErrorCode } from "@diffgazer/core/schemas/errors";
-import type { FullReviewStreamEvent, LensStat, StepId } from "@diffgazer/core/schemas/events";
+import type { FullReviewStreamEvent, LensStat } from "@diffgazer/core/schemas/events";
 import type {
   LensId,
   ProfileId,
-  ReviewErrorCode,
   ReviewIssue,
   ReviewMode,
   ReviewSeverity,
@@ -24,28 +23,24 @@ export interface StreamReviewParams {
 }
 
 /** Review pipeline resolved config (lenses + profile). @see cli/add/src/context.ts for CLI-specific variants. */
-export interface ResolvedConfig {
+export interface ResolvedReviewDefaults {
   activeLenses: LensId[];
   effectiveProfileId?: ProfileId;
   profile: ReturnType<typeof getProfile> | undefined;
   severityFilter?: SeverityFilter;
+  concurrency: number;
+}
+
+export interface ResolvedConfig extends ResolvedReviewDefaults {
   projectContext: string;
 }
 
 export interface ReviewOutcome {
   issues: ReviewIssue[];
-  summary: string;
   lensStats?: LensStat[];
   droppedDuplicates?: number;
   droppedBelowThreshold?: number;
   minSeverity?: ReviewSeverity;
-}
-
-export interface ReviewAbort {
-  readonly kind: "review_abort";
-  readonly message: string;
-  readonly code: ReviewErrorCode;
-  readonly step?: StepId;
 }
 
 export type DrilldownError = AIError | { code: "ISSUE_NOT_FOUND"; message: string };

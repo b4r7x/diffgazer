@@ -33,10 +33,10 @@ import { CodeBlock, CodeBlockContent, CodeBlockLine } from "@/components/ui/code
 
 const lines = [
   [
-    { content: "const", color: "var(--code-keyword)" },
-    { content: " greeting", color: "var(--code-variable)" },
-    { content: " = ", color: "var(--code-operator)" },
-    { content: '"hello"', color: "var(--code-string)" },
+    { text: "const", color: "var(--code-keyword)" },
+    { text: " greeting", color: "var(--code-variable)" },
+    { text: " = ", color: "var(--code-operator)" },
+    { text: '"hello"', color: "var(--code-string)" },
   ],
 ]
 
@@ -80,14 +80,21 @@ pre: ({ children }) => (
 
 ### CodeBlockHighlight
 
-Use `CodeBlockHighlight` when you want runtime syntax coloring through lowlight. Package consumers import it from `@diffgazer/ui/components/code-block/highlight`; copy, `dgadd`, and direct registry consumers add the separate `ui/code-block-highlight` item.
+Use `CodeBlockHighlight` when you want runtime syntax coloring through lowlight. Package consumers import it from `@diffgazer/ui/components/code-block/highlight`; copy, `dgadd`, and direct registry consumers add the separate `ui/code-block-highlight` item. Create a lowlight instance with the language set you need and pass it explicitly; the component does not load grammars at runtime.
 
 ```tsx
 import { CodeBlock } from "@diffgazer/ui/components/code-block"
 import { CodeBlockHighlight } from "@diffgazer/ui/components/code-block/highlight"
+import { common, createLowlight } from "lowlight"
+
+const lowlight = createLowlight(common)
 
 <CodeBlock aria-label="Example">
-  <CodeBlockHighlight code="const greeting = 'hello'" language="typescript" />
+  <CodeBlockHighlight
+    code="const greeting = 'hello'"
+    language="typescript"
+    lowlight={lowlight}
+  />
 </CodeBlock>
 ```
 

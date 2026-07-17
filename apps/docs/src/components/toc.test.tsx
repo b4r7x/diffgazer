@@ -1,6 +1,8 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { stubMatchMedia } from "@diffgazer/core/testing/match-media";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { TableOfContents } from "fumadocs-core/toc";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { SectionHeading } from "./docs-mdx/section-heading";
 import { TableOfContentsPanel } from "./toc";
 
@@ -155,5 +157,73 @@ describe("TableOfContentsPanel", () => {
     );
     expect(links).toHaveLength(1);
     expect(links[0]).toHaveAttribute("href", "#duplicate");
+  });
+
+  it.each([
+    { reducedMotion: true, behavior: "auto" },
+    { reducedMotion: false, behavior: "smooth" },
+  ] as const)("uses $behavior scrolling for main content and an overflowed sidebar", async ({
+    reducedMotion,
+    behavior,
+  }) => {
+    const user = userEvent.setup();
+    stubMatchMedia((query) => reducedMotion && query === "(prefers-reduced-motion: reduce)");
+
+    renderWithHeadings([
+      { tag: "h2", id: "overview", text: "Overview" },
+      { tag: "h2", id: "details", text: "Details" },
+    ]);
+
+    const overview = await screen.findByRole("link", { name: "Overview" });
+    const details = screen.getByRole("link", { name: "Details" });
+    await waitFor(() => expect(details).toHaveAttribute("aria-current", "location"));
+
+    const overviewHeading = document.getElementById("overview");
+    const detailsHeading = document.getElementById("details");
+    const mainContent = document.getElementById("main-content");
+    const scrollArea = overview.closest('[data-slot="scroll-area"]');
+    if (
+      !(overviewHeading instanceof HTMLElement) ||
+      !(detailsHeading instanceof HTMLElement) ||
+      !(mainContent instanceof HTMLElement) ||
+      !(scrollArea instanceof HTMLElement)
+    ) {
+      throw new Error("Expected headings and scroll areas");
+    }
+
+    overviewHeading.getBoundingClientRect = () => new DOMRect(0, 50, 100, 20);
+    detailsHeading.getBoundingClientRect = () => new DOMRect(0, 500, 100, 20);
+    mainContent.getBoundingClientRect = () => new DOMRect(0, 0, 100, 500);
+    Object.defineProperties(mainContent, {
+      clientHeight: { configurable: true, value: 500 },
+      scrollHeight: { configurable: true, value: 1000 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    });
+    const mainScroll = vi.fn();
+    Object.defineProperty(mainContent, "scrollTo", {
+      configurable: true,
+      value: mainScroll,
+    });
+    scrollArea.style.overflowY = "auto";
+    Object.defineProperties(scrollArea, {
+      scrollHeight: { configurable: true, value: 200 },
+      clientHeight: { configurable: true, value: 100 },
+    });
+    scrollArea.getBoundingClientRect = () => new DOMRect(0, 0, 100, 100);
+    overview.getBoundingClientRect = () => new DOMRect(0, 120, 100, 20);
+    const sidebarScroll = vi.fn();
+    Object.defineProperty(scrollArea, "scrollBy", {
+      configurable: true,
+      value: sidebarScroll,
+    });
+
+    // fireEvent retained: scroll has no user-event equivalent and is the external event observed by the scroll-spy.
+    fireEvent.scroll(mainContent);
+    await waitFor(() => expect(overview).toHaveAttribute("aria-current", "location"));
+    await waitFor(() => expect(sidebarScroll).toHaveBeenCalledWith({ top: 48, behavior }));
+
+    overviewHeading.getBoundingClientRect = () => new DOMRect(0, 200, 100, 20);
+    await user.click(overview);
+    expect(mainScroll).toHaveBeenCalledWith({ top: 104, behavior });
   });
 });

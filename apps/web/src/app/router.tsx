@@ -1,3 +1,4 @@
+import { UuidSchema } from "@diffgazer/core/schemas/fields";
 import { ReviewModeSchema } from "@diffgazer/core/schemas/review";
 import {
   createRootRoute,
@@ -6,57 +7,57 @@ import {
   Outlet,
   redirect,
 } from "@tanstack/react-router";
-import { lazy } from "react";
 import { z } from "zod";
 import { RouteLoadingFallback } from "@/components/layout/route-loading-fallback";
 import { requireConfigured, requireNotConfigured } from "../lib/config-guards";
-import { NotFoundPage, RootLayout } from "./routes/__root";
+import { lazyRoute } from "./route-import";
+import { NotFoundPage, RootLayout, RouteRecoveryPage } from "./routes/__root";
 import { HomePage } from "./routes/home";
 import { ReviewPage } from "./routes/review";
 
-const SettingsHubPage = lazy(() =>
+const SettingsHubPage = lazyRoute(() =>
   import("./routes/settings").then((m) => ({ default: m.SettingsHubPage })),
 );
-const SettingsAnalysisPage = lazy(() =>
+const SettingsAnalysisPage = lazyRoute(() =>
   import("./routes/settings/analysis").then((m) => ({
     default: m.SettingsAnalysisPage,
   })),
 );
-const SettingsDiagnosticsPage = lazy(() =>
+const SettingsDiagnosticsPage = lazyRoute(() =>
   import("./routes/settings/diagnostics").then((m) => ({
     default: m.SettingsDiagnosticsPage,
   })),
 );
-const HistoryPage = lazy(() =>
+const HistoryPage = lazyRoute(() =>
   import("./routes/history").then((m) => ({ default: m.HistoryPage })),
 );
-const SettingsStoragePage = lazy(() =>
+const SettingsStoragePage = lazyRoute(() =>
   import("./routes/settings/storage").then((m) => ({
     default: m.SettingsStoragePage,
   })),
 );
-const SettingsThemePage = lazy(() =>
+const SettingsThemePage = lazyRoute(() =>
   import("./routes/settings/theme").then((m) => ({
     default: m.SettingsThemePage,
   })),
 );
-const SettingsTrustPermissionsPage = lazy(() =>
+const SettingsTrustPermissionsPage = lazyRoute(() =>
   import("./routes/settings/trust-permissions").then((m) => ({
     default: m.SettingsTrustPermissionsPage,
   })),
 );
-const SettingsProvidersPage = lazy(() =>
+const SettingsProvidersPage = lazyRoute(() =>
   import("./routes/settings/providers").then((m) => ({
     default: m.SettingsProvidersPage,
   })),
 );
-const SettingsAgentExecutionPage = lazy(() =>
+const SettingsAgentExecutionPage = lazyRoute(() =>
   import("./routes/settings/agent-execution").then((m) => ({
     default: m.SettingsAgentExecutionPage,
   })),
 );
-const HelpPage = lazy(() => import("./routes/help").then((m) => ({ default: m.HelpPage })));
-const OnboardingPage = lazy(() =>
+const HelpPage = lazyRoute(() => import("./routes/help").then((m) => ({ default: m.HelpPage })));
+const OnboardingPage = lazyRoute(() =>
   import("./routes/onboarding").then((m) => ({ default: m.OnboardingPage })),
 );
 
@@ -70,14 +71,13 @@ const ReviewSearchSchema = z.object({
   issueId: z.string().optional(),
 });
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
 function SettingsLayout() {
   return <Outlet />;
 }
 
 const rootRoute = createRootRoute({
   component: RootLayout,
+  errorComponent: (props) => <RouteRecoveryPage {...props} clearFooter={false} />,
 });
 
 const homeRoute = createRoute({
@@ -99,7 +99,7 @@ const reviewRoute = createRoute({
     if (!params.reviewId) {
       throw redirect({ to: "/" });
     }
-    if (!UUID_REGEX.test(params.reviewId)) {
+    if (!UuidSchema.safeParse(params.reviewId).success) {
       throw redirect({ to: "/", search: { error: "invalid-review-id" } });
     }
   },
@@ -213,6 +213,7 @@ const routeTree = rootRoute.addChildren([
 
 export const router = createRouter({
   routeTree,
+  defaultErrorComponent: RouteRecoveryPage,
   defaultPendingComponent: RouteLoadingFallback,
   defaultNotFoundComponent: NotFoundPage,
   defaultPendingMs: 100,

@@ -22,7 +22,8 @@ export const textareaDoc: ComponentDoc = {
         type: '"sm" | "md" | "lg"',
         required: false,
         defaultValue: '"md"',
-        description: "Height/padding/font size token.",
+        description:
+          "Padding and font-size token. Every size shares the same h-auto min-h-20 resize-y resizable baseline.",
       },
       "aria-invalid": {
         type: 'boolean | "true" | "false" | "grammar" | "spelling"',

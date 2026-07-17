@@ -6,6 +6,20 @@ hook: "outside-click"
 
 <HookDocScaffold />
 
+## Event timing
+
+The hook listens in the capture phase so dismissal runs before the later click. Modern documents use `pointerdown`; documents without Pointer Events install `touchstart` and `mousedown` fallbacks with the same capture-phase timing.
+
+## Overlay stack options
+
+`options` is the fifth positional argument, after `excludeRefs`. Use `priority` when overlapping dismissal layers cannot be ordered by DOM nesting alone:
+
+```tsx
+useOutsideClick(panelRef, closePanel, open, [triggerRef], { priority: 2 })
+```
+
+`useOutsideClick` reads `priority` from this shared options type. Its first `ref` and fourth `excludeRefs` arguments remain the outside-pointer and nested-overlay boundaries. `useEscapeKey` uses the options object's `ref` and `excludeRefs` fields because it has no separate boundary arguments.
+
 ## Escape dismissal
 
 The same source file also exports `useEscapeKey` for overlay dismissal stacks that need Escape handling without outside-pointer handling. Both hooks share the same priority and nested-overlay ordering options:

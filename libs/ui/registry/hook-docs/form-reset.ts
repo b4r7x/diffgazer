@@ -1,12 +1,21 @@
 import type { HookDoc } from "@diffgazer/registry";
 
 export const formResetDoc: HookDoc = {
-  description: "Resets uncontrolled custom control state when a parent native form is reset.",
+  description:
+    "Keeps custom controls aligned with native form reset semantics without reporting uncontrolled resets as user changes.",
   usage: {
     code: `const inputRef = useRef<HTMLInputElement>(null);
-const [value, setValue] = useState(defaultValue);
+const [value, setValue, , resetValue] = useControllableState({
+  defaultValue,
+  onChange: props.onChange,
+});
 
-useFormReset(inputRef, defaultValue, setValue, value === undefined);`,
+const invalidatePendingReset = useFormReset(inputRef, defaultValue, resetValue);
+
+const handleChange = (nextValue: string) => {
+  invalidatePendingReset();
+  setValue(nextValue);
+};`,
     lang: "tsx",
   },
   parameters: [
@@ -29,28 +38,40 @@ useFormReset(inputRef, defaultValue, setValue, value === undefined);`,
       description: "Called with resetValue when the parent form resets.",
     },
     {
-      name: "enabled",
+      name: "isUncontrolled",
       type: "boolean",
       required: false,
       defaultValue: "true",
       description:
-        "Set to false for controlled components or when native form reset integration should be disabled.",
+        "Set to false for controlled components. Controlled reset behavior can be provided separately.",
+    },
+    {
+      name: "controlled",
+      type: "{ syncResetBaseline: () => void; onReset: () => void } | undefined",
+      required: false,
+      description:
+        "Optional handlers for custom controls that mirror native form state while externally controlled.",
     },
   ],
   returns: {
-    type: "void",
-    description: "Registers a reset listener on the closest parent form while enabled.",
+    type: "() => void",
+    description: "Invalidates a queued reset before a later user or programmatic value mutation.",
   },
   notes: [
     {
       title: "Uncontrolled custom controls",
       content:
-        "Use this hook when a custom control mirrors native input behavior and should return to its default value on form reset.",
+        "Pair this hook with useControllableState's resetValue setter. It restores the default internal value without calling the public onChange callback.",
     },
     {
       title: "Latest reset value",
       content:
         "The reset listener stays stable while reading the latest resetValue and onReset callback.",
+    },
+    {
+      title: "Last mutation wins",
+      content:
+        "Call the returned invalidation function immediately before changing the control value so an older queued reset cannot overwrite the newer mutation.",
     },
   ],
   examples: [{ name: "form-reset-input", title: "Resettable Input" }],

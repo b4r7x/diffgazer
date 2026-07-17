@@ -8,8 +8,14 @@ interface UseReviewProgressKeyboardOptions {
   onViewResults?: () => void;
   onBack?: () => void;
   onCancel?: () => void;
+  cancelDisabled?: boolean;
   hasError: boolean;
 }
+
+export const REVIEW_PROGRESS_CONTROLS = {
+  cancel: { key: "c", label: "Cancel" },
+  leave: { key: "Escape", label: "Back" },
+} as const;
 
 // App-specific activatable-target check. Unlike `isEditableElement` from
 // @diffgazer/keys (which only matches text-editable inputs/textareas/contenteditable),
@@ -26,6 +32,7 @@ export function useReviewProgressKeyboard({
   onViewResults,
   onBack,
   onCancel,
+  cancelDisabled = false,
   hasError,
 }: UseReviewProgressKeyboardOptions) {
   const progressPaneRef = useRef<HTMLElement>(null);
@@ -71,14 +78,14 @@ export function useReviewProgressKeyboard({
   // streaming server-side and home's Resume Last Review picks it back up.
   // Cancel stays keyboard-reachable via "c" because document-scope Tab no
   // longer visits the [Cancel] button.
-  useKey("Escape", () => onBack?.(), { enabled: !!onBack });
+  useKey(REVIEW_PROGRESS_CONTROLS.leave.key, () => onBack?.(), { enabled: !!onBack });
   useKey(
-    "c",
+    REVIEW_PROGRESS_CONTROLS.cancel.key,
     (event) => {
       if (isActivatableTarget(event.target)) return;
       onCancel?.();
     },
-    { enabled: !!onCancel && !hasError },
+    { enabled: !!onCancel && !hasError && !cancelDisabled },
   );
   useKey(
     "f",
@@ -97,7 +104,7 @@ export function useReviewProgressKeyboard({
           { key: "←/→", label: "Switch Pane" },
           { key: "f", label: "Filter" },
           ...(onViewResults ? [{ key: "Enter", label: "View Results" }] : []),
-          ...(onCancel ? [{ key: "c", label: "Cancel" }] : []),
+          ...(onCancel ? [{ ...REVIEW_PROGRESS_CONTROLS.cancel, disabled: cancelDisabled }] : []),
         ],
     rightShortcuts: onBack ? [BACK_SHORTCUT] : [],
   });

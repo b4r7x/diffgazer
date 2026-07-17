@@ -1,5 +1,6 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, posix, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { extractImportSpecifiers, RELATIVE_JS_IMPORT_RE } from "@diffgazer/registry";
 import type { Registry, RegistryItem } from "@diffgazer/registry/schemas";
 import { REGISTRY_ITEM_TYPE, RegistrySchema } from "@diffgazer/registry/schemas";
@@ -341,7 +342,10 @@ export {
   extractRelativeImports,
 };
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (
+  process.argv[1] !== undefined &&
+  realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
+) {
   const registryPath = resolve(import.meta.dirname, "..", "registry", "registry.json");
   const success = validateRegistryClosure(registryPath);
   process.exit(success ? 0 : 1);

@@ -1,6 +1,6 @@
 "use client";
 
-import { Children, type ComponentPropsWithRef, type ReactNode } from "react";
+import { Children, type ComponentPropsWithRef, isValidElement, type ReactNode } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useOverflowItems } from "@/hooks/use-overflow-items";
 import { cn } from "@/lib/utils";
@@ -64,8 +64,14 @@ export function OverflowItems({
   ref,
   ...props
 }: OverflowItemsProps) {
-  const itemCount = Children.count(children);
-  const { ref: overflowRef, visibleCount, overflowCount } = useOverflowItems({ itemCount });
+  const items = Children.toArray(children);
+  const {
+    ref: overflowRef,
+    visibleCount,
+    overflowCount,
+  } = useOverflowItems({
+    itemCount: items.length,
+  });
   const composedRef = useComposedRefs(overflowRef, ref);
 
   return (
@@ -74,8 +80,9 @@ export function OverflowItems({
       className={cn("relative flex items-center overflow-clip", gap, className)}
       {...props}
     >
-      {Children.map(children, (item, i) => (
+      {items.map((item, i) => (
         <div
+          key={isValidElement(item) ? item.key : i}
           className={cn("shrink-0", i >= visibleCount && hiddenClass)}
           inert={i >= visibleCount || undefined}
         >

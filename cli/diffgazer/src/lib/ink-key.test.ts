@@ -54,6 +54,23 @@ describe("inkKeyToHotkey", () => {
     expect(inkKeyToHotkey(input, emptyKey)).toBe(input);
   });
 
+  test.each([
+    { modifier: "ctrl" as const },
+    { modifier: "meta" as const },
+    { modifier: "super" as const },
+    { modifier: "hyper" as const },
+  ])("rejects printable input with the $modifier modifier", ({ modifier }) => {
+    expect(inkKeyToHotkey("s", { ...emptyKey, [modifier]: true })).toBe(null);
+  });
+
+  test("rejects escape-prefixed printable input even when modifier flags are missing", () => {
+    expect(inkKeyToHotkey("\u001bs", emptyKey)).toBe(null);
+  });
+
+  test("preserves modified navigation keys", () => {
+    expect(inkKeyToHotkey("", { ...emptyKey, ctrl: true, upArrow: true })).toBe("up");
+  });
+
   test("returns null when nothing matches", () => {
     expect(inkKeyToHotkey("", emptyKey)).toBe(null);
   });

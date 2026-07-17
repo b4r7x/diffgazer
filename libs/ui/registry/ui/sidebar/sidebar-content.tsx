@@ -15,6 +15,7 @@ export function SidebarContent({
   children,
   className,
   onKeyDown,
+  inert,
   ...props
 }: SidebarContentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -43,7 +44,7 @@ export function SidebarContent({
       ref={composedRef}
       id={props.id ?? contentId}
       aria-hidden={ariaHidden}
-      inert={hidden ? true : undefined}
+      inert={hidden || inert || undefined}
       hidden={hidden || props.hidden || undefined}
       data-state={state}
       className={cn(

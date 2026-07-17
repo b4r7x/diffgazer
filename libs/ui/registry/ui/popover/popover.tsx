@@ -21,13 +21,13 @@ export interface PopoverProps {
   defaultOpen?: boolean;
   /** Fired when the open state changes. */
   onOpenChange?: (open: boolean) => void;
-  /** Click toggles; hover opens on pointer/focus enter with a delay and closes on leave. */
+  /** Click toggles; hover delays pointer-open, keyboard focus opens immediately, and leave closes. */
   triggerMode?: PopoverTriggerMode;
   /** Overrides the auto-detected aria-haspopup value applied to the trigger. */
   popupRole?: PopoverPopupRole;
   /** When false, the popover never opens and trigger handlers are no-ops. */
   enabled?: boolean;
-  /** Hover mode only. Delay before opening on hover or focus. */
+  /** Hover mode only. Delay before opening after pointer enter; keyboard focus opens immediately. */
   delayMs?: number;
   /** Delay before closing after hover/focus leaves the trigger or content. */
   closeDelayMs?: number;
@@ -79,6 +79,7 @@ export function PopoverRoot({
     onTriggerEnter: behavior.onTriggerEnter,
     onTriggerFocus: behavior.onTriggerFocus,
     onTriggerLeave: behavior.onTriggerLeave,
+    onTriggerBlur: behavior.onTriggerBlur,
     onTriggerClick: behavior.onTriggerClick,
     onTriggerPointerDown: behavior.onTriggerPointerDown,
     markDismissed: behavior.markDismissed,

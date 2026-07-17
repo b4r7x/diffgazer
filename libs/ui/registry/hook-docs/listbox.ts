@@ -17,7 +17,7 @@ const { selectedId, highlighted, handleItemActivate, getContainerProps } =
   });
 
 return (
-  <div {...getContainerProps()}>
+  <div {...getContainerProps()} aria-label="Fruit choices">
     {items.map((item) => (
       <div
         key={item.id}

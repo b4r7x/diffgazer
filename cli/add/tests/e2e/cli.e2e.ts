@@ -1,8 +1,9 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { computeIntegrity } from "@diffgazer/registry";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 let root: string;
@@ -24,7 +25,10 @@ function runDgadd(args: string[], opts?: { silent?: boolean; env?: NodeJS.Proces
 }
 
 function writeFixtureConfig(): void {
-  writeFileSync(join(root, "package.json"), JSON.stringify({ type: "module" }));
+  writeFileSync(
+    join(root, "package.json"),
+    JSON.stringify({ type: "module", devDependencies: { tailwindcss: "^4.0.0" } }),
+  );
   writeFileSync(
     join(root, "tsconfig.json"),
     JSON.stringify({
@@ -114,6 +118,54 @@ describe("add command", () => {
     const buttonSource = join(root, "src/components/ui/button/button.tsx");
     expect(existsSync(buttonSource)).toBe(true);
     expect(readFileSync(buttonSource, "utf-8")).toMatch(/from "~\/lib\/utils"/);
+  });
+
+  test("init --skip-install lists required dependencies without mutating package.json", () => {
+    rmSync(join(root, "diffgazer.json"), { force: true });
+    const packageJson = `${JSON.stringify(
+      {
+        type: "module",
+        dependencies: { react: "^19.2.0", tailwindcss: "^4.0.0" },
+      },
+      null,
+      2,
+    )}\n`;
+    writeFileSync(join(root, "package.json"), packageJson);
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        "tsx",
+        resolve(repoRoot, "cli/add/src/index.ts"),
+        "init",
+        "--cwd",
+        root,
+        "--yes",
+        "--skip-install",
+      ],
+      {
+        cwd: repoRoot,
+        encoding: "utf-8",
+        env: { ...process.env, NO_COLOR: "1" },
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(readFileSync(join(root, "package.json"), "utf-8")).toBe(packageJson);
+    const utils = readFileSync(join(root, "src/lib/utils.ts"), "utf-8");
+    expect(utils).toContain('from "clsx"');
+    expect(utils).toContain('from "tailwind-merge"');
+    expect(result.stdout).toContain(
+      [
+        "  Dependency installation skipped",
+        "  Skipped via --skip-install. Install these packages manually when ready:",
+        "    class-variance-authority",
+        "    clsx",
+        "    tailwind-merge",
+      ].join("\n"),
+    );
   });
 
   test("hidden keys utilities cannot be installed directly", () => {
@@ -678,6 +730,28 @@ describe("list command", () => {
 });
 
 describe("diff command", () => {
+  test("rejects a traversing persisted CSS chunk without touching the outside sentinel", () => {
+    const sentinelName = `dgadd-diff-sentinel-${process.pid}-${Date.now()}`;
+    const sentinelPath = join(tmpdir(), `${sentinelName}.css`);
+    writeFileSync(sentinelPath, "outside sentinel\n");
+    const configPath = join(root, "diffgazer.json");
+    const config = JSON.parse(readFileSync(configPath, "utf-8"));
+    config.installedComponents = {
+      "ui/dialog": {
+        installedAt: "2026-07-15T00:00:00.000Z",
+        cssChunks: [`x/../../${sentinelName}`],
+      },
+    };
+    writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+    try {
+      expect(() => runDgadd(["diff", "--cwd", root], { silent: false })).toThrow();
+      expect(readFileSync(sentinelPath, "utf-8")).toBe("outside sentinel\n");
+    } finally {
+      rmSync(sentinelPath, { force: true });
+    }
+  });
+
   test("default scope detects drift in hidden transitives", () => {
     runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
 
@@ -894,6 +968,11 @@ describe("css chunk ownership on remove", () => {
     expect(retained.cssChunks).toEqual(ownerHashes);
     expect(retained.files).toBeUndefined();
 
+    const retainedDiff = runDgadd(["diff", "--cwd", root], { silent: false });
+    expect(retainedDiff).toMatch(/styles\.css~chunk-[a-f0-9]{16}/);
+    expect(retainedDiff).toMatch(/user tuned/);
+    expect(retainedDiff).not.toMatch(/not installed/);
+
     runDgadd(["remove", chunkOwner, "--cwd", root, "--yes", "--force"]);
 
     const cssFinal = readFileSync(stylesPath, "utf-8");
@@ -941,6 +1020,366 @@ describe("integration modes", () => {
     expect(readFileSync(join(root, "src/hooks/use-navigation.ts"), "utf-8")).toMatch(
       /from "\.\/utils\/navigation-items"/,
     );
+  });
+
+  test("migrating one copy-mode component retains hooks shared by another", () => {
+    runDgadd([
+      "add",
+      "ui/select",
+      "--integration",
+      "copy",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
+    runDgadd([
+      "add",
+      "ui/accordion",
+      "--integration",
+      "copy",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
+
+    const beforeMigration = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    expect(beforeMigration.installedComponents["ui/select"].integrationMode).toBe("copy");
+    expect(beforeMigration.installedComponents["ui/accordion"].integrationMode).toBe("copy");
+    expect(beforeMigration.installedComponents["keys/navigation"]?.installedAs).toBe("transitive");
+
+    runDgadd([
+      "add",
+      "ui/select",
+      "--integration",
+      "keys",
+      "--overwrite",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
+
+    const afterMigration = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    const navigation = afterMigration.installedComponents["keys/navigation"];
+    const navigationFiles = navigation?.files ?? [];
+    const accordionSource = readFileSync(
+      join(root, "src/components/ui/accordion/accordion.tsx"),
+      "utf-8",
+    );
+
+    expect(afterMigration.installedComponents["ui/select"].integrationMode).toBe("@diffgazer/keys");
+    expect(afterMigration.installedComponents["ui/accordion"].integrationMode).toBe("copy");
+    expect(accordionSource).toMatch(/@\/hooks\/utils\/navigation-items/);
+    expect(navigation?.installedAs).toBe("transitive");
+    expect(navigationFiles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: "src/hooks/use-navigation.ts", integrationMode: "copy" }),
+        expect.objectContaining({
+          path: "src/hooks/utils/navigation-dispatch.ts",
+          integrationMode: "copy",
+        }),
+        expect.objectContaining({
+          path: "src/hooks/utils/navigation-items.ts",
+          integrationMode: "copy",
+        }),
+      ]),
+    );
+    expect(existsSync(join(root, "src/hooks/use-navigation.ts"))).toBe(true);
+    expect(existsSync(join(root, "src/hooks/utils/navigation-dispatch.ts"))).toBe(true);
+    expect(existsSync(join(root, "src/hooks/utils/navigation-items.ts"))).toBe(true);
+  });
+
+  test("copy to keys retains files shared with an explicit keys hook", () => {
+    runDgadd(["add", "keys/focus-trap", "--cwd", root, "--yes", "--skip-install"]);
+    runDgadd([
+      "add",
+      "ui/select",
+      "--integration",
+      "copy",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
+
+    runDgadd([
+      "add",
+      "ui/select",
+      "--integration",
+      "keys",
+      "--overwrite",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
+
+    const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    const focusTrapFiles = config.installedComponents["keys/focus-trap"]?.files ?? [];
+
+    expect(config.installedComponents["keys/navigation"]).toBeUndefined();
+    expect(config.installedComponents["keys/focus-trap"]?.installedAs).toBe("explicit");
+    expect(focusTrapFiles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: "src/hooks/utils/focusable.ts" }),
+        expect.objectContaining({ path: "src/hooks/utils/element-guards.ts" }),
+      ]),
+    );
+    expect(existsSync(join(root, "src/hooks/utils/focusable.ts"))).toBe(true);
+    expect(existsSync(join(root, "src/hooks/utils/element-guards.ts"))).toBe(true);
+  });
+
+  test("copy to keys fails before side effects without --overwrite", () => {
+    runDgadd([
+      "add",
+      "ui/select",
+      "--integration",
+      "copy",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
+
+    const selectSource = join(root, "src/components/ui/select/select-content.tsx");
+    const beforeSource = readFileSync(selectSource, "utf-8");
+    const beforeManifest = readFileSync(join(root, "diffgazer.json"), "utf-8");
+
+    expect(() =>
+      runDgadd([
+        "add",
+        "ui/select",
+        "--integration",
+        "keys",
+        "--cwd",
+        root,
+        "--yes",
+        "--skip-install",
+      ]),
+    ).toThrow(/--overwrite/);
+
+    expect(readFileSync(selectSource, "utf-8")).toBe(beforeSource);
+    expect(existsSync(join(root, "src/hooks/use-navigation.ts"))).toBe(true);
+    expect(readFileSync(join(root, "diffgazer.json"), "utf-8")).toBe(beforeManifest);
+  });
+
+  test("copy to keys overwrites component files and removes unshared copied-hook ownership", () => {
+    runDgadd([
+      "add",
+      "ui/select",
+      "--integration",
+      "copy",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
+
+    runDgadd([
+      "add",
+      "ui/select",
+      "--integration",
+      "keys",
+      "--overwrite",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
+
+    const selectSource = readFileSync(
+      join(root, "src/components/ui/select/select-content.tsx"),
+      "utf-8",
+    );
+    const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    const selectFiles = config.installedComponents["ui/select"].files;
+
+    expect(selectSource).toMatch(/from "@diffgazer\/keys"/);
+    expect(existsSync(join(root, "src/hooks/use-navigation.ts"))).toBe(false);
+    expect(existsSync(join(root, "src/hooks/utils/navigation-dispatch.ts"))).toBe(false);
+    expect(existsSync(join(root, "src/hooks/utils/navigation-items.ts"))).toBe(false);
+    expect(config.installedComponents["ui/select"].integrationMode).toBe("@diffgazer/keys");
+    expect(config.installedComponents["keys/navigation"]).toBeUndefined();
+    expect(
+      selectFiles.every(
+        (file: { integrationMode?: string }) => file.integrationMode === "@diffgazer/keys",
+      ),
+    ).toBe(true);
+  });
+
+  test("copy to keys rejects a locally modified unshared hook before side effects", () => {
+    runDgadd([
+      "add",
+      "ui/select",
+      "--integration",
+      "copy",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
+
+    const selectSourcePath = join(root, "src/components/ui/select/select-content.tsx");
+    const hookPath = join(root, "src/hooks/use-navigation.ts");
+    const manifestPath = join(root, "diffgazer.json");
+    const modifiedHook = `${readFileSync(hookPath, "utf-8")}\n// local change\n`;
+    writeFileSync(hookPath, modifiedHook);
+
+    const beforeSource = readFileSync(selectSourcePath, "utf-8");
+    const beforeManifest = readFileSync(manifestPath, "utf-8");
+    const beforeOwnership = JSON.parse(beforeManifest).installedComponents["keys/navigation"];
+
+    expect(() =>
+      runDgadd([
+        "add",
+        "ui/select",
+        "--integration",
+        "keys",
+        "--overwrite",
+        "--cwd",
+        root,
+        "--yes",
+        "--skip-install",
+      ]),
+    ).toThrow(/copied hook has local changes/);
+
+    const afterManifest = readFileSync(manifestPath, "utf-8");
+    expect(readFileSync(selectSourcePath, "utf-8")).toBe(beforeSource);
+    expect(readFileSync(hookPath, "utf-8")).toBe(modifiedHook);
+    expect(afterManifest).toBe(beforeManifest);
+    expect(JSON.parse(afterManifest).installedComponents["keys/navigation"]).toEqual(
+      beforeOwnership,
+    );
+  });
+
+  test("copy to keys rejects hook paths that escape the configured hooks directory", () => {
+    runDgadd([
+      "add",
+      "ui/select",
+      "--integration",
+      "copy",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
+
+    const selectSourcePath = join(root, "src/components/ui/select/select-content.tsx");
+    const hookPath = join(root, "src/hooks/use-navigation.ts");
+    const manifestPath = join(root, "diffgazer.json");
+    const packagePath = join(root, "package.json");
+    const packageSource = readFileSync(packagePath, "utf-8");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+    const escapedFile = manifest.installedComponents["keys/navigation"].files[0];
+    escapedFile.path = "src/hooks/../package.json";
+    escapedFile.hash = computeIntegrity(packageSource);
+    writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+
+    const beforeSource = readFileSync(selectSourcePath, "utf-8");
+    const beforeHook = readFileSync(hookPath, "utf-8");
+    const beforeManifest = readFileSync(manifestPath, "utf-8");
+
+    expect(() =>
+      runDgadd([
+        "add",
+        "ui/select",
+        "--integration",
+        "keys",
+        "--overwrite",
+        "--cwd",
+        root,
+        "--yes",
+        "--skip-install",
+      ]),
+    ).toThrow(/Path traversal detected/);
+
+    expect(readFileSync(selectSourcePath, "utf-8")).toBe(beforeSource);
+    expect(readFileSync(hookPath, "utf-8")).toBe(beforeHook);
+    expect(readFileSync(packagePath, "utf-8")).toBe(packageSource);
+    expect(readFileSync(manifestPath, "utf-8")).toBe(beforeManifest);
+  });
+
+  test("keys to copy fails before side effects without --overwrite", () => {
+    runDgadd([
+      "add",
+      "ui/select",
+      "--integration",
+      "keys",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
+
+    const selectSource = join(root, "src/components/ui/select/select-content.tsx");
+    const beforeSource = readFileSync(selectSource, "utf-8");
+    const beforeManifest = readFileSync(join(root, "diffgazer.json"), "utf-8");
+
+    expect(() =>
+      runDgadd([
+        "add",
+        "ui/select",
+        "--integration",
+        "copy",
+        "--cwd",
+        root,
+        "--yes",
+        "--skip-install",
+      ]),
+    ).toThrow(/--overwrite/);
+
+    expect(readFileSync(selectSource, "utf-8")).toBe(beforeSource);
+    expect(readFileSync(join(root, "diffgazer.json"), "utf-8")).toBe(beforeManifest);
+    expect(existsSync(join(root, "src/hooks/use-navigation.ts"))).toBe(false);
+  });
+
+  test("keys to copy overwrites component files and records copied-hook ownership", () => {
+    runDgadd([
+      "add",
+      "ui/select",
+      "--integration",
+      "keys",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
+
+    runDgadd([
+      "add",
+      "ui/select",
+      "--integration",
+      "copy",
+      "--overwrite",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
+
+    const selectSource = readFileSync(
+      join(root, "src/components/ui/select/select-content.tsx"),
+      "utf-8",
+    );
+    const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    const selectFiles = config.installedComponents["ui/select"].files;
+    const navigation = config.installedComponents["keys/navigation"];
+
+    expect(selectSource).not.toMatch(/from "@diffgazer\/keys"/);
+    expect(selectSource).toMatch(/from "@\/hooks\//);
+    expect(existsSync(join(root, "src/hooks/use-navigation.ts"))).toBe(true);
+    expect(config.installedComponents["ui/select"].integrationMode).toBe("copy");
+    expect(
+      selectFiles.every((file: { integrationMode?: string }) => file.integrationMode === "copy"),
+    ).toBe(true);
+    expect(navigation?.installedAs).toBe("transitive");
+    expect(
+      navigation?.files?.every(
+        (file: { integrationMode?: string }) => file.integrationMode === "copy",
+      ),
+    ).toBe(true);
   });
 
   test("copy integration rewrites package-root keys imports to copied sources", () => {

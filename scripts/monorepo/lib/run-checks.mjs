@@ -1,6 +1,6 @@
-// Shared tail for the monorepo validation scripts (check-invariants,
-// validate-artifacts). Both collect a list of failure messages, then either
-// report them and exit non-zero so CI gates can branch on the exit code, or
+// Shared tail for the monorepo validation scripts. They collect a list of
+// failure messages, then either
+// report them and set a non-zero exit code so CI gates can branch on it, or
 // print a success line. Centralizing this keeps the exit-code contract and the
 // "fail header + lines, else success" shape identical across the scripts.
 //
@@ -13,7 +13,8 @@
 export function runValidationChecks(failures, { failureHeader, successMessage }) {
   if (failures.length > 0) {
     console.error([failureHeader, ...failures].join("\n"));
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   if (successMessage) {

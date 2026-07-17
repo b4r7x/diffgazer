@@ -1,5 +1,5 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
-import { ApiProvider } from "@diffgazer/core/api/hooks";
+import { ApiProvider, configQueries, useSaveConfig } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
 import type {
   AIProvider,
@@ -8,9 +8,9 @@ import type {
 } from "@diffgazer/core/schemas/config";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ModelSelectDialog } from "./dialog";
 
@@ -57,7 +57,7 @@ const OPENROUTER_RESPONSE: OpenRouterModelsResponse = {
 
 interface RenderOptions {
   provider?: AIProvider;
-  currentModel?: string;
+  currentModel?: string | null;
   isSaving?: boolean;
   onSelect?: (modelId: string) => void;
   onOpenChange?: (open: boolean) => void;
@@ -88,17 +88,30 @@ function renderDialog(options: RenderOptions = {}) {
   );
   const onSelect = options.onSelect ?? vi.fn();
   const onOpenChange = options.onOpenChange ?? vi.fn();
-  render(
-    <ModelSelectDialog
-      open
-      onOpenChange={onOpenChange}
-      provider={options.provider ?? "gemini"}
-      currentModel={options.currentModel ?? "gemini-2.5-flash"}
-      isSaving={options.isSaving}
-      onSelect={onSelect}
-    />,
-    { wrapper },
-  );
+  const currentModel =
+    options.currentModel === null ? undefined : (options.currentModel ?? "gemini-2.5-flash");
+
+  function DialogHarness() {
+    const [open, setOpen] = useState(true);
+
+    const handleOpenChange = (nextOpen: boolean) => {
+      setOpen(nextOpen);
+      onOpenChange(nextOpen);
+    };
+
+    return (
+      <ModelSelectDialog
+        open={open}
+        onOpenChange={handleOpenChange}
+        provider={options.provider ?? "gemini"}
+        currentModel={currentModel}
+        isSaving={options.isSaving}
+        onSelect={onSelect}
+      />
+    );
+  }
+
+  render(<DialogHarness />, { wrapper });
   return { getProviderModels, getOpenRouterModels, onSelect, onOpenChange };
 }
 
@@ -155,7 +168,8 @@ describe("ModelSelectDialog (catalog)", () => {
   });
 
   it("shows a saving state and disables confirmation while persistence is pending", async () => {
-    renderDialog({ currentModel: "gemini-2.5-flash", isSaving: true });
+    const user = userEvent.setup();
+    const { onOpenChange } = renderDialog({ currentModel: "gemini-2.5-flash", isSaving: true });
 
     const dialog = await screen.findByRole("dialog");
     const savingButton = await waitFor(() =>
@@ -164,10 +178,84 @@ describe("ModelSelectDialog (catalog)", () => {
 
     expect(savingButton).toBeDisabled();
     expect(within(dialog).getByRole("button", { name: /cancel/i })).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: /close dialog/i })).toBeDisabled();
+
+    await user.keyboard("{Escape}");
+    // fireEvent retained: jsdom does not synthesize the native dialog cancel event from Escape.
+    fireEvent(dialog, new Event("cancel", { bubbles: false, cancelable: true }));
+
+    // fireEvent retained: explicit coordinates are required to exercise native backdrop hit testing.
+    fireEvent.pointerDown(dialog, { clientX: -1, clientY: -1 });
+    fireEvent.click(dialog, { clientX: -1, clientY: -1 });
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(dialog).toBeInTheDocument();
+  });
+
+  it("hands empty tier results to Cancel and dismisses from the recovery target", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    const onOpenChange = vi.fn();
+    const getProviderModels = vi.fn<BoundApi["getProviderModels"]>().mockResolvedValue({
+      models: [
+        {
+          id: "free-only-model",
+          name: "Free Only Model",
+          description: "A free model",
+          tier: "free",
+        },
+      ],
+      fetchedAt: new Date().toISOString(),
+      source: "live",
+      cached: false,
+    });
+
+    renderDialog({
+      currentModel: null,
+      getProviderModels,
+      onSelect,
+      onOpenChange,
+    });
+
+    const model = await screen.findByRole("radio", { name: /Free Only Model/ });
+    await user.click(model);
+
+    // all -> free keeps the list mounted; free -> paid removes the focused list.
+    await user.keyboard("f");
+    await user.keyboard("f");
+
+    const cancel = screen.getByRole("button", { name: /cancel/i });
+    await waitFor(() => expect(cancel).toHaveFocus());
+    expect(cancel).not.toBeDisabled();
+    expect(document.activeElement).toBe(cancel);
+    expect(screen.queryByRole("radio", { name: /Free Only Model/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: /available models/i })).not.toBeInTheDocument();
+
+    await user.keyboard("{Enter}");
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
 
 describe("ModelSelectDialog query states", () => {
+  it("shows cached provenance and retries the catalog", async () => {
+    const user = userEvent.setup();
+    const getProviderModels = vi.fn<BoundApi["getProviderModels"]>().mockResolvedValue({
+      ...RESPONSE,
+      source: "cache",
+      cached: true,
+      fetchedAt: "2026-06-02T00:00:00.000Z",
+    });
+    renderDialog({ getProviderModels });
+
+    expect(await screen.findByText(/using cached catalog data/i)).toHaveTextContent(
+      "2026-06-02T00:00:00.000Z",
+    );
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(getProviderModels).toHaveBeenCalledTimes(2));
+  });
+
   it("renders the error text when the catalog query rejects", async () => {
     renderDialog({
       getProviderModels: vi
@@ -200,13 +288,88 @@ describe("ModelSelectDialog query states", () => {
 });
 
 describe("ModelSelectDialog (OpenRouter)", () => {
-  it("shows the compatibility label and the custom-model affordance", async () => {
+  it("shows the compatibility label without a custom-model affordance", async () => {
     renderDialog({ provider: "openrouter", currentModel: undefined });
 
     expect(
       await screen.findByText(/showing 1\/2 models that support structured outputs/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/enter a custom model ID at your own risk/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /use id/i })).toBeInTheDocument();
+    expect(screen.queryByText(/custom model ID/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /use id/i })).not.toBeInTheDocument();
+  });
+
+  it("removes old-credential rows and blocks confirmation when the replacement fetch fails", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    const getOpenRouterModels = vi
+      .fn<BoundApi["getOpenRouterModels"]>()
+      .mockRejectedValue(new Error("Replacement credential rejected"));
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      getOpenRouterModels,
+      saveConfig: vi.fn<BoundApi["saveConfig"]>().mockResolvedValue(undefined),
+    } satisfies BoundApi;
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(configQueries.openRouterModels(api).queryKey, {
+      models: [
+        {
+          id: "old/account-model",
+          name: "Old account model",
+          description: "Available only to the previous credential",
+          contextLength: 4096,
+          supportedParameters: ["response_format"],
+          pricing: { prompt: "0", completion: "0" },
+          isFree: true,
+        },
+      ],
+      fetchedAt: new Date().toISOString(),
+      cached: false,
+    } satisfies OpenRouterModelsResponse);
+
+    function CredentialReplacementHarness() {
+      const replacement = useSaveConfig();
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() =>
+              replacement.mutate({ provider: "openrouter", apiKey: "replacement-key" })
+            }
+          >
+            Replace credential
+          </button>
+          <ModelSelectDialog
+            open
+            onOpenChange={vi.fn()}
+            provider="openrouter"
+            currentModel="old/account-model"
+            onSelect={onSelect}
+          />
+        </>
+      );
+    }
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ApiProvider value={api}>
+          <FooterProvider>
+            <KeyboardProvider>
+              <CredentialReplacementHarness />
+            </KeyboardProvider>
+          </FooterProvider>
+        </ApiProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole("radio", { name: /Old account model/ })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Replace credential" }));
+
+    expect(await screen.findByText("Replacement credential rejected")).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /Old account model/ })).not.toBeInTheDocument();
+    const confirm = screen.getByRole("button", { name: "Confirm" });
+    expect(confirm).toBeDisabled();
+    await user.click(confirm);
+    expect(onSelect).not.toHaveBeenCalled();
   });
 });

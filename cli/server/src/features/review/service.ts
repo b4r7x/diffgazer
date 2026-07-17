@@ -1,13 +1,17 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { Result } from "@diffgazer/core/result";
 import { err, ok } from "@diffgazer/core/result";
+import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { FullReviewStreamEvent, StepId } from "@diffgazer/core/schemas/events";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
+import type { InitializedAIClient } from "../../shared/lib/ai/client.js";
 import type { AIClient } from "../../shared/lib/ai/types.js";
 import { createGitService } from "../../shared/lib/git/service.js";
 import { log } from "../../shared/lib/log.js";
+import { activateSessionForProject } from "../../shared/lib/session-registry.js";
 import { isReviewAbort } from "./abort.js";
 import { resolveGitDiff } from "./diff.js";
+import type { ParsedDiff } from "./engine/diff/types.js";
 import {
   executeReview,
   finalizeReview,
@@ -53,8 +57,13 @@ function logStepTiming(
   }
 }
 
-async function handleReviewFailure(error: unknown, emit: EmitFn, reviewId: string): Promise<void> {
-  if (isAbortError(error)) {
+async function handleReviewFailure(
+  error: unknown,
+  emit: EmitFn,
+  reviewId: string,
+  signal: AbortSignal,
+): Promise<void> {
+  if (signal.aborted || isAbortError(error)) {
     markComplete(reviewId);
     return;
   }
@@ -89,18 +98,59 @@ export interface CreateReviewSessionResult {
   session: ActiveSession;
 }
 
+export function buildReviewInputHash(params: {
+  headCommit: string;
+  reviewConfigKey: string;
+  parsed: ParsedDiff;
+}): string {
+  const files = params.parsed.files.map((file) => [file.filePath, file.previousPath, file.rawDiff]);
+  return createHash("sha256")
+    .update(JSON.stringify([params.headCommit, params.reviewConfigKey, files]), "utf8")
+    .digest("hex");
+}
+
+function recordReviewEvent(
+  reviewId: string,
+  event: FullReviewStreamEvent,
+  stepStartedAt: Map<StepId, number>,
+): void {
+  logStepTiming(event, reviewId, stepStartedAt);
+  addEvent(reviewId, event);
+}
+
+interface CreateReviewSessionOptions extends StreamReviewParams {
+  activation?: {
+    generation: number;
+    isAuthorized: () => boolean;
+  };
+}
+
 export async function createReviewSession(
-  aiClient: AIClient,
-  options: StreamReviewParams,
-): Promise<Result<CreateReviewSessionResult, { code: ReviewErrorCode; message: string }>> {
+  aiClient: InitializedAIClient,
+  options: CreateReviewSessionOptions,
+): Promise<
+  Result<
+    CreateReviewSessionResult,
+    { code: ReviewErrorCode | typeof ErrorCode.TRUST_REQUIRED; message: string }
+  >
+> {
   const {
     mode = "unstaged",
     files,
     lenses: lensIds,
     profile: profileId,
     projectPath: projectPathOption,
+    activation,
   } = options;
   const projectPath = projectPathOption ?? process.cwd();
+  if (activation && !activation.isAuthorized()) {
+    return err({
+      code: ErrorCode.TRUST_REQUIRED,
+      message: "Repository access was revoked before the review could start.",
+    });
+  }
+
+  const elapsedStart = performance.now();
   const gitService = createGitService({ cwd: projectPath });
 
   const [headCommitResult, statusHashResult] = await Promise.all([
@@ -124,128 +174,165 @@ export async function createReviewSession(
     lenses: reviewDefaults.activeLenses,
     profile: reviewDefaults.effectiveProfileId,
     minSeverity: reviewDefaults.severityFilter?.minSeverity,
+    executionFingerprint: aiClient.executionFingerprint,
   });
+  const reviewId = randomUUID();
+  const bufferedEvents: FullReviewStreamEvent[] = [];
+  const parsedResult = await resolveGitDiff({
+    gitService,
+    mode,
+    files,
+    emit: async (event) => {
+      bufferedEvents.push(event);
+    },
+    reviewId,
+  });
+  const parsed = parsedResult.ok ? parsedResult.value : null;
+  const reviewInputHash = parsed
+    ? buildReviewInputHash({ headCommit, reviewConfigKey, parsed })
+    : undefined;
+  const statusResult = parsed ? await gitService.getStatus().catch(() => null) : null;
+  const branch = statusResult?.ok ? statusResult.value.branch : null;
 
-  if (headCommit && statusHashKind !== "unavailable") {
-    const existingSession = getActiveSessionForProject(projectPath, {
+  const activate = (): Result<CreateReviewSessionResult, never> => {
+    if (parsed && reviewInputHash) {
+      const existingSession = getActiveSessionForProject(projectPath, {
+        headCommit,
+        statusHash,
+        statusHashKind,
+        mode,
+        scopeKey,
+        reviewConfigKey,
+        reviewInputHash,
+      });
+      if (existingSession) {
+        return ok({ reviewId: existingSession.reviewId, session: existingSession });
+      }
+    }
+
+    cancelStaleSessionsForProjectMode(
+      projectPath,
+      mode,
+      headCommit,
+      statusHash,
+      statusHashKind,
+      reviewConfigKey,
+      reviewInputHash,
+    );
+
+    const session = createSession(reviewId, {
+      projectPath,
       headCommit,
       statusHash,
       statusHashKind,
       mode,
       scopeKey,
       reviewConfigKey,
+      reviewInputHash,
+      provider: aiClient.provider,
     });
-    if (existingSession) {
-      return ok({ reviewId: existingSession.reviewId, session: existingSession });
+    const stepStartedAt = new Map<StepId, number>();
+    const emit: EmitFn = async (event) => {
+      if (session.controller.signal.aborted) return;
+      recordReviewEvent(reviewId, event, stepStartedAt);
+    };
+    for (const event of bufferedEvents) {
+      recordReviewEvent(reviewId, event, stepStartedAt);
     }
-  }
+    markReady(reviewId);
 
-  cancelStaleSessionsForProjectMode(
+    if (!parsedResult.ok) {
+      void handleReviewFailure(parsedResult.error, emit, reviewId, session.controller.signal);
+    } else {
+      void runReviewSession(
+        aiClient,
+        { mode, projectPath },
+        reviewDefaults,
+        reviewId,
+        session.controller.signal,
+        headCommit,
+        parsedResult.value,
+        branch,
+        elapsedStart,
+        emit,
+      ).catch((error) => {
+        handleDetachedReviewSessionError(reviewId, error);
+      });
+    }
+
+    return ok({ reviewId, session });
+  };
+
+  if (!activation) return activate();
+
+  const activated = activateSessionForProject(
     projectPath,
-    mode,
-    headCommit,
-    statusHash,
-    statusHashKind,
-    reviewConfigKey,
+    activation.generation,
+    activation.isAuthorized,
+    activate,
   );
+  if (activated) return activated;
 
-  const reviewId = randomUUID();
-  const session = createSession(reviewId, {
-    projectPath,
-    headCommit,
-    statusHash,
-    statusHashKind,
-    mode,
-    scopeKey,
-    reviewConfigKey,
-    provider: aiClient.provider,
+  return err({
+    code: ErrorCode.TRUST_REQUIRED,
+    message: "Repository access was revoked before the review could start.",
   });
-  markReady(reviewId);
-
-  void runReviewSession(
-    aiClient,
-    { mode, files, lenses: lensIds, profile: profileId, projectPath },
-    reviewId,
-    session.controller.signal,
-  ).catch((error) => {
-    handleDetachedReviewSessionError(reviewId, error);
-  });
-
-  return ok({ reviewId, session });
 }
 
 async function runReviewSession(
   aiClient: AIClient,
   options: StreamReviewParams,
+  reviewDefaults: ReturnType<typeof resolveReviewDefaults>,
   reviewId: string,
   signal: AbortSignal,
+  headCommit: string,
+  parsed: ParsedDiff,
+  branch: string | null,
+  elapsedStart: number,
+  emit: EmitFn,
 ): Promise<void> {
-  const {
-    mode = "unstaged",
-    files,
-    lenses: lensIds,
-    profile: profileId,
-    projectPath: projectPathOption,
-  } = options;
-  const startTime = Date.now();
+  const { mode = "unstaged", projectPath: projectPathOption } = options;
   const projectPath = projectPathOption ?? process.cwd();
-  const gitService = createGitService({ cwd: projectPath });
-
-  const stepStartedAt = new Map<StepId, number>();
-  const emit: EmitFn = async (event) => {
-    if (signal.aborted) return;
-    logStepTiming(event, reviewId, stepStartedAt);
-    addEvent(reviewId, event);
-  };
 
   try {
-    const parsedResult = await resolveGitDiff({ gitService, mode, files, emit, reviewId });
-    if (!parsedResult.ok) {
-      await handleReviewFailure(parsedResult.error, emit, reviewId);
-      return;
-    }
-    const parsed = parsedResult.value;
+    signal.throwIfAborted();
 
-    const config = await resolveReviewConfig({ lensIds, profileId, projectPath, emit });
+    const config = await resolveReviewConfig({
+      defaults: reviewDefaults,
+      projectPath,
+      emit,
+      signal,
+    });
+    signal.throwIfAborted();
 
     const outcomeResult = await executeReview({ aiClient, parsed, config, emit, signal });
     if (!outcomeResult.ok) {
-      await handleReviewFailure(outcomeResult.error, emit, reviewId);
+      await handleReviewFailure(outcomeResult.error, emit, reviewId, signal);
       return;
     }
     const outcome = outcomeResult.value;
 
-    const headCommitResult = await gitService.getHeadCommit();
-    const headCommit = headCommitResult.ok ? headCommitResult.value : undefined;
+    const durationMs = Math.round(performance.now() - elapsedStart);
 
     const finalResultResult = await finalizeReview({
       outcome,
-      gitService,
       emit,
       reviewId,
       projectPath,
       mode,
       parsed,
-      profileId: config.effectiveProfileId ?? profileId,
+      profileId: config.effectiveProfileId,
       activeLenses: config.activeLenses,
-      startTime,
+      durationMs,
       signal,
+      branch,
       headCommit,
     });
     if (!finalResultResult.ok) {
-      await handleReviewFailure(finalResultResult.error, emit, reviewId);
+      await handleReviewFailure(finalResultResult.error, emit, reviewId, signal);
       return;
     }
-    const finalResult = finalResultResult.value;
-
-    await emit({
-      type: "complete",
-      result: finalResult,
-      reviewId,
-      durationMs: Date.now() - startTime,
-    });
-    markComplete(reviewId);
   } catch (error) {
-    await handleReviewFailure(error, emit, reviewId);
+    await handleReviewFailure(error, emit, reviewId, signal);
   }
 }

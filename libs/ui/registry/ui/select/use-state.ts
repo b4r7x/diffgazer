@@ -170,7 +170,7 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
     defaultValue: defaultOpen,
     onChange: onOpenChange,
   });
-  const [value, setValue] = useControllableState<SelectValue>({
+  const [value, setValue, , resetUncontrolledValue] = useControllableState<SelectValue>({
     value: isValueControlled ? (controlledValue ?? resetValue) : controlledValue,
     controlled: isValueControlled,
     defaultValue: resetValue,
@@ -178,12 +178,23 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [nativeInvalid, setNativeInvalid] = useState(false);
-  const [highlighted, setHighlighted] = useControllableState<string | null>({
+  const [highlighted, setHighlighted, , resetUncontrolledHighlighted] = useControllableState<
+    string | null
+  >({
     value: isHighlightedControlled ? (controlledHighlighted ?? null) : controlledHighlighted,
     controlled: isHighlightedControlled,
     defaultValue: null,
     onChange: onHighlightChange,
   });
+  const [previousIsOpen, setPreviousIsOpen] = useState(isOpen);
+
+  if (previousIsOpen !== isOpen) {
+    setPreviousIsOpen(isOpen);
+    if (!isOpen) {
+      setSearchQuery("");
+      resetUncontrolledHighlighted(null);
+    }
+  }
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -241,6 +252,44 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
     [highlighted, optionMetadata, setHighlighted],
   );
 
+  const resetValueAndValidity = useCallback(
+    (next: SelectValue) => {
+      setNativeInvalid(false);
+      resetUncontrolledValue(next);
+    },
+    [resetUncontrolledValue],
+  );
+  const controlledFormReset = isValueControlled
+    ? {
+        syncResetBaseline: () => {
+          const select = wrapperRef.current?.querySelector<HTMLSelectElement>(
+            ':scope > select[data-slot="select-form-mirror"]',
+          );
+          if (select) {
+            for (const option of select.options) {
+              option.defaultSelected = Array.isArray(value)
+                ? value.includes(option.value)
+                : option.value === (value ?? "");
+            }
+          }
+          const validation = wrapperRef.current?.querySelector<HTMLInputElement>(
+            ':scope > input[data-slot="select-required-validation"]',
+          );
+          if (validation) {
+            validation.defaultChecked = Array.isArray(value) && value.length > 0;
+          }
+        },
+        onReset: () => setNativeInvalid(false),
+      }
+    : undefined;
+  const invalidatePendingReset = useFormReset(
+    wrapperRef,
+    resetValue,
+    resetValueAndValidity,
+    !isValueControlled,
+    controlledFormReset,
+  );
+
   // Stable ref required: dep of the contextValue memo below.
   const selectItem = useCallback(
     (itemValue: string) => {
@@ -252,6 +301,7 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
       }
       if (disabled || !option || option.disabled || !matchesSearch(option.label, searchQuery))
         return;
+      invalidatePendingReset();
       setNativeInvalid(false);
       if (multiple) {
         setValue((prev) => {
@@ -266,20 +316,16 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
         triggerRef.current?.focus();
       }
     },
-    [disabled, multiple, optionMetadata, searchQuery, setValue, handleOpenChange],
+    [
+      disabled,
+      handleOpenChange,
+      invalidatePendingReset,
+      multiple,
+      optionMetadata,
+      searchQuery,
+      setValue,
+    ],
   );
-
-  // Reset clears both the value AND the post-submit invalid presentation so
-  // aria-invalid does not keep announcing after the form resets, matching native
-  // :user-invalid semantics (form reset clears the user-interacted flag).
-  const resetValueAndValidity = useCallback(
-    (next: SelectValue) => {
-      setNativeInvalid(false);
-      setValue(next);
-    },
-    [setValue],
-  );
-  useFormReset(wrapperRef, resetValue, resetValueAndValidity, !isValueControlled);
 
   const hasRequiredValue = Array.isArray(value) ? value.length > 0 : value !== null && value !== "";
   const resolvedAriaInvalid = nativeInvalid && required && !hasRequiredValue ? true : ariaInvalid;

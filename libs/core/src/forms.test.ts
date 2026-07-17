@@ -81,12 +81,12 @@ describe("useSubmitGuard", () => {
   it("flips isSubmitting to true while the guarded fn is pending and back to false after it settles", async () => {
     const { result } = renderHook(() => useSubmitGuard());
 
-    let resolveFn: (value: string) => void = () => undefined;
-    const pending = new Promise<string>((resolve) => {
+    let resolveFn: () => void = () => undefined;
+    const pending = new Promise<void>((resolve) => {
       resolveFn = resolve;
     });
 
-    let outcome: Promise<string | undefined>;
+    let outcome: Promise<boolean>;
     act(() => {
       outcome = result.current.withGuard(() => pending);
     });
@@ -94,21 +94,21 @@ describe("useSubmitGuard", () => {
     expect(result.current.isSubmitting).toBe(true);
 
     await act(async () => {
-      resolveFn("ok");
+      resolveFn();
       await outcome;
     });
 
     expect(result.current.isSubmitting).toBe(false);
   });
 
-  it("returns undefined synchronously when a second submit starts while the first is in flight", async () => {
+  it("returns false when a second submit starts while the first is in flight", async () => {
     const { result } = renderHook(() => useSubmitGuard());
 
-    const firstFn = vi.fn().mockResolvedValue("first");
-    const secondFn = vi.fn().mockResolvedValue("second");
+    const firstFn = vi.fn().mockResolvedValue(undefined);
+    const secondFn = vi.fn().mockResolvedValue(undefined);
 
-    let firstResult: Promise<string | undefined>;
-    let secondResult: string | undefined;
+    let firstResult: Promise<boolean>;
+    let secondResult: boolean | undefined;
     await act(async () => {
       firstResult = result.current.withGuard(firstFn);
       secondResult = await result.current.withGuard(secondFn);
@@ -116,14 +116,14 @@ describe("useSubmitGuard", () => {
     });
 
     expect(secondFn).not.toHaveBeenCalled();
-    expect(secondResult).toBeUndefined();
+    expect(secondResult).toBe(false);
   });
 
   it("resets after a rejected fn so subsequent submits run", async () => {
     const { result } = renderHook(() => useSubmitGuard());
 
     const failingFn = vi.fn().mockRejectedValue(new Error("boom"));
-    const followUpFn = vi.fn().mockResolvedValue("done");
+    const followUpFn = vi.fn().mockResolvedValue(undefined);
 
     await act(async () => {
       await result.current.withGuard(failingFn).catch(() => undefined);
@@ -132,7 +132,7 @@ describe("useSubmitGuard", () => {
 
     await act(async () => {
       const next = await result.current.withGuard(followUpFn);
-      expect(next).toBe("done");
+      expect(next).toBe(true);
     });
     expect(followUpFn).toHaveBeenCalled();
   });

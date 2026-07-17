@@ -37,6 +37,8 @@ For movement **within** a single list, use [`useNavigation`](/keys/hooks/use-nav
 
 When the `focus` option is set, changing zones moves DOM focus to the zone's target (a ref, a getter, or a `{ container, target }` pair). Initial mount does not steal focus unless `autoFocus` is `true`. `getZoneProps(zone)` returns `data-focused` for styling the active region.
 
+The playground example registers its layout container and a focus target for every panel. Tab therefore changes both the active zone and DOM focus only while focus is inside the example; Tab elsewhere on the page remains native.
+
 ## Examples
 
 <Examples />

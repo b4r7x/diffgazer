@@ -3,6 +3,8 @@
 import { Button } from "@/components/ui/button";
 import { Toaster, toast } from "@/components/ui/toast";
 
+const REVIEW_SUBMITTED_TOAST_ID = "review-submitted";
+
 export default function ToastActions() {
   return (
     <>
@@ -12,10 +14,15 @@ export default function ToastActions() {
           size="sm"
           onClick={() =>
             toast.success("Review Submitted", {
+              id: REVIEW_SUBMITTED_TOAST_ID,
               message: "Your code review has been submitted for 3 files.",
               action: (
-                <Button variant="ghost" size="sm">
-                  Undo
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toast.dismiss(REVIEW_SUBMITTED_TOAST_ID)}
+                >
+                  Dismiss
                 </Button>
               ),
             })

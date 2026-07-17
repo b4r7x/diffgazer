@@ -88,10 +88,17 @@ export function Label({
   ...props
 }: LabelProps) {
   const handleMouseDown = (event: MouseEvent<HTMLLabelElement>) => {
-    const target = event.target as HTMLElement;
-    if (target.closest("button, input, select, textarea")) return;
     onMouseDown?.(event);
-    if (!event.defaultPrevented && event.detail > 1) event.preventDefault();
+    if (event.defaultPrevented) return;
+    const ElementConstructor = event.currentTarget.ownerDocument.defaultView?.Element;
+    if (
+      ElementConstructor &&
+      event.target instanceof ElementConstructor &&
+      event.target.closest("button, input, select, textarea")
+    ) {
+      return;
+    }
+    if (event.detail > 1) event.preventDefault();
   };
 
   if (label) {
@@ -118,11 +125,7 @@ export function Label({
     <label
       ref={ref}
       data-slot="label"
-      className={cn(
-        labelVariants({ color }),
-        "peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
-        className,
-      )}
+      className={cn(labelVariants({ color }), className)}
       onMouseDown={handleMouseDown}
       {...props}
     >

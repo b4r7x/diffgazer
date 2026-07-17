@@ -2,10 +2,11 @@ import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
 import type { SettingsConfig } from "@diffgazer/core/schemas/config";
+import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { stubMatchMedia } from "@diffgazer/core/testing/match-media";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
@@ -62,7 +63,7 @@ function renderPage() {
     );
   }
 
-  return render(<SettingsThemePage />, { wrapper: Wrapper });
+  return { ...render(<SettingsThemePage />, { wrapper: Wrapper }), queryClient };
 }
 
 async function waitForThemeReady() {
@@ -83,6 +84,7 @@ function setSystemPrefersDark(prefersDark: boolean): void {
 
 describe("SettingsThemePage keyboard behavior", () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     mockNavigate.mockReset();
     mockGetSettings = vi.fn<BoundApi["getSettings"]>().mockResolvedValue(SETTINGS_FIXTURE);
     mockSaveSettings = vi.fn<BoundApi["saveSettings"]>().mockResolvedValue(undefined);
@@ -111,6 +113,58 @@ describe("SettingsThemePage keyboard behavior", () => {
 
     await user.keyboard("{Enter}");
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
+  });
+
+  it("waits for the authoritative theme and keeps a dirty draft through background refetch", async () => {
+    const settings = createDeferred<SettingsConfig>();
+    mockGetSettings.mockReturnValueOnce(settings.promise);
+    localStorage.setItem("diffgazer-theme", "dark");
+
+    const { queryClient } = renderPage();
+
+    expect(screen.queryByText("Theme Settings")).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+
+    await act(async () => {
+      settings.resolve({ ...SETTINGS_FIXTURE, theme: "light" });
+    });
+    await waitForSelectedTheme(/light/i);
+
+    const user = userEvent.setup();
+    const darkRadio = screen.getByRole("radio", { name: /dark/i });
+    await user.click(darkRadio);
+    expect(darkRadio).toHaveFocus();
+    expect(darkRadio).toHaveAttribute("aria-checked", "true");
+
+    mockGetSettings.mockResolvedValue({ ...SETTINGS_FIXTURE, theme: "auto" });
+    await act(async () => {
+      await queryClient.invalidateQueries();
+    });
+
+    expect(mockGetSettings).toHaveBeenCalledTimes(2);
+    expect(darkRadio).toHaveFocus();
+    expect(darkRadio).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("button", { name: /^save$/i })).toBeEnabled();
+  });
+
+  it("keeps radio focus and ArrowDown navigation after pointer re-entry from footer actions", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await waitForThemeReady();
+
+    const autoRadio = screen.getByRole("radio", { name: /auto/i });
+    const darkRadio = screen.getByRole("radio", { name: /dark/i });
+    const lightRadio = screen.getByRole("radio", { name: /light/i });
+    await waitFor(() => expect(autoRadio).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
+    expect(screen.getByRole("button", { name: /^cancel$/i })).toHaveFocus();
+
+    await user.click(darkRadio);
+    expect(darkRadio).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(lightRadio).toHaveFocus();
   });
 
   it("keeps focused radio arrow navigation separate from selection", async () => {
@@ -239,8 +293,11 @@ describe("SettingsThemePage keyboard behavior", () => {
     expect(saveButton).toBeEnabled();
   });
 
-  it("keeps the failed-save error visible after the optimistic theme rolls back", async () => {
+  it("keeps the failed-save error and dirty draft after the optimistic theme rolls back", async () => {
     mockSaveSettings.mockRejectedValue(new Error("Network unreachable"));
+    vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
+      throw new DOMException("Storage denied", "SecurityError");
+    });
     const user = userEvent.setup();
     renderPage();
     await waitForThemeReady();
@@ -249,9 +306,42 @@ describe("SettingsThemePage keyboard behavior", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Network unreachable");
-    expect(screen.getByRole("radio", { name: /auto/i })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: /auto/i })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("radio", { name: /dark/i })).toHaveAttribute("aria-checked", "true");
+    expect(document.documentElement).toHaveAttribute("data-theme", "light");
     expect(screen.getByRole("alert")).toHaveTextContent("Network unreachable");
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("saves through the server when storage reads and writes are denied", async () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new DOMException("Storage denied", "SecurityError");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("Storage denied", "SecurityError");
+    });
+    const user = userEvent.setup();
+
+    renderPage();
+    await waitForThemeReady();
+    await user.keyboard("{ArrowDown}{Enter}");
+
+    await waitFor(() => expect(mockSaveSettings).toHaveBeenCalledWith({ theme: "dark" }));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
+  });
+
+  it("mounts and saves when the storage object getter is denied", async () => {
+    vi.spyOn(window, "localStorage", "get").mockImplementation(() => {
+      throw new DOMException("Storage denied", "SecurityError");
+    });
+    const user = userEvent.setup();
+
+    renderPage();
+    await waitForThemeReady();
+    await user.keyboard("{ArrowDown}{Enter}");
+
+    await waitFor(() => expect(mockSaveSettings).toHaveBeenCalledWith({ theme: "dark" }));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
   });
 
   it("ignores an overlapping theme save while one is still pending", async () => {

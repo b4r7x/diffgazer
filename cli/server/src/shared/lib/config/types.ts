@@ -26,9 +26,9 @@ export type SecretEntry = string | EnvCredentialRef;
 export interface SecretsState {
   providers: Record<string, SecretEntry>;
   /**
-   * Secret entries whose ref kind this binary does not recognize (e.g. a newer
-   * reference type). Carried opaquely so they round-trip on persist instead of
-   * failing the whole file (F-445).
+   * Secret entries this binary cannot resolve under current provider policy, such
+   * as a newer reference type, a future provider, or a ref that fails its allowlist.
+   * Carried opaquely so they round-trip instead of failing the whole file (F-445).
    */
   unknownSecrets?: Record<string, unknown>;
 }
@@ -51,6 +51,7 @@ export type SecretsStorageErrorCode =
   | "SECRET_NOT_FOUND"
   | "SECRETS_MIGRATION_FAILED"
   | "PERSIST_FAILED"
+  | "ROLLBACK_FAILED"
   | "CONCURRENCY_CONFLICT"
   | "STORAGE_NOT_CONFIGURED";
 

@@ -23,11 +23,11 @@ Pass `--theme` to start the TUI in a specific palette:
 diffgazer --theme high-contrast --tui
 ```
 
-`--theme` only does anything alongside `--tui`. Run it on its own and the CLI exits with an error rather than guessing, since the web UI manages its own theme.
+`--theme` accepts `auto`, `dark`, `light`, or `high-contrast`, and only works alongside `--tui`. Run it on its own, or pass another value, and the CLI exits with an error. The web UI manages its own theme.
 
-If you don't pass a theme, the TUI starts in `auto` and tries to match your terminal. Auto-detection reads the `COLORFGBG` environment variable that many terminals set, takes the background value from it, and picks `light` when that value points at a light background; otherwise it stays on `dark`. When you name a theme that isn't one of the three above, the TUI falls back to `dark` instead of failing.
+If you don't pass a theme, the TUI starts in `auto` and tries to match your terminal. Auto-detection reads the `COLORFGBG` environment variable that many terminals set, takes the background value from it, and picks `light` when that value points at a light background; otherwise it stays on `dark`.
 
-> Note: The theme you save in your config and the theme the TUI renders are drawn from two different lists. The settings schema, which is what gets written to your config file, accepts `auto`, `dark`, `light`, and `terminal`. The TUI's own palette set is `dark`, `light`, and `high-contrast`. So `terminal` is a valid value to store but has no matching TUI palette (it resolves to `dark`), and `high-contrast` is a real TUI palette that the saved settings can't currently name. When the two disagree, the settings schema is the authority for what your config may hold.
+> Note: The settings schema accepts `auto`, `dark`, `light`, and `terminal`. The TUI normalizes `terminal` to `auto`. `high-contrast` is available from the CLI for the current run, but cannot be saved in config yet.
 
 ## Related
 

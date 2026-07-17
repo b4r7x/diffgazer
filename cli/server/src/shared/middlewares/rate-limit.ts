@@ -11,6 +11,8 @@ interface RateLimitConfig {
   windowMs: number;
 }
 
+type MonotonicNow = () => number;
+
 const windows = new Map<string, WindowEntry>();
 
 const getOrResetWindow = (key: string, windowMs: number, now: number): WindowEntry => {
@@ -24,14 +26,18 @@ const getOrResetWindow = (key: string, windowMs: number, now: number): WindowEnt
 };
 
 export const createRateLimitMiddleware =
-  (key: string, config: RateLimitConfig) =>
+  (key: string, config: RateLimitConfig, now: MonotonicNow = () => performance.now()) =>
   async (c: Context, next: Next): Promise<Response | undefined> => {
-    const now = Date.now();
-    const entry = getOrResetWindow(key, config.windowMs, now);
+    const currentTime = now();
+    const entry = getOrResetWindow(key, config.windowMs, currentTime);
     entry.count++;
 
     if (entry.count > config.maxRequests) {
-      const retryAfter = Math.ceil((entry.windowStart + config.windowMs - now) / 1000);
+      const remainingMs = Math.min(
+        config.windowMs,
+        Math.max(0, entry.windowStart + config.windowMs - currentTime),
+      );
+      const retryAfter = Math.max(1, Math.ceil(remainingMs / 1000));
       c.header("Retry-After", String(retryAfter));
       return errorResponse(c, "Too many requests", "RATE_LIMITED", 429);
     }

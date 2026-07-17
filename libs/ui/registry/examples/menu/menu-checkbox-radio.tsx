@@ -34,18 +34,10 @@ export default function MenuCheckboxRadio() {
         </MenuItemCheckbox>
         <MenuDivider />
         <MenuLabel>SORT BY</MenuLabel>
-        <MenuItemRadio id="name" value="name">
-          Name
-        </MenuItemRadio>
-        <MenuItemRadio id="date" value="date">
-          Date Modified
-        </MenuItemRadio>
-        <MenuItemRadio id="size" value="size">
-          Size
-        </MenuItemRadio>
-        <MenuItemRadio id="type" value="type">
-          Type
-        </MenuItemRadio>
+        <MenuItemRadio id="name">Name</MenuItemRadio>
+        <MenuItemRadio id="date">Date Modified</MenuItemRadio>
+        <MenuItemRadio id="size">Size</MenuItemRadio>
+        <MenuItemRadio id="type">Type</MenuItemRadio>
       </Menu>
     </div>
   );

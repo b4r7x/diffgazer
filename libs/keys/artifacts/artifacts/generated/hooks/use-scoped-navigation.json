@@ -2,3620 +2,6 @@
   "name": "use-scoped-navigation",
   "title": "useScopedNavigation",
   "description": "Scope-aware keyboard navigation registered via KeyboardProvider. Use when navigation should respect the scope stack (e.g., modals, panels).",
-  "source": {
-    "raw": "\"use client\";\n\nimport type { RefObject } from \"react\";\nimport { dispatchNavigationKey, resolveDirectionKeys } from \"../core/navigation-dispatch.js\";\nimport { useKeyboardRegistryContext } from \"../providers/keyboard-context.js\";\nimport { useKey } from \"./use-key.js\";\nimport { type UseNavigationOptions, useNavigationCore } from \"./use-navigation.js\";\n\n/** Options for provider-backed, scope-aware role-based navigation. */\nexport type UseScopedNavigationOptions<TValue extends string = string> = Omit<\n  UseNavigationOptions<TValue>,\n  \"containerRef\"\n> & {\n  /** Ref to the container element holding navigable items. */\n  containerRef: RefObject<HTMLElement | null>;\n  /** Only handle navigation keys when focus is within the container element. */\n  focusWithinOnly?: boolean;\n  /** Keyboard scope name to register navigation handlers under; null skips registration. */\n  scope?: string | null;\n};\n\n/** Return value from `useScopedNavigation`. */\nexport interface UseScopedNavigationReturn<TValue extends string = string> {\n  /** The value of the currently highlighted item, or null. */\n  highlighted: TValue | null;\n  /** Returns true if the given value is the highlighted item. */\n  isHighlighted: (value: TValue) => boolean;\n  /** Imperatively set the highlighted item. Pass null to clear. */\n  highlight: (value: TValue | null) => void;\n}\n\n/**\n * Registers role-based list navigation through `KeyboardProvider` so movement\n * participates in the active scope stack.\n */\nexport function useScopedNavigation<TValue extends string = string>(\n  options: UseScopedNavigationOptions<TValue>,\n): UseScopedNavigationReturn<TValue> {\n  // Provider-presence assertion. The dispatch path below relies on `useKey`,\n  // which would silently no-op without a provider; calling the registry\n  // context here throws early with a clear message instead.\n  useKeyboardRegistryContext();\n\n  const {\n    enabled = true,\n    preventDefault = true,\n    focusWithinOnly,\n    orientation = \"vertical\",\n    upKeys,\n    downKeys,\n    containerRef,\n    scope,\n    onEnter,\n    onSelect,\n  } = options;\n  const resolvedFocusWithinOnly = focusWithinOnly ?? false;\n\n  const { resolvedUpKeys, resolvedDownKeys } = resolveDirectionKeys(orientation, upKeys, downKeys);\n\n  const {\n    highlighted,\n    isHighlighted,\n    highlight,\n    move,\n    focusIndex,\n    handleSelect,\n    handleEnter,\n    getElements,\n  } = useNavigationCore({ ...options, containerRef });\n  const handlesEnter = Boolean(onEnter || onSelect);\n  const handlesSpace = Boolean(onSelect);\n\n  // Editable-target filtering is handled by the keyboard provider via `allowInInput`.\n  const dispatch = (key: string, nativeEvent: globalThis.KeyboardEvent) => {\n    dispatchNavigationKey(key, {\n      resolvedUpKeys,\n      resolvedDownKeys,\n      move: (delta) => move(delta, nativeEvent, key),\n      focusIndex,\n      handleSelect: handlesSpace ? (e) => handleSelect(e) : undefined,\n      handleEnter: handlesEnter ? (e) => handleEnter(e) : undefined,\n      total: getElements().length,\n      nativeEvent,\n    });\n  };\n\n  const handlers: Record<string, (event: globalThis.KeyboardEvent) => void> = {\n    ...Object.fromEntries(\n      resolvedUpKeys.map((key) => [key, (event: globalThis.KeyboardEvent) => dispatch(key, event)]),\n    ),\n    ...Object.fromEntries(\n      resolvedDownKeys.map((key) => [\n        key,\n        (event: globalThis.KeyboardEvent) => dispatch(key, event),\n      ]),\n    ),\n    Home: (e) => dispatch(\"Home\", e),\n    End: (e) => dispatch(\"End\", e),\n  };\n\n  if (handlesEnter) {\n    handlers.Enter = (e) => dispatch(\"Enter\", e);\n  }\n  if (handlesSpace) {\n    handlers[\" \"] = (e) => dispatch(\" \", e);\n  }\n\n  useKey(handlers, {\n    enabled,\n    preventDefault,\n    containerRef,\n    focusWithinOnly: resolvedFocusWithinOnly,\n    scope,\n  });\n\n  return { highlighted, isHighlighted, highlight };\n}\n",
-    "highlighted": [
-      {
-        "number": 1,
-        "content": [
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "use client",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 2,
-        "content": []
-      },
-      {
-        "number": 3,
-        "content": [
-          {
-            "text": "import",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "type",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " RefObject ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "from",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "react",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 4,
-        "content": [
-          {
-            "text": "import",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " dispatchNavigationKey",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " resolveDirectionKeys ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "from",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "../core/navigation-dispatch.js",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 5,
-        "content": [
-          {
-            "text": "import",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " useKeyboardRegistryContext ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "from",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "../providers/keyboard-context.js",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 6,
-        "content": [
-          {
-            "text": "import",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " useKey ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "from",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "./use-key.js",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 7,
-        "content": [
-          {
-            "text": "import",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "type",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " UseNavigationOptions",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " useNavigationCore ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "from",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "./use-navigation.js",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 8,
-        "content": []
-      },
-      {
-        "number": 9,
-        "content": [
-          {
-            "text": "/**",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " Options for provider-backed, scope-aware role-based navigation. ",
-            "color": "var(--code-comment)"
-          },
-          {
-            "text": "*/",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 10,
-        "content": [
-          {
-            "text": "export",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "type",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "UseScopedNavigationOptions",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "<",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "TValue",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "extends",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "string",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "string",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ">",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "Omit",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "<",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 11,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "UseNavigationOptions",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "<",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "TValue",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": ">,",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 12,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "containerRef",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 13,
-        "content": [
-          {
-            "text": ">",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "&",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 14,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "/**",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " Ref to the container element holding navigable items. ",
-            "color": "var(--code-comment)"
-          },
-          {
-            "text": "*/",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 15,
-        "content": [
-          {
-            "text": "  containerRef",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "RefObject",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "<",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "HTMLElement",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "|",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "null",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ">;",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 16,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "/**",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " Only handle navigation keys when focus is within the container element. ",
-            "color": "var(--code-comment)"
-          },
-          {
-            "text": "*/",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 17,
-        "content": [
-          {
-            "text": "  focusWithinOnly",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "?:",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "boolean",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 18,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "/**",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " Keyboard scope name to register navigation handlers under; null skips registration. ",
-            "color": "var(--code-comment)"
-          },
-          {
-            "text": "*/",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 19,
-        "content": [
-          {
-            "text": "  scope",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "?:",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "string",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "|",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "null",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 20,
-        "content": [
-          {
-            "text": "};",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 21,
-        "content": []
-      },
-      {
-        "number": 22,
-        "content": [
-          {
-            "text": "/**",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " Return value from `useScopedNavigation`. ",
-            "color": "var(--code-comment)"
-          },
-          {
-            "text": "*/",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 23,
-        "content": [
-          {
-            "text": "export",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "interface",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "UseScopedNavigationReturn",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "<",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "TValue",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "extends",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "string",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "string",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ">",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 24,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "/**",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " The value of the currently highlighted item, or null. ",
-            "color": "var(--code-comment)"
-          },
-          {
-            "text": "*/",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 25,
-        "content": [
-          {
-            "text": "  highlighted",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "TValue",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "|",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "null",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 26,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "/**",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " Returns true if the given value is the highlighted item. ",
-            "color": "var(--code-comment)"
-          },
-          {
-            "text": "*/",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 27,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "isHighlighted",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "value",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "TValue",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "boolean",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 28,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "/**",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " Imperatively set the highlighted item. Pass null to clear. ",
-            "color": "var(--code-comment)"
-          },
-          {
-            "text": "*/",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 29,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "highlight",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "value",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "TValue",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "|",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "null",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "void",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 30,
-        "content": [
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 31,
-        "content": []
-      },
-      {
-        "number": 32,
-        "content": [
-          {
-            "text": "/**",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 33,
-        "content": [
-          {
-            "text": " * Registers role-based list navigation through `KeyboardProvider` so movement",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 34,
-        "content": [
-          {
-            "text": " * participates in the active scope stack.",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 35,
-        "content": [
-          {
-            "text": " ",
-            "color": "var(--code-comment)"
-          },
-          {
-            "text": "*/",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 36,
-        "content": [
-          {
-            "text": "export",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "function",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useScopedNavigation",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "<",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "TValue",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "extends",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "string",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "string",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ">(",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 37,
-        "content": [
-          {
-            "text": "  options",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "UseScopedNavigationOptions",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "<",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "TValue",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": ">,",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 38,
-        "content": [
-          {
-            "text": "):",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "UseScopedNavigationReturn",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "<",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "TValue",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": ">",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 39,
-        "content": [
-          {
-            "text": "  //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " Provider-presence assertion. The dispatch path below relies on `useKey`,",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 40,
-        "content": [
-          {
-            "text": "  //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " which would silently no-op without a provider; calling the registry",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 41,
-        "content": [
-          {
-            "text": "  //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " context here throws early with a clear message instead.",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 42,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useKeyboardRegistryContext",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "()",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 43,
-        "content": []
-      },
-      {
-        "number": 44,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 45,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "enabled",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "true",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 46,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "preventDefault",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "true",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 47,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "focusWithinOnly",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 48,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "orientation",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "vertical",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 49,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "upKeys",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 50,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "downKeys",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 51,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "containerRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 52,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "scope",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 53,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "onEnter",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 54,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "onSelect",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 55,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " options",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 56,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "resolvedFocusWithinOnly",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " focusWithinOnly ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "??",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "false",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 57,
-        "content": []
-      },
-      {
-        "number": 58,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "resolvedUpKeys",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "resolvedDownKeys",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "resolveDirectionKeys",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(orientation",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " upKeys",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " downKeys)",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 59,
-        "content": []
-      },
-      {
-        "number": 60,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 61,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "highlighted",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 62,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "isHighlighted",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 63,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "highlight",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 64,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "move",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 65,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "focusIndex",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 66,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "handleSelect",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 67,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "handleEnter",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 68,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "getElements",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 69,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useNavigationCore",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "...",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "options",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " containerRef ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 70,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "handlesEnter",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "Boolean",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(onEnter ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "||",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " onSelect)",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 71,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "handlesSpace",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "Boolean",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(onSelect)",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 72,
-        "content": []
-      },
-      {
-        "number": 73,
-        "content": [
-          {
-            "text": "  //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " Editable-target filtering is handled by the keyboard provider via `allowInInput`.",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 74,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "dispatch",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "key",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "string",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " nativeEvent",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "globalThis",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "KeyboardEvent",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 75,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "dispatchNavigationKey",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(key",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 76,
-        "content": [
-          {
-            "text": "      resolvedUpKeys",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 77,
-        "content": [
-          {
-            "text": "      resolvedDownKeys",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 78,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "move",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "delta",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "move",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(delta",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " nativeEvent",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " key)",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 79,
-        "content": [
-          {
-            "text": "      focusIndex",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 80,
-        "content": [
-          {
-            "text": "      handleSelect",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " handlesSpace ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "?",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "e",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "handleSelect",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(e) ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "undefined",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 81,
-        "content": [
-          {
-            "text": "      handleEnter",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " handlesEnter ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "?",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "e",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "handleEnter",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(e) ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "undefined",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 82,
-        "content": [
-          {
-            "text": "      total",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "getElements",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "()",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "length",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 83,
-        "content": [
-          {
-            "text": "      nativeEvent",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 84,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 85,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "};",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 86,
-        "content": []
-      },
-      {
-        "number": 87,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "handlers",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "Record",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "<",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "string",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "event",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "globalThis",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "KeyboardEvent",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "void",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ">",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 88,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "...",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "Object",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "fromEntries",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          }
-        ]
-      },
-      {
-        "number": 89,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "resolvedUpKeys",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "map",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "key",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " [key",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "event",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "globalThis",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "KeyboardEvent",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "dispatch",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(key",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " event)])",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 90,
-        "content": [
-          {
-            "text": "    )",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 91,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "...",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "Object",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "fromEntries",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          }
-        ]
-      },
-      {
-        "number": 92,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "resolvedDownKeys",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "map",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "key",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " [",
-            "color": "var(--code-variable)"
-          }
-        ]
-      },
-      {
-        "number": 93,
-        "content": [
-          {
-            "text": "        key",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 94,
-        "content": [
-          {
-            "text": "        ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "event",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "globalThis",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "KeyboardEvent",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "dispatch",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(key",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " event)",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 95,
-        "content": [
-          {
-            "text": "      ])",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 96,
-        "content": [
-          {
-            "text": "    )",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 97,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "Home",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "e",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "dispatch",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "Home",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " e)",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 98,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "End",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "e",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "dispatch",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "End",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " e)",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 99,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "};",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 100,
-        "content": []
-      },
-      {
-        "number": 101,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "if",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " (handlesEnter) ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 102,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "handlers",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "Enter",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "e",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "dispatch",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "Enter",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " e)",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 103,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 104,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "if",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " (handlesSpace) ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 105,
-        "content": [
-          {
-            "text": "    handlers[",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "] ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "e",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "dispatch",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " e)",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 106,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 107,
-        "content": []
-      },
-      {
-        "number": 108,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useKey",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(handlers",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 109,
-        "content": [
-          {
-            "text": "    enabled",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 110,
-        "content": [
-          {
-            "text": "    preventDefault",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 111,
-        "content": [
-          {
-            "text": "    containerRef",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 112,
-        "content": [
-          {
-            "text": "    focusWithinOnly",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " resolvedFocusWithinOnly",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 113,
-        "content": [
-          {
-            "text": "    scope",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 114,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 115,
-        "content": []
-      },
-      {
-        "number": 116,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "return",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " highlighted",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " isHighlighted",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " highlight ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "};",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 117,
-        "content": [
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 118,
-        "content": []
-      }
-    ]
-  },
   "docs": {
     "description": "Scope-aware keyboard navigation registered via KeyboardProvider. Use when navigation should respect the scope stack (e.g., modals, panels).",
     "usage": {
@@ -3651,13 +37,13 @@
         "name": "onSelect",
         "type": "(value: string, event: KeyboardEvent) => void",
         "required": false,
-        "description": "Called when an item is selected via Space key."
+        "description": "Called when Space selects the highlighted item, and as the Enter fallback when onEnter is not provided."
       },
       {
         "name": "onEnter",
         "type": "(value: string, event: KeyboardEvent) => void",
         "required": false,
-        "description": "Called when Enter is pressed on the highlighted item."
+        "description": "Called when Enter is pressed on the highlighted item. When provided, it overrides the onSelect Enter fallback."
       },
       {
         "name": "wrap",
@@ -3932,7 +318,7 @@
   ],
   "exampleSource": {
     "use-scoped-navigation-basic": {
-      "raw": "\"use client\";\n\nimport { KeyboardProvider, useScope, useScopedNavigation } from \"@diffgazer/keys\";\nimport { useRef, useState } from \"react\";\n\nconst commands = [\"New File\", \"Open File\", \"Save\", \"Save As\", \"Close\"];\n\nfunction CommandPalette({ onClose }: { onClose: () => void }) {\n  const listRef = useRef<HTMLDivElement>(null);\n\n  useScope(\"command-palette\");\n\n  const { isHighlighted } = useScopedNavigation({\n    containerRef: listRef,\n    role: \"option\",\n    wrap: true,\n    onSelect: (value) => {\n      alert(`Executed: ${value}`);\n      onClose();\n    },\n  });\n\n  return (\n    <div style={{ marginTop: 8, padding: 8, border: \"1px solid currentColor\" }}>\n      <h3>Command Palette</h3>\n      <p>ArrowUp/ArrowDown navigate; Enter executes.</p>\n      <div ref={listRef} role=\"listbox\" tabIndex={0}>\n        {commands.map((cmd) => (\n          // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — options stay non-focusable; the listbox container holds focus and active state is tracked via aria-selected.\n          <div\n            key={cmd}\n            role=\"option\"\n            data-value={cmd}\n            aria-selected={isHighlighted(cmd)}\n            style={{ padding: \"4px 8px\", fontWeight: isHighlighted(cmd) ? 700 : 400 }}\n          >\n            {cmd}\n          </div>\n        ))}\n      </div>\n    </div>\n  );\n}\n\nfunction App() {\n  const [open, setOpen] = useState(false);\n\n  return (\n    <div>\n      <button type=\"button\" onClick={() => setOpen(true)}>\n        Open Command Palette\n      </button>\n      {open && <CommandPalette onClose={() => setOpen(false)} />}\n    </div>\n  );\n}\n\nexport default function UseScopedNavigationBasic() {\n  return (\n    <KeyboardProvider>\n      <App />\n    </KeyboardProvider>\n  );\n}\n",
+      "raw": "\"use client\";\n\nimport { KeyboardProvider, useScope, useScopedNavigation } from \"@diffgazer/keys\";\nimport { useId, useRef, useState } from \"react\";\n\nconst commands = [\"New File\", \"Open File\", \"Save\", \"Save As\", \"Close\"];\n\nfunction CommandPalette({ onClose }: { onClose: () => void }) {\n  const listRef = useRef<HTMLDivElement>(null);\n  const headingId = useId();\n\n  useScope(\"command-palette\");\n\n  const { isHighlighted } = useScopedNavigation({\n    containerRef: listRef,\n    role: \"option\",\n    wrap: true,\n    onSelect: (value) => {\n      alert(`Executed: ${value}`);\n      onClose();\n    },\n  });\n\n  return (\n    <div style={{ marginTop: 8, padding: 8, border: \"1px solid currentColor\" }}>\n      <h3 id={headingId}>Command Palette</h3>\n      <p>ArrowUp/ArrowDown navigate; Enter executes.</p>\n      <div ref={listRef} role=\"listbox\" tabIndex={0} aria-labelledby={headingId}>\n        {commands.map((cmd) => (\n          // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — options stay non-focusable; the listbox container holds focus and active state is tracked via aria-selected.\n          <div\n            key={cmd}\n            role=\"option\"\n            data-value={cmd}\n            aria-selected={isHighlighted(cmd)}\n            style={{ padding: \"4px 8px\", fontWeight: isHighlighted(cmd) ? 700 : 400 }}\n          >\n            {cmd}\n          </div>\n        ))}\n      </div>\n    </div>\n  );\n}\n\nfunction App() {\n  const [open, setOpen] = useState(false);\n\n  return (\n    <div>\n      <button type=\"button\" onClick={() => setOpen(true)}>\n        Open Command Palette\n      </button>\n      {open && <CommandPalette onClose={() => setOpen(false)} />}\n    </div>\n  );\n}\n\nexport default function UseScopedNavigationBasic() {\n  return (\n    <KeyboardProvider>\n      <App />\n    </KeyboardProvider>\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -4041,6 +427,14 @@
             },
             {
               "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " useId",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
               "color": "var(--code-operator)"
             },
             {
@@ -4382,10 +776,55 @@
         },
         {
           "number": 10,
-          "content": []
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "headingId",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useId",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
         },
         {
           "number": 11,
+          "content": []
+        },
+        {
+          "number": 12,
           "content": [
             {
               "text": "  ",
@@ -4422,11 +861,11 @@
           ]
         },
         {
-          "number": 12,
+          "number": 13,
           "content": []
         },
         {
-          "number": 13,
+          "number": 14,
           "content": [
             {
               "text": "  ",
@@ -4487,7 +926,7 @@
           ]
         },
         {
-          "number": 14,
+          "number": 15,
           "content": [
             {
               "text": "    containerRef",
@@ -4508,7 +947,7 @@
           ]
         },
         {
-          "number": 15,
+          "number": 16,
           "content": [
             {
               "text": "    role",
@@ -4541,7 +980,7 @@
           ]
         },
         {
-          "number": 16,
+          "number": 17,
           "content": [
             {
               "text": "    wrap",
@@ -4566,7 +1005,7 @@
           ]
         },
         {
-          "number": 17,
+          "number": 18,
           "content": [
             {
               "text": "    ",
@@ -4615,7 +1054,7 @@
           ]
         },
         {
-          "number": 18,
+          "number": 19,
           "content": [
             {
               "text": "      ",
@@ -4664,7 +1103,7 @@
           ]
         },
         {
-          "number": 19,
+          "number": 20,
           "content": [
             {
               "text": "      ",
@@ -4685,7 +1124,7 @@
           ]
         },
         {
-          "number": 20,
+          "number": 21,
           "content": [
             {
               "text": "    ",
@@ -4698,7 +1137,7 @@
           ]
         },
         {
-          "number": 21,
+          "number": 22,
           "content": [
             {
               "text": "  ",
@@ -4719,11 +1158,11 @@
           ]
         },
         {
-          "number": 22,
+          "number": 23,
           "content": []
         },
         {
-          "number": 23,
+          "number": 24,
           "content": [
             {
               "text": "  ",
@@ -4740,7 +1179,7 @@
           ]
         },
         {
-          "number": 24,
+          "number": 25,
           "content": [
             {
               "text": "    ",
@@ -4841,7 +1280,7 @@
           ]
         },
         {
-          "number": 25,
+          "number": 26,
           "content": [
             {
               "text": "      ",
@@ -4856,7 +1295,23 @@
               "color": "var(--code-tag)"
             },
             {
-              "text": ">",
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "id",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "headingId",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}>",
               "color": "var(--code-operator)"
             },
             {
@@ -4878,7 +1333,7 @@
           ]
         },
         {
-          "number": 26,
+          "number": 27,
           "content": [
             {
               "text": "      ",
@@ -4915,7 +1370,7 @@
           ]
         },
         {
-          "number": 27,
+          "number": 28,
           "content": [
             {
               "text": "      ",
@@ -4990,13 +1445,33 @@
               "color": "var(--code-number)"
             },
             {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "aria-labelledby",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "headingId",
+              "color": "var(--code-variable)"
+            },
+            {
               "text": "}>",
               "color": "var(--code-operator)"
             }
           ]
         },
         {
-          "number": 28,
+          "number": 29,
           "content": [
             {
               "text": "        ",
@@ -5049,7 +1524,7 @@
           ]
         },
         {
-          "number": 29,
+          "number": 30,
           "content": [
             {
               "text": "          //",
@@ -5062,7 +1537,7 @@
           ]
         },
         {
-          "number": 30,
+          "number": 31,
           "content": [
             {
               "text": "          ",
@@ -5079,7 +1554,7 @@
           ]
         },
         {
-          "number": 31,
+          "number": 32,
           "content": [
             {
               "text": "            ",
@@ -5104,7 +1579,7 @@
           ]
         },
         {
-          "number": 32,
+          "number": 33,
           "content": [
             {
               "text": "            ",
@@ -5133,7 +1608,7 @@
           ]
         },
         {
-          "number": 33,
+          "number": 34,
           "content": [
             {
               "text": "            ",
@@ -5158,7 +1633,7 @@
           ]
         },
         {
-          "number": 34,
+          "number": 35,
           "content": [
             {
               "text": "            ",
@@ -5187,7 +1662,7 @@
           ]
         },
         {
-          "number": 35,
+          "number": 36,
           "content": [
             {
               "text": "            ",
@@ -5288,7 +1763,7 @@
           ]
         },
         {
-          "number": 36,
+          "number": 37,
           "content": [
             {
               "text": "          ",
@@ -5301,7 +1776,7 @@
           ]
         },
         {
-          "number": 37,
+          "number": 38,
           "content": [
             {
               "text": "            ",
@@ -5322,7 +1797,7 @@
           ]
         },
         {
-          "number": 38,
+          "number": 39,
           "content": [
             {
               "text": "          ",
@@ -5343,7 +1818,7 @@
           ]
         },
         {
-          "number": 39,
+          "number": 40,
           "content": [
             {
               "text": "        ))",
@@ -5356,7 +1831,7 @@
           ]
         },
         {
-          "number": 40,
+          "number": 41,
           "content": [
             {
               "text": "      ",
@@ -5377,7 +1852,7 @@
           ]
         },
         {
-          "number": 41,
+          "number": 42,
           "content": [
             {
               "text": "    ",
@@ -5398,7 +1873,7 @@
           ]
         },
         {
-          "number": 42,
+          "number": 43,
           "content": [
             {
               "text": "  )",
@@ -5411,7 +1886,7 @@
           ]
         },
         {
-          "number": 43,
+          "number": 44,
           "content": [
             {
               "text": "}",
@@ -5420,11 +1895,11 @@
           ]
         },
         {
-          "number": 44,
+          "number": 45,
           "content": []
         },
         {
-          "number": 45,
+          "number": 46,
           "content": [
             {
               "text": "function",
@@ -5453,7 +1928,7 @@
           ]
         },
         {
-          "number": 46,
+          "number": 47,
           "content": [
             {
               "text": "  ",
@@ -5526,11 +2001,11 @@
           ]
         },
         {
-          "number": 47,
+          "number": 48,
           "content": []
         },
         {
-          "number": 48,
+          "number": 49,
           "content": [
             {
               "text": "  ",
@@ -5547,7 +2022,7 @@
           ]
         },
         {
-          "number": 49,
+          "number": 50,
           "content": [
             {
               "text": "    ",
@@ -5568,7 +2043,7 @@
           ]
         },
         {
-          "number": 50,
+          "number": 51,
           "content": [
             {
               "text": "      ",
@@ -5653,7 +2128,7 @@
           ]
         },
         {
-          "number": 51,
+          "number": 52,
           "content": [
             {
               "text": "        Open Command Palette",
@@ -5662,7 +2137,7 @@
           ]
         },
         {
-          "number": 52,
+          "number": 53,
           "content": [
             {
               "text": "      ",
@@ -5683,7 +2158,7 @@
           ]
         },
         {
-          "number": 53,
+          "number": 54,
           "content": [
             {
               "text": "      ",
@@ -5768,7 +2243,7 @@
           ]
         },
         {
-          "number": 54,
+          "number": 55,
           "content": [
             {
               "text": "    ",
@@ -5789,7 +2264,7 @@
           ]
         },
         {
-          "number": 55,
+          "number": 56,
           "content": [
             {
               "text": "  )",
@@ -5802,7 +2277,7 @@
           ]
         },
         {
-          "number": 56,
+          "number": 57,
           "content": [
             {
               "text": "}",
@@ -5811,11 +2286,11 @@
           ]
         },
         {
-          "number": 57,
+          "number": 58,
           "content": []
         },
         {
-          "number": 58,
+          "number": 59,
           "content": [
             {
               "text": "export",
@@ -5860,7 +2335,7 @@
           ]
         },
         {
-          "number": 59,
+          "number": 60,
           "content": [
             {
               "text": "  ",
@@ -5877,7 +2352,7 @@
           ]
         },
         {
-          "number": 60,
+          "number": 61,
           "content": [
             {
               "text": "    ",
@@ -5898,7 +2373,7 @@
           ]
         },
         {
-          "number": 61,
+          "number": 62,
           "content": [
             {
               "text": "      ",
@@ -5923,7 +2398,7 @@
           ]
         },
         {
-          "number": 62,
+          "number": 63,
           "content": [
             {
               "text": "    ",
@@ -5944,7 +2419,7 @@
           ]
         },
         {
-          "number": 63,
+          "number": 64,
           "content": [
             {
               "text": "  )",
@@ -5957,7 +2432,7 @@
           ]
         },
         {
-          "number": 64,
+          "number": 65,
           "content": [
             {
               "text": "}",
@@ -5966,7 +2441,7 @@
           ]
         },
         {
-          "number": 65,
+          "number": 66,
           "content": []
         }
       ]
@@ -7920,13 +4395,13 @@
       "name": "onSelect",
       "type": "(value: string, event: KeyboardEvent) => void",
       "required": false,
-      "description": "Called when an item is selected via Space key."
+      "description": "Called when Space selects the highlighted item, and as the Enter fallback when onEnter is not provided."
     },
     {
       "name": "onEnter",
       "type": "(value: string, event: KeyboardEvent) => void",
       "required": false,
-      "description": "Called when Enter is pressed on the highlighted item."
+      "description": "Called when Enter is pressed on the highlighted item. When provided, it overrides the onSelect Enter fallback."
     },
     {
       "name": "wrap",
@@ -8045,5 +4520,8 @@
         "description": "Imperatively set the highlighted item. Pass null to clear."
       }
     ]
-  }
+  },
+  "files": [
+    "src/hooks/use-scoped-navigation.ts"
+  ]
 }

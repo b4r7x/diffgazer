@@ -11,6 +11,7 @@ export default function FieldForm() {
 
   return (
     <form
+      noValidate
       className="flex max-w-sm flex-col gap-3"
       onSubmit={(event) => {
         event.preventDefault();

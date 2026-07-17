@@ -82,7 +82,9 @@ interface HoverTriggerElementProps {
   "aria-controls"?: string;
   "aria-describedby"?: string;
   "aria-label"?: string;
+  "aria-labelledby"?: string;
   "aria-hidden"?: boolean;
+  id?: string;
   onClick?: MouseEventHandler<HTMLElement>;
   onPointerDown?: PointerEventHandler<HTMLElement>;
   onMouseEnter?: MouseEventHandler<HTMLElement>;
@@ -133,8 +135,10 @@ export function PopoverTrigger({ children, className, ref }: PopoverTriggerProps
     onTriggerEnter,
     onTriggerFocus,
     onTriggerLeave,
+    onTriggerBlur,
     onTriggerClick,
     onTriggerPointerDown,
+    markDismissed,
     enabled,
     popupRole,
   } = usePopoverContext();
@@ -159,15 +163,17 @@ export function PopoverTrigger({ children, className, ref }: PopoverTriggerProps
       if (trigger.contains(event.target)) return;
       const content = trigger.ownerDocument.getElementById(popoverId);
       if (content?.contains(event.target)) return;
+      markDismissed();
       onOpenChange(false);
     };
     const doc = trigger.ownerDocument;
     doc.addEventListener("pointerdown", handlePointerDown, { capture: true });
     return () => doc.removeEventListener("pointerdown", handlePointerDown, { capture: true });
-  }, [enabled, isClick, onOpenChange, open, popoverId, triggerRef]);
+  }, [enabled, isClick, markDismissed, onOpenChange, open, popoverId, triggerRef]);
 
   const handleHoverClick = () => {
     if (!enabled) return;
+    if (open) markDismissed();
     onOpenChange(!open);
   };
 
@@ -178,6 +184,7 @@ export function PopoverTrigger({ children, className, ref }: PopoverTriggerProps
     if (!enabled) return;
     onTriggerPointerDown();
     if (event.pointerType !== "touch") return;
+    if (open) markDismissed();
     onOpenChange(!open);
   };
 
@@ -190,6 +197,7 @@ export function PopoverTrigger({ children, className, ref }: PopoverTriggerProps
     if (!enabled) return;
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
+    if (open) markDismissed();
     onOpenChange(!open);
   };
 
@@ -210,7 +218,7 @@ export function PopoverTrigger({ children, className, ref }: PopoverTriggerProps
     onMouseEnter: onTriggerEnter,
     onMouseLeave: onTriggerLeave,
     onFocus: onTriggerFocus,
-    onBlur: onTriggerLeave,
+    onBlur: onTriggerBlur,
     onClick: handleHoverClick,
     onKeyDown: handleHoverKeyDown,
     tabIndex: enabled ? 0 : undefined,
@@ -223,7 +231,7 @@ export function PopoverTrigger({ children, className, ref }: PopoverTriggerProps
     onMouseEnter: onTriggerEnter,
     onMouseLeave: onTriggerLeave,
     onFocus: onTriggerFocus,
-    onBlur: onTriggerLeave,
+    onBlur: onTriggerBlur,
   };
 
   const triggerProps = isClick ? clickTriggerProps : interactiveHoverTriggerProps;
@@ -267,10 +275,24 @@ export function PopoverTrigger({ children, className, ref }: PopoverTriggerProps
 
     if (isDisabledNative) {
       const spanProps = passiveTriggerProps satisfies ComponentPropsWithRef<"span">;
+      const childId = child.props.id ?? `${popoverId}-trigger`;
       return (
-        <span {...spanProps}>
+        // biome-ignore lint/a11y/useAriaPropsSupportedByRole: the neutral wrapper is the only focus path for a disabled native control and receives its name from that control.
+        <span
+          {...spanProps}
+          aria-label={child.props["aria-label"]}
+          aria-labelledby={
+            child.props["aria-label"] ? undefined : (child.props["aria-labelledby"] ?? childId)
+          }
+          tabIndex={enabled ? 0 : undefined}
+        >
           {cloneElement(child, {
+            id: childId,
             className: cn(child.props.className, className),
+            "aria-describedby": mergeIds(
+              child.props["aria-describedby"],
+              passiveTriggerProps["aria-describedby"],
+            ),
           })}
         </span>
       );
@@ -283,8 +305,8 @@ export function PopoverTrigger({ children, className, ref }: PopoverTriggerProps
       className: cn(child.props.className, className),
       role: child.props.role ?? (isClick || isNativeInteractive ? undefined : hoverProps.role),
       "aria-describedby": mergeIds(child.props["aria-describedby"], hoverProps["aria-describedby"]),
-      onClick: mergeHandlers(child.props.onClick, hoverProps.onClick, isClick),
-      onPointerDown: mergeHandlers(child.props.onPointerDown, hoverProps.onPointerDown),
+      onClick: mergeHandlers(child.props.onClick, hoverProps.onClick, true),
+      onPointerDown: mergeHandlers(child.props.onPointerDown, hoverProps.onPointerDown, true),
       onMouseEnter: mergeHandlers(child.props.onMouseEnter, hoverProps.onMouseEnter),
       onMouseLeave: mergeHandlers(child.props.onMouseLeave, hoverProps.onMouseLeave),
       onFocus: mergeHandlers(child.props.onFocus, hoverProps.onFocus),
@@ -307,8 +329,7 @@ export function PopoverTrigger({ children, className, ref }: PopoverTriggerProps
 
   const spanProps = passiveTriggerProps satisfies ComponentPropsWithRef<"span">;
   // Plain non-interactive children (e.g. a tooltip on text) need a tab stop so
-  // keyboard/SR users can focus the trigger and reveal the tooltip; the disabled
-  // native-element wrapper above intentionally stays untabbable.
+  // keyboard/SR users can focus the trigger and reveal the tooltip.
   return (
     <span {...spanProps} tabIndex={enabled ? 0 : undefined}>
       {children}

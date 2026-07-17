@@ -29,6 +29,7 @@ import { ReviewResultsView } from "./results-view";
 
 interface IssueOptions {
   suggestedPatch?: string | null;
+  trace?: ReviewIssue["trace"];
   fixPlan?: ReviewIssue["fixPlan"];
   severity?: ReviewIssue["severity"];
 }
@@ -59,7 +60,7 @@ function createReviewIssue(id: string, title: string, options: IssueOptions = {}
         excerpt: "const a = 1;",
       },
     ],
-    trace: [
+    trace: options.trace ?? [
       {
         step: 1,
         tool: "reviewer",
@@ -81,11 +82,16 @@ function renderView(
     createReviewIssue("issue-1", "Issue one"),
     createReviewIssue("issue-2", "Issue two"),
   ],
+  droppedDuplicates?: number,
 ) {
   return render(
     <KeyboardProvider>
       <FooterProvider>
-        <ReviewResultsView issues={issues} reviewId="review-1" />
+        <ReviewResultsView
+          issues={issues}
+          reviewId="review-1"
+          droppedDuplicates={droppedDuplicates}
+        />
         <FooterView />
       </FooterProvider>
     </KeyboardProvider>,
@@ -93,6 +99,14 @@ function renderView(
 }
 
 describe("ReviewResultsView keyboard regression", () => {
+  it("renders the persisted duplicate-collapse count transition", () => {
+    renderView([createReviewIssue("issue-1", "Issue one")], 1);
+
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "1 duplicate issue collapsed across lenses (2 → 1 issue)",
+    );
+  });
+
   it("auto-focuses the issue list zone on mount so aria-activedescendant is read", async () => {
     renderView();
 
@@ -175,6 +189,22 @@ describe("ReviewResultsView keyboard regression", () => {
     expect(screen.getByText("Issue two symptom")).toBeInTheDocument();
   });
 
+  it("ignores 3 for a patch-only issue while 4 still selects Patch", async () => {
+    const user = userEvent.setup();
+    renderView([createReviewIssue("issue-1", "Patch-only issue", { trace: [] })]);
+
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
+    );
+
+    await user.keyboard("4");
+    expect(screen.getByRole("tab", { name: "Patch" })).toHaveAttribute("aria-selected", "true");
+
+    await user.keyboard("3");
+    expect(screen.getByRole("tab", { name: "Patch" })).toHaveAttribute("aria-selected", "true");
+  });
+
   it("keeps completed fix-plan steps scoped to the selected issue", async () => {
     const user = userEvent.setup();
     renderView([
@@ -192,18 +222,101 @@ describe("ReviewResultsView keyboard regression", () => {
       }),
     ]);
 
-    const firstIssuePatchStep = screen.getByRole("checkbox", { name: "Patch issue one" });
+    const firstIssuePatchStep = screen.getByRole("checkbox", { name: "2. Patch issue one" });
     expect(firstIssuePatchStep).not.toBeChecked();
 
     await user.click(firstIssuePatchStep);
     expect(firstIssuePatchStep).toBeChecked();
 
     await user.click(screen.getByRole("option", { name: /issue two/i }));
-    expect(screen.getByRole("checkbox", { name: "Inspect issue two" })).not.toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "Patch issue two" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "1. Inspect issue two" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "2. Patch issue two" })).not.toBeChecked();
 
     await user.click(screen.getByRole("option", { name: /issue one/i }));
-    expect(screen.getByRole("checkbox", { name: "Patch issue one" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "2. Patch issue one" })).toBeChecked();
+  });
+
+  it("resets issue-scoped scroll while retaining the selected tab", async () => {
+    const user = userEvent.setup();
+    renderView([
+      createReviewIssue("issue-1", "Issue one", {
+        fixPlan: [
+          { step: 1, action: "Inspect issue one" },
+          { step: 2, action: "Patch issue one" },
+        ],
+      }),
+      createReviewIssue("issue-2", "Issue two", {
+        fixPlan: [
+          { step: 1, action: "Inspect issue two" },
+          { step: 2, action: "Patch issue two" },
+        ],
+      }),
+    ]);
+
+    screen.getByRole("listbox").focus();
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
+    );
+
+    await user.keyboard("j");
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("checkbox", { name: "2. Patch issue one" })).toBeChecked();
+
+    const detailsScroll = screen.getByRole("region", { name: "Issue details" });
+    detailsScroll.scrollTop = 240;
+    await user.click(screen.getByRole("tab", { name: "Explain" }));
+    expect(screen.getByRole("tab", { name: "Explain" })).toHaveAttribute("aria-selected", "true");
+
+    await user.click(screen.getByRole("option", { name: /issue two/i }));
+    expect(detailsScroll.scrollTop).toBe(0);
+    expect(screen.getByRole("tab", { name: "Explain" })).toHaveAttribute("aria-selected", "true");
+
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
+    );
+    await user.keyboard("1");
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("checkbox", { name: "1. Inspect issue two" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "2. Patch issue two" })).not.toBeChecked();
+  });
+
+  it("resets step focus while retaining completion when returning to an issue", async () => {
+    const user = userEvent.setup();
+    renderView([
+      createReviewIssue("issue-1", "Issue one", {
+        fixPlan: [
+          { step: 1, action: "Inspect issue one" },
+          { step: 2, action: "Patch issue one" },
+        ],
+      }),
+      createReviewIssue("issue-2", "Issue two", {
+        fixPlan: [
+          { step: 1, action: "Inspect issue two" },
+          { step: 2, action: "Patch issue two" },
+        ],
+      }),
+    ]);
+
+    screen.getByRole("listbox").focus();
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
+    );
+    await user.keyboard("j");
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("checkbox", { name: "2. Patch issue one" })).toBeChecked();
+
+    await user.click(screen.getByRole("option", { name: /issue two/i }));
+    await user.click(screen.getByRole("option", { name: /issue one/i }));
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
+    );
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("checkbox", { name: "1. Inspect issue one" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "2. Patch issue one" })).toBeChecked();
   });
 
   it("toggles fix-plan steps keyboard-only from the details zone", async () => {
@@ -225,8 +338,8 @@ describe("ReviewResultsView keyboard regression", () => {
       expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
     );
 
-    const firstStep = screen.getByRole("checkbox", { name: "Inspect issue one" });
-    const secondStep = screen.getByRole("checkbox", { name: "Patch issue one" });
+    const firstStep = screen.getByRole("checkbox", { name: "1. Inspect issue one" });
+    const secondStep = screen.getByRole("checkbox", { name: "2. Patch issue one" });
     expect(firstStep).not.toBeChecked();
 
     // Space toggles the focused (first) step without any pointer interaction.
@@ -240,6 +353,30 @@ describe("ReviewResultsView keyboard regression", () => {
     // k moves back up; Space untoggles the first step.
     await user.keyboard("k ");
     expect(firstStep).not.toBeChecked();
+  });
+
+  it("toggles the pointer-focused fix-plan step with the next Enter", async () => {
+    const user = userEvent.setup();
+    renderView([
+      createReviewIssue("issue-1", "Issue one", {
+        fixPlan: [
+          { step: 1, action: "Inspect issue one" },
+          { step: 2, action: "Patch issue one" },
+        ],
+      }),
+    ]);
+
+    const firstStep = screen.getByRole("checkbox", { name: "1. Inspect issue one" });
+    const secondStep = screen.getByRole("checkbox", { name: "2. Patch issue one" });
+
+    await user.click(secondStep);
+    expect(firstStep).not.toBeChecked();
+    expect(secondStep).toBeChecked();
+
+    await user.keyboard("{Enter}");
+
+    expect(firstStep).not.toBeChecked();
+    expect(secondStep).not.toBeChecked();
   });
 
   it("keeps native Tab on the skip link outside main while cycling panes inside main", async () => {

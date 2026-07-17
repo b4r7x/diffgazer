@@ -1,11 +1,8 @@
-import { z } from "zod";
-
-const ShortcutSchema = z.object({
-  key: z.string(),
-  label: z.string(),
-  disabled: z.boolean().optional(),
-});
-export type Shortcut = z.infer<typeof ShortcutSchema>;
+export interface Shortcut {
+  key: string;
+  label: string;
+  disabled?: boolean;
+}
 
 export function areShortcutsEqual(a: Shortcut[], b: Shortcut[]): boolean {
   if (a === b) return true;
@@ -52,7 +49,8 @@ export const HELP_SHORTCUTS: Shortcut[] = [
   { key: "Esc", label: "Go Back" },
   SWITCH_PANE_SHORTCUT,
   { key: "1-4", label: "Switch Tab (in Review)" },
-  { key: "j/k", label: "Scroll Content" },
+  { key: "j/k", label: "Navigate Lists and Fix Plan" },
+  { key: "↑/↓ · PgUp/PgDn · Home/End", label: "Scroll Content" },
   { key: "s", label: "Open Settings" },
   { key: "q", label: "Quit" },
   { key: "?", label: "Open Help" },
@@ -61,7 +59,8 @@ export const HELP_SHORTCUTS: Shortcut[] = [
 // Trust-panel footer shortcuts consumed by both surfaces' home trust prompt.
 export const TRUST_FOOTER_SHORTCUTS: Shortcut[] = [
   { key: "↑/↓", label: "Navigate Permissions" },
-  { key: "Enter/Space", label: "Toggle Permission" },
+  { key: "Enter/Space", label: "Toggle" },
+  { key: "Tab", label: "Focus Actions" },
   { key: "q", label: "Quit" },
 ];
 

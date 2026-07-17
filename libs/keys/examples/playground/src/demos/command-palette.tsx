@@ -1,5 +1,6 @@
 import { useKey, useScope, useScopedNavigation } from "@diffgazer/keys";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { DemoDialog } from "../components/demo-dialog";
 import { DemoWrapper } from "../components/demo-wrapper";
 import { useTransientValue } from "./use-transient-value";
 
@@ -27,12 +28,16 @@ export function CommandPaletteDemo() {
     cmd.label.toLowerCase().includes(query.toLowerCase()),
   );
 
+  const closePalette = () => {
+    setOpen(false);
+    setQuery("");
+  };
+
   const selectCommand = (value: string) => {
     const cmd = ALL_COMMANDS.find((c) => c.id === value);
     if (cmd) {
       showToastMessage(`Executed: ${cmd.label}`);
-      setOpen(false);
-      setQuery("");
+      closePalette();
     }
   };
 
@@ -47,28 +52,19 @@ export function CommandPaletteDemo() {
 
   useScope("command-palette", { enabled: open });
 
-  useKey(
-    "Escape",
-    () => {
-      setOpen(false);
-      setQuery("");
-    },
-    { enabled: open, scope: "command-palette" },
-  );
+  useKey("Escape", closePalette, {
+    allowInInput: true,
+    enabled: open,
+    scope: "command-palette",
+  });
 
   const { isHighlighted } = useScopedNavigation({
     containerRef,
-    role: "option",
+    role: "button",
     onEnter: (value) => selectCommand(value),
     enabled: open,
     wrap: true,
   });
-
-  useEffect(() => {
-    if (!open) return;
-    const frameId = window.requestAnimationFrame(() => inputRef.current?.focus());
-    return () => window.cancelAnimationFrame(frameId);
-  }, [open]);
 
   return (
     <DemoWrapper
@@ -111,51 +107,38 @@ export function CommandPaletteDemo() {
       )}
 
       {open && (
-        <div className="demo-overlay">
-          <button
-            type="button"
-            aria-label="Close command palette"
-            className="demo-overlay-backdrop"
-            onClick={() => {
-              setOpen(false);
-              setQuery("");
-            }}
+        <DemoDialog title="Command Palette" initialFocus={inputRef} onClose={closePalette}>
+          <input
+            ref={inputRef}
+            className="demo-input"
+            style={{ width: "100%", marginBottom: 12 }}
+            placeholder="Type a command..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
           />
-          <div className="demo-dialog">
-            <input
-              ref={inputRef}
-              className="demo-input"
-              style={{ width: "100%", marginBottom: 12 }}
-              placeholder="Type a command..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <div ref={containerRef} className="demo-list">
-              {filtered.map((cmd) => (
-                <button
-                  type="button"
-                  key={cmd.id}
-                  role="option"
-                  tabIndex={-1}
-                  aria-selected={isHighlighted(cmd.id)}
-                  data-value={cmd.id}
-                  className={`demo-list-item${isHighlighted(cmd.id) ? " demo-list-item--focused" : ""}`}
-                  onClick={() => selectCommand(cmd.id)}
-                >
-                  <span style={{ marginRight: 8 }}>{cmd.icon}</span>
-                  {cmd.label}
-                </button>
-              ))}
-              {filtered.length === 0 && (
-                <div
-                  style={{ padding: "10px 12px", color: "var(--color-text-muted)", fontSize: 14 }}
-                >
-                  No commands found
-                </div>
-              )}
-            </div>
+          <div ref={containerRef} className="demo-list">
+            {filtered.map((cmd) => (
+              <button
+                type="button"
+                key={cmd.id}
+                tabIndex={-1}
+                data-value={cmd.id}
+                className={`demo-list-item${isHighlighted(cmd.id) ? " demo-list-item--focused" : ""}`}
+                onClick={() => selectCommand(cmd.id)}
+              >
+                <span aria-hidden="true" style={{ marginRight: 8 }}>
+                  {cmd.icon}
+                </span>
+                {cmd.label}
+              </button>
+            ))}
+            {filtered.length === 0 && (
+              <div style={{ padding: "10px 12px", color: "var(--color-text-muted)", fontSize: 14 }}>
+                No commands found
+              </div>
+            )}
           </div>
-        </div>
+        </DemoDialog>
       )}
     </DemoWrapper>
   );

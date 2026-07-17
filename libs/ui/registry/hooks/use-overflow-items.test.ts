@@ -4,11 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { computeVisibleCount, useOverflowItems } from "./use-overflow-items";
 
 let resizeCallbacks: (() => void)[] = [];
+let retainedResizeCallbacks: (() => void)[] = [];
 let mutationCallbacks: (() => void)[] = [];
 let animationCallbacks: FrameRequestCallback[] = [];
 
 beforeEach(() => {
   resizeCallbacks = [];
+  retainedResizeCallbacks = [];
   mutationCallbacks = [];
   animationCallbacks = [];
 
@@ -17,10 +19,13 @@ beforeEach(() => {
     class {
       constructor(private cb: () => void) {}
       observe() {
-        resizeCallbacks.push(this.cb);
+        if (!resizeCallbacks.includes(this.cb)) resizeCallbacks.push(this.cb);
+        if (!retainedResizeCallbacks.includes(this.cb)) retainedResizeCallbacks.push(this.cb);
       }
       unobserve() {}
-      disconnect() {}
+      disconnect() {
+        resizeCallbacks = resizeCallbacks.filter((callback) => callback !== this.cb);
+      }
     },
   );
   vi.stubGlobal(
@@ -28,9 +33,11 @@ beforeEach(() => {
     class {
       constructor(private cb: () => void) {}
       observe() {
-        mutationCallbacks.push(this.cb);
+        if (!mutationCallbacks.includes(this.cb)) mutationCallbacks.push(this.cb);
       }
-      disconnect() {}
+      disconnect() {
+        mutationCallbacks = mutationCallbacks.filter((callback) => callback !== this.cb);
+      }
       takeRecords() {
         return [];
       }
@@ -61,28 +68,38 @@ function TestOverflowItems({
   widths,
   containerWidth,
   indicatorWidth,
+  show = true,
+  containerKey = "container",
 }: {
   widths: number[];
   containerWidth: number;
   indicatorWidth: number;
+  show?: boolean;
+  containerKey?: string;
 }) {
   const { ref, visibleCount, overflowCount } = useOverflowItems({ itemCount: widths.length });
 
   return React.createElement(
     React.Fragment,
     null,
-    React.createElement(
-      "ul",
-      { ref, "aria-label": "items", style: { gap: "10px" } },
-      widths.map((width, index) =>
-        React.createElement("li", { key: index, "data-width": width }, `Item ${index}`),
-      ),
-      React.createElement(
-        "span",
-        { "aria-label": "overflow indicator", "data-width": indicatorWidth },
-        "More",
-      ),
-    ),
+    show
+      ? React.createElement(
+          "div",
+          { key: containerKey, ref, role: "list", "aria-label": "items", style: { gap: "10px" } },
+          widths.map((width, index) =>
+            React.createElement(
+              "span",
+              { key: index, role: "listitem", "data-width": width },
+              `Item ${index}`,
+            ),
+          ),
+          React.createElement(
+            "span",
+            { "aria-label": "overflow indicator", "data-width": indicatorWidth },
+            "More",
+          ),
+        )
+      : null,
     React.createElement(
       "output",
       { "aria-label": "counts" },
@@ -101,11 +118,11 @@ function TestOverflowItemsWithListener({ listener }: { listener: (count: number)
     React.Fragment,
     null,
     React.createElement(
-      "ul",
-      { ref, "aria-label": "items", style: { gap: "10px" } },
-      React.createElement("li", { "data-width": 50 }, "Item 0"),
-      React.createElement("li", { "data-width": 50 }, "Item 1"),
-      React.createElement("li", { "data-width": 50 }, "Item 2"),
+      "div",
+      { ref, role: "list", "aria-label": "items", style: { gap: "10px" } },
+      React.createElement("span", { role: "listitem", "data-width": 50 }, "Item 0"),
+      React.createElement("span", { role: "listitem", "data-width": 50 }, "Item 1"),
+      React.createElement("span", { role: "listitem", "data-width": 50 }, "Item 2"),
       React.createElement("span", { "aria-label": "overflow indicator", "data-width": 30 }, "More"),
     ),
     React.createElement("output", { "aria-label": "visible count" }, visibleCount),
@@ -279,5 +296,84 @@ describe("useOverflowItems", () => {
     expect(screen.getByLabelText("visible count")).toHaveTextContent("2");
     expect(secondListener).toHaveBeenCalledWith(2);
     expect(firstListener).not.toHaveBeenCalledWith(2);
+  });
+
+  it("measures a late container and recovers across resize and replacement", () => {
+    const { rerender } = render(
+      React.createElement(TestOverflowItems, {
+        widths: [50, 50, 50],
+        containerWidth: 150,
+        indicatorWidth: 30,
+        show: false,
+      }),
+    );
+
+    expect(screen.getByLabelText("counts")).toHaveTextContent("3/0/150");
+    expect(resizeCallbacks).toHaveLength(0);
+
+    rerender(
+      React.createElement(TestOverflowItems, {
+        widths: [50, 50, 50],
+        containerWidth: 150,
+        indicatorWidth: 30,
+      }),
+    );
+    setRenderedWidths(150);
+    act(() => {
+      for (const callback of resizeCallbacks) callback();
+      flushScheduledChecks();
+    });
+    expect(screen.getByLabelText("counts")).toHaveTextContent("2/1/150");
+
+    setRenderedWidths(220);
+    act(() => {
+      for (const callback of resizeCallbacks) callback();
+      flushScheduledChecks();
+    });
+    expect(screen.getByLabelText("counts")).toHaveTextContent("3/0/150");
+    const firstResizeCallback = retainedResizeCallbacks[0];
+    expect(firstResizeCallback).toBeDefined();
+    act(() => firstResizeCallback?.());
+    expect(animationCallbacks).toHaveLength(1);
+
+    rerender(
+      React.createElement(TestOverflowItems, {
+        widths: [50, 50, 50],
+        containerWidth: 100,
+        indicatorWidth: 30,
+        containerKey: "replacement",
+      }),
+    );
+    setRenderedWidths(100);
+    act(flushScheduledChecks);
+    expect(screen.getByLabelText("counts")).toHaveTextContent("1/2/100");
+
+    act(() => firstResizeCallback?.());
+    expect(animationCallbacks).toHaveLength(0);
+    expect(screen.getByLabelText("counts")).toHaveTextContent("1/2/100");
+
+    const replacementResizeCallback = resizeCallbacks[0];
+    expect(replacementResizeCallback).toBeDefined();
+    act(() => {
+      replacementResizeCallback?.();
+      flushScheduledChecks();
+    });
+    expect(screen.getByLabelText("counts")).toHaveTextContent("1/2/100");
+
+    rerender(
+      React.createElement(TestOverflowItems, {
+        widths: [50, 50, 50],
+        containerWidth: 100,
+        indicatorWidth: 30,
+        show: false,
+      }),
+    );
+    expect(screen.getByLabelText("counts")).toHaveTextContent("3/0/100");
+    expect(resizeCallbacks).toHaveLength(0);
+    expect(mutationCallbacks).toHaveLength(0);
+
+    act(() => replacementResizeCallback?.());
+    expect(animationCallbacks).toHaveLength(0);
+    expect(screen.getByLabelText("counts")).toHaveTextContent("3/0/100");
   });
 });

@@ -118,7 +118,7 @@ async function saveReviewWithIssues(
     commit: "abc123",
     lenses: ["correctness"],
     diff: parseDiff(DIFF),
-    result: { summary: "summary", issues },
+    result: { issues },
   });
   expect(result.ok).toBe(true);
 }
@@ -207,7 +207,7 @@ describe("drilldownIssue", () => {
 describe("drilldownIssueById", () => {
   it("returns ISSUE_NOT_FOUND when the requested issue is absent", async () => {
     const { drilldownIssueById } = await loadDrilldown();
-    const reviewResult = { summary: "summary", issues: [makeIssue({ id: "issue-1" })] };
+    const reviewResult = { issues: [makeIssue({ id: "issue-1" })] };
 
     const result = await drilldownIssueById(
       makeMockClient(),
@@ -226,7 +226,7 @@ describe("drilldownIssueById", () => {
   it("returns drilldown analysis for the matching issue", async () => {
     const { drilldownIssueById } = await loadDrilldown();
     const issue = makeIssue({ id: "issue-1" });
-    const reviewResult = { summary: "summary", issues: [issue] };
+    const reviewResult = { issues: [issue] };
     const diff: ParsedDiff = parseDiff(DIFF);
 
     const result = await drilldownIssueById(makeMockClient(), "issue-1", reviewResult, diff);
@@ -240,30 +240,42 @@ describe("drilldownIssueById", () => {
 });
 
 describe("handleDrilldownRequest", () => {
-  it("loads a persisted review, uses its stored diff, and stores the drilldown", async () => {
+  it("completes the request with one storage-owned lock and stores the drilldown", async () => {
     const issue = makeIssue({ id: "issue-1" });
     await saveReviewWithIssues([issue]);
     vi.mocked(createGitService).mockClear();
+    const reviewLock = await import("./storage/review-lock.js");
+    const lockSpy = vi.spyOn(reviewLock, "withReviewLock");
     const { handleDrilldownRequest } = await loadDrilldown();
     const { getReview } = await loadReviewStorage();
 
-    const result = await handleDrilldownRequest(makeMockClient(), REVIEW_ID, "issue-1", "/project");
+    try {
+      const result = await handleDrilldownRequest(
+        makeMockClient(),
+        REVIEW_ID,
+        "issue-1",
+        "/project",
+      );
 
-    expect(result.ok).toBe(true);
-    expect(createGitService).not.toHaveBeenCalled();
-    if (result.ok) {
-      expect(result.value).toMatchObject({
-        issueId: "issue-1",
-        detailedAnalysis: "analysis",
-      });
-    }
+      expect(result.ok).toBe(true);
+      expect(createGitService).not.toHaveBeenCalled();
+      if (result.ok) {
+        expect(result.value).toMatchObject({
+          issueId: "issue-1",
+          detailedAnalysis: "analysis",
+        });
+      }
 
-    const stored = await getReview(REVIEW_ID);
-    expect(stored.ok).toBe(true);
-    if (stored.ok) {
-      expect(stored.value.drilldowns).toMatchObject([
-        { issueId: "issue-1", detailedAnalysis: "analysis" },
-      ]);
+      const stored = await getReview(REVIEW_ID);
+      expect(stored.ok).toBe(true);
+      if (stored.ok) {
+        expect(stored.value.drilldowns).toMatchObject([
+          { issueId: "issue-1", detailedAnalysis: "analysis" },
+        ]);
+      }
+      expect(lockSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      lockSpy.mockRestore();
     }
   });
 

@@ -1,6 +1,6 @@
 import type { AIProvider, ProviderWithStatus } from "@diffgazer/core/schemas/config";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -15,11 +15,14 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-const DEFAULT_PROVIDER = {
-  id: "gemini" as AIProvider,
+const DEFAULT_PROVIDER: ProviderWithStatus = {
+  id: "gemini",
   hasApiKey: false,
   model: "gemini-2.5-flash",
   name: "Gemini",
+  defaultModel: "gemini-2.5-flash",
+  displayStatus: "needs-key",
+  isActive: false,
 };
 
 const PROVIDERS: ProviderWithStatus[] = [
@@ -72,7 +75,7 @@ function Subject({
     onSetApiKey: vi.fn(),
     onSelectModel: vi.fn(),
     onRemoveKey: vi.fn(async () => {}),
-    onSelectProvider: vi.fn(async () => {}),
+    onActivateProvider: vi.fn(),
   });
 
   return (
@@ -118,9 +121,11 @@ function renderSubject(props: Parameters<typeof Subject>[0] = {}) {
 function ProviderListSubject({
   onFilter = vi.fn(),
   onActivate = vi.fn(),
+  onActivateProvider = vi.fn(),
 }: {
   onFilter?: (filter: ProviderFilter) => void;
   onActivate?: (id: string) => void;
+  onActivateProvider?: (provider: ProviderWithStatus) => void;
 }) {
   const [selectedId, setSelectedId] = useState<AIProvider>("gemini");
   const [filter, setFilter] = useState<ProviderFilter>("all");
@@ -128,7 +133,6 @@ function ProviderListSubject({
   const inputRef = useRef<HTMLInputElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
   const selectedProvider = PROVIDERS.find((provider) => provider.id === selectedId) ?? null;
-  const canSelectProvider = Boolean(selectedProvider?.hasApiKey && selectedProvider.model);
   const canRemoveKey = Boolean(selectedProvider?.hasApiKey);
   const applyFilter = (nextFilter: ProviderFilter) => {
     setFilter(nextFilter);
@@ -146,7 +150,7 @@ function ProviderListSubject({
     onSetApiKey: vi.fn(),
     onSelectModel: vi.fn(),
     onRemoveKey: vi.fn(async () => {}),
-    onSelectProvider: vi.fn(async () => {}),
+    onActivateProvider,
   });
 
   return (
@@ -175,12 +179,7 @@ function ProviderListSubject({
         onActivate={onActivate}
         onBoundaryReached={keyboard.handleListBoundary}
       />
-      <button
-        type="button"
-        disabled={!canSelectProvider}
-        aria-disabled={!canSelectProvider}
-        {...keyboard.getActionButtonProps(0)}
-      >
+      <button type="button" {...keyboard.getActionButtonProps(0)}>
         Select Provider
       </button>
       <button type="button" {...keyboard.getActionButtonProps(1)}>
@@ -232,6 +231,28 @@ describe("ProviderList", () => {
 
     expect(option).toHaveAccessibleDescription("FREE gemini-2.5-flash");
   });
+
+  it("keeps the same live status node when filtering removes every provider", () => {
+    const props = {
+      selectedId: "gemini",
+      onSelect: vi.fn(),
+      filter: "all" as const,
+      onFilterChange: vi.fn(),
+      searchQuery: "",
+      onSearchChange: vi.fn(),
+    };
+    const { rerender } = render(<ProviderList providers={PROVIDERS} {...props} />);
+    const liveRegion = screen.getByRole("status");
+
+    expect(liveRegion).toHaveTextContent("");
+    expect(liveRegion).toHaveClass("sr-only");
+
+    rerender(<ProviderList providers={[]} {...props} />);
+
+    expect(screen.getByRole("status")).toBe(liveRegion);
+    expect(liveRegion).toHaveTextContent("No providers match your filters");
+    expect(liveRegion).not.toHaveClass("sr-only");
+  });
 });
 
 describe("useProvidersKeyboard", () => {
@@ -281,7 +302,7 @@ describe("useProvidersKeyboard", () => {
     await waitFor(() => expect(providerList).toHaveFocus());
 
     await user.keyboard("{ArrowRight}");
-    expect(screen.getByRole("button", { name: "API Key" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Connect" })).toHaveFocus();
 
     await user.keyboard("{ArrowLeft}");
     expect(providerList).toHaveFocus();
@@ -362,21 +383,54 @@ describe("useProvidersKeyboard", () => {
     expect(screen.getByRole("radio", { name: "All" })).toHaveFocus();
   });
 
-  it("skips the disabled Select Provider action when the provider has no API key", async () => {
+  it("keeps provider search focused during IME composition, then resumes navigation", async () => {
     const user = userEvent.setup();
 
     renderProviderListSubject();
 
     await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+    await user.keyboard("/");
+    const search = screen.getByRole("searchbox", { name: /search providers/i });
+    expect(search).toHaveFocus();
 
-    await user.keyboard("{ArrowRight}");
-    expect(screen.getByRole("button", { name: "Select Provider" })).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
+    const composingArrow = new KeyboardEvent("keydown", {
+      key: "ArrowDown",
+      bubbles: true,
+      cancelable: true,
+      isComposing: true,
+    });
+    act(() => search.dispatchEvent(composingArrow));
+
+    const legacyImeEscape = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(legacyImeEscape, "keyCode", { value: 229 });
+    act(() => search.dispatchEvent(legacyImeEscape));
+
+    expect(search).toHaveFocus();
+    expect(composingArrow.defaultPrevented).toBe(false);
+    expect(legacyImeEscape.defaultPrevented).toBe(false);
 
     await user.keyboard("{ArrowDown}");
-    expect(screen.getByRole("button", { name: "Set API Key" })).toHaveFocus();
+
+    expect(screen.getByRole("radio", { name: "All" })).toHaveFocus();
+  });
+
+  it("keeps Select Provider reachable so the shared prerequisite router can open setup", async () => {
+    const user = userEvent.setup();
+    const onActivateProvider = vi.fn();
+
+    renderProviderListSubject({ onActivateProvider });
+
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: "Select Provider" })).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+    expect(onActivateProvider).toHaveBeenCalledWith(PROVIDERS[0]);
   });
 
   it("activates the highlighted provider with Enter and moves to actions with Space", async () => {

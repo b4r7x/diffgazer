@@ -34,7 +34,6 @@ function createSSEReader(events: unknown[]): ReadableStreamDefaultReader<Uint8Ar
 }
 
 const reviewResult = {
-  summary: "All good",
   issues: [],
 };
 

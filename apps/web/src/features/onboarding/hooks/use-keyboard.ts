@@ -17,7 +17,7 @@ interface UseOnboardingKeyboardOptions {
   canProceed: boolean;
   isSubmitting: boolean;
   isEarlySaving: boolean;
-  next: () => void;
+  next: (partial?: Partial<WizardData>) => void;
   back: () => void;
   complete: () => Promise<boolean>;
   focusFallbackRef: RefObject<HTMLDivElement | null>;
@@ -65,8 +65,8 @@ export function useOnboardingKeyboard({
     },
   });
 
-  const handleNext = () => {
-    next();
+  const handleNext = (partial?: Partial<WizardData>) => {
+    next(partial);
     footer.reset();
   };
 
@@ -109,7 +109,7 @@ export function useOnboardingKeyboard({
       return;
     }
 
-    handleNext();
+    handleNext(partial);
   };
 
   return {

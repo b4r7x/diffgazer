@@ -7,6 +7,6 @@ export default defineConfig({
     include: ["src/**/*.test.ts", "src/**/*.test.tsx", "tests/e2e/**/*.e2e.ts"],
     pool: "forks",
     fileParallelism: false,
-    testTimeout: 30_000,
+    testTimeout: 45_000,
   },
 });

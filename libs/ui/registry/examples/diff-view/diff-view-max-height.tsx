@@ -2,7 +2,7 @@ import { DiffView } from "@/components/ui/diff-view";
 
 const patch = `--- a/src/server/review-pipeline.ts
 +++ b/src/server/review-pipeline.ts
-@@ -1,40 +1,48 @@
+@@ -1,29 +1,44 @@
 -import { parseDiff } from "@/lib/diff"
 -import type { Review, Finding } from "../types"
 +import { parseDiff, annotateWordDiff } from "@/lib/diff"
@@ -65,7 +65,8 @@ const patch = `--- a/src/server/review-pipeline.ts
 +    const weight = rules.find((r) => r.id === finding.ruleId)?.weight ?? 1
 +    return total + weight
 +  }, 0)
- }`;
+ }
+`;
 
 export default function DiffViewMaxHeight() {
   return <DiffView patch={patch} maxHeight="240px" showLineNumbers />;

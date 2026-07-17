@@ -50,8 +50,10 @@ export type PanelProps<T extends PanelElement = "div"> = Omit<
   };
 
 /**
- * Root container. Polymorphic via `as` (div, article, section, aside). Switches to <section>
- * automatically when Panel.Title or aria-label is present.
+ * Root container. Polymorphic via `as` (div, article, section, aside). A statically discoverable
+ * Panel.Title or an explicit ARIA name switches the initial render to <section>. When an opaque
+ * child component creates the title or description, give those parts stable ids and pass
+ * aria-labelledby/aria-describedby to Panel so the server-rendered root is wired.
  */
 export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
   const {

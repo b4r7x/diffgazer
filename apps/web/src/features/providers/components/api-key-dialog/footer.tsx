@@ -49,6 +49,7 @@ export function ApiKeyFooter({
         variant="ghost"
         size="sm"
         bracket
+        disabled={isSubmitting}
         highlighted={cancelHighlighted}
         onFocus={cancelProps.onFocus}
       >

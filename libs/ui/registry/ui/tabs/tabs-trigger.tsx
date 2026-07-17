@@ -14,6 +14,7 @@ import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { segmentedItemVariants } from "@/lib/segmented-variants";
 import { cn } from "@/lib/utils";
 import { getTabPanelId, getTabTriggerId, useTabsContext } from "./tabs-context";
+import { useTabsListWrapped } from "./tabs-list";
 
 function BracketMarkers({ children }: { children: ReactNode }) {
   return (
@@ -71,6 +72,7 @@ export function TabsTrigger<TValue extends string = string>({
     unregisterTrigger,
   } = useTabsContext();
   const registrationId = useId();
+  const wrapped = useTabsListWrapped();
   const rootRef = useRef<HTMLButtonElement>(null);
   const composedRef = useComposedRefs(rootRef, ref);
   const isActive = selectedValue === value;
@@ -113,13 +115,15 @@ export function TabsTrigger<TValue extends string = string>({
       data-value={value}
       data-state={isActive ? "active" : "inactive"}
       data-orientation={orientation}
+      data-variant={variant}
+      data-wrap={wrapped}
       onClick={handleClick}
       onFocus={handleFocus}
       className={cn(
         // group/segmented-item lets the bracket markers (and any future
         // decoration) react to data-state without a separate context read.
         "group/segmented-item",
-        segmentedItemVariants({ variant, size }),
+        segmentedItemVariants({ variant, size, wrapped }),
         className,
       )}
     >

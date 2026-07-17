@@ -22,13 +22,11 @@ export function stubMatchMedia({ isDesktop }: StubMatchMediaOptions) {
 }
 
 export function stubControllableMatchMedia({ isDesktop }: StubMatchMediaOptions) {
-  let desktop = isDesktop;
-  const controller = stubCoreControllableMatchMedia((query) => matchesFor(query, desktop));
+  const controller = stubCoreControllableMatchMedia((query) => matchesFor(query, isDesktop));
 
   return {
     setDesktop(next: boolean) {
-      desktop = next;
-      controller.setMatches((query) => matchesFor(query, desktop));
+      controller.setMatches((query) => matchesFor(query, next));
     },
   };
 }

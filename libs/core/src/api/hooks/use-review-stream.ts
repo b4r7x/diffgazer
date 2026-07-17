@@ -20,6 +20,10 @@ export interface ReviewStreamState extends ReviewState {
   notices: string[];
 }
 
+export interface CancelReviewOptions {
+  preserveState?: boolean;
+}
+
 type StreamAction =
   | ReviewAction
   | { type: "SET_REVIEW_ID"; reviewId: string }
@@ -91,13 +95,18 @@ export function useReviewStream() {
   };
 
   /** Abort the client stream AND tell the server to stop work. */
-  const cancel = async (reviewId: string | null): Promise<string | null> => {
+  const cancel = async (
+    reviewId: string | null,
+    options: CancelReviewOptions = {},
+  ): Promise<string | null> => {
     cancelStream("cancel");
     const cancelToken = resumeTokenRef.current;
     const isCurrentCancel = () =>
       resumeTokenRef.current === cancelToken && abortControllerRef.current === null;
 
-    dispatch({ type: "CANCELLED" });
+    if (!options.preserveState) {
+      dispatch({ type: "CANCELLED" });
+    }
 
     if (!reviewId) {
       return null;

@@ -4,7 +4,7 @@ import { isDocsPath } from "@/lib/library";
 export function usePendingDocsRoute(): string | null {
   return useRouterState({
     select: (state) => {
-      if (state.status !== "pending") return null;
+      if (!state.isLoading) return null;
       return isDocsPath(state.location.pathname) ? state.location.pathname : null;
     },
   });

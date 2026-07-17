@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import {
   AI_PROVIDERS,
   type AIProvider,
@@ -15,11 +16,13 @@ import {
 } from "@diffgazer/core/schemas/config";
 import { z } from "zod";
 import {
+  isNodeError,
   quarantineCorruptFile,
   readJsonFileSyncSafe,
   removeFileSync,
   writeJsonFile,
   writeJsonFileSync,
+  writeJsonFileSyncExclusive,
 } from "../fs.js";
 import { log } from "../log.js";
 import {
@@ -28,6 +31,7 @@ import {
   getGlobalTrustPath,
   getProjectInfoPath,
 } from "../paths.js";
+import { withFileTransactionLock } from "./transaction.js";
 import type { ConfigState, ProjectFile, SecretsState, TrustState } from "./types.js";
 
 const isValidAIProvider = (value: string): value is AIProvider => {
@@ -44,12 +48,18 @@ const RawConfigContainerSchema = z.object({
 
 const SettingsFieldSchemas = SettingsConfigSchema.shape;
 
-const PersistedEnvCredentialRefSchema = z.object({
-  kind: z.literal("env"),
-  varName: z.string().min(1),
-});
+const PersistedEnvCredentialRefSchema = z
+  .object({
+    kind: z.literal("env"),
+    varName: z.string().min(1),
+  })
+  .strict();
 
-const SecretEntrySchema = z.union([z.string(), PersistedEnvCredentialRefSchema]);
+const PersistedLiteralSecretSchema = z
+  .string()
+  .refine((value) => value.trim().length > 0, { error: "API key must not be empty" });
+
+const SecretEntrySchema = z.union([PersistedLiteralSecretSchema, PersistedEnvCredentialRefSchema]);
 
 const RawSecretsContainerSchema = z.object({
   providers: z.record(z.string(), z.unknown()).catch({}).optional(),
@@ -149,42 +159,74 @@ const loadOrQuarantine = <T>(filePath: string, label: string, schema: z.ZodType<
   return null;
 };
 
-// Returns raw parsed JSON, quarantining ONLY on JSON.parse failure; per-record
-// validation is left to the caller so one unknown value never resets the file (F-445).
-const loadRawOrQuarantine = (filePath: string, label: string): unknown => {
-  const result = readJsonFileSyncSafe<unknown>(filePath);
-  if (result.status === "ok") return result.data;
-  if (result.status === "missing") return null;
-  const backupPath = quarantineCorruptFile(filePath);
-  log("warn", "config_corrupt_quarantined", { label, filePath, backupPath });
-  return null;
-};
-
 interface ParsedProviders {
   providers: ProviderStatus[];
   unknown: unknown[];
 }
+
+type ActiveProviderSelection =
+  | { kind: "known"; provider: AIProvider }
+  | { kind: "opaque"; index: number };
+
+const isOpaqueProviderActive = (
+  entry: unknown,
+): entry is Record<string, unknown> & { isActive: true } =>
+  typeof entry === "object" &&
+  entry !== null &&
+  !Array.isArray(entry) &&
+  "isActive" in entry &&
+  entry.isActive === true;
+
+const deactivateOpaqueProvider = (entry: unknown): unknown => {
+  if (!isOpaqueProviderActive(entry)) return entry;
+  return { ...entry, isActive: false };
+};
 
 // Element-wise parse: valid entries become typed providers; unknown ones are carried
 // opaquely so persist re-emits them instead of destroying a newer binary's state (F-445).
 const parseProviders = (rawProviders: unknown[]): ParsedProviders => {
   const byId = new Map<string, ProviderStatus>();
   const unknown: unknown[] = [];
+  let activeSelection: ActiveProviderSelection | null = null;
+  let activeCount = 0;
+
   for (const entry of rawProviders) {
     const parsed = ProviderStatusSchema.safeParse(entry);
     if (parsed.success) {
       byId.set(parsed.data.provider, parsed.data);
+      if (parsed.data.isActive) {
+        activeCount += 1;
+        activeSelection ??= { kind: "known", provider: parsed.data.provider };
+      }
     } else {
+      const opaqueIndex = unknown.length;
       unknown.push(entry);
+      if (isOpaqueProviderActive(entry)) {
+        activeCount += 1;
+        activeSelection ??= { kind: "opaque", index: opaqueIndex };
+      }
     }
   }
 
-  const providers = DEFAULT_PROVIDERS.map((provider) => ({
-    ...provider,
-    ...byId.get(provider.provider),
-  }));
+  const providers = DEFAULT_PROVIDERS.map((provider) => {
+    const stored = byId.get(provider.provider);
+    return {
+      ...provider,
+      ...stored,
+      isActive: activeSelection?.kind === "known" && activeSelection.provider === provider.provider,
+    };
+  });
+  const normalizedUnknown = unknown.map((entry, index) =>
+    activeSelection?.kind === "opaque" && activeSelection.index === index
+      ? entry
+      : deactivateOpaqueProvider(entry),
+  );
 
-  return { providers, unknown };
+  if (activeCount > 1) {
+    log("warn", "config_multiple_active_providers_repaired");
+  }
+
+  return { providers, unknown: normalizedUnknown };
 };
 
 interface ParsedSettings {
@@ -213,11 +255,9 @@ const parseSettings = (rawSettings: Record<string, unknown>): ParsedSettings => 
   return { settings, unknown };
 };
 
-export const loadConfig = (): ConfigState => {
-  const raw = loadRawOrQuarantine(CONFIG_PATH(), "config");
-  const container = RawConfigContainerSchema.safeParse(raw);
-  const stored = container.success ? container.data : {};
-
+const parseConfigContainer = (
+  stored: z.infer<typeof RawConfigContainerSchema> = {},
+): ConfigState => {
   const { settings, unknown: unknownSettings } = parseSettings(stored.settings ?? {});
   const { providers, unknown: unknownProviders } = parseProviders(
     stored.providers ?? DEFAULT_PROVIDERS,
@@ -231,34 +271,61 @@ export const loadConfig = (): ConfigState => {
   };
 };
 
-export const loadSecrets = (): SecretsState => {
-  const raw = loadRawOrQuarantine(SECRETS_PATH(), "secrets");
-  const container = RawSecretsContainerSchema.safeParse(raw);
-  const storedProviders = container.success ? (container.data.providers ?? {}) : {};
+export const parseConfigData = (data: unknown): ConfigState => {
+  const parsed = RawConfigContainerSchema.safeParse(data);
+  return parseConfigContainer(parsed.success ? parsed.data : {});
+};
 
-  // Per-entry parse: unknown ref kinds are carried opaquely to round-trip on persist (F-445).
+export const loadConfig = (): ConfigState => {
+  const stored = loadOrQuarantine(CONFIG_PATH(), "config", RawConfigContainerSchema) ?? {};
+  return parseConfigContainer(stored);
+};
+
+const parseSecretsContainer = (
+  stored: z.infer<typeof RawSecretsContainerSchema> | null,
+): SecretsState => {
+  const storedProviders = stored?.providers ?? {};
+
+  // Unknown providers and refs that fail the provider allowlist stay opaque and round-trip.
   const migrated: SecretsState["providers"] = {};
   const unknown: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(storedProviders)) {
+    if (!isValidAIProvider(key)) {
+      unknown[key] = value;
+      continue;
+    }
+
     // Migrate legacy "env" sentinel strings to structured env refs.
     if (value === "env") {
-      const isProvider = isValidAIProvider(key);
-      const varName = isProvider ? PROVIDER_ENV_VARS[key] : key.toUpperCase();
-      migrated[key] = { kind: "env", varName };
+      migrated[key] = { kind: "env", varName: PROVIDER_ENV_VARS[key] };
       continue;
     }
     const parsed = SecretEntrySchema.safeParse(value);
-    if (parsed.success) {
-      migrated[key] = parsed.data;
-    } else {
+    if (!parsed.success) {
       unknown[key] = value;
+      continue;
     }
+    if (typeof parsed.data !== "string" && parsed.data.varName !== PROVIDER_ENV_VARS[key]) {
+      unknown[key] = value;
+      continue;
+    }
+    migrated[key] = parsed.data;
   }
 
   return {
     providers: migrated,
     ...(Object.keys(unknown).length > 0 ? { unknownSecrets: unknown } : {}),
   };
+};
+
+export const parseSecretsData = (data: unknown): SecretsState => {
+  const parsed = RawSecretsContainerSchema.safeParse(data);
+  return parseSecretsContainer(parsed.success ? parsed.data : null);
+};
+
+export const loadSecrets = (): SecretsState => {
+  const stored = loadOrQuarantine(SECRETS_PATH(), "secrets", RawSecretsContainerSchema);
+  return parseSecretsContainer(stored);
 };
 
 const validateTrustRecord = (projectId: string, raw: unknown): TrustConfig | null => {
@@ -293,10 +360,20 @@ const serializeConfig = (
   providers: ProviderStatus[],
   unknownSettings: Record<string, unknown> | undefined,
   unknownProviders: unknown[] | undefined,
-): { settings: Record<string, unknown>; providers: unknown[] } => ({
-  settings: { ...unknownSettings, ...settings },
-  providers: [...providers, ...(unknownProviders ?? [])],
-});
+): { settings: Record<string, unknown>; providers: unknown[] } => {
+  const canonicalSettings = SettingsConfigSchema.parse(settings);
+  const activeProviderCount =
+    providers.filter((provider) => provider.isActive).length +
+    (unknownProviders ?? []).filter(isOpaqueProviderActive).length;
+  if (activeProviderCount > 1) {
+    throw new Error("Config cannot persist more than one active provider");
+  }
+
+  return {
+    settings: { ...unknownSettings, ...canonicalSettings },
+    providers: [...providers, ...(unknownProviders ?? [])],
+  };
+};
 
 export const persistConfig = (state: ConfigState): void => {
   writeJsonFileSync(
@@ -332,20 +409,31 @@ const mergeUnknownSettings = (
 ): Record<string, unknown> | undefined =>
   disk && Object.keys(disk).length > 0 ? { ...disk } : undefined;
 
+export type PersistConfigMerged = (
+  state: ConfigState,
+  previousProviders: ProviderStatus[],
+  previousSettings: SettingsConfig,
+) => Promise<ConfigState>;
+
 // Re-reads config.json before the atomic write and merges at record granularity
 // (F-359): a provider this instance didn't change (still matches previousProviders)
 // yields to the freshly-read disk entry so a concurrent change survives; changed
 // providers overwrite disk; unknown ids are appended. Settings merge the same way.
-export const persistConfigMergedAsync = (
-  state: ConfigState,
-  previousProviders: ProviderStatus[],
-  previousSettings: SettingsConfig,
-): Promise<void> => {
+// The caller must hold CONFIG_PATH's transaction lock for this entire operation.
+const persistConfigMergedUnlockedAsync: PersistConfigMerged = async (
+  state,
+  previousProviders,
+  previousSettings,
+) => {
+  if (state.providers.filter((provider) => provider.isActive).length > 1) {
+    throw new Error("Config cannot persist more than one active provider");
+  }
+
   const disk = loadConfig();
   const diskById = new Map(disk.providers.map((provider) => [provider.provider, provider]));
   const previousById = new Map(previousProviders.map((provider) => [provider.provider, provider]));
 
-  const merged: ProviderStatus[] = state.providers.map((provider) => {
+  let merged: ProviderStatus[] = state.providers.map((provider) => {
     const diskProvider = diskById.get(provider.provider);
     const previousProvider = previousById.get(provider.provider);
     const unchangedByThisInstance =
@@ -362,28 +450,129 @@ export const persistConfigMergedAsync = (
     }
   }
 
-  return writeJsonFile(
+  const activeSelectionChanged = state.providers.some((provider) => {
+    const previous = previousById.get(provider.provider);
+    return previous !== undefined && provider.isActive !== previous.isActive;
+  });
+  const selectedProviderId = activeSelectionChanged
+    ? state.providers.find((provider) => provider.isActive)?.provider
+    : disk.providers.find((provider) => provider.isActive)?.provider;
+  merged = merged.map((provider) => ({
+    ...provider,
+    isActive: provider.provider === selectedProviderId,
+  }));
+
+  const diskUnknownProviders = disk.unknownProviders;
+  const unknownProviders = activeSelectionChanged
+    ? diskUnknownProviders?.map(deactivateOpaqueProvider)
+    : diskUnknownProviders;
+
+  const settings = SettingsConfigSchema.parse(
+    mergeSettings(state.settings, previousSettings, disk.settings),
+  );
+  const persistedState: ConfigState = {
+    settings,
+    providers: merged,
+    ...(unknownProviders ? { unknownProviders } : {}),
+    ...(disk.unknownSettings ? { unknownSettings: disk.unknownSettings } : {}),
+  };
+
+  await writeJsonFile(
     CONFIG_PATH(),
-    serializeConfig(
-      mergeSettings(state.settings, previousSettings, disk.settings),
-      merged,
-      mergeUnknownSettings(disk.unknownSettings),
-      state.unknownProviders ?? disk.unknownProviders,
-    ),
+    serializeConfig(settings, merged, mergeUnknownSettings(disk.unknownSettings), unknownProviders),
     0o600,
   );
+  return persistedState;
 };
 
-const serializeSecrets = (state: SecretsState): Record<string, unknown> => ({
+export const withConfigFileTransaction = <T>(
+  operation: (persistMerged: PersistConfigMerged) => Promise<T>,
+): Promise<T> =>
+  withFileTransactionLock(CONFIG_PATH(), async () => {
+    let active = true;
+    const acceptedWriteSettlements: Promise<void>[] = [];
+    const persistMerged: PersistConfigMerged = (state, previousProviders, previousSettings) => {
+      if (!active) {
+        return Promise.reject(new Error("Config transaction writer lease expired"));
+      }
+
+      const write = persistConfigMergedUnlockedAsync(state, previousProviders, previousSettings);
+      acceptedWriteSettlements.push(
+        write.then(
+          () => undefined,
+          () => undefined,
+        ),
+      );
+      return write;
+    };
+
+    try {
+      return await operation(persistMerged);
+    } finally {
+      active = false;
+      await Promise.all(acceptedWriteSettlements);
+    }
+  });
+
+// Direct callers still receive a complete locked read-merge-write transaction. Store
+// mutations use withConfigFileTransaction so their refresh and mutation are covered too.
+export const persistConfigMergedAsync: PersistConfigMerged = (
+  state,
+  previousProviders,
+  previousSettings,
+) =>
+  withConfigFileTransaction((persistMerged) =>
+    persistMerged(state, previousProviders, previousSettings),
+  );
+
+const serializeSecrets = (state: SecretsState): { providers: Record<string, unknown> } => ({
   providers: { ...state.unknownSecrets, ...state.providers },
 });
+
+const mergeChangedRecords = (
+  state: Record<string, unknown>,
+  previous: Record<string, unknown>,
+  disk: Record<string, unknown>,
+): Record<string, unknown> => {
+  const merged = { ...disk };
+  const keys = new Set([...Object.keys(previous), ...Object.keys(state)]);
+  for (const key of keys) {
+    const stateHasKey = Object.hasOwn(state, key);
+    const previousHasKey = Object.hasOwn(previous, key);
+    const changed =
+      stateHasKey !== previousHasKey ||
+      (stateHasKey && previousHasKey && !isDeepStrictEqual(state[key], previous[key]));
+    if (!changed) continue;
+    if (stateHasKey) {
+      merged[key] = state[key];
+    } else {
+      delete merged[key];
+    }
+  }
+  return merged;
+};
 
 export const persistSecrets = (state: SecretsState): void => {
   writeJsonFileSync(SECRETS_PATH(), serializeSecrets(state), 0o600);
 };
 
-export const persistSecretsAsync = (state: SecretsState): Promise<void> =>
-  writeJsonFile(SECRETS_PATH(), serializeSecrets(state), 0o600);
+export const persistSecretsAsync = (
+  state: SecretsState,
+  previousState: SecretsState = { providers: {} },
+): Promise<void> =>
+  withFileTransactionLock(SECRETS_PATH(), async () => {
+    const disk = loadSecrets();
+    const providers = mergeChangedRecords(
+      serializeSecrets(state).providers,
+      serializeSecrets(previousState).providers,
+      serializeSecrets(disk).providers,
+    );
+    if (Object.keys(providers).length === 0) {
+      removeFileSync(SECRETS_PATH());
+      return;
+    }
+    await writeJsonFile(SECRETS_PATH(), { providers }, 0o600);
+  });
 
 export const persistTrust = (state: TrustState): void => {
   writeJsonFileSync(TRUST_PATH(), state, 0o600);
@@ -392,16 +581,20 @@ export const persistTrust = (state: TrustState): void => {
 // Re-reads trust.json before the atomic write so a record another instance persisted
 // during this read-modify-write window survives (F-359).
 export const persistTrustRecordAsync = (config: TrustConfig): Promise<void> => {
-  const disk = loadTrust();
-  disk.projects[config.projectId] = config;
-  return writeJsonFile(TRUST_PATH(), disk, 0o600);
+  return withFileTransactionLock(TRUST_PATH(), async () => {
+    const disk = loadTrust();
+    disk.projects[config.projectId] = config;
+    await writeJsonFile(TRUST_PATH(), disk, 0o600);
+  });
 };
 
 /** Removes a single trust record, re-reading and merging at record granularity (F-359). */
 export const persistTrustRemovalAsync = (projectId: string): Promise<void> => {
-  const disk = loadTrust();
-  delete disk.projects[projectId];
-  return writeJsonFile(TRUST_PATH(), disk, 0o600);
+  return withFileTransactionLock(TRUST_PATH(), async () => {
+    const disk = loadTrust();
+    delete disk.projects[projectId];
+    await writeJsonFile(TRUST_PATH(), disk, 0o600);
+  });
 };
 
 export const removeSecretsFile = (): boolean => removeFileSync(SECRETS_PATH());
@@ -435,9 +628,41 @@ export const syncProvidersWithSecrets = (
   return nextProviders;
 };
 
-/** Notified when a moved repository's project.json is re-keyed (F-447). */
+/** Migrates moved-project state and reports when project.json may commit the new root. */
 export interface ReadProjectFileOptions {
-  onMove?: (oldRepoRoot: string, newRepoRoot: string) => void;
+  onMove?: (oldRepoRoot: string, newRepoRoot: string) => Promise<boolean>;
+}
+
+const projectMoveFlights = new Map<string, Promise<void>>();
+
+function scheduleProjectMove(
+  projectInfoPath: string,
+  current: ProjectFile,
+  moved: ProjectFile,
+  onMove: NonNullable<ReadProjectFileOptions["onMove"]>,
+): void {
+  if (projectMoveFlights.has(projectInfoPath)) return;
+
+  const flight = onMove(current.repoRoot, moved.repoRoot)
+    .then((completed) => {
+      if (!completed) return;
+      const latest = loadOrQuarantine(projectInfoPath, "project file", ProjectFileSchema);
+      if (
+        !latest ||
+        latest.projectId !== current.projectId ||
+        latest.repoRoot !== current.repoRoot
+      ) {
+        return;
+      }
+      writeJsonFileSync(projectInfoPath, moved, 0o600);
+    })
+    .catch((error) => {
+      log("warn", "review_rekey_failed", { error });
+    })
+    .finally(() => {
+      projectMoveFlights.delete(projectInfoPath);
+    });
+  projectMoveFlights.set(projectInfoPath, flight);
 }
 
 export const readProjectFile = (
@@ -448,13 +673,15 @@ export const readProjectFile = (
   const loaded = loadOrQuarantine(projectInfoPath, "project file", ProjectFileSchema);
   if (!loaded) return null;
   if (!projectFileMatchesRoot(loaded, projectRoot)) {
-    // The repo moved: keep the projectId identity and re-point repoRoot instead of
-    // quarantining (F-447). Trust stays gated on the old root (trust-guard 403s until
-    // re-confirmed), preserving anti-trust-transfer, but review history follows.
-    const oldRepoRoot = loaded.repoRoot;
+    // The repo moved: keep the projectId identity while review history migrates.
+    // Trust stays gated on the old root until the migration completes and the user
+    // re-confirms it, preserving anti-trust-transfer.
     const moved: ProjectFile = { ...loaded, repoRoot: projectRoot };
-    writeJsonFileSync(projectInfoPath, moved, 0o600);
-    options.onMove?.(oldRepoRoot, projectRoot);
+    if (options.onMove) {
+      scheduleProjectMove(projectInfoPath, loaded, moved, options.onMove);
+    } else {
+      writeJsonFileSync(projectInfoPath, moved, 0o600);
+    }
     return moved;
   }
   return loaded;
@@ -473,6 +700,16 @@ export const createProjectFile = (
     createdAt: new Date().toISOString(),
   };
 
-  writeJsonFileSync(getProjectInfoPath(projectRoot), created, 0o600);
-  return created;
+  try {
+    writeJsonFileSyncExclusive(getProjectInfoPath(projectRoot), created, 0o600);
+    return created;
+  } catch (error) {
+    if (!isNodeError(error, "EEXIST")) throw error;
+
+    const winner = readProjectFile(projectRoot, options);
+    if (winner) return winner;
+    throw new Error("Project identity winner could not be read after exclusive creation", {
+      cause: error,
+    });
+  }
 };

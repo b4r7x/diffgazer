@@ -21,18 +21,29 @@ export const dividerVariants = cva("flex opacity-40", {
   defaultVariants: { variant: "default", orientation: "horizontal" },
 });
 
-/** Props for divider. */
-export interface DividerProps
+interface DividerBaseProps
   extends ComponentProps<"div">,
     Omit<VariantProps<typeof dividerVariants>, "orientation"> {
-  /**
-   * Renders with role="none" and aria-hidden when true. Set to false for meaningful section
-   * boundaries; renders role="separator" with aria-orientation.
-   */
-  decorative?: boolean;
   /** Layout axis. Vertical requires the parent to define a height. */
   orientation?: "horizontal" | "vertical";
 }
+
+interface DecorativeDividerProps {
+  /**
+   * Renders with role="none" and aria-hidden. This is the default.
+   */
+  decorative?: true;
+}
+
+interface SemanticDividerProps {
+  /** Renders with role="separator" and aria-orientation. */
+  decorative: false;
+  /** Accessible name for the semantic separator. Visible children do not name a separator. */
+  "aria-label": string;
+}
+
+/** Props for divider. Semantic separators require an explicit accessible name. */
+export type DividerProps = DividerBaseProps & (DecorativeDividerProps | SemanticDividerProps);
 
 /** Line separator with horizontal and vertical orientation, default and spaced variants. */
 export function Divider({

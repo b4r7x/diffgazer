@@ -3,7 +3,6 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { SectionHeader } from "../index";
 
-// axe skipped: SSR string contract parsed in detached JSDOM, not standalone UI.
 describe("SectionHeader SSR", () => {
   it("server-renders the requested heading element", () => {
     const html = renderToString(<SectionHeader as="h2">Details</SectionHeader>);

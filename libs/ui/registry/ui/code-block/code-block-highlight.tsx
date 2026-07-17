@@ -26,24 +26,6 @@ export type LowlightInstance = {
   highlight(language: string, value: string): HastRoot;
 } & LowlightAuto;
 
-const MISSING_DEPENDENCY_MESSAGE =
-  "@diffgazer/ui/components/code-block/highlight requires the optional peer dependency 'lowlight'. Install it with: npm install lowlight";
-
-let lowlightPromise: Promise<LowlightInstance> | null = null;
-
-/** Loads and caches the optional lowlight highlighter. */
-export function createDefaultLowlight(): Promise<LowlightInstance> {
-  if (!lowlightPromise) {
-    lowlightPromise = import("lowlight")
-      .then((mod) => mod.createLowlight(mod.common) as LowlightInstance)
-      .catch(() => {
-        lowlightPromise = null;
-        throw new Error(MISSING_DEPENDENCY_MESSAGE);
-      });
-  }
-  return lowlightPromise;
-}
-
 /** Props for code block highlight. */
 export interface CodeBlockHighlightProps extends Omit<CodeBlockContentProps, "children"> {
   /** Source code to highlight. Each newline becomes a separate row. */
@@ -58,7 +40,8 @@ export interface CodeBlockHighlightProps extends Omit<CodeBlockContentProps, "ch
    * CodeBlock.Line for each row.
    */
   lineStates?: Record<number, CodeBlockLineState>;
-  lowlight?: LowlightInstance;
+  /** Caller-created lowlight instance, with the desired language set registered. */
+  lowlight: LowlightInstance;
 }
 
 function classListOf(node: HastElement): string | undefined {
@@ -120,10 +103,9 @@ function renderLineNodes(nodes: HastNode[] | undefined, fallback: string): React
 function highlightCode(
   code: string,
   language: string | undefined,
-  lowlight: LowlightInstance | undefined,
+  lowlight: LowlightInstance,
 ): ReactNode[] {
   const sourceLines = code.split("\n");
-  if (!lowlight) return sourceLines.map((line) => (line.length > 0 ? line : null));
 
   try {
     const tree: HastRoot = language
@@ -138,7 +120,7 @@ function highlightCode(
   }
 }
 
-/** Optional auto-colored content (subpath import; uses lowlight) */
+/** Runtime-highlighted content using a caller-owned lowlight instance. */
 export function CodeBlockHighlight({
   code,
   language,

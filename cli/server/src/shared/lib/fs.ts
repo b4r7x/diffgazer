@@ -78,6 +78,28 @@ export const writeJsonFileSync = (
   }
 };
 
+/** Creates a JSON file without replacing an existing winner. */
+export const writeJsonFileSyncExclusive = (
+  filePath: string,
+  data: unknown,
+  mode: number = DEFAULT_FILE_MODE,
+): void => {
+  const dir = path.dirname(filePath);
+  ensureDirSync(dir, DEFAULT_DIR_MODE);
+
+  const tempPath = `${filePath}.${randomUUID()}.tmp`;
+  const content = `${JSON.stringify(data, null, 2)}\n`;
+
+  try {
+    fs.writeFileSync(tempPath, content, { mode, flag: "wx" });
+    fs.linkSync(tempPath, filePath);
+  } finally {
+    try {
+      fs.unlinkSync(tempPath);
+    } catch {}
+  }
+};
+
 export const removeFileSync = (filePath: string): boolean => {
   try {
     fs.unlinkSync(filePath);

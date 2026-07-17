@@ -1,17 +1,67 @@
-import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type QueryClient,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import type {
   ActiveReviewSession,
   ActiveReviewSessionResponse,
+  ReviewListWarning,
   ReviewMode,
 } from "../../schemas/review/index.js";
 import type { BoundApi } from "../bound.js";
 import { useApi } from "./context.js";
 import { reviewQueries } from "./queries/review.js";
 
+function reviewWarningKey(warning: ReviewListWarning): string {
+  switch (warning.kind) {
+    case "unreadable_review":
+      return `${warning.kind}:${warning.reviewId}`;
+    case "invalid_issues_dropped":
+      return `${warning.kind}:${warning.reviewId}`;
+    case "index_build_failed":
+    case "index_rewrite_failed":
+      return warning.kind;
+    default: {
+      const unhandledWarning: never = warning;
+      return unhandledWarning;
+    }
+  }
+}
+
+function dedupeReviewWarnings(warnings: readonly ReviewListWarning[]): ReviewListWarning[] {
+  const warningsByKey = new Map<string, ReviewListWarning>();
+  for (const warning of warnings) {
+    const key = reviewWarningKey(warning);
+    const existing = warningsByKey.get(key);
+    if (existing?.kind === "invalid_issues_dropped" && warning.kind === "invalid_issues_dropped") {
+      warningsByKey.set(key, { ...warning, count: Math.max(existing.count, warning.count) });
+    } else if (!existing) {
+      warningsByKey.set(key, warning);
+    }
+  }
+  return [...warningsByKey.values()];
+}
+
 export function useReviews(projectPath?: string) {
   const api = useApi();
-  return useQuery(reviewQueries.list(api, projectPath));
+  return useInfiniteQuery({
+    ...reviewQueries.list(api, projectPath),
+    select: (data) => {
+      const reviewsById = new Map(
+        data.pages.flatMap((page) => page.reviews).map((review) => [review.id, review]),
+      );
+      const warnings = dedupeReviewWarnings(data.pages.flatMap((page) => page.warnings ?? []));
+      return {
+        reviews: [...reviewsById.values()],
+        nextCursor: data.pages.at(-1)?.nextCursor ?? null,
+        ...(warnings.length > 0 ? { warnings } : {}),
+      };
+    },
+  });
 }
 
 export function useReview(id: string) {
@@ -123,15 +173,10 @@ export function useReviewSessionCache() {
   return useMemo(() => ({ clearActiveSession }), [clearActiveSession]);
 }
 
-/**
- * Reads the CURRENT workspace context snapshot. The optional `reviewId` is
- * accepted for caller ergonomics but does NOT partition the cache: the server
- * has no per-review context route, so the snapshot is workspace-global.
- */
-export function useReviewContext(options?: { enabled?: boolean; reviewId?: string | null }) {
+/** Reads the current workspace-global context snapshot. */
+export function useReviewContext(options?: { enabled?: boolean }) {
   const api = useApi();
-  const { reviewId: _reviewId, ...queryOptionsOverrides } = options ?? {};
-  return useQuery({ ...reviewQueries.context(api), ...queryOptionsOverrides });
+  return useQuery({ ...reviewQueries.context(api), ...options });
 }
 
 export function useDeleteReview() {

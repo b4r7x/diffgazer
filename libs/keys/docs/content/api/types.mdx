@@ -110,4 +110,4 @@ Callback type for keyboard event handlers.
 type KeyHandler = (event: KeyboardEvent) => unknown;
 ```
 
-Only the exact return value `false` has special meaning: it declines the matched key and lets the next lower-priority matching handler in the active scope run. Other return values are ignored. If `preventDefault` is enabled for that handler, the event is still prevented before the handler returns.
+Only the exact return value `false` has special meaning: it declines the matched key and lets the next lower-priority matching handler in the active scope run. Other return values are ignored. When a handler with `preventDefault` enabled accepts the match (returns anything other than `false`), `event.preventDefault()` runs **after** that handler returns. A declining handler never prevents the default, so native behavior survives until a handler actually handles the key.

@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { listRepoFiles } from "./lib/files.mjs";
 import { readJson } from "./lib/json.mjs";
 
@@ -25,61 +27,174 @@ function listPublicPackages() {
   for (const file of listPackageJsonFiles()) {
     const parsed = readJson(file);
     if (!isPublicPackage(parsed)) continue;
-    packages.push({ name: parsed.name, file });
+    if (typeof parsed.version !== "string" || parsed.version.length === 0) {
+      throw new Error(`Public package ${parsed.name} in ${file} has no version`);
+    }
+    packages.push({ name: parsed.name, version: parsed.version, file });
   }
   return packages;
 }
 
-function isPublished(name) {
+function getPreviousVersionsByFile(packages) {
   try {
-    execFileSync("npm", ["view", name, "versions", "--json"], {
+    execFileSync("git", ["rev-parse", "--verify", "HEAD^"], {
+      stdio: ["ignore", "ignore", "pipe"],
+    });
+  } catch (error) {
+    const stderr = String(error.stderr ?? "");
+    throw new Error(
+      `Publish guard: cannot inspect the commit before HEAD. Fetch the repository history before publishing.\n${stderr}`,
+    );
+  }
+
+  const previousVersions = new Map();
+  for (const pkg of packages) {
+    const previousPath = execFileSync("git", ["ls-tree", "--name-only", "HEAD^", "--", pkg.file], {
+      encoding: "utf8",
+    }).trim();
+    if (previousPath.length === 0) continue;
+
+    const previousManifest = JSON.parse(
+      execFileSync("git", ["show", `HEAD^:${pkg.file}`], { encoding: "utf8" }),
+    );
+    previousVersions.set(pkg.file, previousManifest.version);
+  }
+  return previousVersions;
+}
+
+export function findVersionChangedPackageNames({ packages, previousVersionsByFile }) {
+  return packages
+    .filter((pkg) => valueFor(previousVersionsByFile, pkg.file) !== pkg.version)
+    .map((pkg) => pkg.name);
+}
+
+function getPublishedVersions(name) {
+  try {
+    const output = execFileSync("npm", ["view", name, "versions", "--json"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     });
-    return true;
+    const parsed = JSON.parse(output);
+    if (typeof parsed === "string") return [parsed];
+    if (Array.isArray(parsed) && parsed.every((version) => typeof version === "string")) {
+      return parsed;
+    }
+    throw new Error(`npm view ${name} returned an invalid versions payload`);
   } catch (error) {
     const stderr = String(error.stderr ?? "");
     if (stderr.includes("E404") || stderr.includes("404 Not Found")) {
-      return false;
+      return [];
+    }
+    if (error instanceof SyntaxError) {
+      throw new Error(`npm view ${name} returned invalid JSON`, { cause: error });
     }
     throw new Error(`npm view ${name} failed (not an E404):\n${stderr || error.message}`);
   }
 }
 
-// Pure decision: which public packages would be a FIRST publish (absent from
-// the registry) yet are not in the allowlist. Factored out so the gate can be
-// unit-tested without npm/network access.
-export function findBlockedFirstPublishes({ packages, publishedNames, allowlist }) {
-  const published = new Set(publishedNames);
-  const allowed = new Set(allowlist);
-  return packages.filter((pkg) => !published.has(pkg.name)).filter((pkg) => !allowed.has(pkg.name));
+function valueFor(valuesByName, name) {
+  return valuesByName instanceof Map ? valuesByName.get(name) : valuesByName[name];
 }
 
-function main() {
-  const packages = listPublicPackages();
-  const publishedNames = packages.filter((pkg) => isPublished(pkg.name)).map((pkg) => pkg.name);
+function versionsFor(publishedVersionsByName, name) {
+  return valueFor(publishedVersionsByName, name) ?? [];
+}
 
-  const blocked = findBlockedFirstPublishes({
+export function createPublishPlan({ packages, publishedVersionsByName, allowlist, pendingNames }) {
+  const allowed = new Set(allowlist);
+  const packagesByName = new Map(packages.map((pkg) => [pkg.name, pkg]));
+  const pending = new Set(pendingNames);
+  const unknown = [...pending].filter((name) => !packagesByName.has(name));
+  if (unknown.length > 0) {
+    throw new Error(`Publish guard: unknown public package(s): ${unknown.join(", ")}`);
+  }
+
+  const candidates = packages.filter((pkg) => pending.has(pkg.name));
+  const gated = candidates.filter(
+    (pkg) => versionsFor(publishedVersionsByName, pkg.name).length === 0 && !allowed.has(pkg.name),
+  );
+  if (gated.length > 0) {
+    throw new Error(
+      `Publish guard: refusing to first-publish gated packages: ${gated
+        .map((pkg) => pkg.name)
+        .join(", ")}`,
+    );
+  }
+
+  return candidates.map((pkg) => ({
+    ...pkg,
+    publication: versionsFor(publishedVersionsByName, pkg.name).includes(pkg.version)
+      ? "recover"
+      : "publish",
+  }));
+}
+
+export function publishPendingPackages({
+  packages,
+  publishedVersionsByName,
+  allowlist = FIRST_PUBLISH_ALLOWLIST,
+  pendingNames,
+}) {
+  const plan = createPublishPlan({
     packages,
-    publishedNames,
-    allowlist: FIRST_PUBLISH_ALLOWLIST,
+    publishedVersionsByName,
+    allowlist,
+    pendingNames,
   });
 
-  if (blocked.length > 0) {
-    const names = blocked.map((pkg) => pkg.name).join(", ");
-    console.error(`Publish guard: refusing to first-publish gated packages: ${names}`);
-    console.error(
-      "These packages are unpublished on npm and not in FIRST_PUBLISH_ALLOWLIST, so the npm",
-    );
-    console.error(
-      "gate documented in PACKAGE_GOVERNANCE.md is still in effect. To intentionally un-gate a",
-    );
-    console.error("package, open a reviewed PR adding its name to FIRST_PUBLISH_ALLOWLIST in");
-    console.error("scripts/monorepo/guard-publish.mjs.");
-    process.exit(1);
+  if (plan.length === 0) {
+    console.log("Publish guard: no eligible package versions need publication.");
+    return [];
   }
+
+  for (const pkg of plan) {
+    if (pkg.publication === "recover") continue;
+    execFileSync("pnpm", ["--filter", pkg.name, "publish", "--no-git-checks"], {
+      stdio: "inherit",
+    });
+  }
+
+  for (const pkg of plan) {
+    console.log(`New tag: ${pkg.name}@${pkg.version}`);
+  }
+  return plan.map((pkg) => pkg.name);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main();
+export function main({
+  allowlist = FIRST_PUBLISH_ALLOWLIST,
+  requestedNames = process.argv.slice(2),
+} = {}) {
+  const packages = listPublicPackages();
+  const pendingNames =
+    requestedNames.length > 0
+      ? requestedNames
+      : findVersionChangedPackageNames({
+          packages,
+          previousVersionsByFile: getPreviousVersionsByFile(packages),
+        });
+  const pending = new Set(pendingNames);
+  const publishedVersionsByName = new Map(
+    packages
+      .filter((pkg) => pending.has(pkg.name))
+      .map((pkg) => [pkg.name, getPublishedVersions(pkg.name)]),
+  );
+
+  return publishPendingPackages({
+    packages,
+    publishedVersionsByName,
+    allowlist,
+    pendingNames,
+  });
+}
+
+if (
+  process.argv[1] !== undefined &&
+  realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
+) {
+  try {
+    main();
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  }
 }

@@ -35,7 +35,7 @@ function stepEvent(step: StepId = "diff"): FullReviewStreamEvent {
 function completeEvent(reviewId: string): FullReviewStreamEvent {
   return {
     type: "complete",
-    result: { issues: [], summary: "Clean" },
+    result: { issues: [] },
     reviewId,
     durationMs: 100,
   };

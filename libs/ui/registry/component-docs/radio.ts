@@ -41,6 +41,11 @@ export const radioDoc: ComponentDoc = {
       content:
         "Set orientation='horizontal' for inline layouts. Layout direction changes but all four arrow keys always navigate (per APG spec).",
     },
+    {
+      title: "Required validation",
+      content:
+        "A required RadioGroup participates in native validation only while it has an enabled item. If every item is disabled, the group follows native radio behavior: it is valid, omits aria-required and derived invalid state, contributes no value, and has no validation focus target.",
+    },
   ],
   usage: { example: "radio-group-default" },
   examples: [
@@ -262,7 +267,8 @@ export const radioDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: "Requires one enabled item to be selected.",
+        description:
+          "Requires one enabled item to be selected. All-disabled groups are exempt like native radios.",
       },
       label: {
         type: "string",

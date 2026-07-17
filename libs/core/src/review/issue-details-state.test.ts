@@ -46,8 +46,20 @@ function createReviewIssue(
 }
 
 describe("getAvailableIssueTabs", () => {
+  it("advertises no issue tabs without a selected issue", () => {
+    expect(getAvailableIssueTabs(undefined)).toEqual([]);
+    expect(getAvailableIssueTabs(null)).toEqual([]);
+  });
+
   it("omits patch and trace tabs when the issue has neither", () => {
     expect(getAvailableIssueTabs(createReviewIssue("a"))).toEqual(["details", "explain"]);
+  });
+
+  it("omits the trace tab when the trace array is empty", () => {
+    expect(getAvailableIssueTabs({ ...createReviewIssue("a"), trace: [] })).toEqual([
+      "details",
+      "explain",
+    ]);
   });
 
   it("includes the trace tab only when trace steps exist", () => {
@@ -127,6 +139,19 @@ describe("useIssueDetailsState", () => {
 
     // ...but the requested "patch" is remembered and restored when available again.
     rerender(withPatch);
+    expect(result.current.activeTab).toBe("patch");
+  });
+
+  it("rejects Trace but accepts Patch for a patch-only issue", () => {
+    const patchOnly = createReviewIssue("a", { withPatch: true });
+    const { result } = renderHook((issue: ReviewIssue) => useIssueDetailsState(issue), {
+      initialProps: patchOnly,
+    });
+
+    act(() => result.current.setActiveTab("trace"));
+    expect(result.current.activeTab).toBe("details");
+
+    act(() => result.current.setActiveTab("patch"));
     expect(result.current.activeTab).toBe("patch");
   });
 });

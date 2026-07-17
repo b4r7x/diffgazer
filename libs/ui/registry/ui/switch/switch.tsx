@@ -125,13 +125,15 @@ export function Switch({
   "aria-labelledby": ariaLabelledBy,
   "aria-describedby": ariaDescribedBy,
   "aria-invalid": ariaInvalid,
+  form,
   className,
   ref,
   ...rootProps
 }: SwitchProps) {
   const rootRef = useRef<HTMLButtonElement>(null);
+  const nativeInputRef = useRef<HTMLInputElement>(null);
   const composedRef = useComposedRefs(rootRef, ref);
-  const [isChecked, setIsChecked] = useControllableState<boolean>({
+  const [isChecked, setIsChecked, , resetChecked] = useControllableState<boolean>({
     value: controlledChecked,
     defaultValue: defaultChecked,
     onChange,
@@ -141,19 +143,30 @@ export function Switch({
     ariaInvalid,
     nativeInvalid && required && !isChecked,
   );
+  const controlledFormReset =
+    controlledChecked === undefined
+      ? undefined
+      : {
+          syncResetBaseline: () => {
+            if (nativeInputRef.current) nativeInputRef.current.defaultChecked = isChecked;
+          },
+          onReset: () => setNativeInvalid(false),
+        };
 
-  useFormReset(
+  const invalidatePendingReset = useFormReset(
     rootRef,
     defaultChecked,
     (value) => {
       setNativeInvalid(false);
-      setIsChecked(value);
+      resetChecked(value);
     },
     controlledChecked === undefined,
+    controlledFormReset,
   );
 
   const toggle = () => {
     if (disabled) return;
+    invalidatePendingReset();
     setNativeInvalid(false);
     setIsChecked(!isChecked);
   };
@@ -171,16 +184,19 @@ export function Switch({
     <>
       {(name || required) && (
         <input
+          ref={nativeInputRef}
           type="checkbox"
+          data-slot="switch-form-mirror"
           name={name}
+          form={form}
           value={value}
           checked={isChecked}
           required={required}
           disabled={disabled}
           className="sr-only"
           tabIndex={-1}
-          readOnly
           aria-hidden={true}
+          onChange={() => {}}
           onInvalid={(event) => {
             event.preventDefault();
             setNativeInvalid(true);
@@ -192,6 +208,7 @@ export function Switch({
         {...rootProps}
         ref={composedRef}
         type="button"
+        form={form}
         role="switch"
         data-slot="switch"
         data-state={isChecked ? "checked" : "unchecked"}

@@ -65,12 +65,14 @@ describe("Accordion", () => {
     expect(triggerTwo).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("single mode with collapsible=false prevents closing the open item", async () => {
+  it("single mode with collapsible=false may start empty and prevents closing a selected item", async () => {
     const user = userEvent.setup();
-    renderAccordion({ defaultValue: "one", collapsible: false });
+    renderAccordion({ collapsible: false });
     const trigger = screen.getByRole("button", { name: "Section One" });
-    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
     expect(trigger).not.toBeDisabled();
+    await user.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
     expect(trigger).toHaveAttribute("aria-disabled", "true");
     trigger.focus();
     expect(trigger).toHaveFocus();
@@ -126,7 +128,7 @@ describe("Accordion", () => {
     );
   });
 
-  it("keeps explicit value undefined controlled instead of adopting internal state", async () => {
+  it("keeps explicit single value undefined controlled instead of adopting internal state", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     renderAccordion({ value: undefined, onChange });
@@ -141,6 +143,19 @@ describe("Accordion", () => {
     expect(sectionTwo).toHaveAttribute("aria-expanded", "false");
   });
 
+  it("normalizes explicit multiple value undefined without losing controlledness", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderAccordion({ type: "multiple", value: undefined, onChange });
+    const sectionTwo = screen.getByRole("button", { name: "Section Two" });
+
+    expect(sectionTwo).toHaveAttribute("aria-expanded", "false");
+    await user.click(sectionTwo);
+
+    expect(onChange).toHaveBeenCalledWith(["two"]);
+    expect(sectionTwo).toHaveAttribute("aria-expanded", "false");
+  });
+
   it("controlled single mode calls onChange with new value", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -149,12 +164,12 @@ describe("Accordion", () => {
     expect(onChange).toHaveBeenCalledWith("two");
   });
 
-  it("controlled single mode calls onChange with null when collapsing", async () => {
+  it("controlled single mode calls onChange with undefined when collapsing", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     renderAccordion({ value: "one", onChange });
     await user.click(screen.getByRole("button", { name: "Section One" }));
-    expect(onChange).toHaveBeenCalledWith(null);
+    expect(onChange).toHaveBeenCalledWith(undefined);
   });
 
   it("controlled multiple mode calls onChange with updated array", async () => {

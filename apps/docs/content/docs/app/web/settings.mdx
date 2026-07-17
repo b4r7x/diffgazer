@@ -19,7 +19,9 @@ The hub is a single menu. Each row names a settings area and shows its current s
 | Analysis | Which agents run during a review |
 | Diagnostics | System health checks for this directory |
 
-Pick a row to open that area. Each area is its own screen with a Cancel and a Save action; nothing is written until you save, and Cancel or Esc returns you to the hub without changing anything. The hub footer shows the config file path, `~/.diffgazer/config.json`, which is where these choices are persisted. For the full shape of that file and every field it holds, see [configuration](/app/reference/configuration).
+Pick a row to open that area. Configuration editors have Cancel and Save actions: they do not write changes before Save, and Cancel or `Esc` returns to the hub without applying them. The hub footer shows the config file path, `~/.diffgazer/config.json`, which is where those choices are persisted. For the full shape of that file and every field it holds, see [configuration](/app/reference/configuration).
+
+Diagnostics is not a configuration editor. It offers **Refresh Diagnostics** plus **Generate Context** or **Regenerate Context**, and each action runs immediately without a separate Save confirmation. Generating or regenerating context writes the local project snapshot under the project's `.diffgazer` directory. Press `Esc` to return to the settings hub.
 
 ## Theme, storage, and agent execution
 
@@ -34,11 +36,11 @@ Secrets Storage decides where your API keys live. Two options exist:
 
 Changes to storage take effect immediately after you save. For more on how keys are handled and what stays local, see [privacy](/app/concepts/privacy).
 
-Agent Execution controls scheduling, not which agents run. Sequential runs each agent one after another and works with every provider and tier. Parallel runs all agents at once, which is faster but can hit rate limits on free tiers. It defaults to sequential. The final report is the same either way; only the timing changes.
+Agent Execution controls scheduling, not which agents run. Sequential runs each agent one after another and works with every provider and tier. Parallel runs all agents at once, which is faster but can hit rate limits on free tiers. It defaults to sequential. Findings from successful agents use the same merge, filter, and sort rules in either mode. Reports can still differ because a rate limit or transient failure can stop one agent while the others produce a partial report.
 
 ## Provider and analysis
 
-The Provider area is where you pick the AI provider for reviews, enter or remove its API key, and choose a model. You can search and filter the provider list, and each provider shows its capabilities. API keys can be entered directly or pointed at an environment variable instead, so a key never has to be typed into the app at all. For background on providers and models, see [providers](/app/reference/providers).
+The Provider area is where you pick the AI provider for reviews, enter or remove its API key, and choose a model. You can search and filter the provider list, and each provider shows its capabilities. API keys can be entered directly or pointed at an environment variable instead, so a key never has to be typed into the app at all. The active provider and model are global for this Diffgazer installation, so changing them affects every repository. The repository making an activation request must still be trusted, and its trust grant separately controls the repository reads used to build context and run reviews; trust does not create a project-specific provider selection. For background on providers and models, see [providers](/app/reference/providers).
 
 The Analysis area chooses which agents run during a review. You toggle agents on and off, and at least one has to stay selected. If you have not picked any, every agent runs by default. The set you save here becomes the default agent list for reviews started from the web app.
 

@@ -10,6 +10,7 @@ export interface OpenRouterModelsState {
   total: number;
   compatible: number;
   hasParams: boolean;
+  retry: () => void;
 }
 
 export function getCompatibilityLabel({
@@ -32,6 +33,7 @@ const EMPTY_STATE: OpenRouterModelsState = {
   total: 0,
   compatible: 0,
   hasParams: false,
+  retry: () => {},
 };
 
 export function useOpenRouterModelsMapped(
@@ -40,20 +42,23 @@ export function useOpenRouterModelsMapped(
 ): OpenRouterModelsState {
   const enabled = open && provider === OPENROUTER_PROVIDER_ID;
   const query = useOpenRouterModels({ enabled });
+  const retry = () => {
+    void query.refetch();
+  };
 
   if (!enabled) return EMPTY_STATE;
 
   const response = query.data;
   if (!response) {
     if (query.isLoading) {
-      return { ...EMPTY_STATE, loading: true };
+      return { ...EMPTY_STATE, loading: true, retry };
     }
 
     if (query.error) {
-      return { ...EMPTY_STATE, error: query.error.message };
+      return { ...EMPTY_STATE, error: query.error.message, retry };
     }
 
-    return EMPTY_STATE;
+    return { ...EMPTY_STATE, retry };
   }
 
   const withParams = response.models.filter(
@@ -71,5 +76,6 @@ export function useOpenRouterModelsMapped(
     total: response.models.length,
     compatible: compatibleModels.length,
     hasParams: paramsAvailable,
+    retry,
   };
 }

@@ -31,6 +31,8 @@ pnpm exec dgadd add ui/dialog ui/tabs keys/navigation
 | `--keys-version <version>` | Version/range used when `--integration keys` installs `@diffgazer/keys` | caret range of the bundled `@diffgazer/keys` release |
 | `--yes` | Skip confirmation prompts | `false` |
 
+`--all` selects only items marked public. Hidden dependencies required by those items are still installed as transitive items, while standalone hidden add-ons are not selected by `--all`.
+
 ## Keyboard integration
 
 `copy` mode installs bundled hook source into your app.

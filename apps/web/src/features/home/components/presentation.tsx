@@ -58,6 +58,11 @@ function describeReviewStartError(error: unknown): { title: string; message: str
           title: "Model Not Selected",
           message: error.message,
         };
+      case "KEYRING_READ_FAILED":
+        return {
+          title: "Credential Storage Unavailable",
+          message: `${error.message}. Check Settings → Storage.`,
+        };
     }
     return { title: "Failed to Start Review", message: error.message };
   }
@@ -100,7 +105,17 @@ export function HomePagePresentation({
 }: HomePagePresentationProps) {
   const [isStartingReview, setIsStartingReview] = useState(false);
   const hasResumableSession = resumableSession != null;
+  const activeReviewRequestRef = useRef<symbol | null>(null);
   const invalidIdReportedRef = useRef(false);
+  const isMountedRef = useRef(false);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      activeReviewRequestRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (searchError !== "invalid-review-id" || invalidIdReportedRef.current) return;
@@ -133,16 +148,26 @@ export function HomePagePresentation({
   };
 
   const startReview = async (mode: ReviewMode) => {
-    if (isStartingReview) return;
+    if (activeReviewRequestRef.current) return;
+    const request = Symbol();
+    activeReviewRequestRef.current = request;
     setIsStartingReview(true);
+
+    const finishCurrentRequest = () => {
+      if (!isMountedRef.current || activeReviewRequestRef.current !== request) return false;
+      activeReviewRequestRef.current = null;
+      setIsStartingReview(false);
+      return true;
+    };
+
     try {
       const { reviewId } = await createReview({ mode });
+      if (!finishCurrentRequest()) return;
       navigateToReview(reviewId, mode);
     } catch (error) {
+      if (!finishCurrentRequest()) return;
       const { title, message } = describeReviewStartError(error);
       toast.error(title, { message });
-    } finally {
-      setIsStartingReview(false);
     }
   };
 
@@ -204,13 +229,17 @@ export function HomePagePresentation({
     rightShortcuts: needsTrust ? TRUST_FOOTER_RIGHT_SHORTCUTS : [],
   });
   useScope("home");
-  useKey("q", () => {
-    void handleQuit();
-  });
-  useKey("s", () => handleActivate("settings"));
-  useKey("h", () => handleActivate("history"));
+  useKey(
+    "q",
+    () => {
+      void handleQuit();
+    },
+    { enabled: !isStartingReview },
+  );
+  useKey("s", () => handleActivate("settings"), { enabled: !isStartingReview });
+  useKey("h", () => handleActivate("history"), { enabled: !isStartingReview });
 
-  useKey("shift+?", () => handleActivate("help"));
+  useKey("shift+?", () => handleActivate("help"), { enabled: !isStartingReview });
 
   if (needsTrust && projectId && repoRoot) {
     return <TrustPanel directory={repoRoot} />;
@@ -218,7 +247,12 @@ export function HomePagePresentation({
 
   return (
     <div className="flex flex-1 flex-col lg:flex-row items-center lg:items-start justify-start lg:justify-center p-4 md:p-6 lg:p-8 gap-4 md:gap-6 lg:gap-8 overflow-auto">
-      <ContextSidebar context={context} isTrusted={isTrusted} projectPath={repoRoot ?? undefined} />
+      <ContextSidebar
+        context={context}
+        isTrusted={isTrusted}
+        projectPath={repoRoot ?? undefined}
+        pending={isStartingReview}
+      />
       <HomeMenu
         highlighted={effectiveHighlighted}
         onHighlightChange={onHighlightChange}

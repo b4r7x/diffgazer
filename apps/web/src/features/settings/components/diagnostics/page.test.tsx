@@ -1,6 +1,7 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
+import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
@@ -18,7 +19,9 @@ vi.mock("@tanstack/react-router", () => ({
 
 import { SettingsDiagnosticsPage } from "./page";
 
-function makeInitResponse(): Awaited<ReturnType<BoundApi["loadInit"]>> {
+function makeInitResponse(
+  overrides: Partial<Awaited<ReturnType<BoundApi["loadInit"]>>> = {},
+): Awaited<ReturnType<BoundApi["loadInit"]>> {
   return {
     config: { provider: "openrouter", model: "openrouter/test-model" },
     providers: [{ provider: "openrouter", hasApiKey: true, isActive: true }],
@@ -41,6 +44,7 @@ function makeInitResponse(): Awaited<ReturnType<BoundApi["loadInit"]>> {
       isReady: true,
       missing: [],
     },
+    ...overrides,
   };
 }
 
@@ -62,6 +66,7 @@ function makeContextResponse(): Awaited<ReturnType<BoundApi["getReviewContext"]>
       generatedAt,
       root: "/tmp/repo",
       statusHash: "status-hash",
+      statusHashKind: "full",
       charCount: 12,
     },
   };
@@ -105,13 +110,18 @@ function renderPage() {
     );
   }
 
-  return render(<SettingsDiagnosticsPage />, { wrapper: Wrapper });
+  const renderResult = render(<SettingsDiagnosticsPage />, { wrapper: Wrapper });
+  return { ...renderResult, queryClient };
 }
 
 async function waitForReady() {
   await waitFor(() => {
     expect(screen.getByRole("button", { name: "Refresh Diagnostics" })).toBeEnabled();
   });
+}
+
+function getOverallStatus() {
+  return within(screen.getByRole("region", { name: /system diagnostics/i })).getByRole("status");
 }
 
 async function waitForDiagnosticsActions() {
@@ -243,7 +253,99 @@ describe("SettingsDiagnosticsPage keyboard footer navigation", () => {
     expect(within(diagnosticsPanel).queryByText("success")).not.toBeInTheDocument();
   });
 
-  it("shows refresh-all failures in the diagnostics page", async () => {
+  it("keeps error, loading, setup-needed, and ready precedence across source transitions", async () => {
+    const healthRecovery = createDeferred<Awaited<ReturnType<BoundApi["request"]>>>();
+    const init = createDeferred<Awaited<ReturnType<BoundApi["loadInit"]>>>();
+    const context = createDeferred<Awaited<ReturnType<BoundApi["getReviewContext"]>>>();
+    mockRequest
+      .mockRejectedValueOnce(new Error("server down"))
+      .mockReturnValueOnce(healthRecovery.promise);
+    mockLoadInit.mockReturnValueOnce(init.promise);
+    mockGetReviewContext.mockReturnValueOnce(context.promise);
+    const { queryClient } = renderPage();
+
+    await waitFor(() => expect(getOverallStatus()).toHaveTextContent("Needs attention"));
+
+    const healthRefetch = queryClient.refetchQueries({ queryKey: ["server", "health"] });
+    await waitFor(() => expect(getOverallStatus()).toHaveTextContent("Checking"));
+    healthRecovery.resolve(new Response(null));
+    await healthRefetch;
+
+    init.resolve(
+      makeInitResponse({
+        config: null,
+        setup: {
+          hasSecretsStorage: true,
+          hasProvider: false,
+          hasModel: false,
+          hasTrust: true,
+          isConfigured: false,
+          isReady: false,
+          missing: ["provider", "model"],
+        },
+      }),
+    );
+    await waitFor(() => expect(getOverallStatus()).toHaveTextContent("Checking"));
+
+    context.reject(Object.assign(new Error("context missing"), { status: 404 }));
+    await waitFor(() => expect(getOverallStatus()).toHaveTextContent("Setup needed"));
+
+    mockLoadInit.mockResolvedValue(makeInitResponse());
+    mockGetReviewContext.mockResolvedValue(makeContextResponse());
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: ["config", "init"] }),
+      queryClient.refetchQueries({ queryKey: ["review", "context"] }),
+    ]);
+
+    await waitFor(() => expect(getOverallStatus()).toHaveTextContent("Ready"));
+  });
+
+  it("reports an init failure as the overall error when other sources are ready", async () => {
+    mockLoadInit.mockReset().mockRejectedValue(new Error("init failed"));
+    renderPage();
+
+    await waitFor(() => expect(getOverallStatus()).toHaveTextContent("Needs attention"));
+    expect(screen.getByText("Error: init failed")).toBeVisible();
+  });
+
+  it("reports a context failure as the overall error when other sources are ready", async () => {
+    mockGetReviewContext.mockReset().mockRejectedValue(new Error("context failed"));
+    renderPage();
+
+    await waitFor(() => expect(getOverallStatus()).toHaveTextContent("Needs attention"));
+    expect(screen.getByText("Error: context failed")).toBeVisible();
+  });
+
+  it("reports incomplete setup even when context is ready", async () => {
+    mockLoadInit.mockReset().mockResolvedValue(
+      makeInitResponse({
+        config: null,
+        setup: {
+          hasSecretsStorage: true,
+          hasProvider: false,
+          hasModel: false,
+          hasTrust: true,
+          isConfigured: false,
+          isReady: false,
+          missing: ["provider", "model"],
+        },
+      }),
+    );
+    renderPage();
+
+    await waitFor(() => expect(getOverallStatus()).toHaveTextContent("Setup needed"));
+  });
+
+  it("reports missing context even when configured setup is ready", async () => {
+    mockGetReviewContext
+      .mockReset()
+      .mockRejectedValue(Object.assign(new Error("context missing"), { status: 404 }));
+    renderPage();
+
+    await waitFor(() => expect(getOverallStatus()).toHaveTextContent("Setup needed"));
+  });
+
+  it("shows the failed source error after refresh-all", async () => {
     const user = userEvent.setup();
     renderPage();
     await waitForReady();
@@ -253,7 +355,82 @@ describe("SettingsDiagnosticsPage keyboard footer navigation", () => {
 
     await user.click(screen.getByRole("button", { name: "Refresh Diagnostics" }));
 
-    expect(await screen.findByText("Refresh failed for some diagnostics sources.")).toBeVisible();
+    expect(await screen.findByText("Error: server down")).toBeVisible();
+    expect(screen.getByText("server down")).toBeVisible();
+    expect(await screen.findByText("Needs attention")).toBeVisible();
     expect(screen.getByRole("button", { name: "Refresh Diagnostics" })).toBeEnabled();
+  });
+
+  it("does not resurrect a recovered refresh error when another source later fails", async () => {
+    const user = userEvent.setup();
+    const missingContext = Object.assign(new Error("context missing"), { status: 404 });
+    mockGetReviewContext
+      .mockReset()
+      .mockRejectedValueOnce(missingContext)
+      .mockRejectedValueOnce(missingContext)
+      .mockResolvedValue(makeContextResponse());
+    renderPage();
+    await waitForReady();
+
+    await user.click(screen.getByRole("button", { name: "Refresh Diagnostics" }));
+    expect(await screen.findByText("context missing")).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Generate Context" }));
+    await waitFor(() => expect(mockRefreshReviewContext).toHaveBeenCalledWith({ force: true }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("context missing")).not.toBeInTheDocument();
+    });
+    expect(getOverallStatus()).toHaveTextContent("Ready");
+
+    mockRequest.mockRejectedValueOnce(new Error("later server failure"));
+    await user.click(screen.getByRole("button", { name: "Refresh Diagnostics" }));
+
+    expect(await screen.findByText("later server failure")).toBeVisible();
+    expect(screen.queryByText("context missing")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Refresh failed for some diagnostics sources."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("clears a context-generation error after refresh-all refetches context successfully", async () => {
+    const user = userEvent.setup();
+    mockRefreshReviewContext.mockRejectedValueOnce(new Error("context generation failed"));
+    renderPage();
+    await waitForReady();
+
+    await user.click(await screen.findByRole("button", { name: "Regenerate Context" }));
+    expect(await screen.findByText("context generation failed")).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Refresh Diagnostics" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("context generation failed")).not.toBeInTheDocument();
+    });
+    expect(getOverallStatus()).toHaveTextContent("Ready");
+  });
+
+  it("updates Health when a later health poll recovers after a failed refresh", async () => {
+    const user = userEvent.setup();
+    const { queryClient } = renderPage();
+    await waitForReady();
+
+    mockRequest.mockRejectedValueOnce(new Error("server down"));
+    await user.click(screen.getByRole("button", { name: "Refresh Diagnostics" }));
+
+    const diagnosticsPanel = screen.getByRole("region", { name: /system diagnostics/i });
+    await waitFor(() => {
+      expect(within(diagnosticsPanel).getByText("Error: server down")).toBeVisible();
+      expect(within(diagnosticsPanel).getByText("Needs attention")).toBeVisible();
+    });
+
+    mockRequest.mockResolvedValueOnce(new Response(null));
+    await queryClient.refetchQueries({ queryKey: ["server", "health"] });
+
+    await waitFor(() => {
+      expect(within(diagnosticsPanel).getByText("Connected")).toBeVisible();
+      expect(within(diagnosticsPanel).queryByText("Needs attention")).not.toBeInTheDocument();
+      expect(within(diagnosticsPanel).queryByText("server down")).not.toBeInTheDocument();
+    });
   });
 });

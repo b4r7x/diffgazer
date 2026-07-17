@@ -44,6 +44,8 @@ export const ModelsDevProviderSchema = z.object({
 export const ModelsDevCatalogSchema = z.record(z.string(), ModelsDevProviderSchema);
 export type ModelsDevCatalog = z.infer<typeof ModelsDevCatalogSchema>;
 
+const UNSAFE_RECORD_KEYS = new Set(["__proto__", "prototype", "constructor"]);
+
 /**
  * Defensive parse: drop invalid models and providers so one bad upstream entry
  * can never empty the catalog.
@@ -53,12 +55,14 @@ export function parseModelsDevCatalog(raw: unknown): ModelsDevCatalog {
   if (!raw || typeof raw !== "object") return catalog;
 
   for (const [providerId, rawProvider] of Object.entries(raw as Record<string, unknown>)) {
+    if (UNSAFE_RECORD_KEYS.has(providerId)) continue;
     if (!rawProvider || typeof rawProvider !== "object") continue;
     const { models: rawModels, ...rest } = rawProvider as Record<string, unknown>;
 
     const models: Record<string, ModelsDevModel> = {};
     if (rawModels && typeof rawModels === "object") {
       for (const [modelId, rawModel] of Object.entries(rawModels as Record<string, unknown>)) {
+        if (UNSAFE_RECORD_KEYS.has(modelId)) continue;
         const parsed = ModelsDevModelSchema.safeParse(rawModel);
         if (parsed.success) models[modelId] = parsed.data;
       }

@@ -7,7 +7,7 @@ export default function OutsideClickBasicExample() {
   const [open, setOpen] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
 
-  useOutsideClick(ref, () => setOpen(false));
+  useOutsideClick(ref, () => setOpen(false), open);
 
   return (
     <div className="flex flex-col gap-4 items-start">

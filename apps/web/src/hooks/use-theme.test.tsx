@@ -125,6 +125,20 @@ describe("ThemeProvider", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
+  it("falls back to the system theme when storage reads are denied", () => {
+    vi.spyOn(storageMock, "getItem").mockImplementation(() => {
+      throw new DOMException("Storage denied", "SecurityError");
+    });
+
+    render(
+      <ThemeProvider>
+        <div />
+      </ThemeProvider>,
+    );
+
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+  });
+
   it("prefers the saved settings theme over a stale localStorage value", () => {
     localStorageStore.set("diffgazer-theme", "dark");
     mockUseSettings.mockReturnValue({
@@ -185,6 +199,37 @@ describe("ThemeProvider", () => {
     expect(mockMutateAsync).toHaveBeenCalledWith({ theme: "dark" });
   });
 
+  it("saves the chosen theme when storage writes are denied", async () => {
+    let capturedSetTheme: ThemeContextValue["setTheme"] | undefined;
+    const mockMutateAsync = vi.fn().mockResolvedValue(undefined);
+    mockUseSaveSettings.mockReturnValue({
+      mutate: mockMutate,
+      mutateAsync: mockMutateAsync,
+      isPending: false,
+      error: null,
+    });
+    vi.spyOn(storageMock, "setItem").mockImplementation(() => {
+      throw new DOMException("Storage denied", "SecurityError");
+    });
+
+    render(
+      <ThemeProvider>
+        <ThemeConsumer
+          onRender={(ctx) => {
+            capturedSetTheme = ctx.setTheme;
+          }}
+        />
+      </ThemeProvider>,
+    );
+
+    await act(async () => {
+      await capturedSetTheme?.("dark");
+    });
+
+    expect(mockMutateAsync).toHaveBeenCalledWith({ theme: "dark" });
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+  });
+
   it("applies the chosen theme immediately even when the settings cache is stale", () => {
     let capturedSetTheme: ThemeContextValue["setTheme"] | undefined;
 
@@ -240,6 +285,9 @@ describe("ThemeProvider", () => {
       isPending: false,
       error: null,
     });
+    vi.spyOn(storageMock, "removeItem").mockImplementation(() => {
+      throw new DOMException("Storage denied", "SecurityError");
+    });
 
     render(
       <ThemeProvider>
@@ -258,7 +306,7 @@ describe("ThemeProvider", () => {
       await expect(setTheme("dark")).rejects.toThrow("Save failed");
     });
 
-    expect(localStorage.getItem("diffgazer-theme")).toBeNull();
+    expect(localStorage.getItem("diffgazer-theme")).toBe("dark");
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
@@ -270,6 +318,12 @@ describe("ThemeProvider", () => {
         <div />
       </ThemeProvider>,
     );
+
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+
+    act(() => {
+      mediaQuery.setMatches(() => false);
+    });
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
 

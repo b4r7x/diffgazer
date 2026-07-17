@@ -41,7 +41,7 @@ export function ApiKeyStep({
         apiKey={apiKey}
         onApiKeyChange={onApiKeyChange}
         envVar={envVarName}
-        onEnvVarChange={() => {}}
+        envVarReadOnly
         isActive={isActive}
         inputFocused={inputFocused}
         onInputFocusedChange={onInputFocusedChange}

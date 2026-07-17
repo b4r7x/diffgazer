@@ -12,7 +12,8 @@ interface ApiKeyMethodSelectorProps {
   apiKey: string;
   onApiKeyChange: (v: string) => void;
   envVar: string;
-  onEnvVarChange: (v: string) => void;
+  onEnvVarChange?: (v: string) => void;
+  envVarReadOnly?: boolean;
   isActive?: boolean;
   /**
    * Controlled input-focus toggle. When provided, the owner (e.g. the wizard)
@@ -29,6 +30,7 @@ export function ApiKeyMethodSelector({
   onApiKeyChange,
   envVar,
   onEnvVarChange,
+  envVarReadOnly = false,
   isActive = true,
   inputFocused: controlledInputFocused,
   onInputFocusedChange,
@@ -91,11 +93,18 @@ export function ApiKeyMethodSelector({
             value={envVar}
             onChange={onEnvVarChange}
             placeholder="OPENAI_API_KEY"
-            isActive={isActive && inputFocused}
+            disabled={envVarReadOnly}
+            isActive={isActive && inputFocused && !envVarReadOnly}
           />
-          <Text color={tokens.muted} dimColor>
-            Press Tab to focus input
-          </Text>
+          {envVarReadOnly ? (
+            <Text color={tokens.muted} dimColor>
+              Fixed for this provider
+            </Text>
+          ) : (
+            <Text color={tokens.muted} dimColor>
+              Press Tab to focus input
+            </Text>
+          )}
         </Box>
       )}
     </Box>

@@ -18,6 +18,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createContext, type ReactNode, useCallback, useContext, useMemo } from "react";
 
 interface ConfigDataContextValue {
+  loadState: ConfigLoadState;
+  providerStatusLoadState: ProviderStatusLoadState;
   isLoading: boolean;
   provider?: AIProvider;
   model?: string;
@@ -29,6 +31,16 @@ interface ConfigDataContextValue {
   setupStatus: SetupStatus | null;
   secretsStorage: SecretsStorage | null;
 }
+
+type ConfigLoadState =
+  | { status: "loading" }
+  | { status: "error"; error: Error }
+  | { status: "ready"; setupStatus: SetupStatus };
+
+type ProviderStatusLoadState =
+  | { status: "loading" }
+  | { status: "error"; error: Error }
+  | { status: "ready" };
 
 interface ConfigActionsContextValue {
   refresh: () => Promise<void>;
@@ -56,16 +68,27 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 
   const initData = initQuery.data;
   const isLoading = initQuery.isLoading || providersQuery.isLoading;
+  const loadState = useMemo<ConfigLoadState>(() => {
+    if (initData) return { status: "ready", setupStatus: initData.setup };
+    if (initQuery.isLoading) return { status: "loading" };
+    if (initQuery.error) return { status: "error", error: initQuery.error };
+    return { status: "error", error: new Error("Configuration did not load") };
+  }, [initData, initQuery.error, initQuery.isLoading]);
+  const providerStatusLoadState = useMemo<ProviderStatusLoadState>(() => {
+    if (providersQuery.isLoading) return { status: "loading" };
+    if (providersQuery.error) return { status: "error", error: providersQuery.error };
+    return { status: "ready" };
+  }, [providersQuery.error, providersQuery.isLoading]);
 
   const provider = initData?.config?.provider;
   const model = initData?.config?.model;
-  const isConfigured = initData?.setup?.isConfigured ?? false;
+  const isConfigured = initData?.setup.isConfigured ?? false;
   const providerStatus = providersQuery.data ?? initData?.providers ?? EMPTY_PROVIDERS;
-  const projectId = initData?.project?.projectId ?? null;
-  const repoRoot = initData?.project?.path ?? null;
-  const trust = initData?.project?.trust ?? null;
+  const projectId = initData?.project.projectId ?? null;
+  const repoRoot = initData?.project.path ?? null;
+  const trust = initData?.project.trust ?? null;
   const setupStatus = initData?.setup ?? null;
-  const secretsStorage = initData?.settings?.secretsStorage ?? null;
+  const secretsStorage = initData?.settings.secretsStorage ?? null;
 
   const refresh = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: configQueries.all() });
@@ -98,6 +121,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 
   const dataValue = useMemo<ConfigDataContextValue>(
     () => ({
+      loadState,
+      providerStatusLoadState,
       isLoading,
       provider,
       model,
@@ -110,6 +135,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       secretsStorage,
     }),
     [
+      loadState,
+      providerStatusLoadState,
       isLoading,
       provider,
       model,

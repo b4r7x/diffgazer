@@ -38,7 +38,7 @@ The hotkey string uses the [hotkey format](/keys/api/hotkey-format): a key name 
 | Focus scoping | With `containerRef` + `focusWithinOnly`, the handler only runs while focus is inside the container. |
 | Scope resolution | When several bindings match the same combo, the handler in the deepest active scope runs first. |
 | Declining | Return exactly `false` from a handler to fall through to the next lower-priority handler for that combo. Any other return value consumes the event. |
-| `preventDefault` | When enabled, the browser default is prevented even if the handler declines by returning `false`. |
+| `preventDefault` | When enabled, the browser default is prevented after a handler accepts. A handler that returns `false` leaves the default available unless a later matching handler accepts and prevents it. |
 | Cleanup | Bindings are removed on unmount, when `enabled` is `false`, or when `scope` is `null`. |
 
 ## Examples

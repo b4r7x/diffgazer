@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { matchesSearch } from "./search";
 
 describe("matchesSearch", () => {
@@ -10,23 +10,37 @@ describe("matchesSearch", () => {
     expect(matchesSearch(value, query)).toBe(expected);
   });
 
-  describe("locale-aware lowercasing", () => {
+  describe("Unicode-aware case folding", () => {
     it("round-trips Turkish dotted I between value and query", () => {
-      // Default-locale toLocaleLowerCase("İ") === "i̇" (i + combining dot).
-      // Both arguments must use the same lowercasing rule for the substring
-      // check to succeed.
       expect(matchesSearch("İstanbul", "İ")).toBe(true);
       expect(matchesSearch("İstanbul", "İstan")).toBe(true);
     });
 
-    it("matches German ß labels case-insensitively", () => {
-      expect(matchesSearch("STRASSE", "strasse")).toBe(true);
-      expect(matchesSearch("Strasse", "STRASSE")).toBe(true);
+    it("matches ordinary ASCII I independently of the host locale", () => {
+      const toLocaleUpperCase = String.prototype.toLocaleUpperCase;
+      const localeSpy = vi
+        .spyOn(String.prototype, "toLocaleUpperCase")
+        .mockImplementation(function (this: string) {
+          return toLocaleUpperCase.call(this, "tr");
+        });
+
+      try {
+        expect(matchesSearch("input", "INPUT")).toBe(true);
+        expect(matchesSearch("INPUT", "input")).toBe(true);
+      } finally {
+        localeSpy.mockRestore();
+      }
+    });
+
+    it("expands German sharp S when matching ordinary uppercase text", () => {
+      expect(matchesSearch("Straße", "STRASSE")).toBe(true);
+      expect(matchesSearch("STRASSE", "Straße")).toBe(true);
     });
 
     it("matches composed Unicode (NFC) values", () => {
       expect(matchesSearch("Café", "café")).toBe(true);
       expect(matchesSearch("CAFÉ", "é")).toBe(true);
+      expect(matchesSearch("Cafe\u0301", "CAFÉ")).toBe(true);
     });
   });
 });

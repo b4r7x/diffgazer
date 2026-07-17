@@ -1,6 +1,9 @@
 import { guardQueryState, useInit, useSaveTrust } from "@diffgazer/core/api/hooks";
+import { usePageFooter } from "@diffgazer/core/footer";
 import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
 import { getTrustButtonLabel } from "@diffgazer/core/schemas/config";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
+import { TRUST_FOOTER_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
@@ -29,6 +32,15 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
   const hasRepoAccess = capabilities.readFiles;
 
   const actionLabel = getTrustButtonLabel(saving, hasRepoAccess);
+  const actionShortcuts: Shortcut[] = [
+    { key: "Tab", label: "Focus Permissions", disabled: saving },
+    { key: "Enter", label: actionLabel, disabled: saving },
+    { key: "q", label: "Quit" },
+  ];
+
+  usePageFooter({
+    shortcuts: buttonActive ? actionShortcuts : TRUST_FOOTER_SHORTCUTS,
+  });
 
   useInput(
     (_input, key) => {

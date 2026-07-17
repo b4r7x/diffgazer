@@ -90,10 +90,13 @@ jobs:
         # Meaningful only on PRs: on push-to-main `--since=origin/main` diffs HEAD
         # against itself (vacuous), and a `--since <tag>` variant would go red on
         # the Version-PR merge commit that release.yml's workflow_run gate needs
-        # green. The Version PR (changeset-release/main) is exempt because it has
-        # consumed its changesets. Enforce this as a required branch-protection
-        # check on the PR side.
-        if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main'
+        # green. Only the repository-owned Version PR created by the trusted
+        # Changesets bot is exempt because it has consumed its changesets.
+        if: >-
+          ${{ github.event_name == 'pull_request'
+          && (github.head_ref != 'changeset-release/main'
+          || github.event.pull_request.head.repo.full_name != github.repository
+          || github.event.pull_request.user.login != 'github-actions[bot]') }}
         run: pnpm changeset status --since=origin/main
 
       - name: Pack @diffgazer/add
@@ -118,7 +121,7 @@ jobs:
           fi
 
   e2e:
-    name: Docs E2E (Playwright + axe + visual)
+    name: Browser E2E (Playwright + axe + visual)
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -132,26 +135,39 @@ jobs:
       - name: Setup repo
         uses: ./.github/actions/setup-repo
 
-      - name: Install Playwright browsers
+      - name: Install Chromium
         run: pnpm --filter @diffgazer/docs exec playwright install --with-deps chromium
 
       - name: Build docs
         run: pnpm --filter @diffgazer/docs build
 
-      - name: Run Playwright tests
+      - name: Run Docs Playwright tests
         env:
           CI: "true"
         run: pnpm --filter @diffgazer/docs test:e2e
 
+      - name: Run Web Playwright tests
+        env:
+          CI: "true"
+        run: pnpm --filter @diffgazer/web test:e2e
+
+      - name: Run UI Playwright tests
+        env:
+          CI: "true"
+        run: pnpm --filter @diffgazer/ui test:e2e
+
       - name: Run Lighthouse budgets
         run: pnpm --filter @diffgazer/docs lighthouse
 
-      - name: Upload Playwright report
+      - name: Upload Playwright reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: playwright-report
-          path: apps/docs/playwright-report
+          name: playwright-reports
+          path: |
+            apps/docs/playwright-report
+            apps/web/playwright-report
+            libs/ui/playwright-report
           retention-days: 14
 
       - name: Upload Playwright traces and results
@@ -159,5 +175,8 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: playwright-test-results
-          path: apps/docs/test-results
+          path: |
+            apps/docs/test-results
+            apps/web/test-results
+            libs/ui/test-results
           retention-days: 14

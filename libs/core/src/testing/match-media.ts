@@ -80,9 +80,15 @@ function installMatchMedia(initial: MatchMediaValue) {
 
   return {
     setMatches(next: MatchMediaValue): void {
+      const changes = [...records].map((record) => ({
+        record,
+        previousMatches: record.mediaQueryList.matches,
+        nextMatches: resolveMatches(next, record.mediaQueryList.media),
+      }));
       current = next;
-      for (const record of records) {
-        const event = createChangeEvent(record.mediaQueryList.matches, record.mediaQueryList.media);
+      for (const { record, previousMatches, nextMatches } of changes) {
+        if (previousMatches === nextMatches) continue;
+        const event = createChangeEvent(nextMatches, record.mediaQueryList.media);
         record.mediaQueryList.onchange?.(event);
         record.mediaQueryList.dispatchEvent(event);
         for (const listener of record.legacyListeners) {

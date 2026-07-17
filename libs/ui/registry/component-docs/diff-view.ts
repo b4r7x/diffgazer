@@ -22,7 +22,7 @@ export const diffViewDoc: ComponentDoc = {
     {
       title: "Accessible Name",
       content:
-        'Precedence: figcaption (when a file label can be derived from the patch and variant !== "bare") > `label` prop > "Diff output". The figure exposes aria-labelledby when a figcaption renders, otherwise aria-label. variant="bare" always suppresses the figcaption so the `label` prop becomes the figure name.',
+        'Precedence: explicit `aria-labelledby` > explicit `aria-label` > figcaption (when a file label can be derived and variant !== "bare") > `label` prop > "Diff output". An explicit ARIA name leaves the visible figcaption in place but suppresses its generated aria-labelledby. variant="bare" suppresses the figcaption, so `label` becomes the figure name unless native ARIA props override it.',
     },
     {
       title: "Line States",
@@ -158,15 +158,15 @@ export const diffViewDoc: ComponentDoc = {
     },
     {
       attribute: "data-mode",
-      appliesTo: "DiffView rows",
+      appliesTo: "DiffView",
       values: '"unified" | "split"',
-      description: "Rows container rendering mode.",
+      description: "Rendering mode serialized on the root figure.",
     },
     {
       attribute: "data-line-numbers",
       appliesTo: "DiffView rows",
-      values: "present when enabled",
-      description: "Marks rows with visible line-number gutters.",
+      values: '"true" | "false"',
+      description: "Whether the rows container renders visible line-number gutters.",
     },
     {
       attribute: "data-highlighted",
@@ -286,7 +286,7 @@ export const diffViewDoc: ComponentDoc = {
         required: false,
         defaultValue: '"Diff output"',
         description:
-          'Accessible name applied as aria-label when no figcaption renders (variant="bare" or a patch without paths).',
+          'Fallback accessible name applied as aria-label when no native ARIA name or figcaption names the figure (variant="bare" or a patch without paths).',
       },
       regionLabel: {
         type: "string",

@@ -194,6 +194,35 @@ describe("HomePagePresentation — startReview error surfacing", () => {
     expect(screen.getByText("Pick an AI provider in Settings → Providers.")).toBeInTheDocument();
   });
 
+  it("routes a keyring read failure to credential storage settings", async () => {
+    const createReview = vi.fn(async () => {
+      throw makeApiError("Could not read the OS keyring", "KEYRING_READ_FAILED");
+    });
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ createReview }));
+
+    await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
+
+    expect(await screen.findByText("Credential Storage Unavailable")).toBeInTheDocument();
+    expect(
+      screen.getByText("Could not read the OS keyring. Check Settings → Storage."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Model Not Selected")).not.toBeInTheDocument();
+  });
+
+  it("keeps a model selection failure distinct from credential storage failures", async () => {
+    const createReview = vi.fn(async () => {
+      throw makeApiError("Model selection is required", "MODEL_ERROR");
+    });
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ createReview }));
+
+    await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
+
+    expect(await screen.findByText("Model Not Selected")).toBeInTheDocument();
+    expect(screen.getByText("Model selection is required")).toBeInTheDocument();
+  });
+
   it("falls back to a generic toast for unknown errors", async () => {
     const createReview = vi.fn(async () => {
       throw new Error("boom");

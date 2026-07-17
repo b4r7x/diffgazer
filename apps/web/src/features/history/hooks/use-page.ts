@@ -82,6 +82,7 @@ export function useHistoryPage() {
 
   return {
     reviewsQuery: history.reviewsQuery,
+    reviewDetailQuery: history.reviewDetailQuery,
     focusZone,
     searchQuery: history.searchQuery,
     searchInputRef,
@@ -99,6 +100,9 @@ export function useHistoryPage() {
     duration: history.duration,
     hasReviews: history.hasReviews,
     emptyRunsMessage: history.emptyRunsMessage,
+    hasMoreReviews: history.hasMoreReviews,
+    isLoadingMoreReviews: history.isLoadingMoreReviews,
+    loadMoreReviews: history.loadMoreReviews,
     handleTimelineBoundary,
     handleSearchEscape,
     handleSearchArrowDown,

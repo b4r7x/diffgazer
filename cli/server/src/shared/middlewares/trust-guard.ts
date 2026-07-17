@@ -4,6 +4,11 @@ import { getStore } from "../lib/config/store.js";
 import { getProjectRoot } from "../lib/http/request.js";
 import { errorResponse } from "../lib/http/response.js";
 
+export function hasRepoReadAccess(projectRoot: string): boolean {
+  const { trust } = getStore().getProjectInfo(projectRoot);
+  return trust?.capabilities.readFiles === true && trust.repoRoot === projectRoot;
+}
+
 export const requireRepoAccess = async (c: Context, next: Next): Promise<Response | undefined> => {
   const projectRoot = getProjectRoot(c);
   const { trust } = getStore().getProjectInfo(projectRoot);
@@ -17,7 +22,7 @@ export const requireRepoAccess = async (c: Context, next: Next): Promise<Respons
     );
   }
 
-  if (trust.repoRoot !== projectRoot) {
+  if (!hasRepoReadAccess(projectRoot)) {
     return errorResponse(
       c,
       "Trust was granted for a different repository root. Re-grant trust for this directory.",

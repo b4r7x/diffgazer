@@ -45,7 +45,7 @@ export const navigationListDoc: ComponentDoc = {
     {
       title: "Group Expand/Collapse",
       content:
-        "Group expand/collapse is a mouse-only visual enhancement. Keyboard users navigate all visible items directly via arrow keys. The ARIA listbox pattern does not support focusable group toggles; keyboard-operable group toggling would require restructuring to the ARIA tree pattern.",
+        "Group headers participate in list navigation. ArrowRight expands a collapsed group, ArrowLeft collapses an expanded group, and Enter or Space toggles the highlighted group.",
     },
   ],
   usage: { example: "navigation-list-default" },
@@ -68,6 +68,15 @@ export const navigationListDoc: ComponentDoc = {
       },
       { keys: "Home / End", action: "Moves highlight to the first or last enabled item." },
       { keys: "Enter", action: "Activates the highlighted item via onEnter or onSelect." },
+      {
+        keys: "ArrowRight",
+        action: "Expands the highlighted group header when it is collapsed.",
+      },
+      {
+        keys: "ArrowLeft",
+        action: "Collapses the highlighted group header when it is expanded.",
+      },
+      { keys: "Enter / Space", action: "Toggles the highlighted group header." },
       {
         keys: "Boundary arrow",
         action:
@@ -113,7 +122,7 @@ export const navigationListDoc: ComponentDoc = {
       attribute: "data-expanded",
       appliesTo: "NavigationList.Group",
       values: '"true" | "false"',
-      description: "Mouse-managed group disclosure state.",
+      description: "Group disclosure state changed by pointer or keyboard activation.",
     },
   ],
   props: {
@@ -346,7 +355,8 @@ export const navigationListDoc: ComponentDoc = {
         type: "number",
         required: false,
         defaultValue: "10",
-        description: "Number of characters for the progress bar.",
+        description:
+          "Number of characters for the progress bar. Values are rounded down; negative and non-finite values become zero.",
       },
       color: {
         type: '"auto" | "success" | "warning" | "error" | "muted"',

@@ -27,6 +27,40 @@ describe("useComposedRefs", () => {
     expect(result.current).not.toBe(first);
   });
 
+  it("updates the callback and assigns refs when the sequence grows", () => {
+    const a = createRef<HTMLDivElement>();
+    const b = createRef<HTMLDivElement>();
+    const { result, rerender } = renderHook(({ refs }) => useComposedRefs(...refs), {
+      initialProps: { refs: [a] as Array<Ref<HTMLDivElement>> },
+    });
+    const first = result.current;
+
+    rerender({ refs: [a, b] as Array<Ref<HTMLDivElement>> });
+    const node = document.createElement("div");
+    result.current(node);
+
+    expect(result.current).not.toBe(first);
+    expect(a.current).toBe(node);
+    expect(b.current).toBe(node);
+  });
+
+  it("updates the callback when the ref sequence shrinks", () => {
+    const a = createRef<HTMLDivElement>();
+    const b = createRef<HTMLDivElement>();
+    const { result, rerender } = renderHook(({ refs }) => useComposedRefs(...refs), {
+      initialProps: { refs: [a, b] as Array<Ref<HTMLDivElement>> },
+    });
+    const first = result.current;
+
+    rerender({ refs: [a] as Array<Ref<HTMLDivElement>> });
+    const node = document.createElement("div");
+    result.current(node);
+
+    expect(result.current).not.toBe(first);
+    expect(a.current).toBe(node);
+    expect(b.current).toBeNull();
+  });
+
   it("assigns the element to every composed ref", () => {
     const objectRef = createRef<HTMLDivElement>();
     const callbackRef = vi.fn();

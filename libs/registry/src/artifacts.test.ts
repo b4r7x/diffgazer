@@ -98,6 +98,25 @@ describe("buildRegistryArtifacts", () => {
     expect(written.library).toBe("test-lib");
     expect(written.package).toBe("@test/lib");
     expect(written.schemaVersion).toBe(1);
+    expect(written.origin).toBe("https://example.com");
+  });
+
+  it("writes the normalized requested origin into the provenance manifest", () => {
+    const root = createTempRoot();
+
+    const result = buildRegistryArtifacts({
+      rootDir: root,
+      manifest: createMinimalManifest(),
+      defaultOrigin: "https://example.com",
+      originRaw: "https://registry.example.com/path///",
+      inputs: [],
+    });
+
+    const written = JSON.parse(readFileSync(result.manifestPath, "utf-8")) as Record<
+      string,
+      unknown
+    >;
+    expect(written.origin).toBe("https://registry.example.com/path");
   });
 
   it("writes fingerprint as text file with newline", () => {

@@ -41,7 +41,7 @@ export interface UseActionRowNavigationOptions<
    * exiting only blurs the action and focus lands on `document.body`.
    */
   disabledFocusFallbackRef?: RefObject<HTMLElement | null>;
-  /** Limits zone handling to one row subtree. */
+  /** When supplied, limits handling to one row subtree. Omit for global scope handling. */
   containerRef?: RefObject<HTMLElement | null>;
   /** Explicit keyboard scope for action-row shortcuts. Omit to use implicit scope ordering. */
   scope?: UseKeyOptions["scope"];
@@ -210,21 +210,11 @@ export function useActionRowNavigation<Actions extends readonly unknown[] = read
   }, [focusedIndex]);
 
   const shouldRepairActionFocus = useCallback(() => {
-    const firstAction = actionRefs.current.values().next().value;
-    const ownerDocument =
-      firstAction?.ownerDocument ??
-      disabledFocusFallbackRef?.current?.ownerDocument ??
-      containerRef?.current?.ownerDocument;
-    if (!ownerDocument) return true;
-
-    const activeElement = ownerDocument.activeElement;
-    if (!activeElement || activeElement === ownerDocument.body) return true;
-
     for (const action of actionRefs.current.values()) {
-      if (action === activeElement || action.contains(activeElement)) return true;
+      if (containsActiveElement(action)) return true;
     }
     return false;
-  }, [containerRef, disabledFocusFallbackRef]);
+  }, []);
 
   useEffect(() => {
     if (!enabled || defaultZone !== "actions" || !inActions || hasFocusedDefaultRef.current) return;

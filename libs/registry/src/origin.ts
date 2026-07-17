@@ -11,16 +11,70 @@ export interface NormalizeOriginOptions {
   defaultOrigin?: string;
 }
 
+export interface ResolveRegistryRouteOptions extends NormalizeOriginOptions {
+  origin?: string | null;
+}
+
 export function normalizeOrigin(
   raw: string | undefined | null,
   options: NormalizeOriginOptions = {},
 ): string {
   const defaultOrigin = options.defaultOrigin ?? REGISTRY_ORIGIN;
   const value = (raw ?? defaultOrigin).trim();
-  if (!/^https?:\/\//.test(value)) {
-    throw new Error(`REGISTRY_ORIGIN must start with http:// or https:// (received "${value}")`);
+  const hasQueryOrFragmentDelimiter = value.includes("?") || value.includes("#");
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(`REGISTRY_ORIGIN must be a hosted http(s) URL (received "${value}")`);
   }
-  return value.replace(/\/+$/, "");
+
+  if (
+    (url.protocol !== "http:" && url.protocol !== "https:") ||
+    url.hostname === "" ||
+    url.username !== "" ||
+    url.password !== "" ||
+    hasQueryOrFragmentDelimiter ||
+    url.search !== "" ||
+    url.hash !== ""
+  ) {
+    throw new Error(
+      `REGISTRY_ORIGIN must be a hosted http(s) URL without credentials, a query, or a fragment (received "${value}")`,
+    );
+  }
+
+  const pathname = url.pathname.replace(/\/+$/, "");
+  return `${url.origin}${pathname === "" ? "" : pathname}`;
+}
+
+export function resolveRegistryRoute(
+  value: string,
+  options: ResolveRegistryRouteOptions = {},
+): string | null {
+  const registryOrigin = new URL(normalizeOrigin(options.origin, options));
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+
+  if (
+    url.origin !== registryOrigin.origin ||
+    url.username !== "" ||
+    url.password !== "" ||
+    url.search !== "" ||
+    url.hash !== ""
+  ) {
+    return null;
+  }
+
+  const basePath = registryOrigin.pathname === "/" ? "" : registryOrigin.pathname;
+  if (basePath !== "" && !url.pathname.startsWith(`${basePath}/`)) return null;
+
+  const relativePath = basePath === "" ? url.pathname : url.pathname.slice(basePath.length);
+  const match = relativePath.match(/^\/r\/(ui|keys)\/((?:registry|[a-z0-9-]+)\.json)$/);
+  return match ? `/${match[1]}/${match[2]}` : null;
 }
 
 function rewriteOriginValue(value: unknown, options: OriginRewriteOptions): unknown {

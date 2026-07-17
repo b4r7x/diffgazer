@@ -72,19 +72,35 @@ export const isSpaNavigationRequest = (c: Context, pathname: string): boolean =>
 export function createEmbeddedServer(config: EmbeddedServerConfig): ServerController {
   let server: ReturnType<typeof serve> | null = null;
   let state: EmbeddedServerState = "idle";
+  let startPromise: Promise<void> | null = null;
+  let resolveStart: (() => void) | null = null;
+  let rejectStart: ((error: Error) => void) | null = null;
 
-  function start(): void {
-    if (state === "starting" || state === "running") {
-      return;
-    }
+  function rejectStartup(error: Error): void {
+    rejectStart?.(error);
+    resolveStart = null;
+    rejectStart = null;
+    startPromise = null;
+  }
+
+  function start(): Promise<void> {
+    if (startPromise) return startPromise;
 
     state = "starting";
+    const starting = new Promise<void>((resolve, reject) => {
+      resolveStart = resolve;
+      rejectStart = reject;
+    });
+    startPromise = starting;
+    void starting.catch(() => undefined);
     void startServer().catch((err: unknown) => {
       state = "idle";
       const message = getErrorMessage(err);
       console.error(err);
       config.onFailure?.(message);
+      rejectStartup(new Error(message, { cause: err }));
     });
+    return starting;
   }
 
   async function startServer(): Promise<void> {
@@ -93,6 +109,7 @@ export function createEmbeddedServer(config: EmbeddedServerConfig): ServerContro
       console.error(message);
       state = "idle";
       config.onFailure?.(message);
+      rejectStartup(new Error(message));
       return;
     }
 
@@ -101,11 +118,12 @@ export function createEmbeddedServer(config: EmbeddedServerConfig): ServerContro
     }
     process.env.DIFFGAZER_PACKAGED = "1";
 
-    const { createApp } = await import("@diffgazer/server");
+    const { createApp, startSessionMaintenance } = await import("@diffgazer/server");
     if (state === "stopped") {
       return;
     }
 
+    startSessionMaintenance();
     const app = createApp();
     app.get("/*", async (c, next) => {
       const pathname = new URL(c.req.url).pathname;
@@ -136,6 +154,9 @@ export function createEmbeddedServer(config: EmbeddedServerConfig): ServerContro
         state = "running";
         const address = `http://localhost:${info.port}`;
         config.onReady?.(address);
+        resolveStart?.();
+        resolveStart = null;
+        rejectStart = null;
       });
 
       server.on("error", (err: NodeJS.ErrnoException) => {
@@ -150,12 +171,14 @@ export function createEmbeddedServer(config: EmbeddedServerConfig): ServerContro
         }
         console.error(message);
         config.onFailure?.(message);
+        rejectStartup(new Error(message, { cause: err }));
       });
     } catch (err) {
       state = "idle";
       const message = getErrorMessage(err);
       console.error(err);
       config.onFailure?.(message);
+      rejectStartup(new Error(message, { cause: err }));
     }
   }
 
@@ -163,6 +186,8 @@ export function createEmbeddedServer(config: EmbeddedServerConfig): ServerContro
     start,
     stop: async () => {
       state = "stopped";
+      if (rejectStart) rejectStartup(new Error("Server stopped before readiness"));
+      startPromise = null;
       // Abort in-flight reviews and clear SSE subscribers first so open streams
       // resolve and the HTTP server can drain; otherwise close() never fires its
       // callback while a review stream keeps a connection alive.

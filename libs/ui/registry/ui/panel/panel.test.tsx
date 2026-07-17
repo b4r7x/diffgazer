@@ -3,12 +3,22 @@ import { createRef } from "react";
 import { renderToString } from "react-dom/server";
 import { assertType, describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
+import { panelDoc } from "../../component-docs/panel";
 import { Panel, type PanelProps } from "./index";
 
 function getRoot(container: HTMLElement): HTMLElement {
   const root = container.querySelector('[data-slot="panel"]');
   if (!(root instanceof HTMLElement)) throw new Error("Panel root not found");
   return root;
+}
+
+function OpaquePanelHeading() {
+  return (
+    <Panel.Header>
+      <Panel.Title id="opaque-panel-title">SSR release</Panel.Title>
+      <Panel.Description id="opaque-panel-description">SSR description</Panel.Description>
+    </Panel.Header>
+  );
 }
 
 describe("Panel", () => {
@@ -496,5 +506,27 @@ describe("Panel", () => {
     const root = getRoot(container);
     expect(root).toHaveAttribute("aria-labelledby", "stable-title");
     expect(root).toHaveAttribute("aria-describedby", "stable-description");
+  });
+
+  it("wires an opaque wrapper on SSR through explicit stable ids", () => {
+    const html = renderToString(
+      <Panel aria-labelledby="opaque-panel-title" aria-describedby="opaque-panel-description">
+        <OpaquePanelHeading />
+      </Panel>,
+    );
+
+    expect(html).toContain("<section");
+    expect(html).toContain('aria-labelledby="opaque-panel-title"');
+    expect(html).toContain('aria-describedby="opaque-panel-description"');
+    expect(html).toContain('id="opaque-panel-title"');
+    expect(html).toContain('id="opaque-panel-description"');
+  });
+
+  it("documents every explicit ARIA name as an initial section trigger", () => {
+    const asProp = panelDoc.props?.Panel?.as;
+
+    expect(asProp?.defaultValue).toContain("explicit ARIA name");
+    expect(asProp?.description).toContain("explicit ARIA name");
+    expect(asProp?.defaultValue).not.toContain("aria-label present");
   });
 });

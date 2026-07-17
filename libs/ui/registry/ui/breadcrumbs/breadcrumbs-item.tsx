@@ -1,8 +1,9 @@
 "use client";
 
-import type { ComponentPropsWithRef } from "react";
+import { Children, type ComponentPropsWithRef, isValidElement, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { BreadcrumbsContext, useBreadcrumbsContext } from "./breadcrumbs-context";
+import { BreadcrumbsLink } from "./breadcrumbs-link";
 
 /** Props for breadcrumbs item. */
 export interface BreadcrumbsItemProps extends ComponentPropsWithRef<"li"> {
@@ -11,6 +12,14 @@ export interface BreadcrumbsItemProps extends ComponentPropsWithRef<"li"> {
    * sets it. Adds aria-current="page" and bold styling.
    */
   current?: boolean;
+}
+
+function containsBreadcrumbsLink(children: ReactNode): boolean {
+  return Children.toArray(children).some((child) => {
+    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
+    if (child.type === BreadcrumbsLink) return true;
+    return containsBreadcrumbsLink(child.props.children);
+  });
 }
 
 /** List item - auto-inserts separator. Use current prop to mark the current page. */
@@ -23,6 +32,7 @@ export function BreadcrumbsItem({
 }: BreadcrumbsItemProps) {
   const { separator } = useBreadcrumbsContext();
   const itemContext = { separator, current };
+  const itemOwnsCurrent = current && !containsBreadcrumbsLink(children);
 
   return (
     <>
@@ -44,12 +54,9 @@ export function BreadcrumbsItem({
             className,
           )}
           {...props}
+          aria-current={itemOwnsCurrent ? "page" : props["aria-current"]}
         >
-          {current && (typeof children === "string" || typeof children === "number") ? (
-            <span aria-current="page">{children}</span>
-          ) : (
-            children
-          )}
+          {children}
         </li>
       </BreadcrumbsContext>
     </>

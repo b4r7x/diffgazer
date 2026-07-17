@@ -67,21 +67,3 @@ export function createInitialSteps(): StepState[] {
     status: "pending" as StepStatus,
   }));
 }
-
-/** Narrows an unknown value to an object carrying a string `type` discriminant. */
-function hasEventType(event: unknown): event is { type: string } {
-  return (
-    typeof event === "object" &&
-    event !== null &&
-    "type" in event &&
-    typeof (event as { type?: unknown }).type === "string"
-  );
-}
-
-const STEP_EVENT_TYPES = new Set<string>(
-  StepEventSchema.options.flatMap((option) => [...option.shape.type.values]),
-);
-
-export function isStepEvent(event: unknown): event is StepEvent {
-  return hasEventType(event) && STEP_EVENT_TYPES.has(event.type);
-}

@@ -98,7 +98,7 @@ function isFocusable(element: HTMLElement | null): boolean;
 
 The query helpers read `data-diffgazer-navigation-item`, role selectors, and native radio/checkbox/button controls. Navigation items should expose a stable `data-value`. Typed data-contract markers only match the requested item type, which keeps mixed widgets separated inside the same subtree.
 
-Focusable helpers use the same DOM contract as focus traps and overlays. `getFocusableElements()` includes programmatic focus targets such as `tabIndex={-1}`; `getTabbableElements()` returns browser Tab order and collapses native radio groups to one Tab stop.
+Focusable helpers use the same DOM contract as focus traps and overlays. `getFocusableElements()` includes programmatic focus targets such as `tabIndex={-1}` and traverses nested open shadow roots in composed order. `getTabbableElements()` applies browser Tab ordering across those light- and shadow-DOM descendants and collapses native radio groups to one Tab stop. Closed shadow roots remain opaque.
 
 `canonicalizeHotkey`, `isEditableElement`, `isInputElement`, `isListNavigationKey`, `getVerticalArrowDirection`, and `toVerticalBoundaryDirection` expose the same parsing and guard helpers used internally by the hooks. `clampIndex` and `moveHighlight` are pure list-navigation helpers for code that already owns its item model.
 

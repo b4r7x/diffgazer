@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
+import { inputDoc } from "../../component-docs/input";
 import { fillField } from "../../testing/form-behavior";
 import { Input, InputGroup } from "./index";
 
@@ -81,6 +82,35 @@ describe("Input", () => {
 
     const prefix = screen.getByText("USD").parentElement;
     expect(prefix).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("keeps the documented affix visibility defaults and overrides aligned with the DOM", () => {
+    expect(inputDoc.props?.InputGroup?.prefixAriaHidden?.defaultValue).toBe(
+      "true for string/number prefixes; false otherwise",
+    );
+    expect(inputDoc.props?.InputGroup?.suffixAriaHidden?.defaultValue).toBe(
+      "true for string/number suffixes; false otherwise",
+    );
+
+    const { container, rerender } = render(
+      <InputGroup aria-label="Amount" prefix="$" suffix={<span>USD</span>} />,
+    );
+    const prefix = container.querySelector('[data-slot="input-group-prefix"]');
+    const suffix = container.querySelector('[data-slot="input-group-suffix"]');
+    expect(prefix).toHaveAttribute("aria-hidden", "true");
+    expect(suffix).not.toHaveAttribute("aria-hidden");
+
+    rerender(
+      <InputGroup
+        aria-label="Amount"
+        prefix="$"
+        prefixAriaHidden={false}
+        suffix={<span>USD</span>}
+        suffixAriaHidden
+      />,
+    );
+    expect(prefix).not.toHaveAttribute("aria-hidden");
+    expect(suffix).toHaveAttribute("aria-hidden", "true");
   });
 
   it("forwards aria-invalid through InputGroup to the nested input", () => {

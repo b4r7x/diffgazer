@@ -32,7 +32,6 @@ interface TabsContentProps {
 interface TabsContextValue {
   activeValue: string;
   setActiveValue: (value: string) => void;
-  isActive: boolean;
 }
 
 const TabsContext = createContext<TabsContextValue | null>(null);
@@ -69,7 +68,7 @@ function TabsRoot({ value, defaultValue, onValueChange, children }: TabsProps) {
   }
 
   return (
-    <TabsContext value={{ activeValue, setActiveValue, isActive: true }}>
+    <TabsContext value={{ activeValue, setActiveValue }}>
       <Box flexDirection="column">{children}</Box>
     </TabsContext>
   );

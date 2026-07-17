@@ -8,17 +8,20 @@ import { SeverityBreakdown } from "../../../components/shared/severity/breakdown
 import { EmptyState } from "../../../components/ui/empty-state";
 import { ScrollArea } from "../../../components/ui/scroll-area";
 import { SectionHeader } from "../../../components/ui/section-header";
+import { Spinner } from "../../../components/ui/spinner";
 import { useTheme } from "../../../theme/provider";
 import { severityColor } from "../../../theme/severity";
+import type { HistoryDetailState } from "../types";
 
 export interface HistoryInsightsPaneProps {
   runId: string | null;
   severityCounts: SeverityCounts | null;
   issues: ReviewIssue[];
+  detailState?: HistoryDetailState;
   duration?: string;
   isActive?: boolean;
   scrollHeight?: number;
-  onIssueClick?: (issueId: string) => void;
+  onOpenReview?: () => void;
 }
 
 function toSeverityList(counts: SeverityCounts) {
@@ -31,18 +34,23 @@ export function HistoryInsightsPane({
   runId,
   severityCounts,
   issues,
+  detailState = { status: "ready" },
   duration,
   isActive = false,
   scrollHeight = 12,
-  onIssueClick,
+  onOpenReview,
 }: HistoryInsightsPaneProps): ReactElement {
   const { tokens } = useTheme();
 
   useInput(
-    (_input, key) => {
-      if (key.return && runId && onIssueClick) {
-        const first = issues[0];
-        if (first) onIssueClick(first.id);
+    (input, key) => {
+      if (input === "r" && detailState.status === "error") {
+        detailState.retry();
+        return;
+      }
+
+      if (key.return && detailState.status === "ready" && runId && onOpenReview) {
+        onOpenReview();
       }
     },
     { isActive },
@@ -70,7 +78,22 @@ export function HistoryInsightsPane({
             <SeverityBreakdown issues={severityList} />
           </Box>
         ) : null}
-        {issues.length > 0 ? (
+        {detailState.status === "loading" ? (
+          <Box marginTop={1}>
+            <Spinner label="Loading review details..." />
+          </Box>
+        ) : null}
+        {detailState.status === "error" ? (
+          <Box marginTop={1} flexDirection="column">
+            <Text color={tokens.error}>
+              Could not load review details: {sanitizeTerminalText(detailState.message)}
+            </Text>
+            <Text color={tokens.muted} dimColor>
+              {isActive ? "Press r to retry" : "Focus this pane, then press r to retry"}
+            </Text>
+          </Box>
+        ) : null}
+        {detailState.status === "ready" && issues.length > 0 ? (
           <Box marginTop={1} flexDirection="column">
             <SectionHeader variant="muted">{`${issues.length} Issues`}</SectionHeader>
             {issues.map((issue) => (

@@ -1,5 +1,4 @@
-import { sanitizeTerminalText } from "@diffgazer/core/review";
-import type { FixPlanStep } from "@diffgazer/core/schemas/review";
+import { type IssueFixStepPresentation, sanitizeTerminalText } from "@diffgazer/core/review";
 import { Box, Text, useInput } from "ink";
 import { useState } from "react";
 import { Badge } from "../../../components/ui/badge";
@@ -7,7 +6,7 @@ import type { CliColorTokens } from "../../../theme/palettes";
 import { useTheme } from "../../../theme/provider";
 
 export interface FixPlanChecklistProps {
-  steps: FixPlanStep[];
+  steps: readonly IssueFixStepPresentation[];
   completedSteps: Set<number>;
   onToggle: (step: number) => void;
   isActive?: boolean;
@@ -65,7 +64,8 @@ export function FixPlanChecklist({
         return;
       }
       if (input === " " || key.return) {
-        if (steps[highlightIndex]) onToggle(highlightIndex);
+        const highlightedStep = steps[highlightIndex];
+        if (highlightedStep) onToggle(highlightedStep.completionIndex);
       }
     },
     { isActive },
@@ -73,21 +73,17 @@ export function FixPlanChecklist({
 
   return (
     <Box flexDirection="column">
-      {steps.map((step, i) => {
-        const isComplete = completedSteps.has(i);
-        const isHighlighted = isActive && i === highlightIndex;
+      {steps.map((step) => {
+        const isComplete = completedSteps.has(step.completionIndex);
+        const isHighlighted = isActive && step.completionIndex === highlightIndex;
         const indicator = isComplete ? "[x]" : "[ ]";
 
         return (
-          <Box
-            // biome-ignore lint/suspicious/noArrayIndexKey: fix-plan step numbers can repeat; rendered index is the completion identity.
-            key={i}
-            gap={1}
-          >
+          <Box key={step.completionIndex} gap={1}>
             <Text color={getIndicatorColor(isHighlighted, isComplete, tokens)} bold={isHighlighted}>
               {indicator}
             </Text>
-            <Text color={tokens.muted}>{`${String(step.step)}.`}</Text>
+            <Text color={tokens.muted}>{`${String(step.number)}.`}</Text>
             <Text
               color={getActionColor(isHighlighted, isComplete, tokens)}
               bold={isHighlighted}
@@ -96,6 +92,11 @@ export function FixPlanChecklist({
               {sanitizeTerminalText(step.action)}
             </Text>
             {step.risk ? <Badge variant={riskVariant(step.risk)}>{step.risk}</Badge> : null}
+            {step.files.length > 0 ? (
+              <Text color={tokens.muted}>
+                {sanitizeTerminalText(`files: ${step.files.join(", ")}`)}
+              </Text>
+            ) : null}
           </Box>
         );
       })}

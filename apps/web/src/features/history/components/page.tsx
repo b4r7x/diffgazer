@@ -1,6 +1,11 @@
 import { matchQueryState } from "@diffgazer/core/api/hooks";
 import { deriveTrustStatus } from "@diffgazer/core/navigation";
-import { formatRunId, HISTORY_SEARCH_PLACEHOLDER } from "@diffgazer/core/review";
+import {
+  formatRunId,
+  HISTORY_SEARCH_PLACEHOLDER,
+  summarizeHistoryWarnings,
+} from "@diffgazer/core/review";
+import type { ReviewListWarning } from "@diffgazer/core/schemas/review";
 import { isListNavigationKey, toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
@@ -8,18 +13,67 @@ import { Panel } from "@diffgazer/ui/components/panel";
 import { SearchInput } from "@diffgazer/ui/components/search-input";
 import { type KeyboardEvent, useRef } from "react";
 import { CenteredStatus } from "@/components/shared/centered-status";
+import { ConfigurationStatus } from "@/components/shared/configuration-status";
 import { TrustPanel } from "@/components/shared/trust-panel";
-import { HistoryInsightsPane } from "@/features/history/components/insights-pane";
+import {
+  type HistoryInsightsDetailState,
+  HistoryInsightsPane,
+} from "@/features/history/components/insights-pane";
 import { TimelineList } from "@/features/history/components/timeline-list";
 import { useHistoryKeyboard } from "@/features/history/hooks/use-keyboard";
 import { useHistoryPage } from "@/features/history/hooks/use-page";
 import { useConfigData } from "@/hooks/use-config";
 
-export function HistoryPage() {
-  const { trust, repoRoot, projectId } = useConfigData();
-  const { needsTrust } = deriveTrustStatus({ trust, projectId, repoRoot });
+function HistoryWarnings({ warnings }: { warnings: readonly ReviewListWarning[] }) {
+  const summary = summarizeHistoryWarnings(warnings);
+  const hasWarnings =
+    summary.unreadableReviewCount > 0 ||
+    summary.droppedIssueCount > 0 ||
+    summary.indexBuildFailed ||
+    summary.indexRewriteFailed;
+  if (!hasWarnings) return null;
 
-  if (needsTrust && projectId && repoRoot) {
+  return (
+    <output className="shrink-0 mb-1 block space-y-1 text-sm text-warning-text">
+      {summary.unreadableReviewCount > 0 ? (
+        <p>
+          {summary.unreadableReviewCount} saved review
+          {summary.unreadableReviewCount === 1 ? "" : "s"} could not be read.
+        </p>
+      ) : null}
+      {summary.droppedIssueCount > 0 ? (
+        <p>
+          {summary.droppedIssueCount} invalid saved issue
+          {summary.droppedIssueCount === 1 ? " was" : "s were"} omitted. Re-run the affected reviews
+          for complete results.
+        </p>
+      ) : null}
+      {summary.indexBuildFailed ? (
+        <p>
+          The history index could not be rebuilt. Readable reviews are still shown; reopen History
+          to retry.
+        </p>
+      ) : null}
+      {summary.indexRewriteFailed ? (
+        <p>
+          The history index could not be cleaned up. Readable reviews are still shown; reopen
+          History to retry.
+        </p>
+      ) : null}
+    </output>
+  );
+}
+
+export function HistoryPage() {
+  const { loadState, trust, repoRoot, projectId } = useConfigData();
+
+  if (loadState.status !== "ready") {
+    return <ConfigurationStatus status={loadState.status} />;
+  }
+
+  const { isTrusted } = deriveTrustStatus({ trust, projectId, repoRoot });
+
+  if (!isTrusted && projectId && repoRoot) {
     return <TrustPanel directory={repoRoot} />;
   }
 
@@ -29,6 +83,7 @@ export function HistoryPage() {
 function HistoryPageContent() {
   const {
     reviewsQuery,
+    reviewDetailQuery,
     focusZone,
     searchQuery,
     searchInputRef,
@@ -46,6 +101,9 @@ function HistoryPageContent() {
     duration,
     hasReviews,
     emptyRunsMessage,
+    hasMoreReviews,
+    isLoadingMoreReviews,
+    loadMoreReviews,
     handleTimelineBoundary,
     handleRunsBoundary,
     handleSearchEscape,
@@ -58,18 +116,38 @@ function HistoryPageContent() {
 
   const timelineRef = useRef<HTMLElement>(null);
   const runsListRef = useRef<HTMLDivElement>(null);
+  const loadMoreRef = useRef<HTMLButtonElement>(null);
   const insightsListRef = useRef<HTMLDivElement>(null);
+  const retryRef = useRef<HTMLButtonElement>(null);
   const activeRunId = selectedRunId;
+  let insightsDetailState: HistoryInsightsDetailState = { status: "ready" };
+  if (reviewDetailQuery.isLoading) {
+    insightsDetailState = { status: "loading" };
+  } else if (reviewDetailQuery.isError) {
+    insightsDetailState = {
+      status: "error",
+      message: reviewDetailQuery.error.message,
+      retry: () => {
+        void reviewDetailQuery.refetch();
+      },
+    };
+  }
 
   useHistoryKeyboard({
+    enabled: reviewsQuery.isSuccess,
     focusZone,
     setFocusZone,
     activeRunId,
     hasRuns: mappedRuns.length > 0,
+    hasMore: hasMoreReviews,
+    hasInsights: insightsDetailState.status === "ready" && sortedIssues.length > 0,
+    hasRetry: insightsDetailState.status === "error",
     searchInputRef,
     timelineRef,
     runsListRef,
+    loadMoreRef,
     insightsListRef,
+    retryRef,
     highlightedIssueId,
     onHighlightIssue: setHighlightedIssueId,
   });
@@ -98,11 +176,7 @@ function HistoryPageContent() {
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden px-4 pt-2 pb-2">
-      {warnings.length > 0 ? (
-        <output className="shrink-0 mb-1 text-sm text-warning-text">
-          {warnings.length} saved review{warnings.length === 1 ? "" : "s"} could not be read.
-        </output>
-      ) : null}
+      <HistoryWarnings warnings={warnings} />
 
       <SearchInput
         ref={searchInputRef}
@@ -158,7 +232,7 @@ function HistoryPageContent() {
           as="section"
           aria-label="Review runs"
           data-pane="runs"
-          data-focused={focusZone === "runs" || undefined}
+          data-focused={focusZone === "runs" || focusZone === "load-more" || undefined}
           className="mt-3 flex-1 min-w-0 flex flex-col border border-border data-[focused]:border-info focus:outline-none"
         >
           <Panel.Label variant="border" aria-hidden="true">
@@ -223,6 +297,17 @@ function HistoryPageContent() {
             >
               {mappedRuns.length === 0 ? emptyRunsMessage : null}
             </EmptyState>
+            {hasMoreReviews ? (
+              <button
+                ref={loadMoreRef}
+                type="button"
+                disabled={isLoadingMoreReviews}
+                onClick={() => void loadMoreReviews()}
+                className="mt-2 w-full border border-border px-3 py-2 text-sm font-mono text-muted-foreground hover:text-foreground disabled:opacity-50"
+              >
+                {isLoadingMoreReviews ? "Loading older runs..." : "Load older runs"}
+              </button>
+            ) : null}
           </div>
         </Panel>
 
@@ -230,7 +315,7 @@ function HistoryPageContent() {
           as="aside"
           aria-label="Review insights"
           data-pane="insights"
-          data-focused={focusZone === "insights" || undefined}
+          data-focused={focusZone === "insights" || focusZone === "retry" || undefined}
           className="mt-3 w-80 min-h-0 flex flex-col shrink-0 border border-border data-[focused]:border-info focus:outline-none"
         >
           <Panel.Label variant="border" aria-hidden="true">
@@ -240,10 +325,12 @@ function HistoryPageContent() {
             runId={selectedRun?.id ?? null}
             severityCounts={hasReviews ? severityCounts : null}
             issues={hasReviews ? sortedIssues : []}
+            detailState={insightsDetailState}
             duration={duration}
             highlightedIssueId={highlightedIssueId}
             isFocused={focusZone === "insights"}
             listRef={insightsListRef}
+            retryRef={retryRef}
             onSelectIssue={handleIssueClick}
             onHighlightIssue={setHighlightedIssueId}
             onListFocus={() => setFocusZone("insights")}

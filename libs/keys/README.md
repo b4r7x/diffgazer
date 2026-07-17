@@ -10,9 +10,11 @@ Composable, scoped keyboard navigation hooks for React `>=19.2.0`.
 
 | Path | Standalone hooks | Provider-backed APIs |
 |------|-----------------|---------------------|
-| Manual copy / shadcn | `npx shadcn add https://r.b4r7.dev/r/keys/navigation.json` | Not available |
+| Manual copy / shadcn | Not available; use source checkout or a local registry preview | Not available |
 | `dgadd` CLI | `pnpm exec dgadd add keys/navigation` | Not available |
 | npm package | `npm install @diffgazer/keys` | `npm install @diffgazer/keys` |
+
+The hosted registry is not public yet because r.b4r7.dev does not resolve. Use this source checkout or a local registry preview until the endpoint returns 200.
 
 Provider-backed APIs (`KeyboardProvider`, `useKey`, `useScope`, `useScopedNavigation`, `useActionRowNavigation`, `useFocusZone`) require `KeyboardProvider` and are only available through the npm package.
 
@@ -27,6 +29,20 @@ npm install @diffgazer/keys
 ## Dependency Policy
 
 `@diffgazer/keys` has no runtime dependencies. React `>=19.2.0` is a peer dependency.
+
+### Vitest navigation helper
+
+`@diffgazer/keys/testing/navigation-behavior` is a Vitest-specific test helper. Keep runtime-only installs lean; the helper's test peers are optional and must be installed as development dependencies in projects that import it:
+
+```bash
+npm install --save-dev @testing-library/react@^16.3.2 @testing-library/user-event@^14.6.1 vitest@^4.1.0
+```
+
+Import the helper from its testing subpath inside a Vitest suite:
+
+```ts
+import { testNavigationBehavior } from "@diffgazer/keys/testing/navigation-behavior";
+```
 
 ## Usage
 
@@ -84,7 +100,7 @@ Package-only hooks require `KeyboardProvider` and are not available through copy
 ## Exports
 
 - `@diffgazer/keys` -> default entry point (`dist/index.*`).
-- `@diffgazer/keys/testing/navigation-behavior` -> shared keyboard-navigation test helper.
+- `@diffgazer/keys/testing/navigation-behavior` -> optional Vitest keyboard-navigation test helper; install the test peers listed above before importing it.
 
 ## Repository metadata
 

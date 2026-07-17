@@ -68,7 +68,13 @@ export function SelectTrigger({
     setHighlighted,
   } = useSelectContext("SelectTrigger");
   const composedRef = useComposedRefs(triggerRef, ref);
-  const handleTypeahead = useSelectTypeahead({ options, searchQuery, highlighted, setHighlighted });
+  const handleTypeahead = useSelectTypeahead({
+    open,
+    options,
+    searchQuery,
+    highlighted,
+    setHighlighted,
+  });
   const resolvedAriaInvalid = resolveAriaInvalid(ariaInvalid ?? triggerAriaInvalid);
   const activeDescendant =
     open && !searchable && isActiveOptionVisible(options, highlighted, searchQuery, matchesSearch)
@@ -134,7 +140,7 @@ export function SelectTrigger({
       aria-expanded={open}
       aria-controls={open && !searchable ? listboxId : undefined}
       aria-activedescendant={searchable ? undefined : activeDescendant}
-      aria-required={required}
+      aria-required={searchable ? undefined : required}
       aria-invalid={resolvedAriaInvalid}
       aria-describedby={composedDescribedBy}
       aria-errormessage={ariaErrorMessage}

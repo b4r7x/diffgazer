@@ -1,6 +1,7 @@
 import { act, render, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type RefObject, useRef } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { getDeepActiveElement } from "../dom/element-guards.js";
 import { queryTestElement, requireFrameDocument } from "../testing/assertions.js";
 import { useFocusRestore } from "./use-focus-restore.js";
 import { useFocusTrap } from "./use-focus-trap.js";
@@ -35,8 +36,9 @@ function fireTabFromActive(ownerDocument: Document, shiftKey = false) {
     shiftKey,
     bubbles: true,
     cancelable: true,
+    composed: true,
   });
-  ownerDocument.activeElement?.dispatchEvent(event);
+  getDeepActiveElement(ownerDocument)?.dispatchEvent(event);
   return event;
 }
 
@@ -48,6 +50,7 @@ describe("useFocusTrap", () => {
   let container: HTMLDivElement;
 
   afterEach(() => {
+    vi.restoreAllMocks();
     container?.remove();
   });
 
@@ -120,6 +123,144 @@ describe("useFocusTrap", () => {
   });
 
   describe("Tab cycling", () => {
+    it.each([
+      "disabled",
+      "removed",
+    ] as const)("repairs focus when the active shadow control is %s", async (mutation) => {
+      container = createContainer('<div id="host"></div>');
+      const host = queryTestElement(container, "host");
+      const shadowRoot = host.attachShadow({ mode: "open", delegatesFocus: true });
+      shadowRoot.innerHTML = '<button id="a">A</button><button id="b">B</button>';
+      const active = queryTestElement<HTMLButtonElement>(shadowRoot, "a");
+      const fallback = queryTestElement(shadowRoot, "b");
+
+      renderTrap(container, { restoreFocus: false });
+      expect(getDeepActiveElement(document)).toBe(active);
+
+      if (mutation === "disabled") active.disabled = true;
+      else active.remove();
+
+      await waitFor(() => expect(getDeepActiveElement(document)).toBe(fallback));
+    });
+
+    it("observes a shadow root attached after the trap activates", async () => {
+      container = createContainer(
+        '<button id="fallback">Fallback</button>',
+        '<div id="host"></div>',
+      );
+      const fallback = queryTestElement(container, "fallback");
+      const host = queryTestElement(container, "host");
+
+      renderTrap(container, { restoreFocus: false });
+      expect(getDeepActiveElement(document)).toBe(fallback);
+
+      const shadowRoot = host.attachShadow({ mode: "open", delegatesFocus: true });
+      shadowRoot.innerHTML = '<button id="late">Late shadow control</button>';
+      const active = queryTestElement<HTMLButtonElement>(shadowRoot, "late");
+      active.focus();
+      expect(getDeepActiveElement(document)).toBe(active);
+
+      active.disabled = true;
+      await waitFor(() => expect(getDeepActiveElement(document)).toBe(fallback));
+    });
+
+    it("adds late shadow roots without reconnecting unchanged observer targets", async () => {
+      container = createContainer(
+        '<button id="fallback">Fallback</button>',
+        '<div id="existing-host"></div>',
+        '<div id="late-host"></div>',
+      );
+      const fallback = queryTestElement(container, "fallback");
+      const existingRoot = queryTestElement(container, "existing-host").attachShadow({
+        mode: "open",
+      });
+      existingRoot.innerHTML = '<button id="existing">Existing</button>';
+      const existing = queryTestElement<HTMLButtonElement>(existingRoot, "existing");
+      const lateHost = queryTestElement(container, "late-host");
+      const observe = vi.spyOn(MutationObserver.prototype, "observe");
+      const disconnect = vi.spyOn(MutationObserver.prototype, "disconnect");
+
+      const { unmount } = renderTrap(container, { restoreFocus: false });
+      const trapObserver = observe.mock.contexts[0];
+      const trapObserveCount = () =>
+        observe.mock.contexts.filter((context) => context === trapObserver).length;
+      const trapDisconnectCount = () =>
+        disconnect.mock.contexts.filter((context) => context === trapObserver).length;
+      expect(trapObserveCount()).toBe(2);
+
+      existing.focus();
+      fireTab();
+      expect(trapObserveCount()).toBe(2);
+      expect(trapDisconnectCount()).toBe(0);
+
+      const lateRoot = lateHost.attachShadow({ mode: "open" });
+      lateRoot.innerHTML = '<button id="late">Late</button>';
+      const late = queryTestElement<HTMLButtonElement>(lateRoot, "late");
+      late.focus();
+      expect(trapObserveCount()).toBe(3);
+
+      late.disabled = true;
+      await waitFor(() => expect(getDeepActiveElement(document)).toBe(fallback));
+      expect(trapObserveCount()).toBe(3);
+      expect(trapDisconnectCount()).toBe(0);
+
+      unmount();
+      expect(trapDisconnectCount()).toBe(1);
+    });
+
+    it("focuses and wraps through tabbable descendants of an open shadow host", () => {
+      container = createContainer('<div id="host"></div>');
+      const host = queryTestElement(container, "host");
+      const shadowRoot = host.attachShadow({ mode: "open", delegatesFocus: true });
+      shadowRoot.innerHTML = '<button id="a">A</button><button id="b">B</button>';
+      const first = queryTestElement(shadowRoot, "a");
+      const last = queryTestElement(shadowRoot, "b");
+
+      renderTrap(container, { restoreFocus: false });
+
+      expect(getDeepActiveElement(document)).toBe(first);
+      last.focus();
+      const tabEvent = fireTab();
+      expect(tabEvent.defaultPrevented).toBe(true);
+      expect(getDeepActiveElement(document)).toBe(first);
+
+      const shiftTabEvent = fireTab(true);
+      expect(shiftTabEvent.defaultPrevented).toBe(true);
+      expect(getDeepActiveElement(document)).toBe(last);
+    });
+
+    it("uses the deep active element for a trap rendered in an open shadow root", () => {
+      const host = document.createElement("div");
+      const shadowRoot = host.attachShadow({ mode: "open" });
+      container = document.createElement("div");
+      container.innerHTML = '<button id="a">A</button><button id="b">B</button>';
+      shadowRoot.append(container);
+      document.body.append(host);
+
+      renderTrap(container, { restoreFocus: false });
+
+      const first = queryTestElement(container, "a");
+      const second = queryTestElement(container, "b");
+      expect(shadowRoot.activeElement).toBe(first);
+
+      const nativeTab = fireTab();
+      expect(nativeTab.defaultPrevented).toBe(false);
+      second.focus();
+      expect(shadowRoot.activeElement).toBe(second);
+
+      const wrappingTab = fireTab();
+      expect(wrappingTab.defaultPrevented).toBe(true);
+      expect(shadowRoot.activeElement).toBe(first);
+
+      const outside = document.createElement("button");
+      document.body.append(outside);
+      outside.focus();
+      expect(shadowRoot.activeElement).toBe(first);
+
+      outside.remove();
+      host.remove();
+    });
+
     it("wraps focus bidirectionally (Tab and Shift+Tab)", () => {
       container = createContainer(
         '<button id="a">A</button>',
@@ -140,6 +281,30 @@ describe("useFocusTrap", () => {
       expect(shiftTabEvent.defaultPrevented).toBe(true);
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#c"));
+    });
+
+    it.each([
+      ["content visibility", "content-visibility:hidden"],
+      ["collapsed visibility", "visibility:collapse"],
+    ])("wraps past %s targets at both visible boundaries", (_name, style) => {
+      container = createContainer(
+        `<div style="${style}"><button id="hidden-before">Hidden before</button></div>`,
+        '<button id="first">First</button>',
+        '<button id="last">Last</button>',
+        `<div style="${style}"><button id="hidden-after">Hidden after</button></div>`,
+      );
+      renderTrap(container, { restoreFocus: false });
+      const first = queryTestElement(container, "first");
+      const last = queryTestElement(container, "last");
+
+      last.focus();
+      const forward = fireTab();
+      expect(forward.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(first);
+
+      const reverse = fireTab(true);
+      expect(reverse.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(last);
     });
 
     it("includes focusable nodes added after the trap activated", () => {
@@ -241,6 +406,31 @@ describe("useFocusTrap", () => {
       expect(shiftEvent.defaultPrevented).toBe(true);
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#a"));
+    });
+
+    it("moves from a shadow-root anchor through the composed tabbable list", () => {
+      container = createContainer('<button id="before">Before</button>', '<div id="host"></div>');
+      const host = queryTestElement(container, "host");
+      const shadowRoot = host.attachShadow({ mode: "open" });
+      shadowRoot.innerHTML = `
+        <div id="anchor" tabindex="-1">Anchor</div>
+        <button id="after">After</button>
+      `;
+      const before = queryTestElement(container, "before");
+      const anchor = queryTestElement(shadowRoot, "anchor");
+      const after = queryTestElement(shadowRoot, "after");
+
+      renderTrap(container, { restoreFocus: false });
+      anchor.focus();
+
+      const tabEvent = fireTab();
+      expect(tabEvent.defaultPrevented).toBe(true);
+      expect(getDeepActiveElement(document)).toBe(after);
+
+      anchor.focus();
+      const shiftTabEvent = fireTab(true);
+      expect(shiftTabEvent.defaultPrevented).toBe(true);
+      expect(getDeepActiveElement(document)).toBe(before);
     });
 
     it("cycles focus within the trap container's owning document", () => {

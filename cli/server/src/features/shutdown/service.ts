@@ -23,8 +23,11 @@ const scheduleCliTermination = (cliPid: number): void => {
 
 const parseCliPid = (rawPid: string | undefined): number | null => {
   if (!rawPid) return null;
-  const parsed = Number.parseInt(rawPid, 10);
-  if (!Number.isInteger(parsed) || parsed < MIN_VALID_PID) return null;
+  const normalizedPid = rawPid.trim();
+  if (!/^[1-9]\d*$/.test(normalizedPid)) return null;
+
+  const parsed = Number(normalizedPid);
+  if (!Number.isSafeInteger(parsed) || parsed < MIN_VALID_PID) return null;
   return parsed;
 };
 

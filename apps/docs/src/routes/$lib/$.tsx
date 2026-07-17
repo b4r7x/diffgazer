@@ -1,14 +1,21 @@
 import browserCollections from "fumadocs-mdx:collections/browser";
 import { useKey } from "@diffgazer/keys";
+import { Button } from "@diffgazer/ui/components/button";
 import { Pager } from "@diffgazer/ui/components/pager";
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { Suspense } from "react";
+import { Component, type ReactNode, Suspense } from "react";
 import { ContentSpinner } from "@/components/content-spinner";
-import { type DocData, DocDataProvider, useDocData } from "@/components/docs-mdx/doc-data-context";
+import {
+  type ComponentPageData,
+  type DocData,
+  DocDataProvider,
+  type HookPageData,
+  useDocData,
+} from "@/components/docs-mdx/doc-data-context";
 import { DocsContentLayout } from "@/components/layout/content-layout";
+import { TuiFaultPanel } from "@/components/layout/tui-fault-panel";
 import { DocsPageBody, DocsPageHeader, DocsPageLayout } from "@/components/page-layout";
-import type { HookData } from "@/lib/generated-doc-data";
 import {
   type DocsLibraryId,
   docsPath,
@@ -17,13 +24,12 @@ import {
   routeSplatFromDocsPath,
   sourceSlugsForLibrary,
 } from "@/lib/library";
-import { loadDocData } from "@/lib/load-doc-data";
+import { loadDocPageData } from "@/lib/load-doc-data";
 import { findPageNeighbors, type PageTree } from "@/lib/page-tree";
 import { buildPageSeo } from "@/lib/seo";
 import { parseDocsPageInput, safeParseDocsPageInput } from "@/lib/server-inputs";
 import { useMDXComponents } from "@/mdx-components";
 import { Route as DocsRoute } from "@/routes/$lib";
-import type { ComponentData } from "@/types/data";
 
 interface LoaderData {
   path: string;
@@ -32,6 +38,49 @@ interface LoaderData {
   component?: string;
   hook?: string;
   library: DocsLibraryId;
+}
+
+const PAGER_SHORTCUT_CONTROL_SELECTOR =
+  'a[href], area[href], audio[controls], button, input, select, summary, textarea, video[controls], [contenteditable]:not([contenteditable="false"])';
+const PAGER_SHORTCUT_CONTROL_ROLES = new Set([
+  "button",
+  "checkbox",
+  "combobox",
+  "dialog",
+  "grid",
+  "gridcell",
+  "link",
+  "listbox",
+  "menu",
+  "menuitem",
+  "menuitemcheckbox",
+  "menuitemradio",
+  "option",
+  "radio",
+  "radiogroup",
+  "row",
+  "scrollbar",
+  "searchbox",
+  "slider",
+  "spinbutton",
+  "switch",
+  "tab",
+  "tablist",
+  "textbox",
+  "tree",
+  "treeitem",
+]);
+
+function isControlOwnedShortcut(event: KeyboardEvent): boolean {
+  const target = event.composedPath()[0] ?? event.target;
+  const ownerDocument = (target as { ownerDocument?: Document } | null)?.ownerDocument;
+  const ElementConstructor = ownerDocument?.defaultView?.Element;
+  if (!ElementConstructor || !(target instanceof ElementConstructor)) return false;
+  if (target.closest(PAGER_SHORTCUT_CONTROL_SELECTOR)) return true;
+
+  const roleOwner = target.closest("[role]");
+  const role = roleOwner?.getAttribute("role")?.trim().toLowerCase();
+  return role !== undefined && PAGER_SHORTCUT_CONTROL_ROLES.has(role);
 }
 
 export const Route = createFileRoute("/$lib/$")({
@@ -47,15 +96,15 @@ export const Route = createFileRoute("/$lib/$")({
     if (!data) throw notFound();
 
     const [componentData, hookData] = await Promise.all([
-      loadDocData(library, "components", data.component, { throwIfMissing: true }),
-      loadDocData(library, "hooks", data.hook, { throwIfMissing: true }),
+      loadDocPageData(library, "components", data.component, { throwIfMissing: true }),
+      loadDocPageData(library, "hooks", data.hook, { throwIfMissing: true }),
     ]);
 
-    if (typeof window !== "undefined") {
-      await clientLoader.preload(data.path);
-    }
-
-    return { ...data, componentData, hookData };
+    return {
+      ...data,
+      componentData,
+      hookData,
+    };
   },
   head: ({ loaderData, params }) => {
     if (!loaderData) return {};
@@ -131,15 +180,45 @@ function Page() {
 }
 
 function buildDocData(
-  componentData: ComponentData | null,
-  hookData: HookData | null,
+  componentData: ComponentPageData | null,
+  hookData: HookPageData | null,
 ): DocData | null {
   if (componentData) return { type: "component", data: componentData };
   if (hookData) return { type: "hook", data: hookData };
   return null;
 }
 
-function MdxDocsPage({
+class MdxContentErrorBoundary extends Component<
+  Readonly<{ children: ReactNode }>,
+  Readonly<{ failed: boolean }>
+> {
+  override state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  override render() {
+    if (this.state.failed) {
+      return (
+        <TuiFaultPanel
+          statusCode="ERR_DOC_CONTENT"
+          title="Documentation page unavailable"
+          description="The page content could not be loaded. Reload to try again."
+          actionLabel="RELOAD_PAGE"
+          primaryAction={
+            <Button variant="primary" bracket onClick={() => globalThis.location.reload()}>
+              Reload page
+            </Button>
+          }
+        />
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export function MdxDocsPage({
   path,
   pageUrl,
   tree,
@@ -151,17 +230,19 @@ function MdxDocsPage({
   pageUrl: string;
   tree: PageTree;
   library: DocsLibraryId;
-  componentData: ComponentData | null;
-  hookData: HookData | null;
+  componentData: ComponentPageData | null;
+  hookData: HookPageData | null;
 }) {
   const docData = buildDocData(componentData, hookData);
 
   return (
     <DocsContentLayout tree={tree} library={library}>
       <DocDataProvider value={docData}>
-        <Suspense fallback={<ContentSpinner />}>
-          <MdxContent path={path} />
-        </Suspense>
+        <MdxContentErrorBoundary key={path}>
+          <Suspense fallback={<ContentSpinner />}>
+            <MdxContent path={path} />
+          </Suspense>
+        </MdxContentErrorBoundary>
       </DocDataProvider>
       <DocsFooterPager pageUrl={pageUrl} tree={tree} library={library} />
     </DocsContentLayout>
@@ -180,7 +261,8 @@ export function DocsFooterPager({
   const navigate = useNavigate();
   const { previous, next } = findPageNeighbors(tree, pageUrl);
 
-  useKey("p", () => {
+  useKey("p", (event) => {
+    if (isControlOwnedShortcut(event)) return;
     if (!previous) return;
     void navigate({
       to: "/$lib/$",
@@ -188,7 +270,8 @@ export function DocsFooterPager({
     });
   });
 
-  useKey("n", () => {
+  useKey("n", (event) => {
+    if (isControlOwnedShortcut(event)) return;
     if (!next) return;
     void navigate({
       to: "/$lib/$",

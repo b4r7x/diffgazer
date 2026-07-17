@@ -14,7 +14,9 @@ describe("formatTime", () => {
     [0, undefined, "00:00"],
     [5000, undefined, "00:05"],
     [90_000, undefined, "01:30"],
-    [3_661_000, undefined, "01:01"],
+    [3_661_000, undefined, "61:01"],
+    [3_600_000, undefined, "60:00"],
+    [7_261_000, undefined, "121:01"],
     [3_661_000, "long" as const, "01:01:01"],
     [0, "long" as const, "00:00:00"],
     [1000, undefined, "00:01"],
@@ -32,6 +34,10 @@ describe("formatTimestamp", () => {
 
   it("formats Date objects to HH:MM:SS", () => {
     expect(formatTimestamp(new Date("2025-01-15T14:05:09Z"))).toMatch(/^\d{2}:\d{2}:\d{2}$/);
+  });
+
+  it("returns a stable string for an invalid Date object", () => {
+    expect(formatTimestamp(new Date("invalid"))).toBe("Invalid Date");
   });
 });
 
@@ -51,8 +57,12 @@ describe("formatDuration", () => {
 });
 
 describe("getDateKey", () => {
-  it("returns the first ten chars (YYYY-MM-DD) of an ISO date string", () => {
+  it("returns the local YYYY-MM-DD key of an ISO timestamp", () => {
     expect(getDateKey("2026-02-09T18:00:00.000Z")).toBe("2026-02-09");
+  });
+
+  it("keeps an existing date key as a calendar date instead of parsing it as UTC", () => {
+    expect(getDateKey("2026-02-09")).toBe("2026-02-09");
   });
 
   it("returns an empty string for empty input", () => {
@@ -82,9 +92,8 @@ describe("getDateLabel", () => {
     expect(getDateLabel("2026-01-15T08:00:00.000Z")).toBe("Jan 15");
   });
 
-  it("formats fallback labels from the date key instead of local timezone conversion", () => {
-    expect(getDateLabel("2026-01-15T01:30:00.000Z")).toBe("Jan 15");
-    expect(getDateLabel("2026-01-15T23:30:00.000Z")).toBe("Jan 15");
+  it("formats a bare date key without shifting it through UTC", () => {
+    expect(getDateLabel("2026-01-15")).toBe("Jan 15");
   });
 
   it("includes the year when requested", () => {

@@ -1,4 +1,7 @@
+import { SEGMENTED_VARIANTS } from "../lib/segmented-variants";
 import type { ComponentDoc } from "./types";
+
+const toggleGroupVariantType = SEGMENTED_VARIANTS.map((variant) => `"${variant}"`).join(" | ");
 
 export const toggleGroupDoc: ComponentDoc = {
   description:
@@ -27,7 +30,7 @@ export const toggleGroupDoc: ComponentDoc = {
     {
       title: "Role semantics",
       content:
-        "Single mode without allowDeselect renders as radiogroup/radio with aria-checked because exactly one choice is active. Multiple mode and allow-deselect single mode render as group plus button-style items with aria-pressed because each item is independently toggleable.",
+        "Single mode without allowDeselect renders as radiogroup/radio with aria-checked and allows at most one active choice. Initial selection is optional: defaultValue=null starts with no radio checked. Multiple mode and allow-deselect single mode render as group plus button-style items with aria-pressed because each item is independently toggleable.",
     },
   ],
   usage: { example: "toggle-group-default" },
@@ -142,6 +145,12 @@ export const toggleGroupDoc: ComponentDoc = {
         required: false,
         defaultValue: '"sm"',
         description: "Item size token.",
+      },
+      variant: {
+        type: toggleGroupVariantType,
+        required: false,
+        defaultValue: '"default"',
+        description: "Visual style variant.",
       },
       orientation: {
         type: '"horizontal" | "vertical"',

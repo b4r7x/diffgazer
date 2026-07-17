@@ -6,14 +6,13 @@ import {
   WIZARD_STEPS,
 } from "@diffgazer/core/onboarding";
 import { Box, useInput } from "ink";
-import { type ReactElement, useEffect, useEffectEvent } from "react";
+import type { ReactElement } from "react";
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import { useOnboardingWizard } from "../hooks/use-wizard";
-import { apiKeyStepOwnsTab } from "../lib/api-key-tab";
 import { getStepShortcuts } from "../lib/step-shortcuts";
 import { AnalysisStep } from "./steps/analysis-step";
 import { ApiKeyStep } from "./steps/api-key-step";
@@ -24,6 +23,9 @@ import { StorageStep } from "./steps/storage-step";
 import { WizardProgress } from "./wizard-progress";
 
 const STEP_LABEL_LIST = WIZARD_STEPS.map((step) => STEP_LABELS[step]);
+const FULL_PROGRESS_WIDTH =
+  STEP_LABEL_LIST.reduce((width, label) => width + "[ ] ".length + label.length, 0) +
+  (STEP_LABEL_LIST.length - 1) * 2;
 
 interface WizardStepBodyProps {
   step: OnboardingStep;
@@ -94,32 +96,26 @@ function WizardStepBody({ step, wizard }: WizardStepBodyProps): ReactElement | n
 
 export function OnboardingWizard(): ReactElement {
   const { columns } = useTerminalDimensions();
+  const compactProgress = columns < FULL_PROGRESS_WIDTH;
   const wizard = useOnboardingWizard();
 
-  const cleanupEarlySave = useEffectEvent(() => {
-    void wizard.cleanupEarlySave();
-  });
-
-  useEffect(() => {
-    return () => {
-      cleanupEarlySave();
-    };
-  }, []);
-
   usePageFooter({
-    shortcuts: getStepShortcuts(wizard.currentStep, wizard.focusArea, !wizard.canProceed),
+    shortcuts: getStepShortcuts({
+      currentStep: wizard.currentStep,
+      focusArea: wizard.focusArea,
+      navIndex: wizard.navIndex,
+      isFirstStep: wizard.isFirstStep,
+      isLastStep: wizard.isLastStep,
+      canProceed: wizard.canProceed,
+      inputMethod: wizard.wizardData.inputMethod,
+      apiKeyInputFocused: wizard.apiKeyInputFocused,
+    }),
   });
 
   useInput((_input, key) => {
     if (wizard.isSaving) return;
     if (key.tab) {
-      // The api-key step owns Tab while its body is focused (toggles the key
-      // input), so the wizard must not also toggle the step/nav focus area.
-      if (apiKeyStepOwnsTab(wizard.currentStep, wizard.focusArea)) {
-        wizard.toggleApiKeyInputFocus();
-        return;
-      }
-      wizard.toggleFocusArea();
+      wizard.cycleFocusZone();
       return;
     }
     if (wizard.focusArea === "nav") {
@@ -136,9 +132,13 @@ export function OnboardingWizard(): ReactElement {
   if (wizard.isSaving) {
     return (
       <Box justifyContent="center" flexGrow={1}>
-        <Box width={Math.min(columns, 70)} flexDirection="column">
+        <Box width={Math.min(columns, FULL_PROGRESS_WIDTH)} flexDirection="column">
           <Box flexDirection="column" gap={1}>
-            <WizardProgress steps={STEP_LABEL_LIST} currentStep={wizard.stepIndex} />
+            <WizardProgress
+              steps={STEP_LABEL_LIST}
+              currentStep={wizard.stepIndex}
+              compact={compactProgress}
+            />
             <Spinner label="Saving configuration..." />
           </Box>
         </Box>
@@ -148,9 +148,13 @@ export function OnboardingWizard(): ReactElement {
 
   return (
     <Box justifyContent="center" flexGrow={1}>
-      <Box width={Math.min(columns, 70)} flexDirection="column">
+      <Box width={Math.min(columns, FULL_PROGRESS_WIDTH)} flexDirection="column">
         <Box flexDirection="column" gap={1}>
-          <WizardProgress steps={STEP_LABEL_LIST} currentStep={wizard.stepIndex} />
+          <WizardProgress
+            steps={STEP_LABEL_LIST}
+            currentStep={wizard.stepIndex}
+            compact={compactProgress}
+          />
 
           <SectionHeader>{STEP_TITLES[wizard.currentStep]}</SectionHeader>
 

@@ -39,11 +39,15 @@ export default function CommandPaletteComfortable() {
           <CommandPalette.List>
             <CommandPalette.Empty>No matching commands.</CommandPalette.Empty>
             <CommandPalette.Group heading="Workspace">
-              <CommandPalette.Item id="search">Search files</CommandPalette.Item>
-              <CommandPalette.Item id="branch" shortcut="⌘B">
+              <CommandPalette.Item id="search" value="Search files">
+                Search files
+              </CommandPalette.Item>
+              <CommandPalette.Item id="branch" value="Switch branch" shortcut="⌘B">
                 Switch branch
               </CommandPalette.Item>
-              <CommandPalette.Item id="commits">View commits</CommandPalette.Item>
+              <CommandPalette.Item id="commits" value="View commits">
+                View commits
+              </CommandPalette.Item>
             </CommandPalette.Group>
           </CommandPalette.List>
         </CommandPalette.Content>

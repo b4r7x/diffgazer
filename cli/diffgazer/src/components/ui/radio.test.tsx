@@ -101,4 +101,84 @@ describe("RadioGroup navigation", () => {
     await flush();
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  test.each([
+    ["controlled", { value: "c" }],
+    ["default", { defaultValue: "c" }],
+  ])("starts highlight at the non-first %s selection before navigation", async (_kind, props) => {
+    const onChange = vi.fn();
+    const onHighlightChange = vi.fn();
+    const { lastFrame, stdin } = renderGroup({ ...props, onChange, onHighlightChange });
+    await flush();
+
+    expect(lastFrame()).toContain("( * ) Charlie");
+    stdin.write(RETURN);
+    await flush();
+    expect(onChange).toHaveBeenLastCalledWith("c");
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    expect(onHighlightChange).toHaveBeenLastCalledWith("a");
+    stdin.write(RETURN);
+    await flush();
+    expect(onChange).toHaveBeenLastCalledWith("a");
+  });
+
+  test("repairs an invalidated default highlight and keeps later movement uncontrolled", async () => {
+    const onChange = vi.fn();
+    const onHighlightChange = vi.fn();
+    const renderItems = (includeCharlie: boolean) => (
+      <CliThemeProvider initialTheme="dark">
+        <RadioGroup defaultValue="c" onChange={onChange} onHighlightChange={onHighlightChange}>
+          <RadioGroup.Item value="a" label="Alpha" />
+          {includeCharlie && <RadioGroup.Item value="c" label="Charlie" />}
+          <RadioGroup.Item value="d" label="Delta" />
+        </RadioGroup>
+      </CliThemeProvider>
+    );
+    const view = render(renderItems(true));
+    await flush();
+
+    view.rerender(renderItems(false));
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    expect(onHighlightChange).toHaveBeenLastCalledWith("d");
+    view.stdin.write(RETURN);
+    await flush();
+    expect(onChange).toHaveBeenLastCalledWith("d");
+  });
+
+  test("windows a long list and keeps the keyboard highlight visible", async () => {
+    const onChange = vi.fn();
+    const view = render(
+      <CliThemeProvider initialTheme="dark">
+        <RadioGroup maxVisibleItems={3} onChange={onChange}>
+          {Array.from({ length: 8 }, (_, index) => (
+            <RadioGroup.Item
+              key={`model-${String(index)}`}
+              value={`model-${String(index)}`}
+              label={`Model ${String(index)}`}
+            />
+          ))}
+        </RadioGroup>
+      </CliThemeProvider>,
+    );
+    await flush();
+
+    expect(view.lastFrame()).toContain("Model 0");
+    expect(view.lastFrame()).toContain("Model 2");
+    expect(view.lastFrame()).not.toContain("Model 3");
+
+    for (let index = 0; index < 5; index += 1) {
+      view.stdin.write(ARROW_DOWN);
+      await flush();
+    }
+
+    expect(view.lastFrame()).not.toContain("Model 0");
+    expect(view.lastFrame()).toContain("Model 5");
+    view.stdin.write(RETURN);
+    await flush();
+    expect(onChange).toHaveBeenLastCalledWith("model-5");
+  });
 });

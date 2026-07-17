@@ -11,3 +11,14 @@ content/docs/keys/
 registry/examples/
 public/r/ui/
 public/r/keys/
+public/source-data/
+public/app/
+public/ui/
+public/keys/
+public/sitemap.xml
+public/robots.txt
+public/llms.txt
+public/llms-full.txt
+public/.llms-markdown-manifest.json
+public/privacy.md
+public/terms.md

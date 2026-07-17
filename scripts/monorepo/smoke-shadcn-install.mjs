@@ -2,7 +2,6 @@
 
 // Do not swap throws for process.exit(): that bypasses the try/finally cleanup and leaks the registry server and fixture dirs.
 
-import { spawn } from "node:child_process";
 import {
   existsSync,
   mkdtempSync,
@@ -14,8 +13,9 @@ import {
 } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { normalizeOrigin, REGISTRY_ORIGIN, resolveRegistryRoute } from "@diffgazer/registry";
 import { ENV } from "./lib/env.mjs";
 import { collectMissingClosure } from "./registry-closure.mjs";
 import {
@@ -29,6 +29,12 @@ import {
 
 const root = process.cwd();
 const uiPackageJsonPath = resolve(root, "libs/ui/package.json");
+const rootPackageManager = JSON.parse(
+  readFileSync(resolve(root, "package.json"), "utf-8"),
+).packageManager;
+const registryOrigin = normalizeOrigin(process.env.REGISTRY_ORIGIN, {
+  defaultOrigin: REGISTRY_ORIGIN,
+});
 
 const keysItems = ["navigation", "focus-restore", "focus-trap", "focusable"];
 const keysInstallItems = ["navigation", "focus-trap"];
@@ -52,64 +58,7 @@ export const uiItems = [
 ];
 
 function registryRouteFromUrl(value) {
-  let url;
-  try {
-    url = new URL(value);
-  } catch {
-    return null;
-  }
-  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-
-  const parts = url.pathname.split("/").filter(Boolean);
-  const offset = parts[0] === "r" ? 1 : 0;
-  const namespace = parts[offset];
-  const fileName = parts[offset + 1];
-  if (parts.length !== offset + 2) return null;
-  if (namespace !== "ui" && namespace !== "keys") return null;
-  if (!fileName || !/^(registry|[a-z0-9-]+)\.json$/.test(fileName)) return null;
-  return `/${namespace}/${fileName}`;
-}
-
-function runFileAsync(command, args, cwd = root, options = {}) {
-  const timeoutMs = options.timeoutMs ?? 180_000;
-
-  return new Promise((resolveRun, reject) => {
-    const child = spawn(command, args, {
-      cwd,
-      env: { ...process.env, [ENV.ci]: "1", ...options.env },
-      stdio: ["ignore", "pipe", "pipe"],
-      shell: options.shell ?? false,
-    });
-    let stdout = "";
-    let stderr = "";
-    const timer = setTimeout(() => {
-      child.kill("SIGTERM");
-      reject(new Error(`Command timed out after ${timeoutMs}ms: ${command} ${args.join(" ")}`));
-    }, timeoutMs);
-
-    child.stdout?.on("data", (chunk) => {
-      stdout += chunk.toString();
-    });
-    child.stderr?.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-    child.on("error", (error) => {
-      clearTimeout(timer);
-      reject(error);
-    });
-    child.on("close", (code, signal) => {
-      clearTimeout(timer);
-      if (code === 0) {
-        resolveRun(stdout);
-        return;
-      }
-      reject(
-        new Error(
-          `Command failed (${signal ?? code}): ${command} ${args.join(" ")}\n${stdout}${stderr}`,
-        ),
-      );
-    });
-  });
+  return resolveRegistryRoute(value, { origin: registryOrigin });
 }
 
 function loadRegistryItem(registryDir, name) {
@@ -364,20 +313,24 @@ function assertRegistryClosure(registryDirs, rootRefs, label) {
 async function runShadcnAdd(fixture, items, options = {}) {
   const override = process.env[ENV.shadcnCommand];
   const addArgs = ["add", ...items, "--cwd", fixture, "--yes", "--overwrite"];
-  const runOptions = options.timeoutMs ? { timeoutMs: options.timeoutMs } : {};
+  const runOptions = {
+    cwd: root,
+    env: { [ENV.ci]: "1" },
+    timeoutMs: options.timeoutMs ?? 180_000,
+  };
 
   if (override) {
-    await runFileAsync(override, addArgs, root, runOptions);
+    await runArgv(override, addArgs, runOptions);
     return;
   }
 
   const localBin = resolveLocalShadcnBin();
   if (localBin) {
-    await runFileAsync(localBin, addArgs, root, runOptions);
+    await runArgv(localBin, addArgs, runOptions);
     return;
   }
 
-  await runFileAsync("pnpm", ["dlx", getWorkspaceShadcnSpec(), ...addArgs], root, runOptions);
+  await runArgv("pnpm", ["dlx", getWorkspaceShadcnSpec(), ...addArgs], runOptions);
 }
 
 function resolveLocalShadcnBin() {
@@ -412,11 +365,14 @@ export const bundledUiComponents = [
 ];
 
 export function buildSmokeApp(componentNames, addonImports = []) {
+  const figletEntry = addonImports.find((specifier) => specifier.endsWith("/logo/figlet"));
   const sideEffectImports = [
     ...componentNames
       .filter((name) => !bundledUiComponents.includes(name))
       .map((name) => `import '@/components/ui/${name}';`),
-    ...addonImports.map((specifier) => `import '${specifier}';`),
+    ...addonImports
+      .filter((specifier) => !figletEntry || !specifier.includes("/logo/figlet"))
+      .map((specifier) => `import '${specifier}';`),
   ];
   const app = joinLines(
     "import React from 'react';",
@@ -430,9 +386,22 @@ export function buildSmokeApp(componentNames, addonImports = []) {
     "import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';",
     "import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';",
     "import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';",
+    ...(figletEntry ? [`import { getFigletText } from '${figletEntry}';`] : []),
     ...sideEffectImports,
     "import './index.css';",
     "",
+    ...(figletEntry
+      ? [
+          "const figletSmoke = Promise.all([",
+          "  getFigletText('DG', 'Big'),",
+          "  getFigletText('DG', 'Small'),",
+          "]);",
+          "void figletSmoke.then(([big, small]) => {",
+          "  if (!big || !small) throw new Error('Copied logo-figlet returned empty output');",
+          "});",
+          "",
+        ]
+      : []),
     "function App() {",
     "  return (",
     '    <main className="min-h-screen bg-background text-foreground p-6">',
@@ -482,6 +451,34 @@ export function buildSmokeApp(componentNames, addonImports = []) {
 
 function writeSmokeApp(fixture, componentNames, addonImports = []) {
   writeFileSync(join(fixture, "src/main.tsx"), buildSmokeApp(componentNames, addonImports));
+}
+
+function collectBuiltJavaScript(directory) {
+  const files = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...collectBuiltJavaScript(path));
+    else if (entry.name.endsWith(".js")) files.push(path);
+  }
+  return files;
+}
+
+function assertFigletFontsBundled(fixture) {
+  const files = collectBuiltJavaScript(join(fixture, "dist"));
+  const unresolved = files.filter((path) =>
+    readFileSync(path, "utf8").includes("figlet/importable-fonts/"),
+  );
+  if (unresolved.length > 0) {
+    throw new Error(
+      `Copied logo-figlet left browser-unresolvable bare font imports in: ${unresolved.join(", ")}`,
+    );
+  }
+
+  for (const font of ["Big", "Small"]) {
+    if (!files.some((path) => new RegExp(`^${font}-.+\\.js$`).test(basename(path)))) {
+      throw new Error(`Copied logo-figlet did not emit a lazy Vite chunk for ${font}`);
+    }
+  }
 }
 
 // Every bundledUiComponents name must render as JSX above; otherwise a dropped usage leaves it neither
@@ -583,10 +580,10 @@ function startRegistryServer(uiRegistryDir, keysRegistryDir) {
   });
 }
 
-function writeShadcnFixture(fixture, baseUrl) {
+async function writeShadcnFixture(fixture, baseUrl) {
   writeViteFixture(fixture, {
     name: "shadcn-smoke",
-    packageManager: "pnpm@10.28.2",
+    packageManager: rootPackageManager,
     withLibUtils: true,
     indexCss: ['@import "tailwindcss";', '@import "../styles/styles.css";', '@source ".";', ""],
     componentsJson: true,
@@ -595,7 +592,7 @@ function writeShadcnFixture(fixture, baseUrl) {
       "@diffgazer-keys": `${baseUrl}/keys/{name}.json`,
     },
   });
-  installViteFixtureDeps(root, fixture);
+  await installViteFixtureDeps(root, fixture);
 }
 
 function assertInstalledRegistryTree(fixture) {
@@ -639,10 +636,13 @@ function assertInstalledRegistryTree(fixture) {
   assertFileContains(fixture, "styles/dialog.css", ["dialog::backdrop"]);
 }
 
-function assertFixtureBuilds(fixture, label, componentNames, addonImports = []) {
+async function assertFixtureBuilds(fixture, label, componentNames, addonImports = []) {
   writeSmokeApp(fixture, componentNames, addonImports);
-  runArgv("pnpm", ["run", "typecheck"], fixture);
-  runArgv("pnpm", ["run", "build"], fixture);
+  await runArgv("pnpm", ["run", "typecheck"], fixture);
+  await runArgv("pnpm", ["run", "build"], fixture);
+  if (addonImports.some((specifier) => specifier.endsWith("/logo/figlet"))) {
+    assertFigletFontsBundled(fixture);
+  }
   assertBuiltCss(fixture, { label });
 }
 
@@ -755,9 +755,9 @@ async function runSmoke() {
   try {
     // Install EVERY directly-installable public item through direct registry URLs, not a subset: a static
     // closure resolving is not the same as `shadcn add` writing files and rewriting imports.
-    writeShadcnFixture(directFixture, registryServer.baseUrl);
+    await writeShadcnFixture(directFixture, registryServer.baseUrl);
     // The leaf add-ons import optional peers (figlet, lowlight); seed them so the installed source builds.
-    runArgv(
+    await runArgv(
       "pnpm",
       [
         "add",
@@ -792,7 +792,7 @@ async function runSmoke() {
     // The namespace fixture only proves shadcn's registry-namespace alias resolves and installs the tree.
     // It drives the representative uiItems subset — the direct-URL path above already builds every item
     // exhaustively, so re-running the full build through aliases would double the heaviest work for no signal.
-    writeShadcnFixture(namespaceFixture, registryServer.baseUrl);
+    await writeShadcnFixture(namespaceFixture, registryServer.baseUrl);
     await runShadcnAdd(
       namespaceFixture,
       uiItems.map((name) => `@ui/${name}`),
@@ -809,7 +809,7 @@ async function runSmoke() {
     console.log("OK: shadcn CLI resolved UI and keys registry dependency trees");
 
     const leafAddonNames = installableUiNames.filter((name) => !allUiNames.includes(name));
-    assertFixtureBuilds(
+    await assertFixtureBuilds(
       directFixture,
       "Built direct shadcn",
       uiComponentNames(uiRegistryDir, allUiNames),
@@ -825,7 +825,7 @@ async function runSmoke() {
       "OK: every installed keys entry hook enters the direct build graph (standalone hooks side-effect imported)",
     );
 
-    assertFixtureBuilds(
+    await assertFixtureBuilds(
       namespaceFixture,
       "Built namespace shadcn",
       uiComponentNames(uiRegistryDir, uiItems),
@@ -834,14 +834,14 @@ async function runSmoke() {
 
     // NEW-017 regression: a single-component install must transitively pull the theme item, or component
     // class names reference tokens that resolve to nothing and the build is unstyled.
-    writeShadcnFixture(soloFixture, registryServer.baseUrl);
+    await writeShadcnFixture(soloFixture, registryServer.baseUrl);
     await runShadcnAdd(soloFixture, [`${registryServer.baseUrl}/ui/button.json`]);
     assertThemeFilesInstalled(soloFixture);
     console.log("OK: solo button install auto-pulled theme via registryDependencies");
 
     writeSoloButtonApp(soloFixture);
-    runArgv("pnpm", ["run", "typecheck"], soloFixture);
-    runArgv("pnpm", ["run", "build"], soloFixture);
+    await runArgv("pnpm", ["run", "typecheck"], soloFixture);
+    await runArgv("pnpm", ["run", "build"], soloFixture);
     assertBuiltCss(soloFixture, {
       label: "Built solo button shadcn",
       // Dialog isn't part of solo install — only assert theme tokens reach final CSS.

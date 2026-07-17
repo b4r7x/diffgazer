@@ -3,7 +3,7 @@ title: Running a review
 description: Start a review in web mode and follow it live.
 ---
 
-The review screen is where you kick off a review of your working changes and watch it run from start to finish. It is the main thing you do in web mode. Before you get here, finish [onboarding](/app/web/onboarding) so a provider, API key, and model are configured, and make sure the current directory is trusted. If the directory is not trusted yet, the menu will refuse to start a review and point you to Settings to grant permissions first.
+The review screen is where you kick off a review of your working changes and watch it run from start to finish. It is the main thing you do in web mode. Before you get here, finish [onboarding](/app/web/onboarding) so a provider, API key, and model are configured, and make sure the current directory is trusted. Complete Setup returns to Home; choose **Review Unstaged** or **Review Staged** there to start the first review. If the directory is not trusted yet, the menu will refuse to start a review and point you to Settings to grant permissions first.
 
 ## Start a review
 
@@ -28,7 +28,7 @@ The four phases run in order:
 
 Below the phase list is the agent board. Each analysis agent gets a row showing its name, a status badge (waiting, running, done, or failed), its current action, and a progress bar. The board fills in and the bars advance as agent events arrive on the stream. If one or more agents fail, often from rate limiting, the activity pane shows a partial-analysis notice naming the agents that dropped out, and the run keeps going with what it could finish.
 
-You can filter the activity log by agent to focus on a single one, or leave it on All to watch everything. To stop a run before it finishes, press `Esc`. That cancels the review session and returns you to the home screen.
+You can filter the activity log by agent to focus on a single one, or leave it on All to watch everything. To stop a run before it finishes, press `c` or use **Cancel**. Press `Esc` to return to Home without stopping the run; the server session keeps running and remains resumable from Home.
 
 ## When it finishes
 

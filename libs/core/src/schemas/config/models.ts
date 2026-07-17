@@ -6,6 +6,8 @@ const ModelInfoSchema = z.object({
   description: z.string(),
   tier: z.enum(["free", "paid"]),
   recommended: z.boolean().optional(),
+  contextLength: z.number().int().positive().optional(),
+  maxOutputTokens: z.number().int().positive().optional(),
 });
 export type ModelInfo = z.infer<typeof ModelInfoSchema>;
 
@@ -14,6 +16,7 @@ export const OpenRouterModelSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
   contextLength: z.number(),
+  maxCompletionTokens: z.number().int().positive().optional(),
   supportedParameters: z.array(z.string()).optional(),
   pricing: z.object({
     prompt: z.string(),

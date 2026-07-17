@@ -34,6 +34,18 @@ function createStubServer() {
   };
 }
 
+function configurePlugin(
+  configureServer: ReturnType<
+    typeof import("./vite-plugin-docs-rebuild")["docsDataRebuild"]
+  >["configureServer"],
+  server: ReturnType<typeof createStubServer>["server"],
+): void {
+  if (typeof configureServer !== "function") {
+    throw new Error("Expected a configureServer function hook");
+  }
+  Reflect.apply(configureServer, undefined, [server]);
+}
+
 describe("docsDataRebuild", () => {
   const originalVitest = process.env.VITEST;
   const originalDev = process.env.DIFFGAZER_DEV;
@@ -58,14 +70,16 @@ describe("docsDataRebuild", () => {
     const stub = createStubServer();
     const plugin = docsDataRebuild();
 
-    (plugin.configureServer as (s: typeof stub.server) => void)(stub.server);
+    configurePlugin(plugin.configureServer, stub.server);
     expect(stub.added.length).toBeGreaterThan(0);
 
     stub.emit("change", `${stub.added[0]}/manifest.json`);
     vi.advanceTimersByTime(300);
 
     expect(execMock).toHaveBeenCalledTimes(1);
-    const [, options] = execMock.mock.calls[0];
+    const call = execMock.mock.calls[0];
+    if (!call) throw new Error("Expected rebuild subprocess call");
+    const [, options] = call;
     expect(options.env.DIFFGAZER_SKIP_ARTIFACT_PREPARE).toBe("1");
   });
 
@@ -74,21 +88,20 @@ describe("docsDataRebuild", () => {
     const stub = createStubServer();
     const plugin = docsDataRebuild();
 
-    (plugin.configureServer as (s: typeof stub.server) => void)(stub.server);
+    configurePlugin(plugin.configureServer, stub.server);
 
     const watchedFile = `${stub.added[0]}/manifest.json`;
     stub.emit("change", watchedFile);
     vi.advanceTimersByTime(300);
     expect(execMock).toHaveBeenCalledTimes(1);
 
-    // The exec callback has not fired yet, so the rebuild is still in flight.
-    // The watcher guard records one pending rebuild instead of dropping it.
     stub.emit("change", watchedFile);
     vi.advanceTimersByTime(300);
     expect(execMock).toHaveBeenCalledTimes(1);
 
-    // Completing the in-flight rebuild flushes the pending rebuild immediately.
-    const [, , callback] = execMock.mock.calls[0];
+    const call = execMock.mock.calls[0];
+    if (!call) throw new Error("Expected rebuild subprocess call");
+    const [, , callback] = call;
     callback(null, "", "");
     expect(execMock).toHaveBeenCalledTimes(2);
   });

@@ -1,6 +1,6 @@
 import { guardQueryState, useInit, useSettings } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { buildHubValues } from "@diffgazer/core/schemas/config";
+import { buildHubValues, hasRepositoryReadAccess } from "@diffgazer/core/schemas/config";
 import {
   SETTINGS_MENU_ITEMS,
   SETTINGS_SHORTCUTS,
@@ -93,7 +93,7 @@ export function SettingsHubScreen(): ReactElement {
   const values = buildHubValues({
     provider: initQuery.data?.config?.provider,
     isConfigured: initQuery.data?.setup?.isConfigured ?? false,
-    isTrusted: Boolean(initQuery.data?.project.trust?.capabilities.readFiles),
+    isTrusted: hasRepositoryReadAccess(initQuery.data?.project.trust, initQuery.data?.project.path),
     theme: settingsQuery.data?.theme,
     secretsStorage: settingsQuery.data?.secretsStorage,
     agentExecution: settingsQuery.data?.agentExecution,

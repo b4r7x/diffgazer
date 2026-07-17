@@ -8,7 +8,22 @@ function getAgent(agentId: AgentId): { label: string; name: string } {
   return { label: meta?.badgeLabel ?? "AGT", name: meta?.name ?? agentId };
 }
 
-function convertEventToLogEntry(
+export function getReviewEventLogSource(event: AgentStreamEvent | StepEvent): string | undefined {
+  switch (event.type) {
+    case "agent_start":
+      return event.agent.name;
+    case "agent_thinking":
+    case "agent_progress":
+    case "agent_error":
+    case "issue_found":
+    case "agent_complete":
+      return getAgent(event.agent).name;
+    default:
+      return undefined;
+  }
+}
+
+export function convertReviewEventToLogEntry(
   event: AgentStreamEvent | StepEvent,
   index: number,
 ): LogEntryData | null {
@@ -102,7 +117,7 @@ function convertEventToLogEntry(
         timestamp,
         tag: "FILE",
         tagType: "system",
-        message: `${event.file} (${event.completed}/${event.total})`,
+        message: `Included ${event.file} in prompt (${event.completed}/${event.total})`,
       };
 
     case "agent_start":
@@ -152,32 +167,6 @@ function convertEventToLogEntry(
       };
     }
 
-    case "tool_call":
-    case "tool_start": {
-      const { name } = getAgent(event.agent);
-      return {
-        id,
-        timestamp,
-        tag: "TOOL",
-        tagType: "tool",
-        message: `${event.tool}: ${truncate(event.input, 60)}`,
-        source: name,
-      };
-    }
-
-    case "tool_result":
-    case "tool_end": {
-      const { name } = getAgent(event.agent);
-      return {
-        id,
-        timestamp,
-        tag: "TOOL",
-        tagType: "tool",
-        message: truncate(event.summary, 100),
-        source: name,
-      };
-    }
-
     case "issue_found": {
       const { label, name } = getAgent(event.agent);
       return {
@@ -220,9 +209,19 @@ function convertEventToLogEntry(
 }
 
 export function convertAgentEventsToLogEntries(
-  events: (AgentStreamEvent | StepEvent)[],
+  events: readonly (AgentStreamEvent | StepEvent)[],
+  range: { start: number; end: number } = { start: 0, end: events.length },
 ): LogEntryData[] {
-  return events
-    .map(convertEventToLogEntry)
-    .filter((entry): entry is LogEntryData => entry !== null);
+  const start = Math.max(0, Math.min(range.start, events.length));
+  const end = Math.max(start, Math.min(range.end, events.length));
+  const entries: LogEntryData[] = [];
+
+  for (let index = start; index < end; index += 1) {
+    const event = events[index];
+    if (!event) continue;
+    const entry = convertReviewEventToLogEntry(event, index);
+    if (entry) entries.push(entry);
+  }
+
+  return entries;
 }

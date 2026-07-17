@@ -8,12 +8,22 @@ import {
   useId,
   useMemo,
   useRef,
+  useState,
 } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
-import { getEncodedListboxItemId, type ListboxMetadataItem, useListbox } from "@/hooks/use-listbox";
+import {
+  collectListboxItems,
+  getEncodedListboxItemId,
+  type ListboxMetadataItem,
+  useListbox,
+} from "@/hooks/use-listbox";
 import { useSelectableCollection } from "@/lib/selectable-collection";
 import { cn } from "@/lib/utils";
 import { type CustomActivator, MenuContext, type MenuContextValue } from "./menu-context";
+import { MenuGroup } from "./menu-group";
+import { MenuItem } from "./menu-item";
+import { MenuItemCheckbox } from "./menu-item-checkbox";
+import { MenuItemRadio } from "./menu-item-radio";
 
 /**
  * @typeParam TId - Convenience assertion for the id union surfaced through
@@ -86,13 +96,31 @@ export function Menu<TId extends string = string>({
   const menuRef = useRef<HTMLDivElement>(null);
   const composedRef = useComposedRefs(menuRef, ref);
   const customActivators = useRef<Map<string, CustomActivator>>(new Map());
+  const [registrationsStarted, setRegistrationsStarted] = useState(false);
   const selectionEnabled = controlledSelectedId !== undefined || defaultSelectedId !== null;
   const itemRole = selectionEnabled ? "menuitemradio" : "menuitem";
 
   const { items: registeredItems, registerItem, unregisterItem } = useSelectableCollection(menuRef);
-  const items = useMemo<ListboxMetadataItem<TId>[]>(
+  const registeredMetadata = useMemo<ListboxMetadataItem<TId>[]>(
     () => registeredItems.map((item) => ({ id: item.value as TId, disabled: item.disabled })),
     [registeredItems],
+  );
+  const renderSeed = useMemo(
+    () =>
+      collectListboxItems<TId>(children, {
+        itemTypes: [MenuItem, MenuItemCheckbox, MenuItemRadio],
+        containerTypes: [MenuGroup],
+      }),
+    [children],
+  );
+  const items = registrationsStarted ? registeredMetadata : renderSeed;
+
+  const handleRegisterItem = useCallback(
+    (registrationId: string, value: string, disabled: boolean, element: HTMLElement | null) => {
+      setRegistrationsStarted(true);
+      registerItem(registrationId, value, disabled, element);
+    },
+    [registerItem],
   );
 
   const registerActivator = useCallback((id: string, handler: CustomActivator) => {
@@ -130,6 +158,7 @@ export function Menu<TId extends string = string>({
             if (activeEl?.getAttribute("aria-haspopup") === "menu") {
               e.preventDefault();
               activeEl.click();
+              onKeyDown?.(e);
               return;
             }
           }
@@ -170,6 +199,13 @@ export function Menu<TId extends string = string>({
     [handleItemActivate, handleItemHighlight, items],
   );
 
+  const notifySelect = useCallback(
+    (id: string) => {
+      onSelect?.(id as TId);
+    },
+    [onSelect],
+  );
+
   // Public TId narrows the API; internal context stays string-keyed because the
   // DOM uses data-value strings and child MenuItem ids are opaque to TS.
   const contextValue: MenuContextValue = useMemo(
@@ -177,11 +213,12 @@ export function Menu<TId extends string = string>({
       selectedId,
       highlighted,
       activate: wrappedActivate,
+      notifySelect,
       highlight: handleItemHighlight as (id: string) => void,
       variant,
       idPrefix,
       itemRole,
-      registerItem,
+      registerItem: handleRegisterItem,
       unregisterItem,
       registerActivator,
       unregisterActivator,
@@ -190,11 +227,12 @@ export function Menu<TId extends string = string>({
       selectedId,
       highlighted,
       wrappedActivate,
+      notifySelect,
       handleItemHighlight,
       variant,
       idPrefix,
       itemRole,
-      registerItem,
+      handleRegisterItem,
       unregisterItem,
       registerActivator,
       unregisterActivator,

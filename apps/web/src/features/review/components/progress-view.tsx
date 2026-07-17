@@ -1,6 +1,6 @@
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
-import { getPartialFailureWarning } from "@diffgazer/core/review";
-import type { AgentState } from "@diffgazer/core/schemas/events";
+import { getPartialFailureWarning, type ReviewEvent } from "@diffgazer/core/review";
+import type { AgentState, LensStat } from "@diffgazer/core/schemas/events";
 import type {
   BadgeVariant,
   ProgressStepData,
@@ -15,16 +15,20 @@ import { cn } from "@diffgazer/ui/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { ProgressList } from "@/components/shared/progress/list";
-import { useReviewProgressKeyboard } from "../hooks/use-progress-keyboard";
-import { ActivityLog, type LogEntryData } from "./activity-log";
+import {
+  REVIEW_PROGRESS_CONTROLS,
+  useReviewProgressKeyboard,
+} from "../hooks/use-progress-keyboard";
+import { ActivityLog } from "./activity-log";
 import { AgentBoard } from "./agent-board";
 import { ContextSnapshotPreview } from "./context-snapshot-preview";
 import { ReviewMetricsFooter } from "./metrics-footer";
 
 export interface ReviewProgressData {
   steps: ProgressStepData[];
-  entries: LogEntryData[];
+  events: readonly ReviewEvent[];
   agents: AgentState[];
+  lensStats?: LensStat[];
   metrics: ReviewProgressMetrics;
   startTime?: Date;
   contextSnapshot?: ReviewContextResponse | null;
@@ -38,6 +42,7 @@ export interface ReviewProgressViewProps {
   onViewResults?: () => void;
   onCancel?: () => void;
   onBack?: () => void;
+  cancelDisabled?: boolean;
 }
 
 interface AgentOption {
@@ -134,8 +139,9 @@ export function ReviewProgressView({
   onViewResults,
   onCancel,
   onBack,
+  cancelDisabled = false,
 }: ReviewProgressViewProps) {
-  const { steps, entries, agents, metrics, startTime, contextSnapshot, notices } = data;
+  const { steps, events, agents, lensStats, metrics, startTime, contextSnapshot, notices } = data;
   const [agentFilter, setAgentFilter] = useState<string | null>(null);
   const hasError = Boolean(error);
 
@@ -150,6 +156,7 @@ export function ReviewProgressView({
     onViewResults,
     onBack,
     onCancel: isRunning ? onCancel : undefined,
+    cancelDisabled,
     hasError,
   });
 
@@ -162,11 +169,7 @@ export function ReviewProgressView({
     badgeVariant: agent.meta.badgeVariant,
   }));
 
-  const partialFailure = getPartialFailureWarning(agents, error ?? null);
-
-  const filteredEntries = agentFilter
-    ? entries.filter((entry) => entry.source === agentFilter)
-    : entries;
+  const partialFailure = getPartialFailureWarning(agents, error ?? null, lensStats);
 
   return (
     <div className="flex flex-1 gap-4 overflow-hidden px-4 pt-4 pb-4">
@@ -200,8 +203,8 @@ export function ReviewProgressView({
           {(onViewResults || (isRunning && onCancel)) && !error && (
             <div className="flex flex-wrap gap-3 pb-4">
               {isRunning && onCancel && (
-                <Button variant="secondary" bracket onClick={onCancel}>
-                  Cancel
+                <Button variant="secondary" bracket disabled={cancelDisabled} onClick={onCancel}>
+                  {REVIEW_PROGRESS_CONTROLS.cancel.label}
                 </Button>
               )}
               {onViewResults && (
@@ -255,7 +258,8 @@ export function ReviewProgressView({
             <ErrorDisplay error={error} isApiKeyError={isApiKeyError} onBack={onBack} />
           ) : (
             <ActivityLog
-              entries={filteredEntries}
+              events={events}
+              sourceFilter={agentFilter}
               showCursor={isRunning}
               autoScroll={true}
               className="flex-1 min-h-0 px-2 pb-2"

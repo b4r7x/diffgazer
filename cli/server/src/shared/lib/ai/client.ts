@@ -10,12 +10,29 @@ import type { z } from "zod";
 import { getStore } from "../config/store.js";
 import { classifyError, type ErrorRule } from "../errors.js";
 import { log } from "../log.js";
+import { createResponseLimitingFetch } from "./http-json.js";
+import { getProviderModels } from "./models-dev-catalog.js";
+import { getOpenRouterModelsWithCache } from "./openrouter-models.js";
 import type { AIClient, AIClientConfig, AIError, AIErrorCode } from "./types.js";
 
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_MAX_TOKENS = 65536;
 const DEFAULT_MAX_RETRIES = 2;
 const DEFAULT_TIMEOUT_MS = 300_000;
+
+export interface AIExecutionFingerprint {
+  readonly provider: AIClient["provider"];
+  readonly model: string;
+}
+
+export interface InitializedAIClient extends AIClient {
+  readonly executionFingerprint: AIExecutionFingerprint;
+}
+
+interface ModelLimits {
+  output?: number;
+  context?: number;
+}
 
 const AI_ERROR_RULES: ErrorRule<AIErrorCode>[] = [
   {
@@ -188,7 +205,11 @@ function createLanguageModel(config: AIClientConfig): Result<LanguageModel, AIEr
           ),
         );
       }
-      const zhipu = createZhipu({ apiKey, baseURL: overlay.baseURL });
+      const zhipu = createZhipu({
+        apiKey,
+        baseURL: overlay.baseURL,
+        fetch: createResponseLimitingFetch(),
+      });
       return ok(zhipu(modelId as Parameters<typeof zhipu>[0]));
     }
     case "openrouter": {
@@ -316,7 +337,37 @@ export function createAIClient(config: AIClientConfig): Result<AIClient, AIError
   return ok(aiClient);
 }
 
-export function initializeAIClient(): Result<AIClient, AIError> {
+async function resolveSelectedModelLimits(
+  provider: AIClient["provider"],
+  model: string,
+  apiKey: string,
+): Promise<ModelLimits> {
+  if (provider === "openrouter") {
+    const catalogResult = await getOpenRouterModelsWithCache(apiKey);
+    if (catalogResult.ok) {
+      const currentModel = catalogResult.value.models.find((candidate) => candidate.id === model);
+      if (currentModel) {
+        return {
+          output: currentModel.maxCompletionTokens,
+          context: currentModel.contextLength > 0 ? currentModel.contextLength : undefined,
+        };
+      }
+    }
+    return findModelLimit(CATALOG_SNAPSHOT, provider, model);
+  }
+
+  const catalogResult = await getProviderModels(provider);
+  const currentModel = catalogResult.models.find((candidate) => candidate.id === model);
+  if (currentModel) {
+    return {
+      output: currentModel.maxOutputTokens,
+      context: currentModel.contextLength,
+    };
+  }
+  return findModelLimit(CATALOG_SNAPSHOT, provider, model);
+}
+
+export async function initializeAIClient(): Promise<Result<InitializedAIClient, AIError>> {
   const store = getStore();
   const activeProvider = store.getActiveProvider();
   if (!activeProvider) {
@@ -329,7 +380,7 @@ export function initializeAIClient(): Result<AIClient, AIError> {
 
   const apiKeyResult = store.getProviderApiKey(activeProvider.provider);
   if (!apiKeyResult.ok) {
-    return err(createError<AIErrorCode>("MODEL_ERROR", apiKeyResult.error.message));
+    return err(apiKeyResult.error);
   }
   if (!apiKeyResult.value) {
     return err(
@@ -340,7 +391,11 @@ export function initializeAIClient(): Result<AIClient, AIError> {
     );
   }
 
-  const limit = findModelLimit(CATALOG_SNAPSHOT, activeProvider.provider, activeProvider.model);
+  const limit = await resolveSelectedModelLimits(
+    activeProvider.provider,
+    activeProvider.model,
+    apiKeyResult.value,
+  );
   const clientResult = createAIClient({
     apiKey: apiKeyResult.value,
     provider: activeProvider.provider,
@@ -353,5 +408,11 @@ export function initializeAIClient(): Result<AIClient, AIError> {
     return err(clientResult.error);
   }
 
-  return ok(clientResult.value);
+  return ok({
+    ...clientResult.value,
+    executionFingerprint: {
+      provider: activeProvider.provider,
+      model: activeProvider.model,
+    },
+  });
 }

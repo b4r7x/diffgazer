@@ -42,9 +42,14 @@ export const menuDoc: ComponentDoc = {
     keys: [
       {
         keys: "ArrowUp / ArrowDown",
-        action: "Moves highlight to the previous or next enabled item.",
+        action:
+          "Moves highlight to the previous or next item. Disabled items remain navigable and announced but cannot be activated.",
       },
-      { keys: "Home / End", action: "Moves highlight to the first or last enabled item." },
+      {
+        keys: "Home / End",
+        action:
+          "Moves highlight to the first or last item, including disabled items that remain nonactivatable.",
+      },
       {
         keys: "Enter / Space",
         action: "Activates the highlighted item or toggles checkbox/radio items.",
@@ -54,7 +59,11 @@ export const menuDoc: ComponentDoc = {
         action: "Moves highlight with typeahead search when enabled by useListbox.",
       },
       { keys: "Escape / Tab", action: "Calls onClose on the root menu." },
-      { keys: "ArrowRight", action: "Opens a submenu from MenuSubTrigger." },
+      {
+        keys: "ArrowRight",
+        action:
+          "Opens the highlighted nested submenu. On a leaf item it does nothing and stays within the current submenu.",
+      },
       {
         keys: "ArrowLeft / Escape",
         action: "Closes submenu content and returns focus to its trigger.",
@@ -67,7 +76,8 @@ export const menuDoc: ComponentDoc = {
       attribute: "data-highlighted",
       appliesTo: "MenuItem / MenuItemCheckbox / MenuItemRadio / MenuSubTrigger",
       values: "present when highlighted",
-      description: "Marks the active descendant for keyboard and pointer highlight styling.",
+      description:
+        "Marks the active descendant for keyboard and pointer highlight styling, including disabled items that remain discoverable but cannot activate.",
     },
     {
       attribute: "data-selected",
@@ -296,12 +306,6 @@ export const menuDoc: ComponentDoc = {
         required: true,
         defaultValue: null,
         description: "Stable identifier for the radio item.",
-      },
-      value: {
-        type: "string",
-        required: true,
-        defaultValue: null,
-        description: "Form-submission value for the radio item.",
       },
       disabled: {
         type: "boolean",

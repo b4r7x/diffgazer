@@ -20,6 +20,18 @@ No provider required. Diffgazer packages are not yet published to npm; until the
 
 Require [`KeyboardProvider`](/keys/api/keyboard-provider). Package-only, since dispatch goes through the shared registry.
 
+```tsx
+import { KeyboardProvider } from "@diffgazer/keys";
+
+function App() {
+  return (
+    <KeyboardProvider>
+      <ApplicationRoutes />
+    </KeyboardProvider>
+  );
+}
+```
+
 | Hook | Use it for |
 |------|------------|
 | [`useKey`](/keys/hooks/use-key) | Binding an individual shortcut, optionally scoped to a region or scope. |

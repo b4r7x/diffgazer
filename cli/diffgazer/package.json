@@ -51,11 +51,11 @@
     "build": "pnpm run build:deps && pnpm run clean && pnpm build:web && pnpm build:bundle && pnpm build:notices",
     "build:deps": "pnpm --dir=../.. turbo run build --filter=@diffgazer/core --filter=@diffgazer/server --filter=@diffgazer/keys --filter=@diffgazer/ui --filter=@diffgazer/web",
     "build:web": "pnpm --filter @diffgazer/web exec tsc -b && pnpm --filter @diffgazer/web exec vite build --outDir ../../cli/diffgazer/dist/web",
-    "build:bundle": "tsup",
+    "build:bundle": "tsup --metafile",
     "build:notices": "node --import tsx scripts/generate-third-party-notices.ts",
     "prepack": "pnpm run build",
     "dev": "tsx --tsconfig tsconfig.json src/index.tsx --dev",
-    "type-check": "tsc --noEmit && tsc --noEmit -p scripts/tsconfig.json",
+    "type-check": "tsc --noEmit && tsc --noEmit -p scripts/tsconfig.json && tsc --noEmit -p tsconfig.config.json",
     "check": "biome check .",
     "test": "vitest run",
     "test:types": "tsc --noEmit -p tsconfig.test.json",
@@ -65,15 +65,15 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.13",
-    "@inkjs/ui": "^2.0.0",
+    "@tanstack/react-query": "^5.80.7",
     "execa": "^9.6.1",
     "figlet": "^1.10.0",
     "hono": "^4.12.18",
     "ink": "^7",
     "ink-spinner": "^5.0.0",
     "open": "^11.0.0",
-    "@tanstack/react-query": "^5.80.7",
-    "react": "^19.2.4"
+    "react": "^19.2.4",
+    "string-width": "^8.2.0"
   },
   "optionalDependencies": {
     "@napi-rs/keyring": "^1.2.0"

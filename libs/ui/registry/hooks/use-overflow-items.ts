@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  type RefObject,
+  type RefCallback,
   useCallback,
   useEffectEvent,
   useLayoutEffect,
@@ -20,7 +20,7 @@ export interface UseOverflowItemsOptions {
 /** Reactive measurement result for an overflow-items container. */
 export interface UseOverflowItemsReturn {
   /** Attach to the container element that owns item children followed by the overflow indicator. */
-  ref: RefObject<HTMLDivElement | null>;
+  ref: RefCallback<HTMLDivElement>;
   /** Number of items that fit within the container width. */
   visibleCount: number;
   /** Number of items that do not fit. */
@@ -61,8 +61,11 @@ export function useOverflowItems({
   itemCount,
   onVisibleCountChange,
 }: UseOverflowItemsOptions): UseOverflowItemsReturn {
-  const ref = useRef<HTMLDivElement>(null);
-  const frameRef = useRef<number | null>(null);
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  const attachmentRef = useRef<{ generation: number; node: HTMLDivElement | null }>({
+    generation: 0,
+    node: null,
+  });
   const [visibleCount, setVisibleCount] = useState(() => clampCount(itemCount, itemCount));
   const lastNotifiedCountRef = useRef(visibleCount);
   const notifyVisibleCountChange = useEffectEvent((count: number) => {
@@ -70,51 +73,61 @@ export function useOverflowItems({
   });
 
   const safeItemCount = clampCount(itemCount, itemCount);
-
-  const onRecalculate = useCallback(() => {
-    const container = ref.current;
-    if (!container) {
-      setVisibleCount((current) => clampCount(current, safeItemCount));
-      return;
-    }
-
-    const children = Array.from(container.children) as HTMLElement[];
-    if (safeItemCount === 0 || children.length === 0) {
-      setVisibleCount(0);
-      return;
-    }
-
-    const containerWidth = container.offsetWidth;
-    const gap = parseFloat(getComputedStyle(container).gap) || 0;
-
-    const items = children.slice(0, safeItemCount);
-    const indicator = children[safeItemCount];
-
-    const itemWidths = items.map((el) => el.offsetWidth);
-    const indicatorWidth = indicator ? indicator.offsetWidth : 0;
-
-    const count = clampCount(
-      computeVisibleCount(itemWidths, containerWidth, gap, indicatorWidth),
-      safeItemCount,
-    );
-
-    setVisibleCount(count);
-  }, [safeItemCount]);
-
-  const scheduleRecalculate = useCallback(() => {
-    if (frameRef.current != null) return;
-    frameRef.current = requestAnimationFrame(() => {
-      frameRef.current = null;
-      onRecalculate();
-    });
-  }, [onRecalculate]);
+  const ref = useCallback((nextContainer: HTMLDivElement | null) => {
+    attachmentRef.current = {
+      generation: attachmentRef.current.generation + 1,
+      node: nextContainer,
+    };
+    setContainer(nextContainer);
+  }, []);
 
   useLayoutEffect(() => {
-    const container = ref.current;
-    if (!container) return;
+    if (!container) {
+      setVisibleCount(safeItemCount);
+      return;
+    }
+
+    const generation = attachmentRef.current.generation;
+    let active = true;
+    let frame: number | null = null;
+    const isCurrentAttachment = () => {
+      const attachment = attachmentRef.current;
+      return active && attachment.generation === generation && attachment.node === container;
+    };
+    const recalculate = () => {
+      if (!isCurrentAttachment()) return;
+
+      const children = Array.from(container.children) as HTMLElement[];
+      if (safeItemCount === 0 || children.length === 0) {
+        setVisibleCount(0);
+        return;
+      }
+
+      const containerWidth = container.offsetWidth;
+      const gap = parseFloat(getComputedStyle(container).gap) || 0;
+      const items = children.slice(0, safeItemCount);
+      const indicator = children[safeItemCount];
+      const itemWidths = items.map((element) => element.offsetWidth);
+      const indicatorWidth = indicator ? indicator.offsetWidth : 0;
+
+      setVisibleCount(
+        clampCount(
+          computeVisibleCount(itemWidths, containerWidth, gap, indicatorWidth),
+          safeItemCount,
+        ),
+      );
+    };
+    const scheduleRecalculate = () => {
+      if (!isCurrentAttachment() || frame != null) return;
+      frame = requestAnimationFrame(() => {
+        frame = null;
+        recalculate();
+      });
+    };
 
     const resizeObserver = new ResizeObserver(scheduleRecalculate);
     const observeChildren = () => {
+      if (!isCurrentAttachment()) return;
       resizeObserver.disconnect();
       resizeObserver.observe(container);
       for (const child of Array.from(container.children)) {
@@ -122,6 +135,7 @@ export function useOverflowItems({
       }
     };
     const mutationObserver = new MutationObserver(() => {
+      if (!isCurrentAttachment()) return;
       observeChildren();
       scheduleRecalculate();
     });
@@ -132,20 +146,18 @@ export function useOverflowItems({
       characterData: true,
       subtree: true,
     });
+    recalculate();
 
     return () => {
+      active = false;
       resizeObserver.disconnect();
       mutationObserver.disconnect();
-      if (frameRef.current != null) {
-        cancelAnimationFrame(frameRef.current);
-        frameRef.current = null;
+      if (frame != null) {
+        cancelAnimationFrame(frame);
+        frame = null;
       }
     };
-  }, [scheduleRecalculate]);
-
-  useLayoutEffect(() => {
-    onRecalculate();
-  }, [onRecalculate]);
+  }, [container, safeItemCount]);
 
   useLayoutEffect(() => {
     if (visibleCount === lastNotifiedCountRef.current) return;

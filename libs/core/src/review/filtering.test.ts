@@ -44,7 +44,7 @@ describe("filterIssuesBySeverity", () => {
     ]);
   });
 
-  it("filters to only matching severity", () => {
+  it("includes High exactly and excludes Blocker", () => {
     const filter = new Set<ReviewSeverity>(["high"]);
     expect(issueSummary(filterIssuesBySeverity(issues, filter))).toEqual([
       { id: "high-1", severity: "high" },
@@ -68,15 +68,14 @@ describe("filterIssuesBySeverity", () => {
     expect(result).toEqual([]);
   });
 
-  it("returns union of issues when multiple severities are selected", () => {
-    const filter = new Set<ReviewSeverity>(["blocker", "high"]);
+  it("returns the exact non-contiguous union of selected severities", () => {
+    const filter = new Set<ReviewSeverity>(["blocker", "low"]);
 
     const result = filterIssuesBySeverity(issues, filter);
 
     expect(issueSummary(result)).toEqual([
       { id: "blocker-1", severity: "blocker" },
-      { id: "high-1", severity: "high" },
-      { id: "high-2", severity: "high" },
+      { id: "low-1", severity: "low" },
     ]);
   });
 });

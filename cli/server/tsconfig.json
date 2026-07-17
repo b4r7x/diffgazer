@@ -5,5 +5,12 @@
     "rootDir": "src"
   },
   "include": ["src"],
-  "exclude": ["**/*.test.ts", "src/testing", "node_modules", "dist"]
+  "exclude": [
+    "**/*.test.ts",
+    "src/testing",
+    "src/shared/lib/ai/models-dev-sample.ts",
+    "src/shared/lib/testing",
+    "node_modules",
+    "dist"
+  ]
 }

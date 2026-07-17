@@ -82,16 +82,22 @@ export function SearchInput({
 }: SearchInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const composedRef = useComposedRefs(inputRef, ref);
-  const [current, setValue] = useControllableState({
+  const [current, setValue, , resetValue] = useControllableState({
     value,
     defaultValue: defaultValue ?? "",
     onChange,
   });
-  useFormReset(inputRef, defaultValue ?? "", setValue, value === undefined);
+  const invalidatePendingReset = useFormReset(
+    inputRef,
+    defaultValue ?? "",
+    resetValue,
+    value === undefined,
+  );
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     onKeyDown?.(e);
     if (e.defaultPrevented) return;
+    if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
 
     if (e.key === "Escape") {
       // Only consume Escape when it does something: clear a non-empty value, or
@@ -99,6 +105,7 @@ export function SearchInput({
       // native search clear and a wrapping <dialog> cancel still work.
       if (current.length > 0) {
         e.preventDefault();
+        invalidatePendingReset();
         setValue("");
       } else if (onEscape) {
         e.preventDefault();
@@ -121,7 +128,10 @@ export function SearchInput({
         data-slot="search-input-control"
         type="search"
         value={current}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => {
+          invalidatePendingReset();
+          setValue(e.target.value);
+        }}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         aria-label={ariaLabel ?? placeholder}

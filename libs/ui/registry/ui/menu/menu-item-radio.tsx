@@ -2,8 +2,6 @@
 
 import {
   type ComponentPropsWithRef,
-  type FocusEvent,
-  type MouseEvent,
   type ReactNode,
   type Ref,
   useId,
@@ -15,6 +13,7 @@ import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
 import { useMenuContext } from "./menu-context";
 import { getItemState, menuItemBase, menuItemIndicator, menuItemLabel } from "./menu-item-variants";
+import { useMenuItemInteractions } from "./use-menu-item-interactions";
 
 const RADIO_SELECTED = "(*)";
 const RADIO_UNSELECTED = "( )";
@@ -27,8 +26,6 @@ export interface MenuItemRadioProps
   > {
   /** Stable identifier for the radio item. */
   id: string;
-  /** Form-submission value for the radio item. */
-  value: string;
   /** Disables the radio item. */
   disabled?: boolean;
   /** Radio item label. */
@@ -40,7 +37,6 @@ export interface MenuItemRadioProps
 /** Radio-style selectable item. */
 export function MenuItemRadio({
   id,
-  value,
   disabled = false,
   children,
   className,
@@ -66,23 +62,15 @@ export function MenuItemRadio({
     return () => unregisterItem(registrationId);
   }, [registerItem, unregisterItem, registrationId, id, disabled]);
 
-  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
-    onClick?.(event);
-    if (event.defaultPrevented || disabled) return;
-    activate(id);
-  };
-
-  const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
-    onFocus?.(event);
-    if (event.defaultPrevented || disabled) return;
-    highlight(id);
-  };
-
-  const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {
-    onMouseDown?.(event);
-    if (event.defaultPrevented) return;
-    if (disabled) event.preventDefault();
-  };
+  const { handleClick, handleFocus, handleMouseDown } = useMenuItemInteractions({
+    id,
+    disabled,
+    activate,
+    highlight,
+    onClick,
+    onFocus,
+    onMouseDown,
+  });
 
   const state = getItemState({ disabled, isFocused, isSelected });
 

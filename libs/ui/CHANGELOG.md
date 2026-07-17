@@ -10,10 +10,19 @@
   the same transitive dependency set.
 
   Additions:
-  - New public primitive `FloatingPanel` exported from `@diffgazer/ui` with
-    `useFloatingPanelContext()` for descendants that need positioning state
-    (`positioned`, `side`, `align`). Includes `FloatingPanelProps` and
-    `FloatingPanelContextValue` types.
+  - New public primitive `FloatingPanel` exported from
+    `@diffgazer/ui/components/floating-panel` with `useFloatingPanelContext()` for descendants
+    that need positioning state (`positioned`, `side`, `align`). The same subpath exports the
+    `FloatingPanelProps` and `FloatingPanelContextValue` types.
+
+    ```tsx
+    import {
+      FloatingPanel,
+      useFloatingPanelContext,
+      type FloatingPanelContextValue,
+      type FloatingPanelProps,
+    } from "@diffgazer/ui/components/floating-panel"
+    ```
   - New public CSS variables on the `.ui-floating-panel` cascade:
     `--ui-floating-z`, `--ui-content-enter-from-{top|bottom|left|right}`,
     `--ui-content-exit-to-{top|bottom|left|right}`,
@@ -36,7 +45,7 @@
     `prefers-reduced-motion: reduce`, all eight `--ui-content-{enter-from,exit-to}-*`
     tokens collapse to the fade-only keyframes. Per-instance overrides win.
 
-- 6416350: Raise `@diffgazer/ui`'s `@diffgazer/keys` peer floor to `>=0.1.1` so package
+- 6416350: Raise `@diffgazer/ui`'s `@diffgazer/keys` peer floor to `>=0.2.0` so package
   consumers receive the navigation API used by the current UI primitives.
 - 6416350: Rename the decorated text input wrapper from `InputField` to `InputGroup`, and
   add a separate `Field` primitive for label/control/description/error wiring.

@@ -4,6 +4,7 @@ import { TuiFaultPanel } from "@/components/layout/tui-fault-panel";
 export interface NotFoundStateProps {
   title: string;
   description: string;
+  actionLabel: string;
   primaryAction: ReactNode;
   secondaryAction?: ReactNode;
 }
@@ -11,6 +12,7 @@ export interface NotFoundStateProps {
 export function NotFoundState({
   title,
   description,
+  actionLabel,
   primaryAction,
   secondaryAction,
 }: NotFoundStateProps) {
@@ -20,6 +22,7 @@ export function NotFoundState({
       statusValue="NOT_FOUND"
       title={title}
       description={description}
+      actionLabel={actionLabel}
       primaryAction={primaryAction}
       secondaryAction={secondaryAction}
     />

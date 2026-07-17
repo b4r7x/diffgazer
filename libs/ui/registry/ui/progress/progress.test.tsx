@@ -36,6 +36,21 @@ describe("Progress", () => {
     expect(bar).toHaveAttribute("aria-valuemax", "10");
   });
 
+  it.each([
+    0,
+    -1,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    Number.NEGATIVE_INFINITY,
+  ])("normalizes invalid max %s to the default maximum", (max) => {
+    render(<Progress value={25} max={max} aria-label="Progress" />);
+
+    const bar = screen.getByRole("progressbar");
+    expect(bar).toHaveAttribute("aria-valuemax", "100");
+    expect(bar).toHaveAttribute("aria-valuenow", "25");
+    expect(bar.firstElementChild).toHaveStyle({ width: "25%" });
+  });
+
   it("supports aria-labelledby", () => {
     render(
       <>

@@ -57,6 +57,8 @@ export function initFindings(
 
   const last = demoFindings.length - 1;
   let current = 0;
+  const intro = new AbortController();
+  scope.addCleanup(() => intro.abort());
   const isDisposed = (): boolean => !scope.active();
 
   function renderDetail(index: number): void {
@@ -112,9 +114,14 @@ export function initFindings(
     renderDetail(index);
   }
 
+  function select(index: number): void {
+    intro.abort();
+    highlight(index);
+  }
+
   highlight(0);
   for (const row of rows) {
-    row.addEventListener("click", () => highlight(Number(row.dataset.idx)), {
+    row.addEventListener("click", () => select(Number(row.dataset.idx)), {
       signal: scope.signal,
     });
     row.addEventListener(
@@ -134,7 +141,7 @@ export function initFindings(
           if (event.key === "End") return last;
           return event.key === "ArrowDown" ? Math.min(last, current + 1) : Math.max(0, current - 1);
         })();
-        highlight(next);
+        select(next);
         rows[next]?.focus();
       },
       { signal: scope.signal },
@@ -144,6 +151,7 @@ export function initFindings(
   document.addEventListener(
     "keydown",
     (event) => {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
       if (event.key !== "j" && event.key !== "k") return;
       const target = event.target;
       const withinWidget = target instanceof Element && panel.contains(target);
@@ -151,7 +159,7 @@ export function initFindings(
       const rect = panel.getBoundingClientRect();
       if (rect.bottom < 0 || rect.top > innerHeight) return;
       const next = event.key === "j" ? Math.min(last, current + 1) : Math.max(0, current - 1);
-      highlight(next);
+      select(next);
       if (withinWidget) rows[next]?.focus();
       event.preventDefault();
     },
@@ -163,12 +171,12 @@ export function initFindings(
   const cleanupObserver = observeOnce(
     panel,
     async () => {
-      if (!(await sleep(800, scope.signal)) || isDisposed()) return;
+      if (!(await sleep(800, intro.signal)) || isDisposed()) return;
       for (let i = 1; i <= 2; i++) {
         highlight(i);
-        if (!(await sleep(850, scope.signal)) || isDisposed()) return;
+        if (!(await sleep(850, intro.signal)) || isDisposed()) return;
       }
-      if (!(await sleep(500, scope.signal)) || isDisposed()) return;
+      if (!(await sleep(500, intro.signal)) || isDisposed()) return;
       highlight(0);
     },
     0.45,

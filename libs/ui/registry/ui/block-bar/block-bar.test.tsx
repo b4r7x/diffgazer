@@ -1,10 +1,24 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
-import { BlockBar } from "./index";
-
-// axe skipped: meter role semantics (label/value/min/max) are asserted directly via aria-* attribute checks.
+import { describe, expect, expectTypeOf, it } from "vitest";
+import { blockBarDoc } from "../../component-docs/block-bar";
+import { BlockBar, type BlockBarProps } from "./index";
 
 describe("BlockBar", () => {
+  it("defaults an omitted value to zero in runtime, types, and public metadata", () => {
+    expectTypeOf<{ max: number }>().toMatchTypeOf<BlockBarProps>();
+    expectTypeOf<BlockBarProps["value"]>().toEqualTypeOf<number | undefined>();
+
+    render(<BlockBar label="Empty queue" max={10} barWidth={5} />);
+
+    const meter = screen.getByRole("meter", { name: "Empty queue" });
+    expect(meter).toHaveAttribute("aria-valuenow", "0");
+    expect(meter).toHaveAttribute("aria-valuetext", "0 of 10");
+    expect(blockBarDoc.props?.BlockBar?.value).toMatchObject({
+      required: false,
+      defaultValue: "0",
+    });
+  });
+
   it("clamps invalid root values before rendering meter state", () => {
     expect(() =>
       render(
@@ -53,6 +67,58 @@ describe("BlockBar", () => {
 
     const meter = screen.getByRole("meter", { name: "Segments" });
     expect(meter).toHaveAttribute("aria-valuenow", "4");
+  });
+
+  it("allocates equal fractional segments across the full bar width", () => {
+    render(
+      <BlockBar
+        label="Equal thirds"
+        max={3}
+        barWidth={10}
+        segments={[
+          { value: 1, char: "a" },
+          { value: 1, char: "b" },
+          { value: 1, char: "c" },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("aaa")).toBeInTheDocument();
+    expect(screen.getByText("bbbb")).toBeInTheDocument();
+    expect(screen.getByText("ccc")).toBeInTheDocument();
+  });
+
+  it("allocates compound fractional segments without clipping the later segment", () => {
+    render(
+      <BlockBar label="Compound fractions" max={4} barWidth={7}>
+        <BlockBar.Segment value={1} char="a" />
+        <BlockBar.Segment value={1} char="b" />
+        <BlockBar.Segment value={2} char="c" />
+      </BlockBar>,
+    );
+
+    expect(screen.getByText("aa")).toBeInTheDocument();
+    expect(screen.getByText("bb")).toBeInTheDocument();
+    expect(screen.getByText("ccc")).toBeInTheDocument();
+    expect(screen.queryByText("cccc")).not.toBeInTheDocument();
+  });
+
+  it("caps overfull segment allocation at the bar width", () => {
+    render(
+      <BlockBar
+        label="Overfull"
+        max={10}
+        barWidth={5}
+        segments={[
+          { value: 8, char: "a" },
+          { value: 8, char: "b" },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("aaaa")).toBeInTheDocument();
+    expect(screen.getByText("b")).toBeInTheDocument();
+    expect(screen.queryByText("bbbb")).not.toBeInTheDocument();
   });
 
   it("keeps the accessible label when custom segment children are provided", () => {

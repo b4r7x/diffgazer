@@ -1,17 +1,148 @@
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { type ChildProcess, spawn } from "node:child_process";
+import { access, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
+import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 let tempHome: string;
 
+const fsHooks = vi.hoisted(() => ({
+  writeJsonFileHook: null as
+    | ((filePath: string, data: unknown, mode?: number) => Promise<void>)
+    | null,
+}));
+
+vi.mock("../fs.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../fs.js")>();
+  return {
+    ...real,
+    writeJsonFile: (filePath: string, data: unknown, mode?: number) =>
+      fsHooks.writeJsonFileHook
+        ? fsHooks.writeJsonFileHook(filePath, data, mode)
+        : real.writeJsonFile(filePath, data, mode),
+  };
+});
+
+const persistenceModuleUrl = new URL("./persistence.ts", import.meta.url).href;
+
+const persistenceWorker = `
+import { access, writeFile } from "node:fs/promises";
+import { setTimeout as delay } from "node:timers/promises";
+const persistence = await import(process.env.PERSISTENCE_MODULE_URL);
+const id = process.env.WORKER_ID;
+let operation;
+if (process.env.MODE === "config") {
+  const previous = persistence.loadConfig();
+  const settings = id === "a"
+    ? { ...previous.settings, theme: "dark" }
+    : { ...previous.settings, severityThreshold: "high" };
+  operation = () => persistence.persistConfigMergedAsync(
+    { ...previous, settings },
+    previous.providers,
+    previous.settings,
+  );
+} else if (process.env.MODE === "secrets") {
+  const provider = id === "a" ? "gemini" : "groq";
+  operation = () => persistence.persistSecretsAsync({ providers: { [provider]: id + "-key" } });
+} else {
+  const projectId = "project-" + id;
+  operation = () => persistence.persistTrustRecordAsync({
+    projectId,
+    repoRoot: "/projects/" + id,
+    trustedAt: "2026-01-01T00:00:00.000Z",
+    capabilities: { readFiles: true, runCommands: false },
+    trustMode: "persistent",
+  });
+}
+await writeFile(process.env.READY_PATH, "ready");
+while (true) {
+  try {
+    await access(process.env.START_PATH);
+    break;
+  } catch {
+    await delay(5);
+  }
+}
+await operation();
+`;
+
+const waitForPaths = async (filePaths: string[]): Promise<void> => {
+  const deadline = Date.now() + 5_000;
+  while (true) {
+    try {
+      await Promise.all(filePaths.map((filePath) => access(filePath)));
+      return;
+    } catch {
+      if (Date.now() >= deadline) throw new Error("Timed out waiting for persistence workers");
+      await delay(10);
+    }
+  }
+};
+
+const waitForExit = (child: ChildProcess): Promise<{ code: number | null; stderr: string }> =>
+  new Promise((resolve, reject) => {
+    let stderr = "";
+    child.stderr?.setEncoding("utf8");
+    child.stderr?.on("data", (chunk: string) => {
+      stderr += chunk;
+    });
+    child.once("error", reject);
+    child.once("close", (code) => resolve({ code, stderr }));
+  });
+
+const runProcessRace = async (mode: "config" | "secrets" | "trust"): Promise<void> => {
+  const barrier = path.join(tempHome, `barrier-${mode}`);
+  await mkdir(barrier);
+  const startPath = path.join(barrier, "start");
+  const children = ["a", "b"].map((id) =>
+    spawn(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "--eval", persistenceWorker],
+      {
+        env: {
+          ...process.env,
+          DIFFGAZER_HOME: tempHome,
+          MODE: mode,
+          PERSISTENCE_MODULE_URL: persistenceModuleUrl,
+          READY_PATH: path.join(barrier, `${id}.ready`),
+          START_PATH: startPath,
+          WORKER_ID: id,
+        },
+        stdio: ["ignore", "ignore", "pipe"],
+      },
+    ),
+  );
+  const exits = children.map(waitForExit);
+
+  try {
+    await waitForPaths(
+      children.map((_, index) => path.join(barrier, `${index === 0 ? "a" : "b"}.ready`)),
+    );
+    await writeFile(startPath, "start");
+    const results = await Promise.all(exits);
+    expect(results).toEqual([
+      { code: 0, stderr: "" },
+      { code: 0, stderr: "" },
+    ]);
+  } finally {
+    for (const child of children) {
+      if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+    }
+    await Promise.allSettled(exits);
+  }
+};
+
 beforeEach(async () => {
   tempHome = await mkdtemp(path.join(tmpdir(), "diffgazer-state-"));
   process.env.DIFFGAZER_HOME = tempHome;
+  fsHooks.writeJsonFileHook = null;
   vi.resetModules();
 });
 
 afterEach(async () => {
+  fsHooks.writeJsonFileHook = null;
   delete process.env.DIFFGAZER_HOME;
   await rm(tempHome, { recursive: true, force: true });
 });
@@ -65,6 +196,34 @@ describe("config state", () => {
     const { loadSecrets } = await loadState();
 
     expect(loadSecrets()).toEqual({ providers: { gemini: "key-123" } });
+  });
+
+  it("keeps empty literals opaque while preserving whitespace around a nonempty literal", async () => {
+    await writeJson("secrets.json", {
+      providers: {
+        gemini: "",
+        groq: "   ",
+        openrouter: "  key-with-padding  ",
+      },
+    });
+    const { loadSecrets, persistSecrets } = await loadState();
+
+    const secrets = loadSecrets();
+
+    expect(secrets).toEqual({
+      providers: { openrouter: "  key-with-padding  " },
+      unknownSecrets: { gemini: "", groq: "   " },
+    });
+    persistSecrets(secrets);
+    await expect(
+      readJson<{ providers: Record<string, unknown> }>(path.join(tempHome, "secrets.json")),
+    ).resolves.toEqual({
+      providers: {
+        gemini: "",
+        groq: "   ",
+        openrouter: "  key-with-padding  ",
+      },
+    });
   });
 
   it("keeps valid settings when the providers shape is malformed without quarantining", async () => {
@@ -140,6 +299,50 @@ describe("config state", () => {
     expect(persisted.providers.gemini).toBe("real-key");
   });
 
+  it("loads only provider-owned env refs and preserves foreign records opaquely", async () => {
+    const foreignOpenRouterRef = { kind: "env", varName: "AWS_SECRET_ACCESS_KEY" };
+    const futureProviderRef = { kind: "env", varName: "FUTURE_PROVIDER_API_KEY" };
+    const futureEnvRef = {
+      kind: "env",
+      varName: "GROQ_API_KEY",
+      source: "future-secret-store",
+    };
+    await writeJson("secrets.json", {
+      providers: {
+        gemini: { kind: "env", varName: "GOOGLE_API_KEY" },
+        groq: futureEnvRef,
+        openrouter: foreignOpenRouterRef,
+        "future-provider": futureProviderRef,
+      },
+    });
+    const { loadSecrets, persistSecrets } = await loadState();
+
+    const secrets = loadSecrets();
+
+    expect(secrets).toEqual({
+      providers: {
+        gemini: { kind: "env", varName: "GOOGLE_API_KEY" },
+      },
+      unknownSecrets: {
+        groq: futureEnvRef,
+        openrouter: foreignOpenRouterRef,
+        "future-provider": futureProviderRef,
+      },
+    });
+
+    persistSecrets(secrets);
+    await expect(
+      readJson<{ providers: Record<string, unknown> }>(path.join(tempHome, "secrets.json")),
+    ).resolves.toEqual({
+      providers: {
+        groq: futureEnvRef,
+        openrouter: foreignOpenRouterRef,
+        "future-provider": futureProviderRef,
+        gemini: { kind: "env", varName: "GOOGLE_API_KEY" },
+      },
+    });
+  });
+
   it("quarantines a JSON-corrupt config.json and returns defaults", async () => {
     await writeFile(path.join(tempHome, "config.json"), "{not json", "utf-8");
     const { loadConfig, DEFAULT_PROVIDERS, DEFAULT_SETTINGS } = await loadState();
@@ -162,7 +365,100 @@ describe("config state", () => {
     expect(files.some((file) => /^secrets\.json\..+\.backup$/.test(file))).toBe(true);
   });
 
-  it("merges config.json at per-provider field granularity so a concurrent change to a known provider survives persist", async () => {
+  it.each([
+    { fileName: "config.json", invalidRoot: null, label: "null config root" },
+    { fileName: "config.json", invalidRoot: ["invalid"], label: "array config root" },
+    { fileName: "secrets.json", invalidRoot: null, label: "null secrets root" },
+    { fileName: "secrets.json", invalidRoot: ["invalid"], label: "array secrets root" },
+  ])("quarantines a $label and preserves its backup after a normal persist", async ({
+    fileName,
+    invalidRoot,
+  }) => {
+    await writeJson(fileName, invalidRoot);
+    const filePath = path.join(tempHome, fileName);
+    const original = await readFile(filePath, "utf-8");
+    const persistence = await loadState();
+
+    if (fileName === "config.json") {
+      const state = persistence.loadConfig();
+      persistence.persistConfig(state);
+    } else {
+      const state = persistence.loadSecrets();
+      persistence.persistSecrets(state);
+    }
+
+    const backupName = (await readdir(tempHome)).find((candidate) =>
+      new RegExp(`^${fileName.replace(".", "\\.")}\\..+\\.backup$`).test(candidate),
+    );
+    expect(backupName).toBeDefined();
+    if (!backupName) return;
+    await expect(readFile(path.join(tempHome, backupName), "utf-8")).resolves.toBe(original);
+    await expect(readFile(filePath, "utf-8")).resolves.not.toBe(original);
+  });
+
+  it("rejects a transaction writer used after its callback settles without changing config", async () => {
+    const { loadConfig, withConfigFileTransaction, DEFAULT_SETTINGS } = await loadState();
+    await writeJson("config.json", {
+      settings: DEFAULT_SETTINGS,
+      providers: loadConfig().providers,
+    });
+    const previous = loadConfig();
+    const before = await readFile(path.join(tempHome, "config.json"), "utf8");
+    const escapedWriter = await withConfigFileTransaction(async (persistMerged) => persistMerged);
+
+    await expect(
+      escapedWriter(
+        { ...previous, settings: { ...previous.settings, theme: "dark" } },
+        previous.providers,
+        previous.settings,
+      ),
+    ).rejects.toThrow("Config transaction writer lease expired");
+    await expect(readFile(path.join(tempHome, "config.json"), "utf8")).resolves.toBe(before);
+  });
+
+  it("keeps the config lock until an unawaited in-flight writer settles", async () => {
+    const { loadConfig, withConfigFileTransaction, DEFAULT_SETTINGS } = await loadState();
+    await writeJson("config.json", {
+      settings: DEFAULT_SETTINGS,
+      providers: loadConfig().providers,
+    });
+    const previous = loadConfig();
+    const writeStarted = createDeferred<void>();
+    const releaseWrite = createDeferred<void>();
+    const contenderEntered = createDeferred<void>();
+    const realFs = await vi.importActual<typeof import("../fs.js")>("../fs.js");
+    fsHooks.writeJsonFileHook = async (filePath, data, mode) => {
+      if (filePath.endsWith("config.json")) {
+        writeStarted.resolve(undefined);
+        await releaseWrite.promise;
+      }
+      await realFs.writeJsonFile(filePath, data, mode);
+    };
+
+    let unawaitedWrite = Promise.resolve<unknown>(undefined);
+    const firstTransaction = withConfigFileTransaction(async (persistMerged) => {
+      unawaitedWrite = persistMerged(
+        { ...previous, settings: { ...previous.settings, theme: "dark" } },
+        previous.providers,
+        previous.settings,
+      );
+    });
+    await writeStarted.promise;
+
+    const contender = withConfigFileTransaction(async () => {
+      contenderEntered.resolve(undefined);
+    });
+    const earlyOutcome = await Promise.race([
+      contenderEntered.promise.then(() => "entered" as const),
+      delay(100).then(() => "blocked" as const),
+    ]);
+
+    releaseWrite.resolve(undefined);
+    await Promise.all([firstTransaction, unawaitedWrite, contender]);
+    expect(earlyOutcome).toBe("blocked");
+  });
+
+  it("treats a changed active provider as one aggregate choice during merge", async () => {
     const { persistConfigMergedAsync, loadConfig, DEFAULT_SETTINGS } = await loadState();
     // Both instances carry all known provider ids (every load materializes them).
     // This instance only changed gemini; its openrouter entry is the pre-mutation
@@ -194,16 +490,203 @@ describe("config state", () => {
     const persisted = await readJson<{
       providers: Array<{ provider: string; isActive: boolean; model?: string }>;
     }>(path.join(tempHome, "config.json"));
-    // The concurrent openrouter activation — a KNOWN provider this instance did
-    // not change — survives instead of being overwritten by the stale array.
+    // The model written by the other instance survives, but its stale active bit
+    // yields to this transaction's aggregate provider selection.
     expect(persisted.providers.find((p) => p.provider === "openrouter")).toMatchObject({
-      isActive: true,
+      isActive: false,
       model: "or/model",
     });
-    // This instance's gemini change still lands.
     expect(persisted.providers.find((p) => p.provider === "gemini")).toMatchObject({
       isActive: true,
     });
+    expect(persisted.providers.filter((provider) => provider.isActive)).toHaveLength(1);
+  });
+
+  it("keeps a concurrent active-provider choice while merging an unrelated model update", async () => {
+    const { persistConfigMergedAsync, loadConfig, DEFAULT_SETTINGS } = await loadState();
+    await writeJson("config.json", {
+      settings: DEFAULT_SETTINGS,
+      providers: [
+        { provider: "gemini", hasApiKey: true, isActive: true, model: "old-model" },
+        { provider: "openrouter", hasApiKey: true, isActive: false, model: "or/model" },
+      ],
+    });
+    const previousProviders = loadConfig().providers;
+    const inMemory = {
+      settings: DEFAULT_SETTINGS,
+      providers: previousProviders.map((provider) =>
+        provider.provider === "gemini" ? { ...provider, model: "new-model" } : { ...provider },
+      ),
+    };
+
+    await writeJson("config.json", {
+      settings: DEFAULT_SETTINGS,
+      providers: previousProviders.map((provider) => ({
+        ...provider,
+        isActive: provider.provider === "openrouter",
+      })),
+    });
+
+    await persistConfigMergedAsync(inMemory, previousProviders, DEFAULT_SETTINGS);
+
+    const persisted = await readJson<{
+      providers: Array<{ provider: string; isActive: boolean; model?: string }>;
+    }>(path.join(tempHome, "config.json"));
+    expect(persisted.providers.find((provider) => provider.provider === "gemini")).toMatchObject({
+      isActive: false,
+      model: "new-model",
+    });
+    expect(persisted.providers.filter((provider) => provider.isActive)).toEqual([
+      expect.objectContaining({ provider: "openrouter" }),
+    ]);
+  });
+
+  it("repairs multiple active providers while loading legacy config", async () => {
+    const { loadConfig, DEFAULT_SETTINGS } = await loadState();
+    await writeJson("config.json", {
+      settings: DEFAULT_SETTINGS,
+      providers: [
+        { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-model" },
+        { provider: "openrouter", hasApiKey: true, isActive: true, model: "openrouter-model" },
+      ],
+    });
+
+    const loaded = loadConfig();
+
+    expect(loaded.providers.filter((provider) => provider.isActive)).toHaveLength(1);
+    expect(loaded.providers.find((provider) => provider.isActive)?.provider).toBe("gemini");
+  });
+
+  it("normalizes opaque and known active rows without losing opaque fields", async () => {
+    const { loadConfig, persistConfig, DEFAULT_SETTINGS } = await loadState();
+    await writeJson("config.json", {
+      settings: DEFAULT_SETTINGS,
+      providers: [
+        { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-model" },
+        {
+          provider: "future-provider",
+          hasApiKey: true,
+          isActive: true,
+          model: "future-model",
+          futureMetadata: { revision: 2 },
+        },
+      ],
+    });
+
+    const loaded = loadConfig();
+    expect(loaded.unknownProviders).toEqual([
+      {
+        provider: "future-provider",
+        hasApiKey: true,
+        isActive: false,
+        model: "future-model",
+        futureMetadata: { revision: 2 },
+      },
+    ]);
+    persistConfig(loaded);
+
+    const persisted = await readJson<{
+      providers: Array<Record<string, unknown> & { isActive?: boolean }>;
+    }>(path.join(tempHome, "config.json"));
+    expect(persisted.providers.filter((provider) => provider.isActive)).toHaveLength(1);
+    expect(persisted.providers.find((provider) => provider.provider === "future-provider")).toEqual(
+      {
+        provider: "future-provider",
+        hasApiKey: true,
+        isActive: false,
+        model: "future-model",
+        futureMetadata: { revision: 2 },
+      },
+    );
+  });
+
+  it("deactivates an opaque selection when this transaction activates a known provider", async () => {
+    const { loadConfig, persistConfigMergedAsync, DEFAULT_SETTINGS } = await loadState();
+    await writeJson("config.json", {
+      settings: DEFAULT_SETTINGS,
+      providers: [
+        {
+          provider: "future-provider",
+          hasApiKey: true,
+          isActive: true,
+          futureMetadata: { revision: 2 },
+        },
+      ],
+    });
+    const previous = loadConfig();
+    const state = {
+      ...previous,
+      providers: previous.providers.map((provider) => ({
+        ...provider,
+        isActive: provider.provider === "gemini",
+      })),
+    };
+
+    await persistConfigMergedAsync(state, previous.providers, previous.settings);
+
+    const persisted = await readJson<{
+      providers: Array<Record<string, unknown> & { isActive?: boolean }>;
+    }>(path.join(tempHome, "config.json"));
+    expect(persisted.providers.filter((provider) => provider.isActive)).toEqual([
+      expect.objectContaining({ provider: "gemini" }),
+    ]);
+    expect(persisted.providers.find((provider) => provider.provider === "future-provider")).toEqual(
+      {
+        provider: "future-provider",
+        hasApiKey: true,
+        isActive: false,
+        futureMetadata: { revision: 2 },
+      },
+    );
+  });
+
+  it("refuses to persist active known and opaque providers together", async () => {
+    const { persistConfig, DEFAULT_SETTINGS } = await loadState();
+
+    expect(() =>
+      persistConfig({
+        settings: DEFAULT_SETTINGS,
+        providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
+        unknownProviders: [
+          { provider: "future-provider", hasApiKey: true, isActive: true, futureField: 1 },
+        ],
+      }),
+    ).toThrow("Config cannot persist more than one active provider");
+  });
+
+  it("canonicalizes default lenses at the persistence boundary and rejects an empty list", async () => {
+    const { persistConfig, DEFAULT_SETTINGS } = await loadState();
+    const providers = [{ provider: "gemini" as const, hasApiKey: false, isActive: false }];
+
+    persistConfig({
+      settings: {
+        ...DEFAULT_SETTINGS,
+        defaultLenses: ["security", "correctness", "security", "tests", "correctness"],
+      },
+      providers,
+    });
+
+    const persisted = await readJson<{ settings: { defaultLenses: string[] } }>(
+      path.join(tempHome, "config.json"),
+    );
+    expect(persisted.settings.defaultLenses).toEqual(["security", "correctness", "tests"]);
+
+    expect(() =>
+      persistConfig({
+        settings: { ...DEFAULT_SETTINGS, defaultLenses: [] },
+        providers,
+      }),
+    ).toThrow();
+  });
+
+  it("repairs an empty persisted default lens list with the non-empty default", async () => {
+    const { loadConfig, DEFAULT_SETTINGS } = await loadState();
+    await writeJson("config.json", {
+      settings: { ...DEFAULT_SETTINGS, defaultLenses: [] },
+      providers: [],
+    });
+
+    expect(loadConfig().settings.defaultLenses).toEqual(DEFAULT_SETTINGS.defaultLenses);
   });
 
   it("merges config.json settings at per-field granularity so a concurrent change to a different settings field survives persist", async () => {
@@ -262,6 +745,27 @@ describe("config state", () => {
       path.join(tempHome, "trust.json"),
     );
     expect(Object.keys(persisted.projects).sort()).toEqual(["proj-external", "proj-mine"]);
+  });
+
+  it("preserves disjoint config, secrets, and trust writes from independent processes", async () => {
+    await runProcessRace("config");
+    await runProcessRace("secrets");
+    await runProcessRace("trust");
+
+    const config = await readJson<{
+      settings: { theme: string; severityThreshold: string };
+    }>(path.join(tempHome, "config.json"));
+    expect(config.settings).toMatchObject({ theme: "dark", severityThreshold: "high" });
+
+    const secrets = await readJson<{ providers: Record<string, string> }>(
+      path.join(tempHome, "secrets.json"),
+    );
+    expect(secrets.providers).toEqual({ gemini: "a-key", groq: "b-key" });
+
+    const trust = await readJson<{ projects: Record<string, unknown> }>(
+      path.join(tempHome, "trust.json"),
+    );
+    expect(Object.keys(trust.projects).sort()).toEqual(["project-a", "project-b"]);
   });
 
   it("validates trust records and drops invalid entries while preserving valid ones", async () => {
@@ -356,7 +860,10 @@ describe("config state", () => {
 
     const moves: Array<[string, string]> = [];
     const result = readProjectFile(movedRoot, {
-      onMove: (oldRoot, newRoot) => moves.push([oldRoot, newRoot]),
+      onMove: async (oldRoot, newRoot) => {
+        moves.push([oldRoot, newRoot]);
+        return true;
+      },
     });
 
     // projectId is preserved and repoRoot follows the move; no quarantine backup.
@@ -367,8 +874,47 @@ describe("config state", () => {
     expect(moves).toEqual([[originalRoot, movedRoot]]);
 
     // The re-pointed file is persisted so the next read matches without a move.
-    const reread = readProjectFile(movedRoot);
-    expect(reread).toMatchObject({ projectId: "stable-id", repoRoot: movedRoot });
+    await vi.waitFor(() => {
+      const reread = readProjectFile(movedRoot);
+      expect(reread).toMatchObject({ projectId: "stable-id", repoRoot: movedRoot });
+    });
+  });
+
+  it("keeps the old project root durable until a failed move callback later succeeds", async () => {
+    const { readProjectFile } = await loadState();
+    const originalRoot = path.join(tempHome, "retry-original-project");
+    const movedRoot = path.join(tempHome, "retry-moved-project");
+    const projectFilePath = path.join(movedRoot, ".diffgazer", "project.json");
+    await mkdir(path.dirname(projectFilePath), { recursive: true });
+    await writeFile(
+      projectFilePath,
+      JSON.stringify({
+        projectId: "stable-retry-id",
+        repoRoot: originalRoot,
+        createdAt: "2024-01-01T00:00:00.000Z",
+      }),
+      "utf-8",
+    );
+    let shouldComplete = false;
+    const onMove = vi.fn(async () => shouldComplete);
+
+    readProjectFile(movedRoot, { onMove });
+    await vi.waitFor(() => expect(onMove).toHaveBeenCalledOnce());
+    await new Promise((resolve) => setImmediate(resolve));
+    await expect(readJson<{ repoRoot: string }>(projectFilePath)).resolves.toMatchObject({
+      repoRoot: originalRoot,
+    });
+
+    shouldComplete = true;
+    await vi.waitFor(() => {
+      readProjectFile(movedRoot, { onMove });
+      expect(onMove).toHaveBeenCalledTimes(2);
+    });
+    await vi.waitFor(async () => {
+      await expect(readJson<{ repoRoot: string }>(projectFilePath)).resolves.toMatchObject({
+        repoRoot: movedRoot,
+      });
+    });
   });
 
   it("rejects reserved project IDs in project files and trust records", async () => {

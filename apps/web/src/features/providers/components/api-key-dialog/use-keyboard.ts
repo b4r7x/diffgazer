@@ -46,6 +46,7 @@ interface ApiKeyDialogKeyboardReturn {
   cancelHighlighted: boolean;
   confirmHighlighted: boolean;
   handleMethodKeyDown: (event: ReactKeyboardEvent, method: InputMethod) => void;
+  handleMethodCommit: (method: InputMethod) => void;
 }
 
 function getZoneForElement(element: FocusElement): FocusZone {
@@ -108,9 +109,9 @@ export function useApiKeyDialogKeyboard({
   const footerActionRow = useActionRowNavigation<readonly unknown[]>({
     enabled: open && isZone("footer"),
     actionCount: 2,
-    disabledActions: [false, !canSubmit],
+    disabledActions: [isSubmitting, !canSubmit],
     onAction: (index) => {
-      if (index === 0) onClose();
+      if (index === 0 && !isSubmitting) onClose();
       else if (index === 1 && canSubmit) onSubmit();
     },
     onNavigationBoundaryReached: (direction) => {
@@ -216,19 +217,13 @@ export function useApiKeyDialogKeyboard({
     { enabled: open && isZone("radios") },
   );
 
-  useKey(
-    "Enter",
-    () => {
-      if (effectiveFocused === "paste") {
-        setMethod("paste");
-        if (canSubmit) onSubmit("paste");
-      } else if (effectiveFocused === "env") {
-        setMethod("env");
-        if (!isSubmitting) onSubmit("env");
-      }
-    },
-    { enabled: open && isZone("radios") },
-  );
+  const handleMethodCommit = (nextMethod: InputMethod) => {
+    if (nextMethod === "paste") {
+      if (canSubmit) onSubmit("paste");
+      return;
+    }
+    if (!isSubmitting) onSubmit("env");
+  };
 
   useEffect(() => {
     if (open && zone === "input") {
@@ -267,5 +262,6 @@ export function useApiKeyDialogKeyboard({
     cancelHighlighted,
     confirmHighlighted,
     handleMethodKeyDown,
+    handleMethodCommit,
   };
 }

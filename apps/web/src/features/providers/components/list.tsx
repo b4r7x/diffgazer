@@ -143,11 +143,7 @@ export function ProviderList({
       </ToggleGroup>
 
       <div className="flex-1 overflow-y-auto scrollbar-hide">
-        {providers.length === 0 ? (
-          <EmptyState variant="inline" size="sm" live className="h-full">
-            No providers match your filters
-          </EmptyState>
-        ) : (
+        {providers.length > 0 ? (
           <NavigationList
             ref={ref}
             aria-label="Providers"
@@ -201,7 +197,15 @@ export function ProviderList({
               );
             })}
           </NavigationList>
-        )}
+        ) : null}
+        <EmptyState
+          variant="inline"
+          size="sm"
+          live
+          className={providers.length > 0 ? "sr-only" : "h-full"}
+        >
+          {providers.length === 0 ? "No providers match your filters" : null}
+        </EmptyState>
       </div>
     </div>
   );

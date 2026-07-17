@@ -8,24 +8,24 @@ Private workspace engine for building **shadcn-compatible registries**, publishi
 pnpm add @diffgazer/registry --workspace
 ```
 
-## Features
+## Public importable APIs
+
+The APIs below are exported from the package root, `@diffgazer/registry`.
 
 ### Producer side (library build scripts)
 
 - **`buildRegistryArtifacts(options)`** — Build artifacts with manifest, SHA-256 fingerprint, origin rewriting, and directory copying.
 - **`buildShadcnRegistryWithOrigin(options)`** — Run `shadcn build` with configurable registry origin.
-- **`ensurePublicRegistryReady(options)`** — Validate public registry freshness; auto-rebuild if stale.
 
 ### Consumer side (docs host)
 
-- **`syncDocsFromArtifacts(options)`** — Full sync orchestration: load artifacts (workspace or npm), copy docs/registry/styles, fingerprint caching, origin assertion.
+- **`syncDocsFromArtifacts(options)`** — Full sync orchestration: load workspace artifacts, copy docs/registry/generated data/assets, cache fingerprints, and assert origin provenance. `source.stylesDir` remains artifact/package handoff data; docs sync does not create a styles output.
 
 ### Shared utilities
 
 - **`computeInputsFingerprint(rootDir, inputs)`** — Deterministic SHA-256 fingerprint of file inputs.
 - **`validateManifest(data)`** — Zod-based artifact manifest validation.
-- **`normalizeOrigin(raw)`** / **`rewriteOriginsInDir(dir, options)`** — Registry origin URL manipulation.
-- File system helpers: `ensureExists`, `resetDir`, `collectAllFiles`, `collectJsonFiles`, `readJson`, `writeJson`.
+- **`normalizeOrigin(raw)`** — Normalize a registry origin URL.
 
 ## Usage
 
@@ -65,11 +65,10 @@ syncDocsFromArtifacts({
   docsRoot: "/path/to/docs/app",
   workspaceRoot: "/path/to/workspace",
   libraries: [
-    { id: "my-lib", packageName: "@scope/my-lib-artifacts", workspaceDir: "my-lib" },
+    { id: "my-lib", workspaceDir: "my-lib" },
   ],
   primaryLibraryId: "my-lib",
   origin: normalizeOrigin(process.env.REGISTRY_ORIGIN, { defaultOrigin: "https://example.com" }),
-  mode: process.env.DEV ? "workspace" : "package",
 });
 ```
 

@@ -2,7 +2,9 @@
 
 import {
   type AriaAttributes,
+  Children,
   type ComponentPropsWithRef,
+  isValidElement,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   type Ref,
@@ -20,9 +22,8 @@ import { useNavigation } from "@/hooks/use-navigation";
 import { isHTMLElementForContainer, mergeIds, resolveAriaInvalid } from "@/lib/aria";
 import {
   getEnabledSelectableCollectionItems,
-  getSelectableCollectionItemValue,
   resolveSelectableCollectionItem,
-  resolveSelectableCollectionItemValue,
+  useFieldsetDisabled,
   useSelectableCollection,
 } from "@/lib/selectable-collection";
 import { type SelectableVariant, selectableLabelVariants } from "@/lib/selectable-variants";
@@ -30,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";
 import type { RadioSize } from "./radio";
 import { RadioGroupContext, type RadioGroupContextValue } from "./radio-group-context";
+import { RadioGroupItem, type RadioGroupItemProps } from "./radio-group-item";
 
 /** Props for radio group root. */
 type RadioGroupRootProps = Omit<
@@ -134,6 +136,23 @@ function getRadioNavigationDirection(key: string): RadioGroupNavigationDirection
   return null;
 }
 
+function collectEnabledDirectRadioValues(children: ReactNode): string[] {
+  return Children.toArray(children).flatMap((child) => {
+    if (!isValidElement<RadioGroupItemProps>(child) || child.type !== RadioGroupItem) return [];
+    const props = child.props;
+    if (
+      props.disabled ||
+      props.hidden ||
+      props.inert ||
+      props["aria-hidden"] === true ||
+      props["aria-hidden"] === "true"
+    ) {
+      return [];
+    }
+    return [props.value];
+  });
+}
+
 /** Group root with context, selection state, and keyboard navigation. */
 export function RadioGroup<TValue extends string = string>(props: RadioGroupProps<TValue>) {
   const {
@@ -166,17 +185,29 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
     ...rootProps
   } = props;
   const containerRef = useRef<HTMLDivElement>(null);
+  const validationInputRef = useRef<HTMLInputElement>(null);
   const composedRef = useComposedRefs(containerRef, ref);
   const generatedId = useId();
   const labelId = `${generatedId}-label`;
   const hasAutoFocusedRef = useRef(false);
   const navigationEventRef = useRef<ReactKeyboardEvent<HTMLDivElement> | null>(null);
+  const fieldsetDisabled = useFieldsetDisabled(containerRef);
+  const isDisabled = disabled || fieldsetDisabled;
   const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
+  const [hasLiveRegistrations, setHasLiveRegistrations] = useState(false);
   const [requiredInvalid, setRequiredInvalid] = useState(false);
+
+  const registerLiveItem = useCallback(
+    (itemId: string, itemValue: string, itemDisabled: boolean, element: HTMLElement | null) => {
+      setHasLiveRegistrations(true);
+      registerItem(itemId, itemValue, itemDisabled, element);
+    },
+    [registerItem],
+  );
 
   // Public props narrow on TValue; internal state stays string-typed because the
   // selectable-collection layer keys items by data-value strings.
-  const [value, setValue] = useControllableState<string | undefined>({
+  const [value, setValue, , resetValue] = useControllableState<string | undefined>({
     value: controlledValue,
     controlled: "value" in props,
     defaultValue,
@@ -190,16 +221,6 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
       onChange?.(next as TValue);
     },
   });
-  useFormReset(
-    containerRef,
-    defaultValue,
-    (value) => {
-      setRequiredInvalid(false);
-      setValue(value);
-    },
-    !("value" in props),
-  );
-
   const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({
     value: controlledHighlighted,
     controlled: "highlighted" in props,
@@ -207,25 +228,64 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
     onChange: onHighlightChange as ((value: string | null) => void) | undefined,
   });
 
-  const enabledItems = getEnabledSelectableCollectionItems(items, disabled);
-  const validHighlightedValue = getSelectableCollectionItemValue(enabledItems, highlightedValue);
-  const validSelectedValue = getSelectableCollectionItemValue(enabledItems, value);
+  const enabledItems = getEnabledSelectableCollectionItems(items, isDisabled);
+  const seededEnabledValues = isDisabled ? [] : collectEnabledDirectRadioValues(children);
+  const enabledValues = hasLiveRegistrations
+    ? enabledItems.map((item) => item.value)
+    : seededEnabledValues;
+  const effectiveRequired = !!required && enabledValues.length > 0;
+  const validHighlightedValue =
+    highlightedValue !== null && enabledValues.includes(highlightedValue) ? highlightedValue : null;
+  const validSelectedValue = value !== undefined && enabledValues.includes(value) ? value : null;
+  const isValueControlled = "value" in props;
+  const controlledFormReset = isValueControlled
+    ? {
+        syncResetBaseline: () => {
+          for (const input of containerRef.current?.querySelectorAll<HTMLInputElement>(
+            'input[data-slot="radio-form-mirror"]',
+          ) ?? []) {
+            const item = input.nextElementSibling;
+            if (!item?.hasAttribute("data-diffgazer-radio-group-item")) continue;
+            if (item.closest('[data-slot="radio-group"]') !== containerRef.current) continue;
+            input.defaultChecked = input.value === value;
+          }
+          const validation = validationInputRef.current;
+          if (validation) validation.defaultChecked = validSelectedValue !== null;
+        },
+        onReset: () => setRequiredInvalid(false),
+      }
+    : undefined;
+  const invalidatePendingReset = useFormReset(
+    containerRef,
+    defaultValue,
+    (value) => {
+      setRequiredInvalid(false);
+      resetValue(value);
+    },
+    !isValueControlled,
+    controlledFormReset,
+  );
   const resolvedAriaLabelledBy = ariaLabel
     ? undefined
     : mergeIds(ariaLabelledBy, label ? labelId : undefined);
+  const preferredTabValues =
+    activationMode === "manual" ? [highlightedValue, value] : [value, highlightedValue];
   const tabTargetValue =
-    activationMode === "manual"
-      ? resolveSelectableCollectionItemValue(enabledItems, highlightedValue, value)
-      : resolveSelectableCollectionItemValue(enabledItems, value, highlightedValue);
+    preferredTabValues.find(
+      (candidate): candidate is string =>
+        candidate !== null && candidate !== undefined && enabledValues.includes(candidate),
+    ) ??
+    enabledValues[0] ??
+    null;
 
   useEffect(() => {
-    if (!autoFocus || !keyboardNavigation || disabled) {
+    if (!autoFocus || !keyboardNavigation || isDisabled) {
       hasAutoFocusedRef.current = false;
       return;
     }
     if (hasAutoFocusedRef.current) return;
 
-    const activeItems = getEnabledSelectableCollectionItems(items, disabled);
+    const activeItems = getEnabledSelectableCollectionItems(items, isDisabled);
     const target = resolveSelectableCollectionItem(activeItems, highlightedValue, value);
     if (!target?.element) return;
 
@@ -235,7 +295,7 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
   }, [
     autoFocus,
     keyboardNavigation,
-    disabled,
+    isDisabled,
     items,
     highlightedValue,
     value,
@@ -245,10 +305,11 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
   // Stable ref required: dep of the contextValue memo below.
   const handleValueChange = useCallback(
     (next: string) => {
+      invalidatePendingReset();
       setRequiredInvalid(false);
       setValue(next);
     },
-    [setValue],
+    [invalidatePendingReset, setValue],
   );
 
   // Stable ref required: dep of the contextValue memo below.
@@ -271,7 +332,10 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
       onNavigate?.(next as TValue, direction);
     }
 
-    if (activationMode === "automatic") setValue(next);
+    if (activationMode === "automatic") {
+      invalidatePendingReset();
+      setValue(next);
+    }
   };
 
   const handleNavigationEnter = (next: string) => {
@@ -295,7 +359,7 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
     onHighlightChange: handleNavigatedItem,
     onEnter: handleNavigationEnter,
     wrap,
-    enabled: keyboardNavigation && !disabled,
+    enabled: keyboardNavigation && !isDisabled,
     moveFocus: true,
     scopeToContainer: true,
     upKeys: RADIO_PREVIOUS_KEYS,
@@ -312,7 +376,7 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
     }
 
     onKeyDown?.(event);
-    if (event.defaultPrevented || !keyboardNavigation || disabled) return;
+    if (event.defaultPrevented || !keyboardNavigation || isDisabled) return;
 
     navigationEventRef.current = event;
     try {
@@ -326,30 +390,30 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
     () => ({
       value,
       onChange: handleValueChange,
-      registerItem,
+      registerItem: registerLiveItem,
       unregisterItem,
-      disabled,
+      disabled: isDisabled,
       keyboardNavigation,
       size,
       variant,
       highlightedValue: validHighlightedValue,
       name,
-      required,
+      required: effectiveRequired,
       onRequiredInvalid: handleRequiredInvalid,
       tabTargetValue,
     }),
     [
       value,
       handleValueChange,
-      registerItem,
+      registerLiveItem,
       unregisterItem,
-      disabled,
+      isDisabled,
       keyboardNavigation,
       size,
       variant,
       validHighlightedValue,
       name,
-      required,
+      effectiveRequired,
       handleRequiredInvalid,
       tabTargetValue,
     ],
@@ -369,18 +433,20 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
           {label}
         </div>
       )}
-      {required && !name && (
+      {effectiveRequired && !name && (
         <input
+          ref={validationInputRef}
           type="checkbox"
+          data-slot="radio-group-validation"
           required
           checked={validSelectedValue !== null}
-          disabled={disabled}
+          disabled={isDisabled}
           tabIndex={-1}
           aria-hidden={true}
           aria-label={ariaLabel}
           aria-labelledby={resolvedAriaLabelledBy}
-          readOnly
           className="sr-only"
+          onChange={() => {}}
           onInvalid={(event) => {
             event.preventDefault();
             handleRequiredInvalid();
@@ -392,16 +458,17 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
         {...rootProps}
         ref={composedRef}
         role="radiogroup"
+        data-slot="radio-group"
         data-diffgazer-selectable-owner="radio"
         aria-label={ariaLabel}
         aria-labelledby={resolvedAriaLabelledBy}
         aria-orientation={orientation}
-        aria-required={required || undefined}
+        aria-required={effectiveRequired || undefined}
         aria-invalid={resolveAriaInvalid(
           ariaInvalid,
-          requiredInvalid && validSelectedValue === null,
+          effectiveRequired && requiredInvalid && validSelectedValue === null,
         )}
-        aria-disabled={disabled || undefined}
+        aria-disabled={isDisabled || undefined}
         className={cn(
           "flex",
           orientation === "vertical" ? "flex-col gap-2" : "flex-row gap-4",

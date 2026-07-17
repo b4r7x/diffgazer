@@ -1,5 +1,6 @@
 export {
   buildCategoryStats,
+  buildDuplicateCollapseNotice,
   buildHiddenIssuesNotice,
   buildLensSummaryRows,
   buildReviewSummary,
@@ -12,7 +13,11 @@ export {
   mapStepStatus,
   type UIStepStatus,
 } from "./display.js";
-export { convertAgentEventsToLogEntries } from "./event-to-log.js";
+export {
+  convertAgentEventsToLogEntries,
+  convertReviewEventToLogEntry,
+  getReviewEventLogSource,
+} from "./event-to-log.js";
 export { filterIssuesBySeverity, toggleSeverity } from "./filtering.js";
 export {
   buildHistoryRunSummary,
@@ -28,6 +33,7 @@ export {
   HISTORY_SECTION_ALL_ID,
   HISTORY_SECTION_ALL_LABEL,
   type HistoryRunSummary,
+  type HistoryWarningSummary,
   matchesHistoryQuery,
   metadataToSeverityCounts,
   type RunSummaryParts,
@@ -35,6 +41,7 @@ export {
   resolveSelectedId,
   type SeverityPart,
   sortIssuesBySeverity,
+  summarizeHistoryWarnings,
 } from "./history.js";
 export {
   clampIssueTab,
@@ -62,10 +69,13 @@ export {
   getDetailsEmptyCopy,
   getNoChangesCopy,
   getPartialFailureWarning,
+  type IssueDetailsPresentation,
+  type IssueFixStepPresentation,
   NO_CHANGES_COPY,
   type PartialFailureWarning,
   type ReviewEmptyCopy,
   type ReviewNoChangesCopy,
+  toIssueDetailsPresentation,
 } from "./presentation.js";
 export { mapStepsToProgressData } from "./progress-mapping.js";
 export { sanitizeTerminalText } from "./sanitize-terminal.js";
@@ -79,8 +89,11 @@ export {
 export {
   createInitialReviewState,
   type FileProgress,
+  getReviewEventSequence,
+  isReviewEventSequenceContinuation,
   type ReviewAction,
   type ReviewEvent,
+  type ReviewEventSequence,
   type ReviewState,
   reviewReducer,
 } from "./state.js";

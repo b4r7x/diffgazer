@@ -8,7 +8,8 @@ const mockSetPassword = vi.fn((value: string) => {
 });
 const mockDeletePassword = vi.fn();
 
-const { mockRequireModule } = vi.hoisted(() => ({
+const { mockLog, mockRequireModule } = vi.hoisted(() => ({
+  mockLog: vi.fn(),
   mockRequireModule: vi.fn(),
 }));
 
@@ -16,6 +17,8 @@ const { mockRequireModule } = vi.hoisted(() => ({
 vi.mock("node:module", () => ({
   createRequire: vi.fn(() => mockRequireModule),
 }));
+
+vi.mock("../log.js", () => ({ log: mockLog }));
 
 function setupKeyringAvailable() {
   lastSetPassword = null;
@@ -52,6 +55,84 @@ describe("keyring (available)", () => {
     const { isKeyringAvailable } = await import("./keyring.js");
 
     expect(isKeyringAvailable()).toBe(true);
+  });
+
+  it("reports unavailable without cleanup when constructing the probe entry fails", async () => {
+    const deletePassword = vi.fn();
+
+    class ThrowingEntry {
+      constructor() {
+        throw new Error("keyring constructor failed");
+      }
+
+      getPassword() {
+        return null;
+      }
+
+      setPassword() {}
+
+      deletePassword() {
+        deletePassword();
+      }
+    }
+
+    mockRequireModule.mockReturnValue({ Entry: ThrowingEntry });
+    const { isKeyringAvailable } = await import("./keyring.js");
+
+    expect(isKeyringAvailable()).toBe(false);
+    expect(deletePassword).not.toHaveBeenCalled();
+    expect(mockLog).toHaveBeenCalledWith("warn", "keyring_availability_check_failed", {
+      error: "keyring constructor failed",
+    });
+  });
+
+  it("isolates interleaved availability probes and cleans up only their own accounts", async () => {
+    const passwords = new Map<string, string>();
+    const createdAccounts: string[] = [];
+    const deletedAccounts: string[] = [];
+    let runInterleavedProbe: (() => void) | null = null;
+    let hasInterleaved = false;
+
+    class InterleavedEntry {
+      constructor(
+        _service: string,
+        private readonly account: string,
+      ) {
+        createdAccounts.push(account);
+      }
+
+      setPassword(value: string) {
+        passwords.set(this.account, value);
+        if (!hasInterleaved && runInterleavedProbe) {
+          hasInterleaved = true;
+          runInterleavedProbe();
+        }
+      }
+
+      getPassword() {
+        return passwords.get(this.account) ?? null;
+      }
+
+      deletePassword() {
+        deletedAccounts.push(this.account);
+        passwords.delete(this.account);
+      }
+    }
+
+    mockRequireModule.mockReturnValue({ Entry: InterleavedEntry });
+    const firstInstance = await import("./keyring.js");
+    vi.resetModules();
+    const secondInstance = await import("./keyring.js");
+    let secondAvailable: boolean | null = null;
+    runInterleavedProbe = () => {
+      secondAvailable = secondInstance.isKeyringAvailable();
+    };
+
+    expect(firstInstance.isKeyringAvailable()).toBe(true);
+    expect(secondAvailable).toBe(true);
+    expect(new Set(createdAccounts).size).toBe(2);
+    expect(deletedAccounts).toEqual(expect.arrayContaining(createdAccounts));
+    expect(passwords).toEqual(new Map());
   });
 
   it("returns the stored password from readKeyringSecret", async () => {

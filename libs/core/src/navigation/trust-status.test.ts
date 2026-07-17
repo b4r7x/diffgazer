@@ -41,6 +41,16 @@ describe("deriveTrustStatus", () => {
     expect(result).toEqual({ needsTrust: false, isTrusted: false });
   });
 
+  it("reports untrusted when read access belongs to a different repository root", () => {
+    const result = deriveTrustStatus({
+      trust: makeTrust({ repoRoot: "/old/repo" }),
+      projectId: "proj_1",
+      repoRoot: "/moved/repo",
+    });
+
+    expect(result).toEqual({ needsTrust: false, isTrusted: false });
+  });
+
   it("does not flag needsTrust when project is not identified", () => {
     const result = deriveTrustStatus({ trust: null, projectId: null, repoRoot: null });
     expect(result).toEqual({ needsTrust: false, isTrusted: false });

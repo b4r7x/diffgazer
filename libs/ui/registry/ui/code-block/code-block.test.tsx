@@ -4,11 +4,20 @@ import { common, createLowlight } from "lowlight";
 import type { MouseEvent } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
+import { codeBlockDoc } from "../../component-docs/code-block";
+import CodeBlockHighlighted from "../../examples/code-block/code-block-highlighted";
 import { requireElement } from "../../testing/assertions";
-import { CodeBlockHighlight, createDefaultLowlight } from "./highlight";
-import { CodeBlock } from "./index";
+import * as highlightEntry from "./highlight";
+import { CodeBlockHighlight } from "./highlight";
+import { CodeBlock, type CodeBlockToken } from "./index";
 
 const lowlight = createLowlight(common);
+const documentedTokens = [
+  { text: "const", color: "var(--code-keyword)" },
+  { text: " greeting", color: "var(--code-variable)" },
+  { text: " = ", color: "var(--code-operator)" },
+  { text: '"hello"', color: "var(--code-string)" },
+] satisfies CodeBlockToken[];
 
 interface Deferred {
   promise: Promise<void>;
@@ -29,7 +38,37 @@ function createDeferred(): Deferred {
 describe("CodeBlock", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
-    vi.doUnmock("lowlight");
+  });
+
+  it("renders the documented pre-tokenized public shape", () => {
+    const { container } = render(
+      <CodeBlock>
+        <CodeBlock.Content>
+          <CodeBlock.Line content={documentedTokens} />
+        </CodeBlock.Content>
+      </CodeBlock>,
+    );
+
+    const code = container.querySelector("code");
+    expect(code).toHaveTextContent('const greeting = "hello"');
+    expect(code?.querySelectorAll("span")).toHaveLength(documentedTokens.length);
+    expect(code?.firstElementChild).toHaveStyle({ color: "var(--code-keyword)" });
+  });
+
+  it("keeps Content metadata limited to the props and attributes rendered at runtime", () => {
+    const { container } = render(
+      <CodeBlock>
+        <CodeBlock.Content>{"const value = 1;"}</CodeBlock.Content>
+      </CodeBlock>,
+    );
+
+    expect(codeBlockDoc.props?.CodeBlockContent).not.toHaveProperty("tone");
+    expect(codeBlockDoc.dataAttributes).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ attribute: "data-tone" })]),
+    );
+    expect(container.querySelector('[data-slot="code-block-content"]')).not.toHaveAttribute(
+      "data-tone",
+    );
   });
 
   describe("accessible name", () => {
@@ -40,7 +79,7 @@ describe("CodeBlock", () => {
         </CodeBlock>,
       );
 
-      expect(screen.getByLabelText("Custom name")).toBeInTheDocument();
+      expect(screen.getAllByLabelText("Custom name")).toHaveLength(2);
     });
 
     it("uses an explicit aria-labelledby when provided", () => {
@@ -53,7 +92,7 @@ describe("CodeBlock", () => {
         </>,
       );
 
-      expect(screen.getByLabelText("External title")).toBeInTheDocument();
+      expect(screen.getAllByLabelText("External title")).toHaveLength(2);
     });
 
     it("derives the accessible name from a rendered CodeBlock.Label", () => {
@@ -71,6 +110,175 @@ describe("CodeBlock", () => {
       expect(figure).toHaveAttribute("aria-labelledby", label?.id);
       expect(figure).not.toHaveAttribute("aria-label");
       expect(label).toHaveTextContent("app.tsx");
+      expect(container.querySelector('[data-slot="scroll-area"]')).toHaveAttribute(
+        "aria-labelledby",
+        label?.id,
+      );
+    });
+
+    it("falls back instead of referencing a Label suppressed by a bare Header", () => {
+      const { container } = render(
+        <CodeBlock variant="bare" language="ts">
+          <CodeBlock.Header>
+            <CodeBlock.Label>hidden.tsx</CodeBlock.Label>
+          </CodeBlock.Header>
+          <CodeBlock.Content>{"x"}</CodeBlock.Content>
+        </CodeBlock>,
+      );
+
+      const figure = container.querySelector('[data-slot="code-block"]');
+      const content = container.querySelector('[data-slot="scroll-area"]');
+      expect(container.querySelector('[data-slot="code-block-label"]')).toBeNull();
+      expect(figure).toHaveAttribute("aria-label", "ts code");
+      expect(figure).not.toHaveAttribute("aria-labelledby");
+      expect(content).toHaveAttribute("aria-label", "ts code");
+      expect(content).not.toHaveAttribute("aria-labelledby");
+    });
+
+    it("coordinates a custom Label id with the figure and scroll region", () => {
+      const { container } = render(
+        <CodeBlock>
+          <CodeBlock.Header>
+            <CodeBlock.Label id="consumer-label">custom.tsx</CodeBlock.Label>
+          </CodeBlock.Header>
+          <CodeBlock.Content>{"x"}</CodeBlock.Content>
+        </CodeBlock>,
+      );
+
+      expect(container.querySelector('[data-slot="code-block"]')).toHaveAttribute(
+        "aria-labelledby",
+        "consumer-label",
+      );
+      expect(container.querySelector('[data-slot="scroll-area"]')).toHaveAttribute(
+        "aria-labelledby",
+        "consumer-label",
+      );
+    });
+
+    it("gives implicit labels unique ids and falls back to the next mounted label", () => {
+      function Labels({ showFirst }: { showFirst: boolean }) {
+        return (
+          <CodeBlock>
+            <CodeBlock.Header>
+              {showFirst ? <CodeBlock.Label key="first">first.ts</CodeBlock.Label> : null}
+              <CodeBlock.Label key="second">second.ts</CodeBlock.Label>
+            </CodeBlock.Header>
+            <CodeBlock.Content>{"x"}</CodeBlock.Content>
+          </CodeBlock>
+        );
+      }
+
+      const { container, rerender } = render(<Labels showFirst />);
+      const labels = container.querySelectorAll('[data-slot="code-block-label"]');
+      const firstId = labels[0]?.id;
+      const secondId = labels[1]?.id;
+
+      expect(firstId).toBeTruthy();
+      expect(secondId).toBeTruthy();
+      expect(firstId).not.toBe(secondId);
+      expect(container.querySelector('[data-slot="code-block"]')).toHaveAttribute(
+        "aria-labelledby",
+        firstId,
+      );
+      expect(container.querySelector('[data-slot="scroll-area"]')).toHaveAttribute(
+        "aria-labelledby",
+        firstId,
+      );
+
+      rerender(<Labels showFirst={false} />);
+
+      expect(container.querySelector('[data-slot="code-block"]')).toHaveAttribute(
+        "aria-labelledby",
+        secondId,
+      );
+      expect(container.querySelector('[data-slot="scroll-area"]')).toHaveAttribute(
+        "aria-labelledby",
+        secondId,
+      );
+
+      rerender(<Labels showFirst />);
+
+      expect(container.querySelector('[data-slot="code-block"]')).toHaveAttribute(
+        "aria-labelledby",
+        secondId,
+      );
+      expect(container.querySelector('[data-slot="scroll-area"]')).toHaveAttribute(
+        "aria-labelledby",
+        secondId,
+      );
+    });
+
+    it("keeps a duplicate custom id registered until its final label unmounts", () => {
+      function Labels({ showFirst }: { showFirst: boolean }) {
+        return (
+          <CodeBlock>
+            <CodeBlock.Header>
+              {showFirst ? (
+                <CodeBlock.Label key="first" id="shared-label">
+                  first.ts
+                </CodeBlock.Label>
+              ) : null}
+              <CodeBlock.Label key="second" id="shared-label">
+                second.ts
+              </CodeBlock.Label>
+            </CodeBlock.Header>
+            <CodeBlock.Content>{"x"}</CodeBlock.Content>
+          </CodeBlock>
+        );
+      }
+
+      const { container, rerender } = render(<Labels showFirst />);
+      rerender(<Labels showFirst={false} />);
+
+      expect(container.querySelectorAll("#shared-label")).toHaveLength(1);
+      expect(container.querySelector('[data-slot="code-block"]')).toHaveAttribute(
+        "aria-labelledby",
+        "shared-label",
+      );
+      expect(container.querySelector('[data-slot="scroll-area"]')).toHaveAttribute(
+        "aria-labelledby",
+        "shared-label",
+      );
+    });
+
+    it("provides the root's explicit aria-label to the scroll region", () => {
+      const { container } = render(
+        <CodeBlock aria-label="Server output">
+          <CodeBlock.Header>
+            <CodeBlock.Label>ignored-for-naming.txt</CodeBlock.Label>
+          </CodeBlock.Header>
+          <CodeBlock.Content>{"x"}</CodeBlock.Content>
+        </CodeBlock>,
+      );
+
+      expect(container.querySelector('[data-slot="code-block"]')).toHaveAttribute(
+        "aria-label",
+        "Server output",
+      );
+      expect(container.querySelector('[data-slot="scroll-area"]')).toHaveAttribute(
+        "aria-label",
+        "Server output",
+      );
+    });
+
+    it("provides the root's explicit aria-labelledby to the scroll region", () => {
+      const { container } = render(
+        <>
+          <h2 id="external-code-title">External code title</h2>
+          <CodeBlock aria-labelledby="external-code-title">
+            <CodeBlock.Content>{"x"}</CodeBlock.Content>
+          </CodeBlock>
+        </>,
+      );
+
+      expect(container.querySelector('[data-slot="code-block"]')).toHaveAttribute(
+        "aria-labelledby",
+        "external-code-title",
+      );
+      expect(container.querySelector('[data-slot="scroll-area"]')).toHaveAttribute(
+        "aria-labelledby",
+        "external-code-title",
+      );
     });
 
     it("does not set aria-labelledby when no Label is rendered", () => {
@@ -508,7 +716,7 @@ describe("CodeBlock", () => {
     });
   });
 
-  // lowlight splits highlighted source into token <span>s inside <code>; plain text stays one text node.
+  // lowlight splits highlighted source into token <span>s inside <code>.
   function codeTokenCount(line: Element): number {
     return line.querySelector("code")?.querySelectorAll("span").length ?? 0;
   }
@@ -551,21 +759,6 @@ describe("CodeBlock", () => {
       expect(commentTokens.length).toBeGreaterThan(0);
     });
 
-    it("renders source as plain text when no lowlight instance is provided", () => {
-      render(
-        <CodeBlock language="ts">
-          <CodeBlockHighlight code="const x = 1" language="typescript" />
-        </CodeBlock>,
-      );
-
-      const line = requireElement(
-        document.querySelector('[data-slot="code-block-line"]'),
-        "plain code line",
-      );
-      expect(codeTokenCount(line)).toBe(0);
-      expect(line.querySelector("code")).toHaveTextContent("const x = 1");
-    });
-
     it("applies lineStates, gutter signs, and tokenized highlighting together on diff rows", () => {
       const { container } = render(
         <CodeBlock language="ts">
@@ -587,32 +780,16 @@ describe("CodeBlock", () => {
       expect(codeTokenCount(requireElement(lines[1], "removed diff line"))).toBeGreaterThan(0);
     });
 
-    it("createDefaultLowlight() loads lowlight lazily and returns a usable instance", async () => {
-      const instance = await createDefaultLowlight();
-      expect(typeof instance.highlight).toBe("function");
-      expect(typeof instance.highlightAuto).toBe("function");
-      const tree = instance.highlight("typescript", "const x = 1");
-      expect(tree.children.length).toBeGreaterThan(0);
-    });
+    it("requires lowlight through the actual public highlighted example", () => {
+      const { container } = render(<CodeBlockHighlighted />);
+      const lines = container.querySelectorAll('[data-slot="code-block-line"]');
 
-    it("retries loading lowlight after a rejected import", async () => {
-      vi.resetModules();
-      let importCount = 0;
-      vi.doMock("lowlight", async () => {
-        importCount += 1;
-        if (importCount === 1) {
-          throw new Error("chunk load failed");
-        }
-        return vi.importActual<typeof import("lowlight")>("lowlight");
-      });
-
-      const { createDefaultLowlight: loadLowlight } = await import("./highlight");
-
-      await expect(loadLowlight()).rejects.toThrow(/optional peer dependency 'lowlight'/);
-      const instance = await loadLowlight();
-
-      expect(typeof instance.highlight).toBe("function");
-      expect(importCount).toBe(2);
+      expect(lines.length).toBeGreaterThan(1);
+      expect(Array.from(lines).some((line) => line.querySelectorAll("code span").length > 0)).toBe(
+        true,
+      );
+      expect(container).toHaveTextContent("export function Counter");
+      expect("createDefaultLowlight" in highlightEntry).toBe(false);
     });
   });
 

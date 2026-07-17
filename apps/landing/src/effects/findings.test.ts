@@ -107,6 +107,52 @@ describe("initFindings", () => {
     cleanup();
   });
 
+  it.each(["j", "k"] as const)("leaves modified %s shortcuts to the browser", (key) => {
+    mountLanding();
+
+    const cleanup = initFindings(document, { reduced: true, finePointer: false });
+    const selected = () =>
+      document.querySelector<HTMLElement>(".finding-row[aria-selected='true']");
+
+    document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "j", bubbles: true }));
+    expect(selected()?.textContent).toContain(demoFindings[1].title);
+
+    for (const modifier of [{ ctrlKey: true }, { metaKey: true }, { altKey: true }]) {
+      const event = new KeyboardEvent("keydown", {
+        key,
+        bubbles: true,
+        cancelable: true,
+        ...modifier,
+      });
+      document.body.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(selected()?.textContent).toContain(demoFindings[1].title);
+    }
+
+    cleanup();
+  });
+
+  it("ignores a j/k shortcut already handled by another listener", () => {
+    mountLanding();
+
+    const cleanup = initFindings(document, { reduced: true, finePointer: false });
+    const selected = () =>
+      document.querySelector<HTMLElement>(".finding-row[aria-selected='true']");
+    const event = new KeyboardEvent("keydown", {
+      key: "j",
+      bubbles: true,
+      cancelable: true,
+    });
+    event.preventDefault();
+
+    document.body.dispatchEvent(event);
+
+    expect(selected()?.textContent).toContain(demoFindings[0].title);
+
+    cleanup();
+  });
+
   it("does not steal j/k from an interactive element outside the widget", () => {
     mountLanding();
 
@@ -160,6 +206,30 @@ describe("initFindings", () => {
     await vi.advanceTimersByTimeAsync(3000);
 
     expect(selected()?.textContent).toContain(demoFindings[0].title);
+  });
+
+  it("keeps the first clicked finding selected after the intro has started", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("IntersectionObserver", undefined);
+    mountLanding();
+
+    const cleanup = initFindings(document, flags);
+    const rows = [...document.querySelectorAll<HTMLButtonElement>(".finding-row")];
+    const selected = () =>
+      document.querySelector<HTMLElement>(".finding-row[aria-selected='true']");
+
+    await vi.advanceTimersByTimeAsync(800);
+    expect(selected()?.textContent).toContain(demoFindings[1].title);
+
+    rows[3]?.click();
+    await vi.advanceTimersByTimeAsync(3_000);
+
+    expect(selected()?.textContent).toContain(demoFindings[3].title);
+    expect(rows[3]?.getAttribute("aria-selected")).toBe("true");
+    expect(rows[3]?.tabIndex).toBe(0);
+    expect(rows.filter((row, index) => index !== 3 && row.tabIndex === 0)).toEqual([]);
+
+    cleanup();
   });
 
   it("removes keyboard listeners when reduced-motion cleanup runs", () => {

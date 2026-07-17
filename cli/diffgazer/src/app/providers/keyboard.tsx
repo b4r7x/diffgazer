@@ -3,12 +3,17 @@ import type { ReactNode } from "react";
 import { useCallback, useMemo, useRef } from "react";
 import { KeyboardContext, type KeyboardContextValue } from "../../hooks/use-keyboard";
 import { inkKeyToHotkey, isTypeableShortcutKey } from "../../lib/ink-key";
+import type { TerminalInputQueue } from "../../lib/terminal-input";
 
 interface TerminalKeyboardProviderProps {
   children: ReactNode;
+  terminalInputQueue?: TerminalInputQueue;
 }
 
-export function TerminalKeyboardProvider({ children }: TerminalKeyboardProviderProps) {
+export function TerminalKeyboardProvider({
+  children,
+  terminalInputQueue,
+}: TerminalKeyboardProviderProps) {
   const globalHandlersRef = useRef<Map<string, Set<() => void>>>(new Map());
   const inputActiveRef = useRef(false);
 
@@ -37,6 +42,8 @@ export function TerminalKeyboardProvider({ children }: TerminalKeyboardProviderP
   }, []);
 
   useInput((input, key) => {
+    if (terminalInputQueue?.consume() === "legacy-modified") return;
+
     const hotkey = inkKeyToHotkey(input, key);
     if (!hotkey) return;
 

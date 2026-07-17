@@ -44,14 +44,15 @@ export function CheckboxItem({
   const { registerItem, unregisterItem } = ctx;
 
   useLayoutEffect(() => {
-    registerItem(itemId, value, disabled, rootRef.current);
+    registerItem(itemId, value, isDisabled, rootRef.current);
     return () => unregisterItem(itemId);
-  }, [registerItem, unregisterItem, itemId, value, disabled]);
+  }, [registerItem, unregisterItem, itemId, value, isDisabled]);
 
   return (
     <Checkbox
       {...checkboxProps}
       ref={composedRef}
+      data-diffgazer-checkbox-group-item=""
       value={value}
       data-value={value}
       checked={ctx.value.includes(value)}

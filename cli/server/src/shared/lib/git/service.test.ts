@@ -24,6 +24,10 @@ function setupExecResult(stdout: string) {
   mockExecFileAsync.mockResolvedValue({ stdout, stderr: "" });
 }
 
+function setupStatusResult(...records: string[]) {
+  setupExecResult(records.length > 0 ? `${records.join("\0")}\0` : "");
+}
+
 function setupExecError(error: Error) {
   mockExecFileAsync.mockRejectedValue(error);
 }
@@ -35,7 +39,7 @@ describe("createGitService", () => {
 
   describe("getStatus", () => {
     it("reports a clean repo with branch and remote tracking", async () => {
-      setupExecResult("## main...origin/main\n");
+      setupStatusResult("## main...origin/main");
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatus();
@@ -56,7 +60,7 @@ describe("createGitService", () => {
     it.each([
       {
         scenario: "ahead and behind counts",
-        output: "## feature...origin/feature [ahead 3, behind 2]\n",
+        output: ["## feature...origin/feature [ahead 3, behind 2]"],
         branch: "feature",
         remoteBranch: "origin/feature",
         ahead: 3,
@@ -64,7 +68,7 @@ describe("createGitService", () => {
       },
       {
         scenario: "only ahead count",
-        output: "## main...origin/main [ahead 5]\n",
+        output: ["## main...origin/main [ahead 5]"],
         branch: "main",
         remoteBranch: "origin/main",
         ahead: 5,
@@ -72,7 +76,7 @@ describe("createGitService", () => {
       },
       {
         scenario: "no remote tracking",
-        output: "## feature-branch\n",
+        output: ["## feature-branch"],
         branch: "feature-branch",
         remoteBranch: null,
         ahead: 0,
@@ -85,7 +89,7 @@ describe("createGitService", () => {
       ahead,
       behind,
     }) => {
-      setupExecResult(output);
+      setupStatusResult(...output);
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatus();
@@ -101,27 +105,27 @@ describe("createGitService", () => {
     it.each([
       {
         kind: "staged modified",
-        output: "## main\nM  src/file.ts\n",
+        output: ["## main", "M  src/file.ts"],
         path: "src/file.ts",
         indexStatus: "M",
         group: "staged" as const,
       },
       {
         kind: "staged added",
-        output: "## main\nA  new-file.ts\n",
+        output: ["## main", "A  new-file.ts"],
         path: "new-file.ts",
         indexStatus: "A",
         group: "staged" as const,
       },
       {
         kind: "staged deleted",
-        output: "## main\nD  old-file.ts\n",
+        output: ["## main", "D  old-file.ts"],
         path: "old-file.ts",
         indexStatus: "D",
         group: "staged" as const,
       },
     ])("places $kind file in the staged bucket", async ({ output, path, indexStatus }) => {
-      setupExecResult(output);
+      setupStatusResult(...output);
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatus();
@@ -135,7 +139,7 @@ describe("createGitService", () => {
     });
 
     it("places worktree-only changes in the unstaged bucket", async () => {
-      setupExecResult("## main\n M src/file.ts\n");
+      setupStatusResult("## main", " M src/file.ts");
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatus();
@@ -149,7 +153,7 @@ describe("createGitService", () => {
     });
 
     it("places ?? files in the untracked bucket without flagging hasChanges", async () => {
-      setupExecResult("## main\n?? new-file.ts\n");
+      setupStatusResult("## main", "?? new-file.ts");
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatus();
@@ -161,15 +165,23 @@ describe("createGitService", () => {
       expect(result.value.files.untracked[0]?.path).toBe("new-file.ts");
     });
 
-    it("reports UU entries as conflicted files", async () => {
-      setupExecResult("## main\nUU conflicted.ts\n");
+    it.each([
+      ["DD", "both deleted"],
+      ["AU", "added by us"],
+      ["UD", "deleted by them"],
+      ["UA", "added by them"],
+      ["DU", "deleted by us"],
+      ["AA", "both added"],
+      ["UU", "both modified"],
+    ])("reports %s (%s) entries as conflicted files", async (status) => {
+      setupStatusResult("## main", `${status} conflicted.ts`);
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatus();
 
       expect(result.ok).toBe(true);
       if (!result.ok) return;
-      expect(result.value.conflicted).toContain("conflicted.ts");
+      expect(result.value.conflicted).toEqual(["conflicted.ts"]);
     });
 
     it("splits mixed-status entries into the correct buckets", async () => {
@@ -179,9 +191,8 @@ describe("createGitService", () => {
         " M unstaged.ts",
         "?? untracked.ts",
         "A  added.ts",
-        "",
-      ].join("\n");
-      setupExecResult(output);
+      ];
+      setupStatusResult(...output);
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatus();
@@ -195,7 +206,7 @@ describe("createGitService", () => {
     });
 
     it("reports no changes for an empty porcelain output", async () => {
-      setupExecResult("");
+      setupStatusResult();
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatus();
@@ -240,8 +251,8 @@ describe("createGitService", () => {
       expect(result.error.message).toContain("index file corrupt");
     });
 
-    it("ignores porcelain lines shorter than the status prefix", async () => {
-      setupExecResult("## main\nXY\n");
+    it("ignores porcelain records shorter than the status prefix", async () => {
+      setupStatusResult("## main", "XY");
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatus();
@@ -252,10 +263,8 @@ describe("createGitService", () => {
       expect(result.value.files.unstaged).toEqual([]);
     });
 
-    it("decodes a git-quoted non-ASCII porcelain path to the correct string", async () => {
-      // git quotes `żółć/plik.ts` as octal bytes under default core.quotepath.
-      const quoted = '"\\305\\274\\303\\263\\305\\202\\304\\207/plik.ts"';
-      setupExecResult(`## main\n M ${quoted}\n`);
+    it("preserves a non-ASCII porcelain path", async () => {
+      setupStatusResult("## main", " M żółć/plik.ts");
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatus();
@@ -266,7 +275,7 @@ describe("createGitService", () => {
     });
 
     it("parses a staged rename into path and previousPath", async () => {
-      setupExecResult("## main\nR  old.txt -> new.txt\n");
+      setupStatusResult("## main", "R  new.txt", "old.txt");
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatus();
@@ -281,8 +290,8 @@ describe("createGitService", () => {
       });
     });
 
-    it("parses a quoted rename with spaces", async () => {
-      setupExecResult('## main\nR  "a b.txt" -> "c d.txt"\n');
+    it("parses a rename with spaces", async () => {
+      setupStatusResult("## main", "R  c d.txt", "a b.txt");
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatus();
@@ -293,19 +302,19 @@ describe("createGitService", () => {
       expect(result.value.files.staged[0]?.previousPath).toBe("a b.txt");
     });
 
-    it("preserves a leading/trailing space in an unquoted filename", async () => {
-      setupExecResult("## main\n M report .md \n");
+    it("preserves a leading/trailing space in a filename", async () => {
+      setupStatusResult("## main", " M  report .md ");
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatus();
 
       expect(result.ok).toBe(true);
       if (!result.ok) return;
-      expect(result.value.files.unstaged[0]?.path).toBe("report .md ");
+      expect(result.value.files.unstaged[0]?.path).toBe(" report .md ");
     });
 
-    it("preserves a leading/trailing space in an unquoted rename's paths", async () => {
-      setupExecResult("## main\nR   old.txt -> new.txt \n");
+    it("preserves a leading/trailing space in a rename's paths", async () => {
+      setupStatusResult("## main", "R  new.txt ", " old.txt");
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatus();
@@ -316,9 +325,8 @@ describe("createGitService", () => {
       expect(result.value.files.staged[0]?.previousPath).toBe(" old.txt");
     });
 
-    it("excludes a git-quoted .diffgazer non-ASCII path from status results", async () => {
-      const quoted = '".diffgazer/\\305\\274.json"';
-      setupExecResult(`## main\n M ${quoted}\n M src/app.ts\n`);
+    it("excludes a .diffgazer non-ASCII path from status results", async () => {
+      setupStatusResult("## main", " M .diffgazer/ż.json", " M src/app.ts");
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatus();
@@ -356,10 +364,6 @@ describe("createGitService", () => {
         mode: "unstaged" as const,
         expectedArgs: ["diff", "--no-ext-diff", "--no-textconv", "--no-color"],
       },
-      {
-        mode: "files" as const,
-        expectedArgs: ["diff", "--no-ext-diff", "--no-textconv", "--no-color"],
-      },
     ])("returns diff output for mode=$mode and invokes git with $expectedArgs", async ({
       mode,
       expectedArgs,
@@ -378,6 +382,29 @@ describe("createGitService", () => {
         expect.arrayContaining(expectedArgs),
         expect.objectContaining({ cwd: "/test" }),
       );
+    });
+
+    it("requires a non-empty explicit pathspec for files mode before spawning git", async () => {
+      const git = createGitService({ cwd: "/test" });
+
+      const result = await git.getDiff("files", []);
+
+      expect(result).toEqual({
+        ok: false,
+        error: { message: "files diff mode requires at least one pathspec" },
+      });
+      expect(mockExecFileAsync).not.toHaveBeenCalled();
+    });
+
+    it("passes explicit files mode pathspecs after the git separator", async () => {
+      setupExecResult("diff --git a/src/file.ts b/src/file.ts\n");
+      const git = createGitService({ cwd: "/test" });
+
+      const result = await git.getDiff("files", ["src/file.ts"]);
+
+      expect(result.ok).toBe(true);
+      const args = mockExecFileAsync.mock.calls[0]?.[1] as string[];
+      expect(args.slice(-2)).toEqual(["--", "src/file.ts"]);
     });
 
     it("returns an empty string when git produces no diff output", async () => {
@@ -400,6 +427,43 @@ describe("createGitService", () => {
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error.message).toContain("not a git repository");
+    });
+
+    it("passes the signal to git and rejects when a pending diff is aborted", async () => {
+      const controller = new AbortController();
+      mockExecFileAsync.mockImplementationOnce(
+        async (_command: string, _args: string[], options: { signal?: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            options.signal?.addEventListener(
+              "abort",
+              () => reject(new DOMException("The operation was aborted", "AbortError")),
+              { once: true },
+            );
+          }),
+      );
+      const git = createGitService({ cwd: "/test" });
+
+      const result = git.getDiff("unstaged", undefined, controller.signal);
+      expect(mockExecFileAsync).toHaveBeenCalledWith(
+        "git",
+        expect.any(Array),
+        expect.objectContaining({ signal: controller.signal }),
+      );
+
+      controller.abort();
+
+      await expect(result).rejects.toMatchObject({ name: "AbortError" });
+    });
+
+    it("does not spawn git for an already-aborted diff", async () => {
+      const controller = new AbortController();
+      controller.abort();
+      const git = createGitService({ cwd: "/test" });
+
+      await expect(git.getDiff("unstaged", undefined, controller.signal)).rejects.toMatchObject({
+        name: "AbortError",
+      });
+      expect(mockExecFileAsync).not.toHaveBeenCalled();
     });
 
     it("hardens every diff invocation with fsmonitor and optional-lock overrides", async () => {
@@ -452,7 +516,7 @@ describe("createGitService", () => {
   describe("git environment hardening", () => {
     it("unsets GIT_EXTERNAL_DIFF from the environment", async () => {
       process.env.GIT_EXTERNAL_DIFF = "/usr/bin/malicious-diff";
-      setupExecResult("## main\n");
+      setupStatusResult("## main");
       const git = createGitService({ cwd: "/test" });
 
       await git.getStatus();
@@ -489,7 +553,7 @@ describe("createGitService", () => {
     });
 
     it("passes --no-optional-locks and fsmonitor=false for status", async () => {
-      setupExecResult("## main\n");
+      setupStatusResult("## main");
       const git = createGitService({ cwd: "/test" });
 
       await git.getStatus();
@@ -497,6 +561,9 @@ describe("createGitService", () => {
       const args = mockExecFileAsync.mock.calls[0]?.[1] as string[];
       expect(args).toContain("--no-optional-locks");
       expect(args).toContain("core.fsmonitor=false");
+      expect(args).toContain("--porcelain=v2");
+      expect(args).toContain("--branch");
+      expect(args).toContain("-z");
     });
 
     it("hardens every index-touching git invocation, exempting only the --version probe", async () => {
@@ -504,7 +571,7 @@ describe("createGitService", () => {
       // site is recorded, then assert the hardened base args are uniform — the
       // only allowed exemption is the `git --version` install probe, which never
       // reads the repo or refreshes the index (F-223).
-      setupExecResult(" M file.ts\n");
+      setupStatusResult(" M file.ts");
       const git = createGitService({ cwd: "/test" });
 
       await git.getStatus();
@@ -549,7 +616,7 @@ describe("createGitService", () => {
       "GIT_TEMPLATE_DIR",
     ])("unsets %s from the environment to prevent parent pollution", async (envVar) => {
       process.env[envVar] = "/some/polluted/value";
-      setupExecResult("## main\n");
+      setupStatusResult("## main");
       const git = createGitService({ cwd: "/test" });
 
       await git.getStatus();
@@ -565,7 +632,7 @@ describe("createGitService", () => {
 
   describe(".diffgazer filtering in status", () => {
     it("excludes .diffgazer/ files from status results", async () => {
-      setupExecResult("## main\n?? .diffgazer/project.json\n M src/app.ts\n");
+      setupStatusResult("## main", "?? .diffgazer/project.json", " M src/app.ts");
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatus();
@@ -578,7 +645,7 @@ describe("createGitService", () => {
     });
 
     it("reports no changes when only .diffgazer/ files are changed", async () => {
-      setupExecResult("## main\n?? .diffgazer/context.md\nA  .diffgazer/project.json\n");
+      setupStatusResult("## main", "?? .diffgazer/context.md", "A  .diffgazer/project.json");
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatus();
@@ -591,7 +658,7 @@ describe("createGitService", () => {
     });
 
     it("keeps non-.diffgazer files with similar names", async () => {
-      setupExecResult("## main\n?? .diffgazer-backup/config.json\n");
+      setupStatusResult("## main", "?? .diffgazer-backup/config.json");
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatus();
@@ -606,7 +673,7 @@ describe("createGitService", () => {
 
   describe("getStatusHash", () => {
     it("returns a full-kind 16-char hex hash when the working tree has changes", async () => {
-      setupExecResult(" M file1.ts\n M file2.ts\n");
+      setupStatusResult(" M file1.ts", " M file2.ts");
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatusHash();
@@ -617,7 +684,7 @@ describe("createGitService", () => {
     });
 
     it("returns a full-kind empty string when there are no changes", async () => {
-      setupExecResult("");
+      setupStatusResult();
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatusHash();
@@ -626,7 +693,7 @@ describe("createGitService", () => {
     });
 
     it("treats workspace-only .diffgazer changes as no changes", async () => {
-      setupExecResult("?? .diffgazer/context.md\n?? .diffgazer/context.json\n");
+      setupStatusResult("?? .diffgazer/context.md", "?? .diffgazer/context.json");
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatusHash();
@@ -635,7 +702,7 @@ describe("createGitService", () => {
     });
 
     it("hashes user changes even when .diffgazer files are also present", async () => {
-      setupExecResult(" M src/app.ts\n?? .diffgazer/context.md\n");
+      setupStatusResult(" M src/app.ts", "?? .diffgazer/context.md");
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatusHash();
@@ -648,11 +715,11 @@ describe("createGitService", () => {
     it.each([
       {
         description: "similarly named top-level directories",
-        output: " M .diffgazer-backup/config.json\n",
+        output: " M .diffgazer-backup/config.json",
       },
-      { description: "nested .diffgazer directories", output: " M src/.diffgazer/config.json\n" },
+      { description: "nested .diffgazer directories", output: " M src/.diffgazer/config.json" },
     ])("includes $description in the hash", async ({ output }) => {
-      setupExecResult(output);
+      setupStatusResult(output);
       const git = createGitService({ cwd: "/test" });
 
       const result = await git.getStatusHash();
@@ -665,7 +732,7 @@ describe("createGitService", () => {
     it("degrades to status-only when the inner diff read fails", async () => {
       // First call (status) succeeds with changes; the diff reads reject.
       mockExecFileAsync
-        .mockResolvedValueOnce({ stdout: " M file1.ts\n", stderr: "" })
+        .mockResolvedValueOnce({ stdout: " M file1.ts\0", stderr: "" })
         .mockRejectedValue(new Error("stdout maxBuffer length exceeded"));
       const git = createGitService({ cwd: "/test" });
 

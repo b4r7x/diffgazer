@@ -13,6 +13,7 @@ import { ProvidersScreen } from "./screen";
 
 const TAB = "\t";
 const ENTER = "\r";
+const ARROW_RIGHT = "\u001b[C";
 
 const PROVIDER_STATUS: ProviderStatus[] = [
   { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
@@ -108,5 +109,34 @@ describe("ProvidersScreen keyboard zones", () => {
     await flushUntil(() => lastFrame()?.includes("Choose how to provide") ?? false);
 
     expect(lastFrame()).toContain("Choose how to provide");
+  });
+
+  test("renders a rejected credentials deletion exactly once", async () => {
+    const message = "credentials delete failed";
+    const deleteProviderCredentials = vi
+      .fn<BoundApi["deleteProviderCredentials"]>()
+      .mockRejectedValue(new Error(message));
+    const api = { ...makeApi(), deleteProviderCredentials } satisfies BoundApi;
+    const { stdin, lastFrame } = render(
+      <Wrapper api={api}>
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Select a provider to view details") ?? false);
+    stdin.write(ENTER);
+    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    stdin.write(TAB);
+    await flush();
+    stdin.write(ARROW_RIGHT);
+    await flush();
+    stdin.write(ARROW_RIGHT);
+    await flush();
+    stdin.write(ENTER);
+
+    await flushUntil(() => lastFrame()?.includes(message) ?? false);
+
+    expect(deleteProviderCredentials).toHaveBeenCalledWith("gemini");
+    expect(lastFrame()?.split(message)).toHaveLength(2);
   });
 });

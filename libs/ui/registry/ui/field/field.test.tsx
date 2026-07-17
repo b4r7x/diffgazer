@@ -61,6 +61,22 @@ describe("Field", () => {
     expect(input).toBeDisabled();
   });
 
+  it("keeps a disabled Field authoritative when the child sets disabled to false", async () => {
+    const { container } = render(
+      <Field disabled>
+        <Field.Label>Project name</Field.Label>
+        <Field.Control>
+          <Input disabled={false} />
+        </Field.Control>
+      </Field>,
+    );
+
+    const input = screen.getByRole("textbox", { name: "Project name" });
+    expect(input).toBeDisabled();
+    expect(input.closest("[data-slot='field']")).toHaveAttribute("data-disabled");
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
   it("clicking the label focuses the control", async () => {
     const user = userEvent.setup();
 
@@ -172,6 +188,66 @@ describe("Field", () => {
     expect(input).toHaveAccessibleDescription("Use your work email.");
   });
 
+  it("keeps aria-label when direct, wrapped, and conditional labels are empty", () => {
+    render(
+      <>
+        <Field controlId="direct-empty">
+          <Field.Label>{""}</Field.Label>
+          <Field.Control>
+            <Input aria-label="Direct fallback" />
+          </Field.Control>
+        </Field>
+        <Field controlId="wrapped-empty">
+          <div>
+            <Field.Label>{null}</Field.Label>
+          </div>
+          <Field.Control>
+            <Input aria-label="Wrapped fallback" />
+          </Field.Control>
+        </Field>
+        <Field controlId="conditional-empty">
+          <Field.Label>{false && "Conditional label"}</Field.Label>
+          <Field.Control>
+            <Input aria-label="Conditional fallback" />
+          </Field.Control>
+        </Field>
+      </>,
+    );
+
+    for (const name of ["Direct fallback", "Wrapped fallback", "Conditional fallback"]) {
+      expect(screen.getByRole("textbox", { name })).not.toHaveAttribute("aria-labelledby");
+    }
+  });
+
+  it("updates wrapped label ownership across empty, text, and empty renders", () => {
+    const renderField = (label: string) => (
+      <Field controlId="dynamic-label">
+        <div>
+          <Field.Label>{label}</Field.Label>
+        </div>
+        <Field.Control>
+          <Input aria-label="Fallback name" />
+        </Field.Control>
+      </Field>
+    );
+    const { rerender } = render(renderField(""));
+
+    expect(screen.getByRole("textbox", { name: "Fallback name" })).not.toHaveAttribute(
+      "aria-labelledby",
+    );
+
+    rerender(renderField("Visible name"));
+
+    const namedInput = screen.getByRole("textbox", { name: "Visible name" });
+    expect(namedInput).toHaveAttribute("aria-labelledby", "dynamic-label-label");
+
+    rerender(renderField(""));
+
+    expect(screen.getByRole("textbox", { name: "Fallback name" })).not.toHaveAttribute(
+      "aria-labelledby",
+    );
+  });
+
   it("keeps ARIA wiring when slots are wrapped in layout elements", () => {
     render(
       <Field invalid required>
@@ -276,6 +352,50 @@ describe("Field", () => {
 
     expect(checkbox).toHaveAttribute("aria-checked", "true");
     expect(checkbox).toHaveFocus();
+  });
+
+  it("does not activate a div-based Checkbox disabled by Field", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(
+      <Field disabled>
+        <Field.Label>Accept terms</Field.Label>
+        <Field.Control>
+          <Checkbox onChange={onChange} />
+        </Field.Control>
+      </Field>,
+    );
+
+    const checkbox = screen.getByRole("checkbox", { name: "Accept terms" });
+    await user.click(screen.getByText("Accept terms"));
+
+    expect(checkbox).toHaveAttribute("aria-disabled", "true");
+    expect(checkbox).toHaveAttribute("aria-checked", "false");
+    expect(checkbox).not.toHaveFocus();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("does not activate a disabled div-based Radio", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(
+      <Field>
+        <Field.Label>Primary option</Field.Label>
+        <Field.Control>
+          <Radio disabled onChange={onChange} />
+        </Field.Control>
+      </Field>,
+    );
+
+    const radio = screen.getByRole("radio", { name: "Primary option" });
+    await user.click(screen.getByText("Primary option"));
+
+    expect(radio).toHaveAttribute("aria-disabled", "true");
+    expect(radio).toHaveAttribute("aria-checked", "false");
+    expect(radio).not.toHaveFocus();
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it("clicking a label for a native Input focuses it exactly once (no double activation)", async () => {
@@ -483,6 +603,22 @@ describe("Field", () => {
     expect(input).toHaveAttribute("id", "ssr-test");
     expect(input).toHaveAttribute("aria-labelledby", "ssr-test-label");
     expect(screen.getByText("Username")).toHaveAttribute("for", "ssr-test");
+  });
+
+  it("preserves aria-label for an empty Field.Label in SSR output", () => {
+    const html = renderToStaticMarkup(
+      <Field controlId="ssr-empty-label">
+        <Field.Label>{""}</Field.Label>
+        <Field.Control>
+          <Input aria-label="SSR fallback" />
+        </Field.Control>
+      </Field>,
+    );
+    mountStaticMarkup(html);
+
+    expect(screen.getByRole("textbox", { name: "SSR fallback" })).not.toHaveAttribute(
+      "aria-labelledby",
+    );
   });
 
   it("names a div-based Checkbox via aria-labelledby in SSR output before hydration", () => {

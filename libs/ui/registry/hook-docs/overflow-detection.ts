@@ -24,16 +24,16 @@ return (
     },
   ],
   returns: {
-    type: "{ ref: RefObject<T | null>; isOverflowing: boolean }",
+    type: "{ ref: RefCallback<T>; isOverflowing: boolean }",
     description:
-      "A ref to attach to the observed element, and a boolean that updates reactively when overflow state changes.",
+      "A callback ref to attach to the observed element, and a boolean that updates reactively when overflow state changes.",
     properties: [
       {
         name: "ref",
-        type: "RefObject<T | null>",
+        type: "RefCallback<T>",
         required: true,
         description:
-          "Attach to the element whose overflow you want to detect. Must have constrained dimensions (width/height).",
+          "Attach to the element whose overflow you want to detect. Conditional mounts and replacement nodes are observed when the callback receives them. The element must have constrained dimensions (width/height).",
       },
       {
         name: "isOverflowing",

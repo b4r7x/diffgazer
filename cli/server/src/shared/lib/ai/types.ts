@@ -3,9 +3,11 @@ import type { Result } from "@diffgazer/core/result";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import type { SharedErrorCode } from "@diffgazer/core/schemas/errors";
 import type { z } from "zod";
+import type { SecretsStorageErrorCode } from "../config/types.js";
 
 export type AIErrorCode =
   | SharedErrorCode
+  | SecretsStorageErrorCode
   | "API_KEY_INVALID"
   | "MODEL_ERROR"
   | "NETWORK_ERROR"

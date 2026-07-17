@@ -107,4 +107,33 @@ describe("SettingsAnalysisPage keyboard behavior", () => {
       defaultLenses: ["security", "performance", "simplicity", "tests"],
     });
   });
+
+  it("keeps one associated live validation node while the final lens is removed and restored", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const group = screen.getByRole("group", { name: /active agents/i });
+    const liveRegion = screen.getByRole("status");
+
+    expect(group.querySelector('[data-slot="checkbox-group-validation"]')).toBeRequired();
+    expect(group).toHaveAttribute("aria-describedby", liveRegion.id);
+    expect(liveRegion).toHaveTextContent("");
+
+    for (const checkbox of within(group).getAllByRole("checkbox")) {
+      await user.click(checkbox);
+    }
+
+    expect(screen.getByRole("status")).toBe(liveRegion);
+    expect(liveRegion).toHaveTextContent("Select at least one lens.");
+    expect(group).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+
+    const firstCheckbox = within(group).getAllByRole("checkbox")[0];
+    if (!firstCheckbox) throw new Error("Expected at least one analysis lens");
+    await user.click(firstCheckbox);
+
+    expect(screen.getByRole("status")).toBe(liveRegion);
+    expect(liveRegion).toHaveTextContent("");
+    expect(group).not.toHaveAttribute("aria-invalid");
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+  });
 });

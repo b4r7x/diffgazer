@@ -8,6 +8,5 @@ const port = parsePortEnv(process.env.PORT, config.ports.api);
 
 export const api: BoundApi = createApi({
   baseUrl: `http://127.0.0.1:${String(port)}`,
-  projectRoot: process.cwd(),
   shutdownToken,
 });

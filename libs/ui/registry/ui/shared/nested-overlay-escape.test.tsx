@@ -6,8 +6,6 @@ import { Dialog } from "../dialog/index";
 import { Menu } from "../menu/index";
 import { Popover } from "../popover/index";
 
-// axe skipped: nested-overlay escape behavior test; dialog/popover primitive tests own a11y assertions.
-
 describe("Nested overlay: Popover inside Dialog", () => {
   it("Escape on open popover closes only the popover, not the dialog", async () => {
     const user = userEvent.setup();

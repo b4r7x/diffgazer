@@ -15,6 +15,7 @@ import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { mergeIds, resolveAriaInvalid } from "@/lib/aria";
+import { useFieldsetDisabled } from "@/lib/selectable-collection";
 import {
   type SelectableSize,
   type SelectableVariant,
@@ -119,12 +120,15 @@ export function Checkbox({
   const controlledBool = controlledChecked === undefined ? undefined : controlledChecked === true;
 
   const rootRef = useRef<HTMLDivElement>(null);
+  const nativeInputRef = useRef<HTMLInputElement>(null);
   const composedRef = useComposedRefs(rootRef, ref);
-  const [isChecked, setIsChecked] = useControllableState<boolean>({
+  const [isChecked, setIsChecked, , resetChecked] = useControllableState<boolean>({
     value: controlledBool,
     defaultValue: defaultChecked,
     onChange,
   });
+  const fieldsetDisabled = useFieldsetDisabled(rootRef);
+  const isDisabled = disabled || fieldsetDisabled;
   const state = resolveCheckboxState(isIndeterminate, isChecked);
   const [nativeInvalid, setNativeInvalid] = useState(false);
   const resolvedAriaInvalid = resolveAriaInvalid(
@@ -138,25 +142,40 @@ export function Checkbox({
     ariaDescribedBy,
     description ? descriptionId : undefined,
   );
+  const controlledFormReset =
+    controlledBool === undefined
+      ? undefined
+      : {
+          syncResetBaseline: () => {
+            if (rootRef.current?.hasAttribute("data-diffgazer-checkbox-group-item")) return;
+            if (nativeInputRef.current) nativeInputRef.current.defaultChecked = isChecked;
+          },
+          onReset: () => {
+            if (rootRef.current?.hasAttribute("data-diffgazer-checkbox-group-item")) return;
+            setNativeInvalid(false);
+          },
+        };
 
-  useFormReset(
+  const invalidatePendingReset = useFormReset(
     rootRef,
     defaultChecked,
     (value) => {
       setNativeInvalid(false);
-      setIsChecked(value);
+      resetChecked(value);
     },
     controlledBool === undefined,
+    controlledFormReset,
   );
 
   const toggle = () => {
-    if (disabled) return;
+    if (isDisabled) return;
+    invalidatePendingReset();
     setNativeInvalid(false);
     setIsChecked(!isChecked);
   };
 
   const handleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (disabled) {
+    if (isDisabled) {
       event.preventDefault();
       return;
     }
@@ -165,7 +184,7 @@ export function Checkbox({
   };
 
   const handleKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (disabled) return;
+    if (isDisabled) return;
     onKeyDown?.(e);
     if (e.defaultPrevented) return;
     if (e.key === " ") {
@@ -188,16 +207,18 @@ export function Checkbox({
         // Validation/submission-only mirror: aria-hidden keeps it out of the
         // a11y tree, so naming/invalid/described-by live on the visible control.
         <input
+          ref={nativeInputRef}
           type="checkbox"
+          data-slot="checkbox-form-mirror"
           name={name}
           value={value}
           checked={isChecked}
           required={required}
-          disabled={disabled}
+          disabled={isDisabled}
           className="sr-only"
           tabIndex={-1}
-          readOnly
           aria-hidden={true}
+          onChange={() => {}}
           onInvalid={(event) => {
             event.preventDefault();
             setNativeInvalid(true);
@@ -213,21 +234,21 @@ export function Checkbox({
         data-slot="checkbox"
         data-value={dataValue ?? value}
         data-state={dataState}
-        data-disabled={disabled ? "" : undefined}
+        data-disabled={isDisabled ? "" : undefined}
         data-highlighted={highlighted ? "" : undefined}
         aria-checked={isIndeterminate ? "mixed" : isChecked}
-        aria-disabled={disabled || undefined}
+        aria-disabled={isDisabled || undefined}
         aria-required={required || undefined}
         aria-invalid={resolvedAriaInvalid}
         aria-label={ariaLabel}
         aria-labelledby={resolvedAriaLabelledBy}
         aria-describedby={resolvedAriaDescribedBy}
-        tabIndex={disabled ? -1 : 0}
+        tabIndex={isDisabled ? -1 : 0}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         onMouseEnter={onMouseEnter}
         className={cn(
-          selectableVariants({ highlighted, disabled }),
+          selectableVariants({ highlighted, disabled: isDisabled }),
           selectableContainerClass,
           description && "items-start",
           className,

@@ -324,15 +324,68 @@ export function writeUiNextPackageSmoke(_root, projectDir) {
     ),
   );
   writeFileSync(
+    resolve(projectDir, "app/highlight-client-boundaries.tsx"),
+    joinLines(
+      '"use client";',
+      "",
+      "import type { ComponentType } from 'react';",
+      "import { CodeBlock } from '@diffgazer/ui/components/code-block';",
+      "import type { CodeBlockHighlightProps } from '@diffgazer/ui/components/code-block/highlight';",
+      "import { CommandPalette } from '@diffgazer/ui/components/command-palette';",
+      "import type { CommandPaletteHighlightItemProps } from '@diffgazer/ui/components/command-palette/highlight';",
+      "",
+      "const lowlight = {",
+      '  highlight: () => ({ type: "root", children: [] }),',
+      '  highlightAuto: () => ({ type: "root", children: [] }),',
+      '} satisfies CodeBlockHighlightProps["lowlight"];',
+      "",
+      "interface HighlightClientBoundariesProps {",
+      "  codeBlockHighlight: ComponentType<CodeBlockHighlightProps>;",
+      "  commandPaletteHighlightItem: ComponentType<CommandPaletteHighlightItemProps>;",
+      "}",
+      "",
+      "export function HighlightClientBoundaries({",
+      "  codeBlockHighlight: CodeBlockHighlight,",
+      "  commandPaletteHighlightItem: CommandPaletteHighlightItem,",
+      "}: HighlightClientBoundariesProps) {",
+      "  return (",
+      "    <>",
+      '      <CodeBlock language="ts">',
+      '        <CodeBlockHighlight code="const value = 1;" language="ts" lowlight={lowlight} />',
+      "      </CodeBlock>",
+      "      <CommandPalette open>",
+      "        <CommandPalette.Content>",
+      '          <CommandPalette.Input aria-label="Commands" />',
+      "          <CommandPalette.List>",
+      '            <CommandPaletteHighlightItem id="open-settings">Open settings</CommandPaletteHighlightItem>',
+      "          </CommandPalette.List>",
+      "        </CommandPalette.Content>",
+      "      </CommandPalette>",
+      "    </>",
+      "  );",
+      "}",
+      "",
+    ),
+  );
+  writeFileSync(
     resolve(projectDir, "app/page.tsx"),
     joinLines(
       "import { Button } from '@diffgazer/ui/components/button';",
+      "import { CodeBlockHighlight } from '@diffgazer/ui/components/code-block/highlight';",
+      "import { CommandPaletteHighlightItem } from '@diffgazer/ui/components/command-palette/highlight';",
       "import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter, DialogClose, DialogCloseIcon } from '@diffgazer/ui/components/dialog';",
       "import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@diffgazer/ui/components/select';",
+      "import { HighlightClientBoundaries } from './highlight-client-boundaries';",
       "",
       "export default function Page() {",
       "  return (",
-      ...uiSmokeAppBody("Package"),
+      "    <>",
+      "      <HighlightClientBoundaries",
+      "        codeBlockHighlight={CodeBlockHighlight}",
+      "        commandPaletteHighlightItem={CommandPaletteHighlightItem}",
+      "      />",
+      ...uiSmokeAppBody("Package").map((line) => `  ${line}`),
+      "    </>",
       "  );",
       "}",
       "",
@@ -351,6 +404,23 @@ export function verifyUiNextPackageSmoke(projectDir) {
 }
 
 export function writeKeysPackageModeSmoke(projectDir) {
+  writeFileSync(
+    resolve(projectDir, "runtime-only.mjs"),
+    joinLines(
+      "import { createRequire } from 'node:module';",
+      "const require = createRequire(import.meta.url);",
+      "for (const peer of ['@testing-library/react', '@testing-library/user-event', 'vitest']) {",
+      "  let resolved = null;",
+      "  try { resolved = require.resolve(peer); } catch {}",
+      "  if (resolved) throw new Error(`Expected optional test peer ${peer} to be absent, but it resolved to ${resolved}`);",
+      "}",
+      "require.resolve('@diffgazer/keys/package.json');",
+      "const keys = await import('@diffgazer/keys');",
+      "if (typeof keys.KeyboardProvider !== 'function') throw new Error('Expected KeyboardProvider from the root entry');",
+      "console.log('OK: @diffgazer/keys root works without optional test peers');",
+      "",
+    ),
+  );
   writeFileSync(
     resolve(projectDir, "strict.ts"),
     joinLines(
@@ -392,6 +462,21 @@ export function writeKeysPackageModeSmoke(projectDir) {
       },
       null,
       2,
+    ),
+  );
+}
+
+export function writeKeysTestHelperSmoke(projectDir) {
+  writeFileSync(
+    resolve(projectDir, "helper-import.test.mjs"),
+    joinLines(
+      "import { testNavigationBehavior } from '@diffgazer/keys/testing/navigation-behavior';",
+      "import { expect, it } from 'vitest';",
+      "",
+      "it('loads the documented navigation helper after its optional test peers are installed', () => {",
+      "  expect(typeof testNavigationBehavior).toBe('function');",
+      "});",
+      "",
     ),
   );
 }

@@ -1,7 +1,13 @@
 "use client";
 
 import { type RefObject, useEffect, useRef } from "react";
-import { getOwnerView, isHTMLElement, isNode } from "../dom/element-guards.js";
+import {
+  composedContains,
+  getComposedEventTarget,
+  getDeepActiveElement,
+  isHTMLElement,
+  isHTMLInputElement,
+} from "../dom/element-guards.js";
 import { restoreFocus as restoreFocusTarget } from "../dom/focus-restore.js";
 import {
   documentOrder,
@@ -29,6 +35,7 @@ interface TrapEntry {
   handleKeyDown: (event: KeyboardEvent) => void;
   handleFocusIn: (event: FocusEvent) => void;
   observer: MutationObserver;
+  observedTargets: Set<Node>;
   suspended: boolean;
 }
 
@@ -40,6 +47,55 @@ interface ActiveTrap {
 
 // Per-document trap stacks: only the top entry captures focus.
 const trapStacks = new WeakMap<Document, TrapEntry[]>();
+
+const TRAP_MUTATION_OPTIONS = {
+  childList: true,
+  subtree: true,
+  attributes: true,
+  attributeFilter: [
+    "disabled",
+    "hidden",
+    "open",
+    "tabindex",
+    "aria-hidden",
+    "inert",
+    "style",
+    "class",
+  ],
+} as const satisfies MutationObserverInit;
+
+function getComposedChildren(element: Element): Element[] {
+  if (element.shadowRoot) return Array.from(element.shadowRoot.children);
+  if (element.localName === "slot") {
+    const assigned = (element as HTMLSlotElement).assignedElements({ flatten: true });
+    if (assigned.length > 0) return assigned;
+  }
+  return Array.from(element.children);
+}
+
+function getOpenShadowRoots(container: HTMLElement): ShadowRoot[] {
+  const roots: ShadowRoot[] = [];
+  const visit = (element: Element) => {
+    if (element.shadowRoot) roots.push(element.shadowRoot);
+    for (const child of getComposedChildren(element)) visit(child);
+  };
+  visit(container);
+  return roots;
+}
+
+function observeNewTrapTargets(entry: TrapEntry): void {
+  const targets: Node[] = [entry.container, ...getOpenShadowRoots(entry.container)];
+  for (const target of targets) {
+    if (entry.observedTargets.has(target)) continue;
+    entry.observer.observe(target, TRAP_MUTATION_OPTIONS);
+    entry.observedTargets.add(target);
+  }
+}
+
+function disconnectTrapObserver(entry: TrapEntry): void {
+  entry.observer.disconnect();
+  entry.observedTargets.clear();
+}
 
 function getTrapStack(ownerDocument: Document): TrapEntry[] {
   let stack = trapStacks.get(ownerDocument);
@@ -54,12 +110,7 @@ function armEntry(entry: TrapEntry): void {
   if (!entry.suspended) return;
   entry.ownerDocument.addEventListener("keydown", entry.handleKeyDown, true);
   entry.ownerDocument.addEventListener("focusin", entry.handleFocusIn, true);
-  entry.observer.observe(entry.container, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ["disabled", "hidden", "tabindex", "aria-hidden", "inert", "style", "class"],
-  });
+  observeNewTrapTargets(entry);
   entry.suspended = false;
 }
 
@@ -67,14 +118,14 @@ function suspendEntry(entry: TrapEntry): void {
   if (entry.suspended) return;
   entry.ownerDocument.removeEventListener("keydown", entry.handleKeyDown, true);
   entry.ownerDocument.removeEventListener("focusin", entry.handleFocusIn, true);
-  entry.observer.disconnect();
+  disconnectTrapObserver(entry);
   entry.suspended = true;
 }
 
 function resumeEntry(entry: TrapEntry): void {
   armEntry(entry);
   const target =
-    entry.container.contains(entry.lastFocused) &&
+    composedContains(entry.container, entry.lastFocused) &&
     entry.lastFocused.isConnected &&
     isFocusable(entry.lastFocused)
       ? entry.lastFocused
@@ -86,7 +137,8 @@ function shouldInsertBefore(incoming: TrapEntry, existing: TrapEntry): boolean {
   // Splice an incoming ancestor before its existing descendant so the descendant
   // stays on top; otherwise activation order makes the new trap the top.
   return (
-    incoming.container !== existing.container && incoming.container.contains(existing.container)
+    incoming.container !== existing.container &&
+    composedContains(incoming.container, existing.container)
   );
 }
 
@@ -119,7 +171,8 @@ function pickInitialTarget(
   initialFocus: RefObject<HTMLElement | null> | undefined,
 ): HTMLElement {
   const requested = initialFocus?.current;
-  if (requested && container.contains(requested) && isFocusable(requested)) return requested;
+  if (requested && composedContains(container, requested) && isFocusable(requested))
+    return requested;
   return getFocusableElements(container)[0] ?? container;
 }
 
@@ -127,8 +180,7 @@ function isInsideContainer(
   container: HTMLElement,
   target: EventTarget | null,
 ): target is HTMLElement {
-  const View = getOwnerView(container);
-  return isNode(target, View) && container.contains(target);
+  return isHTMLElement(target) && composedContains(container, target);
 }
 
 function getTabbableFromAnchor(
@@ -151,9 +203,26 @@ function getTabbableFromAnchor(
   return documentOrderEls[0] ?? null;
 }
 
+function hasExcludedCheckedRadioPeer(container: HTMLElement, element: HTMLElement): boolean {
+  if (!isHTMLInputElement(element) || element.type !== "radio" || element.name === "") return false;
+  const root = element.getRootNode();
+  return getFocusableElements(container).some(
+    (candidate) =>
+      candidate !== element &&
+      isHTMLInputElement(candidate) &&
+      candidate.type === "radio" &&
+      candidate.name === element.name &&
+      candidate.form === element.form &&
+      candidate.getRootNode() === root &&
+      candidate.checked &&
+      candidate.tabIndex < 0,
+  );
+}
+
 /**
  * Keeps Tab and Shift+Tab focus inside a container while active, with nested
- * trap stacking and optional focus restoration on release.
+ * trap stacking and optional focus restoration on release. Active traps listen
+ * for keydown and focusin in the capture phase on the container's owner document.
  */
 export function useFocusTrap(
   containerRef: RefObject<HTMLElement | null>,
@@ -189,7 +258,7 @@ export function useFocusTrap(
     const container = nextContainer;
     const ownerDocument = container.ownerDocument;
     // Capture the opener before focus moves inside, so a false-to-true toggle can still restore to it.
-    const activeAtActivation = ownerDocument.activeElement;
+    const activeAtActivation = getDeepActiveElement(ownerDocument);
     const opener =
       isHTMLElement(activeAtActivation) && !isInsideContainer(container, activeAtActivation)
         ? activeAtActivation
@@ -204,17 +273,23 @@ export function useFocusTrap(
 
     const recapture = () => {
       const target =
-        container.contains(lastFocused) && lastFocused.isConnected && isFocusable(lastFocused)
+        composedContains(container, lastFocused) &&
+        lastFocused.isConnected &&
+        isFocusable(lastFocused)
           ? lastFocused
           : pickInitialTarget(container, initialFocus);
       target.focus();
     };
 
     const handleFocusIn = (event: FocusEvent) => {
-      const target = event.target;
+      const target = getComposedEventTarget(event);
       if (isInsideContainer(container, target)) {
         lastFocused = target;
-        if (trapEntryRef.current) trapEntryRef.current.lastFocused = target;
+        const entry = trapEntryRef.current;
+        if (entry) {
+          entry.lastFocused = target;
+          if (!entry.suspended) observeNewTrapTargets(entry);
+        }
         return;
       }
       recapture();
@@ -223,16 +298,18 @@ export function useFocusTrap(
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Tab") return;
 
+      const entry = trapEntryRef.current;
+      if (entry && !entry.suspended) observeNewTrapTargets(entry);
       const focusableEls = getTabbableElements(container);
       if (focusableEls.length === 0) {
         event.preventDefault();
-        if (ownerDocument.activeElement !== container) container.focus();
+        if (getDeepActiveElement(ownerDocument) !== container) container.focus();
         return;
       }
 
       const first = focusableEls[0];
       const last = focusableEls[focusableEls.length - 1];
-      const activeElement = ownerDocument.activeElement;
+      const activeElement = getDeepActiveElement(ownerDocument);
 
       if (!isInsideContainer(container, activeElement)) {
         event.preventDefault();
@@ -240,12 +317,20 @@ export function useFocusTrap(
         return;
       }
 
-      if (!focusableEls.includes(activeElement as HTMLElement)) {
+      if (!focusableEls.includes(activeElement)) {
         event.preventDefault();
         const anchorTarget = isInsideContainer(container, activeElement)
           ? getTabbableFromAnchor(focusableEls, activeElement, event.shiftKey)
           : null;
         (anchorTarget ?? (event.shiftKey ? last : first))?.focus();
+        return;
+      }
+
+      const activeIndex = focusableEls.indexOf(activeElement);
+      const adjacent = focusableEls[activeIndex + (event.shiftKey ? -1 : 1)];
+      if (adjacent && hasExcludedCheckedRadioPeer(container, adjacent)) {
+        event.preventDefault();
+        adjacent.focus();
         return;
       }
 
@@ -263,7 +348,13 @@ export function useFocusTrap(
     };
 
     const observer = new MutationObserver(() => {
-      if (lastFocused.isConnected && container.contains(lastFocused) && isFocusable(lastFocused))
+      const entry = trapEntryRef.current;
+      if (entry && !entry.suspended) observeNewTrapTargets(entry);
+      if (
+        lastFocused.isConnected &&
+        composedContains(container, lastFocused) &&
+        isFocusable(lastFocused)
+      )
         return;
       recapture();
     });
@@ -278,6 +369,7 @@ export function useFocusTrap(
       handleKeyDown,
       handleFocusIn,
       observer,
+      observedTargets: new Set(),
       suspended: true,
     };
     trapEntryRef.current = entry;
@@ -285,16 +377,20 @@ export function useFocusTrap(
 
     if (isTopTrap) {
       armEntry(entry);
-      if (!isInsideContainer(container, ownerDocument.activeElement)) {
+      if (!isInsideContainer(container, getDeepActiveElement(ownerDocument))) {
         pickInitialTarget(container, initialFocus).focus();
       }
-      lastFocused = isInsideContainer(container, ownerDocument.activeElement)
-        ? ownerDocument.activeElement
+      const activeElement = getDeepActiveElement(ownerDocument);
+      lastFocused = isInsideContainer(container, activeElement)
+        ? activeElement
         : pickInitialTarget(container, initialFocus);
       entry.lastFocused = lastFocused;
-    } else if (isInsideContainer(container, ownerDocument.activeElement)) {
-      lastFocused = ownerDocument.activeElement;
-      entry.lastFocused = lastFocused;
+    } else {
+      const activeElement = getDeepActiveElement(ownerDocument);
+      if (isInsideContainer(container, activeElement)) {
+        lastFocused = activeElement;
+        entry.lastFocused = lastFocused;
+      }
     }
 
     const activeTrap: ActiveTrap = {
@@ -305,7 +401,7 @@ export function useFocusTrap(
         // our focusin sees the outer trap's refocus as an escape and fights it.
         ownerDocument.removeEventListener("keydown", handleKeyDown, true);
         ownerDocument.removeEventListener("focusin", handleFocusIn, true);
-        observer.disconnect();
+        disconnectTrapObserver(entry);
 
         removeTrap(entry);
         trapEntryRef.current = null;

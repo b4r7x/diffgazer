@@ -6,6 +6,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { axe } from "../../testing/axe";
+import { listboxDoc } from "../hook-docs/listbox";
 import { requireAttribute } from "../testing/assertions";
 import {
   getEncodedListboxItemId,
@@ -20,9 +21,17 @@ function Listbox(
   props: Omit<Partial<UseListboxOptions>, "items"> & {
     items: ListboxItem[];
     provideItemsMetadata?: boolean;
+    accessibleName?: string;
+    rootKey?: string;
   },
 ) {
-  const { items, provideItemsMetadata = true, ...opts } = props;
+  const {
+    items,
+    provideItemsMetadata = true,
+    accessibleName = "Test listbox",
+    rootKey,
+    ...opts
+  } = props;
   const hookItems = provideItemsMetadata
     ? items.map((item) => ({ id: item.id, disabled: item.disabled }))
     : undefined;
@@ -34,7 +43,7 @@ function Listbox(
   const getDomItemId = opts.getItemId ?? getEncodedListboxItemId;
 
   return (
-    <div {...getContainerProps()} aria-label="Test listbox">
+    <div key={rootKey} {...getContainerProps()} aria-label={accessibleName}>
       {items.map((item) => (
         <div
           key={item.id}
@@ -58,6 +67,115 @@ const defaultItems = [
   { id: "c", label: "Charlie" },
 ];
 
+type EditableControlKind = "input" | "textarea" | "contenteditable";
+
+function EditableControl({ kind }: { kind: EditableControlKind }) {
+  if (kind === "input") return <input aria-label="Editable child" />;
+  if (kind === "textarea") return <textarea aria-label="Editable child" />;
+  return (
+    // biome-ignore lint/a11y/useSemanticElements: contenteditable has no native element equivalent and needs textbox semantics.
+    <div contentEditable role="textbox" aria-label="Editable child" suppressContentEditableWarning>
+      edit
+    </div>
+  );
+}
+
+function ListboxWithEditableChild({
+  kind,
+  onHighlightChange,
+}: {
+  kind: EditableControlKind;
+  onHighlightChange: (id: string | null) => void;
+}) {
+  const { getContainerProps } = useListbox({
+    idPrefix: "editable",
+    defaultHighlighted: "alpha",
+    typeahead: true,
+    onHighlightChange,
+  });
+
+  return (
+    <div {...getContainerProps()} aria-label="Editable listbox">
+      <EditableControl kind={kind} />
+      <div id="editable-alpha" role="option" data-value="alpha">
+        Alpha
+      </div>
+      <div id="editable-beta" role="option" data-value="beta">
+        Beta
+      </div>
+    </div>
+  );
+}
+
+function ListboxWithEditableItem({
+  onHighlightChange,
+}: {
+  onHighlightChange: (id: string | null) => void;
+}) {
+  const { getContainerProps } = useListbox({
+    idPrefix: "editable-item",
+    defaultHighlighted: "alpha",
+    typeahead: true,
+    onHighlightChange,
+  });
+
+  return (
+    <div {...getContainerProps()} aria-label="Editable item listbox">
+      <div id="editable-item-alpha" role="option" data-value="alpha">
+        Alpha
+      </div>
+      <div
+        id="editable-item-beta"
+        role="option"
+        data-value="beta"
+        contentEditable
+        suppressContentEditableWarning
+      >
+        Beta
+      </div>
+    </div>
+  );
+}
+
+function ListboxWithShadowEditable({
+  owned,
+  onHighlightChange,
+}: {
+  owned: boolean;
+  onHighlightChange: (id: string | null) => void;
+}) {
+  const { getContainerProps } = useListbox({
+    idPrefix: "shadow-editable",
+    defaultHighlighted: "alpha",
+    typeahead: true,
+    onHighlightChange,
+  });
+  const shadowInputHost = (
+    <span
+      data-testid="shadow-editable-host"
+      ref={(host) => {
+        if (!host || host.shadowRoot) return;
+        const input = document.createElement("input");
+        input.setAttribute("aria-label", "Shadow editable");
+        host.attachShadow({ mode: "open" }).append(input);
+      }}
+    />
+  );
+
+  return (
+    <div {...getContainerProps()} aria-label="Shadow editable listbox">
+      {!owned && shadowInputHost}
+      <div id="shadow-editable-alpha" role="option" data-value="alpha">
+        Alpha
+      </div>
+      <div id="shadow-editable-beta" role="option" data-value="beta">
+        Beta
+        {owned && shadowInputHost}
+      </div>
+    </div>
+  );
+}
+
 describe("useListbox", () => {
   it("renders with listbox role and tabindex", () => {
     render(<Listbox items={defaultItems} />);
@@ -66,8 +184,10 @@ describe("useListbox", () => {
     expect(listbox).toHaveAttribute("tabindex", "0");
   });
 
-  it("has no axe violations", async () => {
-    const { container } = render(<Listbox items={defaultItems} />);
+  it("documents and renders a named listbox with no axe violations", async () => {
+    expect(listboxDoc.usage?.code).toContain('aria-label="Fruit choices"');
+    const { container } = render(<Listbox items={defaultItems} accessibleName="Fruit choices" />);
+    expect(screen.getByRole("listbox", { name: "Fruit choices" })).toBeInTheDocument();
     expect(await axe(container)).toHaveNoViolations();
   });
 
@@ -166,6 +286,36 @@ describe("useListbox", () => {
       />,
     );
     await waitFor(() => expect(listbox).not.toHaveAttribute("aria-activedescendant"));
+  });
+
+  it("moves DOM validation to a keyed replacement root before observing option removal", async () => {
+    const { rerender } = render(
+      <Listbox rootKey="first" items={defaultItems} selectedId="b" provideItemsMetadata={false} />,
+    );
+    const firstRoot = screen.getByRole("listbox");
+    await waitFor(() =>
+      expect(firstRoot).toHaveAttribute(
+        "aria-activedescendant",
+        getEncodedListboxItemId("lb", "b"),
+      ),
+    );
+
+    rerender(
+      <Listbox rootKey="second" items={defaultItems} selectedId="b" provideItemsMetadata={false} />,
+    );
+    const replacementRoot = screen.getByRole("listbox");
+    expect(replacementRoot).not.toBe(firstRoot);
+
+    rerender(
+      <Listbox
+        rootKey="second"
+        items={defaultItems.filter((item) => item.id !== "b")}
+        selectedId="b"
+        provideItemsMetadata={false}
+      />,
+    );
+
+    await waitFor(() => expect(replacementRoot).not.toHaveAttribute("aria-activedescendant"));
   });
 
   it("does not activate a removed highlighted item", async () => {
@@ -383,6 +533,118 @@ describe("useListbox", () => {
     expect(onHighlight).not.toHaveBeenCalled();
   });
 
+  it("does not update outer typeahead from an editable shadow descendant of an inner composite", async () => {
+    const onHighlight = vi.fn();
+
+    function NestedShadowListbox() {
+      const { getContainerProps } = useListbox({
+        idPrefix: "outer-shadow",
+        defaultHighlighted: "alpha",
+        onHighlightChange: onHighlight,
+        typeahead: true,
+      });
+
+      return (
+        <div {...getContainerProps()} aria-label="Outer shadow listbox">
+          <div id="outer-shadow-alpha" role="option" data-value="alpha">
+            Alpha
+            <div role="listbox" aria-label="Inner shadow listbox">
+              <div role="option" data-value="inner">
+                Inner
+                <span
+                  data-testid="nested-shadow-input-host"
+                  ref={(host) => {
+                    if (!host || host.shadowRoot) return;
+                    const input = document.createElement("input");
+                    input.setAttribute("aria-label", "Nested shadow input");
+                    host.attachShadow({ mode: "open" }).append(input);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+          <div id="outer-shadow-charlie" role="option" data-value="charlie">
+            Charlie
+          </div>
+        </div>
+      );
+    }
+
+    render(<NestedShadowListbox />);
+    const input = screen.getByTestId("nested-shadow-input-host").shadowRoot?.querySelector("input");
+    expect(input).not.toBeNull();
+    if (!input) return;
+    input.focus();
+
+    await userEvent.setup().keyboard("c");
+
+    expect(onHighlight).not.toHaveBeenCalled();
+    expect(screen.getByRole("listbox", { name: "Outer shadow listbox" })).toHaveAttribute(
+      "aria-activedescendant",
+      "outer-shadow-alpha",
+    );
+  });
+
+  it.each([
+    "input",
+    "textarea",
+    "contenteditable",
+  ] as const)("does not run typeahead for printable input bubbling from an editable %s descendant", async (kind) => {
+    const onHighlight = vi.fn();
+    render(<ListboxWithEditableChild kind={kind} onHighlightChange={onHighlight} />);
+    const editable = screen.getByRole("textbox", { name: "Editable child" });
+    editable.focus();
+
+    await userEvent.setup().keyboard("b");
+
+    expect(onHighlight).not.toHaveBeenCalled();
+    expect(screen.getByRole("listbox", { name: "Editable listbox" })).toHaveAttribute(
+      "aria-activedescendant",
+      "editable-alpha",
+    );
+  });
+
+  it("retains typeahead when the editable target is itself an owned option", async () => {
+    const onHighlight = vi.fn();
+    render(<ListboxWithEditableItem onHighlightChange={onHighlight} />);
+    const editableOption = screen.getByRole("option", { name: "Beta" });
+    editableOption.focus();
+
+    await userEvent.setup().keyboard("b");
+
+    expect(onHighlight).toHaveBeenCalledWith("beta");
+  });
+
+  it("retains typeahead for an editable open-shadow descendant of an owned option", async () => {
+    const onHighlight = vi.fn();
+    render(<ListboxWithShadowEditable owned onHighlightChange={onHighlight} />);
+    const input = screen.getByTestId("shadow-editable-host").shadowRoot?.querySelector("input");
+    expect(input).not.toBeNull();
+    if (!input) return;
+    input.focus();
+
+    await userEvent.setup().keyboard("b");
+
+    expect(onHighlight).toHaveBeenCalledWith("beta");
+  });
+
+  it("ignores typeahead from an editable open-shadow non-item", async () => {
+    const onHighlight = vi.fn();
+    render(<ListboxWithShadowEditable owned={false} onHighlightChange={onHighlight} />);
+    const input = screen.getByTestId("shadow-editable-host").shadowRoot?.querySelector("input");
+    expect(input).not.toBeNull();
+    if (!input) return;
+    input.focus();
+
+    await userEvent.setup().keyboard("b");
+
+    expect(onHighlight).not.toHaveBeenCalled();
+    expect(screen.getByRole("listbox", { name: "Shadow editable listbox" })).toHaveAttribute(
+      "aria-activedescendant",
+      "shadow-editable-alpha",
+    );
+  });
+
   it("starts typeahead search after the current highlighted item", async () => {
     const items = [
       { id: "a1", label: "Alpha" },
@@ -477,6 +739,41 @@ describe("useListbox", () => {
     }
 
     render(<LabelledByListbox />);
+    screen.getByRole("listbox").focus();
+    await user.keyboard("o");
+
+    expect(onHighlight).toHaveBeenCalledWith("symbol");
+  });
+
+  it("uses a directly referenced hidden label for typeahead", async () => {
+    const onHighlight = vi.fn();
+    const user = userEvent.setup();
+
+    function HiddenLabelListbox() {
+      const { getContainerProps } = useListbox({
+        idPrefix: "lb",
+        typeahead: true,
+        onHighlightChange: onHighlight,
+      });
+
+      return (
+        <div {...getContainerProps()} aria-label="Test listbox">
+          <span id="hidden-omega-label" hidden>
+            Omega
+          </span>
+          <div
+            id="lb-symbol"
+            role="option"
+            data-value="symbol"
+            aria-labelledby="hidden-omega-label"
+          >
+            Symbol
+          </div>
+        </div>
+      );
+    }
+
+    render(<HiddenLabelListbox />);
     screen.getByRole("listbox").focus();
     await user.keyboard("o");
 

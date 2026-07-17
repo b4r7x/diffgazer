@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { FocusElement } from "@/types/focus-element";
 import { ApiKeyMethodSelector } from "./api-key-method-selector";
 
-function Subject() {
+function Subject({ onFocusChange = vi.fn() }: { onFocusChange?: (value: FocusElement) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [method, setMethod] = useState<InputMethod>("paste");
   const [focused, setFocused] = useState<FocusElement>("paste");
@@ -21,8 +21,12 @@ function Subject() {
       providerName="Gemini"
       inputRef={inputRef}
       focused={focused}
-      onFocus={setFocused}
+      onFocus={(nextFocused) => {
+        onFocusChange(nextFocused);
+        setFocused(nextFocused);
+      }}
       onKeySubmit={vi.fn()}
+      onMethodCommit={vi.fn()}
       onInputMethodKeyDown={(event, focusedMethod) => {
         if (event.key === "ArrowDown" && focusedMethod === "paste" && method === "paste") {
           event.preventDefault();
@@ -58,5 +62,30 @@ describe("ApiKeyMethodSelector", () => {
     expect(envInput).toHaveValue("GEMINI_API_KEY");
     expect(envInput).toHaveAttribute("readonly");
     expect(envInput).toHaveAttribute("tabindex", "-1");
+  });
+
+  it("keeps Env focused when disabled paste padding is clicked", async () => {
+    const user = userEvent.setup();
+    const onFocusChange = vi.fn();
+
+    render(<Subject onFocusChange={onFocusChange} />);
+
+    const env = screen.getByRole("radio", { name: "Import from Env" });
+    await user.click(env);
+    expect(env).toHaveFocus();
+    expect(env).toBeChecked();
+
+    const input = screen.getByLabelText("Gemini API Key");
+    const inputFocus = vi.spyOn(input, "focus");
+    const pastePadding = input.closest('[data-slot="input-group"]')?.parentElement;
+    if (!pastePadding) throw new Error("Expected paste padding wrapper");
+    onFocusChange.mockClear();
+
+    await user.click(pastePadding);
+
+    expect(env).toHaveFocus();
+    expect(env).toBeChecked();
+    expect(onFocusChange).not.toHaveBeenCalled();
+    expect(inputFocus).not.toHaveBeenCalled();
   });
 });

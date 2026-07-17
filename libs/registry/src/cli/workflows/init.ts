@@ -11,6 +11,8 @@ export interface InitWorkflowOptions<TConfig> {
   force: boolean;
   dryRun?: boolean;
   skipInstall?: boolean;
+  dependencies?: string[];
+  onSkipInstall?: (dependencies: string[]) => void;
   loadConfig: (cwd: string) => ConfigLoadResult<TConfig>;
   detectProject: (cwd: string) => { display: Array<[label: string, value: string]> };
   /**
@@ -153,22 +155,33 @@ function collectAncestorDirs(path: string, cwd: string, sink: Set<string>): void
   sink.add(cwd);
 }
 
-function restoreSnapshottedFiles(snapshot: Map<string, Buffer>): void {
+function recordRollbackFailure(failures: Error[], action: string, compensation: () => void): void {
+  try {
+    compensation();
+  } catch (error) {
+    failures.push(new Error(`Failed to ${action}`, { cause: error }));
+  }
+}
+
+function restoreSnapshottedFiles(snapshot: Map<string, Buffer>, failures: Error[]): void {
   for (const [path, content] of snapshot) {
-    if (!existsSync(path) || !readFileSync(path).equals(content)) {
-      writeFileSync(path, content);
-    }
+    recordRollbackFailure(failures, `restore ${path}`, () => {
+      if (!existsSync(path) || !readFileSync(path).equals(content)) {
+        writeFileSync(path, content);
+      }
+    });
   }
 }
 
 function removeUnplannedlyCreatedFiles(
   plannedFilePaths: Set<string>,
   preExistingFiles: Map<string, Buffer>,
+  failures: Error[],
 ): void {
   for (const path of plannedFilePaths) {
     if (preExistingFiles.has(path)) continue;
     if (!existsSync(path)) continue;
-    rmSync(path, { force: true });
+    recordRollbackFailure(failures, `remove ${path}`, () => rmSync(path, { force: true }));
   }
 }
 
@@ -176,6 +189,7 @@ function removeCreatedResults(
   cwd: string,
   results: Array<{ action: "created" | "skipped"; path: string }>,
   existingDirs: Set<string>,
+  failures: Error[],
 ): void {
   const created = results
     .filter((result) => result.action === "created")
@@ -183,21 +197,33 @@ function removeCreatedResults(
 
   for (const path of created.sort((a, b) => b.length - a.length)) {
     if (!existsSync(path)) continue;
-    rmSync(path, { recursive: statSync(path).isDirectory(), force: true });
+    recordRollbackFailure(failures, `remove ${path}`, () => {
+      rmSync(path, { recursive: statSync(path).isDirectory(), force: true });
+    });
   }
 
   const parents = new Set(created.map((path) => dirname(path)));
   for (const path of [...parents].sort((a, b) => b.length - a.length)) {
     let current = path;
     while (current !== resolve(cwd) && !existingDirs.has(current) && existsSync(current)) {
-      try {
+      const failureCount = failures.length;
+      recordRollbackFailure(failures, `remove directory ${current}`, () => {
         rmSync(current, { recursive: false });
-      } catch {
-        break;
-      }
+      });
+      if (failures.length > failureCount) break;
       current = dirname(current);
     }
   }
+}
+
+function attachRollbackCause(primary: unknown, failures: Error[]): unknown {
+  if (failures.length === 0) return primary;
+  const cause = new AggregateError(failures, "Initialization rollback was incomplete");
+  if (!(primary instanceof Error)) {
+    return new Error(String(primary), { cause });
+  }
+  Object.defineProperty(primary, "cause", { value: cause, configurable: true });
+  return primary;
 }
 
 function showNextSteps(steps: string[]): void {
@@ -219,6 +245,8 @@ export async function runInitWorkflow<TConfig>(
     force,
     dryRun,
     skipInstall,
+    dependencies = [],
+    onSkipInstall,
     loadConfig,
     detectProject,
     plannedPaths,
@@ -264,16 +292,25 @@ export async function runInitWorkflow<TConfig>(
   try {
     fileResults = createFiles(cwd);
     logFileResults(fileResults);
-    if (afterFiles && !skipInstall) await afterFiles(cwd);
+    if (!skipInstall && afterFiles) {
+      await afterFiles(cwd);
+    }
 
     await writeConfig(cwd);
     fileAction(pc.green("+"), configFileName);
+    if (skipInstall && dependencies.length > 0) onSkipInstall?.(dependencies);
   } catch (error) {
-    removeCreatedResults(cwd, fileResults, snapshot.dirs);
-    removeUnplannedlyCreatedFiles(snapshot.plannedFilePaths, snapshot.files);
-    restoreSnapshottedFiles(snapshot.files);
-    if (!configExisted) rmSync(resolve(cwd, configFileName), { force: true });
-    throw error;
+    const rollbackFailures: Error[] = [];
+    removeCreatedResults(cwd, fileResults, snapshot.dirs, rollbackFailures);
+    removeUnplannedlyCreatedFiles(snapshot.plannedFilePaths, snapshot.files, rollbackFailures);
+    restoreSnapshottedFiles(snapshot.files, rollbackFailures);
+    if (!configExisted) {
+      const configPath = resolve(cwd, configFileName);
+      recordRollbackFailure(rollbackFailures, `remove ${configPath}`, () => {
+        rmSync(configPath, { force: true });
+      });
+    }
+    throw attachRollbackCause(error, rollbackFailures);
   }
 
   showNextSteps(nextSteps);

@@ -2,24 +2,30 @@
 
 import "@testing-library/jest-dom/vitest";
 import { toast } from "@diffgazer/ui/components/toast";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MobileNavProvider, useMobileNav } from "@/hooks/mobile-nav-context";
 import { stubMatchMedia } from "@/testing/match-media";
 import { SidebarChrome } from "./sidebar-chrome";
 
-const routerBoundary = vi.hoisted(() => ({
-  pathname: "/ui/components/button",
-  navigate: vi.fn(),
-  resolveSwitchPath: vi.fn(),
-}));
+const routerBoundary = vi.hoisted(
+  (): {
+    pathname: string;
+    pendingPathname: string | null;
+    navigate: ReturnType<typeof vi.fn>;
+    resolveSwitchPath: ReturnType<typeof vi.fn>;
+  } => ({
+    pathname: "/ui/components/button",
+    pendingPathname: null,
+    navigate: vi.fn(),
+    resolveSwitchPath: vi.fn(),
+  }),
+);
 
 // Boundary mock: @tanstack/react-router is the external route context boundary.
 vi.mock("@tanstack/react-router", async () => {
-  const { RouterLinkMock, useLocationMock, useRouterStateMock } = await import(
-    "@/testing/router-mock"
-  );
+  const { RouterLinkMock, useLocationMock } = await import("@/testing/router-mock");
   return {
     Link: RouterLinkMock,
     ...useLocationMock({
@@ -27,11 +33,15 @@ vi.mock("@tanstack/react-router", async () => {
         return routerBoundary.pathname;
       },
     }),
-    ...useRouterStateMock({
-      get pathname() {
-        return routerBoundary.pathname;
-      },
-    }),
+    useRouterState: ({
+      select,
+    }: {
+      select: (state: { isLoading: boolean; location: { pathname: string } }) => unknown;
+    }) =>
+      select({
+        isLoading: routerBoundary.pendingPathname !== null,
+        location: { pathname: routerBoundary.pendingPathname ?? routerBoundary.pathname },
+      }),
     useNavigate: () => routerBoundary.navigate,
   };
 });
@@ -76,12 +86,14 @@ const TEST_TREE = {
 };
 
 function renderSidebarChrome() {
-  return render(
+  const getUi = () => (
     <MobileNavProvider>
       <DrawerProbe />
       <SidebarChrome library="ui" tree={TEST_TREE} />
-    </MobileNavProvider>,
+    </MobileNavProvider>
   );
+  const view = render(getUi());
+  return { ...view, rerenderSidebarChrome: () => view.rerender(getUi()) };
 }
 
 async function selectKeysLibrary(user: ReturnType<typeof userEvent.setup>) {
@@ -89,9 +101,20 @@ async function selectKeysLibrary(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole("option", { name: "@diffgazer/keys" }));
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
 describe("SidebarChrome library switching", () => {
   beforeEach(() => {
     routerBoundary.pathname = "/ui/components/button";
+    routerBoundary.pendingPathname = null;
     routerBoundary.navigate.mockReset();
     routerBoundary.resolveSwitchPath.mockReset();
     vi.mocked(toast.error).mockReset();
@@ -138,11 +161,87 @@ describe("SidebarChrome library switching", () => {
     await waitFor(() => expect(routerBoundary.navigate).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(trigger).not.toHaveAttribute("aria-disabled"));
   });
+
+  it("ignores a late library response after the pathname changes", async () => {
+    stubMatchMedia({ isDesktop: true });
+    Element.prototype.scrollIntoView = () => {};
+    const deferred = createDeferred<{ library: string; slugs: string[] }>();
+    routerBoundary.resolveSwitchPath.mockReturnValueOnce(deferred.promise);
+    const user = userEvent.setup();
+    const { rerenderSidebarChrome } = renderSidebarChrome();
+
+    await selectKeysLibrary(user);
+    routerBoundary.pathname = "/ui/components/card";
+    rerenderSidebarChrome();
+
+    await act(async () => {
+      deferred.resolve({ library: "keys", slugs: ["getting-started"] });
+      await deferred.promise;
+    });
+
+    expect(routerBoundary.navigate).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("combobox", { name: /select documentation library/i }),
+    ).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("ignores a late library failure after another route starts loading", async () => {
+    stubMatchMedia({ isDesktop: true });
+    Element.prototype.scrollIntoView = () => {};
+    const deferred = createDeferred<{ library: string; slugs: string[] }>();
+    routerBoundary.resolveSwitchPath.mockReturnValueOnce(deferred.promise);
+    const user = userEvent.setup();
+    const { rerenderSidebarChrome } = renderSidebarChrome();
+
+    await selectKeysLibrary(user);
+    routerBoundary.pendingPathname = "/ui/components/card";
+    rerenderSidebarChrome();
+
+    await act(async () => {
+      deferred.reject(new Error("stale failure"));
+      await Promise.resolve();
+    });
+
+    expect(routerBoundary.navigate).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("combobox", { name: /select documentation library/i }),
+    ).not.toHaveAttribute("aria-disabled");
+  });
+
+  it.each([
+    "resolve",
+    "reject",
+  ] as const)("ignores a late %s after the sidebar unmounts", async (settlement) => {
+    stubMatchMedia({ isDesktop: true });
+    Element.prototype.scrollIntoView = () => {};
+    const deferred = createDeferred<{ library: string; slugs: string[] }>();
+    routerBoundary.resolveSwitchPath.mockReturnValueOnce(deferred.promise);
+    const user = userEvent.setup();
+    const { unmount } = renderSidebarChrome();
+
+    await selectKeysLibrary(user);
+    unmount();
+
+    await act(async () => {
+      if (settlement === "resolve") {
+        deferred.resolve({ library: "keys", slugs: ["getting-started"] });
+      } else {
+        deferred.reject(new Error("stale failure"));
+      }
+      await Promise.resolve();
+    });
+
+    expect(routerBoundary.navigate).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
 });
 
 describe("SidebarChrome breadcrumbs", () => {
   beforeEach(() => {
     routerBoundary.pathname = "/ui/components/button";
+    routerBoundary.pendingPathname = null;
     routerBoundary.navigate.mockReset();
   });
 

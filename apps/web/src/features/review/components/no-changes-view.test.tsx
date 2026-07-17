@@ -14,7 +14,12 @@ function renderView(props: Partial<NoChangesViewProps> = {}) {
   const view = render(
     <KeyboardProvider>
       <FooterProvider>
-        <NoChangesView mode={mode} onBack={onBack} onSwitchMode={onSwitchMode} />
+        <NoChangesView
+          mode={mode}
+          onBack={onBack}
+          onSwitchMode={onSwitchMode}
+          switchDisabled={props.switchDisabled}
+        />
       </FooterProvider>
     </KeyboardProvider>,
   );
@@ -94,6 +99,25 @@ describe("NoChangesView", () => {
     // call-count IS the contract: Escape must fire onBack exactly once (no double-fire regardless of focused action)
     expect(onBack).toHaveBeenCalledTimes(1);
     expect(onSwitchMode).not.toHaveBeenCalled();
+  });
+
+  it("disables the pending switch while keeping Back authoritative", async () => {
+    const user = userEvent.setup();
+    const onBack = vi.fn();
+    const onSwitchMode = vi.fn();
+    renderView({ onBack, onSwitchMode, switchDisabled: true });
+
+    const switchButton = screen.getByRole("button", { name: "Review Staged" });
+    const backButton = screen.getByRole("button", { name: "Back to Home" });
+    expect(switchButton).toBeDisabled();
+    expect(backButton).toBeEnabled();
+    await waitFor(() => expect(backButton).toHaveFocus());
+
+    await user.click(switchButton);
+    await user.keyboard("{Escape}");
+
+    expect(onSwitchMode).not.toHaveBeenCalled();
+    expect(onBack).toHaveBeenCalledTimes(1);
   });
 
   it("renders only the Back button when onSwitchMode is omitted and Enter calls onBack", async () => {

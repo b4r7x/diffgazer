@@ -7,7 +7,10 @@ import { useDialogContext } from "./dialog-context";
 /** Props for dialog description. */
 export interface DialogDescriptionProps extends ComponentProps<"p"> {}
 
-/** Accessible description. */
+/**
+ * Accessible description. Statically discoverable child trees are wired during SSR. When a
+ * consumer component hides the description, provide it through Dialog.Content aria-description.
+ */
 export function DialogDescription({ className, ...props }: DialogDescriptionProps) {
   const { descriptionId, registerDescription, unregisterDescription } = useDialogContext();
   const registrationId = useId();

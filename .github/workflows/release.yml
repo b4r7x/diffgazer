@@ -7,9 +7,15 @@ on:
       - main
     types:
       - completed
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: Full merged-main commit SHA of the Version PR to recover
+        required: true
+        type: string
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release
   cancel-in-progress: false
 
 permissions:
@@ -60,6 +66,71 @@ jobs:
           title: "chore: version packages"
         # NPM_TOKEN is consumed only when changesets/action takes the publish branch
         # (i.e. after the Version PR is merged); it is unused on the version branch.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
+
+  recovery:
+    name: Recover Publish from Merged Main SHA
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+      issues: write
+    steps:
+      - name: Validate recovery SHA format
+        env:
+          RELEASE_SHA: ${{ inputs.release_sha }}
+        run: |
+          if [[ ! "$RELEASE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "release_sha must be a full 40-character commit SHA" >&2
+            exit 1
+          fi
+
+      - name: Checkout selected recovery commit
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release_sha }}
+          persist-credentials: false
+
+      - name: Verify selected commit is merged into main
+        env:
+          RELEASE_SHA: ${{ inputs.release_sha }}
+        run: |
+          selected_sha="$(git rev-parse --verify 'HEAD^{commit}')"
+          if [[ "$selected_sha" != "${RELEASE_SHA,,}" ]]; then
+            echo "Checked-out commit does not match release_sha" >&2
+            exit 1
+          fi
+          git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$selected_sha" refs/remotes/origin/main; then
+            echo "release_sha must already be merged into main" >&2
+            exit 1
+          fi
+
+      - name: Setup repo
+        uses: ./.github/actions/setup-repo
+        with:
+          registry-url: https://registry.npmjs.org
+          scope: '@diffgazer'
+
+      - name: Release readiness gate
+        run: pnpm run release-check
+
+      - name: Recover version metadata or publish
+        uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1.8.0
+        with:
+          publish: pnpm run release
+          version: pnpm run version-packages
+          commit: "chore: version packages"
+          title: "chore: version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

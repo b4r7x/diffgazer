@@ -1,4 +1,5 @@
 import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
+import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { KeyboardProvider, useKey, useScope } from "@diffgazer/keys";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -188,37 +189,77 @@ describe("TrustPermissionsContent", () => {
     expect(readFilesOption).toHaveFocus();
   });
 
-  it("moves focus back to permissions when focused action buttons become disabled while loading", async () => {
+  it("freezes permissions and restores the initiating action after a deferred save", async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
     const onRevoke = vi.fn();
+    const onChange = vi.fn();
+    const saveGate = createDeferred<void>();
 
-    const { rerender } = render(
+    function Host() {
+      const [value, setValue] = useState<TrustCapabilities>({
+        readFiles: true,
+        runCommands: false,
+      });
+      const [isLoading, setIsLoading] = useState(false);
+      useScope(TEST_SCOPE);
+
+      const handleSave = async () => {
+        onSave(value);
+        setIsLoading(true);
+        await saveGate.promise;
+        setIsLoading(false);
+      };
+
+      return (
+        <TrustPermissionsContent
+          directory="~/dev/projects/diffgazer-core"
+          value={value}
+          onChange={(next) => {
+            onChange(next);
+            setValue(next);
+          }}
+          showActions
+          keyboardScope={TEST_SCOPE}
+          onSave={handleSave}
+          onRevoke={onRevoke}
+          isLoading={isLoading}
+        />
+      );
+    }
+
+    render(
       <KeyboardProvider>
-        <TrustPermissionsTestHarness onSave={onSave} onRevoke={onRevoke} />
+        <Host />
       </KeyboardProvider>,
     );
 
     const readFilesOption = getReadFilesOption();
     await user.tab();
-    await user.keyboard("{ArrowDown}{ArrowRight}");
-    expect(screen.getByRole("button", { name: /revoke trust/i })).toHaveFocus();
+    await user.keyboard("{ArrowDown}{Enter}");
 
-    rerender(
-      <KeyboardProvider>
-        <TrustPermissionsTestHarness onSave={onSave} onRevoke={onRevoke} isLoading />
-      </KeyboardProvider>,
-    );
-
-    await waitFor(() => expect(readFilesOption).toHaveFocus());
+    const busyStatus = await screen.findByRole("status");
+    expect(busyStatus).toHaveFocus();
+    expect(getTrustPermissionsGroup()).toHaveAttribute("aria-disabled", "true");
+    expect(onSave).toHaveBeenCalledOnce();
+    expect(onSave).toHaveBeenCalledWith({ readFiles: true, runCommands: false });
 
     expect(screen.getByRole("button", { name: /saving/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /revoking/i })).toBeDisabled();
 
+    await user.click(readFilesOption);
+    readFilesOption.focus();
     await user.keyboard("{Enter} ");
 
-    expect(onSave).not.toHaveBeenCalled();
+    expect(readFilesOption).toHaveAttribute("aria-checked", "true");
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onSave).toHaveBeenCalledOnce();
     expect(onRevoke).not.toHaveBeenCalled();
+
+    saveGate.resolve();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /save changes/i })).toHaveFocus(),
+    );
   });
 
   it("calls onListBoundaryNext when arrowing past the last checkbox without actions", async () => {

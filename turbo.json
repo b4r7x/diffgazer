@@ -1,6 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalPassThroughEnv": ["DIFFGAZER_SKIP_ARTIFACT_PREPARE", "DIFFGAZER_ARTIFACT_SYNC_MODE"],
+  "globalPassThroughEnv": ["DIFFGAZER_SKIP_ARTIFACT_PREPARE"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -8,13 +8,7 @@
     },
     "@diffgazer/docs#build": {
       "dependsOn": ["^build"],
-      "env": [
-        "REGISTRY_ORIGIN",
-        "VITE_PUBLIC_ORIGIN",
-        "DOCS_PRERENDER",
-        "DIFFGAZER_DEV",
-        "DIFFGAZER_ARTIFACT_SYNC_MODE"
-      ],
+      "env": ["REGISTRY_ORIGIN", "VITE_PUBLIC_ORIGIN", "DOCS_PRERENDER", "DIFFGAZER_DEV"],
       "outputs": ["dist/**", ".output/**"]
     },
     "@diffgazer/landing#build": {
@@ -28,7 +22,7 @@
       "outputs": ["dist/**"]
     },
     "@diffgazer/add#build": {
-      "dependsOn": ["^build", "generate:bundles"],
+      "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
     "@diffgazer/ui#build": {
@@ -47,8 +41,15 @@
     "test": {
       "dependsOn": ["^build"]
     },
+    "@diffgazer/keys#test": {
+      "dependsOn": ["build", "^build"]
+    },
+    "@diffgazer/ui#test": {
+      "dependsOn": ["build", "^build"]
+    },
     "@diffgazer/add#test": {
-      "dependsOn": ["^build", "generate:bundles"]
+      "dependsOn": ["^build", "generate:bundles"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/apps/docs/public/schema/diffgazer.json"]
     },
     "generate:bundles": {
       "dependsOn": ["^build"],

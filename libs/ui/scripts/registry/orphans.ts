@@ -1,39 +1,64 @@
-import { existsSync, readdirSync, statSync } from "node:fs";
-import { dirname, relative, resolve } from "node:path";
+import { existsSync, lstatSync, readdirSync } from "node:fs";
+import { relative, resolve } from "node:path";
 import { normalizeRegistryPath, type RegistryItem } from "./fs.js";
 
-const ORPHAN_EXCLUDED_SUFFIXES = [".test.ts", ".test.tsx", ".stories.ts", ".stories.tsx"] as const;
+const PRODUCTION_ROOTS = ["registry/ui", "registry/hooks", "registry/lib"] as const;
+const EXCLUDED_DIRECTORIES = new Set([
+  "__tests__",
+  "test",
+  "tests",
+  "stories",
+  "testing",
+  "example",
+  "examples",
+]);
+const EXCLUDED_FILE_RE = /\.(?:test|spec|story|stories|example|examples)\.[cm]?[jt]sx?$/;
+
+function listProductionFiles(root: string): string[] {
+  const files: string[] = [];
+
+  function walk(directory: string): void {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (entry.isSymbolicLink()) continue;
+      const entryPath = resolve(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (!EXCLUDED_DIRECTORIES.has(entry.name)) walk(entryPath);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      if (!entry.name.endsWith(".ts") && !entry.name.endsWith(".tsx")) continue;
+      if (!EXCLUDED_FILE_RE.test(entry.name)) files.push(entryPath);
+    }
+  }
+
+  for (const productionRoot of PRODUCTION_ROOTS) {
+    const absoluteRoot = resolve(root, productionRoot);
+    if (!existsSync(absoluteRoot)) continue;
+    const rootStats = lstatSync(absoluteRoot);
+    if (!rootStats.isSymbolicLink() && rootStats.isDirectory()) walk(absoluteRoot);
+  }
+
+  return files;
+}
 
 export function validateOrphanFiles(root: string, items: RegistryItem[]): string[] {
   const errors: string[] = [];
 
   const declaredFiles = new Set<string>();
-  const scanDirs = new Set<string>();
 
   for (const item of items) {
     for (const file of item.files ?? []) {
       const normalized = normalizeRegistryPath(file.path);
       declaredFiles.add(normalized);
-      scanDirs.add(dirname(normalized));
     }
   }
 
-  for (const dir of [...scanDirs].sort()) {
-    const absoluteDir = resolve(root, dir);
-    if (!existsSync(absoluteDir) || !statSync(absoluteDir).isDirectory()) continue;
-
-    for (const entry of readdirSync(absoluteDir)) {
-      const entryPath = resolve(absoluteDir, entry);
-      if (!statSync(entryPath).isFile()) continue;
-      if (!entry.endsWith(".ts") && !entry.endsWith(".tsx")) continue;
-      if (ORPHAN_EXCLUDED_SUFFIXES.some((suffix) => entry.endsWith(suffix))) continue;
-
-      const registryPath = normalizeRegistryPath(relative(root, entryPath));
-      if (!declaredFiles.has(registryPath)) {
-        errors.push(
-          `File ${registryPath} exists on disk but is not declared in any registry item's files[]`,
-        );
-      }
+  for (const entryPath of listProductionFiles(root).sort()) {
+    const registryPath = normalizeRegistryPath(relative(root, entryPath));
+    if (!declaredFiles.has(registryPath)) {
+      errors.push(
+        `File ${registryPath} exists on disk but is not declared in any registry item's files[]`,
+      );
     }
   }
 

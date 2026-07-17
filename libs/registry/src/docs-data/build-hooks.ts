@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { log } from "../logger.js";
 import { REGISTRY_ITEM_TYPE, type Registry, type RegistryItem } from "../registry-types.js";
@@ -81,10 +81,18 @@ export async function buildHooksData(params: {
     rmSync(hooksDir, { recursive: true });
   }
   mkdirSync(hooksDir, { recursive: true });
-
   for (const [name, data] of Object.entries(enrichedData)) {
     try {
-      writeJson(resolve(hooksDir, `${name}.json`), data);
+      const { source, files, ...pageData } = data;
+
+      writeJson(resolve(hooksDir, `${name}.json`), {
+        ...pageData,
+        files: files.map((file) => file.path),
+      });
+      writeFileSync(
+        resolve(hooksDir, `${name}.source.json`),
+        `${JSON.stringify({ source, files })}\n`,
+      );
     } catch (err) {
       errors.push(String(err instanceof Error ? err.message : err));
     }

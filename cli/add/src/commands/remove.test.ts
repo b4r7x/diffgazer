@@ -7,6 +7,7 @@ import { planComponentCss } from "../utils/css-chunks.js";
 import {
   createRemoveWorkflowContext,
   planOwnedCssChunkRemoval,
+  resolveRemoveTransactionFiles,
   retainCssChunkTrackingOnly,
 } from "./remove.js";
 
@@ -35,6 +36,51 @@ describe("RemoveWorkflowContext", () => {
 
     expect(ctx.activeCwd).toBe("/projects/app-b");
     expect(ctx.preRemovalChunksByItem.size).toBe(0);
+  });
+});
+
+describe("resolveRemoveTransactionFiles", () => {
+  test("snapshots the manifest and configured stylesheet for the CLI transaction", () => {
+    const config: ResolvedConfig = {
+      aliases: {
+        components: "@/components/ui",
+        utils: "@/lib/utils",
+        lib: "@/lib",
+        hooks: "@/hooks",
+      },
+      rsc: false,
+      componentsFsPath: "src/components/ui",
+      hooksFsPath: "src/hooks",
+      libFsPath: "src/lib",
+      stylesFsPath: "src/styles",
+      tailwind: { css: "src/styles/styles.css" },
+    };
+
+    expect(resolveRemoveTransactionFiles("/projects/app", config)).toEqual([
+      "/projects/app/diffgazer.json",
+      "/projects/app/src/styles/styles.css",
+    ]);
+  });
+
+  test("snapshots only the manifest when the project has no configured stylesheet", () => {
+    const config: ResolvedConfig = {
+      aliases: {
+        components: "@/components/ui",
+        utils: "@/lib/utils",
+        lib: "@/lib",
+        hooks: "@/hooks",
+      },
+      rsc: false,
+      componentsFsPath: "src/components/ui",
+      hooksFsPath: "src/hooks",
+      libFsPath: "src/lib",
+      stylesFsPath: "src/styles",
+      tailwind: undefined,
+    };
+
+    expect(resolveRemoveTransactionFiles("/projects/app", config)).toEqual([
+      "/projects/app/diffgazer.json",
+    ]);
   });
 });
 
@@ -222,20 +268,20 @@ describe("retainCssChunkTrackingOnly", () => {
         installedAt: "2026-01-01T00:00:00.000Z",
         installedAs: "transitive",
         integrationMode: "copy",
-        cssChunks: ["drifted0000000000", "pristine000000000"],
+        cssChunks: ["deadbeef00000000", "cafebabe00000000"],
         files: [
           { path: "src/components/ui/shared/dialog-shell.tsx", hash: "abc", item: "dialog-shell" },
         ],
       },
     });
 
-    retainCssChunkTrackingOnly(root, new Map([["ui/dialog-shell", ["drifted0000000000"]]]));
+    retainCssChunkTrackingOnly(root, new Map([["ui/dialog-shell", ["deadbeef00000000"]]]));
 
     expect(readManifest()["ui/dialog-shell"]).toEqual({
       installedAt: "2026-01-01T00:00:00.000Z",
       installedAs: "transitive",
       integrationMode: "copy",
-      cssChunks: ["drifted0000000000"],
+      cssChunks: ["deadbeef00000000"],
     });
   });
 

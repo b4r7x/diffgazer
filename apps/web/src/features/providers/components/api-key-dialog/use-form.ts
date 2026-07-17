@@ -3,17 +3,11 @@ import { useApiKeyEntry } from "@diffgazer/core/providers";
 
 interface UseApiKeyFormOptions {
   envVarName: string;
-  onSubmit: (method: InputMethod, value: string) => Promise<void>;
-  onOpenChange: (open: boolean) => void;
+  onSubmit: (method: InputMethod, value: string) => Promise<boolean>;
 }
 
-export function useApiKeyForm({ envVarName, onSubmit, onOpenChange }: UseApiKeyFormOptions) {
+export function useApiKeyForm({ envVarName, onSubmit }: UseApiKeyFormOptions) {
   const entry = useApiKeyEntry({ envVarName, onSubmit });
-
-  const handleSubmit = async (submitMethod: InputMethod = entry.method) => {
-    const saved = await entry.submit(submitMethod);
-    if (saved) onOpenChange(false);
-  };
 
   return {
     method: entry.method,
@@ -23,7 +17,7 @@ export function useApiKeyForm({ envVarName, onSubmit, onOpenChange }: UseApiKeyF
     isSubmitting: entry.isSubmitting,
     error: entry.error,
     canSubmit: entry.canSubmit,
-    handleSubmit,
+    handleSubmit: entry.submit,
     reset: entry.reset,
   };
 }

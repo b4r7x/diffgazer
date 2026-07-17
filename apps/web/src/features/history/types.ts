@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export type HistoryFocusZone = "timeline" | "runs" | "insights" | "search";
+export type HistoryFocusZone = "timeline" | "runs" | "load-more" | "insights" | "retry" | "search";
 
 export interface Run {
   id: string;

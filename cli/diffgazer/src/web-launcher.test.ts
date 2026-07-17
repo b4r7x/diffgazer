@@ -1,5 +1,7 @@
+import { createServer as createTcpServer } from "node:net";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ServerController } from "./lib/servers/process";
+import { createServerFactories } from "./lib/servers/factories";
+import { createProcessServer, type ServerController } from "./lib/servers/process";
 import { startWeb } from "./web-launcher";
 
 const ensureShutdownToken = vi.fn();
@@ -8,7 +10,7 @@ function createMockServer(): ServerController & { startCalls: number; stopCalls:
   const server = {
     startCalls: 0,
     stopCalls: 0,
-    start() {
+    async start() {
       server.startCalls++;
     },
     stop() {
@@ -23,6 +25,7 @@ describe("startWeb", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     ensureShutdownToken.mockReset();
+    process.exitCode = undefined;
   });
 
   it("calls start on every created server", () => {
@@ -107,7 +110,7 @@ describe("startWeb", () => {
         printBanner: vi.fn(),
         createServerFactories: ({ onStartupFailure }) => [
           () => ({
-            start() {
+            async start() {
               onStartupFailure?.("embedded web failed");
             },
             stop: () => Promise.resolve(),
@@ -122,6 +125,84 @@ describe("startWeb", () => {
     expect(process.exitCode).toBe(1);
   });
 
+  it("stops the Vite peer and exits nonzero when the real dev API child hits EADDRINUSE", async () => {
+    const blocker = createTcpServer();
+    await new Promise<void>((resolve, reject) => {
+      blocker.once("error", reject);
+      blocker.listen(0, "127.0.0.1", resolve);
+    });
+    const address = blocker.address();
+    if (!address || typeof address === "string") throw new Error("Expected TCP blocker address");
+
+    const vite = createMockServer();
+    const exit = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+    const originalPort = process.env.PORT;
+    const originalShutdownToken = process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    const originalViteShutdownToken = process.env.VITE_DIFFGAZER_SHUTDOWN_TOKEN;
+    process.env.PORT = String(address.port);
+    let childFailure: string | undefined;
+    let stop: (() => Promise<void>) | undefined;
+
+    try {
+      stop = startWeb(
+        { mode: "dev", openBrowser: false },
+        {
+          createServerFactories: (options) =>
+            createServerFactories(
+              {
+                ...options,
+                onStartupFailure: (message) => {
+                  childFailure = message;
+                  options.onStartupFailure?.(message);
+                },
+              },
+              {
+                createApiServer: (apiConfig) =>
+                  createProcessServer({
+                    command: process.execPath,
+                    args: [
+                      "-e",
+                      `require("node:net").createServer().listen(${apiConfig.port}, "127.0.0.1")`,
+                    ],
+                    cwd: process.cwd(),
+                    port: apiConfig.port,
+                    readyPattern: "never",
+                    onFailure: apiConfig.onFailure,
+                  }),
+                createWebServer: () => vite,
+              },
+            ),
+        },
+      );
+
+      await vi.waitFor(
+        () => {
+          expect(childFailure).toContain("EADDRINUSE");
+          expect(vite.stopCalls).toBe(1);
+          expect(exit).toHaveBeenCalledExactlyOnceWith(1);
+        },
+        { timeout: 10_000 },
+      );
+      expect(vite.startCalls).toBe(1);
+      expect(process.exitCode).toBe(1);
+    } finally {
+      await stop?.();
+      await new Promise<void>((resolve, reject) => {
+        blocker.close((error) => (error ? reject(error) : resolve()));
+      });
+      if (originalPort === undefined) delete process.env.PORT;
+      else process.env.PORT = originalPort;
+      if (originalShutdownToken === undefined) delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+      else process.env.DIFFGAZER_SHUTDOWN_TOKEN = originalShutdownToken;
+      if (originalViteShutdownToken === undefined) {
+        delete process.env.VITE_DIFFGAZER_SHUTDOWN_TOKEN;
+      } else {
+        process.env.VITE_DIFFGAZER_SHUTDOWN_TOKEN = originalViteShutdownToken;
+      }
+      process.exitCode = undefined;
+    }
+  });
+
   it("prints the banner before starting web servers and stops them on cleanup", async () => {
     const events: string[] = [];
 
@@ -132,7 +213,9 @@ describe("startWeb", () => {
         printBanner: () => events.push("banner"),
         createServerFactories: () => [
           () => ({
-            start: () => events.push("start"),
+            start: async () => {
+              events.push("start");
+            },
             stop: () => {
               events.push("stop");
               return Promise.resolve();

@@ -1,7 +1,8 @@
 import { cva } from "class-variance-authority";
 
 /** Visual style shared by segmented controls such as Tabs and ToggleGroup. */
-export type SegmentedVariant = "default" | "bracket" | "pill" | "underline";
+export const SEGMENTED_VARIANTS = ["default", "bracket", "pill", "underline"] as const;
+export type SegmentedVariant = (typeof SEGMENTED_VARIANTS)[number];
 /** Segmented-control density. */
 export type SegmentedSize = "sm" | "md";
 
@@ -18,13 +19,35 @@ export const segmentedContainerVariants = cva("inline-flex font-mono", {
       horizontal: "",
       vertical: "flex-col",
     },
+    wrapped: {
+      true: "",
+      false: "",
+    },
   },
   compoundVariants: [
     { variant: "underline", orientation: "vertical", className: "gap-1 border-b-0 border-r" },
+    {
+      orientation: "horizontal",
+      wrapped: true,
+      className: "max-w-full min-w-0 flex-wrap",
+    },
+    {
+      variant: "pill",
+      orientation: "horizontal",
+      wrapped: true,
+      className: "gap-1.5 border-0 bg-transparent p-0",
+    },
+    {
+      variant: "underline",
+      orientation: "horizontal",
+      wrapped: true,
+      className: "gap-x-6 gap-y-1 border-b-0",
+    },
   ],
   defaultVariants: {
     variant: "default",
     orientation: "horizontal",
+    wrapped: false,
   },
 });
 
@@ -77,6 +100,10 @@ export const segmentedItemVariants = cva(
       highlighted: {
         true: "",
       },
+      wrapped: {
+        true: "max-w-full min-w-0 shrink-0 whitespace-normal break-words",
+        false: "",
+      },
     },
     compoundVariants: [
       // Pill items add inner vertical padding so the label nests cleanly inside
@@ -94,10 +121,23 @@ export const segmentedItemVariants = cva(
       // via the indicator/border so they opt out.
       { variant: "default", highlighted: true, className: "bg-secondary" },
       { variant: "bracket", highlighted: true, className: "text-foreground" },
+      {
+        variant: "pill",
+        wrapped: true,
+        className:
+          "data-[state=active]:bg-primary data-[state=on]:bg-primary data-[state=active]:text-primary-foreground data-[state=on]:text-primary-foreground",
+      },
+      {
+        variant: "underline",
+        wrapped: true,
+        className:
+          "border-x-0 border-t-0 border-b border-transparent data-[state=active]:border-b-foreground data-[state=on]:border-b-foreground",
+      },
     ],
     defaultVariants: {
       variant: "default",
       size: "sm",
+      wrapped: false,
     },
   },
 );

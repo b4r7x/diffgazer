@@ -121,13 +121,36 @@ describe("ModelList", () => {
 
     const { rerender } = render(<ModelList models={MODELS} {...props} />);
 
-    // Present (and empty of message) while results exist.
     const liveRegion = screen.getByRole("status");
     expect(liveRegion).toHaveTextContent("");
+    expect(liveRegion).toHaveClass("sr-only");
 
     rerender(<ModelList models={[]} emptyLabel="No models match your search" {...props} />);
 
-    // Same persistent region now carries the announcement.
+    expect(screen.getByRole("status")).toBe(liveRegion);
+    expect(liveRegion).toHaveTextContent("No models match your search");
+    expect(liveRegion).not.toHaveClass("sr-only");
+  });
+
+  it("removes focused model controls when the results become empty", () => {
+    const props = {
+      focusedModelId: "model-a",
+      currentModelId: "model-a",
+      isFocused: true,
+      onSelect: vi.fn(),
+      onConfirm: vi.fn(),
+      onHighlightChange: vi.fn(),
+      onBoundaryReached: vi.fn(),
+    };
+    const { rerender } = render(<ModelList models={MODELS} {...props} />);
+    const focusedModel = screen.getByRole("radio", { name: /Model A/ });
+
+    focusedModel.focus();
+    expect(focusedModel).toHaveFocus();
+
+    rerender(<ModelList models={[]} emptyLabel="No models match your search" {...props} />);
+
+    expect(screen.queryByRole("radio", { name: /Model A/ })).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("No models match your search");
   });
 

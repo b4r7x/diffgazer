@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildRegistryArtifacts } from "./artifacts.js";
+import { DEFAULT_OUTPUT_PATHS } from "./docs-sync/types.js";
 import type { ArtifactManifest } from "./manifest.js";
 import {
   ArtifactManifestSchema,
@@ -65,6 +66,16 @@ describe("ArtifactManifestSchema", () => {
     },
   ])("accepts manifest with $label", ({ manifest }) => {
     expect(ArtifactManifestSchema.safeParse(manifest).success).toBe(true);
+  });
+
+  it("keeps source styles as handoff metadata outside the docs-sync output contract", () => {
+    const result = ArtifactManifestSchema.safeParse({
+      ...validManifest,
+      source: { registryDir: "registry", stylesDir: "source/styles" },
+    });
+
+    expect(result.success).toBe(true);
+    expect(DEFAULT_OUTPUT_PATHS).not.toHaveProperty("stylesDir");
   });
 
   it.each([

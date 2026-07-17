@@ -10,7 +10,7 @@ export default function ToastPositions() {
   const [position, setPosition] = useState<ToastPosition | null>("bottom-right");
   return (
     <div className="flex flex-col gap-4">
-      <ToggleGroup value={position} onChange={setPosition}>
+      <ToggleGroup label="Toast position" value={position} onChange={setPosition}>
         <ToggleGroup.Item value="top-left">Top Left</ToggleGroup.Item>
         <ToggleGroup.Item value="top-center">Top Center</ToggleGroup.Item>
         <ToggleGroup.Item value="top-right">Top Right</ToggleGroup.Item>

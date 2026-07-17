@@ -2,6 +2,7 @@ import type { HistoryRunSummary } from "@diffgazer/core/review";
 import type { HistoryFocusZone } from "../types";
 
 export type MappedRun = HistoryRunSummary;
+export type HistoryInteractionMode = HistoryFocusZone | "route";
 
 export const HISTORY_ZONE_ORDER: HistoryFocusZone[] = ["search", "timeline", "runs", "insights"];
 

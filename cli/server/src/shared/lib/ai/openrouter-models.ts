@@ -9,7 +9,7 @@ import {
 } from "@diffgazer/core/schemas/config";
 import { log } from "../log.js";
 import { getGlobalOpenRouterModelsPath } from "../paths.js";
-import { withTtlAndFallback } from "./disk-cache.js";
+import { createSingleFlight, withTtlAndFallback } from "./disk-cache.js";
 import { readJsonResponseWithLimit } from "./http-json.js";
 
 const hashApiKey = (apiKey: string): string =>
@@ -17,6 +17,14 @@ const hashApiKey = (apiKey: string): string =>
 
 const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const SHRINK_GUARD_RATIO = 0.5;
+
+type OpenRouterModelsResult = Result<
+  { models: OpenRouterModel[]; fetchedAt: string; cached: boolean },
+  { message: string }
+>;
+
+const resolveOpenRouterModelsSingleFlight = createSingleFlight<OpenRouterModelsResult>();
 
 const parseCost = (value: unknown): number => {
   if (typeof value === "number") return value;
@@ -48,6 +56,12 @@ const mapOpenRouterModel = (raw: unknown): OpenRouterModel | null => {
     topProvider?.context_length ??
     topProvider?.contextLength;
   const contextLength = Number.isFinite(Number(contextLengthRaw)) ? Number(contextLengthRaw) : 0;
+  const maxCompletionTokensRaw =
+    topProvider?.max_completion_tokens ??
+    topProvider?.maxCompletionTokens ??
+    r.max_completion_tokens ??
+    r.maxCompletionTokens;
+  const maxCompletionTokens = Number(maxCompletionTokensRaw);
 
   let supportedParametersRaw: unknown[] | undefined;
   if (Array.isArray(r.supported_parameters)) {
@@ -71,6 +85,9 @@ const mapOpenRouterModel = (raw: unknown): OpenRouterModel | null => {
     name,
     description,
     contextLength,
+    ...(Number.isInteger(maxCompletionTokens) && maxCompletionTokens > 0
+      ? { maxCompletionTokens }
+      : {}),
     supportedParameters: supportedParametersRaw,
     pricing: {
       prompt: String(prompt),
@@ -120,56 +137,67 @@ export const fetchOpenRouterModels = async (
     return err({ message: "OpenRouter models response is not an array" });
   }
 
-  return ok(
-    rawModels.map(mapOpenRouterModel).filter((model): model is OpenRouterModel => model !== null),
-  );
+  const models = rawModels
+    .map(mapOpenRouterModel)
+    .filter((model): model is OpenRouterModel => model !== null);
+  if (models.length === 0) {
+    return err({ message: "OpenRouter models response parsed to zero models" });
+  }
+  if (models.length < rawModels.length * SHRINK_GUARD_RATIO) {
+    return err({
+      message: `OpenRouter models corruption guard tripped: ${models.length} of ${rawModels.length} raw models survived parsing`,
+    });
+  }
+
+  return ok(models);
 };
 
 export const getOpenRouterModelsWithCache = async (
   apiKey: string,
-): Promise<
-  Result<{ models: OpenRouterModel[]; fetchedAt: string; cached: boolean }, { message: string }>
-> => {
+): Promise<OpenRouterModelsResult> => {
   const currentKeyHash = hashApiKey(apiKey);
+  const path = getGlobalOpenRouterModelsPath();
 
-  const resolution = await (async () => {
-    try {
-      return await withTtlAndFallback({
-        path: getGlobalOpenRouterModelsPath(),
-        schema: OpenRouterModelCacheSchema,
-        ttlMs: CACHE_TTL_MS,
-        isCacheUsable: (entry) => entry.models.length > 0,
-        keyHashOf: (entry) => entry.keyHash,
-        currentKeyHash,
-        fetcher: async () => {
-          const fetchResult = await fetchOpenRouterModels(apiKey);
-          if (!fetchResult.ok) return fetchResult;
-          return ok({
-            models: fetchResult.value,
-            fetchedAt: new Date().toISOString(),
-            keyHash: currentKeyHash,
-          });
-        },
-      });
-    } catch (error) {
-      return err({
-        message: getErrorMessage(error, "Failed to resolve OpenRouter models cache"),
-      });
+  return resolveOpenRouterModelsSingleFlight(JSON.stringify([path, currentKeyHash]), async () => {
+    const resolution = await (async () => {
+      try {
+        return await withTtlAndFallback({
+          path,
+          schema: OpenRouterModelCacheSchema,
+          ttlMs: CACHE_TTL_MS,
+          isCacheUsable: (entry) => entry.models.length > 0,
+          keyHashOf: (entry) => entry.keyHash,
+          currentKeyHash,
+          fetcher: async () => {
+            const fetchResult = await fetchOpenRouterModels(apiKey);
+            if (!fetchResult.ok) return fetchResult;
+            return ok({
+              models: fetchResult.value,
+              fetchedAt: new Date().toISOString(),
+              keyHash: currentKeyHash,
+            });
+          },
+        });
+      } catch (error) {
+        return err({
+          message: getErrorMessage(error, "Failed to resolve OpenRouter models cache"),
+        });
+      }
+    })();
+
+    if (!resolution.ok) return err({ message: resolution.error.message });
+
+    const { entry, cached, cacheWasFresh } = resolution.value;
+    const models = entry.models.length;
+    const withParams = countWithParams(entry.models);
+    if (!cached) {
+      log("info", "openrouter_models_fetched", { models, withParams, cacheWasFresh });
+    } else if (cacheWasFresh) {
+      log("info", "openrouter_models_cache_hit", { models, withParams });
+    } else {
+      log("info", "openrouter_models_fetch_failed_using_cache", { models, withParams });
     }
-  })();
 
-  if (!resolution.ok) return err({ message: resolution.error.message });
-
-  const { entry, cached, cacheWasFresh } = resolution.value;
-  const models = entry.models.length;
-  const withParams = countWithParams(entry.models);
-  if (!cached) {
-    log("info", "openrouter_models_fetched", { models, withParams, cacheWasFresh });
-  } else if (cacheWasFresh) {
-    log("info", "openrouter_models_cache_hit", { models, withParams });
-  } else {
-    log("info", "openrouter_models_fetch_failed_using_cache", { models, withParams });
-  }
-
-  return ok({ models: entry.models, fetchedAt: entry.fetchedAt, cached });
+    return ok({ models: entry.models, fetchedAt: entry.fetchedAt, cached });
+  });
 };

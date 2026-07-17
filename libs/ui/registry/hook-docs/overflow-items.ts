@@ -40,15 +40,15 @@ return (
     },
   ],
   returns: {
-    type: "{ ref: RefObject<HTMLDivElement | null>; visibleCount: number; overflowCount: number }",
-    description: "A ref to attach to the container and reactive counts.",
+    type: "{ ref: RefCallback<HTMLDivElement>; visibleCount: number; overflowCount: number }",
+    description: "A callback ref to attach to the container and reactive counts.",
     properties: [
       {
         name: "ref",
-        type: "RefObject<HTMLDivElement | null>",
+        type: "RefCallback<HTMLDivElement>",
         required: true,
         description:
-          "Attach to the container element. The hook reads child widths and observes size changes via ResizeObserver.",
+          "Attach to the container element. Conditional mounts and replacement containers are remeasured and observed through the callback lifecycle.",
       },
       {
         name: "visibleCount",

@@ -3,7 +3,7 @@ title: composeRefs
 description: Compose multiple React refs into a single ref callback. Essential when a component needs an internal ref and must also forward an external ref prop.
 ---
 
-`composeRefs` merges any number of React refs — `RefCallback`, `RefObject`, `null`, or `undefined` — into a single ref callback. Use it wherever a component holds an internal DOM ref and also accepts a `ref` prop from the consumer (the [React 19 ref-as-prop](https://react.dev/blog/2024/04/25/react-19#ref-as-a-prop) pattern).
+`composeRefs` merges any number of React refs into one callback. It is the low-level utility used to construct a composed ref. In component render call sites, use `useComposedRefs` so the callback identity stays stable across renders.
 
 It is used internally by `select`, `menu`, `tabs`, `radio`, `checkbox`, `navigation-list`, and `command-palette` and is installed automatically when you add any of those components.
 
@@ -12,6 +12,8 @@ It is used internally by `select`, `menu`, `tabs`, `radio`, `checkbox`, `navigat
 <ConsumptionBlock />
 
 The file is placed at `lib/compose-refs.ts` in your project.
+
+The render-time recipes below use the companion hook. Install it with `pnpm exec dgadd add ui/composed-refs`; its registry item includes `compose-refs`.
 
 ---
 
@@ -41,48 +43,53 @@ A single `RefCallback<T>` that, when called with a DOM element (or `null` on unm
 
 ```tsx
 import { useRef } from "react";
-import { composeRefs } from "@/lib/compose-refs";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 
 interface ListProps {
   ref?: React.Ref<HTMLDivElement>;
 }
 
 function List({ ref, ...props }: ListProps) {
-  // Internal ref used for keyboard navigation
   const containerRef = useRef<HTMLDivElement>(null);
+  const composedRef = useComposedRefs(containerRef, ref);
 
-  return (
-    <div ref={composeRefs(containerRef, ref)} role="listbox" {...props} />
-  );
+  return <div ref={composedRef} role="listbox" {...props} />;
 }
 ```
 
 ### Merge a context ref with an external ref
 
 ```tsx
-import { composeRefs } from "@/lib/compose-refs";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useMyContext } from "./context";
 
 function PaletteList({ ref }: { ref?: React.Ref<HTMLDivElement> }) {
-  const { listRef } = useMyContext(); // ref owned by context
+  const { listRef } = useMyContext();
+  const composedRef = useComposedRefs(listRef, ref);
 
-  return (
-    <div ref={composeRefs(listRef, ref)} role="listbox" />
-  );
+  return <div ref={composedRef} role="listbox" />;
 }
 ```
 
 ### Three refs at once
 
 ```tsx
-<div ref={composeRefs(localRef, contextRef, externalRef)} />
+function List({ ref }: { ref?: React.Ref<HTMLDivElement> }) {
+  const localRef = useRef<HTMLDivElement>(null);
+  const { listRef } = useMyContext();
+  const composedRef = useComposedRefs(localRef, listRef, ref);
+
+  return <div ref={composedRef} />;
+}
 ```
 
 ---
 
 ## Notes
 
-- **No `forwardRef` needed** — `composeRefs` is designed for the React 19 `ref`-as-prop pattern. Pass `ref` as a regular prop and compose it directly.
+- **Stable render-time refs** — use `useComposedRefs` when the composed callback is passed from a component render. Calling `composeRefs` inline creates a new callback, so React detaches and reattaches it on every render.
+- **Low-level construction** — use `composeRefs` when callback identity is already stable, including inside the `useComposedRefs` implementation.
+- **No `forwardRef` needed** — both utilities support the React 19 `ref`-as-prop pattern.
 - **Null-safe** — `null` and `undefined` refs are silently skipped. You can pass an optional consumer ref without guarding.
 - **Order-independent** — refs are called left-to-right, but all receive the same element value, so order only matters if you have side effects in a callback ref.
 - **No runtime dependencies** — pure TypeScript, no React peer API beyond the `Ref` types.

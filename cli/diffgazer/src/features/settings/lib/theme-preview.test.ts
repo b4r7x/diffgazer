@@ -9,17 +9,17 @@ describe("theme preview", () => {
   });
 
   test("paletteForTheme returns darkPalette for 'dark'", () => {
-    expect(paletteForTheme("dark", lightPalette)).toBe(darkPalette);
+    expect(paletteForTheme("dark")).toBe(darkPalette);
   });
 
   test("paletteForTheme returns lightPalette for 'light'", () => {
-    expect(paletteForTheme("light", darkPalette)).toBe(lightPalette);
+    expect(paletteForTheme("light")).toBe(lightPalette);
   });
 
   test("paletteForTheme on 'auto' returns the terminal-detected palette", () => {
     vi.stubEnv("COLORFGBG", "0;15");
 
-    const previewPalette = paletteForTheme("auto", darkPalette);
+    const previewPalette = paletteForTheme("auto");
 
     expect(previewPalette).toBe(lightPalette);
     expect(previewPalette).not.toBe(darkPalette);

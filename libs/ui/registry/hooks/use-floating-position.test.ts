@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { JSDOM } from "jsdom";
-import { createElement, useRef } from "react";
+import { createElement, useLayoutEffect, useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   computePosition,
@@ -91,8 +91,8 @@ function FloatingHarness({
       "div",
       {
         ref: (node: HTMLDivElement | null) => {
-          contentRef.current = node;
           if (node) node.getBoundingClientRect = getContentRect;
+          contentRef(node);
         },
         "data-testid": "position",
       },
@@ -140,6 +140,221 @@ describe("useFloatingPosition", () => {
       // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
       expect(screen.getByTestId("position")).toHaveTextContent("bottom:100:146");
     });
+  });
+
+  it("measures content attached after opening and keeps resize observation active", async () => {
+    setViewport();
+    let contentX = 100;
+    let resizeCallback: ResizeObserverCallback | null = null;
+    const disconnect = vi.fn();
+    const resizeObserverDescriptor = Object.getOwnPropertyDescriptor(globalThis, "ResizeObserver");
+    Object.defineProperty(globalThis, "ResizeObserver", {
+      configurable: true,
+      value: class {
+        constructor(callback: ResizeObserverCallback) {
+          resizeCallback = callback;
+        }
+        observe() {}
+        disconnect() {
+          disconnect();
+        }
+      },
+    });
+
+    function LateContentHarness({ showContent }: { showContent: boolean }) {
+      const triggerRef = useRef<HTMLElement | null>(null);
+      const { position, contentRef } = useFloatingPosition({
+        triggerRef,
+        open: true,
+        side: "bottom",
+        align: "start",
+        avoidCollisions: false,
+      });
+
+      return createElement(
+        "div",
+        null,
+        createElement("button", {
+          type: "button",
+          ref: (node: HTMLButtonElement | null) => {
+            triggerRef.current = node;
+            if (node) node.getBoundingClientRect = () => makeDOMRect(contentX, 100, 80, 40);
+          },
+        }),
+        showContent
+          ? createElement(
+              "div",
+              {
+                ref: (node: HTMLDivElement | null) => {
+                  if (node) node.getBoundingClientRect = () => contentRect;
+                  contentRef(node);
+                },
+                "data-testid": "late-position",
+              },
+              formatPosition(position),
+            )
+          : createElement("div", { "data-testid": "late-position" }, formatPosition(position)),
+      );
+    }
+
+    try {
+      const { rerender, unmount } = render(
+        createElement(LateContentHarness, { showContent: false }),
+      );
+      expect(screen.getByTestId("late-position")).toHaveTextContent("closed");
+
+      rerender(createElement(LateContentHarness, { showContent: true }));
+      await waitFor(() => {
+        expect(screen.getByTestId("late-position")).toHaveTextContent("bottom:100:146");
+      });
+
+      contentX = 260;
+      act(() => {
+        resizeCallback?.([], {} as ResizeObserver);
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId("late-position")).toHaveTextContent("bottom:260:146");
+      });
+
+      rerender(createElement(LateContentHarness, { showContent: false }));
+      await waitFor(() => {
+        expect(screen.getByTestId("late-position")).toHaveTextContent("closed");
+      });
+      expect(disconnect).toHaveBeenCalledTimes(1);
+
+      unmount();
+      expect(disconnect).toHaveBeenCalledTimes(1);
+    } finally {
+      restoreProperty(globalThis, "ResizeObserver", resizeObserverDescriptor);
+    }
+  });
+
+  it("replaces open trigger and content attachments and leaves stale observers inert", async () => {
+    setViewport();
+    const resizeObserverDescriptor = Object.getOwnPropertyDescriptor(globalThis, "ResizeObserver");
+    const addEventListener = vi.spyOn(window, "addEventListener");
+    const removeEventListener = vi.spyOn(window, "removeEventListener");
+    const firstTriggerRect = vi.fn(() => makeDOMRect(100, 100, 120, 40));
+    const secondTriggerRect = vi.fn(() => makeDOMRect(300, 100, 80, 40));
+    const firstContentRect = vi.fn(() => makeDOMRect(0, 0, 120, 50));
+    const secondContentRect = vi.fn(() => makeDOMRect(0, 0, 40, 50));
+    const observers: Array<{
+      callback: ResizeObserverCallback;
+      disconnect: ReturnType<typeof vi.fn>;
+      observe: ReturnType<typeof vi.fn>;
+      observer: ResizeObserver;
+    }> = [];
+
+    class MockResizeObserver implements ResizeObserver {
+      readonly disconnect = vi.fn();
+      readonly observe = vi.fn();
+      readonly unobserve = vi.fn();
+
+      constructor(callback: ResizeObserverCallback) {
+        observers.push({
+          callback,
+          disconnect: this.disconnect,
+          observe: this.observe,
+          observer: this,
+        });
+      }
+    }
+
+    Object.defineProperty(globalThis, "ResizeObserver", {
+      configurable: true,
+      value: MockResizeObserver,
+    });
+
+    function ReplacementHarness({ version }: { version: "first" | "second" }) {
+      const triggerRef = useRef<HTMLElement | null>(null);
+      const { position, contentRef } = useFloatingPosition({
+        triggerRef,
+        open: true,
+        side: "bottom",
+        align: "center",
+        avoidCollisions: false,
+      });
+      const getTriggerRect = version === "first" ? firstTriggerRect : secondTriggerRect;
+      const getContentRect = version === "first" ? firstContentRect : secondContentRect;
+
+      return createElement(
+        "div",
+        null,
+        createElement("button", {
+          key: `trigger-${version}`,
+          type: "button",
+          ref: (node: HTMLButtonElement | null) => {
+            triggerRef.current = node;
+            if (node) node.getBoundingClientRect = getTriggerRect;
+          },
+        }),
+        createElement(
+          "div",
+          {
+            key: `content-${version}`,
+            ref: (node: HTMLDivElement | null) => {
+              if (node) node.getBoundingClientRect = getContentRect;
+              contentRef(node);
+            },
+            "data-testid": "replacement-position",
+          },
+          formatPosition(position),
+        ),
+      );
+    }
+
+    try {
+      const { rerender } = render(createElement(ReplacementHarness, { version: "first" }));
+      await waitFor(() => {
+        expect(screen.getByTestId("replacement-position")).toHaveTextContent("bottom:100:146");
+      });
+
+      const firstTrigger = screen.getByRole("button");
+      const firstNode = screen.getByTestId("replacement-position");
+      const firstObserver = observers[0];
+      expect(firstObserver?.observe).toHaveBeenCalledWith(firstTrigger);
+      expect(firstObserver?.observe).toHaveBeenCalledWith(firstNode);
+      const firstResizeRegistration = addEventListener.mock.calls.find(
+        ([type]) => type === "resize",
+      );
+      const firstScrollRegistration = addEventListener.mock.calls.find(
+        ([type]) => type === "scroll",
+      );
+      expect(firstResizeRegistration).toBeDefined();
+      expect(firstScrollRegistration).toBeDefined();
+
+      rerender(createElement(ReplacementHarness, { version: "second" }));
+      await waitFor(() => {
+        expect(screen.getByTestId("replacement-position")).toHaveTextContent("bottom:320:146");
+      });
+
+      const secondTrigger = screen.getByRole("button");
+      const secondNode = screen.getByTestId("replacement-position");
+      const secondObserver = observers[1];
+      expect(firstObserver?.disconnect).toHaveBeenCalledTimes(1);
+      expect(removeEventListener).toHaveBeenCalledWith("resize", firstResizeRegistration?.[1]);
+      expect(removeEventListener).toHaveBeenCalledWith("scroll", firstScrollRegistration?.[1]);
+      expect(secondTrigger).not.toBe(firstTrigger);
+      expect(secondObserver?.observe).toHaveBeenCalledWith(secondTrigger);
+      expect(secondObserver?.observe).toHaveBeenCalledWith(secondNode);
+      expect(secondTriggerRect).toHaveBeenCalled();
+      expect(secondContentRect).toHaveBeenCalled();
+
+      const firstTriggerMeasurements = firstTriggerRect.mock.calls.length;
+      const firstMeasurements = firstContentRect.mock.calls.length;
+      act(() => {
+        firstObserver?.callback([], firstObserver.observer);
+      });
+      await act(async () => {});
+
+      expect(firstTriggerRect).toHaveBeenCalledTimes(firstTriggerMeasurements);
+      expect(firstContentRect).toHaveBeenCalledTimes(firstMeasurements);
+      expect(screen.getByTestId("replacement-position")).toHaveTextContent("bottom:320:146");
+    } finally {
+      addEventListener.mockRestore();
+      removeEventListener.mockRestore();
+      restoreProperty(globalThis, "ResizeObserver", resizeObserverDescriptor);
+    }
   });
 
   it("reports the collision-resolved side and shifted coordinates", async () => {
@@ -419,8 +634,12 @@ describe("useFloatingPosition", () => {
         avoidCollisions: true,
         collisionPadding: 0,
       });
-      // Attach the cross-document content node so the hook's ref points at it.
-      contentRef.current = content;
+      useLayoutEffect(() => {
+        contentRef(content);
+        return () => {
+          contentRef(null);
+        };
+      }, [contentRef]);
       return createElement("div", { "data-testid": "alt-position" }, formatPosition(position));
     }
 
@@ -537,7 +756,12 @@ describe("useFloatingPosition", () => {
         align: "start",
         avoidCollisions: false,
       });
-      contentRef.current = content as unknown as HTMLDivElement;
+      useLayoutEffect(() => {
+        contentRef(content as unknown as HTMLDivElement);
+        return () => {
+          contentRef(null);
+        };
+      }, [contentRef]);
       return createElement("div", { "data-testid": "cross-realm-ready" }, "ready");
     }
 
@@ -650,8 +874,8 @@ describe("useFloatingPosition", () => {
           "div",
           {
             ref: (n: HTMLDivElement | null) => {
-              contentRef.current = n;
               if (n) n.getBoundingClientRect = () => contentRect;
+              contentRef(n);
             },
             "data-testid": testId,
           },

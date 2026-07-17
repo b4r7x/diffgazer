@@ -12,17 +12,25 @@ const DEFAULT_TYPEAHEAD_RESET_MS = 500;
  * `String.prototype.toLocaleLowerCase()` (host environment's default locale).
  * Using the locale-aware variant keeps the returned query consistent with
  * label comparisons in `matchesSearch`/`typeaheadSearch` for locale-sensitive
- * characters such as Turkish dotted/dotless I.
+ * characters such as Turkish dotted/dotless I. Changing `resetKey` starts a
+ * new interaction session instead of carrying a partial query
+ * across a close/reopen boundary.
  */
-export function useTypeaheadBuffer(resetMs = DEFAULT_TYPEAHEAD_RESET_MS) {
+export function useTypeaheadBuffer(resetMs = DEFAULT_TYPEAHEAD_RESET_MS, resetKey?: unknown) {
   const bufferRef = useRef("");
   const timerRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
-    };
+  const reset = useCallback(() => {
+    bufferRef.current = "";
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    timerRef.current = null;
   }, []);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resetKey is a session-boundary trigger; only its identity matters.
+  useEffect(() => {
+    reset();
+    return reset;
+  }, [reset, resetKey]);
 
   return useCallback(
     (key: string): string | null => {

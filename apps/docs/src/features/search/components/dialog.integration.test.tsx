@@ -35,10 +35,14 @@ interface ServerSearchResult {
   breadcrumbs: string[];
 }
 
-function pageResult(id: string, title: string): ServerSearchResult {
+function pageResult(
+  id: string,
+  title: string,
+  url = `/docs/ui/components/${id}`,
+): ServerSearchResult {
   return {
     id,
-    url: `/docs/ui/components/${id}`,
+    url,
     type: "page",
     content: title,
     breadcrumbs: [],
@@ -103,6 +107,40 @@ describe("SearchDialog integration", () => {
 
     await user.keyboard("{ArrowDown}{Enter}");
     expect(mocks.navigate).toHaveBeenCalledWith({ to: "/ui/components/callout" });
+  });
+
+  it("keeps duplicate-url results distinct for navigation and selection", async () => {
+    const user = setupUser();
+    const sharedUrl = "/docs/ui/components/shared";
+    mocks.doSearch.mockResolvedValue([
+      pageResult("first-hit", "First hit", sharedUrl),
+      pageResult("second-hit", "Second hit", sharedUrl),
+    ]);
+
+    const input = await renderOpenDialog();
+    await user.type(input, "shared");
+    await waitFor(() =>
+      expect(mocks.doSearch).toHaveBeenCalledWith(expect.objectContaining({ data: "shared" })),
+    );
+
+    const options = await screen.findAllByRole("option");
+    const optionIds = options.map((option) => option.id);
+    expect(new Set(optionIds).size).toBe(2);
+    expect(options.map((option) => option.getAttribute("data-value"))).toEqual([
+      "first-hit",
+      "second-hit",
+    ]);
+    expect(screen.getAllByRole("option", { selected: true })).toHaveLength(1);
+    expect(input).toHaveAttribute("aria-activedescendant", optionIds[0]);
+
+    await user.keyboard("{ArrowDown}");
+
+    expect(screen.getAllByRole("option", { selected: true })).toHaveLength(1);
+    expect(input).toHaveAttribute("aria-activedescendant", optionIds[1]);
+
+    await user.keyboard("{Enter}");
+    expect(mocks.navigate).toHaveBeenCalledOnce();
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/ui/components/shared" });
   });
 
   it("suppresses stale results when a slower earlier search resolves after the current query", async () => {

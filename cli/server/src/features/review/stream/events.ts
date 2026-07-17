@@ -1,27 +1,22 @@
 import { getErrorMessage } from "@diffgazer/core/errors";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import {
+  type ReviewError,
   ReviewErrorCode,
-  type ReviewErrorCode as ReviewErrorCodeType,
+  ReviewErrorSchema,
 } from "@diffgazer/core/schemas/review";
 import { isReviewAbort } from "../abort.js";
 
-const REVIEW_STREAM_ERROR_CODES = new Set(Object.values(ReviewErrorCode));
-
-export function isReviewStreamErrorCode(
-  code: string,
-): code is (typeof ReviewErrorCode)[keyof typeof ReviewErrorCode] {
-  return REVIEW_STREAM_ERROR_CODES.has(
-    code as (typeof ReviewErrorCode)[keyof typeof ReviewErrorCode],
-  );
+export function isReviewStreamErrorCode(code: unknown): code is ReviewError["code"] {
+  return ReviewErrorSchema.shape.code.safeParse(code).success;
 }
 
 export function normalizeReviewStreamError(
   error: unknown,
-  fallbackCode: ReviewErrorCodeType = ReviewErrorCode.GENERATION_FAILED,
-): { code: ReviewErrorCodeType; message: string } {
-  const resolveCode = (code: unknown): ReviewErrorCodeType =>
-    typeof code === "string" && isReviewStreamErrorCode(code) ? code : fallbackCode;
+  fallbackCode: ReviewError["code"] = ReviewErrorCode.GENERATION_FAILED,
+): ReviewError {
+  const resolveCode = (code: unknown): ReviewError["code"] =>
+    isReviewStreamErrorCode(code) ? code : fallbackCode;
 
   if (isReviewAbort(error)) {
     return { code: resolveCode(error.code), message: error.message };
@@ -43,7 +38,7 @@ export function normalizeReviewStreamError(
 
 export function reviewStreamError(
   message: string,
-  code: ReviewErrorCodeType = ReviewErrorCode.GENERATION_FAILED,
+  code: ReviewError["code"] = ReviewErrorCode.GENERATION_FAILED,
 ): FullReviewStreamEvent {
   // `code` is the typed review-error union (abort codes and normalized codes are
   // both already in-union), so an out-of-union code is a compile error here — no

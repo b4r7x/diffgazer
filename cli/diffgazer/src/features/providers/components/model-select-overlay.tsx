@@ -4,7 +4,6 @@ import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useEffect, useEffectEvent, useState } from "react";
-import { Button } from "../../../components/ui/button";
 import { Dialog } from "../../../components/ui/dialog";
 import { Spinner } from "../../../components/ui/spinner";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
@@ -70,7 +69,7 @@ function getVisibleModelWindow({
 
 function renderModelListBody({
   loading,
-  error,
+  sourceError,
   models,
   filteredModels,
   focusZone,
@@ -81,7 +80,7 @@ function renderModelListBody({
   tokens,
 }: {
   loading: boolean;
-  error: string | undefined;
+  sourceError: string | undefined;
   models: ModelInfo[];
   filteredModels: ModelInfo[];
   focusZone: FocusZone;
@@ -94,8 +93,8 @@ function renderModelListBody({
   if (loading) {
     return <Spinner label="Loading models…" />;
   }
-  if (error) {
-    return <Text color={tokens.error}>{error}</Text>;
+  if (sourceError) {
+    return <Text color={tokens.error}>{sourceError}</Text>;
   }
   if (filteredModels.length === 0) {
     return (
@@ -154,11 +153,14 @@ export function ModelSelectOverlay({
     error: sourceError,
     isOpenRouter,
     openRouter,
+    source,
+    fetchedAt,
+    retry,
   } = useModelSource(open, providerId);
   const activateProvider = useActivateProvider();
 
   const saving = activateProvider.isPending;
-  const error = activateProvider.error?.message ?? sourceError ?? undefined;
+  const activationError = activateProvider.error?.message;
 
   const {
     searchQuery,
@@ -170,19 +172,29 @@ export function ModelSelectOverlay({
     resetFilters,
   } = useModelFilter(models);
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
-  const [highlightIndex, setHighlightIndex] = useState(0);
+  const [highlightedModelId, setHighlightedModelId] = useState<string>();
+
+  const initialHighlightId =
+    (selectedId && models.some((model) => model.id === selectedId) ? selectedId : undefined) ??
+    models[0]?.id;
+  const activeHighlightId =
+    highlightedModelId && models.some((model) => model.id === highlightedModelId)
+      ? highlightedModelId
+      : initialHighlightId;
+  const highlightedIndex = filteredModels.findIndex((model) => model.id === activeHighlightId);
 
   const safeHighlightIndex =
-    filteredModels.length === 0 ? 0 : Math.min(highlightIndex, filteredModels.length - 1);
+    filteredModels.length === 0 || highlightedIndex < 0 ? 0 : highlightedIndex;
 
   const resetOnOpen = useEffectEvent(() => {
     resetFilters();
     setFocusZone("list");
-    setHighlightIndex(0);
+    setHighlightedModelId(undefined);
     activateProvider.reset();
   });
 
   const resetOnClose = useEffectEvent(() => {
+    setHighlightedModelId(undefined);
     activateProvider.reset();
   });
 
@@ -196,6 +208,7 @@ export function ModelSelectOverlay({
   }, [open, providerId]);
 
   function handleSelect(modelId: string) {
+    activateProvider.reset();
     activateProvider.mutate(
       { providerId, model: modelId },
       {
@@ -205,14 +218,6 @@ export function ModelSelectOverlay({
         },
       },
     );
-  }
-
-  function handleOpenChange(nextOpen: boolean) {
-    if (!nextOpen && focusZone !== "list") {
-      setFocusZone("list");
-      return;
-    }
-    onOpenChange(nextOpen);
   }
 
   useInput(
@@ -239,16 +244,38 @@ export function ModelSelectOverlay({
     { isActive: open && !saving },
   );
 
+  let fallbackNotice: string | null = null;
+  if (source === "cache") {
+    fallbackNotice = `Using cached catalog data from ${fetchedAt ?? "an unknown time"}.`;
+  } else if (source === "snapshot") {
+    fallbackNotice = "Using the bundled model catalog because live catalog data is unavailable.";
+  }
+
+  useInput(
+    (input) => {
+      if (input.toLowerCase() === "r") retry();
+    },
+    {
+      isActive:
+        open &&
+        !saving &&
+        focusZone !== "search" &&
+        (Boolean(sourceError) || fallbackNotice !== null),
+    },
+  );
+
   useInput(
     (_input, key) => {
       if (filteredModels.length === 0) return;
 
       if (key.upArrow) {
-        setHighlightIndex((safeHighlightIndex - 1 + filteredModels.length) % filteredModels.length);
+        const nextIndex = (safeHighlightIndex - 1 + filteredModels.length) % filteredModels.length;
+        setHighlightedModelId(filteredModels[nextIndex]?.id);
         return;
       }
       if (key.downArrow) {
-        setHighlightIndex((safeHighlightIndex + 1) % filteredModels.length);
+        const nextIndex = (safeHighlightIndex + 1) % filteredModels.length;
+        setHighlightedModelId(filteredModels[nextIndex]?.id);
         return;
       }
       if (key.return) {
@@ -266,7 +293,7 @@ export function ModelSelectOverlay({
   const compatibilityLabel = isOpenRouter ? getCompatibilityLabel(openRouter) : null;
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <Dialog.Content>
         <Dialog.Header>
           <Dialog.Title>Select Model</Dialog.Title>
@@ -285,13 +312,17 @@ export function ModelSelectOverlay({
               isActive={focusZone === "filters" && !saving}
             />
 
-            {compatibilityLabel && !loading && !error && (
+            {compatibilityLabel && !loading && !sourceError && (
               <Text color={tokens.muted}>{compatibilityLabel}</Text>
             )}
+            {fallbackNotice ? (
+              <Text color={tokens.warning}>{fallbackNotice} Press r to retry.</Text>
+            ) : null}
+            {sourceError ? <Text color={tokens.muted}>Press r to retry.</Text> : null}
 
             {renderModelListBody({
               loading,
-              error,
+              sourceError: sourceError ?? undefined,
               models,
               filteredModels,
               focusZone,
@@ -301,19 +332,16 @@ export function ModelSelectOverlay({
               viewportSize: modelViewportSize,
               tokens,
             })}
+            {activationError ? <Text color={tokens.error}>{activationError}</Text> : null}
             {saving && <Spinner label="Saving…" />}
           </Box>
         </Dialog.Body>
         <Dialog.Footer>
-          <Box justifyContent="space-between" width="100%">
-            <Button variant="ghost" onPress={() => handleOpenChange(false)}>
-              Cancel
-            </Button>
-            <Box gap={2}>
-              <Text dimColor>Tab: zone</Text>
-              <Text dimColor>/: search</Text>
-              <Text dimColor>f: filter</Text>
-            </Box>
+          <Box gap={2} justifyContent="flex-end" width="100%">
+            <Text dimColor>Tab: zone</Text>
+            <Text dimColor>/: search</Text>
+            <Text dimColor>f: filter</Text>
+            {(sourceError || fallbackNotice) && <Text dimColor>r: retry</Text>}
           </Box>
         </Dialog.Footer>
       </Dialog.Content>

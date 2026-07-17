@@ -26,6 +26,17 @@ describe("HELP_SHORTCUTS", () => {
   it("advertises the live Open Help binding", () => {
     expect(HELP_SHORTCUTS).toContainEqual({ key: "?", label: "Open Help" });
   });
+
+  it("describes j/k as navigation and lists the scroll controls separately", () => {
+    expect(HELP_SHORTCUTS).toContainEqual({
+      key: "j/k",
+      label: "Navigate Lists and Fix Plan",
+    });
+    expect(HELP_SHORTCUTS).toContainEqual({
+      key: "↑/↓ · PgUp/PgDn · Home/End",
+      label: "Scroll Content",
+    });
+  });
 });
 
 describe("trust footer shortcut constants", () => {
@@ -35,10 +46,11 @@ describe("trust footer shortcut constants", () => {
     expect(keys).not.toContain("h");
   });
 
-  it("declares the three byte-identical permission rows", () => {
+  it("declares the permission controls and action-focus transition", () => {
     expect(TRUST_FOOTER_SHORTCUTS).toEqual([
       { key: "↑/↓", label: "Navigate Permissions" },
-      { key: "Enter/Space", label: "Toggle Permission" },
+      { key: "Enter/Space", label: "Toggle" },
+      { key: "Tab", label: "Focus Actions" },
       { key: "q", label: "Quit" },
     ]);
   });

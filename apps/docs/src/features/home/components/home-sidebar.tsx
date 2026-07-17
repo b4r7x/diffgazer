@@ -33,6 +33,7 @@ export function HomeSidebar({
         return (
           <SidebarSection key={library.id} collapsible defaultOpen>
             <SidebarSectionTitle
+              headingLevel="h2"
               className={cn(
                 libraryHasActive ? "text-foreground" : "font-medium text-muted-foreground",
               )}

@@ -3,6 +3,7 @@ import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext, useState } from "react";
 import { collectChildItems } from "../../lib/collect-child-items";
 import { useListNavigation } from "../../lib/use-list-navigation";
+import { getVisibleSliceOffset } from "../../lib/visible-slice-offset";
 import type { CliColorTokens } from "../../theme/palettes";
 import { useTheme } from "../../theme/provider";
 
@@ -15,6 +16,7 @@ export interface RadioGroupProps {
   wrap?: boolean;
   disabled?: boolean;
   isActive?: boolean;
+  maxVisibleItems?: number;
   children: ReactNode;
 }
 
@@ -29,6 +31,7 @@ interface RadioGroupContextValue {
   selectedValue: string;
   highlightedValue: string;
   groupDisabled: boolean;
+  visibleValues: ReadonlySet<string>;
   tokens: CliColorTokens;
 }
 
@@ -55,6 +58,8 @@ function extractRadioItem(element: ReactElement): CollectedItem | null {
 
 function RadioGroupItem({ value, label, description, disabled = false }: RadioGroupItemProps) {
   const ctx = useRadioGroupContext();
+  if (!ctx.visibleValues.has(value)) return null;
+
   const isDisabled = disabled || ctx.groupDisabled;
   const isSelected = ctx.selectedValue === value;
   const isHighlighted = ctx.highlightedValue === value;
@@ -115,6 +120,7 @@ function RadioGroupRoot({
   wrap = true,
   disabled = false,
   isActive = true,
+  maxVisibleItems,
   children,
 }: RadioGroupProps) {
   const { tokens } = useTheme();
@@ -129,9 +135,23 @@ function RadioGroupRoot({
     currentHighlightedId: highlightedValue,
     moveBy,
     selectItem,
-  } = useListNavigation({ items: navigableItems, onHighlightChange, wrap });
+  } = useListNavigation({
+    items: navigableItems,
+    defaultHighlightedId: value ?? defaultValue,
+    onHighlightChange,
+    wrap,
+  });
 
   const selectedValue = value ?? internalValue;
+  const highlightedIndex = Math.max(
+    items.findIndex((item) => item.value === highlightedValue),
+    0,
+  );
+  const visibleItemCount = Math.max(1, Math.min(maxVisibleItems ?? items.length, items.length));
+  const visibleOffset = getVisibleSliceOffset(highlightedIndex, items.length, visibleItemCount);
+  const visibleValues = new Set(
+    items.slice(visibleOffset, visibleOffset + visibleItemCount).map((item) => item.value),
+  );
 
   function selectCurrent() {
     const item = selectItem(highlightedValue);
@@ -172,6 +192,7 @@ function RadioGroupRoot({
         selectedValue,
         highlightedValue,
         groupDisabled: disabled,
+        visibleValues,
         tokens,
       }}
     >

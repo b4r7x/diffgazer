@@ -21,7 +21,6 @@ interface UseDiagnosticsKeyboardResult {
   getActionProps: ReturnType<typeof useActionRowNavigation>["getActionProps"];
   focusFallbackRef: RefObject<HTMLDivElement | null>;
   isRefreshingAll: boolean;
-  refreshError: string | null;
   lastRefreshedAt: string | null;
   handleRefreshAll: () => Promise<void>;
 }
@@ -41,7 +40,6 @@ export function useDiagnosticsKeyboard({
   } = diagnostics;
 
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
-  const [refreshError, setRefreshError] = useState<string | null>(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
   const focusFallbackRef = useRef<HTMLDivElement>(null);
 
@@ -51,13 +49,10 @@ export function useDiagnosticsKeyboard({
     if (isRefreshingAll || isRefreshingContext) return;
 
     setIsRefreshingAll(true);
-    setRefreshError(null);
 
     try {
-      const results = await refreshAllDiagnostics({ retryServer, refetchContext });
-      const failedCount = results.filter((result) => result.status === "rejected").length;
+      await refreshAllDiagnostics({ retryServer, refetchContext });
       setLastRefreshedAt(new Date().toISOString());
-      if (failedCount > 0) setRefreshError("Refresh failed for some diagnostics sources.");
     } finally {
       setIsRefreshingAll(false);
     }
@@ -139,7 +134,6 @@ export function useDiagnosticsKeyboard({
     getActionProps,
     focusFallbackRef,
     isRefreshingAll,
-    refreshError,
     lastRefreshedAt,
     handleRefreshAll,
   };

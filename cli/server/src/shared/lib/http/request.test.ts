@@ -1,8 +1,12 @@
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api/protocol";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Boundary mock: paths resolve OS/env project roots; tests pin request-header handling without depending on the host cwd.
 vi.mock("../paths.js", () => ({
+  canonicalizeProjectRoot: vi.fn((projectRoot: string) => projectRoot),
   isPackaged: () => process.env.DIFFGAZER_PACKAGED === "1",
   resolveProjectRoot: vi.fn(
     (opts: { header?: string | null; env?: string | null; cwd?: string | null }) => {
@@ -54,16 +58,28 @@ describe("getProjectRoot", () => {
     }
   });
 
-  it("passes the client header in dev mode with explicit opt-in", () => {
+  it.each([
+    "/projects/zażółć",
+    "/projects/🚀",
+  ])("decodes the opted-in client project header %s at the request boundary", (projectRoot) => {
     delete process.env.DIFFGAZER_PACKAGED;
     process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT = "1";
-    const c = createMockContext({ [PROJECT_ROOT_HEADER]: "/user/supplied" });
+    const c = createMockContext({ [PROJECT_ROOT_HEADER]: encodeURIComponent(projectRoot) });
 
     getProjectRoot(c);
 
     expect(resolveProjectRoot).toHaveBeenCalledWith(
-      expect.objectContaining({ header: "/user/supplied" }),
+      expect.objectContaining({ header: projectRoot }),
     );
+  });
+
+  it("rejects malformed project-root transport", () => {
+    delete process.env.DIFFGAZER_PACKAGED;
+    process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT = "1";
+    const c = createMockContext({ [PROJECT_ROOT_HEADER]: "%not-encoded" });
+
+    expect(() => getProjectRoot(c)).toThrow("Invalid project root header encoding");
+    expect(resolveProjectRoot).not.toHaveBeenCalled();
   });
 
   it("ignores the client header in dev mode without opt-in", () => {
@@ -95,5 +111,38 @@ describe("getProjectRoot", () => {
     expect(resolveProjectRoot).toHaveBeenCalledWith(
       expect.objectContaining({ header: undefined, env: "/safe/root" }),
     );
+  });
+});
+
+describe("project-root filesystem changes", () => {
+  it("accepts an external project root after a .git directory is created", async () => {
+    const paths = await vi.importActual<typeof import("../paths.js")>("../paths.js");
+    const root = mkdtempSync(join(tmpdir(), "diffgazer-project-root-"));
+
+    try {
+      expect(() => paths.resolveProjectRoot({ header: root })).toThrow("Invalid project root");
+
+      mkdirSync(join(root, ".git"));
+
+      expect(paths.resolveProjectRoot({ header: root })).toBe(root);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects an external project root after its .git directory is removed", async () => {
+    const paths = await vi.importActual<typeof import("../paths.js")>("../paths.js");
+    const root = mkdtempSync(join(tmpdir(), "diffgazer-project-root-"));
+    mkdirSync(join(root, ".git"));
+
+    try {
+      expect(paths.resolveProjectRoot({ header: root })).toBe(root);
+
+      rmSync(join(root, ".git"), { recursive: true });
+
+      expect(() => paths.resolveProjectRoot({ header: root })).toThrow("Invalid project root");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

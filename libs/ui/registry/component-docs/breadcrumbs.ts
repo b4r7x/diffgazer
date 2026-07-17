@@ -89,6 +89,12 @@ export const breadcrumbsDoc: ComponentDoc = {
       },
     },
     "Breadcrumbs.Ellipsis": {
+      label: {
+        type: "string",
+        required: false,
+        defaultValue: '"More"',
+        description: "Screen-reader text announcing collapsed breadcrumb levels.",
+      },
       children: {
         type: "ReactNode",
         required: false,

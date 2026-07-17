@@ -1,4 +1,5 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
+import type { InitResponse, ProviderStatus, SetupStatus } from "@diffgazer/core/schemas/config";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -6,7 +7,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider, useConfigActions, useConfigData } from "@/hooks/use-config";
 
-function makeSetupStatus(overrides: Record<string, unknown> = {}) {
+function makeSetupStatus(overrides: Partial<SetupStatus> = {}): SetupStatus {
   return {
     hasSecretsStorage: true,
     hasProvider: true,
@@ -14,12 +15,12 @@ function makeSetupStatus(overrides: Record<string, unknown> = {}) {
     hasTrust: false,
     isConfigured: true,
     isReady: true,
-    missing: [] as string[],
+    missing: [],
     ...overrides,
   };
 }
 
-function makeInitResponse(overrides: Record<string, unknown> = {}) {
+function makeInitResponse(overrides: Partial<InitResponse> = {}): InitResponse {
   return {
     config: { provider: "gemini", model: "gemini-2.5-flash" },
     providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
@@ -38,7 +39,7 @@ function makeInitResponse(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function makeProviderStatus() {
+function makeProviderStatus(): ProviderStatus[] {
   return [{ provider: "gemini", hasApiKey: true, isActive: true }];
 }
 
@@ -65,7 +66,10 @@ function ConfigConsumer() {
       <p>Model: {data.model ?? "none"}</p>
       <p>Configured: {String(data.isConfigured)}</p>
       <p>Loading: {String(data.isLoading)}</p>
+      <p>Config load: {data.loadState.status}</p>
+      <p>Provider status load: {data.providerStatusLoadState.status}</p>
       <p>Project: {data.projectId ?? "none"}</p>
+      <p>Provider rows: {data.providerStatus.length}</p>
       <button
         type="button"
         onClick={() =>
@@ -171,6 +175,38 @@ describe("ConfigProvider", () => {
 
     expect(screen.getByText("Provider: none")).toBeInTheDocument();
     expect(screen.getByText("Configured: false")).toBeInTheDocument();
+    expect(screen.getByText("Config load: error")).toBeInTheDocument();
+  });
+
+  it("preserves valid init data and exposes a separate provider-status failure", async () => {
+    mockApi.getProviderStatus.mockRejectedValue(new Error("Provider status unavailable"));
+
+    renderWithProvider();
+
+    await waitFor(() => {
+      expect(screen.getByText("Loading: false")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Config load: ready")).toBeInTheDocument();
+    expect(screen.getByText("Provider status load: error")).toBeInTheDocument();
+    expect(screen.getByText("Provider: gemini")).toBeInTheDocument();
+    expect(screen.getByText("Project: proj-1")).toBeInTheDocument();
+    expect(screen.getByText("Provider rows: 1")).toBeInTheDocument();
+  });
+
+  it("exposes provider-status loading without hiding loaded init data", async () => {
+    mockApi.getProviderStatus.mockReturnValue(new Promise(() => {}));
+
+    renderWithProvider();
+
+    await waitFor(() => {
+      expect(screen.getByText("Config load: ready")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Provider status load: loading")).toBeInTheDocument();
+    expect(screen.getByText("Loading: true")).toBeInTheDocument();
+    expect(screen.getByText("Provider: gemini")).toBeInTheDocument();
+    expect(screen.getByText("Project: proj-1")).toBeInTheDocument();
   });
 
   it("reports loading=true while init requests are still pending", async () => {

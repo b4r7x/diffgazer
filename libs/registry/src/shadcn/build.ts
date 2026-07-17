@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { resolveAndRewriteOrigin } from "../origin.js";
+import { normalizeOrigin, rewriteOriginsInDir } from "../origin.js";
 import { REGISTRY_ITEM_TYPE, RegistrySchema } from "../registry-types.js";
 import { readJson } from "../utils/json.js";
 import { resolveLocalShadcnBin, runShadcnRegistryBuild } from "./runner.js";
@@ -22,14 +22,17 @@ export function aggregateThemeStyles(params: {
   const registry = readJson(resolve(rootDir, sourceRegistryPath), RegistrySchema);
 
   let aggregated = seedContent;
+  const appendedPaths = new Set<string>();
   for (const item of registry.items) {
     if (item.type === REGISTRY_ITEM_TYPE.theme) continue;
     for (const file of item.files) {
       if (!file.path.endsWith(".css")) continue;
       const cssPath = resolve(rootDir, file.path);
+      if (appendedPaths.has(cssPath)) continue;
       if (!existsSync(cssPath)) {
         throw new Error(`Registry CSS file is missing: ${file.path}`);
       }
+      appendedPaths.add(cssPath);
       aggregated += `\n${readFileSync(cssPath, "utf-8")}`;
     }
   }
@@ -142,16 +145,16 @@ export function buildShadcnRegistryWithOrigin(
     afterBuild,
   } = options;
 
+  const origin = normalizeOrigin(originRaw, { defaultOrigin });
+
   beforeBuild?.();
 
   runShadcnRegistryBuild({ rootDir, registryPath, outputDir });
   afterBuild?.({ rootDir, outputDir: resolve(rootDir, outputDir) });
 
-  const { origin } = resolveAndRewriteOrigin({
-    dir: resolve(rootDir, outputDir),
-    originRaw,
-    defaultOrigin,
+  rewriteOriginsInDir(resolve(rootDir, outputDir), {
     fromOrigin,
+    toOrigin: origin,
   });
 
   return {

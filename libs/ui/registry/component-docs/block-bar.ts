@@ -20,12 +20,12 @@ export const blockBarDoc: ComponentDoc = {
     {
       title: "Multi-Segment Mode",
       content:
-        "Pass a segments array: segments={[{ value: 60, variant: 'success' }, { value: 25, variant: 'warning' }]}. Value is derived from the segment sum unless explicitly provided. When segments and children are both provided, segments win and define rendering and value.",
+        "Pass a segments array: segments={[{ value: 60, variant: 'success' }, { value: 25, variant: 'warning' }]}. Value is derived from the segment sum unless explicitly provided. Cells are allocated across ordered segments, so an exact max-total fills the configured width without clipping later segments. When segments and children are both provided, segments win and define rendering and value.",
     },
     {
       title: "Compound Mode",
       content:
-        "Pass BlockBar.Segment children for custom per-segment content (labels, event handlers, tooltips). Root renders the empty background automatically.",
+        "Pass BlockBar.Segment children for custom per-segment content (labels, event handlers, tooltips). Cells are allocated across the segment children in order. Root renders the empty background automatically.",
     },
     {
       title: "Value Text",
@@ -54,9 +54,9 @@ export const blockBarDoc: ComponentDoc = {
       value: {
         type: "number",
         required: false,
-        defaultValue: null,
+        defaultValue: "0",
         description:
-          "Current value. Required unless segments are provided or BlockBar.Segment children are passed (in which case the value is derived from their sum).",
+          "Current value. Defaults to zero when omitted without segments or BlockBar.Segment children; otherwise the value is derived from their sum.",
       },
       max: {
         type: "number",
@@ -120,14 +120,14 @@ export const blockBarDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description:
-          "Multi-segment stack. When provided, takes precedence over children and derives value from the sum.",
+          "Multi-segment stack. When provided, takes precedence over children and derives value from the sum. Cells are allocated collectively across segments in order.",
       },
       children: {
         type: "ReactNode",
         required: false,
         defaultValue: null,
         description:
-          "BlockBar.Segment children for fully custom rendering. Throws when neither value nor segments are provided and children are not BlockBar.Segment elements.",
+          "BlockBar.Segment children for fully custom rendering. Cells are allocated collectively across segment children. Throws when neither value nor segments are provided and children are not BlockBar.Segment elements.",
       },
     },
     "BlockBar.Segment": {

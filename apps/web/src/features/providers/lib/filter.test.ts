@@ -1,6 +1,6 @@
 import type { ProviderWithStatus } from "@diffgazer/core/schemas/config";
 import { describe, expect, it } from "vitest";
-import { filterProviders, PROVIDER_FILTERS } from "./filter";
+import { filterProviders, findProviderById, PROVIDER_FILTERS } from "./filter";
 
 const PROVIDERS: ProviderWithStatus[] = [
   {
@@ -85,5 +85,15 @@ describe("filterProviders", () => {
 
   it("exposes the canonical PROVIDER_FILTERS tuple", () => {
     expect(PROVIDER_FILTERS).toEqual(["all", "configured", "needs-key", "free", "paid"]);
+  });
+
+  it("resolves a dialog owner from the canonical list after filtering removes it", () => {
+    const filtered = filterProviders(PROVIDERS, "needs-key").map((provider) =>
+      provider.id === "openrouter" ? { ...provider, hasApiKey: true } : provider,
+    );
+    const refreshedFiltered = filterProviders(filtered, "needs-key");
+
+    expect(findProviderById(refreshedFiltered, "openrouter")).toBeNull();
+    expect(findProviderById(PROVIDERS, "openrouter")?.name).toBe("OpenRouter");
   });
 });

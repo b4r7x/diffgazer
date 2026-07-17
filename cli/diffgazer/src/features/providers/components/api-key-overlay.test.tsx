@@ -5,6 +5,7 @@ import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
+import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
 import { ApiKeyOverlay } from "./api-key-overlay";
 
@@ -58,7 +59,7 @@ describe("ApiKeyOverlay", () => {
     view.stdin.write("\t");
     await flush();
     view.stdin.write("\r");
-    await flush(8);
+    await waitUntil(() => onSaved.mock.calls.length > 0);
 
     expect(saveConfig).toHaveBeenCalledWith({
       provider: "gemini",
@@ -87,12 +88,41 @@ describe("ApiKeyOverlay", () => {
     view.stdin.write("[C"); // right arrow
     await flush();
     view.stdin.write("\r"); // Enter
-    await flush(8);
+    await waitUntil(() => onOpenChange.mock.calls.length > 0);
 
     expect(saveConfig).toHaveBeenCalledWith({
       provider: "gemini",
       apiKey: { kind: "literal", value: "sk-typed-key" },
     });
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  test("saves once when Enter follows Cancel selection and input focus", async () => {
+    const saveConfig = vi.fn<BoundApi["saveConfig"]>().mockResolvedValue(undefined);
+    const onOpenChange = vi.fn();
+    const api = { ...createApi({ baseUrl: "http://localhost" }), saveConfig } satisfies BoundApi;
+
+    const view = render(
+      <Wrapper api={api}>
+        <ApiKeyOverlay open providerId="gemini" onOpenChange={onOpenChange} />
+      </Wrapper>,
+    );
+
+    view.stdin.write("\u001B[C");
+    await flush();
+    view.stdin.write("\t");
+    await flush();
+    view.stdin.write("sk-cancel-then-save");
+    await flush();
+    view.stdin.write("\r");
+    await waitUntil(() => onOpenChange.mock.calls.length > 0);
+
+    expect(saveConfig).toHaveBeenCalledTimes(1);
+    expect(saveConfig).toHaveBeenCalledWith({
+      provider: "gemini",
+      apiKey: { kind: "literal", value: "sk-cancel-then-save" },
+    });
+    expect(onOpenChange).toHaveBeenCalledTimes(1);
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
@@ -157,5 +187,97 @@ describe("ApiKeyOverlay", () => {
     expect(frame).toContain("openrouter");
     expect(frame).not.toContain("sk-provider-secret");
     expect(frame).not.toContain("*".repeat("sk-provider-secret".length));
+  });
+
+  test("keeps a pasted secret out of the fixed environment-variable credential", async () => {
+    const saveConfig = vi.fn<BoundApi["saveConfig"]>().mockResolvedValue(undefined);
+    const api = { ...createApi({ baseUrl: "http://localhost" }), saveConfig } satisfies BoundApi;
+
+    const view = render(
+      <Wrapper api={api}>
+        <ApiKeyOverlay open providerId="gemini" onOpenChange={() => {}} />
+      </Wrapper>,
+    );
+
+    view.stdin.write("\t");
+    await flush();
+    view.stdin.write("sk-never-an-env-name");
+    await flush();
+    view.stdin.write("\t");
+    await flush();
+    view.stdin.write("\u001B[B");
+    await flush();
+
+    const envFrame = view.lastFrame() ?? "";
+    expect(envFrame).toContain("GOOGLE_API_KEY");
+    expect(envFrame).toContain("Fixed for this provider");
+    expect(envFrame).not.toContain("sk-never-an-env-name");
+    expect(envFrame).not.toContain("*".repeat("sk-never-an-env-name".length));
+
+    view.stdin.write("\t");
+    view.stdin.write("ATTACKER_VAR");
+    await flush();
+    expect(view.lastFrame()).not.toContain("ATTACKER_VAR");
+
+    view.stdin.write("\r");
+    await flush(8);
+
+    expect(saveConfig).toHaveBeenCalledWith({
+      provider: "gemini",
+      apiKey: { kind: "env", varName: "GOOGLE_API_KEY" },
+    });
+  });
+
+  test("ignores close requests during a deferred save and closes after a failed save settles", async () => {
+    let rejectSave: ((reason: Error) => void) | undefined;
+    const saveConfig = vi.fn<BoundApi["saveConfig"]>(
+      () =>
+        new Promise<never>((_resolve, reject) => {
+          rejectSave = reject;
+        }),
+    );
+    const onOpenChange = vi.fn();
+    const api = { ...createApi({ baseUrl: "http://localhost" }), saveConfig } satisfies BoundApi;
+
+    const view = render(
+      <Wrapper api={api}>
+        <ApiKeyOverlay open providerId="gemini" onOpenChange={onOpenChange} />
+      </Wrapper>,
+    );
+
+    view.stdin.write("\t");
+    await flush();
+    view.stdin.write("sk-pending-secret");
+    await flush();
+    view.stdin.write("\t");
+    await flush();
+    view.stdin.write("\r");
+    await flush();
+
+    expect(view.lastFrame()).toContain("Saving...");
+    view.stdin.write("\u001B");
+    await flush();
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(view.lastFrame()).toContain("Saving...");
+
+    rejectSave?.(new Error("save rejected"));
+    await waitUntil(() => {
+      const frame = view.lastFrame() ?? "";
+      return (
+        frame.includes("save rejected") &&
+        !frame.includes("Saving...") &&
+        frame.includes("Save") &&
+        frame.includes("Cancel")
+      );
+    });
+
+    expect(view.lastFrame()).toContain("save rejected");
+    expect(onOpenChange).not.toHaveBeenCalled();
+    view.stdin.write("\u001B");
+    await waitUntil(() => onOpenChange.mock.calls.length > 0);
+
+    expect(onOpenChange).toHaveBeenCalledOnce();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

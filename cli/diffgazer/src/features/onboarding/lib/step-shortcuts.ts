@@ -1,15 +1,39 @@
-import type { OnboardingStep } from "@diffgazer/core/onboarding";
+import type { InputMethod, OnboardingStep } from "@diffgazer/core/onboarding";
 import { NAVIGATE_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
 
-export function getStepShortcuts(
-  currentStep: OnboardingStep,
-  focusArea: "step" | "nav",
-  actionDisabled: boolean,
-): Shortcut[] {
+interface StepShortcutState {
+  currentStep: OnboardingStep;
+  focusArea: "step" | "nav";
+  navIndex: number;
+  isFirstStep: boolean;
+  isLastStep: boolean;
+  canProceed: boolean;
+  inputMethod: InputMethod;
+  apiKeyInputFocused: boolean;
+}
+
+export function getStepShortcuts({
+  currentStep,
+  focusArea,
+  navIndex,
+  isFirstStep,
+  isLastStep,
+  canProceed,
+  inputMethod,
+  apiKeyInputFocused,
+}: StepShortcutState): Shortcut[] {
   if (focusArea === "nav") {
+    const isBackFocused = !isFirstStep && navIndex === 0;
+    let actionLabel = "Next";
+    if (isBackFocused) actionLabel = "Back";
+    else if (isLastStep) actionLabel = "Complete Setup";
     return [
       { key: "Tab", label: "Move to Options" },
-      { key: "Enter", label: "Activate Action", disabled: actionDisabled },
+      {
+        key: "Enter",
+        label: actionLabel,
+        disabled: !isBackFocused && !canProceed,
+      },
     ];
   }
 
@@ -27,10 +51,13 @@ export function getStepShortcuts(
         { key: "Tab", label: "Focus Actions" },
       ];
     case "api-key":
+      if (apiKeyInputFocused) {
+        return [{ key: "Tab", label: "Focus Actions" }];
+      }
       return [
-        { key: "↑/↓", label: "Navigate Fields" },
+        { key: "↑/↓", label: "Navigate Methods" },
         { key: "Enter/Space", label: "Select Method" },
-        { key: "Tab", label: "Focus Actions" },
+        { key: "Tab", label: inputMethod === "paste" ? "Focus Input" : "Focus Actions" },
       ];
     case "model":
       return [

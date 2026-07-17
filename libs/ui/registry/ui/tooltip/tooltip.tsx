@@ -17,7 +17,7 @@ export interface TooltipProps {
   content?: ReactNode;
   /** Disables hover/focus triggering when false (use to suppress tooltips conditionally). */
   enabled?: boolean;
-  /** Show delay after pointer/focus enters the trigger. */
+  /** Show delay after pointer enters the trigger; keyboard focus opens immediately. */
   delayMs?: number;
   /** Hide delay after pointer/focus leaves the trigger or content. */
   closeDelayMs?: number;

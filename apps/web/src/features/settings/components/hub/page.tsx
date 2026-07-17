@@ -1,6 +1,6 @@
 import { useSettings } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { buildHubValues } from "@diffgazer/core/schemas/config";
+import { buildHubValues, hasRepositoryReadAccess } from "@diffgazer/core/schemas/config";
 import {
   SETTINGS_MENU_ITEMS,
   SETTINGS_SHORTCUTS,
@@ -10,6 +10,7 @@ import { useKey, useScope } from "@diffgazer/keys";
 import { Menu, MenuItem } from "@diffgazer/ui/components/menu";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { useNavigate } from "@tanstack/react-router";
+import { ConfigurationStatus } from "@/components/shared/configuration-status";
 import { useConfigData } from "@/hooks/use-config";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
@@ -34,7 +35,7 @@ function getSettingsMenuHighlighted(value: string | null): string | null {
 
 export function SettingsHubPage() {
   const navigate = useNavigate();
-  const { provider, isConfigured, trust } = useConfigData();
+  const { loadState, provider, isConfigured, repoRoot, trust } = useConfigData();
   const { theme } = useTheme();
   const [highlighted, setHighlighted] = useScopedRouteState<string | null>(
     "highlighted",
@@ -49,6 +50,10 @@ export function SettingsHubPage() {
   useScope("settings-hub");
   useKey("Escape", () => navigate({ to: "/" }));
 
+  if (loadState.status !== "ready") {
+    return <ConfigurationStatus status={loadState.status} />;
+  }
+
   const handleActivate = (id: string) => {
     const route = SETTINGS_ROUTES[id as SettingsAction];
     if (route) {
@@ -56,7 +61,7 @@ export function SettingsHubPage() {
     }
   };
 
-  const isTrusted = Boolean(trust?.capabilities.readFiles);
+  const isTrusted = hasRepositoryReadAccess(trust, repoRoot);
   const values = buildHubValues({
     provider,
     isConfigured,

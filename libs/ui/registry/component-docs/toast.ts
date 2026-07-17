@@ -22,11 +22,12 @@ export const toastDoc: ComponentDoc = {
     {
       title: "Loading Toasts",
       content:
-        "Loading toasts show a braille spinner and don't auto-dismiss. Use toast.loading() for manual control, or toast.promise() for automatic lifecycle.",
+        "Loading toasts show a braille spinner and persist when duration is omitted. Use toast.loading() for manual control, or toast.promise() for automatic lifecycle. An explicit positive duration schedules auto-dismissal.",
     },
     {
       title: "Error Toasts Persist",
-      content: "Toasts with tone='error' do not auto-dismiss. Users must manually close them.",
+      content:
+        "Toasts with tone='error' persist when duration is omitted and must be closed manually. An explicit positive duration schedules auto-dismissal.",
     },
     {
       title: "Keyboard",
@@ -90,7 +91,7 @@ export const toastDoc: ComponentDoc = {
         required: false,
         defaultValue: '"info"',
         description:
-          "Severity tone. Drives icon, color, and auto-dismiss behavior (error and loading persist).",
+          "Severity tone. Drives icon, color, and auto-dismiss behavior. Error and loading tones persist when duration is omitted.",
       },
       variant: {
         type: '"card" | "hud" | "viewfinder" | "countdown"',
@@ -111,14 +112,26 @@ export const toastDoc: ComponentDoc = {
         required: false,
         defaultValue: "5000",
         description:
-          "Auto-dismiss delay in ms. When action is set and duration is omitted, the toast persists indefinitely per WCAG 2.2.1.",
+          "Auto-dismiss delay in ms. Error/loading tones and toasts with a rendered action persist when duration is omitted. The `hud` variant does not render actions, so passing an action does not make a HUD toast persistent. An explicit positive duration schedules dismissal.",
       },
       action: {
         type: "ReactNode",
         required: false,
         defaultValue: null,
         description:
-          "Action element (e.g. a Button) rendered under the message. Ignored by `hud` (dev warning logged).",
+          "Action element (e.g. a Button) rendered under the message. The `hud` variant silently omits it.",
+      },
+      dismissLabel: {
+        type: "string",
+        required: false,
+        defaultValue: '"Dismiss: " + title',
+        description: "Accessible name for the dismiss button.",
+      },
+      toneLabel: {
+        type: "string",
+        required: false,
+        defaultValue: "the tone value",
+        description: "Screen-reader tone text announced before the toast title.",
       },
       id: {
         type: "string",

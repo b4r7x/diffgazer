@@ -10,8 +10,9 @@ import { PanelRow, type PanelRowProps } from "./panel-row";
 import { PanelTitle, type PanelTitleProps } from "./panel-title";
 
 /**
- * Root container. Polymorphic via `as` (div, article, section, aside). Switches to <section>
- * automatically when Panel.Title or aria-label is present.
+ * Root container. Polymorphic via `as` (div, article, section, aside). A statically discoverable
+ * Panel.Title or explicit ARIA name switches the initial render to <section>. Opaque title or
+ * description wrappers require stable part ids plus root aria-labelledby/aria-describedby for SSR.
  */
 const Panel = Object.assign(PanelRoot, {
   Header: PanelHeader,

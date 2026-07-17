@@ -1,13 +1,10 @@
-import { TextInput } from "@inkjs/ui";
 import { Box, Text, useInput } from "ink";
-import { useState } from "react";
 import { applyTextEditKey, useInputMode } from "../../hooks/use-input-mode";
 import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions";
 import { useTheme } from "../../theme/provider";
 
 export interface InputProps {
-  value?: string;
-  defaultValue?: string;
+  value: string;
   onChange?: (value: string) => void;
   placeholder?: string;
   size?: "sm" | "md" | "lg";
@@ -25,7 +22,6 @@ const widthBySize = {
 
 export function Input({
   value,
-  defaultValue,
   onChange,
   placeholder,
   size = "md",
@@ -35,59 +31,29 @@ export function Input({
   isActive = false,
 }: InputProps) {
   const { tokens } = useTheme();
-  const [internalValue, setInternalValue] = useState(defaultValue ?? "");
   const { columns } = useTerminalDimensions();
 
-  useInputMode(isActive);
+  useInputMode(isActive && !disabled);
 
   const width = Math.min(widthBySize[size], columns - 4);
   const borderColor = error ? tokens.error : tokens.border;
-  const currentValue = value ?? internalValue;
   const isMasked = type === "password";
 
-  if (disabled) {
-    const display =
-      isMasked && currentValue
-        ? "*".repeat(currentValue.length)
-        : currentValue || placeholder || "";
-
-    return (
-      <Box width={width} borderStyle="single" borderColor={tokens.muted}>
-        <Text dimColor>{display}</Text>
-      </Box>
-    );
-  }
-
   function handleChange(next: string) {
-    if (value === undefined) {
-      setInternalValue(next);
-    }
     onChange?.(next);
   }
 
-  if (isMasked || value !== undefined) {
-    return (
-      <ManualTextEdit
-        value={currentValue}
-        onChange={handleChange}
-        placeholder={placeholder}
-        width={width}
-        borderColor={borderColor}
-        isActive={isActive}
-        mask={isMasked}
-      />
-    );
-  }
-
   return (
-    <Box width={width} borderStyle="single" borderColor={borderColor}>
-      <TextInput
-        placeholder={placeholder}
-        defaultValue={defaultValue}
-        onChange={handleChange}
-        isDisabled={!isActive}
-      />
-    </Box>
+    <ManualTextEdit
+      value={value}
+      onChange={handleChange}
+      placeholder={placeholder}
+      width={width}
+      borderColor={disabled ? tokens.muted : borderColor}
+      isActive={isActive && !disabled}
+      mask={isMasked}
+      disabled={disabled}
+    />
   );
 }
 
@@ -99,6 +65,7 @@ interface ManualTextEditProps {
   borderColor: string;
   isActive: boolean;
   mask: boolean;
+  disabled: boolean;
 }
 
 function ManualTextEdit({
@@ -109,6 +76,7 @@ function ManualTextEdit({
   borderColor,
   isActive,
   mask,
+  disabled,
 }: ManualTextEditProps) {
   const { tokens } = useTheme();
 
@@ -120,12 +88,18 @@ function ManualTextEdit({
     { isActive },
   );
 
-  const display = mask ? "*".repeat(value.length) : value;
+  const display = mask ? "*".repeat(Array.from(value).length) : value;
   const showPlaceholder = value.length === 0 && placeholder != null;
 
   return (
     <Box width={width} borderStyle="single" borderColor={borderColor}>
-      {showPlaceholder ? <Text color={tokens.muted}>{placeholder}</Text> : <Text>{display}</Text>}
+      {showPlaceholder ? (
+        <Text color={tokens.muted} dimColor={disabled}>
+          {placeholder}
+        </Text>
+      ) : (
+        <Text dimColor={disabled}>{display}</Text>
+      )}
     </Box>
   );
 }

@@ -1,6 +1,13 @@
 "use client";
 
-import { type RefObject, useCallback, useLayoutEffect, useRef, useState } from "react";
+import {
+  type RefCallback,
+  type RefObject,
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   computeAvailableSize,
   computePosition,
@@ -60,8 +67,8 @@ export interface FloatingPosition {
 export interface UseFloatingPositionReturn {
   /** Computed position with x/y coordinates and resolved side. Null when closed. */
   position: FloatingPosition | null;
-  /** Ref to attach to the floating content element so it can be measured. */
-  contentRef: RefObject<HTMLDivElement | null>;
+  /** Callback ref to attach to the floating content element so attachment changes are observed. */
+  contentRef: RefCallback<HTMLDivElement>;
 }
 
 function getNodeName(node: Node): string {
@@ -138,12 +145,19 @@ export function useFloatingPosition({
   avoidCollisions = true,
 }: UseFloatingPositionOptions): UseFloatingPositionReturn {
   const [position, setPosition] = useState<FloatingPosition | null>(null);
-  const contentRef = useRef<HTMLDivElement | null>(null);
+  const [trigger, setTrigger] = useState<HTMLElement | null>(null);
+  const [content, setContent] = useState<HTMLDivElement | null>(null);
+  const contentRef = useCallback<RefCallback<HTMLDivElement>>((node) => {
+    setContent(node);
+  }, []);
   const frameRef = useRef<number | null>(null);
 
+  useLayoutEffect(() => {
+    const nextTrigger = triggerRef.current;
+    if (nextTrigger !== trigger) setTrigger(nextTrigger);
+  });
+
   const update = useCallback(() => {
-    const trigger = triggerRef.current;
-    const content = contentRef.current;
     if (!trigger || !content) return;
 
     const view = trigger.ownerDocument?.defaultView ?? window;
@@ -206,7 +220,8 @@ export function useFloatingPosition({
     preferredAlign,
     preferredSide,
     sideOffset,
-    triggerRef,
+    trigger,
+    content,
   ]);
 
   const scheduleUpdate = useCallback(() => {
@@ -224,39 +239,45 @@ export function useFloatingPosition({
       return;
     }
 
+    if (!trigger || !content) {
+      setPosition(null);
+      return;
+    }
+
     update();
 
-    const trigger = triggerRef.current;
-    const content = contentRef.current;
-    if (!trigger || !content) return;
-
     const view = trigger.ownerDocument?.defaultView ?? window;
+    let active = true;
+    const handleLayoutChange = () => {
+      if (active) scheduleUpdate();
+    };
     const ResizeObserverCtor = view.ResizeObserver;
     const observer =
-      typeof ResizeObserverCtor === "function" ? new ResizeObserverCtor(scheduleUpdate) : null;
+      typeof ResizeObserverCtor === "function" ? new ResizeObserverCtor(handleLayoutChange) : null;
     observer?.observe(trigger);
     observer?.observe(content);
 
     const scrollParents = getOverflowAncestors(trigger);
     for (const parent of scrollParents) {
-      parent.addEventListener("scroll", scheduleUpdate, { passive: true });
+      parent.addEventListener("scroll", handleLayoutChange, { passive: true });
     }
-    view.addEventListener("scroll", scheduleUpdate, { passive: true });
-    view.addEventListener("resize", scheduleUpdate);
+    view.addEventListener("scroll", handleLayoutChange, { passive: true });
+    view.addEventListener("resize", handleLayoutChange);
 
     return () => {
+      active = false;
       observer?.disconnect();
       for (const parent of scrollParents) {
-        parent.removeEventListener("scroll", scheduleUpdate);
+        parent.removeEventListener("scroll", handleLayoutChange);
       }
-      view.removeEventListener("scroll", scheduleUpdate);
-      view.removeEventListener("resize", scheduleUpdate);
+      view.removeEventListener("scroll", handleLayoutChange);
+      view.removeEventListener("resize", handleLayoutChange);
       if (frameRef.current != null) {
         view.cancelAnimationFrame(frameRef.current);
         frameRef.current = null;
       }
     };
-  }, [open, triggerRef, update, scheduleUpdate]);
+  }, [content, open, trigger, update, scheduleUpdate]);
 
   return { position, contentRef };
 }

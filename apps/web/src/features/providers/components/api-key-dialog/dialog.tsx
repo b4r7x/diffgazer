@@ -22,7 +22,7 @@ export interface ApiKeyDialogProps {
   providerName: string;
   envVarName: string;
   secretsStorage?: SecretsStorage | null;
-  onSubmit: (method: "paste" | "env", value: string) => Promise<void>;
+  onSubmit: (method: "paste" | "env", value: string) => Promise<boolean>;
 }
 
 export function ApiKeyDialog({
@@ -43,12 +43,18 @@ export function ApiKeyDialog({
   const form = useApiKeyForm({
     envVarName,
     onSubmit,
-    onOpenChange,
   });
 
   const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && form.isSubmitting) return;
     if (!nextOpen) form.reset();
     onOpenChange(nextOpen);
+  };
+
+  const handleSubmit = async (method?: "paste" | "env") => {
+    const saved = await form.handleSubmit(method);
+    if (saved) handleOpenChange(false);
+    return saved;
   };
 
   const {
@@ -56,6 +62,7 @@ export function ApiKeyDialog({
     setFocused,
     getMethodOptionProps,
     handleMethodKeyDown,
+    handleMethodCommit,
     getCancelProps,
     getConfirmProps,
     cancelHighlighted,
@@ -67,13 +74,19 @@ export function ApiKeyDialog({
     canSubmit: form.canSubmit && !form.isSubmitting,
     isSubmitting: form.isSubmitting,
     inputRef,
-    onSubmit: form.handleSubmit,
+    onSubmit: handleSubmit,
     onClose: () => handleOpenChange(false),
   });
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-xl overflow-hidden border border-border shadow-2xl">
+      <DialogContent
+        className="max-w-xl overflow-hidden border border-border shadow-2xl"
+        closeOnBackdropClick={!form.isSubmitting}
+        onEscapeKeyDown={(event) => {
+          if (form.isSubmitting) event.preventDefault();
+        }}
+      >
         <DialogHeader marker="none" className="bg-secondary/50 px-4 py-3">
           <DialogTitle className="min-w-0 flex-1 w-auto text-info-text tracking-wide">
             {providerName} API Key
@@ -91,7 +104,8 @@ export function ApiKeyDialog({
             inputRef={inputRef}
             focused={focused}
             onFocus={setFocused}
-            onKeySubmit={form.handleSubmit}
+            onKeySubmit={handleSubmit}
+            onMethodCommit={handleMethodCommit}
             onInputMethodKeyDown={handleMethodKeyDown}
             getMethodOptionProps={getMethodOptionProps}
             invalid={form.error !== null}
@@ -111,7 +125,7 @@ export function ApiKeyDialog({
 
         <ApiKeyFooter
           onConfirm={() => {
-            void form.handleSubmit();
+            void handleSubmit();
           }}
           canSubmit={form.canSubmit}
           isSubmitting={form.isSubmitting}

@@ -18,6 +18,13 @@ return isMobile ? <MobileNav /> : <DesktopNav />;`,
       description:
         "Pixel breakpoint. The hook matches max-width: breakpoint - 1px, so the default is mobile below 1024px.",
     },
+    {
+      name: "owner",
+      type: "Window | RefObject<Element | null>",
+      required: false,
+      description:
+        "Window or element ref whose owner window supplies matchMedia. Pass it when rendering into an iframe or another document.",
+    },
   ],
   returns: {
     type: "boolean",
@@ -34,6 +41,11 @@ return isMobile ? <MobileNav /> : <DesktopNav />;`,
       title: "Media Query",
       content:
         "The subscribed query is (max-width: breakpoint - 1px). With the default 1024 breakpoint, 1023px and below return true.",
+    },
+    {
+      title: "Owner Window",
+      content:
+        "By default the hook uses the current global window. Pass a Window or an element ref to classify and subscribe against another document's viewport.",
     },
   ],
   tags: ["hook", "responsive", "media-query"],

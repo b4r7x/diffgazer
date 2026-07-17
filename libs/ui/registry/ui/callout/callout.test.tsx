@@ -1,5 +1,6 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Fragment } from "react";
 import { describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
 import { Callout } from "./index";
@@ -64,6 +65,25 @@ describe("Callout structure", () => {
     );
     const grid = getGrid(container);
     expect(grid).toHaveAttribute("data-has-icon", "true");
+  });
+
+  it("detects a conditionally rendered icon inside a Fragment", () => {
+    function ConditionalCallout({ showIcon }: { showIcon: boolean }) {
+      return (
+        <Callout>
+          <Fragment key="conditional-icon">
+            {showIcon ? <Callout.Icon /> : null}
+            <Callout.Title>Conditional</Callout.Title>
+          </Fragment>
+        </Callout>
+      );
+    }
+
+    const { container, rerender } = render(<ConditionalCallout showIcon={false} />);
+    expect(getGrid(container)).toHaveAttribute("data-has-icon", "false");
+
+    rerender(<ConditionalCallout showIcon />);
+    expect(getGrid(container)).toHaveAttribute("data-has-icon", "true");
   });
 
   it("assigns each part its grid cell via data-slot (layout driven by callout.css)", () => {
@@ -163,6 +183,87 @@ describe("Callout dismiss", () => {
     expect(dismiss).not.toHaveAttribute("aria-label");
   });
 
+  it("uses a visible bigint child as the dismiss accessible name", async () => {
+    const { container } = render(
+      <Callout>
+        <Callout.Title>Title</Callout.Title>
+        <Callout.Dismiss>{1n}</Callout.Dismiss>
+      </Callout>,
+    );
+
+    const dismiss = screen.getByRole("button", { name: "1" });
+    expect(dismiss).not.toHaveAttribute("aria-label");
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("retains the default name for a decorative icon child", () => {
+    render(
+      <Callout>
+        <Callout.Title>Title</Callout.Title>
+        <Callout.Dismiss>
+          <svg aria-hidden="true" viewBox="0 0 10 10" />
+        </Callout.Dismiss>
+      </Callout>,
+    );
+
+    expect(screen.getByRole("button", { name: "Dismiss" })).toHaveAttribute(
+      "aria-label",
+      "Dismiss",
+    );
+  });
+
+  it("retains the default name when nested text is hidden", async () => {
+    const { container } = render(
+      <Callout>
+        <Callout.Title>Title</Callout.Title>
+        <Callout.Dismiss>
+          <span hidden>Close</span>
+        </Callout.Dismiss>
+      </Callout>,
+    );
+
+    expect(screen.getByRole("button", { name: "Dismiss" })).toHaveAttribute(
+      "aria-label",
+      "Dismiss",
+    );
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("uses an explicit aria-labelledby name before child fallback detection", async () => {
+    const { container } = render(
+      <>
+        <span id="callout-dismiss-label">Close maintenance notice</span>
+        <Callout>
+          <Callout.Title>Title</Callout.Title>
+          <Callout.Dismiss aria-labelledby="callout-dismiss-label">
+            <svg aria-hidden="true" viewBox="0 0 10 10" />
+          </Callout.Dismiss>
+        </Callout>
+      </>,
+    );
+
+    const dismiss = screen.getByRole("button", { name: "Close maintenance notice" });
+    expect(dismiss).toHaveAttribute("aria-labelledby", "callout-dismiss-label");
+    expect(dismiss).not.toHaveAttribute("aria-label");
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("prefers an explicit name for a decorative icon child", () => {
+    render(
+      <Callout>
+        <Callout.Title>Title</Callout.Title>
+        <Callout.Dismiss aria-label="Close maintenance notice">
+          <svg aria-hidden="true" viewBox="0 0 10 10" />
+        </Callout.Dismiss>
+      </Callout>,
+    );
+
+    expect(screen.getByRole("button", { name: "Close maintenance notice" })).toHaveAttribute(
+      "aria-label",
+      "Close maintenance notice",
+    );
+  });
+
   it("dismiss is focusable and activatable via keyboard", async () => {
     const user = userEvent.setup();
     render(
@@ -198,6 +299,30 @@ describe("Callout dismiss", () => {
 
     expect(screen.queryByText("Alert")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue" })).toHaveFocus();
+  });
+
+  it("skips a recovery control hidden by an ancestor", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <Callout>
+          <Callout.Title>Alert</Callout.Title>
+          <Callout.Dismiss />
+        </Callout>
+        <div style={{ display: "none" }}>
+          <button type="button">Hidden recovery target</button>
+        </div>
+        <button type="button">Visible recovery target</button>
+      </>,
+    );
+
+    await user.tab();
+    expect(screen.getByRole("button", { name: "Dismiss" })).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+
+    expect(screen.queryByText("Alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Visible recovery target" })).toHaveFocus();
   });
 
   it("repairs focus to a stable target after dismiss inside an open shadow root (F-070)", () => {
@@ -292,6 +417,30 @@ describe("Callout accessibility", () => {
         expect(await axe(container)).toHaveNoViolations();
         unmount();
       }
+    }
+  });
+
+  it("has no a11y violations for default, text, icon, and explicitly labelled dismissals", async () => {
+    const dismissals = [
+      <Callout.Dismiss key="default" />,
+      <Callout.Dismiss key="text">Dismiss notice</Callout.Dismiss>,
+      <Callout.Dismiss key="icon">
+        <svg aria-hidden="true" viewBox="0 0 10 10" />
+      </Callout.Dismiss>,
+      <Callout.Dismiss key="labelled-icon" aria-label="Close notice">
+        <svg aria-hidden="true" viewBox="0 0 10 10" />
+      </Callout.Dismiss>,
+    ];
+
+    for (const dismiss of dismissals) {
+      const { container, unmount } = render(
+        <Callout>
+          <Callout.Title>Notice</Callout.Title>
+          {dismiss}
+        </Callout>,
+      );
+      expect(await axe(container)).toHaveNoViolations();
+      unmount();
     }
   });
 });

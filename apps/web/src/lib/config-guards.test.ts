@@ -17,6 +17,7 @@ vi.mock("@/lib/api", () => ({
 
 import { api } from "@/lib/api";
 import { queryClient } from "@/lib/query-client";
+import { resolveApiEndpoint } from "./api-endpoint";
 import { requireConfigured, requireNotConfigured } from "./config-guards";
 
 async function expectRedirectTo(promise: Promise<unknown>, to: string) {
@@ -44,9 +45,10 @@ describe("config guards", () => {
 
   it("passes a configured user through requireConfigured", async () => {
     mockCheckConfig.mockResolvedValue({ configured: true });
+    mockLoadInit.mockResolvedValue({ setup: { isConfigured: true } });
 
     await expect(requireConfigured()).resolves.toBeUndefined();
-    expect(mockLoadInit).not.toHaveBeenCalled();
+    expect(mockCheckConfig).not.toHaveBeenCalled();
   });
 
   it("redirects an unconfigured user to onboarding", async () => {
@@ -56,18 +58,12 @@ describe("config guards", () => {
     await expectRedirectTo(requireConfigured(), "/onboarding");
   });
 
-  it("treats init setup status as source of truth when checkConfig fails", async () => {
-    mockCheckConfig.mockRejectedValue(new Error("network down"));
-    mockLoadInit.mockResolvedValue({ setup: { isConfigured: true } });
+  it("uses init setup status when the legacy check contradicts it", async () => {
+    mockCheckConfig.mockResolvedValue({ configured: true });
+    mockLoadInit.mockResolvedValue({ setup: { isConfigured: false } });
 
-    await expect(requireConfigured()).resolves.toBeUndefined();
-  });
-
-  it("treats init setup status as source of truth when checkConfig reports not configured", async () => {
-    mockCheckConfig.mockResolvedValue({ configured: false });
-    mockLoadInit.mockResolvedValue({ setup: { isConfigured: true } });
-
-    await expect(requireConfigured()).resolves.toBeUndefined();
+    await expectRedirectTo(requireConfigured(), "/onboarding");
+    expect(mockCheckConfig).not.toHaveBeenCalled();
   });
 
   it("redirects completed users away from onboarding on direct URL access", async () => {
@@ -77,16 +73,14 @@ describe("config guards", () => {
     await expectRedirectTo(requireNotConfigured(), "/");
   });
 
-  it("does not redirect when both configuration checks fail transiently", async () => {
-    mockCheckConfig.mockRejectedValue(new Error("network down"));
+  it("does not redirect when init fails transiently", async () => {
     mockLoadInit.mockRejectedValue(new Error("network down"));
 
     await expect(requireConfigured()).resolves.toBeUndefined();
     await expect(requireNotConfigured()).resolves.toBeUndefined();
   });
 
-  it("dedupes the /api/config request shared with a concurrent ConfigProvider fetch", async () => {
-    mockCheckConfig.mockRejectedValue(new Error("check unavailable"));
+  it("dedupes the init request shared with a concurrent ConfigProvider fetch", async () => {
     let resolveInit: (value: { setup: { isConfigured: boolean } }) => void = () => {};
     mockLoadInit.mockReturnValue(
       new Promise<{ setup: { isConfigured: boolean } }>((resolve) => {
@@ -101,5 +95,34 @@ describe("config guards", () => {
     await Promise.all([guardPromise, providerPromise]);
 
     expect(mockLoadInit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("resolveApiEndpoint", () => {
+  const fallback = "http://127.0.0.1:3000";
+
+  it("trims and accepts HTTP(S) overrides", () => {
+    expect(resolveApiEndpoint("  https://api.example.test/v1  ", fallback)).toBe(
+      "https://api.example.test/v1",
+    );
+  });
+
+  it.each([undefined, "", "   "])("uses the same fallback for %s", (value) => {
+    expect(resolveApiEndpoint(value, fallback)).toBe(fallback);
+  });
+
+  it("rejects malformed overrides", () => {
+    expect(() => resolveApiEndpoint("not a URL", fallback)).toThrow(
+      "VITE_API_URL must be a valid HTTP(S) URL.",
+    );
+  });
+
+  it.each([
+    "file:///tmp/api",
+    "ftp://api.example.test",
+  ])("rejects unsupported endpoint %s", (value) => {
+    expect(() => resolveApiEndpoint(value, fallback)).toThrow(
+      "VITE_API_URL must use HTTP or HTTPS.",
+    );
   });
 });

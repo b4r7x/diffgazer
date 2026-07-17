@@ -65,6 +65,10 @@ export function StepperTrigger({
   const tabIndex = tabTargetId === stepId && isInteractive ? 0 : -1;
 
   const tagLabel = statusLabels?.[status] ?? DEFAULT_STEP_STATUS_LABELS[status];
+  const screenReaderLabel =
+    variant === "tag"
+      ? STATUS_SR_PREFIX[status]
+      : (statusLabels?.[status] ?? STATUS_SR_PREFIX[status]);
 
   // Report the rendered label text up to the step so the Stepper live region can
   // announce it, mirroring the previous static label extraction but resilient to
@@ -96,7 +100,7 @@ export function StepperTrigger({
       tabIndex={tabIndex}
     >
       <span className={stepperIndicatorVariants({ variant, status })}>
-        <span className="sr-only">{STATUS_SR_PREFIX[status]} </span>
+        <span className="sr-only">{screenReaderLabel} </span>
         <Glyph variant={variant} status={status} tagLabel={tagLabel} />
       </span>
       <span ref={labelRef} className={stepperLabelVariants({ status })}>

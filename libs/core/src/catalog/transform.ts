@@ -102,6 +102,8 @@ function toModelInfo(model: ModelsDevModel, overlay: ProviderOverlay): ModelInfo
     description: sanitizeTerminalText(describeModel(model)),
     tier: isModelFreeToUse(model, overlay) ? "free" : "paid",
     ...(recommended ? { recommended: true } : {}),
+    ...(model.limit?.context ? { contextLength: model.limit.context } : {}),
+    ...(model.limit?.output ? { maxOutputTokens: model.limit.output } : {}),
   };
 }
 

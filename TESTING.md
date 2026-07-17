@@ -125,11 +125,14 @@ After registry/UI/keys/CLI/docs changes (handoff-affecting):
 pnpm run prepare:artifacts && pnpm run validate:artifacts:check
 ```
 
-Root hygiene (non-blocking report vs blocking gates):
+Root hygiene (blocking gates):
 ```
-pnpm run knip                         # dead-file / unused-dep report (non-blocking today)
+pnpm run knip                         # dead-file / unused-dep gate (blocking in `pnpm run check`)
 pnpm run depcruise                    # import-boundary rules (blocking in `pnpm run check`)
 ```
+
+Because `check` runs both commands in its `&&` chain, a Knip finding blocks `check` and every
+readiness command that invokes it: `test-ci`, `verify`, and `release-check`.
 
 CI-safe gate (`test-ci`):
 ```

@@ -25,6 +25,7 @@ export function startWeb(
   initializeShutdownToken();
   let stopPromise: Promise<void> | null = null;
   let servers: ServerController[] = [];
+  let startupFailureHandled = false;
 
   const stop = (): Promise<void> => {
     if (!stopPromise) {
@@ -34,6 +35,8 @@ export function startWeb(
   };
 
   const handleStartupFailure = (message: string): void => {
+    if (startupFailureHandled) return;
+    startupFailureHandled = true;
     console.error(message);
     process.exitCode = 1;
     void stopWithTimeout(stop, config.shutdown.gracefulMs).finally(() => {
@@ -60,7 +63,7 @@ export function startWeb(
   const printBanner = dependencies.printBanner ?? printDiffgazerBanner;
   printBanner();
   for (const server of servers) {
-    server.start();
+    void server.start().catch(() => undefined);
   }
 
   return () => {

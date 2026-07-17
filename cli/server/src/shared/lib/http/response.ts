@@ -2,6 +2,7 @@ import type { CatalogErrorCode } from "@diffgazer/core/schemas/config";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import type { Context } from "hono";
+import type { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 // `@hono/zod-validator`'s Hook surfaces zod's internal `$ZodError`, which is a
 // distinct type from the public `ZodError` (it lacks `format`/`flatten`/etc.).
@@ -55,6 +56,35 @@ export const errorResponse = (
   code: WireErrorCode,
   status: ErrorStatus,
 ): Response => ctx.json({ error: { message, code } }, VALID_ERROR_STATUSES[status]);
+
+const httpExceptionCode = (status: ContentfulStatusCode): WireErrorCode | undefined => {
+  switch (status) {
+    case 401:
+      return ErrorCode.UNAUTHORIZED;
+    case 403:
+      return ErrorCode.FORBIDDEN;
+    case 404:
+      return ErrorCode.NOT_FOUND;
+    case 413:
+      return ErrorCode.PAYLOAD_TOO_LARGE;
+    case 429:
+      return ErrorCode.RATE_LIMITED;
+    default:
+      return status >= 400 && status < 500 ? ErrorCode.VALIDATION_ERROR : undefined;
+  }
+};
+
+export const httpExceptionResponse = (ctx: Context, error: HTTPException): Response | undefined => {
+  const code = httpExceptionCode(error.status);
+  if (code === undefined) return undefined;
+
+  const response = ctx.json({ error: { message: error.message, code } }, error.status);
+  for (const [name, value] of error.getResponse().headers) {
+    if (name === "content-length" || name === "content-type") continue;
+    response.headers.set(name, value);
+  }
+  return response;
+};
 
 export const zodErrorHandler = <T>(
   result: { success: true; data: T } | { success: false; error: core.$ZodError },

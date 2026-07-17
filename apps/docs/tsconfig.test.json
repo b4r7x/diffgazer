@@ -9,6 +9,20 @@
     "allowJs": true,
     "checkJs": false
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "scripts/**/*.ts", "src/generated/**/*.json"],
-  "exclude": ["node_modules", "dist", ".source", ".output"]
+  "include": [
+    "*.test.ts",
+    "*.test.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "scripts/**/*.ts",
+    "src/generated/**/*.json"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".source",
+    ".output",
+    // This config replaces the base excludes, so keep lazy source archives out here too.
+    "src/generated/**/*.source.json"
+  ]
 }

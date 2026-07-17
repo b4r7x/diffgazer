@@ -84,6 +84,8 @@ pnpm exec dgadd init [options]
 | `--dry-run` | Preview initialization without writing files | `false` |
 | `--skip-install` | Write files without installing npm dependencies | `false` |
 
+`dgadd init` requires Tailwind CSS v4 to be declared in `dependencies` or `devDependencies`. If it is missing or still on v3, install it first (for example, `pnpm add -D tailwindcss@^4`) and rerun init. The check runs before any files or configuration are written; `--skip-install` skips Diffgazer's companion dependencies, not this prerequisite. The command never installs or upgrades Tailwind silently.
+
 `dgadd init` does not mutate `tsconfig`, Vite, Next, or your CSS entrypoint. Configure a TypeScript or Vite alias to your source directory first, or use `--allow-missing-alias` only when your tooling already resolves source aliases.
 
 ### `add`
@@ -107,6 +109,8 @@ pnpm exec dgadd ui/button
 | `-y, --yes` | Skip confirmation prompts | `false` |
 
 `copy` mode installs bundled offline hook source. `keys` mode rewrites local hook imports to `@diffgazer/keys` and installs the package dependency, so use it only after `@diffgazer/keys` is published or available through a local tarball. `--yes` uses `copy` mode for components that require keyboard hooks; `none` is rejected for those components because it would leave unresolved local hook imports.
+
+When re-adding an installed keyboard component with a different integration mode, `dgadd` stops before writing and asks for `--overwrite`. With `--overwrite`, it rewrites the component files and migrates copied hook files and their ownership records to the requested mode.
 
 ### `list`
 

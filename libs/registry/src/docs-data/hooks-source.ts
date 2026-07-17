@@ -4,7 +4,13 @@ import { log } from "../logger.js";
 import { type RegistryFile, RegistryItemSchema } from "../registry-types.js";
 import { findExamples } from "./examples.js";
 import { type DocsHighlighter, type HighlightLanguage, highlightCode } from "./highlight.js";
-import type { CodeBlockLine, EnrichedHookData, HookDoc, HookSourceData } from "./types.js";
+import type {
+  CodeBlockLine,
+  EnrichedHookData,
+  HookDoc,
+  HookSourceData,
+  HookSourceFileData,
+} from "./types.js";
 
 export interface HookRegistryItem {
   name: string;
@@ -13,16 +19,6 @@ export interface HookRegistryItem {
   description?: string;
   files: Array<{ path: string }>;
 }
-
-interface HookSourceFileData {
-  path: string;
-  raw: string;
-  highlighted: CodeBlockLine[];
-}
-
-type HookSourceDataWithFiles = HookSourceData & {
-  files: HookSourceFileData[];
-};
 
 export interface GenerateHooksSourceOptions {
   items: HookRegistryItem[];
@@ -102,6 +98,20 @@ function readSourceFile(options: {
   };
 }
 
+function readHookSourceFiles(options: {
+  item: HookRegistryItem;
+  rootDir: string;
+  highlighter: DocsHighlighter;
+  themeName: string;
+  lang: HighlightLanguage;
+}): HookSourceFileData[] {
+  const publicFiles = readPublicRegistryFiles(options);
+  if (publicFiles) return publicFiles;
+
+  const sourceFile = readSourceFile(options);
+  return sourceFile ? [sourceFile] : [];
+}
+
 export function generateHooksSource(
   options: GenerateHooksSourceOptions,
 ): Record<string, HookSourceData> {
@@ -109,15 +119,11 @@ export function generateHooksSource(
   const data: Record<string, HookSourceData> = {};
 
   for (const item of items) {
-    const files =
-      readPublicRegistryFiles({ item, rootDir, highlighter, themeName, lang }) ??
-      [readSourceFile({ item, rootDir, highlighter, themeName, lang })].filter(
-        (file): file is HookSourceFileData => file !== null,
-      );
+    const files = readHookSourceFiles({ item, rootDir, highlighter, themeName, lang });
     const firstFile = files[0];
     if (!firstFile) continue;
 
-    const entry: HookSourceDataWithFiles = {
+    const entry: HookSourceData = {
       name: item.name,
       title: item.title ?? item.name,
       description: item.description ?? "",
@@ -149,19 +155,9 @@ export async function generateEnrichedHookData(
   const data: Record<string, EnrichedHookData> = {};
 
   for (const item of items) {
-    const file = item.files[0];
-    if (!file?.path) {
-      log.warn(`Hook "${item.name}": no file path, skipping`);
-      continue;
-    }
-    const hookPath = resolve(rootDir, file.path);
-    if (!existsSync(hookPath)) {
-      log.warn(`Hook "${item.name}": file not found at ${hookPath}, skipping`);
-      continue;
-    }
-
-    const raw = readFileSync(hookPath, "utf-8");
-    const highlighted = highlightCode(highlighter, raw, lang, themeName);
+    const files = readHookSourceFiles({ item, rootDir, highlighter, themeName, lang });
+    const firstFile = files[0];
+    if (!firstFile) continue;
 
     const docs = await loadHookDoc(item.name);
 
@@ -202,7 +198,8 @@ export async function generateEnrichedHookData(
       name: item.name,
       title: item.title ?? item.name,
       description: docs?.description ?? item.description ?? "",
-      source: { raw, highlighted },
+      source: { raw: firstFile.raw, highlighted: firstFile.highlighted },
+      files,
       docs,
       usageSnippet,
       usageSnippetHighlighted,

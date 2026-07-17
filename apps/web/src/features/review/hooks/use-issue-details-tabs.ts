@@ -1,6 +1,6 @@
 import { useIssueDetailsState } from "@diffgazer/core/review";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 
 interface UseIssueDetailsTabsOptions {
   selectedIssue: ReviewIssue | null;
@@ -10,6 +10,12 @@ export function useIssueDetailsTabs({ selectedIssue }: UseIssueDetailsTabsOption
   const { activeTab, availableTabs, setActiveTab, completedSteps, toggleStep } =
     useIssueDetailsState(selectedIssue);
   const detailsScrollRef = useRef<HTMLDivElement>(null);
+  const selectedIssueId = selectedIssue?.id ?? null;
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedIssueId is the intentional reset trigger; the stable scroll ref is the only value read by the effect.
+  useLayoutEffect(() => {
+    if (detailsScrollRef.current) detailsScrollRef.current.scrollTop = 0;
+  }, [selectedIssueId]);
 
   const moveTab = (delta: -1 | 1) => {
     const index = availableTabs.indexOf(activeTab);

@@ -17,7 +17,7 @@ export function ReviewMetricsFooter({ metrics, startTime, isRunning }: ReviewMet
       </SectionHeader>
       <KeyValue className="pt-2">
         <KeyValue.Item
-          label="Files Processed"
+          label="Files in Prompt"
           value={
             metrics.filesTotal > 0
               ? `${metrics.filesProcessed}/${metrics.filesTotal}`

@@ -15,7 +15,11 @@ Most of these have a free tier you can review with before paying for anything. F
 
 ## How models are listed
 
-You do not type model names by hand. When you open the model picker, the list comes live from the provider's own catalog, so it reflects the models that provider currently offers rather than a list baked into Diffgazer. OpenRouter is the one provider that does not use the shared catalog; it sources its model list from its own live route instead. If Diffgazer cannot reach a catalog, it falls back to a bundled snapshot so the picker is never empty, which means a stale or offline list may lag behind what the provider has just shipped.
+You do not type model names by hand. For Google Gemini, Z.AI, Z.AI Coding Plan, Groq, and Cerebras, Diffgazer first uses a non-empty models.dev cache that is less than a day old, without making a network request. Otherwise, unless `DIFFGAZER_OFFLINE` is set, it requests the live shared catalog. When a live request is skipped, fails, or does not contain the selected provider, Diffgazer falls back to a non-empty cached list for that provider even if it is stale, then to the bundled offline snapshot. The snapshot keeps these five provider pickers populated on first use. The picker identifies cached and snapshot results, offers Retry, and shows when cached data was fetched; either fallback may lag behind models the provider has just shipped.
+
+OpenRouter does not use the shared snapshot. Its picker first reuses a non-empty cache that is less than a day old and belongs to the same API key. When that cache is missing or stale, it requests OpenRouter's live, account-scoped model route; if the refresh fails, it can fall back only to a stale cache for that same key. If no matching cache exists, the picker has no models to show. See [Privacy: model-catalog requests](/app/concepts/privacy#model-catalog-requests-during-setup) for the network and offline behavior of both catalog paths.
+
+For catalog-backed providers, the selected model must be present in the returned live, cached, or snapshot list. Diffgazer validates that membership when saving the selection; an arbitrary model ID that is absent from the displayed catalog is rejected.
 
 ## Choosing a model
 

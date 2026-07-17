@@ -1,10 +1,34 @@
-import { renderHook } from "@testing-library/react";
+import { render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createRef, StrictMode } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useEscapeKey, useOutsideClick } from "./use-outside-click";
+import {
+  createElement,
+  createRef,
+  Fragment,
+  type RefObject,
+  StrictMode,
+  useRef,
+  useState,
+} from "react";
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
+import OutsideClickBasicExample from "../examples/outside-click/outside-click-basic";
+import { outsideClickDoc } from "../hook-docs/outside-click";
+import { type OverlayStackOptions, useEscapeKey, useOutsideClick } from "./use-outside-click";
 
 let restorePointerEventSupport = () => {};
+
+function LateAttachHarness({ onOutside }: { onOutside: () => void }) {
+  const [attached, setAttached] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useOutsideClick(ref, onOutside);
+
+  return createElement(
+    Fragment,
+    null,
+    createElement("button", { type: "button", onClick: () => setAttached(true) }, "Attach"),
+    attached ? createElement("div", { ref }, "Inside") : null,
+    createElement("button", { type: "button" }, "Outside"),
+  );
+}
 
 function setPointerEventSupport(enabled: boolean) {
   const descriptor = Object.getOwnPropertyDescriptor(window, "PointerEvent");
@@ -33,6 +57,86 @@ afterEach(() => {
 });
 
 describe("useOutsideClick", () => {
+  it("keeps the five positional parameters aligned with public metadata", () => {
+    expect(outsideClickDoc.parameters?.map((parameter) => parameter.name)).toEqual([
+      "ref",
+      "handler",
+      "enabled",
+      "excludeRefs",
+      "options",
+    ]);
+    expectTypeOf<Parameters<typeof useOutsideClick>>().toEqualTypeOf<
+      [
+        ref: RefObject<HTMLElement | null>,
+        handler: () => void,
+        enabled?: boolean,
+        excludeRefs?: ReadonlyArray<RefObject<HTMLElement | null>>,
+        options?: OverlayStackOptions,
+      ]
+    >();
+  });
+
+  it("keeps modern listener timing aligned with the public metadata", () => {
+    restorePointerEventSupport();
+    restorePointerEventSupport = setPointerEventSupport(true);
+    const addListener = vi.spyOn(document, "addEventListener");
+
+    const { cleanup } = setup();
+
+    expect(addListener).toHaveBeenCalledWith(
+      "pointerdown",
+      expect.any(Function),
+      expect.objectContaining({ capture: true }),
+    );
+    expect(outsideClickDoc.notes?.find((note) => note.title === "Event Type")?.content).toContain(
+      "capture-phase pointerdown",
+    );
+    cleanup();
+    addListener.mockRestore();
+  });
+
+  it("keeps legacy capture listeners aligned with the public metadata", () => {
+    const addListener = vi.spyOn(document, "addEventListener");
+
+    const { cleanup } = setup();
+
+    for (const eventName of ["touchstart", "mousedown"]) {
+      expect(addListener).toHaveBeenCalledWith(
+        eventName,
+        expect.any(Function),
+        expect.objectContaining({ capture: true }),
+      );
+    }
+    const eventNote = outsideClickDoc.notes?.find((note) => note.title === "Event Type")?.content;
+    expect(eventNote).toContain("capture-phase touchstart and mousedown fallbacks");
+    cleanup();
+    addListener.mockRestore();
+  });
+
+  it("lets the canonical example close and reopen", async () => {
+    const user = userEvent.setup();
+    render(createElement(OutsideClickBasicExample));
+
+    expect(screen.getByText("Click outside to dismiss")).toBeInTheDocument();
+    await user.click(document.body);
+    const opener = screen.getByRole("button", { name: "Show panel" });
+
+    await user.click(opener);
+
+    expect(screen.getByText("Click outside to dismiss")).toBeInTheDocument();
+  });
+
+  it("registers when an initially null ref attaches in a later commit", async () => {
+    const user = userEvent.setup();
+    const handler = vi.fn();
+    render(createElement(LateAttachHarness, { onOutside: handler }));
+
+    await user.click(screen.getByRole("button", { name: "Attach" }));
+    await user.click(screen.getByRole("button", { name: "Outside" }));
+
+    expect(handler).toHaveBeenCalledOnce();
+  });
+
   function setup(
     opts: { enabled?: boolean; excludeRefs?: React.RefObject<HTMLElement | null>[] } = {},
   ) {
@@ -270,6 +374,51 @@ describe("useOutsideClick", () => {
     outside.remove();
   });
 
+  it("skips a detached top entry and dismisses one live layer", async () => {
+    const user = userEvent.setup();
+    const lower = document.createElement("div");
+    const upper = document.createElement("div");
+    const outside = document.createElement("button");
+    document.body.append(lower, upper, outside);
+
+    const lowerRef: React.RefObject<HTMLElement | null> = { current: lower };
+    const upperRef: React.RefObject<HTMLElement | null> = { current: upper };
+    const lowerHandler = vi.fn();
+    const upperHandler = vi.fn();
+
+    renderHook(() => {
+      useOutsideClick(lowerRef, lowerHandler);
+      useOutsideClick(upperRef, upperHandler);
+    });
+    upper.remove();
+
+    await user.click(outside);
+
+    expect(lowerHandler).toHaveBeenCalledOnce();
+    expect(upperHandler).not.toHaveBeenCalled();
+    lower.remove();
+    outside.remove();
+  });
+
+  it("does not swallow the opener gesture for a detached entry", async () => {
+    const user = userEvent.setup();
+    const inside = document.createElement("div");
+    const opener = document.createElement("button");
+    document.body.append(inside, opener);
+    const ref: React.RefObject<HTMLElement | null> = { current: inside };
+    const handler = vi.fn();
+    const open = vi.fn();
+    opener.addEventListener("click", open);
+
+    renderHook(() => useOutsideClick(ref, handler));
+    inside.remove();
+    await user.click(opener);
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(open).toHaveBeenCalledOnce();
+    opener.remove();
+  });
+
   it("routes Escape to the topmost enabled layer", async () => {
     const user = userEvent.setup();
     const lowerHandler = vi.fn();
@@ -369,6 +518,37 @@ describe("useOutsideClick", () => {
       altAddSpy.mockRestore();
       hostAddSpy.mockRestore();
     }
+  });
+
+  it("treats primary and excluded refs across documents as one logical layer", () => {
+    const iframe = document.createElement("iframe");
+    document.body.appendChild(iframe);
+    const iframeDocument = iframe.contentDocument;
+    if (!iframeDocument) throw new Error("Expected iframe document");
+    const primary = document.createElement("div");
+    const hostOutside = document.createElement("button");
+    const excluded = iframeDocument.createElement("div");
+    const iframeOutside = iframeDocument.createElement("button");
+    document.body.append(primary, hostOutside);
+    iframeDocument.body.append(excluded, iframeOutside);
+
+    const primaryRef: React.RefObject<HTMLElement | null> = { current: primary };
+    const excludedRef: React.RefObject<HTMLElement | null> = { current: excluded };
+    const handler = vi.fn();
+    const { unmount } = renderHook(() => useOutsideClick(primaryRef, handler, true, [excludedRef]));
+
+    const press = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+    hostOutside.dispatchEvent(press);
+    iframeOutside.dispatchEvent(press);
+    expect(handler).toHaveBeenCalledOnce();
+
+    unmount();
+    iframeOutside.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    expect(handler).toHaveBeenCalledOnce();
+
+    primary.remove();
+    hostOutside.remove();
+    iframe.remove();
   });
 
   it("routes Escape from the ref's ownerDocument only", () => {

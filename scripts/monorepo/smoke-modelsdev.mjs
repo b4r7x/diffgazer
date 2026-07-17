@@ -1,25 +1,28 @@
 #!/usr/bin/env node
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ENV } from "./lib/env.mjs";
 import {
   assertCatalogProviders,
+  collectReachableBundleFiles,
   enabledSnapshotProviders,
   findSnapshotInBundle,
 } from "./lib/smoke-modelsdev.mjs";
-import { networkAllowed } from "./smoke-shared.mjs";
+import { fetchJsonWithLimit, networkAllowed } from "./smoke-shared.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const LABEL = "live models.dev catalog";
 const DIFFGAZER_DIST = resolve(root, "cli/diffgazer/dist");
+const DIFFGAZER_ENTRY = resolve(DIFFGAZER_DIST, "index.js");
+const MAX_LIVE_CATALOG_BYTES = 4 * 1024 * 1024;
 
 // design D6: the diffgazer binary is tsup-bundled with `noExternal`, so the
 // CATALOG_SNAPSHOT must be INLINED into the emitted bundle (not loaded from a
-// runtime fs json). A known snapshot model id proves the snapshot rode along;
-// its absence is the opencode #4959 "blank first-run picker" regression.
-function assertSnapshotInlinedInBundle(snapshotMarker) {
-  if (!existsSync(DIFFGAZER_DIST)) {
+// runtime fs json). The evidence is a model id/name pair derived from the
+// snapshot and absent from the separately bundled overlays.
+function assertSnapshotInlinedInBundle(evidence, assertEvidence) {
+  if (!existsSync(DIFFGAZER_ENTRY)) {
     const message =
       `diffgazer bundle not built at ${DIFFGAZER_DIST}; cannot verify the snapshot is ` +
       `inlined. Run \`pnpm --filter diffgazer build\` first`;
@@ -32,26 +35,29 @@ function assertSnapshotInlinedInBundle(snapshotMarker) {
     return;
   }
 
-  const bundleFiles = readdirSync(DIFFGAZER_DIST)
-    .filter((name) => name.endsWith(".js"))
-    .map((name) => resolve(DIFFGAZER_DIST, name));
-  const match = findSnapshotInBundle(
-    bundleFiles,
-    (path) => readFileSync(path, "utf8"),
-    snapshotMarker,
+  const readBundle = (path) => readFileSync(path, "utf8");
+  const bundleFiles = collectReachableBundleFiles(DIFFGAZER_ENTRY, readBundle, (file, specifier) =>
+    resolve(dirname(file), specifier),
   );
-  if (!match) {
-    throw new Error(
-      `diffgazer bundle does not inline CATALOG_SNAPSHOT: '${snapshotMarker}' not found in ` +
-        `${DIFFGAZER_DIST}. A blank first-run picker would ship. Check tsup noExternal for @diffgazer/core.`,
-    );
-  }
-  console.log(`OK: CATALOG_SNAPSHOT inlined in diffgazer bundle (found '${snapshotMarker}')`);
+  assertEvidence(bundleFiles.map(readBundle).join("\n"), evidence);
+
+  const match = findSnapshotInBundle(bundleFiles, readBundle, evidence);
+  const location = match ?? "across emitted chunks";
+  console.log(
+    `OK: CATALOG_SNAPSHOT inlined in diffgazer bundle (${evidence.join(" + ")} in ${location})`,
+  );
 }
 
 async function run() {
-  const { catalogToModelInfo, CATALOG_SNAPSHOT, parseModelsDevCatalog, PROVIDER_OVERLAY } =
-    await import(resolve(root, "libs/core/dist/catalog/index.js"));
+  const {
+    assertCatalogSnapshotBundleEvidence,
+    catalogToModelInfo,
+    CATALOG_SNAPSHOT,
+    getCatalogSnapshotBundleEvidence,
+    parseModelsDevCatalog,
+    PROVIDER_OVERLAY,
+    SURFACED_OVERLAYS,
+  } = await import(resolve(root, "libs/core/dist/catalog/index.js"));
 
   const enabledProviders = enabledSnapshotProviders(PROVIDER_OVERLAY);
 
@@ -67,18 +73,22 @@ async function run() {
     console.log(line);
   }
 
-  assertSnapshotInlinedInBundle(PROVIDER_OVERLAY.cerebras.defaultModel);
+  const snapshotEvidence = getCatalogSnapshotBundleEvidence(CATALOG_SNAPSHOT, [
+    { PROVIDER_OVERLAY, SURFACED_OVERLAYS },
+  ]);
+  assertSnapshotInlinedInBundle(snapshotEvidence, assertCatalogSnapshotBundleEvidence);
 
   if (!networkAllowed()) {
     console.log(`OK: ${LABEL} offline snapshot smoke passed`);
     return;
   }
 
-  const response = await fetch("https://models.dev/api.json", {
+  const liveCatalog = await fetchJsonWithLimit("https://models.dev/api.json", {
+    label: LABEL,
+    maxBytes: MAX_LIVE_CATALOG_BYTES,
     signal: AbortSignal.timeout(15_000),
   });
-  if (!response.ok) throw new Error(`${LABEL}: HTTP ${response.status}`);
-  const catalog = parseModelsDevCatalog(await response.json());
+  const catalog = parseModelsDevCatalog(liveCatalog);
 
   for (const line of assertCatalogProviders(
     catalog,

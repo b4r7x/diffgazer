@@ -1,7 +1,14 @@
 {
   "extends": "../../libs/core/tsconfig/react.json",
   "include": ["**/*.ts", "**/*.tsx", "src/generated/**/*.json"],
-  "exclude": ["**/*.test.ts", "**/*.test.tsx", "registry/**/*.ts", "registry/**/*.tsx"],
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "registry/**/*.ts",
+    "registry/**/*.tsx",
+    // Lazy source archives are runtime artifacts; rooting them exhausts the default tsc heap.
+    "src/generated/**/*.source.json"
+  ],
   "compilerOptions": {
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
@@ -15,6 +22,7 @@
     "declarationMap": false,
     "baseUrl": ".",
     "paths": {
+      "@/components/ui/select": ["../../libs/ui/dist/components/select.d.ts"],
       "@/*": ["./src/*"],
       "@diffgazer/keys": ["../../libs/keys/src/index.ts"],
       "@diffgazer/registry": ["../../libs/registry/src/index.ts"],

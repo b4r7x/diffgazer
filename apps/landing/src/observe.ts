@@ -21,9 +21,9 @@ export function observeOnce(target: Element, onEnter: () => void, threshold = 0.
 export function observeEach(
   targets: Iterable<Element>,
   onEnter: (target: Element) => void,
-  options: { threshold?: number; once?: boolean } = {},
+  options: { threshold?: number; rootMargin?: string; once?: boolean } = {},
 ): Cleanup {
-  const { threshold = 0.5, once = false } = options;
+  const { threshold = 0.5, rootMargin, once = false } = options;
   if (typeof IntersectionObserver === "undefined") {
     for (const target of targets) onEnter(target);
     return () => {};
@@ -36,7 +36,7 @@ export function observeEach(
         if (once) observer.unobserve(entry.target);
       }
     },
-    { threshold },
+    { threshold, rootMargin },
   );
   for (const target of targets) observer.observe(target);
   return () => observer.disconnect();

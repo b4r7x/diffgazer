@@ -53,14 +53,15 @@ export function RadioGroupItem<TValue extends string = string>({
   const { registerItem, unregisterItem } = context;
 
   useLayoutEffect(() => {
-    registerItem(itemId, value, itemDisabled === true, rootRef.current);
+    registerItem(itemId, value, isDisabled, rootRef.current);
     return () => unregisterItem(itemId);
-  }, [registerItem, unregisterItem, itemId, value, itemDisabled]);
+  }, [registerItem, unregisterItem, itemId, value, isDisabled]);
 
   return (
     <Radio
       {...radioProps}
       ref={composedRef}
+      data-diffgazer-radio-group-item=""
       data-value={value}
       value={value}
       checked={isSelected}

@@ -10,7 +10,7 @@ import { AVAILABLE_PROVIDERS, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/sch
 import { BACK_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Panel } from "../../../components/ui/panel";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
@@ -115,12 +115,6 @@ export function ProvidersScreen(): ReactElement {
   }
 
   const isOverlayOpen = apiKeyOpen || modelSelectOpen;
-  useEffect(() => {
-    if (!hasSelection && zone !== "list") {
-      setZone("list");
-    }
-  }, [hasSelection, zone]);
-
   const activeZone = hasSelection ? zone : "list";
   const isListActive = !isOverlayOpen && activeZone === "list";
   const isDetailsActive = !isOverlayOpen && activeZone === "details";
@@ -170,9 +164,6 @@ export function ProvidersScreen(): ReactElement {
       <Panel.Content>
         <Box flexDirection="column" gap={1}>
           <SectionHeader>Providers</SectionHeader>
-          {deleteCredentials.error && (
-            <Text color="red">Error: {deleteCredentials.error.message}</Text>
-          )}
           <Box flexDirection={isNarrow ? "column" : "row"} gap={isNarrow ? 0 : 2}>
             <Box
               flexDirection="column"

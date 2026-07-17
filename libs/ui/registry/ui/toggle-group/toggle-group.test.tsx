@@ -1,8 +1,12 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
+import { renderToString } from "react-dom/server";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
+import { toggleGroupDoc } from "../../component-docs/toggle-group";
+import ToastPositions from "../../examples/toast/toast-positions";
+import { SEGMENTED_VARIANTS } from "../../lib/segmented-variants";
 import { ToggleGroup, type ToggleGroupItemProps } from "./index";
 import type { ToggleGroupProps } from "./toggle-group";
 
@@ -26,6 +30,66 @@ function getRadios() {
 }
 
 describe("ToggleGroup", () => {
+  it("documents and renders the optional initial selection in single mode", () => {
+    const roleNote = toggleGroupDoc.notes?.find((note) => note.title === "Role semantics");
+
+    expect(roleNote?.content).toContain("at most one active choice");
+    expect(roleNote?.content).toContain("defaultValue=null starts with no radio checked");
+    expect(toggleGroupDoc.props?.ToggleGroup?.defaultValue?.defaultValue).toBe(
+      "null (single) | [] (multiple)",
+    );
+
+    renderGroup({ defaultValue: null });
+
+    expect(screen.getByRole("radiogroup", { name: "Options" })).toBeInTheDocument();
+    expect(getRadios()).toHaveLength(3);
+    for (const radio of getRadios()) {
+      expect(radio).toHaveAttribute("aria-checked", "false");
+    }
+  });
+
+  it("keeps variant metadata aligned with the shared runtime variants", () => {
+    const variant = toggleGroupDoc.props?.ToggleGroup?.variant;
+    const documentedDefault = variant?.defaultValue?.replaceAll('"', "");
+
+    expect(variant).toMatchObject({
+      defaultValue: '"default"',
+      required: false,
+      type: SEGMENTED_VARIANTS.map((value) => `"${value}"`).join(" | "),
+    });
+
+    renderGroup();
+    expect(screen.getByRole("radiogroup")).toHaveAttribute("data-variant", documentedDefault);
+  });
+
+  it.each([
+    { defaultValue: "b", expected: "Beta", label: "default-selected item" },
+    { defaultValue: undefined, expected: "Beta", label: "first enabled fallback" },
+  ])("renders the $label as the only server Tab stop", ({ defaultValue, expected }) => {
+    const markup = renderToString(
+      <ToggleGroup label="Options" defaultValue={defaultValue}>
+        <ToggleGroup.Item value="a" disabled>
+          Alpha
+        </ToggleGroup.Item>
+        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+        <ToggleGroup.Item value="c">Charlie</ToggleGroup.Item>
+      </ToggleGroup>,
+    );
+    const container = document.createElement("div");
+    container.innerHTML = markup;
+    const radios = within(container).getAllByRole("radio");
+    const tabbable = radios.filter((radio) => radio.getAttribute("tabindex") === "0");
+
+    expect(tabbable).toHaveLength(1);
+    expect(tabbable[0]).toHaveTextContent(expected);
+  });
+
+  it("gives the Toast positions example an accessible group name", () => {
+    render(<ToastPositions />);
+
+    expect(screen.getByRole("radiogroup", { name: "Toast position" })).toBeInTheDocument();
+  });
+
   it("supports direct namespaced items with custom item UI", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -231,9 +295,10 @@ describe("ToggleGroup", () => {
 
   it("participates in form data by name and resets to defaultValue", async () => {
     const user = userEvent.setup();
+    const onChange = vi.fn();
     render(
       <form aria-label="Test form">
-        <ToggleGroup label="Options" name="option" defaultValue="a">
+        <ToggleGroup label="Options" name="option" defaultValue="a" onChange={onChange}>
           <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
           <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
         </ToggleGroup>
@@ -244,9 +309,68 @@ describe("ToggleGroup", () => {
     expect(new FormData(form).get("option")).toBe("a");
     await user.click(screen.getByRole("radio", { name: /beta/i }));
     expect(new FormData(form).get("option")).toBe("b");
+    expect(onChange).toHaveBeenCalledOnce();
 
     form.reset();
     await waitFor(() => expect(new FormData(form).get("option")).toBe("a"));
+    expect(onChange).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a single ToggleGroup activation newer than a same-task form reset", async () => {
+    render(
+      <form aria-label="Test form">
+        <ToggleGroup label="Options" name="option" defaultValue="a">
+          <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+          <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+        </ToggleGroup>
+      </form>,
+    );
+    const form = screen.getByRole("form", { name: "Test form" }) as HTMLFormElement;
+
+    form.reset();
+    // fireEvent retained: activation must remain in the reset task before its microtask can flush.
+    fireEvent.click(screen.getByRole("radio", { name: /beta/i }));
+    await Promise.resolve();
+
+    expect(new FormData(form).get("option")).toBe("b");
+  });
+
+  it.each([
+    "single",
+    "multiple",
+  ] as const)("applies a %s ToggleGroup reset before a later activation", async (mode) => {
+    const user = userEvent.setup();
+    render(
+      <form aria-label="Test form">
+        {mode === "single" ? (
+          <ToggleGroup label="Options" name="option" defaultValue="a">
+            <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+            <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+          </ToggleGroup>
+        ) : (
+          <ToggleGroup label="Options" selectionMode="multiple" defaultValue={["a"]}>
+            <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+            <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+          </ToggleGroup>
+        )}
+      </form>,
+    );
+    const role = mode === "single" ? "radio" : "button";
+    const selectedAttribute = mode === "single" ? "aria-checked" : "aria-pressed";
+    const alpha = screen.getByRole(role, { name: /alpha/i });
+    const beta = screen.getByRole(role, { name: /beta/i });
+    const form = screen.getByRole("form", { name: "Test form" }) as HTMLFormElement;
+
+    await user.click(beta);
+    expect(beta).toHaveAttribute(selectedAttribute, "true");
+
+    form.reset();
+    await waitFor(() => expect(alpha).toHaveAttribute(selectedAttribute, "true"));
+    expect(beta).toHaveAttribute(selectedAttribute, "false");
+
+    await user.click(beta);
+    expect(beta).toHaveAttribute(selectedAttribute, "true");
+    expect(alpha).toHaveAttribute(selectedAttribute, mode === "single" ? "false" : "true");
   });
 
   it("omits form data when disabled or deselected", async () => {
@@ -277,6 +401,33 @@ describe("ToggleGroup", () => {
         "option",
       ),
     ).toBe(false);
+  });
+
+  it("retains a disabled selected value without submitting it", async () => {
+    function FormGroup({ itemDisabled }: { itemDisabled: boolean }) {
+      return (
+        <form aria-label="Test form">
+          <ToggleGroup label="Options" name="option" value="a">
+            <ToggleGroup.Item value="a" disabled={itemDisabled}>
+              Alpha
+            </ToggleGroup.Item>
+            <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+          </ToggleGroup>
+        </form>
+      );
+    }
+
+    const { rerender } = render(<FormGroup itemDisabled={false} />);
+    const form = screen.getByRole("form", { name: "Test form" }) as HTMLFormElement;
+    expect(new FormData(form).get("option")).toBe("a");
+
+    rerender(<FormGroup itemDisabled />);
+
+    await waitFor(() => expect(new FormData(form).has("option")).toBe(false));
+    expect(screen.getByRole("radio", { name: /alpha/i })).toHaveAttribute("aria-checked", "true");
+
+    rerender(<FormGroup itemDisabled={false} />);
+    await waitFor(() => expect(new FormData(form).get("option")).toBe("a"));
   });
 
   it("has no a11y violations", async () => {
@@ -496,9 +647,9 @@ describe("ToggleGroup variants", () => {
     expect(screen.getByRole("radiogroup")).toHaveAttribute("data-variant", "underline");
   });
 
-  it("renders a sliding pill indicator only for variant='pill' single mode", () => {
+  it("renders a sliding pill indicator for a non-wrapping pill single mode", () => {
     const { container, rerender } = render(
-      <ToggleGroup label="Options" variant="pill" defaultValue="b">
+      <ToggleGroup label="Options" variant="pill" defaultValue="b" wrap={false}>
         <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
         <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
       </ToggleGroup>,
@@ -512,6 +663,18 @@ describe("ToggleGroup variants", () => {
       </ToggleGroup>,
     );
     expect(container.querySelector('[data-slot="toggle-group-pill"]')).toBeNull();
+  });
+
+  it("uses selected items instead of a one-row indicator when pill items can wrap", () => {
+    const { container } = render(
+      <ToggleGroup label="Options" variant="pill" defaultValue="b">
+        <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+      </ToggleGroup>,
+    );
+
+    expect(container.querySelector('[data-slot="toggle-group-pill"]')).toBeNull();
+    expect(screen.getByRole("radio", { name: "Beta" })).toHaveAttribute("data-state", "on");
   });
 
   it("suppresses the pill indicator in multiple-selection mode", () => {
@@ -728,6 +891,58 @@ describe("ToggleGroup multiple mode", () => {
     expect(onChange).toHaveBeenCalledWith(["a", "b"]);
     expect(screen.getByRole("button", { name: /alpha/i })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: /beta/i })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("resets uncontrolled multiple values silently", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <form aria-label="Test form">
+        <ToggleGroup
+          label="Options"
+          selectionMode="multiple"
+          defaultValue={["a"]}
+          onChange={onChange}
+        >
+          <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+          <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+        </ToggleGroup>
+      </form>,
+    );
+    const form = screen.getByRole("form", { name: "Test form" }) as HTMLFormElement;
+    const alpha = screen.getByRole("button", { name: /alpha/i });
+    const beta = screen.getByRole("button", { name: /beta/i });
+
+    await user.click(alpha);
+    await user.click(beta);
+    expect(alpha).toHaveAttribute("aria-pressed", "false");
+    expect(beta).toHaveAttribute("aria-pressed", "true");
+    expect(onChange).toHaveBeenCalledTimes(2);
+
+    form.reset();
+    await waitFor(() => expect(alpha).toHaveAttribute("aria-pressed", "true"));
+    expect(beta).toHaveAttribute("aria-pressed", "false");
+    expect(onChange).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps a multiple ToggleGroup activation newer than a same-task form reset", async () => {
+    render(
+      <form aria-label="Test form">
+        <ToggleGroup label="Options" selectionMode="multiple" defaultValue={["a"]}>
+          <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+          <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+        </ToggleGroup>
+      </form>,
+    );
+    const form = screen.getByRole("form", { name: "Test form" }) as HTMLFormElement;
+
+    form.reset();
+    // fireEvent retained: activation must remain in the reset task before its microtask can flush.
+    fireEvent.click(screen.getByRole("button", { name: /beta/i }));
+    await Promise.resolve();
+
+    expect(screen.getByRole("button", { name: /alpha/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /beta/i })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("does not render a hidden input in multiple mode", () => {

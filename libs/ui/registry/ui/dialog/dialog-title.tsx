@@ -15,7 +15,10 @@ export interface DialogTitleProps extends ComponentProps<"h2"> {
   meta?: string;
 }
 
-/** Accessible title. */
+/**
+ * Accessible title. Statically discoverable child trees are wired during SSR. When a consumer
+ * component hides the title, provide the server-visible name through Dialog.Content aria-label.
+ */
 export function DialogTitle({
   children,
   className,

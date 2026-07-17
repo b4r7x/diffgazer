@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { useTheme } from "../../theme/provider";
 
 interface PanelProps {
-  variant?: "default" | "borderless";
   children: ReactNode;
 }
 
@@ -16,20 +15,8 @@ interface PanelContentProps {
   children: ReactNode;
 }
 
-interface PanelFooterProps {
-  children: string;
-}
-
-function PanelRoot({ variant = "default", children }: PanelProps) {
+function PanelRoot({ children }: PanelProps) {
   const { tokens } = useTheme();
-
-  if (variant === "borderless") {
-    return (
-      <Box flexDirection="column" width="100%">
-        {children}
-      </Box>
-    );
-  }
 
   return (
     <Box flexDirection="column" width="100%" borderStyle="round" borderColor={tokens.border}>
@@ -60,23 +47,7 @@ function PanelContent({ children }: PanelContentProps) {
   return <Box padding={1}>{children}</Box>;
 }
 
-function PanelFooter({ children }: PanelFooterProps) {
-  const { tokens } = useTheme();
-
-  return (
-    <Box flexDirection="column">
-      <Box width="100%" overflowX="hidden">
-        <Text color={tokens.muted}>{"─".repeat(9999)}</Text>
-      </Box>
-      <Box>
-        <Text color={tokens.muted}>{children}</Text>
-      </Box>
-    </Box>
-  );
-}
-
 export const Panel = Object.assign(PanelRoot, {
   Header: PanelHeader,
   Content: PanelContent,
-  Footer: PanelFooter,
 });

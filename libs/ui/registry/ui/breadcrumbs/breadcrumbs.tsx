@@ -4,6 +4,7 @@ import {
   Children,
   type ComponentPropsWithRef,
   cloneElement,
+  Fragment,
   isValidElement,
   type ReactElement,
   type ReactNode,
@@ -23,14 +24,24 @@ function isBreadcrumbsItemElement(child: ReactNode): child is ReactElement<Bread
   return isValidElement<BreadcrumbsItemProps>(child) && child.type === BreadcrumbsItem;
 }
 
+function flattenFragments(children: ReactNode, parentKey?: string): ReactNode[] {
+  return Children.toArray(children).flatMap((child, index) => {
+    if (!isValidElement<{ children?: ReactNode }>(child)) return [child];
+    const childKey = child.key === null ? String(index) : String(child.key);
+    const composedKey = parentKey === undefined ? childKey : `${parentKey}/${childKey}`;
+    if (child.type === Fragment) return flattenFragments(child.props.children, composedKey);
+    return parentKey === undefined ? [child] : [cloneElement(child, { key: composedKey })];
+  });
+}
+
 function resolveCurrentItem(children: ReactNode): ReactNode {
-  const childArray = Children.toArray(children);
+  const childArray = flattenFragments(children);
   const hasCurrentItem = childArray.some(
     (child) => isBreadcrumbsItemElement(child) && child.props.current,
   );
   const lastItemIndex = hasCurrentItem ? -1 : childArray.findLastIndex(isBreadcrumbsItemElement);
 
-  if (lastItemIndex < 0) return children;
+  if (lastItemIndex < 0) return childArray;
 
   return childArray.map((child, index) =>
     index === lastItemIndex && isBreadcrumbsItemElement(child)

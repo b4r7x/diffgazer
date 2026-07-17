@@ -22,7 +22,7 @@ export const keyValueDoc: ComponentDoc = {
     {
       title: "Bordered Rows",
       content:
-        "Set bordered on KeyValue.Item to add a bottom border, vertical padding, and compact text-xs sizing — ideal for stacked list layouts.",
+        "Set bordered on KeyValue or KeyValue.Item to add top separators between rows, vertical padding, and compact text-xs sizing — ideal for stacked list layouts.",
     },
     {
       title: "Layout Options",
@@ -57,7 +57,7 @@ export const keyValueDoc: ComponentDoc = {
         required: false,
         defaultValue: "false",
         description:
-          "Adds row borders and switches items to compact xs sizing. Propagated to KeyValue.Item via context.",
+          "Adds top separators between rows and switches items to compact xs sizing. Propagated to KeyValue.Item via context.",
       },
       children: {
         type: "ReactNode",
@@ -96,7 +96,7 @@ export const keyValueDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: "inherited from KeyValue",
-        description: "Per-row override of the parent bordered prop.",
+        description: "Per-row override for the inter-row top separator and compact sizing.",
       },
       labelClassName: {
         type: "string",

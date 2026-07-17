@@ -7,7 +7,7 @@ Once a review finishes, the web environment drops you on a summary screen and th
 
 ## The summary
 
-The summary is the first thing you see when a review completes. It opens with a single line: how many issues turned up and across how many files. If anything came back at blocker severity, that count is called out separately in red so you do not miss it.
+The summary is the first thing you see when a review completes. It opens with a single line: how many issues turned up and how many files contain those issues. If anything came back at blocker severity, that count is called out separately in red so you do not miss it.
 
 Below that are two panels side by side. The first is a severity breakdown, so you can tell at a glance whether you are looking at a handful of nits or a wall of blockers. The second groups the issues by category: correctness, security, performance, and so on. Under the panels, the summary previews the top three issues so you have something concrete before you commit to reading the full list.
 
@@ -15,19 +15,19 @@ When you are ready, view results from the summary to open the full results. The 
 
 ## The two-pane view
 
-The results screen splits into two panes. The left pane is the list of every issue in the review, with a severity filter at the top so you can hide everything below a threshold and focus on what matters. Pick an issue in the list and its full detail loads in the right pane, which takes up most of the width.
+The results screen splits into two panes. The left pane is the list of every issue in the review, with multi-select severity chips at the top. When one or more chips are selected, results include exactly those severities and exclude every unselected severity. High by itself does not include Blocker, so select Blocker explicitly when you want to see it. Reset clears the selection and shows every severity again. Pick an issue in the list and its full detail loads in the right pane, which takes up most of the width.
 
-The list and the filter work together. If you raise the filter to, say, blockers only and nothing qualifies, the details pane tells you no issues match and suggests choosing another severity. If the review itself came back clean with no issues at all, the pane says so rather than leaving you staring at a blank panel.
+The list and the chips work together. If none of the issues has a selected severity, the details pane tells you no issues match and suggests choosing another severity. If the review itself came back clean with no issues at all, the pane says so rather than leaving you staring at a blank panel.
 
 Each issue carries a fixed shape, so the detail pane always has the same fields to draw from. The model behind a single issue includes its severity and category, a title, the file and line range it points at, the reasoning behind it, a recommendation, a confidence score, and optional extras like a fix plan, a suggested patch, evidence excerpts, and a tool trace. You do not need to memorize that list. The pane lays it out for you across a few tabs. For the full field-by-field breakdown and what every severity level means, see [review output](/app/reference/review-output).
 
 ## Issue details
 
-The top of the detail pane shows the issue title, colored by its severity, with the exact `file:line` location underneath. Below the header are tabs. Three are always present, and a fourth appears only when the review produced a fix to show.
+The top of the detail pane shows the issue title, colored by its severity, with the exact `file:start-end` range underneath. Category and rounded confidence are shown beside that location, so the same metadata is visible whether you open a live result or a saved review. Below the header are tabs: Details and Explain are always present, while Trace and Patch appear only when the review contains their data.
 
 The **Details** tab is the main read. It walks through the symptom (what is wrong), why it matters, and, when the review supplied them, a fix plan, better alternatives, and tests worth adding. When the issue includes a code excerpt as evidence, it renders inline so you can see the offending lines in place rather than jumping to the file yourself.
 
-The fix plan inside the Details tab is an interactive checklist, not a static list. Each step is a checkbox you can tick as you work through it, and completed steps get struck through. It is a scratchpad for tracking your own progress against the suggested fix; nothing is written back to your code.
+The fix plan inside the Details tab is an interactive checklist, not a static list. Every row preserves the review's step number and action, plus its risk and affected files when supplied. You can tick a step as you work through it, and completed steps get struck through. It is a scratchpad for tracking your own progress against the suggested fix; nothing is written back to your code.
 
 The **Explain** tab is the shorter read: the rationale for the issue followed by the recommendation, in prose. Reach for it when you want the reasoning without the full breakdown.
 

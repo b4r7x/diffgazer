@@ -12,6 +12,14 @@ export const PROVIDER_FILTER_LABELS: { value: ProviderFilter; label: string }[] 
   { value: "paid", label: "Paid" },
 ];
 
+export function findProviderById(
+  providers: ProviderWithStatus[],
+  providerId: string | null,
+): ProviderWithStatus | null {
+  if (providerId === null) return null;
+  return providers.find((provider) => provider.id === providerId) ?? null;
+}
+
 export function filterProviders(
   providers: ProviderWithStatus[],
   filter: ProviderFilter,

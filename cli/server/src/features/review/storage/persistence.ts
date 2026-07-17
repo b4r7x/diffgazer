@@ -6,15 +6,25 @@ import { UuidSchema } from "@diffgazer/core/schemas/fields";
 import type { ZodType } from "zod";
 import { atomicWriteFile as atomicWrite, isNodeError } from "../../../shared/lib/fs.js";
 import { log } from "../../../shared/lib/log.js";
-import type { Collection, CollectionConfig, StoreError, StoreErrorCode } from "./types.js";
+import type {
+  Collection,
+  CollectionConfig,
+  LenientReadResult,
+  StoreError,
+  StoreErrorCode,
+} from "./types.js";
 
-interface ExtendedCollectionConfig<T, M> extends CollectionConfig<T, M> {
+interface ExtendedCollectionConfig<T, M, D> extends CollectionConfig<T, M, D> {
   coerceMetadata?: (metadata: unknown) => unknown;
   transformRead?: (item: T) => T;
 }
 
-type ExtendedCollection<T, M> = Collection<T, M> & {
-  readDetailed(id: string): Promise<Result<{ item: T; salvaged: boolean }, StoreError>>;
+type DetailedRead<T, D> =
+  | { item: T; salvaged: false; diagnostics: null }
+  | { item: T; salvaged: true; diagnostics: D };
+
+type ExtendedCollection<T, M, D> = Collection<T, M> & {
+  readDetailed(id: string): Promise<Result<DetailedRead<T, D>, StoreError>>;
   readMetadata(id: string): Promise<Result<M, StoreError>>;
 };
 
@@ -114,7 +124,12 @@ async function extractMetadataFromFile<M>(
   );
   if (!parseResult.ok) return parseResult;
 
-  const metadata = (parseResult.value as Record<string, unknown>).metadata;
+  const parsed = parseResult.value;
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    return err(createStoreError("PARSE_ERROR", `${name} must be a JSON object`));
+  }
+
+  const metadata = "metadata" in parsed ? parsed.metadata : undefined;
   if (metadata === undefined) {
     return err(createStoreError("PARSE_ERROR", `${name} missing metadata key`));
   }
@@ -126,9 +141,9 @@ async function extractMetadataFromFile<M>(
 
 export type { Collection, StoreError, StoreErrorCode } from "./types.js";
 
-export function createCollection<T, M>(
-  config: ExtendedCollectionConfig<T, M>,
-): ExtendedCollection<T, M> {
+export function createCollection<T, M, D = never>(
+  config: ExtendedCollectionConfig<T, M, D>,
+): ExtendedCollection<T, M, D> {
   const {
     name,
     dir,
@@ -150,9 +165,7 @@ export function createCollection<T, M>(
     return transformRead ? transformRead(item) : item;
   }
 
-  async function readDetailed(
-    id: string,
-  ): Promise<Result<{ item: T; salvaged: boolean }, StoreError>> {
+  async function readDetailed(id: string): Promise<Result<DetailedRead<T, D>, StoreError>> {
     const path = filePath(id);
     const readResult = await safeReadFile(path, name);
     if (!readResult.ok) return readResult;
@@ -165,11 +178,19 @@ export function createCollection<T, M>(
     if (!parseResult.ok) return parseResult;
 
     const validation = schema.safeParse(parseResult.value);
-    if (validation.success) return ok({ item: transform(validation.data), salvaged: false });
+    if (validation.success) {
+      return ok({ item: transform(validation.data), salvaged: false, diagnostics: null });
+    }
 
     if (lenientRead) {
-      const salvaged = lenientRead(parseResult.value);
-      if (salvaged !== null) return ok({ item: transform(salvaged), salvaged: true });
+      const salvaged: LenientReadResult<T, D> | null = lenientRead(parseResult.value);
+      if (salvaged !== null) {
+        return ok({
+          item: transform(salvaged.item),
+          salvaged: true,
+          diagnostics: salvaged.diagnostics,
+        });
+      }
     }
 
     return err(

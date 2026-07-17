@@ -40,8 +40,8 @@ interface DiffViewBaseProps extends Omit<ComponentProps<"figure">, "children"> {
   /** Disables intra-line word-level highlighting on added/removed rows. */
   disableWordDiff?: boolean;
   /**
-   * Accessible name applied as aria-label when no figcaption renders (variant="bare" or a patch
-   * without paths).
+   * Fallback accessible name applied as aria-label when no native ARIA name or figcaption names the
+   * figure (variant="bare" or a patch without paths).
    */
   label?: string;
   /**
@@ -211,10 +211,8 @@ export function DiffView(props: DiffViewProps) {
   const showFigCaption = variant !== "bare" && fileLabel !== null;
 
   const captionId = useId();
-  // Consumer ARIA wins over the internal defaults (the merge-external-ARIA rule),
-  // but the figcaption labelledby still takes precedence when one renders so the
-  // accessible name stays the file path unless the consumer overrides it.
-  const ariaLabelledBy = ariaLabelledByProp ?? (showFigCaption ? captionId : undefined);
+  const ariaLabelledBy =
+    ariaLabelledByProp ?? (ariaLabelProp === undefined && showFigCaption ? captionId : undefined);
   const ariaLabel = ariaLabelProp ?? (ariaLabelledBy ? undefined : (label ?? "Diff output"));
 
   const style =
@@ -228,15 +226,8 @@ export function DiffView(props: DiffViewProps) {
   const isDense = variant === "dense";
   const hasHunks = parsed.hunks.length > 0;
 
-  let body: ReactNode;
-  if (!hasHunks) {
-    body = (
-      // biome-ignore lint/a11y/useSemanticElements: role="status" announces the empty diff state; <output> carries form-association semantics that do not fit here.
-      <div data-slot="diff-view-empty" role="status">
-        {emptyLabel}
-      </div>
-    );
-  } else if (mode === "split") {
+  let body: ReactNode = null;
+  if (hasHunks && mode === "split") {
     body = (
       <DiffViewSplit
         parsed={parsed}
@@ -253,7 +244,7 @@ export function DiffView(props: DiffViewProps) {
         removedLineLabel={removedLineLabel}
       />
     );
-  } else {
+  } else if (hasHunks) {
     body = (
       <DiffViewUnified
         parsed={parsed}
@@ -299,6 +290,10 @@ export function DiffView(props: DiffViewProps) {
           {fileLabel}
         </figcaption>
       )}
+      {/* biome-ignore lint/a11y/useSemanticElements: role="status" announces the empty diff state; <output> carries form-association semantics that do not fit here. */}
+      <div data-slot="diff-view-empty" role="status" className={hasHunks ? "sr-only" : undefined}>
+        {hasHunks ? "" : emptyLabel}
+      </div>
       {hasHunks && maxHeight ? (
         <div data-slot="diff-view-scroll-v" className="scrollbar-thin">
           {body}

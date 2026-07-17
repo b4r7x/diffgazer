@@ -14,8 +14,8 @@ export function useInputMode(isActive: boolean): void {
 }
 
 export function applyTextEditKey(value: string, input: string, key: Key): string | null {
-  if (key.backspace || key.delete) {
-    return value.slice(0, -1);
+  if (key.backspace) {
+    return Array.from(value).slice(0, -1).join("");
   }
   if (key.return || key.escape || key.upArrow || key.downArrow || key.tab) {
     return null;

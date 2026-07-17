@@ -1,4 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { writeLlmsFiles } from "../../scripts/generate-llms";
+import { resolveOrigin, writeSitemap } from "../../scripts/generate-sitemap";
+import { DEFAULT_PUBLIC_ORIGIN, resolvePublicOrigin } from "./public-origin";
 import {
   buildCanonicalUrl,
   buildPageSeo,
@@ -7,6 +15,126 @@ import {
   DEFAULT_SITE_NAME,
   PUBLIC_ORIGIN,
 } from "./seo";
+
+const sitemapModuleUrl = pathToFileURL(
+  resolve(import.meta.dirname, "../../scripts/generate-sitemap.ts"),
+).href;
+
+function resolveProductionOriginInNode(envDir: string): string {
+  const env = { ...process.env };
+  delete env.VITE_PUBLIC_ORIGIN;
+  return execFileSync(
+    process.execPath,
+    [
+      "--import",
+      "tsx",
+      "--input-type=module",
+      "--eval",
+      "const { resolveOrigin } = await import(process.env.SITEMAP_MODULE_URL); process.stdout.write(resolveOrigin(process.env.DOCS_ENV_DIR));",
+    ],
+    {
+      encoding: "utf8",
+      env: { ...env, DOCS_ENV_DIR: envDir, SITEMAP_MODULE_URL: sitemapModuleUrl },
+    },
+  );
+}
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.resetModules();
+});
+
+describe("resolvePublicOrigin", () => {
+  it("uses the fallback only when configuration is absent", () => {
+    expect(resolvePublicOrigin()).toBe(DEFAULT_PUBLIC_ORIGIN);
+    expect(() => resolvePublicOrigin("")).toThrow(/absolute HTTP\(S\) origin/);
+    expect(() => resolvePublicOrigin("   ")).toThrow(/absolute HTTP\(S\) origin/);
+  });
+
+  it("normalizes valid HTTP(S) origins and their trailing slashes", () => {
+    expect(resolvePublicOrigin("https://docs.example.test///")).toBe("https://docs.example.test");
+    expect(resolvePublicOrigin("http://localhost:4173/")).toBe("http://localhost:4173");
+  });
+
+  it.each([
+    "javascript:alert(1)",
+    "ftp://docs.example.test",
+    "https://",
+    "https:///missing-host",
+    "https://docs example.test",
+    "https://docs.example.test/reference",
+    "https://docs.example.test?preview=1",
+  ])("rejects invalid configured origin %s", (configuredOrigin) => {
+    expect(() => resolvePublicOrigin(configuredOrigin)).toThrow(/absolute HTTP\(S\) origin/);
+  });
+
+  it("applies the same normalization at the runtime SEO boundary", async () => {
+    vi.stubEnv("VITE_PUBLIC_ORIGIN", "https://docs.example.test///");
+    vi.resetModules();
+
+    const runtimeSeo = await import("./seo");
+
+    expect(runtimeSeo.PUBLIC_ORIGIN).toBe("https://docs.example.test");
+    expect(runtimeSeo.buildCanonicalUrl("/ui")).toBe("https://docs.example.test/ui");
+  });
+
+  it("uses one production env origin for canonical, sitemap, robots, and LLM output", async () => {
+    const envDir = mkdtempSync(join(tmpdir(), "diffgazer-docs-origin-"));
+    const outDir = join(envDir, "public");
+    const sourcePath = join(envDir, "page.mdx");
+    vi.stubEnv("VITE_PUBLIC_ORIGIN", undefined);
+    writeFileSync(
+      join(envDir, ".env.production"),
+      "VITE_PUBLIC_ORIGIN=https://docs.production.test///\n",
+    );
+    writeFileSync(
+      sourcePath,
+      ["---", "title: Test page", "description: Test.", "---", "", "Body."].join("\n"),
+    );
+
+    try {
+      const origin = resolveProductionOriginInNode(envDir);
+      vi.stubEnv("VITE_PUBLIC_ORIGIN", origin);
+      vi.resetModules();
+      const productionSeo = await import("./seo");
+      writeSitemap(outDir, origin);
+      writeLlmsFiles(outDir, {
+        origin,
+        pages: [{ path: "/app/test-page", source: sourcePath }],
+      });
+
+      expect(productionSeo.buildCanonicalUrl("/app/test-page")).toBe(
+        "https://docs.production.test/app/test-page",
+      );
+      expect(readFileSync(join(outDir, "sitemap.xml"), "utf8")).toContain(
+        "https://docs.production.test",
+      );
+      expect(readFileSync(join(outDir, "robots.txt"), "utf8")).toContain(
+        "Sitemap: https://docs.production.test/sitemap.xml",
+      );
+      expect(readFileSync(join(outDir, "llms.txt"), "utf8")).toContain(
+        "https://docs.production.test/app/test-page.md",
+      );
+    } finally {
+      rmSync(envDir, { recursive: true, force: true });
+    }
+  });
+
+  it("gives an explicit process origin priority over .env.production", () => {
+    const envDir = mkdtempSync(join(tmpdir(), "diffgazer-docs-origin-priority-"));
+    writeFileSync(
+      join(envDir, ".env.production"),
+      "VITE_PUBLIC_ORIGIN=https://docs.production.test\n",
+    );
+    vi.stubEnv("VITE_PUBLIC_ORIGIN", "https://docs.override.test/");
+
+    try {
+      expect(resolveOrigin(envDir)).toBe("https://docs.override.test");
+    } finally {
+      rmSync(envDir, { recursive: true, force: true });
+    }
+  });
+});
 
 function findMeta(
   meta: ReturnType<typeof buildPageSeo>["meta"],

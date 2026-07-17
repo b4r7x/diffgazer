@@ -1,3 +1,4 @@
+import { FooterProvider } from "@diffgazer/core/footer";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -5,14 +6,21 @@ import {
   createRouter,
   HeadContent,
   Outlet,
+  type RouteComponent,
   RouterProvider,
 } from "@tanstack/react-router";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RouteLoadingFallback } from "@/components/layout/route-loading-fallback";
+import { lazyRoute } from "./route-import";
 import { router } from "./router";
-import { NotFoundPage } from "./routes/__root";
+import { ConnectedRouteOutlet, NotFoundPage, RouteRecoveryPage } from "./routes/__root";
+
+vi.mock("../lib/config-guards", () => ({
+  requireConfigured: vi.fn(),
+  requireNotConfigured: vi.fn(),
+}));
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -127,6 +135,97 @@ describe("router pending behavior", () => {
   });
 });
 
+describe("route recovery", () => {
+  let consoleError: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleError.mockRestore();
+  });
+
+  function createRecoveryRouter({
+    component,
+    loader,
+    reloadDocument,
+  }: {
+    component: RouteComponent;
+    loader?: () => Promise<void> | void;
+    reloadDocument: () => void;
+  }) {
+    const rootRoute = createRootRoute({
+      component: () => (
+        <FooterProvider initialShortcuts={[]}>
+          <ConnectedRouteOutlet reloadDocument={reloadDocument} />
+        </FooterProvider>
+      ),
+    });
+    const childRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/",
+      component,
+      ...(loader ? { loader } : {}),
+    });
+    return createRouter({
+      routeTree: rootRoute.addChildren([childRoute]),
+      history: createMemoryHistory({ initialEntries: ["/"] }),
+      defaultErrorComponent: (props) => (
+        <RouteRecoveryPage {...props} reloadDocument={reloadDocument} />
+      ),
+    });
+  }
+
+  it("reloads once after a rejected dynamic route import without invalidating its cached payload", async () => {
+    const user = userEvent.setup();
+    const reloadDocument = vi.fn();
+    const BrokenRoute = lazyRoute(() =>
+      Promise.reject(new TypeError("Failed to fetch dynamically imported module")),
+    );
+    const testRouter = createRecoveryRouter({
+      component: BrokenRoute,
+      reloadDocument,
+    });
+    const invalidate = vi.spyOn(testRouter, "invalidate");
+
+    render(<RouterProvider router={testRouter} />);
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: /try again/i }));
+
+    expect(reloadDocument).toHaveBeenCalledOnce();
+    expect(invalidate).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+  });
+
+  it("invalidates a rejected route loader without reloading", async () => {
+    const user = userEvent.setup();
+    const reloadDocument = vi.fn();
+    const loader = vi.fn(async () => {
+      if (loader.mock.calls.length === 1) {
+        throw new Error("loader failed");
+      }
+    });
+    const testRouter = createRecoveryRouter({
+      component: () => <div>loader recovered</div>,
+      loader,
+      reloadDocument,
+    });
+    const invalidate = vi.spyOn(testRouter, "invalidate");
+
+    render(<RouterProvider router={testRouter} />);
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: /try again/i }));
+
+    await waitFor(() => expect(screen.getByText("loader recovered")).toBeInTheDocument());
+    expect(loader).toHaveBeenCalledTimes(2);
+    expect(invalidate).toHaveBeenCalledTimes(1);
+    expect(reloadDocument).not.toHaveBeenCalled();
+  });
+});
+
 const EXPECTED_ROUTE_TITLES: Record<string, string> = {
   "/": "Home — Diffgazer",
   "/onboarding": "Setup — Diffgazer",
@@ -204,28 +303,69 @@ describe("not-found routing", () => {
     expect(router.options.defaultNotFoundComponent).toBe(NotFoundPage);
   });
 
-  it("renders the app recovery state for an unmatched URL and offers a route home", async () => {
+  it("sets the unmatched title and restores the matched title after returning home", async () => {
     const user = userEvent.setup();
-    const rootRoute = createRootRoute({ component: Outlet });
+    const rootRoute = createRootRoute({
+      component: () => (
+        <>
+          <HeadContent />
+          <Outlet />
+        </>
+      ),
+    });
     const homeRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: "/",
       component: () => <div>home ready</div>,
+      head: () => ({ meta: [{ title: "Home — Diffgazer" }] }),
     });
     const notFoundRouter = createRouter({
       routeTree: rootRoute.addChildren([homeRoute]),
-      history: createMemoryHistory({ initialEntries: ["/stale-bookmark"] }),
+      history: createMemoryHistory({ initialEntries: ["/"] }),
       defaultNotFoundComponent: NotFoundPage,
     });
 
     render(<RouterProvider router={notFoundRouter} />);
+    await waitFor(() => expect(document.title).toBe("Home — Diffgazer"));
+
+    await act(async () => {
+      notFoundRouter.history.push("/stale-bookmark");
+      await notFoundRouter.load();
+    });
     await waitFor(() => expect(screen.getByText("Page not found")).toBeInTheDocument());
+    expect(document.title).toBe("Page not found — Diffgazer");
 
     const homeLink = screen.getByRole("link", { name: /go home/i });
     expect(homeLink).toHaveAttribute("href", "/");
 
     await user.click(homeLink);
     await waitFor(() => expect(screen.getByText("home ready")).toBeInTheDocument());
+    await waitFor(() => expect(document.title).toBe("Home — Diffgazer"));
     expect(screen.queryByText("Page not found")).not.toBeInTheDocument();
+  });
+});
+
+describe("review route id validation", () => {
+  async function loadReviewPath(path: string) {
+    const testRouter = createRouter({
+      routeTree: router.routeTree,
+      history: createMemoryHistory({ initialEntries: [path] }),
+    });
+
+    await testRouter.load();
+    return testRouter;
+  }
+
+  it("opens persisted reviews whose RFC UUID is not version 4", async () => {
+    const testRouter = await loadReviewPath("/review/6ba7b810-9dad-11d1-80b4-00c04fd430c8");
+
+    expect(testRouter.state.location.pathname).toBe("/review/6ba7b810-9dad-11d1-80b4-00c04fd430c8");
+  });
+
+  it("redirects malformed review ids to the home error state", async () => {
+    const testRouter = await loadReviewPath("/review/not-a-uuid");
+
+    expect(testRouter.state.location.pathname).toBe("/");
+    expect(testRouter.state.location.search).toEqual({ error: "invalid-review-id" });
   });
 });

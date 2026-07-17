@@ -1,12 +1,15 @@
 "use client";
 
+import { composedClosest, composedContains, isEditableElement } from "@diffgazer/keys";
 import {
   Children,
-  type ElementType,
+  Fragment,
   isValidElement,
   type KeyboardEvent,
+  type ReactElement,
   type ReactNode,
   type Ref,
+  useCallback,
   useEffect,
   useEffectEvent,
   useLayoutEffect,
@@ -35,7 +38,19 @@ export type { ListboxMetadataItem };
 interface ListboxItemElementProps {
   id?: string;
   disabled?: boolean;
+  hidden?: boolean;
+  inert?: boolean;
+  "aria-hidden"?: boolean | "true" | "false";
+  expanded?: boolean;
+  defaultExpanded?: boolean;
   children?: ReactNode;
+}
+
+type ListboxChildType = ReactElement["type"];
+
+interface CollectListboxItemsOptions {
+  itemTypes: readonly ListboxChildType[];
+  containerTypes?: readonly ListboxChildType[];
 }
 
 /**
@@ -115,21 +130,40 @@ export interface UseListboxReturn<TId extends string = string> {
   };
 }
 
-/** Collects item IDs and disabled state from a recursive listbox child tree. */
+function isRenderSeedHidden(props: ListboxItemElementProps): boolean {
+  return (
+    props.hidden === true ||
+    props.inert === true ||
+    props["aria-hidden"] === true ||
+    props["aria-hidden"] === "true"
+  );
+}
+
+function isRenderSeedContainerVisible(props: ListboxItemElementProps): boolean {
+  return !isRenderSeedHidden(props) && (props.expanded ?? props.defaultExpanded ?? true);
+}
+
+/** Collects item IDs and disabled state that are inspectable during render. */
 export function collectListboxItems<TId extends string = string>(
   children: ReactNode,
-  itemType: ElementType,
+  { itemTypes, containerTypes = [] }: CollectListboxItemsOptions,
 ): ListboxMetadataItem<TId>[] {
   const items: ListboxMetadataItem<TId>[] = [];
 
   Children.forEach(children, (child) => {
     if (!isValidElement<ListboxItemElementProps>(child)) return;
-    if (child.type === itemType && typeof child.props.id === "string") {
+    if (itemTypes.includes(child.type) && typeof child.props.id === "string") {
+      if (isRenderSeedHidden(child.props)) return;
       // Child id is opaque to TS; consumers parameterize TId.
       items.push({ id: child.props.id as TId, disabled: child.props.disabled });
       return;
     }
-    items.push(...collectListboxItems<TId>(child.props.children, itemType));
+    if (
+      child.type === Fragment ||
+      (containerTypes.includes(child.type) && isRenderSeedContainerVisible(child.props))
+    ) {
+      items.push(...collectListboxItems<TId>(child.props.children, { itemTypes, containerTypes }));
+    }
   });
 
   return items;
@@ -157,7 +191,13 @@ export function useListbox<TId extends string = string>({
   ref,
 }: UseListboxOptions<TId>): UseListboxReturn<TId> {
   const containerRef = useRef<HTMLDivElement>(null);
-  const composedContainerRef = useComposedRefs(containerRef, ref);
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  const attachContainer = useCallback((node: HTMLDivElement | null) => {
+    containerRef.current = node;
+    setContainer((current) => (current === node ? current : node));
+  }, []);
+  const composedContainerRef = useComposedRefs(attachContainer, ref);
+  const autoFocusInitialized = useRef(false);
   const [domActiveDescendant, setDomActiveDescendant] = useState<string | null>(null);
   const readTypeaheadQuery = useTypeaheadBuffer();
 
@@ -203,28 +243,38 @@ export function useListbox<TId extends string = string>({
     setDomActiveDescendant((current) => (current === next ? current : next));
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: syncDomActiveDescendant is a useEffectEvent; activeDescendantCandidate and items are intentional triggers that must re-run the DOM sync when they change.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: syncDomActiveDescendant is a useEffectEvent; the attached container, activeDescendantCandidate, and items are intentional sync triggers.
   useLayoutEffect(() => {
     syncDomActiveDescendant();
-  }, [activeDescendantCandidate, items]);
+  }, [container, activeDescendantCandidate, items]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: syncDomActiveDescendant is a useEffectEvent that reads containerRole/getItemId/idPrefix/itemRole; these are intentional triggers that must re-subscribe the MutationObserver when the listbox identity changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: syncDomActiveDescendant is a useEffectEvent that reads the query inputs listed here; the attached container keys observer ownership.
   useLayoutEffect(() => {
     if (items) return;
     syncDomActiveDescendant();
-    const container = containerRef.current;
     const view = container?.ownerDocument.defaultView;
     if (!container || !view?.MutationObserver) return;
 
-    const observer = new view.MutationObserver(syncDomActiveDescendant);
+    const observer = new view.MutationObserver(() => {
+      if (containerRef.current === container) syncDomActiveDescendant();
+    });
     observer.observe(container, {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ["aria-disabled", "data-disabled", "data-value", "id", "role"],
+      attributeFilter: [
+        "aria-disabled",
+        "aria-hidden",
+        "data-disabled",
+        "data-value",
+        "hidden",
+        "id",
+        "inert",
+        "role",
+      ],
     });
     return () => observer.disconnect();
-  }, [containerRole, getItemId, idPrefix, itemRole, items]);
+  }, [container, containerRole, getItemId, idPrefix, itemRole, items]);
 
   const isItemEnabled = (id: TId) => {
     return items
@@ -249,36 +299,44 @@ export function useListbox<TId extends string = string>({
   };
 
   const ensureActiveItem = () => {
-    if (activeDescendant !== null) return;
+    if (activeDescendant !== null) return true;
     const firstItemId = getFirstNavigableItemId<TId>(
       containerRef.current,
       itemRole,
       containerRole,
       items,
     );
-    if (firstItemId !== null) setHighlighted(firstItemId);
+    if (firstItemId === null) return false;
+    setHighlighted(firstItemId);
+    return true;
   };
 
-  // The autoFocus init reads current highlight/items through an Effect Event so
-  // the effect's only dep is the autoFocus transition. Keying it to a callback
-  // whose identity changed with highlight/items re-fired on unrelated re-renders
-  // and re-stole DOM focus after the user had moved on.
+  // A submenu can mount before its children finish registering. Retry on the
+  // metadata update, but only until the first successful initialization.
   const runAutoFocusInit = useEffectEvent(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container) return false;
 
     if (!container.contains(container.ownerDocument.activeElement)) {
       container.focus({ preventScroll: true });
     }
 
-    ensureActiveItem();
+    return ensureActiveItem();
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: items is the retry trigger; the callback reads the latest state through an Effect Event.
   useEffect(() => {
-    if (!autoFocus) return;
-    const frame = requestAnimationFrame(runAutoFocusInit);
+    if (!autoFocus) {
+      autoFocusInitialized.current = false;
+      return;
+    }
+    if (autoFocusInitialized.current) return;
+
+    const frame = requestAnimationFrame(() => {
+      if (runAutoFocusInit()) autoFocusInitialized.current = true;
+    });
     return () => cancelAnimationFrame(frame);
-  }, [autoFocus]);
+  }, [autoFocus, items]);
 
   const { onKeyDown: navKeyDown } = useNavigation<TId>({
     containerRef,
@@ -302,24 +360,30 @@ export function useListbox<TId extends string = string>({
     const container = containerRef.current;
     if (!container) return false;
 
-    // Owner-scoping: when a key bubbles up from a nested composite (inner listbox/menu),
-    // do not let the outer composite's typeahead consume it.
-    const target = event.target as HTMLElement | null;
-    if (target && target !== container) {
-      const ownerSelector = getListboxOwnerSelector(containerRole);
-      const targetOwner = target.closest(ownerSelector);
-      if (targetOwner && targetOwner !== container) return false;
-    }
-
-    const queryText = readTypeaheadQuery(event.key);
-    if (queryText === null) return false;
-
+    const composedTarget = event.nativeEvent.composedPath()[0] ?? event.target;
     const typeaheadItems = getListboxItems(
       container,
       itemRole,
       containerRole,
       containerRole === "menu",
     ).filter((item) => item.dataset.value !== undefined);
+    const view = container.ownerDocument.defaultView;
+    const target = view && composedTarget instanceof view.HTMLElement ? composedTarget : null;
+    const isOwnItem =
+      target !== null && typeaheadItems.some((item) => composedContains(item, target));
+    if (isEditableElement(composedTarget) && !isOwnItem) return false;
+
+    // Owner-scoping: when a key bubbles up from a nested composite (inner listbox/menu),
+    // do not let the outer composite's typeahead consume it.
+    if (target && target !== container) {
+      const ownerSelector = getListboxOwnerSelector(containerRole);
+      const targetOwner = composedClosest(target, ownerSelector);
+      if (targetOwner && targetOwner !== container) return false;
+    }
+
+    const queryText = readTypeaheadQuery(event.key);
+    if (queryText === null) return false;
+
     if (typeaheadItems.length === 0) return true;
 
     const currentValue = highlighted ?? selectedId;

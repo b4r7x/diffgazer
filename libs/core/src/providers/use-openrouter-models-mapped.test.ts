@@ -101,6 +101,21 @@ describe("useOpenRouterModelsMapped", () => {
     expect(result.current.models).toEqual([]);
   });
 
+  it("refetches the credential-scoped catalog on retry", () => {
+    const refetch = vi.fn();
+    mockUseOpenRouterModels.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error("Network error"),
+      refetch,
+    });
+
+    const { result } = renderHook(() => useOpenRouterModelsMapped(true, "openrouter"));
+    result.current.retry();
+
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+
   it("keeps the last-good models when a background refetch fails", () => {
     mockUseOpenRouterModels.mockReturnValue({
       data: {

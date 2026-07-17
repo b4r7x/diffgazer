@@ -162,8 +162,98 @@ describe("parseDiff", () => {
 
     expect(added?.oldPath).toBeNull();
     expect(added?.newPath).toBe("added.ts");
+    expect(added?.hunks[0]).toMatchObject({ oldStart: 0, oldCount: 0, newStart: 1, newCount: 1 });
     expect(deleted?.oldPath).toBe("deleted.ts");
     expect(deleted?.newPath).toBeNull();
+    expect(deleted?.hunks[0]).toMatchObject({ oldStart: 1, oldCount: 1, newStart: 0, newCount: 0 });
+  });
+
+  it("removes standard unified-diff timestamps from file paths", () => {
+    const patch = [
+      "--- a/src/app.ts\t2026-07-15 09:30:00.000000000 +0200",
+      "+++ b/src/app.ts\t2026-07-15 09:31:00.000000000 +0200",
+      "@@ -1 +1 @@",
+      "-before",
+      "+after",
+    ].join("\n");
+
+    expect(parseDiff(patch)[0]).toMatchObject({
+      oldPath: "src/app.ts",
+      newPath: "src/app.ts",
+    });
+  });
+
+  it("keeps timestamped /dev/null headers pathless", () => {
+    const patch = [
+      "--- /dev/null\t1970-01-01 00:00:00.000000000 +0000",
+      "+++ b/added.ts\t2026-07-15 09:31:00.000000000 +0200",
+      "@@ -0,0 +1 @@",
+      "+added",
+    ].join("\n");
+
+    expect(parseDiff(patch)[0]).toMatchObject({ oldPath: null, newPath: "added.ts" });
+  });
+
+  it("decodes tabs in quoted Git paths without treating them as timestamp delimiters", () => {
+    const patch = [
+      '--- "a/src/before\\tname.ts"\t2026-07-15 09:30:00 +0200',
+      '+++ "b/src/after\\tname.ts"\t2026-07-15 09:31:00 +0200',
+      "@@ -1 +1 @@",
+      "-before",
+      "+after",
+    ].join("\n");
+
+    expect(parseDiff(patch)[0]).toMatchObject({
+      oldPath: "src/before\tname.ts",
+      newPath: "src/after\tname.ts",
+    });
+  });
+
+  it("keeps consecutive standard header pairs as separate files without diff --git lines", () => {
+    const patch = [
+      "--- src/one.ts",
+      "+++ src/one.ts",
+      "@@ -1 +1 @@",
+      "-one before",
+      "+one after",
+      "--- src/two.ts",
+      "+++ src/two.ts",
+      "@@ -1 +1 @@",
+      "-two before",
+      "+two after",
+    ].join("\n");
+
+    const files = parseDiff(patch);
+
+    expect(files).toHaveLength(2);
+    expect(files[0]).toMatchObject({
+      oldPath: "src/one.ts",
+      newPath: "src/one.ts",
+      hunks: [{ changes: [{ content: "one before" }, { content: "one after" }] }],
+    });
+    expect(files[1]).toMatchObject({
+      oldPath: "src/two.ts",
+      newPath: "src/two.ts",
+      hunks: [{ changes: [{ content: "two before" }, { content: "two after" }] }],
+    });
+  });
+
+  it("separates added and deleted files with /dev/null headers without git sentinels", () => {
+    const patch = [
+      "--- /dev/null",
+      "+++ added.ts",
+      "@@ -0,0 +1 @@",
+      "+added",
+      "--- deleted.ts",
+      "+++ /dev/null",
+      "@@ -1 +0,0 @@",
+      "-deleted",
+    ].join("\n");
+
+    expect(parseDiff(patch)).toMatchObject([
+      { oldPath: null, newPath: "added.ts", hunks: [{ changes: [{ content: "added" }] }] },
+      { oldPath: "deleted.ts", newPath: null, hunks: [{ changes: [{ content: "deleted" }] }] },
+    ]);
   });
 
   it("returns empty array for empty diff input", () => {

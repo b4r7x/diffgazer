@@ -16,7 +16,11 @@
 
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { registryItemToDistKey, resolveKeysHookFiles } from "@diffgazer/registry/build-checks";
+import {
+  getUiPublicClientOutputMap,
+  registryItemToDistKey,
+  resolveKeysHookFiles,
+} from "@diffgazer/registry/build-checks";
 import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
 import type { Plugin } from "esbuild";
 import { defineConfig } from "tsup";
@@ -26,6 +30,25 @@ const registryRoot = resolve(import.meta.dirname, "registry");
 const registry = UiRegistrySchema.parse(
   JSON.parse(readFileSync(resolve(registryRoot, "registry.json"), "utf-8")),
 );
+
+export function collectComponentCssFiles(
+  items: typeof registry.items,
+  rootDir = import.meta.dirname,
+): string[] {
+  const paths: string[] = [];
+  const seen = new Set<string>();
+  for (const item of items) {
+    if (item.type === REGISTRY_ITEM_TYPE.theme) continue;
+    for (const file of item.files) {
+      if (!file.path.endsWith(".css")) continue;
+      const normalizedPath = resolve(rootDir, file.path);
+      if (seen.has(normalizedPath)) continue;
+      seen.add(normalizedPath);
+      paths.push(file.path);
+    }
+  }
+  return paths;
+}
 
 /** Keys hooks derived from registry refs, with `use-` prefix for hook matching. */
 const DIFFGAZER_KEYS_HOOKS = resolveKeysHookFiles(registry.items);
@@ -139,13 +162,7 @@ export default defineConfig({
 
     // Append component CSS files to styles.css. Theme CSS is already imported
     // by styles.css and must not be appended after normal CSS rules.
-    const componentCssFiles = registry.items.flatMap((item) =>
-      item.type === REGISTRY_ITEM_TYPE.theme
-        ? []
-        : item.files
-            .map((file: { path: string }) => file.path)
-            .filter((path: string) => path.endsWith(".css")),
-    );
+    const componentCssFiles = collectComponentCssFiles(registry.items);
     const stylesPath = resolve(dist, "styles.css");
     let stylesContent = readFileSync(stylesPath, "utf-8");
     for (const cssFile of componentCssFiles) {
@@ -157,14 +174,14 @@ export default defineConfig({
     }
     writeFileSync(stylesPath, stylesContent);
 
-    // Inject "use client" into entry points marked with meta.client in registry.json.
-    // esbuild strips these during code splitting, so we re-inject post-build.
+    // esbuild strips directives during code splitting, so restore the exhaustive
+    // public client map shared with the emitted/package verifier.
     let injected = 0;
-    for (const item of registry.items) {
-      if (!item.meta?.client) continue;
-
-      const filePath = resolve(dist, `${registryItemToDistKey(item)}.js`);
-      if (!existsSync(filePath)) continue;
+    for (const output of getUiPublicClientOutputMap(registry.items).values()) {
+      const filePath = resolve(dist, `${output}.js`);
+      if (!existsSync(filePath)) {
+        throw new Error(`Public client entry did not emit: ${output}.js`);
+      }
 
       const content = readFileSync(filePath, "utf-8");
       if (!content.startsWith('"use client"')) {

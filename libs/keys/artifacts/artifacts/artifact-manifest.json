@@ -36,5 +36,6 @@
   "integrity": {
     "algorithm": "sha256",
     "fingerprintFile": "fingerprint.sha256"
-  }
+  },
+  "origin": "https://r.b4r7.dev"
 }

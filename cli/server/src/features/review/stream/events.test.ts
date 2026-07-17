@@ -89,7 +89,7 @@ describe("isTerminalEvent", () => {
     expect(
       isTerminalEvent({
         type: "complete",
-        result: { issues: [], summary: "" },
+        result: { issues: [] },
         reviewId: "rid",
         durationMs: 0,
       }),

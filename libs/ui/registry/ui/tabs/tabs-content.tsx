@@ -44,17 +44,18 @@ export function TabsContent<TValue extends string = string>({
     <div
       ref={composedRef}
       role="tabpanel"
-      id={getTabPanelId(tabsId, value)}
       aria-labelledby={mergeIds(triggerId, ariaLabelledBy)}
       data-state={isActive ? "active" : "inactive"}
       data-orientation={orientation}
-      hidden={!isActive}
       tabIndex={isActive ? 0 : undefined}
       className={cn(
         "mt-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
         className,
       )}
       {...rest}
+      id={getTabPanelId(tabsId, value)}
+      data-value={value}
+      hidden={!isActive}
     >
       {children}
     </div>

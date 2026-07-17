@@ -14,7 +14,7 @@ export function GlobalShortcutsDemo() {
       setSearchOpen((prev) => !prev);
       setLastAction("Toggled search bar");
     },
-    { preventDefault: true },
+    { allowInInput: true, preventDefault: true },
   );
 
   // Overload 2: array of keys + handler
@@ -26,7 +26,7 @@ export function GlobalShortcutsDemo() {
         setLastAction("Closed search bar");
       }
     },
-    { enabled: searchOpen },
+    { allowInInput: true, enabled: searchOpen },
   );
 
   // Overload 3: key map

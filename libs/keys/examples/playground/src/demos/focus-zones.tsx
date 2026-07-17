@@ -1,5 +1,5 @@
 import { useFocusZone, useKey } from "@diffgazer/keys";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { DemoWrapper } from "../components/demo-wrapper";
 import { Kbd } from "../components/kbd";
 
@@ -19,11 +19,33 @@ const ZONE_SHORTCUTS: Record<Zone, { keys: string; label: string }[]> = {
 
 export function FocusZonesDemo() {
   const [lastAction, setLastAction] = useState("No action yet");
+  const layoutRef = useRef<HTMLDivElement>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const sidebarTargetRef = useRef<HTMLButtonElement>(null);
+  const contentTargetRef = useRef<HTMLButtonElement>(null);
+  const previewTargetRef = useRef<HTMLButtonElement>(null);
+  const panelRefs = { sidebar: sidebarRef, content: contentRef, preview: previewRef };
+  const targetRefs = {
+    sidebar: sidebarTargetRef,
+    content: contentTargetRef,
+    preview: previewTargetRef,
+  };
 
-  const { zone, setZone, getKeyOptions } = useFocusZone<Zone>({
+  const { zone, setZone, getKeyOptions, getZoneProps } = useFocusZone<Zone>({
     initial: "sidebar",
     zones: ["sidebar", "content", "preview"] as const,
     tabCycle: ["sidebar", "content", "preview"] as const,
+    containerRef: layoutRef,
+    focusWithinOnly: true,
+    focus: {
+      targets: {
+        sidebar: { container: sidebarRef, target: sidebarTargetRef },
+        content: { container: contentRef, target: contentTargetRef },
+        preview: { container: previewRef, target: previewTargetRef },
+      },
+    },
     transitions: ({ zone, key }) => {
       if (zone === "sidebar" && key === "ArrowRight") return "content";
       if (zone === "content" && key === "ArrowLeft") return "sidebar";
@@ -58,10 +80,16 @@ export function FocusZonesDemo() {
         { keys: "Enter", label: "Zone action (varies)" },
       ]}
     >
-      <div style={{ display: "flex", gap: 12 }}>
+      <div ref={layoutRef} style={{ display: "flex", gap: 12 }}>
         {(["sidebar", "content", "preview"] as const).map((z) => (
-          <div key={z} className={`demo-panel${zone === z ? " demo-panel--active" : ""}`}>
+          <div
+            key={z}
+            ref={panelRefs[z]}
+            className={`demo-panel${zone === z ? " demo-panel--active" : ""}`}
+            {...getZoneProps(z)}
+          >
             <button
+              ref={targetRefs[z]}
               type="button"
               className={`demo-badge${zone === z ? " demo-badge--active" : ""}`}
               onClick={() => setZone(z)}

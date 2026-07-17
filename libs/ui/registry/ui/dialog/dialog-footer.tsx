@@ -24,7 +24,7 @@ function DialogFooterRoot({ hints, className, children, ...props }: DialogFooter
     <div
       data-slot="dialog-footer"
       className={cn(
-        "flex gap-3 items-center px-5 pt-3 pb-4 shrink-0 bg-background text-foreground",
+        "flex flex-wrap gap-3 items-center px-5 pt-3 pb-4 shrink-0 bg-background text-foreground",
         hasHints ? "justify-between" : "justify-end",
         className,
       )}
@@ -41,7 +41,14 @@ export type DialogFooterActionsProps = ComponentProps<"div">;
 
 function DialogFooterActions({ className, ...props }: DialogFooterActionsProps) {
   return (
-    <div className={cn("flex shrink-0 items-center justify-end gap-3", className)} {...props} />
+    <div
+      data-slot="dialog-footer-actions"
+      className={cn(
+        "flex min-w-0 max-w-full basis-full flex-col items-stretch justify-end gap-3 sm:basis-auto sm:flex-row sm:flex-wrap sm:items-center",
+        className,
+      )}
+      {...props}
+    />
   );
 }
 

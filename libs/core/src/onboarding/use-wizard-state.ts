@@ -30,7 +30,7 @@ export interface UseWizardStateResult {
   isFirstStep: boolean;
   isLastStep: boolean;
   canProceed: boolean;
-  /** True while an early-save is in flight. */
+  /** True while an early credential save or reconciliation is in flight. */
   isEarlySaving: boolean;
   /** True while the final save is in flight. */
   isSubmitting: boolean;
@@ -38,7 +38,8 @@ export interface UseWizardStateResult {
   error: string | null;
   /** Early-save failure surfaced to both UIs; cleared on retry/step change. */
   earlySaveError: string | null;
-  next: () => void;
+  /** Commit optional step data and advance after validating the resulting state. */
+  next: (partial?: Partial<WizardData>) => void;
   back: () => void;
   updateData: (partial: Partial<WizardData>) => void;
   setProvider: (provider: AIProvider) => void;
@@ -64,28 +65,51 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
   const isLast = isLastStepIndex(stepIndex);
   const canProceedNow = canProceed(currentStep, wizardData);
 
+  const applyProvider = (provider: AIProvider) => {
+    const info = AVAILABLE_PROVIDERS.find((candidate) => candidate.id === provider);
+    setWizardData((prev) => ({
+      ...prev,
+      provider,
+      model: info?.defaultModel || null,
+      apiKey: "",
+      inputMethod: "paste",
+    }));
+  };
+
+  const reconcileEarlySavedProvider = async (provider: AIProvider | null) => {
+    const savedProvider = earlySavedProviderRef.current;
+    if (!savedProvider || savedProvider === provider || !callbacks) return;
+
+    await callbacks.deleteCredentials(savedProvider);
+    if (earlySavedProviderRef.current === savedProvider) {
+      earlySavedProviderRef.current = null;
+    }
+  };
+
   const goToStep = (index: number) => {
     setEarlySaveError(null);
     setStepIndex(index);
   };
 
-  const next = () => {
-    if (!canProceedNow || isLast) return;
+  const next = (partial?: Partial<WizardData>) => {
+    const projectedData = partial ? { ...wizardData, ...partial } : wizardData;
+    if (!canProceed(currentStep, projectedData) || isLast) return;
     const nextStep = getStepAt(stepIndex + 1);
+    if (partial) setWizardData((currentData) => ({ ...currentData, ...partial }));
 
     // Early-save credentials before the model step for providers that need an
     // API key to fetch models (e.g. OpenRouter).
     if (
       nextStep === "model" &&
-      wizardData.provider === "openrouter" &&
+      projectedData.provider === "openrouter" &&
       callbacks &&
-      (wizardData.apiKey || wizardData.inputMethod === "env")
+      (projectedData.apiKey || projectedData.inputMethod === "env")
     ) {
       setIsEarlySaving(true);
       setEarlySaveError(null);
       // Track the in-flight commit so a racing abandon-cleanup can await it and not leak credentials.
-      const savePromise = runEarlySave(wizardData, callbacks).then(() => {
-        earlySavedProviderRef.current = wizardData.provider;
+      const savePromise = runEarlySave(projectedData, callbacks).then(() => {
+        earlySavedProviderRef.current = projectedData.provider;
       });
       pendingSaveRef.current = savePromise;
       savePromise
@@ -113,15 +137,31 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
   };
 
   const setProvider = (provider: AIProvider) => {
-    const info = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
-    setWizardData((prev) => ({
-      ...prev,
-      provider,
-      // Empty defaultModel (e.g. OpenRouter) means "no default"; `||` yields null, never leaking "" downstream.
-      model: info?.defaultModel || null,
-      apiKey: "",
-      inputMethod: "paste",
-    }));
+    if (
+      earlySavedProviderRef.current === null ||
+      earlySavedProviderRef.current === provider ||
+      !callbacks
+    ) {
+      applyProvider(provider);
+      return;
+    }
+
+    setIsEarlySaving(true);
+    setEarlySaveError(null);
+    const reconciliation = reconcileEarlySavedProvider(provider).then(() =>
+      applyProvider(provider),
+    );
+    pendingSaveRef.current = reconciliation;
+    reconciliation
+      .catch((cause) => {
+        setEarlySaveError(
+          `${CLEANUP_ERROR_PREFIX}: ${getErrorMessage(cause, "Retry to remove them.")}`,
+        );
+      })
+      .finally(() => {
+        if (pendingSaveRef.current === reconciliation) pendingSaveRef.current = null;
+        setIsEarlySaving(false);
+      });
   };
 
   const complete = async () => {
@@ -129,6 +169,9 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
     setIsSubmitting(true);
     setError(null);
     try {
+      const pending = pendingSaveRef.current;
+      if (pending) await pending;
+      await reconcileEarlySavedProvider(wizardData.provider);
       const result = await saveWizard(wizardData, callbacks);
       if (result.status === "partial") {
         setError(getErrorMessage(result.error, "Setup failed"));
@@ -137,6 +180,9 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
       earlySavedProviderRef.current = null;
       await onComplete?.();
       return true;
+    } catch (cause) {
+      setError(getErrorMessage(cause, "Setup failed"));
+      return false;
     } finally {
       setIsSubmitting(false);
     }

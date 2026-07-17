@@ -1,23 +1,21 @@
-import type { ReviewErrorCode } from "@diffgazer/core/schemas/review";
-import type { ReviewAbort } from "./types.js";
+import { StepIdSchema } from "@diffgazer/core/schemas/events";
+import { ReviewErrorSchema } from "@diffgazer/core/schemas/review";
+import { z } from "zod";
+
+export const ReviewAbortSchema = ReviewErrorSchema.extend({
+  kind: z.literal("review_abort"),
+  step: StepIdSchema.optional(),
+});
+export type ReviewAbort = z.infer<typeof ReviewAbortSchema>;
 
 export function reviewAbort(
   message: string,
-  code: ReviewErrorCode,
+  code: ReviewAbort["code"],
   step?: ReviewAbort["step"],
 ): ReviewAbort {
   return { kind: "review_abort", message, code, step };
 }
 
 export function isReviewAbort(error: unknown): error is ReviewAbort {
-  if (!error || typeof error !== "object") {
-    return false;
-  }
-
-  const candidate = error as Partial<ReviewAbort>;
-  return (
-    candidate.kind === "review_abort" &&
-    typeof candidate.message === "string" &&
-    typeof candidate.code === "string"
-  );
+  return ReviewAbortSchema.safeParse(error).success;
 }

@@ -13,6 +13,7 @@ export interface SavedReviewData {
   reviewId: string;
   durationMs: number | undefined;
   lensStats?: LensStat[];
+  droppedDuplicates?: number;
   droppedBelowThreshold?: number;
   minSeverity?: ReviewSeverity;
 }
@@ -30,6 +31,7 @@ export interface SavedReviewQueryState {
         metadata: { id: string; durationMs?: number | null };
         result?: { issues: ReviewIssue[] } | null;
         lensStats?: LensStat[];
+        droppedDuplicates?: number;
         droppedBelowThreshold?: number;
         minSeverity?: ReviewSeverity;
       }
@@ -66,6 +68,7 @@ export function resolveSavedReviewOutcome(
           reviewId: review.metadata.id,
           durationMs: review.metadata.durationMs ?? undefined,
           lensStats: review.lensStats,
+          droppedDuplicates: review.droppedDuplicates,
           droppedBelowThreshold: review.droppedBelowThreshold,
           minSeverity: review.minSeverity,
         },

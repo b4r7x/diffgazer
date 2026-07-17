@@ -27,6 +27,7 @@ function makeSnapshot(root: string): ReviewContextResponse {
       generatedAt: "2026-01-01T00:00:00.000Z",
       root,
       statusHash: "hash",
+      statusHashKind: "full",
       charCount: 0,
     },
   };
@@ -46,5 +47,31 @@ describe("ContextSnapshotPreview (TUI)", () => {
     const frame = lastFrame() ?? "";
     expect(frame).toContain("proj");
     expect(frame).not.toContain("HACK");
+  });
+
+  test("renders only the final directory for a Windows-style project root", () => {
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <ContextSnapshotPreview snapshot={makeSnapshot("C:\\work\\repo")} />
+      </CliThemeProvider>,
+    );
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("Project     : repo");
+    expect(frame).not.toContain("C:\\work");
+  });
+
+  test.each([
+    ["POSIX root", "/", "/"],
+    ["Windows drive root", "C:\\", "C:\\"],
+    ["Windows share root", "\\\\server\\share\\", "share"],
+  ])("retains a useful project label for %s", (_label, root, expectedLabel) => {
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <ContextSnapshotPreview snapshot={makeSnapshot(root)} />
+      </CliThemeProvider>,
+    );
+
+    expect(lastFrame() ?? "").toContain(`Project     : ${expectedLabel}`);
   });
 });

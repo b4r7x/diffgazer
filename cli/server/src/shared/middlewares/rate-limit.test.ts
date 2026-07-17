@@ -7,9 +7,9 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function createApp(key: string, max: number, windowMs: number): Hono {
+function createApp(key: string, max: number, windowMs: number, now?: () => number): Hono {
   const app = new Hono();
-  app.post("/test", createRateLimitMiddleware(key, { maxRequests: max, windowMs }), (c) =>
+  app.post("/test", createRateLimitMiddleware(key, { maxRequests: max, windowMs }, now), (c) =>
     c.json({ ok: true }),
   );
   return app;
@@ -38,6 +38,18 @@ describe("rate limit middleware", () => {
     expect(body.error.code).toBe("RATE_LIMITED");
     expect(res.headers.get("Retry-After")).toBeTruthy();
     expect(Number(res.headers.get("Retry-After"))).toBeGreaterThan(0);
+  });
+
+  it("derives a bounded Retry-After from the injected monotonic window", async () => {
+    let elapsed = 10;
+    const app = createApp("test:monotonic", 1, 2_500, () => elapsed);
+
+    expect((await app.request("/test", { method: "POST" })).status).toBe(200);
+    elapsed = 1_510;
+    const blocked = await app.request("/test", { method: "POST" });
+
+    expect(blocked.status).toBe(429);
+    expect(Number(blocked.headers.get("Retry-After"))).toBe(1);
   });
 
   it("resets the window after it expires", async () => {

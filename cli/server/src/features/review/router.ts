@@ -4,7 +4,7 @@ import { err } from "@diffgazer/core/result";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { ActiveReviewSession, CreateReviewResponse } from "@diffgazer/core/schemas/review";
 import { zValidator } from "@hono/zod-validator";
-import { type Context, Hono } from "hono";
+import { type Context, Hono, type Next } from "hono";
 import { initializeAIClient } from "../../shared/lib/ai/client.js";
 import { createGitService } from "../../shared/lib/git/service.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
@@ -15,13 +15,15 @@ import {
 } from "../../shared/lib/http/response.js";
 import { log } from "../../shared/lib/log.js";
 import { getProjectDiffgazerDir } from "../../shared/lib/paths.js";
+import { getProjectSessionGeneration } from "../../shared/lib/session-registry.js";
 import {
+  CREATE_REVIEW_BODY_LIMIT_KB,
   createBodyLimitMiddleware,
   DEFAULT_BODY_LIMIT_KB,
 } from "../../shared/middlewares/body-limit.js";
 import { createRateLimitMiddleware } from "../../shared/middlewares/rate-limit.js";
 import { requireSetup } from "../../shared/middlewares/setup-guard.js";
-import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
+import { hasRepoReadAccess, requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
 import { buildProjectContextSnapshot, loadContextSnapshot } from "./context/snapshot.js";
 import { handleDrilldownRequest } from "./drilldown.js";
 import { handleStoreError } from "./errors.js";
@@ -31,12 +33,13 @@ import {
   CreateReviewBodySchema,
   DrilldownRequestSchema,
   ReviewIdParamSchema,
+  ReviewListQuerySchema,
 } from "./schemas.js";
 import { createReviewSession } from "./service.js";
 import {
   deleteReview as deleteStoredReview,
   getReview as getStoredReview,
-  listReviews as listStoredReviews,
+  listReviewPage,
 } from "./storage/reviews.js";
 import { resumeStreamById } from "./stream/resume.js";
 import {
@@ -45,12 +48,31 @@ import {
   deleteSession,
   getActiveSessionForProject,
   getSession,
+  hasReadySessionForProjectMode,
 } from "./stream/store.js";
 import type { HandleDrilldownError } from "./types.js";
 import { isValidProjectPath, resolvesToSameProject } from "./validation.js";
 
 const reviewRouter = new Hono();
 
+async function requireJsonContentType(c: Context, next: Next): Promise<Response | undefined> {
+  const contentType = c.req.header("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
+  if (contentType !== "application/json") {
+    return c.json(
+      {
+        error: {
+          message: "Content-Type must be application/json",
+          code: ErrorCode.VALIDATION_ERROR,
+        },
+      },
+      415,
+    );
+  }
+  await next();
+  return undefined;
+}
+
+const reviewCreationBodyLimit = createBodyLimitMiddleware(CREATE_REVIEW_BODY_LIMIT_KB);
 const bodyLimitMiddleware = createBodyLimitMiddleware(DEFAULT_BODY_LIMIT_KB);
 const reviewCreationLimit = createRateLimitMiddleware("review:create", {
   maxRequests: 10,
@@ -73,29 +95,36 @@ function toActiveReviewSessionResponse(session: ActiveSession): ActiveReviewSess
 
 reviewRouter.post(
   "/reviews",
-  bodyLimitMiddleware,
+  reviewCreationBodyLimit,
+  requireJsonContentType,
   reviewCreationLimit,
   requireSetup,
   requireRepoAccess,
   zValidator("json", CreateReviewBodySchema, handleZodError),
   async (c): Promise<Response> => {
     const body = c.req.valid("json");
-    const clientResult = initializeAIClient();
+    const clientResult = await initializeAIClient();
     if (!clientResult.ok) {
       return errorResponse(c, clientResult.error.message, clientResult.error.code, 500);
     }
 
     const projectPath = getProjectRoot(c);
+    const generation = getProjectSessionGeneration(projectPath);
     const result = await createReviewSession(clientResult.value, {
       mode: body.mode ?? "unstaged",
       files: body.files,
       lenses: body.lenses,
       profile: body.profile,
       projectPath,
+      activation: {
+        generation,
+        isAuthorized: () => hasRepoReadAccess(projectPath),
+      },
     });
 
     if (!result.ok) {
-      return errorResponse(c, result.error.message, result.error.code, 500);
+      const status = result.error.code === ErrorCode.TRUST_REQUIRED ? 403 : 500;
+      return errorResponse(c, result.error.message, result.error.code, status);
     }
 
     const response: CreateReviewResponse = {
@@ -120,6 +149,11 @@ reviewRouter.get(
   async (c): Promise<Response> => {
     const query = c.req.valid("query");
     const projectPath = getProjectRoot(c);
+    const mode = query.mode ?? "unstaged";
+    if (!hasReadySessionForProjectMode(projectPath, mode)) {
+      return c.json({ session: null });
+    }
+
     const gitService = createGitService({ cwd: projectPath });
 
     const [headCommitResult, statusHashResult] = await Promise.all([
@@ -139,7 +173,7 @@ reviewRouter.get(
       headCommit: headCommitResult.value,
       statusHash: statusHashResult.hash,
       statusHashKind: statusHashResult.kind,
-      mode: query.mode ?? "unstaged",
+      mode,
     });
     if (!session) {
       return c.json({ session: null });
@@ -159,11 +193,8 @@ reviewRouter.delete(
     if (!session || session.projectPath !== getProjectRoot(c)) {
       return c.json({ cancelled: true, reason: "not-found" });
     }
-    if (session.isComplete) {
-      return c.json({ cancelled: true, reason: "already-complete" });
-    }
-    cancelSessionForUser(id);
-    return c.json({ cancelled: true, reason: "cancelled" });
+    const reason = cancelSessionForUser(id);
+    return c.json({ cancelled: true, reason });
   },
 );
 
@@ -220,18 +251,25 @@ reviewRouter.post(
   },
 );
 
-reviewRouter.get("/reviews", requireRepoAccess, async (c): Promise<Response> => {
-  const requested = await getRequestedProjectPath(c);
-  if (!requested.ok) return requested.response;
+reviewRouter.get(
+  "/reviews",
+  requireRepoAccess,
+  zValidator("query", ReviewListQuerySchema.passthrough(), handleZodError),
+  async (c): Promise<Response> => {
+    const requested = await getRequestedProjectPath(c);
+    if (!requested.ok) return requested.response;
 
-  const result = await listStoredReviews(requested.projectPath);
-  if (!result.ok) return handleStoreError(c, result.error);
+    const { cursor, limit } = c.req.valid("query");
+    const result = await listReviewPage(requested.projectPath, { cursor, limit });
+    if (!result.ok) return handleStoreError(c, result.error);
 
-  return c.json({
-    reviews: result.value.items,
-    ...(result.value.warnings.length > 0 ? { warnings: result.value.warnings } : {}),
-  });
-});
+    return c.json({
+      reviews: result.value.items,
+      nextCursor: result.value.nextCursor,
+      ...(result.value.warnings.length > 0 ? { warnings: result.value.warnings } : {}),
+    });
+  },
+);
 
 reviewRouter.get(
   "/reviews/:id",
@@ -287,7 +325,7 @@ reviewRouter.post(
     const reviewResult = await getReviewForProject(id, projectPath);
     if (!reviewResult.ok) return handleStoreError(c, reviewResult.error);
 
-    const clientResult = initializeAIClient();
+    const clientResult = await initializeAIClient();
     if (!clientResult.ok) {
       return errorResponse(c, clientResult.error.message, clientResult.error.code, 500);
     }

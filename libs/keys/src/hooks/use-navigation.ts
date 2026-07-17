@@ -2,7 +2,13 @@
 
 import { type KeyboardEvent, type RefObject, useState } from "react";
 import { dispatchNavigationKey, resolveDirectionKeys } from "../core/navigation-dispatch.js";
-import { getOwnerView, isEditableElement, isNode } from "../dom/element-guards.js";
+import {
+  composedContains,
+  getComposedEventTarget,
+  getOwnerView,
+  isEditableElement,
+  isNode,
+} from "../dom/element-guards.js";
 import { containsActiveElement } from "../dom/focusable.js";
 import {
   getFocusedNavigationValue,
@@ -25,9 +31,9 @@ export interface UseNavigationOptions<TValue extends string = string> {
   defaultHighlighted?: TValue | null;
   /** Called when the controlled highlight value should change. */
   onHighlightChange?: (value: TValue | null) => void;
-  /** Called when an item is selected via Space key. */
+  /** Called for Space selection and as the Enter fallback when onEnter is not provided. */
   onSelect?: (value: TValue, event: globalThis.KeyboardEvent) => void;
-  /** Called when Enter is pressed on the highlighted item. */
+  /** Called for Enter selection, overriding the onSelect Enter fallback when provided. */
   onEnter?: (value: TValue, event: globalThis.KeyboardEvent) => void;
   /** Wrap around when reaching the first or last item. */
   wrap?: boolean;
@@ -52,7 +58,10 @@ export interface UseNavigationOptions<TValue extends string = string> {
   orientation?: "vertical" | "horizontal";
   /** Skip aria-disabled, data-disabled, and native disabled items during navigation. */
   skipDisabled?: boolean;
-  /** Move DOM focus to the next item instead of only updating highlight state. */
+  /**
+   * Move DOM focus to the next item. When false, focus stays on the composite owner, which should
+   * expose the highlighted option through aria-activedescendant.
+   */
   moveFocus?: boolean;
   /** Ignore items owned by nested composite containers such as nested listboxes. */
   scopeToContainer?: boolean;
@@ -269,6 +278,7 @@ export function useNavigation<TValue extends string = string>(
   const handlesSpace = Boolean(onSelect);
 
   const onKeyDown = (event: KeyboardEvent) => {
+    if (event.defaultPrevented) return;
     if (!enabled) return;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
 
@@ -279,10 +289,10 @@ export function useNavigation<TValue extends string = string>(
     if (!isMoveKey && !isSpecialKey) return;
 
     const elements = getElements();
-    const target = event.target;
+    const target = getComposedEventTarget(event.nativeEvent);
     const isOwnItem =
       isNode(target, getOwnerView(containerRef.current)) &&
-      elements.some((el) => el === target || el.contains(target));
+      elements.some((el) => composedContains(el, target));
 
     // Editable non-item bubbling into a wrapper that owns the items: let native handle it.
     if (isEditableElement(target)) {

@@ -3,7 +3,7 @@ title: Review output and severities
 description: The shape of a finished review, how issues are ranked by severity, and how they group by category.
 ---
 
-A finished review is a summary line plus a flat list of issues. Each issue (sometimes called a finding) carries the same fixed set of fields, so the [results view](/app/web/results) always has the same data to draw from no matter which lens produced it. This page documents that data model: the severity levels, the categories, the fields on a single issue, and the built-in profiles that decide which lenses run.
+A finished review is a flat list of issues. Each issue (sometimes called a finding) carries the same fixed set of fields, so the [results view](/app/web/results) always has the same data to draw from no matter which lens produced it. This page documents that data model: the severity levels, the categories, the fields on a single issue, and the built-in profiles that decide which lenses run.
 
 If you want to know how issues get produced in the first place, read [the review pipeline](/app/concepts/review-pipeline). This page is about what comes out the other end.
 
@@ -64,7 +64,18 @@ A single issue follows a fixed shape. The results view spreads these across a fe
 | `evidence`        | evidence[]       | Supporting references: code excerpts, docs, traces, or external sources. |
 | `trace`           | trace[] (optional) | The agent steps taken to reach the issue.                       |
 
-The optional fields are exactly that. An issue with no suggested fix has `suggested_patch` set to null and no Patch tab in the results view, and an issue with no `trace` shows an empty Trace tab. For how each of these renders, see [reading results](/app/web/results).
+Patch and Trace tabs follow the same binary rule. The results view includes Patch exactly when `suggested_patch` contains a patch, and includes Trace exactly when `trace` contains at least one step. A null patch, a missing trace, and an empty trace omit their respective tabs. For how each renders, see [reading results](/app/web/results).
+
+### Evidence references
+
+Every evidence item keeps its title, source identifier, and excerpt in saved reviews. The web and terminal result views render all four supported types:
+
+| Type       | Results presentation |
+|------------|----------------------|
+| `code`     | A code block or terminal code snippet, with its file and starting line when available. |
+| `doc`      | A Documentation reference with its title, source identifier, and quoted excerpt. |
+| `trace`    | A Trace evidence reference with its title, source identifier, and excerpt. This is separate from the issue's optional agent-step `trace`. |
+| `external` | An External reference with its title, source identifier, and excerpt. The source identifier is displayed as plain text, not treated as an executable link. |
 
 ## Profiles
 

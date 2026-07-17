@@ -1,4 +1,11 @@
-import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from "react";
 
 export type DocsTheme = "dark" | "light";
 
@@ -16,23 +23,20 @@ function applyTheme(theme: DocsTheme): void {
   document.documentElement.setAttribute("data-theme", theme);
 }
 
-function readStoredTheme(): DocsTheme {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored === "light" || stored === "dark" ? stored : DEFAULT_THEME;
-  } catch {
-    return DEFAULT_THEME;
-  }
+function readDocumentTheme(): DocsTheme {
+  const theme = document.documentElement.getAttribute("data-theme");
+  return theme === "light" || theme === "dark" ? theme : DEFAULT_THEME;
 }
+
+export const THEME_INIT_SCRIPT = `(function(){var t="dark";try{var s=localStorage.getItem("@diffgazer/docs-theme");if(s==="light"||s==="dark")t=s}catch(e){}document.documentElement.setAttribute("data-theme",t);function u(e){var n=t==="dark"?"light":"dark";e.setAttribute("aria-label","Switch to "+n+" theme");e.textContent=n}function y(e){if(e.nodeType!==1)return;if(e.matches("[data-docs-theme-toggle]"))u(e);e.querySelectorAll("[data-docs-theme-toggle]").forEach(u)}var o=new MutationObserver(function(r){r.forEach(function(m){m.addedNodes.forEach(y)})});o.observe(document.documentElement,{childList:true,subtree:true});y(document.documentElement);document.addEventListener("DOMContentLoaded",function(){o.disconnect()},{once:true})})();`;
+
+const useClientLayoutEffect = typeof document === "undefined" ? useEffect : useLayoutEffect;
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<DocsTheme>(DEFAULT_THEME);
 
-  // The no-flash inline script in the root document sets data-theme before
-  // hydration; adopt the stored value into React state on mount so the toggle
-  // and the consuming components stay in sync.
-  useEffect(() => {
-    setThemeState(readStoredTheme());
+  useClientLayoutEffect(() => {
+    setThemeState(readDocumentTheme());
   }, []);
 
   function setTheme(next: DocsTheme) {

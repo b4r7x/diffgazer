@@ -38,14 +38,6 @@ function countNodes(nodes: FileTreeNode[]): number {
   return count;
 }
 
-function collectPaths(nodes: FileTreeNode[], paths: string[] = []): string[] {
-  for (const node of nodes) {
-    paths.push(node.path);
-    if (node.children) collectPaths(node.children, paths);
-  }
-  return paths;
-}
-
 describe("buildFileTree", () => {
   it("represents every top-level directory before a heavy early-sorting subtree exhausts the budget", async () => {
     // A Python-repo-shaped fixture: an unexcludable heavy dir that sorts early
@@ -102,16 +94,31 @@ describe("buildFileTree", () => {
     expect(names.has("main.py")).toBe(true);
   });
 
-  it("terminates when a symlink points back to an ancestor directory", async () => {
+  it("renders a directory symlink as a file leaf without traversing it", async () => {
     await writeProjectFile("src/nested/file.ts");
     await symlink(projectRoot, join(projectRoot, "src", "nested", "root-link"), "dir");
 
     const counter = { count: 0, truncated: false };
     const tree = await buildFileTree(projectRoot, { depth: 5, counter });
-    const paths = collectPaths(tree);
 
-    expect(paths.filter((path) => path === "src/nested/file.ts")).toHaveLength(1);
-    expect(paths).not.toContain("src/nested/root-link/src/nested/file.ts");
+    expect(tree).toEqual([
+      {
+        name: "src",
+        path: "src",
+        type: "dir",
+        children: [
+          {
+            name: "nested",
+            path: "src/nested",
+            type: "dir",
+            children: [
+              { name: "file.ts", path: "src/nested/file.ts", type: "file" },
+              { name: "root-link", path: "src/nested/root-link", type: "file" },
+            ],
+          },
+        ],
+      },
+    ]);
     expect(countNodes(tree)).toBeLessThan(10);
     expect(counter.truncated).toBe(false);
   });

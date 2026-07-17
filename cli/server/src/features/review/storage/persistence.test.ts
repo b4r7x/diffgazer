@@ -24,6 +24,7 @@ type TestMetadata = z.infer<typeof MetadataSchema>;
 
 const TEST_ID = "550e8400-e29b-41d4-a716-446655440000";
 const TEST_ID_2 = "660e8400-e29b-41d4-a716-446655440001";
+const TEST_ID_3 = "770e8400-e29b-41d4-a716-446655440002";
 
 let tempRoot: string;
 let collectionDir: string;
@@ -118,7 +119,7 @@ describe("createCollection", () => {
     await collection.write(makeItem(TEST_ID_2, "Item2"));
     await writeFile(join(collectionDir, "not-a-uuid.json"), "{}", "utf-8");
     await writeFile(join(collectionDir, "readme.txt"), "ignored", "utf-8");
-    await writeRawItem("770e8400-e29b-41d4-a716-446655440002", "{corrupt}");
+    await writeRawItem(TEST_ID_3, "{corrupt}");
 
     const result = await collection.list();
 
@@ -129,8 +130,44 @@ describe("createCollection", () => {
         { id: TEST_ID_2, label: "Item2" },
       ]);
       expect(result.value.warnings).toHaveLength(1);
-      expect(result.value.warnings[0]).toContain("770e8400-e29b-41d4-a716-446655440002");
+      expect(result.value.warnings[0]).toContain(TEST_ID_3);
     }
+  });
+
+  it.each([
+    ["null", null],
+    ["array", []],
+    ["string", "review"],
+    ["number", 42],
+    ["boolean", false],
+  ])("returns a path-free PARSE_ERROR for a top-level %s", async (_label, value) => {
+    const collection = makeCollection();
+    await writeRawItem(TEST_ID, JSON.stringify(value));
+
+    const result = await collection.readMetadata(TEST_ID);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("PARSE_ERROR");
+      expect(result.error.message).not.toContain(tempRoot);
+      expect(result.error.message).not.toContain(collectionDir);
+    }
+  });
+
+  it("keeps valid metadata and reports one warning when a UUID file contains null", async () => {
+    const collection = makeCollection();
+    await collection.write(makeItem());
+    await writeRawItem(TEST_ID_2, "null");
+
+    const result = await collection.list();
+
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        items: [makeItem().metadata],
+        warnings: [expect.stringContaining(TEST_ID_2)],
+      },
+    });
   });
 
   it("lists a legacy review whose metadata carries retired vocabulary", async () => {

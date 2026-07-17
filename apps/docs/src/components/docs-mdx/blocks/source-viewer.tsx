@@ -1,21 +1,61 @@
 import { InlineCode } from "@diffgazer/ui/components/code-block";
-import { CopyButton } from "@/components/copy-button";
-import { SourceViewer } from "@/components/docs-mdx/source-viewer";
-import { type CrossDepSourceFile, resolveCrossDepFiles } from "@/lib/cross-deps-data";
-import { type DocsLibraryId, getInstallCommand, hookFileName } from "@/lib/library";
-import type { ComponentData, SourceFile } from "@/types/data";
-import { type HookData, useComponentData, useHookData } from "../doc-data-context";
+import { SourceViewer, type SourceViewerContent } from "@/components/docs-mdx/source-viewer";
+import {
+  type DocsLibraryId,
+  getDocsLibraryConfig,
+  getInstallCommand,
+  hookFileName,
+} from "@/lib/library";
+import { loadDocSourceData } from "@/lib/load-doc-data";
+import {
+  type ComponentPageData,
+  type HookPageData,
+  useComponentData,
+  useHookData,
+} from "../doc-data-context";
 import { useCurrentLibrary } from "./use-current-library";
 
-/** Map cross-dependency files (keys hooks/utilities) into the SourceViewer file shape. */
-function toSourceFiles(
-  crossDeps: NonNullable<ComponentData["crossDeps"]>,
-): (SourceFile & { path: string })[] {
-  return resolveCrossDepFiles(crossDeps).map((file: CrossDepSourceFile) => ({
-    path: file.path,
-    raw: file.raw,
-    highlighted: file.highlighted,
-  }));
+async function loadComponentSource(
+  library: DocsLibraryId,
+  name: string,
+): Promise<SourceViewerContent> {
+  const component = await loadDocSourceData(library, "components", name, {
+    throwIfMissing: true,
+  });
+  if (!component) throw new Error(`Missing component source: ${library}/${name}`);
+
+  return {
+    files: Object.entries(component.source).map(([path, file]) => ({
+      path,
+      raw: file.raw,
+      highlighted: file.highlighted,
+    })),
+    copyText: component.mergedSource,
+  };
+}
+
+async function loadHookSource(library: DocsLibraryId, name: string): Promise<SourceViewerContent> {
+  const hook = await loadDocSourceData(library, "hooks", name, { throwIfMissing: true });
+  if (!hook) throw new Error(`Missing hook source: ${library}/${name}`);
+
+  const files =
+    hook.files && hook.files.length > 0
+      ? hook.files
+      : [
+          {
+            path: hookFileName(name),
+            raw: hook.source.raw,
+            highlighted: hook.source.highlighted,
+          },
+        ];
+
+  return {
+    files,
+    copyText:
+      files.length === 1
+        ? (files[0]?.raw ?? "")
+        : files.map((file) => `// ${file.path}\n${file.raw}`).join("\n\n"),
+  };
 }
 
 export function SourceViewerBlock() {
@@ -24,22 +64,18 @@ export function SourceViewerBlock() {
   const library = useCurrentLibrary();
 
   if (componentData) return <ComponentSourceViewer data={componentData} library={library} />;
-  if (hookData) return <HookSourceViewer data={hookData} />;
+  if (hookData) return <HookSourceViewer data={hookData} library={library} />;
   return null;
 }
 
-function ComponentSourceViewer({ data, library }: { data: ComponentData; library: DocsLibraryId }) {
+function ComponentSourceViewer({
+  data,
+  library,
+}: {
+  data: ComponentPageData;
+  library: DocsLibraryId;
+}) {
   const installCommand = getInstallCommand(library, data.name) ?? undefined;
-  const sourceFiles = Object.entries(data.source).map(([path, file]) => ({
-    path,
-    raw: file.raw,
-    highlighted: file.highlighted,
-  }));
-
-  if (data.crossDeps?.length) {
-    sourceFiles.push(...toSourceFiles(data.crossDeps));
-  }
-
   const externalDeps = data.crossDeps?.filter((d) => d.library !== library);
   const firstExternalDep = externalDeps?.[0];
   const integrationNote = firstExternalDep ? (
@@ -48,37 +84,37 @@ function ComponentSourceViewer({ data, library }: { data: ComponentData; library
       <InlineCode>--integration {firstExternalDep.library}</InlineCode>.
     </>
   ) : undefined;
+  const cacheKey = `${library}:component:${data.name}`;
+  const fileCount = data.files.length;
 
   return (
     <SourceViewer
-      files={sourceFiles}
-      copyButton={
-        data.mergedSource ? (
-          <CopyButton
-            text={data.mergedSource}
-            label="Copy Full Source"
-            title="Copies all component files, hooks, and utilities merged into a single standalone file"
-          />
-        ) : undefined
-      }
+      key={cacheKey}
+      cacheKey={cacheKey}
+      fileCount={fileCount}
+      loadSource={() => loadComponentSource(library, data.name)}
+      copyLabel="Copy Full Source"
+      copyTitle="Copies a dependency-closed registry archive with every file and local import rewrite"
       installCommand={installCommand}
       integrationNote={integrationNote}
+      sourceHref={getDocsLibraryConfig(library).githubUrl}
     />
   );
 }
 
-function HookSourceViewer({ data }: { data: HookData }) {
+function HookSourceViewer({ data, library }: { data: HookPageData; library: DocsLibraryId }) {
+  const cacheKey = `${library}:hook:${data.name}`;
+  const fileCount = data.files?.length ?? 1;
   return (
     <SourceViewer
-      files={[
-        {
-          path: hookFileName(data.name),
-          raw: data.source.raw,
-          highlighted: data.source.highlighted,
-        },
-      ]}
-      triggerLabel="View hook source"
-      copyButton={<CopyButton text={data.source.raw} label={`Copy ${data.title}`} />}
+      key={cacheKey}
+      cacheKey={cacheKey}
+      fileCount={fileCount}
+      loadSource={() => loadHookSource(library, data.name)}
+      triggerLabel={fileCount === 1 ? "View hook source" : `View hook source (${fileCount} files)`}
+      copyLabel={`Copy ${data.title}`}
+      copyTitle="Copies every source file with its consumer target path"
+      sourceHref={getDocsLibraryConfig(library).githubUrl}
     />
   );
 }

@@ -78,6 +78,14 @@ function isLabelableElement(element: HTMLElement | null): boolean {
   return element !== null && LABELABLE_TAGS.has(element.tagName);
 }
 
+function isDisabledControl(element: HTMLElement, fieldDisabled: boolean | undefined): boolean {
+  return (
+    fieldDisabled === true ||
+    element.hasAttribute("disabled") ||
+    element.getAttribute("aria-disabled") === "true"
+  );
+}
+
 interface FieldChildProps {
   id?: string;
   children?: ReactNode;
@@ -109,7 +117,10 @@ function seedFieldFromChildren(
     if (!isValidElement<FieldChildProps>(child)) return;
     if (child.type === FieldLabel) {
       directSlots.add("label");
-      slots.label = { id: child.props.id ?? ids.label, hasContent: true };
+      slots.label = {
+        id: child.props.id ?? ids.label,
+        hasContent: hasRenderableContent(child.props.children),
+      };
     } else if (child.type === FieldDescription) {
       directSlots.add("description");
       slots.description = {
@@ -211,7 +222,7 @@ function FieldRoot({
     : slots.description;
   const errorSlot = seed.directSlots.has("error") ? seed.slots.error : slots.error;
 
-  const labelId = labelSlot?.id;
+  const labelId = labelSlot?.hasContent ? labelSlot.id : undefined;
   const descriptionId = descriptionSlot?.hasContent ? descriptionSlot.id : undefined;
   const errorId = errorSlot?.hasContent ? errorSlot.id : undefined;
   const describedBy = mergeIds(descriptionId, invalid ? errorId : undefined);
@@ -271,14 +282,22 @@ export interface FieldLabelProps extends LabelHTMLAttributes<HTMLLabelElement> {
 }
 
 function FieldLabel({ className, children, ref, id, onClick, ...props }: FieldLabelProps) {
-  const { controlId, required, defaultLabelId, controlRef, registerSlot, unregisterSlot } =
-    useFieldContext("Field.Label");
+  const {
+    controlId,
+    required,
+    disabled,
+    defaultLabelId,
+    controlRef,
+    registerSlot,
+    unregisterSlot,
+  } = useFieldContext("Field.Label");
+  const hasChildren = hasRenderableContent(children);
   const resolvedId = id ?? defaultLabelId;
 
   useLayoutEffect(() => {
-    registerSlot("label", { id: resolvedId, hasContent: true });
+    registerSlot("label", { id: resolvedId, hasContent: hasChildren });
     return () => unregisterSlot("label");
-  }, [registerSlot, unregisterSlot, resolvedId]);
+  }, [registerSlot, unregisterSlot, resolvedId, hasChildren]);
 
   const handleClick = (event: ReactMouseEvent<HTMLLabelElement>) => {
     onClick?.(event);
@@ -287,6 +306,7 @@ function FieldLabel({ className, children, ref, id, onClick, ...props }: FieldLa
     const control = controlRef.current;
     if (control && !isLabelableElement(control)) {
       event.preventDefault();
+      if (isDisabledControl(control, disabled)) return;
       control.focus();
       control.click();
     }
@@ -362,7 +382,7 @@ function FieldControl({ children, ref }: FieldControlProps) {
 
   return cloneElement(child, {
     id: resolvedId,
-    disabled: child.props.disabled ?? disabled,
+    disabled: disabled || child.props.disabled || undefined,
     required: child.props.required ?? required,
     "aria-invalid": child.props["aria-invalid"] ?? (invalid ? true : undefined),
     "aria-describedby": mergeIds(child.props["aria-describedby"], describedBy),

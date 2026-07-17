@@ -3,6 +3,7 @@
 import {
   Children,
   type FocusEvent,
+  isValidElement,
   type MouseEvent,
   type ReactNode,
   useEffect,
@@ -40,7 +41,7 @@ export interface NavigationListGroupProps {
    * hierarchy with ASCII connectors.
    */
   variant?: "tree" | "section";
-  /** DOM id for header. */
+  /** Stable header identity. Defaults to a per-instance generated value. */
   headerId?: string;
   /** Accessible action word appended to the header name while collapsed. Defaults to "expand". */
   expandLabel?: string;
@@ -69,8 +70,7 @@ export function NavigationListGroup({
   const parentGroup = useNavigationListGroupContext();
   const position = useNavigationListGroupPositionContext();
   const generatedId = useId();
-  const sectionHeaderId = controlledHeaderId ?? `__section_${label}`;
-  const treeHeaderId = controlledHeaderId ?? `__group_${generatedId}`;
+  const headerId = controlledHeaderId ?? `__group_${generatedId}`;
 
   const [expanded, setExpanded] = useControllableState<boolean>({
     value: controlledExpanded,
@@ -100,10 +100,10 @@ export function NavigationListGroup({
 
   const wrappedChildren = (
     <NavigationListGroupContext value={groupContextValue}>
+      {/* Children.toArray preserves explicit keys and gives unkeyed elements positional keys. */}
       {arrayChildren.map((child, index) => (
         <NavigationListGroupPositionContext
-          // biome-ignore lint/suspicious/noArrayIndexKey: this wrapper provides positional context (isLast) for children rendered in fixed order; the position index is the identity by design.
-          key={index}
+          key={isValidElement(child) && child.key !== null ? child.key : index}
           value={{ isLast: index === arrayChildren.length - 1 }}
         >
           {child}
@@ -116,7 +116,7 @@ export function NavigationListGroup({
     return (
       <div className={cn("border-t border-border first:border-t-0", className)}>
         <SectionHeader
-          headerId={sectionHeaderId}
+          headerId={headerId}
           label={label}
           count={count}
           expanded={expanded}
@@ -133,7 +133,7 @@ export function NavigationListGroup({
     // biome-ignore lint/a11y/useSemanticElements: role="group" labels a related set of navigation options; <fieldset> is for form controls and is not appropriate here.
     <div role="group" aria-label={groupLabel} className={className}>
       <TreeHeader
-        headerId={treeHeaderId}
+        headerId={headerId}
         label={label}
         expanded={expanded}
         toggle={toggle}

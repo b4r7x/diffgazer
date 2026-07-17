@@ -1,12 +1,32 @@
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import { test } from "node:test";
 import { runValidationChecks } from "./run-checks.mjs";
 
-// runValidationChecks owns the exit-code contract shared by check-invariants
-// and validate-artifacts: failures => header + lines on stderr + exit 1, no
-// failures => optional success line on stdout, no exit. Exiting the test
-// process would abort the run, so the failure path is exercised in a child
-// process via `node -e`.
+const runnerUrl = new URL("./run-checks.mjs", import.meta.url).href;
+
+function runChild(script) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ["--input-type=module", "--eval", script], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stderr = "";
+    let stdout = "";
+
+    child.stderr.setEncoding("utf8");
+    child.stdout.setEncoding("utf8");
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.once("error", reject);
+    child.once("close", (status, signal) => {
+      resolve({ signal, status, stderr, stdout });
+    });
+  });
+}
 
 test("runValidationChecks prints the success message and does not exit when there are no failures", () => {
   const logged = [];
@@ -32,27 +52,34 @@ test("runValidationChecks stays silent on success when no successMessage is give
   assert.deepEqual(logged, []);
 });
 
-test("runValidationChecks reports failures on stderr and exits 1", async () => {
-  const { execFileSync } = await import("node:child_process");
-  const { fileURLToPath } = await import("node:url");
-  const runnerPath = fileURLToPath(new URL("./run-checks.mjs", import.meta.url));
-  const script = [
-    `import { runValidationChecks } from ${JSON.stringify(runnerPath)};`,
-    'runValidationChecks(["  first", "  second"], { failureHeader: "Validation failed.", successMessage: "ok" });',
-  ].join("\n");
-
-  let error;
-  try {
-    execFileSync(process.execPath, ["-e", script], {
-      encoding: "utf-8",
-      stdio: ["ignore", "pipe", "pipe"],
+test("runValidationChecks reports failures and leaves the child with exit code 1", async () => {
+  const result = await runChild(`
+    import { runValidationChecks } from ${JSON.stringify(runnerUrl)};
+    runValidationChecks(["  first", "  second"], {
+      failureHeader: "Validation failed.",
+      successMessage: "ok",
     });
-  } catch (caught) {
-    error = caught;
-  }
+  `);
 
-  assert.ok(error, "expected a non-zero exit");
-  assert.equal(error.status, 1);
-  assert.equal(error.stderr.trim(), ["Validation failed.", "  first", "  second"].join("\n"));
-  assert.equal(error.stdout, "");
+  assert.equal(result.status, 1);
+  assert.equal(result.signal, null);
+  assert.equal(result.stderr.trim(), ["Validation failed.", "  first", "  second"].join("\n"));
+  assert.equal(result.stdout, "");
+});
+
+test("runValidationChecks drains diagnostics larger than a pipe buffer", async () => {
+  const diagnosticBytes = 4 * 1024 * 1024;
+  const sentinel = "DIAGNOSTIC_SENTINEL_AT_END";
+  const result = await runChild(`
+    import { runValidationChecks } from ${JSON.stringify(runnerUrl)};
+    runValidationChecks(["x".repeat(${diagnosticBytes}), ${JSON.stringify(sentinel)}], {
+      failureHeader: "Validation failed.",
+    });
+  `);
+
+  assert.equal(result.status, 1);
+  assert.equal(result.signal, null);
+  assert.equal(result.stdout, "");
+  assert.ok(result.stderr.length > diagnosticBytes);
+  assert.ok(result.stderr.endsWith(`${sentinel}\n`));
 });

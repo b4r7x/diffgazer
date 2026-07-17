@@ -62,7 +62,7 @@ return present ? (
         type: "boolean",
         required: true,
         description:
-          "True during the closing animation phase, after present becomes false but before the animation completes.",
+          "True during the closing animation phase while present remains true. Both become false after the animation or fallback timer completes.",
       },
       {
         name: "onAnimationEnd",

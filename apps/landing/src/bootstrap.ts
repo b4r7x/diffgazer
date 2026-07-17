@@ -8,7 +8,15 @@ import { initHud } from "./effects/hud";
 import { initPipeline } from "./effects/pipeline";
 import { initTerminal } from "./effects/terminal";
 import { wireEnvLinks } from "./env";
-import { type Cleanup, createMouse, type Flags, getFlags, isLight, type Mouse } from "./util";
+import {
+  type Cleanup,
+  createEffectScope,
+  createMouse,
+  type Flags,
+  getFlags,
+  isLight,
+  type Mouse,
+} from "./util";
 
 function trackPointer(mouse: Mouse, signal: AbortSignal): void {
   addEventListener(
@@ -65,6 +73,27 @@ function startMotion(
   };
 }
 
+function startVisualEffects(doc: Document, flags: Flags, signal: AbortSignal): Cleanup {
+  const scope = createEffectScope(signal);
+  scope.addCleanup(initHud(doc, flags, scope.signal));
+  scope.addCleanup(initHero(doc, flags, scope.signal));
+  scope.addCleanup(initTerminal(doc, flags, scope.signal));
+  const gaze = initGaze(doc, flags, scope.signal);
+  scope.addCleanup(gaze.cleanup);
+  scope.addCleanup(initFindings(doc, flags, scope.signal));
+  scope.addCleanup(initPipeline(doc, flags, scope.signal));
+
+  if (flags.reduced) {
+    const field = createField(doc, scope.signal, { redrawOnResize: true });
+    field?.draw(createMouse(), isLight(doc));
+    scope.addCleanup(() => field?.cleanup());
+  } else {
+    scope.addCleanup(startMotion(doc, flags, gaze, scope.signal));
+  }
+
+  return scope.cleanup;
+}
+
 export function bootstrap(doc: Document = document, flags: Flags = getFlags()): Cleanup {
   const controller = new AbortController();
   const cleanups: Cleanup[] = [];
@@ -77,22 +106,22 @@ export function bootstrap(doc: Document = document, flags: Flags = getFlags()): 
   };
 
   wireEnvLinks(doc);
-  addCleanup(initHud(doc, flags, controller.signal));
   addCleanup(initCopyButtons(doc, 1400, controller.signal));
-  addCleanup(initHero(doc, flags, controller.signal));
-  addCleanup(initTerminal(doc, flags, controller.signal));
-  const gaze = initGaze(doc, flags, controller.signal);
-  addCleanup(gaze.cleanup);
-  addCleanup(initFindings(doc, flags, controller.signal));
-  addCleanup(initPipeline(doc, flags, controller.signal));
+  let activeFlags = flags;
+  let stopVisualEffects = startVisualEffects(doc, activeFlags, controller.signal);
+  addCleanup(() => stopVisualEffects());
 
-  if (flags.reduced) {
-    const field = createField(doc, controller.signal);
-    field?.draw(createMouse(), isLight(doc));
-    addCleanup(() => field?.cleanup());
-    return cleanup;
+  if (typeof matchMedia === "function") {
+    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+    const handleReducedMotionChange = (event: MediaQueryListEvent): void => {
+      if (event.matches === activeFlags.reduced) return;
+      stopVisualEffects();
+      activeFlags = { ...activeFlags, reduced: event.matches };
+      stopVisualEffects = startVisualEffects(doc, activeFlags, controller.signal);
+    };
+    reducedMotion.addEventListener("change", handleReducedMotionChange);
+    addCleanup(() => reducedMotion.removeEventListener("change", handleReducedMotionChange));
   }
 
-  addCleanup(startMotion(doc, flags, gaze, controller.signal));
   return cleanup;
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { requireValue } from "../../../../testing/assertions.js";
+import { createPromptFileIdentities } from "../prompts.js";
 import { parseDiff } from "./parser.js";
 
 describe("parseDiff", () => {
@@ -64,6 +65,27 @@ describe("parseDiff", () => {
 
     expect(result.files[0]?.stats.additions).toBe(0);
     expect(result.files[0]?.stats.deletions).toBe(1);
+  });
+
+  it("counts header-shaped source text only after the hunk boundary", () => {
+    const diff = `diff --git a/file.ts b/file.ts
+--- a/file.ts
++++ b/file.ts
+@@ -1,2 +1,2 @@
+--- a/path
+--- "a/quoted path"
++++ b/path
++++ "b/quoted path"`;
+
+    const result = parseDiff(diff);
+
+    expect(result.files).toHaveLength(1);
+    expect(result.files[0]?.stats).toMatchObject({ additions: 2, deletions: 2 });
+    expect(result.totalStats).toMatchObject({
+      filesChanged: 1,
+      additions: 2,
+      deletions: 2,
+    });
   });
 
   it("splits a multi-file diff into one entry per file", () => {
@@ -427,6 +449,38 @@ index abc1234..def5678 100644
 
     expect(result.files).toHaveLength(1);
     expect(result.files[0]?.filePath).toBe("dir\twith\ttabs/file.ts");
+  });
+
+  it("keeps control-bearing and sanitization-colliding paths on distinct prompt identities", () => {
+    const diff = `diff --git "a/dir\\tname.ts" "b/dir\\tname.ts"
+--- "a/dir\\tname.ts"
++++ "b/dir\\tname.ts"
+@@ -1 +1 @@
+-old
++new
+diff --git a/dirname.ts b/dirname.ts
+--- a/dirname.ts
++++ b/dirname.ts
+@@ -1 +1 @@
+-old
++new
+diff --git "a/line\\nbreak.ts" "b/line\\nbreak.ts"
+--- "a/line\\nbreak.ts"
++++ "b/line\\nbreak.ts"
+@@ -1 +1 @@
+-old
++new`;
+
+    const parsed = parseDiff(diff);
+    const identities = createPromptFileIdentities(parsed);
+
+    expect(parsed.files.map((file) => file.filePath)).toEqual([
+      "dir\tname.ts",
+      "dirname.ts",
+      "line\nbreak.ts",
+    ]);
+    expect(identities.map(({ id }) => id)).toEqual(["file-1", "file-2", "file-3"]);
+    expect(new Set(identities.map(({ id }) => id)).size).toBe(identities.length);
   });
 
   it("handles quoted rename paths", () => {

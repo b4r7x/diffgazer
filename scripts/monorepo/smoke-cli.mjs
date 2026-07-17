@@ -9,9 +9,11 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { stringify as stringifyYaml } from "yaml";
 import {
   assertBuiltCss,
   CommandFailedError,
+  declareTailwindV4Dependency,
   installViteFixtureDeps,
   joinLines,
   networkAllowed,
@@ -30,6 +32,9 @@ import {
 const root = process.cwd();
 const dgaddBin = resolve(root, "cli/add/dist/index.js");
 const diffgazerBin = resolve(root, "cli/diffgazer/dist/index.js");
+const rootPackageManager = JSON.parse(
+  readFileSync(resolve(root, "package.json"), "utf-8"),
+).packageManager;
 
 if (!existsSync(diffgazerBin)) {
   throw new Error(
@@ -37,9 +42,9 @@ if (!existsSync(diffgazerBin)) {
   );
 }
 
-function runFailureArgv(command, args, cwd = root) {
+async function runFailureArgv(command, args, cwd = root) {
   try {
-    const output = runArgv(command, args, cwd);
+    const output = await runArgv(command, args, cwd);
     throw new Error(
       `Expected command to fail but it succeeded: ${command} ${args.join(" ")}\n${output.slice(0, 250)}`,
     );
@@ -60,11 +65,14 @@ function missingLocalDeps(deps) {
   return resolveAndCollectMissing(deps, (dep) => resolveWorkspaceDependency(root, dep));
 }
 
-function installDeps(fixture, depSpecs) {
+async function installDeps(fixture, depSpecs) {
   const deps = networkAllowed()
     ? depSpecs
     : depSpecs.map((dep) => resolveWorkspaceDependency(root, packageNameFromSpec(dep) ?? dep));
-  runArgv("pnpm", ["add", ...pnpmAddFlags(), ...deps], fixture);
+  await runArgv("pnpm", ["add", ...pnpmAddFlags(), ...deps], fixture);
+  if (depSpecs.some((dep) => packageNameFromSpec(dep) === "tailwindcss")) {
+    declareTailwindV4Dependency(fixture);
+  }
 }
 
 function writeNextCopyFirstApp(fixture) {
@@ -186,7 +194,7 @@ function assertCopyFirstCssInstall(fixture) {
   }
 }
 
-function runOptionalNextCopyFirstSmoke() {
+async function runOptionalNextCopyFirstSmoke() {
   const nextDeps = [
     "react@^19.2.0",
     "react-dom@^19.2.0",
@@ -215,9 +223,9 @@ function runOptionalNextCopyFirstSmoke() {
   const fixture = mkdtempSync(join(tmpdir(), "dgadd-next-smoke-"));
   try {
     writeNextFixture(fixture, { root, withSrc: true, paths: true });
-    installDeps(fixture, nextDeps);
-    runArgv("node", [dgaddBin, "init", "--cwd", fixture, "--yes", "--skip-install"]);
-    runArgv("node", [
+    await installDeps(fixture, nextDeps);
+    await runArgv("node", [dgaddBin, "init", "--cwd", fixture, "--yes", "--skip-install"]);
+    await runArgv("node", [
       dgaddBin,
       "add",
       "ui/button",
@@ -231,7 +239,7 @@ function runOptionalNextCopyFirstSmoke() {
     ]);
     assertCopyFirstCssInstall(fixture);
     writeNextCopyFirstApp(fixture);
-    runArgv("pnpm", ["exec", "next", "build", "--webpack"], fixture);
+    await runArgv("pnpm", ["exec", "next", "build", "--webpack"], fixture);
     assertBuiltCss(fixture, { outputDir: ".next", label: "Built copy-first" });
     console.log("OK: dgadd Next copy-first build flow");
   } finally {
@@ -291,8 +299,8 @@ const commands = [
 
 for (const check of commands) {
   const output = check.expectFailure
-    ? runFailureArgv(check.command, check.args)
-    : runArgv(check.command, check.args);
+    ? await runFailureArgv(check.command, check.args)
+    : await runArgv(check.command, check.args);
 
   if (!check.expect.test(output)) {
     throw new Error(
@@ -306,10 +314,10 @@ for (const check of commands) {
 const fixture = mkdtempSync(join(tmpdir(), "dgadd-smoke-"));
 try {
   writeViteFixture(fixture);
-  installViteFixtureDeps(root, fixture);
+  await installViteFixtureDeps(root, fixture);
 
-  runArgv("node", [dgaddBin, "init", "--cwd", fixture, "--yes", "--skip-install"]);
-  runArgv("node", [
+  await runArgv("node", [dgaddBin, "init", "--cwd", fixture, "--yes", "--skip-install"]);
+  await runArgv("node", [
     dgaddBin,
     "add",
     "ui/button",
@@ -330,12 +338,12 @@ try {
     throw new Error("selectable-collection helper was not copied for selectable UI components");
   }
   writeCopyFirstApp(fixture);
-  runArgv("node", [dgaddBin, "list", "--installed", "--json", "--cwd", fixture]);
-  runArgv("node", [dgaddBin, "diff", "--cwd", fixture]);
-  runArgv("pnpm", ["run", "typecheck"], fixture);
-  runArgv("pnpm", ["run", "build"], fixture);
+  await runArgv("node", [dgaddBin, "list", "--installed", "--json", "--cwd", fixture]);
+  await runArgv("node", [dgaddBin, "diff", "--cwd", fixture]);
+  await runArgv("pnpm", ["run", "typecheck"], fixture);
+  await runArgv("pnpm", ["run", "build"], fixture);
   assertBuiltCss(fixture, { label: "Built copy-first" });
-  const removeOutput = runArgv("node", [
+  const removeOutput = await runArgv("node", [
     dgaddBin,
     "remove",
     "keys/navigation",
@@ -359,34 +367,31 @@ try {
   if (!existsSync(join(fixture, "src/hooks/use-navigation.ts"))) {
     throw new Error("keys/navigation hook was removed while copy-mode UI still depends on it");
   }
-  runArgv("pnpm", ["run", "typecheck"], fixture);
-  runArgv("pnpm", ["run", "build"], fixture);
+  await runArgv("pnpm", ["run", "typecheck"], fixture);
+  await runArgv("pnpm", ["run", "build"], fixture);
   console.log("OK: dgadd copy-first init/add/list/diff/remove typecheck/build flow");
-  runOptionalNextCopyFirstSmoke();
+  await runOptionalNextCopyFirstSmoke();
 } finally {
   rmSync(fixture, { recursive: true, force: true });
 }
 
-function runInstallDependencySmoke() {
+async function runInstallDependencySmoke() {
   const fixture = mkdtempSync(join(tmpdir(), "dgadd-install-deps-"));
   try {
     writeViteFixture(fixture);
     const packageJsonPath = join(fixture, "package.json");
     const pkg = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
-    pkg.packageManager = "pnpm@10.0.0";
-    pkg.pnpm = {
-      ...(pkg.pnpm ?? {}),
-      overrides: {
-        ...(pkg.pnpm?.overrides ?? {}),
-        "class-variance-authority": resolveWorkspaceDependency(root, "class-variance-authority"),
-        clsx: resolveWorkspaceDependency(root, "clsx"),
-        "tailwind-merge": resolveWorkspaceDependency(root, "tailwind-merge"),
-      },
+    pkg.packageManager = rootPackageManager;
+    const overrides = {
+      "class-variance-authority": resolveWorkspaceDependency(root, "class-variance-authority"),
+      clsx: resolveWorkspaceDependency(root, "clsx"),
+      "tailwind-merge": resolveWorkspaceDependency(root, "tailwind-merge"),
     };
     writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`);
+    writeFileSync(join(fixture, "pnpm-workspace.yaml"), stringifyYaml({ packages: [], overrides }));
 
-    runArgv("node", [dgaddBin, "init", "--cwd", fixture, "--yes"]);
-    runArgv("node", [dgaddBin, "add", "ui/badge", "--cwd", fixture, "--yes"]);
+    await runArgv("node", [dgaddBin, "init", "--cwd", fixture, "--yes"]);
+    await runArgv("node", [dgaddBin, "add", "ui/badge", "--cwd", fixture, "--yes"]);
 
     const installedPackageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
     if (!installedPackageJson.dependencies?.["class-variance-authority"]) {
@@ -407,14 +412,14 @@ function runInstallDependencySmoke() {
   }
 }
 
-function runKeysPackageIntegrationSmoke() {
+async function runKeysPackageIntegrationSmoke() {
   const fixture = mkdtempSync(join(tmpdir(), "dgadd-keys-dep-"));
   try {
     writeViteFixture(fixture);
-    installViteFixtureDeps(root, fixture);
+    await installViteFixtureDeps(root, fixture);
 
-    runArgv("node", [dgaddBin, "init", "--cwd", fixture, "--yes", "--skip-install"]);
-    runArgv("node", [
+    await runArgv("node", [dgaddBin, "init", "--cwd", fixture, "--yes", "--skip-install"]);
+    await runArgv("node", [
       dgaddBin,
       "add",
       "ui/button",
@@ -440,7 +445,7 @@ function runKeysPackageIntegrationSmoke() {
     const packageJsonPath = join(fixture, "package.json");
     const packDir = join(fixture, "packs");
     mkdirSync(packDir, { recursive: true });
-    const keysPackPath = packWorkspacePackage(root, "@diffgazer/keys", packDir);
+    const keysPackPath = await packWorkspacePackage(root, "@diffgazer/keys", packDir);
     const keysFixturePkg = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
     keysFixturePkg.pnpm = {
       ...(keysFixturePkg.pnpm ?? {}),
@@ -451,7 +456,7 @@ function runKeysPackageIntegrationSmoke() {
     };
     writeFileSync(packageJsonPath, `${JSON.stringify(keysFixturePkg, null, 2)}\n`);
 
-    runArgv("node", [
+    await runArgv("node", [
       dgaddBin,
       "add",
       "ui/select",
@@ -465,7 +470,7 @@ function runKeysPackageIntegrationSmoke() {
       "--skip-install",
     ]);
 
-    runArgv(
+    await runArgv(
       "pnpm",
       ["add", ...pnpmAddFlags(), "--config.auto-install-peers=false", keysPackPath],
       fixture,
@@ -507,8 +512,8 @@ function runKeysPackageIntegrationSmoke() {
       throw new Error("keys package mode should not copy local use-navigation.ts");
     }
     writeKeysPackageSelectApp(fixture);
-    runArgv("pnpm", ["run", "typecheck"], fixture);
-    runArgv("pnpm", ["run", "build"], fixture);
+    await runArgv("pnpm", ["run", "typecheck"], fixture);
+    await runArgv("pnpm", ["run", "build"], fixture);
 
     console.log("OK: keys package integration dependency install/build flow");
   } finally {
@@ -516,12 +521,12 @@ function runKeysPackageIntegrationSmoke() {
   }
 }
 
-function runBareNameRejectionSmoke() {
+async function runBareNameRejectionSmoke() {
   const fixture = mkdtempSync(join(tmpdir(), "smoke-bare-"));
   try {
     writeViteFixture(fixture);
-    runArgv("node", [dgaddBin, "init", "--cwd", fixture, "--yes"]);
-    const bareOutput = runFailureArgv("node", [
+    await runArgv("node", [dgaddBin, "init", "--cwd", fixture, "--yes"]);
+    const bareOutput = await runFailureArgv("node", [
       dgaddBin,
       "add",
       "button",
@@ -539,8 +544,8 @@ function runBareNameRejectionSmoke() {
   }
 }
 
-runInstallDependencySmoke();
-runKeysPackageIntegrationSmoke();
-runBareNameRejectionSmoke();
+await runInstallDependencySmoke();
+await runKeysPackageIntegrationSmoke();
+await runBareNameRejectionSmoke();
 
 console.log("OK: CLI smoke checks passed");

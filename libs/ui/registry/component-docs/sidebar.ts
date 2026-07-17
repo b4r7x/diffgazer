@@ -54,7 +54,7 @@ export const sidebarDoc: ComponentDoc = {
     {
       title: "Tri-state visibility",
       content:
-        'Sidebar tracks three states via SidebarProvider: "open" (full width), "rail" (collapsed glyph rail, desktop only), and "hidden" (off-canvas; mobile sheet target). The provider exposes state/defaultState/onStateChange and helpers toggleSidebar (open ↔ rail) and toggleHidden (open ↔ hidden).',
+        'Sidebar tracks three states via SidebarProvider: "open" (full width), "rail" (collapsed glyph rail, desktop only), and "hidden" (off-canvas; mobile sheet target). Mobile presents every non-hidden state as open while preserving the provider value for a later desktop resize. Hidden desktop navigation marks the complete nav shell aria-hidden and inert, including Header, Content, and Footer. Keep a SidebarTrigger outside that shell or use the provider hotkey so users can reopen it. The provider exposes state/defaultState/onStateChange and helpers toggleSidebar (desktop open ↔ rail; mobile visible ↔ hidden) and toggleHidden (open ↔ hidden).',
     },
     {
       title: "Mobile sheet",
@@ -64,7 +64,7 @@ export const sidebarDoc: ComponentDoc = {
     {
       title: "Global hotkey",
       content:
-        'An explicit SidebarProvider binds a configurable global shortcut. Cmd/Ctrl+<key> cycles open ↔ rail; Shift+Cmd/Ctrl+<key> toggles hidden. Default key is "b" (VS Code convention). Pass shortcutKey={null} to disable. A Sidebar used without a provider never binds the hotkey — global keys are an app-level contract, so opt in by mounting the provider. Editable targets (input/textarea/contenteditable/select) skip the handler.',
+        'An explicit SidebarProvider binds a configurable global shortcut. Cmd/Ctrl+<key> cycles open ↔ rail on desktop and visible ↔ hidden on mobile; Shift+Cmd/Ctrl+<key> toggles hidden. Default key is "b" (VS Code convention). Pass shortcutKey={null} to disable. A Sidebar used without a provider never binds the hotkey — global keys are an app-level contract, so opt in by mounting the provider. Editable targets (input/textarea/contenteditable/select) skip the handler.',
     },
     {
       title: "SidebarProvider vs standalone",
@@ -84,7 +84,7 @@ export const sidebarDoc: ComponentDoc = {
     {
       title: "Collapsible sections",
       content:
-        "SidebarSection accepts collapsible. SidebarSectionTitle renders an ARIA disclosure (h3 wrapping a button with aria-expanded/aria-controls). SidebarSectionContent panels the collapsed area; it uses the section context to set hidden when closed. Supports controlled open/onOpenChange or uncontrolled defaultOpen.",
+        "SidebarSection accepts collapsible. SidebarSectionTitle renders an ARIA disclosure (h3 wrapping a button with aria-expanded/aria-controls). A title rendered through an opaque consumer wrapper registers after mount so the role=group keeps its accessible name; for server-rendered opaque wrappers, give the heading a stable id and pass it to Sidebar.Section through aria-labelledby. SidebarSectionContent stays mounted for the close animation and becomes aria-hidden and inert while closed. Supports controlled open/onOpenChange or uncontrolled defaultOpen.",
     },
     {
       title: "Rail mode naming",
@@ -112,6 +112,7 @@ export const sidebarDoc: ComponentDoc = {
     { name: "sidebar-collapsible", title: "Collapsible sections" },
     { name: "sidebar-rail", title: "Rail mode" },
     { name: "sidebar-mobile-sheet", title: "Mobile sheet" },
+    { name: "sidebar-owner-window", title: "Iframe viewport ownership" },
     { name: "sidebar-auto-tone", title: "Auto-tone intent dots" },
     { name: "sidebar-render-prop", title: "Render-prop items" },
   ],
@@ -130,7 +131,7 @@ export const sidebarDoc: ComponentDoc = {
       },
       {
         keys: "Cmd/Ctrl+B",
-        action: "Cycles desktop sidebar state between open and rail.",
+        action: "Cycles desktop open ↔ rail or mobile visible ↔ hidden.",
       },
       {
         keys: "Shift+Cmd/Ctrl+B",
@@ -145,9 +146,16 @@ export const sidebarDoc: ComponentDoc = {
   dataAttributes: [
     {
       attribute: "data-state",
-      appliesTo: "Sidebar / Sidebar.Content / Sidebar.Trigger",
+      appliesTo: "Sidebar / Sidebar.Content",
       values: '"open" | "rail" | "hidden"',
-      description: "Current provider visibility state used for root, content, and trigger styling.",
+      description: "Current provider visibility state used for root and content styling.",
+    },
+    {
+      attribute: "data-state",
+      appliesTo: "Sidebar.Trigger",
+      values: '"open" | "collapsed"',
+      description:
+        "Binary visual state: open when the sidebar is visible at full width, collapsed for desktop rail and hidden states.",
     },
     {
       attribute: "data-state",
@@ -254,7 +262,7 @@ export const sidebarDoc: ComponentDoc = {
         required: false,
         defaultValue: '"b"',
         description:
-          "Case-insensitive hotkey. Cmd/Ctrl+<key> cycles open ↔ rail; Shift+Cmd/Ctrl+<key> toggles hidden. Pass null to disable.",
+          "Case-insensitive hotkey. Cmd/Ctrl+<key> cycles open ↔ rail on desktop and visible ↔ hidden on mobile; Shift+Cmd/Ctrl+<key> toggles hidden. Pass null to disable.",
       },
       children: {
         type: "ReactNode",
@@ -292,7 +300,7 @@ export const sidebarDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description:
-          "Scrollable middle region. Hidden, aria-hidden, and inert when the sidebar is in the rail/hidden state.",
+          "Scrollable middle region. The complete Sidebar nav shell becomes aria-hidden and inert in the hidden state.",
       },
     },
     "Sidebar.Section": {
@@ -355,7 +363,7 @@ export const sidebarDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description:
-          "Panel for collapsible sections. Wires the section title's aria-controls and applies hidden when the section is closed. For non-collapsible sections this is a no-op wrapper and may be omitted.",
+          "Panel for collapsible sections. Wires the section title's aria-controls, stays mounted for animation, and becomes aria-hidden and inert while closed. For non-collapsible sections this is a no-op wrapper and may be omitted.",
       },
     },
     "Sidebar.Item": {

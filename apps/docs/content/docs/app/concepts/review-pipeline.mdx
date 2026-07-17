@@ -23,7 +23,7 @@ This is where the agents do their work. The active lenses run over the diff, eac
 
 ### Generate report
 
-The surviving issues and the combined summary are assembled into the final report, which is then persisted to disk along with the branch, commit, profile, lenses, and how long the run took. Once this step completes, the review is saved and available in your history.
+The surviving issues are assembled into the final report, which is then persisted to disk along with the branch, commit, profile, lenses, and how long the run took. Once this step completes, the review is saved and available in your history.
 
 > Note: A single review caps the total diff at 512KB. Past that, the run stops and asks you to review fewer files or use file filtering. The limit is on the combined byte size of all changed files in the diff, not on any single file.
 
@@ -43,11 +43,11 @@ Which lenses run comes from an ordered fallback: an explicit lens list wins, the
 
 ## Sequential vs parallel
 
-The `agentExecution` setting decides whether agents run one at a time or all at once. It defaults to sequential, so by default each lens runs in turn rather than concurrently. Switching it to parallel raises the concurrency to the number of active lenses, so every agent runs at the same time. Either way the merge, filter, and sort happen after all agents finish, so the final report is identical; only the timing and the load on your provider change. You set this in [configuration](/app/reference/configuration).
+The `agentExecution` setting decides whether agents run one at a time or all at once. It defaults to sequential, so by default each lens runs in turn rather than concurrently. Switching it to parallel raises the concurrency to the number of active lenses, so every agent runs at the same time. Findings from successful lenses use the same merge, filter, and sort rules in both modes, but the final reports are not guaranteed to match. The extra concurrency can trigger provider rate limits or transient failures. If one lens fails, the others continue and produce a partial report. You set this in [configuration](/app/reference/configuration); see [provider or key errors](/app/operations/troubleshooting#provider-or-key-errors) for rate-limit guidance.
 
 ## Backend capabilities not in the UI
 
-The review backend exposes more than the web app drives. Issue drilldown is the clearest example: there is a route at `POST /reviews/:id/drilldown` that re-analyzes a single issue in depth, but the web SPA never calls it, so it is not currently in the UI. The same goes for starting a review with a lens filter, a profile, or an explicit file list. The backend route accepts all of those, but the web app only ever sends the review mode and relies on your saved default lenses. The git status and diff routes are likewise backend endpoints with no dedicated screen. Treat these as backend capabilities, not features you can reach from the web app today.
+The review backend exposes more than the web app drives. Issue drilldown is the clearest example: there is a route at `POST /api/review/reviews/:id/drilldown` that re-analyzes a single issue in depth, but the web SPA never calls it, so it is not currently in the UI. The same goes for starting a review with a lens filter, a profile, or an explicit file list. The backend route accepts all of those, but the web app only ever sends the review mode and relies on your saved default lenses. The git status and diff routes are likewise backend endpoints with no dedicated screen. Treat these as backend capabilities, not features you can reach from the web app today. See the [API reference](/app/reference/api) for the complete mounted paths.
 
 ## Related
 

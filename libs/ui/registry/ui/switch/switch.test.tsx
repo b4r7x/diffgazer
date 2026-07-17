@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
@@ -137,19 +137,106 @@ describe("Switch", () => {
 
   it("resets uncontrolled state with native form reset", async () => {
     const user = userEvent.setup();
+    const onChange = vi.fn();
     render(
       <form aria-label="Test form">
-        <Switch name="toggle" defaultChecked aria-label="Toggle" />
+        <Switch name="toggle" defaultChecked onChange={onChange} aria-label="Toggle" />
       </form>,
     );
 
     await user.click(screen.getByRole("switch"));
     const form = getForm();
+    expect(document.querySelector<HTMLInputElement>('[data-slot="switch-form-mirror"]')?.form).toBe(
+      form,
+    );
     expect(new FormData(form).has("toggle")).toBe(false);
+    expect(onChange).toHaveBeenCalledOnce();
 
     form.reset();
     await waitFor(() => expect(new FormData(form).get("toggle")).toBe("on"));
     await waitFor(() => expect(screen.getByRole("switch")).toHaveAttribute("aria-checked", "true"));
+    expect(onChange).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a Switch activation newer than a same-task form reset", async () => {
+    render(
+      <form aria-label="Test form">
+        <Switch name="toggle" aria-label="Toggle" />
+      </form>,
+    );
+    const control = screen.getByRole("switch");
+    const form = getForm();
+
+    form.reset();
+    // fireEvent retained: activation must remain in the reset task before its microtask can flush.
+    fireEvent.click(control);
+    await Promise.resolve();
+
+    expect(control).toHaveAttribute("aria-checked", "true");
+    expect(new FormData(form).get("toggle")).toBe("on");
+  });
+
+  it("applies a Switch reset before a later activation", async () => {
+    const user = userEvent.setup();
+    render(
+      <form aria-label="Test form">
+        <Switch name="toggle" defaultChecked aria-label="Toggle" />
+      </form>,
+    );
+    const control = screen.getByRole("switch");
+    const form = getForm();
+
+    await user.click(control);
+    expect(new FormData(form).has("toggle")).toBe(false);
+
+    form.reset();
+    await waitFor(() => expect(new FormData(form).get("toggle")).toBe("on"));
+    expect(control).toHaveAttribute("aria-checked", "true");
+
+    await user.click(control);
+    expect(control).toHaveAttribute("aria-checked", "false");
+    expect(new FormData(form).has("toggle")).toBe(false);
+  });
+
+  it("submits to and resets with an explicit remote form instead of its physical ancestor", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <>
+        <form aria-label="Physical form">
+          <Switch
+            form="remote-form"
+            name="notifications"
+            value="enabled"
+            defaultChecked
+            onChange={onChange}
+            aria-label="Notifications"
+          />
+        </form>
+        <form id="remote-form" aria-label="Remote form" />
+      </>,
+    );
+
+    const physical = getForm("Physical form");
+    const remote = getForm("Remote form");
+    const mirror = document.querySelector<HTMLInputElement>('[data-slot="switch-form-mirror"]');
+    expect(mirror?.form).toBe(remote);
+    expect(new FormData(physical).has("notifications")).toBe(false);
+    expect(new FormData(remote).get("notifications")).toBe("enabled");
+
+    await user.click(screen.getByRole("switch", { name: "Notifications" }));
+    expect(new FormData(remote).has("notifications")).toBe(false);
+    expect(onChange).toHaveBeenCalledOnce();
+
+    remote.reset();
+    await waitFor(() => expect(new FormData(remote).get("notifications")).toBe("enabled"));
+    await waitFor(() =>
+      expect(screen.getByRole("switch", { name: "Notifications" })).toHaveAttribute(
+        "aria-checked",
+        "true",
+      ),
+    );
+    expect(onChange).toHaveBeenCalledOnce();
   });
 
   it("focuses the switch when native required validation fails", async () => {

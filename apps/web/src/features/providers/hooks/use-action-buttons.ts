@@ -1,18 +1,11 @@
-import type { AIProvider } from "@diffgazer/core/schemas/config";
-import { useActionRowNavigation, useKey } from "@diffgazer/keys";
+import type { AIProvider, ProviderWithStatus } from "@diffgazer/core/schemas/config";
+import { DECLINE, useActionRowNavigation, useKey } from "@diffgazer/keys";
 import type { RefCallback } from "react";
 
 const BUTTON_COUNT = 4;
 
-interface SelectedProvider {
-  id: AIProvider;
-  hasApiKey: boolean;
-  model?: string;
-  name: string;
-}
-
 interface UseProvidersActionButtonsOptions {
-  selectedProvider: SelectedProvider | null;
+  selectedProvider: ProviderWithStatus | null;
   dialogOpen: boolean;
   inButtons: boolean;
   setZone: (zone: "input" | "filters" | "list" | "buttons") => void;
@@ -20,7 +13,7 @@ interface UseProvidersActionButtonsOptions {
   onSetApiKey: () => void;
   onSelectModel: () => void;
   onRemoveKey: (id: AIProvider) => Promise<void>;
-  onSelectProvider: (id: AIProvider, name: string, model: string | undefined) => Promise<void>;
+  onActivateProvider: (provider: ProviderWithStatus) => void;
 }
 
 interface UseProvidersActionButtonsResult {
@@ -45,19 +38,16 @@ export function useProvidersActionButtons({
   onSetApiKey,
   onSelectModel,
   onRemoveKey,
-  onSelectProvider,
+  onActivateProvider,
 }: UseProvidersActionButtonsOptions): UseProvidersActionButtonsResult {
   const hasApiKey = selectedProvider?.hasApiKey ?? false;
   const canRemoveKey = hasApiKey;
-  const needsModel = selectedProvider !== null && !selectedProvider.model;
-  const canSelectProvider = hasApiKey && !needsModel;
 
   const handleButtonAction = (index: number) => {
     if (!selectedProvider) return;
     switch (index) {
       case 0:
-        if (canSelectProvider)
-          void onSelectProvider(selectedProvider.id, selectedProvider.name, selectedProvider.model);
+        onActivateProvider(selectedProvider);
         break;
       case 1:
         onSetApiKey();
@@ -74,7 +64,7 @@ export function useProvidersActionButtons({
   const actionRow = useActionRowNavigation<readonly unknown[]>({
     enabled: !dialogOpen && inButtons,
     actionCount: BUTTON_COUNT,
-    disabledActions: [!canSelectProvider, false, !canRemoveKey, !hasApiKey],
+    disabledActions: [false, false, !canRemoveKey, !hasApiKey],
     onAction: handleButtonAction,
     onNavigationBoundaryReached: (direction) => {
       if (direction === "previous") {
@@ -104,7 +94,7 @@ export function useProvidersActionButtons({
   };
 
   const navigateButtonsVertical = (direction: 1 | -1) => {
-    const enabledFlags = [canSelectProvider, true, canRemoveKey, hasApiKey];
+    const enabledFlags = [true, true, canRemoveKey, hasApiKey];
     let next = actionRow.focusedIndex + direction;
     while (next >= 0 && next < BUTTON_COUNT) {
       if (enabledFlags[next]) {
@@ -113,9 +103,16 @@ export function useProvidersActionButtons({
       }
       next += direction;
     }
+    return DECLINE;
   };
-  useKey("ArrowUp", () => navigateButtonsVertical(-1), { enabled: !dialogOpen && inButtons });
-  useKey("ArrowDown", () => navigateButtonsVertical(1), { enabled: !dialogOpen && inButtons });
+  useKey("ArrowUp", () => navigateButtonsVertical(-1), {
+    enabled: !dialogOpen && inButtons,
+    preventDefault: true,
+  });
+  useKey("ArrowDown", () => navigateButtonsVertical(1), {
+    enabled: !dialogOpen && inButtons,
+    preventDefault: true,
+  });
 
   return {
     buttonIndex: actionRow.focusedIndex,

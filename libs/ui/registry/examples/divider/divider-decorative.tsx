@@ -7,7 +7,7 @@ export default function DividerDecorative() {
         <h3 className="text-sm font-medium">Account Settings</h3>
         <p className="text-sm text-muted-foreground">Manage your profile and preferences.</p>
       </section>
-      <Divider decorative={false} />
+      <Divider decorative={false} aria-label="Account settings and danger zone" />
       <section>
         <h3 className="text-sm font-medium">Danger Zone</h3>
         <p className="text-sm text-muted-foreground">Irreversible actions like account deletion.</p>

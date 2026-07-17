@@ -1,16 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   cancelSessionsForProject,
+  cancelSessionsForProvider,
   registerSession,
   unregisterSession,
 } from "./session-registry.js";
 
-describe("session-registry", () => {
-  beforeEach(() => {
-    unregisterSession("a");
-    unregisterSession("b");
-  });
+const sessionIds = ["project-a-gemini", "project-b-gemini", "project-b-openrouter"];
 
+beforeEach(() => {
+  unregisterSession("a");
+  unregisterSession("b");
+  for (const sessionId of sessionIds) unregisterSession(sessionId);
+});
+
+describe("session-registry", () => {
   it("cancels every registered session matching the project key", () => {
     const cancelA = vi.fn();
     const cancelB = vi.fn();
@@ -57,5 +61,32 @@ describe("session-registry", () => {
       message: "config deleted",
       reason: "config_deleted",
     });
+  });
+
+  it("cancels matching provider sessions across projects without cancelling another provider", () => {
+    const projectAGemini = vi.fn();
+    const projectBGemini = vi.fn();
+    const projectBOpenRouter = vi.fn();
+
+    registerSession(sessionIds[0] ?? "", { projectKey: "/project/a", cancel: projectAGemini });
+    registerSession(sessionIds[1] ?? "", { projectKey: "/project/b", cancel: projectBGemini });
+    registerSession(sessionIds[2] ?? "", {
+      projectKey: "/project/b",
+      cancel: (options) => {
+        if (options?.provider === "openrouter") projectBOpenRouter(options);
+      },
+    });
+
+    cancelSessionsForProvider("gemini", { reason: "provider_deleted" });
+
+    expect(projectAGemini).toHaveBeenCalledWith({
+      provider: "gemini",
+      reason: "provider_deleted",
+    });
+    expect(projectBGemini).toHaveBeenCalledWith({
+      provider: "gemini",
+      reason: "provider_deleted",
+    });
+    expect(projectBOpenRouter).not.toHaveBeenCalled();
   });
 });

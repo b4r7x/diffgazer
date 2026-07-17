@@ -11,18 +11,14 @@ import { Header } from "./header";
 const MIN_COLUMNS = 40;
 
 function ConnectedHeader() {
-  const { goBack, canGoBack } = useNavigation();
+  const { canGoBack } = useNavigation();
   const { data, isLoading } = useInit();
 
   const providerStatus = getProviderDisplayStatus(isLoading, data?.configured ?? false);
   const providerName = getProviderDisplay(data?.config?.provider, data?.config?.model);
 
   return (
-    <Header
-      providerName={providerName}
-      providerStatus={providerStatus}
-      onBack={canGoBack ? goBack : undefined}
-    />
+    <Header providerName={providerName} providerStatus={providerStatus} showBack={canGoBack} />
   );
 }
 
@@ -51,7 +47,7 @@ export function GlobalLayout({ children }: GlobalLayoutProps) {
   return (
     <Box flexDirection="column" width={columns} height={rows}>
       <ConnectedHeader />
-      <Box flexGrow={1} flexDirection="column">
+      <Box flexGrow={1} minHeight={0} overflow="hidden" flexDirection="column">
         {children}
       </Box>
       <ConnectedFooter />

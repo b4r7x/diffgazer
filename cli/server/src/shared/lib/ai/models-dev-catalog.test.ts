@@ -1,9 +1,17 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { PROVIDER_OVERLAY } from "@diffgazer/core/catalog";
+import {
+  assertCatalogSnapshotBundleEvidence,
+  CATALOG_SNAPSHOT,
+  getCatalogSnapshotBundleEvidence,
+  PROVIDER_OVERLAY,
+  SURFACED_OVERLAYS,
+} from "@diffgazer/core/catalog";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { ProviderModelsResponseSchema } from "@diffgazer/core/schemas/config";
+import { createDeferred } from "@diffgazer/core/testing/deferred";
+import ts from "typescript";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const writeJsonFileSyncFailPaths = vi.hoisted(() => new Set<string>());
@@ -25,6 +33,7 @@ vi.mock("../fs.js", async (importOriginal) => {
 });
 
 import { requireValue } from "../../../testing/assertions.js";
+import { makeChunkedResponse } from "../testing/http.js";
 import {
   fetchModelsDevCatalog,
   getProviderModels,
@@ -33,33 +42,57 @@ import {
 } from "./models-dev-catalog.js";
 import { MODELS_DEV_SAMPLE } from "./models-dev-sample.js";
 
+const SERVER_ROOT = path.resolve(import.meta.dirname, "../../../..");
+const TEST_ONLY_FIXTURES = [
+  "src/shared/lib/ai/models-dev-sample.ts",
+  "src/shared/lib/testing/factories.ts",
+  "src/shared/lib/testing/http.ts",
+] as const;
+
+function parseTsConfig(configName: string): ts.ParsedCommandLine {
+  const configPath = path.join(SERVER_ROOT, configName);
+  const config = ts.readConfigFile(configPath, ts.sys.readFile);
+  if (config.error) {
+    throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, "\n"));
+  }
+
+  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, SERVER_ROOT, {}, configPath);
+  if (parsed.errors.length > 0) {
+    throw new Error(
+      parsed.errors
+        .map((error) => ts.flattenDiagnosticMessageText(error.messageText, "\n"))
+        .join("\n"),
+    );
+  }
+  return parsed;
+}
+
+type PathSystem = Pick<ts.System, "realpath" | "useCaseSensitiveFileNames">;
+
+function canonicalPhysicalPath(filePath: string, system: PathSystem = ts.sys): string {
+  const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(SERVER_ROOT, filePath);
+  const physicalPath = system.realpath?.(absolutePath) ?? fs.realpathSync.native(absolutePath);
+  const normalizedPath = path.normalize(physicalPath);
+  return system.useCaseSensitiveFileNames ? normalizedPath : normalizedPath.toLowerCase();
+}
+
 let testHome: string;
 const cachePath = (): string => path.join(testHome, "models-dev.json");
-const writeCache = (catalog: unknown, fetchedAt: string): void => {
-  fs.writeFileSync(cachePath(), `${JSON.stringify({ catalog, fetchedAt }, null, 2)}\n`);
+const writeCache = (catalog: unknown, fetchedAt: string, generationId?: string): void => {
+  fs.writeFileSync(
+    cachePath(),
+    `${JSON.stringify({ catalog, fetchedAt, ...(generationId && { generationId }) }, null, 2)}\n`,
+  );
 };
 const readCache = (): unknown => JSON.parse(fs.readFileSync(cachePath(), "utf-8"));
+const catalogWithGoogleModel = (modelId: string): unknown => ({
+  google: {
+    id: "google",
+    models: { [modelId]: { id: modelId, name: modelId } },
+  },
+});
 const okResponse = (body: unknown, headers?: Record<string, string>): Response =>
   ({ ok: true, status: 200, headers: new Headers(headers), json: async () => body }) as Response;
-const chunkedResponse = (text: string, headers?: Record<string, string>): Response => {
-  const bytes = new TextEncoder().encode(text);
-  return {
-    ok: true,
-    status: 200,
-    headers: new Headers(headers),
-    body: new ReadableStream({
-      start(controller) {
-        let offset = 0;
-        const chunkSize = 64 * 1024;
-        while (offset < bytes.length) {
-          controller.enqueue(bytes.slice(offset, offset + chunkSize));
-          offset += chunkSize;
-        }
-        controller.close();
-      },
-    }),
-  } as Response;
-};
 const fresh = (): string => new Date().toISOString();
 const stale = (): string => new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
 const MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
@@ -69,6 +102,30 @@ const ENABLED_PROVIDERS = (
 )
   .filter(([, overlay]) => overlay.enabled)
   .map(([id]) => id);
+
+describe("CATALOG_SNAPSHOT bundle evidence", () => {
+  const otherBundledCatalogInputs = { PROVIDER_OVERLAY, SURFACED_OVERLAYS };
+
+  it("accepts the real bundled snapshot", () => {
+    const evidence = getCatalogSnapshotBundleEvidence(CATALOG_SNAPSHOT, [
+      otherBundledCatalogInputs,
+    ]);
+
+    expect(() =>
+      assertCatalogSnapshotBundleEvidence(JSON.stringify(CATALOG_SNAPSHOT), evidence),
+    ).not.toThrow();
+  });
+
+  it("rejects a complete overlay bundle with the snapshot removed", () => {
+    const evidence = getCatalogSnapshotBundleEvidence(CATALOG_SNAPSHOT, [
+      otherBundledCatalogInputs,
+    ]);
+
+    expect(() =>
+      assertCatalogSnapshotBundleEvidence(JSON.stringify(otherBundledCatalogInputs), evidence),
+    ).toThrowError(/CATALOG_SNAPSHOT evidence missing/);
+  });
+});
 
 beforeEach(() => {
   testHome = fs.mkdtempSync(path.join(os.tmpdir(), "dg-models-dev-"));
@@ -83,6 +140,44 @@ afterEach(() => {
   delete process.env.DIFFGAZER_HOME;
   delete process.env.DIFFGAZER_OFFLINE;
   fs.rmSync(testHome, { recursive: true, force: true });
+});
+
+describe("TypeScript config boundaries", () => {
+  it("keeps fixtures in test roots and out of production roots and transitive sources", () => {
+    const productionConfig = parseTsConfig("tsconfig.json");
+    const testConfig = parseTsConfig("tsconfig.test.json");
+    const productionRootPaths = productionConfig.fileNames.map((fileName) =>
+      canonicalPhysicalPath(fileName),
+    );
+    const testRootPaths = testConfig.fileNames.map((fileName) => canonicalPhysicalPath(fileName));
+    const productionSourcePaths = ts
+      .createProgram({
+        rootNames: productionConfig.fileNames,
+        options: productionConfig.options,
+      })
+      .getSourceFiles()
+      .map(({ fileName }) => canonicalPhysicalPath(fileName));
+
+    for (const fixture of TEST_ONLY_FIXTURES) {
+      const fixturePath = canonicalPhysicalPath(fixture);
+      expect(productionRootPaths).not.toContain(fixturePath);
+      expect(productionSourcePaths).not.toContain(fixturePath);
+      expect(testRootPaths).toContain(fixturePath);
+    }
+  });
+
+  it("detects a differently cased fixture in a case-insensitive source graph", () => {
+    const fixturePath = path.join(SERVER_ROOT, TEST_ONLY_FIXTURES[0]);
+    const compilerPath = fixturePath.toUpperCase();
+    const system = {
+      useCaseSensitiveFileNames: false,
+      realpath: (filePath: string) => filePath,
+    };
+
+    expect([canonicalPhysicalPath(compilerPath, system)]).toContain(
+      canonicalPhysicalPath(fixturePath, system),
+    );
+  });
 });
 
 describe("fetchModelsDevCatalog", () => {
@@ -125,7 +220,7 @@ describe("fetchModelsDevCatalog", () => {
 
   it("refuses a chunked response whose body exceeds the ceiling without Content-Length", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      chunkedResponse(
+      makeChunkedResponse(
         `{"google":{"id":"google","models":{"big":{"id":"big","name":"${"x".repeat(MAX_RESPONSE_BYTES)}"}}}}`,
       ),
     );
@@ -183,13 +278,23 @@ describe("fetchModelsDevCatalog", () => {
 });
 
 describe("ModelsDevCatalogCacheSchema", () => {
-  it("accepts a keyless { catalog, fetchedAt } entry", () => {
+  it("accepts a legacy entry without a generation id", () => {
     expect(
       ModelsDevCatalogCacheSchema.safeParse({
         catalog: { google: { id: "google", models: {} } },
         fetchedAt: fresh(),
       }).success,
     ).toBe(true);
+  });
+
+  it("rejects a malformed generation id", () => {
+    expect(
+      ModelsDevCatalogCacheSchema.safeParse({
+        catalog: { google: { id: "google", models: {} } },
+        fetchedAt: fresh(),
+        generationId: "not-a-uuid",
+      }).success,
+    ).toBe(false);
   });
   it("rejects an entry missing fetchedAt", () => {
     expect(
@@ -210,6 +315,10 @@ describe("getProviderModels — three-tier fallback", () => {
     // The persisted file must round-trip through the cache schema...
     const persisted = ModelsDevCatalogCacheSchema.safeParse(readCache());
     expect(persisted.success).toBe(true);
+    if (!persisted.success) throw new Error("Expected a valid persisted models.dev cache");
+    expect(persisted.data.generationId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
 
     // ...and a follow-up request must serve that fresh persisted cache without refetching.
     fetchSpy.mockClear();
@@ -217,6 +326,32 @@ describe("getProviderModels — three-tier fallback", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(followUp.source).toBe("cache");
     expect(followUp.models.map((m) => m.id)).toContain("gemini-2.5-flash");
+  });
+
+  it("uses every provider joining a flight when deciding whether to persist its catalog", async () => {
+    const response = createDeferred<Response>();
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockReturnValue(response.promise);
+    const google =
+      MODELS_DEV_SAMPLE !== null &&
+      typeof MODELS_DEV_SAMPLE === "object" &&
+      "google" in MODELS_DEV_SAMPLE
+        ? MODELS_DEV_SAMPLE.google
+        : undefined;
+
+    const missingProviderRequest = getProviderModels("groq");
+    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    const presentProviderRequest = getProviderModels("gemini");
+    response.resolve(okResponse({ google: requireValue(google, "sample google provider") }));
+
+    const [missingProvider, presentProvider] = await Promise.all([
+      missingProviderRequest,
+      presentProviderRequest,
+    ]);
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(missingProvider.source).toBe("snapshot");
+    expect(presentProvider.source).toBe("live");
+    expect(ModelsDevCatalogCacheSchema.safeParse(readCache()).success).toBe(true);
   });
 
   it("fresh disk cache: serves cache without fetching, source=cache", async () => {
@@ -335,6 +470,45 @@ describe("getProviderModels — three-tier fallback", () => {
     // not pin the prior generation's parse.
     expect(second.source).toBe("snapshot");
     expect(second.models.length).toBeGreaterThan(0);
+  });
+
+  it("serves replacement legacy contents when fetchedAt is unchanged", async () => {
+    const fetchedAt = fresh();
+    writeCache(catalogWithGoogleModel("first-model"), fetchedAt);
+    expect((await getProviderModels("gemini")).models.map((model) => model.id)).toEqual([
+      "first-model",
+    ]);
+
+    writeCache(catalogWithGoogleModel("second-model"), fetchedAt);
+    expect((await getProviderModels("gemini")).models.map((model) => model.id)).toEqual([
+      "second-model",
+    ]);
+  });
+
+  it("scopes parsed cache generations to their cache path", async () => {
+    const fetchedAt = fresh();
+    const generationId = "4f9ec069-6874-4a91-8b4d-ceca1a5b3a94";
+    const firstHome = path.join(testHome, "first");
+    const secondHome = path.join(testHome, "second");
+    fs.mkdirSync(firstHome, { recursive: true });
+    fs.mkdirSync(secondHome, { recursive: true });
+    fs.writeFileSync(
+      path.join(firstHome, "models-dev.json"),
+      `${JSON.stringify({ catalog: catalogWithGoogleModel("first-path"), fetchedAt, generationId })}\n`,
+    );
+    fs.writeFileSync(
+      path.join(secondHome, "models-dev.json"),
+      `${JSON.stringify({ catalog: catalogWithGoogleModel("second-path"), fetchedAt, generationId })}\n`,
+    );
+
+    process.env.DIFFGAZER_HOME = firstHome;
+    expect((await getProviderModels("gemini")).models.map((model) => model.id)).toEqual([
+      "first-path",
+    ]);
+    process.env.DIFFGAZER_HOME = secondHome;
+    expect((await getProviderModels("gemini")).models.map((model) => model.id)).toEqual([
+      "second-path",
+    ]);
   });
 
   it("fresh cache missing the requested provider: never serves a blank picker, falls through to the snapshot", async () => {

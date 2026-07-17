@@ -91,4 +91,75 @@ describe("requireSetup", () => {
     expect(response.status).toBe(200);
     expect(body).toEqual({ ok: true });
   });
+
+  it("uses SETUP_REQUIRED for an active provider whose credential is absent", async () => {
+    const app = await createApp();
+    const store = (await import("../lib/config/store.js")).getStore();
+    vi.spyOn(store, "getProviders").mockReturnValue([
+      {
+        provider: "gemini",
+        hasApiKey: true,
+        isActive: true,
+        model: "gemini-2.5-flash",
+      },
+    ]);
+    vi.spyOn(store, "getProviderApiKey").mockReturnValue({ ok: true, value: null });
+
+    const response = await request(app);
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "SETUP_REQUIRED", message: expect.stringContaining("provider") },
+    });
+  });
+
+  it("uses SETUP_REQUIRED for an active provider without a model", async () => {
+    const app = await createApp();
+    const store = (await import("../lib/config/store.js")).getStore();
+    vi.spyOn(store, "getSettings").mockReturnValue({
+      ...store.getSettings(),
+      secretsStorage: "file",
+    });
+    vi.spyOn(store, "getProviders").mockReturnValue([
+      { provider: "gemini", hasApiKey: true, isActive: true },
+    ]);
+    vi.spyOn(store, "getProviderApiKey").mockReturnValue({ ok: true, value: "file-key" });
+
+    const response = await request(app);
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "SETUP_REQUIRED", message: expect.stringContaining("model") },
+    });
+  });
+
+  it.each([
+    "KEYRING_UNAVAILABLE",
+    "KEYRING_READ_FAILED",
+  ] as const)("returns the concrete setup storage error %s", async (errorCode) => {
+    const app = await createApp();
+    const store = (await import("../lib/config/store.js")).getStore();
+    vi.spyOn(store, "getProviders").mockReturnValue([
+      {
+        provider: "gemini",
+        hasApiKey: true,
+        isActive: true,
+        model: "gemini-2.5-flash",
+      },
+    ]);
+    vi.spyOn(store, "getProviderApiKey").mockReturnValue({
+      ok: false,
+      error: { code: errorCode, message: "Credential storage unavailable" },
+    });
+
+    const response = await request(app);
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: errorCode,
+        message: expect.stringContaining("Check secrets storage access and retry"),
+      },
+    });
+  });
 });

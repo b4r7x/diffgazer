@@ -19,9 +19,11 @@ export default function SidebarDefault() {
       <SidebarContent>
         <SidebarSection>
           <SidebarSectionTitle>Components</SidebarSectionTitle>
-          <SidebarItem active>Button</SidebarItem>
-          <SidebarItem>Dialog</SidebarItem>
-          <SidebarItem>
+          <SidebarItem active href="#button">
+            Button
+          </SidebarItem>
+          <SidebarItem href="#dialog">Dialog</SidebarItem>
+          <SidebarItem href="#sidebar">
             <SidebarItemLabel>Sidebar</SidebarItemLabel>
             <SidebarItemBadge>
               <span className="text-xs text-muted-foreground">new</span>
@@ -31,8 +33,8 @@ export default function SidebarDefault() {
         </SidebarSection>
         <SidebarSection>
           <SidebarSectionTitle>Hooks</SidebarSectionTitle>
-          <SidebarItem>useTheme</SidebarItem>
-          <SidebarItem>useMediaQuery</SidebarItem>
+          <SidebarItem href="#use-theme">useTheme</SidebarItem>
+          <SidebarItem href="#use-media-query">useMediaQuery</SidebarItem>
         </SidebarSection>
       </SidebarContent>
       <SidebarFooter>

@@ -87,9 +87,7 @@ export function ModelList({
           ))}
         </RadioGroup>
       ) : null}
-      {/* Live region stays mounted across the results→empty transition so the
-          empty/loading/saving message is announced; empty while results exist. */}
-      <EmptyState size="sm" live>
+      <EmptyState size="sm" live className={showList ? "sr-only" : undefined}>
         {showList ? null : (
           <StatusMessage isSaving={isSaving} isLoading={isLoading} emptyLabel={emptyLabel} />
         )}

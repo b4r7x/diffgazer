@@ -19,7 +19,7 @@ export const progressDoc: ComponentDoc = {
     {
       title: "Value Clamping",
       content:
-        "The value is clamped between 0 and max. Values outside this range are silently corrected.",
+        "The value is clamped between 0 and max. Values outside this range are silently corrected. A non-finite, zero, or negative max is normalized to the default of 100 before ARIA values and fill width are calculated.",
     },
     {
       title: "Reduced Motion",
@@ -49,7 +49,8 @@ export const progressDoc: ComponentDoc = {
         type: "number",
         required: false,
         defaultValue: "100",
-        description: "Maximum value for the progress bar.",
+        description:
+          "Finite positive maximum for the progress bar. Invalid values are normalized to 100.",
       },
       size: {
         type: '"sm" | "md"',

@@ -50,12 +50,14 @@ function makeInitResponse(): Awaited<ReturnType<BoundApi["loadInit"]>> {
 }
 
 let mockGetSettings: Mock<BoundApi["getSettings"]>;
+let mockGetProviderStatus: Mock<BoundApi["getProviderStatus"]>;
 let mockLoadInit: Mock<BoundApi["loadInit"]>;
 
 function createTestApi(): BoundApi {
   return {
     ...createApi({ baseUrl: "http://localhost" }),
     getSettings: mockGetSettings,
+    getProviderStatus: mockGetProviderStatus,
     loadInit: mockLoadInit,
   } satisfies BoundApi;
 }
@@ -89,6 +91,9 @@ describe("SettingsHubPage", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
     mockGetSettings = vi.fn<BoundApi["getSettings"]>().mockResolvedValue(SETTINGS_FIXTURE);
+    mockGetProviderStatus = vi
+      .fn<BoundApi["getProviderStatus"]>()
+      .mockResolvedValue(makeInitResponse().providers);
     mockLoadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse());
     localStorage.clear();
   });
@@ -96,7 +101,7 @@ describe("SettingsHubPage", () => {
   it("exposes the panel as a region named Settings Hub without double-announcing the corner label", async () => {
     renderPage();
 
-    expect(screen.getByRole("region", { name: /settings hub/i })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: /settings hub/i })).toBeInTheDocument();
 
     // getByText throws on multiple matches, so this also proves "Settings Hub" appears once.
     const cornerLabel = screen.getByText("Settings Hub");
@@ -117,9 +122,9 @@ describe("SettingsHubPage", () => {
     expect(screen.queryByText("local settings")).not.toBeInTheDocument();
   });
 
-  it("names the persistent settings menu so it is not an unlabeled role=menu", () => {
+  it("names the persistent settings menu so it is not an unlabeled role=menu", async () => {
     renderPage();
-    expect(screen.getByRole("menu", { name: /settings/i })).toBeInTheDocument();
+    expect(await screen.findByRole("menu", { name: /settings/i })).toBeInTheDocument();
   });
 
   it("navigates to the selected settings section", async () => {
@@ -150,5 +155,62 @@ describe("SettingsHubPage", () => {
       expect(trustRow).toHaveTextContent("Trusted");
       expect(trustRow).not.toHaveTextContent("Not trusted");
     });
+  });
+
+  it("shows not trusted when repository access belongs to the previous root", async () => {
+    const movedInit = makeInitResponse();
+    movedInit.project = {
+      ...movedInit.project,
+      path: "/tmp/moved-repo",
+      trust: {
+        projectId: "proj-1",
+        repoRoot: "/tmp/repo",
+        trustedAt: "2026-01-01T00:00:00.000Z",
+        trustMode: "persistent",
+        capabilities: { readFiles: true, runCommands: false },
+      },
+    };
+    mockLoadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(movedInit);
+    renderPage();
+
+    const trustRow = await screen.findByRole("menuitem", { name: /trust & permissions/i });
+    await waitFor(() => {
+      expect(trustRow).toHaveTextContent("Not trusted");
+    });
+  });
+
+  it("preserves trusted init data when provider status fails", async () => {
+    const trustedInit = makeInitResponse();
+    trustedInit.project = {
+      ...trustedInit.project,
+      trust: {
+        projectId: "proj-1",
+        repoRoot: "/tmp/repo",
+        trustedAt: "2026-01-01T00:00:00.000Z",
+        trustMode: "persistent",
+        capabilities: { readFiles: true, runCommands: false },
+      },
+    };
+    mockLoadInit.mockResolvedValue(trustedInit);
+    mockGetProviderStatus.mockRejectedValue(new Error("provider status unavailable"));
+
+    renderPage();
+
+    const trustRow = await screen.findByRole("menuitem", { name: /trust & permissions/i });
+    await waitFor(() => {
+      expect(trustRow).toHaveTextContent("Trusted");
+      expect(trustRow).not.toHaveTextContent("Not trusted");
+    });
+    expect(screen.getByRole("menuitem", { name: /provider/i })).toHaveTextContent(/openrouter/i);
+  });
+
+  it("shows an init error instead of false settings defaults", async () => {
+    mockLoadInit.mockRejectedValue(new Error("init unavailable"));
+
+    renderPage();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Configuration unavailable.");
+    expect(screen.queryByText("Not trusted")).not.toBeInTheDocument();
+    expect(screen.queryByText("Not configured")).not.toBeInTheDocument();
   });
 });

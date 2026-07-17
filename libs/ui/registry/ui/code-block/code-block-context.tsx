@@ -24,16 +24,14 @@ export interface CodeBlockContextValue {
    * disables chrome - useful for a terminal pane without window dots.
    */
   chrome: CodeBlockChrome;
-  /** DOM id for label. */
-  labelId: string;
-  /** Whether code block has label. */
-  hasLabel: boolean;
+  /** Registers the id of a label that actually rendered. */
+  registerLabel: (id: string) => () => void;
   /**
    * Language identifier exposed as data-language and used in the default aria-label
    * ("{language} code").
    */
-  language: string | undefined;
-  fallbackName: string;
+  ariaLabel: string | undefined;
+  ariaLabelledBy: string | undefined;
 }
 
 const CodeBlockContext = createContext<CodeBlockContextValue | null>(null);

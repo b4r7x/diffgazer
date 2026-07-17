@@ -140,17 +140,34 @@ describe("IssueListPane severity accessibility", () => {
   });
 
   it("announces the filter-to-empty state as a live status region", () => {
-    render(
+    const callbacks = { onSelectIssue: vi.fn() };
+    const onSeverityFilterChange = vi.fn();
+    const { rerender } = render(
+      <IssueListPane
+        listState={{ issues, allIssues: issues, selectedIssueId: null }}
+        callbacks={callbacks}
+        filter={{ severityFilter: new Set(), onSeverityFilterChange }}
+        refs={{}}
+        ui={{ isFocused: true }}
+      />,
+    );
+    const liveRegion = screen.getByRole("status");
+
+    expect(liveRegion).toHaveTextContent("");
+    expect(liveRegion).toHaveClass("sr-only");
+
+    rerender(
       <IssueListPane
         listState={{ issues: [], allIssues: issues, selectedIssueId: null }}
-        callbacks={{ onSelectIssue: vi.fn() }}
-        filter={{ severityFilter: new Set(["nit"]), onSeverityFilterChange: vi.fn() }}
+        callbacks={callbacks}
+        filter={{ severityFilter: new Set(["nit"]), onSeverityFilterChange }}
         refs={{}}
         ui={{ isFocused: true }}
       />,
     );
 
-    // F-353(d): the empty message announces on appear, matching the history page.
-    expect(screen.getByRole("status")).toHaveTextContent(/no issues match/i);
+    expect(screen.getByRole("status")).toBe(liveRegion);
+    expect(liveRegion).toHaveTextContent(/no issues match/i);
+    expect(liveRegion).not.toHaveClass("sr-only");
   });
 });

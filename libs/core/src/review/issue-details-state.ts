@@ -8,9 +8,10 @@ import type { ReviewIssue } from "../schemas/review/index.js";
  * empty trace tab disappears and tab-cycling skips it.
  */
 export function getAvailableIssueTabs(issue: ReviewIssue | null | undefined): IssueTab[] {
+  if (!issue) return [];
   return ISSUE_TABS.filter((tab) => {
-    if (tab === "patch") return Boolean(issue?.suggested_patch);
-    if (tab === "trace") return Boolean(issue?.trace?.length);
+    if (tab === "patch") return Boolean(issue.suggested_patch);
+    if (tab === "trace") return Boolean(issue.trace?.length);
     return true;
   });
 }

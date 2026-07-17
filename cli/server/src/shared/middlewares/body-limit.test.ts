@@ -1,10 +1,11 @@
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
+import { configRouter } from "../../features/config/router.js";
 import { reviewRouter } from "../../features/review/router.js";
-import { DEFAULT_BODY_LIMIT_KB } from "./body-limit.js";
+import { CREATE_REVIEW_BODY_LIMIT_KB, DEFAULT_BODY_LIMIT_KB } from "./body-limit.js";
 
 function createReviewApp(): Hono {
-  return new Hono().route("/api/review", reviewRouter);
+  return new Hono().route("/api/review", reviewRouter).route("/api/config", configRouter);
 }
 
 function jsonRequestWithBytes(byteLength: number): RequestInit {
@@ -16,23 +17,28 @@ function jsonRequestWithBytes(byteLength: number): RequestInit {
 }
 
 describe("body limit route wiring", () => {
-  it("rejects oversized review POST bodies and lets under-limit bodies reach later guards", async () => {
+  it("uses the review-specific cap without changing the default JSON route cap", async () => {
     const app = createReviewApp();
 
-    const oversized = await app.request(
+    const reviewAboveDefault = await app.request(
       "/api/review/reviews",
       jsonRequestWithBytes(DEFAULT_BODY_LIMIT_KB * 1024),
     );
-    const oversizedBody = (await oversized.json()) as { error: { code: string } };
+    expect(reviewAboveDefault.status).not.toBe(413);
 
-    expect(oversized.status).toBe(413);
-    expect(oversizedBody.error.code).toBe("PAYLOAD_TOO_LARGE");
-
-    const underLimit = await app.request(
+    const oversizedReview = await app.request(
       "/api/review/reviews",
-      jsonRequestWithBytes(DEFAULT_BODY_LIMIT_KB * 1024 - 1024),
+      jsonRequestWithBytes(CREATE_REVIEW_BODY_LIMIT_KB * 1024),
     );
+    expect(oversizedReview.status).toBe(413);
 
-    expect(underLimit.status).not.toBe(413);
+    const oversizedConfig = await app.request(
+      "/api/config",
+      jsonRequestWithBytes(DEFAULT_BODY_LIMIT_KB * 1024),
+    );
+    const oversizedBody = (await oversizedConfig.json()) as { error: { code: string } };
+
+    expect(oversizedConfig.status).toBe(413);
+    expect(oversizedBody.error.code).toBe("PAYLOAD_TOO_LARGE");
   });
 });

@@ -67,7 +67,7 @@ function SettingsThemeEditor({ savedTheme }: SettingsThemeEditorProps): ReactEle
   });
 
   const previewTheme = isListActive ? focusedTheme : selectedTheme;
-  const previewTokens = paletteForTheme(previewTheme, activeTokens);
+  const previewTokens = paletteForTheme(previewTheme);
 
   function handleCancel(): void {
     goBack();

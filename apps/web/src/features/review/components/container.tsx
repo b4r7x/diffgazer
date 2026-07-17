@@ -1,9 +1,14 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import { convertAgentEventsToLogEntries, mapStepsToProgressData } from "@diffgazer/core/review";
+import { mapStepsToProgressData } from "@diffgazer/core/review";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { CenteredStatus } from "@/components/shared/centered-status";
-import { type ReviewCompleteData, useReviewLifecycle } from "../hooks/use-lifecycle";
-import { ApiKeyMissingView } from "./api-key-missing-view";
+import { useConfigActions, useConfigData } from "@/hooks/use-config";
+import {
+  extractOrchestratorStats,
+  type ReviewCompleteData,
+  useReviewLifecycle,
+} from "../hooks/use-lifecycle";
+import { ApiKeyMissingView, ConfigurationErrorView } from "./api-key-missing-view";
 import { NoChangesView } from "./no-changes-view";
 import { ReviewProgressView } from "./progress-view";
 
@@ -22,13 +27,15 @@ export function ReviewLoadingMessage({ message }: { message: string }) {
 }
 
 export function ReviewContainer({ mode, onComplete, onStreamNotFound }: ReviewContainerProps) {
+  const { loadState } = useConfigData();
+  const { refresh } = useConfigActions();
   const {
     state,
     gate,
     contextSnapshot,
     loadingMessage,
     provider,
-    model,
+    isTransitionPending,
     handleCancel,
     handleBack,
     handleViewResults,
@@ -37,23 +44,34 @@ export function ReviewContainer({ mode, onComplete, onStreamNotFound }: ReviewCo
   } = useReviewLifecycle({ mode, onComplete, onStreamNotFound });
 
   const steps = mapStepsToProgressData(state.steps, state.agents);
-  const entries = convertAgentEventsToLogEntries(state.events);
+  const filesIncludedInPrompt = state.fileProgress.completed.length;
   const metrics = {
-    filesProcessed: state.fileProgress.completed.length,
+    filesProcessed: filesIncludedInPrompt,
     filesTotal: state.fileProgress.total,
     issuesFound: state.issues.length,
   };
   const progressData = {
     steps,
-    entries,
+    events: state.events,
     agents: state.agents,
+    lensStats: extractOrchestratorStats(state).lensStats,
     metrics,
     startTime: state.startedAt ?? undefined,
     contextSnapshot,
     notices: state.notices,
   };
 
-  if (gate === "loading") {
+  if (loadState.status === "error") {
+    return (
+      <ConfigurationErrorView
+        onRetry={() => void refresh()}
+        onBack={handleCancel}
+        primaryDisabled={isTransitionPending}
+      />
+    );
+  }
+
+  if (loadState.status === "loading" || gate === "loading") {
     return <ReviewLoadingMessage message={loadingMessage ?? "Loading review..."} />;
   }
 
@@ -61,15 +79,23 @@ export function ReviewContainer({ mode, onComplete, onStreamNotFound }: ReviewCo
     return (
       <ApiKeyMissingView
         activeProvider={provider}
-        missingModel={!model}
+        missing={loadState.setupStatus.missing}
         onNavigateSettings={handleSetupProvider}
         onBack={handleCancel}
+        primaryDisabled={isTransitionPending}
       />
     );
   }
 
   if (gate === "no-diff") {
-    return <NoChangesView mode={mode} onBack={handleCancel} onSwitchMode={handleSwitchMode} />;
+    return (
+      <NoChangesView
+        mode={mode}
+        onBack={handleCancel}
+        onSwitchMode={handleSwitchMode}
+        switchDisabled={isTransitionPending}
+      />
+    );
   }
 
   // Enable View Results only once the report step is completed. The server now
@@ -88,6 +114,7 @@ export function ReviewContainer({ mode, onComplete, onStreamNotFound }: ReviewCo
       onViewResults={canViewResults ? handleViewResults : undefined}
       onCancel={handleCancel}
       onBack={handleBack}
+      cancelDisabled={isTransitionPending}
     />
   );
 }

@@ -1,7 +1,9 @@
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { ok } from "@diffgazer/core/result";
+import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Boundary mock: git/service wraps the `git` CLI subprocess; tests feed canned status/diff responses.
@@ -10,6 +12,7 @@ vi.mock("../../../shared/lib/git/service.js", () => ({
 }));
 
 const writeOrder: string[] = [];
+let beforeAtomicWrite: ((filePath: string, content: string) => Promise<void>) | undefined;
 // Boundary mock: filesystem helper; delegates to the real atomic write while recording commit order.
 vi.mock("../../../shared/lib/fs.js", async () => {
   const actual = await vi.importActual<typeof import("../../../shared/lib/fs.js")>(
@@ -19,18 +22,25 @@ vi.mock("../../../shared/lib/fs.js", async () => {
     ...actual,
     atomicWriteFile: async (filePath: string, content: string, mode?: number) => {
       writeOrder.push(basename(filePath));
+      await beforeAtomicWrite?.(filePath, content);
       return actual.atomicWriteFile(filePath, content, mode);
     },
   };
 });
 
 import { createGitService } from "../../../shared/lib/git/service.js";
-import { buildProjectContextSnapshot, loadContextSnapshot } from "./snapshot.js";
+import { createKeyedLock } from "../storage/keyed-lock.js";
+import {
+  buildProjectContextSnapshot,
+  buildWorkspaceEdges,
+  loadContextSnapshot,
+} from "./snapshot.js";
 
 type GitService = ReturnType<typeof createGitService>;
+type StatusHashResult = Awaited<ReturnType<GitService["getStatusHash"]>>;
 
 let projectRoot: string;
-let statusHash = "hash-1";
+let statusHashResult: StatusHashResult = { kind: "full", hash: "hash-1" };
 
 function makeGitService(overrides: Partial<GitService> = {}): GitService {
   return {
@@ -49,14 +59,15 @@ function makeGitService(overrides: Partial<GitService> = {}): GitService {
     getDiff: vi.fn(async () => ok("")),
     isGitInstalled: vi.fn(async () => true),
     getHeadCommit: vi.fn(async () => ok("HEAD")),
-    getStatusHash: vi.fn(async () => ({ kind: "full" as const, hash: statusHash })),
+    getStatusHash: vi.fn(async () => statusHashResult),
     ...overrides,
   };
 }
 
 beforeEach(async () => {
   projectRoot = await mkdtemp(join(tmpdir(), "diffgazer-context-"));
-  statusHash = "hash-1";
+  statusHashResult = { kind: "full", hash: "hash-1" };
+  beforeAtomicWrite = undefined;
   vi.resetAllMocks();
   vi.mocked(createGitService).mockReturnValue(makeGitService());
 });
@@ -80,6 +91,99 @@ async function writeProjectFile(relativePath: string, content: string): Promise<
   await writeFile(absolutePath, content, "utf-8");
 }
 
+function snapshotArtifactNames(generation: string) {
+  return {
+    markdown: `context.${generation}.md`,
+    graph: `context.${generation}.json`,
+    meta: `context.${generation}.meta.json`,
+  } as const;
+}
+
+function sha256(content: string): string {
+  return createHash("sha256").update(content, "utf8").digest("hex");
+}
+
+async function writeSnapshotFixture(
+  contextDir: string,
+  snapshot: { markdown: string; graph: unknown; meta: unknown },
+  generation = "fixture",
+): Promise<void> {
+  const names = snapshotArtifactNames(generation);
+  const graphContent = JSON.stringify(snapshot.graph, null, 2);
+  const metaContent = JSON.stringify(snapshot.meta, null, 2);
+  await mkdir(contextDir, { recursive: true });
+  await writeFile(join(contextDir, names.markdown), snapshot.markdown, "utf-8");
+  await writeFile(join(contextDir, names.graph), graphContent, "utf-8");
+  await writeFile(join(contextDir, names.meta), metaContent, "utf-8");
+  await writeJson(join(contextDir, "context.manifest.json"), {
+    version: 1,
+    generation,
+    artifacts: {
+      markdown: { file: names.markdown, sha256: sha256(snapshot.markdown) },
+      graph: { file: names.graph, sha256: sha256(graphContent) },
+      meta: { file: names.meta, sha256: sha256(metaContent) },
+    },
+  });
+}
+
+async function readCurrentSnapshotFiles(contextDir: string) {
+  const manifest = await readJson<{
+    artifacts: {
+      markdown: { file: string };
+      graph: { file: string };
+      meta: { file: string };
+    };
+  }>(join(contextDir, "context.manifest.json"));
+  return {
+    markdown: await readFile(join(contextDir, manifest.artifacts.markdown.file), "utf-8"),
+    graph: await readJson<unknown>(join(contextDir, manifest.artifacts.graph.file)),
+    meta: await readJson<unknown>(join(contextDir, manifest.artifacts.meta.file)),
+  };
+}
+
+describe("createKeyedLock", () => {
+  it("continues in FIFO order after rejection and removes only the settled queue tail", async () => {
+    const registry = new Map<string, Promise<unknown>>();
+    const withLock = createKeyedLock(registry);
+    const firstGate = createDeferred<void>();
+    const secondGate = createDeferred<void>();
+    const firstStarted = createDeferred<void>();
+    const secondStarted = createDeferred<void>();
+    const failure = new Error("first operation failed");
+    const order: string[] = [];
+
+    const first = withLock("project", async () => {
+      order.push("first");
+      firstStarted.resolve();
+      await firstGate.promise;
+    });
+    await firstStarted.promise;
+
+    const second = withLock("project", async () => {
+      order.push("second");
+      secondStarted.resolve();
+      await secondGate.promise;
+    });
+    firstGate.reject(failure);
+
+    await expect(first).rejects.toBe(failure);
+    await secondStarted.promise;
+    expect(registry.size).toBe(1);
+
+    const third = withLock("project", async () => {
+      order.push("third");
+    });
+    await Promise.resolve();
+    expect(order).toEqual(["first", "second"]);
+
+    secondGate.resolve();
+    await Promise.all([second, third]);
+
+    expect(order).toEqual(["first", "second", "third"]);
+    expect(registry.size).toBe(0);
+  });
+});
+
 describe("loadContextSnapshot", () => {
   it("loads a snapshot from real context files", async () => {
     const contextDir = join(projectRoot, ".diffgazer");
@@ -95,12 +199,10 @@ describe("loadContextSnapshot", () => {
       generatedAt: "2025-01-01",
       root: projectRoot,
       statusHash: "hash-1",
+      statusHashKind: "full",
       charCount: 10,
     };
-    await mkdir(contextDir, { recursive: true });
-    await writeFile(join(contextDir, "context.md"), "# cached", "utf-8");
-    await writeJson(join(contextDir, "context.json"), graph);
-    await writeJson(join(contextDir, "context.meta.json"), meta);
+    await writeSnapshotFixture(contextDir, { markdown: "# cached", graph, meta });
 
     await expect(loadContextSnapshot(contextDir)).resolves.toEqual({
       markdown: "# cached",
@@ -113,9 +215,23 @@ describe("loadContextSnapshot", () => {
     await expect(loadContextSnapshot(join(projectRoot, ".diffgazer"))).resolves.toBeNull();
 
     const contextDir = join(projectRoot, ".diffgazer");
-    await mkdir(contextDir, { recursive: true });
-    await writeFile(join(contextDir, "context.md"), "# cached", "utf-8");
-    await writeFile(join(contextDir, "context.json"), "not json", "utf-8");
+    const graph = {
+      generatedAt: "2025-01-01",
+      root: projectRoot,
+      packages: [],
+      edges: [],
+      fileTree: [],
+      changedFiles: [],
+    };
+    const meta = {
+      generatedAt: "2025-01-01",
+      root: projectRoot,
+      statusHash: "hash-1",
+      statusHashKind: "full",
+      charCount: 8,
+    };
+    await writeSnapshotFixture(contextDir, { markdown: "# cached", graph, meta });
+    await writeFile(join(contextDir, snapshotArtifactNames("fixture").graph), "not json", "utf-8");
 
     await expect(loadContextSnapshot(contextDir)).resolves.toBeNull();
   });
@@ -126,23 +242,28 @@ describe("loadContextSnapshot", () => {
       const outsideRoot = await mkdtemp(join(tmpdir(), "diffgazer-outside-"));
       try {
         const contextDir = join(projectRoot, ".diffgazer");
-        await mkdir(contextDir, { recursive: true });
         await writeFile(join(outsideRoot, "secret.md"), "SECRET_EXTERNAL_CACHE_MARKER", "utf-8");
-        await symlink(join(outsideRoot, "secret.md"), join(contextDir, "context.md"));
-        await writeJson(join(contextDir, "context.json"), {
-          generatedAt: "2025-01-01",
-          root: projectRoot,
-          packages: [],
-          edges: [],
-          fileTree: [],
-          changedFiles: [],
+        await writeSnapshotFixture(contextDir, {
+          markdown: "SECRET_EXTERNAL_CACHE_MARKER",
+          graph: {
+            generatedAt: "2025-01-01",
+            root: projectRoot,
+            packages: [],
+            edges: [],
+            fileTree: [],
+            changedFiles: [],
+          },
+          meta: {
+            generatedAt: "2025-01-01",
+            root: projectRoot,
+            statusHash: "hash-1",
+            statusHashKind: "full",
+            charCount: 28,
+          },
         });
-        await writeJson(join(contextDir, "context.meta.json"), {
-          generatedAt: "2025-01-01",
-          root: projectRoot,
-          statusHash: "hash-1",
-          charCount: 10,
-        });
+        const markdownPath = join(contextDir, snapshotArtifactNames("fixture").markdown);
+        await rm(markdownPath);
+        await symlink(join(outsideRoot, "secret.md"), markdownPath);
 
         await expect(loadContextSnapshot(contextDir)).resolves.toBeNull();
       } finally {
@@ -151,25 +272,27 @@ describe("loadContextSnapshot", () => {
     },
   );
 
-  it("returns null for a cache trio whose stored root belongs to a different checkout", async () => {
+  it("returns null for a snapshot whose stored root belongs to a different checkout", async () => {
     const foreignRoot = await mkdtemp(join(tmpdir(), "diffgazer-foreign-"));
     try {
       const contextDir = join(projectRoot, ".diffgazer");
-      await mkdir(contextDir, { recursive: true });
-      await writeFile(join(contextDir, "context.md"), "# foreign", "utf-8");
-      await writeJson(join(contextDir, "context.json"), {
-        generatedAt: "2025-01-01",
-        root: foreignRoot,
-        packages: [],
-        edges: [],
-        fileTree: [],
-        changedFiles: [],
-      });
-      await writeJson(join(contextDir, "context.meta.json"), {
-        generatedAt: "2025-01-01",
-        root: foreignRoot,
-        statusHash: "hash-1",
-        charCount: 9,
+      await writeSnapshotFixture(contextDir, {
+        markdown: "# foreign",
+        graph: {
+          generatedAt: "2025-01-01",
+          root: foreignRoot,
+          packages: [],
+          edges: [],
+          fileTree: [],
+          changedFiles: [],
+        },
+        meta: {
+          generatedAt: "2025-01-01",
+          root: foreignRoot,
+          statusHash: "hash-1",
+          statusHashKind: "full",
+          charCount: 9,
+        },
       });
 
       await expect(loadContextSnapshot(contextDir)).resolves.toBeNull();
@@ -183,20 +306,23 @@ describe("loadContextSnapshot", () => {
     async () => {
       const outsideRoot = await mkdtemp(join(tmpdir(), "diffgazer-outside-"));
       try {
-        await writeFile(join(outsideRoot, "context.md"), "SECRET_EXTERNAL_CACHE_MARKER", "utf-8");
-        await writeJson(join(outsideRoot, "context.json"), {
-          generatedAt: "2025-01-01",
-          root: projectRoot,
-          packages: [],
-          edges: [],
-          fileTree: [],
-          changedFiles: [],
-        });
-        await writeJson(join(outsideRoot, "context.meta.json"), {
-          generatedAt: "2025-01-01",
-          root: projectRoot,
-          statusHash: "hash-1",
-          charCount: 10,
+        await writeSnapshotFixture(outsideRoot, {
+          markdown: "SECRET_EXTERNAL_CACHE_MARKER",
+          graph: {
+            generatedAt: "2025-01-01",
+            root: projectRoot,
+            packages: [],
+            edges: [],
+            fileTree: [],
+            changedFiles: [],
+          },
+          meta: {
+            generatedAt: "2025-01-01",
+            root: projectRoot,
+            statusHash: "hash-1",
+            statusHashKind: "full",
+            charCount: 28,
+          },
         });
         const contextDir = join(projectRoot, ".diffgazer");
         await symlink(outsideRoot, contextDir);
@@ -210,21 +336,72 @@ describe("loadContextSnapshot", () => {
 
   it("returns null when cached snapshot JSON has the wrong shape", async () => {
     const contextDir = join(projectRoot, ".diffgazer");
-    await mkdir(contextDir, { recursive: true });
-    await writeFile(join(contextDir, "context.md"), "# cached", "utf-8");
-    await writeJson(join(contextDir, "context.json"), { packages: "wrong" });
-    await writeJson(join(contextDir, "context.meta.json"), {
-      generatedAt: "2025-01-01",
-      root: projectRoot,
-      statusHash: "hash-1",
-      charCount: 10,
+    await writeSnapshotFixture(contextDir, {
+      markdown: "# cached",
+      graph: { packages: "wrong" },
+      meta: {
+        generatedAt: "2025-01-01",
+        root: projectRoot,
+        statusHash: "hash-1",
+        statusHashKind: "full",
+        charCount: 8,
+      },
     });
+
+    await expect(loadContextSnapshot(contextDir)).resolves.toBeNull();
+  });
+
+  it("rejects an artifact whose bytes no longer match the committed manifest", async () => {
+    const contextDir = join(projectRoot, ".diffgazer");
+    await writeSnapshotFixture(contextDir, {
+      markdown: "# cached",
+      graph: {
+        generatedAt: "2025-01-01",
+        root: projectRoot,
+        packages: [],
+        edges: [],
+        fileTree: [],
+        changedFiles: [],
+      },
+      meta: {
+        generatedAt: "2025-01-01",
+        root: projectRoot,
+        statusHash: "hash-1",
+        statusHashKind: "full",
+        charCount: 8,
+      },
+    });
+    await writeFile(join(contextDir, snapshotArtifactNames("fixture").markdown), "# TAMPERED");
 
     await expect(loadContextSnapshot(contextDir)).resolves.toBeNull();
   });
 });
 
 describe("buildProjectContextSnapshot", () => {
+  it("builds medium workspace edges without rescanning package names per dependency", () => {
+    const packageCount = 500;
+    let nameReads = 0;
+    const packages = Array.from({ length: packageCount }, (_, index) => {
+      const name = `package-${index}`;
+      return {
+        get name() {
+          nameReads += 1;
+          return name;
+        },
+        dir: `packages/${index}`,
+        kind: "package" as const,
+        dependencies: [`package-${(index + 1) % packageCount}`, "external-package"],
+      };
+    });
+
+    const edges = buildWorkspaceEdges(packages);
+
+    expect(edges).toHaveLength(packageCount);
+    expect(edges[0]).toEqual({ from: "package-0", to: ["package-1"] });
+    expect(edges.at(-1)).toEqual({ from: "package-499", to: ["package-0"] });
+    expect(nameReads).toBeLessThanOrEqual(packageCount * 2);
+  });
+
   it("discovers project metadata, workspace packages, file tree, and persists the snapshot", async () => {
     await writeProjectFile(
       "package.json",
@@ -275,19 +452,17 @@ describe("buildProjectContextSnapshot", () => {
       expect.arrayContaining([".diffgazer", ".git", "dist", "node_modules"]),
     );
 
-    await expect(readFile(join(projectRoot, ".diffgazer", "context.md"), "utf-8")).resolves.toBe(
-      result.markdown,
-    );
-    await expect(readJson(join(projectRoot, ".diffgazer", "context.json"))).resolves.toMatchObject({
+    const persisted = await readCurrentSnapshotFiles(join(projectRoot, ".diffgazer"));
+    expect(persisted.markdown).toBe(result.markdown);
+    expect(persisted.graph).toMatchObject({
       root: projectRoot,
       packages: result.graph.packages,
       edges: result.graph.edges,
     });
-    await expect(
-      readJson(join(projectRoot, ".diffgazer", "context.meta.json")),
-    ).resolves.toMatchObject({
+    expect(persisted.meta).toMatchObject({
       root: projectRoot,
       statusHash: "hash-1",
+      statusHashKind: "full",
       charCount: result.markdown.length,
     });
   });
@@ -305,18 +480,58 @@ describe("buildProjectContextSnapshot", () => {
     expect(rebuilt.markdown).toContain("- Name: second");
   });
 
+  it("rebuilds when a full status identity becomes unavailable", async () => {
+    statusHashResult = { kind: "full", hash: "" };
+    await writeProjectFile("package.json", JSON.stringify({ name: "first", version: "1.0.0" }));
+    const first = await buildProjectContextSnapshot(projectRoot);
+    expect(first.meta.statusHashKind).toBe("full");
+
+    await writeProjectFile("package.json", JSON.stringify({ name: "second", version: "1.0.0" }));
+    statusHashResult = { kind: "unavailable" };
+
+    const rebuilt = await buildProjectContextSnapshot(projectRoot);
+
+    expect(rebuilt.markdown).toContain("- Name: second");
+    expect(rebuilt.meta.statusHashKind).toBe("unavailable");
+  });
+
+  it("rebuilds when the same status-only hash may hide changed content", async () => {
+    statusHashResult = { kind: "status-only", hash: "status-1" };
+    await writeProjectFile("package.json", JSON.stringify({ name: "first", version: "1.0.0" }));
+    await buildProjectContextSnapshot(projectRoot);
+
+    await writeProjectFile("package.json", JSON.stringify({ name: "second", version: "1.0.0" }));
+    const rebuilt = await buildProjectContextSnapshot(projectRoot);
+
+    expect(rebuilt.markdown).toContain("- Name: second");
+    expect(rebuilt.meta.statusHashKind).toBe("status-only");
+  });
+
+  it("reuses a matching full status identity without writing a second snapshot", async () => {
+    await writeProjectFile("package.json", JSON.stringify({ name: "first", version: "1.0.0" }));
+    const first = await buildProjectContextSnapshot(projectRoot);
+    writeOrder.length = 0;
+
+    const cached = await buildProjectContextSnapshot(projectRoot);
+
+    expect(cached).toEqual(first);
+    expect(writeOrder).toEqual([]);
+  });
+
   it("rebuilds instead of reusing a structurally invalid cached snapshot", async () => {
     const contextDir = join(projectRoot, ".diffgazer");
-    await mkdir(contextDir, { recursive: true });
     await writeProjectFile("package.json", JSON.stringify({ name: "fresh", version: "1.0.0" }));
-    await writeFile(join(contextDir, "context.md"), "# stale", "utf-8");
-    await writeJson(join(contextDir, "context.json"), { generatedAt: "oops" });
-    await writeJson(join(contextDir, "context.meta.json"), {
-      generatedAt: "2025-01-01",
-      root: projectRoot,
-      statusHash: "hash-1",
-      headCommit: "HEAD",
-      charCount: 7,
+    await writeSnapshotFixture(contextDir, {
+      markdown: "# stale",
+      graph: { generatedAt: "oops" },
+      meta: {
+        generatedAt: "2025-01-01",
+        root: projectRoot,
+        statusHash: "hash-1",
+        statusHashKind: "full",
+        headCommit: "HEAD",
+        charCount: 7,
+      },
     });
 
     const rebuilt = await buildProjectContextSnapshot(projectRoot);
@@ -330,7 +545,7 @@ describe("buildProjectContextSnapshot", () => {
     await buildProjectContextSnapshot(projectRoot);
 
     await writeProjectFile("package.json", JSON.stringify({ name: "second", version: "1.0.0" }));
-    statusHash = "hash-2";
+    statusHashResult = { kind: "full", hash: "hash-2" };
 
     const rebuilt = await buildProjectContextSnapshot(projectRoot);
 
@@ -442,7 +657,9 @@ describe("buildProjectContextSnapshot", () => {
         await expect(buildProjectContextSnapshot(projectRoot, { force: true })).rejects.toThrow(
           /outside the project root/,
         );
-        await expect(readFile(join(outsideRoot, "context.md"), "utf-8")).rejects.toThrow();
+        await expect(
+          readFile(join(outsideRoot, "context.manifest.json"), "utf-8"),
+        ).rejects.toThrow();
       } finally {
         await rm(outsideRoot, { recursive: true, force: true });
       }
@@ -454,22 +671,24 @@ describe("buildProjectContextSnapshot", () => {
     try {
       await writeProjectFile("package.json", JSON.stringify({ name: "current", version: "1.0.0" }));
       const contextDir = join(projectRoot, ".diffgazer");
-      await mkdir(contextDir, { recursive: true });
-      await writeFile(join(contextDir, "context.md"), "# foreign-cache", "utf-8");
-      await writeJson(join(contextDir, "context.json"), {
-        generatedAt: "2025-01-01",
-        root: foreignRoot,
-        packages: [],
-        edges: [],
-        fileTree: [],
-        changedFiles: [],
-      });
-      await writeJson(join(contextDir, "context.meta.json"), {
-        generatedAt: "2025-01-01",
-        root: foreignRoot,
-        statusHash: "hash-1",
-        headCommit: "HEAD",
-        charCount: 15,
+      await writeSnapshotFixture(contextDir, {
+        markdown: "# foreign-cache",
+        graph: {
+          generatedAt: "2025-01-01",
+          root: foreignRoot,
+          packages: [],
+          edges: [],
+          fileTree: [],
+          changedFiles: [],
+        },
+        meta: {
+          generatedAt: "2025-01-01",
+          root: foreignRoot,
+          statusHash: "hash-1",
+          statusHashKind: "full",
+          headCommit: "HEAD",
+          charCount: 15,
+        },
       });
 
       const rebuilt = await buildProjectContextSnapshot(projectRoot);
@@ -556,21 +775,56 @@ describe("buildProjectContextSnapshot", () => {
     expect(order).toEqual(["hash-start-1", "hash-end-1", "hash-start-2", "hash-end-2"]);
 
     const contextDir = join(projectRoot, ".diffgazer");
-    const markdown = await readFile(join(contextDir, "context.md"), "utf-8");
-    const meta = await readJson<{ statusHash: string; charCount: number }>(
-      join(contextDir, "context.meta.json"),
-    );
-    // Persisted trio is single-generation: meta describes the markdown beside it.
+    const persisted = await readCurrentSnapshotFiles(contextDir);
+    const markdown = persisted.markdown;
+    const meta = persisted.meta as { statusHash: string; charCount: number };
+    // The committed generation stays internally consistent.
     expect(meta.charCount).toBe(markdown.length);
     expect(meta.statusHash).toBe("hash-2");
   });
 
-  it("writes context.meta.json last so a reader never sees newer meta with older content", async () => {
+  it("commits generation artifacts before atomically replacing the manifest", async () => {
     await writeProjectFile("package.json", JSON.stringify({ name: "order", version: "1.0.0" }));
 
     writeOrder.length = 0;
     await buildProjectContextSnapshot(projectRoot, { force: true });
 
-    expect(writeOrder).toEqual(["context.json", "context.md", "context.meta.json"]);
+    expect(writeOrder).toHaveLength(4);
+    expect(writeOrder.slice(0, 3)).toEqual([
+      expect.stringMatching(/^context\..+\.json$/),
+      expect.stringMatching(/^context\..+\.md$/),
+      expect.stringMatching(/^context\..+\.meta\.json$/),
+    ]);
+    expect(writeOrder[3]).toBe("context.manifest.json");
+  });
+
+  it("lets readers keep using the prior generation until the new manifest commits", async () => {
+    await writeProjectFile("package.json", JSON.stringify({ name: "old", version: "1.0.0" }));
+    const oldSnapshot = await buildProjectContextSnapshot(projectRoot, { force: true });
+    await writeProjectFile("package.json", JSON.stringify({ name: "new", version: "1.0.0" }));
+    statusHashResult = { kind: "full", hash: "hash-2" };
+
+    const manifestWriteStarted = createDeferred<void>();
+    const releaseManifestWrite = createDeferred<void>();
+    beforeAtomicWrite = async (filePath) => {
+      if (basename(filePath) !== "context.manifest.json") return;
+      manifestWriteStarted.resolve();
+      await releaseManifestWrite.promise;
+    };
+
+    const writer = buildProjectContextSnapshot(projectRoot, { force: true });
+    await manifestWriteStarted.promise;
+
+    const duringWrite = await loadContextSnapshot(join(projectRoot, ".diffgazer"));
+    expect(duringWrite).toEqual(oldSnapshot);
+
+    releaseManifestWrite.resolve();
+    const newSnapshot = await writer;
+    beforeAtomicWrite = undefined;
+
+    await expect(loadContextSnapshot(join(projectRoot, ".diffgazer"))).resolves.toEqual(
+      newSnapshot,
+    );
+    expect(newSnapshot.markdown).toContain("- Name: new");
   });
 });

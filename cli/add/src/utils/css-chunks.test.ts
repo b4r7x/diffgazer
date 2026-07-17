@@ -1,9 +1,10 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { buildStylesContent } from "../commands/init.js";
-import { getRegistry, type ResolvedConfig } from "../context.js";
+import { getRegistry, type ResolvedConfig, resolveConfig } from "../context.js";
 import {
   buildExpectedChunkContentsForItem,
   planComponentCss,
@@ -45,6 +46,52 @@ afterEach(() => {
 });
 
 describe("planComponentCss", () => {
+  function seedOwnedChunk(
+    itemName: string,
+    body: string,
+    retainedOwner?: string,
+  ): { hash: string; stylesPath: string } {
+    const hash = createHash("sha256").update(body).digest("hex").slice(0, 16);
+    const installedComponents: Record<string, object> = {
+      [itemName]: { installedAt: "2026-01-01T00:00:00.000Z", cssChunks: [hash] },
+    };
+    if (retainedOwner) {
+      installedComponents[retainedOwner] = {
+        installedAt: "2026-01-01T00:00:00.000Z",
+        cssChunks: [hash],
+      };
+    }
+    writeFileSync(
+      join(root, "diffgazer.json"),
+      JSON.stringify({ tailwind: { css: "src/styles/styles.css" }, installedComponents }),
+    );
+    mkdirSync(join(root, "src/styles"), { recursive: true });
+    const stylesPath = join(root, "src/styles/styles.css");
+    writeFileSync(stylesPath, `/* dgadd:css ${hash} */\n${body}\n/* dgadd:css-end ${hash} */\n`);
+    return { hash, stylesPath };
+  }
+
+  test.each([
+    "/outside/styles.css",
+    "C:\\outside\\styles.css",
+    "\\outside\\styles.css",
+    "\\\\server\\share\\styles.css",
+  ])("rejects absolute tailwind css path %s before creating files", (css) => {
+    expect(() => resolveConfig({ tailwind: { css } }, root)).toThrow(
+      /Project paths must be relative/,
+    );
+    expect(readdirSync(root)).toEqual([]);
+  });
+
+  test("retains a canonical validated relative tailwind css path", () => {
+    const config = resolveConfig({ tailwind: { css: "src\\styles\\styles.css" } }, root);
+
+    expect(config.tailwind).toEqual({ css: "src/styles/styles.css" });
+    const plan = planComponentCss(["dialog-shell"], root, config);
+    expect(plan.fileOp?.targetPath).toBe(join(root, "src/styles/styles.css"));
+    expect(readdirSync(root)).toEqual([]);
+  });
+
   test("blocks CSS-bearing installs when tailwind css path is absent", () => {
     const config = {
       aliases: {
@@ -61,9 +108,18 @@ describe("planComponentCss", () => {
       stylesFsPath: "src/styles",
     } satisfies ResolvedConfig;
 
-    expect(() => planComponentCss(["dialog-shell"], root, config)).toThrow(
-      /components\.json has no tailwind\.css path/,
-    );
+    let thrown: unknown;
+    try {
+      planComponentCss(["dialog-shell"], root, config);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    if (!(thrown instanceof Error)) throw new Error("Expected the CSS planner to reject");
+    expect(thrown.message).toContain("diffgazer.json has no tailwind.css path");
+    expect(thrown.message).not.toContain("components.json");
+    expect(thrown.message).toContain("Run dgadd init");
   });
 
   test("writes CSS chunks when tailwind css path is configured", () => {
@@ -170,6 +226,28 @@ describe("planComponentCss", () => {
     expect(replan.fileOp.content).not.toContain("--user-drift: teal;");
     expect(replan.fileOp.content).toContain(".brand { color: red; }");
     expect(countOccurrences(replan.fileOp.content, `/* dgadd:css ${hash} */`)).toBe(1);
+  });
+
+  test("keeps an obsolete chunk still owned by an unupdated item", () => {
+    const { hash } = seedOwnedChunk(
+      "ui/dialog-shell",
+      ".legacy-dialog { color: red; }",
+      "ui/retained-fixture",
+    );
+
+    const plan = planComponentCss(["dialog-shell"], root, styledConfig());
+
+    expect(plan.fileOp?.content).toContain(`dgadd:css ${hash}`);
+    expect(plan.chunksByItem.get("ui/dialog-shell")).not.toContain(hash);
+  });
+
+  test("removes obsolete ownership when an updated item no longer ships CSS", () => {
+    const { hash } = seedOwnedChunk("ui/button", ".legacy-button { color: red; }");
+
+    const plan = planComponentCss(["button"], root, styledConfig());
+
+    expect(plan.fileOp?.content).not.toContain(`dgadd:css ${hash}`);
+    expect(plan.chunksByItem.get("ui/button")).toEqual([]);
   });
 
   test("shipped styles seed and CSS chunks do not import Tailwind", () => {

@@ -1,25 +1,22 @@
-import type { SeverityPart } from "@diffgazer/core/review";
+import { makeReviewMetadata } from "@diffgazer/core/testing/factories";
+import { render, screen } from "@testing-library/react";
+import { createElement, Fragment } from "react";
 import { describe, expect, it } from "vitest";
-import { severityChipClass } from "./run-summary";
+import { getRunSummary } from "./run-summary";
 
-const SEVERITY_BASE: Record<SeverityPart["severity"], string> = {
-  blocker: "text-error-text",
-  high: "text-warning-text",
-  medium: "text-info-text",
-  low: "text-info-text",
-  nit: "text-muted-foreground",
-};
+describe("getRunSummary", () => {
+  it("renders partial analysis instead of a pass for a zero-issue failed-lens run", () => {
+    render(
+      createElement(
+        Fragment,
+        null,
+        getRunSummary(makeReviewMetadata({ issueCount: 0, failedLensCount: 1 })),
+      ),
+    );
 
-describe("severityChipClass", () => {
-  for (const severity of Object.keys(SEVERITY_BASE) as SeverityPart["severity"][]) {
-    it(`returns the base color class for ${severity} severity`, () => {
-      expect(severityChipClass(severity)).toContain(SEVERITY_BASE[severity]);
-    });
-
-    it(`returns the active-row inversion class for ${severity} severity`, () => {
-      expect(severityChipClass(severity)).toContain(
-        "group-data-[highlighted]:text-primary-foreground/85",
-      );
-    });
-  }
+    expect(
+      screen.getByText("Partial analysis: 1 lens failed; no issues found."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Passed with no issues.")).not.toBeInTheDocument();
+  });
 });

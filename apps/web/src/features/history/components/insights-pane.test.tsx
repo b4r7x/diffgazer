@@ -28,6 +28,40 @@ describe("HistoryInsightsPane", () => {
     expect(screen.getByText("4m 12s")).toBeInTheDocument();
   });
 
+  it("keeps the metadata summary visible while review details load", () => {
+    const counts: SeverityCounts = { blocker: 0, high: 1, medium: 0, low: 0, nit: 0 };
+    render(
+      <HistoryInsightsPane
+        runId="run-42"
+        severityCounts={counts}
+        issues={[]}
+        detailState={{ status: "loading" }}
+      />,
+    );
+
+    expect(screen.getByText(/severity breakdown/i)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading review details...");
+  });
+
+  it("shows a retryable detail error without discarding the metadata summary", async () => {
+    const user = userEvent.setup();
+    const onRetry = vi.fn();
+    const counts: SeverityCounts = { blocker: 0, high: 1, medium: 0, low: 0, nit: 0 };
+    render(
+      <HistoryInsightsPane
+        runId="run-42"
+        severityCounts={counts}
+        issues={[]}
+        detailState={{ status: "error", message: "disk unreadable", retry: onRetry }}
+      />,
+    );
+
+    expect(screen.getByText(/severity breakdown/i)).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("disk unreadable");
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+
   it("does not render a nullable line label for run issues", () => {
     render(
       <HistoryInsightsPane
@@ -61,6 +95,7 @@ describe("HistoryInsightsPane", () => {
       />,
     );
     await user.click(screen.getByRole("option", { name: /click me/i }));
+    expect(onSelectIssue).toHaveBeenCalledOnce();
     expect(onSelectIssue).toHaveBeenCalledWith("issue-99");
   });
 });
@@ -255,9 +290,11 @@ describe("HistoryInsightsPane keyboard navigation", () => {
     const listbox = screen.getByRole("listbox", { name: /run issues/i });
     listbox.focus();
 
-    await user.keyboard("{Enter}");
+    await user.keyboard("{Enter}{Enter}");
 
-    expect(onSelectIssue).toHaveBeenCalledWith("issue-2");
+    expect(onSelectIssue).toHaveBeenCalledTimes(2);
+    expect(onSelectIssue).toHaveBeenNthCalledWith(1, "issue-2");
+    expect(onSelectIssue).toHaveBeenNthCalledWith(2, "issue-2");
   });
 
   it("does not include severity-breakdown bars in the listbox option set", () => {

@@ -1,7 +1,7 @@
-import { useFocusRestore, useKey } from "@diffgazer/keys";
+import { useFocusTrap, useKey } from "@diffgazer/keys";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { cn } from "@diffgazer/ui/lib/utils";
-import { type ReactNode, useEffect, useRef } from "react";
+import { type FocusEvent, type ReactNode, useEffect, useRef } from "react";
 import { useMobileNav } from "@/hooks/mobile-nav-context";
 
 export interface TuiTwoPaneProps {
@@ -26,15 +26,18 @@ export function TuiTwoPane({
     isDesktop,
     registerSidebar,
     unregisterSidebar,
-    menuButtonRef,
   } = useMobileNav();
   const sidebarInert = !isDesktop && !sidebarOpen;
   const panelInert = !isDesktop && sidebarOpen;
+  const drawerRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
-  const hadOpenSidebarRef = useRef(false);
-  const { capture, restore } = useFocusRestore({
-    fallback: menuButtonRef.current,
-    restoreOnUnmount: false,
+  const initialSidebarFocusRef = useRef<HTMLElement>(null);
+  const lastSidebarFocusRef = useRef<HTMLElement>(null);
+
+  useFocusTrap(drawerRef, {
+    enabled: sidebarOpen && !isDesktop,
+    initialFocus: initialSidebarFocusRef,
+    restoreFocus: true,
   });
 
   const closeSidebar = () => setSidebarOpen(false);
@@ -48,24 +51,21 @@ export function TuiTwoPane({
   }, [registerSidebar, unregisterSidebar]);
 
   useEffect(() => {
-    if (isDesktop) {
-      hadOpenSidebarRef.current = false;
-      return;
-    }
+    if (!isDesktop) return;
+    const target = lastSidebarFocusRef.current;
+    if (target?.isConnected) target.focus();
+  }, [isDesktop]);
 
-    if (sidebarOpen) {
-      hadOpenSidebarRef.current = true;
-      capture();
-      const firstLink = sidebarRef.current?.querySelector<HTMLElement>("a[href], button");
-      (firstLink ?? sidebarRef.current)?.focus();
-      return;
-    }
+  const setSidebarRef = (node: HTMLElement | null) => {
+    sidebarRef.current = node;
+    initialSidebarFocusRef.current = node?.querySelector<HTMLElement>("a[href], button") ?? null;
+  };
 
-    if (hadOpenSidebarRef.current) {
-      hadOpenSidebarRef.current = false;
-      restore();
+  const rememberSidebarFocus = (event: FocusEvent<HTMLDivElement>) => {
+    if (event.target instanceof HTMLElement && sidebarRef.current?.contains(event.target)) {
+      lastSidebarFocusRef.current = event.target;
     }
-  }, [sidebarOpen, isDesktop, capture, restore]);
+  };
 
   const contentBody = contentInPanel ? (
     <Panel frame="hairline" className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -76,7 +76,11 @@ export function TuiTwoPane({
   );
 
   return (
-    <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:grid lg:grid-cols-[18rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:gap-2">
+    <div
+      ref={drawerRef}
+      onFocusCapture={rememberSidebarFocus}
+      className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:grid lg:grid-cols-[18rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:gap-2"
+    >
       <button
         type="button"
         aria-label="Close sidebar navigation"
@@ -89,7 +93,7 @@ export function TuiTwoPane({
       />
 
       <aside
-        ref={sidebarRef}
+        ref={setSidebarRef}
         id="sidebar-nav"
         aria-label="Sidebar navigation"
         aria-busy={sidebarBusy}

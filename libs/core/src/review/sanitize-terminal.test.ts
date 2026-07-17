@@ -25,6 +25,13 @@ describe("sanitizeTerminalText", () => {
     expect(sanitizeTerminalText(payload)).toBe("xy");
   });
 
+  it.each([
+    ["7-bit OSC", `x\x1b]0;evil-title\x9cy`],
+    ["C1 OSC", `x\x9d0;evil-title\x9cy`],
+  ])("strips %s terminated by C1 ST without consuming trailing text", (_label, payload) => {
+    expect(sanitizeTerminalText(payload)).toBe("xy");
+  });
+
   it("strips C0 control bytes but keeps \\n and \\t", () => {
     const payload = "line1\nline2\tcol\x00\x08bel";
     expect(sanitizeTerminalText(payload)).toBe("line1\nline2\tcolbel");
@@ -50,6 +57,14 @@ describe("sanitizeTerminalText", () => {
   it("strips private-prefix CSI sequences ending in m", () => {
     expect(sanitizeTerminalText("a\x1b[>4;2mb")).toBe("ab");
     expect(sanitizeTerminalText("a\x1b[?1mb")).toBe("ab");
+  });
+
+  it("strips complete C1 cursor-control sequences without consuming surrounding text", () => {
+    expect(sanitizeTerminalText("before\x9b2Jmiddle\x9bHafter")).toBe("beforemiddleafter");
+  });
+
+  it("strips complete C1 SGR sequences without leaving parameter residue", () => {
+    expect(sanitizeTerminalText("before\x9b31mred\x9b0mafter")).toBe("beforeredafter");
   });
 
   it("leaves plain text unchanged", () => {

@@ -7,7 +7,7 @@ import { useApiKeyEntry } from "./use-api-key-entry.js";
 
 describe("useApiKeyEntry", () => {
   it("submits the typed key in paste mode and clears the value", async () => {
-    const onSubmit = vi.fn(async () => {});
+    const onSubmit = vi.fn(async () => true);
     const { result } = renderHook(() => useApiKeyEntry({ envVarName: "OPENAI_API_KEY", onSubmit }));
 
     act(() => result.current.setValue("sk-test"));
@@ -24,7 +24,7 @@ describe("useApiKeyEntry", () => {
   });
 
   it("submits the fixed env var name in env mode", async () => {
-    const onSubmit = vi.fn(async () => {});
+    const onSubmit = vi.fn(async () => true);
     const { result } = renderHook(() => useApiKeyEntry({ envVarName: "OPENAI_API_KEY", onSubmit }));
 
     act(() => result.current.setMethod("env"));
@@ -52,8 +52,52 @@ describe("useApiKeyEntry", () => {
     expect(result.current.error).toBeNull();
   });
 
+  it("keeps the value when the submit owner declines the save", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(false);
+    const { result } = renderHook(() => useApiKeyEntry({ onSubmit }));
+
+    act(() => result.current.setValue("sk-kept"));
+    let committed: boolean | undefined;
+    await act(async () => {
+      committed = await result.current.submit();
+    });
+
+    expect(committed).toBe(false);
+    expect(result.current.value).toBe("sk-kept");
+    expect(result.current.error).toBeNull();
+  });
+
+  it("declines a same-tick duplicate while the first submit is pending", async () => {
+    let resolveSubmit!: (committed: boolean) => void;
+    const onSubmit = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveSubmit = resolve;
+        }),
+    );
+    const { result } = renderHook(() => useApiKeyEntry({ onSubmit }));
+    act(() => result.current.setValue("sk-kept"));
+
+    let submitPromise!: Promise<boolean>;
+    let duplicatePromise!: Promise<boolean>;
+    act(() => {
+      submitPromise = result.current.submit();
+      duplicatePromise = result.current.submit();
+    });
+
+    expect(onSubmit).toHaveBeenCalledOnce();
+    await expect(duplicatePromise).resolves.toBe(false);
+    expect(result.current.value).toBe("sk-kept");
+
+    await act(async () => {
+      resolveSubmit(true);
+      await expect(submitPromise).resolves.toBe(true);
+    });
+    expect(result.current.value).toBe("");
+  });
+
   it("treats the typed value as the env var when no fixed name is provided", async () => {
-    const onSubmit = vi.fn(async () => {});
+    const onSubmit = vi.fn(async () => true);
     const { result } = renderHook(() => useApiKeyEntry({ onSubmit }));
 
     act(() => result.current.setMethod("env"));
@@ -68,7 +112,7 @@ describe("useApiKeyEntry", () => {
   });
 
   it("reset restores the initial entry state", () => {
-    const onSubmit = vi.fn(async () => {});
+    const onSubmit = vi.fn(async () => true);
     const { result } = renderHook(() => useApiKeyEntry({ envVarName: "X", onSubmit }));
 
     act(() => {

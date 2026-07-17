@@ -4,6 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type {
   AnchorHTMLAttributes,
   ButtonHTMLAttributes,
+  MouseEventHandler,
   MouseEvent as ReactMouseEvent,
   ReactNode,
   Ref,
@@ -15,7 +16,7 @@ const LazySpinner = lazy(() => import("../spinner/spinner").then((m) => ({ defau
 
 /** Class variants for button. */
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center font-mono whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 cursor-pointer disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50",
+  "inline-flex items-center justify-center wrap-anywhere text-center font-mono transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 cursor-pointer disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50",
   {
     variants: {
       variant: {
@@ -31,10 +32,10 @@ export const buttonVariants = cva(
         action: "bg-action text-action-foreground font-bold hover:bg-action/90",
       },
       size: {
-        sm: "h-7 px-3 text-xs",
-        md: "h-9 px-4 py-2 text-sm",
-        lg: "h-11 px-6 py-2 text-base",
-        icon: "h-9 w-9 p-0",
+        sm: "min-h-7 h-auto max-w-full whitespace-normal px-3 py-1 text-xs",
+        md: "min-h-9 h-auto max-w-full whitespace-normal px-4 py-2 text-sm",
+        lg: "min-h-11 h-auto max-w-full whitespace-normal px-6 py-2 text-base",
+        icon: "h-9 w-9 max-w-none shrink-0 whitespace-nowrap p-0",
       },
       highlighted: {
         true: "ring-2 ring-primary ring-offset-2 ring-offset-background",
@@ -103,7 +104,10 @@ export interface ButtonAsAnchorProps
 }
 
 /** Props for button. */
-export type ButtonProps = ButtonAsButtonProps | ButtonAsAnchorProps | ButtonRenderPropProps;
+export type ButtonProps<T extends HTMLElement = HTMLElement> =
+  | ButtonAsButtonProps
+  | ButtonAsAnchorProps
+  | ButtonRenderPropProps<T>;
 
 /** Props for button render. */
 export interface ButtonRenderProps<T extends HTMLElement = HTMLElement> {
@@ -113,6 +117,8 @@ export interface ButtonRenderProps<T extends HTMLElement = HTMLElement> {
   className: string;
   /** Disables interaction; sets aria-disabled and stops onClick. */
   disabled?: boolean;
+  /** Prevents activation while disabled or loading. */
+  onClick: MouseEventHandler<T>;
   /** ARIA busy state forwarded to the rendered element. */
   "aria-busy"?: boolean;
   /** ARIA disabled state forwarded to the rendered element. */
@@ -121,12 +127,15 @@ export interface ButtonRenderProps<T extends HTMLElement = HTMLElement> {
   "data-slot"?: "button";
   /** Present when the component is in a loading state. */
   "data-loading"?: boolean;
+  /** Present when the component is highlighted by a parent collection. */
+  "data-highlighted"?: boolean;
   /** Tab index applied to the rendered element. */
   tabIndex?: number;
 }
 
 /** Props for button render prop. */
-interface ButtonRenderPropProps<T extends HTMLElement = HTMLElement> extends ButtonSharedProps {
+export interface ButtonRenderPropProps<T extends HTMLElement = HTMLElement>
+  extends ButtonSharedProps {
   /** Additional class names merged onto the rendered element. */
   className?: string;
   /** Ref forwarded to the underlying element. */
@@ -143,7 +152,9 @@ interface ButtonRenderPropProps<T extends HTMLElement = HTMLElement> extends But
   children: (props: ButtonRenderProps<T>) => ReactNode;
 }
 
-function isRenderPropProps(props: ButtonProps): props is ButtonRenderPropProps {
+function isRenderPropProps<T extends HTMLElement>(
+  props: ButtonProps<T>,
+): props is ButtonRenderPropProps<T> {
   return typeof props.children === "function";
 }
 
@@ -165,7 +176,7 @@ function ButtonContent({
           <LazySpinner variant="braille" size={spinnerSize} aria-hidden="true" gap="none" />
         </Suspense>
       )}
-      <span className={loading ? "sr-only" : undefined}>{children}</span>
+      <span className={loading ? "sr-only" : "min-w-0"}>{children}</span>
     </>
   );
   if (bracket) {
@@ -179,7 +190,7 @@ function ButtonContent({
 }
 
 /** Root button element. */
-export function Button(props: ButtonProps): ReactNode {
+export function Button<T extends HTMLElement = HTMLElement>(props: ButtonProps<T>): ReactNode {
   const {
     className,
     variant,
@@ -205,12 +216,16 @@ export function Button(props: ButtonProps): ReactNode {
       "aria-disabled": isDisabled || undefined,
       "data-slot": "button" as const,
       "data-loading": loading || undefined,
+      "data-highlighted": highlighted || undefined,
       ...(isDisabled && { tabIndex: -1 as const }),
     };
     return props.children({
       ref: props.ref,
       className: resolvedClassName,
       disabled: isDisabled || undefined,
+      onClick: (event: ReactMouseEvent<T>) => {
+        if (isDisabled) event.preventDefault();
+      },
       ...ariaProps,
     });
   }
@@ -242,6 +257,7 @@ export function Button(props: ButtonProps): ReactNode {
         href={isDisabled ? undefined : href}
         data-slot="button"
         data-loading={loading || undefined}
+        data-highlighted={highlighted || undefined}
         {...anchorProps}
         aria-busy={consumerAriaBusy ?? (loading || undefined)}
         aria-disabled={consumerAriaDisabled ?? (isDisabled || undefined)}
@@ -284,6 +300,7 @@ export function Button(props: ButtonProps): ReactNode {
       ref={ref}
       data-slot="button"
       data-loading={loading || undefined}
+      data-highlighted={highlighted || undefined}
       disabled={disabled || undefined}
       {...buttonProps}
       aria-busy={consumerAriaBusy ?? (loading || undefined)}

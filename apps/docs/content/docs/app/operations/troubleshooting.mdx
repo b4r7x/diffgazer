@@ -21,11 +21,19 @@ Most failures fall into a handful of buckets: setup isn't finished, the repo isn
 
 **Fix.** Open Trust and Permissions and grant repository access for the directory you're in. If you moved the project or opened a different checkout, re-grant trust for the new root. Granting trust covers reading files; it does not enable running commands. For the full picture of what stays local, see [privacy and security](/app/concepts/privacy).
 
+## Credential storage unavailable
+
+**Symptom.** Setup initialization or a review returns `KEYRING_UNAVAILABLE` or `KEYRING_READ_FAILED`. The server does not report `SETUP_REQUIRED` because the provider is already configured.
+
+**Cause.** Diffgazer found the active provider but could not verify its credential. The system keychain may be locked or unavailable, or the process may lack permission to read the saved entry.
+
+**Fix.** Unlock the system keychain and allow the terminal process to read it, then retry. If you meant to use local file storage, select it in Storage settings and save the provider key there.
+
 ## No changes to review
 
 **Symptom.** A review stops immediately with a `NO_DIFF` code. In staged mode the message is "No staged changes found. Use 'git add' to stage files, or review unstaged changes instead." In unstaged mode it's "No unstaged changes found. Make some edits first, or review staged changes instead."
 
-**Cause.** Diffgazer reviews a git diff. If the mode you picked has an empty diff, there's nothing to send to the model, so the run ends before it starts. Note that changes inside the `.diffgazer/` directory are filtered out of the diff, so a change set that only touches Diffgazer's own files counts as empty.
+**Cause.** Diffgazer reviews a git diff. If the mode you picked has an empty diff, there's nothing to send to the model, so the run ends before it starts. Changes inside the `.diffgazer/` directory are filtered out too, so a change set that only touches Diffgazer's own files returns `NO_DIFF` before the review starts.
 
 **Fix.** Make sure the mode matches where your changes are. Stage files with `git add` for a staged review, or edit some tracked files for an unstaged one. If you scoped the review to specific files and none of them have changes in that mode, widen the file selection.
 

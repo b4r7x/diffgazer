@@ -5,10 +5,12 @@ export interface ApiServerConfig {
   port: number;
   projectRoot: string;
   onReady?: (address: string) => void;
+  onFailure?: (message: string) => void;
 }
 
 const HEALTH_TIMEOUT_MS = 10_000;
 const HEALTH_POLL_INTERVAL_MS = 200;
+const DEV_SERVER_READY_PATTERN = '"event":"dev_server_ready"';
 
 export interface WaitForHealthyOptions {
   address: string;
@@ -22,19 +24,25 @@ export interface WaitForHealthyOptions {
 const defaultSleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
+function remainingBudget(deadline: number, timeoutMs: number, now: () => number): number {
+  const remaining = deadline - now();
+  if (!Number.isFinite(remaining)) return 0;
+  return Math.min(timeoutMs, Math.max(0, Math.ceil(remaining)));
+}
+
 export async function waitForHealthy({
   address,
   timeoutMs = HEALTH_TIMEOUT_MS,
   intervalMs = HEALTH_POLL_INTERVAL_MS,
   fetchImpl = fetch,
   sleep = defaultSleep,
-  now = Date.now,
+  now = () => performance.now(),
 }: WaitForHealthyOptions): Promise<void> {
   const url = `${address}/api/health`;
   const deadline = now() + timeoutMs;
 
   while (true) {
-    const remainingMs = deadline - now();
+    const remainingMs = remainingBudget(deadline, timeoutMs, now);
     if (remainingMs <= 0) {
       throw new Error(`API server did not become healthy at ${url} within ${timeoutMs}ms.`);
     }
@@ -48,7 +56,7 @@ export async function waitForHealthy({
       // Server not accepting connections yet; retry until the deadline.
     }
 
-    if (now() >= deadline) {
+    if (remainingBudget(deadline, timeoutMs, now) <= 0) {
       throw new Error(`API server did not become healthy at ${url} within ${timeoutMs}ms.`);
     }
 
@@ -69,8 +77,9 @@ export function createApiServer(config: ApiServerConfig): ServerController {
         ? { DIFFGAZER_SHUTDOWN_TOKEN: process.env.DIFFGAZER_SHUTDOWN_TOKEN }
         : {}),
     },
-    readyPattern: "Server running",
+    readyPattern: DEV_SERVER_READY_PATTERN,
     onReady: config.onReady,
+    onFailure: config.onFailure,
     readyCheck: (address) => waitForHealthy({ address }),
   });
 }

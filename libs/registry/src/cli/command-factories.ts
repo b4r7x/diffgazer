@@ -7,6 +7,7 @@ import { type DiffWorkflowFile, renderDiffPatch, runDiffWorkflow } from "./workf
 import { runInitWorkflow } from "./workflows/init.js";
 import { runListWorkflow } from "./workflows/list.js";
 import {
+  type DerivedRemovalPlan,
   type ExpandRequestedNamesResult,
   type RemoveWorkflowFile,
   runRemoveWorkflow,
@@ -146,6 +147,7 @@ export interface RemoveCommandConfig<TItem, TConfig> {
     requestedNames: string[];
   }) => boolean;
   resolveAllowedBaseDirs: (ctx: { cwd: string; config: TConfig }) => string[];
+  resolveTransactionFiles?: (ctx: { cwd: string; config: TConfig }) => string[];
   updateManifest: (ctx: { cwd: string; removedNames: string[] }) => void;
   findOrphanedDeps?: (ctx: { removedNames: string[]; cwd: string; config: TConfig }) => string[];
   expandRequestedNames?: (ctx: {
@@ -158,7 +160,7 @@ export interface RemoveCommandConfig<TItem, TConfig> {
     config: TConfig;
     removedNames: string[];
     force: boolean;
-  }) => void;
+  }) => DerivedRemovalPlan | undefined;
 }
 
 function buildRemoveAction<TItem, TConfig>(config: RemoveCommandConfig<TItem, TConfig>) {
@@ -181,6 +183,7 @@ function buildRemoveAction<TItem, TConfig>(config: RemoveCommandConfig<TItem, TC
       resolveFilesForItem: config.resolveFilesForItem,
       canRemoveFile: config.canRemoveFile,
       resolveAllowedBaseDirs: config.resolveAllowedBaseDirs,
+      resolveTransactionFiles: config.resolveTransactionFiles,
       updateManifest: config.updateManifest,
       findOrphanedDeps: config.findOrphanedDeps,
       expandRequestedNames: config.expandRequestedNames,
@@ -225,6 +228,8 @@ export interface InitCommandConfig<TConfig> {
     opts: SharedCommandOptions,
   ) => Array<{ action: "created" | "skipped"; path: string }>;
   afterFiles?: (cwd: string) => Promise<void>;
+  dependencies: string[];
+  onSkipInstall: (dependencies: string[]) => void;
   writeConfig: (cwd: string, opts: SharedCommandOptions) => void | Promise<void>;
   nextSteps: string[];
   extraOptions?: ExtraOption[];
@@ -245,6 +250,8 @@ function buildInitAction<TConfig>(config: InitCommandConfig<TConfig>) {
       plannedPaths: (cwd) => config.plannedPaths(cwd, opts),
       createFiles: (cwd) => config.createFiles(cwd, opts),
       afterFiles: config.afterFiles,
+      dependencies: config.dependencies,
+      onSkipInstall: config.onSkipInstall,
       writeConfig: (cwd) => config.writeConfig(cwd, opts),
       nextSteps: config.nextSteps,
     });
@@ -283,30 +290,33 @@ export interface AddCommandConfig<TConfig> {
   }) =>
     | Promise<import("./workflows/add.js").AddWorkflowPlan>
     | import("./workflows/add.js").AddWorkflowPlan;
+  withLock?: <T>(cwd: string, operation: () => Promise<T>) => Promise<T>;
   extraOptions?: ExtraOption[];
 }
 
 function buildAddAction<TConfig>(config: AddCommandConfig<TConfig>) {
   return withErrorHandler(async (names: string[], opts: SharedCommandOptions) => {
     const cwd = resolveCwd(opts);
-    await runAddWorkflow({
-      cwd,
-      requestedNames: names,
-      all: opts.all ?? false,
-      yes: opts.yes ?? false,
-      dryRun: opts.dryRun ?? false,
-      overwrite: opts.overwrite ?? false,
-      skipInstall: opts.skipInstall ?? false,
-      itemLabel: config.itemLabel,
-      itemPlural: config.itemPlural,
-      listCommand: config.listCommand,
-      emptyRequestedMessage: config.emptyRequestedMessage,
-      allIgnoresSpecifiedWarning: config.allIgnoresSpecifiedWarning,
-      requireConfig: config.requireConfig,
-      getPublicNames: config.getPublicNames,
-      validateRequestedNames: config.validateRequestedNames,
-      buildPlan: (ctx) => config.buildPlan({ ...ctx, opts }),
-    });
+    const run = () =>
+      runAddWorkflow({
+        cwd,
+        requestedNames: names,
+        all: opts.all ?? false,
+        yes: opts.yes ?? false,
+        dryRun: opts.dryRun ?? false,
+        overwrite: opts.overwrite ?? false,
+        skipInstall: opts.skipInstall ?? false,
+        itemLabel: config.itemLabel,
+        itemPlural: config.itemPlural,
+        listCommand: config.listCommand,
+        emptyRequestedMessage: config.emptyRequestedMessage,
+        allIgnoresSpecifiedWarning: config.allIgnoresSpecifiedWarning,
+        requireConfig: config.requireConfig,
+        getPublicNames: config.getPublicNames,
+        validateRequestedNames: config.validateRequestedNames,
+        buildPlan: (ctx) => config.buildPlan({ ...ctx, opts }),
+      });
+    await (config.withLock ? config.withLock(cwd, run) : run());
   });
 }
 

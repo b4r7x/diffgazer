@@ -15,7 +15,7 @@ vi.mock("../api/hooks/config", () => ({
 
 const { useModelSource } = await import("./use-model-source.js");
 
-const IDLE = { data: undefined, isLoading: false, error: null };
+const IDLE = { data: undefined, isLoading: false, error: null, refetch: vi.fn() };
 
 describe("useModelSource", () => {
   beforeEach(() => {
@@ -49,6 +49,8 @@ describe("useModelSource", () => {
     expect(result.current.models.map((m) => m.id)).toEqual(["openrouter/free-model"]);
     expect(result.current.error).toBeNull();
     expect(result.current.openRouter.total).toBe(1);
+    expect(result.current.source).toBeNull();
+    expect(result.current.fetchedAt).toBeNull();
   });
 
   it("serves the catalog source for a non-openrouter provider", () => {
@@ -58,9 +60,9 @@ describe("useModelSource", () => {
         models: [
           { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "", tier: "free" },
         ],
-        fetchedAt: new Date().toISOString(),
-        source: "live",
-        cached: false,
+        fetchedAt: "2026-06-02T00:00:00.000Z",
+        source: "cache",
+        cached: true,
       },
       isLoading: false,
       error: null,
@@ -71,6 +73,8 @@ describe("useModelSource", () => {
     expect(result.current.isOpenRouter).toBe(false);
     expect(result.current.models.map((m) => m.id)).toEqual(["gemini-2.5-flash"]);
     expect(result.current.openRouter.models).toEqual([]);
+    expect(result.current.source).toBe("cache");
+    expect(result.current.fetchedAt).toBe("2026-06-02T00:00:00.000Z");
   });
 
   it("stays empty for both branches while the picker is closed", () => {

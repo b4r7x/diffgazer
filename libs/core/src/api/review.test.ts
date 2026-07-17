@@ -4,6 +4,7 @@ import {
   type CreateReviewOptions,
   createReview,
   getActiveReviewSession,
+  getReviews,
   resumeReviewStream,
 } from "./review.js";
 import { createMockClient as createClient } from "./test-helpers.js";
@@ -36,7 +37,6 @@ function streamResponse(events: unknown[]): Response {
 }
 
 const reviewResult = {
-  summary: "No issues found",
   issues: [],
 };
 
@@ -169,6 +169,22 @@ describe("createReview", () => {
         },
       }),
     ).toThrow();
+  });
+});
+
+describe("getReviews", () => {
+  it("forwards the project, cursor, and page size to the validated list endpoint", async () => {
+    const client = createClient();
+    vi.mocked(client.get).mockResolvedValue({ reviews: [], nextCursor: null });
+    const cursor = "dg1_eyJvcGFxdWUiOiJjdXJzb3IifQ";
+
+    await getReviews(client, "/repo", cursor, 25);
+
+    expect(client.get).toHaveBeenCalledWith(
+      "/api/review/reviews",
+      { projectPath: "/repo", cursor, limit: "25" },
+      expect.any(Function),
+    );
   });
 });
 

@@ -1,6 +1,7 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
+import { renderToString } from "react-dom/server";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { expectFieldInvalid, expectResetClearsInvalid } from "../../testing/form-behavior";
@@ -129,19 +130,62 @@ describe("Radio", () => {
 
   it("submits a meaningful default value and resets uncontrolled state", async () => {
     const user = userEvent.setup();
+    const onChange = vi.fn();
     render(
       <form aria-label="Test form">
-        <Radio name="choice" defaultChecked={false} label="Option A" />
+        <Radio name="choice" defaultChecked={false} onChange={onChange} label="Option A" />
       </form>,
     );
 
     await user.click(screen.getByRole("radio"));
     const form = getForm();
     expect(new FormData(form).get("choice")).toBe("on");
+    expect(onChange).toHaveBeenCalledOnce();
 
     form.reset();
     await waitFor(() => expect(new FormData(form).has("choice")).toBe(false));
     expect(screen.getByRole("radio")).toHaveAttribute("aria-checked", "false");
+    expect(onChange).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a Radio activation newer than a same-task form reset", async () => {
+    render(
+      <form aria-label="Test form">
+        <Radio name="choice" label="Option A" />
+      </form>,
+    );
+    const radio = screen.getByRole("radio");
+    const form = getForm();
+
+    form.reset();
+    // fireEvent retained: activation must remain in the reset task before its microtask can flush.
+    fireEvent.click(radio);
+    await Promise.resolve();
+
+    expect(radio).toHaveAttribute("aria-checked", "true");
+    expect(new FormData(form).get("choice")).toBe("on");
+  });
+
+  it("applies a Radio reset before a later activation", async () => {
+    const user = userEvent.setup();
+    render(
+      <form aria-label="Test form">
+        <Radio name="choice" label="Option A" />
+      </form>,
+    );
+    const radio = screen.getByRole("radio");
+    const form = getForm();
+
+    await user.click(radio);
+    expect(new FormData(form).get("choice")).toBe("on");
+
+    form.reset();
+    await waitFor(() => expect(new FormData(form).has("choice")).toBe(false));
+    expect(radio).toHaveAttribute("aria-checked", "false");
+
+    await user.click(radio);
+    expect(radio).toHaveAttribute("aria-checked", "true");
+    expect(new FormData(form).get("choice")).toBe("on");
   });
 
   it("keeps custom and empty submitted values aligned with data-value", async () => {
@@ -242,6 +286,55 @@ describe("Radio", () => {
     expect(new FormData(form).get("size")).toBe("large");
   });
 
+  it("keeps same-name standalone radios independent across shadow roots", async () => {
+    const user = userEvent.setup();
+    const firstHost = document.createElement("div");
+    const secondHost = document.createElement("div");
+    document.body.append(firstHost, secondHost);
+    const firstMount = document.createElement("div");
+    const secondMount = document.createElement("div");
+    firstHost.attachShadow({ mode: "open" }).append(firstMount);
+    secondHost.attachShadow({ mode: "open" }).append(secondMount);
+
+    render(<Radio name="size" value="small" label="Small" />, { container: firstMount });
+    render(<Radio name="size" value="large" label="Large" />, { container: secondMount });
+    const small = within(firstMount).getByRole("radio", { name: "Small" });
+    const large = within(secondMount).getByRole("radio", { name: "Large" });
+
+    await user.click(small);
+    await user.click(large);
+
+    expect(small).toHaveAttribute("aria-checked", "true");
+    expect(large).toHaveAttribute("aria-checked", "true");
+    firstHost.remove();
+    secondHost.remove();
+  });
+
+  it("keeps same-name standalone radios exclusive within one shadow root", async () => {
+    const user = userEvent.setup();
+    const host = document.createElement("div");
+    document.body.append(host);
+    const mountPoint = document.createElement("div");
+    host.attachShadow({ mode: "open" }).append(mountPoint);
+
+    render(
+      <form>
+        <Radio name="size" value="small" label="Small" />
+        <Radio name="size" value="large" label="Large" />
+      </form>,
+      { container: mountPoint },
+    );
+    const small = within(mountPoint).getByRole("radio", { name: "Small" });
+    const large = within(mountPoint).getByRole("radio", { name: "Large" });
+
+    await user.click(small);
+    await user.click(large);
+
+    expect(small).toHaveAttribute("aria-checked", "false");
+    expect(large).toHaveAttribute("aria-checked", "true");
+    host.remove();
+  });
+
   it("normalizes same-name default selections to one checked standalone radio", async () => {
     render(
       <form aria-label="Test form">
@@ -293,6 +386,101 @@ describe("Radio", () => {
         "false",
       );
     });
+  });
+
+  it("lets an uncontrolled peer uncheck a cooperative controlled radio", async () => {
+    const user = userEvent.setup();
+    const onSmallChange = vi.fn();
+
+    function MixedRadios() {
+      const [smallChecked, setSmallChecked] = useState(true);
+
+      return (
+        <form aria-label="Test form">
+          <Radio
+            name="size"
+            value="small"
+            checked={smallChecked}
+            onChange={(next) => {
+              onSmallChange(next);
+              setSmallChecked(next);
+            }}
+            label="Small"
+          />
+          <Radio name="size" value="large" label="Large" />
+        </form>
+      );
+    }
+
+    render(<MixedRadios />);
+    await user.click(screen.getByRole("radio", { name: /large/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: /small/i })).toHaveAttribute(
+        "aria-checked",
+        "false",
+      );
+      expect(screen.getByRole("radio", { name: /large/i })).toHaveAttribute("aria-checked", "true");
+    });
+    expect(onSmallChange).toHaveBeenCalledExactlyOnceWith(false);
+    expect(new FormData(getForm()).get("size")).toBe("large");
+  });
+
+  it("unchecks an uncontrolled peer when a controlled radio is clicked", async () => {
+    const user = userEvent.setup();
+    const onLargeChange = vi.fn();
+
+    function MixedRadios() {
+      const [largeChecked, setLargeChecked] = useState(false);
+
+      return (
+        <form aria-label="Test form">
+          <Radio name="size" value="small" defaultChecked label="Small" />
+          <Radio
+            name="size"
+            value="large"
+            checked={largeChecked}
+            onChange={(next) => {
+              onLargeChange(next);
+              setLargeChecked(next);
+            }}
+            label="Large"
+          />
+        </form>
+      );
+    }
+
+    render(<MixedRadios />);
+    await user.click(screen.getByRole("radio", { name: /large/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: /small/i })).toHaveAttribute(
+        "aria-checked",
+        "false",
+      );
+      expect(screen.getByRole("radio", { name: /large/i })).toHaveAttribute("aria-checked", "true");
+    });
+    expect(onLargeChange).toHaveBeenCalledExactlyOnceWith(true);
+    expect(new FormData(getForm()).get("size")).toBe("large");
+  });
+
+  it("keeps controlled state when its parent refuses a peer uncheck request", async () => {
+    const user = userEvent.setup();
+    const onSmallChange = vi.fn();
+
+    render(
+      <form aria-label="Test form">
+        <Radio name="size" value="small" checked onChange={onSmallChange} label="Small" />
+        <Radio name="size" value="large" label="Large" />
+      </form>,
+    );
+
+    await user.click(screen.getByRole("radio", { name: /large/i }));
+
+    await waitFor(() => expect(onSmallChange).toHaveBeenCalledExactlyOnceWith(false));
+    expect(screen.getByRole("radio", { name: /small/i })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: /large/i })).toHaveAttribute("aria-checked", "true");
+    expect(new FormData(getForm()).get("size")).toBe("large");
   });
 
   it("passes native root props and composes root handlers", async () => {
@@ -357,6 +545,110 @@ describe("Radio", () => {
 });
 
 describe("RadioGroup", () => {
+  it.each([
+    { defaultValue: "blue", expected: "Blue", label: "default-selected item" },
+    { defaultValue: undefined, expected: "Blue", label: "first enabled fallback" },
+  ])("renders the $label as the only server Tab stop", ({ defaultValue, expected }) => {
+    const markup = renderToString(
+      <RadioGroup label="Colors" defaultValue={defaultValue}>
+        <RadioGroup.Item value="red" label="Red" disabled />
+        <RadioGroup.Item value="blue" label="Blue" />
+        <RadioGroup.Item value="green" label="Green" />
+      </RadioGroup>,
+    );
+    const container = document.createElement("div");
+    container.innerHTML = markup;
+    const radios = within(container).getAllByRole("radio");
+    const tabbable = radios.filter((radio) => radio.getAttribute("tabindex") === "0");
+
+    expect(tabbable).toHaveLength(1);
+    expect(tabbable[0]).toHaveTextContent(expected);
+  });
+
+  it("keeps a visible radio as the only Tab stop when the selected item is CSS-hidden", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <>
+        <style>{`.css-hidden-radio { display: none; }`}</style>
+        <button type="button">Before</button>
+        <RadioGroup label="Colors" value="red">
+          <div className="css-hidden-radio">
+            <RadioGroup.Item value="red" label="Red" />
+          </div>
+          <RadioGroup.Item value="blue" label="Blue" />
+        </RadioGroup>
+        <button type="button">After</button>
+      </>,
+    );
+    const red = container.querySelector<HTMLElement>('[role="radio"][data-value="red"]');
+    const blue = screen.getByRole("radio", { name: "Blue" });
+    if (!red) throw new Error("Expected CSS-hidden red radio");
+
+    await waitFor(() => {
+      expect(red).toHaveAttribute("tabindex", "-1");
+      expect(blue).toHaveAttribute("tabindex", "0");
+    });
+
+    screen.getByRole("button", { name: "Before" }).focus();
+    await user.tab();
+    expect(blue).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole("button", { name: "After" })).toHaveFocus();
+
+    await user.tab({ shift: true });
+    expect(blue).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(screen.getByRole("button", { name: "Before" })).toHaveFocus();
+  });
+
+  it("resyncs the RadioGroup Tab target when an ancestor class changes visibility", async () => {
+    function VisibilityGroup({ hideSelected }: { hideSelected: boolean }) {
+      return (
+        <>
+          <style>{`.css-hidden-radio { display: none; }`}</style>
+          <RadioGroup label="Colors" value="red">
+            <div className={hideSelected ? "css-hidden-radio" : undefined}>
+              <RadioGroup.Item value="red" label="Red" />
+            </div>
+            <RadioGroup.Item value="blue" label="Blue" />
+          </RadioGroup>
+        </>
+      );
+    }
+
+    const { rerender } = render(<VisibilityGroup hideSelected={false} />);
+    const red = screen.getByRole("radio", { name: "Red" });
+    const blue = screen.getByRole("radio", { name: "Blue" });
+    expect(red).toHaveAttribute("tabindex", "0");
+    expect(blue).toHaveAttribute("tabindex", "-1");
+
+    rerender(<VisibilityGroup hideSelected />);
+    await waitFor(() => {
+      expect(red).toHaveAttribute("tabindex", "-1");
+      expect(blue).toHaveAttribute("tabindex", "0");
+    });
+
+    rerender(<VisibilityGroup hideSelected={false} />);
+    await waitFor(() => {
+      expect(red).toHaveAttribute("tabindex", "0");
+      expect(blue).toHaveAttribute("tabindex", "-1");
+    });
+  });
+
+  it("submits the item value when its DOM id is different", () => {
+    render(
+      <form aria-label="Test form">
+        <RadioGroup name="color" defaultValue="ocean" label="Colors">
+          <RadioGroup.Item id="blue-control" value="ocean" label="Blue" />
+          <RadioGroup.Item id="red-control" value="sunset" label="Red" />
+        </RadioGroup>
+      </form>,
+    );
+
+    expect(screen.getByRole("radio", { name: "Blue" })).toHaveAttribute("id", "blue-control");
+    expect(new FormData(getForm()).get("color")).toBe("ocean");
+  });
+
   it("does not dev-warn when selecting a registered item", async () => {
     const user = userEvent.setup();
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -832,9 +1124,10 @@ describe("RadioGroup", () => {
 
   it("resets uncontrolled group value with native form reset", async () => {
     const user = userEvent.setup();
+    const onChange = vi.fn();
     render(
       <form aria-label="Test form">
-        <RadioGroup name="color" defaultValue="red" label="Colors">
+        <RadioGroup name="color" defaultValue="red" onChange={onChange} label="Colors">
           <RadioGroup.Item value="red" label="Red" />
           <RadioGroup.Item value="blue" label="Blue" />
         </RadioGroup>
@@ -844,9 +1137,55 @@ describe("RadioGroup", () => {
     await user.click(screen.getByRole("radio", { name: /blue/i }));
     const form = getForm();
     expect(new FormData(form).get("color")).toBe("blue");
+    expect(onChange).toHaveBeenCalledOnce();
 
     form.reset();
     await waitFor(() => expect(new FormData(form).get("color")).toBe("red"));
+    expect(onChange).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a RadioGroup activation newer than a same-task form reset", async () => {
+    render(
+      <form aria-label="Test form">
+        <RadioGroup name="color" defaultValue="red" label="Colors">
+          <RadioGroup.Item value="red" label="Red" />
+          <RadioGroup.Item value="blue" label="Blue" />
+        </RadioGroup>
+      </form>,
+    );
+    const form = getForm();
+
+    form.reset();
+    // fireEvent retained: activation must remain in the reset task before its microtask can flush.
+    fireEvent.click(screen.getByRole("radio", { name: /blue/i }));
+    await Promise.resolve();
+
+    expect(new FormData(form).get("color")).toBe("blue");
+  });
+
+  it("applies a RadioGroup reset before a later activation", async () => {
+    const user = userEvent.setup();
+    render(
+      <form aria-label="Test form">
+        <RadioGroup name="color" defaultValue="red" label="Colors">
+          <RadioGroup.Item value="red" label="Red" />
+          <RadioGroup.Item value="blue" label="Blue" />
+        </RadioGroup>
+      </form>,
+    );
+    const blue = screen.getByRole("radio", { name: /blue/i });
+    const form = getForm();
+
+    await user.click(blue);
+    expect(new FormData(form).get("color")).toBe("blue");
+
+    form.reset();
+    await waitFor(() => expect(new FormData(form).get("color")).toBe("red"));
+    expect(blue).toHaveAttribute("aria-checked", "false");
+
+    await user.click(blue);
+    expect(blue).toHaveAttribute("aria-checked", "true");
+    expect(new FormData(form).get("color")).toBe("blue");
   });
 
   it("clears the group's aria-invalid on native form reset after a failed submit", async () => {
@@ -954,6 +1293,46 @@ describe("RadioGroup", () => {
     expect(form.checkValidity()).toBe(true);
     expect(screen.getByRole("radiogroup")).not.toHaveAttribute("aria-invalid");
     expect(new FormData(form).entries().next().done).toBe(true);
+  });
+
+  it.each([
+    { label: "named", name: "color" },
+    { label: "unnamed", name: undefined },
+  ])("exempts an all-disabled $label required group from validation", async ({ name }) => {
+    function RequiredGroup({ allDisabled }: { allDisabled: boolean }) {
+      return (
+        <form aria-label="Test form">
+          <button type="button">Before group</button>
+          <RadioGroup {...(name ? { name } : {})} required label="Colors">
+            <RadioGroup.Item value="red" label="Red" disabled={allDisabled} />
+            <RadioGroup.Item value="blue" label="Blue" disabled={allDisabled} />
+          </RadioGroup>
+        </form>
+      );
+    }
+
+    const { container, rerender } = render(<RequiredGroup allDisabled={false} />);
+    const form = getForm();
+    const group = screen.getByRole("radiogroup", { name: "Colors" });
+    expect(form.reportValidity()).toBe(false);
+    await waitFor(() => expectFieldInvalid(group));
+
+    rerender(<RequiredGroup allDisabled />);
+
+    await waitFor(() => expect(group).not.toHaveAttribute("aria-required"));
+    expect(group).not.toHaveAttribute("aria-invalid");
+    expect(form.checkValidity()).toBe(true);
+    expect(new FormData(form).has("color")).toBe(false);
+    expect(container.querySelector('[data-slot="radio-group-validation"]')).toBeNull();
+    for (const radio of screen.getAllByRole("radio")) {
+      expect(radio).toHaveAttribute("aria-disabled", "true");
+      expect(radio).toHaveAttribute("tabindex", "-1");
+    }
+
+    const before = screen.getByRole("button", { name: "Before group" });
+    before.focus();
+    expect(form.reportValidity()).toBe(true);
+    expect(before).toHaveFocus();
   });
 
   it("does not call the public value callback with undefined on native reset", async () => {

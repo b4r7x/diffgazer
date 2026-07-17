@@ -116,6 +116,10 @@
       "types": "./dist/testing/dom-polyfills.d.ts",
       "import": "./dist/testing/dom-polyfills.js"
     },
+    "./testing/deferred": {
+      "types": "./dist/testing/deferred.d.ts",
+      "import": "./dist/testing/deferred.js"
+    },
     "./testing/factories": {
       "types": "./dist/testing/factories.d.ts",
       "import": "./dist/testing/factories.js"

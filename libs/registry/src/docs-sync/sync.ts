@@ -1,9 +1,10 @@
 import { log } from "../logger.js";
+import { normalizeOrigin } from "../origin.js";
 import { computeSyncFingerprint, readSyncState, shouldSkipSync, writeSyncState } from "./cache.js";
 import { assertSafeLibraryId } from "./library-id-validation.js";
 import { loadLibraryArtifacts } from "./loader.js";
 import { resolveSyncOutputPaths } from "./paths.js";
-import { runDocsSyncPass } from "./sync-operations.js";
+import { assertArtifactOrigins, runDocsSyncPass } from "./sync-operations.js";
 import type { SyncDocsOptions, SyncDocsResult } from "./types.js";
 
 export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult {
@@ -12,26 +13,29 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
     workspaceRoot,
     libraries,
     primaryLibraryId,
-    origin,
+    origin: requestedOrigin,
     sourceOrigin,
-    mode,
     syncSchemaVersion = 3,
     afterSync,
     outputPaths: outputPathOverrides,
   } = options;
-
-  const paths = resolveSyncOutputPaths(docsRoot, outputPathOverrides);
-
   assertSafeLibraryId(primaryLibraryId, "Primary library id");
+  const libraryIds = new Set<string>();
   for (const library of libraries) {
     assertSafeLibraryId(library.id, `Library id "${library.id}"`);
+    if (libraryIds.has(library.id)) {
+      throw new Error(`Duplicate library id "${library.id}".`);
+    }
+    libraryIds.add(library.id);
   }
 
-  log.info(`[docs-sync] Mode: ${mode}`);
+  const origin = normalizeOrigin(requestedOrigin);
+  const paths = resolveSyncOutputPaths(docsRoot, outputPathOverrides);
 
-  const artifacts = libraries.map((lib) =>
-    loadLibraryArtifacts(lib, mode, docsRoot, workspaceRoot, origin),
-  );
+  log.info("[docs-sync] Loading workspace artifacts.");
+
+  const artifacts = libraries.map((lib) => loadLibraryArtifacts(lib, workspaceRoot, origin));
+  assertArtifactOrigins(artifacts, origin);
 
   const primaryArtifact = artifacts.find((a) => a.id === primaryLibraryId);
   if (!primaryArtifact) {

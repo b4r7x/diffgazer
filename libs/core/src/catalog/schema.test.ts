@@ -66,4 +66,18 @@ describe("parseModelsDevCatalog", () => {
     const parsed = ModelsDevModelSchema.safeParse({ id: "x", structured_output: null });
     expect(parsed.success).toBe(true);
   });
+
+  it("rejects JSON __proto__ keys without poisoning the result or Object.prototype", () => {
+    const raw = JSON.parse(
+      '{"__proto__":{"id":"__proto__","name":"poisoned","models":{}},"google":{"id":"google","models":{}}}',
+    );
+
+    const catalog = parseModelsDevCatalog(raw);
+
+    expect(Object.getPrototypeOf(catalog)).toBe(Object.prototype);
+    expect(Object.hasOwn(catalog, "__proto__")).toBe(false);
+    expect("name" in catalog).toBe(false);
+    expect(catalog.google?.id).toBe("google");
+    expect(Object.prototype).not.toHaveProperty("name");
+  });
 });

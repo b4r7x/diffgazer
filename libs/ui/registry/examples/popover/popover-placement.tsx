@@ -11,6 +11,7 @@ export default function PopoverPlacementExample() {
             {(triggerProps) => (
               <button
                 {...triggerProps}
+                type="button"
                 className="border border-foreground/30 px-3 py-1 font-mono text-sm"
               >
                 {side}

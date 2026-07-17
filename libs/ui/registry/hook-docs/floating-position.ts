@@ -86,10 +86,10 @@ const { position, contentRef } = useFloatingPosition({
       },
       {
         name: "contentRef",
-        type: "RefObject<HTMLDivElement | null>",
+        type: "RefCallback<HTMLDivElement>",
         required: true,
         description:
-          "Ref to attach to the floating content element. Used for measuring dimensions during positioning.",
+          "Callback ref to attach to the floating content element. Attaching, replacing, or removing the node restarts measurement and observer subscriptions.",
       },
     ],
   },
@@ -103,6 +103,11 @@ const { position, contentRef } = useFloatingPosition({
       title: "Layout Effect",
       content:
         "Uses useLayoutEffect to compute position synchronously before paint, preventing visual flicker.",
+    },
+    {
+      title: "Late Attachment",
+      content:
+        "The content callback ref participates in the positioning lifecycle, so content mounted after the overlay opens is measured immediately and receives resize and scroll subscriptions.",
     },
     {
       title: "Used By",

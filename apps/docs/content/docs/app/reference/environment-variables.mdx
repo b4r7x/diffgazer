@@ -1,9 +1,9 @@
 ---
 title: Environment variables
-description: The environment variables Diffgazer reads and the ones it sets for itself.
+description: The environment variables Diffgazer reads and sets in packaged mode.
 ---
 
-Diffgazer reads a handful of environment variables, and it sets a few more on its own when it runs packaged. The two groups behave very differently, so this page keeps them apart: the first table is variables you can set to change behavior, and the second is variables Diffgazer injects internally that you should not set by hand. Most settings live in config rather than the environment, so reach for these only when you need to override where files live, how much it logs, or which port it binds.
+Diffgazer reads a handful of environment variables, and it sets a few internal values when it runs packaged. Most settings live in config rather than the environment, so reach for these only when you need to override where files live, how much it logs, or which port it binds.
 
 ## Variables you set
 
@@ -16,7 +16,7 @@ These are safe to set in your shell or process environment. Anything not listed 
 | `DIFFGAZER_PROJECT_ROOT` | The repository root the server reviews. The packaged CLI sets this for you from the project you launched in; set it yourself only when running the server outside the CLI. | The current working directory, walked up to its git root |
 | `DIFFGAZER_LOG_LEVEL` | The lowest log level the server emits: `debug`, `info`, `warn`, or `error`. An unrecognized value is ignored and the default applies. | `warn` when packaged, `info` for the standalone dev server |
 | `DIFFGAZER_OFFLINE` | Skips the live models.dev catalog fetch and uses the bundled snapshot. Any value except unset, empty, `0`, or `false` turns it on. | Off (the live fetch runs) |
-| `DIFFGAZER_FORCE_KILL_DELAY_MS` | Milliseconds to wait after `SIGTERM` before sending `SIGKILL` to a child process. Raise it for slow shutdowns, for example in CI. Must be a positive integer; anything else is ignored. | `2000` |
+| `DIFFGAZER_FORCE_KILL_DELAY_MS` | Milliseconds to wait after `SIGTERM` before sending `SIGKILL` to a child process. Raise it for slow shutdowns, for example in CI. Must be an integer from `1` through `2147482647`; anything else is ignored. | `2000` |
 | `GOOGLE_API_KEY` | API key for Google Gemini. | Unset |
 | `ZAI_API_KEY` | API key for Z.ai and Z.ai Coding Plan. Both providers read the same variable. | Unset |
 | `OPENROUTER_API_KEY` | API key for OpenRouter. | Unset |
@@ -29,13 +29,28 @@ The five provider keys map to the six enabled providers because Z.ai and Z.ai Co
 
 `DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT=1` tells the standalone development server to trust the project-root request header. Packaged mode ignores it. Never enable it outside local development; the packaged CLI already sets the reviewed project root itself.
 
+## Optional split-development security
+
+`DIFFGAZER_SHUTDOWN_TOKEN` enables the API token gate in every mode. The packaged CLI creates and sets it automatically. When you run the server and web app separately, set the same token on both sides if you want the API gate enabled or need to use the trust routes.
+
+The server expects the token in the `x-diffgazer-shutdown-token` request header. The web client reads `VITE_DIFFGAZER_SHUTDOWN_TOKEN` when the Vite dev server or build starts and sends that header. Restart the dev server or rebuild after changing the value. Packaged web mode receives the same value through `window.__DIFFGAZER_SHUTDOWN_TOKEN__` instead.
+
+```bash
+# Terminal 1
+DIFFGAZER_SHUTDOWN_TOKEN="replace-with-one-random-value" pnpm --filter @diffgazer/server dev
+
+# Terminal 2
+VITE_DIFFGAZER_SHUTDOWN_TOKEN="replace-with-one-random-value" pnpm --filter @diffgazer/web dev
+```
+
+In split development without a server token, the general API gate is disabled, but `/api/settings/trust` still fails closed with `401`. Warning: setting only the server variable makes the web app's requests fail with `401`; setting only the Vite variable does not configure the server. Configure both values together so the client and server use the same token.
+
 ## Set automatically
 
-Diffgazer sets these itself. They exist so the packaged CLI and its embedded server can talk to each other; treat them as outputs of how Diffgazer runs, not as knobs. Setting them by hand has no useful effect and can break shutdown or the embedded app.
+The packaged CLI sets these itself so it and the embedded server can coordinate. The optional split-development token is documented above because it is also a supported manual setting. Do not set the variables in this table by hand.
 
 | Variable | What sets it | Why it exists |
 | --- | --- | --- |
-| `DIFFGAZER_SHUTDOWN_TOKEN` | The CLI, before it starts the embedded server. | Authenticates the shutdown request from the embedded web app. The server refuses to serve the packaged app without it. |
 | `DIFFGAZER_CLI_PID` | The CLI, set to its own process id at startup. | Lets the embedded server terminate the parent CLI process when the app asks to shut down. |
 | `DIFFGAZER_PACKAGED` | The CLI, set to `1` when serving the embedded app. | Flags packaged mode, which changes defaults such as the log level and how the server resolves the project root. |
 
@@ -43,5 +58,5 @@ Diffgazer sets these itself. They exist so the packaged CLI and its embedded ser
 
 - [Providers](/app/reference/providers): the model providers and which environment variable each one reads for its key.
 - [Configuration](/app/reference/configuration): the config files and the settings that the environment overrides.
-- [Server](/app/reference/server): the embedded server that consumes the automatic variables above.
+- [Server](/app/reference/server): the embedded server and its packaged runtime variables.
 - [Troubleshooting](/app/operations/troubleshooting): what to check when a port, a key, or shutdown is not behaving.

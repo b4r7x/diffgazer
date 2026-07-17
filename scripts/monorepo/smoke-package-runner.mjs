@@ -1,7 +1,5 @@
-import { execFileSync } from "node:child_process";
 import {
   existsSync,
-  mkdirSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
@@ -10,12 +8,14 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
+import { stringify as stringifyYaml } from "yaml";
 import {
   networkAllowed,
   packageNameFromSpec,
   packWorkspacePackage,
   pnpmAddFlags,
   resolveAndCollectMissing,
+  runArgv,
   skipMissingSmokeDeps,
 } from "./smoke-shared.mjs";
 
@@ -57,7 +57,7 @@ function resolveInstalledDependency(
   throw new Error(`Cannot resolve local dependency ${packageName} for ${workspacePackage}`);
 }
 
-function localDependencySpecs(root, workspacePackage, smoke) {
+export function localDependencySpecs(root, workspacePackage, smoke) {
   const workspacePackages = [workspacePackage, ...(smoke.workspaceDeps ?? [])];
   const dependencySourcePackages = [
     workspacePackage,
@@ -68,7 +68,11 @@ function localDependencySpecs(root, workspacePackage, smoke) {
 
   for (const packageName of workspacePackages) {
     const pkg = readPackageJson(root, packageName);
-    for (const depName of Object.keys(pkg.dependencies ?? {})) {
+    const runtimeDependencies = {
+      ...pkg.dependencies,
+      ...pkg.optionalDependencies,
+    };
+    for (const depName of Object.keys(runtimeDependencies)) {
       if (!depName.startsWith("@diffgazer/")) {
         specs.set(depName, `link:${resolveInstalledDependency(root, packageName, depName)}`);
       }
@@ -92,16 +96,10 @@ function writeOfflineOverrides(root, projectDir, workspacePackage, smoke) {
   const specs = localDependencySpecs(root, workspacePackage, smoke);
   if (specs.size === 0) return specs;
 
-  const packageJsonPath = resolve(projectDir, "package.json");
-  const pkg = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
-  pkg.pnpm = {
-    ...(pkg.pnpm ?? {}),
-    overrides: {
-      ...(pkg.pnpm?.overrides ?? {}),
-      ...Object.fromEntries(specs),
-    },
-  };
-  writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`);
+  writeFileSync(
+    resolve(projectDir, "pnpm-workspace.yaml"),
+    stringifyYaml({ packages: [], overrides: Object.fromEntries(specs) }),
+  );
   return specs;
 }
 
@@ -132,19 +130,48 @@ export function shouldRunPackageSmoke(root, item) {
   return !skipMissingSmokeDeps(item.label ?? item.name, missing);
 }
 
-function execFile(command, args, options = {}) {
-  return execFileSync(command, args, {
-    cwd: options.cwd,
-    encoding: "utf-8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+export function createPackageTarballCache(root, options = {}) {
+  const pack = options.pack ?? packWorkspacePackage;
+  const packDir = options.packDir ?? realpathSync(mkdtempSync(resolve(tmpdir(), "dg-packs-")));
+  const cleanup = options.cleanup ?? (() => rmSync(packDir, { recursive: true, force: true }));
+  const tarballs = new Map();
+  let disposed = false;
+
+  return {
+    async get(workspacePackage) {
+      if (disposed) throw new Error("Package tarball cache is already disposed");
+      const cached = tarballs.get(workspacePackage);
+      if (cached) return cached;
+
+      const pending = Promise.resolve(pack(root, workspacePackage, packDir)).catch((error) => {
+        tarballs.delete(workspacePackage);
+        throw error;
+      });
+      tarballs.set(workspacePackage, pending);
+      return pending;
+    },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      cleanup();
+    },
+  };
 }
+
+let runnerTarballCache;
+
+function getRunnerTarballCache(root) {
+  if (!runnerTarballCache) runnerTarballCache = createPackageTarballCache(root);
+  return runnerTarballCache;
+}
+
+process.once("exit", () => runnerTarballCache?.dispose());
 
 // List the file paths inside a packed .tgz (stripping the leading "package/"
 // prefix npm adds) so a smoke can assert the tarball actually ships what its
 // build is supposed to produce.
-function listTarballFiles(tgzPath) {
-  const output = execFile("tar", ["-tzf", tgzPath]);
+async function listTarballFiles(tgzPath) {
+  const output = await runArgv("tar", ["-tzf", tgzPath]);
   return output
     .split("\n")
     .map((line) => line.trim())
@@ -152,7 +179,7 @@ function listTarballFiles(tgzPath) {
     .map((entry) => entry.replace(/^package\//, ""));
 }
 
-function runSmokeStep(step, projectDir) {
+async function runSmokeStep(step, projectDir) {
   if (!step || typeof step !== "object" || typeof step.command !== "string") {
     throw new Error("Package smoke steps must be objects with a command string");
   }
@@ -162,62 +189,64 @@ function runSmokeStep(step, projectDir) {
     throw new Error(`Package smoke step ${step.command} must provide string args`);
   }
 
-  return execFile(step.command, args, { cwd: projectDir }).trim();
+  return (await runArgv(step.command, args, { cwd: projectDir })).trim();
 }
 
-function runSmokeSteps(smoke, projectDir) {
+async function runSmokeSteps(smoke, projectDir) {
   if (!Array.isArray(smoke.steps) || smoke.steps.length === 0) {
     throw new Error(`Package smoke ${smoke.label ?? smoke.name} must define at least one step`);
   }
 
-  return smoke.steps
-    .map((step) => runSmokeStep(step, projectDir))
-    .filter(Boolean)
-    .join("\n");
+  const output = [];
+  for (const step of smoke.steps) {
+    const result = await runSmokeStep(step, projectDir);
+    if (result) output.push(result);
+  }
+  return output.join("\n");
 }
 
 function makeTempPackageProject() {
   return realpathSync(mkdtempSync(resolve(tmpdir(), "dg-smoke-")));
 }
 
-export function withTempPackageProject(root, workspacePackage, smoke) {
+export async function withTempPackageProject(root, workspacePackage, smoke) {
   const projectDir = makeTempPackageProject();
-  const packDir = resolve(projectDir, "packs");
   const tgzPaths = [];
-  execFile("npm", ["-v"], { cwd: root });
+  await runArgv("npm", ["-v"], { cwd: root });
 
   try {
-    mkdirSync(packDir, { recursive: true });
-    execFile("npm", ["init", "-y"], { cwd: projectDir });
-    execFile("npm", ["pkg", "set", "type=module"], { cwd: projectDir });
+    await runArgv("npm", ["init", "-y"], { cwd: projectDir });
+    await runArgv("npm", ["pkg", "set", "type=module"], { cwd: projectDir });
+    const packageManager = JSON.parse(
+      readFileSync(resolve(root, "package.json"), "utf-8"),
+    ).packageManager;
+    await runArgv("npm", ["pkg", "set", `packageManager=${packageManager}`], {
+      cwd: projectDir,
+    });
 
-    const mainTgz = packWorkspacePackage(root, workspacePackage, packDir);
+    const tarballCache = getRunnerTarballCache(root);
+    const mainTgz = await tarballCache.get(workspacePackage);
     tgzPaths.push(mainTgz);
-    smoke.assertTarball?.(listTarballFiles(mainTgz));
+    if (smoke.assertTarball) smoke.assertTarball(await listTarballFiles(mainTgz));
     for (const dep of smoke.workspaceDeps ?? []) {
-      tgzPaths.push(packWorkspacePackage(root, dep, packDir));
+      tgzPaths.push(await tarballCache.get(dep));
     }
     const installDeps = networkAllowed()
       ? (smoke.installDeps ?? [])
       : [...writeOfflineOverrides(root, projectDir, workspacePackage, smoke).values()];
-    // The keys-absent fixture deliberately installs @diffgazer/ui WITHOUT its
-    // required @diffgazer/keys peer to prove the load-time missing-peer signal
-    // (package-mode UI entries import @diffgazer/keys at runtime, so keys must
-    // remain a required peer). pnpm's default auto-install-peers would try to resolve that required
-    // peer from the registry, which fails offline because keys is publish-gated.
-    // Disable peer auto-install/strictness for this fixture so the install models a
-    // consumer who skipped the required peer; the runtime step then asserts the
-    // keys-backed subpath fails naming @diffgazer/keys.
+    // Missing-peer and runtime-only fixtures disable pnpm peer auto-install so
+    // the temporary project contains exactly the host dependencies they list.
+    // Their runtime steps then verify the expected missing-peer or optional-peer
+    // contract against the packed package.
     const peerFlags = smoke.skipPeerAutoInstall
       ? ["--config.auto-install-peers=false", "--config.strict-peer-dependencies=false"]
       : [];
-    execFileSync("pnpm", ["add", ...pnpmAddFlags(), ...peerFlags, ...tgzPaths, ...installDeps], {
+    await runArgv("pnpm", ["add", ...pnpmAddFlags(), ...peerFlags, ...tgzPaths, ...installDeps], {
       cwd: projectDir,
-      encoding: "utf-8",
-      stdio: ["ignore", "pipe", "pipe"],
+      timeoutMs: 900_000,
     });
     smoke.prepare?.(projectDir);
-    const result = runSmokeSteps(smoke, projectDir);
+    const result = await runSmokeSteps(smoke, projectDir);
     const verification = smoke.verify?.(projectDir);
     return [result, verification].filter(Boolean).join("\n").trim();
   } finally {

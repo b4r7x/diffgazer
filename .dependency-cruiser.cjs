@@ -51,6 +51,9 @@ module.exports = {
           "(^|/)src/client\\.tsx?$",
           "(^|/)src/server\\.ts$",
           "(^|/)bin/",
+          // Browser fixtures are Vite entrypoints referenced from HTML rather
+          // than imported by another TypeScript module.
+          "(^|/)tests/fixtures/",
           // Tooling scripts are invoked by package scripts rather than imports.
           "^scripts/monorepo/[^/]+\\.mjs$",
           "(^|/)scripts/[^/]+\\.[cm]?[jt]s$",
@@ -73,7 +76,7 @@ module.exports = {
           "^apps/web/src/hooks/(use-theme|use-config)\\.tsx$",
           "^apps/web/src/lib/main-content\\.ts$",
           "^apps/web/src/(features/(providers/components/list|history/hooks/use-keyboard|help/components/page)|components/ui/card-layout)\\.tsx?$",
-          "^apps/docs/src/(components/(content-spinner|not-found-state|preview-inset-pane|shared/(chrome-label|dot-grid|focus-ring)|layout/(tui-fault-panel|tui-bracket-link)|docs-mdx/(markdown-renderers|blocks/steps))|features/theme/components/(diffgazer-preview|variable-diagram)|hooks/(theme-context|use-demos)|lib/(consumption-metadata|cross-deps-data|docs-chrome|example-frames|generated-doc-data|resolve-examples))\\.tsx?$",
+          "^apps/docs/src/(components/(content-spinner|not-found-state|preview-inset-pane|shared/(chrome-label|dot-grid|focus-ring)|layout/(tui-fault-panel|tui-bracket-link)|docs-mdx/(markdown-renderers|blocks/steps))|features/theme/components/(diffgazer-preview|variable-diagram)|hooks/(theme-context|use-demos)|lib/(consumption-metadata|docs-chrome|example-frames|generated-doc-data|resolve-examples))\\.tsx?$",
         ],
       },
       to: {},

@@ -22,11 +22,15 @@ import { ReviewSummaryView } from "./summary-view";
 
 interface SavedReviewViewProps {
   saved: SavedReviewData;
+  initialIssueId?: string;
   onClose: () => void;
 }
 
-function SavedReviewView({ saved, onClose }: SavedReviewViewProps): ReactElement {
-  const [phase, setPhase] = useState<Extract<ReviewScreenPhase, "summary" | "results">>("summary");
+function SavedReviewView({ saved, initialIssueId, onClose }: SavedReviewViewProps): ReactElement {
+  const hasInitialIssue = saved.issues.some((issue) => issue.id === initialIssueId);
+  const [phase, setPhase] = useState<Extract<ReviewScreenPhase, "summary" | "results">>(
+    hasInitialIssue ? "results" : "summary",
+  );
 
   if (phase === "summary") {
     return (
@@ -35,6 +39,7 @@ function SavedReviewView({ saved, onClose }: SavedReviewViewProps): ReactElement
         reviewId={saved.reviewId}
         durationMs={saved.durationMs}
         lensStats={saved.lensStats}
+        droppedDuplicates={saved.droppedDuplicates}
         droppedBelowThreshold={saved.droppedBelowThreshold}
         minSeverity={saved.minSeverity}
         onContinue={() => setPhase("results")}
@@ -47,6 +52,7 @@ function SavedReviewView({ saved, onClose }: SavedReviewViewProps): ReactElement
     <ReviewResultsView
       issues={saved.issues}
       reviewId={saved.reviewId}
+      initialIssueId={hasInitialIssue ? initialIssueId : undefined}
       onBack={() => setPhase("summary")}
     />
   );
@@ -93,6 +99,7 @@ export function ReviewScreen(): ReactElement {
 
   const routeMode: ReviewMode = route.screen === "review" && route.mode ? route.mode : "unstaged";
   const reviewId = route.screen === "review" ? route.reviewId : undefined;
+  const issueId = route.screen === "review" ? route.issueId : undefined;
   const isLiveRoute = route.screen === "review" && route.live === true;
 
   const shouldLoadSavedReview = Boolean(reviewId && !isLiveRoute);
@@ -120,7 +127,14 @@ export function ReviewScreen(): ReactElement {
       return <LoadingSavedView />;
     }
     if (outcome.kind === "results") {
-      return <SavedReviewView saved={outcome.data} onClose={goBack} />;
+      return (
+        <SavedReviewView
+          key={`${outcome.data.reviewId}:${issueId ?? "summary"}`}
+          saved={outcome.data}
+          initialIssueId={issueId}
+          onClose={goBack}
+        />
+      );
     }
     if (outcome.kind === "report-error") {
       const message = getErrorMessage(outcome.error, "Failed to load the saved review.");

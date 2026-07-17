@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import { createError, getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
@@ -7,7 +8,7 @@ import type { SecretsStorageError, SecretsStorageErrorCode } from "./types.js";
 type KeyringModule = typeof import("@napi-rs/keyring");
 
 const KEYRING_APP_NAME = "diffgazer";
-const KEYRING_TEST_KEY = "__diffgazer_keyring_test__";
+const KEYRING_TEST_KEY_PREFIX = "__diffgazer_keyring_test__";
 
 const requireModule = createRequire(import.meta.url);
 let cachedKeyring: KeyringModule | null | undefined;
@@ -27,20 +28,26 @@ const loadKeyring = (): KeyringModule | null => {
 };
 
 const checkKeyringAvailability = (keyring: KeyringModule): boolean => {
+  const testKey = `${KEYRING_TEST_KEY_PREFIX}${randomUUID()}`;
+  let entry: InstanceType<KeyringModule["Entry"]> | null = null;
+
   try {
-    const testValue = `test_${Date.now()}`;
-    const entry = new keyring.Entry(KEYRING_APP_NAME, KEYRING_TEST_KEY);
+    entry = new keyring.Entry(KEYRING_APP_NAME, testKey);
+    const testValue = `test_${randomUUID()}`;
     entry.setPassword(testValue);
     const readBack = entry.getPassword();
-    try {
-      entry.deletePassword();
-    } catch (cleanupError) {
-      log("warn", "keyring_test_key_cleanup_failed", { error: getErrorMessage(cleanupError) });
-    }
     return readBack === testValue;
   } catch (error) {
     log("warn", "keyring_availability_check_failed", { error: getErrorMessage(error) });
     return false;
+  } finally {
+    if (entry) {
+      try {
+        entry.deletePassword();
+      } catch (cleanupError) {
+        log("warn", "keyring_test_key_cleanup_failed", { error: getErrorMessage(cleanupError) });
+      }
+    }
   }
 };
 

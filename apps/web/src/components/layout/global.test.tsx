@@ -1,8 +1,11 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
+import { makeIssue } from "@diffgazer/core/testing/factories";
+import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
@@ -14,6 +17,7 @@ vi.mock("@tanstack/react-router", () => ({
   useCanGoBack: () => false,
 }));
 
+import { ReviewResultsView } from "../../features/review/components/results-view";
 import { GlobalLayout } from "./global";
 
 let queryClient: QueryClient;
@@ -96,5 +100,69 @@ describe("GlobalLayout", () => {
     );
     expect(screen.getByRole("main")).toHaveTextContent("Help content");
     expect(screen.getByRole("contentinfo")).toBeInTheDocument();
+  });
+
+  it("moves focus to main on skip activation without adding main to regular Tab order", async () => {
+    const user = userEvent.setup();
+    renderShell(<button type="button">First content action</button>);
+    const skipLink = screen.getByRole("link", { name: "Skip to main content" });
+    const main = screen.getByRole("main");
+
+    await user.click(skipLink);
+    expect(main).toHaveFocus();
+    expect(main).toHaveAttribute("tabindex", "-1");
+
+    skipLink.focus();
+    await user.tab();
+    expect(screen.getByRole("button", { name: "First content action" })).toHaveFocus();
+  });
+
+  it("keeps the real review-results viewport keyboard reachable inside the shell", () => {
+    const issue = makeIssue({
+      id: "narrow-layout",
+      severity: "high",
+      title: "Details remain reachable",
+      symptom: "The details pane must remain reachable at narrow widths.",
+      rationale: "The review composition owns horizontal overflow.",
+      recommendation: "Keep the results row inside its explicit viewport.",
+    });
+
+    renderShell(
+      <KeyboardProvider>
+        <ReviewResultsView issues={[issue]} reviewId="layout-regression" />
+      </KeyboardProvider>,
+    );
+
+    const main = screen.getByRole("main");
+    const resultsViewport = screen.getByRole("region", { name: "Review result panes" });
+    expect(main).toContainElement(resultsViewport);
+    expect(resultsViewport).toHaveAttribute("data-viewport", "review-results");
+    expect(resultsViewport).toHaveAttribute("tabindex", "0");
+
+    resultsViewport.focus();
+    expect(resultsViewport).toHaveFocus();
+  });
+
+  it("keeps the configured header when only provider status fails", async () => {
+    vi.mocked(mockApi.getProviderStatus).mockRejectedValue(
+      new Error("provider status unavailable"),
+    );
+
+    renderShell();
+
+    expect(
+      await screen.findByLabelText("Provider: openrouter / openrouter/test-model, Status: active"),
+    ).toBeInTheDocument();
+  });
+
+  it("labels an init failure without presenting an unconfigured provider", async () => {
+    vi.mocked(mockApi.loadInit).mockRejectedValue(new Error("init unavailable"));
+
+    renderShell();
+
+    expect(
+      await screen.findByLabelText("Provider: Configuration unavailable, Status: idle"),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Provider: Not configured/i)).not.toBeInTheDocument();
   });
 });

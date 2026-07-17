@@ -2,15 +2,10 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { registryItemToDistKey } from "./dist-keys.js";
 
-interface RscRegistryFile {
-  path: string;
-}
-
 interface RscRegistryItem {
   name: string;
   type: string;
-  files?: RscRegistryFile[];
-  meta?: { client?: boolean };
+  meta?: { client?: boolean; hidden?: boolean };
 }
 
 interface RscRegistry {
@@ -20,9 +15,13 @@ interface RscRegistry {
 interface AssertRscClientDirectivesOptions {
   rootDir: string;
   registryPath: string;
+  packagePath?: string;
 }
 
-const HOOK_ENTRY = /(?:^|\/)src\/hooks\/(use-[^/]+)\.tsx?$/;
+const UI_PUBLIC_CLIENT_OUTPUT_OVERRIDES = {
+  "./components/code-block/highlight": "components/code-block/highlight",
+  "./components/command-palette/highlight": "components/command-palette/highlight",
+} as const;
 
 // Skips a leading directive prologue's surrounding noise (BOM, whitespace, and
 // line/block comments) so a license header above the directive does not hide it.
@@ -44,41 +43,46 @@ function startsWithUseClient(content: string): boolean {
   return rest.startsWith('"use client"') || rest.startsWith("'use client'");
 }
 
-/**
- * Derives the dist `.js` outputs that must carry a "use client" directive from
- * each client registry item, covering both the tsup name→dist-key layout (UI)
- * and the tsc src→dist layout (keys). Non-entry transitive items contribute no
- * existing candidate and are skipped.
- */
-function clientOutputsForItem(item: RscRegistryItem): string[] {
-  const outputs = new Set<string>([`dist/${registryItemToDistKey(item)}.js`]);
-  for (const file of item.files ?? []) {
-    const match = file.path.match(HOOK_ENTRY);
-    if (match) outputs.add(`dist/hooks/${match[1]}.js`);
+export function getUiPublicClientOutputMap(
+  items: readonly RscRegistryItem[],
+): ReadonlyMap<string, string> {
+  const outputs = new Map<string, string>();
+  for (const item of items) {
+    if (!item.meta?.client || item.meta.hidden) continue;
+    const output = registryItemToDistKey(item);
+    outputs.set(`./${output}`, output);
   }
-  return [...outputs];
+  for (const [publicSubpath, output] of Object.entries(UI_PUBLIC_CLIENT_OUTPUT_OVERRIDES)) {
+    outputs.set(publicSubpath, output);
+  }
+  return outputs;
 }
 
 export function assertRscClientDirectives({
   rootDir,
   registryPath,
+  packagePath = resolve(rootDir, "package.json"),
 }: AssertRscClientDirectivesOptions): void {
   const registry = JSON.parse(readFileSync(registryPath, "utf-8")) as RscRegistry;
+  const packageJson = JSON.parse(readFileSync(packagePath, "utf-8")) as {
+    exports?: Record<string, string | { import?: string }>;
+  };
 
   const missing: string[] = [];
 
-  for (const item of registry.items) {
-    if (!item.meta?.client) continue;
-
-    const present = clientOutputsForItem(item).filter((relativePath) =>
-      existsSync(resolve(rootDir, relativePath)),
-    );
-
-    for (const relativePath of present) {
-      const content = readFileSync(resolve(rootDir, relativePath), "utf-8");
-      if (!startsWithUseClient(content)) {
-        missing.push(relativePath);
-      }
+  for (const [publicSubpath, output] of getUiPublicClientOutputMap(registry.items)) {
+    const relativePath = `dist/${output}.js`;
+    const exportValue = packageJson.exports?.[publicSubpath];
+    const importTarget = typeof exportValue === "string" ? exportValue : exportValue?.import;
+    if (importTarget !== `./${relativePath}`) {
+      missing.push(`${publicSubpath} (missing package export to ./${relativePath})`);
+    }
+    if (!existsSync(resolve(rootDir, relativePath))) {
+      missing.push(`${relativePath} (missing public client output)`);
+      continue;
+    }
+    if (!startsWithUseClient(readFileSync(resolve(rootDir, relativePath), "utf-8"))) {
+      missing.push(relativePath);
     }
   }
 

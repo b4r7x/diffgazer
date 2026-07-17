@@ -15,9 +15,13 @@ import {
   resolveAliasedPaths,
 } from "@diffgazer/registry/cli";
 import { z } from "zod";
-import { resolveProjectPath, toPosixPath } from "./utils/paths.js";
+import { normalizeProjectRelativePath, resolveProjectPath, toPosixPath } from "./utils/paths.js";
 
 export const VERSION = readPackageVersion(import.meta.url, "../package.json");
+
+const CssChunkHashSchema = z.string().regex(/^[a-f0-9]{16}$/, {
+  error: "CSS chunk hashes must be sixteen lowercase hexadecimal characters",
+});
 
 export const DiffgazerAddConfigSchema = z.object({
   $schema: z.string().optional(),
@@ -45,7 +49,7 @@ export const DiffgazerAddConfigSchema = z.object({
         // "explicit" — user passed this name to `dgadd add`. "transitive" — pulled in as
         // a registry dependency. Used to decide cascade-remove eligibility.
         installedAs: z.enum(["explicit", "transitive"]).optional(),
-        cssChunks: z.array(z.string()).optional(),
+        cssChunks: z.array(CssChunkHashSchema).optional(),
         files: z
           .array(
             z.object({
@@ -55,6 +59,7 @@ export const DiffgazerAddConfigSchema = z.object({
               registryIntegrity: z.string().optional(),
               cliVersion: z.string().optional(),
               integrationMode: z.enum(["none", "copy", "@diffgazer/keys"]).optional(),
+              retired: z.literal(true).optional(),
             }),
           )
           .optional(),
@@ -83,6 +88,7 @@ export type ManifestOwnedFile = {
   registryIntegrity?: string;
   cliVersion?: string;
   integrationMode?: "none" | "copy" | "@diffgazer/keys";
+  retired?: true;
 };
 
 /** dgadd resolved config (component + hook paths). */
@@ -117,6 +123,9 @@ const DEFAULT_ALIASES = {
 
 export function resolveConfig(raw: DiffgazerAddConfig, cwd?: string): ResolvedConfig {
   const aliases = { ...DEFAULT_ALIASES, ...raw.aliases };
+  const tailwindCss = raw.tailwind ? normalizeProjectRelativePath(raw.tailwind.css) : undefined;
+  if (cwd && tailwindCss) resolveProjectPath(cwd, tailwindCss);
+  const tailwind = tailwindCss === undefined ? undefined : { css: tailwindCss };
   const rawResolved = resolveAliasedPaths(
     { components: raw.componentsFsPath, lib: raw.libFsPath, hooks: raw.hooksFsPath },
     { components: aliases.components, lib: aliases.lib, hooks: aliases.hooks },
@@ -135,11 +144,11 @@ export function resolveConfig(raw: DiffgazerAddConfig, cwd?: string): ResolvedCo
   return {
     aliases,
     rsc: raw.rsc ?? false,
-    tailwind: raw.tailwind,
+    tailwind,
     componentsFsPath: resolved.components,
     libFsPath: resolved.lib,
     hooksFsPath: resolved.hooks,
-    stylesFsPath: deriveStylesFsPath(raw.tailwind?.css, resolved.lib, cwd),
+    stylesFsPath: deriveStylesFsPath(tailwindCss, resolved.lib, cwd),
   };
 }
 

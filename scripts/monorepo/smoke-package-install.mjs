@@ -10,6 +10,7 @@ import {
   verifyUiNextPackageSmoke,
   verifyUiVitePackageSmoke,
   writeKeysPackageModeSmoke,
+  writeKeysTestHelperSmoke,
   writeUiCommonImportSmoke,
   writeUiKeysAbsentSmoke,
   writeUiNextPackageSmoke,
@@ -85,17 +86,27 @@ const packages = [
   },
   {
     name: "@diffgazer/keys",
+    label: "@diffgazer/keys runtime-only consumer",
+    skipPeerAutoInstall: true,
     installDeps: ["react@^19.2.0", "@types/react@^19.2.0", "typescript@^5.9.0"],
     prepare: writeKeysPackageModeSmoke,
-    steps: [
-      step(
-        "node",
-        "-e",
-        "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url); require.resolve('@diffgazer/keys/package.json'); import('@diffgazer/keys').then(()=>console.log('OK: @diffgazer/keys import and package.json export')).catch((e)=>{console.error(e); process.exit(1);});",
-      ),
-      step("pnpm", "exec", "tsc", "-p", "tsconfig.json"),
+    steps: [step("node", "runtime-only.mjs"), step("pnpm", "exec", "tsc", "-p", "tsconfig.json")],
+    expect: /OK: @diffgazer\/keys root works without optional test peers/,
+  },
+  {
+    name: "@diffgazer/keys",
+    label: "@diffgazer/keys Vitest navigation helper",
+    installDeps: [
+      "react@^19.2.0",
+      "react-dom@^19.2.0",
+      "@testing-library/react@^16.3.2",
+      "@testing-library/user-event@^14.6.1",
+      "vitest@^4.1.0",
     ],
-    expect: /OK: @diffgazer\/keys import and package\.json export/,
+    prepare: writeKeysTestHelperSmoke,
+    steps: [step("pnpm", "exec", "vitest", "run", "helper-import.test.mjs")],
+    verify: () => "OK: @diffgazer/keys testing helper works after documented peers",
+    expect: /OK: @diffgazer\/keys testing helper works after documented peers/,
   },
   {
     name: "@diffgazer/ui",
@@ -142,7 +153,7 @@ const packages = [
 for (const item of packages) {
   if (!shouldRunPackageSmoke(root, item)) continue;
 
-  const result = withTempPackageProject(root, item.name, item);
+  const result = await withTempPackageProject(root, item.name, item);
   console.log(result);
   assertSmoke(item.name, result, item.expect);
 }

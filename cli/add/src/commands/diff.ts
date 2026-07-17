@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { createDiffCommand } from "@diffgazer/registry/cli";
+import { join, resolve } from "node:path";
+import { createDiffCommand, ensureWithinDir } from "@diffgazer/registry/cli";
 import { ctx, type DiffgazerAddConfig, type ResolvedConfig } from "../context.js";
 import { buildExpectedChunkContentsForItem, extractCssChunkContents } from "../utils/css-chunks.js";
 import {
@@ -9,7 +9,7 @@ import {
   parseInstallName,
   validateInstallableNames,
 } from "../utils/namespaces.js";
-import { resolveInstallPath } from "../utils/paths.js";
+import { resolveInstallPath, resolveProjectPath } from "../utils/paths.js";
 import {
   getInstallBaseForFilePath,
   getInstallDirForBase,
@@ -46,7 +46,9 @@ function chunkScratchPath(itemName: string, hash: string): string {
     installScratchCleanupHandlers();
   }
   const safeName = itemName.replace(/[^a-zA-Z0-9_-]/g, "_");
-  return join(chunkScratchDir, `${safeName}-${hash}.css`);
+  const scratchPath = resolve(chunkScratchDir, `${safeName}-${hash}.css`);
+  ensureWithinDir(scratchPath, chunkScratchDir);
+  return scratchPath;
 }
 
 function cleanupChunkScratchDir(): void {
@@ -108,6 +110,18 @@ function buildCssChunkDriftFiles(
   });
 }
 
+function buildRetiredDriftFiles(itemName: string, cwd: string): ChunkDriftFile[] {
+  const files = ctx.config.getManifestItems(cwd)?.[itemName]?.files ?? [];
+  return files
+    .filter((file) => file.retired)
+    .map((file) => ({
+      itemName,
+      relativePath: `${file.path}~retired`,
+      localPath: resolveProjectPath(cwd, file.path),
+      registryContent: "",
+    }));
+}
+
 export const diffCommand = createDiffCommand({
   itemPlural: "items",
   requireConfig: ctx.items.requireConfig,
@@ -119,7 +133,12 @@ export const diffCommand = createDiffCommand({
     const parsed = parseInstallName(name);
     const item = getNamespacedItem(name);
     const itemName = `${parsed.namespace}/${parsed.name}`;
-    const fileEntries = item.files.map((file) => {
+    const manifestEntry = ctx.config.getManifestItems(cwd)?.[itemName];
+    const isCssOnlyEntry =
+      manifestEntry?.files === undefined && (manifestEntry?.cssChunks?.length ?? 0) > 0;
+    const fileEntries = (
+      isCssOnlyEntry ? [] : item.files.filter((file) => !file.path.endsWith(".css"))
+    ).map((file) => {
       const relativePath = ctx.registry.relativePath(file);
       const installBase = getInstallBaseForFilePath(file.path);
       const installDir = getInstallDirForBase(installBase, config);
@@ -139,7 +158,11 @@ export const diffCommand = createDiffCommand({
       };
     });
 
-    return [...fileEntries, ...buildCssChunkDriftFiles(itemName, cwd, config)];
+    return [
+      ...fileEntries,
+      ...buildRetiredDriftFiles(itemName, cwd),
+      ...buildCssChunkDriftFiles(itemName, cwd, config),
+    ];
   },
   noInstalledMessage: "No installed Diffgazer items found.",
   upToDateMessage: "All Diffgazer items are up to date with registry.",

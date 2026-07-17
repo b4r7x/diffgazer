@@ -8,9 +8,15 @@ import {
   useId,
   useMemo,
   useRef,
+  useState,
 } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
-import { getEncodedListboxItemId, type ListboxMetadataItem, useListbox } from "@/hooks/use-listbox";
+import {
+  collectListboxItems,
+  getEncodedListboxItemId,
+  type ListboxMetadataItem,
+  useListbox,
+} from "@/hooks/use-listbox";
 import { isSelectableItemEligible, useSelectableCollection } from "@/lib/selectable-collection";
 import { cn } from "@/lib/utils";
 import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";
@@ -19,6 +25,8 @@ import {
   NavigationListContext,
   type NavigationListIndicator,
 } from "./navigation-list-context";
+import { NavigationListGroup } from "./navigation-list-group";
+import { NavigationListItem } from "./navigation-list-item";
 
 /** Props for navigation list. */
 export interface NavigationListProps
@@ -94,18 +102,36 @@ export function NavigationList({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const composedRef = useComposedRefs(containerRef, ref);
   const groupHeadersRef = useRef<Map<string, GroupHeaderRegistration>>(new Map());
+  const [registrationsStarted, setRegistrationsStarted] = useState(false);
   const {
     items: registeredItems,
     registerItem,
     unregisterItem,
   } = useSelectableCollection(containerRef);
-  const items = useMemo<ListboxMetadataItem[]>(
+  const registeredMetadata = useMemo<ListboxMetadataItem[]>(
     () =>
       registeredItems.map((item) => ({
         id: item.value,
         disabled: !isSelectableItemEligible(item),
       })),
     [registeredItems],
+  );
+  const renderSeed = useMemo(
+    () =>
+      collectListboxItems(children, {
+        itemTypes: [NavigationListItem],
+        containerTypes: [NavigationListGroup],
+      }),
+    [children],
+  );
+  const items = registrationsStarted ? registeredMetadata : renderSeed;
+
+  const handleRegisterItem = useCallback(
+    (registrationId: string, value: string, disabled: boolean, element: HTMLElement | null) => {
+      setRegistrationsStarted(true);
+      registerItem(registrationId, value, disabled, element);
+    },
+    [registerItem],
   );
 
   const handleGroupKeyDown = useCallback(
@@ -203,7 +229,7 @@ export function NavigationList({
       focused,
       idPrefix,
       indicator,
-      registerItem,
+      registerItem: handleRegisterItem,
       unregisterItem,
       registerGroupHeader,
       unregisterGroupHeader,
@@ -217,7 +243,7 @@ export function NavigationList({
       focused,
       idPrefix,
       indicator,
-      registerItem,
+      handleRegisterItem,
       unregisterItem,
       registerGroupHeader,
       unregisterGroupHeader,

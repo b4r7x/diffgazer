@@ -90,6 +90,12 @@ export const calloutDoc: ComponentDoc = {
         description:
           'Opt into role="status" (or role="alert" for tone="error") for live-region announcement.',
       },
+      toneLabel: {
+        type: "string",
+        required: false,
+        defaultValue: "tone name",
+        description: "Screen-reader tone word announced before the content.",
+      },
     },
     "Callout.Icon": {
       children: {

@@ -48,9 +48,10 @@ export function Progress({
   className,
   ...props
 }: ProgressProps) {
+  const normalizedMax = Number.isFinite(max) && max > 0 ? max : 100;
   const isIndeterminate = value === undefined;
-  const clampedValue = isIndeterminate ? undefined : Math.min(Math.max(0, value), max);
-  const percentage = clampedValue === undefined ? undefined : (clampedValue / max) * 100;
+  const clampedValue = isIndeterminate ? undefined : Math.min(Math.max(0, value), normalizedMax);
+  const percentage = clampedValue === undefined ? undefined : (clampedValue / normalizedMax) * 100;
 
   return (
     <div
@@ -60,7 +61,7 @@ export function Progress({
       data-state={isIndeterminate ? "indeterminate" : "loaded"}
       aria-valuenow={clampedValue}
       aria-valuemin={0}
-      aria-valuemax={max}
+      aria-valuemax={normalizedMax}
       aria-valuetext={valueText}
       className={cn(progressVariants({ size }), className)}
     >

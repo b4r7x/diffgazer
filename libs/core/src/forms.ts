@@ -33,19 +33,20 @@ export function isArrayDirty<T>(persisted: T[], choice: T[] | null): boolean {
 
 export interface UseSubmitGuardResult {
   isSubmitting: boolean;
-  withGuard: <T>(fn: () => Promise<T>) => Promise<T | undefined>;
+  withGuard: (fn: () => Promise<void>) => Promise<boolean>;
 }
 
 export function useSubmitGuard(): UseSubmitGuardResult {
   const isSubmittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const withGuard = async <T>(fn: () => Promise<T>): Promise<T | undefined> => {
-    if (isSubmittingRef.current) return undefined;
+  const withGuard = async (fn: () => Promise<void>): Promise<boolean> => {
+    if (isSubmittingRef.current) return false;
     isSubmittingRef.current = true;
     setIsSubmitting(true);
     try {
-      return await fn();
+      await fn();
+      return true;
     } finally {
       isSubmittingRef.current = false;
       setIsSubmitting(false);

@@ -1,5 +1,7 @@
 import { ok } from "@diffgazer/core/result";
+import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
+import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { StatusHashResult } from "../../../shared/lib/git/service.js";
@@ -11,6 +13,7 @@ const gitService = {
   getHeadCommit: vi.fn(),
   getStatusHash: vi.fn(),
 };
+const repoAccess = vi.hoisted(() => ({ has: vi.fn(() => true) }));
 // Boundary mock: git service wraps subprocess/git state reads; tests drive reconnect freshness without a real working tree.
 vi.mock("../../../shared/lib/git/service.js", () => ({
   createGitService: () => gitService,
@@ -21,9 +24,14 @@ vi.mock("../../../shared/lib/http/request.js", () => ({
   getProjectRoot: () => PROJECT_PATH,
 }));
 
+vi.mock("../../../shared/middlewares/trust-guard.js", () => ({
+  hasRepoReadAccess: () => repoAccess.has(),
+}));
+
 // Boundary mock: log writes process output; freshness assertions do not depend on emitted logs.
 vi.mock("../../../shared/lib/log.js", () => ({ log: vi.fn() }));
 
+import { revokeProjectSessions } from "../../../shared/lib/session-registry.js";
 import { resumeStreamById } from "./resume.js";
 import {
   addEvent,
@@ -44,7 +52,7 @@ function setStatusHash(result: StatusHashResult): void {
 function completeEvent(): FullReviewStreamEvent {
   return {
     type: "complete",
-    result: { issues: [], summary: "Clean" },
+    result: { issues: [] },
     reviewId: REVIEW_ID,
     durationMs: 1,
   };
@@ -59,6 +67,7 @@ async function resume(): Promise<Response> {
 }
 
 beforeEach(() => {
+  repoAccess.has.mockReturnValue(true);
   gitService.getHeadCommit.mockResolvedValue(ok("abc123"));
   setStatusHash({ kind: "full", hash: "stored-hash" });
 });
@@ -152,6 +161,66 @@ describe("resumeStreamById freshness gating", () => {
     // sessions, and reconnect keeps replaying the retained terminal log.
     expect(gitService.getStatusHash).not.toHaveBeenCalled();
     expect(getSession(REVIEW_ID)?.isComplete).toBe(true);
+  });
+
+  it("replays completion that lands while reconnect freshness is pending", async () => {
+    createSession(REVIEW_ID, {
+      projectPath: PROJECT_PATH,
+      headCommit: "abc123",
+      statusHash: "stored-hash",
+      statusHashKind: "full",
+      mode: "unstaged",
+    });
+    markReady(REVIEW_ID);
+    const headCommit = createDeferred<ReturnType<typeof ok<string>>>();
+    gitService.getHeadCommit.mockReturnValue(headCommit.promise);
+    setStatusHash({ kind: "full", hash: "changed-hash" });
+
+    const responsePromise = resume();
+    await vi.waitFor(() => expect(gitService.getStatusHash).toHaveBeenCalledOnce());
+    addEvent(REVIEW_ID, completeEvent());
+    markComplete(REVIEW_ID);
+    headCommit.resolve(ok("def456"));
+
+    const response = await responsePromise;
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(body).toContain("event: complete");
+    expect(body).not.toContain("SESSION_STALE");
+    expect(getSession(REVIEW_ID)?.isComplete).toBe(true);
+  });
+
+  it("does not replay retained events after trust is revoked during freshness", async () => {
+    createSession(REVIEW_ID, {
+      projectPath: PROJECT_PATH,
+      headCommit: "abc123",
+      statusHash: "stored-hash",
+      statusHashKind: "full",
+      mode: "unstaged",
+    });
+    markReady(REVIEW_ID);
+    addEvent(REVIEW_ID, {
+      type: "review_started",
+      reviewId: REVIEW_ID,
+      filesTotal: 1,
+      timestamp: "2026-01-01T00:00:00.000Z",
+    });
+    const headCommit = createDeferred<ReturnType<typeof ok<string>>>();
+    gitService.getHeadCommit.mockReturnValue(headCommit.promise);
+
+    const responsePromise = resume();
+    await vi.waitFor(() => expect(gitService.getStatusHash).toHaveBeenCalledOnce());
+    repoAccess.has.mockReturnValue(false);
+    revokeProjectSessions(PROJECT_PATH);
+    headCommit.resolve(ok("abc123"));
+
+    const response = await responsePromise;
+    const body = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(403);
+    expect(body.error.code).toBe(ErrorCode.TRUST_REQUIRED);
+    expect(JSON.stringify(body)).not.toContain("review_started");
   });
 
   it("409s a non-complete session when the status hash genuinely changed", async () => {

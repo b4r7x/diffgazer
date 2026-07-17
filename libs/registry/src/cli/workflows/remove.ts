@@ -1,4 +1,4 @@
-import { existsSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, relative } from "node:path";
 import pc from "picocolors";
 import { cleanEmptyDirs, ensureWithinAnyDir } from "../fs.js";
@@ -86,6 +86,7 @@ export interface RunRemoveWorkflowOptions<TItem, TConfig> {
     requestedNames: string[];
   }) => boolean;
   resolveAllowedBaseDirs: (ctx: { cwd: string; config: TConfig }) => string[];
+  resolveTransactionFiles?: (ctx: { cwd: string; config: TConfig }) => string[];
   updateManifest: (ctx: { cwd: string; removedNames: string[] }) => void;
   findOrphanedDeps?: (ctx: { removedNames: string[]; cwd: string; config: TConfig }) => string[];
   // Expands requested names with cascade-orphaned transitives; items still
@@ -103,8 +104,7 @@ export interface RunRemoveWorkflowOptions<TItem, TConfig> {
     config: TConfig;
     removedNames: string[];
     force: boolean;
-    // biome-ignore lint/suspicious/noConfusingVoidType: `void` (not `undefined`) keeps a plain `() => void` handler assignable here; the callback may return a plan or nothing.
-  }) => DerivedRemovalPlan | void;
+  }) => DerivedRemovalPlan | undefined;
 }
 
 interface ResolveCtx<TItem, TConfig> {
@@ -135,9 +135,10 @@ function collectFilesToRemove<TItem, TConfig>(
   },
   names: string[],
   retainedFiles: Set<string>,
-): { files: Set<string>; dirs: Set<string>; removedNames: string[] } {
+): { files: Set<string>; dirs: Set<string>; ownedFiles: Set<string>; removedNames: string[] } {
   const files = new Set<string>();
   const dirs = new Set<string>();
+  const ownedFiles = new Set<string>();
   const removedNames: string[] = [];
   for (const name of names) {
     const item = ctx.getItemOrThrow(name);
@@ -145,6 +146,7 @@ function collectFilesToRemove<TItem, TConfig>(
     let blocked = false;
     let hadMissingFiles = false;
     for (const file of ctx.resolveFilesForItem({ cwd: ctx.cwd, config: ctx.config, item })) {
+      ownedFiles.add(file.absolutePath);
       if (!existsSync(file.absolutePath)) {
         hadMissingFiles = true;
         info(`Skipping ${relative(ctx.cwd, file.absolutePath)}: file not found on disk`);
@@ -179,7 +181,7 @@ function collectFilesToRemove<TItem, TConfig>(
       dirs.add(dirname(file.absolutePath));
     }
   }
-  return { files, dirs, removedNames };
+  return { files, dirs, ownedFiles, removedNames };
 }
 
 function showRemovePreview(cwd: string, files: Set<string>): void {
@@ -193,6 +195,7 @@ function showRemovePreview(cwd: string, files: Set<string>): void {
 interface DeleteResult {
   removed: number;
   failures: string[];
+  causes: unknown[];
 }
 
 function deleteFiles(cwd: string, files: Set<string>, allowedBaseDirs: string[]): DeleteResult {
@@ -202,6 +205,7 @@ function deleteFiles(cwd: string, files: Set<string>, allowedBaseDirs: string[])
 
   let removed = 0;
   const failures: string[] = [];
+  const causes: unknown[] = [];
   for (const file of files) {
     try {
       rmSync(file);
@@ -210,9 +214,65 @@ function deleteFiles(cwd: string, files: Set<string>, allowedBaseDirs: string[])
       const rel = relative(cwd, file);
       error(`Failed to remove ${rel}: ${toErrorMessage(e)}`);
       failures.push(rel);
+      causes.push(e);
     }
   }
-  return { removed, failures };
+  return { removed, failures, causes };
+}
+
+type RemovalSnapshot = Map<string, Uint8Array | null>;
+
+function addFileSnapshots(
+  snapshot: RemovalSnapshot,
+  paths: Iterable<string>,
+  allowedBaseDirs: string[],
+): void {
+  for (const path of paths) {
+    if (snapshot.has(path)) continue;
+    ensureWithinAnyDir(path, allowedBaseDirs);
+    snapshot.set(path, existsSync(path) ? readFileSync(path) : null);
+  }
+}
+
+function restoreFileSnapshots(snapshot: RemovalSnapshot, primaryFailure: unknown): void {
+  const rollbackFailures: unknown[] = [];
+  for (const [path, content] of [...snapshot].reverse()) {
+    try {
+      if (content === null) {
+        rmSync(path, { force: true });
+      } else {
+        mkdirSync(dirname(path), { recursive: true });
+        writeFileSync(path, content);
+      }
+    } catch (rollbackFailure) {
+      rollbackFailures.push(rollbackFailure);
+    }
+  }
+  if (rollbackFailures.length > 0) {
+    throw new AggregateError(
+      [primaryFailure, ...rollbackFailures],
+      "Removal failed and rollback was incomplete",
+    );
+  }
+}
+
+function beginRemovalTransaction<TItem, TConfig>(
+  options: RunRemoveWorkflowOptions<TItem, TConfig>,
+  config: TConfig,
+  ownedFiles: Set<string>,
+): RemovalSnapshot {
+  const snapshot: RemovalSnapshot = new Map();
+  addFileSnapshots(
+    snapshot,
+    ownedFiles,
+    options.resolveAllowedBaseDirs({ cwd: options.cwd, config }),
+  );
+  addFileSnapshots(
+    snapshot,
+    options.resolveTransactionFiles?.({ cwd: options.cwd, config }) ?? [],
+    [options.cwd],
+  );
+  return snapshot;
 }
 
 // Previews (dry-run) or applies the derived-artifact mutations. Writes are
@@ -222,6 +282,7 @@ function runDerivedRemoval<TItem, TConfig>(
   options: RunRemoveWorkflowOptions<TItem, TConfig>,
   config: TConfig,
   removedNames: string[],
+  snapshot?: RemovalSnapshot,
 ): string[] {
   const plan = options.onAfterRemove?.({
     cwd: options.cwd,
@@ -243,6 +304,7 @@ function runDerivedRemoval<TItem, TConfig>(
   const allowedBaseDirs = options.resolveAllowedBaseDirs({ cwd: options.cwd, config });
   for (const write of plan.writes) {
     ensureWithinAnyDir(write.targetPath, allowedBaseDirs);
+    if (snapshot) addFileSnapshots(snapshot, [write.targetPath], allowedBaseDirs);
     writeFileSync(write.targetPath, write.content);
   }
   return plan.retainedNames ?? [];
@@ -276,10 +338,17 @@ function finalizeRemoval<TItem, TConfig>(
   removed: number,
   dirs: Set<string>,
   removedNames: string[],
+  snapshot: RemovalSnapshot,
 ): void {
-  cleanEmptyDirs([...dirs]);
-  const retainedNames = runDerivedRemoval(options, config, removedNames);
-  options.updateManifest({ cwd: options.cwd, removedNames });
+  let retainedNames: string[];
+  try {
+    retainedNames = runDerivedRemoval(options, config, removedNames, snapshot);
+    options.updateManifest({ cwd: options.cwd, removedNames });
+    cleanEmptyDirs([...dirs]);
+  } catch (failure) {
+    restoreFileSnapshots(snapshot, failure);
+    throw failure;
+  }
   reportOrphanedDeps({
     cwd: options.cwd,
     names: removedNames,
@@ -297,7 +366,7 @@ function collectRemovalTargets<TItem, TConfig>(
   options: RunRemoveWorkflowOptions<TItem, TConfig>,
   config: TConfig,
   expandedNames: string[],
-): { files: Set<string>; dirs: Set<string>; removedNames: string[] } {
+): { files: Set<string>; dirs: Set<string>; ownedFiles: Set<string>; removedNames: string[] } {
   const { cwd } = options;
   const removedSet = new Set(expandedNames);
   const ctx = { cwd, config, resolveFilesForItem: options.resolveFilesForItem };
@@ -326,6 +395,7 @@ async function executeRemoval<TItem, TConfig>(
   config: TConfig,
   files: Set<string>,
   dirs: Set<string>,
+  ownedFiles: Set<string>,
   removedNames: string[],
 ): Promise<void> {
   const { cwd, yes, dryRun } = options;
@@ -345,17 +415,23 @@ async function executeRemoval<TItem, TConfig>(
     }
   }
 
+  const snapshot = beginRemovalTransaction(options, config, ownedFiles);
   const allowedBaseDirs = options.resolveAllowedBaseDirs({ cwd, config });
-  const { removed, failures } = deleteFiles(cwd, files, allowedBaseDirs);
+  const { removed, failures, causes } = deleteFiles(cwd, files, allowedBaseDirs);
 
   if (failures.length > 0) {
+    const failure = new AggregateError(
+      causes,
+      `Failed to remove ${failures.length} file(s): ${failures.join(", ")}`,
+    );
+    restoreFileSnapshots(snapshot, failure);
     error(
       `Aborting: ${failures.length} file(s) could not be removed. Manifest and CSS left unchanged.`,
     );
-    return;
+    throw failure;
   }
 
-  finalizeRemoval(options, config, removed, dirs, removedNames);
+  finalizeRemoval(options, config, removed, dirs, removedNames, snapshot);
 }
 
 function reportBlocked(blocked: BlockedRemoval[]): void {
@@ -384,7 +460,11 @@ export async function runRemoveWorkflow<TItem, TConfig>(
     return;
   }
 
-  const { files, dirs, removedNames } = collectRemovalTargets(options, config, expansion.toRemove);
+  const { files, dirs, ownedFiles, removedNames } = collectRemovalTargets(
+    options,
+    config,
+    expansion.toRemove,
+  );
   if (files.size === 0 && removedNames.length === 0) {
     if (expansion.blocked.length === 0) {
       info(`No installed files found for the specified ${options.itemPlural}.`);
@@ -395,8 +475,15 @@ export async function runRemoveWorkflow<TItem, TConfig>(
   if (files.size === 0 && removedNames.length > 0) {
     // All owned files are already gone (stale entries). Clean up the manifest.
     if (!options.dryRun) {
-      const retainedNames = runDerivedRemoval(options, config, removedNames);
-      options.updateManifest({ cwd: options.cwd, removedNames });
+      const snapshot = beginRemovalTransaction(options, config, ownedFiles);
+      let retainedNames: string[];
+      try {
+        retainedNames = runDerivedRemoval(options, config, removedNames, snapshot);
+        options.updateManifest({ cwd: options.cwd, removedNames });
+      } catch (failure) {
+        restoreFileSnapshots(snapshot, failure);
+        throw failure;
+      }
       reportOrphanedDeps({
         cwd: options.cwd,
         names: removedNames,
@@ -420,5 +507,5 @@ export async function runRemoveWorkflow<TItem, TConfig>(
     return;
   }
 
-  await executeRemoval(options, config, files, dirs, removedNames);
+  await executeRemoval(options, config, files, dirs, ownedFiles, removedNames);
 }

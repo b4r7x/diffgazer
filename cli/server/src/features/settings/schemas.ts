@@ -1,9 +1,5 @@
-import { SettingsConfigSchema } from "@diffgazer/core/schemas/config";
+import { SecretsStorageSchema, SettingsConfigSchema } from "@diffgazer/core/schemas/config";
 
-export const SettingsSchema = SettingsConfigSchema.partial().refine(
-  (settings) => settings.defaultLenses === undefined || settings.defaultLenses.length > 0,
-  {
-    path: ["defaultLenses"],
-    error: "defaultLenses must not be empty",
-  },
-);
+export const SettingsSchema = SettingsConfigSchema.partial().extend({
+  secretsStorage: SecretsStorageSchema.optional(),
+});

@@ -86,6 +86,20 @@ describe("Part A: no .js import leaks in public registry copy content", () => {
 });
 
 describe("Part B: unknown @diffgazer/keys copy imports fail validation", () => {
+  it("ships listbox composed-tree helpers from the copied element guards", () => {
+    const listbox = parseRegistryEntry(
+      JSON.parse(readFileSync(resolve(PUBLIC_REGISTRY_DIR, "listbox.json"), "utf-8")),
+    );
+    const hook = listbox.files?.find((file) => file.path.endsWith("use-listbox.ts"));
+
+    expect(hook?.content).toContain(
+      'import { composedClosest, composedContains, isEditableElement } from "@/hooks/utils/element-guards";',
+    );
+    expect(hook?.content).not.toMatch(
+      /import\s*\{[^}]*composed(?:Closest|Contains)[^}]*\}\s*from\s*["']@\/hooks\/use-navigation["']/s,
+    );
+  });
+
   it("known imports are rewritten successfully", () => {
     const input = `import { useNavigation } from "@diffgazer/keys";`;
     const result = transformUiPublicRegistryKeysImportContent(input);
@@ -105,12 +119,94 @@ describe("Part B: unknown @diffgazer/keys copy imports fail validation", () => {
     expect(result).not.toContain("@diffgazer/keys");
   });
 
+  it("rewrites the listbox navigation values and type for direct-copy consumers", () => {
+    const input = [
+      "import {",
+      "  findNavigationItemByValue,",
+      "  getNavigationItems,",
+      "  type NavigationItemType,",
+      '} from "@diffgazer/keys";',
+    ].join("\n");
+
+    expect(transformUiPublicRegistryKeysImportContent(input)).toBe(
+      'import { findNavigationItemByValue, getNavigationItems, type NavigationItemType } from "@/hooks/utils/navigation-items";',
+    );
+  });
+
   it("preserves hidden shim package imports to avoid self-import rewrites", () => {
     const input = 'import { useScrollLock } from "@diffgazer/keys";';
     const result = transformUiPublicRegistryKeysImportContent(input, {
       shimHookBasename: "use-scroll-lock",
     });
     expect(result).toBe(input);
+  });
+
+  it("preserves mixed shim value and type specifiers while rewriting other targets", () => {
+    const input =
+      'import { type UseScrollLockOptions, useScrollLock, useNavigation } from "@diffgazer/keys";';
+
+    const result = transformUiPublicRegistryKeysImportContent(input, {
+      shimHookBasename: "use-scroll-lock",
+    });
+
+    expect(result).toBe(
+      [
+        'import { type UseScrollLockOptions, useScrollLock } from "@diffgazer/keys";',
+        'import { useNavigation } from "@/hooks/use-navigation";',
+      ].join("\n"),
+    );
+  });
+
+  it.each([
+    ["default", 'import keys from "@diffgazer/keys";'],
+    ["namespace", 'import * as keys from "@diffgazer/keys";'],
+    ["side-effect", 'import "@diffgazer/keys";'],
+    ["export", 'export * from "@diffgazer/keys";'],
+    ["dynamic", 'const keys = import("@diffgazer/keys");'],
+    ["require", 'const keys = require("@diffgazer/keys");'],
+  ])("rejects residual %s root imports", (_form, input) => {
+    expect(() => transformUiPublicRegistryKeysImportContent(input)).toThrow(
+      /Unsupported @diffgazer\/keys root import/,
+    );
+  });
+
+  it("limits the hidden shim exception to its static named self-import", () => {
+    const input = [
+      'import { useScrollLock } from "@diffgazer/keys";',
+      'const keys = import("@diffgazer/keys");',
+    ].join("\n");
+
+    expect(() =>
+      transformUiPublicRegistryKeysImportContent(input, {
+        shimHookBasename: "use-scroll-lock",
+      }),
+    ).toThrow(/Unsupported @diffgazer\/keys root import/);
+  });
+
+  it.each([
+    ["template dynamic import", "const keys = import(`@diffgazer/keys`);"],
+    ["template require", "const keys = require(`@diffgazer/keys`);"],
+    [
+      "template interpolation",
+      `const keys = \`\${import("@diffgazer/keys")}:\${require("@diffgazer/keys")}\`;`,
+    ],
+  ])("rejects root imports through the adapter in a %s", (_form, input) => {
+    expect(() => transformUiPublicRegistryKeysImportContent(input)).toThrow(
+      /Unsupported @diffgazer\/keys root import/,
+    );
+  });
+
+  it("preserves non-executable root import text inside a template literal", () => {
+    const input = 'const example = `import("@diffgazer/keys"); require("@diffgazer/keys");`;';
+
+    expect(transformUiPublicRegistryKeysImportContent(input)).toBe(input);
+  });
+
+  it.each([
+    ["known", `const example = 'import { useScrollLock } from "@diffgazer/keys";';`],
+    ["unknown", `const example = 'import { unknownExport } from "@diffgazer/keys";';`],
+  ])("does not mutate or reject %s imports inside ordinary strings", (_kind, input) => {
+    expect(transformUiPublicRegistryKeysImportContent(input)).toBe(input);
   });
 
   it("throws on unknown @diffgazer/keys import specifiers", () => {

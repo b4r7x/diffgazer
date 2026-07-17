@@ -5,8 +5,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Overflow } from "./index";
 import { OverflowText } from "./overflow-text";
 
-// axe skipped: behavior depends on mocked layout dimensions, so axe cannot evaluate real overflow truncation/tooltip semantics here.
-
 let resizeCallbacks: Array<() => void> = [];
 let animationCallbacks: FrameRequestCallback[] = [];
 
@@ -40,6 +38,10 @@ function mockDimensions(
   Object.defineProperty(el, "clientWidth", { value: dims.clientWidth, configurable: true });
   Object.defineProperty(el, "scrollHeight", { value: dims.scrollHeight, configurable: true });
   Object.defineProperty(el, "clientHeight", { value: dims.clientHeight, configurable: true });
+}
+
+function mockWidth(element: Element, width: number) {
+  Object.defineProperty(element, "offsetWidth", { value: width, configurable: true });
 }
 
 function flushObservers() {
@@ -123,5 +125,35 @@ describe("Overflow", () => {
     expect(root).toHaveTextContent("One");
     expect(root).toHaveTextContent("Two");
     expect(ref.current).toBe(root);
+  });
+
+  it("counts and measures only rendered items when children contain empty conditions", () => {
+    render(
+      <Overflow mode="items" aria-label="Recent files">
+        <span>One</span>
+        {false}
+        {null}
+        {[<span key="two">Two</span>]}
+      </Overflow>,
+    );
+
+    const root = screen.getByLabelText("Recent files");
+    const itemWrappers = Array.from(root.children).slice(0, -1);
+    const [firstItem, secondItem] = itemWrappers;
+    const indicator = root.lastElementChild;
+    if (!firstItem || !secondItem || !indicator)
+      throw new Error("expected measured overflow items");
+
+    expect(itemWrappers).toHaveLength(2);
+    mockWidth(root, 80);
+    mockWidth(firstItem, 50);
+    mockWidth(secondItem, 50);
+    mockWidth(indicator, 20);
+    root.style.gap = "10px";
+
+    act(flushObservers);
+
+    expect(screen.getByRole("status", { name: "1 more items" })).toBe(indicator);
+    expect(screen.queryByRole("status", { name: "3 more items" })).not.toBeInTheDocument();
   });
 });

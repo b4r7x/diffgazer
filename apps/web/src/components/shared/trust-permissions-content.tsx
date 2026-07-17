@@ -60,6 +60,7 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
   const onListBoundaryNext = !showActions ? props.onListBoundaryNext : undefined;
   const contentRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const busyStatusRef = useRef<HTMLOutputElement>(null);
   const [listFocused, setListFocused] = useState<string | null>(() =>
     getInitialFocusedCapability(value),
   );
@@ -90,6 +91,8 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
     handlePermissionFocus,
     focusActionButton,
     handleActionFocus,
+    activateAction,
+    pendingAction,
   } = useTrustFormKeyboard({
     enabled: showActions,
     actionsDisabled: isLoading,
@@ -97,9 +100,11 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
     onListFocusRequest: focusListItem,
     onSave,
     onRevoke,
+    busyStatusRef,
   });
 
   const handleValueChange = (selected: string[]) => {
+    if (isLoading) return;
     onChange(fromSelectedCapabilityIds(selected));
   };
 
@@ -150,6 +155,7 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
         ref={listRef}
         value={selectedCapabilities}
         onChange={handleValueChange}
+        disabled={isLoading}
         highlighted={isListZone ? effectiveListFocused : null}
         onHighlightChange={setListFocused}
         onNavigationBoundaryReached={(direction) => {
@@ -184,10 +190,21 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
 
       {showActions && (
         <div ref={actionRowRef} className="flex justify-end gap-4 pt-2">
+          {isLoading && (
+            <output
+              ref={busyStatusRef}
+              tabIndex={-1}
+              className="mr-auto text-sm text-muted-foreground focus:outline-none"
+            >
+              {pendingAction === "revoke"
+                ? "Revoking trust permissions..."
+                : "Saving trust permissions..."}
+            </output>
+          )}
           <Button
             data-value="save"
             variant="success"
-            onClick={onSave}
+            onClick={() => activateAction("save")}
             onFocus={() => handleActionFocus("save")}
             disabled={isLoading}
             highlighted={focusZone === "buttons" && focusedAction === "save" && !isLoading}
@@ -197,7 +214,7 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
           <Button
             data-value="revoke"
             variant="destructive"
-            onClick={onRevoke}
+            onClick={() => activateAction("revoke")}
             onFocus={() => handleActionFocus("revoke")}
             disabled={isLoading}
             highlighted={focusZone === "buttons" && focusedAction === "revoke" && !isLoading}

@@ -17,7 +17,7 @@ const selectTagsPlaceholderVariants = cva("", {
 
 /** Props for select tags. */
 export interface SelectTagsProps {
-  /** Rendered when nothing is selected. Only available in multi-select mode. */
+  /** String rendered when nothing is selected. Only available in multi-select mode. */
   placeholder?: string;
   /** Additional class names merged onto the rendered element. */
   className?: string;
@@ -32,7 +32,11 @@ export function SelectTags({ placeholder = "Select...", className }: SelectTagsP
   const selected = toSelectedArray(value, multiple);
 
   if (selected.length === 0) {
-    return <span className={selectTagsPlaceholderVariants({ variant })}>{placeholder}</span>;
+    return (
+      <span className={cn(selectTagsPlaceholderVariants({ variant }), className)}>
+        {placeholder}
+      </span>
+    );
   }
 
   return (

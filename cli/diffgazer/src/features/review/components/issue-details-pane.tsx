@@ -1,10 +1,12 @@
 import {
   type DetailsEmptyKind,
   getDetailsEmptyCopy,
+  type IssueDetailsPresentation,
   sanitizeTerminalText,
+  toIssueDetailsPresentation,
 } from "@diffgazer/core/review";
 import { type IssueTab, isIssueTab } from "@diffgazer/core/schemas/presentation";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { type ReviewIssue, toEvidencePresentation } from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
 import { Badge } from "../../../components/ui/badge";
 import { EmptyState } from "../../../components/ui/empty-state";
@@ -13,7 +15,6 @@ import { SectionHeader } from "../../../components/ui/section-header";
 import { Tabs } from "../../../components/ui/tabs";
 import { useTheme } from "../../../theme/provider";
 import { severityVariant } from "../../../theme/severity-variant";
-import { formatIssueLineRange } from "../lib/issue-line-range";
 import { CodeSnippet } from "./code-snippet";
 import { DiffView } from "./diff-view";
 import { FixPlanChecklist } from "./fix-plan-checklist";
@@ -32,9 +33,14 @@ export interface IssueDetailsPaneProps {
 
 export type IssueDetailsSubZone = "body" | "fix-plan";
 
-function IssueHeader({ issue }: { issue: ReviewIssue }) {
+function IssueHeader({
+  issue,
+  presentation,
+}: {
+  issue: ReviewIssue;
+  presentation: IssueDetailsPresentation;
+}) {
   const { tokens } = useTheme();
-  const lineText = formatIssueLineRange(issue.line_start, issue.line_end);
 
   return (
     <Box flexDirection="column">
@@ -43,7 +49,7 @@ function IssueHeader({ issue }: { issue: ReviewIssue }) {
       </Text>
       <Box gap={1}>
         <Text color={tokens.muted}>Location:</Text>
-        <Text color={tokens.accent}>{sanitizeTerminalText(`${issue.file}:${lineText}`)}</Text>
+        <Text color={tokens.accent}>{sanitizeTerminalText(presentation.location)}</Text>
       </Box>
     </Box>
   );
@@ -56,6 +62,7 @@ function DetailsTab({
   subZone,
   scrollHeight,
   isActive,
+  presentation,
 }: {
   issue: ReviewIssue;
   completedSteps: Set<number>;
@@ -63,51 +70,68 @@ function DetailsTab({
   subZone: IssueDetailsSubZone;
   scrollHeight: number;
   isActive: boolean;
+  presentation: IssueDetailsPresentation;
 }) {
   const { tokens } = useTheme();
-  const codeEvidence = issue.evidence.filter((e) => e.type === "code");
+  const evidence = issue.evidence.map((item, ordinal) =>
+    toEvidencePresentation(item, issue.file, ordinal),
+  );
   const isFixPlanActive = subZone === "fix-plan";
 
   return (
-    <ScrollArea height={scrollHeight} isActive={isActive}>
+    <ScrollArea height={scrollHeight} isActive={isActive} contentIdentity={issue.id}>
       <Box flexDirection="column" gap={1} paddingTop={1}>
         <Box gap={1}>
           <Badge variant={severityVariant(issue.severity)} dot>
             {issue.severity}
           </Badge>
-          <Badge variant="neutral">{issue.category}</Badge>
-          <Text color={tokens.muted}>confidence: {Math.round(issue.confidence * 100)}%</Text>
+          <Badge variant="neutral">{presentation.category}</Badge>
+          <Text color={tokens.muted}>confidence: {presentation.confidence}</Text>
         </Box>
 
         <SectionHeader variant="muted">Symptom</SectionHeader>
         <Text color={tokens.fg}>{sanitizeTerminalText(issue.symptom)}</Text>
 
-        {codeEvidence.length > 0 ? (
+        {evidence.length > 0 ? (
           <Box flexDirection="column" gap={1}>
             <SectionHeader variant="muted">Evidence</SectionHeader>
-            {codeEvidence.map((ev) => (
-              <Box
-                key={`${ev.file ?? issue.file}:${ev.range?.start ?? ""}:${ev.excerpt}`}
-                flexDirection="column"
-              >
-                <CodeSnippet
-                  filePath={sanitizeTerminalText(ev.file ?? issue.file)}
-                  startLine={ev.range?.start}
-                  code={sanitizeTerminalText(ev.excerpt)}
-                />
-              </Box>
-            ))}
+            {evidence.map((item) =>
+              item.kind === "code" ? (
+                <Box key={`${item.type}:${item.ordinal}`} flexDirection="column">
+                  <CodeSnippet
+                    filePath={sanitizeTerminalText(item.file)}
+                    startLine={item.startLine}
+                    code={sanitizeTerminalText(item.excerpt)}
+                  />
+                </Box>
+              ) : (
+                <Box key={`${item.type}:${item.ordinal}`} flexDirection="column" paddingLeft={1}>
+                  <Box gap={1}>
+                    <Text color={tokens.muted}>{sanitizeTerminalText(item.label)}:</Text>
+                    <Text color={tokens.fg} bold>
+                      {sanitizeTerminalText(item.title)}
+                    </Text>
+                  </Box>
+                  <Text color={tokens.fg}>
+                    <Text color={tokens.muted}>source: </Text>
+                    {sanitizeTerminalText(item.sourceText)}
+                  </Text>
+                  <Text color={tokens.fg}>{sanitizeTerminalText(item.excerpt)}</Text>
+                </Box>
+              ),
+            )}
           </Box>
         ) : null}
 
         <SectionHeader variant="muted">Why It Matters</SectionHeader>
         <Text color={tokens.fg}>{sanitizeTerminalText(issue.whyItMatters)}</Text>
 
-        {issue.fixPlan && issue.fixPlan.length > 0 ? (
+        {presentation.fixPlan.length > 0 ? (
           <Box flexDirection="column">
             <SectionHeader variant="muted">Fix Plan</SectionHeader>
             <FixPlanChecklist
-              steps={issue.fixPlan}
+              key={issue.id}
+              steps={presentation.fixPlan}
               completedSteps={completedSteps}
               onToggle={onToggleStep}
               isActive={isFixPlanActive}
@@ -134,8 +158,12 @@ function DetailsTab({
         {issue.testsToAdd && issue.testsToAdd.length > 0 ? (
           <Box flexDirection="column">
             <SectionHeader variant="muted">Tests to Add</SectionHeader>
-            {issue.testsToAdd.map((test) => (
-              <Box key={test} gap={1}>
+            {issue.testsToAdd.map((test, index) => (
+              <Box
+                // biome-ignore lint/suspicious/noArrayIndexKey: test text can repeat; backend order is the rendered identity.
+                key={index}
+                gap={1}
+              >
                 <Text color={tokens.muted}>-</Text>
                 <Text color={tokens.fg}>{sanitizeTerminalText(test)}</Text>
               </Box>
@@ -159,7 +187,7 @@ function ExplainTab({
   const { tokens } = useTheme();
 
   return (
-    <ScrollArea height={scrollHeight} isActive={isActive}>
+    <ScrollArea height={scrollHeight} isActive={isActive} contentIdentity={issue.id}>
       <Box flexDirection="column" gap={1} paddingTop={1}>
         <SectionHeader variant="muted">Rationale</SectionHeader>
         <Text color={tokens.fg}>{sanitizeTerminalText(issue.rationale)}</Text>
@@ -185,7 +213,7 @@ function TraceTab({
   // The trace tab is only rendered when issue.trace is non-empty (the tab is
   // gated in IssueDetailsPane), so trace steps are always present here.
   return (
-    <ScrollArea height={scrollHeight} isActive={isActive}>
+    <ScrollArea height={scrollHeight} isActive={isActive} contentIdentity={issue.id}>
       <Box flexDirection="column" gap={1} paddingTop={1}>
         <SectionHeader variant="muted">Agent Trace</SectionHeader>
         {issue.trace?.map((step) => (
@@ -227,7 +255,7 @@ function PatchTab({
 
   if (!issue.suggested_patch) {
     return (
-      <ScrollArea height={scrollHeight} isActive={isActive}>
+      <ScrollArea height={scrollHeight} isActive={isActive} contentIdentity={issue.id}>
         <Box paddingTop={1}>
           <Text color={tokens.muted}>No patch suggested</Text>
         </Box>
@@ -236,7 +264,7 @@ function PatchTab({
   }
 
   return (
-    <ScrollArea height={scrollHeight} isActive={isActive}>
+    <ScrollArea height={scrollHeight} isActive={isActive} contentIdentity={issue.id}>
       <Box flexDirection="column" gap={1} paddingTop={1}>
         <SectionHeader variant="muted">Suggested Patch</SectionHeader>
         <DiffView patch={issue.suggested_patch} />
@@ -268,10 +296,12 @@ export function IssueDetailsPane({
     );
   }
 
+  const presentation = toIssueDetailsPresentation(issue);
+
   return (
     <Box flexDirection="column">
       <Box paddingX={1} paddingTop={1}>
-        <IssueHeader issue={issue} />
+        <IssueHeader issue={issue} presentation={presentation} />
       </Box>
       <Tabs
         value={activeTab}
@@ -293,6 +323,7 @@ export function IssueDetailsPane({
             subZone={subZone}
             scrollHeight={scrollHeight}
             isActive={isActive && subZone === "body"}
+            presentation={presentation}
           />
         </Tabs.Content>
         <Tabs.Content value="explain">

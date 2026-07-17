@@ -1,4 +1,3 @@
-import { realpath } from "node:fs/promises";
 import path from "node:path";
 import type { FileTreeNode } from "@diffgazer/core/schemas/context";
 import { readFileDirectory } from "./workspace-discovery.js";
@@ -40,15 +39,11 @@ export async function buildFileTree(
   root: string,
   options: {
     depth: number;
-    baseRoot?: string;
-    visited?: Set<string>;
     counter?: { count: number; truncated: boolean };
   },
 ): Promise<FileTreeNode[]> {
   if (options.depth < 0) return [];
 
-  const baseRoot = options.baseRoot ?? root;
-  const visited = options.visited ?? new Set<string>();
   const counter = options.counter ?? { count: 0, truncated: false };
 
   const rootNodes: FileTreeNode[] = [];
@@ -57,7 +52,7 @@ export async function buildFileTree(
   // Breadth-first: expand the whole tree level by level so every top-level
   // directory is represented before any single subtree exhausts the node
   // budget (a deep dependency dir can no longer consume the cap depth-first).
-  await expandDirectory(root, options.depth, baseRoot, visited, counter, rootNodes, queue);
+  await expandDirectory(root, options.depth, root, counter, rootNodes, queue);
   while (queue.length > 0) {
     const pending = queue.shift();
     if (!pending) break;
@@ -65,8 +60,7 @@ export async function buildFileTree(
     await expandDirectory(
       pending.dirPath,
       pending.depth,
-      baseRoot,
-      visited,
+      root,
       counter,
       pending.node.children,
       queue,
@@ -79,17 +73,11 @@ export async function buildFileTree(
 async function expandDirectory(
   dirPath: string,
   depth: number,
-  baseRoot: string,
-  visited: Set<string>,
+  root: string,
   counter: { count: number; truncated: boolean },
   out: FileTreeNode[],
   queue: PendingDir[],
 ): Promise<void> {
-  // Prevent symlink cycles by tracking visited real paths
-  const real = await realpath(dirPath).catch(() => dirPath);
-  if (visited.has(real)) return;
-  visited.add(real);
-
   const entries = await readFileDirectory(dirPath);
   entries.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -100,9 +88,9 @@ async function expandDirectory(
     }
     if (CONTEXT_EXCLUDE_DIRS.has(entry.name)) continue;
     const fullPath = path.join(dirPath, entry.name);
-    const relativePath = path.relative(baseRoot, fullPath);
+    const relativePath = path.relative(root, fullPath);
     counter.count += 1;
-    if (entry.isDirectory) {
+    if (entry.kind === "directory") {
       const node: FileTreeNode = { name: entry.name, path: relativePath, type: "dir" };
       out.push(node);
       if (depth > 0) {

@@ -8,11 +8,23 @@ import {
 import { getErrorMessage } from "@diffgazer/core/errors";
 import type { FileProgress, ReviewEvent, ReviewScreenPhase } from "@diffgazer/core/review";
 import { sessionTerminationCopy } from "@diffgazer/core/review";
+import type { SetupStatus } from "@diffgazer/core/schemas/config";
 import type { AgentState, StepState } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue, ReviewMode } from "@diffgazer/core/schemas/review";
 import { useEffect, useState } from "react";
 
 type LifecyclePhase = ReviewScreenPhase | "completing" | "loading";
+type LiveCompletionPayload = Pick<
+  Extract<ReviewEvent, { type: "orchestrator_complete" }>,
+  "lensStats" | "droppedDuplicates" | "droppedBelowThreshold" | "minSeverity"
+>;
+
+type ReviewInitState =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "ready"; missing: SetupStatus["missing"] };
+
+type ReviewStartResult = "started" | "setup-required" | "failed";
 
 export function getDisplayPhase(input: {
   hasStartFailed: boolean;
@@ -33,16 +45,18 @@ export interface ReviewLifecycleState {
   mode: ReviewMode;
   reviewId: string | null;
   startedAt: Date | null;
+  completedAt: Date | null;
   issues: ReviewIssue[];
   steps: StepState[];
   agents: AgentState[];
   events: ReviewEvent[];
+  completion: LiveCompletionPayload | undefined;
   fileProgress: FileProgress;
   notices: string[];
   error: string | null;
   isConfigured: boolean;
   provider: string | null;
-  model: string | null;
+  initState: ReviewInitState;
   isNoDiffError: boolean;
   isCheckingForChanges: boolean;
   loadingMessage: string | null;
@@ -56,13 +70,15 @@ interface UseReviewLifecycleOptions {
 
 export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
   state: ReviewLifecycleState;
-  start: (mode: ReviewMode) => Promise<void>;
+  start: (mode: ReviewMode) => Promise<ReviewStartResult>;
   cancel: () => Promise<string | null>;
   goToSummary: () => void;
   goToResults: () => void;
+  retryConfig: () => Promise<void>;
   reset: (options?: { clearActiveSession?: boolean }) => void;
 } {
-  const { data: initData, isLoading: configLoading } = useInit();
+  const initQuery = useInit();
+  const initData = initQuery.data;
   const createReview = useCreateReview();
   const { clearActiveSession: clearCachedActiveSession } = useReviewSessionCache();
   const [mode, setMode] = useState<ReviewMode>(options.mode ?? "staged");
@@ -71,9 +87,19 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
   const [startError, setStartError] = useState<string | null>(null);
   const requestedReviewId = startedReviewId ?? options.reviewId;
 
-  const isConfigured = initData?.configured ?? false;
+  const isConfigured = initData?.setup.isConfigured ?? false;
   const provider = initData?.config?.provider ?? null;
-  const model = initData?.config?.model ?? null;
+  let initState: ReviewInitState;
+  if (initData) {
+    initState = { status: "ready", missing: initData.setup.missing };
+  } else if (initQuery.isLoading || initQuery.isFetching) {
+    initState = { status: "loading" };
+  } else {
+    initState = {
+      status: "error",
+      message: getErrorMessage(initQuery.error, "Unable to load configuration."),
+    };
+  }
 
   function clearActiveSessionForReview(reviewId: string | null | undefined) {
     if (reviewId) {
@@ -82,7 +108,7 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
   }
 
   const lifecycle = useReviewLifecycleBase({
-    configLoading,
+    configLoading: initState.status === "loading",
     isConfigured,
     allowResumeWithoutSetup: options.allowResumeWithoutSetup,
     reviewId: requestedReviewId,
@@ -104,6 +130,14 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
   });
 
   const terminalReviewId = lifecycle.stream.state.reviewId ?? requestedReviewId ?? null;
+  let completion: LiveCompletionPayload | undefined;
+  for (let index = lifecycle.stream.state.events.length - 1; index >= 0; index -= 1) {
+    const event = lifecycle.stream.state.events[index];
+    if (event?.type === "orchestrator_complete") {
+      completion = event;
+      break;
+    }
+  }
 
   useEffect(() => {
     if (lifecycle.checks.isNoDiffError && terminalReviewId) {
@@ -121,9 +155,9 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
     phase,
   });
 
-  async function start(selectedMode: ReviewMode) {
+  async function start(selectedMode: ReviewMode): Promise<ReviewStartResult> {
     if (!isConfigured) {
-      return;
+      return "setup-required";
     }
     setMode(selectedMode);
     setStartError(null);
@@ -136,8 +170,10 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
     try {
       const result = await createReview.mutateAsync({ mode: selectedMode });
       setStartedReviewId(result.reviewId);
+      return "started";
     } catch (err) {
       setStartError(getErrorMessage(err));
+      return "failed";
     }
   }
 
@@ -156,6 +192,10 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
 
   function goToResults() {
     setPhase("results");
+  }
+
+  async function retryConfig(): Promise<void> {
+    await initQuery.refetch();
   }
 
   function reset(options: { clearActiveSession?: boolean } = {}) {
@@ -178,20 +218,22 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
     mode,
     reviewId: lifecycle.stream.state.reviewId ?? requestedReviewId ?? null,
     startedAt: lifecycle.stream.state.startedAt,
+    completedAt: lifecycle.completion.completedAt,
     issues: lifecycle.stream.state.issues,
     steps: lifecycle.stream.state.steps,
     agents: lifecycle.stream.state.agents,
     events: lifecycle.stream.state.events,
+    completion,
     fileProgress: lifecycle.stream.state.fileProgress,
     notices: lifecycle.stream.state.notices,
     error: startError ?? lifecycle.stream.state.error,
     isConfigured,
     provider,
-    model,
+    initState,
     isNoDiffError: lifecycle.checks.isNoDiffError,
     isCheckingForChanges: lifecycle.checks.isCheckingForChanges,
     loadingMessage: lifecycle.checks.loadingMessage,
   };
 
-  return { state, start, cancel, goToSummary, goToResults, reset };
+  return { state, start, cancel, goToSummary, goToResults, retryConfig, reset };
 }

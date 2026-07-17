@@ -1,11 +1,57 @@
 import { getDateKey, getDateLabel, getTimestamp } from "../format.js";
 import type { SeverityCounts, TimelineItem } from "../schemas/presentation/index.js";
 import { SEVERITY_ORDER } from "../schemas/presentation/index.js";
-import type { ReviewIssue, ReviewMetadata, ReviewSeverity } from "../schemas/review/index.js";
+import type {
+  ReviewIssue,
+  ReviewListWarning,
+  ReviewMetadata,
+  ReviewSeverity,
+} from "../schemas/review/index.js";
 import { pluralize } from "../strings.js";
 
 export const HISTORY_SECTION_ALL_ID = "all";
 export const HISTORY_SECTION_ALL_LABEL = "All";
+
+export interface HistoryWarningSummary {
+  unreadableReviewCount: number;
+  droppedIssueCount: number;
+  indexBuildFailed: boolean;
+  indexRewriteFailed: boolean;
+}
+
+export function summarizeHistoryWarnings(
+  warnings: readonly ReviewListWarning[],
+): HistoryWarningSummary {
+  const summary: HistoryWarningSummary = {
+    unreadableReviewCount: 0,
+    droppedIssueCount: 0,
+    indexBuildFailed: false,
+    indexRewriteFailed: false,
+  };
+
+  for (const warning of warnings) {
+    switch (warning.kind) {
+      case "unreadable_review":
+        summary.unreadableReviewCount += 1;
+        break;
+      case "invalid_issues_dropped":
+        summary.droppedIssueCount += warning.count;
+        break;
+      case "index_build_failed":
+        summary.indexBuildFailed = true;
+        break;
+      case "index_rewrite_failed":
+        summary.indexRewriteFailed = true;
+        break;
+      default: {
+        const unhandledWarning: never = warning;
+        return unhandledWarning;
+      }
+    }
+  }
+
+  return summary;
+}
 
 export interface SeverityPart {
   severity: ReviewSeverity;
@@ -14,16 +60,36 @@ export interface SeverityPart {
 
 export interface RunSummaryParts {
   passed: boolean;
+  partial: boolean;
+  failedLensCount: number;
   parts: SeverityPart[];
   issueCount: number;
 }
 
-export function formatRunId(id: string): string {
-  return `#${id.slice(0, 4)}`;
+const MIN_RUN_ID_PREFIX_LENGTH = 8;
+
+function getRunIdPrefixLength(id: string, peerIds: readonly string[]): number {
+  const normalizedId = id.toLowerCase();
+  const normalizedPeers = peerIds
+    .map((peerId) => peerId.toLowerCase())
+    .filter((peerId) => peerId !== normalizedId);
+  let length = Math.min(MIN_RUN_ID_PREFIX_LENGTH, id.length);
+
+  while (
+    length < id.length &&
+    normalizedPeers.some((peerId) => peerId.startsWith(normalizedId.slice(0, length)))
+  ) {
+    length += 1;
+  }
+  return length;
 }
 
-export function getRunDisplayId(metadata: ReviewMetadata): string {
-  return formatRunId(metadata.id);
+export function formatRunId(id: string, peerIds: readonly string[] = []): string {
+  return `#${id.slice(0, getRunIdPrefixLength(id, peerIds))}`;
+}
+
+export function getRunDisplayId(metadata: ReviewMetadata, peerIds: readonly string[] = []): string {
+  return formatRunId(metadata.id, peerIds);
 }
 
 export function getRunBranchLabel(metadata: ReviewMetadata): string {
@@ -32,10 +98,8 @@ export function getRunBranchLabel(metadata: ReviewMetadata): string {
 
 export function getRunSummaryParts(metadata: ReviewMetadata): RunSummaryParts {
   const { blockerCount, highCount, mediumCount, lowCount, nitCount, issueCount } = metadata;
-
-  if (issueCount === 0) {
-    return { passed: true, parts: [], issueCount: 0 };
-  }
+  const failedLensCount = metadata.failedLensCount ?? 0;
+  const partial = failedLensCount > 0;
 
   const parts: SeverityPart[] = [];
   if (blockerCount > 0) parts.push({ severity: "blocker", count: blockerCount });
@@ -44,11 +108,24 @@ export function getRunSummaryParts(metadata: ReviewMetadata): RunSummaryParts {
   if (lowCount > 0) parts.push({ severity: "low", count: lowCount });
   if (nitCount > 0) parts.push({ severity: "nit", count: nitCount });
 
-  return { passed: false, parts, issueCount };
+  return {
+    passed: issueCount === 0 && !partial,
+    partial,
+    failedLensCount,
+    parts,
+    issueCount,
+  };
 }
 
 export function getRunSummaryText(metadata: ReviewMetadata): string {
   const summary = getRunSummaryParts(metadata);
+  if (summary.partial) {
+    const findings =
+      summary.issueCount === 0
+        ? "no issues found"
+        : `${pluralize(summary.issueCount, "issue")} found`;
+    return `Partial analysis: ${pluralize(summary.failedLensCount, "lens", "lenses")} failed; ${findings}.`;
+  }
   if (summary.passed) return "Passed with no issues.";
   if (summary.parts.length === 0) {
     return `Found ${pluralize(summary.issueCount, "issue")}.`;
@@ -64,10 +141,13 @@ export interface HistoryRunSummary {
   summary: string;
 }
 
-export function buildHistoryRunSummary(metadata: ReviewMetadata): HistoryRunSummary {
+export function buildHistoryRunSummary(
+  metadata: ReviewMetadata,
+  peerIds: readonly string[] = [],
+): HistoryRunSummary {
   return {
     id: metadata.id,
-    displayId: getRunDisplayId(metadata),
+    displayId: getRunDisplayId(metadata, peerIds),
     branch: getRunBranchLabel(metadata),
     timestamp: getTimestamp(metadata.createdAt),
     summary: getRunSummaryText(metadata),
@@ -85,11 +165,15 @@ export function metadataToSeverityCounts(metadata: ReviewMetadata | null): Sever
   };
 }
 
-export function matchesHistoryQuery(metadata: ReviewMetadata, query: string): boolean {
+export function matchesHistoryQuery(
+  metadata: ReviewMetadata,
+  query: string,
+  peerIds: readonly string[] = [],
+): boolean {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return true;
   if (metadata.id.toLowerCase().includes(normalized)) return true;
-  if (getRunDisplayId(metadata).toLowerCase().includes(normalized)) return true;
+  if (getRunDisplayId(metadata, peerIds).toLowerCase().includes(normalized)) return true;
   const branchText =
     metadata.mode === "staged" ? "staged" : (metadata.branch?.toLowerCase() ?? "main");
   if (branchText.includes(normalized)) return true;
@@ -109,7 +193,8 @@ export function filterReviewsForHistory(
 
   const query = searchQuery.trim().toLowerCase();
   if (!query) return bySection;
-  return bySection.filter((r) => matchesHistoryQuery(r, query));
+  const peerIds = reviews.map((review) => review.id);
+  return bySection.filter((review) => matchesHistoryQuery(review, query, peerIds));
 }
 
 export function buildTimelineItems(reviews: ReviewMetadata[]): TimelineItem[] {

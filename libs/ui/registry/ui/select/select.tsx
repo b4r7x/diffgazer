@@ -114,6 +114,17 @@ interface DerivedSelectStateOptions {
   seedOptions: ReadonlyMap<string, SelectOptionMetadata>;
 }
 
+function getSubmittedValue(
+  value: string | string[] | null,
+  options: ReadonlyMap<string, SelectOptionMetadata>,
+): string | string[] | null {
+  if (Array.isArray(value)) {
+    return value.filter((itemValue) => !options.get(itemValue)?.disabled);
+  }
+  if (value !== null && options.get(value)?.disabled) return null;
+  return value;
+}
+
 // Single typed boundary for the public TValue -> internal string narrowing.
 // value/defaultValue/highlighted widen covariantly; only the value/highlight
 // callbacks are contravariant, so they get an explicit (identity-preserving)
@@ -208,6 +219,10 @@ export function Select<TValue extends string = string>(props: SelectProps<TValue
 
   const { contextValue, wrapperRef } = useSelectState(stateOptions);
   const composedRef = useComposedRefs(wrapperRef, ref);
+  const submittedValue = getSubmittedValue(contextValue.value, contextValue.options);
+  const logicalMultipleValues = Array.isArray(contextValue.value) ? contextValue.value : [];
+  const logicalSingleValue = Array.isArray(contextValue.value) ? null : contextValue.value;
+  const selectedSingleValueIsDisabled = logicalSingleValue !== null && submittedValue === null;
 
   return (
     <SelectContext value={contextValue}>
@@ -218,12 +233,13 @@ export function Select<TValue extends string = string>(props: SelectProps<TValue
       >
         {children}
         {(name || required) &&
-          (Array.isArray(contextValue.value) ? (
+          (Array.isArray(submittedValue) ? (
             <>
               <select
                 name={name}
+                data-slot="select-form-mirror"
                 multiple
-                value={contextValue.value}
+                value={submittedValue}
                 required={required}
                 disabled={disabled}
                 tabIndex={-1}
@@ -237,8 +253,8 @@ export function Select<TValue extends string = string>(props: SelectProps<TValue
                   contextValue.onNativeInvalid();
                 }}
               >
-                {contextValue.value.map((v) => (
-                  <option key={v} value={v}>
+                {logicalMultipleValues.map((v) => (
+                  <option key={v} value={v} disabled={contextValue.options.get(v)?.disabled}>
                     {v}
                   </option>
                 ))}
@@ -246,13 +262,14 @@ export function Select<TValue extends string = string>(props: SelectProps<TValue
               {required && (
                 <input
                   type="checkbox"
+                  data-slot="select-required-validation"
                   required
-                  checked={contextValue.value.length > 0}
+                  checked={submittedValue.length > 0}
                   disabled={disabled}
                   tabIndex={-1}
                   aria-hidden={true}
-                  readOnly
                   className="sr-only"
+                  onChange={() => {}}
                   onInvalid={(event) => {
                     event.preventDefault();
                     contextValue.onNativeInvalid();
@@ -263,9 +280,10 @@ export function Select<TValue extends string = string>(props: SelectProps<TValue
           ) : (
             <select
               name={name}
-              value={contextValue.value ?? ""}
+              data-slot="select-form-mirror"
+              value={submittedValue ?? ""}
               required={required}
-              disabled={disabled}
+              disabled={disabled || selectedSingleValueIsDisabled}
               tabIndex={-1}
               aria-hidden={true}
               className="sr-only"
@@ -278,8 +296,13 @@ export function Select<TValue extends string = string>(props: SelectProps<TValue
               }}
             >
               <option value="" />
-              {contextValue.value !== null && (
-                <option value={contextValue.value}>{contextValue.value}</option>
+              {logicalSingleValue !== null && (
+                <option
+                  value={logicalSingleValue}
+                  disabled={contextValue.options.get(logicalSingleValue)?.disabled}
+                >
+                  {logicalSingleValue}
+                </option>
               )}
             </select>
           ))}

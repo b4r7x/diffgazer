@@ -12,7 +12,7 @@ export const inputDoc: ComponentDoc = {
     {
       title: "InputGroup",
       content:
-        "Use InputGroup for prefix and suffix content around a text input. Plain text affixes are treated as decorative. Interactive affixes must provide their own accessible labels. Use Field when you need label, description, and error wiring.",
+        "Use InputGroup for prefix and suffix content around a text input. Plain text and number affixes are decorative by default; set prefixAriaHidden or suffixAriaHidden to false when that text contributes meaning. Non-text affixes remain exposed by default and can be hidden explicitly. Interactive affixes must remain exposed and provide their own accessible labels. Use Field when you need label, description, and error wiring.",
     },
   ],
   usage: { example: "input-default" },
@@ -59,6 +59,20 @@ export const inputDoc: ComponentDoc = {
         defaultValue: null,
         description:
           "Decorative content rendered after the input. Plain text is aria-hidden; interactive affixes must provide their own accessible labels.",
+      },
+      prefixAriaHidden: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true for string/number prefixes; false otherwise",
+        description:
+          "Controls whether the prefix wrapper is hidden from assistive technology. Overrides the content-based default.",
+      },
+      suffixAriaHidden: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true for string/number suffixes; false otherwise",
+        description:
+          "Controls whether the suffix wrapper is hidden from assistive technology. Overrides the content-based default.",
       },
       inputClassName: {
         type: "string",

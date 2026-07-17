@@ -26,6 +26,7 @@ import { FloatingPanel } from "../floating-panel/floating-panel";
 import { Chevron } from "../icons/chevron";
 import { Menu as MenuRoot } from "./menu";
 import { useMenuContext } from "./menu-context";
+import { getItemState } from "./menu-item-variants";
 
 /** Context value shared by menu sub. */
 interface MenuSubContextValue {
@@ -103,6 +104,9 @@ export const menuSubTriggerBase = cva(
       state: {
         normal: "hover:bg-secondary group",
         focused: "font-bold bg-primary text-primary-foreground",
+        selected: "font-bold bg-primary text-primary-foreground",
+        disabled: "opacity-50 cursor-not-allowed",
+        disabledFocused: "opacity-60 cursor-not-allowed bg-secondary text-foreground",
       },
     },
     defaultVariants: { state: "normal" },
@@ -149,7 +153,7 @@ export function MenuSubTrigger({
 
   const isFocused = highlighted === id;
   const itemId = getEncodedListboxItemId(idPrefix, id);
-  const state = isFocused ? "focused" : "normal";
+  const state = getItemState({ disabled, isFocused, isSelected: false });
 
   useLayoutEffect(() => {
     registerItem(registrationId, id, disabled, triggerRef.current);
@@ -277,6 +281,10 @@ export function MenuSubContent({
   useOutsideClick(contentRef, dismissSubmenu, open, [triggerRef]);
 
   const handleSubmenuKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "ArrowRight") {
+      event.stopPropagation();
+      return;
+    }
     if (event.key === "Tab") {
       event.preventDefault();
       event.stopPropagation();
@@ -319,6 +327,7 @@ export function MenuSubContent({
         aria-labelledby={resolvedAriaLabelledBy}
         autoFocus={open}
         onClose={dismissSubmenu}
+        onSelect={parentMenu.notifySelect}
         onKeyDown={handleSubmenuKeyDown}
       >
         {children}

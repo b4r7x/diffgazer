@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { AgentStreamEvent, StepEvent } from "../schemas/events/index.js";
 import type { ReviewIssue } from "../schemas/review/index.js";
-import { convertAgentEventsToLogEntries } from "./event-to-log.js";
+import {
+  convertAgentEventsToLogEntries,
+  convertReviewEventToLogEntry,
+  getReviewEventLogSource,
+} from "./event-to-log.js";
 
 const timestamp = "2025-02-01T10:00:00Z";
 
@@ -43,6 +47,127 @@ const issue: ReviewIssue = {
 describe("convertAgentEventsToLogEntries", () => {
   it("returns empty array for no events", () => {
     expect(convertAgentEventsToLogEntries([])).toEqual([]);
+  });
+
+  it("converts only the requested absolute event range", () => {
+    const events: AgentStreamEvent[] = Array.from({ length: 5 }, (_, index) => ({
+      type: "agent_thinking",
+      agent: "detective",
+      thought: `event-${index}`,
+      timestamp,
+    }));
+
+    const entries = convertAgentEventsToLogEntries(events, { start: 2, end: 4 });
+
+    expect(entries.map((entry) => [entry.id, entry.message])).toEqual([
+      ["agent_thinking-2", "event-2"],
+      ["agent_thinking-3", "event-3"],
+    ]);
+  });
+
+  it("exposes the same source and entry semantics for sparse range selection", () => {
+    const event: AgentStreamEvent = {
+      type: "agent_thinking",
+      agent: "detective",
+      thought: "checking",
+      timestamp,
+    };
+
+    expect(getReviewEventLogSource(event)).toBe("Detective");
+    expect(convertReviewEventToLogEntry(event, 42)).toMatchObject({
+      id: "agent_thinking-42",
+      source: "Detective",
+      message: "checking",
+    });
+    expect(
+      getReviewEventLogSource({
+        type: "file_progress",
+        agent: "detective",
+        file: "src/index.ts",
+        completed: 1,
+        total: 1,
+        timestamp,
+      }),
+    ).toBeUndefined();
+  });
+
+  it.each<[string, AgentStreamEvent | StepEvent, string | undefined]>([
+    [
+      "review_started",
+      { type: "review_started", reviewId: "r1", filesTotal: 1, timestamp },
+      undefined,
+    ],
+    ["step_start", { type: "step_start", step: "diff", timestamp }, undefined],
+    ["step_complete", { type: "step_complete", step: "review", timestamp }, undefined],
+    ["step_error", { type: "step_error", step: "report", error: "failed", timestamp }, undefined],
+    [
+      "orchestrator_start",
+      { type: "orchestrator_start", agents: [detective], concurrency: 1, timestamp },
+      undefined,
+    ],
+    [
+      "agent_queued",
+      { type: "agent_queued", agent: detective, position: 1, total: 1, timestamp },
+      undefined,
+    ],
+    [
+      "file_start",
+      { type: "file_start", file: "src/a.ts", index: 0, total: 1, timestamp },
+      undefined,
+    ],
+    [
+      "file_complete",
+      { type: "file_complete", file: "src/a.ts", index: 0, total: 1, timestamp },
+      undefined,
+    ],
+    ["agent_start", { type: "agent_start", agent: detective, timestamp }, "Detective"],
+    [
+      "agent_thinking",
+      { type: "agent_thinking", agent: "detective", thought: "checking", timestamp },
+      "Detective",
+    ],
+    [
+      "agent_progress",
+      { type: "agent_progress", agent: "guardian", progress: 50, timestamp },
+      "Guardian",
+    ],
+    [
+      "agent_error",
+      { type: "agent_error", agent: "optimizer", error: "failed", timestamp },
+      "Optimizer",
+    ],
+    [
+      "file_progress",
+      {
+        type: "file_progress",
+        agent: "detective",
+        file: "src/a.ts",
+        completed: 1,
+        total: 1,
+        timestamp,
+      },
+      undefined,
+    ],
+    ["issue_found", { type: "issue_found", agent: "guardian", issue, timestamp }, "Guardian"],
+    [
+      "agent_complete",
+      { type: "agent_complete", agent: "simplifier", issueCount: 0, timestamp },
+      "Simplifier",
+    ],
+    [
+      "orchestrator_complete",
+      {
+        type: "orchestrator_complete",
+        totalIssues: 0,
+        lensStats: [],
+        filesAnalyzed: 1,
+        timestamp,
+      },
+      undefined,
+    ],
+  ])("keeps %s source indexing identical to its rendered entry", (_, event, source) => {
+    expect(getReviewEventLogSource(event)).toBe(source);
+    expect(convertReviewEventToLogEntry(event, 0)?.source).toBe(source);
   });
 
   it.each<
@@ -116,28 +241,6 @@ describe("convertAgentEventsToLogEntries", () => {
       { tagType: "error", isError: true, messageIncludes: ["API timeout"] },
     ],
     [
-      "tool_call",
-      {
-        type: "tool_call",
-        agent: "detective",
-        tool: "readFileContext",
-        input: "src/index.ts:1-20",
-        timestamp,
-      },
-      { tag: "TOOL", tagType: "tool", messageIncludes: ["readFileContext"] },
-    ],
-    [
-      "tool_result",
-      {
-        type: "tool_result",
-        agent: "guardian",
-        tool: "readFileContext",
-        summary: "Read 50 lines",
-        timestamp,
-      },
-      { tag: "TOOL", messageIncludes: ["Read 50 lines"] },
-    ],
-    [
       "issue_found",
       { type: "issue_found", agent: "guardian", issue, timestamp },
       { tagType: "warning", isWarning: true, messageIncludes: ["SQL Injection risk"] },
@@ -156,7 +259,6 @@ describe("convertAgentEventsToLogEntries", () => {
       "orchestrator_complete",
       {
         type: "orchestrator_complete",
-        summary: "Review done",
         totalIssues: 7,
         lensStats: [],
         filesAnalyzed: 10,
@@ -173,6 +275,18 @@ describe("convertAgentEventsToLogEntries", () => {
       "file_complete",
       { type: "file_complete", file: "src/app.ts", index: 2, total: 10, timestamp },
       { tag: "DONE", messageIncludes: ["src/app.ts"] },
+    ],
+    [
+      "file_progress",
+      {
+        type: "file_progress",
+        agent: "detective",
+        file: "src/app.ts",
+        completed: 3,
+        total: 10,
+        timestamp,
+      },
+      { tag: "FILE", messageIncludes: ["Included", "src/app.ts", "in prompt", "3/10"] },
     ],
   ])("maps %s", (_, event, expected) => {
     const [entry] = convertAgentEventsToLogEntries([event]);

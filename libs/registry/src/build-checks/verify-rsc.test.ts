@@ -2,9 +2,106 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { assertSourceRscClientDirectives } from "./verify-rsc.js";
+import {
+  assertRscClientDirectives,
+  assertSourceRscClientDirectives,
+  getUiPublicClientOutputMap,
+} from "./verify-rsc.js";
 
 const USE_CLIENT = '"use client";\n';
+
+describe("UI public client output map", () => {
+  const clientOutputs = [
+    ["./components/button", "components/button"],
+    ["./components/code-block/highlight", "components/code-block/highlight"],
+    ["./components/command-palette/highlight", "components/command-palette/highlight"],
+  ] as const;
+  const registryItems = [
+    { name: "button", type: "registry:ui", meta: { client: true } },
+    { name: "badge", type: "registry:ui", meta: { client: false } },
+    { name: "internal", type: "registry:ui", meta: { client: true, hidden: true } },
+  ];
+  let root: string;
+
+  function writeJson(relPath: string, value: unknown): void {
+    const full = join(root, relPath);
+    mkdirSync(join(full, ".."), { recursive: true });
+    writeFileSync(full, `${JSON.stringify(value, null, 2)}\n`);
+  }
+
+  function writeOutput(output: string, body = `${USE_CLIENT}export const value = 1;\n`): void {
+    const full = join(root, "dist", `${output}.js`);
+    mkdirSync(join(full, ".."), { recursive: true });
+    writeFileSync(full, body);
+  }
+
+  function writeCompleteFixture(): void {
+    writeJson("registry/registry.json", { items: registryItems });
+    writeJson("package.json", {
+      exports: Object.fromEntries(
+        clientOutputs.map(([publicSubpath, output]) => [
+          publicSubpath,
+          { import: `./dist/${output}.js` },
+        ]),
+      ),
+    });
+    for (const [, output] of clientOutputs) writeOutput(output);
+  }
+
+  function verify(): void {
+    assertRscClientDirectives({
+      rootDir: root,
+      registryPath: join(root, "registry/registry.json"),
+    });
+  }
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), "ui-rsc-"));
+  });
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("derives registry clients and both non-registry highlight subpaths from one map", () => {
+    expect([...getUiPublicClientOutputMap(registryItems)]).toEqual(clientOutputs);
+  });
+
+  it("accepts every emitted public client subpath used by a Next server-component fixture", () => {
+    writeCompleteFixture();
+
+    expect(verify).not.toThrow();
+  });
+
+  it.each(
+    clientOutputs,
+  )("rejects %s when its emitted file loses the directive", (_path, output) => {
+    writeCompleteFixture();
+    writeOutput(output, "export const value = 1;\n");
+
+    expect(verify).toThrow(new RegExp(`${output.replaceAll("/", "\\/")}\\.js`));
+  });
+
+  it("rejects a missing public client output instead of silently skipping it", () => {
+    writeCompleteFixture();
+    rmSync(join(root, "dist/components/code-block/highlight.js"));
+
+    expect(verify).toThrow(/code-block\/highlight\.js \(missing public client output\)/);
+  });
+
+  it("rejects a client output that is not reachable through the package exports map", () => {
+    writeCompleteFixture();
+    writeJson("package.json", {
+      exports: Object.fromEntries(
+        clientOutputs
+          .filter(([publicSubpath]) => publicSubpath !== "./components/command-palette/highlight")
+          .map(([publicSubpath, output]) => [publicSubpath, { import: `./dist/${output}.js` }]),
+      ),
+    });
+
+    expect(verify).toThrow(/command-palette\/highlight.*missing package export/);
+  });
+});
 
 describe("assertSourceRscClientDirectives", () => {
   let root: string;

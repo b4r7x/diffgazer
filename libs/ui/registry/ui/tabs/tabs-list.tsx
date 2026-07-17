@@ -1,6 +1,13 @@
 "use client";
 
-import { type ComponentProps, type FocusEvent, type KeyboardEvent, useRef } from "react";
+import {
+  type ComponentProps,
+  createContext,
+  type FocusEvent,
+  type KeyboardEvent,
+  useContext,
+  useRef,
+} from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useFloatingIndicator } from "@/hooks/use-floating-indicator";
 import { useNavigation } from "@/hooks/use-navigation";
@@ -12,8 +19,12 @@ import {
 import { cn } from "@/lib/utils";
 import { useTabsContext } from "./tabs-context";
 
+type TabsListNativeProps = Omit<ComponentProps<"div">, "aria-orientation" | "role">;
+
 /** Props for tabs list. */
-export interface TabsListProps extends ComponentProps<"div"> {
+export interface TabsListProps extends TabsListNativeProps {
+  /** Allows horizontal triggers and their labels to wrap within the available width. */
+  wrap?: boolean;
   /** When true, arrow navigation wraps from last to first trigger and vice versa. */
   loop?: boolean;
   /** Fired when arrow navigation reaches the first/last trigger with loop disabled. */
@@ -24,10 +35,17 @@ export interface TabsListProps extends ComponentProps<"div"> {
   ) => void;
 }
 
+const TabsListWrappedContext = createContext(false);
+
+export function useTabsListWrapped(): boolean {
+  return useContext(TabsListWrappedContext);
+}
+
 /** Container for tab triggers. */
 export function TabsList({
   children,
   className,
+  wrap = true,
   loop = true,
   onBlur,
   onKeyDown,
@@ -40,6 +58,7 @@ export function TabsList({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const composedRef = useComposedRefs(containerRef, ref);
+  const wrapped = orientation === "horizontal" && wrap;
 
   const handleHighlightChange = (next: string | null) => {
     if (next === null) return;
@@ -81,26 +100,26 @@ export function TabsList({
     if (!focusRemainsInside) onFocusChange(null);
   };
 
-  // Pill variant: a single absolutely-positioned indicator tracks the active
-  // tab's rect. The hook is null-fed when the variant doesn't use a pill, so
-  // the observer is never created.
-  const pillTargetValue = variant === "pill" ? value : null;
+  // Single-row variants use a floating indicator. Wrapped rows style each
+  // active trigger locally because one absolute indicator cannot span rows.
+  const pillTargetValue = variant === "pill" && !wrapped ? value : null;
   const pillRect = useFloatingIndicator(containerRef, pillTargetValue);
 
-  const underlineTargetValue = variant === "underline" ? value : null;
+  const underlineTargetValue = variant === "underline" && !wrapped ? value : null;
   const underlineRect = useFloatingIndicator(containerRef, underlineTargetValue);
 
   return (
     <div
+      {...rest}
       ref={composedRef}
       role="tablist"
       data-variant={variant}
       data-orientation={orientation}
+      data-wrap={wrapped}
       aria-orientation={orientation}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
-      className={cn(segmentedContainerVariants({ variant, orientation }), className)}
-      {...rest}
+      className={cn(segmentedContainerVariants({ variant, orientation, wrapped }), className)}
     >
       {variant === "pill" && pillRect && (
         <span
@@ -122,7 +141,7 @@ export function TabsList({
           }
         />
       )}
-      {children}
+      <TabsListWrappedContext value={wrapped}>{children}</TabsListWrappedContext>
     </div>
   );
 }

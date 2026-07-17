@@ -14,7 +14,7 @@ export const switchDoc: ComponentDoc = {
     {
       title: "Form Submission",
       content:
-        'Switch renders a hidden native checkbox when name or required is set. The value prop controls the form-submission string (default "on").',
+        'Switch renders a hidden native checkbox when name or required is set. The value prop controls the form-submission string (default "on"). Pass form to associate both the switch and its form mirror with a remote form.',
     },
   ],
   usage: { example: "switch-default" },
@@ -76,6 +76,13 @@ export const switchDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description: "Hidden native input name used for form submission.",
+      },
+      form: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description:
+          "ID of the form that owns the switch and hidden native input, including when rendered outside that form.",
       },
       required: {
         type: "boolean",

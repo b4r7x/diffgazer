@@ -13,6 +13,7 @@ import {
   CreateReviewResponseSchema,
   type LensId,
   type ProfileId,
+  type ReviewCursor,
   ReviewErrorCode,
   type ReviewMode,
   type ReviewResponse,
@@ -31,7 +32,7 @@ export interface CreateReviewOptions {
   files?: string[];
 }
 
-export type CancelReason = "cancelled" | "not-found" | "already-complete";
+export type CancelReason = "cancelled" | "not-found" | "already-complete" | "already-committed";
 
 export interface CancelReviewSessionResponse {
   cancelled: true;
@@ -121,8 +122,14 @@ export async function resumeReviewStream(
 export async function getReviews(
   client: ApiClient,
   projectPath?: string,
+  cursor?: ReviewCursor,
+  limit?: number,
 ): Promise<ReviewsResponse> {
-  const params = projectPath ? { projectPath } : undefined;
+  const params = {
+    ...(projectPath ? { projectPath } : {}),
+    ...(cursor ? { cursor } : {}),
+    ...(limit !== undefined ? { limit: String(limit) } : {}),
+  };
   return client.get<ReviewsResponse>("/api/review/reviews", params, (body) =>
     ReviewsResponseSchema.parse(body),
   );
@@ -179,7 +186,8 @@ export async function cancelReviewSession(
 export const bindReview = (client: ApiClient) => ({
   createReview: (options?: CreateReviewOptions) => createReview(client, options),
   resumeReviewStream: (options: ResumeReviewOptions) => resumeReviewStream(client, options),
-  getReviews: (projectPath?: string) => getReviews(client, projectPath),
+  getReviews: (projectPath?: string, cursor?: ReviewCursor, limit?: number) =>
+    getReviews(client, projectPath, cursor, limit),
   getReview: (id: string) => getReview(client, id),
   getActiveReviewSession: (mode?: ReviewMode, signal?: AbortSignal) =>
     getActiveReviewSession(client, mode, signal),

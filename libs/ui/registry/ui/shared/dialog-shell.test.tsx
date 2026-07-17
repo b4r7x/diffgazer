@@ -5,8 +5,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { isHTMLDialogElement } from "@/lib/aria";
 import { DialogShell } from "./dialog-shell";
 
-// axe skipped: internal overlay infrastructure with no standalone accessible UI; consumer dialogs run axe.
-
 function requireFrameDocument(frame: HTMLIFrameElement): Document {
   const frameDocument = frame.contentDocument;
   if (!frameDocument) throw new Error("Expected iframe document");

@@ -50,13 +50,18 @@ function deriveContextError(queryError: Error | null, refreshError: Error | null
 }
 
 export function useDiagnosticsData(): DiagnosticsData {
-  const { state: serverState, retry: retryServer } = useServerStatus();
+  const { latestState: serverState, retry: retryServer } = useServerStatus();
   const { data: initData, isLoading: initLoading, error: initErrorObj } = useInit();
   const contextQuery = useReviewContext();
   const refreshContext = useRefreshReviewContext();
 
   const contextStatus = deriveContextStatus(contextQuery);
   const contextError = deriveContextError(contextQuery.error, refreshContext.error);
+  const refetchContext = async () => {
+    const result = await contextQuery.refetch({ throwOnError: true });
+    refreshContext.reset();
+    return result;
+  };
 
   return {
     serverState,
@@ -70,7 +75,7 @@ export function useDiagnosticsData(): DiagnosticsData {
     canRegenerate: contextStatus === "ready" || contextStatus === "missing",
     handleRefreshContext: () => refreshContext.mutate({ force: true }),
     isRefreshingContext: refreshContext.isPending,
-    refetchContext: () => contextQuery.refetch({ throwOnError: true }),
+    refetchContext,
   };
 }
 

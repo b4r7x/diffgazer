@@ -1,6 +1,7 @@
 "use client";
 
 import type { FocusEventHandler, MouseEventHandler, ReactNode, Ref } from "react";
+import { hasAccessibleTextContent } from "@/lib/accessible-text";
 import { Button, type ButtonProps } from "../button/button";
 import { useDialogDismiss } from "./dialog-context";
 
@@ -20,6 +21,10 @@ export interface DialogCloseProps
   ref?: Ref<HTMLButtonElement>;
   /** Moves focus to the element when it mounts. */
   autoFocus?: boolean;
+  /** Accessible name. Defaults to "Close dialog" when children contain no visible text. */
+  "aria-label"?: string;
+  /** ID of the element that labels the close button. */
+  "aria-labelledby"?: string;
   [dataAttribute: `data-${string}`]: unknown;
 }
 
@@ -29,9 +34,13 @@ export function DialogClose({
   onClick,
   variant = "ghost",
   ref,
+  "aria-label": ariaLabel,
+  "aria-labelledby": ariaLabelledBy,
   ...buttonProps
 }: DialogCloseProps) {
   const handleClick = useDialogDismiss(onClick);
+  const fallbackLabel =
+    ariaLabel || ariaLabelledBy || hasAccessibleTextContent(children) ? undefined : "Close dialog";
 
   return (
     <Button
@@ -39,7 +48,8 @@ export function DialogClose({
       type="button"
       {...buttonProps}
       variant={variant}
-      aria-label={!children ? "Close dialog" : undefined}
+      aria-label={ariaLabel || fallbackLabel}
+      aria-labelledby={ariaLabelledBy}
       onClick={handleClick}
     >
       {children ?? "[x]"}

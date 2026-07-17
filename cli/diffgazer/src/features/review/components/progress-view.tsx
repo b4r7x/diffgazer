@@ -3,16 +3,13 @@ import { usePageFooter } from "@diffgazer/core/footer";
 import {
   type FileProgress,
   getPartialFailureWarning,
+  type ReviewEvent,
   sanitizeTerminalText,
 } from "@diffgazer/core/review";
-import type { AgentState } from "@diffgazer/core/schemas/events";
-import type {
-  LogEntryData,
-  ProgressStepData,
-  Shortcut,
-} from "@diffgazer/core/schemas/presentation";
+import type { AgentState, LensStat } from "@diffgazer/core/schemas/events";
+import type { ProgressStepData, Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
-import { type ReactElement, useEffect, useState } from "react";
+import type { ReactElement } from "react";
 import { ProgressList } from "../../../components/shared/progress/list";
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
@@ -27,7 +24,8 @@ import { ReviewMetricsFooter } from "./metrics-footer";
 export interface ReviewProgressViewProps {
   progressSteps: ProgressStepData[];
   agents: AgentState[];
-  logEntries: LogEntryData[];
+  lensStats?: LensStat[];
+  events: readonly ReviewEvent[];
   fileProgress: FileProgress;
   isStreaming: boolean;
   error: string | null;
@@ -37,6 +35,7 @@ export interface ReviewProgressViewProps {
   onViewResults?: () => void;
   issuesFound: number;
   startedAt: Date | null;
+  completedAt: Date | null;
   reviewId?: string | null;
   contextSnapshot?: ReviewContextResponse | null;
 }
@@ -71,7 +70,8 @@ function getProgressShortcuts({
 export function ReviewProgressView({
   progressSteps,
   agents,
-  logEntries,
+  lensStats,
+  events,
   fileProgress,
   isStreaming,
   error,
@@ -81,12 +81,12 @@ export function ReviewProgressView({
   onViewResults,
   issuesFound,
   startedAt,
+  completedAt,
   reviewId,
   contextSnapshot,
 }: ReviewProgressViewProps): ReactElement {
   const { tokens } = useTheme();
   const { isMedium, isWide } = useResponsive();
-  const [completedAt, setCompletedAt] = useState<number | null>(null);
 
   useInput(
     (_input, key) => {
@@ -96,14 +96,6 @@ export function ReviewProgressView({
     },
     { isActive: Boolean(onBack) },
   );
-
-  useEffect(() => {
-    if (isStreaming) {
-      setCompletedAt(null);
-      return;
-    }
-    setCompletedAt((current) => current ?? Date.now());
-  }, [isStreaming]);
 
   const shortcuts = getProgressShortcuts({
     isStreaming,
@@ -116,7 +108,7 @@ export function ReviewProgressView({
     rightShortcuts: onBack ? BACK_SHORTCUTS : [],
   });
 
-  const elapsed = startedAt ? (completedAt ?? Date.now()) - startedAt.getTime() : 0;
+  const elapsed = startedAt ? (completedAt?.getTime() ?? Date.now()) - startedAt.getTime() : 0;
 
   const sideBySide = isWide || isMedium;
   const progressWidth = getResponsiveWidth(isWide, isMedium, {
@@ -130,7 +122,7 @@ export function ReviewProgressView({
     narrow: "100%",
   });
 
-  const partialFailure = getPartialFailureWarning(agents, error);
+  const partialFailure = getPartialFailureWarning(agents, error, lensStats);
 
   const progressPane = (
     <Box flexDirection="column" width={progressWidth}>
@@ -155,7 +147,7 @@ export function ReviewProgressView({
 
       <Box marginTop={1}>
         <ReviewMetricsFooter
-          filesProcessed={fileProgress.completed.length}
+          filesIncluded={fileProgress.completed.length}
           issuesFound={issuesFound}
           elapsed={elapsed}
           isStreaming={isStreaming}
@@ -191,7 +183,7 @@ export function ReviewProgressView({
       ) : null}
 
       <Box paddingTop={1}>
-        <ActivityLog entries={logEntries} height={progressSteps.length + 8} />
+        <ActivityLog events={events} height={progressSteps.length + 8} isActive />
       </Box>
     </Box>
   );

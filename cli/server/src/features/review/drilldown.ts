@@ -14,7 +14,6 @@ import type { ParsedDiff } from "./engine/diff/types.js";
 import { buildDrilldownPrompt } from "./engine/prompts.js";
 import type { DrilldownAIResponse } from "./schemas.js";
 import { DrilldownResponseSchema } from "./schemas.js";
-import { withReviewLock } from "./storage/review-lock.js";
 import { addDrilldownToReview, getReview as getStoredReview } from "./storage/reviews.js";
 import { recordTrace } from "./trace.js";
 import type { DrilldownError, HandleDrilldownError } from "./types.js";
@@ -122,9 +121,7 @@ export async function handleDrilldownRequest(
 
   if (!drilldownResult.ok) return drilldownResult;
 
-  const saveResult = await withReviewLock(reviewId, () =>
-    addDrilldownToReview(reviewId, drilldownResult.value),
-  );
+  const saveResult = await addDrilldownToReview(reviewId, drilldownResult.value);
   if (!saveResult.ok) return saveResult;
 
   return drilldownResult;

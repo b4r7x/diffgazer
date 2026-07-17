@@ -45,7 +45,7 @@ export interface SelectValueProps {
    * shows first N + "+M more".
    */
   display?: SelectValueDisplay;
-  /** Number of items shown before "+N more" when display="truncate". */
+  /** Finite nonnegative integer count shown before "+N more" when display="truncate". */
   truncateAfter?: number;
   /** Additional class names merged onto the rendered element. */
   className?: string;
@@ -53,7 +53,7 @@ export interface SelectValueProps {
    * Render function for fully custom selection display. Example: selected.map((value) =>
    * labels.get(value) ?? value).join(', ').
    */
-  children?: ((props: SelectValueRenderProps) => ReactNode) | ReactNode;
+  children?: (props: SelectValueRenderProps) => ReactNode;
   /** "N selected" summary text (count display). Defaults to `${count} selected`. */
   getSelectedLabel?: (count: number) => string;
   /** "+N more" overflow text (truncate display). Defaults to ` +${count} more`. */
@@ -120,6 +120,9 @@ export function SelectValue({
   const { value, multiple, options, variant } = useSelectContext("SelectValue");
 
   const selected = toSelectedArray(value, multiple);
+  const normalizedTruncateAfter = Number.isFinite(truncateAfter)
+    ? Math.max(0, Math.floor(truncateAfter))
+    : 0;
   // Treat "" as unset unless the consumer explicitly registers an option with value="".
   const isUnsetEmptyString =
     !multiple && selected.length === 1 && selected[0] === "" && !options.has("");
@@ -132,7 +135,7 @@ export function SelectValue({
     );
   }
 
-  if (typeof children === "function") {
+  if (children !== undefined) {
     return (
       <span className={className}>{children({ selected, labels: getLabelMap(options) })}</span>
     );
@@ -144,7 +147,7 @@ export function SelectValue({
         selected={selected}
         options={options}
         display={display}
-        truncateAfter={truncateAfter}
+        truncateAfter={normalizedTruncateAfter}
         getSelectedLabel={getSelectedLabel}
         getOverflowLabel={getOverflowLabel}
       />

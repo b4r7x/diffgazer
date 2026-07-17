@@ -1,6 +1,6 @@
 import { getNavigationItemProps, useScopedNavigation } from "@diffgazer/keys";
 import { Panel } from "@diffgazer/ui/components/panel";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useRef } from "react";
 import { FOCUS_RING_CLASS } from "@/components/shared/focus-ring";
 import type { DocsLibraryId } from "@/lib/library";
@@ -26,7 +26,6 @@ function actionLabel(library: HomeLibrary): string {
 }
 
 export function ModulesIndexTable({ libraries }: { libraries: HomeLibrary[] }) {
-  const navigate = useNavigate();
   const listRef = useRef<HTMLElement>(null);
 
   const { isHighlighted, highlight } = useScopedNavigation<DocsLibraryId>({
@@ -35,14 +34,6 @@ export function ModulesIndexTable({ libraries }: { libraries: HomeLibrary[] }) {
     wrap: false,
     upKeys: ["ArrowUp", "k"],
     downKeys: ["ArrowDown", "j"],
-    onEnter: (id) => {
-      const library = libraries.find((lib) => lib.id === id);
-      if (!library) return;
-      void navigate({
-        to: "/$lib/$",
-        params: { lib: library.id, _splat: library.sections[0]?.splat ?? "" },
-      });
-    },
   });
 
   return (
@@ -90,7 +81,7 @@ export function ModulesIndexTable({ libraries }: { libraries: HomeLibrary[] }) {
         ))}
         <div
           aria-hidden="true"
-          className="mt-4 flex items-center gap-4 px-2 py-3 font-mono text-2xs uppercase tracking-widest text-muted-foreground opacity-50"
+          className="mt-4 flex items-center gap-4 px-2 py-3 font-mono text-2xs uppercase tracking-widest text-muted-foreground"
         >
           <span className="grow border-b border-dashed border-border" />
           <span>END OF DIRECTORY</span>

@@ -2,6 +2,7 @@ import { testNavigationBehavior } from "@diffgazer/keys/testing/navigation-behav
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
+import { renderToString } from "react-dom/server";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { requireAttribute, requireValue } from "../../testing/assertions";
@@ -30,6 +31,137 @@ function getMenuItemRadio(name: string | RegExp) {
 }
 
 describe("Menu", () => {
+  function expectServerActiveDescendant(markup: string): string {
+    const activeDescendant = markup.match(/aria-activedescendant="([^"]+)"/)?.[1];
+    expect(activeDescendant).toBeDefined();
+    expect(markup).toContain(`id="${activeDescendant}"`);
+    return activeDescendant ?? "";
+  }
+
+  it("renders a selected direct radio as the active descendant on the server", () => {
+    const markup = renderToString(
+      <Menu aria-label="Sort" defaultSelectedId="date">
+        <Menu.ItemRadio id="name">Name</Menu.ItemRadio>
+        <Menu.ItemRadio id="date">Date</Menu.ItemRadio>
+      </Menu>,
+    );
+
+    expect(expectServerActiveDescendant(markup)).toContain("-date");
+  });
+
+  it("renders a highlighted direct checkbox as the active descendant on the server", () => {
+    const markup = renderToString(
+      <Menu aria-label="View" defaultHighlighted="wrap">
+        <Menu.ItemCheckbox id="wrap">Word wrap</Menu.ItemCheckbox>
+      </Menu>,
+    );
+
+    expect(expectServerActiveDescendant(markup)).toContain("-wrap");
+  });
+
+  it("keeps a highlighted disabled menu item discoverable on the server", () => {
+    const markup = renderToString(
+      <Menu aria-label="Actions" defaultHighlighted="disabled">
+        <Menu.Item id="disabled" disabled>
+          Disabled
+        </Menu.Item>
+      </Menu>,
+    );
+
+    expect(expectServerActiveDescendant(markup)).toContain("-disabled");
+  });
+
+  it("omits hidden, wrapper-rendered, and absent active descendants on the server", () => {
+    function WrappedItem() {
+      return <Menu.Item id="wrapped">Wrapped</Menu.Item>;
+    }
+
+    const hidden = renderToString(
+      <Menu aria-label="Hidden" defaultHighlighted="hidden">
+        <Menu.Item id="hidden" hidden>
+          Hidden
+        </Menu.Item>
+      </Menu>,
+    );
+    const wrapped = renderToString(
+      <Menu aria-label="Wrapped" defaultHighlighted="wrapped">
+        <WrappedItem />
+      </Menu>,
+    );
+    const noSelection = renderToString(
+      <Menu aria-label="Idle">
+        <Menu.Item id="idle">Idle</Menu.Item>
+      </Menu>,
+    );
+
+    expect(hidden).not.toContain("aria-activedescendant");
+    expect(wrapped).not.toContain("aria-activedescendant");
+    expect(noSelection).not.toContain("aria-activedescendant");
+  });
+
+  it("uses live registration for a wrapper-rendered item after mount", async () => {
+    function WrappedItem() {
+      return <Menu.Item id="wrapped">Wrapped</Menu.Item>;
+    }
+
+    render(
+      <Menu aria-label="Wrapped" defaultHighlighted="wrapped">
+        <WrappedItem />
+      </Menu>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole("menu", { name: "Wrapped" })).toHaveAttribute(
+        "aria-activedescendant",
+        expect.stringContaining("-wrapped"),
+      ),
+    );
+  });
+
+  it.each([
+    [
+      "item",
+      (onClick: React.MouseEventHandler<HTMLDivElement>) => (
+        <Menu.Item id="item" onClick={onClick}>
+          Item
+        </Menu.Item>
+      ),
+    ],
+    [
+      "checkbox",
+      (onClick: React.MouseEventHandler<HTMLDivElement>) => (
+        <Menu.ItemCheckbox id="checkbox" onClick={onClick}>
+          Checkbox
+        </Menu.ItemCheckbox>
+      ),
+    ],
+    [
+      "radio",
+      (onClick: React.MouseEventHandler<HTMLDivElement>) => (
+        <Menu.ItemRadio id="radio" onClick={onClick}>
+          Radio
+        </Menu.ItemRadio>
+      ),
+    ],
+  ])("lets consumer click prevention cancel %s activation", async (_variant, renderItem) => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    const onClick = vi.fn<React.MouseEventHandler<HTMLDivElement>>((event) => {
+      event.preventDefault();
+    });
+
+    render(
+      <Menu aria-label="Prevented menu" onSelect={onSelect}>
+        {renderItem(onClick)}
+      </Menu>,
+    );
+
+    await user.click(screen.getByText(/^(Item|Checkbox|Radio)$/));
+
+    expect(onClick).toHaveBeenCalledOnce();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
   it("supports direct namespaced items with custom item UI", async () => {
     const user = userEvent.setup();
     const onSelect = vi.fn();
@@ -492,6 +624,79 @@ describe("Menu typeahead", () => {
     const cherryItem = getMenuItem("Cherry");
     expect(menu).toHaveAttribute("aria-activedescendant", cherryItem.id);
   });
+
+  it.each([
+    ["hidden", { hidden: true }],
+    ["inert", { inert: true }],
+    ["aria-hidden", { "aria-hidden": true }],
+    ["display none", { style: { display: "none" } }],
+    ["visibility hidden", { style: { visibility: "hidden" } }],
+    ["visibility collapse", { style: { visibility: "collapse" } }],
+    ["content visibility hidden", { style: { contentVisibility: "hidden" } }],
+  ] as const)("ignores %s descendant text during typeahead", async (_case, hiddenProps) => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    render(
+      <Menu aria-label="Test menu" onSelect={onSelect}>
+        <Menu.Item id="alpha">
+          Alpha
+          <span {...hiddenProps}>Zulu</span>
+        </Menu.Item>
+        <Menu.Item id="zulu">Zulu visible</Menu.Item>
+      </Menu>,
+    );
+
+    const menu = screen.getByRole("menu");
+    menu.focus();
+    await user.keyboard("z{Enter}");
+
+    expect(menu).toHaveAttribute("aria-activedescendant", getMenuItem("Zulu visible").id);
+    expect(onSelect).toHaveBeenCalledWith("zulu");
+  });
+
+  it.each([
+    ["hidden", { hidden: true }],
+    ["inert", { inert: true }],
+    ["aria-hidden", { "aria-hidden": true }],
+  ] as const)("removes a dynamically %s item from metadata, typeahead, and the active descendant", async (_attribute, skippedProps) => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    const { rerender } = render(
+      <Menu aria-label="Test menu" defaultHighlighted="hidden-beta" onSelect={onSelect}>
+        <Menu.Item id="hidden-beta">Beta hidden</Menu.Item>
+        <Menu.Item id="visible-beta">Beta visible</Menu.Item>
+        <Menu.Item id="disabled" disabled>
+          Disabled
+        </Menu.Item>
+      </Menu>,
+    );
+    const menu = screen.getByRole("menu");
+    const hiddenItem = getMenuItem("Beta hidden");
+    expect(menu).toHaveAttribute("aria-activedescendant", hiddenItem.id);
+
+    rerender(
+      <Menu aria-label="Test menu" defaultHighlighted="hidden-beta" onSelect={onSelect}>
+        <Menu.Item id="hidden-beta" {...skippedProps}>
+          Beta hidden
+        </Menu.Item>
+        <Menu.Item id="visible-beta">Beta visible</Menu.Item>
+        <Menu.Item id="disabled" disabled>
+          Disabled
+        </Menu.Item>
+      </Menu>,
+    );
+
+    await waitFor(() => expect(menu).not.toHaveAttribute("aria-activedescendant", hiddenItem.id));
+    menu.focus();
+    await user.keyboard("b");
+    expect(menu).toHaveAttribute("aria-activedescendant", getMenuItem("Beta visible").id);
+
+    await user.keyboard("{ArrowDown}");
+    const disabledItem = getMenuItem("Disabled");
+    expect(menu).toHaveAttribute("aria-activedescendant", disabledItem.id);
+    await user.keyboard("{Enter}");
+    expect(onSelect).not.toHaveBeenCalled();
+  });
 });
 
 describe("Menu keyboard navigation", () => {
@@ -525,8 +730,8 @@ describe("Menu keyboard navigation", () => {
 });
 
 describe("MenuItem hotkey prop", () => {
-  it("exposes the hotkey to AT via aria-keyshortcuts while the glyph stays decorative", () => {
-    render(
+  it("keeps an unbound hotkey decorative for assistive technology", async () => {
+    const { container } = render(
       <Menu aria-label="Test menu">
         <Menu.Item id="one" hotkey="N">
           New File
@@ -534,10 +739,10 @@ describe("MenuItem hotkey prop", () => {
       </Menu>,
     );
     const item = getMenuItem("New File");
-    expect(item).toHaveAttribute("aria-keyshortcuts", "N");
-    // The bracketed glyph is decorative and does not pollute the item name.
+    expect(item).not.toHaveAttribute("aria-keyshortcuts");
     expect(item).toHaveAccessibleName("New File");
     expect(screen.getByText("[N]")).toHaveAttribute("aria-hidden", "true");
+    expect(await axe(container)).toHaveNoViolations();
   });
 });
 
@@ -779,6 +984,56 @@ describe("MenuSub", () => {
     });
   });
 
+  it("ArrowRight on a submenu leaf is a local no-op and keeps its parent open", async () => {
+    const user = userEvent.setup();
+    renderSubmenu();
+    const menu = screen.getByRole("menu");
+    menu.focus();
+
+    await user.keyboard("{ArrowDown}{ArrowRight}");
+    const submenu = await screen.findByRole("menu", { name: "Edit" });
+    await waitFor(() => expect(submenu).toHaveFocus());
+
+    await user.keyboard("{ArrowRight}");
+
+    expect(getMenuItem("Edit")).toHaveAttribute("aria-expanded", "true");
+    expect(submenu).toBeVisible();
+    expect(submenu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-undo"));
+  });
+
+  it("ArrowRight opens a nested submenu without toggling its ancestor trigger", async () => {
+    const user = userEvent.setup();
+    render(
+      <Menu aria-label="Root menu" defaultHighlighted="edit">
+        <Menu.Sub>
+          <Menu.SubTrigger id="edit">Edit</Menu.SubTrigger>
+          <Menu.SubContent>
+            <Menu.Item id="undo">Undo</Menu.Item>
+            <Menu.Sub>
+              <Menu.SubTrigger id="format">Format</Menu.SubTrigger>
+              <Menu.SubContent>
+                <Menu.Item id="bold">Bold</Menu.Item>
+              </Menu.SubContent>
+            </Menu.Sub>
+          </Menu.SubContent>
+        </Menu.Sub>
+      </Menu>,
+    );
+    const rootMenu = screen.getByRole("menu", { name: "Root menu" });
+    rootMenu.focus();
+
+    await user.keyboard("{ArrowRight}");
+    const editMenu = await screen.findByRole("menu", { name: "Edit" });
+    await waitFor(() => expect(editMenu).toHaveFocus());
+    await user.keyboard("{ArrowDown}{ArrowRight}");
+
+    const formatMenu = await screen.findByRole("menu", { name: "Format" });
+    expect(getMenuItem("Edit")).toHaveAttribute("aria-expanded", "true");
+    expect(getMenuItem("Format")).toHaveAttribute("aria-expanded", "true");
+    expect(editMenu).toBeVisible();
+    expect(formatMenu).toBeVisible();
+  });
+
   it("Enter on trigger opens submenu", async () => {
     const user = userEvent.setup();
     renderSubmenu();
@@ -910,6 +1165,39 @@ describe("MenuSub", () => {
     expect(submenu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-undo"));
   });
 
+  it.each([
+    "click",
+    "Enter",
+  ] as const)("notifies the root onSelect when a submenu item activates via %s", async (activation) => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    renderSubmenu({ onSelect });
+    const menu = screen.getByRole("menu");
+    menu.focus();
+
+    await user.keyboard("{ArrowDown}{ArrowRight}");
+    const submenu = await waitFor(() => {
+      const found = screen.getAllByRole("menu").find((candidate) => candidate !== menu);
+      if (!found) throw new Error("submenu not open");
+      return found;
+    });
+    const undo = screen.getByRole("menuitem", { name: "Undo" });
+    expect(onSelect).not.toHaveBeenCalled();
+
+    if (activation === "click") {
+      await user.click(undo);
+    } else {
+      submenu.focus();
+      await waitFor(() => {
+        expect(submenu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-undo"));
+      });
+      await user.keyboard("{Enter}");
+    }
+
+    expect(onSelect).toHaveBeenCalledOnce();
+    expect(onSelect).toHaveBeenCalledWith("undo");
+  });
+
   it("multiple SubMenus can exist in the same parent menu", () => {
     render(
       <Menu aria-label="Test menu">
@@ -993,9 +1281,7 @@ describe("MenuSub", () => {
   it("SubTrigger pins role to menuitem and never renders aria-checked in a selection menu", () => {
     render(
       <Menu aria-label="Sort" selectedId="name">
-        <Menu.ItemRadio id="name" value="name">
-          Name
-        </Menu.ItemRadio>
+        <Menu.ItemRadio id="name">Name</Menu.ItemRadio>
         <Menu.Sub>
           <Menu.SubTrigger id="more">More</Menu.SubTrigger>
           <Menu.SubContent>
@@ -1238,11 +1524,13 @@ describe("MenuItemCheckbox", () => {
     expect(item).toHaveAttribute("aria-checked", "false");
   });
 
-  it("disabled item does not toggle", async () => {
+  it("keeps a disabled highlighted checkbox discoverable without toggling it", async () => {
     const user = userEvent.setup();
+    const onChange = vi.fn();
+    const onSelect = vi.fn();
     render(
-      <Menu aria-label="Options" defaultHighlighted="disabled-opt">
-        <Menu.ItemCheckbox id="disabled-opt" disabled defaultChecked>
+      <Menu aria-label="Options" highlighted="disabled-opt" onSelect={onSelect}>
+        <Menu.ItemCheckbox id="disabled-opt" disabled defaultChecked onChange={onChange}>
           Disabled
         </Menu.ItemCheckbox>
       </Menu>,
@@ -1253,12 +1541,15 @@ describe("MenuItemCheckbox", () => {
     const item = screen.getByRole("menuitemcheckbox", { name: "Disabled" });
     expect(item).toHaveAttribute("aria-disabled", "true");
     expect(item).toHaveAttribute("aria-checked", "true");
+    expect(item).toHaveAttribute("data-highlighted");
 
     await user.keyboard("{Enter}");
     expect(item).toHaveAttribute("aria-checked", "true");
 
     await user.click(item);
     expect(item).toHaveAttribute("aria-checked", "true");
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it("toggles on click", async () => {
@@ -1324,13 +1615,9 @@ describe("MenuItemRadio", () => {
   function renderRadioMenu(props: MenuRenderProps = {}) {
     return render(
       <Menu aria-label="Sort" selectedId="name" onSelect={vi.fn()} {...props}>
-        <Menu.ItemRadio id="name" value="name">
-          Name
-        </Menu.ItemRadio>
-        <Menu.ItemRadio id="date" value="date">
-          Date
-        </Menu.ItemRadio>
-        <Menu.ItemRadio id="size" value="size" disabled>
+        <Menu.ItemRadio id="name">Name</Menu.ItemRadio>
+        <Menu.ItemRadio id="date">Date</Menu.ItemRadio>
+        <Menu.ItemRadio id="size" disabled>
           Size
         </Menu.ItemRadio>
       </Menu>,
@@ -1362,12 +1649,8 @@ describe("MenuItemRadio", () => {
   it("aria-checked reflects selection state", () => {
     const { rerender } = render(
       <Menu aria-label="Sort" selectedId="name">
-        <Menu.ItemRadio id="name" value="name">
-          Name
-        </Menu.ItemRadio>
-        <Menu.ItemRadio id="date" value="date">
-          Date
-        </Menu.ItemRadio>
+        <Menu.ItemRadio id="name">Name</Menu.ItemRadio>
+        <Menu.ItemRadio id="date">Date</Menu.ItemRadio>
       </Menu>,
     );
 
@@ -1382,12 +1665,8 @@ describe("MenuItemRadio", () => {
 
     rerender(
       <Menu aria-label="Sort" selectedId="date">
-        <Menu.ItemRadio id="name" value="name">
-          Name
-        </Menu.ItemRadio>
-        <Menu.ItemRadio id="date" value="date">
-          Date
-        </Menu.ItemRadio>
+        <Menu.ItemRadio id="name">Name</Menu.ItemRadio>
+        <Menu.ItemRadio id="date">Date</Menu.ItemRadio>
       </Menu>,
     );
 
@@ -1406,12 +1685,8 @@ describe("MenuItemRadio", () => {
     render(
       <Menu aria-label="Mixed" selectedId="name" defaultHighlighted="action">
         <Menu.Item id="action">Action</Menu.Item>
-        <Menu.ItemRadio id="name" value="name">
-          Name
-        </Menu.ItemRadio>
-        <Menu.ItemRadio id="date" value="date">
-          Date
-        </Menu.ItemRadio>
+        <Menu.ItemRadio id="name">Name</Menu.ItemRadio>
+        <Menu.ItemRadio id="date">Date</Menu.ItemRadio>
       </Menu>,
     );
     const menu = screen.getByRole("menu");

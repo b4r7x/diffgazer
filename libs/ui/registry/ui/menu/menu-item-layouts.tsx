@@ -61,7 +61,7 @@ interface DefaultItemLayoutProps {
   isSelected: boolean;
   /** Whether default item layout is danger. */
   isDanger: boolean;
-  /** Keyboard shortcut that focuses the region. */
+  /** Decorative hotkey label rendered as [n]. */
   hotkey?: number | string;
   /** Icon content rendered by the component. */
   icon?: ReactNode;
@@ -98,9 +98,7 @@ export function DefaultItemLayout({
         }
       />
       {hotkey !== undefined && (
-        // The bracketed glyphs stay aria-hidden so they do not pollute the item's
-        // name or typeahead; MenuItem exposes the shortcut to AT via
-        // aria-keyshortcuts instead.
+        // Keep the unbound label out of the accessible name and typeahead text.
         <span
           aria-hidden="true"
           className={

@@ -30,8 +30,8 @@ export interface DialogShellProps extends ComponentProps<"dialog"> {
   onBeforeShowModal?: (ownerDocument: Document) => void;
   /** Called when after show modal occurs. */
   onAfterShowModal?: () => void;
-  /** Called when close occurs. */
-  onClose?: () => void;
+  /** Called after the exit transition has closed the native dialog. */
+  onExitComplete?: () => void;
   /** Content rendered inside the component. */
   children: ReactNode;
   /** Ref for the dialog element. */
@@ -106,12 +106,13 @@ export function DialogShell({
   onCancel,
   onBeforeShowModal,
   onAfterShowModal,
-  onClose,
+  onExitComplete,
   children,
   className,
   dialogRef: externalDialogRef,
   initialFocus,
   onClick,
+  onClickCapture,
   onPointerDown,
   onAnimationEnd: externalOnAnimationEnd,
   ...props
@@ -121,7 +122,7 @@ export function DialogShell({
   const isClosingFromShellRef = useRef(false);
   // usePresence's native animationend/animationcancel listener owns the
   // exit-complete path; do not also wire the returned React handler here or
-  // onClose would fire twice on the non-portaled <dialog>.
+  // onExitComplete would fire twice on the non-portaled <dialog>.
   const { present } = usePresence({
     open,
     ref: shellRef,
@@ -135,7 +136,7 @@ export function DialogShell({
           isClosingFromShellRef.current = false;
         }
       }
-      onClose?.();
+      onExitComplete?.();
     },
   });
 
@@ -212,7 +213,16 @@ export function DialogShell({
       {...props}
       ref={dialogRef}
       data-state={open ? "open" : "closed"}
+      inert={open ? undefined : true}
       className={className}
+      onClickCapture={(e) => {
+        if (!open) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        onClickCapture?.(e);
+      }}
       onPointerDown={(e: PointerEvent<HTMLDialogElement>) => {
         onPointerDown?.(e);
         const element = shellRef.current;

@@ -4,7 +4,7 @@ import { ReviewSeveritySchema } from "../review/issues.js";
 const AnalysisStatsSchema = z.object({
   runId: z.string().nullable(),
   totalIssues: z.number(),
-  filesAnalyzed: z.number(),
+  filesWithIssues: z.number(),
   blockerCount: z.number(),
 });
 export type AnalysisStats = z.infer<typeof AnalysisStatsSchema>;

@@ -40,9 +40,16 @@ function resolveHref(to: string, params: Record<string, string> = {}) {
   return params._splat ? href.replace("$", params._splat) : href.replace(/\/\$$/, "");
 }
 
-export function RouterLinkMock({ to, params, children, ...rest }: RouterLinkMockProps) {
+export function RouterLinkMock({ to, params, children, onClick, ...rest }: RouterLinkMockProps) {
   return (
-    <a href={resolveHref(to, params)} {...rest}>
+    <a
+      href={resolveHref(to, params)}
+      {...rest}
+      onClick={(event) => {
+        onClick?.(event);
+        event.preventDefault();
+      }}
+    >
       {children}
     </a>
   );

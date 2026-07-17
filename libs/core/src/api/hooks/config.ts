@@ -52,7 +52,15 @@ export function useSaveConfig() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (config: SaveConfigRequest) => api.saveConfig(config),
-    onSuccess: () => qc.invalidateQueries({ queryKey: configQueries.all() }),
+    onSuccess: async (_result, config) => {
+      if (config.provider === "openrouter") {
+        qc.removeQueries({
+          queryKey: configQueries.openRouterModels(api).queryKey,
+          exact: true,
+        });
+      }
+      await qc.invalidateQueries({ queryKey: configQueries.all() });
+    },
   });
 }
 
@@ -76,6 +84,14 @@ export function useDeleteProviderCredentials() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (providerId: string) => api.deleteProviderCredentials(providerId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: configQueries.all() }),
+    onSuccess: async (_result, providerId) => {
+      if (providerId === "openrouter") {
+        qc.removeQueries({
+          queryKey: configQueries.openRouterModels(api).queryKey,
+          exact: true,
+        });
+      }
+      await qc.invalidateQueries({ queryKey: configQueries.all() });
+    },
   });
 }

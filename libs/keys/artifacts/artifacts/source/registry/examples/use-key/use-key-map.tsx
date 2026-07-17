@@ -6,12 +6,15 @@ import { useState } from "react";
 function TextFormatter() {
   const [style, setStyle] = useState<"normal" | "bold" | "italic" | "underline">("normal");
 
-  useKey({
-    "ctrl+b": () => setStyle("bold"),
-    "ctrl+i": () => setStyle("italic"),
-    "ctrl+u": () => setStyle("underline"),
-    Escape: () => setStyle("normal"),
-  });
+  useKey(
+    {
+      "ctrl+b": () => setStyle("bold"),
+      "ctrl+i": () => setStyle("italic"),
+      "ctrl+u": () => setStyle("underline"),
+      Escape: () => setStyle("normal"),
+    },
+    { preventDefault: true },
+  );
 
   return (
     <div>

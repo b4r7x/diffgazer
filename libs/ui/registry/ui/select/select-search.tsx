@@ -1,7 +1,6 @@
 "use client";
 
 import { cva } from "class-variance-authority";
-import { useLayoutEffect } from "react";
 import { matchesSearch } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { useSelectContext } from "./select-context";
@@ -67,10 +66,6 @@ export function SelectSearch({
   const activeDescendant = isActiveOptionVisible(options, highlighted, searchQuery, matchesSearch)
     ? toOptionId(listboxId, highlighted)
     : undefined;
-
-  useLayoutEffect(() => {
-    if (open) searchInputRef.current?.focus();
-  }, [open, searchInputRef]);
 
   if (!open) return null;
 

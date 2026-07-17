@@ -18,13 +18,12 @@ export interface AccordionSingleProps {
    * value/onChange/defaultValue shape from string to string[].
    */
   type?: "single";
-  /** Controlled open value(s). string for single mode, string[] for multiple. */
-  value?: string;
+  /** Controlled open value. `undefined` means no item is open. */
+  value?: string | undefined;
   /**
-   * Fired when the open value(s) change. Receives the next value; in single non-collapsible
-   * mode it never receives undefined.
+   * Fired when the open value changes. `undefined` means no item is open.
    */
-  onChange?: (value: string | null) => void;
+  onChange?: (value: string | undefined) => void;
   /** Initial open value(s) for uncontrolled mode. */
   defaultValue?: string;
   /** Single mode only. When false, the currently open item cannot be closed by clicking it. */
@@ -50,12 +49,9 @@ export interface AccordionMultipleProps {
    * value/onChange/defaultValue shape from string to string[].
    */
   type: "multiple";
-  /** Controlled open value(s). string for single mode, string[] for multiple. */
-  value?: string[];
-  /**
-   * Fired when the open value(s) change. Receives the next value; in single non-collapsible
-   * mode it never receives undefined.
-   */
+  /** Controlled open values. `undefined` is normalized to an empty array. */
+  value?: string[] | undefined;
+  /** Fired when the open values change. */
   onChange?: (value: string[]) => void;
   /** Initial open value(s) for uncontrolled mode. */
   defaultValue?: string[];
@@ -78,23 +74,25 @@ export type AccordionProps = AccordionSingleProps | AccordionMultipleProps;
 
 function normalizeStateOptions(props: AccordionProps): UseControllableStateOptions<string[]> {
   if (props.type === "multiple") {
+    const controlled = "value" in props;
     return {
-      value: props.value,
-      controlled: "value" in props,
+      value: controlled ? (props.value ?? []) : undefined,
+      controlled,
       defaultValue: props.defaultValue ?? [],
       onChange: props.onChange,
     };
   }
+  const controlled = "value" in props;
   let value: string[] | undefined;
-  if ("value" in props) {
+  if (controlled) {
     value = props.value === undefined ? [] : [props.value];
   }
 
   return {
     value,
-    controlled: "value" in props,
+    controlled,
     defaultValue: props.defaultValue !== undefined ? [props.defaultValue] : [],
-    onChange: props.onChange ? (v: string[]) => props.onChange?.(v[0] ?? null) : undefined,
+    onChange: props.onChange ? (v: string[]) => props.onChange?.(v[0]) : undefined,
   };
 }
 

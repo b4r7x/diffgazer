@@ -12,12 +12,13 @@ import {
 } from "@diffgazer/core/schemas/git";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { log } from "../log.js";
-import { unquoteGitPath } from "./quote.js";
 import type { BranchInfo, CategorizedFile } from "./types.js";
 
 const execFileAsync = promisify(execFile);
 
 const GIT_DIFF_MAX_BUFFER = 5 * 1024 * 1024;
+type GitDiffMode = Exclude<ReviewMode, "files">;
+type GitDiffResult = Promise<Result<string, { message: string }>>;
 
 // Git environment variables that point git at a different repo/config/hook and
 // can turn a malicious parent environment into command execution. Each is
@@ -66,8 +67,12 @@ export type StatusHashResult =
   | { kind: "status-only"; hash: string }
   | { kind: "unavailable" };
 
-function parseBranchLine(line: string): BranchInfo {
-  const result: BranchInfo = { branch: null, remoteBranch: null, ahead: 0, behind: 0 };
+function emptyBranchInfo(): BranchInfo {
+  return { branch: null, remoteBranch: null, ahead: 0, behind: 0 };
+}
+
+function parseV1BranchLine(line: string): BranchInfo {
+  const result = emptyBranchInfo();
 
   if (!line.includes("...")) {
     result.branch = line || null;
@@ -88,49 +93,144 @@ function parseBranchLine(line: string): BranchInfo {
 }
 
 const STATUS_CODES: Set<string> = new Set(GIT_FILE_STATUS_CODES);
+const UNMERGED_STATUS_PAIRS = new Set(["DD", "AU", "UD", "UA", "DU", "AA", "UU"]);
 const INTERNAL_DIFFGAZER_DIR = ".diffgazer";
 
 function toStatusCode(char: string): GitFileStatusCode {
   return STATUS_CODES.has(char) ? (char as GitFileStatusCode) : " ";
 }
 
-/**
- * Decodes a git porcelain path field, which git wraps in double quotes and
- * C-style escapes when it contains special bytes (default `core.quotepath`).
- * Plain paths pass through unchanged.
- */
-function decodePorcelainPath(path: string): string {
-  if (path.startsWith('"') && path.endsWith('"')) {
-    return unquoteGitPath(path.slice(1, -1));
-  }
-  return path;
-}
+function categorizeGitFile(
+  status: string,
+  path: string,
+  previousPath?: string,
+): CategorizedFile | null {
+  if (status.length !== 2 || path.length === 0) return null;
 
-function categorizeGitFile(line: string): CategorizedFile | null {
-  if (line.length < 3) return null;
-
-  const indexStatus = toStatusCode(line[0] ?? " ");
-  const workTreeStatus = toStatusCode(line[1] ?? " ");
-  const pathField = line.slice(3);
-  const [previousPathPart, nextPathPart] = pathField.split(" -> ");
-  const path = decodePorcelainPath(nextPathPart ?? previousPathPart ?? "");
+  const indexStatus = toStatusCode(status[0] ?? " ");
+  const workTreeStatus = toStatusCode(status[1] ?? " ");
   const entry: GitFileEntry =
-    nextPathPart === undefined || previousPathPart === undefined
+    previousPath === undefined
       ? { path, indexStatus, workTreeStatus }
       : {
           path,
-          previousPath: decodePorcelainPath(previousPathPart),
+          previousPath,
           indexStatus,
           workTreeStatus,
         };
 
   return {
     entry,
-    isConflicted: indexStatus === "U" || workTreeStatus === "U",
+    isConflicted: UNMERGED_STATUS_PAIRS.has(`${indexStatus}${workTreeStatus}`),
     isUntracked: indexStatus === "?" && workTreeStatus === "?",
     isStaged: indexStatus !== " " && indexStatus !== "?",
     isUnstaged: workTreeStatus !== " " && workTreeStatus !== "?",
   };
+}
+
+function parseV1GitStatusRecords(output: string): {
+  branch: BranchInfo;
+  files: CategorizedFile[];
+} {
+  let branch = emptyBranchInfo();
+  const files: CategorizedFile[] = [];
+  const records = output.split("\0");
+
+  for (let index = 0; index < records.length; index += 1) {
+    const record = records[index];
+    if (!record) continue;
+
+    if (record.startsWith("## ")) {
+      branch = parseV1BranchLine(record.slice(3));
+      continue;
+    }
+
+    const indexStatus = record[0] ?? " ";
+    const workTreeStatus = record[1] ?? " ";
+    const hasPreviousPath =
+      indexStatus === "R" ||
+      indexStatus === "C" ||
+      workTreeStatus === "R" ||
+      workTreeStatus === "C";
+    const previousPath = hasPreviousPath ? records[index + 1] : undefined;
+    if (hasPreviousPath) index += 1;
+
+    const categorized = categorizeGitFile(record.slice(0, 2), record.slice(3), previousPath);
+    if (categorized) files.push(categorized);
+  }
+
+  return { branch, files };
+}
+
+function pathAfterFields(record: string, fieldCount: number): string | null {
+  let separator = -1;
+  for (let field = 0; field < fieldCount; field += 1) {
+    separator = record.indexOf(" ", separator + 1);
+    if (separator === -1) return null;
+  }
+  return record.slice(separator + 1);
+}
+
+function parseBranchRecord(record: string, branch: BranchInfo): void {
+  if (record.startsWith("# branch.head ")) {
+    const head = record.slice("# branch.head ".length);
+    branch.branch = head === "(detached)" ? null : head || null;
+    return;
+  }
+  if (record.startsWith("# branch.upstream ")) {
+    branch.remoteBranch = record.slice("# branch.upstream ".length) || null;
+    return;
+  }
+  if (record.startsWith("# branch.ab ")) {
+    const counts = /^\+(\d+) -(\d+)$/.exec(record.slice("# branch.ab ".length));
+    branch.ahead = Number(counts?.[1] ?? 0);
+    branch.behind = Number(counts?.[2] ?? 0);
+  }
+}
+
+function parseV2GitStatusRecords(output: string): {
+  branch: BranchInfo;
+  files: CategorizedFile[];
+} {
+  const branch = emptyBranchInfo();
+  const files: CategorizedFile[] = [];
+  const records = output.split("\0");
+
+  for (let index = 0; index < records.length; index += 1) {
+    const record = records[index];
+    if (!record) continue;
+    if (record.startsWith("# ")) {
+      parseBranchRecord(record, branch);
+      continue;
+    }
+
+    let status: string;
+    let path: string | null;
+    let previousPath: string | undefined;
+    if (record.startsWith("1 ")) {
+      status = record.slice(2, 4);
+      path = pathAfterFields(record, 8);
+    } else if (record.startsWith("2 ")) {
+      status = record.slice(2, 4);
+      path = pathAfterFields(record, 9);
+      previousPath = records[index + 1];
+      index += 1;
+    } else if (record.startsWith("u ")) {
+      status = record.slice(2, 4);
+      path = pathAfterFields(record, 10);
+    } else if (record.startsWith("? ")) {
+      status = "??";
+      path = record.slice(2);
+    } else {
+      continue;
+    }
+
+    if (path === null) continue;
+    const categorized = categorizeGitFile(status, path, previousPath);
+    if (categorized) files.push(categorized);
+  }
+
+  return { branch, files };
 }
 
 function parseGitStatusOutput(output: string): {
@@ -141,29 +241,15 @@ function parseGitStatusOutput(output: string): {
   files: GitStatusFiles;
   conflicted: string[];
 } {
-  const lines = output.split("\n").filter((line) => line.length > 0);
-  let branch: string | null = null;
-  let remoteBranch: string | null = null;
-  let ahead = 0,
-    behind = 0;
+  const parsed = output.includes("# branch.")
+    ? parseV2GitStatusRecords(output)
+    : parseV1GitStatusRecords(output);
   const staged: GitFileEntry[] = [];
   const unstaged: GitFileEntry[] = [];
   const untracked: GitFileEntry[] = [];
   const conflicted: string[] = [];
 
-  for (const line of lines) {
-    if (line.startsWith("## ")) {
-      const parsed = parseBranchLine(line.slice(3));
-      branch = parsed.branch;
-      remoteBranch = parsed.remoteBranch;
-      ahead = parsed.ahead;
-      behind = parsed.behind;
-      continue;
-    }
-
-    const categorized = categorizeGitFile(line);
-    if (!categorized) continue;
-
+  for (const categorized of parsed.files) {
     const { entry, isConflicted, isUntracked, isStaged, isUnstaged } = categorized;
 
     if (isConflicted) conflicted.push(entry.path);
@@ -173,36 +259,18 @@ function parseGitStatusOutput(output: string): {
   }
 
   return {
-    branch,
-    remoteBranch,
-    ahead,
-    behind,
+    ...parsed.branch,
     files: { staged, unstaged, untracked },
     conflicted,
   };
 }
 
-function isInternalDiffgazerPath(pathPart: string): boolean {
-  const normalized = pathPart.trim();
-  return (
-    normalized === INTERNAL_DIFFGAZER_DIR || normalized.startsWith(`${INTERNAL_DIFFGAZER_DIR}/`)
-  );
+function isInternalDiffgazerPath(path: string): boolean {
+  return path === INTERNAL_DIFFGAZER_DIR || path.startsWith(`${INTERNAL_DIFFGAZER_DIR}/`);
 }
 
-function isUntrackedLine(line: string): boolean {
-  return line.length >= 2 && line[0] === "?" && line[1] === "?";
-}
-
-function isExternalStatusLine(line: string): boolean {
-  if (line.length < 3) return false;
-  const pathPart = line.slice(3).trim();
-  if (!pathPart) return false;
-
-  const paths = pathPart
-    .split(" -> ")
-    .map((part) => decodePorcelainPath(part.trim()))
-    .filter(Boolean);
-  return paths.every((path) => !isInternalDiffgazerPath(path));
+function isExternalStatusFile(file: CategorizedFile): boolean {
+  return !isInternalDiffgazerPath(file.entry.path);
 }
 
 export function createGitService(options: { cwd?: string; timeout?: number } = {}) {
@@ -230,7 +298,7 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
     try {
       const { stdout } = await execFileAsync(
         "git",
-        [...HARDENED_BASE_ARGS, "status", "--porcelain=v1", "-b"],
+        [...HARDENED_BASE_ARGS, "status", "--porcelain=v2", "--branch", "-z"],
         { cwd, timeout, env: safeEnv() },
       );
       const parsed = parseGitStatusOutput(stdout);
@@ -259,10 +327,21 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
     }
   }
 
+  function getDiff(mode?: GitDiffMode, pathspecs?: undefined, signal?: AbortSignal): GitDiffResult;
+  function getDiff(
+    mode: ReviewMode,
+    pathspecs: readonly string[],
+    signal?: AbortSignal,
+  ): GitDiffResult;
   async function getDiff(
     mode: ReviewMode = "unstaged",
-    pathspecs?: string[],
+    pathspecs?: readonly string[],
+    signal?: AbortSignal,
   ): Promise<Result<string, { message: string }>> {
+    signal?.throwIfAborted();
+    if (mode === "files" && (!pathspecs || pathspecs.length === 0)) {
+      return err({ message: "files diff mode requires at least one pathspec" });
+    }
     const args =
       mode === "staged"
         ? [
@@ -283,9 +362,12 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
         timeout,
         maxBuffer: GIT_DIFF_MAX_BUFFER,
         env: safeEnv(),
+        signal,
       });
+      signal?.throwIfAborted();
       return ok(stdout);
     } catch (error) {
+      signal?.throwIfAborted();
       return err({ message: getErrorMessage(error) });
     }
   }
@@ -316,26 +398,31 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
   async function getStatusHash(): Promise<StatusHashResult> {
     let stdout: string;
     try {
-      ({ stdout } = await execFileAsync("git", [...HARDENED_BASE_ARGS, "status", "--porcelain"], {
-        cwd,
-        timeout,
-        env: safeEnv(),
-      }));
+      ({ stdout } = await execFileAsync(
+        "git",
+        [...HARDENED_BASE_ARGS, "status", "--porcelain=v1", "-z"],
+        { cwd, timeout, env: safeEnv() },
+      ));
     } catch (error) {
       log("warn", "git_status_hash_failed", { error: getErrorMessage(error) });
       return { kind: "unavailable" };
     }
 
-    const externalLines = stdout
-      .split("\n")
-      .filter((line) => line.length > 0 && isExternalStatusLine(line) && !isUntrackedLine(line))
+    const externalStatusFiles = parseV1GitStatusRecords(stdout).files.filter(
+      (file) => isExternalStatusFile(file) && !file.isUntracked,
+    );
+    const externalFiles = externalStatusFiles
+      .map(({ entry }) =>
+        [entry.indexStatus, entry.workTreeStatus, entry.path, entry.previousPath ?? ""].join("\0"),
+      )
       .sort();
-    if (externalLines.length === 0) {
+    if (externalFiles.length === 0) {
       return { kind: "full", hash: "" };
     }
 
     const hash = createHash("sha256");
-    hash.update(externalLines.join("\n"));
+    hash.update(externalFiles.join("\0"));
+    const externalPaths = [...new Set(externalStatusFiles.map(({ entry }) => entry.path))];
 
     // Include diff contents so the hash changes when file content changes even
     // if the status lines remain the same. A diff failure (e.g. a >maxBuffer
@@ -345,7 +432,15 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
       const [{ stdout: unstagedDiff }, { stdout: stagedDiff }] = await Promise.all([
         execFileAsync(
           "git",
-          [...HARDENED_BASE_ARGS, "diff", "--no-ext-diff", "--no-textconv", "--no-color"],
+          [
+            ...HARDENED_BASE_ARGS,
+            "diff",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--no-color",
+            "--",
+            ...externalPaths,
+          ],
           {
             cwd,
             timeout,
@@ -362,6 +457,8 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
             "--no-ext-diff",
             "--no-textconv",
             "--no-color",
+            "--",
+            ...externalPaths,
           ],
           { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER, env: safeEnv() },
         ),

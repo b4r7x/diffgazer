@@ -1,10 +1,19 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { RegistrySchema } from "../registry-types.js";
 import { requireValue } from "../testing/assertions.js";
+import { buildHooksData } from "./build-hooks.js";
+import { DOCS_CODE_THEME_NAME } from "./code-theme.js";
 import { findExamples, generateDemoIndex } from "./examples.js";
-import { createDocsHighlighter, type DocsHighlighter, highlightCode } from "./highlight.js";
+import {
+  createDocsHighlighter,
+  type DocsHighlighter,
+  getSourceHighlightLanguage,
+  highlightCode,
+  highlightSourceFile,
+} from "./highlight.js";
 import {
   generateEnrichedHookData,
   generateHooksSource,
@@ -37,6 +46,25 @@ beforeAll(async () => {
 });
 
 describe("highlightCode", () => {
+  it.each([
+    ["styles/theme.css", "css"],
+    ["hooks/use-theme.ts", "typescript"],
+    ["components/theme.tsx", "tsx"],
+  ] as const)("selects the %s source grammar as %s", (path, language) => {
+    expect(getSourceHighlightLanguage(path)).toBe(language);
+  });
+
+  it("preserves registry style source bytes while highlighting with the CSS grammar", () => {
+    const raw = '.panel::before {\n  content: "<ready>&";\n}\n';
+    const source = highlightSourceFile(highlighter, "styles/panel.css", raw, TEST_THEME_NAME);
+
+    expect(source.raw).toBe(raw);
+    expect(source.highlighted).toHaveLength(4);
+    expect(
+      source.highlighted.flatMap((line) => line.content.map((token) => token.text)).join(""),
+    ).toContain(".panel::before");
+  });
+
   it("returns CodeBlockLine[] with number and content", () => {
     const lines = highlightCode(highlighter, "const x = 1;", "typescript", TEST_THEME_NAME);
     expect(lines.length).toBeGreaterThan(0);
@@ -207,6 +235,62 @@ describe("generateEnrichedHookData", () => {
     expect(entry.exampleSource.basic?.raw).toContain("useBeta");
     expect(entry.exampleSource.basic?.highlighted.length).toBeGreaterThan(0);
   });
+
+  it("emits every public consumer file for use-navigation in page and source artifacts", async () => {
+    const keysRoot = resolve(import.meta.dirname, "../../../keys");
+    const registry = RegistrySchema.parse(
+      JSON.parse(readFileSync(resolve(keysRoot, "registry/registry.json"), "utf-8")),
+    );
+    const outputDir = resolve(tempDir, "generated");
+    const expectedPaths = [
+      "src/hooks/use-navigation.ts",
+      "src/hooks/utils/navigation-dispatch.ts",
+      "src/hooks/utils/navigation-items.ts",
+      "src/hooks/utils/navigation-directions.ts",
+      "src/hooks/utils/focusable.ts",
+      "src/hooks/utils/element-guards.ts",
+    ];
+    const artifactHighlighter = await createDocsHighlighter({
+      theme: { ...TEST_THEME, name: DOCS_CODE_THEME_NAME },
+      themeName: DOCS_CODE_THEME_NAME,
+    });
+
+    const result = await buildHooksData({
+      registry,
+      rootDir: keysRoot,
+      examplesDir: resolve(tempDir, "missing-examples"),
+      outputDir,
+      highlighter: artifactHighlighter,
+      hooksConfig: {
+        contentDir: resolve(tempDir, "content"),
+        filter: (item) => item.name === "navigation",
+        mapItem: (item) => ({
+          name: "use-navigation",
+          registryName: item.name,
+          title: "useNavigation",
+          description: item.description,
+          files: item.files,
+        }),
+        loadHookDoc: async () => null,
+      },
+    });
+
+    const page = JSON.parse(
+      readFileSync(resolve(outputDir, "hooks/use-navigation.json"), "utf-8"),
+    ) as { files: string[] };
+    const archive = JSON.parse(
+      readFileSync(resolve(outputDir, "hooks/use-navigation.source.json"), "utf-8"),
+    ) as {
+      source: { raw: string };
+      files: Array<{ path: string; raw: string }>;
+    };
+
+    expect(result.errors).toEqual([]);
+    expect(page.files).toEqual(expectedPaths);
+    expect(archive.files.map((file) => file.path)).toEqual(expectedPaths);
+    expect(archive.files.every((file) => file.raw.length > 0)).toBe(true);
+    expect(archive.source.raw).toBe(archive.files[0]?.raw);
+  }, 30_000);
 
   it("falls back when HookDoc is null", async () => {
     const result = await generateEnrichedHookData({

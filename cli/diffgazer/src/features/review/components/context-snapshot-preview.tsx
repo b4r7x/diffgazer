@@ -1,3 +1,4 @@
+import { basename, win32 } from "node:path";
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
 import { sanitizeTerminalText } from "@diffgazer/core/review";
 import { pluralize } from "@diffgazer/core/strings";
@@ -18,7 +19,10 @@ export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps
   const totalAdditions = graph.changedFiles.reduce((sum, f) => sum + f.additions, 0);
   const totalDeletions = graph.changedFiles.reduce((sum, f) => sum + f.deletions, 0);
 
-  const projectName = sanitizeTerminalText(graph.root.split("/").pop() ?? graph.root);
+  const nativeBasename = basename(graph.root);
+  const projectName = sanitizeTerminalText(
+    win32.basename(nativeBasename) || nativeBasename || graph.root,
+  );
 
   const labelWidth = 12;
 

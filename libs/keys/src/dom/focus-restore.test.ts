@@ -30,6 +30,22 @@ describe("focus restore utilities", () => {
     expect(restoreFocus(trigger)).toBe(false);
   });
 
+  it("restores to the same connected trigger across repeated panel cycles", () => {
+    const trigger = button("Open panel");
+    const panel = button("Panel action");
+
+    for (let cycle = 0; cycle < 2; cycle += 1) {
+      trigger.focus();
+      const captured = getRestorableFocusTarget();
+      panel.focus();
+
+      expect(captured).toBe(trigger);
+      expect(restoreFocus(captured)).toBe(true);
+      expect(document.activeElement).toBe(trigger);
+      expect(trigger.isConnected).toBe(true);
+    }
+  });
+
   it("ignores non-restorable active elements", () => {
     const trigger = button("Trigger");
 

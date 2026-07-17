@@ -94,9 +94,6 @@ export function shift(
   };
 }
 
-// Space the panel can occupy along each axis for the resolved side, viewport
-// minus the trigger edge it anchors to (plus sideOffset) minus collision padding.
-// Lets a panel cap its size and scroll instead of overflowing the viewport.
 /**
  * Computes the max content size available from the trigger edge to the viewport edge.
  *

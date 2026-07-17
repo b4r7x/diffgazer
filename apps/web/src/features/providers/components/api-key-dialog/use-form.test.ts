@@ -5,8 +5,7 @@ import { useApiKeyForm } from "./use-form";
 function defaultProps(overrides: Partial<Parameters<typeof useApiKeyForm>[0]> = {}) {
   return {
     envVarName: "OPENAI_API_KEY",
-    onSubmit: vi.fn().mockResolvedValue(undefined),
-    onOpenChange: vi.fn(),
+    onSubmit: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
 }
@@ -38,7 +37,7 @@ describe("useApiKeyForm", () => {
   });
 
   it("uses an explicit submit method instead of the current render snapshot", async () => {
-    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const onSubmit = vi.fn().mockResolvedValue(true);
     const { result } = renderHook(() => useApiKeyForm(defaultProps({ onSubmit })));
 
     await act(async () => {
@@ -49,7 +48,7 @@ describe("useApiKeyForm", () => {
   });
 
   it("passes env method and var name so callers can construct a CredentialRef", async () => {
-    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const onSubmit = vi.fn().mockResolvedValue(true);
     const { result } = renderHook(() =>
       useApiKeyForm(defaultProps({ onSubmit, envVarName: "OPENROUTER_API_KEY" })),
     );
@@ -66,37 +65,39 @@ describe("useApiKeyForm", () => {
     expect(credentialRef).toEqual({ kind: "env", varName: "OPENROUTER_API_KEY" });
   });
 
-  it("ignores a second submit while the first is still in flight", async () => {
-    let resolveSubmit!: () => void;
+  it("declines a concurrent save without clearing the form", async () => {
+    let resolveSubmit!: (committed: boolean) => void;
     const onSubmit = vi.fn().mockImplementation(
       () =>
-        new Promise<void>((resolve) => {
+        new Promise<boolean>((resolve) => {
           resolveSubmit = resolve;
         }),
     );
     const { result } = renderHook(() => useApiKeyForm(defaultProps({ onSubmit })));
 
-    act(() => result.current.setMethod("env"));
+    act(() => result.current.setKeyValue("sk-kept"));
 
-    let submitPromise!: Promise<void>;
+    let submitPromise!: Promise<boolean>;
+    let duplicatePromise!: Promise<boolean>;
     act(() => {
       submitPromise = result.current.handleSubmit();
+      duplicatePromise = result.current.handleSubmit();
     });
 
     expect(result.current.isSubmitting).toBe(true);
     expect(onSubmit).toHaveBeenCalledOnce();
 
-    await act(async () => {
-      await result.current.handleSubmit();
-    });
+    await expect(duplicatePromise).resolves.toBe(false);
     expect(onSubmit).toHaveBeenCalledOnce();
+    expect(result.current.keyValue).toBe("sk-kept");
 
     await act(async () => {
-      resolveSubmit();
-      await submitPromise;
+      resolveSubmit(true);
+      await expect(submitPromise).resolves.toBe(true);
     });
 
     expect(result.current.isSubmitting).toBe(false);
+    expect(result.current.keyValue).toBe("");
   });
 
   it("exposes the failure message when handleSubmit rejects", async () => {
@@ -115,8 +116,7 @@ describe("useApiKeyForm", () => {
 
   it("keeps the typed key after a failed paste submit", async () => {
     const onSubmit = vi.fn().mockRejectedValue(new Error("Network error"));
-    const onOpenChange = vi.fn();
-    const { result } = renderHook(() => useApiKeyForm(defaultProps({ onSubmit, onOpenChange })));
+    const { result } = renderHook(() => useApiKeyForm(defaultProps({ onSubmit })));
 
     act(() => result.current.setKeyValue("sk-test-key"));
 
@@ -125,7 +125,6 @@ describe("useApiKeyForm", () => {
     });
 
     expect(result.current.keyValue).toBe("sk-test-key");
-    expect(onOpenChange).not.toHaveBeenCalled();
   });
 
   it("clears the keyValue after a successful submit", async () => {
@@ -134,10 +133,12 @@ describe("useApiKeyForm", () => {
     act(() => result.current.setKeyValue("sk-test-key"));
     expect(result.current.keyValue).toBe("sk-test-key");
 
+    let saved = false;
     await act(async () => {
-      await result.current.handleSubmit();
+      saved = await result.current.handleSubmit();
     });
 
+    expect(saved).toBe(true);
     expect(result.current.keyValue).toBe("");
   });
 });

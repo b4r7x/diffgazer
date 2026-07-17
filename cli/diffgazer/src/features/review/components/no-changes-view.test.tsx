@@ -1,6 +1,7 @@
 import { FooterProvider } from "@diffgazer/core/footer";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
 import { NoChangesView } from "./no-changes-view";
 
@@ -14,13 +15,6 @@ afterEach(() => {
 async function flush(times = 4): Promise<void> {
   for (let i = 0; i < times; i += 1) {
     await new Promise((resolve) => setImmediate(resolve));
-  }
-}
-
-async function waitUntil(predicate: () => boolean, attempts = 100): Promise<void> {
-  for (let i = 0; i < attempts; i += 1) {
-    if (predicate()) return;
-    await new Promise((resolve) => setTimeout(resolve, 10));
   }
 }
 

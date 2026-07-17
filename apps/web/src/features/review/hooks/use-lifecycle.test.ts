@@ -1,12 +1,16 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
+import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeCreateReviewResponse } from "@diffgazer/core/testing/factories";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
+import { REVIEW_PROGRESS_CONTROLS } from "./use-progress-keyboard";
 
 const {
   mockNavigate,
@@ -40,7 +44,6 @@ vi.mock("@diffgazer/core/api/hooks", async () => {
   );
   return {
     ...actual,
-    useCreateReview: () => ({ mutateAsync: mockCreateReview }),
     useReviewLifecycleBase: mockUseReviewLifecycleBase,
     useReviewSessionCache: () => ({
       clearActiveSession: mockClearActiveSession,
@@ -48,7 +51,63 @@ vi.mock("@diffgazer/core/api/hooks", async () => {
   };
 });
 
-import { useReviewLifecycle } from "./use-lifecycle";
+import { extractOrchestratorStats, useReviewLifecycle } from "./use-lifecycle";
+
+describe("extractOrchestratorStats", () => {
+  it("uses the latest orchestrator completion as the authoritative lens stats", () => {
+    const result = extractOrchestratorStats({
+      events: [
+        {
+          type: "orchestrator_complete",
+          totalIssues: 0,
+          filesAnalyzed: 1,
+          lensStats: [
+            {
+              lensId: "security",
+              issueCount: 0,
+              status: "failed",
+              errorCode: "MODEL_ERROR",
+            },
+          ],
+          timestamp: "2026-01-01T00:00:01.000Z",
+        },
+        {
+          type: "orchestrator_complete",
+          totalIssues: 0,
+          filesAnalyzed: 1,
+          lensStats: [
+            {
+              lensId: "security",
+              issueCount: 0,
+              status: "failed",
+              errorCode: "RATE_LIMITED",
+            },
+          ],
+          timestamp: "2026-01-01T00:00:02.000Z",
+        },
+      ],
+    });
+
+    expect(result.lensStats?.[0]?.errorCode).toBe("RATE_LIMITED");
+  });
+});
+
+describe("review progress control documentation", () => {
+  it("matches the cancel and resumable-leave controls used by the progress screen", () => {
+    const guide = readFileSync(
+      resolve(import.meta.dirname, "../../../../../docs/content/docs/app/web/reviewing.mdx"),
+      "utf8",
+    );
+
+    expect(guide).toContain(
+      `press \`${REVIEW_PROGRESS_CONTROLS.cancel.key}\` or use **${REVIEW_PROGRESS_CONTROLS.cancel.label}**`,
+    );
+    expect(guide).toContain(
+      "Press `Esc` to return to Home without stopping the run; the server session keeps running and remains resumable from Home.",
+    );
+    expect(REVIEW_PROGRESS_CONTROLS.leave.key).toBe("Escape");
+  });
+});
 
 let queryClient: QueryClient;
 let mockApi: BoundApi;
@@ -85,7 +144,7 @@ function makeBaseReturn() {
     stream: {
       stop: vi.fn(),
       abort: vi.fn(),
-      cancel: vi.fn(async () => null),
+      cancel: vi.fn(async (): Promise<string | null> => null),
       state: {
         steps: [],
         agents: [],
@@ -105,7 +164,12 @@ function makeBaseReturn() {
       isTerminalStreamError: false,
       isCheckingForChanges: false,
     },
-    completion: { isCompleting: false, skipDelay: vi.fn(), resetCompletion: vi.fn() },
+    completion: {
+      isCompleting: false,
+      completedAt: null,
+      skipDelay: vi.fn(),
+      resetCompletion: vi.fn(),
+    },
     start: {
       hasStarted: true,
       hasStreamed: true,
@@ -173,6 +237,112 @@ describe("useReviewLifecycle no-diff alternate start", () => {
       );
     });
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("makes Back authoritative while alternate cancellation is pending", async () => {
+    const cancel = createDeferred<string | null>();
+    const base = makeBaseReturn();
+    base.stream.cancel = vi.fn(() => cancel.promise);
+    mockUseReviewLifecycleBase.mockReturnValue(base);
+    const { result } = renderReviewLifecycle("unstaged");
+
+    act(() => result.current.handleSwitchMode());
+    await waitFor(() => expect(base.stream.cancel).toHaveBeenCalledTimes(1));
+
+    act(() => result.current.handleCancel());
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
+    expect(result.current.isTransitionPending).toBe(false);
+
+    cancel.resolve(null);
+    await act(async () => cancel.promise);
+    expect(mockCreateReview).not.toHaveBeenCalled();
+  });
+
+  it("keeps a late alternate session resumable when Back wins after creation starts", async () => {
+    const created = createDeferred<ReturnType<typeof makeCreateReviewResponse>>();
+    const response = makeCreateReviewResponse({
+      reviewId: "22222222-2222-4222-8222-222222222222",
+      session: { mode: "staged" },
+    });
+    const base = makeBaseReturn();
+    base.stream.cancel = vi.fn(async () => null);
+    mockUseReviewLifecycleBase.mockReturnValue(base);
+    mockCreateReview.mockReturnValue(created.promise);
+    const { result } = renderReviewLifecycle("unstaged");
+
+    act(() => result.current.handleSwitchMode());
+    await waitFor(() => expect(mockCreateReview).toHaveBeenCalledTimes(1));
+
+    act(() => result.current.handleCancel());
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith({ to: "/" }));
+
+    created.resolve(response);
+    await act(async () => created.promise);
+
+    await waitFor(() => {
+      expect(queryClient.getQueryData(["review", "active-session", "staged"])).toEqual({
+        session: response.session,
+      });
+    });
+    await waitFor(() => {
+      const mutations = queryClient.getMutationCache().getAll();
+      expect(mutations).toHaveLength(1);
+      expect(mutations[0]?.state.status).toBe("success");
+    });
+    await act(async () => Promise.resolve());
+
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).not.toHaveBeenCalledWith(
+      expect.objectContaining({ to: "/review/{-$reviewId}" }),
+    );
+  });
+
+  it("exposes the pending transition until alternate creation settles", async () => {
+    const created = createDeferred<ReturnType<typeof makeCreateReviewResponse>>();
+    const base = makeBaseReturn();
+    base.stream.cancel = vi.fn(async () => null);
+    mockUseReviewLifecycleBase.mockReturnValue(base);
+    mockCreateReview.mockReturnValue(created.promise);
+    const { result } = renderReviewLifecycle("unstaged");
+
+    act(() => result.current.handleSwitchMode());
+    await waitFor(() => expect(mockCreateReview).toHaveBeenCalledTimes(1));
+    expect(result.current.isTransitionPending).toBe(true);
+
+    created.resolve(
+      makeCreateReviewResponse({
+        reviewId: "22222222-2222-4222-8222-222222222222",
+        session: { mode: "staged" },
+      }),
+    );
+    await act(async () => created.promise);
+
+    expect(result.current.isTransitionPending).toBe(false);
+  });
+
+  it("invalidates alternate navigation when the owner unmounts", async () => {
+    const created = createDeferred<ReturnType<typeof makeCreateReviewResponse>>();
+    const base = makeBaseReturn();
+    base.stream.cancel = vi.fn(async () => null);
+    mockUseReviewLifecycleBase.mockReturnValue(base);
+    mockCreateReview.mockReturnValue(created.promise);
+    const view = renderReviewLifecycle("unstaged");
+
+    act(() => view.result.current.handleSwitchMode());
+    await waitFor(() => expect(mockCreateReview).toHaveBeenCalledTimes(1));
+    view.unmount();
+
+    created.resolve(
+      makeCreateReviewResponse({
+        reviewId: "22222222-2222-4222-8222-222222222222",
+        session: { mode: "staged" },
+      }),
+    );
+    await act(async () => created.promise);
+
+    expect(mockNavigate).not.toHaveBeenCalledWith(
+      expect.objectContaining({ to: "/review/{-$reviewId}" }),
+    );
   });
 });
 
@@ -391,7 +561,9 @@ describe("useReviewLifecycle completion cache cleanup", () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings/providers" });
     });
-    expect(base.stream.cancel).toHaveBeenCalledWith("11111111-1111-4111-8111-111111111111");
+    expect(base.stream.cancel).toHaveBeenCalledWith("11111111-1111-4111-8111-111111111111", {
+      preserveState: true,
+    });
     expect(mockClearActiveSession).toHaveBeenCalledWith(
       "staged",
       "11111111-1111-4111-8111-111111111111",
@@ -441,6 +613,7 @@ function createMockApi(): BoundApi {
 
   return {
     ...api,
+    createReview: mockCreateReview,
     activateProvider: vi
       .fn()
       .mockResolvedValue({ provider: "openrouter", model: "openrouter/test-model" }),

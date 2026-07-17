@@ -25,8 +25,10 @@ export interface UsePopoverBehaviorReturn {
   onTriggerEnter: () => void;
   /** Called when trigger focus occurs. */
   onTriggerFocus: () => void;
-  /** Called when trigger leave occurs. */
+  /** Called when pointer leaves the trigger. */
   onTriggerLeave: () => void;
+  /** Called when focus leaves the trigger. */
+  onTriggerBlur: () => void;
   /** Called when trigger click occurs. */
   onTriggerClick: () => void;
   /** Called when trigger pointer down occurs. */
@@ -56,6 +58,9 @@ export function usePopoverBehavior({
   const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressFocusOpenUntilRef = useRef(0);
+  const triggerPointerInsideRef = useRef(false);
+  const triggerFocusedRef = useRef(false);
+  const contentPointerInsideRef = useRef(false);
 
   const clearTimers = () => {
     if (openTimerRef.current) {
@@ -70,6 +75,7 @@ export function usePopoverBehavior({
 
   const onTriggerEnter = () => {
     if (!enabled || triggerMode !== "hover") return;
+    triggerPointerInsideRef.current = true;
     clearTimers();
     if (delayMs <= 0) {
       onOpenChange(true);
@@ -84,6 +90,7 @@ export function usePopoverBehavior({
   // so it does not fight the click toggle or reopen after Escape/outside close.
   const onTriggerFocus = () => {
     if (!enabled || triggerMode !== "hover") return;
+    triggerFocusedRef.current = true;
     if (Date.now() < suppressFocusOpenUntilRef.current) return;
     clearTimers();
     onOpenChange(true);
@@ -94,17 +101,35 @@ export function usePopoverBehavior({
   };
 
   const markDismissed = () => {
+    clearTimers();
     suppressFocusOpenUntilRef.current = Date.now() + FOCUS_OPEN_SUPPRESS_MS;
   };
 
-  const scheduleClose = () => {
+  const hasHoverOwner = () =>
+    triggerPointerInsideRef.current || triggerFocusedRef.current || contentPointerInsideRef.current;
+
+  const scheduleCloseIfUnowned = () => {
     if (!enabled || triggerMode !== "hover") return;
+    if (hasHoverOwner()) return;
     clearTimers();
     if (closeDelayMs > 0) {
-      closeTimerRef.current = setTimeout(() => onOpenChange(false), closeDelayMs);
+      closeTimerRef.current = setTimeout(() => {
+        closeTimerRef.current = null;
+        if (!hasHoverOwner()) onOpenChange(false);
+      }, closeDelayMs);
     } else {
       onOpenChange(false);
     }
+  };
+
+  const onTriggerLeave = () => {
+    triggerPointerInsideRef.current = false;
+    scheduleCloseIfUnowned();
+  };
+
+  const onTriggerBlur = () => {
+    triggerFocusedRef.current = false;
+    scheduleCloseIfUnowned();
   };
 
   const onTriggerClick = () => {
@@ -114,7 +139,13 @@ export function usePopoverBehavior({
 
   const onContentEnter = () => {
     if (!enabled || triggerMode !== "hover") return;
+    contentPointerInsideRef.current = true;
     clearTimers();
+  };
+
+  const onContentLeave = () => {
+    contentPointerInsideRef.current = false;
+    scheduleCloseIfUnowned();
   };
 
   // Unmount-only cleanup. Inline timer-clear avoids depending on a function identity.
@@ -144,24 +175,36 @@ export function usePopoverBehavior({
     };
   }, [onOpenChange, open, triggerMode, triggerRef]);
 
-  // Close on disable, but bail when already closed so a controlled-open disabled
-  // popover does not re-fire the consumer's onOpenChange(false) on every render
-  // (onOpenChange has per-render identity for controlled consumers).
   useEffect(() => {
-    if (enabled || !open) return;
-    if (openTimerRef.current) clearTimeout(openTimerRef.current);
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    if (enabled) return;
+    if (openTimerRef.current) {
+      clearTimeout(openTimerRef.current);
+      openTimerRef.current = null;
+    }
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    if (!open) return;
     onOpenChange(false);
   }, [enabled, open, onOpenChange]);
+
+  useEffect(() => {
+    if (enabled) return;
+    triggerPointerInsideRef.current = false;
+    triggerFocusedRef.current = false;
+    contentPointerInsideRef.current = false;
+  }, [enabled]);
 
   return {
     onTriggerEnter,
     onTriggerFocus,
-    onTriggerLeave: scheduleClose,
+    onTriggerLeave,
+    onTriggerBlur,
     onTriggerClick,
     onTriggerPointerDown,
     markDismissed,
     onContentEnter,
-    onContentLeave: scheduleClose,
+    onContentLeave,
   };
 }

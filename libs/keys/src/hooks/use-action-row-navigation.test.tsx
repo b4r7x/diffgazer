@@ -1,7 +1,10 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import { useActionRowNavigationDoc } from "../../docs/hook-docs/use-action-row-navigation.js";
 import { testNavigationBehavior } from "../testing/navigation-behavior.js";
 import { fireKey, KeyboardWrapper } from "../testing/test-utils.js";
 import {
@@ -108,6 +111,25 @@ function expectFocused(el: HTMLElement) {
 }
 
 describe("useActionRowNavigation", () => {
+  it("documents contained row ownership and the intentional global fallback", () => {
+    const page = readFileSync(
+      resolve(process.cwd(), "docs/content/hooks/use-action-row-navigation.mdx"),
+      "utf8",
+    );
+    const { notes, usage } = useActionRowNavigationDoc;
+    expect(notes).toBeDefined();
+    expect(usage).toBeDefined();
+    if (!notes || !usage) throw new Error("Action row ownership docs are incomplete");
+    const ownershipNote = notes.find((note) => note.title === "Scope rows with containerRef");
+
+    expect(page).toContain("When `containerRef` is supplied");
+    expect(page).toContain("Omitting `containerRef` intentionally leaves");
+    expect(ownershipNote?.content).toContain("Omitting it intentionally leaves");
+    expect(usage.code).toContain("const containerRef = useRef<HTMLDivElement>(null)");
+    expect(usage.code).toContain("  containerRef,");
+    expect(usage.code).toContain("<div ref={containerRef}>");
+  });
+
   describe("arrow navigation within the actions zone", () => {
     testNavigationBehavior({
       setup: () => {
@@ -278,6 +300,103 @@ describe("useActionRowNavigation", () => {
     await user.keyboard("{Enter}");
     expect(onAction).toHaveBeenCalledWith(0);
     expect(onAction).not.toHaveBeenCalledWith(1);
+  });
+
+  it("repairs a disabled action inside an open shadow root without stealing outside focus", async () => {
+    function ShadowActionRow({ disabledActions }: { disabledActions: readonly boolean[] }) {
+      const hostRef = useRef<HTMLDivElement>(null);
+      const actionElementsRef = useRef<readonly [HTMLButtonElement, HTMLButtonElement] | null>(
+        null,
+      );
+      const row = useActionRowNavigation({
+        enabled: true,
+        actionCount: 2,
+        defaultZone: "actions",
+        disabledActions,
+        onAction: vi.fn(),
+      });
+      const cancelProps = row.getActionProps(0);
+      const saveProps = row.getActionProps(1);
+
+      useLayoutEffect(() => {
+        const host = hostRef.current;
+        if (!host) return;
+        const shadowRoot = host.attachShadow({ mode: "open" });
+        const cancel = host.ownerDocument.createElement("button");
+        cancel.type = "button";
+        cancel.textContent = "Cancel";
+        const save = host.ownerDocument.createElement("button");
+        save.type = "button";
+        save.textContent = "Save";
+        cancel.addEventListener("focus", cancelProps.onFocus);
+        save.addEventListener("focus", saveProps.onFocus);
+        cancelProps.ref(cancel);
+        saveProps.ref(save);
+        actionElementsRef.current = [cancel, save];
+        shadowRoot.append(cancel, save);
+
+        return () => {
+          cancelProps.ref(null);
+          saveProps.ref(null);
+          cancel.removeEventListener("focus", cancelProps.onFocus);
+          save.removeEventListener("focus", saveProps.onFocus);
+          actionElementsRef.current = null;
+        };
+      }, []);
+
+      useLayoutEffect(() => {
+        const actions = actionElementsRef.current;
+        if (!actions) return;
+        actions[0].disabled = disabledActions[0] ?? false;
+        actions[1].disabled = disabledActions[1] ?? false;
+      }, [disabledActions]);
+
+      return (
+        <div>
+          <div ref={hostRef} role="region" aria-label="Shadow actions" />
+          <input aria-label="Outside input" />
+        </div>
+      );
+    }
+
+    const { rerender } = render(
+      <KeyboardWrapper>
+        <ShadowActionRow disabledActions={[false, false]} />
+      </KeyboardWrapper>,
+    );
+    const host = screen.getByRole("region", { name: "Shadow actions" });
+    const shadowRoot = host.shadowRoot;
+    if (!shadowRoot) throw new Error("Expected an open shadow root");
+    const [cancel, save] = [...shadowRoot.querySelectorAll("button")];
+    if (!cancel || !save) throw new Error("Expected both shadow actions");
+
+    cancel.focus();
+    expect(shadowRoot.activeElement).toBe(cancel);
+
+    rerender(
+      <KeyboardWrapper>
+        <ShadowActionRow disabledActions={[true, false]} />
+      </KeyboardWrapper>,
+    );
+
+    await waitFor(() => expect(shadowRoot.activeElement).toBe(save));
+
+    rerender(
+      <KeyboardWrapper>
+        <ShadowActionRow disabledActions={[false, false]} />
+      </KeyboardWrapper>,
+    );
+    cancel.focus();
+    const outside = screen.getByRole("textbox", { name: "Outside input" });
+    outside.focus();
+
+    rerender(
+      <KeyboardWrapper>
+        <ShadowActionRow disabledActions={[true, false]} />
+      </KeyboardWrapper>,
+    );
+
+    expect(document.activeElement).toBe(outside);
   });
 
   it("keeps focus in an input when an action's disabled state flips while focus is outside the actions row", async () => {

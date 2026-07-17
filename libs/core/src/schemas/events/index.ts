@@ -13,7 +13,6 @@ export {
 export { buildLensOptions, type LensOption } from "./lens-options.js";
 export {
   createInitialSteps,
-  isStepEvent,
   type ReviewStartedEvent,
   STEP_IDS,
   STEP_METADATA,

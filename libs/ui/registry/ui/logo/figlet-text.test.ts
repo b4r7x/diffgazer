@@ -11,10 +11,13 @@ afterEach(() => {
 });
 
 describe("getFigletText", () => {
-  it("renders multi-line ASCII art for the requested text when figlet is installed", async () => {
+  it.each([
+    "Big",
+    "Small",
+  ] as const)("renders multi-line ASCII art through the static %s font loader", async (font) => {
     const { getFigletText } = await import("./figlet-text");
 
-    const result = await getFigletText("OK", "Small");
+    const result = await getFigletText("OK", font);
 
     expect(result.split("\n").length).toBeGreaterThan(1);
     expect(result.length).toBeGreaterThan(2);

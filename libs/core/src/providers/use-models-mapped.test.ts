@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BoundApi } from "../api/bound.js";
 import type { ProviderModelsResponse } from "../schemas/config/index.js";
@@ -12,7 +12,7 @@ const GEMINI_CATALOG: ProviderModelsResponse = {
     { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "1M ctx", tier: "free" },
     { id: "gemini-3-pro-preview", name: "Gemini 3 Pro", description: "1M ctx", tier: "paid" },
   ],
-  fetchedAt: new Date().toISOString(),
+  fetchedAt: "2026-06-02T00:00:00.000Z",
   source: "live",
   cached: false,
 };
@@ -39,6 +39,33 @@ describe("useProviderModelsMapped", () => {
       "gemini-2.5-flash",
       "gemini-3-pro-preview",
     ]);
+    expect(result.current.source).toBe("live");
+    expect(result.current.fetchedAt).toBe("2026-06-02T00:00:00.000Z");
+  });
+
+  it.each(["cache", "snapshot"] as const)("preserves %s catalog provenance", async (source) => {
+    getProviderModels.mockResolvedValue({ ...GEMINI_CATALOG, source, cached: source === "cache" });
+    const { Wrapper } = createTestQueryWrapper({ api });
+    const { result } = renderHook(() => useProviderModelsMapped(true, "gemini"), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.source).toBe(source);
+    expect(result.current.fetchedAt).toBe(GEMINI_CATALOG.fetchedAt);
+  });
+
+  it("refetches the catalog on retry", async () => {
+    const { Wrapper } = createTestQueryWrapper({ api });
+    const { result } = renderHook(() => useProviderModelsMapped(true, "gemini"), {
+      wrapper: Wrapper,
+    });
+    await waitFor(() => expect(getProviderModels).toHaveBeenCalledOnce());
+
+    act(() => result.current.retry());
+
+    await waitFor(() => expect(getProviderModels).toHaveBeenCalledTimes(2));
   });
 
   it("keeps the last-good models when a background refetch fails", async () => {
@@ -70,6 +97,8 @@ describe("useProviderModelsMapped", () => {
       "gemini-3-pro-preview",
     ]);
     expect(result.current.error).toBeNull();
+    expect(result.current.source).toBe("live");
+    expect(result.current.fetchedAt).toBe(GEMINI_CATALOG.fetchedAt);
   });
 
   it("reports loading while the catalog query is in flight", () => {

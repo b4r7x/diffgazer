@@ -2,8 +2,6 @@
 
 import {
   type ComponentPropsWithRef,
-  type FocusEvent,
-  type MouseEvent,
   type ReactNode,
   type Ref,
   useId,
@@ -16,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { useMenuContext } from "./menu-context";
 import { DefaultItemLayout, DetailItemLayout } from "./menu-item-layouts";
 import { getItemState, menuItemBase, menuItemValue } from "./menu-item-variants";
+import { useMenuItemInteractions } from "./use-menu-item-interactions";
 
 /** Props for menu item. */
 export interface MenuItemProps<TId extends string = string>
@@ -91,23 +90,15 @@ export function MenuItem<TId extends string = string>({
   const state = getItemState({ disabled, isFocused, isSelected });
   const itemId = getEncodedListboxItemId(idPrefix, id);
 
-  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
-    onClick?.(event);
-    if (event.defaultPrevented || disabled) return;
-    activate(id);
-  };
-
-  const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
-    onFocus?.(event);
-    if (event.defaultPrevented || disabled) return;
-    highlight(id);
-  };
-
-  const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {
-    onMouseDown?.(event);
-    if (event.defaultPrevented) return;
-    if (disabled) event.preventDefault();
-  };
+  const { handleClick, handleFocus, handleMouseDown } = useMenuItemInteractions({
+    id,
+    disabled,
+    activate,
+    highlight,
+    onClick,
+    onFocus,
+    onMouseDown,
+  });
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: menuitem with centralized keyboard handling — the menu container owns arrow/Enter/Space via useNavigation; the item only mirrors focus/click.
@@ -123,7 +114,6 @@ export function MenuItem<TId extends string = string>({
       data-diffgazer-navigation-item="true"
       data-value={id}
       data-highlighted={isFocused ? "" : undefined}
-      aria-keyshortcuts={hotkey !== undefined ? String(hotkey) : undefined}
       aria-checked={itemRole === "menuitemradio" ? isSelected : undefined}
       aria-disabled={disabled || undefined}
       data-selected={isSelected ? "" : undefined}

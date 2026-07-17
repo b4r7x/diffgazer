@@ -44,10 +44,10 @@ let projectRealpath: string;
 
 beforeEach(async () => {
   tempHome = await mkdtemp(join(tmpdir(), "diffgazer-git-router-home-"));
-  project = await mkdtemp(join(tmpdir(), "diffgazer-git-router-proj-"));
+  project = await realpath(await mkdtemp(join(tmpdir(), "diffgazer-git-router-proj-")));
   await mkdir(join(project, ".git"));
   await mkdir(join(project, "src"));
-  projectRealpath = await realpath(project);
+  projectRealpath = project;
   process.env.DIFFGAZER_HOME = tempHome;
   process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT = "1";
   vi.resetModules();
@@ -110,6 +110,21 @@ describe("git router", () => {
 
     expect(response.status).toBe(400);
     expect(body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it.each([
+    "/api/git/diff?mode=files",
+    "/api/git/diff?mode=files&path=src",
+  ])("rejects files mode at the public git diff boundary: %s", async (url) => {
+    await trustProject(project);
+    const app = await createGitApp();
+
+    const response = await app.request(url, requestOptions());
+    const body = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(400);
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(mockGitService.getDiff).not.toHaveBeenCalled();
   });
 
   it("maps a non-repository status response to NOT_GIT_REPO", async () => {

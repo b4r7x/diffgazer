@@ -42,7 +42,7 @@ export async function getProviderModels(
   providerId: string,
 ): Promise<ProviderModelsResponse> {
   return client.get<ProviderModelsResponse>(
-    `/api/config/provider/${providerId}/models`,
+    `/api/config/provider/${encodeURIComponent(providerId)}/models`,
     undefined,
     (body) => ProviderModelsResponseSchema.parse(body),
   );
@@ -58,7 +58,7 @@ export async function activateProvider(
   model?: string,
 ): Promise<ActivateProviderResponse> {
   return client.post<ActivateProviderResponse>(
-    `/api/config/provider/${providerId}/activate`,
+    `/api/config/provider/${encodeURIComponent(providerId)}/activate`,
     model ? { model } : {},
   );
 }
@@ -67,7 +67,9 @@ export async function deleteProviderCredentials(
   client: ApiClient,
   providerId: string,
 ): Promise<DeleteProviderResponse> {
-  return client.delete<DeleteProviderResponse>(`/api/config/provider/${providerId}`);
+  return client.delete<DeleteProviderResponse>(
+    `/api/config/provider/${encodeURIComponent(providerId)}`,
+  );
 }
 
 export async function loadInit(client: ApiClient): Promise<InitResponse> {

@@ -1,8 +1,10 @@
 "use client";
 
+import { getRestorableFocusTarget, isFocusable } from "@diffgazer/keys";
 import {
   Children,
   type ComponentProps,
+  Fragment,
   isValidElement,
   type ReactNode,
   useCallback,
@@ -41,19 +43,6 @@ const DISMISS_FOCUS_SELECTOR = [
   "[tabindex]:not([disabled])",
 ].join(",");
 
-function isHTMLElement(ownerDocument: Document, element: Element | null): element is HTMLElement {
-  const HTMLElementCtor = ownerDocument.defaultView?.HTMLElement;
-  return HTMLElementCtor ? element instanceof HTMLElementCtor : element instanceof HTMLElement;
-}
-
-function getDeepActiveElement(ownerDocument: Document): Element | null {
-  let active = ownerDocument.activeElement;
-  while (active?.shadowRoot?.activeElement) {
-    active = active.shadowRoot.activeElement;
-  }
-  return active;
-}
-
 function getFocusSearchScope(root: HTMLElement): ParentNode {
   const rootNode = root.getRootNode();
   const view = root.ownerDocument.defaultView;
@@ -61,42 +50,42 @@ function getFocusSearchScope(root: HTMLElement): ParentNode {
   return root.ownerDocument.body;
 }
 
-function isVisibleFocusTarget(element: HTMLElement): boolean {
-  if (element.tabIndex < 0) return false;
-  if (element.closest("[inert]")) return false;
-  if (element.closest('[aria-hidden="true"]')) return false;
-
-  const style = element.ownerDocument.defaultView?.getComputedStyle(element);
-  return !style || (style.display !== "none" && style.visibility !== "hidden");
-}
-
-function findDismissFocusTarget(root: HTMLElement): HTMLElement | null {
+function getDismissFocusTargets(root: HTMLElement): HTMLElement[] {
   const ownerDocument = root.ownerDocument;
   const candidates = Array.from(
     getFocusSearchScope(root).querySelectorAll<HTMLElement>(DISMISS_FOCUS_SELECTOR),
-  ).filter((candidate) => !root.contains(candidate) && isVisibleFocusTarget(candidate));
+  ).filter((candidate) => !root.contains(candidate) && isFocusable(candidate));
   const NodeCtor = ownerDocument.defaultView?.Node;
   const followingFlag = NodeCtor?.DOCUMENT_POSITION_FOLLOWING ?? 4;
   const precedingFlag = NodeCtor?.DOCUMENT_POSITION_PRECEDING ?? 2;
 
-  return (
-    candidates.find((candidate) =>
-      Boolean(root.compareDocumentPosition(candidate) & followingFlag),
-    ) ??
-    candidates.findLast((candidate) =>
-      Boolean(root.compareDocumentPosition(candidate) & precedingFlag),
-    ) ??
-    null
+  const following = candidates.filter((candidate) =>
+    Boolean(root.compareDocumentPosition(candidate) & followingFlag),
   );
+  const preceding = candidates
+    .filter((candidate) => Boolean(root.compareDocumentPosition(candidate) & precedingFlag))
+    .reverse();
+  return [...following, ...preceding];
+}
+
+function moveFocusOutsideCallout(root: HTMLElement): void {
+  for (const target of getDismissFocusTargets(root)) {
+    target.focus({ preventScroll: true });
+    const activeElement = getRestorableFocusTarget(root.ownerDocument);
+    if (activeElement && !root.contains(activeElement)) return;
+  }
 }
 
 function hasCalloutIcon(children: ReactNode): boolean {
   let found = false;
   Children.forEach(children, (child) => {
     if (found) return;
-    if (isValidElement(child) && child.type === CalloutIcon) {
+    if (!isValidElement<{ children?: ReactNode }>(child)) return;
+    if (child.type === CalloutIcon) {
       found = true;
+      return;
     }
+    if (child.type === Fragment) found = hasCalloutIcon(child.props.children);
   });
   return found;
 }
@@ -148,10 +137,10 @@ export function Callout({
 
   const onDismiss = useCallback(() => {
     const root = rootRef.current;
-    const activeElement = root ? getDeepActiveElement(root.ownerDocument) : null;
+    const activeElement = root ? getRestorableFocusTarget(root.ownerDocument) : null;
 
-    if (root && isHTMLElement(root.ownerDocument, activeElement) && root.contains(activeElement)) {
-      findDismissFocusTarget(root)?.focus({ preventScroll: true });
+    if (root && activeElement && root.contains(activeElement)) {
+      moveFocusOutsideCallout(root);
     }
 
     setOpen(false);

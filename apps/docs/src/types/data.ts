@@ -24,20 +24,23 @@ export interface SourceFile {
   highlighted: CodeBlockLineProps[];
 }
 
-export interface ComponentData {
+export interface ComponentPageData {
   name: string;
   title: string;
   description: string;
   dependencies: string[];
   files: string[];
   props: Record<string, Record<string, PropInfo>>;
-  source: Record<string, SourceFile>;
-  mergedSource: string;
-  mergedSourceHighlighted: CodeBlockLineProps[];
   usageSnippet: string;
   usageSnippetHighlighted: CodeBlockLineProps[];
   examples: string[];
   exampleSource: Record<string, SourceFile>;
   docs: ComponentDoc | null;
   crossDeps?: Array<{ library: string; type: string; items: string[] }>;
+}
+
+export interface ComponentSourceData {
+  source: Record<string, SourceFile>;
+  mergedSource: string;
+  crossDeps?: ComponentPageData["crossDeps"];
 }

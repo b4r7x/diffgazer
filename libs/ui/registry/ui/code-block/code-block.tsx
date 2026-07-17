@@ -1,29 +1,11 @@
 "use client";
 
-import {
-  Children,
-  type ComponentProps,
-  isValidElement,
-  type ReactNode,
-  useId,
-  useMemo,
-} from "react";
+import { type ComponentProps, useCallback, useMemo, useRef, useState } from "react";
 import {
   type CodeBlockChrome,
   CodeBlockProvider,
   type CodeBlockVariant,
 } from "./code-block-context";
-import { CodeBlockLabel } from "./code-block-label";
-
-function containsLabelElement(node: ReactNode): boolean {
-  for (const child of Children.toArray(node)) {
-    if (!isValidElement(child)) continue;
-    if (child.type === CodeBlockLabel) return true;
-    const nested = (child.props as { children?: ReactNode }).children;
-    if (nested && containsLabelElement(nested)) return true;
-  }
-  return false;
-}
 
 /** Props for code block. */
 export interface CodeBlockProps extends Omit<ComponentProps<"figure">, "children"> {
@@ -57,12 +39,16 @@ export interface CodeBlockProps extends Omit<ComponentProps<"figure">, "children
 
 function resolveAriaName(
   props: { "aria-label"?: string; "aria-labelledby"?: string },
-  children: ComponentProps<"figure">["children"],
-  labelId: string,
+  renderedLabelId: string | null,
   fallbackName: string,
 ): { "aria-label"?: string; "aria-labelledby"?: string } {
-  if (props["aria-label"] !== undefined || props["aria-labelledby"] !== undefined) return {};
-  if (containsLabelElement(children)) return { "aria-labelledby": labelId };
+  if (props["aria-label"] !== undefined || props["aria-labelledby"] !== undefined) {
+    return {
+      "aria-label": props["aria-label"],
+      "aria-labelledby": props["aria-labelledby"],
+    };
+  }
+  if (renderedLabelId) return { "aria-labelledby": renderedLabelId };
   return { "aria-label": fallbackName };
 }
 
@@ -80,25 +66,40 @@ export function CodeBlock({
   const resolvedVariant: CodeBlockVariant = variant ?? "hairline";
   const resolvedChrome: CodeBlockChrome =
     chrome ?? (resolvedVariant === "terminal" ? "dots" : "none");
-  const labelId = useId();
+  const [renderedLabelId, setRenderedLabelId] = useState<string | null>(null);
+  const labelRegistrationsRef = useRef(new Map<symbol, string>());
 
   const fallbackName = label ?? (language ? `${language} code` : "Code block");
+  const ariaProps = resolveAriaName(props, renderedLabelId, fallbackName);
 
-  const hasLabel = containsLabelElement(children);
+  const registerLabel = useCallback((id: string) => {
+    const token = Symbol("code-block-label");
+    const registrations = labelRegistrationsRef.current;
+    registrations.set(token, id);
+    setRenderedLabelId(registrations.values().next().value ?? null);
+
+    return () => {
+      registrations.delete(token);
+      setRenderedLabelId(registrations.values().next().value ?? null);
+    };
+  }, []);
 
   const contextValue = useMemo(
     () => ({
       variant: resolvedVariant,
       chrome: resolvedChrome,
-      labelId,
-      hasLabel,
-      language,
-      fallbackName,
+      registerLabel,
+      ariaLabel: ariaProps["aria-label"],
+      ariaLabelledBy: ariaProps["aria-labelledby"],
     }),
-    [resolvedVariant, resolvedChrome, labelId, hasLabel, language, fallbackName],
+    [
+      resolvedVariant,
+      resolvedChrome,
+      registerLabel,
+      ariaProps["aria-label"],
+      ariaProps["aria-labelledby"],
+    ],
   );
-
-  const ariaProps = resolveAriaName(props, children, labelId, fallbackName);
 
   return (
     <CodeBlockProvider value={contextValue}>

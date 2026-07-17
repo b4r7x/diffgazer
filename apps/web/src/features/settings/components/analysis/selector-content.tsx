@@ -19,6 +19,9 @@ interface AnalysisSelectorContentProps {
   disabled?: boolean;
   enabled?: boolean;
   autoFocusList?: boolean;
+  required?: boolean;
+  invalid?: boolean;
+  descriptionId?: string;
   onBoundaryReached?: (direction: "up" | "down") => void;
 }
 
@@ -29,6 +32,9 @@ export function AnalysisSelectorContent({
   disabled = false,
   enabled = true,
   autoFocusList = false,
+  required = false,
+  invalid = false,
+  descriptionId,
   onBoundaryReached,
 }: AnalysisSelectorContentProps) {
   const labelId = useId();
@@ -69,6 +75,9 @@ export function AnalysisSelectorContent({
           variant="bullet"
           disabled={disabled || !enabled}
           autoFocus={autoFocusReady}
+          required={required}
+          aria-invalid={invalid || undefined}
+          aria-describedby={descriptionId}
           aria-labelledby={labelId}
         >
           {options.map((option) => (

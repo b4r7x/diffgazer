@@ -3,7 +3,9 @@ import {
   createInitCommand,
   heading,
   installDepsWithSpinner,
+  PACKAGE_MANAGER_LOCKFILES,
   REGISTRY_ORIGIN,
+  showSkippedDependencies,
   writeFileSafe,
 } from "@diffgazer/registry/cli";
 import { z } from "zod";
@@ -27,17 +29,6 @@ function parseInitOptions(opts: Record<string, unknown>): InitOptions {
   return InitOptionsSchema.parse(opts);
 }
 
-// Declared as planned paths so an install during init that creates or mutates a
-// lockfile is rolled back on a later writeConfig failure. Keep in sync with the
-// lockfile table in `@diffgazer/registry/cli` detect.ts.
-export const KNOWN_LOCKFILES = [
-  "pnpm-lock.yaml",
-  "yarn.lock",
-  "bun.lockb",
-  "bun.lock",
-  "package-lock.json",
-] as const;
-
 // Every path init may create, write, or touch — including package.json and the
 // lockfiles — so a writeConfig failure after afterFiles rolls them back.
 export function buildInitPlannedPaths(cwd: string, opts: Record<string, unknown>): string[] {
@@ -52,7 +43,7 @@ export function buildInitPlannedPaths(cwd: string, opts: Record<string, unknown>
     `${stylesDir}/theme.css`,
     `${stylesDir}/styles.css`,
     "package.json",
-    ...KNOWN_LOCKFILES,
+    ...PACKAGE_MANAGER_LOCKFILES,
   ];
 }
 
@@ -103,6 +94,71 @@ const UTILS_CONTENT = [
   ``,
 ].join("\n");
 
+const INIT_DEPENDENCIES = ["class-variance-authority", "clsx", "tailwind-merge"];
+
+function tailwindInstallCommand(
+  packageManager: ReturnType<typeof detectProject>["packageManager"],
+): string {
+  return packageManager === "npm"
+    ? "npm install --save-dev tailwindcss@^4"
+    : `${packageManager} add -D tailwindcss@^4`;
+}
+
+function isTailwindV4(version: string): boolean {
+  const spec = version.trim().replace(/^workspace:/, "");
+  return /^(?:\^|~)?v?4(?:\.(?:\d+|x|\*)){0,2}(?:-[0-9A-Za-z.-]+)?$/.test(spec);
+}
+
+function assertTailwindV4(
+  project: ReturnType<typeof detectProject>,
+): asserts project is ReturnType<typeof detectProject> & { tailwindVersion: string } {
+  const installCommand = tailwindInstallCommand(project.packageManager);
+  if (!project.tailwindVersion) {
+    throw new Error(
+      "Tailwind CSS v4 is required, but tailwindcss was not found in dependencies or " +
+        `devDependencies. Install it with \`${installCommand}\`, then rerun \`dgadd init\`.`,
+    );
+  }
+  if (!isTailwindV4(project.tailwindVersion)) {
+    throw new Error(
+      `Tailwind CSS v4 is required, but package.json declares tailwindcss ${JSON.stringify(project.tailwindVersion)}. ` +
+        `Install it with \`${installCommand}\`, then rerun \`dgadd init\`.`,
+    );
+  }
+}
+
+export function detectInitProject(cwd: string, opts: Record<string, unknown>) {
+  const initOptions = parseInitOptions(opts);
+  const { project, componentsDir, libDir, stylesDir, hooksDir } = derivePaths(
+    cwd,
+    initOptions.componentsDir,
+  );
+
+  assertTailwindV4(project);
+  assertInsideProject(cwd, componentsDir);
+  assertInsideProject(cwd, libDir);
+  assertInsideProject(cwd, stylesDir);
+  assertInsideProject(cwd, hooksDir);
+
+  if (!project.hasPathAlias && !initOptions.allowMissingAlias) {
+    throw new Error(
+      "dgadd requires a TypeScript or Vite alias that resolves to your source directory. " +
+        "Configure it in your TypeScript and bundler config, then rerun init. " +
+        "Use --allow-missing-alias only if your app already resolves source aliases another way.",
+    );
+  }
+
+  return {
+    display: [
+      ["Package manager", project.packageManager],
+      ["Tailwind", project.tailwindVersion],
+      ["Source dir", `${project.sourceDir}/`],
+      ["Path alias", project.hasPathAlias ? `${project.importAliasPrefix}/*` : "no"],
+      ["RSC", project.rsc ? "yes" : "no"],
+    ] satisfies Array<[label: string, value: string]>,
+  };
+}
+
 export function buildStylesContent(registry: ReturnType<typeof getRegistry>): string {
   return `${registry.styles.trimEnd()}\n`;
 }
@@ -149,6 +205,8 @@ export function writeInitConfig(cwd: string, opts: Record<string, unknown>): voi
 export const initCommand = createInitCommand({
   configFileName: "diffgazer.json",
   loadConfig: ctx.config.loadConfig,
+  dependencies: INIT_DEPENDENCIES,
+  onSkipInstall: (dependencies) => showSkippedDependencies(dependencies, "--skip-install"),
   extraOptions: [
     {
       flags: "--components-dir <path>",
@@ -162,39 +220,10 @@ export const initCommand = createInitCommand({
     {
       flags: "--reset-manifest",
       description:
-        "Discard the tracked installed-component ownership ledger instead of preserving it (orphans previously installed files)",
+        "Recovery only: discard the installed-component ownership ledger, orphaning previously installed files",
     },
   ],
-  detectProject: (cwd, opts) => {
-    const initOptions = parseInitOptions(opts);
-    const { project, componentsDir, libDir, stylesDir, hooksDir } = derivePaths(
-      cwd,
-      initOptions.componentsDir,
-    );
-
-    assertInsideProject(cwd, componentsDir);
-    assertInsideProject(cwd, libDir);
-    assertInsideProject(cwd, stylesDir);
-    assertInsideProject(cwd, hooksDir);
-
-    if (!project.hasPathAlias && !initOptions.allowMissingAlias) {
-      throw new Error(
-        "dgadd requires a TypeScript or Vite alias that resolves to your source directory. " +
-          "Configure it in your TypeScript and bundler config, then rerun init. " +
-          "Use --allow-missing-alias only if your app already resolves source aliases another way.",
-      );
-    }
-
-    return {
-      display: [
-        ["Package manager", project.packageManager],
-        ["Tailwind", project.tailwindVersion || "not found"],
-        ["Source dir", `${project.sourceDir}/`],
-        ["Path alias", project.hasPathAlias ? `${project.importAliasPrefix}/*` : "no"],
-        ["RSC", project.rsc ? "yes" : "no"],
-      ],
-    };
-  },
+  detectProject: detectInitProject,
   plannedPaths: (cwd, opts) => buildInitPlannedPaths(cwd, opts),
   createFiles: (cwd, opts) => {
     const { componentsDir, libDir, stylesDir, hooksDir } = derivePaths(
@@ -227,8 +256,7 @@ export const initCommand = createInitCommand({
   afterFiles: async (cwd) => {
     const project = detectProject(cwd);
     heading("Installing dependencies...");
-    const deps = ["class-variance-authority", "clsx", "tailwind-merge"];
-    const ok = await installDepsWithSpinner(project.packageManager, deps, cwd);
+    const ok = await installDepsWithSpinner(project.packageManager, INIT_DEPENDENCIES, cwd);
     if (!ok) {
       throw new Error(
         "Failed to install dependencies (class-variance-authority, clsx, tailwind-merge). " +

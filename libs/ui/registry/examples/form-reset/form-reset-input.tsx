@@ -1,14 +1,15 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
+import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 
 export default function FormResetInputExample() {
   const inputRef = useRef<HTMLInputElement>(null);
   const defaultValue = "Initial value";
-  const [value, setValue] = useState(defaultValue);
+  const [value, setValue, , resetValue] = useControllableState({ defaultValue });
 
-  useFormReset(inputRef, defaultValue, setValue);
+  const invalidatePendingReset = useFormReset(inputRef, defaultValue, resetValue);
 
   return (
     <form className="flex max-w-sm flex-col gap-3">
@@ -18,7 +19,10 @@ export default function FormResetInputExample() {
           ref={inputRef}
           className="border border-border bg-background px-3 py-2 text-sm text-foreground"
           value={value}
-          onChange={(event) => setValue(event.currentTarget.value)}
+          onChange={(event) => {
+            invalidatePendingReset();
+            setValue(event.currentTarget.value);
+          }}
         />
       </label>
       <button

@@ -1,5 +1,5 @@
 import type { SaveTrustRequest, TrustCapabilities, TrustConfig } from "./settings.js";
-import { normalizeTrustCapabilities } from "./trust-capabilities.js";
+import { hasRepositoryReadAccess, normalizeTrustCapabilities } from "./trust-capabilities.js";
 
 export interface TrustDraft {
   editorKey: string;
@@ -19,26 +19,34 @@ export interface TrustEditorView {
 }
 
 function getTrustEditorKey({ projectId, repoRoot, trust }: TrustEditorInput): string {
-  if (trust) return `${trust.projectId}:${trust.trustedAt}`;
-  return `${projectId ?? "loading"}:${repoRoot ?? "loading"}:untrusted`;
+  const projectKey = `${projectId ?? "loading"}:${repoRoot ?? "loading"}`;
+  if (trust) return `${projectKey}:${trust.projectId}:${trust.repoRoot}:${trust.trustedAt}`;
+  return `${projectKey}:untrusted`;
+}
+
+function getApplicableCapabilities(input: TrustEditorInput): TrustCapabilities {
+  const capabilities = hasRepositoryReadAccess(input.trust, input.repoRoot)
+    ? input.trust?.capabilities
+    : null;
+  return normalizeTrustCapabilities(capabilities);
 }
 
 export function getInitialDraft(input: TrustEditorInput): TrustDraft {
   return {
     editorKey: getTrustEditorKey(input),
-    capabilities: normalizeTrustCapabilities(input.trust?.capabilities),
+    capabilities: getApplicableCapabilities(input),
   };
 }
 
 export function resolveEditorView(draft: TrustDraft, input: TrustEditorInput): TrustEditorView {
   const editorKey = getTrustEditorKey(input);
-  const isTrusted = Boolean(input.trust?.capabilities.readFiles);
+  const isTrusted = hasRepositoryReadAccess(input.trust, input.repoRoot);
   if (draft.editorKey === editorKey) {
     return { editorKey, capabilities: draft.capabilities, isTrusted };
   }
   return {
     editorKey,
-    capabilities: normalizeTrustCapabilities(input.trust?.capabilities),
+    capabilities: getApplicableCapabilities(input),
     isTrusted,
   };
 }

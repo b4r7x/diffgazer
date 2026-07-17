@@ -25,7 +25,11 @@ describe("resolveSavedReviewOutcome", () => {
   it("returns results when a stored result exists", () => {
     const state: SavedReviewQueryState = {
       status: "success",
-      review: { metadata: { id: "abc", durationMs: 1200 }, result: { issues: [issue("i-1")] } },
+      review: {
+        metadata: { id: "abc", durationMs: 1200 },
+        result: { issues: [issue("i-1")] },
+        droppedDuplicates: 1,
+      },
       error: null,
       notFound: false,
     };
@@ -35,6 +39,7 @@ describe("resolveSavedReviewOutcome", () => {
       expect(outcome.data.reviewId).toBe("abc");
       expect(outcome.data.durationMs).toBe(1200);
       expect(outcome.data.issues).toHaveLength(1);
+      expect(outcome.data.droppedDuplicates).toBe(1);
     }
   });
 

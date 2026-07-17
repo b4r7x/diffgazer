@@ -1,10 +1,11 @@
 import {
-  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
+  statSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -15,10 +16,13 @@ import { computeArtifactFingerprint } from "../fingerprint.js";
 import type { ArtifactManifest } from "../manifest.js";
 import { requireValue } from "../testing/assertions.js";
 import { writeJson as writeJsonFile } from "../utils/json.js";
+import { resolveSyncOutputPaths } from "./paths.js";
 import { syncDocsFromArtifacts } from "./sync.js";
-import type { SyncLibraryConfig } from "./types.js";
+import { runDocsSyncPass } from "./sync-operations.js";
+import type { LoadedLibraryArtifacts, SyncLibraryConfig } from "./types.js";
 
 const TEST_ORIGIN = "https://diffgazer.com";
+const SENTINEL_CONTENT = "preserve me\n";
 
 function writeText(filePath: string, content: string): void {
   mkdirSync(dirname(filePath), { recursive: true });
@@ -28,6 +32,33 @@ function writeText(filePath: string, content: string): void {
 function writeJson(filePath: string, value: unknown): void {
   mkdirSync(dirname(filePath), { recursive: true });
   writeJsonFile(filePath, value);
+}
+
+function readOutputFiles(root: string): string[] {
+  if (!existsSync(root)) return [];
+  return readdirSync(root).flatMap((entry) => {
+    const path = join(root, entry);
+    return statSync(path).isDirectory() ? readOutputFiles(path) : [readFileSync(path, "utf-8")];
+  });
+}
+
+function seedSyncSentinels(docsRoot: string, libraryId: string): string[] {
+  const paths = resolveSyncOutputPaths(docsRoot);
+  const sentinels = [
+    join(paths.contentDir, libraryId, "sentinel.txt"),
+    join(paths.generatedDir, "sentinel.txt"),
+    join(paths.registryDir, "sentinel.txt"),
+    join(paths.publicRegistryDir, "sentinel.txt"),
+    join(paths.libraryAssetsDir, libraryId, "sentinel.txt"),
+  ];
+  for (const sentinel of sentinels) writeText(sentinel, SENTINEL_CONTENT);
+  return sentinels;
+}
+
+function expectSyncSentinels(sentinels: string[]): void {
+  for (const sentinel of sentinels) {
+    expect(readFileSync(sentinel, "utf-8")).toBe(SENTINEL_CONTENT);
+  }
 }
 
 interface TestLibraryFixture {
@@ -64,6 +95,7 @@ function createLibraryFixture(options: CreateLibraryFixtureOptions): TestLibrary
 
   const manifest: ArtifactManifest = {
     schemaVersion: 1,
+    origin: TEST_ORIGIN,
     library: id,
     package: `@test/${id}`,
     version: "1.0.0",
@@ -109,6 +141,7 @@ function createLibraryFixture(options: CreateLibraryFixtureOptions): TestLibrary
     join(artifactRoot, "source/registry/examples/demo/demo-basic.tsx"),
     "export default function Demo() { return null }\n",
   );
+  writeText(join(artifactRoot, "source/styles/styles.css"), "/* artifact-only-style-marker */\n");
 
   for (const relPath of Object.values(generated)) {
     writeJson(join(artifactRoot, relPath), { from: relPath });
@@ -123,7 +156,6 @@ function createLibraryFixture(options: CreateLibraryFixtureOptions): TestLibrary
   return {
     config: {
       id,
-      packageName: `@test/${id}`,
       workspaceDir,
     },
     libraryRoot,
@@ -132,39 +164,6 @@ function createLibraryFixture(options: CreateLibraryFixtureOptions): TestLibrary
       (relPath) => relPath.split("/").at(-1) ?? relPath,
     ),
   };
-}
-
-function installFixturePackage(docsRoot: string, fixture: TestLibraryFixture): void {
-  const packageRoot = join(docsRoot, "node_modules", "@test", fixture.config.id);
-  mkdirSync(packageRoot, { recursive: true });
-  writeJson(join(packageRoot, "package.json"), {
-    name: fixture.config.packageName,
-    version: fixture.manifest.version,
-    type: "module",
-  });
-  const packageManifest = { ...fixture.manifest, artifactRoot: "artifacts" };
-  cpSync(join(fixture.libraryRoot, fixture.manifest.artifactRoot), join(packageRoot, "artifacts"), {
-    recursive: true,
-  });
-  writeJson(join(packageRoot, "artifacts/artifact-manifest.json"), packageManifest);
-}
-
-function installManifestOnlyPackage(
-  docsRoot: string,
-  config: SyncLibraryConfig,
-  manifest: ArtifactManifest,
-): void {
-  const packageRoot = join(docsRoot, "node_modules", "@test", config.id);
-  mkdirSync(join(packageRoot, "artifacts"), { recursive: true });
-  writeJson(join(packageRoot, "package.json"), {
-    name: config.packageName,
-    version: manifest.version,
-    type: "module",
-  });
-  writeJson(join(packageRoot, "artifacts/artifact-manifest.json"), {
-    ...manifest,
-    artifactRoot: manifest.artifactRoot === "dist/artifacts" ? "artifacts" : manifest.artifactRoot,
-  });
 }
 
 describe("syncDocsFromArtifacts", () => {
@@ -184,7 +183,7 @@ describe("syncDocsFromArtifacts", () => {
     rmSync(tempRoot, { recursive: true, force: true });
   });
 
-  function runSync(config: SyncLibraryConfig, mode: "workspace" | "package" = "workspace") {
+  function runSync(config: SyncLibraryConfig) {
     return syncDocsFromArtifacts({
       docsRoot,
       workspaceRoot,
@@ -192,7 +191,6 @@ describe("syncDocsFromArtifacts", () => {
       primaryLibraryId: config.id,
       origin: TEST_ORIGIN,
       sourceOrigin: TEST_ORIGIN,
-      mode,
     });
   }
 
@@ -208,6 +206,26 @@ describe("syncDocsFromArtifacts", () => {
     expect(() => runSync(fixture.config)).toThrow(/duplicate output name/i);
   });
 
+  it.each([
+    ["missing", undefined],
+    ["historical source", "https://r.b4r7.dev"],
+    ["third-party", "https://third.example.com"],
+  ])("rejects %s origin provenance before cache skip or output mutation", (_label, origin) => {
+    const fixture = createLibraryFixture({ workspaceRoot });
+    const manifestPath = join(
+      fixture.libraryRoot,
+      fixture.manifest.artifactRoot,
+      "artifact-manifest.json",
+    );
+    writeJson(manifestPath, { ...fixture.manifest, origin });
+    const sentinels = seedSyncSentinels(docsRoot, fixture.config.id);
+
+    expect(() => runSync(fixture.config)).toThrow(
+      /artifact (manifest is missing origin|origin .* does not match)/i,
+    );
+    expectSyncSentinels(sentinels);
+  });
+
   it("throws when workspace artifact fingerprint is stale", () => {
     const fixture = createLibraryFixture({
       workspaceRoot,
@@ -215,6 +233,20 @@ describe("syncDocsFromArtifacts", () => {
     });
 
     expect(() => runSync(fixture.config)).toThrowError(/artifacts are stale/i);
+  });
+
+  it("rejects a workspace manifest whose library differs from its configured id", () => {
+    const fixture = createLibraryFixture({ workspaceRoot });
+    const manifestPath = join(
+      fixture.libraryRoot,
+      fixture.manifest.artifactRoot,
+      "artifact-manifest.json",
+    );
+    writeJson(manifestPath, { ...fixture.manifest, library: "other" });
+    const sentinels = seedSyncSentinels(docsRoot, fixture.config.id);
+
+    expect(() => runSync(fixture.config)).toThrow(/configured library id "demo".*"other"/i);
+    expectSyncSentinels(sentinels);
   });
 
   it("rejects unsafe library ids before writing namespace outputs", () => {
@@ -228,7 +260,6 @@ describe("syncDocsFromArtifacts", () => {
         primaryLibraryId: "../demo",
         origin: TEST_ORIGIN,
         sourceOrigin: TEST_ORIGIN,
-        mode: "workspace",
       }),
     ).toThrow(/safe library id/);
   });
@@ -244,7 +275,6 @@ describe("syncDocsFromArtifacts", () => {
         primaryLibraryId: fixture.config.id,
         origin: TEST_ORIGIN,
         sourceOrigin: TEST_ORIGIN,
-        mode: "workspace",
         outputPaths: { contentDir: "../outside" },
       }),
     ).toThrow(/docs content output path must be a relative path/);
@@ -257,7 +287,6 @@ describe("syncDocsFromArtifacts", () => {
         primaryLibraryId: fixture.config.id,
         origin: TEST_ORIGIN,
         sourceOrigin: TEST_ORIGIN,
-        mode: "workspace",
         outputPaths: { generatedDir: "/tmp/outside" },
       }),
     ).toThrow(/docs generated output path must be a relative path/);
@@ -274,7 +303,6 @@ describe("syncDocsFromArtifacts", () => {
         primaryLibraryId: fixture.config.id,
         origin: TEST_ORIGIN,
         sourceOrigin: TEST_ORIGIN,
-        mode: "workspace",
       }),
     ).toThrow(/workspace directory must be a relative path/);
   });
@@ -302,6 +330,13 @@ describe("syncDocsFromArtifacts", () => {
     expect(existsSync(join(docsRoot, "src/generated", fixture.config.id, "logical-name"))).toBe(
       false,
     );
+  });
+
+  it("does not turn source.stylesDir handoff data into a docs output", () => {
+    const fixture = createLibraryFixture({ workspaceRoot });
+
+    expect(runSync(fixture.config).synced).toBe(true);
+    expect(readOutputFiles(docsRoot).join("\n")).not.toContain("artifact-only-style-marker");
   });
 
   it("rewrites secondary demo indexes to the copied example namespace", () => {
@@ -345,7 +380,6 @@ describe("syncDocsFromArtifacts", () => {
       primaryLibraryId: primary.config.id,
       origin: TEST_ORIGIN,
       sourceOrigin: TEST_ORIGIN,
-      mode: "workspace",
     });
 
     expect(result.synced).toBe(true);
@@ -385,7 +419,6 @@ describe("syncDocsFromArtifacts", () => {
       primaryLibraryId: primary.config.id,
       origin: TEST_ORIGIN,
       sourceOrigin: TEST_ORIGIN,
-      mode: "workspace",
     });
     expect(first.synced).toBe(true);
 
@@ -396,7 +429,6 @@ describe("syncDocsFromArtifacts", () => {
       primaryLibraryId: primary.config.id,
       origin: TEST_ORIGIN,
       sourceOrigin: TEST_ORIGIN,
-      mode: "workspace",
     });
     expect(second.synced).toBe(false);
 
@@ -410,7 +442,6 @@ describe("syncDocsFromArtifacts", () => {
       primaryLibraryId: primary.config.id,
       origin: TEST_ORIGIN,
       sourceOrigin: TEST_ORIGIN,
-      mode: "workspace",
     });
     expect(third.synced).toBe(true);
     expect(existsSync(copiedExample)).toBe(true);
@@ -442,113 +473,53 @@ describe("syncDocsFromArtifacts", () => {
     expect(existsSync(missingOutput)).toBe(true);
   });
 
-  it("syncs package-mode artifacts from an installed node_modules package", () => {
-    writeJson(join(docsRoot, "package.json"), { type: "module" });
+  it("removes copied assets when the manifest drops them and does not cache stale assets", () => {
     const fixture = createLibraryFixture({ workspaceRoot });
-    installFixturePackage(docsRoot, fixture);
-    rmSync(fixture.libraryRoot, { recursive: true, force: true });
+    const artifactRoot = join(fixture.libraryRoot, fixture.manifest.artifactRoot);
+    const manifestPath = join(artifactRoot, "artifact-manifest.json");
+    const manifestWithAssets: ArtifactManifest = {
+      ...fixture.manifest,
+      docs: { ...fixture.manifest.docs, assetsDir: "docs/assets" },
+    };
+    writeJson(manifestPath, manifestWithAssets);
+    writeText(join(artifactRoot, "docs/assets/logo.svg"), "<svg />\n");
 
-    const result = runSync(fixture.config, "package");
+    expect(runSync(fixture.config).synced).toBe(true);
+    const copiedAsset = join(docsRoot, "public/library-assets", fixture.config.id, "logo.svg");
+    expect(existsSync(copiedAsset)).toBe(true);
 
-    expect(result.synced).toBe(true);
-    expect(result.artifacts[0]?.manifestPath).toContain(
-      join("node_modules", "@test", "demo", "artifacts", "artifact-manifest.json"),
-    );
-    expect(existsSync(join(docsRoot, "node_modules", "@test", "demo", "dist", "artifacts"))).toBe(
-      false,
-    );
-    expect(existsSync(join(docsRoot, "content/docs/demo/meta.json"))).toBe(true);
-    expect(existsSync(join(docsRoot, "public/r/demo/registry.json"))).toBe(true);
-    expect(
-      readFileSync(join(docsRoot, "src/generated/demo/actual-generated.json"), "utf-8"),
-    ).toContain("generated/nested/actual-generated.json");
+    writeJson(manifestPath, fixture.manifest);
+    expect(runSync(fixture.config).synced).toBe(true);
+    expect(existsSync(copiedAsset)).toBe(false);
+
+    writeText(copiedAsset, "stale\n");
+    expect(runSync(fixture.config).synced).toBe(true);
+    expect(existsSync(copiedAsset)).toBe(false);
   });
 
-  it("rejects unsafe package names in package mode", () => {
+  it("rejects mismatched loaded artifacts before a direct sync pass writes outputs", () => {
     const fixture = createLibraryFixture({ workspaceRoot });
+    const artifactRoot = join(fixture.libraryRoot, fixture.manifest.artifactRoot);
+    const artifact: LoadedLibraryArtifacts = {
+      id: fixture.config.id,
+      manifest: { ...fixture.manifest, library: "other" },
+      manifestPath: join(artifactRoot, "artifact-manifest.json"),
+      artifactRoot,
+      fingerprintPath: join(artifactRoot, fixture.manifest.integrity.fingerprintFile),
+      fingerprint: "fixture",
+      generatedFiles: Object.values(fixture.manifest.generated ?? {}),
+    };
+    const sentinels = seedSyncSentinels(docsRoot, fixture.config.id);
 
     expect(() =>
-      syncDocsFromArtifacts({
-        docsRoot,
-        workspaceRoot,
-        libraries: [{ ...fixture.config, packageName: "../outside" }],
-        primaryLibraryId: fixture.config.id,
+      runDocsSyncPass({
+        artifacts: [artifact],
+        primaryArtifact: artifact,
+        paths: resolveSyncOutputPaths(docsRoot),
         origin: TEST_ORIGIN,
         sourceOrigin: TEST_ORIGIN,
-        mode: "package",
       }),
-    ).toThrow(/Artifact package name must be an npm package name/);
-  });
-
-  it("rejects package-mode manifests with escaped artifact paths", () => {
-    const config = {
-      id: "demo",
-      packageName: "@test/demo",
-      workspaceDir: "demo-lib",
-    };
-    const baseManifest: ArtifactManifest = {
-      schemaVersion: 1,
-      library: "demo",
-      package: "@test/demo",
-      version: "1.0.0",
-      artifactRoot: "dist/artifacts",
-      inputs: ["src/input.txt"],
-      docs: {
-        contentDir: "docs/content",
-        metaFile: "docs/content/meta.json",
-        generatedDir: "docs/generated",
-      },
-      registry: {
-        namespace: "@demo",
-        basePath: "/r/demo",
-        publicDir: "public/r",
-        index: "public/r/registry.json",
-      },
-      source: {
-        registryDir: "source/registry",
-        stylesDir: "source/styles",
-      },
-      generated: {
-        demoIndex: "generated/demo-index.ts",
-      },
-      integrity: {
-        algorithm: "sha256",
-        fingerprintFile: "fingerprint.sha256",
-      },
-    };
-    const invalidManifests: ArtifactManifest[] = [
-      { ...baseManifest, artifactRoot: "../outside" },
-      {
-        ...baseManifest,
-        integrity: { ...baseManifest.integrity, fingerprintFile: "../fingerprint.sha256" },
-      },
-      {
-        ...baseManifest,
-        docs: { ...baseManifest.docs, contentDir: "../docs" },
-      },
-      {
-        ...baseManifest,
-        docs: { ...baseManifest.docs, generatedDir: "../generated" },
-      },
-      {
-        ...baseManifest,
-        registry: { ...baseManifest.registry, publicDir: "../registry" },
-      },
-      {
-        ...baseManifest,
-        source: { ...baseManifest.source, registryDir: "../source" },
-      },
-      {
-        ...baseManifest,
-        generated: { demoIndex: "../demo-index.ts" },
-      },
-    ];
-
-    for (const manifest of invalidManifests) {
-      rmSync(join(docsRoot, "node_modules"), { recursive: true, force: true });
-      installManifestOnlyPackage(docsRoot, config, manifest);
-
-      expect(() => runSync(config, "package")).toThrow(/manifest validation failed/);
-    }
+    ).toThrow(/configured library id "demo".*"other"/i);
+    expectSyncSentinels(sentinels);
   });
 });

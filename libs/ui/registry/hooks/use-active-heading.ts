@@ -137,7 +137,9 @@ export function useActiveHeading({
 }: UseActiveHeadingOptions): UseActiveHeadingReturn {
   const doc = ownerDocument ?? (typeof document !== "undefined" ? document : null);
   const idsKey = ids.join("\0");
-  const [activeId, setActiveId] = useState<string | null>(ids[0] ?? null);
+  const [activeId, setActiveId] = useState<string | null>(() =>
+    enabled ? (ids[0] ?? null) : null,
+  );
   const [settleSignal, setSettleSignal] = useState(0);
   const scrollingToRef = useRef<string | null>(null);
   const settleTimerRef = useRef<number>(0);
@@ -247,6 +249,7 @@ export function useActiveHeading({
       mutationObs?.disconnect();
       if (frame !== 0) view.cancelAnimationFrame(frame);
       clearSettleTimer();
+      scrollingToRef.current = null;
     };
   }, [
     doc,

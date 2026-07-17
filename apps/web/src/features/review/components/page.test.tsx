@@ -1,5 +1,6 @@
 import { FooterProvider } from "@diffgazer/core/footer";
-import { formatRunId } from "@diffgazer/core/review";
+import { createInitialReviewState, formatRunId, reviewReducer } from "@diffgazer/core/review";
+import type { InitResponse } from "@diffgazer/core/schemas/config";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { KeyboardProvider } from "@diffgazer/keys";
@@ -32,7 +33,9 @@ const {
   mockUseReview: vi.fn(),
   mockUseReviewLifecycleBase: vi.fn(),
   routeState: {
+    canGoBack: false,
     params: {} as { reviewId?: string },
+    pathname: "/review/test-id",
     search: {} as { mode?: ReviewMode; live?: boolean },
   },
 }));
@@ -48,8 +51,8 @@ vi.mock("@tanstack/react-router", () => ({
     navigate: mockNavigate,
   }),
   useSearch: () => routeState.search,
-  useCanGoBack: () => false,
-  useLocation: () => ({ pathname: "/review/test-id" }),
+  useCanGoBack: () => routeState.canGoBack,
+  useLocation: () => ({ pathname: routeState.pathname }),
 }));
 
 // Boundary mock: api/hooks is the HTTP-data fetch boundary; we provide canned data and assert on the resulting UI.
@@ -57,6 +60,29 @@ vi.mock("@diffgazer/core/api/hooks", async () => {
   const { makeCreateReviewResponse } = await vi.importActual<
     typeof import("@diffgazer/core/testing/factories")
   >("@diffgazer/core/testing/factories");
+  const initResponse = {
+    config: { provider: "gemini", model: "gemini-2.5-flash" },
+    providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
+    settings: {
+      theme: "terminal",
+      defaultLenses: [],
+      defaultProfile: null,
+      severityThreshold: "low",
+      secretsStorage: null,
+      agentExecution: "parallel",
+    },
+    configured: true,
+    project: { projectId: "project-1", path: "/repo", trust: null },
+    setup: {
+      hasSecretsStorage: true,
+      hasProvider: true,
+      hasModel: true,
+      hasTrust: false,
+      isConfigured: true,
+      isReady: true,
+      missing: [],
+    },
+  } satisfies InitResponse;
 
   return {
     configQueries: {
@@ -64,16 +90,7 @@ vi.mock("@diffgazer/core/api/hooks", async () => {
     },
     useActivateProvider: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
     useDeleteProviderCredentials: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
-    useInit: () => ({
-      data: {
-        config: { provider: "gemini", model: "gemini-2.5-flash" },
-        providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
-        project: { projectId: "project-1", path: "/repo", trust: null },
-        setup: { isConfigured: true, isReady: true, missing: [] },
-      },
-      error: null,
-      isLoading: false,
-    }),
+    useInit: () => ({ data: initResponse, error: null, isLoading: false }),
     useProviderStatus: () => ({
       data: [{ provider: "gemini", hasApiKey: true, isActive: true }],
       error: null,
@@ -156,6 +173,8 @@ function renderPage({ strict = false }: { strict?: boolean } = {}) {
 function resetReviewMocks() {
   toast.dismiss();
   routeState.params = {};
+  routeState.canGoBack = false;
+  routeState.pathname = "/review/test-id";
   routeState.search = {};
   mockBack.mockReset();
   mockClearActiveSession.mockReset();
@@ -167,7 +186,12 @@ function resetReviewMocks() {
   mockUseReviewLifecycleBase.mockReturnValue({
     stream: { stop: vi.fn(), abort: vi.fn(), cancel: vi.fn(), state: makeStreamState() },
     checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
-    completion: { isCompleting: false, skipDelay: vi.fn(), resetCompletion: vi.fn() },
+    completion: {
+      isCompleting: false,
+      completedAt: null,
+      skipDelay: vi.fn(),
+      resetCompletion: vi.fn(),
+    },
     start: { hasStarted: true, hasStreamed: true, setHasStarted: vi.fn(), setHasStreamed: vi.fn() },
   });
 }
@@ -198,7 +222,6 @@ describe("ReviewPage saved review loading", () => {
           review: {
             metadata: { id: "review-saved" },
             result: {
-              summary: "Saved review summary",
               issues: [issue],
             },
           },
@@ -208,13 +231,37 @@ describe("ReviewPage saved review loading", () => {
 
     renderPage();
 
-    expect(await screen.findByText("Review #revi")).toBeInTheDocument();
+    expect(await screen.findByText(`Review ${formatRunId("review-saved")}`)).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /saved result issue/i })).toHaveAttribute(
       "aria-selected",
       "true",
     );
     expect(screen.getByText("Saved result issue symptom")).toBeInTheDocument();
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("explains persisted duplicate collapse in reopened review results", async () => {
+    const issue = makeIssue({ id: "issue-1", title: "Saved result issue" });
+    routeState.params = { reviewId: "review-saved" };
+    routeState.search = { mode: "staged" };
+    mockUseReview.mockReturnValue(
+      reviewQuery({
+        isSuccess: true,
+        data: {
+          review: {
+            metadata: { id: "review-saved" },
+            result: { issues: [issue] },
+            droppedDuplicates: 1,
+          },
+        },
+      }),
+    );
+
+    renderPage();
+
+    expect(await screen.findByRole("note")).toHaveTextContent(
+      "1 duplicate issue collapsed across lenses (2 → 1 issue)",
+    );
   });
 
   it("keeps a routed live review streaming instead of loading it from history", () => {
@@ -229,7 +276,12 @@ describe("ReviewPage saved review loading", () => {
         state: { ...makeStreamState(), reviewId },
       },
       checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
-      completion: { isCompleting: false, skipDelay: vi.fn(), resetCompletion: vi.fn() },
+      completion: {
+        isCompleting: false,
+        completedAt: null,
+        skipDelay: vi.fn(),
+        resetCompletion: vi.fn(),
+      },
       start: {
         hasStarted: true,
         hasStreamed: true,
@@ -366,7 +418,12 @@ describe("ReviewPage stale live session falls back to saved review", () => {
             state: { ...makeStreamState(), reviewId: STALE_REVIEW_ID },
           },
           checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
-          completion: { isCompleting: false, skipDelay: vi.fn(), resetCompletion: vi.fn() },
+          completion: {
+            isCompleting: false,
+            completedAt: null,
+            skipDelay: vi.fn(),
+            resetCompletion: vi.fn(),
+          },
           start: {
             hasStarted: true,
             hasStreamed: true,
@@ -390,7 +447,7 @@ describe("ReviewPage stale live session falls back to saved review", () => {
         data: {
           review: {
             metadata: { id: STALE_REVIEW_ID },
-            result: { summary: "Saved summary", issues: [savedIssue] },
+            result: { issues: [savedIssue] },
           },
         },
       }),
@@ -407,7 +464,7 @@ describe("ReviewPage stale live session falls back to saved review", () => {
     });
 
     // Falls back to saved review results
-    expect(await screen.findByText("Review #3333")).toBeInTheDocument();
+    expect(await screen.findByText(`Review ${formatRunId(STALE_REVIEW_ID)}`)).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /saved fallback issue/i })).toBeInTheDocument();
     expect(mockClearActiveSession).toHaveBeenCalledWith("staged", STALE_REVIEW_ID);
     expect(mockNavigate).not.toHaveBeenCalledWith({ to: "/" });
@@ -469,7 +526,12 @@ describe("ReviewPage reviewId changes", () => {
           state: { ...makeStreamState(), reviewId: FIRST_REVIEW_ID, issues: [firstIssue] },
         },
         checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
-        completion: { isCompleting: false, skipDelay: vi.fn(), resetCompletion: vi.fn() },
+        completion: {
+          isCompleting: false,
+          completedAt: null,
+          skipDelay: vi.fn(),
+          resetCompletion: vi.fn(),
+        },
         start: {
           hasStarted: true,
           hasStreamed: true,
@@ -498,7 +560,12 @@ describe("ReviewPage reviewId changes", () => {
         state: { ...makeStreamState(), reviewId: SECOND_REVIEW_ID },
       },
       checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
-      completion: { isCompleting: false, skipDelay: vi.fn(), resetCompletion: vi.fn() },
+      completion: {
+        isCompleting: false,
+        completedAt: null,
+        skipDelay: vi.fn(),
+        resetCompletion: vi.fn(),
+      },
       start: {
         hasStarted: true,
         hasStreamed: true,
@@ -519,28 +586,77 @@ describe("ReviewPage reviewId changes", () => {
 
 describe("ReviewPage live review phase transitions", () => {
   const LIVE_REVIEW_ID = "22222222-2222-4222-8222-222222222222";
-  const completedIssues = [
-    makeIssue({
-      id: "live-issue-1",
-      title: "Live issue one",
-      file: "src/a.ts",
-      category: "correctness",
-    }),
-    makeIssue({
-      id: "live-issue-2",
-      title: "Live issue two",
-      file: "src/b.ts",
-      category: "security",
-    }),
-  ];
+  const liveIssueOne = makeIssue({
+    id: "live-issue-1",
+    title: "Live issue one",
+    file: "src/a.ts",
+    category: "correctness",
+  });
+  const liveIssueTwo = makeIssue({
+    id: "live-issue-2",
+    title: "Live issue two",
+    file: "src/b.ts",
+    category: "security",
+  });
+  const completedIssues = [liveIssueOne, liveIssueTwo];
+  const streamedDuplicate = makeIssue({
+    id: "live-issue-duplicate",
+    title: "Live issue duplicate",
+    file: "src/a.ts",
+    category: "correctness",
+  });
 
   let capturedOnComplete: (() => void) | null;
+  let streamedIssueCount = 0;
 
   beforeEach(() => {
     resetReviewMocks();
     capturedOnComplete = null;
     routeState.params = { reviewId: LIVE_REVIEW_ID };
     routeState.search = { mode: "unstaged", live: true };
+    const issueEvents = [
+      {
+        type: "issue_found" as const,
+        agent: "detective" as const,
+        issue: liveIssueOne,
+        timestamp: "2026-01-01T00:00:00.000Z",
+      },
+      {
+        type: "issue_found" as const,
+        agent: "guardian" as const,
+        issue: liveIssueTwo,
+        timestamp: "2026-01-01T00:00:01.000Z",
+      },
+      {
+        type: "issue_found" as const,
+        agent: "tester" as const,
+        issue: streamedDuplicate,
+        timestamp: "2026-01-01T00:00:02.000Z",
+      },
+    ];
+    const streamedState = issueEvents.reduce(
+      (state, event) => reviewReducer(state, { type: "EVENT", event }),
+      reviewReducer(createInitialReviewState(), { type: "START" }),
+    );
+    streamedIssueCount = streamedState.issues.length;
+    const completedEventState = reviewReducer(streamedState, {
+      type: "EVENT",
+      event: {
+        type: "orchestrator_complete",
+        totalIssues: 2,
+        lensStats: [
+          { lensId: "correctness", issueCount: 2, status: "success" },
+          { lensId: "security", issueCount: 1, status: "success" },
+        ],
+        filesAnalyzed: 2,
+        droppedDuplicates: 1,
+        timestamp: "2026-01-01T00:00:03.000Z",
+      },
+    });
+    const completedState = reviewReducer(completedEventState, {
+      type: "COMPLETE_WITH_RESULT",
+      issues: completedIssues,
+    });
     mockUseReviewLifecycleBase.mockImplementation((opts: { onComplete?: () => void }) => {
       capturedOnComplete = opts.onComplete ?? null;
       return {
@@ -548,10 +664,19 @@ describe("ReviewPage live review phase transitions", () => {
           stop: vi.fn(),
           abort: vi.fn(),
           cancel: vi.fn(),
-          state: { ...makeStreamState(), reviewId: LIVE_REVIEW_ID, issues: completedIssues },
+          state: {
+            ...makeStreamState(),
+            ...completedState,
+            reviewId: LIVE_REVIEW_ID,
+          },
         },
         checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
-        completion: { isCompleting: false, skipDelay: vi.fn(), resetCompletion: vi.fn() },
+        completion: {
+          isCompleting: false,
+          completedAt: null,
+          skipDelay: vi.fn(),
+          resetCompletion: vi.fn(),
+        },
         start: {
           hasStarted: true,
           hasStreamed: true,
@@ -578,6 +703,20 @@ describe("ReviewPage live review phase transitions", () => {
     expect(screen.getByRole("button", { name: /view results/i })).toBeInTheDocument();
   });
 
+  it("carries the live duplicate-collapse count into the summary", async () => {
+    renderPage();
+
+    await act(() => {
+      capturedOnComplete?.();
+    });
+
+    expect(streamedIssueCount).toBe(3);
+    expect(await screen.findByText("2 issues")).toBeVisible();
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "1 duplicate issue collapsed across lenses (3 → 2 issues)",
+    );
+  });
+
   it("transitions from summary to results when Enter Review is clicked", async () => {
     const user = userEvent.setup();
 
@@ -593,9 +732,55 @@ describe("ReviewPage live review phase transitions", () => {
 
     await user.click(screen.getByRole("button", { name: /view results/i }));
 
-    expect(await screen.findByText("Review #2222")).toBeInTheDocument();
+    expect(await screen.findByText(`Review ${formatRunId(LIVE_REVIEW_ID)}`)).toBeInTheDocument();
     expect(
       screen.queryByText(`Review Complete ${formatRunId(LIVE_REVIEW_ID)}`),
     ).not.toBeInTheDocument();
+  });
+
+  async function openSummary() {
+    const user = userEvent.setup();
+    renderPage();
+    await act(() => {
+      capturedOnComplete?.();
+    });
+    expect(
+      await screen.findByText(`Review Complete ${formatRunId(LIVE_REVIEW_ID)}`),
+    ).toBeInTheDocument();
+    return user;
+  }
+
+  async function triggerBack(
+    user: ReturnType<typeof userEvent.setup>,
+    control: "button" | "escape",
+  ) {
+    if (control === "button") {
+      await user.click(screen.getByRole("button", { name: /back/i }));
+      return;
+    }
+    await user.keyboard("{Escape}");
+  }
+
+  it.each(["button", "escape"] satisfies Array<
+    "button" | "escape"
+  >)("uses the safe home fallback for direct navigation via %s", async (control) => {
+    const user = await openSummary();
+
+    await triggerBack(user, control);
+
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
+    expect(mockBack).not.toHaveBeenCalled();
+  });
+
+  it.each(["button", "escape"] satisfies Array<
+    "button" | "escape"
+  >)("uses browser history when available via %s", async (control) => {
+    routeState.canGoBack = true;
+    const user = await openSummary();
+
+    await triggerBack(user, control);
+
+    expect(mockBack).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

@@ -4,7 +4,7 @@ import {
   useKey,
   useScopedNavigation,
 } from "@diffgazer/keys";
-import { useLayoutEffect, useRef } from "react";
+import { type RefObject, useLayoutEffect, useRef } from "react";
 
 export type TrustFormFocusZone = "list" | "buttons";
 export type TrustFormAction = "save" | "revoke";
@@ -19,6 +19,7 @@ interface UseTrustFormKeyboardOptions {
   onListFocusRequest?: () => void;
   onSave?: () => void;
   onRevoke?: () => void;
+  busyStatusRef?: RefObject<HTMLElement | null>;
 }
 
 function isTrustFormAction(value: string | null | undefined): value is TrustFormAction {
@@ -41,8 +42,12 @@ export function useTrustFormKeyboard({
   onListFocusRequest,
   onSave,
   onRevoke,
+  busyStatusRef,
 }: UseTrustFormKeyboardOptions) {
   const actionRowRef = useRef<HTMLDivElement>(null);
+  const restoreFocusRef = useRef<HTMLButtonElement | null>(null);
+  const pendingActionRef = useRef<TrustFormAction | null>(null);
+  const wasActionsDisabledRef = useRef(false);
   const keyboardEnabled = enabled && !actionsDisabled;
   const { zone, setZone, getKeyOptions } = useFocusZone<TrustFormFocusZone>({
     initial: "list",
@@ -89,18 +94,32 @@ export function useTrustFormKeyboard({
     highlight(action);
   };
 
-  const activateCurrentAction = () => {
+  const activateAction = (action: TrustFormAction) => {
     if (actionsDisabled) return;
-    const action = getFocusedAction(actionRowRef.current) ?? focusedAction;
+    pendingActionRef.current = action;
+    restoreFocusRef.current = getActionButton(actionRowRef.current, action);
     if (action === "save") onSave?.();
     else onRevoke?.();
   };
 
+  const activateCurrentAction = () => {
+    activateAction(getFocusedAction(actionRowRef.current) ?? focusedAction);
+  };
+
   useLayoutEffect(() => {
-    if (!enabled || !actionsDisabled || zone !== "buttons") return;
-    setZone("list");
-    onListFocusRequest?.();
-  }, [actionsDisabled, enabled, onListFocusRequest, setZone, zone]);
+    const wasActionsDisabled = wasActionsDisabledRef.current;
+    wasActionsDisabledRef.current = actionsDisabled;
+
+    if (!wasActionsDisabled && actionsDisabled) {
+      busyStatusRef?.current?.focus();
+      return;
+    }
+    if (wasActionsDisabled && !actionsDisabled) {
+      restoreFocusRef.current?.focus();
+      restoreFocusRef.current = null;
+      pendingActionRef.current = null;
+    }
+  }, [actionsDisabled, busyStatusRef]);
 
   useKey("ArrowUp", enterListZone, getKeyOptions("buttons", { enabled: keyboardEnabled }));
   useKey(
@@ -116,5 +135,7 @@ export function useTrustFormKeyboard({
     handlePermissionFocus,
     focusActionButton,
     handleActionFocus,
+    activateAction,
+    pendingAction: pendingActionRef.current,
   };
 }

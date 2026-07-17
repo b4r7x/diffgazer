@@ -1,17 +1,15 @@
 import { z } from "zod";
 import { isRelativeSubpath } from "../utils/fs.js";
 import { readJson } from "../utils/json.js";
-import { assertSafeLibraryId, isPackageName } from "./library-id-validation.js";
+import { assertSafeLibraryId } from "./library-id-validation.js";
 
 export interface ArtifactLibrary {
   id: string;
-  packageName: string;
   workspaceDir: string;
 }
 
 interface ArtifactSourceConfig {
   workspaceDir: string;
-  packageName: string;
 }
 
 interface DocsLibraryConfig {
@@ -30,9 +28,6 @@ const nonEmptyStringSchema = z.string().min(1, { error: "must be a non-empty str
 const artifactSourceConfigSchema = z.object({
   workspaceDir: nonEmptyStringSchema.refine(isRelativeSubpath, {
     error: "must be a relative path without '..' segments",
-  }),
-  packageName: nonEmptyStringSchema.refine(isPackageName, {
-    error: "must be an npm package name",
   }),
 });
 
@@ -66,7 +61,20 @@ const docsLibrariesConfigSchema = z.object({
   ),
   libraries: z
     .array(docsLibraryConfigSchema, { error: "must be a non-empty array" })
-    .min(1, { error: "must be a non-empty array" }),
+    .min(1, { error: "must be a non-empty array" })
+    .superRefine((libraries, context) => {
+      const seenIds = new Set<string>();
+      for (const [index, library] of libraries.entries()) {
+        if (seenIds.has(library.id)) {
+          context.addIssue({
+            code: "custom",
+            path: [index, "id"],
+            message: `duplicates library id "${library.id}"`,
+          });
+        }
+        seenIds.add(library.id);
+      }
+    }),
 });
 
 function formatConfigPath(path: PropertyKey[]): string {
@@ -105,7 +113,6 @@ export function getArtifactLibraries(docsLibraries: DocsLibrariesConfig): Artifa
     return [
       {
         id: library.id,
-        packageName: library.artifactSource.packageName,
         workspaceDir: library.artifactSource.workspaceDir,
       },
     ];

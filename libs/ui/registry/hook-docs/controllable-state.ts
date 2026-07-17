@@ -2,9 +2,9 @@ import type { HookDoc } from "@diffgazer/registry";
 
 export const controllableStateDoc: HookDoc = {
   description:
-    "Generic controlled/uncontrolled state hook. Manages value, defaultValue, and onChange for any component that supports both modes — like React's built-in input pattern, but reusable.",
+    "Generic controlled/uncontrolled state hook. Manages value, defaultValue, and onChange, with a separate silent setter for restoring uncontrolled native form state.",
   usage: {
-    code: `const [value, setValue, isControlled] = useControllableState({
+    code: `const [value, setValue, isControlled, resetValue] = useControllableState({
   value: props.value,
   defaultValue: props.defaultValue ?? "",
   onChange: props.onChange,
@@ -39,9 +39,9 @@ export const controllableStateDoc: HookDoc = {
     },
   ],
   returns: {
-    type: "[T, (next: T | ((prev: T) => T)) => void, boolean]",
+    type: "[T, (next: T | ((prev: T) => T)) => void, boolean, (next: T) => void]",
     description:
-      "Tuple of [currentValue, setValue, isControlled]. The setter accepts both direct values and updater functions.",
+      "Tuple of [currentValue, setValue, isControlled, resetValue]. The public setter accepts direct values and updater functions; resetValue silently restores uncontrolled internal state.",
     properties: [
       {
         name: "currentValue",
@@ -61,6 +61,13 @@ export const controllableStateDoc: HookDoc = {
         required: true,
         description: "Whether the consumer is driving the value externally.",
       },
+      {
+        name: "resetValue",
+        type: "(next: T) => void",
+        required: true,
+        description:
+          "Updates uncontrolled internal state without calling onChange. It is a no-op in controlled mode.",
+      },
     ],
   },
   notes: [
@@ -72,7 +79,7 @@ export const controllableStateDoc: HookDoc = {
     {
       title: "Return Value",
       content:
-        "The isControlled flag tells you whether the consumer is driving the value externally. Use it for conditional logic like preventing internal state updates.",
+        "The isControlled flag reports external ownership. Use resetValue only for synchronization such as native form reset, where restoring an uncontrolled baseline must not emit a user change.",
     },
   ],
   examples: [

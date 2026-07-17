@@ -16,17 +16,23 @@ export default function CommandPaletteTerminal() {
           <CommandPalette.List>
             <CommandPalette.Empty>No matching commands.</CommandPalette.Empty>
             <CommandPalette.Group heading="Suggested">
-              <CommandPalette.Item id="history">Go to History</CommandPalette.Item>
-              <CommandPalette.Item id="theme" shortcut="⌘T">
+              <CommandPalette.Item id="history" value="Go to History">
+                Go to History
+              </CommandPalette.Item>
+              <CommandPalette.Item id="theme" value="Switch Theme" shortcut="⌘T">
                 Switch Theme
               </CommandPalette.Item>
-              <CommandPalette.Item id="export">Export PDF</CommandPalette.Item>
+              <CommandPalette.Item id="export" value="Export PDF">
+                Export PDF
+              </CommandPalette.Item>
             </CommandPalette.Group>
             <CommandPalette.Group heading="System">
-              <CommandPalette.Item id="settings" shortcut=",">
+              <CommandPalette.Item id="settings" value="Settings Hub" shortcut=",">
                 Settings Hub
               </CommandPalette.Item>
-              <CommandPalette.Item id="logout">Log Out</CommandPalette.Item>
+              <CommandPalette.Item id="logout" value="Log Out">
+                Log Out
+              </CommandPalette.Item>
             </CommandPalette.Group>
           </CommandPalette.List>
         </CommandPalette.Content>

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import type { ServerController } from "../lib/servers/process";
-import { activeServerSets } from "../lib/servers/stop-all";
+import { registerServerSet } from "../lib/servers/stop-all";
 
 export interface ServerControls {
   /** Re-invoke start() on every controller; idle/stopped controllers re-listen. */
-  restartServers: () => void;
+  restartServers: () => Promise<void>;
 }
 
 export function useServers(createServers: ReadonlyArray<() => ServerController>): ServerControls {
@@ -12,22 +12,16 @@ export function useServers(createServers: ReadonlyArray<() => ServerController>)
 
   useEffect(() => {
     for (const server of servers) {
-      server.start();
+      void server.start().catch(() => undefined);
     }
-    activeServerSets.add(servers);
+    const stopServers = registerServerSet(servers);
     return () => {
-      servers.forEach((server) => {
-        void server.stop();
-      });
-      activeServerSets.delete(servers);
+      void stopServers();
     };
   }, [servers]);
 
   return {
-    restartServers: () => {
-      for (const server of servers) {
-        server.start();
-      }
-    },
+    restartServers: () =>
+      Promise.all(servers.map((server) => server.start())).then(() => undefined),
   };
 }

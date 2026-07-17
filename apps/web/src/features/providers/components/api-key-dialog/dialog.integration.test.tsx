@@ -1,11 +1,12 @@
 import { FooterProvider, useFooterData, usePageFooter } from "@diffgazer/core/footer";
+import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { Footer } from "@/components/layout/footer";
-import { ApiKeyDialog } from "./dialog";
+import { ApiKeyDialog, type ApiKeyDialogProps } from "./dialog";
 
 beforeAll(() => {
   if (typeof HTMLDialogElement === "undefined") return;
@@ -42,7 +43,7 @@ function ProvidersPageStub({ dialogOpen }: { dialogOpen: boolean }) {
         onOpenChange={setOpen}
         providerName="Z.AI"
         envVarName="ZAI_API_KEY"
-        onSubmit={vi.fn().mockResolvedValue(undefined)}
+        onSubmit={vi.fn().mockResolvedValue(true)}
       />
     </>
   );
@@ -56,6 +57,59 @@ function renderProvidersStub(dialogOpen: boolean) {
       </KeyboardProvider>
     </FooterProvider>,
   );
+}
+
+function DeferredApiKeyDialog({ onSubmit }: Pick<ApiKeyDialogProps, "onSubmit">) {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <FooterProvider>
+      <KeyboardProvider>
+        <ApiKeyDialog
+          open={open}
+          onOpenChange={setOpen}
+          providerName="Z.AI"
+          envVarName="ZAI_API_KEY"
+          onSubmit={onSubmit}
+        />
+      </KeyboardProvider>
+    </FooterProvider>
+  );
+}
+
+function ReopenableApiKeyDialog({ onSubmit }: Pick<ApiKeyDialogProps, "onSubmit">) {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <FooterProvider>
+      <KeyboardProvider>
+        <button type="button" onClick={() => setOpen(true)}>
+          Reopen API Key
+        </button>
+        <ApiKeyDialog
+          open={open}
+          onOpenChange={setOpen}
+          providerName="Z.AI"
+          envVarName="ZAI_API_KEY"
+          onSubmit={onSubmit}
+        />
+      </KeyboardProvider>
+    </FooterProvider>
+  );
+}
+
+function mockDialogBounds(dialog: HTMLElement) {
+  vi.spyOn(dialog, "getBoundingClientRect").mockReturnValue({
+    x: 100,
+    y: 100,
+    width: 320,
+    height: 240,
+    top: 100,
+    right: 420,
+    bottom: 340,
+    left: 100,
+    toJSON() {},
+  });
 }
 
 describe("ApiKeyDialog footer integration", () => {
@@ -121,6 +175,79 @@ describe("ApiKeyDialog footer integration", () => {
     expect(dialog).toBeInTheDocument();
   });
 
+  it("submits the method committed with Enter on the real selector", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<ApiKeyDialogProps["onSubmit"]>().mockResolvedValue(true);
+
+    render(<DeferredApiKeyDialog onSubmit={onSubmit} />);
+
+    const dialog = screen.getByRole("dialog", { name: /API Key/ });
+    const env = within(dialog).getByRole("radio", { name: "Import from Env" });
+    env.focus();
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith("env", "ZAI_API_KEY"));
+    await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"));
+  });
+
+  it("resets to Paste when reopened after an environment save", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<ApiKeyDialogProps["onSubmit"]>().mockResolvedValue(true);
+
+    render(<ReopenableApiKeyDialog onSubmit={onSubmit} />);
+
+    const dialog = screen.getByRole("dialog", { name: /API Key/ });
+    await user.click(within(dialog).getByRole("radio", { name: "Import from Env" }));
+    await user.click(within(dialog).getByRole("button", { name: "Confirm" }));
+
+    await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"));
+    expect(onSubmit).toHaveBeenCalledWith("env", "ZAI_API_KEY");
+
+    await user.click(screen.getByRole("button", { name: "Reopen API Key" }));
+    const reopenedDialog = screen.getByRole("dialog", { name: /API Key/ });
+    expect(within(reopenedDialog).getByRole("radio", { name: "Paste Key Now" })).toBeChecked();
+    expect(within(reopenedDialog).getByLabelText("Z.AI API Key")).toBeEnabled();
+  });
+
+  it.each([
+    "Cancel",
+    "Escape",
+    "backdrop",
+  ] as const)("keeps the dialog open when %s is used during a save", async (dismissal) => {
+    const user = userEvent.setup();
+    const save = createDeferred<boolean>();
+    const onSubmit = vi.fn<ApiKeyDialogProps["onSubmit"]>().mockReturnValue(save.promise);
+
+    render(<DeferredApiKeyDialog onSubmit={onSubmit} />);
+
+    const dialog = screen.getByRole("dialog", { name: /API Key/ });
+    const keyInput = within(dialog).getByLabelText("Z.AI API Key");
+    await user.type(keyInput, "sk-deferred");
+    await user.click(within(dialog).getByRole("button", { name: "Confirm" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith("paste", "sk-deferred"));
+
+    if (dismissal === "Cancel") {
+      expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeDisabled();
+      await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    } else if (dismissal === "Escape") {
+      // fireEvent retained: jsdom does not synthesize a native dialog cancel event from Escape.
+      fireEvent(dialog, new Event("cancel", { bubbles: false }));
+    } else {
+      mockDialogBounds(dialog);
+      // fireEvent retained: backdrop dismissal requires matching pointer/click coordinates.
+      fireEvent.pointerDown(dialog, { clientX: 80, clientY: 120 });
+      fireEvent.click(dialog, { clientX: 80, clientY: 120 });
+    }
+
+    expect(screen.getByRole("dialog", { name: /API Key/ })).toBe(dialog);
+
+    await act(async () => {
+      save.resolve(true);
+      await save.promise;
+    });
+    await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"));
+  });
+
   it("returns focus to the trigger button after the dialog closes", async () => {
     const user = userEvent.setup();
 
@@ -136,7 +263,7 @@ describe("ApiKeyDialog footer integration", () => {
             onOpenChange={setOpen}
             providerName="Z.AI"
             envVarName="ZAI_API_KEY"
-            onSubmit={vi.fn().mockResolvedValue(undefined)}
+            onSubmit={vi.fn().mockResolvedValue(true)}
           />
         </>
       );

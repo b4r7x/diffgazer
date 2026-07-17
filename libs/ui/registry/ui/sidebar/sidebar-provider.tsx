@@ -24,8 +24,8 @@ export interface SidebarProviderProps {
    */
   breakpoint?: number;
   /**
-   * Case-insensitive hotkey. Cmd/Ctrl+<key> cycles open ↔ rail; Shift+Cmd/Ctrl+<key> toggles
-   * hidden. Pass null to disable.
+   * Case-insensitive hotkey. Cmd/Ctrl+<key> cycles open ↔ rail on desktop and visible ↔ hidden
+   * on mobile; Shift+Cmd/Ctrl+<key> toggles hidden. Pass null to disable.
    */
   shortcutKey?: string | null;
   /** Sidebar and main content that need access to the state via useSidebar(). */
@@ -58,11 +58,15 @@ export function SidebarProvider({
     defaultValue: defaultState,
     onChange: onStateChange,
   });
-  const isMobile = useIsMobile(breakpoint);
+  const isMobile = useIsMobile(breakpoint, anchorRef);
+  const presentationState = isMobile && state !== "hidden" ? "open" : state;
 
   const toggleSidebar = useCallback(() => {
-    setState((prev) => (prev === "open" ? "rail" : "open"));
-  }, [setState]);
+    setState((prev) => {
+      if (isMobile) return prev === "hidden" ? "open" : "hidden";
+      return prev === "open" ? "rail" : "open";
+    });
+  }, [isMobile, setState]);
 
   const toggleHidden = useCallback(() => {
     setState((prev) => (prev === "hidden" ? "open" : "hidden"));
@@ -94,14 +98,14 @@ export function SidebarProvider({
 
   const contextValue = useMemo(
     () => ({
-      state,
+      state: presentationState,
       contentId: `${sidebarId}-content`,
       isMobile,
       onStateChange: setState,
       toggleSidebar,
       toggleHidden,
     }),
-    [state, isMobile, setState, sidebarId, toggleSidebar, toggleHidden],
+    [presentationState, isMobile, setState, sidebarId, toggleSidebar, toggleHidden],
   );
 
   return (

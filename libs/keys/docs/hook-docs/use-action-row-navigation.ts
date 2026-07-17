@@ -5,11 +5,16 @@ export const useActionRowNavigationDoc: HookDoc = {
     "Provider-backed two-zone keyboard navigation for rows with inline actions. Moves between row content and action buttons while preserving disabled-action behavior.",
   usage: {
     code: [
+      `const containerRef = useRef<HTMLDivElement>(null)`,
+      ``,
       `const row = useActionRowNavigation({`,
       `  enabled: true,`,
       `  actionCount: 3,`,
+      `  containerRef,`,
       `  onAction: (index) => runAction(index),`,
       `})`,
+      ``,
+      `return <div ref={containerRef}>{/* row content and actions */}</div>`,
     ].join("\n"),
     lang: "tsx",
   },
@@ -51,7 +56,7 @@ export const useActionRowNavigationDoc: HookDoc = {
       type: "RefObject<HTMLElement | null>",
       required: false,
       description:
-        "Limits zone handling to one row subtree. When set, the hook enables focusWithinOnly so sibling rows do not respond to the same key press.",
+        "When supplied, limits zone handling to one row subtree so sibling rows do not respond to the same key press. Omit it only when the active row should keep global keyboard ownership within its scope.",
     },
     {
       name: "allowInInput",
@@ -168,7 +173,7 @@ export const useActionRowNavigationDoc: HookDoc = {
     {
       title: "Scope rows with containerRef",
       content:
-        "Pass containerRef for each row so its arrow keys only fire while focus is inside that row. Without it, all mounted rows share the same global keyboard handling.",
+        "Pass containerRef for each row so its arrow keys only fire while focus is inside that row. Omitting it intentionally leaves the active row's handlers global within the current keyboard scope.",
     },
     {
       title: "Requires KeyboardProvider",

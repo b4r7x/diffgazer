@@ -51,4 +51,5 @@ apps/docs/src/generated
 apps/docs/registry/examples
 apps/docs/public/r/ui
 apps/docs/public/r/keys
+apps/docs/public/source-data
 apps/docs/src/routeTree.gen.ts

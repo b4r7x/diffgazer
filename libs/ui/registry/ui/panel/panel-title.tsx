@@ -11,8 +11,9 @@ export interface PanelTitleProps extends ComponentProps<"h2"> {
 }
 
 /**
- * Real heading (h2 by default, configurable via `as`). Auto-wires aria-labelledby on the Panel
- * root.
+ * Real heading (h2 by default, configurable via `as`). Direct child trees are wired to the Panel
+ * root on the server and client. A title created inside an opaque wrapper registers after client
+ * render; for SSR, give it a stable id and pass that id through Panel aria-labelledby.
  */
 export function PanelTitle({ children, className, as: Tag = "h2", id, ...props }: PanelTitleProps) {
   const { titleId, registerTitle, unregisterTitle } = usePanelContext();

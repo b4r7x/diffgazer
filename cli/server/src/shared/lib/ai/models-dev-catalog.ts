@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from "node:crypto";
 import {
   CATALOG_SNAPSHOT,
   catalogToModelInfo,
@@ -24,38 +25,61 @@ const SHRINK_GUARD_RATIO = 0.5;
 export const ModelsDevCatalogCacheSchema = z.object({
   catalog: ModelsDevCatalogSchema,
   fetchedAt: z.iso.datetime(),
+  generationId: z.uuid().optional(),
 });
 type ModelsDevCatalogCache = z.infer<typeof ModelsDevCatalogCacheSchema>;
 
-// Reuse the parsed catalog within a cache generation (keyed by fetchedAt) instead
-// of re-parsing the ~2 MB payload on every per-provider request.
-let parsedCacheMemo: ModelsDevCatalogCache | null = null;
+interface ParsedCacheMemo {
+  path: string;
+  identity: string;
+  entry: ModelsDevCatalogCache;
+}
 
-// Test seam: distinct catalogs sharing a same-millisecond fetchedAt would otherwise hit the stale memo.
+interface LoadedCacheState {
+  state: DiskCacheState<ModelsDevCatalogCache>;
+  identity: string;
+}
+
+interface CatalogFetchGeneration {
+  result: Result<ModelsDevCatalog, { message: string }>;
+  fetchedAt: string;
+}
+
+interface CatalogFlight {
+  requestedProviders: Set<AIProvider>;
+  promise: Promise<CatalogFetchGeneration>;
+}
+
+const catalogFlights = new Map<string, CatalogFlight>();
+
+let parsedCacheMemo: ParsedCacheMemo | null = null;
+
 export const resetCatalogParseMemo = (): void => {
   parsedCacheMemo = null;
 };
 
-const peekFetchedAt = (raw: unknown): string | undefined => {
-  if (!raw || typeof raw !== "object") return undefined;
-  const value = (raw as Record<string, unknown>).fetchedAt;
-  return typeof value === "string" ? value : undefined;
+const CacheGenerationSchema = z.object({ generationId: z.uuid() });
+
+const getCacheIdentity = (raw: unknown): string => {
+  const generation = CacheGenerationSchema.safeParse(raw);
+  if (generation.success) return `generation:${generation.data.generationId}`;
+  return `legacy:${createHash("sha256").update(JSON.stringify(raw)).digest("hex")}`;
 };
 
-const loadCacheStateMemoized = (path: string): DiskCacheState<ModelsDevCatalogCache> => {
+const loadCacheStateMemoized = (path: string): LoadedCacheState => {
   const read = readJsonFileSyncSafe<unknown>(path);
-  if (read.status === "missing") return { status: "missing" };
-  if (read.status === "corrupt") return { status: "corrupt" };
+  if (read.status === "missing") return { state: { status: "missing" }, identity: "none" };
+  if (read.status === "corrupt") return { state: { status: "corrupt" }, identity: "none" };
 
-  const fetchedAt = peekFetchedAt(read.data);
-  if (parsedCacheMemo && fetchedAt !== undefined && parsedCacheMemo.fetchedAt === fetchedAt) {
-    return { status: "ok", entry: parsedCacheMemo };
+  const identity = getCacheIdentity(read.data);
+  if (parsedCacheMemo?.path === path && parsedCacheMemo.identity === identity) {
+    return { state: { status: "ok", entry: parsedCacheMemo.entry }, identity };
   }
 
   const parsed = ModelsDevCatalogCacheSchema.safeParse(read.data);
-  if (!parsed.success) return { status: "corrupt" };
-  parsedCacheMemo = parsed.data;
-  return { status: "ok", entry: parsed.data };
+  if (!parsed.success) return { state: { status: "corrupt" }, identity: "none" };
+  parsedCacheMemo = { path, identity, entry: parsed.data };
+  return { state: { status: "ok", entry: parsed.data }, identity };
 };
 
 const countModels = (catalog: ModelsDevCatalog): number => {
@@ -173,13 +197,55 @@ const snapshotResult = (provider: AIProvider): ProviderModelsResult => ({
   cached: false,
 });
 
+const resolveCatalogGeneration = async (options: {
+  key: string;
+  path: string;
+  providerId: AIProvider;
+  baselineModelCount: number;
+  trustedCache: ModelsDevCatalogCache | null;
+}): Promise<CatalogFetchGeneration> => {
+  const active = catalogFlights.get(options.key);
+  if (active) {
+    active.requestedProviders.add(options.providerId);
+    return active.promise;
+  }
+
+  const requestedProviders = new Set<AIProvider>([options.providerId]);
+  const promise = (async (): Promise<CatalogFetchGeneration> => {
+    const result = await fetchModelsDevCatalog({
+      baselineModelCount: options.baselineModelCount,
+    });
+    const fetchedAt = new Date().toISOString();
+    const servesRequestedProvider =
+      result.ok &&
+      [...requestedProviders].some(
+        (providerId) => resultIfNonEmpty(result.value, providerId, fetchedAt, "live") !== null,
+      );
+
+    if (result.ok && servesRequestedProvider) {
+      persistIfNotDroppingProviders(options.path, result.value, options.trustedCache, fetchedAt);
+    }
+
+    return { result, fetchedAt };
+  })();
+  const flight = { requestedProviders, promise };
+  catalogFlights.set(options.key, flight);
+
+  try {
+    return await promise;
+  } finally {
+    if (catalogFlights.get(options.key) === flight) catalogFlights.delete(options.key);
+  }
+};
+
 // Keeps its own three-tier orchestration instead of the shared withTtlAndFallback:
 // it adds a bundled-snapshot tier, per-provider non-empty fall-through, a
 // single-provider-drop poison guard, and a corrupt-cache quarantine that still
 // seeds a shrink-guard baseline. See design.md D6 for the recorded exception.
 export const getProviderModels = async (providerId: AIProvider): Promise<ProviderModelsResult> => {
   const path = getGlobalModelsDevCatalogPath();
-  const cacheState = loadCacheStateMemoized(path);
+  const loadedCache = loadCacheStateMemoized(path);
+  const cacheState = loadedCache.state;
 
   // A present-but-unloadable cache must not be mistaken for a baseline-free first
   // run: quarantine it so the next fetch is still shrink-guarded against the snapshot floor.
@@ -222,15 +288,22 @@ export const getProviderModels = async (providerId: AIProvider): Promise<Provide
   } else if (cacheState.status === "corrupt") {
     baselineModelCount = countModels(CATALOG_SNAPSHOT);
   }
-  const fetchResult = await fetchModelsDevCatalog({ baselineModelCount });
+  const generation = await resolveCatalogGeneration({
+    key: JSON.stringify([path, loadedCache.identity]),
+    path,
+    providerId,
+    baselineModelCount,
+    trustedCache: cache,
+  });
 
-  if (fetchResult.ok) {
-    const fetchedAt = new Date().toISOString();
-    const live = resultIfNonEmpty(fetchResult.value, providerId, fetchedAt, "live");
-    if (live) {
-      persistIfNotDroppingProviders(path, fetchResult.value, cache, fetchedAt);
-      return live;
-    }
+  if (generation.result.ok) {
+    const live = resultIfNonEmpty(
+      generation.result.value,
+      providerId,
+      generation.fetchedAt,
+      "live",
+    );
+    if (live) return live;
     // Healthy fetch but no models for this provider: fall through rather than persist a poisoned catalog.
   }
 
@@ -260,10 +333,14 @@ const persistIfNotDroppingProviders = (
       }
     }
   }
-  const entry: ModelsDevCatalogCache = { catalog, fetchedAt };
+  const entry: ModelsDevCatalogCache = { catalog, fetchedAt, generationId: randomUUID() };
   try {
     persistDiskCache(path, entry);
-    parsedCacheMemo = entry;
+    parsedCacheMemo = {
+      path,
+      identity: `generation:${entry.generationId}`,
+      entry,
+    };
   } catch (error) {
     log("warn", "models_dev_catalog_persist_failed", { error: getErrorMessage(error) });
   }

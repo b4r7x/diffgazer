@@ -5,8 +5,13 @@ describe("downloadAsFile", () => {
   let liveUrls: Set<string>;
   let nextId: number;
 
+  const preventJsdomNavigation = (event: MouseEvent) => {
+    event.preventDefault();
+  };
+
   beforeEach(() => {
     vi.useFakeTimers();
+    document.addEventListener("click", preventJsdomNavigation);
     liveUrls = new Set();
     nextId = 0;
     // jsdom does not implement the blob URL APIs; provide a minimal real
@@ -25,6 +30,7 @@ describe("downloadAsFile", () => {
   });
 
   afterEach(() => {
+    document.removeEventListener("click", preventJsdomNavigation);
     vi.useRealTimers();
     vi.unstubAllGlobals();
   });

@@ -1,5 +1,5 @@
 import { useNavigation } from "@diffgazer/keys";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { DemoWrapper } from "../components/demo-wrapper";
 
 const horizontalTabs = [
@@ -46,6 +46,8 @@ const verticalTabs = [
 export function TabBarDemo() {
   const [activeHTab, setActiveHTab] = useState<string | null>("dashboard");
   const [activeVTab, setActiveVTab] = useState<string | null>("general");
+  const horizontalId = useId();
+  const verticalId = useId();
 
   const hTabListRef = useRef<HTMLDivElement>(null);
   const vTabListRef = useRef<HTMLDivElement>(null);
@@ -70,9 +72,6 @@ export function TabBarDemo() {
     moveFocus: true,
   });
 
-  const activeHContent = horizontalTabs.find((t) => t.id === activeHTab)?.content;
-  const activeVContent = verticalTabs.find((t) => t.id === activeVTab)?.content;
-
   return (
     <DemoWrapper
       title="Tab Bar"
@@ -87,15 +86,23 @@ export function TabBarDemo() {
       ]}
     >
       <div className="demo-card">
-        <div ref={hTabListRef} role="tablist" onKeyDown={hOnKeyDown} className="demo-tabs">
+        <div
+          ref={hTabListRef}
+          role="tablist"
+          aria-label="Account sections"
+          onKeyDown={hOnKeyDown}
+          className="demo-tabs"
+        >
           {horizontalTabs.map((tab) => (
             <button
               type="button"
               key={tab.id}
+              id={`${horizontalId}-tab-${tab.id}`}
               role="tab"
               data-value={tab.id}
               onClick={() => setActiveHTab(tab.id)}
               aria-selected={activeHTab === tab.id}
+              aria-controls={`${horizontalId}-panel-${tab.id}`}
               tabIndex={activeHTab === tab.id ? 0 : -1}
               className={`demo-tab${activeHTab === tab.id ? " demo-tab--active" : ""}`}
             >
@@ -103,7 +110,18 @@ export function TabBarDemo() {
             </button>
           ))}
         </div>
-        <div className="demo-tab-content">{activeHContent}</div>
+        {horizontalTabs.map((tab) => (
+          <div
+            key={tab.id}
+            id={`${horizontalId}-panel-${tab.id}`}
+            role="tabpanel"
+            aria-labelledby={`${horizontalId}-tab-${tab.id}`}
+            className="demo-tab-content"
+            hidden={activeHTab !== tab.id}
+          >
+            {tab.content}
+          </div>
+        ))}
       </div>
 
       <div style={{ marginTop: 24 }}>
@@ -114,6 +132,7 @@ export function TabBarDemo() {
           <div
             ref={vTabListRef}
             role="tablist"
+            aria-label="Settings sections"
             aria-orientation="vertical"
             onKeyDown={vOnKeyDown}
             style={{
@@ -127,10 +146,12 @@ export function TabBarDemo() {
               <button
                 type="button"
                 key={tab.id}
+                id={`${verticalId}-tab-${tab.id}`}
                 role="tab"
                 data-value={tab.id}
                 onClick={() => setActiveVTab(tab.id)}
                 aria-selected={activeVTab === tab.id}
+                aria-controls={`${verticalId}-panel-${tab.id}`}
                 tabIndex={activeVTab === tab.id ? 0 : -1}
                 className={`demo-tab${activeVTab === tab.id ? " demo-tab--active" : ""}`}
                 style={{
@@ -146,9 +167,19 @@ export function TabBarDemo() {
               </button>
             ))}
           </div>
-          <div className="demo-tab-content" style={{ padding: 16, flex: 1 }}>
-            {activeVContent}
-          </div>
+          {verticalTabs.map((tab) => (
+            <div
+              key={tab.id}
+              id={`${verticalId}-panel-${tab.id}`}
+              role="tabpanel"
+              aria-labelledby={`${verticalId}-tab-${tab.id}`}
+              className="demo-tab-content"
+              style={{ padding: 16, flex: 1 }}
+              hidden={activeVTab !== tab.id}
+            >
+              {tab.content}
+            </div>
+          ))}
         </div>
       </div>
     </DemoWrapper>

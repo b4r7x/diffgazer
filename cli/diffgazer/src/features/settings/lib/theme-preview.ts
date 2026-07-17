@@ -20,7 +20,7 @@ export const TOKEN_GROUPS: ReadonlyArray<{
   { title: "Status", keys: STATUS_TOKEN_KEYS },
 ];
 
-export function paletteForTheme(theme: CliTheme, _activePalette: CliColorTokens): CliColorTokens {
+export function paletteForTheme(theme: CliTheme): CliColorTokens {
   if (theme === "dark") return darkPalette;
   if (theme === "light") return lightPalette;
   return detectDefaultPalette().tokens;

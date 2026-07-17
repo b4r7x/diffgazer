@@ -19,6 +19,8 @@ export interface MenuContextValue {
   highlighted: string | null;
   /** Activates an item in menu. */
   activate: (id: string) => void;
+  /** Notifies the owning root menu when a nested menu item is activated. */
+  notifySelect: (id: string) => void;
   /** Highlights an item in menu. */
   highlight: (id: string) => void;
   /**

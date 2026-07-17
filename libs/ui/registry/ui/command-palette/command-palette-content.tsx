@@ -102,7 +102,7 @@ export function CommandPaletteContent({
       onAfterShowModal={focusSearchInput}
       onBackdropClick={() => onOpenChange(false)}
       onCancel={() => (search ? onSearchChange("") : onOpenChange(false))}
-      onClose={handleClose}
+      onExitComplete={handleClose}
       className={cn(commandPaletteContentVariants({ size }), className)}
       data-slot="command-palette-content"
       data-frame={resolvedFrame}

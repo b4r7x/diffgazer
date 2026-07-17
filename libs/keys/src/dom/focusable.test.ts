@@ -70,6 +70,63 @@ describe("focusable utilities", () => {
       });
     });
 
+    it("discovers open shadow-root descendants in composed order", () => {
+      const c = mount(`
+        <button id="before">Before</button>
+        <div id="host">
+          <button id="slotted" slot="actions">Slotted</button>
+          <button id="unslotted">Unslotted</button>
+        </div>
+        <button id="after">After</button>
+      `);
+      const host = queryTestElement(c, "#host");
+      const shadowRoot = host.attachShadow({ mode: "open", delegatesFocus: true });
+      shadowRoot.innerHTML = `
+        <button id="shadow-before">Shadow before</button>
+        <slot name="actions"></slot>
+        <button id="shadow-after">Shadow after</button>
+        <div id="nested-host"></div>
+      `;
+      const nestedHost = queryTestElement(shadowRoot, "#nested-host");
+      nestedHost.attachShadow({ mode: "open" }).innerHTML =
+        '<button id="nested-shadow">Nested shadow</button>';
+
+      expect(getFocusableElements(c).map((element) => element.id)).toEqual([
+        "before",
+        "shadow-before",
+        "slotted",
+        "shadow-after",
+        "nested-shadow",
+        "after",
+      ]);
+    });
+
+    it("keeps focusable hosts unless their shadow root delegates focus", () => {
+      const c = mount(`
+        <div id="plain-host" tabindex="0"></div>
+        <div id="delegating-host" tabindex="0"></div>
+      `);
+      const plainHost = queryTestElement(c, "#plain-host");
+      plainHost.attachShadow({ mode: "open" }).innerHTML =
+        '<button id="plain-shadow">Plain shadow</button>';
+      const delegatingHost = queryTestElement(c, "#delegating-host");
+      const delegatingRoot = delegatingHost.attachShadow({ mode: "open", delegatesFocus: true });
+      // jsdom accepts the option but does not expose ShadowRoot.delegatesFocus yet.
+      Object.defineProperty(delegatingRoot, "delegatesFocus", { value: true });
+      delegatingRoot.innerHTML = '<button id="delegated-shadow">Delegated shadow</button>';
+
+      expect(getFocusableElements(c).map((element) => element.id)).toEqual([
+        "plain-host",
+        "plain-shadow",
+        "delegated-shadow",
+      ]);
+      expect(getTabbableElements(c).map((element) => element.id)).toEqual([
+        "plain-host",
+        "plain-shadow",
+        "delegated-shadow",
+      ]);
+    });
+
     it("skips disabled native elements", () => {
       const c = mount(`
         <button id="a">A</button>
@@ -110,6 +167,55 @@ describe("focusable utilities", () => {
       `);
       const ids = getFocusableElements(c).map((el) => el.id);
       expect(ids).toEqual(["c"]);
+    });
+
+    it("keeps an explicitly visible descendant of a visibility-hidden ancestor reachable", () => {
+      const c = mount(`
+        <div style="visibility:hidden">
+          <button id="visible" style="visibility:visible">Visible override</button>
+        </div>
+      `);
+
+      const target = queryTestElement(c, "#visible");
+      expect(isFocusable(target)).toBe(true);
+      expect(getFocusableElements(c)).toEqual([target]);
+      expect(getTabbableElements(c)).toEqual([target]);
+    });
+
+    it.each([
+      ["content-visibility:hidden", "content-visibility:hidden"],
+      ["visibility:collapse", "visibility:collapse"],
+    ])("skips elements with %s on self or ancestor", (_name, style) => {
+      const c = mount(`
+        <button id="a" style="${style}">A</button>
+        <div style="${style}"><button id="b">B</button></div>
+        <button id="c">C</button>
+      `);
+
+      expect(getFocusableElements(c).map((element) => element.id)).toEqual(["c"]);
+      expect(getTabbableElements(c).map((element) => element.id)).toEqual(["c"]);
+    });
+
+    it("keeps content-visibility:auto descendants reachable", () => {
+      const c = mount(`
+        <div style="content-visibility:auto"><button id="a">A</button></div>
+        <button id="b" style="content-visibility:auto">B</button>
+      `);
+
+      expect(getFocusableElements(c).map((element) => element.id)).toEqual(["a", "b"]);
+      expect(getTabbableElements(c).map((element) => element.id)).toEqual(["a", "b"]);
+    });
+
+    it("skips hidden=until-found descendants until the hidden state is removed", () => {
+      const c = mount(`
+        <div id="hidden-section" hidden="until-found"><button id="a">A</button></div>
+        <button id="b">B</button>
+      `);
+
+      expect(getFocusableElements(c).map((element) => element.id)).toEqual(["b"]);
+
+      queryTestElement(c, "hidden-section").removeAttribute("hidden");
+      expect(getFocusableElements(c).map((element) => element.id)).toEqual(["a", "b"]);
     });
 
     it("skips elements with inert on self or ancestor", () => {
@@ -181,6 +287,26 @@ describe("focusable utilities", () => {
       expect(ids).toEqual(["c", "b", "a", "e"]);
     });
 
+    it("orders positive tabindex values across light DOM and an open shadow root", () => {
+      const c = mount(`
+        <button id="before" tabindex="2">Before</button>
+        <div id="host"></div>
+        <button id="after" tabindex="1">After</button>
+      `);
+      const host = queryTestElement(c, "#host");
+      host.attachShadow({ mode: "open" }).innerHTML = `
+        <button id="shadow-a" tabindex="1">Shadow A</button>
+        <button id="shadow-b" tabindex="2">Shadow B</button>
+      `;
+
+      expect(getTabbableElements(c).map((element) => element.id)).toEqual([
+        "shadow-a",
+        "after",
+        "before",
+        "shadow-b",
+      ]);
+    });
+
     it("excludes negative tabindex values from Tab order", () => {
       const c = mount(`
         <button id="a" tabindex="-1">A</button>
@@ -191,9 +317,21 @@ describe("focusable utilities", () => {
       expect(getTabbableElements(c).map((el) => el.id)).toEqual(["c"]);
     });
 
-    it("includes summary elements in Tab order", () => {
+    it("keeps the first summary reachable while excluding descendants of closed details", () => {
       const c = mount(`
         <details>
+          <summary id="a">Details</summary>
+          <button id="b">B</button>
+        </details>
+      `);
+
+      expect(getFocusableElements(c).map((el) => el.id)).toEqual(["a"]);
+      expect(getTabbableElements(c).map((el) => el.id)).toEqual(["a"]);
+    });
+
+    it("includes descendants of open details in Tab order", () => {
+      const c = mount(`
+        <details open>
           <summary id="a">Details</summary>
           <button id="b">B</button>
         </details>
@@ -215,6 +353,16 @@ describe("focusable utilities", () => {
       expect(getTabbableElements(c).map((el) => el.id)).toEqual(["b", "d", "f"]);
     });
 
+    it("uses a Tab-eligible radio when the checked group member has negative tabindex", () => {
+      const c = mount(`
+        <input id="excluded" type="radio" name="choice" checked tabindex="-1" />
+        <input id="eligible" type="radio" name="choice" />
+      `);
+
+      expect(getFocusableElements(c).map((el) => el.id)).toEqual(["excluded", "eligible"]);
+      expect(getTabbableElements(c).map((el) => el.id)).toEqual(["eligible"]);
+    });
+
     it("keeps same-name radios in different forms as separate Tab stops", () => {
       const c = mount(`
         <form><input id="a" type="radio" name="choice" /></form>
@@ -222,6 +370,22 @@ describe("focusable utilities", () => {
       `);
 
       expect(getTabbableElements(c).map((el) => el.id)).toEqual(["a", "b"]);
+    });
+
+    it("keeps one Tab stop per same-name radio group in separate shadow roots", () => {
+      const c = mount('<div id="host-a"></div><div id="host-b"></div>');
+      const rootA = queryTestElement(c, "host-a").attachShadow({ mode: "open" });
+      rootA.innerHTML = `
+        <input id="a-first" type="radio" name="choice" />
+        <input id="a-checked" type="radio" name="choice" checked />
+      `;
+      const rootB = queryTestElement(c, "host-b").attachShadow({ mode: "open" });
+      rootB.innerHTML = `
+        <input id="b-first" type="radio" name="choice" />
+        <input id="b-second" type="radio" name="choice" />
+      `;
+
+      expect(getTabbableElements(c).map((element) => element.id)).toEqual(["a-checked", "b-first"]);
     });
   });
 
@@ -272,6 +436,25 @@ describe("focusable utilities", () => {
 
       host.style.display = "none";
       expect(isFocusable(child)).toBe(false);
+    });
+
+    it("treats a shadow child under closed details as unreachable", () => {
+      const c = mount(`
+        <details>
+          <summary id="summary">Details</summary>
+          <div id="host"></div>
+        </details>
+      `);
+      const details = c.querySelector("details");
+      const host = queryTestElement(c, "#host");
+      const shadowRoot = host.attachShadow({ mode: "open" });
+      const child = document.createElement("button");
+      child.textContent = "Shadow child";
+      shadowRoot.append(child);
+
+      expect(isFocusable(child)).toBe(false);
+      details?.setAttribute("open", "");
+      expect(isFocusable(child)).toBe(true);
     });
 
     it("works with elements from another document realm", () => {

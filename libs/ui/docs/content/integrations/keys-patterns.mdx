@@ -170,13 +170,16 @@ function KeyboardTabs() {
 ```tsx
 import { useRef } from "react"
 import { useNavigation } from "@diffgazer/keys"
-import { Button } from "@/components/ui/button"
 
 const items = [
   { id: "main", label: "main" },
   { id: "develop", label: "develop" },
   { id: "feature-auth", label: "feature/auth" },
 ]
+
+function getOptionId(id) {
+  return `branch-${id}`
+}
 
 function BranchList({ onChoose }) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -189,18 +192,25 @@ function BranchList({ onChoose }) {
   })
 
   return (
-    <div ref={containerRef} role="listbox" tabIndex={0} onKeyDown={onKeyDown}>
+    <div
+      ref={containerRef}
+      role="listbox"
+      aria-label="Branches"
+      aria-activedescendant={highlighted ? getOptionId(highlighted) : undefined}
+      tabIndex={0}
+      onKeyDown={onKeyDown}
+    >
       {items.map((item) => (
-        <Button
+        <div
           key={item.id}
+          id={getOptionId(item.id)}
           data-value={item.id}
           role="option"
-          aria-selected={highlighted === item.id}
-          variant={isHighlighted(item.id) ? "secondary" : "ghost"}
-          onClick={() => onChoose(item.id)}
+          aria-selected={isHighlighted(item.id)}
+          data-highlighted={isHighlighted(item.id) || undefined}
         >
           {item.label}
-        </Button>
+        </div>
       ))}
     </div>
   )

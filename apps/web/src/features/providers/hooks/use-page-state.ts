@@ -1,9 +1,18 @@
 import { resolveSelectedId } from "@diffgazer/core/review";
+import type { ProviderWithStatus } from "@diffgazer/core/schemas/config";
 import { useRef, useState } from "react";
 import { useProvidersKeyboard } from "@/features/providers/hooks/use-keyboard";
-import { useProviderManagement } from "@/features/providers/hooks/use-provider-management";
+import {
+  type ApiKeyDialogOwner,
+  type ModelDialogOwner,
+  useProviderManagement,
+} from "@/features/providers/hooks/use-provider-management";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
-import { filterProviders, type ProviderFilter } from "../lib/filter";
+import { filterProviders, findProviderById, type ProviderFilter } from "../lib/filter";
+
+type ProviderDialog =
+  | { kind: "api-key"; owner: ApiKeyDialogOwner; provider: ProviderWithStatus }
+  | { kind: "model"; owner: ModelDialogOwner; provider: ProviderWithStatus };
 
 export function useProvidersPageState() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -17,10 +26,10 @@ export function useProvidersPageState() {
     providers,
     isLoading,
     isSubmitting,
-    apiKeyDialogOpen,
-    setApiKeyDialogOpen,
-    modelDialogOpen,
-    setModelDialogOpen,
+    dialogOwner,
+    openApiKeyDialog,
+    openModelDialog,
+    closeDialog,
     handleSaveApiKey,
     handleRemoveKey,
     handleSelectProvider,
@@ -32,11 +41,34 @@ export function useProvidersPageState() {
   const effectiveSelectedId = resolveSelectedId(selectedId, filteredProviders);
 
   const selectedProvider = effectiveSelectedId
-    ? (filteredProviders.find((p) => p.id === effectiveSelectedId) ?? null)
+    ? findProviderById(filteredProviders, effectiveSelectedId)
     : null;
+  const dialogProvider = findProviderById(providers, dialogOwner?.providerId ?? null);
+  let dialog: ProviderDialog | null = null;
+  if (dialogOwner && dialogProvider) {
+    dialog =
+      dialogOwner.kind === "api-key"
+        ? { kind: "api-key", owner: dialogOwner, provider: dialogProvider }
+        : { kind: "model", owner: dialogOwner, provider: dialogProvider };
+  }
 
-  const dialogOpen = apiKeyDialogOpen || modelDialogOpen;
-  const needsModel = selectedProvider !== null && !selectedProvider.model;
+  const dialogOpen = dialogOwner !== null;
+
+  const activateProvider = (provider: ProviderWithStatus) => {
+    if (isSubmitting) return;
+    if (!provider.hasApiKey) {
+      openApiKeyDialog(provider.id);
+      return;
+    }
+
+    const model = provider.model || provider.defaultModel;
+    if (!model) {
+      openModelDialog(provider.id);
+      return;
+    }
+
+    void handleSelectProvider(provider.id, provider.name, model);
+  };
 
   const {
     focusZone,
@@ -61,17 +93,22 @@ export function useProvidersPageState() {
     dialogOpen,
     inputRef,
     listContainerRef,
-    onSetApiKey: () => setApiKeyDialogOpen(true),
-    onSelectModel: () => setModelDialogOpen(true),
-    onRemoveKey: handleRemoveKey,
-    onSelectProvider: handleSelectProvider,
+    onSetApiKey: () => {
+      if (selectedProvider) openApiKeyDialog(selectedProvider.id);
+    },
+    onSelectModel: () => {
+      if (selectedProvider) openModelDialog(selectedProvider.id);
+    },
+    onRemoveKey: async (providerId) => {
+      void (await handleRemoveKey(providerId));
+    },
+    onActivateProvider: activateProvider,
   });
 
   return {
     isLoading,
     filteredProviders,
     selectedProvider,
-    needsModel,
 
     search: {
       inputRef,
@@ -87,10 +124,10 @@ export function useProvidersPageState() {
     },
 
     dialogs: {
-      apiKeyOpen: apiKeyDialogOpen,
-      setApiKeyOpen: setApiKeyDialogOpen,
-      modelOpen: modelDialogOpen,
-      setModelOpen: setModelDialogOpen,
+      current: dialog,
+      openApiKey: openApiKeyDialog,
+      openModel: openModelDialog,
+      close: closeDialog,
       anyOpen: dialogOpen,
     },
 
@@ -98,7 +135,7 @@ export function useProvidersPageState() {
       saveApiKey: handleSaveApiKey,
       removeKey: handleRemoveKey,
       selectModel: handleSelectModel,
-      selectProvider: handleSelectProvider,
+      activateProvider,
     },
 
     isSubmitting,

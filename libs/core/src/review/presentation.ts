@@ -1,11 +1,52 @@
-import type { AgentState, AgentStatus } from "../schemas/events/index.js";
-import type { ReviewMode } from "../schemas/review/index.js";
+import type { SetupStatus } from "../schemas/config/index.js";
+import type { AgentState, AgentStatus, LensStat } from "../schemas/events/index.js";
+import type { FixPlanStep, ReviewIssue, ReviewMode } from "../schemas/review/index.js";
 import { pluralize } from "../strings.js";
 import type { DetailsEmptyKind } from "./details-empty.js";
 
 export interface ReviewEmptyCopy {
   title: string;
   description?: string;
+}
+
+export interface IssueFixStepPresentation {
+  completionIndex: number;
+  number: number;
+  action: string;
+  risk?: FixPlanStep["risk"];
+  files: readonly string[];
+}
+
+export interface IssueDetailsPresentation {
+  category: ReviewIssue["category"];
+  confidence: string;
+  range: string;
+  location: string;
+  fixPlan: readonly IssueFixStepPresentation[];
+}
+
+function formatIssueLineRange(start: number | null, end: number | null): string {
+  if (start == null) return "?";
+  if (end == null) return String(start);
+  return `${String(start)}-${String(end)}`;
+}
+
+/** Builds the issue metadata and fix-plan contract shared by web and TUI details panes. */
+export function toIssueDetailsPresentation(issue: ReviewIssue): IssueDetailsPresentation {
+  const range = formatIssueLineRange(issue.line_start, issue.line_end);
+  return {
+    category: issue.category,
+    confidence: `${String(Math.round(issue.confidence * 100))}%`,
+    range,
+    location: `${issue.file}:${range}`,
+    fixPlan: (issue.fixPlan ?? []).map((step, completionIndex) => ({
+      completionIndex,
+      number: step.step,
+      action: step.action,
+      risk: step.risk,
+      files: [...(step.files ?? [])],
+    })),
+  };
 }
 
 export const DETAILS_EMPTY_COPY = {
@@ -89,15 +130,27 @@ export interface PartialFailureWarning {
  * error takes precedence.
  */
 export function getPartialFailureWarning(
-  agents: AgentState[],
+  agents: readonly AgentState[],
   error: string | null,
+  lensStats?: readonly LensStat[],
 ): PartialFailureWarning {
   const failedAgents = agents.filter((agent) => agent.status === "error");
   const hasPartialFailure = failedAgents.length > 0 && !error;
+  if (!hasPartialFailure) return { hasPartialFailure: false, message: "" };
+
   const failedAgentNames = failedAgents.map((agent) => agent.meta.name).join(", ");
+  const allFailedLensesWereRateLimited = failedAgents.every((agent) =>
+    lensStats?.some(
+      (stat) =>
+        stat.lensId === agent.meta.lens &&
+        stat.status === "failed" &&
+        stat.errorCode === "RATE_LIMITED",
+    ),
+  );
+  const failureReason = allFailedLensesWereRateLimited ? " (rate limited)" : "";
   return {
-    hasPartialFailure,
-    message: `${pluralize(failedAgents.length, "agent")} failed (likely rate limited): ${failedAgentNames}. Results may be incomplete.`,
+    hasPartialFailure: true,
+    message: `${pluralize(failedAgents.length, "agent")} failed${failureReason}: ${failedAgentNames}. Results may be incomplete.`,
   };
 }
 
@@ -106,16 +159,18 @@ export interface ApiKeyMissingCopy {
   body: string;
 }
 
-/**
- * Variant-aware copy for the missing-provider gate: a missing model vs a missing
- * API key, each interpolating the active provider when known.
- */
 export function getApiKeyMissingCopy(input: {
   provider?: string;
-  missingModel: boolean;
+  missing: Readonly<SetupStatus["missing"]>;
 }): ApiKeyMissingCopy {
   const forProvider = input.provider ? ` for ${input.provider}` : "";
-  if (input.missingModel) {
+  if (input.missing.includes("secretsStorage")) {
+    return {
+      title: "Secrets Storage Required",
+      body: "Choose a secrets storage backend in Settings before starting a review.",
+    };
+  }
+  if (!input.missing.includes("provider") && input.missing.includes("model")) {
     return {
       title: "Model Required",
       body: `No model selected${forProvider}. Set up a model in Settings to start reviewing code.`,

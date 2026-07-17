@@ -37,16 +37,28 @@ function getOverallState({
   serverState,
   contextStatus,
   provider,
+  setupStatus,
+  initLoading,
+  initError,
 }: {
   isRefreshingAll: boolean;
   serverState: DiagnosticsData["serverState"];
   contextStatus: DiagnosticsData["contextStatus"];
   provider: string | undefined;
+  setupStatus: DiagnosticsData["setupStatus"];
+  initLoading: boolean;
+  initError: string | null;
 }): OverallState {
-  if (isRefreshingAll || serverState.status === "checking" || contextStatus === "loading")
+  if (serverState.status === "error" || contextStatus === "error" || initError) return "error";
+  if (
+    isRefreshingAll ||
+    serverState.status === "checking" ||
+    contextStatus === "loading" ||
+    initLoading
+  ) {
     return "loading";
-  if (serverState.status === "error" && contextStatus === "error") return "error";
-  if (!provider && contextStatus === "missing") return "empty";
+  }
+  if (!provider || !setupStatus?.isReady || contextStatus === "missing") return "empty";
   return "success";
 }
 
@@ -54,10 +66,10 @@ export function SettingsDiagnosticsPage() {
   const { provider, model } = useConfigData();
   const diagnostics = useDiagnosticsData();
   const {
-    serverState,
     setupStatus,
     initLoading,
     initError,
+    serverState,
     contextStatus,
     contextGeneratedAt,
     contextError,
@@ -71,7 +83,6 @@ export function SettingsDiagnosticsPage() {
     getActionProps,
     focusFallbackRef,
     isRefreshingAll,
-    refreshError,
     lastRefreshedAt,
     handleRefreshAll,
   } = useDiagnosticsKeyboard({ diagnostics });
@@ -82,12 +93,20 @@ export function SettingsDiagnosticsPage() {
   const context = getContextPresentation(contextStatus, contextError);
   const contextActionLabel = getContextActionLabel(isRefreshing, contextStatus);
   const serverError = serverState.status === "error" ? serverState.message : null;
-  const diagnosticsError = refreshError ?? contextError ?? serverError;
+  const diagnosticsError = initError ?? contextError ?? serverError;
   const {
     refreshAllDisabled: isRefreshAllDisabled,
     contextActionDisabled: isContextActionDisabled,
   } = deriveDiagnosticsActions({ canRegenerate, isRefreshing, isRefreshingAll });
-  const overallState = getOverallState({ isRefreshingAll, serverState, contextStatus, provider });
+  const overallState = getOverallState({
+    isRefreshingAll,
+    serverState,
+    contextStatus,
+    provider,
+    setupStatus,
+    initLoading,
+    initError,
+  });
 
   return (
     <div className="flex flex-1 overflow-hidden px-4 justify-center items-center">
@@ -99,9 +118,9 @@ export function SettingsDiagnosticsPage() {
       >
         <Panel.Header className="bg-secondary border-border px-4 py-2">
           <Panel.Title className="text-foreground">System Diagnostics</Panel.Title>
-          <span className="text-xs text-muted-foreground">
+          <output className="text-xs text-muted-foreground">
             {OVERALL_STATE_LABELS[overallState]}
-          </span>
+          </output>
         </Panel.Header>
 
         <Panel.Content

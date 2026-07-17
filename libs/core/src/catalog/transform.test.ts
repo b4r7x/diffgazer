@@ -85,6 +85,8 @@ describe("catalogToModelInfo", () => {
     expect(flash.name).toBe("Gemini 2.5 Flash");
     expect(flash.description.length).toBeGreaterThan(0);
     expect(flash.description).toContain("1M context");
+    expect(flash.contextLength).toBe(1048576);
+    expect(flash.maxOutputTokens).toBe(65536);
     const pro3 = requireValue(
       models.find((m) => m.id === "gemini-3-pro-preview"),
       "Gemini 3 Pro model info",

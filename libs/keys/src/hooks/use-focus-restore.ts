@@ -29,6 +29,7 @@ export interface UseFocusRestoreReturn {
 
 interface FocusRestoreEntry {
   target: HTMLElement | null;
+  fallbackTargets: HTMLElement[];
   ownerDocument: Document;
 }
 
@@ -68,15 +69,31 @@ function releaseEntry(
   options: Required<UseFocusRestoreOptions>,
 ): boolean {
   const stack = getFocusRestoreStack(entry.ownerDocument);
-  const isTopEntry = stack.at(-1) === entry;
-  removeEntry(entry);
+  const index = stack.lastIndexOf(entry);
+  if (index < 0) return false;
 
-  if (!shouldRestore || !options.enabled || !isTopEntry) return false;
+  const isTopEntry = index === stack.length - 1;
+  stack.splice(index, 1);
 
-  return (
-    restoreFocus(entry.target, { preventScroll: options.preventScroll }) ||
-    restoreFocus(options.fallback, { preventScroll: options.preventScroll })
+  if (!shouldRestore || !options.enabled) return false;
+
+  const candidates = [entry.target, ...entry.fallbackTargets].filter(
+    (candidate): candidate is HTMLElement => candidate !== null,
   );
+  if (!isTopEntry) {
+    for (const entryAbove of stack.slice(index)) {
+      entryAbove.fallbackTargets = [
+        ...candidates,
+        ...entryAbove.fallbackTargets.filter((candidate) => !candidates.includes(candidate)),
+      ];
+    }
+    return false;
+  }
+
+  for (const candidate of candidates) {
+    if (restoreFocus(candidate, { preventScroll: options.preventScroll })) return true;
+  }
+  return restoreFocus(options.fallback, { preventScroll: options.preventScroll });
 }
 
 /**
@@ -117,10 +134,11 @@ export function useFocusRestore(options: UseFocusRestoreOptions = {}): UseFocusR
     }
 
     const nextTarget = getRestorableFocusTarget(doc) ?? resolvedOptions.fallback;
-    const entry = entryRef.current ?? { target: null, ownerDocument: doc };
+    const entry = entryRef.current ?? { target: null, fallbackTargets: [], ownerDocument: doc };
 
     removeEntry(entry);
     entry.target = nextTarget;
+    entry.fallbackTargets = [];
     entry.ownerDocument = doc;
     entryRef.current = entry;
     getFocusRestoreStack(doc).push(entry);

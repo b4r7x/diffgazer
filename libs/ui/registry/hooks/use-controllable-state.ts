@@ -17,8 +17,8 @@ export interface UseControllableStateOptions<T> {
 /**
  * Generic controlled/uncontrolled state hook.
  *
- * Returns the current value, a setter that accepts direct values or updater
- * functions, and a boolean that reports whether the consumer controls the value.
+ * Returns the current value, its public setter, a boolean that reports whether
+ * the consumer controls the value, and a silent uncontrolled reset setter.
  */
 export function useControllableState<T>({
   value: controlledValue,
@@ -59,5 +59,11 @@ export function useControllableState<T>({
     onChangeNow?.(resolved);
   }, []);
 
-  return [current, setValue, isControlled] as const;
+  const resetValue = useCallback((next: T) => {
+    if (latest.current.isControlled || Object.is(internalRef.current, next)) return;
+    internalRef.current = next;
+    setInternal(next);
+  }, []);
+
+  return [current, setValue, isControlled, resetValue] as const;
 }

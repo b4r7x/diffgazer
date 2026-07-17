@@ -4,6 +4,10 @@ import { basename, dirname, relative, resolve } from "node:path";
 import { collectAllFiles, resolveInside } from "../utils/fs.js";
 import type { LoadedLibraryArtifacts, SyncOutputPaths, SyncState } from "./types.js";
 
+function directoryHasFiles(dirPath: string): boolean {
+  return existsSync(dirPath) && collectAllFiles(dirPath).length > 0;
+}
+
 export function computeSyncFingerprint(
   origin: string,
   syncSchemaVersion: number,
@@ -61,15 +65,20 @@ function docsOutputsExist(
       required.push(resolve(paths.generatedDir, artifact.id, basename(generatedFile)));
     }
 
+    const targetAssetsDir = resolve(paths.libraryAssetsDir, artifact.id);
     const sourceAssetsDirRel = artifact.manifest.docs.assetsDir;
-    if (sourceAssetsDirRel) {
+    if (!sourceAssetsDirRel) {
+      if (directoryHasFiles(targetAssetsDir)) return false;
+    } else {
       const sourceAssetsDir = resolveInside(
         artifact.artifactRoot,
         sourceAssetsDirRel,
         `${artifact.id} artifact assets path`,
       );
       if (existsSync(sourceAssetsDir)) {
-        required.push(resolve(paths.libraryAssetsDir, artifact.id));
+        required.push(targetAssetsDir);
+      } else if (directoryHasFiles(targetAssetsDir)) {
+        return false;
       }
     }
 

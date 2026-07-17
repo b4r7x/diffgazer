@@ -29,6 +29,7 @@
 
   dialog[data-state="closed"] {
     animation: dialog-out var(--dialog-duration) ease-in forwards;
+    pointer-events: none;
   }
 
   /*

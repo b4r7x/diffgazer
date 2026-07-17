@@ -5,8 +5,10 @@ import {
   type ComponentProps,
   isValidElement,
   type ReactNode,
+  useCallback,
   useId,
   useMemo,
+  useState,
 } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { cn } from "@/lib/utils";
@@ -42,8 +44,14 @@ export function SidebarSection({
 }: SidebarSectionProps) {
   const titleId = useId();
   const panelId = useId();
+  const [registeredTitleId, setRegisteredTitleId] = useState<string | null>(null);
+  const registerTitle = useCallback((id: string) => setRegisteredTitleId(id), []);
+  const unregisterTitle = useCallback(
+    (id: string) => setRegisteredTitleId((current) => (current === id ? null : current)),
+    [],
+  );
   const labelSourceId =
-    ariaLabelledBy ?? (containsSidebarSectionTitleElement(children) ? titleId : undefined);
+    ariaLabelledBy ?? registeredTitleId ?? findSidebarSectionTitleId(children, titleId);
 
   const [isOpen, setIsOpen] = useControllableState<boolean>({
     value: controlledOpen,
@@ -57,9 +65,11 @@ export function SidebarSection({
       open: isOpen,
       onToggle: () => setIsOpen((prev) => !prev),
       titleId,
+      registerTitle,
+      unregisterTitle,
       panelId,
     }),
-    [collapsible, isOpen, setIsOpen, titleId, panelId],
+    [collapsible, isOpen, setIsOpen, titleId, registerTitle, unregisterTitle, panelId],
   );
 
   return (
@@ -79,10 +89,15 @@ export function SidebarSection({
   );
 }
 
-function containsSidebarSectionTitleElement(children: ReactNode): boolean {
-  return Children.toArray(children).some((child) => {
-    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
-    if (child.type === SidebarSectionTitle) return true;
-    return containsSidebarSectionTitleElement(child.props.children);
-  });
+function findSidebarSectionTitleId(children: ReactNode, fallbackId: string): string | undefined {
+  for (const child of Children.toArray(children)) {
+    if (!isValidElement<{ id?: unknown; children?: ReactNode }>(child)) continue;
+    if (child.type === SidebarSectionTitle) {
+      return typeof child.props.id === "string" ? child.props.id : fallbackId;
+    }
+    if (child.type === SidebarSection) continue;
+    const nestedTitleId = findSidebarSectionTitleId(child.props.children, fallbackId);
+    if (nestedTitleId) return nestedTitleId;
+  }
+  return undefined;
 }

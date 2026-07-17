@@ -1,20 +1,17 @@
 import { z } from "zod";
 
-const LOG_TAG_TYPES = ["system", "tool", "lens", "warning", "error", "agent", "thinking"] as const;
-const LogTagTypeSchema = z.enum(LOG_TAG_TYPES);
-export type LogTagType = z.infer<typeof LogTagTypeSchema>;
+export type LogTagType = "system" | "tool" | "lens" | "warning" | "error" | "agent" | "thinking";
 
-const LogEntryDataSchema = z.object({
-  id: z.string(),
-  timestamp: z.union([z.date(), z.string()]),
-  tag: z.string(),
-  tagType: LogTagTypeSchema.optional(),
-  message: z.string(),
-  isWarning: z.boolean().optional(),
-  source: z.string().optional(),
-  isError: z.boolean().optional(),
-});
-export type LogEntryData = z.infer<typeof LogEntryDataSchema>;
+export interface LogEntryData {
+  id: string;
+  timestamp: Date | string;
+  tag: string;
+  tagType?: LogTagType;
+  message: string;
+  isWarning?: boolean;
+  source?: string;
+  isError?: boolean;
+}
 
 /** @see libs/ui/registry/ui/badge/badge.tsx for the component-library copy. */
 const BADGE_VARIANTS = ["success", "warning", "error", "info", "neutral"] as const;

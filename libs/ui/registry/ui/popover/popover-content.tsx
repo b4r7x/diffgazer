@@ -8,6 +8,7 @@ import {
   type ReactNode,
   type Ref,
   type RefObject,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -16,10 +17,34 @@ import { useComposedRefs } from "@/hooks/use-composed-refs";
 import type { FloatingAlign, FloatingSide } from "@/hooks/use-floating-position";
 import { useEscapeKey, useOutsideClick } from "@/hooks/use-outside-click";
 import { FloatingPanel, useFloatingPanelContext } from "../floating-panel";
+import { useAriaLinkedPortalContainer } from "../shared/portal";
 import { type PopoverPopupRole, usePopoverContext } from "./popover-context";
 import { useAutoFocus } from "./use-auto-focus";
 
 const FALLBACK_POPOVER_DIALOG_LABEL = "Popover";
+
+function isFocusInDescendantPopup(
+  next: Node,
+  content: HTMLElement,
+  trigger: HTMLElement,
+  ownerDocument: Document,
+): boolean {
+  const View = ownerDocument.defaultView;
+  if (!View || !(next instanceof View.Element)) return false;
+  const controlledIds = new Set<string>();
+  for (const controller of ownerDocument.querySelectorAll<HTMLElement>("[aria-controls]")) {
+    if (!content.contains(controller) && !trigger.contains(controller)) continue;
+    const ids = controller.getAttribute("aria-controls")?.split(/\s+/) ?? [];
+    for (const id of ids) controlledIds.add(id);
+  }
+
+  let current: Element | null = next;
+  while (current) {
+    if (current.id && controlledIds.has(current.id)) return true;
+    current = current.parentElement;
+  }
+  return false;
+}
 
 /** Props for popover content. */
 export interface PopoverContentProps
@@ -99,6 +124,10 @@ export function PopoverContent({
   const contentRef = useRef<HTMLDivElement>(null);
   const wasOpenRef = useRef(open);
   const restoreFocusAfterCloseRef = useRef(false);
+  const dismissRequestedRef = useRef(false);
+  const dismissResetRef = useRef<{ timer: number; view: Window } | null>(null);
+  const pointerFocusTransferRef = useRef(false);
+  const pointerResetRef = useRef<{ timer: number; view: Window } | null>(null);
   const composedRef = useComposedRefs(contentRef, ref);
 
   const isHover = triggerMode === "hover";
@@ -108,6 +137,46 @@ export function PopoverContent({
   const isMenu = contentRole === "menu";
   const resolvedAriaLabel =
     ariaLabel ?? (isDialog && !ariaLabelledBy ? FALLBACK_POPOVER_DIALOG_LABEL : undefined);
+  const resolvedPortalContainer = useAriaLinkedPortalContainer(
+    portalContainer,
+    triggerRef,
+    "Popover",
+  );
+
+  const requestClose = useCallback(
+    (restoreFocus: boolean) => {
+      if (dismissRequestedRef.current) return;
+      dismissRequestedRef.current = true;
+      const view =
+        triggerRef.current?.ownerDocument.defaultView ??
+        contentRef.current?.ownerDocument.defaultView;
+      if (view) {
+        const timer = view.setTimeout(() => {
+          dismissResetRef.current = null;
+          dismissRequestedRef.current = false;
+        }, 0);
+        dismissResetRef.current = { timer, view };
+      } else {
+        dismissRequestedRef.current = false;
+      }
+      markDismissed();
+      onOpenChange(false);
+      if (restoreFocus) triggerRef.current?.focus();
+    },
+    [markDismissed, onOpenChange, triggerRef],
+  );
+
+  useEffect(
+    () => () => {
+      const pendingReset = dismissResetRef.current;
+      if (pendingReset) pendingReset.view.clearTimeout(pendingReset.timer);
+      const pendingPointerReset = pointerResetRef.current;
+      if (pendingPointerReset) {
+        pendingPointerReset.view.clearTimeout(pendingPointerReset.timer);
+      }
+    },
+    [],
+  );
 
   const isFocusWithinPopover = () => {
     const content = contentRef.current;
@@ -153,9 +222,7 @@ export function PopoverContent({
   useOutsideClick(
     contentRef,
     () => {
-      markDismissed();
-      onOpenChange(false);
-      triggerRef.current?.focus();
+      requestClose(false);
     },
     open && isClick,
     [triggerRef],
@@ -164,41 +231,71 @@ export function PopoverContent({
   useEscapeKey(
     (e) => {
       const shouldRestoreFocus = isFocusWithinPopover();
+      e.preventDefault();
       if (shouldRestoreFocus) {
         e.stopPropagation();
-        e.preventDefault();
       }
-      markDismissed();
-      onOpenChange(false);
-      if (shouldRestoreFocus) triggerRef.current?.focus();
+      requestClose(shouldRestoreFocus);
     },
     open,
     { ref: contentRef, excludeRefs: [triggerRef] },
   );
 
-  // Focus-out dismissal for click-mode popovers covers focus moves that do not
-  // start with a Tab keydown inside the content.
   useEffect(() => {
     if (!open || !isClick) return;
+    const trigger = triggerRef.current;
     const content = contentRef.current;
-    if (!content) return;
+    const ownerDocument = trigger?.ownerDocument ?? content?.ownerDocument;
+    if (!ownerDocument || !trigger || !content) return;
 
     const handleFocusOut = (event: globalThis.FocusEvent) => {
+      const path = typeof event.composedPath === "function" ? event.composedPath() : [];
+      const target = event.target;
+      const View = ownerDocument.defaultView;
+      const startedInPair =
+        path.includes(trigger) ||
+        path.includes(content) ||
+        (!!View &&
+          target instanceof View.Node &&
+          (trigger.contains(target) || content.contains(target)));
+      if (!startedInPair) return;
+      if (pointerFocusTransferRef.current) return;
+
       const next = event.relatedTarget;
-      const View = content.ownerDocument.defaultView;
       if (View && next instanceof View.Node) {
-        const path = typeof event.composedPath === "function" ? event.composedPath() : [];
-        const inContent = content.contains(next) || path.includes(content);
-        const trigger = triggerRef.current;
-        const inTrigger = !!trigger && (trigger.contains(next) || path.includes(trigger));
-        if (inContent || inTrigger) return;
+        if (content.contains(next) || trigger.contains(next)) return;
+        if (isFocusInDescendantPopup(next, content, trigger, ownerDocument)) return;
       }
-      onOpenChange(false);
+      requestClose(false);
     };
 
-    content.addEventListener("focusout", handleFocusOut);
-    return () => content.removeEventListener("focusout", handleFocusOut);
-  }, [open, isClick, onOpenChange, triggerRef]);
+    const handlePointerStart = () => {
+      const pendingReset = pointerResetRef.current;
+      if (pendingReset) pendingReset.view.clearTimeout(pendingReset.timer);
+      pointerFocusTransferRef.current = true;
+      const view = ownerDocument.defaultView;
+      if (!view) {
+        pointerFocusTransferRef.current = false;
+        return;
+      }
+      const timer = view.setTimeout(() => {
+        pointerResetRef.current = null;
+        pointerFocusTransferRef.current = false;
+      }, 0);
+      pointerResetRef.current = { timer, view };
+    };
+
+    ownerDocument.addEventListener("focusout", handleFocusOut);
+    ownerDocument.addEventListener("pointerdown", handlePointerStart, true);
+    ownerDocument.addEventListener("mousedown", handlePointerStart, true);
+    ownerDocument.addEventListener("touchstart", handlePointerStart, true);
+    return () => {
+      ownerDocument.removeEventListener("focusout", handleFocusOut);
+      ownerDocument.removeEventListener("pointerdown", handlePointerStart, true);
+      ownerDocument.removeEventListener("mousedown", handlePointerStart, true);
+      ownerDocument.removeEventListener("touchstart", handlePointerStart, true);
+    };
+  }, [open, isClick, requestClose, triggerRef]);
 
   const handleMouseEnter = (e: MouseEvent<HTMLDivElement>) => {
     onMouseEnter?.(e);
@@ -233,19 +330,11 @@ export function PopoverContent({
 
     if (e.key === "Escape") {
       const shouldRestoreFocus = isFocusWithinPopover();
+      e.preventDefault();
       if (shouldRestoreFocus) {
         e.stopPropagation();
-        e.preventDefault();
       }
-      markDismissed();
-      onOpenChange(false);
-      if (shouldRestoreFocus) triggerRef.current?.focus();
-      return;
-    }
-
-    if (e.key === "Tab") {
-      onOpenChange(false);
-      triggerRef.current?.focus();
+      requestClose(shouldRestoreFocus);
     }
   };
 
@@ -256,7 +345,7 @@ export function PopoverContent({
       {...rest}
       open={open}
       triggerRef={triggerRef}
-      portalContainer={portalContainer}
+      portalContainer={resolvedPortalContainer}
       side={side}
       align={align}
       sideOffset={sideOffset}

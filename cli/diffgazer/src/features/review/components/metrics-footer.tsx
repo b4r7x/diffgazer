@@ -3,14 +3,14 @@ import { Box, Text } from "ink";
 import { useTheme } from "../../../theme/provider";
 
 export interface ReviewMetricsFooterProps {
-  filesProcessed: number;
+  filesIncluded: number;
   issuesFound: number;
   elapsed: number;
   isStreaming: boolean;
 }
 
 export function ReviewMetricsFooter({
-  filesProcessed,
+  filesIncluded,
   issuesFound,
   elapsed,
   isStreaming,
@@ -19,8 +19,8 @@ export function ReviewMetricsFooter({
 
   return (
     <Box borderStyle="single" borderColor={tokens.border} paddingX={1}>
-      <Text color={tokens.muted}>Files: </Text>
-      <Text color={tokens.fg}>{filesProcessed}</Text>
+      <Text color={tokens.muted}>Prompt: </Text>
+      <Text color={tokens.fg}>{filesIncluded}</Text>
       <Text color={tokens.muted}> | Issues: </Text>
       <Text color={issuesFound > 0 ? tokens.warning : tokens.fg}>{issuesFound}</Text>
       <Text color={tokens.muted}> | Time: </Text>

@@ -5,11 +5,13 @@ import type {
   OpenRouterModelsResponse,
   ProviderModelsResponse,
 } from "@diffgazer/core/schemas/config";
+import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
+import { terminalCellWidth } from "../../../lib/terminal-width";
 import { escapeRegExp } from "../../../testing/escape-regexp";
 import { CliThemeProvider } from "../../../theme/provider";
 import { ModelSelectOverlay } from "./model-select-overlay";
@@ -291,20 +293,6 @@ const OPENROUTER_MODELS: OpenRouterModelsResponse = {
   cached: false,
 };
 
-function createDeferred<T>(): {
-  promise: Promise<T>;
-  resolve: (value: T) => void;
-  reject: (reason: unknown) => void;
-} {
-  let resolve!: (value: T) => void;
-  let reject!: (reason: unknown) => void;
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-  return { promise, resolve, reject };
-}
-
 describe("ModelSelectOverlay selection (Enter -> activate -> close)", () => {
   afterEach(() => {
     cleanup();
@@ -389,10 +377,12 @@ describe("ModelSelectOverlay saving state", () => {
     expect(countPrefixes(lastFrame(), secondName).highlighted).toBe(0);
   });
 
-  test("renders the activate error message when the mutation rejects", async () => {
+  test("keeps the failed row visible and navigable, then clears the error on retry", async () => {
+    const onSelect = vi.fn();
     const activateProvider = vi
       .fn<(providerId: string, model?: string) => Promise<ActivateProviderResponse>>()
-      .mockRejectedValue(new Error("Activation failed: missing credentials"));
+      .mockRejectedValueOnce(new Error("Activation failed: missing credentials"))
+      .mockResolvedValueOnce({ provider: "gemini", model: "gemini-2.5-flash-lite" });
     const api = { ...makeGeminiApi(), activateProvider } satisfies BoundApi;
 
     const { stdin, lastFrame } = render(
@@ -401,7 +391,7 @@ describe("ModelSelectOverlay saving state", () => {
           open={true}
           onOpenChange={() => {}}
           providerId="gemini"
-          onSelect={() => {}}
+          onSelect={onSelect}
         />
       </Wrapper>,
     );
@@ -412,6 +402,22 @@ describe("ModelSelectOverlay saving state", () => {
     await flushUntil(() => lastFrame()?.includes("Activation failed") ?? false);
 
     expect(lastFrame()).toContain("Activation failed: missing credentials");
+    expect(lastFrame()).toContain(geminiName("gemini-2.5-flash"));
+    expect(countPrefixes(lastFrame(), geminiName("gemini-2.5-flash")).highlighted).toBe(1);
+
+    stdin.write(ARROW_DOWN);
+    await flushUntil(
+      () => countPrefixes(lastFrame(), geminiName("gemini-2.5-flash-lite")).highlighted === 1,
+    );
+    expect(lastFrame()).toContain("Activation failed: missing credentials");
+
+    stdin.write("\r");
+    await flushUntil(() => activateProvider.mock.calls.length === 2);
+    await flushUntil(() => onSelect.mock.calls.length === 1);
+
+    expect(activateProvider).toHaveBeenLastCalledWith("gemini", "gemini-2.5-flash-lite");
+    expect(onSelect).toHaveBeenCalledWith("gemini-2.5-flash-lite");
+    expect(lastFrame()).not.toContain("Activation failed: missing credentials");
   });
 
   test("clears activation errors when the provider changes while open", async () => {
@@ -483,6 +489,72 @@ describe("ModelSelectOverlay selected marker", () => {
       (frame.match(/\[\*\]/g) ?? []).length,
       `only one row should be marked selected. Frame: ${frame}`,
     ).toBe(1);
+  });
+
+  test("starts on a non-first selected model so Enter reselects the current model", async () => {
+    const onSelect = vi.fn();
+    const onOpenChange = vi.fn();
+    const activateProvider = vi
+      .fn<(providerId: string, model?: string) => Promise<ActivateProviderResponse>>()
+      .mockResolvedValue({ provider: "gemini", model: "gemini-2.5-pro" });
+    const api = { ...makeGeminiApi(), activateProvider } satisfies BoundApi;
+
+    const { stdin, lastFrame } = render(
+      <Wrapper api={api}>
+        <ModelSelectOverlay
+          open={true}
+          onOpenChange={onOpenChange}
+          providerId="gemini"
+          selectedId="gemini-2.5-pro"
+          onSelect={onSelect}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-pro")) ?? false);
+
+    stdin.write("\r");
+    await flushUntil(() => onSelect.mock.calls.length > 0);
+
+    expect(activateProvider).toHaveBeenCalledWith("gemini", "gemini-2.5-pro");
+    expect(onSelect).toHaveBeenCalledWith("gemini-2.5-pro");
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  test("restores the highlighted model when a filter temporarily hides it", async () => {
+    const onSelect = vi.fn();
+    const activateProvider = vi
+      .fn<(providerId: string, model?: string) => Promise<ActivateProviderResponse>>()
+      .mockResolvedValue({ provider: "gemini", model: "gemini-2.5-pro" });
+    const api = { ...makeGeminiApi(), activateProvider } satisfies BoundApi;
+
+    const { stdin, lastFrame } = render(
+      <Wrapper api={api}>
+        <ModelSelectOverlay
+          open={true}
+          onOpenChange={() => {}}
+          providerId="gemini"
+          selectedId="gemini-2.5-pro"
+          onSelect={onSelect}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-pro")) ?? false);
+
+    stdin.write("f");
+    await flush();
+    stdin.write("f");
+    await flush();
+    expect(lastFrame()).not.toContain(geminiName("gemini-2.5-pro"));
+
+    stdin.write("f");
+    await flush();
+    stdin.write("\r");
+    await flushUntil(() => onSelect.mock.calls.length > 0);
+
+    expect(activateProvider).toHaveBeenCalledWith("gemini", "gemini-2.5-pro");
+    expect(onSelect).toHaveBeenCalledWith("gemini-2.5-pro");
   });
 });
 
@@ -634,6 +706,55 @@ describe("ModelSelectOverlay search input mode", () => {
 
     expect(lastFrame()).toContain("flash");
   });
+
+  test("one Escape closes from the search zone", async () => {
+    const onOpenChange = vi.fn();
+    const { stdin, lastFrame } = render(
+      <Wrapper>
+        <ModelSelectOverlay
+          open={true}
+          onOpenChange={onOpenChange}
+          providerId="gemini"
+          onSelect={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
+    stdin.write("/");
+    await flush();
+    stdin.write("\u001B");
+    await flushUntil(() => onOpenChange.mock.calls.length > 0);
+
+    expect(onOpenChange).toHaveBeenCalledOnce();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  test("one Escape closes from the filter zone", async () => {
+    const onOpenChange = vi.fn();
+    const { stdin, lastFrame } = render(
+      <Wrapper>
+        <ModelSelectOverlay
+          open={true}
+          onOpenChange={onOpenChange}
+          providerId="gemini"
+          onSelect={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
+    stdin.write("\t");
+    await flush();
+    stdin.write("\t");
+    await flush();
+    expect(lastFrame()).toContain("<-/->");
+    stdin.write("\u001B");
+    await flushUntil(() => onOpenChange.mock.calls.length > 0);
+
+    expect(onOpenChange).toHaveBeenCalledOnce();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
 });
 
 describe("ModelSelectOverlay long description", () => {
@@ -674,7 +795,89 @@ describe("ModelSelectOverlay long description", () => {
     await flushUntil(() => lastFrame()?.includes("Flash") ?? false);
 
     const frame = lastFrame() ?? "";
-    expect(frame).toContain("easily over");
+    expect(frame).toContain("A very long model");
+    expect(frame).toContain("…");
     expect(frame).not.toContain("FULLTAILVISIBLE");
+  });
+
+  test("keeps a wide long-name model and footer within a 40-column terminal budget", async () => {
+    terminalDimensions.current = { columns: 40, rows: 19 };
+    expect(terminalCellWidth("いe\u0301🙂")).toBe(5);
+    const catalog: ProviderModelsResponse = {
+      models: [
+        {
+          id: "gemini-wide-model",
+          name: "Gemini 超長い Wide Model Name FULLNAMEEND",
+          description:
+            "A very long e\u0301🙂 model description that easily overflows the terminal row width FULLTAILVISIBLE",
+          tier: "free",
+        },
+      ],
+      fetchedAt: new Date().toISOString(),
+      source: "live",
+      cached: false,
+    };
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      getProviderModels: vi.fn<() => Promise<ProviderModelsResponse>>().mockResolvedValue(catalog),
+    } satisfies BoundApi;
+
+    const { lastFrame } = render(
+      <Wrapper api={api}>
+        <ModelSelectOverlay
+          open={true}
+          onOpenChange={() => {}}
+          providerId="gemini"
+          onSelect={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Gemini") ?? false);
+
+    const frame = lastFrame() ?? "";
+    const lines = frame.split("\n");
+    expect(lines.filter((line) => line.includes("[ ]"))).toHaveLength(1);
+    expect(lines.every((line) => terminalCellWidth(line) <= 40)).toBe(true);
+    expect(lines).toHaveLength(19);
+    expect(frame).toContain("Tab: zone");
+    expect(frame).not.toContain("FULLNAMEEND");
+    expect(frame).not.toContain("FULLTAILVISIBLE");
+  });
+});
+
+describe("ModelSelectOverlay catalog provenance", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  test("shows cached provenance and retries with r", async () => {
+    const getProviderModels = vi.fn<() => Promise<ProviderModelsResponse>>().mockResolvedValue({
+      ...GEMINI_CATALOG,
+      source: "cache",
+      cached: true,
+      fetchedAt: "2026-06-02T00:00:00.000Z",
+    });
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      getProviderModels,
+    } satisfies BoundApi;
+    const { lastFrame, stdin } = render(
+      <Wrapper api={api}>
+        <ModelSelectOverlay
+          open={true}
+          onOpenChange={() => {}}
+          providerId="gemini"
+          onSelect={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Using cached catalog data") ?? false);
+    expect(lastFrame()).toContain("2026-06-02T00:00:00.000Z");
+
+    stdin.write("r");
+    await flushUntil(() => getProviderModels.mock.calls.length === 2);
+    expect(getProviderModels).toHaveBeenCalledTimes(2);
   });
 });

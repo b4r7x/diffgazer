@@ -29,6 +29,9 @@ export function useModelSource(open: boolean, provider: AIProvider): ModelSource
     models: source.models,
     loading: source.loading,
     error: source.error,
+    source: isOpenRouter ? null : catalog.source,
+    fetchedAt: isOpenRouter ? null : catalog.fetchedAt,
+    retry: isOpenRouter ? openRouter.retry : catalog.retry,
     isOpenRouter,
     openRouter,
   };

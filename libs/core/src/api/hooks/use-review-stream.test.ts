@@ -9,13 +9,14 @@ import { err, ok } from "../../result.js";
 import type { StreamReviewError } from "../../review/index.js";
 import { ReviewErrorCode } from "../../schemas/review/index.js";
 import { requirePromise, requireValue } from "../../testing/assertions.js";
+import { createDeferred } from "../../testing/deferred.js";
 import { createTestQueryWrapper } from "../../testing/query-wrapper.js";
 import type { BoundApi } from "../bound.js";
 import type { ResumeReviewResult } from "../review.js";
 import { useReviewStream } from "./use-review-stream.js";
 
 function fakeResumeResult(reviewId = "r"): ResumeReviewResult {
-  return { result: { summary: "", issues: [] }, reviewId };
+  return { result: { issues: [] }, reviewId };
 }
 
 function createApi(overrides: Partial<BoundApi> = {}): BoundApi {
@@ -28,20 +29,6 @@ function createApi(overrides: Partial<BoundApi> = {}): BoundApi {
 
 function createWrapper(api: BoundApi) {
   return createTestQueryWrapper({ api }).Wrapper;
-}
-
-function createDeferred<T>(): {
-  promise: Promise<T>;
-  resolve: (value: T) => void;
-  reject: (reason: unknown) => void;
-} {
-  let resolve!: (value: T) => void;
-  let reject!: (reason: unknown) => void;
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-  return { promise, resolve, reject };
 }
 
 describe("useReviewStream", () => {

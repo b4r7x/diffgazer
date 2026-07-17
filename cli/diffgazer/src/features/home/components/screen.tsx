@@ -6,15 +6,12 @@ import {
 } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { deriveTrustStatus, selectResumableSession } from "@diffgazer/core/navigation";
+import { sanitizeTerminalText } from "@diffgazer/core/review";
 import type { ContextInfo, Shortcut } from "@diffgazer/core/schemas/presentation";
-import {
-  buildHomeContextInfo,
-  MAIN_MENU_SHORTCUTS,
-  TRUST_FOOTER_RIGHT_SHORTCUTS,
-  TRUST_FOOTER_SHORTCUTS,
-} from "@diffgazer/core/schemas/presentation";
-import { Box } from "ink";
-import type { ReactElement } from "react";
+import { buildHomeContextInfo, MAIN_MENU_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
+import { Box, Text, useInput } from "ink";
+import type { ComponentProps, ReactElement } from "react";
+import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useExit } from "../../../hooks/use-exit";
 import { useNavigation } from "../../../hooks/use-navigation";
@@ -24,15 +21,54 @@ import { ContextSidebar } from "./context-sidebar";
 import { HomeMenu } from "./menu";
 import { TrustPanel } from "./trust-panel";
 
-const EMPTY_SHORTCUTS: Shortcut[] = [];
+const RETRY_SHORTCUTS: Shortcut[] = [{ key: "r", label: "Retry" }];
+
+type InitData = NonNullable<ReturnType<typeof useInit>["data"]>;
 
 export function HomeScreen(): ReactElement {
   useBackHandler();
 
+  const { data, error, isLoading, refetch } = useInit();
+  if (isLoading) return <HomeLoading />;
+  if (error || !data) {
+    return (
+      <HomeInitError
+        message={error?.message ?? "The initialization response was empty."}
+        onRetry={() => void refetch()}
+      />
+    );
+  }
+  return <LoadedHomeScreen initData={data} onRefresh={() => void refetch()} />;
+}
+
+function HomeLoading(): ReactElement {
+  usePageFooter({ shortcuts: [] });
+  return (
+    <Box flexGrow={1} alignItems="center" justifyContent="center">
+      <Spinner label="Loading home data..." />
+    </Box>
+  );
+}
+
+function HomeInitError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  useInput((input) => {
+    if (input === "r") onRetry();
+  });
+  usePageFooter({ shortcuts: RETRY_SHORTCUTS });
+
+  return (
+    <Box flexDirection="column" flexGrow={1} alignItems="center" justifyContent="center">
+      <Text color="red">Home Data Unavailable</Text>
+      <Text dimColor>{sanitizeTerminalText(message)}</Text>
+      <Text dimColor>Press r to retry</Text>
+    </Box>
+  );
+}
+
+function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefresh: () => void }) {
   const { columns } = useResponsive();
   const { navigate } = useNavigation();
   const { handleExit } = useExit();
-  const { data: initData, refetch: refreshInit } = useInit();
   const { data: reviewsData } = useReviews();
   const { data: unstagedSessionData } = useActiveReviewSession("unstaged");
   const { data: stagedSessionData } = useActiveReviewSession("staged");
@@ -55,11 +91,6 @@ export function HomeScreen(): ReactElement {
     repoRoot,
   });
 
-  usePageFooter({
-    shortcuts: needsTrust ? TRUST_FOOTER_SHORTCUTS : MAIN_MENU_SHORTCUTS,
-    rightShortcuts: needsTrust ? TRUST_FOOTER_RIGHT_SHORTCUTS : EMPTY_SHORTCUTS,
-  });
-
   const context: ContextInfo = buildHomeContextInfo(
     {
       provider: initData?.config?.provider,
@@ -71,7 +102,7 @@ export function HomeScreen(): ReactElement {
   );
 
   function handleTrustAccept() {
-    refreshInit();
+    onRefresh();
   }
 
   const onAction = createHomeMenuAction({
@@ -100,7 +131,7 @@ export function HomeScreen(): ReactElement {
           {needsTrust ? (
             <TrustPanel onAccept={handleTrustAccept} />
           ) : (
-            <HomeMenu
+            <HomeMenuWithFooter
               isActive
               onAction={onAction}
               isTrusted={isTrusted}
@@ -111,4 +142,9 @@ export function HomeScreen(): ReactElement {
       </Box>
     </Box>
   );
+}
+
+function HomeMenuWithFooter(props: ComponentProps<typeof HomeMenu>): ReactElement {
+  usePageFooter({ shortcuts: MAIN_MENU_SHORTCUTS });
+  return <HomeMenu {...props} />;
 }

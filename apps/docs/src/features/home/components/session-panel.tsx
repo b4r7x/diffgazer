@@ -44,12 +44,35 @@ export function SessionPanel() {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: runId is a restart counter that replays the animation from the top when [ replay ] is pressed.
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+    let spinner: ReturnType<typeof setInterval> | undefined;
+
+    const clearAnimation = () => {
+      for (const id of timeouts) clearTimeout(id);
+      timeouts.length = 0;
+      if (spinner) {
+        clearInterval(spinner);
+        spinner = undefined;
+      }
+    };
+    const settle = () => {
+      clearAnimation();
       setStage("settled");
       setTypedCount(COMMAND.length);
       setSpinnerFrame(0);
       setReveal(REVEAL_LINE_11);
-      return;
+    };
+    const onReducedMotionChange = (event: MediaQueryListEvent) => {
+      if (event.matches) settle();
+    };
+
+    reducedMotion.addEventListener("change", onReducedMotionChange);
+    if (reducedMotion.matches) {
+      settle();
+      return () => {
+        reducedMotion.removeEventListener("change", onReducedMotionChange);
+      };
     }
 
     setStage("typing");
@@ -57,8 +80,6 @@ export function SessionPanel() {
     setSpinnerFrame(0);
     setReveal(0);
 
-    const timeouts: ReturnType<typeof setTimeout>[] = [];
-    let spinner: ReturnType<typeof setInterval> | undefined;
     const at = (delay: number, run: () => void) => {
       timeouts.push(setTimeout(run, delay));
     };
@@ -96,8 +117,8 @@ export function SessionPanel() {
     });
 
     return () => {
-      for (const id of timeouts) clearTimeout(id);
-      if (spinner) clearInterval(spinner);
+      reducedMotion.removeEventListener("change", onReducedMotionChange);
+      clearAnimation();
     };
   }, [runId]);
 

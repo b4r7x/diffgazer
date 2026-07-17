@@ -40,7 +40,7 @@ For a plain list with no per-row action strip, use [`useNavigation`](/keys/hooks
 | `ArrowUp` | actions | Exits the actions zone back to content when `canExitActions` is `true`. |
 | `Enter` / `Space` | actions | Calls `onAction(focusedIndex)` for the focused, enabled action. |
 
-The row only handles these keys while focus is inside `containerRef`. Bindings register through `KeyboardProvider`, so they participate in the scope stack.
+When `containerRef` is supplied, the row only handles these keys while focus is inside that container. Omitting `containerRef` intentionally leaves the active row's handlers global within the current keyboard scope. Bindings register through `KeyboardProvider`, so they participate in the scope stack.
 
 ## Examples
 

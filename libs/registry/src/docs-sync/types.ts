@@ -2,7 +2,6 @@ import type { ArtifactManifest } from "../manifest.js";
 
 export interface SyncLibraryConfig {
   id: string;
-  packageName: string;
   workspaceDir: string;
 }
 
@@ -13,7 +12,6 @@ export interface SyncDocsOptions {
   primaryLibraryId: string;
   origin: string;
   sourceOrigin: string;
-  mode: "workspace" | "package";
   syncSchemaVersion?: number;
   afterSync?: (ctx: AfterSyncContext) => void;
   outputPaths?: Partial<SyncOutputPathsConfig>;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { getErrorMessage } from "../errors.js";
 import type { InputMethod } from "../onboarding/types.js";
 
@@ -9,7 +9,7 @@ export interface UseApiKeyEntryOptions {
    * for both modes.
    */
   envVarName?: string;
-  onSubmit: (method: InputMethod, value: string) => Promise<void>;
+  onSubmit: (method: InputMethod, value: string) => Promise<boolean>;
 }
 
 export interface UseApiKeyEntryResult {
@@ -21,7 +21,7 @@ export interface UseApiKeyEntryResult {
   isSubmitting: boolean;
   /** Last failed-submit message, cleared on input/method change and reset. */
   error: string | null;
-  /** Runs onSubmit; on success resolves true and clears the value. */
+  /** Runs onSubmit; clears the value only when the caller commits the save. */
   submit: (submitMethod?: InputMethod) => Promise<boolean>;
   reset: () => void;
 }
@@ -39,6 +39,7 @@ export function useApiKeyEntry({
   const [value, setValueState] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const submittingRef = useRef(false);
 
   const resolveSubmitValue = (submitMethod: InputMethod) =>
     submitMethod === "paste" ? value : (envVarName ?? value);
@@ -56,20 +57,23 @@ export function useApiKeyEntry({
   const canSubmit = method === "paste" ? value.length > 0 : (envVarName ?? value).length > 0;
 
   const submit = async (submitMethod: InputMethod = method): Promise<boolean> => {
-    if (isSubmitting) return false;
+    if (submittingRef.current) return false;
     const submitValue = resolveSubmitValue(submitMethod);
     if (!submitValue) return false;
 
+    submittingRef.current = true;
     setIsSubmitting(true);
     setError(null);
     try {
-      await onSubmit(submitMethod, submitValue);
+      const committed = await onSubmit(submitMethod, submitValue);
+      if (!committed) return false;
       setValueState("");
       return true;
     } catch (cause) {
       setError(getErrorMessage(cause, "Failed to save API key"));
       return false;
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };

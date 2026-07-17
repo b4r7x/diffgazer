@@ -5,8 +5,17 @@ import { computeRequiredArtifactFingerprint } from "../fingerprint.js";
 import type { ArtifactManifest } from "../manifest.js";
 import { loadValidatedManifest } from "../manifest.js";
 import { ensureExists, resolveInside } from "../utils/fs.js";
-import { loadArtifactsFromPackage } from "./artifact-loader.js";
 import type { LoadedLibraryArtifacts, SyncLibraryConfig } from "./types.js";
+
+export function assertManifestLibraryId(
+  configuredId: string,
+  manifest: Pick<ArtifactManifest, "library">,
+): void {
+  if (manifest.library === configuredId) return;
+  throw new Error(
+    `Configured library id "${configuredId}" does not match artifact manifest library "${manifest.library}".`,
+  );
+}
 
 function getManifestGeneratedFiles(manifest: ArtifactManifest): string[] {
   if (!manifest.generated) return [];
@@ -56,27 +65,7 @@ function toLoadedLibraryArtifacts(params: {
   };
 }
 
-function loadFromPackage(config: SyncLibraryConfig, docsRoot: string): LoadedLibraryArtifacts {
-  const loaded = loadArtifactsFromPackage({
-    packageName: config.packageName,
-    from: docsRoot,
-  });
-
-  return toLoadedLibraryArtifacts({
-    id: config.id,
-    manifest: loaded.manifest,
-    manifestPath: loaded.manifestPath,
-    artifactRoot: loaded.artifactRoot,
-    fingerprintPath: resolveInside(
-      loaded.artifactRoot,
-      loaded.manifest.integrity.fingerprintFile,
-      `${config.id} artifact fingerprint path`,
-    ),
-    fingerprint: loaded.fingerprint,
-  });
-}
-
-function loadFromWorkspace(
+export function loadLibraryArtifacts(
   config: SyncLibraryConfig,
   workspaceRoot: string,
   origin: string,
@@ -94,6 +83,7 @@ function loadFromWorkspace(
   ensureExists(manifestPath, `${config.id} artifact manifest`);
 
   const manifest = loadValidatedManifest(manifestPath, config.id);
+  assertManifestLibraryId(config.id, manifest);
   const artifactRoot = resolveInside(
     libraryRoot,
     manifest.artifactRoot,
@@ -133,17 +123,4 @@ function loadFromWorkspace(
     fingerprintPath,
     fingerprint: expectedFingerprint,
   });
-}
-
-export function loadLibraryArtifacts(
-  config: SyncLibraryConfig,
-  mode: "workspace" | "package",
-  docsRoot: string,
-  workspaceRoot: string,
-  origin: string,
-): LoadedLibraryArtifacts {
-  if (mode === "workspace") {
-    return loadFromWorkspace(config, workspaceRoot, origin);
-  }
-  return loadFromPackage(config, docsRoot);
 }

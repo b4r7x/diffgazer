@@ -25,15 +25,21 @@ describe("resolveCliAction", () => {
     expect(action.openBrowser).toBe(false);
   });
 
-  test("keeps dev mode and theme for the TUI flow", () => {
-    const action = resolveCliAction(["--dev", "--tui", "--theme", "classic"]);
+  test("keeps dev mode and a supported theme for the TUI flow", () => {
+    const action = resolveCliAction(["--dev", "--tui", "--theme", "high-contrast"]);
 
     expect(action).toEqual({
       type: "tui",
       mode: "dev",
-      theme: "classic",
+      theme: "high-contrast",
       openBrowser: false,
     });
+  });
+
+  test("rejects unsupported TUI themes", () => {
+    expect(() => resolveCliAction(["--tui", "--theme", "classic"])).toThrow(
+      /Invalid --theme "classic"\. Expected one of: auto, dark, light, high-contrast\./,
+    );
   });
 
   test("returns help action when --help is passed", () => {

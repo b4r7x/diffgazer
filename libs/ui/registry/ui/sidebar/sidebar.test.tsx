@@ -1,9 +1,10 @@
+import { getTabbableElements } from "@diffgazer/keys";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { Ref } from "react";
+import { createRef, type Ref } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
-import { requireAttribute, requireElement } from "../../testing/assertions";
+import { requireAttribute, requireElement, requireValue } from "../../testing/assertions";
 import { Sidebar } from "./index";
 
 type SidebarState = "open" | "rail" | "hidden";
@@ -33,6 +34,27 @@ function renderSidebar(
 }
 
 describe("Sidebar", () => {
+  it.each([
+    ["open", false, false],
+    ["open", true, true],
+    ["rail", false, false],
+    ["rail", true, true],
+    ["hidden", false, true],
+    ["hidden", true, true],
+  ] as const)("merges inert in %s state when caller inert is %s", (state, inert, expected) => {
+    render(
+      <Sidebar.Provider defaultState={state}>
+        <Sidebar>
+          <Sidebar.Content data-testid="sidebar-content" inert={inert} />
+        </Sidebar>
+      </Sidebar.Provider>,
+    );
+
+    const content = screen.getByTestId("sidebar-content");
+    if (expected) expect(content).toHaveAttribute("inert");
+    else expect(content).not.toHaveAttribute("inert");
+  });
+
   it("toggles open state via SidebarTrigger", async () => {
     const user = userEvent.setup();
     renderSidebar();
@@ -47,28 +69,61 @@ describe("Sidebar", () => {
     expect(trigger).toHaveAttribute("aria-label", "Expand sidebar");
   });
 
-  it("skips closed sidebar content in tab order", async () => {
-    const user = userEvent.setup();
+  it.each([
+    ["rail", "rail"],
+    ["hidden", "hidden"],
+  ] as const)("keeps %s on the sidebar DOM while exposing collapsed on the trigger", (state, providerState) => {
     render(
+      <Sidebar.Provider defaultState={state}>
+        <Sidebar data-testid="sidebar-root">
+          <Sidebar.Content data-testid="sidebar-content" />
+        </Sidebar>
+        <Sidebar.Trigger data-testid="sidebar-trigger" />
+      </Sidebar.Provider>,
+    );
+
+    expect(screen.getByTestId("sidebar-root")).toHaveAttribute("data-state", providerState);
+    expect(screen.getByTestId("sidebar-content")).toHaveAttribute("data-state", providerState);
+    expect(screen.getByTestId("sidebar-trigger")).toHaveAttribute("data-state", "collapsed");
+  });
+
+  it("removes the complete hidden sidebar from landmarks and tab order", () => {
+    const { container } = render(
       <>
         <button type="button">Before</button>
         <Sidebar.Provider defaultState="hidden">
           <Sidebar>
+            <Sidebar.Header>
+              <button type="button">Hidden header action</button>
+            </Sidebar.Header>
             <Sidebar.Content>
               <Sidebar.Item as="button">Hidden item</Sidebar.Item>
             </Sidebar.Content>
-            <Sidebar.Trigger>Toggle</Sidebar.Trigger>
+            <Sidebar.Footer>
+              <a href="/account">Hidden footer action</a>
+            </Sidebar.Footer>
           </Sidebar>
+          <Sidebar.Trigger>Toggle</Sidebar.Trigger>
         </Sidebar.Provider>
         <button type="button">After</button>
       </>,
     );
 
-    await user.tab();
-    expect(screen.getByRole("button", { name: "Before" })).toHaveFocus();
-    await user.tab();
-    expect(screen.getByRole("button", { name: "Expand sidebar" })).toHaveFocus();
-    expect(screen.getByRole("button", { name: "Hidden item", hidden: true })).not.toHaveFocus();
+    const hiddenNav = requireElement<HTMLElement>(
+      container.querySelector<HTMLElement>('[data-slot="sidebar"]'),
+      "hidden sidebar navigation",
+    );
+    expect(hiddenNav).toHaveAttribute("aria-hidden", "true");
+    expect(hiddenNav).toHaveAttribute("inert");
+    expect(screen.queryByRole("navigation", { name: "Primary" })).not.toBeInTheDocument();
+    expect(screen.getByRole("navigation", { hidden: true })).toBe(hiddenNav);
+    expect(hiddenNav).toHaveAttribute("aria-label", "Primary");
+
+    expect(getTabbableElements(container)).toEqual([
+      screen.getByRole("button", { name: "Before" }),
+      screen.getByRole("button", { name: "Expand sidebar" }),
+      screen.getByRole("button", { name: "After" }),
+    ]);
   });
 
   it("calls custom onClick on trigger alongside toggle", async () => {
@@ -312,6 +367,34 @@ describe("Sidebar", () => {
 });
 
 describe("SidebarSection collapsible", () => {
+  it("forwards native div props to the section content panel", () => {
+    const ref = createRef<HTMLDivElement>();
+    render(
+      <Sidebar.Provider>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Section>
+              <Sidebar.SectionContent
+                ref={ref}
+                className="consumer-panel"
+                data-testid="section-panel"
+              >
+                Content
+              </Sidebar.SectionContent>
+            </Sidebar.Section>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    );
+
+    const panel = screen.getByTestId("section-panel");
+    expect(ref.current).toBe(panel);
+    expect(panel).toHaveClass("consumer-panel");
+    expect(panel.querySelector('[data-slot="sidebar-section-content-inner"]')).not.toHaveClass(
+      "consumer-panel",
+    );
+  });
+
   it("does not reference a missing section title", () => {
     render(
       <Sidebar.Provider>
@@ -790,21 +873,39 @@ describe("Sidebar mobile sheet", () => {
   const originalMatchMedia = window.matchMedia;
 
   function stubMatchMedia(isMobile: boolean) {
+    let matches = isMobile;
+    const listeners = new Set<EventListenerOrEventListenerObject>();
     const mql = {
-      matches: isMobile,
+      get matches() {
+        return matches;
+      },
       media: "(max-width: 1023px)",
       onchange: null,
       addListener: vi.fn(),
       removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
+      addEventListener: vi.fn((_type: string, listener: EventListenerOrEventListenerObject) => {
+        listeners.add(listener);
+      }),
+      removeEventListener: vi.fn((_type: string, listener: EventListenerOrEventListenerObject) => {
+        listeners.delete(listener);
+      }),
       dispatchEvent: vi.fn(),
-    };
+    } as MediaQueryList;
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       writable: true,
       value: vi.fn().mockReturnValue(mql),
     });
+    return {
+      setMobile(next: boolean) {
+        matches = next;
+        const event = new Event("change");
+        for (const listener of listeners) {
+          if (typeof listener === "function") listener(event);
+          else listener.handleEvent(event);
+        }
+      },
+    };
   }
 
   afterEach(() => {
@@ -826,6 +927,138 @@ describe("Sidebar mobile sheet", () => {
         </Sidebar>
       </Sidebar.Provider>,
     );
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["uncontrolled", { defaultState: "rail" as const }],
+    ["controlled", { state: "rail" as const }],
+  ])("presents a %s rail state as an open mobile sidebar", (_mode, providerProps) => {
+    stubMatchMedia(true);
+    render(
+      <Sidebar.Provider {...providerProps}>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">
+              <Sidebar.ItemLabel>Item label</Sidebar.ItemLabel>
+            </Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    );
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Primary" })).toHaveAttribute(
+      "data-state",
+      "open",
+    );
+    expect(screen.getByText("Item label")).toBeInTheDocument();
+  });
+
+  it("restores a desktop rail presentation after a mobile resize", () => {
+    const viewport = stubMatchMedia(false);
+    render(
+      <Sidebar.Provider defaultState="rail">
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    );
+
+    expect(screen.getByRole("navigation", { name: "Primary" })).toHaveAttribute(
+      "data-state",
+      "rail",
+    );
+
+    act(() => viewport.setMobile(true));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Primary" })).toHaveAttribute(
+      "data-state",
+      "open",
+    );
+
+    act(() => viewport.setMobile(false));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Primary" })).toHaveAttribute(
+      "data-state",
+      "rail",
+    );
+  });
+
+  it("toggles every visible mobile state through hidden and back to open", async () => {
+    const user = userEvent.setup();
+    stubMatchMedia(true);
+    render(
+      <Sidebar.Provider defaultState="rail">
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+        <Sidebar.Trigger>Toggle</Sidebar.Trigger>
+      </Sidebar.Provider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Close navigation" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Open navigation" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Primary" })).toHaveAttribute(
+      "data-state",
+      "open",
+    );
+  });
+
+  it("uses the mobile visible-hidden transition for Cmd+B", () => {
+    const onStateChange = vi.fn();
+    stubMatchMedia(true);
+    render(
+      <Sidebar.Provider defaultState="rail" onStateChange={onStateChange}>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    );
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "b", metaKey: true }));
+    });
+    expect(onStateChange).toHaveBeenLastCalledWith("hidden");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "b", metaKey: true }));
+    });
+    expect(onStateChange).toHaveBeenLastCalledWith("open");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("requests hidden from a controlled mobile rail without exposing rail presentation", async () => {
+    const user = userEvent.setup();
+    const onStateChange = vi.fn();
+    stubMatchMedia(true);
+    render(
+      <Sidebar.Provider state="rail" onStateChange={onStateChange}>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+        <Sidebar.Trigger>Toggle</Sidebar.Trigger>
+      </Sidebar.Provider>,
+    );
+
+    expect(screen.getByRole("navigation", { name: "Primary" })).toHaveAttribute(
+      "data-state",
+      "open",
+    );
+    await user.click(screen.getByRole("button", { name: "Close navigation" }));
+    expect(onStateChange).toHaveBeenCalledWith("hidden");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
@@ -858,5 +1091,90 @@ describe("Sidebar mobile sheet", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Item" })).toBeInTheDocument();
+  });
+
+  it("subscribes to the sidebar owner window and cleans up the exact media query", () => {
+    stubMatchMedia(false);
+    const iframe = document.createElement("iframe");
+    document.body.append(iframe);
+    const frameDocument = requireValue(iframe.contentDocument, "iframe document");
+    const frameWindow = requireValue(iframe.contentWindow, "iframe window");
+    const dialogPrototype = Object.getPrototypeOf(
+      frameDocument.createElement("dialog"),
+    ) as HTMLDialogElement;
+    Object.defineProperties(dialogPrototype, {
+      showModal: {
+        configurable: true,
+        value(this: HTMLDialogElement) {
+          this.setAttribute("open", "");
+        },
+      },
+      close: {
+        configurable: true,
+        value(this: HTMLDialogElement) {
+          this.removeAttribute("open");
+        },
+      },
+    });
+    let matches = true;
+    const listeners = new Set<EventListenerOrEventListenerObject>();
+    const addEventListener = vi.fn((type: string, listener: EventListenerOrEventListenerObject) => {
+      if (type === "change") listeners.add(listener);
+    });
+    const removeEventListener = vi.fn(
+      (type: string, listener: EventListenerOrEventListenerObject) => {
+        if (type === "change") listeners.delete(listener);
+      },
+    );
+    const mediaQueryList = {
+      get matches() {
+        return matches;
+      },
+      media: "(max-width: 1023px)",
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener,
+      removeEventListener,
+      dispatchEvent: vi.fn(),
+    } as MediaQueryList;
+    const frameMatchMedia = vi.fn(() => mediaQueryList);
+    Object.defineProperty(frameWindow, "matchMedia", {
+      configurable: true,
+      writable: true,
+      value: frameMatchMedia,
+    });
+
+    const rendered = render(
+      <Sidebar.Provider>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">Frame item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+      { baseElement: frameDocument.body, container: frameDocument.body },
+    );
+
+    expect(rendered.getByRole("dialog")).toBeInTheDocument();
+    expect(frameMatchMedia).toHaveBeenCalledTimes(1);
+    expect(window.matchMedia).not.toHaveBeenCalled();
+    expect(addEventListener).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      matches = false;
+      for (const listener of listeners) {
+        if (typeof listener === "function") listener(new Event("change"));
+        else listener.handleEvent(new Event("change"));
+      }
+    });
+
+    expect(rendered.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(rendered.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
+
+    rendered.unmount();
+    expect(removeEventListener).toHaveBeenCalledWith("change", addEventListener.mock.calls[0]?.[1]);
+    expect(listeners).toHaveLength(0);
+    iframe.remove();
   });
 });

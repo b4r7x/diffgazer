@@ -62,6 +62,10 @@ pnpm install
 pnpm run build
 ```
 
+The root build prepares shared registry and documentation artifacts once before Turbo starts the
+parallel package builds. A direct `pnpm --filter @diffgazer/add build` remains self-contained and
+generates its own bundled registry sources.
+
 ## Development
 
 ```bash

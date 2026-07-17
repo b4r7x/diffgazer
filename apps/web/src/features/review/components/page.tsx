@@ -6,8 +6,16 @@ import {
   type SavedReviewQueryState,
 } from "@diffgazer/core/review";
 import { toast } from "@diffgazer/ui/components/toast";
-import { useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
+import {
+  useCanGoBack,
+  useLocation,
+  useNavigate,
+  useParams,
+  useRouter,
+  useSearch,
+} from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { resolveBackAction } from "@/lib/back-navigation";
 import { useReviewErrorHandler } from "../hooks/use-error-handler";
 import { type ReviewCompleteData, ReviewContainer, ReviewLoadingMessage } from "./container";
 import { ReviewResultsView } from "./results-view";
@@ -73,6 +81,8 @@ export function ReviewPage() {
   }
 
   const router = useRouter();
+  const canGoBack = useCanGoBack();
+  const { pathname } = useLocation();
   const navigate = useNavigate();
   const { handleApiError } = useReviewErrorHandler();
 
@@ -93,6 +103,17 @@ export function ReviewPage() {
   const handleStreamNotFound = () => {
     setStreamNotFound(true);
     setLiveState(null);
+  };
+
+  const handleBack = () => {
+    const action = resolveBackAction(pathname, canGoBack);
+    if (action.type === "navigate") {
+      void router.navigate({ to: action.to });
+      return;
+    }
+    if (action.type === "history") {
+      router.history.back();
+    }
   };
 
   useEffect(() => {
@@ -122,6 +143,7 @@ export function ReviewPage() {
           issues={savedOutcome.data.issues}
           reviewId={savedOutcome.data.reviewId}
           initialIssueId={initialIssueId}
+          droppedDuplicates={savedOutcome.data.droppedDuplicates}
         />
       );
     }
@@ -151,12 +173,13 @@ export function ReviewPage() {
           issues={currentLiveState.reviewData.issues}
           reviewId={currentLiveState.reviewData.reviewId}
           lensStats={currentLiveState.reviewData.lensStats}
+          droppedDuplicates={currentLiveState.reviewData.droppedDuplicates}
           droppedBelowThreshold={currentLiveState.reviewData.droppedBelowThreshold}
           minSeverity={currentLiveState.reviewData.minSeverity}
           onEnterReview={() =>
             setLiveState({ phase: "results", reviewData: currentLiveState.reviewData })
           }
-          onBack={() => router.history.back()}
+          onBack={handleBack}
         />
       );
 
@@ -166,6 +189,7 @@ export function ReviewPage() {
           issues={currentLiveState.reviewData.issues}
           reviewId={currentLiveState.reviewData.reviewId}
           initialIssueId={initialIssueId}
+          droppedDuplicates={currentLiveState.reviewData.droppedDuplicates}
         />
       );
   }

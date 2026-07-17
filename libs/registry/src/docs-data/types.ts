@@ -121,6 +121,13 @@ export interface HookSourceData {
     raw: string;
     highlighted: CodeBlockLine[];
   };
+  files: HookSourceFileData[];
+}
+
+export interface HookSourceFileData {
+  path: string;
+  raw: string;
+  highlighted: CodeBlockLine[];
 }
 
 export type ConsumptionLibrary = "ui" | "keys";

@@ -9,6 +9,7 @@ export interface ListNavigationItem {
 export interface UseListNavigationOptions {
   items: ListNavigationItem[];
   highlightedId?: string | null;
+  defaultHighlightedId?: string | null;
   onHighlightChange?: (id: string) => void;
   wrap?: boolean;
 }
@@ -22,11 +23,14 @@ export interface ListNavigation {
 export function useListNavigation({
   items,
   highlightedId: controlledHighlightedId = null,
+  defaultHighlightedId = null,
   onHighlightChange,
   wrap = true,
 }: UseListNavigationOptions): ListNavigation {
   const selectableItems = items.filter((item) => !item.disabled);
-  const [internalHighlightedId, setInternalHighlightedId] = useState<string | null>(null);
+  const [internalHighlightedId, setInternalHighlightedId] = useState<string | null>(
+    defaultHighlightedId,
+  );
   const uncontrolledHighlightedId =
     internalHighlightedId !== null &&
     selectableItems.some((item) => item.id === internalHighlightedId)

@@ -36,9 +36,16 @@ export function useFloatingIndicator(
   activeValue: string | null,
 ): FloatingIndicatorRect | null {
   const [rect, setRect] = useState<FloatingIndicatorRect | null>(null);
+  const [container, setContainer] = useState<HTMLElement | null>(null);
 
   useLayoutEffect(() => {
-    const container = containerRef.current;
+    const nextContainer = containerRef.current;
+    setContainer((currentContainer) =>
+      currentContainer === nextContainer ? currentContainer : nextContainer,
+    );
+  });
+
+  useLayoutEffect(() => {
     if (!container || activeValue == null) {
       setRect(null);
       return;
@@ -89,7 +96,7 @@ export function useFloatingIndicator(
       resizeObserver.disconnect();
       mutationObserver.disconnect();
     };
-  }, [containerRef, activeValue]);
+  }, [container, activeValue]);
 
   return rect;
 }

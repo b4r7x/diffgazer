@@ -5,39 +5,51 @@ export function initCopyButtons(
   revertMs = 1400,
   signal?: AbortSignal,
 ): Cleanup {
-  const timers = new Set<ReturnType<typeof setTimeout>>();
+  const clearButtonTimers: Array<() => void> = [];
   let disposed = false;
   const isDisposed = (): boolean => disposed || signal?.aborted === true;
   const clearTimers = (): void => {
-    for (const timer of timers) clearTimeout(timer);
-    timers.clear();
+    for (const clearTimer of clearButtonTimers) clearTimer();
   };
-  signal?.addEventListener("abort", clearTimers, { once: true });
 
   for (const button of root.querySelectorAll<HTMLButtonElement>(".copy-btn")) {
+    let operation = 0;
+    let revertTimer: ReturnType<typeof setTimeout> | undefined;
+    const clearRevertTimer = (): void => {
+      if (revertTimer === undefined) return;
+      clearTimeout(revertTimer);
+      revertTimer = undefined;
+    };
+    clearButtonTimers.push(clearRevertTimer);
+
     button.addEventListener(
       "click",
       async () => {
         const label = button.querySelector<HTMLElement>(".copy-label");
         if (!label || isDisposed()) return;
+        const currentOperation = ++operation;
+        clearRevertTimer();
         try {
           await navigator.clipboard.writeText(button.dataset.copy ?? "");
-          if (isDisposed()) return;
+          if (isDisposed() || currentOperation !== operation) return;
           label.textContent = "copied";
         } catch {
-          if (isDisposed()) return;
+          if (isDisposed() || currentOperation !== operation) return;
           label.textContent = "failed";
         }
-        if (isDisposed()) return;
+        if (isDisposed() || currentOperation !== operation) return;
         const timer = setTimeout(() => {
-          timers.delete(timer);
+          if (revertTimer !== timer || currentOperation !== operation || isDisposed()) return;
+          revertTimer = undefined;
           label.textContent = "copy";
         }, revertMs);
-        timers.add(timer);
+        revertTimer = timer;
       },
       signal ? { signal } : undefined,
     );
   }
+  signal?.addEventListener("abort", clearTimers, { once: true });
+
   return () => {
     disposed = true;
     signal?.removeEventListener("abort", clearTimers);

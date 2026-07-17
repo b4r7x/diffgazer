@@ -8,7 +8,7 @@ export {
   type SettingsPayload,
   saveWizard,
 } from "./save-wizard.js";
-export { STEP_LABELS, STEP_TITLES } from "./steps.js";
+export { getOnboardingProgressLabel, STEP_LABELS, STEP_TITLES } from "./steps.js";
 export type {
   InputMethod,
   OnboardingStep,

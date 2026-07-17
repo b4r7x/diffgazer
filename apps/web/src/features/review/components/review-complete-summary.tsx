@@ -44,8 +44,13 @@ export function ReviewCompleteSummary({
           Review Complete {runLabel}
         </Typography>
         <p className="text-sm text-muted-foreground">
-          Found <span className="text-foreground font-bold">{stats.totalIssues} issues</span> across{" "}
-          <span className="text-foreground font-bold">{stats.filesAnalyzed} files</span>.
+          Found{" "}
+          <span className="text-foreground font-bold">{pluralize(stats.totalIssues, "issue")}</span>{" "}
+          across{" "}
+          <span className="text-foreground font-bold">
+            {pluralize(stats.filesWithIssues, "file")} with issues
+          </span>
+          .
           {stats.blockerCount > 0 && (
             <>
               {" "}
@@ -60,7 +65,7 @@ export function ReviewCompleteSummary({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Panel className="bg-secondary/10">
-          <SectionHeader variant="muted" className="mb-4">
+          <SectionHeader as="h2" variant="muted" className="mb-4">
             Severity Breakdown
           </SectionHeader>
           <PanelContent spacing="sm" className="pt-0">
@@ -69,7 +74,7 @@ export function ReviewCompleteSummary({
         </Panel>
 
         <Panel className="bg-secondary/10">
-          <SectionHeader variant="muted" className="mb-4">
+          <SectionHeader as="h2" variant="muted" className="mb-4">
             Issues by Category
           </SectionHeader>
           <PanelContent spacing="none" className="pt-0">
@@ -81,7 +86,7 @@ export function ReviewCompleteSummary({
       {topIssues.length > 0 && (
         <div>
           <Typography
-            as="h3"
+            as="h2"
             size="sm"
             className="text-accent mb-3 flex items-center gap-2 uppercase tracking-wider"
           >

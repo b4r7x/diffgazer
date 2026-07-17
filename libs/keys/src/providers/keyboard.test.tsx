@@ -1,7 +1,11 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, useEffect, useRef } from "react";
 import { describe, expect, it, vi } from "vitest";
+import UseKeyMap from "../../registry/examples/use-key/use-key-map.js";
+import UseScopeBasic from "../../registry/examples/use-scope/use-scope-basic.js";
 import { DECLINE } from "../core/normalize-key-input.js";
 import { useScope } from "../hooks/use-scope.js";
 import { requireFrameDocument } from "../testing/assertions.js";
@@ -72,15 +76,51 @@ describe("KeyboardProvider", () => {
     expect(eventB.defaultPrevented).toBe(true);
   });
 
-  it("does not suppress the native default when a preventDefault handler declines", () => {
-    const declineHandler = vi.fn(() => DECLINE);
-    const handledHandler = vi.fn();
+  it("prevents native Ctrl+U and Ctrl+K accelerators when the demos handle them", () => {
+    const mapDemo = render(<UseKeyMap />);
+    const underlineEvent = new KeyboardEvent("keydown", {
+      key: "u",
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+
+    act(() => window.dispatchEvent(underlineEvent));
+
+    expect(screen.getByText("Active: underline")).toBeTruthy();
+    expect(underlineEvent.defaultPrevented).toBe(true);
+    mapDemo.unmount();
+
+    render(<UseScopeBasic />);
+    const commandEvent = new KeyboardEvent("keydown", {
+      key: "k",
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+
+    act(() => window.dispatchEvent(commandEvent));
+
+    expect(screen.getByRole("dialog", { name: "Modal" })).toBeTruthy();
+    expect(commandEvent.defaultPrevented).toBe(true);
+  });
+
+  it("prevents the default after an accepted handler returns but not after a handler declines", () => {
+    let acceptedDuringHandler: boolean | undefined;
+    let declinedDuringHandler: boolean | undefined;
+    const acceptedHandler = vi.fn((event: KeyboardEvent) => {
+      acceptedDuringHandler = event.defaultPrevented;
+    });
+    const declineHandler = vi.fn((event: KeyboardEvent) => {
+      declinedDuringHandler = event.defaultPrevented;
+      return DECLINE;
+    });
 
     function Consumer() {
       const { register } = useKeyboardContext();
       useEffect(() => {
         register("global", "d", declineHandler, { preventDefault: true });
-        register("global", "e", handledHandler, { preventDefault: true });
+        register("global", "e", acceptedHandler, { preventDefault: true });
       }, [register]);
       return <div>consumer</div>;
     }
@@ -94,6 +134,7 @@ describe("KeyboardProvider", () => {
     });
     act(() => window.dispatchEvent(declinedEvent));
     expect(declineHandler).toHaveBeenCalledOnce();
+    expect(declinedDuringHandler).toBe(false);
     expect(declinedEvent.defaultPrevented).toBe(false);
 
     const handledEvent = new KeyboardEvent("keydown", {
@@ -102,8 +143,19 @@ describe("KeyboardProvider", () => {
       cancelable: true,
     });
     act(() => window.dispatchEvent(handledEvent));
-    expect(handledHandler).toHaveBeenCalledOnce();
+    expect(acceptedHandler).toHaveBeenCalledOnce();
+    expect(acceptedDuringHandler).toBe(false);
     expect(handledEvent.defaultPrevented).toBe(true);
+  });
+
+  it("keeps the Types prevention contract aligned with the KeyboardProvider reference", () => {
+    const docsDirectory = resolve(process.cwd(), "docs/content/api");
+    const providerPage = readFileSync(resolve(docsDirectory, "keyboard-provider.mdx"), "utf8");
+    const typesPage = readFileSync(resolve(docsDirectory, "types.mdx"), "utf8");
+    const providerContract = providerPage.match(/^- `preventDefault` contract\. (.+)$/m)?.[1];
+
+    expect(providerContract).toBeDefined();
+    expect(typesPage).toContain(providerContract);
   });
 
   it("does not fire when a local keydown listener has already handled the event", async () => {
@@ -220,12 +272,14 @@ describe("KeyboardProvider", () => {
     const user = userEvent.setup();
     const blocked = vi.fn();
     const allowed = vi.fn();
+    const toggle = vi.fn();
 
     function Consumer() {
       const { register } = useKeyboardContext();
       useEffect(() => {
         register("global", "a", blocked);
         register("global", "Escape", allowed, { allowInInput: true });
+        register("global", "mod+k", toggle, { allowInInput: true });
       }, []);
       return <input aria-label="Search" />;
     }
@@ -243,6 +297,59 @@ describe("KeyboardProvider", () => {
 
     await user.keyboard("{Escape}");
     expect(allowed).toHaveBeenCalledOnce();
+
+    fireKeyFrom(input, "k", { ctrlKey: true });
+    expect(toggle).toHaveBeenCalledOnce();
+  });
+
+  it("preserves editable ownership during IME composition", () => {
+    const move = vi.fn();
+    const close = vi.fn();
+
+    function Consumer() {
+      const { register } = useKeyboardContext();
+      useEffect(() => {
+        register("global", "ArrowDown", move, { allowInInput: true, preventDefault: true });
+        register("global", "Escape", close, { allowInInput: true, preventDefault: true });
+      }, [register]);
+      return <input aria-label="Search" />;
+    }
+
+    renderInProvider(<Consumer />);
+
+    const input = screen.getByRole("textbox", { name: "Search" });
+    input.focus();
+    const composingArrow = new KeyboardEvent("keydown", {
+      key: "ArrowDown",
+      bubbles: true,
+      cancelable: true,
+      isComposing: true,
+    });
+    act(() => input.dispatchEvent(composingArrow));
+
+    const legacyImeEscape = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(legacyImeEscape, "keyCode", { value: 229 });
+    act(() => input.dispatchEvent(legacyImeEscape));
+
+    expect(move).not.toHaveBeenCalled();
+    expect(close).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(input);
+    expect(composingArrow.defaultPrevented).toBe(false);
+    expect(legacyImeEscape.defaultPrevented).toBe(false);
+
+    const postCompositionArrow = new KeyboardEvent("keydown", {
+      key: "ArrowDown",
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => input.dispatchEvent(postCompositionArrow));
+
+    expect(move).toHaveBeenCalledOnce();
+    expect(postCompositionArrow.defaultPrevented).toBe(true);
   });
 
   it.each([
@@ -802,6 +909,41 @@ describe("KeyboardProvider", () => {
     // The browser retargets `event.target` to the shadow host, which lives
     // outside the container; only the composed path reveals the real target
     // inside the container so containment must be judged from it.
+    fireKeyFrom(innerTarget, "ArrowDown", { composed: true });
+    expect(handler).toHaveBeenCalledOnce();
+  });
+
+  it("fires focus-scoped handlers through a nested open shadow root inside the container", () => {
+    const handler = vi.fn();
+    let innerTarget: HTMLButtonElement | null = null;
+
+    function Consumer() {
+      const { register } = useKeyboardContext();
+      const containerRef = useRef<HTMLDivElement>(null);
+      const hostRef = useRef<HTMLDivElement>(null);
+      useEffect(() => {
+        const host = hostRef.current;
+        if (!host) return;
+        const root = host.attachShadow({ mode: "open" });
+        innerTarget = document.createElement("button");
+        root.append(innerTarget);
+      }, []);
+      useEffect(() => {
+        return register("global", "ArrowDown", handler, {
+          containerRef,
+          focusWithinOnly: true,
+        });
+      }, [register]);
+      return (
+        <div ref={containerRef}>
+          <div ref={hostRef} />
+        </div>
+      );
+    }
+
+    renderInProvider(<Consumer />);
+
+    if (!innerTarget) throw new Error("nested shadow target missing");
     fireKeyFrom(innerTarget, "ArrowDown", { composed: true });
     expect(handler).toHaveBeenCalledOnce();
   });

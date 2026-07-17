@@ -346,14 +346,16 @@
     "build:docs-data": "node --import tsx scripts/build-docs-data.ts",
     "build:artifacts": "node --import tsx scripts/build-publish-artifacts.ts",
     "validate:registry": "node --import tsx scripts/validate-registry-metadata.ts",
+    "validate:release-docs": "node --input-type=module -e \"import fs from 'node:fs';const p=JSON.parse(fs.readFileSync('package.json','utf8'));const floor=p.peerDependencies['@diffgazer/keys'];const current=source=>(source.split('\\n## '+p.version+'\\n')[1]||'').split('\\n## ')[0];const docs={README:fs.readFileSync('README.md','utf8'),CHANGELOG:current(fs.readFileSync('CHANGELOG.md','utf8')),DOCS_CHANGELOG:current(fs.readFileSync('docs/content/changelog.mdx','utf8'))};for(const [name,source] of Object.entries(docs)){const matches=source.split(/\\r?\\n/).some(line=>{const normalized=line.replace(/\\s+/g,'');return normalized.includes('@diffgazer/keys')&&normalized.includes(floor)});if(!matches)throw new Error(name+' does not document @diffgazer/keys '+floor)}const specifier='@diffgazer/ui/components/floating-panel';if(!docs.CHANGELOG.includes(specifier))throw new Error('CHANGELOG does not name '+specifier);const module=await import(specifier);for(const name of ['FloatingPanel','useFloatingPanelContext']){if(!(name in module))throw new Error(specifier+' does not export '+name)}\"",
     "validate:artifacts": "pnpm --dir ../.. validate:artifacts",
-    "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p scripts/tsconfig.json",
+    "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p tsconfig.e2e.json && tsc --noEmit -p scripts/tsconfig.json",
     "check": "biome check .",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "test:watch": "vitest",
     "test:types": "vitest --typecheck --typecheck.only --run",
     "prepack": "pnpm run build",
-    "prepublishOnly": "pnpm run build && pnpm run type-check && pnpm run test && pnpm run validate:artifacts"
+    "prepublishOnly": "pnpm run build && pnpm run validate:release-docs && pnpm run type-check && pnpm run test && pnpm run validate:artifacts"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
@@ -380,6 +382,7 @@
     "@diffgazer/core": "workspace:*",
     "@diffgazer/keys": "workspace:*",
     "@diffgazer/registry": "workspace:*",
+    "@playwright/test": "^1.60.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -395,6 +398,7 @@
     "shadcn": "^4.7.0",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
+    "vite": "^7.3.1",
     "vitest": "^4.1.0"
   },
   "publishConfig": {

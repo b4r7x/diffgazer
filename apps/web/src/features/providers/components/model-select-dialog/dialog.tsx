@@ -1,6 +1,7 @@
 import { getCompatibilityLabel, useModelFilter, useModelSource } from "@diffgazer/core/providers";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
+import { Button } from "@diffgazer/ui/components/button";
 import {
   Dialog,
   DialogAction,
@@ -42,9 +43,14 @@ export function ModelSelectDialog({
   onSelect,
   isSaving = false,
 }: ModelSelectDialogProps) {
-  const { models, loading, error, isOpenRouter, openRouter } = useModelSource(open, provider);
+  const { models, loading, error, isOpenRouter, openRouter, source, fetchedAt, retry } =
+    useModelSource(open, provider);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && isSaving) return;
+    onOpenChange(nextOpen);
+  };
 
   const {
     searchQuery,
@@ -64,7 +70,6 @@ export function ModelSelectDialog({
     setFilterIndex,
     setFocusZone,
     handleConfirm,
-    handleUseCustom,
     handleFilterKeyDown,
     handleSearchEscape,
     handleSearchArrowDown,
@@ -88,14 +93,20 @@ export function ModelSelectDialog({
     searchInputRef,
     listContainerRef,
     onSelect,
-    onOpenChange,
+    onOpenChange: handleOpenChange,
   });
 
   const emptyLabel = error ?? "No models match your search";
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl overflow-hidden border border-border shadow-2xl">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className="max-w-2xl overflow-hidden border border-border shadow-2xl"
+        closeOnBackdropClick={!isSaving}
+        onEscapeKeyDown={(event) => {
+          if (isSaving) event.preventDefault();
+        }}
+      >
         <DialogHeader
           marker="none"
           className="flex-row items-center justify-between gap-3 bg-secondary/50 px-4 py-3"
@@ -106,6 +117,7 @@ export function ModelSelectDialog({
           <DialogClose
             {...getCloseButtonProps()}
             size="sm"
+            disabled={isSaving}
             className="h-auto shrink-0 px-2 py-1 text-muted-foreground hover:text-foreground font-bold"
           />
         </DialogHeader>
@@ -118,8 +130,6 @@ export function ModelSelectDialog({
             onFocus={() => setFocusZone("search")}
             onEscape={handleSearchEscape}
             onArrowDown={handleSearchArrowDown}
-            showCustomAction={isOpenRouter}
-            onUseCustom={handleUseCustom}
             disabled={isSaving}
           />
 
@@ -135,11 +145,42 @@ export function ModelSelectDialog({
               setFilterIndex(idx);
             }}
           />
-          {isOpenRouter && (
+          {isOpenRouter && !loading && !error && (
             <div className="px-4 pb-2 text-2xs text-muted-foreground">
-              {getCompatibilityLabel(openRouter)} You can enter a custom model ID at your own risk.
+              {getCompatibilityLabel(openRouter)}
             </div>
           )}
+          {(source === "cache" || source === "snapshot") && (
+            <output className="mx-4 mb-2 flex items-center justify-between gap-3 text-2xs text-warning-text">
+              <span>
+                {source === "cache"
+                  ? `Using cached catalog data from ${fetchedAt ?? "an unknown time"}.`
+                  : "Using the bundled model catalog because live catalog data is unavailable."}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={retry}
+                disabled={isSaving}
+              >
+                Retry
+              </Button>
+            </output>
+          )}
+          {error ? (
+            <div className="mx-4 mb-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={retry}
+                disabled={isSaving}
+              >
+                Retry
+              </Button>
+            </div>
+          ) : null}
 
           <ModelList
             ref={listContainerRef}

@@ -78,6 +78,42 @@ describe("waitForHealthy", () => {
     timeoutSpy.mockRestore();
   });
 
+  it.each([
+    ["forward", Number.MAX_SAFE_INTEGER],
+    ["backward", -Number.MAX_SAFE_INTEGER],
+  ])("ignores a %s wall-clock discontinuity when budgeting probes", async (_direction, jump) => {
+    let wallClock = 1_000;
+    const dateSpy = vi.spyOn(Date, "now").mockImplementation(() => wallClock);
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+    const fetchImpl = vi
+      .fn()
+      .mockImplementationOnce(() => {
+        wallClock = jump;
+        return Promise.resolve(unavailableResponse());
+      })
+      .mockResolvedValueOnce(okResponse());
+
+    try {
+      await waitForHealthy({
+        address: ADDRESS,
+        fetchImpl,
+        sleep: vi.fn().mockResolvedValue(undefined),
+        timeoutMs: 500,
+      });
+
+      expect(dateSpy).not.toHaveBeenCalled();
+      expect(timeoutSpy).toHaveBeenCalledTimes(2);
+      for (const [remainingMs] of timeoutSpy.mock.calls) {
+        expect(Number.isFinite(remainingMs)).toBe(true);
+        expect(remainingMs).toBeGreaterThanOrEqual(0);
+        expect(remainingMs).toBeLessThanOrEqual(500);
+      }
+    } finally {
+      dateSpy.mockRestore();
+      timeoutSpy.mockRestore();
+    }
+  });
+
   it("rejects once the timeout elapses without a healthy response", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(unavailableResponse());
     const sleep = vi.fn().mockResolvedValue(undefined);
@@ -128,8 +164,11 @@ describe("createApiServer readiness wiring", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse());
 
     const server = createApiServer({ cwd: "/srv", port: 4100, projectRoot: "/repo" });
-    server.start();
-    child.stdout.emit("data", Buffer.from("Server running on 4100"));
+    const starting = server.start();
+    child.stdout.emit(
+      "data",
+      Buffer.from('{"level":"info","event":"dev_server_ready","url":"http://localhost:4100"}\n'),
+    );
 
     await vi.waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledWith(
@@ -137,6 +176,7 @@ describe("createApiServer readiness wiring", () => {
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
+    await expect(starting).resolves.toBeUndefined();
   });
 
   it("invokes onReady only after the health probe resolves", async () => {
@@ -150,13 +190,17 @@ describe("createApiServer readiness wiring", () => {
     const onReady = vi.fn();
 
     const server = createApiServer({ cwd: "/srv", port: 4200, projectRoot: "/repo", onReady });
-    server.start();
-    child.stdout.emit("data", Buffer.from("Server running"));
+    const starting = server.start();
+    child.stdout.emit(
+      "data",
+      Buffer.from('{"level":"info","event":"dev_server_ready","url":"http://localhost:4200"}\n'),
+    );
 
     await Promise.resolve();
     expect(onReady).not.toHaveBeenCalled();
 
     resolveHealth();
+    await expect(starting).resolves.toBeUndefined();
     await vi.waitFor(() => {
       expect(onReady).toHaveBeenCalledExactlyOnceWith("http://localhost:4200");
     });

@@ -48,11 +48,28 @@ export const ProjectContextMetaSchema = z.object({
   generatedAt: z.string(),
   root: z.string(),
   statusHash: z.string(),
+  statusHashKind: z.enum(["full", "status-only", "unavailable"]),
   headCommit: z.string().optional(),
   charCount: z.number(),
   treeTruncated: z.boolean().optional(),
 });
 export type ProjectContextMeta = z.infer<typeof ProjectContextMetaSchema>;
+
+const ProjectContextSnapshotArtifactSchema = z.object({
+  file: z.string().min(1),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+});
+
+export const ProjectContextSnapshotManifestSchema = z.object({
+  version: z.literal(1),
+  generation: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
+  artifacts: z.object({
+    markdown: ProjectContextSnapshotArtifactSchema,
+    graph: ProjectContextSnapshotArtifactSchema,
+    meta: ProjectContextSnapshotArtifactSchema,
+  }),
+});
+export type ProjectContextSnapshotManifest = z.infer<typeof ProjectContextSnapshotManifestSchema>;
 
 export const ProjectContextSnapshotSchema = z.object({
   markdown: z.string(),

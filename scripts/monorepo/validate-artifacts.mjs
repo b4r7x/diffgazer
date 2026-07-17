@@ -4,11 +4,11 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
-  collectArtifactSyncValidationErrors,
   collectTreeParityErrors,
   getArtifactLibraries,
   readDocsLibrariesConfig,
 } from "@diffgazer/registry";
+import { collectDocsArtifactSyncValidationErrors } from "./lib/docs-artifact-sync-validation.mjs";
 import { ENV } from "./lib/env.mjs";
 import { readJson } from "./lib/json.mjs";
 import { validateArtifactPackSurface } from "./lib/pack-surface.mjs";
@@ -300,7 +300,7 @@ const checks = [
 ];
 
 checks.push(
-  ...collectArtifactSyncValidationErrors({
+  ...collectDocsArtifactSyncValidationErrors({
     docsRoot,
     primaryLibraryId: docsLibraries.primaryLibraryId,
     libraries: artifactLibraries,
@@ -321,9 +321,8 @@ checks.push(
   ...collectBundleRelativeJsImportErrors(keysCopyBundle.items, "@diffgazer/add keys copy bundle"),
 );
 
-// Exit-code contract: this validator exits non-zero when any check fails so CI
-// gates can branch on it. The shared runner reports failures and exits 1
-// explicitly rather than relying on an uncaught throw.
+// Exit-code contract: this validator leaves a non-zero code when any check
+// fails so diagnostics can drain before CI observes the failure.
 runValidationChecks(checks, {
   failureHeader: "Artifact validation failed.",
   successMessage: "OK: artifact validation passed",

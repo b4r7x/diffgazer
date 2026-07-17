@@ -24,8 +24,9 @@ export async function streamActiveSessionToSSE(
   stream: SSEWriter,
   session: ActiveSession,
   clientSignal?: AbortSignal,
+  isAuthorized: () => boolean = () => true,
 ): Promise<void> {
-  if (clientSignal?.aborted) {
+  if (clientSignal?.aborted || !isAuthorized()) {
     return;
   }
 
@@ -62,6 +63,10 @@ export async function streamActiveSessionToSSE(
 
   let replayedTerminalEvent = false;
   for (const event of replayedSet) {
+    if (!isAuthorized()) {
+      earlyUnsub();
+      return;
+    }
     try {
       await writeStreamEvent(stream, event);
     } catch (error) {
@@ -81,6 +86,7 @@ export async function streamActiveSessionToSSE(
     // Drain any remaining buffered live events that arrived during replay
     for (const event of liveQueue) {
       if (replayedSet.has(event)) continue;
+      if (!isAuthorized()) return;
       try {
         await writeStreamEvent(stream, event);
       } catch (error) {
@@ -140,6 +146,10 @@ export async function streamActiveSessionToSSE(
     // Drain buffered live events first, then subscribe for new ones.
     draining = true;
     const processEvent = (event: FullReviewStreamEvent): void => {
+      if (!isAuthorized()) {
+        finish(resolve);
+        return;
+      }
       if (replayedSet.has(event)) return;
       if (isTerminalEvent(event)) terminalClaimed = true;
       pendingWrite = pendingWrite.then(() => writeStreamEvent(stream, event));
@@ -171,6 +181,10 @@ export async function streamActiveSessionToSSE(
 
     const onComplete = (): void => {
       if (done) return;
+      if (!isAuthorized()) {
+        finish(resolve);
+        return;
+      }
       const latest = getSession(session.reviewId);
       if (!latest) {
         writeTerminal(STALE_ERROR_EVENT);

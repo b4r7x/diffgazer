@@ -26,28 +26,30 @@ export default function SidebarCollapsible() {
         <SidebarSection collapsible defaultOpen>
           <SidebarSectionTitle>src/</SidebarSectionTitle>
           <SidebarSectionContent>
-            <SidebarItem active>index.ts</SidebarItem>
-            <SidebarItem>utils.ts</SidebarItem>
-            <SidebarItem>config.ts</SidebarItem>
+            <SidebarItem active href="#src-index">
+              index.ts
+            </SidebarItem>
+            <SidebarItem href="#src-utils">utils.ts</SidebarItem>
+            <SidebarItem href="#src-config">config.ts</SidebarItem>
           </SidebarSectionContent>
         </SidebarSection>
         <SidebarSection collapsible defaultOpen={false}>
           <SidebarSectionTitle>tests/</SidebarSectionTitle>
           <SidebarSectionContent>
-            <SidebarItem>index.test.ts</SidebarItem>
-            <SidebarItem>utils.test.ts</SidebarItem>
+            <SidebarItem href="#tests-index">index.test.ts</SidebarItem>
+            <SidebarItem href="#tests-utils">utils.test.ts</SidebarItem>
           </SidebarSectionContent>
         </SidebarSection>
         <SidebarSection collapsible defaultOpen>
           <SidebarSectionTitle>docs/</SidebarSectionTitle>
           <SidebarSectionContent>
-            <SidebarItem>
+            <SidebarItem href="#docs-readme">
               <SidebarItemLabel>README.md</SidebarItemLabel>
               <SidebarItemBadge>
                 <span className="text-xs text-muted-foreground">draft</span>
               </SidebarItemBadge>
             </SidebarItem>
-            <SidebarItem>CHANGELOG.md</SidebarItem>
+            <SidebarItem href="#docs-changelog">CHANGELOG.md</SidebarItem>
           </SidebarSectionContent>
         </SidebarSection>
       </SidebarContent>

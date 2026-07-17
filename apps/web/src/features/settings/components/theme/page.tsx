@@ -1,3 +1,4 @@
+import { useSettings } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { deriveSaveState, useSubmitGuard } from "@diffgazer/core/forms";
 import { isSelectableTheme, SELECTABLE_THEME_OPTIONS } from "@diffgazer/core/schemas/config";
@@ -20,13 +21,12 @@ function resolveTheme(theme: WebTheme, system: ResolvedTheme): ResolvedTheme {
 }
 
 export function SettingsThemePage() {
+  const { data: settings } = useSettings();
   const { theme: savedTheme, system, setTheme } = useTheme();
   const navigate = useNavigate();
   const [saveError, setSaveError] = useState<string | null>(null);
   const { isSubmitting, withGuard } = useSubmitGuard();
 
-  // Save state must live above the `key={savedTheme}` remount, or the error and
-  // pending guard reset each time the provider rolls the effective theme.
   const saveAndExit = (theme: WebTheme) => {
     void withGuard(async () => {
       setSaveError(null);
@@ -41,9 +41,10 @@ export function SettingsThemePage() {
     });
   };
 
+  if (!settings) return null;
+
   return (
     <SettingsThemeEditor
-      key={savedTheme}
       savedTheme={savedTheme}
       system={system}
       saveError={saveError}
@@ -179,6 +180,7 @@ function SettingsThemeEditor({
               onChange={handleChange}
               onEnter={handleEnterOnList}
               onSelect={handleChange}
+              onFocus={() => footer.reset()}
               enabled={!footer.inActions}
               onBoundaryReached={(direction) => {
                 if (direction === "down") {

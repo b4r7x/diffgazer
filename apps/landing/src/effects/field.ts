@@ -55,7 +55,11 @@ export interface Field {
 
 const pick = <T>(items: [T, ...T[]]): T => items[(Math.random() * items.length) | 0] ?? items[0];
 
-export function createField(root: ParentNode = document, signal?: AbortSignal): Field | null {
+export function createField(
+  root: ParentNode = document,
+  signal?: AbortSignal,
+  options: { redrawOnResize?: boolean } = {},
+): Field | null {
   const scope = createEffectScope(signal);
   if (!scope.active()) return null;
 
@@ -75,6 +79,7 @@ export function createField(root: ParentNode = document, signal?: AbortSignal): 
   let lastScrollY = scrollY;
   let apRect: DOMRect | null = null;
   let heroRect: DOMRect | null = null;
+  let lastFrame: { mouse: Mouse; light: boolean } | null = null;
 
   function seedLine(line: Line, fresh: boolean): void {
     line.src = pick(FIELD_SRC);
@@ -109,6 +114,7 @@ export function createField(root: ParentNode = document, signal?: AbortSignal): 
 
   const draw = (mouse: Mouse, light: boolean): void => {
     if (!scope.active()) return;
+    if (options.redrawOnResize) lastFrame = { mouse, light };
     ctx.clearRect(0, 0, fieldW, fieldH);
     camX = lerp(camX, mouse.nx, 0.04);
     camY = lerp(camY, mouse.ny, 0.04);
@@ -158,7 +164,10 @@ export function createField(root: ParentNode = document, signal?: AbortSignal): 
     "resize",
     () => {
       if (resizeTimer) clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(resize, 150);
+      resizeTimer = setTimeout(() => {
+        resize();
+        if (lastFrame) draw(lastFrame.mouse, lastFrame.light);
+      }, 150);
     },
     { signal: scope.signal },
   );

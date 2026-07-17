@@ -12,6 +12,7 @@ export function inkKeyToHotkey(input: string, key: Key): string | null {
   if (key.delete) return "delete";
   if (key.pageUp) return "pageup";
   if (key.pageDown) return "pagedown";
+  if (key.ctrl || key.meta || key.super || key.hyper || input.startsWith("\u001b")) return null;
   if (input) return input;
   return null;
 }

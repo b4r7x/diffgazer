@@ -3,7 +3,7 @@ title: How it works
 description: What Diffgazer does between the command and the review.
 ---
 
-You run one command, and a moment later a review opens in your browser. In between, **Diffgazer starts an embedded local server and a UI on your own machine; nothing leaves it until you start a review.** No account, no upload, no dashboard you do not control. This page walks through what that command actually sets in motion.
+You run one command, and a moment later a review opens in your browser. In between, **Diffgazer starts an embedded local server and a UI on your own machine.** No account, no upload to a Diffgazer service, no dashboard you do not control. During provider setup, opening the model picker can make an outbound catalog request before any review starts; it never includes your code. This page walks through what that command actually sets in motion.
 
 ## The pieces
 
@@ -44,7 +44,7 @@ Both modes run the same pipeline against the same local server. The difference i
 
 ## What runs locally
 
-Everything you have read about so far runs on your machine: the CLI, the embedded server bound to `127.0.0.1`, the UI served over localhost, and your git history. The only thing that leaves your computer is the request you send to your chosen model provider. For exactly what stays local and what does not, see [Privacy](/app/concepts/privacy).
+Everything you have read about so far runs on your machine: the CLI, the embedded server bound to `127.0.0.1`, the UI served over localhost, and your git history. Two kinds of request can leave your computer: a pre-review model-catalog lookup during provider setup, and the review request sent to your chosen model provider. Gemini, Z.AI, Z.AI Coding Plan, Groq, and Cerebras use the public models.dev catalog; OpenRouter requests its account-scoped catalog with your OpenRouter API key. For exactly what each request carries, see [Privacy](/app/concepts/privacy).
 
 ## Related
 

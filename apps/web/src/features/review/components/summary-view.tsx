@@ -1,6 +1,7 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import {
   buildCategoryStats,
+  buildDuplicateCollapseNotice,
   buildHiddenIssuesNotice,
   buildLensSummaryRows,
   buildReviewSummary,
@@ -35,6 +36,7 @@ interface ReviewSummaryViewProps {
   issues: ReviewIssue[];
   reviewId: string | null;
   lensStats?: LensStat[];
+  droppedDuplicates?: number;
   droppedBelowThreshold?: number;
   minSeverity?: ReviewSeverity;
   onEnterReview: () => void;
@@ -45,12 +47,14 @@ export function ReviewSummaryView({
   issues,
   reviewId,
   lensStats,
+  droppedDuplicates,
   droppedBelowThreshold,
   minSeverity,
   onEnterReview,
   onBack,
 }: ReviewSummaryViewProps) {
   const summary = buildReviewSummary(issues);
+  const duplicateNotice = buildDuplicateCollapseNotice(droppedDuplicates, summary.total);
   const hiddenNotice = buildHiddenIssuesNotice(droppedBelowThreshold, minSeverity);
   const lensRows = buildLensSummaryRows(lensStats);
 
@@ -73,7 +77,7 @@ export function ReviewSummaryView({
   const stats = {
     runId: reviewId,
     totalIssues: summary.total,
-    filesAnalyzed: summary.filesAnalyzed,
+    filesWithIssues: summary.filesWithIssues,
     blockerCount: summary.blockerCount,
   };
 
@@ -101,6 +105,11 @@ export function ReviewSummaryView({
           onEnterReview={onEnterReview}
           onBack={onBack}
         />
+        {duplicateNotice ? (
+          <p className="text-muted-foreground font-mono text-xs mt-4" role="note">
+            {duplicateNotice}
+          </p>
+        ) : null}
         {hiddenNotice ? (
           <p className="text-muted-foreground font-mono text-xs mt-4" role="note">
             {hiddenNotice}
@@ -109,10 +118,18 @@ export function ReviewSummaryView({
         {lensRows.length > 0 ? (
           <table className="font-mono text-xs mt-4 w-full">
             <caption className="text-left text-muted-foreground mb-1">Issues by lens</caption>
+            <thead className="sr-only">
+              <tr>
+                <th scope="col">Lens</th>
+                <th scope="col">Issues</th>
+              </tr>
+            </thead>
             <tbody>
               {lensRows.map((row) => (
                 <tr key={row.lensId}>
-                  <td className="pr-4">{row.label}</td>
+                  <th className="pr-4 text-left font-normal" scope="row">
+                    {row.label}
+                  </th>
                   <td className="pr-4 text-right">
                     {row.status === "failed"
                       ? `failed${row.errorCode ? ` (${row.errorCode})` : ""}`

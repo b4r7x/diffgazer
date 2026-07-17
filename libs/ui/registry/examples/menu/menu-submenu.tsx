@@ -15,7 +15,7 @@ export default function MenuSubmenu() {
 
   return (
     <div className="w-64 border border-border">
-      <Menu aria-label="Application menu" onSelect={(id) => setLastAction(id)}>
+      <Menu aria-label="Application menu" onSelect={setLastAction}>
         <MenuItem id="new" hotkey={1}>
           New File
         </MenuItem>

@@ -3,13 +3,36 @@ import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
 import { runWithRequestNonce } from "./lib/request-nonce";
 import { buildDocsContentSecurityPolicy, DOCS_BASE_SECURITY_HEADERS } from "./security-headers";
 
+const STATIC_NAMESPACE_PREFIXES = ["/assets", "/r", "/schema"] as const;
+const STATIC_RESOURCE_METHODS = new Set(["GET", "HEAD"]);
+
+function getStaticNamespaceBoundaryResponse(request: Request): Response | null {
+  const { pathname } = new URL(request.url);
+  const isStaticNamespace = STATIC_NAMESPACE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+  if (!isStaticNamespace) return null;
+
+  if (STATIC_RESOURCE_METHODS.has(request.method)) {
+    return new Response(null, { status: 404 });
+  }
+
+  return new Response(null, {
+    status: 405,
+    headers: { Allow: "GET, HEAD" },
+  });
+}
+
 export default createServerEntry({
   async fetch(request) {
     // One nonce per request: getRouter() reads it (via the csp-nonce bridge) and
     // stamps it on every SSR-injected inline script, and the response CSP carries
     // the matching 'nonce-…' so those scripts run without 'unsafe-inline'.
     const nonce = randomBytes(16).toString("base64");
-    const response = await runWithRequestNonce(nonce, () => handler.fetch(request));
+    const response = await runWithRequestNonce(
+      nonce,
+      () => getStaticNamespaceBoundaryResponse(request) ?? handler.fetch(request),
+    );
     const headers = new Headers(response.headers);
     for (const [key, value] of Object.entries(DOCS_BASE_SECURITY_HEADERS)) {
       headers.set(key, value);

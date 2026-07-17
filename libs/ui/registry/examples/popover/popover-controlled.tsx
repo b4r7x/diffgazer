@@ -13,6 +13,7 @@ export default function PopoverControlledExample() {
           {(triggerProps) => (
             <button
               {...triggerProps}
+              type="button"
               className="border border-foreground/30 px-3 py-1 font-mono text-sm"
             >
               {open ? "close" : "open"}

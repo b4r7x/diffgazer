@@ -1,4 +1,5 @@
 import { FooterProvider } from "@diffgazer/core/footer";
+import { makeIssue } from "@diffgazer/core/testing/factories";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
@@ -42,6 +43,15 @@ describe("ReviewScreen", () => {
       data: {
         config: { provider: "gemini", model: "gemini-2.5-flash" },
         configured: true,
+        setup: {
+          hasSecretsStorage: true,
+          hasProvider: true,
+          hasModel: true,
+          hasTrust: true,
+          isConfigured: true,
+          isReady: true,
+          missing: [],
+        },
       },
       isLoading: false,
     });
@@ -78,7 +88,83 @@ describe("ReviewScreen", () => {
 
     const frame = lastFrame() ?? "";
     expect(frame).toMatch(/review complete/i);
-    expect(frame).toContain("Found 0 issues across 0 files.");
+    expect(frame).toContain("Found 0 issues across 0 files with issues.");
+  });
+
+  test("renders the persisted duplicate-collapse notice in a reopened summary", () => {
+    const issue = makeIssue({ id: "issue-1", title: "Saved issue" });
+    apiMocks.useReview.mockReturnValue({
+      isSuccess: true,
+      isError: false,
+      data: {
+        review: {
+          metadata: { id: "review-123", durationMs: 10 },
+          result: { issues: [issue] },
+          droppedDuplicates: 1,
+        },
+      },
+      error: null,
+    });
+
+    const { lastFrame } = renderReviewScreen();
+
+    expect(lastFrame() ?? "").toContain("1 duplicate issue collapsed across lenses (2 → 1 issue)");
+  });
+
+  test("opens a saved review directly on the issue named by the route", () => {
+    const first = makeIssue({ id: "issue-1", title: "First issue", symptom: "First symptom" });
+    const selected = makeIssue({
+      id: "issue-2",
+      title: "Selected issue",
+      symptom: "Selected issue symptom",
+    });
+    apiMocks.useReview.mockReturnValue({
+      isSuccess: true,
+      isError: false,
+      data: {
+        review: {
+          metadata: { id: "review-123", durationMs: 10 },
+          result: { issues: [first, selected] },
+        },
+      },
+      error: null,
+    });
+
+    const { lastFrame } = renderReviewScreen({
+      screen: "review",
+      reviewId: "review-123",
+      issueId: "issue-2",
+    });
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("Selected issue symptom");
+    expect(frame).not.toContain("First symptom");
+    expect(frame).not.toMatch(/review complete/i);
+  });
+
+  test("falls back to the saved review summary for an unknown route issue", () => {
+    const issue = makeIssue({ id: "issue-1", symptom: "Issue detail symptom" });
+    apiMocks.useReview.mockReturnValue({
+      isSuccess: true,
+      isError: false,
+      data: {
+        review: {
+          metadata: { id: "review-123", durationMs: 10 },
+          result: { issues: [issue] },
+        },
+      },
+      error: null,
+    });
+
+    const { lastFrame } = renderReviewScreen({
+      screen: "review",
+      reviewId: "review-123",
+      issueId: "missing-issue",
+    });
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toMatch(/review complete/i);
+    expect(frame).not.toContain("Issue detail symptom");
   });
 
   test("surfaces an error view on a non-404 saved-read failure instead of resuming the stream", () => {
@@ -139,6 +225,15 @@ describe("ReviewScreen", () => {
       data: {
         config: { provider: null, model: null },
         configured: false,
+        setup: {
+          hasSecretsStorage: true,
+          hasProvider: false,
+          hasModel: false,
+          hasTrust: true,
+          isConfigured: false,
+          isReady: false,
+          missing: ["provider", "model"],
+        },
       },
       isLoading: false,
     });

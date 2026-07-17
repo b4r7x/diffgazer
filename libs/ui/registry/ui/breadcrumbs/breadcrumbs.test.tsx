@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { Fragment } from "react";
+import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { Breadcrumbs } from "./index";
 
@@ -49,8 +50,8 @@ describe("Breadcrumbs", () => {
       </Breadcrumbs>,
     );
     const items = screen.getAllByRole("listitem");
-    expect(items[1]).not.toHaveAttribute("aria-current");
-    expect(screen.getByText("About")).toHaveAttribute("aria-current", "page");
+    expect(items[1]).toHaveAttribute("aria-current", "page");
+    expect(items[1]?.querySelector("[aria-current]")).toBeNull();
   });
 
   it("uses the explicit current item when provided", () => {
@@ -64,9 +65,86 @@ describe("Breadcrumbs", () => {
       </Breadcrumbs>,
     );
     const items = screen.getAllByRole("listitem");
-    expect(items[1]).not.toHaveAttribute("aria-current");
-    expect(screen.getByText("About")).toHaveAttribute("aria-current", "page");
+    expect(items[1]).toHaveAttribute("aria-current", "page");
+    expect(items[1]?.querySelector("[aria-current]")).toBeNull();
     expect(items[2]).not.toHaveAttribute("aria-current");
+  });
+
+  it("marks a current item whose label is an element", () => {
+    render(
+      <Breadcrumbs>
+        <Breadcrumbs.Item>
+          <Breadcrumbs.Link href="/">Home</Breadcrumbs.Link>
+        </Breadcrumbs.Item>
+        <Breadcrumbs.Item current>
+          <strong>About</strong>
+        </Breadcrumbs.Item>
+      </Breadcrumbs>,
+    );
+
+    const currentItem = screen.getByText("About").closest("li");
+    expect(currentItem).toHaveAttribute("aria-current", "page");
+    expect(screen.getByText("About")).not.toHaveAttribute("aria-current");
+  });
+
+  it("auto-marks the final item inside a Fragment", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      render(
+        <Breadcrumbs>
+          <Breadcrumbs.Item>
+            <Breadcrumbs.Link href="/">Home</Breadcrumbs.Link>
+          </Breadcrumbs.Item>
+          {/* biome-ignore lint/complexity/noUselessFragments: the Fragment is the regression input for automatic current-item selection. */}
+          <>
+            <Breadcrumbs.Item>
+              <span>About</span>
+            </Breadcrumbs.Item>
+          </>
+        </Breadcrumbs>,
+      );
+
+      expect(screen.getByText("About").closest("li")).toHaveAttribute("aria-current", "page");
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
+  it("preserves keyed item identity across nested Fragment reordering", () => {
+    const entries = [
+      { id: "first", label: "First" },
+      { id: "second", label: "Second" },
+    ];
+
+    function KeyedBreadcrumbs({ reversed }: { reversed: boolean }) {
+      const orderedEntries = reversed ? [...entries].reverse() : entries;
+      return (
+        <Breadcrumbs>
+          {orderedEntries.map((entry) => (
+            <Fragment key={`group-${entry.id}`}>
+              {/* biome-ignore lint/complexity/noUselessFragments: nested Fragment key namespaces are the regression input. */}
+              <>
+                <Breadcrumbs.Item key="item">
+                  <span>{entry.label}</span>
+                </Breadcrumbs.Item>
+              </>
+            </Fragment>
+          ))}
+        </Breadcrumbs>
+      );
+    }
+
+    const { rerender } = render(<KeyedBreadcrumbs reversed={false} />);
+    const firstItem = screen.getByText("First").closest("li");
+    const secondItem = screen.getByText("Second").closest("li");
+
+    rerender(<KeyedBreadcrumbs reversed />);
+
+    expect(screen.getByText("First").closest("li")).toBe(firstItem);
+    expect(screen.getByText("Second").closest("li")).toBe(secondItem);
+    expect(firstItem).toHaveAttribute("aria-current", "page");
+    expect(secondItem).not.toHaveAttribute("aria-current");
   });
 
   it("marks the current breadcrumb link instead of the list item", () => {

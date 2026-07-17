@@ -80,7 +80,70 @@ const HUNK_RE = /^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@(.*)$/;
 const SKIP_RE =
   /^(index |new file mode|deleted file mode|old mode|new mode|similarity index|rename from|rename to|Binary files|copy from|copy to)/;
 
-function normalizeDiffPath(path: string): string | null {
+function decodeQuotedDiffPath(path: string): string {
+  const bytes: number[] = [];
+  const encoder = new TextEncoder();
+
+  for (let index = 0; index < path.length; index++) {
+    const character = path[index];
+    if (character !== "\\") {
+      const codePoint = path.codePointAt(index);
+      if (codePoint === undefined) continue;
+      const value = String.fromCodePoint(codePoint);
+      bytes.push(...encoder.encode(value));
+      index += value.length - 1;
+      continue;
+    }
+
+    const escaped = path[index + 1];
+    if (escaped === "\\" || escaped === '"') {
+      bytes.push(escaped.charCodeAt(0));
+      index++;
+      continue;
+    }
+    if (escaped === "t" || escaped === "n" || escaped === "r") {
+      if (escaped === "t") bytes.push(0x09);
+      if (escaped === "n") bytes.push(0x0a);
+      if (escaped === "r") bytes.push(0x0d);
+      index++;
+      continue;
+    }
+    const octal = path.slice(index + 1, index + 4);
+    if (/^[0-7]{3}$/.test(octal)) {
+      bytes.push(Number.parseInt(octal, 8));
+      index += 3;
+      continue;
+    }
+    bytes.push(0x5c);
+  }
+
+  return new TextDecoder().decode(Uint8Array.from(bytes));
+}
+
+function readQuotedPath(header: string): string | null {
+  for (let index = 1; index < header.length; index++) {
+    if (header[index] === "\\") {
+      index++;
+      continue;
+    }
+    if (header[index] !== '"') continue;
+    const suffix = header.slice(index + 1);
+    if (suffix.length > 0 && !suffix.startsWith("\t")) return null;
+    return decodeQuotedDiffPath(header.slice(1, index));
+  }
+  return null;
+}
+
+/**
+ * An unquoted header's first tab starts its timestamp. Git C-quoted paths instead decode escaped or
+ * literal tabs inside the closing quote before an optional tab-separated timestamp is discarded.
+ */
+function parseDiffHeaderPath(header: string, gitPrefix: "a/" | "b/"): string | null {
+  const quotedPath = header.startsWith('"') ? readQuotedPath(header) : null;
+  const pathWithPrefix = quotedPath ?? header.split("\t", 1)[0] ?? "";
+  const path = pathWithPrefix.startsWith(gitPrefix)
+    ? pathWithPrefix.slice(gitPrefix.length)
+    : pathWithPrefix;
   return path === "/dev/null" ? null : path;
 }
 
@@ -95,14 +158,27 @@ export function parseDiff(patch: string): ParsedDiff[] {
   let newLine = 0;
   let remainingOldLines = 0;
   let remainingNewLines = 0;
+  let hasHeaderPair = false;
+  let hasPendingOldHeader = false;
+  let pendingOldPath: string | null = null;
+
+  const startFile = (): ParsedDiff => ({ oldPath: null, newPath: null, hunks: [] });
+
+  const finishCurrentFile = (): void => {
+    if (current) files.push(current);
+    current = null;
+    hunk = null;
+    remainingOldLines = 0;
+    remainingNewLines = 0;
+    hasHeaderPair = false;
+  };
 
   for (const line of lines) {
     if (line.startsWith("diff --git ")) {
-      if (current) files.push(current);
-      current = { oldPath: null, newPath: null, hunks: [] };
-      hunk = null;
-      remainingOldLines = 0;
-      remainingNewLines = 0;
+      finishCurrentFile();
+      current = startFile();
+      hasPendingOldHeader = false;
+      pendingOldPath = null;
       continue;
     }
 
@@ -135,19 +211,30 @@ export function parseDiff(patch: string): ParsedDiff[] {
     if (SKIP_RE.test(line)) continue;
 
     if (line.startsWith("--- ")) {
-      if (!current) current = { oldPath: null, newPath: null, hunks: [] };
-      current.oldPath = normalizeDiffPath(line.replace(/^---\s+(?:a\/)?/, ""));
+      pendingOldPath = parseDiffHeaderPath(line.slice(4), "a/");
+      hasPendingOldHeader = true;
       continue;
     }
     if (line.startsWith("+++ ")) {
-      if (!current) current = { oldPath: null, newPath: null, hunks: [] };
-      current.newPath = normalizeDiffPath(line.replace(/^\+\+\+\s+(?:b\/)?/, ""));
+      const nextNewPath = parseDiffHeaderPath(line.slice(4), "b/");
+      if (hasPendingOldHeader) {
+        if (current && (hasHeaderPair || current.hunks.length > 0)) finishCurrentFile();
+        current ??= startFile();
+        current.oldPath = pendingOldPath;
+        current.newPath = nextNewPath;
+        hasHeaderPair = true;
+        hasPendingOldHeader = false;
+        pendingOldPath = null;
+      } else {
+        current ??= startFile();
+        current.newPath = nextNewPath;
+      }
       continue;
     }
 
     const m = HUNK_RE.exec(line);
     if (m) {
-      if (!current) current = { oldPath: null, newPath: null, hunks: [] };
+      if (!current) current = startFile();
       hunk = {
         oldStart: Number(m[1]),
         oldCount: Number(m[2] ?? 1),

@@ -11,6 +11,8 @@ import {
   deleteSession,
   getActiveSessionForProject,
   getSession,
+  hasReadySessionForProjectMode,
+  markCommitting,
   markComplete,
   markReady,
   onSessionComplete,
@@ -29,6 +31,7 @@ function createTrackedSession(
     reviewConfigKey?: string;
     scopeKey?: string;
     mode?: "staged" | "unstaged";
+    monotonicNow?: () => number;
   } = {},
 ) {
   createdSessionIds.add(reviewId);
@@ -38,6 +41,7 @@ function createTrackedSession(
     statusHash: options.statusHash ?? "hash",
     statusHashKind: "full",
     mode: options.mode ?? "staged",
+    ...(options.monotonicNow === undefined ? {} : { monotonicNow: options.monotonicNow }),
     ...(options.reviewConfigKey === undefined ? {} : { reviewConfigKey: options.reviewConfigKey }),
     ...(options.scopeKey === undefined ? {} : { scopeKey: options.scopeKey }),
   });
@@ -54,7 +58,7 @@ function stepEvent(step: StepId = "diff"): FullReviewStreamEvent {
 function completeEvent(reviewId: string): FullReviewStreamEvent {
   return {
     type: "complete",
-    result: { issues: [], summary: "Clean" },
+    result: { issues: [] },
     reviewId,
     durationMs: 100,
   };
@@ -312,6 +316,31 @@ describe("session bounds and subscriber failures", () => {
     expect(getSession("evict-oldest")).toBeUndefined();
   });
 
+  it("skips the oldest committing session and evicts the oldest pending session", () => {
+    const committingEvents: FullReviewStreamEvent[] = [];
+    const pendingEvents: FullReviewStreamEvent[] = [];
+    const committing = createTrackedSession("evict-committing");
+    subscribe(committing.reviewId, (event) => committingEvents.push(event));
+    expect(markCommitting(committing.reviewId)).toBe(true);
+
+    vi.advanceTimersByTime(1);
+    const pending = createTrackedSession("evict-pending");
+    subscribe(pending.reviewId, (event) => pendingEvents.push(event));
+    for (let index = 0; index < 48; index += 1) {
+      vi.advanceTimersByTime(1);
+      createTrackedSession(`evict-fill-${index}`);
+    }
+
+    createTrackedSession("evict-after-commit-start");
+
+    expect(getSession(committing.reviewId)).toBe(committing);
+    expect(committingEvents).toEqual([]);
+    expect(getSession(pending.reviewId)).toBeUndefined();
+    expect(pendingEvents).toMatchObject([
+      { type: "error", error: { code: ReviewErrorCode.SESSION_EVICTED } },
+    ]);
+  });
+
   it("does not terminate an actively-emitting session older than the timeout window", () => {
     const received: FullReviewStreamEvent[] = [];
     const session = createTrackedSession("active-session");
@@ -341,6 +370,54 @@ describe("session bounds and subscriber failures", () => {
     expect(getSession("timeout-session")).toBeUndefined();
   });
 
+  it.each([
+    {
+      direction: "forward",
+      eventWallTime: "2030-01-01T00:00:00.000Z",
+      cleanupWallTime: "2040-01-01T00:00:00.000Z",
+    },
+    {
+      direction: "backward",
+      eventWallTime: "2020-01-01T00:00:00.000Z",
+      cleanupWallTime: "2010-01-01T00:00:00.000Z",
+    },
+  ])("uses monotonic idle time after a $direction wall-clock jump", ({
+    direction,
+    eventWallTime,
+    cleanupWallTime,
+  }) => {
+    let activityTick = 0;
+    const received: FullReviewStreamEvent[] = [];
+    vi.setSystemTime("2024-01-01T00:00:00.000Z");
+    const session = createTrackedSession(`wall-clock-${direction}`, {
+      monotonicNow: () => activityTick,
+    });
+    subscribe(session.reviewId, (event) => received.push(event));
+
+    activityTick = 10 * 60 * 1000;
+    vi.setSystemTime(eventWallTime);
+    const event = stepEvent();
+    addEvent(session.reviewId, event);
+
+    expect(session.lastEventAt).toEqual(new Date(eventWallTime));
+
+    activityTick += 30 * 60 * 1000;
+    vi.setSystemTime(cleanupWallTime);
+    cleanupStaleSessions();
+
+    expect(received).toEqual([event]);
+    expect(getSession(session.reviewId)).toBeDefined();
+
+    activityTick += 1;
+    cleanupStaleSessions();
+
+    expect(received.at(-1)).toMatchObject({
+      type: "error",
+      error: { code: ReviewErrorCode.SESSION_TIMEOUT },
+    });
+    expect(getSession(session.reviewId)).toBeUndefined();
+  });
+
   it("continues dispatching when an async subscriber rejects", async () => {
     const received: FullReviewStreamEvent[] = [];
     const session = createTrackedSession("subscriber-rejects");
@@ -367,9 +444,15 @@ describe("session bounds and subscriber failures", () => {
     }
     addEvent(session.reviewId, completeEvent(session.reviewId));
 
+    const liveNotices = received.filter((event) => event.type === "chunk");
+    expect(liveNotices).toHaveLength(1);
     expect(received.at(-1)).toMatchObject({ type: "complete", reviewId: session.reviewId });
-    expect(receivedEvents(session.reviewId)).toHaveLength(10_000);
-    expect(receivedEvents(session.reviewId).at(-1)).toMatchObject({
+
+    const stored = receivedEvents(session.reviewId);
+    expect(stored).toHaveLength(10_001);
+    expect(stored.filter((event) => event.type === "chunk")).toHaveLength(1);
+    expect(stored.filter((event) => event.type === "complete")).toHaveLength(1);
+    expect(stored.at(-1)).toMatchObject({
       type: "complete",
       reviewId: session.reviewId,
     });
@@ -557,6 +640,53 @@ describe("shutdownSessions", () => {
       getActiveSessionForProject("/project", {
         headCommit: "abc",
         statusHash: "hash",
+        statusHashKind: "full",
+        mode: "unstaged",
+      }),
+    ).toBeUndefined();
+  });
+});
+
+describe("active-session candidate precheck", () => {
+  it("requires a ready non-complete session for the same project and mode", () => {
+    expect(hasReadySessionForProjectMode("/project", "unstaged")).toBe(false);
+
+    const candidate = createTrackedSession("candidate", { mode: "unstaged" });
+    expect(hasReadySessionForProjectMode("/project", "unstaged")).toBe(false);
+
+    markReady(candidate.reviewId);
+    expect(hasReadySessionForProjectMode("/project", "unstaged")).toBe(true);
+
+    markComplete(candidate.reviewId);
+    const otherProject = createTrackedSession("candidate-other-project", {
+      projectPath: "/other",
+      mode: "unstaged",
+    });
+    const otherMode = createTrackedSession("candidate-other-mode", { mode: "staged" });
+    markReady(otherProject.reviewId);
+    markReady(otherMode.reviewId);
+
+    expect(hasReadySessionForProjectMode("/project", "unstaged")).toBe(false);
+  });
+
+  it("ignores Git identity, scope, and review configuration", () => {
+    const candidate = createSession("candidate-status-only", {
+      projectPath: "/candidate",
+      headCommit: "old-head",
+      statusHash: "content-blind",
+      statusHashKind: "status-only",
+      mode: "unstaged",
+      scopeKey: "f:src/app.ts",
+      reviewConfigKey: "configured-review",
+    });
+    createdSessionIds.add(candidate.reviewId);
+    markReady(candidate.reviewId);
+
+    expect(hasReadySessionForProjectMode("/candidate", "unstaged")).toBe(true);
+    expect(
+      getActiveSessionForProject("/candidate", {
+        headCommit: "current-head",
+        statusHash: "current-hash",
         statusHashKind: "full",
         mode: "unstaged",
       }),

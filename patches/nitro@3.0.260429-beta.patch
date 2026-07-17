@@ -1,0 +1,93 @@
+diff --git a/dist/runtime/internal/static.mjs b/dist/runtime/internal/static.mjs
+index d942003403adc1287ace15839d8f7df077118c26..07129770c78cb90cd8e763e4afd9bd9649f06ea6 100644
+--- a/dist/runtime/internal/static.mjs
++++ b/dist/runtime/internal/static.mjs
+@@ -7,6 +7,40 @@ const EncodingMap = {
+ 	br: ".br",
+ 	zstd: ".zst"
+ };
++function stripWeakPrefix(etag) {
++	return etag.startsWith("W/") ? etag.slice(2) : etag;
++}
++function matchesIfNoneMatch(value, etag) {
++	const expected = etag ? stripWeakPrefix(etag) : void 0;
++	let index = 0;
++	while (index < value.length) {
++		while (index < value.length && (value[index] === " " || value[index] === "\t" || value[index] === ",")) index++;
++		if (value[index] === "*") {
++			index++;
++			while (value[index] === " " || value[index] === "\t") index++;
++			if (index === value.length || value[index] === ",") return true;
++		}
++		if (value.startsWith("W/", index)) index += 2;
++		if (value[index] === "\"") {
++			const start = index;
++			index++;
++			while (index < value.length && value[index] !== "\"") index++;
++			if (index < value.length) {
++				const candidate = value.slice(start, index + 1);
++				index++;
++				while (value[index] === " " || value[index] === "\t") index++;
++				if ((index === value.length || value[index] === ",") && candidate === expected) return true;
++			}
++		}
++		while (index < value.length && value[index] !== ",") index++;
++	}
++	return false;
++}
++function sendNotModified(event) {
++	event.res.status = 304;
++	event.res.statusText = "Not Modified";
++	return "";
++}
+ export default defineHandler((event) => {
+ 	if (event.req.method && !METHODS.has(event.req.method)) {
+ 		return;
+@@ -35,26 +69,15 @@ export default defineHandler((event) => {
+ 	if (encodings.length > 1) {
+ 		event.res.headers.append("Vary", "Accept-Encoding");
+ 	}
+-	const ifNotMatch = event.req.headers.get("if-none-match") === asset.etag;
+-	if (ifNotMatch) {
+-		event.res.status = 304;
+-		event.res.statusText = "Not Modified";
+-		return "";
+-	}
+-	const ifModifiedSinceH = event.req.headers.get("if-modified-since");
+-	const mtimeDate = new Date(asset.mtime);
+-	if (ifModifiedSinceH && asset.mtime && new Date(ifModifiedSinceH) >= mtimeDate) {
+-		event.res.status = 304;
+-		event.res.statusText = "Not Modified";
+-		return "";
+-	}
++	const mtimeMs = asset.mtime ? Date.parse(asset.mtime) : NaN;
++	const mtimeDate = new Date(mtimeMs);
+ 	if (asset.type) {
+ 		event.res.headers.set("Content-Type", asset.type);
+ 	}
+ 	if (asset.etag && !event.res.headers.has("ETag")) {
+ 		event.res.headers.set("ETag", asset.etag);
+ 	}
+-	if (asset.mtime && !event.res.headers.has("Last-Modified")) {
++	if (Number.isFinite(mtimeMs) && !event.res.headers.has("Last-Modified")) {
+ 		event.res.headers.set("Last-Modified", mtimeDate.toUTCString());
+ 	}
+ 	if (asset.encoding && !event.res.headers.has("Content-Encoding")) {
+@@ -63,5 +86,17 @@ export default defineHandler((event) => {
+ 	if (asset.size > 0 && !event.res.headers.has("Content-Length")) {
+ 		event.res.headers.set("Content-Length", asset.size.toString());
+ 	}
++	const ifNoneMatch = event.req.headers.get("if-none-match");
++	if (ifNoneMatch !== null) {
++		if (matchesIfNoneMatch(ifNoneMatch, asset.etag)) return sendNotModified(event);
++	} else {
++		const ifModifiedSince = event.req.headers.get("if-modified-since");
++		const modifiedSinceMs = ifModifiedSince ? Date.parse(ifModifiedSince) : NaN;
++		if (
++			Number.isFinite(modifiedSinceMs) &&
++			Number.isFinite(mtimeMs) &&
++			Math.floor(modifiedSinceMs / 1e3) >= Math.floor(mtimeMs / 1e3)
++		) return sendNotModified(event);
++	}
+ 	return readAsset(id);
+ });

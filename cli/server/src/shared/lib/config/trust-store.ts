@@ -104,8 +104,8 @@ export function createTrustStore(): TrustStore {
         return result;
       });
     }
-    return mutex.run(() =>
-      runConfigTransaction(
+    return mutex.run(async () => {
+      const result = await runConfigTransaction(
         {
           ...transactionDeps,
           persist: () => persistTrustWith(() => persistTrustRecordAsync(config)),
@@ -114,18 +114,21 @@ export function createTrustStore(): TrustStore {
           trustState.projects[config.projectId] = config;
           return ok(config);
         },
-      ),
-    );
+      );
+      if (result.ok) delete sessionTrust[config.projectId];
+      return result;
+    });
   };
 
   const removeTrust = (projectId: string): Promise<Result<boolean, SecretsStorageError>> =>
-    mutex.run(() => {
-      // Session trust is purely in-memory, so its removal needs no disk refresh.
+    mutex.run(async () => {
       const removedSession = projectId in sessionTrust;
-      if (removedSession) delete sessionTrust[projectId];
       refreshTrustState();
-      if (!(projectId in trustState.projects)) return Promise.resolve(ok(removedSession));
-      return runConfigTransaction(
+      if (!(projectId in trustState.projects)) {
+        if (removedSession) delete sessionTrust[projectId];
+        return ok(removedSession);
+      }
+      const result = await runConfigTransaction(
         {
           ...transactionDeps,
           refresh: () => {},
@@ -136,6 +139,8 @@ export function createTrustStore(): TrustStore {
           return ok(true);
         },
       );
+      if (result.ok && removedSession) delete sessionTrust[projectId];
+      return result;
     });
 
   return { getTrust, listTrustedProjects, saveTrust, removeTrust };

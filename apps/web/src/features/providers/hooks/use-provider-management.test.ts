@@ -1,5 +1,6 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
+import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
@@ -39,24 +40,25 @@ describe("useProviderManagement", () => {
     queryClient.clear();
   });
 
-  it("rethrows a failed credential save WITHOUT toasting so the dialog owns the report", async () => {
+  it("rejects a failed credential save without toasting so the dialog owns the report", async () => {
     mockApi.saveConfig.mockRejectedValue(new Error("Save failed"));
 
     const { result } = renderManagedHook();
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     act(() => {
-      result.current.setApiKeyDialogOpen(true);
+      result.current.openApiKeyDialog("gemini");
     });
+    const owner = result.current.dialogOwner;
+    if (owner?.kind !== "api-key") throw new Error("Expected Gemini API-key dialog owner");
 
     await act(async () => {
-      await expect(result.current.handleSaveApiKey("gemini", "sk-test")).rejects.toThrow(
+      await expect(result.current.handleSaveApiKey(owner, "sk-test")).rejects.toThrow(
         "Save failed",
       );
     });
 
-    // Dialog stays open and the inline error (F-465) is the single report — no toast.
-    expect(result.current.apiKeyDialogOpen).toBe(true);
+    expect(result.current.dialogOwner).toBe(owner);
     expect(toastMocks.success).not.toHaveBeenCalled();
     expect(toastMocks.error).not.toHaveBeenCalled();
   });
@@ -72,7 +74,7 @@ describe("useProviderManagement", () => {
       // never produce an unhandled rejection (F-024).
       await expect(
         result.current.handleSelectProvider("gemini", "Gemini", "gemini-2.5-flash"),
-      ).resolves.toBeUndefined();
+      ).resolves.toBe(false);
     });
 
     await waitFor(() => {
@@ -92,16 +94,16 @@ describe("useProviderManagement", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     act(() => {
-      result.current.setModelDialogOpen(true);
+      result.current.openModelDialog("gemini");
     });
+    const owner = result.current.dialogOwner;
+    if (owner?.kind !== "model") throw new Error("Expected Gemini model dialog owner");
 
     await act(async () => {
-      await expect(
-        result.current.handleSelectModel("gemini", "gemini-2.5-pro"),
-      ).resolves.toBeUndefined();
+      await expect(result.current.handleSelectModel(owner, "gemini-2.5-pro")).resolves.toBe(false);
     });
 
-    expect(result.current.modelDialogOpen).toBe(true);
+    expect(result.current.dialogOwner).toBe(owner);
     expect(toastMocks.success).not.toHaveBeenCalled();
     expect(toastMocks.error).toHaveBeenCalledTimes(1);
   });
@@ -113,11 +115,206 @@ describe("useProviderManagement", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     await act(async () => {
-      await expect(result.current.handleRemoveKey("gemini")).resolves.toBeUndefined();
+      await expect(result.current.handleRemoveKey("gemini")).resolves.toBe(false);
     });
 
     expect(toastMocks.error).toHaveBeenCalledTimes(1);
     expect(toastMocks.success).not.toHaveBeenCalled();
+  });
+
+  it("returns true after remove, activation, and model selection commit", async () => {
+    const { result } = renderManagedHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await expect(result.current.handleRemoveKey("gemini")).resolves.toBe(true);
+      await expect(
+        result.current.handleSelectProvider("gemini", "Gemini", "gemini-2.5-flash"),
+      ).resolves.toBe(true);
+    });
+
+    act(() => result.current.openModelDialog("gemini"));
+    const owner = result.current.dialogOwner;
+    if (owner?.kind !== "model") throw new Error("Expected Gemini model dialog owner");
+
+    await act(async () => {
+      await expect(result.current.handleSelectModel(owner, "gemini-2.5-pro")).resolves.toBe(true);
+    });
+
+    expect(mockApi.deleteProviderCredentials).toHaveBeenCalledOnce();
+    expect(mockApi.activateProvider).toHaveBeenCalledTimes(2);
+    expect(toastMocks.success).toHaveBeenCalledTimes(3);
+    expect(toastMocks.error).not.toHaveBeenCalled();
+    expect(result.current.dialogOwner).toBeNull();
+  });
+
+  it("returns false and opens model selection when activation has no model", async () => {
+    const { result } = renderManagedHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await expect(
+        result.current.handleSelectProvider("gemini", "Gemini", undefined),
+      ).resolves.toBe(false);
+    });
+
+    expect(mockApi.activateProvider).not.toHaveBeenCalled();
+    expect(toastMocks.success).not.toHaveBeenCalled();
+    expect(toastMocks.error).toHaveBeenCalledOnce();
+    expect(result.current.dialogOwner).toMatchObject({ kind: "model", providerId: "gemini" });
+  });
+
+  it("carries the provider id from credential save into the model dialog", async () => {
+    const { result } = renderManagedHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => {
+      result.current.openApiKeyDialog("openrouter");
+    });
+    const owner = result.current.dialogOwner;
+    if (owner?.kind !== "api-key") throw new Error("Expected OpenRouter API-key dialog owner");
+    await act(async () => {
+      await result.current.handleSaveApiKey(owner, "sk-test", { openModelDialog: true });
+    });
+
+    expect(result.current.dialogOwner).toMatchObject({
+      kind: "model",
+      providerId: "openrouter",
+    });
+  });
+
+  it("blocks dialog openings while a credential save is pending", async () => {
+    const openRouterSave = createDeferred<void>();
+    mockApi.saveConfig.mockReturnValueOnce(openRouterSave.promise);
+
+    const { result } = renderManagedHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => {
+      result.current.openApiKeyDialog("openrouter");
+    });
+    const owner = result.current.dialogOwner;
+    if (owner?.kind !== "api-key") throw new Error("Expected OpenRouter API-key dialog owner");
+    act(() => {
+      void result.current.handleSaveApiKey(owner, "sk-openrouter", {
+        openModelDialog: true,
+      });
+    });
+    await waitFor(() => expect(result.current.isSubmitting).toBe(true));
+
+    act(() => {
+      result.current.closeDialog(owner);
+      result.current.openApiKeyDialog("gemini");
+    });
+
+    expect(result.current.dialogOwner).toBeNull();
+
+    openRouterSave.resolve(undefined);
+    await waitFor(() => expect(result.current.isSubmitting).toBe(false));
+
+    expect(result.current.dialogOwner).toBeNull();
+  });
+
+  it("keeps the API-key handoff owner when a peer dialog opening is declined", async () => {
+    const save = createDeferred<void>();
+    mockApi.saveConfig.mockReturnValueOnce(save.promise);
+
+    const { result } = renderManagedHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => {
+      result.current.openApiKeyDialog("openrouter");
+    });
+    const apiKeyOwner = result.current.dialogOwner;
+    if (apiKeyOwner?.kind !== "api-key") {
+      throw new Error("Expected OpenRouter API-key dialog owner");
+    }
+    act(() => {
+      void result.current.handleSaveApiKey(apiKeyOwner, "sk-openrouter", {
+        openModelDialog: true,
+      });
+    });
+    await waitFor(() => expect(result.current.isSubmitting).toBe(true));
+
+    act(() => {
+      result.current.openModelDialog("gemini");
+    });
+    expect(result.current.dialogOwner).toBe(apiKeyOwner);
+
+    save.resolve(undefined);
+    await waitFor(() => expect(result.current.isSubmitting).toBe(false));
+
+    expect(result.current.dialogOwner).toMatchObject({
+      kind: "model",
+      providerId: "openrouter",
+    });
+  });
+
+  it("declines every other provider mutation while a save is pending", async () => {
+    const save = createDeferred<void>();
+    mockApi.saveConfig.mockReturnValueOnce(save.promise);
+
+    const { result } = renderManagedHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => result.current.openApiKeyDialog("openrouter"));
+    const owner = result.current.dialogOwner;
+    if (owner?.kind !== "api-key") throw new Error("Expected OpenRouter API-key dialog owner");
+    act(() => {
+      void result.current.handleSaveApiKey(owner, "sk-openrouter");
+    });
+    await waitFor(() => expect(result.current.isSubmitting).toBe(true));
+
+    let declinedResults: boolean[] = [];
+    await act(async () => {
+      result.current.openApiKeyDialog("gemini");
+      result.current.openModelDialog("gemini");
+      declinedResults = await Promise.all([
+        result.current.handleRemoveKey("gemini"),
+        result.current.handleSelectProvider("gemini", "Gemini", undefined),
+        result.current.handleSelectModel(
+          { kind: "model", id: 999, providerId: "gemini" },
+          "gemini-2.5-pro",
+        ),
+      ]);
+    });
+
+    expect(declinedResults).toEqual([false, false, false]);
+    expect(result.current.dialogOwner).toBe(owner);
+    expect(mockApi.deleteProviderCredentials).not.toHaveBeenCalled();
+    expect(mockApi.activateProvider).not.toHaveBeenCalled();
+    expect(toastMocks.success).not.toHaveBeenCalled();
+    expect(toastMocks.error).not.toHaveBeenCalled();
+
+    save.resolve(undefined);
+    await waitFor(() => expect(result.current.isSubmitting).toBe(false));
+  });
+
+  it("keeps only the model dialog when peer opens are batched API-first", async () => {
+    const { result } = renderManagedHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => {
+      result.current.openApiKeyDialog("openrouter");
+      result.current.openModelDialog("gemini");
+    });
+
+    expect(result.current.dialogOwner).toMatchObject({ kind: "model", providerId: "gemini" });
+  });
+
+  it("keeps only the API-key dialog when peer opens are batched model-first", async () => {
+    const { result } = renderManagedHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => {
+      result.current.openModelDialog("gemini");
+      result.current.openApiKeyDialog("openrouter");
+    });
+
+    expect(result.current.dialogOwner).toMatchObject({
+      kind: "api-key",
+      providerId: "openrouter",
+    });
   });
 });
 

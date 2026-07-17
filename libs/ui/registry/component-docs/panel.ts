@@ -7,7 +7,7 @@ export const panelDoc: ComponentDoc = {
     {
       name: "Panel",
       indent: 0,
-      note: "Root container. Polymorphic via `as` (div, article, section, aside). Switches to <section> automatically when Panel.Title or aria-label is present.",
+      note: "Root container. Polymorphic via `as` (div, article, section, aside). A statically discoverable Panel.Title or explicit ARIA name switches the initial render to <section>.",
     },
     {
       name: "PanelHeader",
@@ -17,12 +17,12 @@ export const panelDoc: ComponentDoc = {
     {
       name: "PanelTitle",
       indent: 2,
-      note: "Real heading (h2 by default, configurable via `as`). Auto-wires aria-labelledby on the Panel root.",
+      note: "Real heading (h2 by default, configurable via `as`). Direct child trees auto-wire aria-labelledby; opaque wrappers need an explicit stable id and root aria-labelledby for SSR.",
     },
     {
       name: "PanelDescription",
       indent: 2,
-      note: "Paragraph description. Auto-wires aria-describedby on the Panel root.",
+      note: "Paragraph description. Direct child trees auto-wire aria-describedby; opaque wrappers need an explicit stable id and root aria-describedby for SSR.",
     },
     {
       name: "PanelContent",
@@ -65,7 +65,7 @@ export const panelDoc: ComponentDoc = {
     {
       title: "Accessibility",
       content:
-        "When Panel.Title is present (or aria-label/aria-labelledby is supplied), the root renders as <section> with aria-labelledby auto-wired. With neither, the root stays a plain <div> (no nameless landmark). Panel.Description is auto-wired via aria-describedby when present.",
+        "A statically discoverable Panel.Title makes the initial root a <section> and auto-wires aria-labelledby; Panel.Description similarly auto-wires aria-describedby. React cannot inspect content created inside an opaque child component during SSR. For that shape, assign stable ids to the generated title and description and pass those ids to root aria-labelledby/aria-describedby. An explicit ARIA name still makes the default root a <section>. With no discoverable title or explicit name, the root stays a plain <div> (no nameless landmark).",
     },
     {
       title: "Eyebrow tags",
@@ -91,9 +91,10 @@ export const panelDoc: ComponentDoc = {
       as: {
         type: '"div" | "article" | "section" | "aside"',
         required: false,
-        defaultValue: '"div" (or "section" when Title/aria-label present)',
+        defaultValue:
+          '"div" (or "section" when a statically discoverable Title or explicit ARIA name is present)',
         description:
-          "Rendered HTML element. Defaults to <section> when a Panel.Title or aria-label is supplied, otherwise <div>.",
+          "Rendered HTML element. Defaults to <section> when a Panel.Title is statically discoverable or an explicit ARIA name is supplied, otherwise <div>.",
       },
       frame: {
         type: '"hairline" | "rail" | "viewfinder" | "surface"',

@@ -1,11 +1,12 @@
 # Stage 1: Build landing page
 FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 AS builder
 
-RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
+RUN corepack enable && corepack prepare pnpm@11.13.0 --activate
 
 WORKDIR /app
 
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json biome.json .gitignore ./
+COPY patches/ patches/
 COPY apps/ apps/
 COPY cli/ cli/
 COPY libs/ libs/

@@ -1,7 +1,9 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api/protocol";
+import { ErrorCode } from "@diffgazer/core/schemas/errors";
+import { HTTPException } from "hono/http-exception";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "./app.js";
 import { resetShutdownStateForTests } from "./features/shutdown/service.js";
@@ -215,9 +217,11 @@ describe("security headers", () => {
 
 describe("error handling", () => {
   let originalToken: string | undefined;
+  let originalUnsafeProjectRoot: string | undefined;
 
   beforeEach(() => {
     originalToken = process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    originalUnsafeProjectRoot = process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
     process.env.DIFFGAZER_SHUTDOWN_TOKEN = "test-token";
   });
 
@@ -226,6 +230,11 @@ describe("error handling", () => {
       delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
     } else {
       process.env.DIFFGAZER_SHUTDOWN_TOKEN = originalToken;
+    }
+    if (originalUnsafeProjectRoot === undefined) {
+      delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
+    } else {
+      process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT = originalUnsafeProjectRoot;
     }
   });
 
@@ -252,8 +261,107 @@ describe("error handling", () => {
     // The request-logger tail runs through onError and sets the id header, so
     // the generic error response still carries exactly one X-Request-Id.
     expect(res.headers.get("X-Request-Id")).toMatch(/[0-9a-f-]{36}/);
-    const body = (await res.json()) as { error: { message: string } };
+    const body = (await res.json()) as { error: { message: string; code: string } };
     expect(body.error.message).toBe("Internal Server Error");
+    expect(body.error.code).toBe(ErrorCode.INTERNAL_ERROR);
+  });
+
+  it.each([
+    { status: 400, code: ErrorCode.VALIDATION_ERROR },
+    { status: 401, code: ErrorCode.UNAUTHORIZED },
+    { status: 403, code: ErrorCode.FORBIDDEN },
+    { status: 404, code: ErrorCode.NOT_FOUND },
+    { status: 405, code: ErrorCode.VALIDATION_ERROR },
+    { status: 409, code: ErrorCode.VALIDATION_ERROR },
+    { status: 413, code: ErrorCode.PAYLOAD_TOO_LARGE },
+    { status: 422, code: ErrorCode.VALIDATION_ERROR },
+    { status: 429, code: ErrorCode.RATE_LIMITED },
+    { status: 451, code: ErrorCode.VALIDATION_ERROR },
+  ] as const)("maps HTTPException $status to the exact wire status and code", async ({
+    status,
+    code,
+  }) => {
+    const app = createApp();
+    app.get(`/__http_exception_${status}`, () => {
+      throw new HTTPException(status, { message: `boundary-${status}` });
+    });
+
+    const res = await app.request(`/__http_exception_${status}`, {
+      headers: { Host: "localhost:3000" },
+    });
+
+    expect(res.status).toBe(status);
+    await expect(res.json()).resolves.toEqual({
+      error: { message: `boundary-${status}`, code },
+    });
+  });
+
+  it("preserves HTTPException boundary headers on the JSON wire response", async () => {
+    const app = createApp();
+    app.get("/__http_exception_headers", () => {
+      throw new HTTPException(401, {
+        message: "Missing token",
+        res: new Response(null, { headers: { "WWW-Authenticate": 'Bearer realm="diffgazer"' } }),
+      });
+    });
+
+    const res = await app.request("/__http_exception_headers", {
+      headers: { Host: "localhost:3000" },
+    });
+
+    expect(res.status).toBe(401);
+    expect(res.headers.get("WWW-Authenticate")).toBe('Bearer realm="diffgazer"');
+    expect(res.headers.get("Content-Type")).toContain("application/json");
+    await expect(res.json()).resolves.toEqual({
+      error: { message: "Missing token", code: ErrorCode.UNAUTHORIZED },
+    });
+  });
+
+  it("maps malformed JSON to the validation-error wire envelope", async () => {
+    const app = createApp();
+    const res = await app.request("/api/settings", {
+      method: "POST",
+      headers: {
+        Host: "localhost:3000",
+        "Content-Type": "application/json",
+        [SHUTDOWN_TOKEN_HEADER]: "test-token",
+      },
+      body: "{",
+    });
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({
+      error: {
+        message: "Malformed JSON in request body",
+        code: ErrorCode.VALIDATION_ERROR,
+      },
+    });
+  });
+
+  it("maps a rejected development project-root header to validation error 400", async () => {
+    const invalidRoot = mkdtempSync(join(tmpdir(), "diffgazer-invalid-root-"));
+    process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT = "1";
+
+    try {
+      const app = createApp();
+      const res = await app.request("/api/settings/trust", {
+        headers: {
+          Host: "localhost:3000",
+          [PROJECT_ROOT_HEADER]: invalidRoot,
+          [SHUTDOWN_TOKEN_HEADER]: "test-token",
+        },
+      });
+
+      expect(res.status).toBe(400);
+      await expect(res.json()).resolves.toEqual({
+        error: {
+          message: "Invalid project root: path must be under user home or contain a .git directory",
+          code: ErrorCode.VALIDATION_ERROR,
+        },
+      });
+    } finally {
+      rmSync(invalidRoot, { recursive: true, force: true });
+    }
   });
 });
 
@@ -386,18 +494,20 @@ describe("API token gate scoping (standalone dev vs packaged)", () => {
     }
   });
 
-  it("does not 401 standalone dev API requests when no token is configured and not packaged", async () => {
+  it("keeps general API open but trust routes closed when split dev has no token", async () => {
     delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
     delete process.env.DIFFGAZER_PACKAGED;
     const app = createApp();
 
-    const res = await app.request("/api/config", {
+    const apiResponse = await app.request("/api/config", {
+      headers: { Host: "localhost:3000" },
+    });
+    const trustResponse = await app.request("/api/settings/trust", {
       headers: { Host: "localhost:3000" },
     });
 
-    // The gate is skipped in standalone dev; the request reaches downstream
-    // routing instead of being rejected as Unauthorized.
-    expect(res.status).not.toBe(401);
+    expect(apiResponse.status).not.toBe(401);
+    expect(trustResponse.status).toBe(401);
   });
 
   it("still 401s packaged API requests when no token is configured", async () => {
@@ -414,7 +524,7 @@ describe("API token gate scoping (standalone dev vs packaged)", () => {
     expect(body.error.message).toBe("Unauthorized");
   });
 
-  it("enforces a configured token even when not packaged", async () => {
+  it("enforces a configured token for split-dev API and trust routes", async () => {
     process.env.DIFFGAZER_SHUTDOWN_TOKEN = "configured-token";
     delete process.env.DIFFGAZER_PACKAGED;
     const app = createApp();
@@ -428,6 +538,11 @@ describe("API token gate scoping (standalone dev vs packaged)", () => {
       headers: { Host: "localhost:3000", [SHUTDOWN_TOKEN_HEADER]: "configured-token" },
     });
     expect(accepted.status).not.toBe(401);
+
+    const acceptedTrust = await app.request("/api/settings/trust", {
+      headers: { Host: "localhost:3000", [SHUTDOWN_TOKEN_HEADER]: "configured-token" },
+    });
+    expect(acceptedTrust.status).not.toBe(401);
   });
 });
 
@@ -634,7 +749,18 @@ describe("shutdown route", () => {
     expect(killSpy).not.toHaveBeenCalled();
   });
 
-  it.each(["abc", "1"])("returns 503 when CLI pid is invalid: %s", async (pid) => {
+  it.each([
+    "abc",
+    "1",
+    "4321junk",
+    "+4321",
+    "-4321",
+    "4321.0",
+    "4.321e3",
+    "0x10e1",
+    "04321",
+    "9007199254740992",
+  ])("returns 503 when CLI pid is invalid: %s", async (pid) => {
     process.env.DIFFGAZER_CLI_PID = pid;
     const app = createApp();
     const killSpy = vi.spyOn(process, "kill");
@@ -652,7 +778,7 @@ describe("shutdown route", () => {
   });
 
   it("schedules CLI termination when PID is present", async () => {
-    process.env.DIFFGAZER_CLI_PID = "4321";
+    process.env.DIFFGAZER_CLI_PID = " 4321 ";
     const app = createApp();
     vi.useFakeTimers();
     const killSpy = vi.spyOn(process, "kill").mockImplementation(() => true);
@@ -754,7 +880,7 @@ describe("review re-key wiring", () => {
   });
 
   afterEach(() => {
-    setReviewRekeyHandler(() => {});
+    setReviewRekeyHandler(async () => true);
     if (originalHome === undefined) {
       delete process.env.DIFFGAZER_HOME;
     } else {
@@ -798,7 +924,6 @@ describe("review re-key wiring", () => {
         files: [],
       },
       result: {
-        summary: "Review",
         issues: [makeIssue({ id: "i1", title: "Bug", severity: "high", file: "a.ts" })],
       },
     });
@@ -827,5 +952,79 @@ describe("review re-key wiring", () => {
     const underOld = await listReviews(originalRoot);
     expect(underOld.ok).toBe(true);
     if (underOld.ok) expect(underOld.value.items).toEqual([]);
+  });
+
+  it("keeps the old root after a review-write failure and commits it after the next retry", async () => {
+    const { createApp: freshCreateApp } = await import("./app.js");
+    const { saveReview, listReviews } = await import("./features/review/storage/reviews.js");
+    const { createConfigStore } = await import("./shared/lib/config/store.js");
+    const atomicWrite = await import("./shared/lib/fs.js");
+    const originalRoot = join(diffgazerHome, "retry-original");
+    const movedRoot = join(diffgazerHome, "retry-moved");
+    const projectFilePath = join(movedRoot, ".diffgazer", "project.json");
+    mkdirSync(join(movedRoot, ".diffgazer"), { recursive: true });
+    mkdirSync(join(movedRoot, ".git"), { recursive: true });
+    writeFileSync(
+      projectFilePath,
+      JSON.stringify({
+        projectId: "stable-retry-id",
+        repoRoot: originalRoot,
+        createdAt: "2024-01-01T00:00:00.000Z",
+      }),
+    );
+    const saved = await saveReview({
+      reviewId,
+      projectPath: originalRoot,
+      mode: "unstaged",
+      branch: "main",
+      commit: "abc123",
+      lenses: ["correctness"],
+      diff: {
+        totalStats: { filesChanged: 1, additions: 1, deletions: 0, totalSizeBytes: 100 },
+        files: [],
+      },
+      result: {
+        issues: [makeIssue({ id: "i1", title: "Bug", severity: "high", file: "a.ts" })],
+      },
+    });
+    expect(saved.ok).toBe(true);
+
+    const realAtomicWrite = atomicWrite.atomicWriteFile;
+    let failReviewWrite = true;
+    const writeSpy = vi
+      .spyOn(atomicWrite, "atomicWriteFile")
+      .mockImplementation(async (filePath, content, mode) => {
+        if (filePath.includes(`${reviewId}.json`) && failReviewWrite) {
+          failReviewWrite = false;
+          throw new Error("injected review write failure");
+        }
+        return realAtomicWrite(filePath, content, mode);
+      });
+
+    try {
+      freshCreateApp();
+      createConfigStore().getProjectInfo(movedRoot);
+      await vi.waitFor(() => expect(failReviewWrite).toBe(false));
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(JSON.parse(readFileSync(projectFilePath, "utf-8"))).toMatchObject({
+        repoRoot: originalRoot,
+      });
+
+      freshCreateApp();
+      const retryStore = createConfigStore();
+      await vi.waitFor(() => {
+        retryStore.getProjectInfo(movedRoot);
+        expect(JSON.parse(readFileSync(projectFilePath, "utf-8"))).toMatchObject({
+          repoRoot: movedRoot,
+        });
+      });
+
+      const underNew = await listReviews(movedRoot);
+      const underOld = await listReviews(originalRoot);
+      expect(underNew.ok && underNew.value.items.map((item) => item.id)).toEqual([reviewId]);
+      expect(underOld.ok && underOld.value.items).toEqual([]);
+    } finally {
+      writeSpy.mockRestore();
+    }
   });
 });

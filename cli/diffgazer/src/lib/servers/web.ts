@@ -3,7 +3,9 @@ import { createProcessServer, type ServerController } from "./process";
 export interface WebServerConfig {
   cwd: string;
   port: number;
+  apiUrl: string;
   onReady?: (address: string) => void;
+  onFailure?: (message: string) => void;
 }
 
 const VITE_LOCAL_ADDRESS = /Local:\s+(https?:\/\/\S+)/i;
@@ -23,8 +25,10 @@ export function createWebServer(config: WebServerConfig): ServerController {
     args: ["exec", "vite", "--port", String(config.port)],
     cwd: config.cwd,
     port: config.port,
+    env: { VITE_API_URL: config.apiUrl },
     readyPattern: "Local:",
     resolveReadyAddress: resolveViteReadyAddress,
     onReady: config.onReady,
+    onFailure: config.onFailure,
   });
 }

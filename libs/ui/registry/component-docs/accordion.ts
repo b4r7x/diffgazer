@@ -32,7 +32,7 @@ export const accordionDoc: ComponentDoc = {
     {
       title: "Collapsible",
       content:
-        "In single mode, collapsible defaults to true. Set collapsible={false} to always keep one item open.",
+        "In single mode, collapsible defaults to true. With collapsible={false}, an accordion may still initialize with no open item, but once an item is selected, activating it again cannot close it.",
     },
     {
       title: "Heading semantics",
@@ -99,10 +99,11 @@ export const accordionDoc: ComponentDoc = {
           "Single allows one open item; multiple allows several open at once. Switches the value/onChange/defaultValue shape from string to string[].",
       },
       value: {
-        type: "string | string[]",
+        type: "string | undefined | string[]",
         required: false,
         defaultValue: null,
-        description: "Controlled open value(s). string for single mode, string[] for multiple.",
+        description:
+          "Controlled open value(s). In single mode, undefined means no item is open. In multiple mode, undefined is normalized to an empty array while remaining controlled.",
       },
       defaultValue: {
         type: "string | string[]",
@@ -111,11 +112,11 @@ export const accordionDoc: ComponentDoc = {
         description: "Initial open value(s) for uncontrolled mode.",
       },
       onChange: {
-        type: "(value: string | undefined) => void | (value: string[]) => void",
+        type: "((value: string | undefined) => void) | ((value: string[]) => void)",
         required: false,
         defaultValue: null,
         description:
-          "Fired when the open value(s) change. Receives the next value; in single non-collapsible mode it never receives undefined.",
+          "Fired when the open value(s) change. Single mode emits undefined when no item is open; multiple mode emits an array.",
       },
       collapsible: {
         type: "boolean",

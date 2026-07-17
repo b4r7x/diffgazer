@@ -1,4 +1,4 @@
-import type { TrustCapabilities } from "./settings.js";
+import type { TrustCapabilities, TrustConfig } from "./settings.js";
 
 export type TrustCapabilityId = keyof TrustCapabilities;
 
@@ -44,6 +44,14 @@ export function normalizeTrustCapabilities(
   value: TrustCapabilities | null | undefined,
 ): TrustCapabilities {
   return { ...NO_TRUST_CAPABILITIES, ...(value ?? {}), runCommands: false };
+}
+
+export function hasRepositoryReadAccess(
+  trust: Pick<TrustConfig, "repoRoot" | "capabilities"> | null | undefined,
+  repoRoot: string | null | undefined,
+): boolean {
+  if (!trust || !repoRoot) return false;
+  return trust.repoRoot === repoRoot && trust.capabilities.readFiles;
 }
 
 export function toSelectedCapabilityIds(value: TrustCapabilities): TrustCapabilityId[] {

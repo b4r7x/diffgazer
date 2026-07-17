@@ -93,4 +93,33 @@ describe("NavigationList navigation", () => {
     await flush();
     expect(onHighlightChange).not.toHaveBeenCalled();
   });
+
+  test("navigates the full semantic item set when only a window is rendered", async () => {
+    const onHighlightChange = vi.fn();
+    const { stdin } = render(
+      <CliThemeProvider initialTheme="dark">
+        <NavigationList
+          isActive
+          highlightedId="a"
+          navigationItems={[
+            { id: "a", disabled: false },
+            { id: "b", disabled: true },
+            { id: "c", disabled: false },
+          ]}
+          onHighlightChange={onHighlightChange}
+          wrap={false}
+        >
+          <NavigationList.Item id="a">
+            <Text>Alpha</Text>
+          </NavigationList.Item>
+        </NavigationList>
+      </CliThemeProvider>,
+    );
+    await flush();
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+
+    expect(onHighlightChange).toHaveBeenCalledWith("c");
+  });
 });

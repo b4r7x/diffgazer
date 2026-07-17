@@ -13,12 +13,13 @@ import { useContext, useEffect, useEffectEvent, useMemo, useRef, useState } from
 import type { CliMode } from "../cli-options";
 import { GlobalLayout } from "../components/layout/global";
 import { Spinner } from "../components/ui/spinner";
-import { useExit } from "../hooks/use-exit";
+import { ExitPreparationProvider, useExit } from "../hooks/use-exit";
 import { KeyboardContext } from "../hooks/use-keyboard";
 import { useNavigation } from "../hooks/use-navigation";
 import { api } from "../lib/api";
 import { createCliQueryClient } from "../lib/query-client";
 import { createServerFactories } from "../lib/servers/factories";
+import type { TerminalInputQueue } from "../lib/terminal-input";
 import { CliThemeProvider, useTheme } from "../theme/provider";
 import { TerminalKeyboardProvider } from "./providers/keyboard";
 import { NavigationProvider } from "./providers/navigation-provider";
@@ -41,19 +42,23 @@ function HealthGate({
 }: HealthGateProps): ReactElement {
   const { state, retry } = useServerStatus();
   const { restartServers } = useServerControls();
+  const [isRecovering, setIsRecovering] = useState(false);
 
   useInput(
     (input) => {
       if (input === "r") {
         onClearStartupFailure();
-        restartServers();
-        retry().catch(() => {});
+        setIsRecovering(true);
+        void restartServers()
+          .then(() => retry())
+          .catch(() => undefined)
+          .finally(() => setIsRecovering(false));
       }
     },
-    { isActive: state.status === "error" },
+    { isActive: state.status === "error" && !isRecovering },
   );
 
-  if (state.status === "checking") {
+  if (state.status === "checking" || isRecovering) {
     return (
       <Box flexDirection="column" alignItems="center" justifyContent="center" padding={1}>
         <Spinner label="Connecting to server..." />
@@ -74,9 +79,10 @@ function HealthGate({
   return <>{children}</>;
 }
 
-function ConfigGate({ children }: { children: ReactNode }): ReactElement {
+export function ConfigGate({ children }: { children: ReactNode }): ReactElement {
   const configState = useConfigGuard();
   const configCheck = useConfigCheck();
+  const { route } = useNavigation();
 
   useInput(
     (input) => {
@@ -107,6 +113,14 @@ function ConfigGate({ children }: { children: ReactNode }): ReactElement {
     );
   }
 
+  if (configState === "not-configured" && route.screen !== "onboarding") {
+    return (
+      <Box flexDirection="column" alignItems="center" justifyContent="center" padding={1}>
+        <Spinner label="Opening onboarding..." />
+      </Box>
+    );
+  }
+
   return <>{children}</>;
 }
 
@@ -124,22 +138,21 @@ export function StartupThemeSync({ explicitTheme }: { explicitTheme?: string }):
   return null;
 }
 
-function GlobalShortcuts(): null {
+export function GlobalShortcuts({ onExit }: { onExit: () => void }): null {
   const ctx = useContext(KeyboardContext);
   const { navigate, route } = useNavigation();
-  const { handleExit } = useExit();
 
   const isGated = route.screen === "onboarding";
 
   const onKeyboard = useEffectEvent((key: string) => {
     if (isGated) {
-      if (key === "q") handleExit();
+      if (key === "q") onExit();
       return;
     }
 
     switch (key) {
       case "q":
-        handleExit();
+        onExit();
         break;
       case "s":
         if (route.screen !== "settings" && !route.screen.startsWith("settings/")) {
@@ -171,47 +184,53 @@ function GlobalShortcuts(): null {
   return null;
 }
 
+export function AppGlobalShortcuts(): ReactElement {
+  const { handleExit } = useExit();
+  return <GlobalShortcuts onExit={handleExit} />;
+}
+
 interface AppProps {
   mode: CliMode;
   theme?: string;
-  openBrowser: boolean;
+  terminalInputQueue?: TerminalInputQueue;
 }
 
-export function App({ mode, theme, openBrowser }: AppProps): ReactElement {
-  const serverProviderKey = `${mode}:${openBrowser ? "open" : "closed"}`;
+export function App({ mode, theme, terminalInputQueue }: AppProps): ReactElement {
   const [startupFailure, setStartupFailure] = useState<string | null>(null);
   const serverFactories = useMemo(
     () =>
       createServerFactories({
         mode,
-        openBrowser,
+        openBrowser: false,
         includeWebServer: false,
         onStartupFailure: setStartupFailure,
       }),
-    [mode, openBrowser],
+    [mode],
   );
 
   return (
     <QueryClientProvider client={queryClient}>
       <ApiProvider value={api}>
         <CliThemeProvider initialTheme={theme}>
-          <TerminalKeyboardProvider>
+          <TerminalKeyboardProvider terminalInputQueue={terminalInputQueue}>
             <NavigationProvider>
               <FooterProvider>
-                <ServerProvider key={serverProviderKey} servers={serverFactories}>
-                  <GlobalShortcuts />
-                  <HealthGate
-                    startupFailure={startupFailure}
-                    onClearStartupFailure={() => setStartupFailure(null)}
-                  >
-                    <ConfigGate>
-                      <StartupThemeSync explicitTheme={theme} />
-                      <GlobalLayout>
-                        <ScreenRouter />
-                      </GlobalLayout>
-                    </ConfigGate>
-                  </HealthGate>
-                </ServerProvider>
+                <ExitPreparationProvider>
+                  <ServerProvider key={mode} servers={serverFactories}>
+                    <AppGlobalShortcuts />
+                    <HealthGate
+                      startupFailure={startupFailure}
+                      onClearStartupFailure={() => setStartupFailure(null)}
+                    >
+                      <ConfigGate>
+                        <StartupThemeSync explicitTheme={theme} />
+                        <GlobalLayout>
+                          <ScreenRouter />
+                        </GlobalLayout>
+                      </ConfigGate>
+                    </HealthGate>
+                  </ServerProvider>
+                </ExitPreparationProvider>
               </FooterProvider>
             </NavigationProvider>
           </TerminalKeyboardProvider>

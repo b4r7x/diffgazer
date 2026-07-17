@@ -8,6 +8,7 @@ export interface TuiFaultPanelProps {
   statusValue?: string;
   title: string;
   description: string;
+  actionLabel: string;
   detail?: string;
   primaryAction: ReactNode;
   secondaryAction?: ReactNode;
@@ -18,6 +19,7 @@ export function TuiFaultPanel({
   statusValue = "FAULT",
   title,
   description,
+  actionLabel,
   detail,
   primaryAction,
   secondaryAction,
@@ -55,7 +57,7 @@ export function TuiFaultPanel({
               />
               <KeyValue.Item
                 label="ACTION:"
-                value="RETRY"
+                value={actionLabel}
                 labelClassName="mt-2 border-t border-dashed border-border pt-2"
                 valueClassName="mt-2 border-t border-dashed border-border pt-2 font-normal"
               />

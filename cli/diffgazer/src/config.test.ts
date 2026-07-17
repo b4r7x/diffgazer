@@ -26,4 +26,18 @@ describe("shutdown timing", () => {
     expect(config.shutdown.forceKillMs).toBe(5000);
     expect(config.shutdown.gracefulMs).toBeGreaterThan(config.shutdown.forceKillMs);
   });
+
+  it("accepts the largest delay whose parent grace fits a Node timer", async () => {
+    const config = await loadConfig("2147482647");
+
+    expect(config.shutdown.forceKillMs).toBe(2_147_482_647);
+    expect(config.shutdown.gracefulMs).toBe(2_147_483_647);
+  });
+
+  it("falls back when the delay would overflow the parent Node timer", async () => {
+    const config = await loadConfig("2147482648");
+
+    expect(config.shutdown.forceKillMs).toBe(2000);
+    expect(config.shutdown.gracefulMs).toBe(3000);
+  });
 });

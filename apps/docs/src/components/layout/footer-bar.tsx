@@ -5,7 +5,27 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Fragment } from "react";
 import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 import { FOCUS_RING_CLASS } from "@/components/shared/focus-ring";
-import { isDocsPath } from "@/lib/library";
+
+type FooterRouteMatch = {
+  routeId: string;
+  status: string;
+  globalNotFound?: boolean;
+};
+
+function getFooterMode(matches: readonly FooterRouteMatch[]): "home" | "docs" | "global" {
+  if (
+    matches.some(
+      (match) => match.status === "error" || match.status === "notFound" || match.globalNotFound,
+    )
+  ) {
+    return "global";
+  }
+
+  const leafRouteId = matches.at(-1)?.routeId;
+  if (leafRouteId === "/") return "home";
+  if (leafRouteId === "/$lib/$") return "docs";
+  return "global";
+}
 
 function KeyHint({ keys, label }: { keys: readonly string[]; label: string }) {
   return (
@@ -25,8 +45,7 @@ function KeyHint({ keys, label }: { keys: readonly string[]; label: string }) {
 
 export function FooterBar() {
   const navigate = useNavigate();
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const onDocsPage = isDocsPath(pathname);
+  const mode = useRouterState({ select: (state) => getFooterMode(state.matches) });
 
   useKey("f2", () => {
     void navigate({ to: "/$lib/$", params: { lib: "ui", _splat: "theme" } });
@@ -40,18 +59,14 @@ export function FooterBar() {
       )}
     >
       <div className="hidden items-center gap-6 sm:flex">
-        {onDocsPage ? (
-          <>
-            <KeyHint keys={["/"]} label="search" />
-            <KeyHint keys={["p", "n"]} label="prev/next" />
-          </>
-        ) : (
+        {mode === "home" && (
           <>
             <KeyHint keys={["j", "k"]} label="move" />
             <KeyHint keys={["↵"]} label="open" />
-            <KeyHint keys={["/"]} label="search" />
           </>
         )}
+        {mode === "docs" && <KeyHint keys={["p", "n"]} label="prev/next" />}
+        <KeyHint keys={["/"]} label="search" />
         <Link
           to="/$lib/$"
           params={{ lib: "ui", _splat: "theme" }}

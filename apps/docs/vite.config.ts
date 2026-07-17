@@ -33,6 +33,9 @@ const config = defineConfig(() => {
     docsDataRebuild(),
     !isVitest
       ? tanstackStart({
+          router: {
+            routeFileIgnorePattern: "\\.test\\.tsx$",
+          },
           prerender: {
             enabled: prerenderEnabled,
             crawlLinks: false,
@@ -43,7 +46,7 @@ const config = defineConfig(() => {
     !isVitest
       ? nitro({
           // The shipped Nitro server content-negotiates pre-compressed siblings
-          // but has no dynamic compressor; precompress so the ~1.8 MB-per-page
+          // but has no dynamic compressor; precompress so the multi-megabyte per-page
           // payload is served gzip/brotli (Traefik only does TLS/routing).
           compressPublicAssets: { gzip: true, brotli: true },
           routeRules: {
@@ -106,6 +109,7 @@ const config = defineConfig(() => {
         "@/hooks/theme-context": resolve(import.meta.dirname, "./src/hooks/theme-context"),
         "@/hooks": uiRegistryPath("hooks"),
         "@/lib/utils": uiRegistryPath("lib/utils"),
+        "@/lib/accessible-text": uiRegistryPath("lib/accessible-text"),
         "@/lib/aria": uiRegistryPath("lib/aria"),
         "@/lib/compose-refs": uiRegistryPath("lib/compose-refs"),
         "@/lib/corner-label-variants": uiRegistryPath("lib/corner-label-variants"),

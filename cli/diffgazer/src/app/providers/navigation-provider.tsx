@@ -44,7 +44,8 @@ export function NavigationProvider({
   };
 
   const canGoBack =
-    getBackTarget(route.screen) !== null || stack.length > 0 || route.screen !== "home";
+    route.screen !== "onboarding" &&
+    (getBackTarget(route.screen) !== null || stack.length > 0 || route.screen !== "home");
 
   const value: NavigationContextValue = {
     route,

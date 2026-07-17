@@ -17,7 +17,12 @@ export type { StoreErrorCode };
 
 export type StoreError = AppError<StoreErrorCode>;
 
-export interface CollectionConfig<T, M> {
+export interface LenientReadResult<T, D> {
+  item: T;
+  diagnostics: D;
+}
+
+export interface CollectionConfig<T, M, D = never> {
   name: string;
   dir: string;
   filePath: (id: string) => string;
@@ -28,11 +33,12 @@ export interface CollectionConfig<T, M> {
   /**
    * Salvage an immutable stored record whose strict-schema parse failed (e.g. an
    * older-version review with line/evidence/vocab values the current write-side
-   * schema rejects). Receives the parsed JSON; returns the recovered record or
-   * `null` when nothing usable can be recovered. Strict validation still governs
-   * new writes — this only loosens the read path so old records open and delete.
+   * schema rejects). Receives the parsed JSON; returns the recovered record with
+   * typed diagnostics, or `null` when nothing usable can be recovered. Strict
+   * validation still governs new writes — this only loosens the read path so old
+   * records open and delete.
    */
-  lenientRead?: (parsed: unknown) => T | null;
+  lenientRead?: (parsed: unknown) => LenientReadResult<T, D> | null;
 }
 
 export interface Collection<T, M> {

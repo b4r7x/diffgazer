@@ -229,6 +229,70 @@ describe("useWizardState", () => {
     expect(cleanupDone).toBe(true);
   });
 
+  it("deletes an early-saved provider before accepting and completing with another provider", async () => {
+    const deleteGate = deferred<void>();
+    const callbacks = makeCallbacks({
+      deleteCredentials: vi.fn(() => deleteGate.promise),
+    });
+    const { result } = renderHook(() => useWizardState({ initial: OPENROUTER_DATA, callbacks }));
+
+    advanceToEarlySave(result);
+    await act(async () => result.current.next());
+    act(() => result.current.back());
+    act(() => result.current.back());
+
+    act(() => result.current.setProvider("gemini"));
+    expect(result.current.isEarlySaving).toBe(true);
+    expect(result.current.wizardData.provider).toBe("openrouter");
+    expect(callbacks.deleteCredentials).toHaveBeenCalledWith("openrouter");
+
+    await act(async () => deleteGate.resolve());
+    expect(result.current.wizardData.provider).toBe("gemini");
+    expect(result.current.isEarlySaving).toBe(false);
+
+    await act(async () => {
+      await result.current.complete();
+    });
+
+    expect(callbacks.deleteCredentials).toHaveBeenCalledTimes(1);
+    expect(callbacks.saveConfig).toHaveBeenLastCalledWith(
+      expect.objectContaining({ provider: "gemini" }),
+    );
+    const deleteOrder = vi.mocked(callbacks.deleteCredentials).mock.invocationCallOrder[0];
+    const finalSaveOrder = vi.mocked(callbacks.saveConfig).mock.invocationCallOrder.at(-1);
+    expect(deleteOrder).toBeLessThan(finalSaveOrder ?? Number.POSITIVE_INFINITY);
+  });
+
+  it("retains the early-saved provider marker until provider-switch deletion succeeds", async () => {
+    const callbacks = makeCallbacks({
+      deleteCredentials: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("delete failed"))
+        .mockResolvedValueOnce(undefined),
+    });
+    const { result } = renderHook(() => useWizardState({ initial: OPENROUTER_DATA, callbacks }));
+
+    advanceToEarlySave(result);
+    await act(async () => result.current.next());
+    act(() => result.current.back());
+    act(() => result.current.back());
+
+    await act(async () => {
+      result.current.setProvider("gemini");
+      await Promise.resolve();
+    });
+    expect(result.current.wizardData.provider).toBe("openrouter");
+    expect(result.current.earlySaveError).toContain("delete failed");
+
+    await act(async () => {
+      result.current.setProvider("gemini");
+      await Promise.resolve();
+    });
+    expect(callbacks.deleteCredentials).toHaveBeenCalledTimes(2);
+    expect(result.current.wizardData.provider).toBe("gemini");
+    expect(result.current.earlySaveError).toBeNull();
+  });
+
   it("complete persists settings then config, runs onComplete, and resolves true", async () => {
     const callOrder: string[] = [];
     const onComplete = vi.fn();

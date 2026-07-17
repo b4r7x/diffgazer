@@ -70,4 +70,16 @@ describe("sanitizeIssue", () => {
     expect(b.id).toBe(rawB);
     expect(a.id).not.toBe(b.id);
   });
+
+  it("preserves text after 7-bit and C1 OSC sequences terminated by C1 ST", () => {
+    const result = sanitizeIssue(
+      makeIssue({
+        title: `before\x1b]0;title\x9cafter`,
+        rationale: `left\x9d52;c;payload\x9cright`,
+      }),
+    );
+
+    expect(result.title).toBe("beforeafter");
+    expect(result.rationale).toBe("leftright");
+  });
 });

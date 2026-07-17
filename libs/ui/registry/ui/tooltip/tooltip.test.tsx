@@ -104,7 +104,7 @@ describe("Tooltip keyboard", () => {
     expectClosedOrUnmounted(tooltip);
   });
 
-  it("Escape pressed while focus is in an unrelated input closes a hover tooltip without moving focus", async () => {
+  it("Escape claimed by a hover tooltip closes it without moving unrelated focus", async () => {
     const user = userEvent.setup();
     render(
       <div>
@@ -135,7 +135,7 @@ describe("Tooltip keyboard", () => {
 
     expectClosedOrUnmounted(tooltip);
     expect(input).toHaveFocus();
-    expect(escapeEvent.defaultPrevented).toBe(false);
+    expect(escapeEvent.defaultPrevented).toBe(true);
   });
 
   it("makes a tooltip on plain text reachable with Tab and opens on focus", async () => {
@@ -197,10 +197,49 @@ describe("Tooltip trigger semantics", () => {
     expect(screen.getByRole("tooltip")).toBeInTheDocument();
   });
 
-  it("wraps a disabled native trigger without replacing its semantics", async () => {
+  it("gives a disabled native trigger one named Tab stop and describes both AX nodes", async () => {
     const user = userEvent.setup();
     render(
-      <Tooltip content="Disabled tip" delayMs={0}>
+      <>
+        <span id="existing-description">Existing description</span>
+        <Tooltip content="Disabled tip" delayMs={0} closeDelayMs={0}>
+          <button type="button" disabled aria-describedby="existing-description">
+            Unavailable
+          </button>
+        </Tooltip>
+        <button type="button">After</button>
+      </>,
+    );
+
+    const button = screen.getByRole("button", { name: "Unavailable" });
+    const wrapper = button.parentElement as HTMLElement;
+    expect(button).toBeDisabled();
+    expect(screen.getAllByRole("button")).toHaveLength(2);
+    expect(wrapper.tagName).toBe("SPAN");
+    expect(wrapper).not.toHaveAttribute("role");
+    expect(wrapper).toHaveAttribute("tabindex", "0");
+    expect(wrapper).toHaveAttribute("aria-labelledby", button.id);
+    expect(wrapper).toHaveAccessibleName("Unavailable");
+
+    await user.tab();
+    expect(wrapper).toHaveFocus();
+    const tooltip = screen.getByRole("tooltip");
+    expect(wrapper).toHaveAttribute("aria-describedby", tooltip.id);
+    expect(button.getAttribute("aria-describedby")?.split(/\s+/)).toEqual([
+      "existing-description",
+      tooltip.id,
+    ]);
+    expect(button).toHaveAccessibleDescription("Existing description Disabled tip");
+
+    await user.tab();
+    expect(screen.getByRole("button", { name: "After" })).toHaveFocus();
+    expectClosedOrUnmounted(tooltip);
+  });
+
+  it("dismisses a focus-open disabled trigger tooltip on Escape without moving focus", async () => {
+    const user = userEvent.setup();
+    render(
+      <Tooltip content="Disabled tip" delayMs={0} closeDelayMs={0}>
         <button type="button" disabled>
           Unavailable
         </button>
@@ -209,13 +248,43 @@ describe("Tooltip trigger semantics", () => {
 
     const button = screen.getByRole("button", { name: "Unavailable" });
     const wrapper = button.parentElement as HTMLElement;
-    expect(button).toBeDisabled();
-    expect(screen.getAllByRole("button")).toHaveLength(1);
-    expect(wrapper).not.toHaveAttribute("role");
-    expect(wrapper).not.toHaveAttribute("tabindex");
+    await user.tab();
+    const tooltip = screen.getByRole("tooltip");
+
+    await user.keyboard("{Escape}");
+
+    expectClosedOrUnmounted(tooltip);
+    expect(wrapper).toHaveFocus();
+    expect(button).not.toHaveAttribute("aria-describedby");
+  });
+
+  it("preserves hover and touch behavior for a disabled native trigger", async () => {
+    const user = userEvent.setup();
+    render(
+      <Tooltip content="Disabled tip" delayMs={0} closeDelayMs={0}>
+        <button type="button" disabled>
+          Unavailable
+        </button>
+      </Tooltip>,
+    );
+
+    const button = screen.getByRole("button", { name: "Unavailable" });
+    const wrapper = button.parentElement as HTMLElement;
 
     await user.hover(wrapper);
-    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+    const hoveredTooltip = screen.getByRole("tooltip");
+    expect(button).toHaveAttribute("aria-describedby", hoveredTooltip.id);
+    await user.unhover(wrapper);
+    expectClosedOrUnmounted(hoveredTooltip);
+
+    // fireEvent retained: pointerType is required to exercise the touch-only toggle path.
+    fireEvent.pointerDown(wrapper, { pointerType: "touch" });
+    const touchedTooltip = screen.getByRole("tooltip");
+    expect(button).toHaveAttribute("aria-describedby", touchedTooltip.id);
+
+    // fireEvent retained: the second touch toggles the same disabled-trigger tooltip closed.
+    fireEvent.pointerDown(wrapper, { pointerType: "touch" });
+    expectClosedOrUnmounted(touchedTooltip);
   });
 });
 

@@ -1,4 +1,4 @@
-import { Box, Text, useInput } from "ink";
+import { Box, type DOMElement, Text, useBoxMetrics, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import {
   Children,
@@ -11,12 +11,29 @@ import {
 } from "react";
 import { useTheme } from "../../theme/provider";
 
-export interface ScrollAreaProps {
+interface BaseScrollAreaProps {
   height: number;
   isActive?: boolean;
   autoTail?: boolean;
-  children: ReactNode;
+  contentIdentity?: unknown;
 }
+
+export interface ScrollRange {
+  start: number;
+  end: number;
+}
+
+interface StaticScrollAreaProps extends BaseScrollAreaProps {
+  children: ReactNode;
+  totalRows?: never;
+}
+
+interface WindowedScrollAreaProps extends BaseScrollAreaProps {
+  children: (range: ScrollRange) => ReactNode;
+  totalRows: number;
+}
+
+export type ScrollAreaProps = StaticScrollAreaProps | WindowedScrollAreaProps;
 
 interface ColumnChildProps {
   children?: ReactNode;
@@ -42,15 +59,21 @@ export function ScrollArea({
   height,
   isActive = false,
   autoTail = false,
+  contentIdentity,
   children,
+  totalRows,
 }: ScrollAreaProps) {
   const { tokens } = useTheme();
   const [scrollOffset, setScrollOffset] = useState(0);
+  const staticContentRef = useRef<DOMElement>(null);
+  const { height: measuredStaticRowCount } = useBoxMetrics(staticContentRef);
   const previousRowCountRef = useRef(0);
+  const previousContentIdentityRef = useRef(contentIdentity);
   const [userScrolled, setUserScrolled] = useState(false);
 
-  const rows = getScrollRows(children);
-  const maxOffset = Math.max(0, rows.length - height);
+  const isWindowed = typeof children === "function";
+  const rowCount = totalRows ?? measuredStaticRowCount;
+  const maxOffset = Math.max(0, rowCount - height);
   const clampedOffset = Math.min(scrollOffset, maxOffset);
 
   useEffect(() => {
@@ -59,32 +82,43 @@ export function ScrollArea({
 
   useEffect(() => {
     const previousRowCount = previousRowCountRef.current;
-    previousRowCountRef.current = rows.length;
+    const contentChanged = !Object.is(previousContentIdentityRef.current, contentIdentity);
+    previousRowCountRef.current = rowCount;
+    previousContentIdentityRef.current = contentIdentity;
 
-    if (autoTail && rows.length > previousRowCount && !userScrolled) {
+    if (contentChanged) {
+      setUserScrolled(false);
+      setScrollOffset(autoTail ? maxOffset : 0);
+      return;
+    }
+
+    if (autoTail && rowCount > previousRowCount && !userScrolled) {
       setScrollOffset(maxOffset);
     }
-  }, [autoTail, rows.length, maxOffset, userScrolled]);
+  }, [autoTail, contentIdentity, rowCount, maxOffset, userScrolled]);
 
   useInput(
     (_input, key) => {
       if (key.upArrow) {
-        setUserScrolled(true);
-        setScrollOffset(Math.max(0, clampedOffset - 1));
+        const next = Math.max(0, clampedOffset - 1);
+        setUserScrolled(next < maxOffset);
+        setScrollOffset(next);
       } else if (key.downArrow) {
         const next = Math.min(maxOffset, clampedOffset + 1);
         setUserScrolled(next < maxOffset);
         setScrollOffset(next);
       } else if (key.pageUp) {
-        setUserScrolled(true);
-        setScrollOffset(Math.max(0, clampedOffset - height));
+        const next = Math.max(0, clampedOffset - height);
+        setUserScrolled(next < maxOffset);
+        setScrollOffset(next);
       } else if (key.pageDown) {
         const next = Math.min(maxOffset, clampedOffset + height);
         setUserScrolled(next < maxOffset);
         setScrollOffset(next);
       } else if (key.home) {
-        setUserScrolled(true);
-        setScrollOffset(0);
+        const next = 0;
+        setUserScrolled(next < maxOffset);
+        setScrollOffset(next);
       } else if (key.end) {
         setUserScrolled(false);
         setScrollOffset(maxOffset);
@@ -95,13 +129,29 @@ export function ScrollArea({
 
   const canScrollUp = clampedOffset > 0;
   const canScrollDown = clampedOffset < maxOffset;
-  const visibleRows = rows.slice(clampedOffset, clampedOffset + height);
+  const range = {
+    start: clampedOffset,
+    end: Math.min(rowCount, clampedOffset + height),
+  };
+  const visibleRows = isWindowed ? getScrollRows(children(range)) : null;
 
   return (
     <Box flexDirection="column">
       {canScrollUp ? <Text color={tokens.muted}>{"\u25B2"}</Text> : null}
       <Box flexDirection="column" height={height} overflow="hidden">
-        {visibleRows}
+        {isWindowed ? (
+          visibleRows
+        ) : (
+          <Box
+            ref={staticContentRef}
+            flexDirection="column"
+            flexShrink={0}
+            position="relative"
+            top={-clampedOffset}
+          >
+            {children}
+          </Box>
+        )}
       </Box>
       {canScrollDown ? <Text color={tokens.muted}>{"\u25BC"}</Text> : null}
     </Box>

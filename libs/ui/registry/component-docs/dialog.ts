@@ -49,6 +49,11 @@ export const dialogDoc: ComponentDoc = {
         "Pass onEscapeKeyDown to DialogContent to intercept cancelable Escape dismissal. Call e.preventDefault() to keep the dialog open during async operations or form validation; if the native dialog is force-closed without a cancelable cancel event while React open is still true, the shell reopens it.",
     },
     {
+      title: "Nested popovers",
+      content:
+        "An open Popover inside Dialog owns the first Escape press, including when focus is on a dialog sibling. Escape closes only the popover; focus returns to its trigger only when focus was inside the popover or trigger.",
+    },
+    {
       title: "Preventing Close on Action",
       content:
         "DialogAction and DialogClose check e.defaultPrevented. Call e.preventDefault() in your onClick handler to keep the dialog open — useful for async validation where you want to close only on success.",
@@ -81,6 +86,7 @@ export const dialogDoc: ComponentDoc = {
     { name: "dialog-custom-trigger", title: "Custom Trigger" },
     { name: "dialog-close-icon", title: "With Close Icon" },
     { name: "dialog-header-flat", title: "Header (flat marker)" },
+    { name: "dialog-popover", title: "Nested Popover" },
   ],
   keyboard: {
     description:
@@ -245,6 +251,20 @@ export const dialogDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description: "Close handler. Call e.preventDefault() to keep the dialog open.",
+      },
+      "aria-label": {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description:
+          'Explicit accessible name. aria-labelledby wins when both attributes are set. With neither attribute, visible child text names the button; empty, decorative, or hidden content falls back to "Close dialog".',
+      },
+      "aria-labelledby": {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description:
+          'ID reference for an external label. It takes precedence over aria-label and suppresses the automatic "Close dialog" fallback.',
       },
     },
     DialogCloseIcon: {

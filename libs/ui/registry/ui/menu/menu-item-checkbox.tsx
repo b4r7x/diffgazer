@@ -2,8 +2,6 @@
 
 import {
   type ComponentPropsWithRef,
-  type FocusEvent,
-  type MouseEvent,
   type ReactNode,
   type Ref,
   useEffect,
@@ -17,6 +15,7 @@ import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
 import { useMenuContext } from "./menu-context";
 import { getItemState, menuItemBase, menuItemIndicator, menuItemLabel } from "./menu-item-variants";
+import { useMenuItemInteractions } from "./use-menu-item-interactions";
 
 const CHECKBOX_CHECKED = "[x]";
 const CHECKBOX_UNCHECKED = "[ ]";
@@ -102,23 +101,15 @@ export function MenuItemCheckbox({
     return () => unregisterActivator(id);
   }, [id, disabled, registerActivator, unregisterActivator, setIsChecked]);
 
-  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
-    onClick?.(event);
-    if (event.defaultPrevented || disabled) return;
-    activate(id);
-  };
-
-  const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
-    onFocus?.(event);
-    if (event.defaultPrevented || disabled) return;
-    highlight(id);
-  };
-
-  const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {
-    onMouseDown?.(event);
-    if (event.defaultPrevented) return;
-    if (disabled) event.preventDefault();
-  };
+  const { handleClick, handleFocus, handleMouseDown } = useMenuItemInteractions({
+    id,
+    disabled,
+    activate,
+    highlight,
+    onClick,
+    onFocus,
+    onMouseDown,
+  });
 
   const state = getItemState({ disabled, isFocused, isSelected: false });
 
@@ -133,7 +124,7 @@ export function MenuItemCheckbox({
       data-slot="menu-item-checkbox"
       data-diffgazer-navigation-item="true"
       data-value={id}
-      data-highlighted={!disabled && isFocused ? "" : undefined}
+      data-highlighted={isFocused ? "" : undefined}
       aria-checked={isChecked}
       aria-disabled={disabled || undefined}
       onMouseDown={handleMouseDown}

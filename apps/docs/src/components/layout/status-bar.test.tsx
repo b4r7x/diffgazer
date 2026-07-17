@@ -61,6 +61,29 @@ describe("StatusBar", () => {
     expect(screen.getByRole("link", { name: "Keys" })).not.toHaveAttribute("aria-current");
   });
 
+  it.each([
+    "/uix",
+    "/application",
+    "/keysmith",
+  ])("marks no library link active on the root 404 path %s", (pathname) => {
+    routerBoundary.pathname = pathname;
+    renderStatusBar();
+
+    expect(screen.getByRole("link", { name: "Docs" })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("link", { name: "Components" })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("link", { name: "Keys" })).not.toHaveAttribute("aria-current");
+  });
+
+  it.each(["/app", "/ui", "/keys"])("marks the exact library root %s active", (pathname) => {
+    routerBoundary.pathname = pathname;
+    renderStatusBar();
+
+    const activeLinks = screen
+      .getAllByRole("link")
+      .filter((link) => link.getAttribute("aria-current") === "page");
+    expect(activeLinks).toHaveLength(1);
+  });
+
   it("points each nav link at its library route", () => {
     routerBoundary.pathname = "/";
     renderStatusBar();

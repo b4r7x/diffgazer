@@ -4,11 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type OverflowDirection, useOverflowDetection } from "./use-overflow-detection";
 
 let resizeCallbacks: (() => void)[] = [];
+let retainedResizeCallbacks: (() => void)[] = [];
 let mutationCallbacks: (() => void)[] = [];
 let animationCallbacks: FrameRequestCallback[] = [];
 
 beforeEach(() => {
   resizeCallbacks = [];
+  retainedResizeCallbacks = [];
   mutationCallbacks = [];
   animationCallbacks = [];
   vi.stubGlobal(
@@ -19,10 +21,13 @@ beforeEach(() => {
         this.cb = cb;
       }
       observe() {
-        resizeCallbacks.push(this.cb);
+        if (!resizeCallbacks.includes(this.cb)) resizeCallbacks.push(this.cb);
+        if (!retainedResizeCallbacks.includes(this.cb)) retainedResizeCallbacks.push(this.cb);
       }
       unobserve() {}
-      disconnect() {}
+      disconnect() {
+        resizeCallbacks = resizeCallbacks.filter((callback) => callback !== this.cb);
+      }
     },
   );
   vi.stubGlobal(
@@ -33,9 +38,11 @@ beforeEach(() => {
         this.cb = cb;
       }
       observe() {
-        mutationCallbacks.push(this.cb);
+        if (!mutationCallbacks.includes(this.cb)) mutationCallbacks.push(this.cb);
       }
-      disconnect() {}
+      disconnect() {
+        mutationCallbacks = mutationCallbacks.filter((callback) => callback !== this.cb);
+      }
       takeRecords() {
         return [];
       }
@@ -55,15 +62,19 @@ afterEach(() => {
 function TestComponent({
   direction,
   onResult,
+  show = true,
+  nodeKey = "target",
 }: {
   direction?: OverflowDirection;
   onResult: (v: boolean) => void;
+  show?: boolean;
+  nodeKey?: string;
 }) {
   const { ref, isOverflowing } = useOverflowDetection<HTMLDivElement>(direction);
   React.useEffect(() => {
     onResult(isOverflowing);
   });
-  return React.createElement("div", { ref, "data-testid": "target" });
+  return show ? React.createElement("div", { key: nodeKey, ref, "data-testid": "target" }) : null;
 }
 
 function mockDimensions(
@@ -203,5 +214,110 @@ describe("useOverflowDetection", () => {
     });
 
     expect(lastResult).toBe(true);
+  });
+
+  it("subscribes after a late mount and recovers across resize and node replacement", () => {
+    let lastResult = false;
+    const onResult = (value: boolean) => {
+      lastResult = value;
+    };
+    const { getByTestId, queryByTestId, rerender } = render(
+      React.createElement(TestComponent, {
+        direction: "horizontal",
+        onResult,
+        show: false,
+      }),
+    );
+
+    expect(queryByTestId("target")).toBeNull();
+    expect(resizeCallbacks).toHaveLength(0);
+
+    rerender(React.createElement(TestComponent, { direction: "horizontal", onResult }));
+    const first = getByTestId("target");
+    mockDimensions(first, {
+      scrollWidth: 100,
+      clientWidth: 100,
+      scrollHeight: 20,
+      clientHeight: 20,
+    });
+    act(() => {
+      for (const callback of resizeCallbacks) callback();
+      flushScheduledChecks();
+    });
+    expect(lastResult).toBe(false);
+
+    mockDimensions(first, {
+      scrollWidth: 180,
+      clientWidth: 100,
+      scrollHeight: 20,
+      clientHeight: 20,
+    });
+    act(() => {
+      for (const callback of resizeCallbacks) callback();
+      flushScheduledChecks();
+    });
+    expect(lastResult).toBe(true);
+    const firstResizeCallback = retainedResizeCallbacks[0];
+    expect(firstResizeCallback).toBeDefined();
+    mockDimensions(first, {
+      scrollWidth: 180,
+      clientWidth: 100,
+      scrollHeight: 20,
+      clientHeight: 20,
+    });
+    act(() => firstResizeCallback?.());
+    expect(animationCallbacks).toHaveLength(1);
+
+    rerender(
+      React.createElement(TestComponent, {
+        direction: "horizontal",
+        onResult,
+        nodeKey: "replacement",
+      }),
+    );
+    const replacement = getByTestId("target");
+    expect(replacement).not.toBe(first);
+    mockDimensions(replacement, {
+      scrollWidth: 80,
+      clientWidth: 100,
+      scrollHeight: 20,
+      clientHeight: 20,
+    });
+    act(flushScheduledChecks);
+    expect(lastResult).toBe(false);
+    expect(animationCallbacks).toHaveLength(0);
+
+    act(() => firstResizeCallback?.());
+    expect(animationCallbacks).toHaveLength(0);
+    expect(lastResult).toBe(false);
+
+    const replacementResizeCallback = resizeCallbacks[0];
+    expect(replacementResizeCallback).toBeDefined();
+    mockDimensions(replacement, {
+      scrollWidth: 180,
+      clientWidth: 100,
+      scrollHeight: 20,
+      clientHeight: 20,
+    });
+    act(() => {
+      replacementResizeCallback?.();
+      flushScheduledChecks();
+    });
+    expect(lastResult).toBe(true);
+
+    rerender(
+      React.createElement(TestComponent, {
+        direction: "horizontal",
+        onResult,
+        show: false,
+      }),
+    );
+    expect(resizeCallbacks).toHaveLength(0);
+    expect(mutationCallbacks).toHaveLength(0);
+    expect(lastResult).toBe(false);
+
+    act(() => replacementResizeCallback?.());
+    expect(animationCallbacks).toHaveLength(0);
+    expect(lastResult).toBe(false);
   });
 });

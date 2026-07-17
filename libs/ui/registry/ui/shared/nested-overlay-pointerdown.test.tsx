@@ -4,9 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 import { Dialog } from "../dialog/index";
 import { Select } from "../select/index";
 
-// axe skipped: nested-overlay outside-press behavior test; the dialog/select
-// primitive suites own the a11y assertions.
-
 // Backdrop close compares the click coordinate to the dialog's bounding rect;
 // jsdom layout is 0x0, so mock the rect so (10,10) reads as "outside".
 function mockDialogBounds(dialog: HTMLElement) {

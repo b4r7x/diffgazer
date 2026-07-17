@@ -9,7 +9,6 @@ export interface ProgressStepProps {
   name: string;
   status: ProgressStatus;
   substeps?: ProgressSubstepData[];
-  duration?: number;
 }
 
 const STEP_ICON: Record<ProgressStatus, string> = {
@@ -45,7 +44,7 @@ function getSubstepColor(status: SubstepStatus, tokens: CliColorTokens): string 
   return tokens.fg;
 }
 
-export function ProgressStep({ name, status, substeps, duration }: ProgressStepProps) {
+export function ProgressStep({ name, status, substeps }: ProgressStepProps) {
   const { tokens } = useTheme();
 
   const stepColor = getStepColor(status, tokens);
@@ -62,7 +61,6 @@ export function ProgressStep({ name, status, substeps, duration }: ProgressStepP
       <Box gap={1}>
         {icon}
         <Text color={stepColor}>{name}</Text>
-        {duration != null ? <Text color={tokens.muted}>({duration}ms)</Text> : null}
       </Box>
       {substeps && substeps.length > 0 ? (
         <Box flexDirection="column" marginLeft={3}>

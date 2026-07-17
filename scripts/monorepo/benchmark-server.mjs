@@ -59,6 +59,7 @@ const SLO = {
 };
 
 const SERVER_DIST = resolve(root, "cli/server/dist/app.js");
+const REQUEST_TIMEOUT_MS = 5_000;
 
 function percentile(sortedMs, fraction) {
   if (sortedMs.length === 0) return 0;
@@ -77,17 +78,32 @@ function summarize(durations) {
   };
 }
 
-function timeRequest(baseUrl, path, headers) {
+export function timeRequest(baseUrl, path, headers, { timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
   return new Promise((resolveRequest, reject) => {
     const start = performance.now();
+    let settled = false;
+    let timer;
+
+    const settle = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      callback(value);
+    };
+
     const req = httpRequest(new URL(path, baseUrl), { headers }, (res) => {
       res.resume();
       res.on("end", () =>
-        resolveRequest({ ms: performance.now() - start, status: res.statusCode }),
+        settle(resolveRequest, { ms: performance.now() - start, status: res.statusCode }),
       );
-      res.on("error", reject);
+      res.on("error", (error) => settle(reject, error));
     });
-    req.on("error", reject);
+    req.on("error", (error) => settle(reject, error));
+    timer = setTimeout(() => {
+      const error = new Error(`GET ${path} timed out after ${timeoutMs}ms`);
+      settle(reject, error);
+      req.destroy(error);
+    }, timeoutMs);
     req.end();
   });
 }
@@ -139,13 +155,79 @@ function report(label, result) {
   );
 }
 
-async function main() {
+async function runBenchmark({ shutdownToken }) {
   if (!existsSync(SERVER_DIST)) {
     throw new Error(
       `Server build not found at ${SERVER_DIST}. Run \`pnpm --filter @diffgazer/server build\` first.`,
     );
   }
 
+  const { createApp } = await import(pathToFileURL(SERVER_DIST).href);
+  const { createAdaptorServer } = await import(
+    pathToFileURL(serverRequire.resolve("@hono/node-server")).href
+  );
+  // Workspace packages are not linked under scripts/, and core's subpath exports
+  // are import-only (no CJS require condition), so import the built dist directly.
+  const { SHUTDOWN_TOKEN_HEADER } = await import(
+    pathToFileURL(resolve(root, "libs/core/dist/api/index.js")).href
+  );
+
+  const authHeaders = {
+    [SHUTDOWN_TOKEN_HEADER]: shutdownToken,
+    host: "127.0.0.1",
+  };
+
+  const app = createApp();
+  const server = createAdaptorServer({ fetch: app.fetch, hostname: "127.0.0.1" });
+  const functionalFailures = [];
+  const latencyBreaches = [];
+  const collectors = { functionalFailures, latencyBreaches };
+
+  try {
+    const baseUrl = await listen(server);
+
+    // Warm up so JIT / first-request costs do not skew the percentiles.
+    await runScenario(baseUrl, { path: "/health", totalRequests: 50, concurrency: 5 });
+    await runScenario(baseUrl, {
+      path: "/api/config/init",
+      headers: authHeaders,
+      totalRequests: 50,
+      concurrency: 5,
+    });
+
+    const health = await runScenario(baseUrl, {
+      path: "/health",
+      totalRequests: 2000,
+      concurrency: 50,
+    });
+    report("GET /health", health);
+    checkSlo(collectors, "GET /health", health, SLO.health);
+
+    const configInit = await runScenario(baseUrl, {
+      path: "/api/config/init",
+      headers: authHeaders,
+      totalRequests: 1000,
+      concurrency: 40,
+    });
+    report("GET /api/config/init", configInit);
+    checkSlo(collectors, "GET /api/config/init", configInit, SLO.configInit);
+  } finally {
+    await new Promise((resolveClose) => server.close(() => resolveClose()));
+  }
+
+  // Functional regressions always gate. Latency breaches gate only in strict
+  // mode; otherwise warn so machine-dependent timings do not fail CI by default.
+  const strict = process.env[ENV.smokeStrictSkips] === "1";
+  if (latencyBreaches.length > 0) {
+    const heading = strict
+      ? "Benchmark SLO breach (strict):"
+      : "WARN: benchmark latency below SLO (not gating):";
+    (strict ? console.error : console.warn)([heading, ...latencyBreaches].join("\n"));
+  }
+  return [...functionalFailures, ...(strict ? latencyBreaches : [])];
+}
+
+export async function main(benchmarkRunner = runBenchmark) {
   const fixtureHome = mkdtempSync(join(tmpdir(), "diffgazer-bench-home-"));
   const fixtureProject = realpathSync(mkdtempSync(join(tmpdir(), "diffgazer-bench-project-")));
   const shutdownToken = "benchmark-shutdown-token";
@@ -158,74 +240,12 @@ async function main() {
   applyBenchmarkEnvDefaults(process.env);
 
   try {
-    const { createApp } = await import(pathToFileURL(SERVER_DIST).href);
-    const { createAdaptorServer } = await import(
-      pathToFileURL(serverRequire.resolve("@hono/node-server")).href
-    );
-    // Workspace packages are not linked under scripts/, and core's subpath exports
-    // are import-only (no CJS require condition), so import the built dist directly.
-    const { SHUTDOWN_TOKEN_HEADER } = await import(
-      pathToFileURL(resolve(root, "libs/core/dist/api/index.js")).href
-    );
-
-    const authHeaders = {
-      [SHUTDOWN_TOKEN_HEADER]: shutdownToken,
-      host: "127.0.0.1",
-    };
-
-    const app = createApp();
-    const server = createAdaptorServer({ fetch: app.fetch, hostname: "127.0.0.1" });
-    const functionalFailures = [];
-    const latencyBreaches = [];
-    const collectors = { functionalFailures, latencyBreaches };
-
-    try {
-      const baseUrl = await listen(server);
-
-      // Warm up so JIT / first-request costs do not skew the percentiles.
-      await runScenario(baseUrl, { path: "/health", totalRequests: 50, concurrency: 5 });
-      await runScenario(baseUrl, {
-        path: "/api/config/init",
-        headers: authHeaders,
-        totalRequests: 50,
-        concurrency: 5,
-      });
-
-      const health = await runScenario(baseUrl, {
-        path: "/health",
-        totalRequests: 2000,
-        concurrency: 50,
-      });
-      report("GET /health", health);
-      checkSlo(collectors, "GET /health", health, SLO.health);
-
-      const configInit = await runScenario(baseUrl, {
-        path: "/api/config/init",
-        headers: authHeaders,
-        totalRequests: 1000,
-        concurrency: 40,
-      });
-      report("GET /api/config/init", configInit);
-      checkSlo(collectors, "GET /api/config/init", configInit, SLO.configInit);
-    } finally {
-      await new Promise((resolveClose) => server.close(() => resolveClose()));
-    }
-
-    // Functional regressions always gate. Latency breaches gate only in strict
-    // mode; otherwise warn so machine-dependent timings do not fail CI by default.
-    const strict = process.env[ENV.smokeStrictSkips] === "1";
-    if (latencyBreaches.length > 0) {
-      const heading = strict
-        ? "Benchmark SLO breach (strict):"
-        : "WARN: benchmark latency below SLO (not gating):";
-      (strict ? console.error : console.warn)([heading, ...latencyBreaches].join("\n"));
-    }
-    const gating = [...functionalFailures, ...(strict ? latencyBreaches : [])];
+    const gating = await benchmarkRunner({ shutdownToken });
     if (gating.length > 0) {
       console.error(["Benchmark failed:", ...gating].join("\n"));
-      process.exit(1);
+      process.exitCode = 1;
+      return;
     }
-
     console.log("OK: server benchmark functional checks passed");
   } finally {
     rmSync(fixtureHome, { recursive: true, force: true });

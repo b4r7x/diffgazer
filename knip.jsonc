@@ -7,7 +7,7 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   "ignoreExportsUsedInFile": true,
-  "ignoreBinaries": ["depcruise", "biome", "turbo", "playwright", "lhci", "dev"],
+  "ignoreBinaries": ["depcruise", "biome", "turbo", "playwright", "lhci", "dev", "taskkill"],
   "ignoreDependencies": [
     "@arethetypeswrong/cli",
     "@diffgazer/.+",
@@ -64,7 +64,7 @@
       "entry": ["scripts/monorepo/**/*.mjs", "scripts/monorepo/**/*.test.mjs"]
     },
     "apps/web": {
-      "entry": ["src/main.tsx", "src/app/routes/**/*.tsx"]
+      "entry": ["src/main.tsx", "src/app/routes/**/*.tsx", "tests/fixtures/results-layout.tsx"]
     },
     "apps/landing": {
       "entry": ["src/main.ts", "index.html"]
@@ -102,6 +102,8 @@
         "registry/**/*.{ts,tsx}",
         "scripts/**/*.ts",
         "tsup.config.ts",
+        "tests/fixtures/*.tsx",
+        "vite.e2e.config.ts",
         "vitest.config.ts"
       ]
     },

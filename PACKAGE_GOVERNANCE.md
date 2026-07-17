@@ -33,7 +33,7 @@ Artifact handoff:
 
 - `@diffgazer/ui` builds docs and registry artifacts into its own `dist/artifacts`; there is no `@diffgazer/ui-artifacts` package.
 - `@diffgazer/keys` builds artifacts into `dist/artifacts`; there is no public `@diffgazer/keys-artifacts` package.
-- `@diffgazer/docs prepare:generated` auto-detects sync mode from package resolvability everywhere (CI included): resolvable packages sync from package artifacts, otherwise it syncs from workspace artifacts. Force a mode with `DIFFGAZER_ARTIFACT_SYNC_MODE=workspace|package`.
+- `@diffgazer/docs prepare:generated` synchronizes only from the prepared `libs/ui/dist/artifacts` and `libs/keys/dist/artifacts` workspace trees.
 - Artifact validation is non-mutating and must fail on fingerprint drift, missing manifest inputs, stale/tampered copied artifact directories, stale docs-host sync outputs, and copied artifact mirror drift.
 
 ## Artifact Packaging
@@ -177,7 +177,7 @@ The release-readiness workflow must also run pack dry-runs for all public packag
 
 ## Publish Metadata
 
-Public packages are published through the root `pnpm run release` script, which runs the first-publish guard and then `changeset publish`. Provenance is supplied by each package's `publishConfig.provenance` plus `NPM_CONFIG_PROVENANCE=true` in the release workflow env under GitHub OIDC, not by a CLI flag (`changeset publish` parses only `otp`/`tag`/`gitTag`). `publishConfig.provenance` also makes one-off `npm publish` calls use the same provenance policy. Scoped public packages set `publishConfig.access` to `public`. The `author` field is uniform across the four published packages (`"author": "diffgazer"`); the `license` field intentionally splits MIT vs Apache-2.0 per the [Licensing](#licensing) section.
+Public packages are published through the root `pnpm run release` script. Its targeted publisher derives the pending Version-PR set from package version changes between `HEAD^` and `HEAD`, checks registry versions, preflights every pending package against the first-publish gate, and publishes each missing version with a separate filtered `pnpm publish` invocation. Provenance is supplied by each package's `publishConfig.provenance` plus `NPM_CONFIG_PROVENANCE=true` in the release workflow env under GitHub OIDC. `publishConfig.provenance` also makes one-off `npm publish` calls use the same provenance policy. Scoped public packages set `publishConfig.access` to `public`. The `author` field is uniform across the four published packages (`"author": "diffgazer"`); the `license` field intentionally splits MIT vs Apache-2.0 per the [Licensing](#licensing) section.
 
 `@diffgazer/keys-artifacts` is private and exists only as a workspace mirror for docs artifact handoff; it is not a public package target.
 
@@ -186,16 +186,18 @@ Public packages are published through the root `pnpm run release` script, which 
 Publishing runs from `.github/workflows/release.yml` via `changesets/action`:
 
 1. A contributor adds a changeset on their PR (`pnpm run changeset`); merging the PR to `main` triggers the release workflow, which opens (or updates) a `chore: version packages` PR that applies pending changesets, bumps versions, and updates CHANGELOGs.
-2. Merging the Version PR re-triggers the workflow, which runs `pnpm run release-check` and then `pnpm run release` under GitHub OIDC so npm records provenance attestations. `pnpm run release` first runs `node scripts/monorepo/guard-publish.mjs`, then `changeset publish`.
+2. Merging the Version PR re-triggers the workflow, which runs `pnpm run release-check` and then `pnpm run release` under GitHub OIDC so npm records provenance attestations. `pnpm run release` runs the targeted publisher in `scripts/monorepo/guard-publish.mjs`.
 3. The workflow requires `secrets.NPM_TOKEN` until each public package is configured for npm Trusted Publishers; once trusted publishing is enabled per package on npmjs.com, the token becomes optional.
 
 #### First-publish gate
 
-`changeset publish` would publish every public package whose version is absent from npm, which would silently first-publish the gated scoped packages. To keep the per-package npm gate mechanical, `pnpm run release` runs `scripts/monorepo/guard-publish.mjs` first: it enumerates the non-private workspace packages, checks each against npm (`npm view <name> versions`), and fails the publish step if any unpublished package is missing from `FIRST_PUBLISH_ALLOWLIST` in that script. Today the allowlist is `["diffgazer"]` only, so a Version PR that bumps `@diffgazer/ui`, `@diffgazer/keys`, or `@diffgazer/add` fails the publish step loudly instead of un-gating them — that is the intended safe state. Un-gating a scoped package is an explicit reviewed PR adding its name to the allowlist (alongside the `npm view` go-live checks above). Because both the release workflow and the manual recovery command below run `pnpm run release`, the guard covers both paths.
+An unfiltered workspace publisher would publish every public package whose version is absent from npm, including unrelated gated packages. To keep each npm gate mechanical, `pnpm run release` delegates publication to `scripts/monorepo/guard-publish.mjs`. The default invocation compares each non-private workspace package's current version with its version in `HEAD^`; only packages versioned by the commit are pending, so an older never-published workspace package is not mistaken for part of the current Version PR. The publisher reads registry versions for that pending set and rejects the whole run before `pnpm` starts if any pending, never-published package is absent from `FIRST_PUBLISH_ALLOWLIST`. Today the allowlist is `["diffgazer"]`, so un-gating one scoped package is an explicit reviewed PR adding only its name to the allowlist (alongside the `npm view` go-live checks above). Maintainers may pass explicit package names to select the recovery set manually; the same whole-set preflight applies.
 
 #### Recovery from publish failure
 
-If the publish step fails after the Version PR is merged (network blip, npm registry error, transient runner issue), re-run the failed `Release` workflow run from the GitHub Actions UI; `changesets/action` is idempotent — already-published versions are skipped. If the workflow itself is wedged or the secret is missing, a maintainer can publish manually from a clean tree at the merged Version PR commit with `pnpm install --frozen-lockfile && pnpm run release-check && pnpm run release`, supplying `NPM_TOKEN` and `NPM_CONFIG_PROVENANCE=true` in the environment (`pnpm run release` routes through the first-publish guard, then `changeset publish`). For any failure, open an issue or contact a maintainer before re-attempting a manual publish so the team can confirm registry state first.
+If the publish step fails after the Version PR is merged (network blip, npm registry error, transient runner issue), first re-run the failed `Release` workflow run from the GitHub Actions UI. Packages are published one at a time. A retry derives the same pending set from the checked-out Version PR commit, skips any exact versions already present on npm, and still emits one exact `New tag: <name>@<version>` line for every recovered or newly published version after the complete set succeeds. This lets `changesets/action` create the missing Git tag and GitHub Release metadata without attempting a duplicate npm publication.
+
+If that workflow run is wedged, use the same `Release` workflow's **Run workflow** action and provide the full 40-character merged-main Version PR commit as `release_sha`. The `Recover Publish from Merged Main SHA` job validates that the selected commit is already contained in `main`, waits for approval through the protected `production` environment, and runs the normal release-readiness and first-publish-protected release chain on a GitHub-hosted runner with OIDC provenance. Do not run the publish command locally: local token authentication does not provide the supported CI identity required by the package provenance policy. For any failure, open an issue or contact a maintainer before starting recovery so the team can confirm registry state first.
 
 ## Dependency Management
 
@@ -210,7 +212,7 @@ If the publish step fails after the Version PR is merged (network blip, npm regi
 
 ## Dependency Governance
 
-The root `package.json` carries a `pnpm.overrides` block to keep shared transitive packages on a single version across the workspace. The current pins collapse duplicates that otherwise drift across apps and tooling:
+The root `pnpm-workspace.yaml` carries the `overrides` block to keep shared transitive packages on a single version across the workspace. The current pins collapse duplicates that otherwise drift across apps and tooling:
 
 - `@types/node` pinned to `^25.2.3` so docs, registry, ui, keys, server, core, and cli packages resolve to one major.
 - `@types/react` pinned to `^19.2.13` and `@types/react-dom` pinned to `^19.2.3` so the whole workspace resolves to one React 19.2 type line, matching the shared React `>=19.2.0` runtime floor. Declared package ranges stay on the 19.2 line (`@diffgazer/core` declares `^19.2.13`, ui/keys/docs `^19.2.0`, web/landing/diffgazer `^19.2.13`); the override collapses them to a single resolution so a stray `^19.1` cannot reappear.
@@ -218,6 +220,13 @@ The root `package.json` carries a `pnpm.overrides` block to keep shared transiti
 - `postcss` pinned to `^8.5.14` so transitive Vite/Tailwind resolvers share one patch line.
 - `picomatch` pinned to `^4.0.4` so Vite, Vitest, Fumadocs, and Tailwind plugins share one version.
 - `vitest` pinned to `^4.1.0`, `@testing-library/react` to `^16.3.2`, `@testing-library/jest-dom` to `^6.9.1`, `jsdom` to `^28.1.0`, `@vitejs/plugin-react` to `^5.1.3`, and `axe-core` to `^4.11.4` so every workspace that imports a test tool resolves to one shared version of each (no `vitest 4.0` / `4.1`, `jsdom 27` / `28`, `@testing-library/react 16.0` / `16.2` / `16.3`, or `@vitejs/plugin-react 5.0` / `5.1` split).
+
+The same workspace file restricts dependency install scripts through `allowBuilds`. Only the
+reviewed lockfile versions `esbuild@0.27.3` and `sharp@0.34.5` may run their required native
+build/install steps. The optional `msw` postinstall is explicitly disabled because the workspace
+does not need its interactive setup. Version-qualified approvals are intentional: a dependency
+update must review and update the approval instead of silently granting script execution to a new
+release.
 - `jiti` (`^2.7.0`), `hono` (`^4.12.25`), and `ws` (`^8.21.0`) are pinned so the config loader, the embedded server framework, and the WebSocket dependency each resolve to one version across the workspace and its dev/build tooling.
 
 The `@tanstack/react-router` range is kept aligned across `apps/web` and `apps/docs` (both declare `^1.158.1`) so the two TanStack-Router consumers track one router minor; it is not overridden because the rest of the TanStack Start surface in `apps/docs` resolves its router transitively.
@@ -276,13 +285,24 @@ These commands are public only after `@diffgazer/add` is published. Before publi
 
 This copies source into the consuming app. The app must configure its own `@/*` TypeScript/bundler alias before `dgadd init` and import the copied CSS entrypoint.
 
-Runtime package mode is supported for versioned imports:
+### Local runtime package installation before publication
+
+Until `npm view @diffgazer/ui version` and `npm view @diffgazer/keys version` both succeed, build and pack the packages from a clean local checkout:
 
 ```bash
-npm install @diffgazer/ui @diffgazer/keys
+pnpm install --frozen-lockfile
+pnpm run prepare:artifacts
+pnpm --filter @diffgazer/keys build
+pnpm --filter @diffgazer/ui build
+mkdir -p .tmp/local-packages
+pnpm --filter @diffgazer/keys pack --pack-destination "$PWD/.tmp/local-packages"
+pnpm --filter @diffgazer/ui pack --pack-destination "$PWD/.tmp/local-packages"
+npm install ./.tmp/local-packages/diffgazer-keys-*.tgz ./.tmp/local-packages/diffgazer-ui-*.tgz
 ```
 
-These commands are public only after both packages are published. Runtime consumers must import Tailwind CSS v4, `@diffgazer/ui/sources.css`, and `@diffgazer/ui/styles.css` from their global CSS entrypoint.
+Run the final `npm install` from the consuming application and replace the paths with absolute paths to the checkout's tarballs when the consumer is outside this repository. Runtime consumers must import Tailwind CSS v4, `@diffgazer/ui/sources.css`, and `@diffgazer/ui/styles.css` from their global CSS entrypoint.
+
+Public registry installation examples may be added to package READMEs only after both `npm view` checks above pass.
 
 ### `@diffgazer/add`
 
@@ -300,16 +320,17 @@ Until the hosted registry endpoints serve `200 OK` for `/r/ui/registry.json`, `/
 
 - `dgadd` CLI from a locally packed `@diffgazer/add` tarball: `pnpm exec dgadd add ui/button`.
 - Runtime npm packages from locally packed tarballs: `npm install ./diffgazer-ui-*.tgz ./diffgazer-keys-*.tgz`.
-- Direct file copy from GitHub: `https://github.com/b4r7x/diffgazer/tree/main/libs/ui/registry/ui/<component>`.
+- Dependency-closed source archive from the component docs: choose **Copy Full Source**, save the
+  copied registry-item JSON as `<component>.registry.json`, then run
+  `npx shadcn add ./<component>.registry.json`. The archive includes transitive UI and keys files
+  with the same local-import rewrites as `dgadd --integration copy`.
 
 Release readiness runs `pnpm run registry:live-check`. That script reads the docs consumption metadata and skips only while public hosted-registry install commands remain gated. If the registry is ungated, or if `DIFFGAZER_LIVE_REGISTRY_REQUIRED=1` is set, the check is a hard gate.
 
-After deployment or ungating, hosted-registry availability is verified by:
-
-1. `host r.b4r7.dev` resolves to the deploy target.
-2. `curl -fI https://r.b4r7.dev/r/ui/registry.json` returns `200`.
-3. `curl -fI https://r.b4r7.dev/r/ui/button.json` returns `200`.
-4. `curl -fI https://r.b4r7.dev/r/keys/navigation.json` returns `200`.
+After deployment or ungating, `registry:live-check` verifies that `r.b4r7.dev` resolves, then
+dynamically enumerates every JSON file in the UI, keys, and schema trees copied by
+`deploy/registry.Dockerfile`. Every corresponding hosted URL must return `200`, and its raw response
+bytes must match the committed file exactly.
 
 Once those checks pass, un-gate the hosted-shadcn install snippets in `README.md`, `libs/ui/README.md`, `libs/keys/README.md`, and `apps/docs/content/docs/**/*.mdx`, and remove the "future" preambles added while the hosted registry was gated.
 

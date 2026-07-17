@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { REVIEW_SEVERITY, type ReviewSeverity } from "../review/issues.js";
 
 export { REVIEW_SEVERITY as SEVERITY_ORDER };
@@ -16,14 +15,13 @@ export const SEVERITY_LABELS: Record<ReviewSeverity, string> = {
 
 export type UISeverityFilter = ReadonlySet<ReviewSeverity>;
 
-const SeverityCountsSchema = z.object({
-  blocker: z.number(),
-  high: z.number(),
-  medium: z.number(),
-  low: z.number(),
-  nit: z.number(),
-});
-export type SeverityCounts = z.infer<typeof SeverityCountsSchema>;
+export interface SeverityCounts {
+  blocker: number;
+  high: number;
+  medium: number;
+  low: number;
+  nit: number;
+}
 
 export function calculateSeverityCounts(issues: { severity: ReviewSeverity }[]): SeverityCounts {
   const counts: SeverityCounts = { blocker: 0, high: 0, medium: 0, low: 0, nit: 0 };

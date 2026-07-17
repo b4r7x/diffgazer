@@ -28,6 +28,7 @@ export {
   copyGeneratedDir,
   ensureWithinDir,
   readTsConfigPaths,
+  withFileLock,
   writeFileSafe,
 } from "./fs.js";
 export { createInstallChecker } from "./install-checker.js";
@@ -37,6 +38,7 @@ export {
   getInstalledDeps,
   installDepsWithSpinner,
   normalizeVersionSpec,
+  PACKAGE_MANAGER_LOCKFILES,
 } from "./package-manager.js";
 export { parseEnumOption } from "./parse-enum-option.js";
 export { type CliOptions, createCli, runCli } from "./program.js";
@@ -53,5 +55,6 @@ export {
   type RegistryItem,
 } from "./registry.js";
 export { heading, info, promptSelect, warn } from "./terminal.js";
+export { showSkippedDependencies } from "./workflows/apply-install-plan.js";
 export { type InitWorkflowOptions, runInitWorkflow } from "./workflows/init.js";
 export { findOrphanedNpmDeps } from "./workflows/remove.js";

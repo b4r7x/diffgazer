@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname } from "node:path";
-import type { FileOp } from "@diffgazer/registry/cli";
+import { type FileOp, warn } from "@diffgazer/registry/cli";
 import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
 import type { ResolvedConfig } from "../context.js";
 import { ctx } from "../context.js";
@@ -118,12 +118,17 @@ export function planComponentCss(
 ): ComponentCssPlan {
   const chunksByItem = new Map<string, string[]>();
   const chunks = collectComponentCssChunks(resolved);
-  if (chunks.length === 0) return { fileOp: null, chunksByItem };
 
-  if (!config.tailwind?.css) {
+  for (const name of resolved) {
+    if (ctx.items.getOrThrow(name).type !== REGISTRY_ITEM_TYPE.theme) {
+      chunksByItem.set(`ui/${name}`, []);
+    }
+  }
+
+  if (!config.tailwind?.css && chunks.length > 0) {
     const itemList = [...new Set(chunks.map((chunk) => chunk.itemName))].join(", ");
     throw new Error(
-      `Cannot install CSS for ${itemList} because components.json has no tailwind.css path. Run dgadd init or add tailwind.css to components.json before installing CSS-bearing items.`,
+      `Cannot install CSS for ${itemList} because diffgazer.json has no tailwind.css path. Run dgadd init or add tailwind.css to diffgazer.json before installing CSS-bearing items.`,
     );
   }
 
@@ -133,17 +138,72 @@ export function planComponentCss(
     chunksByItem.set(chunk.itemName, existing);
   }
 
-  const cssPath = toPosixPath(config.tailwind.css);
+  const updatedItemNames = new Set(chunksByItem.keys());
+  const currentHashes = new Set(chunks.map((chunk) => chunk.hash));
+  const manifest = ctx.config.getManifestItems(cwd) ?? {};
+  const obsoleteOwnersByHash = new Map<string, string[]>();
+  for (const itemName of updatedItemNames) {
+    const currentItemHashes = new Set(chunksByItem.get(itemName));
+    for (const hash of manifest[itemName]?.cssChunks ?? []) {
+      if (currentItemHashes.has(hash)) continue;
+      const owners = obsoleteOwnersByHash.get(hash) ?? [];
+      owners.push(itemName);
+      obsoleteOwnersByHash.set(hash, owners);
+    }
+  }
+
+  const retainedHashes = new Set(
+    Object.entries(manifest).flatMap(([itemName, record]) =>
+      updatedItemNames.has(itemName) ? [] : (record.cssChunks ?? []),
+    ),
+  );
+  const obsoleteHashes = new Set(
+    [...obsoleteOwnersByHash.keys()].filter(
+      (hash) => !retainedHashes.has(hash) && !currentHashes.has(hash),
+    ),
+  );
+
+  if (chunks.length === 0 && obsoleteHashes.size === 0) {
+    return { fileOp: null, chunksByItem };
+  }
+
+  if (!config.tailwind?.css) {
+    throw new Error(
+      "Cannot reconcile installed CSS because diffgazer.json has no tailwind.css path. Run dgadd init or add tailwind.css to diffgazer.json before upgrading CSS-bearing items.",
+    );
+  }
+
+  const cssPath = config.tailwind.css;
   const targetPath = resolveProjectPath(cwd, cssPath);
   const existing = existsSync(targetPath) ? readFileSync(targetPath, "utf-8") : "";
-  const installed = existingChunkHashes(existing);
+  const obsoleteRemoval = removeCssChunkContent(existing, obsoleteHashes, false);
+  for (const hash of obsoleteRemoval.modifiedHashes) {
+    const owners = obsoleteOwnersByHash.get(hash) ?? [];
+    for (const owner of owners) {
+      const ownedHashes = chunksByItem.get(owner) ?? [];
+      if (!ownedHashes.includes(hash)) ownedHashes.push(hash);
+      chunksByItem.set(owner, ownedHashes);
+    }
+    warn(
+      `Preserving obsolete CSS chunk ${hash} for ${owners.join(", ")}: local content differs from the installed version. It remains tracked as drift for dgadd diff and dgadd remove --force.`,
+    );
+  }
+
+  const installed = existingChunkHashes(obsoleteRemoval.content);
   const missing = chunks.filter((chunk) => !installed.has(chunk.hash));
   const repairs = overwrite
-    ? collectDriftedChunkRepairs(chunks, installed, findChunkSlices(existing), existing)
+    ? collectDriftedChunkRepairs(
+        chunks,
+        installed,
+        findChunkSlices(obsoleteRemoval.content),
+        obsoleteRemoval.content,
+      )
     : [];
-  if (missing.length === 0 && repairs.length === 0) return { fileOp: null, chunksByItem };
+  if (obsoleteRemoval.removedHashes.length === 0 && missing.length === 0 && repairs.length === 0) {
+    return { fileOp: null, chunksByItem };
+  }
 
-  let updated = existing;
+  let updated = obsoleteRemoval.content;
   for (const { content, slice } of [...repairs].sort((a, b) => b.slice.start - a.slice.start)) {
     updated = `${updated.slice(0, slice.start)}${wrapChunk(content)}${updated.slice(slice.end)}`;
   }
@@ -214,6 +274,39 @@ function trimSurroundingBlanks(
   return { start: trimmedStart, end: trimmedEnd };
 }
 
+function removeCssChunkContent(
+  content: string,
+  hashesToRemove: Set<string>,
+  force: boolean,
+): { content: string; removedHashes: string[]; modifiedHashes: string[] } {
+  const candidates = findChunkSlices(content).filter((slice) => hashesToRemove.has(slice.hash));
+  const slices: CssChunkSlice[] = [];
+  const modifiedHashes: string[] = [];
+  for (const slice of candidates) {
+    if (force || isChunkPristine(content, slice)) {
+      slices.push(slice);
+    } else {
+      modifiedHashes.push(slice.hash);
+    }
+  }
+
+  slices.sort((a, b) => b.start - a.start);
+  let updated = content;
+  for (const slice of slices) {
+    const { start, end } = trimSurroundingBlanks(updated, slice.start, slice.end);
+    updated = `${updated.slice(0, start)}${updated.slice(end)}`;
+    if (start > 0 && start < updated.length) {
+      updated = `${updated.slice(0, start)}\n${updated.slice(start)}`;
+    }
+  }
+
+  return {
+    content: updated,
+    removedHashes: slices.map((slice) => slice.hash),
+    modifiedHashes,
+  };
+}
+
 export interface CssRemovalResult {
   fileOp: FileOp | null;
   removedHashes: string[];
@@ -232,49 +325,32 @@ export function removeCssChunks(
     return { fileOp: null, removedHashes: [], modifiedHashes: [] };
   }
 
-  const cssPath = toPosixPath(config.tailwind.css);
+  const cssPath = config.tailwind.css;
   const targetPath = resolveProjectPath(cwd, cssPath);
   if (!existsSync(targetPath)) return { fileOp: null, removedHashes: [], modifiedHashes: [] };
 
   const content = readFileSync(targetPath, "utf-8");
-  const candidates = findChunkSlices(content).filter((slice) => hashesToRemove.has(slice.hash));
-
-  const slices: CssChunkSlice[] = [];
-  const modifiedHashes: string[] = [];
-  for (const slice of candidates) {
-    if (force || isChunkPristine(content, slice)) {
-      slices.push(slice);
-    } else {
-      modifiedHashes.push(slice.hash);
-    }
-  }
-  if (slices.length === 0) return { fileOp: null, removedHashes: [], modifiedHashes };
-
-  slices.sort((a, b) => b.start - a.start);
-  let updated = content;
-  for (const slice of slices) {
-    const { start, end } = trimSurroundingBlanks(updated, slice.start, slice.end);
-    updated = `${updated.slice(0, start)}${updated.slice(end)}`;
-    if (start > 0 && start < updated.length)
-      updated = `${updated.slice(0, start)}\n${updated.slice(start)}`;
+  const removal = removeCssChunkContent(content, hashesToRemove, force);
+  if (removal.removedHashes.length === 0) {
+    return { fileOp: null, removedHashes: [], modifiedHashes: removal.modifiedHashes };
   }
 
   return {
     fileOp: {
       targetPath,
-      content: updated,
+      content: removal.content,
       relativePath: basename(cssPath),
       installDir: toPosixPath(dirname(cssPath)),
       overwrite: true,
     },
-    removedHashes: slices.map((s) => s.hash),
-    modifiedHashes,
+    removedHashes: removal.removedHashes,
+    modifiedHashes: removal.modifiedHashes,
   };
 }
 
 export function readInstalledCssChunkHashes(cwd: string, config: ResolvedConfig): Set<string> {
   if (!config.tailwind?.css) return new Set();
-  const targetPath = resolveProjectPath(cwd, toPosixPath(config.tailwind.css));
+  const targetPath = resolveProjectPath(cwd, config.tailwind.css);
   if (!existsSync(targetPath)) return new Set();
   return existingChunkHashes(readFileSync(targetPath, "utf-8"));
 }
@@ -283,7 +359,7 @@ export function readInstalledCssChunkHashes(cwd: string, config: ResolvedConfig)
 export function extractCssChunkContents(cwd: string, config: ResolvedConfig): Map<string, string> {
   const contents = new Map<string, string>();
   if (!config.tailwind?.css) return contents;
-  const targetPath = resolveProjectPath(cwd, toPosixPath(config.tailwind.css));
+  const targetPath = resolveProjectPath(cwd, config.tailwind.css);
   if (!existsSync(targetPath)) return contents;
 
   const file = readFileSync(targetPath, "utf-8");

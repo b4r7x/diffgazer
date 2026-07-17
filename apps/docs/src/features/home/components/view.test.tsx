@@ -129,15 +129,15 @@ describe("HomeView", () => {
     );
   });
 
-  it("places the page h1 before the sidebar section headings in DOM order", () => {
+  it("follows the page h1 with level-two sidebar section headings", () => {
     renderHome();
 
-    const h1 = screen.getByRole("heading", { level: 1, name: "Documentation" });
-    const h3s = screen.getAllByRole("heading", { level: 3 });
-    expect(h3s.length).toBeGreaterThan(0);
-    for (const h3 of h3s) {
-      expect(h1.compareDocumentPosition(h3) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    }
+    expect(screen.getAllByRole("heading").map((heading) => heading.tagName)).toEqual([
+      "H1",
+      "H2",
+      "H2",
+      "H2",
+    ]);
   });
 
   it("hides the decorative END OF DIRECTORY divider from assistive tech", () => {
@@ -177,17 +177,19 @@ describe("HomeView", () => {
     expect(ui).not.toHaveAttribute("data-highlighted");
   });
 
-  it("navigates to the highlighted package on Enter", async () => {
+  it("activates the focused package link with native Enter behavior", async () => {
     const user = userEvent.setup();
     renderHome();
+    const app = packageLink(/^diffgazer\b/i);
+    const onActivate = vi.fn((event: Event) => event.preventDefault());
+    app.addEventListener("click", onActivate);
 
-    await user.keyboard("j");
+    app.focus();
     await user.keyboard("{Enter}");
 
-    expect(navigate).toHaveBeenCalledWith({
-      to: "/$lib/$",
-      params: { lib: "app", _splat: "getting-started/installation" },
-    });
+    expect(onActivate).toHaveBeenCalledOnce();
+    expect(app).toHaveAttribute("href", "/app/getting-started/installation");
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it("does not navigate on Enter when no package is highlighted", async () => {

@@ -1,6 +1,6 @@
 import type { CodeBlockLineProps } from "@diffgazer/ui/components/code-block";
 import { z } from "zod";
-import { hooksData as rawHooksData, libsData as rawLibsData } from "@/generated/library-data";
+import { hooksData as rawHooksData } from "@/generated/library-data";
 
 const highlightedLinesSchema = z.custom<CodeBlockLineProps[]>((value) => Array.isArray(value), {
   error: "Expected highlighted code lines",
@@ -68,15 +68,13 @@ export interface HookData {
   exampleSource: Record<string, SourceFile>;
 }
 
-export type HookDataMap = Record<string, HookData>;
-export type SourceDataEntry = { source: SourceFile };
-export type SourceDataMap = Record<string, SourceDataEntry>;
+export type HookPageData = Omit<HookData, "files" | "source"> & {
+  files?: string[];
+};
 
-const sourceDataEntrySchema: z.ZodType<SourceDataEntry> = z
-  .object({
-    source: sourceFileSchema,
-  })
-  .passthrough();
+export type HookSourceData = Pick<HookData, "files" | "source">;
+
+export type HookDataMap = Record<string, HookData>;
 
 const hookDataSchema: z.ZodType<HookData> = z
   .object({
@@ -94,7 +92,6 @@ const hookDataSchema: z.ZodType<HookData> = z
   .passthrough();
 
 const hooksDataSchema = z.record(z.string(), z.record(z.string(), hookDataSchema));
-const sourceDataSchema = z.record(z.string(), z.record(z.string(), sourceDataEntrySchema));
 
 function parseGeneratedData<T>(label: string, value: unknown, schema: z.ZodType<T>): T {
   const result = schema.safeParse(value);
@@ -105,4 +102,3 @@ function parseGeneratedData<T>(label: string, value: unknown, schema: z.ZodType<
 }
 
 export const hooksData = parseGeneratedData("hooksData", rawHooksData, hooksDataSchema);
-export const libsData = parseGeneratedData("libsData", rawLibsData, sourceDataSchema);

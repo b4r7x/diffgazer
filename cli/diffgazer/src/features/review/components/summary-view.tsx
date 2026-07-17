@@ -2,6 +2,7 @@ import { usePageFooter } from "@diffgazer/core/footer";
 import { formatDuration } from "@diffgazer/core/format";
 import {
   buildCategoryStats,
+  buildDuplicateCollapseNotice,
   buildHiddenIssuesNotice,
   buildLensSummaryRows,
   buildReviewSummary,
@@ -26,6 +27,7 @@ export interface ReviewSummaryViewProps {
   reviewId: string | null | undefined;
   durationMs: number | undefined;
   lensStats?: LensStat[];
+  droppedDuplicates?: number;
   droppedBelowThreshold?: number;
   minSeverity?: ReviewSeverity;
   onContinue?: () => void;
@@ -40,6 +42,7 @@ export function ReviewSummaryView({
   reviewId,
   durationMs,
   lensStats,
+  droppedDuplicates,
   droppedBelowThreshold,
   minSeverity,
   onContinue,
@@ -76,6 +79,7 @@ export function ReviewSummaryView({
   }));
   const categoryStats = buildCategoryStats(issues);
   const topIssues = issues.slice(0, 3);
+  const duplicateNotice = buildDuplicateCollapseNotice(droppedDuplicates, summary.total);
   const hiddenNotice = buildHiddenIssuesNotice(droppedBelowThreshold, minSeverity);
   const lensRows = buildLensSummaryRows(lensStats);
 
@@ -95,7 +99,7 @@ export function ReviewSummaryView({
               </Text>
               <Text color={tokens.muted}> across </Text>
               <Text color={tokens.fg} bold>
-                {pluralize(summary.filesAnalyzed, "file")}
+                {pluralize(summary.filesWithIssues, "file")} with issues
               </Text>
               <Text color={tokens.muted}>.</Text>
             </Box>
@@ -149,6 +153,7 @@ export function ReviewSummaryView({
                   severity={issue.severity}
                   filePath={issue.file}
                   title={issue.title}
+                  contentWidth={width}
                 />
               ))}
             </Box>
@@ -172,6 +177,12 @@ export function ReviewSummaryView({
                 </Box>
               ))}
             </Box>
+          </Box>
+        ) : null}
+
+        {duplicateNotice ? (
+          <Box>
+            <Text color={tokens.muted}>{duplicateNotice}</Text>
           </Box>
         ) : null}
 

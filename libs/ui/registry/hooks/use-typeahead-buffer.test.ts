@@ -46,6 +46,17 @@ describe("useTypeaheadBuffer", () => {
     expect(result.current("c")).toBe("c");
   });
 
+  it("starts a new buffer when the interaction session changes", () => {
+    const { result, rerender } = renderHook(
+      ({ session }) => useTypeaheadBuffer(undefined, session),
+      { initialProps: { session: "closed" } },
+    );
+
+    expect(result.current("a")).toBe("a");
+    rerender({ session: "open" });
+    expect(result.current("b")).toBe("b");
+  });
+
   describe("locale-aware lowercasing", () => {
     it("emits a Turkish dotted I that round-trips through default-locale lowercase", () => {
       const { result } = renderHook(() => useTypeaheadBuffer());

@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { AI_PROVIDERS } from "@diffgazer/core/schemas/config";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MAX_RESPONSE_BYTES } from "./http-json.js";
 
 const keyring = vi.hoisted(() => ({
   deleteKeyringSecret: vi.fn(),
@@ -11,8 +12,18 @@ const keyring = vi.hoisted(() => ({
   writeKeyringSecret: vi.fn(),
 }));
 
+const modelsDevCatalog = vi.hoisted(() => ({
+  getProviderModels: vi.fn(),
+}));
+
+const openRouterCatalog = vi.hoisted(() => ({
+  getOpenRouterModelsWithCache: vi.fn(),
+}));
+
 // Boundary mock: keyring wraps the OS keychain via @napi-rs/keyring; tests provide canned secret read/write results.
 vi.mock("../config/keyring.js", () => keyring);
+vi.mock("./models-dev-catalog.js", () => modelsDevCatalog);
+vi.mock("./openrouter-models.js", () => openRouterCatalog);
 
 // Boundary mock: `ai` is the Vercel AI SDK external HTTP client; tests provide canned generateText output.
 vi.mock("ai", async (importOriginal) => ({
@@ -65,9 +76,20 @@ function setupTempHome() {
   vi.clearAllMocks();
   keyring.isKeyringAvailable.mockReturnValue(true);
   keyring.readKeyringSecret.mockReturnValue({ ok: true, value: null });
+  modelsDevCatalog.getProviderModels.mockResolvedValue({
+    models: [],
+    fetchedAt: new Date().toISOString(),
+    source: "live",
+    cached: false,
+  });
+  openRouterCatalog.getOpenRouterModelsWithCache.mockResolvedValue({
+    ok: true,
+    value: { models: [], fetchedAt: new Date().toISOString(), cached: false },
+  });
 }
 
 function teardownTempHome() {
+  vi.restoreAllMocks();
   delete process.env.DIFFGAZER_HOME;
   rmSync(diffgazerHome, { recursive: true, force: true });
 }
@@ -127,7 +149,7 @@ describe("initializeAIClient", () => {
   it("reports UNSUPPORTED_PROVIDER when no provider is active", async () => {
     // No config file written — store has no active provider
     const { initializeAIClient } = await loadClient();
-    const result = initializeAIClient();
+    const result = await initializeAIClient();
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -143,7 +165,7 @@ describe("initializeAIClient", () => {
     writeJson(join(diffgazerHome, "secrets.json"), { providers: { gemini: "test-key" } });
 
     const { initializeAIClient } = await loadClient();
-    const result = initializeAIClient();
+    const result = await initializeAIClient();
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -151,7 +173,7 @@ describe("initializeAIClient", () => {
     }
   });
 
-  it("reports MODEL_ERROR when the keyring read fails", async () => {
+  it("preserves KEYRING_READ_FAILED when the configured credential cannot be read", async () => {
     writeJson(join(diffgazerHome, "config.json"), {
       settings: { secretsStorage: "keyring" },
       providers: [
@@ -164,11 +186,11 @@ describe("initializeAIClient", () => {
     });
 
     const { initializeAIClient } = await loadClient();
-    const result = initializeAIClient();
+    const result = await initializeAIClient();
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.code).toBe("MODEL_ERROR");
+      expect(result.error).toEqual({ code: "KEYRING_READ_FAILED", message: "keyring error" });
     }
   });
 
@@ -182,7 +204,7 @@ describe("initializeAIClient", () => {
     // No secrets.json → getProviderApiKey returns null
 
     const { initializeAIClient } = await loadClient();
-    const result = initializeAIClient();
+    const result = await initializeAIClient();
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -190,21 +212,27 @@ describe("initializeAIClient", () => {
     }
   });
 
-  it("returns a usable client when the active provider has a stored key", async () => {
+  it("returns a usable client with a non-secret execution fingerprint", async () => {
+    const apiKey = "test-api-key";
     writeJson(join(diffgazerHome, "config.json"), {
       settings: { secretsStorage: "file" },
       providers: [
         { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
       ],
     });
-    writeJson(join(diffgazerHome, "secrets.json"), { providers: { gemini: "test-api-key" } });
+    writeJson(join(diffgazerHome, "secrets.json"), { providers: { gemini: apiKey } });
 
     const { initializeAIClient } = await loadClient();
-    const result = initializeAIClient();
+    const result = await initializeAIClient();
 
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.provider).toBe("gemini");
+      expect(result.value.executionFingerprint).toStrictEqual({
+        provider: "gemini",
+        model: "gemini-2.5-flash",
+      });
+      expect(JSON.stringify(result.value.executionFingerprint)).not.toContain(apiKey);
     }
   });
 });
@@ -280,7 +308,7 @@ describe("generate output budget", () => {
     expect(generateText).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 8192 }));
   });
 
-  it("initializeAIClient threads the active model's snapshot limit into the request", async () => {
+  it("falls back to the snapshot when the active model is absent from current catalog data", async () => {
     const { generateText } = await import("ai");
     vi.mocked(generateText).mockResolvedValue({ output: { x: "ok" } } as never);
 
@@ -298,7 +326,7 @@ describe("generate output budget", () => {
     writeJson(join(diffgazerHome, "secrets.json"), { providers: { groq: "test-key" } });
 
     const { initializeAIClient } = await loadClient();
-    const clientResult = initializeAIClient();
+    const clientResult = await initializeAIClient();
     expect(clientResult.ok).toBe(true);
     if (!clientResult.ok) return;
 
@@ -307,6 +335,141 @@ describe("generate output budget", () => {
 
     // The groq scout model's snapshot output limit is 8192, well below the 65536 default.
     expect(generateText).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 8192 }));
+  });
+
+  it("uses live-only model limits for generation and context preflight", async () => {
+    const { generateText } = await import("ai");
+    vi.mocked(generateText).mockResolvedValue({ output: { x: "ok" } } as never);
+    modelsDevCatalog.getProviderModels.mockResolvedValue({
+      models: [
+        {
+          id: "live-only-model",
+          name: "Live Only",
+          description: "Live model",
+          tier: "paid",
+          contextLength: 8192,
+          maxOutputTokens: 4096,
+        },
+      ],
+      fetchedAt: new Date().toISOString(),
+      source: "cache",
+      cached: true,
+    });
+    writeJson(join(diffgazerHome, "config.json"), {
+      settings: { secretsStorage: "file" },
+      providers: [
+        {
+          provider: "groq",
+          hasApiKey: true,
+          isActive: true,
+          model: "live-only-model",
+        },
+      ],
+    });
+    writeJson(join(diffgazerHome, "secrets.json"), { providers: { groq: "test-key" } });
+
+    const { initializeAIClient } = await loadClient();
+    const clientResult = await initializeAIClient();
+    expect(clientResult.ok).toBe(true);
+    if (!clientResult.ok) return;
+
+    const { z } = await import("zod");
+    await clientResult.value.generate("test", z.object({ x: z.string() }));
+    expect(generateText).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 4096 }));
+
+    vi.mocked(generateText).mockClear();
+    const oversized = await clientResult.value.generate(
+      "x".repeat(20_000),
+      z.object({ x: z.string() }),
+    );
+    expect(oversized.ok).toBe(false);
+    expect(generateText).not.toHaveBeenCalled();
+  });
+
+  it("does not replace a current model's missing limits with snapshot limits", async () => {
+    const { generateText } = await import("ai");
+    vi.mocked(generateText).mockResolvedValue({ output: { x: "ok" } } as never);
+    modelsDevCatalog.getProviderModels.mockResolvedValue({
+      models: [
+        {
+          id: "meta-llama/llama-4-scout-17b-16e-instruct",
+          name: "Current Scout",
+          description: "Current catalog entry without limits",
+          tier: "paid",
+        },
+      ],
+      fetchedAt: new Date().toISOString(),
+      source: "live",
+      cached: false,
+    });
+    writeJson(join(diffgazerHome, "config.json"), {
+      settings: { secretsStorage: "file" },
+      providers: [
+        {
+          provider: "groq",
+          hasApiKey: true,
+          isActive: true,
+          model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        },
+      ],
+    });
+    writeJson(join(diffgazerHome, "secrets.json"), { providers: { groq: "test-key" } });
+
+    const { initializeAIClient } = await loadClient();
+    const clientResult = await initializeAIClient();
+    expect(clientResult.ok).toBe(true);
+    if (!clientResult.ok) return;
+
+    const { z } = await import("zod");
+    await clientResult.value.generate("test", z.object({ x: z.string() }));
+
+    expect(generateText).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 65536 }));
+  });
+
+  it("uses OpenRouter's current completion ceiling", async () => {
+    const { generateText } = await import("ai");
+    vi.mocked(generateText).mockResolvedValue({ output: { x: "ok" } } as never);
+    openRouterCatalog.getOpenRouterModelsWithCache.mockResolvedValue({
+      ok: true,
+      value: {
+        models: [
+          {
+            id: "vendor/current-model",
+            name: "Current Model",
+            contextLength: 16384,
+            maxCompletionTokens: 2048,
+            pricing: { prompt: "0", completion: "0" },
+            isFree: true,
+          },
+        ],
+        fetchedAt: new Date().toISOString(),
+        cached: true,
+      },
+    });
+    writeJson(join(diffgazerHome, "config.json"), {
+      settings: { secretsStorage: "file" },
+      providers: [
+        {
+          provider: "openrouter",
+          hasApiKey: true,
+          isActive: true,
+          model: "vendor/current-model",
+        },
+      ],
+    });
+    writeJson(join(diffgazerHome, "secrets.json"), {
+      providers: { openrouter: "test-key" },
+    });
+
+    const { initializeAIClient } = await loadClient();
+    const clientResult = await initializeAIClient();
+    expect(clientResult.ok).toBe(true);
+    if (!clientResult.ok) return;
+
+    const { z } = await import("zod");
+    await clientResult.value.generate("test", z.object({ x: z.string() }));
+
+    expect(generateText).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 2048 }));
   });
 
   it("refuses a prompt that exceeds the model's context window with a named-limit message", async () => {
@@ -490,7 +653,65 @@ describe("createLanguageModel zhipu providers", () => {
     expect(createZhipu).toHaveBeenCalledWith({
       apiKey: "test-key",
       baseURL: PROVIDER_OVERLAY[provider].baseURL,
+      fetch: expect.any(Function),
     });
+  });
+
+  it("rejects an oversized declared response before the Zhipu SDK can read it", async () => {
+    const response = new Response("{}", {
+      headers: { "content-length": String(MAX_RESPONSE_BYTES + 1) },
+    });
+    if (!response.body) throw new Error("response body missing");
+    const getReader = vi.spyOn(response.body, "getReader");
+    const upstreamFetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
+    const { createZhipu } = await import("zhipu-ai-provider");
+    const { createAIClient } = await loadClient();
+
+    createAIClient({ apiKey: "test-key", provider: "zai" });
+    const limitingFetch = vi.mocked(createZhipu).mock.calls[0]?.[0]?.fetch;
+    if (!limitingFetch) throw new Error("Zhipu limiting fetch missing");
+
+    await expect(limitingFetch("https://api.z.ai/test")).rejects.toThrow("response too large");
+    expect(upstreamFetch).toHaveBeenCalledOnce();
+    expect(getReader).not.toHaveBeenCalled();
+  });
+
+  it("allows a headerless Zhipu response at the exact byte ceiling", async () => {
+    const response = new Response(new Uint8Array(MAX_RESPONSE_BYTES));
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
+    const { createZhipu } = await import("zhipu-ai-provider");
+    const { createAIClient } = await loadClient();
+
+    createAIClient({ apiKey: "test-key", provider: "zai" });
+    const limitingFetch = vi.mocked(createZhipu).mock.calls[0]?.[0]?.fetch;
+    if (!limitingFetch) throw new Error("Zhipu limiting fetch missing");
+
+    const limited = await limitingFetch("https://api.z.ai/test");
+    await expect(limited.arrayBuffer()).resolves.toHaveProperty("byteLength", MAX_RESPONSE_BYTES);
+  });
+
+  it("cancels a headerless Zhipu stream on the first byte above the ceiling", async () => {
+    const cancel = vi.fn();
+    const response = new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new Uint8Array(MAX_RESPONSE_BYTES));
+          controller.enqueue(new Uint8Array(1));
+        },
+        cancel,
+      }),
+    );
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
+    const { createZhipu } = await import("zhipu-ai-provider");
+    const { createAIClient } = await loadClient();
+
+    createAIClient({ apiKey: "test-key", provider: "zai" });
+    const limitingFetch = vi.mocked(createZhipu).mock.calls[0]?.[0]?.fetch;
+    if (!limitingFetch) throw new Error("Zhipu limiting fetch missing");
+
+    const limited = await limitingFetch("https://api.z.ai/test");
+    await expect(limited.arrayBuffer()).rejects.toThrow(`${MAX_RESPONSE_BYTES + 1} bytes`);
+    expect(cancel).toHaveBeenCalledOnce();
   });
 });
 

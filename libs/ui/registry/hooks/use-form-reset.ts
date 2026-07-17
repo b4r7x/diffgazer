@@ -1,32 +1,64 @@
 "use client";
 
-import { type RefObject, useEffectEvent, useLayoutEffect, useRef } from "react";
+import { type RefObject, useCallback, useEffectEvent, useLayoutEffect, useRef } from "react";
 
 interface FormSubscription {
   form: HTMLFormElement;
   listener: (event: Event) => void;
 }
 
-/** Registers a native form-reset listener that restores custom uncontrolled state. */
+interface ControlledFormResetHandlers {
+  syncResetBaseline: () => void;
+  onReset: () => void;
+}
+
+function resolveForm(element: HTMLElement | null): HTMLFormElement | null {
+  if (!element) return null;
+  const formId = element.getAttribute("form");
+  if (formId === null) return element.closest("form");
+  const form = element.ownerDocument.getElementById(formId);
+  const FormElement = element.ownerDocument.defaultView?.HTMLFormElement;
+  return FormElement && form instanceof FormElement ? form : null;
+}
+
+/** Keeps custom form controls aligned with native reset semantics. */
 export function useFormReset<T>(
   ref: RefObject<HTMLElement | null>,
   resetValue: T,
   onReset: (value: T) => void,
-  enabled = true,
+  isUncontrolled = true,
+  controlled?: ControlledFormResetHandlers,
 ) {
+  const resetGenerationRef = useRef(0);
+  const invalidatePendingReset = useCallback(() => {
+    resetGenerationRef.current += 1;
+  }, []);
   const handleReset = useEffectEvent(() => {
-    onReset(resetValue);
+    if (isUncontrolled) {
+      onReset(resetValue);
+      return;
+    }
+    controlled?.onReset();
+  });
+  const syncControlledResetBaseline = useEffectEvent(() => {
+    controlled?.syncResetBaseline();
   });
 
   // Track the attached form so target swaps don't churn the listener every render.
   const subscriptionRef = useRef<FormSubscription | null>(null);
 
   useLayoutEffect(() => {
-    const nextForm = enabled ? (ref.current?.closest("form") ?? null) : null;
+    if (isUncontrolled || !controlled) return;
+    syncControlledResetBaseline();
+  });
+
+  useLayoutEffect(() => {
+    const nextForm = isUncontrolled || controlled ? resolveForm(ref.current) : null;
     const current = subscriptionRef.current;
     if (current?.form === nextForm) return;
 
     if (current) {
+      invalidatePendingReset();
       current.form.removeEventListener("reset", current.listener);
       subscriptionRef.current = null;
     }
@@ -34,8 +66,11 @@ export function useFormReset<T>(
     if (!nextForm) return;
 
     const listener = (event: Event) => {
+      const resetGeneration = resetGenerationRef.current + 1;
+      resetGenerationRef.current = resetGeneration;
       queueMicrotask(() => {
         if (event.defaultPrevented) return;
+        if (resetGenerationRef.current !== resetGeneration) return;
         handleReset();
       });
     };
@@ -45,10 +80,13 @@ export function useFormReset<T>(
 
   useLayoutEffect(() => {
     return () => {
+      invalidatePendingReset();
       const current = subscriptionRef.current;
       if (!current) return;
       current.form.removeEventListener("reset", current.listener);
       subscriptionRef.current = null;
     };
-  }, []);
+  }, [invalidatePendingReset]);
+
+  return invalidatePendingReset;
 }

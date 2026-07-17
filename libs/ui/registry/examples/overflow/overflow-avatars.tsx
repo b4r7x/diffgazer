@@ -28,7 +28,7 @@ export default function OverflowAvatarsExample() {
             )}
           >
             {users.map((u) => (
-              <Avatar key={u.initials} fallback={u.initials} size="sm" />
+              <Avatar key={u.initials} alt={u.name} fallback={u.initials} size="sm" />
             ))}
           </Overflow>
         </div>
@@ -47,7 +47,7 @@ export default function OverflowAvatarsExample() {
             )}
           >
             {users.map((u) => (
-              <Avatar key={u.initials} fallback={u.initials} size="sm" />
+              <Avatar key={u.initials} alt={u.name} fallback={u.initials} size="sm" />
             ))}
           </Overflow>
         </div>

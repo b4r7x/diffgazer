@@ -1,7 +1,11 @@
 import { useSaveConfig } from "@diffgazer/core/api/hooks";
 import type { InputMethod } from "@diffgazer/core/onboarding";
 import { useApiKeyEntry } from "@diffgazer/core/providers";
-import type { AIProvider, CredentialRef } from "@diffgazer/core/schemas/config";
+import {
+  type AIProvider,
+  type CredentialRef,
+  PROVIDER_ENV_VARS,
+} from "@diffgazer/core/schemas/config";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useEffect, useEffectEvent, useState } from "react";
@@ -29,25 +33,27 @@ export function ApiKeyOverlay({
   const saveConfig = useSaveConfig();
   const [footerIndex, setFooterIndex] = useState(0);
   const [inputFocused, setInputFocused] = useState(false);
+  const envVarName = PROVIDER_ENV_VARS[providerId];
 
   const entry = useApiKeyEntry({
+    envVarName,
     onSubmit: async (method, value) => {
       const credentialRef: CredentialRef =
         method === "env" ? { kind: "env", varName: value } : { kind: "literal", value };
       await saveConfig.mutateAsync({ provider: providerId, apiKey: credentialRef });
       onSaved?.();
       onOpenChange(false);
+      return true;
     },
   });
 
-  const { method, value, setMethod, setValue, canSubmit, error } = entry;
-  const saving = saveConfig.isPending;
+  const { method, value, setMethod, setValue, canSubmit, isSubmitting: saving, error } = entry;
 
   const resetSecrets = useEffectEvent(() => {
+    if (entry.isSubmitting) return;
     entry.reset();
     setFooterIndex(0);
     setInputFocused(false);
-    saveConfig.reset();
   });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: open/providerId are the reset triggers; useEffectEvent keeps the reset body current without depending on mutation object identity.
@@ -55,8 +61,13 @@ export function ApiKeyOverlay({
     resetSecrets();
   }, [open, providerId]);
 
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen && saving) return;
+    onOpenChange(nextOpen);
+  }
+
   function handleClose() {
-    onOpenChange(false);
+    handleOpenChange(false);
   }
 
   function handleSave() {
@@ -72,7 +83,11 @@ export function ApiKeyOverlay({
   // gates the footer arrows below (F-347b).
   useInput(
     (_input, key) => {
-      if (key.tab) setInputFocused((focused) => !focused);
+      if (key.tab && method === "paste") {
+        setInputFocused((focused) => !focused);
+        return;
+      }
+      if (key.return && inputFocused) handleSave();
     },
     { isActive: open && !saving },
   );
@@ -92,7 +107,7 @@ export function ApiKeyOverlay({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <Dialog.Content>
         <Dialog.Header>
           <Dialog.Title>{`Configure API Key — ${providerId}`}</Dialog.Title>
@@ -105,8 +120,8 @@ export function ApiKeyOverlay({
               onMethodChange={handleMethodChange}
               apiKey={value}
               onApiKeyChange={setValue}
-              envVar={value}
-              onEnvVarChange={setValue}
+              envVar={envVarName}
+              envVarReadOnly
               isActive={open && !saving}
               inputFocused={inputFocused}
               onInputFocusedChange={setInputFocused}
@@ -120,10 +135,18 @@ export function ApiKeyOverlay({
               <Spinner label="Saving..." />
             ) : (
               <>
-                <Button variant="primary" onPress={handleSave} isActive={footerIndex === 0}>
+                <Button
+                  variant="primary"
+                  onPress={handleSave}
+                  isActive={footerIndex === 0 && !inputFocused}
+                >
                   Save
                 </Button>
-                <Button variant="ghost" onPress={handleClose} isActive={footerIndex === 1}>
+                <Button
+                  variant="ghost"
+                  onPress={handleClose}
+                  isActive={footerIndex === 1 && !inputFocused}
+                >
                   Cancel
                 </Button>
               </>

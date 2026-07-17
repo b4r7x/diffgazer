@@ -1,13 +1,10 @@
-import { z } from "zod";
-
-const ContextInfoSchema = z.object({
-  trustedDir: z.string().optional(),
-  providerName: z.string().optional(),
-  providerMode: z.string().optional(),
-  lastRunId: z.string().optional(),
-  lastRunIssueCount: z.number().optional(),
-});
-export type ContextInfo = z.infer<typeof ContextInfoSchema>;
+export interface ContextInfo {
+  trustedDir?: string;
+  providerName?: string;
+  providerMode?: string;
+  lastRunId?: string;
+  lastRunIssueCount?: number;
+}
 
 export interface HomeContextInit {
   provider: string | null | undefined;

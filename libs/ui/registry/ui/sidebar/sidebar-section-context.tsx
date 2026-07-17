@@ -15,6 +15,10 @@ export interface SidebarSectionContextValue {
   onToggle: () => void;
   /** DOM id for title. */
   titleId: string;
+  /** Registers a mounted title rendered through an opaque wrapper. */
+  registerTitle: (id: string) => void;
+  /** Unregisters a mounted title. */
+  unregisterTitle: (id: string) => void;
   /** DOM id for panel. */
   panelId: string;
 }

@@ -17,6 +17,7 @@ import { ReviewSummaryView } from "./summary-view";
 
 function renderSummary(props?: {
   droppedBelowThreshold?: number;
+  droppedDuplicates?: number;
   minSeverity?: ReviewIssue["severity"];
   lensStats?: LensStat[];
   issues?: ReviewIssue[];
@@ -29,6 +30,7 @@ function renderSummary(props?: {
           issues={props?.issues ?? [makeIssue({ id: "1", severity: "high", title: "Issue 1" })]}
           reviewId={props?.reviewId === undefined ? "review-1" : props.reviewId}
           droppedBelowThreshold={props?.droppedBelowThreshold}
+          droppedDuplicates={props?.droppedDuplicates}
           minSeverity={props?.minSeverity}
           lensStats={props?.lensStats}
           onEnterReview={vi.fn()}
@@ -44,6 +46,10 @@ describe("ReviewSummaryView", () => {
     renderSummary({ reviewId: "7685a1b2-0000-4000-8000-000000000000" });
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Review Complete #7685");
+    expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(3);
+    expect(screen.getByRole("heading", { level: 2, name: "Severity Breakdown" })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 2, name: "Issues by Category" })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 2, name: /top issues preview/i })).toBeVisible();
   });
 
   it("falls back to #unknown in the heading when the review id is missing", () => {
@@ -74,6 +80,22 @@ describe("ReviewSummaryView", () => {
     expect(note).toHaveTextContent("3 below-threshold issues hidden (threshold: low)");
   });
 
+  it("explains the issue-count reduction caused by cross-lens duplicates", () => {
+    renderSummary({
+      droppedDuplicates: 1,
+      lensStats: [
+        { lensId: "correctness", issueCount: 1, status: "success" },
+        { lensId: "security", issueCount: 1, status: "success" },
+      ],
+    });
+
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "1 duplicate issue collapsed across lenses (2 → 1 issue)",
+    );
+    const lensTable = screen.getByRole("table", { name: /issues by lens/i });
+    expect(within(lensTable).getAllByText("1")).toHaveLength(2);
+  });
+
   it("renders the per-lens stats table including a failed lens error code", () => {
     renderSummary({
       lensStats: [
@@ -83,9 +105,23 @@ describe("ReviewSummaryView", () => {
     });
 
     const table = screen.getByRole("table", { name: /issues by lens/i });
-    expect(within(table).getByText("Correctness")).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "Lens" })).toHaveAttribute(
+      "scope",
+      "col",
+    );
+    expect(within(table).getByRole("columnheader", { name: "Issues" })).toHaveAttribute(
+      "scope",
+      "col",
+    );
+    expect(within(table).getByRole("rowheader", { name: "Correctness" })).toHaveAttribute(
+      "scope",
+      "row",
+    );
     expect(within(table).getByText("2")).toBeInTheDocument();
-    expect(within(table).getByText("Security")).toBeInTheDocument();
+    expect(within(table).getByRole("rowheader", { name: "Security" })).toHaveAttribute(
+      "scope",
+      "row",
+    );
     expect(within(table).getByText("failed (CANCELLED)")).toBeInTheDocument();
   });
 

@@ -1,12 +1,13 @@
 "use client";
 
 import { KeyboardProvider, useScope, useScopedNavigation } from "@diffgazer/keys";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 const commands = ["New File", "Open File", "Save", "Save As", "Close"];
 
 function CommandPalette({ onClose }: { onClose: () => void }) {
   const listRef = useRef<HTMLDivElement>(null);
+  const headingId = useId();
 
   useScope("command-palette");
 
@@ -22,9 +23,9 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
 
   return (
     <div style={{ marginTop: 8, padding: 8, border: "1px solid currentColor" }}>
-      <h3>Command Palette</h3>
+      <h3 id={headingId}>Command Palette</h3>
       <p>ArrowUp/ArrowDown navigate; Enter executes.</p>
-      <div ref={listRef} role="listbox" tabIndex={0}>
+      <div ref={listRef} role="listbox" tabIndex={0} aria-labelledby={headingId}>
         {commands.map((cmd) => (
           // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — options stay non-focusable; the listbox container holds focus and active state is tracked via aria-selected.
           <div

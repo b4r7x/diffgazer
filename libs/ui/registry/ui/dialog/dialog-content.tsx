@@ -18,6 +18,7 @@ import { mergeIds } from "@/lib/aria";
 import { cn } from "@/lib/utils";
 import { DialogShell } from "../shared/dialog-shell";
 import { PortalContainerProvider } from "../shared/portal-context";
+import { Dialog as DialogRoot } from "./dialog";
 import { useDialogContext } from "./dialog-context";
 import { DialogDescription } from "./dialog-description";
 import { DialogTitle } from "./dialog-title";
@@ -136,6 +137,9 @@ function resolveAccessibleName({
  * <Dialog.Content aria-labelledby="settings-heading">…</Dialog.Content>
  * ```
  *
+ * When a consumer component hides the title or description from the static child tree, pass
+ * native `aria-label` and `aria-description` attributes so both are present during SSR.
+ *
  * If none are present the dialog falls back to the label "Dialog" and warns in
  * dev so the dialog still has a usable name rather than failing to open.
  */
@@ -152,6 +156,7 @@ export function DialogContent({
   onAnimationEnd,
   "aria-label": ariaLabel,
   "aria-labelledby": ariaLabelledBy,
+  "aria-description": ariaDescription,
   "aria-describedby": ariaDescribedBy,
   ...rest
 }: DialogContentProps) {
@@ -236,7 +241,7 @@ export function DialogContent({
         if (!e.defaultPrevented) close();
       }}
       onBeforeShowModal={focusRestore.capture}
-      onClose={handleClose}
+      onExitComplete={handleClose}
       onAnimationEnd={onAnimationEnd}
       className={cn(dialogContentVariants({ size, frame }), className)}
       data-slot="dialog-content"
@@ -245,6 +250,7 @@ export function DialogContent({
       aria-modal="true"
       aria-label={accessibleName["aria-label"]}
       aria-labelledby={accessibleName["aria-labelledby"]}
+      aria-description={ariaDescription}
       aria-describedby={resolvedDescribedBy}
     >
       <PortalContainerProvider container={container}>
@@ -258,6 +264,7 @@ export function DialogContent({
 function containsDialogTitleElement(children: ReactNode): boolean {
   return Children.toArray(children).some((child) => {
     if (!isValidElement<{ children?: ReactNode }>(child)) return false;
+    if (child.type === DialogRoot) return false;
     if (child.type === DialogTitle) return true;
     return containsDialogTitleElement(child.props.children);
   });
@@ -266,6 +273,7 @@ function containsDialogTitleElement(children: ReactNode): boolean {
 function containsDialogDescriptionElement(children: ReactNode): boolean {
   return Children.toArray(children).some((child) => {
     if (!isValidElement<{ children?: ReactNode }>(child)) return false;
+    if (child.type === DialogRoot) return false;
     if (child.type === DialogDescription) return true;
     return containsDialogDescriptionElement(child.props.children);
   });

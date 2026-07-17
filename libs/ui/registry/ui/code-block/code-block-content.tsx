@@ -24,17 +24,9 @@ export function CodeBlockContent({
   ...props
 }: CodeBlockContentProps) {
   const context = useRequiredCodeBlockContext("CodeBlock.Content");
-  const hasExplicitName = Boolean(ariaLabel || ariaLabelledBy);
-  // Only reference labelId when a CodeBlock.Label is actually rendered,
-  // otherwise the aria-labelledby would point at a non-existent element.
-  const resolvedLabelledBy =
-    ariaLabelledBy ?? (hasExplicitName || !context.hasLabel ? undefined : context.labelId);
-  let resolvedLabel: string | undefined = context.fallbackName;
-  if (hasExplicitName) {
-    resolvedLabel = ariaLabel;
-  } else if (context.hasLabel) {
-    resolvedLabel = undefined;
-  }
+  const hasExplicitName = ariaLabel !== undefined || ariaLabelledBy !== undefined;
+  const resolvedLabel = hasExplicitName ? ariaLabel : context.ariaLabel;
+  const resolvedLabelledBy = hasExplicitName ? ariaLabelledBy : context.ariaLabelledBy;
 
   const isString = typeof children === "string";
   const lines = isString ? (children as string).split("\n") : null;

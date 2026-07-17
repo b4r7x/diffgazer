@@ -17,13 +17,66 @@ import {
   resolveSelectedDateId,
   resolveSelectedId,
   sortIssuesBySeverity,
+  summarizeHistoryWarnings,
 } from "./history.js";
+
+describe("summarizeHistoryWarnings", () => {
+  it("separates unreadable records, salvage loss, and index maintenance failures", () => {
+    expect(
+      summarizeHistoryWarnings([
+        {
+          kind: "unreadable_review",
+          reviewId: "11111111-1111-4111-8111-111111111111",
+        },
+        {
+          kind: "invalid_issues_dropped",
+          reviewId: "22222222-2222-4222-8222-222222222222",
+          count: 2,
+        },
+        {
+          kind: "invalid_issues_dropped",
+          reviewId: "33333333-3333-4333-8333-333333333333",
+          count: 1,
+        },
+        { kind: "index_build_failed" },
+        { kind: "index_rewrite_failed" },
+      ]),
+    ).toEqual({
+      unreadableReviewCount: 1,
+      droppedIssueCount: 3,
+      indexBuildFailed: true,
+      indexRewriteFailed: true,
+    });
+  });
+});
+
+function inNewYork(run: () => void): void {
+  const originalTimeZone = process.env.TZ;
+  process.env.TZ = "America/New_York";
+  try {
+    run();
+  } finally {
+    if (originalTimeZone === undefined) {
+      delete process.env.TZ;
+    } else {
+      process.env.TZ = originalTimeZone;
+    }
+  }
+}
 
 describe("getRunSummaryParts", () => {
   it("flags a passing review when issueCount is zero", () => {
     const summary = getRunSummaryParts(makeReviewMetadata({ issueCount: 0 }));
     expect(summary.passed).toBe(true);
     expect(summary.parts).toEqual([]);
+  });
+
+  it("flags a zero-issue review as partial when any lens failed", () => {
+    const summary = getRunSummaryParts(makeReviewMetadata({ issueCount: 0, failedLensCount: 1 }));
+
+    expect(summary.passed).toBe(false);
+    expect(summary.partial).toBe(true);
+    expect(summary.failedLensCount).toBe(1);
   });
 
   it("collects only non-zero severities in canonical order", () => {
@@ -51,6 +104,12 @@ describe("getRunSummaryText", () => {
     expect(getRunSummaryText(makeReviewMetadata({ issueCount: 0 }))).toBe("Passed with no issues.");
   });
 
+  it("reports partial analysis before declaring a zero-issue review passed", () => {
+    expect(getRunSummaryText(makeReviewMetadata({ issueCount: 0, failedLensCount: 1 }))).toBe(
+      "Partial analysis: 1 lens failed; no issues found.",
+    );
+  });
+
   it("joins severity parts with commas", () => {
     const text = getRunSummaryText(
       makeReviewMetadata({ issueCount: 3, blockerCount: 1, highCount: 2 }),
@@ -76,10 +135,17 @@ describe("getRunBranchLabel + getRunDisplayId", () => {
   });
 
   it("displays a short id with a leading hash", () => {
-    expect(formatRunId("abcdef00-0000-4000-8000-000000000000")).toBe("#abcd");
+    expect(formatRunId("abcdef00-0000-4000-8000-000000000000")).toBe("#abcdef00");
     expect(
       getRunDisplayId(makeReviewMetadata({ id: "abcdef00-0000-4000-8000-000000000000" })),
-    ).toBe("#abcd");
+    ).toBe("#abcdef00");
+  });
+
+  it("extends colliding minimum prefixes until each loaded run is unique", () => {
+    const ids = ["abcdef00-0000-4000-8000-000000000000", "abcdef00-1000-4000-8000-000000000000"];
+
+    expect(formatRunId(ids[0] ?? "", ids)).toBe("#abcdef00-0");
+    expect(formatRunId(ids[1] ?? "", ids)).toBe("#abcdef00-1");
   });
 });
 
@@ -94,7 +160,7 @@ describe("buildHistoryRunSummary", () => {
       }),
     );
     expect(summary.id).toBe("abcdef00-0000-4000-8000-000000000000");
-    expect(summary.displayId).toBe("#abcd");
+    expect(summary.displayId).toBe("#abcdef00");
     expect(summary.branch).toBe("Staged");
     expect(summary.summary).toBe("2 high");
     expect(typeof summary.timestamp).toBe("string");
@@ -158,6 +224,22 @@ describe("filterReviewsForHistory", () => {
     const filtered = filterReviewsForHistory(reviews, HISTORY_SECTION_ALL_ID, "feature");
     expect(filtered.map((r) => r.id)).toEqual(["a"]);
   });
+
+  it("keeps adaptive id search stable when a colliding peer is in another date section", () => {
+    const reviews = [
+      makeReviewMetadata({
+        id: "abcdef00-0000-4000-8000-000000000000",
+        createdAt: "2026-02-09T08:00:00.000Z",
+      }),
+      makeReviewMetadata({
+        id: "abcdef00-1000-4000-8000-000000000000",
+        createdAt: "2026-02-08T08:00:00.000Z",
+      }),
+    ];
+
+    expect(filterReviewsForHistory(reviews, "2026-02-09", "#abcdef00-0")).toEqual([reviews[0]]);
+    expect(filterReviewsForHistory(reviews, "2026-02-09", "#abcdef00-1")).toEqual([]);
+  });
 });
 
 describe("matchesHistoryQuery", () => {
@@ -169,10 +251,28 @@ describe("matchesHistoryQuery", () => {
     });
 
     expect(matchesHistoryQuery(r, "abcdef")).toBe(true);
-    expect(matchesHistoryQuery(r, "#abcd")).toBe(true);
+    expect(matchesHistoryQuery(r, "#abcdef00")).toBe(true);
     expect(matchesHistoryQuery(r, "feature")).toBe(true);
     expect(matchesHistoryQuery(r, "repo")).toBe(true);
     expect(matchesHistoryQuery(r, "nothing")).toBe(false);
+  });
+
+  it("uses the adaptive display id to disambiguate colliding loaded runs", () => {
+    const reviews = [
+      makeReviewMetadata({ id: "abcdef00-0000-4000-8000-000000000000" }),
+      makeReviewMetadata({ id: "abcdef00-1000-4000-8000-000000000000" }),
+    ];
+    const peerIds = reviews.map((review) => review.id);
+    const [firstReview, secondReview] = reviews;
+    if (!firstReview || !secondReview) throw new Error("Expected collision fixtures");
+
+    expect(matchesHistoryQuery(firstReview, "#abcdef00-0", peerIds)).toBe(true);
+    expect(matchesHistoryQuery(secondReview, "#abcdef00-0", peerIds)).toBe(false);
+    expect(
+      filterReviewsForHistory(reviews, HISTORY_SECTION_ALL_ID, secondReview.id).map(
+        (review) => review.id,
+      ),
+    ).toEqual([secondReview.id]);
   });
 
   it("uses staged label when mode is staged", () => {
@@ -199,19 +299,79 @@ describe("buildTimelineItems", () => {
   });
 
   it("labels date groups from the same date key used for grouping in TZ-sensitive runs", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-01T12:00:00.000Z"));
+    inNewYork(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-08-01T12:00:00.000Z"));
 
-    try {
-      const items = buildTimelineItems([
-        makeReviewMetadata({ id: "a", createdAt: "2026-07-03T23:30:00.000Z" }),
-        makeReviewMetadata({ id: "b", createdAt: "2026-07-03T01:30:00.000Z" }),
-      ]);
+      try {
+        const items = buildTimelineItems([
+          makeReviewMetadata({ id: "a", createdAt: "2026-07-04T03:30:00.000Z" }),
+          makeReviewMetadata({ id: "b", createdAt: "2026-07-04T01:30:00.000Z" }),
+        ]);
 
-      expect(items[1]).toMatchObject({ id: "2026-07-03", label: "Jul 3", count: 2 });
-    } finally {
-      vi.useRealTimers();
-    }
+        expect(items[1]).toMatchObject({ id: "2026-07-03", label: "Jul 3", count: 2 });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+});
+
+describe("History local calendar sections", () => {
+  it("groups, labels, and filters timestamps on opposite sides of local midnight", () => {
+    inNewYork(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-07-04T16:00:00.000Z"));
+
+      try {
+        const afterMidnight = makeReviewMetadata({
+          id: "after-midnight",
+          createdAt: "2026-07-04T04:30:00.000Z",
+        });
+        const beforeMidnight = makeReviewMetadata({
+          id: "before-midnight",
+          createdAt: "2026-07-04T03:30:00.000Z",
+        });
+        const reviews = [afterMidnight, beforeMidnight];
+
+        expect(buildTimelineItems(reviews)).toEqual([
+          { id: HISTORY_SECTION_ALL_ID, label: "All", count: 2 },
+          { id: "2026-07-04", label: "Today", count: 1 },
+          { id: "2026-07-03", label: "Yesterday", count: 1 },
+        ]);
+        expect(
+          filterReviewsForHistory(reviews, "2026-07-03", "").map((review) => review.id),
+        ).toEqual(["before-midnight"]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  it("uses local DST date keys while preserving the reviews' UTC sort order", () => {
+    inNewYork(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-04-10T16:00:00.000Z"));
+
+      try {
+        const reviews = [
+          makeReviewMetadata({ id: "newest", createdAt: "2026-03-08T07:30:00.000Z" }),
+          makeReviewMetadata({ id: "middle", createdAt: "2026-03-08T05:30:00.000Z" }),
+          makeReviewMetadata({ id: "oldest", createdAt: "2026-03-08T04:30:00.000Z" }),
+        ];
+
+        expect(buildTimelineItems(reviews)).toEqual([
+          { id: HISTORY_SECTION_ALL_ID, label: "All", count: 3 },
+          { id: "2026-03-08", label: "Mar 8", count: 2 },
+          { id: "2026-03-07", label: "Mar 7", count: 1 },
+        ]);
+        expect(
+          filterReviewsForHistory(reviews, "2026-03-08", "").map((review) => review.id),
+        ).toEqual(["newest", "middle"]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 });
 

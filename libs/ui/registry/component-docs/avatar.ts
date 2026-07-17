@@ -125,7 +125,7 @@ export const avatarDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description:
-          "Hard cap on visible avatars. Extras render as an AvatarIndicator. When omitted, AvatarGroup measures overflow with Overflow.",
+          "Hard cap on visible avatars. Values are rounded down; negative and non-finite values become zero. When omitted, AvatarGroup measures overflow with Overflow.",
       },
       spacing: {
         type: '"overlap" | "gap"',

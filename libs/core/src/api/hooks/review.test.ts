@@ -12,11 +12,18 @@ import {
   type ActiveReviewSessionResponse,
   ReviewErrorCode,
 } from "../../schemas/review/index.js";
+import { createDeferred } from "../../testing/deferred.js";
 import type { BoundApi } from "../bound.js";
 import type { ResumeReviewResult } from "../review.js";
+import type { ReviewContextResponse } from "../types.js";
 import { ApiProvider } from "./context.js";
 import { reviewQueries } from "./queries/review.js";
-import { useCreateReview, useRefreshReviewContext, useReviewSessionCache } from "./review.js";
+import {
+  useCreateReview,
+  useRefreshReviewContext,
+  useReviewSessionCache,
+  useReviews,
+} from "./review.js";
 import { useReviewLifecycleBase } from "./use-review-lifecycle-controller.js";
 import { type UseReviewStartOptions, useReviewStart } from "./use-review-start.js";
 
@@ -52,19 +59,81 @@ function makeSettings(overrides: Partial<SettingsConfig> = {}): SettingsConfig {
   };
 }
 
-function createDeferred<T>(): {
-  promise: Promise<T>;
-  resolve: (value: T) => void;
-  reject: (reason: unknown) => void;
-} {
-  let resolve!: (value: T) => void;
-  let reject!: (reason: unknown) => void;
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-  return { promise, resolve, reject };
+function makeContextResponse(label: string): ReviewContextResponse {
+  const generatedAt = "2026-07-15T12:00:00.000Z";
+  return {
+    text: `context-${label}`,
+    markdown: `# Context ${label}`,
+    graph: {
+      generatedAt,
+      root: "/tmp/repo",
+      packages: [],
+      edges: [],
+      fileTree: [],
+      changedFiles: [],
+    },
+    meta: {
+      generatedAt,
+      root: "/tmp/repo",
+      statusHash: `status-${label}`,
+      statusHashKind: "full",
+      charCount: `context-${label}`.length,
+    },
+  };
 }
+
+describe("useReviews", () => {
+  it("deduplicates typed warnings across cursor pages without collapsing distinct records", async () => {
+    const unreadable = {
+      kind: "unreadable_review" as const,
+      reviewId: "11111111-1111-4111-8111-111111111111",
+    };
+    const getReviews = vi.fn(async (_projectPath?: string, cursor?: string) =>
+      cursor
+        ? {
+            reviews: [],
+            warnings: [
+              unreadable,
+              { kind: "index_build_failed" as const },
+              {
+                kind: "invalid_issues_dropped" as const,
+                reviewId: unreadable.reviewId,
+                count: 2,
+              },
+            ],
+          }
+        : {
+            reviews: [],
+            nextCursor: "dg1_b2xkZXItcmV2aWV3cw",
+            warnings: [
+              unreadable,
+              { kind: "index_build_failed" as const },
+              {
+                kind: "invalid_issues_dropped" as const,
+                reviewId: unreadable.reviewId,
+                count: 1,
+              },
+            ],
+          },
+    );
+    const api = { getReviews } as unknown as BoundApi;
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => useReviews(), {
+      wrapper: makeWrapper(api, queryClient),
+    });
+
+    await waitFor(() => expect(result.current.hasNextPage).toBe(true));
+    await act(() => result.current.fetchNextPage());
+
+    await waitFor(() =>
+      expect(result.current.data?.warnings).toEqual([
+        unreadable,
+        { kind: "index_build_failed" },
+        { kind: "invalid_issues_dropped", reviewId: unreadable.reviewId, count: 2 },
+      ]),
+    );
+  });
+});
 
 describe("useRefreshReviewContext", () => {
   let api: BoundApi;
@@ -399,6 +468,112 @@ describe("useReviewLifecycleBase terminal resume states", () => {
       getReviewContext: vi.fn(),
     } as unknown as BoundApi;
   }
+
+  it("replaces a fresh cached snapshot A with B after B's context step completes", async () => {
+    const snapshotA = makeContextResponse("A");
+    const snapshotB = makeContextResponse("B");
+    const snapshotBRequest = createDeferred<ReviewContextResponse>();
+    const streamResult = createDeferred<Result<ResumeReviewResult, StreamReviewError>>();
+    const getReviewContext = vi
+      .fn<BoundApi["getReviewContext"]>()
+      .mockResolvedValueOnce(snapshotA)
+      .mockImplementationOnce(() => snapshotBRequest.promise);
+    const resumeReviewStream = vi
+      .fn<BoundApi["resumeReviewStream"]>()
+      .mockImplementation((streamOptions) => {
+        streamOptions.onStepEvent?.({
+          type: "step_complete",
+          step: "context",
+          timestamp: "2026-07-15T12:00:01.000Z",
+        });
+        return streamResult.promise;
+      });
+    const api = {
+      getSettings: vi.fn(async () => makeSettings()),
+      getReviewContext,
+      resumeReviewStream,
+    } as unknown as BoundApi;
+    const lifecycleQueryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    await lifecycleQueryClient.fetchQuery(reviewQueries.context(api));
+    expect(getReviewContext).toHaveBeenCalledTimes(1);
+
+    const lifecycle = renderHook(
+      () =>
+        useReviewLifecycleBase({
+          configLoading: false,
+          isConfigured: true,
+          reviewId: "review-b",
+          onComplete: vi.fn(),
+        }),
+      { wrapper: makeWrapper(api, lifecycleQueryClient) },
+    );
+
+    await waitFor(() => expect(resumeReviewStream).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(getReviewContext).toHaveBeenCalledTimes(2));
+    expect(lifecycle.result.current.contextSnapshot).toBeNull();
+
+    snapshotBRequest.resolve(snapshotB);
+    await waitFor(() => expect(lifecycle.result.current.contextSnapshot).toEqual(snapshotB));
+
+    expect(lifecycleQueryClient.getQueryData(reviewQueries.context(api).queryKey)).toEqual(
+      snapshotB,
+    );
+
+    streamResult.resolve(
+      ok({
+        reviewId: "review-b",
+        result: { issues: [] },
+      }),
+    );
+    await act(async () => streamResult.promise);
+    lifecycle.unmount();
+  });
+
+  it("completes when a successful resume resolves before a streaming render commits", async () => {
+    const onComplete = vi.fn();
+    const onStreamComplete = vi.fn();
+    const api = createLifecycleApi(
+      ok({
+        reviewId: "completed-review",
+        result: { issues: [] },
+      }),
+    );
+    const lifecycleQueryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    const { result } = renderHook(
+      () =>
+        useReviewLifecycleBase({
+          configLoading: false,
+          isConfigured: true,
+          reviewId: "completed-review",
+          onComplete,
+          onStreamComplete,
+        }),
+      { wrapper: makeWrapper(api, lifecycleQueryClient) },
+    );
+
+    await waitFor(() => expect(api.resumeReviewStream).toHaveBeenCalled());
+    await waitFor(() => expect(result.current.stream.state.hasCompleted).toBe(true));
+    await waitFor(() => expect(onStreamComplete).toHaveBeenCalledTimes(1));
+
+    expect(result.current.stream.state.isStreaming).toBe(false);
+    expect(result.current.completion.isCompleting).toBe(true);
+    const completedAt = result.current.completion.completedAt;
+    expect(completedAt).toBeInstanceOf(Date);
+    expect(onComplete).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.completion.skipDelay();
+    });
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(result.current.completion.completedAt).toBe(completedAt);
+  });
 
   it("exposes a generic stream failure as terminal and not running", async () => {
     const onComplete = vi.fn();

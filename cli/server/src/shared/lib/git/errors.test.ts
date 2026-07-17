@@ -58,6 +58,18 @@ describe("createGitDiffError", () => {
     expect(result.message).not.toContain("Original:");
   });
 
+  it.each([
+    "fatal: index file corrupt",
+    "fatal: bad object HEAD",
+    "fatal: object not found",
+    "fatal: bad config line 1 in file .git/config",
+  ])("preserves unrelated Git fatal errors without claiming the repository is missing", (message) => {
+    const result = createGitDiffError(new Error(message));
+
+    expect(result.message).toBe(`Failed to get git diff: ${message}`);
+    expect(result.message).not.toContain("Not a git repository");
+  });
+
   it("formats non-Error values into the generic fallback message", () => {
     const result = createGitDiffError("raw string error");
 

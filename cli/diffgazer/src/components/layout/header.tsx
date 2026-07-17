@@ -5,10 +5,10 @@ import { useTheme } from "../../theme/provider";
 export interface HeaderProps {
   providerName: string;
   providerStatus: ProviderDisplayStatus;
-  onBack?: () => void;
+  showBack: boolean;
 }
 
-export function Header({ providerName, providerStatus, onBack }: HeaderProps) {
+export function Header({ providerName, providerStatus, showBack }: HeaderProps) {
   const { tokens } = useTheme();
 
   const statusColor = providerStatus === "active" ? tokens.success : tokens.muted;
@@ -17,7 +17,7 @@ export function Header({ providerName, providerStatus, onBack }: HeaderProps) {
   return (
     <Box flexDirection="column" paddingX={1} paddingTop={1} paddingBottom={0}>
       <Box flexDirection="row" justifyContent="space-between" width="100%">
-        <Box minWidth={10}>{onBack ? <Text color={tokens.muted}>{"← Back"}</Text> : null}</Box>
+        <Box minWidth={10}>{showBack ? <Text color={tokens.muted}>{"← Back"}</Text> : null}</Box>
         <Box>
           <Text color={tokens.accent} bold>
             diffgazer

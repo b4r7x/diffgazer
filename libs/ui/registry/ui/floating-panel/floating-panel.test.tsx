@@ -1,10 +1,11 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FloatingAlign, FloatingSide } from "@/hooks/use-floating-position";
 import { axe } from "../../../testing/axe";
 import { applyReducedMotionFixture } from "../../../testing/prefers-reduced-motion";
+import { Select } from "../select";
 import { FloatingPanel, useFloatingPanelContext } from "./index";
 
 interface TriggerRect {
@@ -313,6 +314,73 @@ describe("FloatingPanel positioning attributes", () => {
     expect(await screen.findByRole("status", { name: "Floating panel context" })).toHaveTextContent(
       "positioned top end",
     );
+  });
+
+  it("lets Select focus after positioning without re-stealing focus on rerender", async () => {
+    const user = userEvent.setup();
+
+    function SelectHarness({ suffix }: { suffix: string }) {
+      return (
+        <>
+          <Select>
+            <Select.Trigger aria-label="Branch">
+              <Select.Value placeholder="Select a branch" />
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="main">main {suffix}</Select.Item>
+              <Select.Item value="develop">develop {suffix}</Select.Item>
+            </Select.Content>
+          </Select>
+          <button type="button">Outside</button>
+        </>
+      );
+    }
+
+    const { rerender } = render(<SelectHarness suffix="one" />);
+    const trigger = screen.getByRole("combobox", { name: "Branch" });
+    trigger.focus();
+    await user.keyboard("{Enter}");
+
+    const listbox = screen.getByRole("listbox");
+    expect(listbox).toHaveFocus();
+
+    const outside = screen.getByRole("button", { name: "Outside" });
+    outside.focus();
+    rerender(<SelectHarness suffix="two" />);
+    expect(outside).toHaveFocus();
+  });
+
+  it("initializes searchable dropdown highlight after its options register", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(
+      <Select value="" onChange={onChange}>
+        <Select.Trigger aria-label="Command">
+          <Select.Value placeholder="Select a command" />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="git-add">git add</Select.Item>
+          <Select.Item value="git-commit">git commit</Select.Item>
+          <Select.Search />
+        </Select.Content>
+      </Select>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Command" }));
+    const searchInput = screen.getByRole("combobox", { name: "Search options" });
+    const addOption = screen.getByRole("option", { name: "git add" });
+    await waitFor(() => {
+      expect(searchInput).toHaveFocus();
+      expect(searchInput).toHaveAttribute("aria-activedescendant", addOption.id);
+    });
+
+    await user.keyboard("{ArrowDown}");
+    const commitOption = screen.getByRole("option", { name: "git commit" });
+    expect(searchInput).toHaveAttribute("aria-activedescendant", commitOption.id);
+
+    await user.keyboard("{Enter}");
+    expect(onChange).toHaveBeenCalledWith("git-commit");
   });
 });
 

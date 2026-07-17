@@ -1,5 +1,5 @@
 import type { UseReviewLifecycleBaseResult } from "@diffgazer/core/api/hooks";
-import type { FileProgress } from "@diffgazer/core/review";
+import type { FileProgress, ReviewEvent } from "@diffgazer/core/review";
 import type { AgentState, StepState } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
@@ -11,8 +11,10 @@ export interface ReviewLifecycleBaseOverrides {
   abort?: () => void;
   agents?: AgentState[];
   cancel?: ReviewLifecycleBase["stream"]["cancel"];
+  completedAt?: Date | null;
   error?: string | null;
   errorCode?: string | null;
+  events?: ReviewEvent[];
   fileProgress?: FileProgress;
   gate?: ReviewLifecycleBase["gate"];
   hasStarted?: boolean;
@@ -58,7 +60,7 @@ export function makeReviewLifecycleBase(
         steps: overrides.steps ?? [{ id: "diff", label: "Diff", status: "completed" }],
         agents: overrides.agents ?? [],
         issues: overrides.issues ?? [makeIssue({ id: "issue-1", title: "Completed issue" })],
-        events: [],
+        events: overrides.events ?? [],
         fileProgress: overrides.fileProgress ?? {
           total: 1,
           current: 1,
@@ -85,6 +87,7 @@ export function makeReviewLifecycleBase(
     },
     completion: {
       isCompleting: overrides.isCompleting ?? false,
+      completedAt: overrides.completedAt ?? null,
       skipDelay: vi.fn(),
       resetCompletion: vi.fn(),
     },

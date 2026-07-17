@@ -1,5 +1,7 @@
+import { execFile } from "node:child_process";
 import { access, readdir, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { z } from "zod";
 import { log } from "../../../shared/lib/log.js";
@@ -18,6 +20,14 @@ type WorkspaceRoot = {
   includeChildren: boolean;
 };
 
+export interface WorkspaceDiscoveryOptions {
+  runPnpmList?: (projectPath: string) => Promise<string>;
+}
+
+const execFileAsync = promisify(execFile);
+const PNPM_LIST_TIMEOUT_MS = 10_000;
+const PNPM_LIST_MAX_BUFFER_BYTES = 4 * 1024 * 1024;
+
 const PackageManifestSchema = z.object({
   name: z.string().optional(),
   description: z.string().optional(),
@@ -26,6 +36,14 @@ const PackageManifestSchema = z.object({
   devDependencies: z.record(z.string(), z.string()).optional(),
   peerDependencies: z.record(z.string(), z.string()).optional(),
 });
+
+const PnpmWorkspaceListSchema = z
+  .array(
+    z.object({
+      path: z.string().min(1),
+    }),
+  )
+  .min(1);
 
 export type PackageManifest = z.infer<typeof PackageManifestSchema>;
 
@@ -68,13 +86,18 @@ export async function readPackageManifest(filePath: string): Promise<PackageMani
 
 export async function readFileDirectory(
   dirPath: string,
-): Promise<Array<{ name: string; isDirectory: boolean }>> {
+): Promise<Array<{ name: string; kind: "directory" | "file" | "symlink" }>> {
   try {
     const entries = await readdir(dirPath, { withFileTypes: true });
-    return entries.map((entry) => ({
-      name: entry.name,
-      isDirectory: entry.isDirectory(),
-    }));
+    return entries.map((entry) => {
+      let kind: "directory" | "file" | "symlink" = "file";
+      if (entry.isSymbolicLink()) {
+        kind = "symlink";
+      } else if (entry.isDirectory()) {
+        kind = "directory";
+      }
+      return { name: entry.name, kind };
+    });
   } catch {
     return [];
   }
@@ -84,38 +107,6 @@ const FALLBACK_WORKSPACE_ROOTS: WorkspaceRoot[] = [
   { dir: "apps", kind: "app", includeSelf: false, includeChildren: true },
   { dir: "packages", kind: "package", includeSelf: false, includeChildren: true },
 ];
-
-function parseWorkspaceYaml(content: string): string[] {
-  const lines = content.split("\n");
-  const globs: string[] = [];
-  let inPackages = false;
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed === "packages:" || trimmed.startsWith("packages:")) {
-      inPackages = true;
-      continue;
-    }
-    if (inPackages) {
-      if (/^\w/.test(trimmed) && !trimmed.startsWith("-")) {
-        break;
-      }
-      const match = trimmed.match(/^-\s+["']?([^"']+)["']?$/);
-      if (match?.[1]) {
-        globs.push(match[1]);
-      }
-    }
-  }
-  return globs;
-}
-
-function resolveWorkspaceRoots(globs: string[]): WorkspaceRoot[] {
-  return globs.map((glob) => {
-    const includeChildren = glob.endsWith("/*");
-    const dir = includeChildren ? glob.replace(/\/\*$/, "") : glob;
-    const kind: WorkspacePackage["kind"] = dir.startsWith("app") ? "app" : "package";
-    return { dir, kind, includeSelf: !includeChildren, includeChildren };
-  });
-}
 
 async function isRealpathContained(
   absolutePath: string,
@@ -139,21 +130,53 @@ async function filterEscapedRoots(
   return results;
 }
 
-async function getWorkspaceRoots(
-  projectPath: string,
-  normalizedProject: string,
-): Promise<WorkspaceRoot[]> {
-  const yamlPath = path.join(projectPath, "pnpm-workspace.yaml");
+async function hasPnpmWorkspace(projectPath: string): Promise<boolean> {
   try {
-    const content = await readFile(yamlPath, "utf8");
-    const globs = parseWorkspaceYaml(content);
-    if (globs.length > 0) {
-      return await filterEscapedRoots(resolveWorkspaceRoots(globs), normalizedProject);
+    await access(path.join(projectPath, "pnpm-workspace.yaml"));
+    return true;
+  } catch (error) {
+    if (error !== null && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      return false;
     }
-  } catch {
-    // pnpm-workspace.yaml not found — fall through to defaults
+    throw error;
   }
-  return await filterEscapedRoots(FALLBACK_WORKSPACE_ROOTS, normalizedProject);
+}
+
+async function runPnpmWorkspaceList(projectPath: string): Promise<string> {
+  const { stdout } = await execFileAsync(
+    "pnpm",
+    ["--recursive", "--depth", "-1", "list", "--json"],
+    {
+      cwd: projectPath,
+      env: { ...process.env, CI: "1", npm_config_offline: "true" },
+      timeout: PNPM_LIST_TIMEOUT_MS,
+      maxBuffer: PNPM_LIST_MAX_BUFFER_BYTES,
+      windowsHide: true,
+    },
+  );
+  return stdout;
+}
+
+function parsePnpmWorkspaceList(stdout: string): Array<{ path: string }> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stdout);
+  } catch (error) {
+    throw new Error(`pnpm workspace list returned invalid JSON: ${getErrorMessage(error)}`);
+  }
+
+  const result = PnpmWorkspaceListSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new Error(
+      `pnpm workspace list returned an invalid shape: ${formatSchemaIssues(result.error)}`,
+    );
+  }
+  return result.data;
+}
+
+function workspaceKind(dir: string): WorkspacePackage["kind"] {
+  const firstSegment = dir.split("/")[0];
+  return firstSegment === "app" || firstSegment === "apps" ? "app" : "package";
 }
 
 function collectDependencies(pkgJson: {
@@ -190,9 +213,11 @@ async function readWorkspacePackage(
   };
 }
 
-export async function discoverWorkspacePackages(projectPath: string): Promise<WorkspacePackage[]> {
+export async function discoverWorkspacePackages(
+  projectPath: string,
+  options: WorkspaceDiscoveryOptions = {},
+): Promise<WorkspacePackage[]> {
   const normalizedProject = await realpath(projectPath).catch(() => path.resolve(projectPath));
-  const roots = await getWorkspaceRoots(projectPath, normalizedProject);
 
   const packages: WorkspacePackage[] = [];
   const seenPackageDirs = new Set<string>();
@@ -204,6 +229,47 @@ export async function discoverWorkspacePackages(projectPath: string): Promise<Wo
     packages.push(pkg);
   };
 
+  if (await hasPnpmWorkspace(projectPath)) {
+    let stdout: string;
+    try {
+      stdout = await (options.runPnpmList ?? runPnpmWorkspaceList)(projectPath);
+    } catch (error) {
+      throw new Error(
+        `Failed to resolve pnpm workspace with the local pnpm CLI: ${getErrorMessage(error)}`,
+      );
+    }
+
+    for (const project of parsePnpmWorkspaceList(stdout)) {
+      const absoluteDir = path.isAbsolute(project.path)
+        ? project.path
+        : path.resolve(projectPath, project.path);
+      let realDir: string;
+      try {
+        realDir = await realpath(absoluteDir);
+      } catch (error) {
+        throw new Error(
+          `pnpm workspace path cannot be resolved (${project.path}): ${getErrorMessage(error)}`,
+        );
+      }
+      if (realDir !== normalizedProject && !realDir.startsWith(`${normalizedProject}${path.sep}`)) {
+        continue;
+      }
+
+      const relativeDir =
+        path.relative(normalizedProject, realDir).split(path.sep).join("/") || ".";
+      addPackage(
+        await readWorkspacePackage(
+          normalizedProject,
+          relativeDir,
+          workspaceKind(relativeDir),
+          normalizedProject,
+        ),
+      );
+    }
+    return packages;
+  }
+
+  const roots = await filterEscapedRoots(FALLBACK_WORKSPACE_ROOTS, normalizedProject);
   for (const root of roots) {
     const absoluteRoot = path.join(projectPath, root.dir);
     try {
@@ -219,7 +285,7 @@ export async function discoverWorkspacePackages(projectPath: string): Promise<Wo
 
     const entries = await readFileDirectory(absoluteRoot);
     for (const entry of entries) {
-      if (!entry.isDirectory) continue;
+      if (entry.kind !== "directory") continue;
       const childDir = path.join(root.dir, entry.name);
       if (!(await isRealpathContained(path.join(projectPath, childDir), normalizedProject))) {
         continue;

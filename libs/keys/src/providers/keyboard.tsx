@@ -12,6 +12,7 @@ import {
 import type { KeyHandler } from "../core/normalize-key-input.js";
 import { DECLINE } from "../core/normalize-key-input.js";
 import {
+  composedContains,
   getComposedEventTarget,
   getOwnerView,
   isEditableElement,
@@ -98,7 +99,7 @@ function isEventWithinContainer(
   if (!container) return false;
   const View = getOwnerView(container);
   if (!isNode(eventTarget, View)) return false;
-  return container.contains(eventTarget);
+  return composedContains(container, eventTarget);
 }
 
 /**
@@ -173,6 +174,7 @@ export function KeyboardProvider({
 
     const target = getComposedEventTarget(event);
     const isEditable = isEditableElement(target);
+    if (isEditable && (event.isComposing || event.keyCode === 229)) return;
 
     for (const canonicalKey of canonicalKeys) {
       const explicitEntries = scopeHandlers?.get(canonicalKey) ?? [];

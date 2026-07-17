@@ -4,6 +4,7 @@ import {
   fromSelectedCapabilityIds,
   getInitialFocusedCapability,
   getTrustButtonLabel,
+  hasRepositoryReadAccess,
   isFocusableCapability,
   NO_TRUST_CAPABILITIES,
   normalizeTrustCapabilities,
@@ -13,6 +14,32 @@ import {
 } from "./trust-capabilities.js";
 
 describe("trust capabilities model", () => {
+  describe("hasRepositoryReadAccess", () => {
+    const trust = {
+      repoRoot: "/work/repo",
+      capabilities: { readFiles: true, runCommands: false },
+    };
+
+    it("allows reads only when the capability belongs to the current repository root", () => {
+      expect(hasRepositoryReadAccess(trust, "/work/repo")).toBe(true);
+      expect(hasRepositoryReadAccess(trust, "/work/moved-repo")).toBe(false);
+    });
+
+    it("denies reads when trust or the current repository root is unavailable", () => {
+      expect(hasRepositoryReadAccess(null, "/work/repo")).toBe(false);
+      expect(hasRepositoryReadAccess(trust, null)).toBe(false);
+    });
+
+    it("denies reads when the repository capability is disabled", () => {
+      expect(
+        hasRepositoryReadAccess(
+          { ...trust, capabilities: { readFiles: false, runCommands: false } },
+          "/work/repo",
+        ),
+      ).toBe(false);
+    });
+  });
+
   describe("normalizeTrustCapabilities", () => {
     it("returns NO_TRUST_CAPABILITIES when value is null", () => {
       expect(normalizeTrustCapabilities(null)).toEqual(NO_TRUST_CAPABILITIES);

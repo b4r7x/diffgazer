@@ -39,6 +39,8 @@ function SidebarNav({
   autoTone,
   className,
   "aria-label": ariaLabel,
+  "aria-hidden": ariaHidden,
+  inert,
   children,
   ...rest
 }: ComponentProps<"nav"> & {
@@ -46,6 +48,7 @@ function SidebarNav({
   autoTone: boolean;
 }) {
   const { state } = useSidebar();
+  const hidden = state === "hidden";
   return (
     <nav
       ref={ref}
@@ -55,6 +58,8 @@ function SidebarNav({
       data-state={state}
       data-auto-tone={autoTone || undefined}
       {...rest}
+      aria-hidden={hidden ? true : ariaHidden}
+      inert={hidden ? true : inert}
       className={cn(sidebarContainerVariants({ state }), className)}
     >
       {children}

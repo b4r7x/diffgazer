@@ -11,7 +11,13 @@ import { Spinner } from "@diffgazer/ui/components/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@diffgazer/ui/components/tabs";
 import { Typography } from "@diffgazer/ui/components/typography";
 import { cn } from "@diffgazer/ui/lib/utils";
-import { type ComponentType, type LazyExoticComponent, Suspense } from "react";
+import {
+  Component,
+  type ComponentType,
+  type LazyExoticComponent,
+  type ReactNode,
+  Suspense,
+} from "react";
 import { CopyButton } from "@/components/copy-button";
 import { InsetPreviewPane } from "@/components/preview-inset-pane";
 import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
@@ -34,6 +40,28 @@ const LOADING_FALLBACK = (
     <Spinner variant="pulse" size="sm" />
   </div>
 );
+
+class DemoPreviewErrorBoundary extends Component<
+  Readonly<{ children: ReactNode }>,
+  Readonly<{ failed: boolean }>
+> {
+  override state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  override render() {
+    if (this.state.failed) {
+      return (
+        <output className="flex min-h-[120px] items-center justify-center text-sm">
+          Preview unavailable.
+        </output>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function DemoNode({ demo: Demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
   if (!Demo) return EMPTY_FALLBACK;
@@ -158,7 +186,9 @@ export function DemoPreview({ title, demo, code, rawCode, frame = "default" }: D
           </TabsTrigger>
         </TabsList>
         <TabsContent value="preview">
-          <PreviewPane demo={demo} frame={frame} rawCode={rawCode} />
+          <DemoPreviewErrorBoundary>
+            <PreviewPane demo={demo} frame={frame} rawCode={rawCode} />
+          </DemoPreviewErrorBoundary>
         </TabsContent>
         <TabsContent value="code">
           <CodePane code={code} rawCode={rawCode} />

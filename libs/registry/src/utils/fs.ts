@@ -1,5 +1,10 @@
 import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
-import { isAbsolute, relative, resolve, win32 } from "node:path";
+import { isAbsolute, relative, resolve, sep, win32 } from "node:path";
+
+interface PathSemantics {
+  isAbsolute(path: string): boolean;
+  sep: string;
+}
 
 export function cleanDir(dir: string, ext: string): void {
   if (!existsSync(dir)) return;
@@ -37,7 +42,12 @@ export function assertRegistrySourceFilePath(path: string, label = "Registry fil
 /** Plain relative-prefix containment: is `target` at or inside `base`? */
 export function isWithinDir(target: string, base: string): boolean {
   const rel = relative(resolve(base), resolve(target));
-  return !rel.startsWith("..") && !isAbsolute(rel);
+  return isContainedRelativePath(rel, { isAbsolute, sep });
+}
+
+export function isContainedRelativePath(path: string, semantics: PathSemantics): boolean {
+  const escapesParent = path === ".." || path.startsWith(`..${semantics.sep}`);
+  return !escapesParent && !semantics.isAbsolute(path);
 }
 
 export function resolveInside(baseDir: string, relPath: string, label: string): string {

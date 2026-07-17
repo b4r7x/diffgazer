@@ -4,6 +4,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { ApiKeyMethodSelector } from "@/components/shared/api-key-method-selector";
 import { useApiKeyDialogKeyboard } from "./use-keyboard";
 
 function Subject({
@@ -19,7 +20,15 @@ function Subject({
 }) {
   const [method, setMethod] = useState<InputMethod>("paste");
   const inputRef = useRef<HTMLInputElement>(null);
-  const { getMethodOptionProps, getCancelProps, getConfirmProps } = useApiKeyDialogKeyboard({
+  const {
+    focused,
+    setFocused,
+    getMethodOptionProps,
+    getCancelProps,
+    getConfirmProps,
+    handleMethodKeyDown,
+    handleMethodCommit,
+  } = useApiKeyDialogKeyboard({
     open: true,
     method,
     setMethod,
@@ -34,25 +43,21 @@ function Subject({
 
   return (
     <>
-      {/* biome-ignore lint/a11y/useSemanticElements: harness reproduces the production custom div role="radio" so the keyboard hook is exercised against the real DOM shape; a native <input type="radio"> would intercept arrow keys and reject the spread props. */}
-      <div
-        role="radio"
-        aria-checked={method === "paste"}
-        tabIndex={0}
-        {...getMethodOptionProps("paste")}
-      >
-        Paste
-      </div>
-      <input ref={inputRef} aria-label="API key" />
-      {/* biome-ignore lint/a11y/useSemanticElements: harness reproduces the production custom div role="radio" so the keyboard hook is exercised against the real DOM shape; a native <input type="radio"> would intercept arrow keys and reject the spread props. */}
-      <div
-        role="radio"
-        aria-checked={method === "env"}
-        tabIndex={0}
-        {...getMethodOptionProps("env")}
-      >
-        Env
-      </div>
+      <ApiKeyMethodSelector
+        value={method}
+        onChange={setMethod}
+        keyValue=""
+        onKeyValueChange={vi.fn()}
+        envVarName="GEMINI_API_KEY"
+        providerName="Gemini"
+        inputRef={inputRef}
+        focused={focused}
+        onFocus={setFocused}
+        onKeySubmit={() => onSubmit(method)}
+        onMethodCommit={handleMethodCommit}
+        onInputMethodKeyDown={handleMethodKeyDown}
+        getMethodOptionProps={getMethodOptionProps}
+      />
       <button ref={cancelProps.ref} type="button" onFocus={cancelProps.onFocus} onClick={onClose}>
         Cancel
       </button>
@@ -80,9 +85,9 @@ describe("useApiKeyDialogKeyboard", () => {
       </KeyboardProvider>,
     );
 
-    const paste = screen.getByRole("radio", { name: "Paste" });
-    const input = screen.getByRole("textbox", { name: "API key" });
-    const env = screen.getByRole("radio", { name: "Env" });
+    const paste = screen.getByRole("radio", { name: "Paste Key Now" });
+    const input = screen.getByLabelText("Gemini API Key");
+    const env = screen.getByRole("radio", { name: "Import from Env" });
 
     await waitFor(() => expect(paste).toHaveFocus());
 
@@ -107,11 +112,14 @@ describe("useApiKeyDialogKeyboard", () => {
       </KeyboardProvider>,
     );
 
-    await waitFor(() => expect(screen.getByRole("radio", { name: "Paste" })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("radio", { name: "Paste Key Now" })).toHaveFocus());
 
     await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
 
-    expect(screen.getByRole("radio", { name: "Env" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "Import from Env" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -126,7 +134,7 @@ describe("useApiKeyDialogKeyboard", () => {
       </KeyboardProvider>,
     );
 
-    await waitFor(() => expect(screen.getByRole("radio", { name: "Paste" })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("radio", { name: "Paste Key Now" })).toHaveFocus());
 
     await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
 
@@ -153,7 +161,7 @@ describe("useApiKeyDialogKeyboard", () => {
       </KeyboardProvider>,
     );
 
-    await waitFor(() => expect(screen.getByRole("radio", { name: "Paste" })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("radio", { name: "Paste Key Now" })).toHaveFocus());
 
     await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowRight}");
 

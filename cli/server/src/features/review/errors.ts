@@ -1,21 +1,9 @@
 import type { Context } from "hono";
-import { type ErrorStatus, errorResponse } from "../../shared/lib/http/response.js";
-import type { StoreError, StoreErrorCode } from "./storage/types.js";
-
-const errorCodeToStatus = (code: StoreErrorCode): ErrorStatus => {
-  switch (code) {
-    case "NOT_FOUND":
-      return 404;
-    case "VALIDATION_ERROR":
-      return 400;
-    case "PERMISSION_ERROR":
-      return 403;
-    default:
-      return 500;
-  }
-};
+import { errorResponse } from "../../shared/lib/http/response.js";
+import { storeErrorStatus } from "../../shared/lib/http/store-error.js";
+import type { StoreError } from "./storage/types.js";
 
 export const handleStoreError = (ctx: Context, error: StoreError): Response => {
-  const status = errorCodeToStatus(error.code);
+  const status = storeErrorStatus(error.code);
   return errorResponse(ctx, error.message, error.code, status);
 };

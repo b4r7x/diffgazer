@@ -24,6 +24,21 @@ export const tabsDoc: ComponentDoc = {
       content:
         "Tabs default to horizontal orientation. Set orientation='vertical' to stack triggers vertically. Keyboard arrow directions automatically align with the orientation.",
     },
+    {
+      title: "Horizontal reflow",
+      content:
+        "Horizontal Tabs.List wraps triggers and label text by default so constrained layouts do not create page-level horizontal scrolling. Pill and underline variants use a selected treatment on each trigger when rows wrap. Set wrap={false} only when a single-row layout is guaranteed.",
+    },
+    {
+      title: "Panel ownership",
+      content:
+        "Tabs.Content owns its DOM id and hidden state so the matching trigger's aria-controls reference and inactive-panel visibility stay synchronized. Pair triggers and panels with value instead of overriding id or hidden.",
+    },
+    {
+      title: "Tab list semantics",
+      content:
+        "Tabs.List owns its tablist role, orientation, variant, and wrapping state. Native attributes can label or describe the list but cannot replace those compound-component invariants.",
+    },
   ],
   usage: { example: "tabs-default" },
   examples: [
@@ -31,6 +46,7 @@ export const tabsDoc: ComponentDoc = {
     { name: "tabs-vertical", title: "Vertical Orientation" },
     { name: "tabs-controlled", title: "Controlled with Disabled Tab" },
     { name: "tabs-keyboard", title: "Keyboard Navigation" },
+    { name: "tabs-reflow", title: "Wrapped Reflow" },
   ],
   keyboard: {
     description:
@@ -68,8 +84,14 @@ export const tabsDoc: ComponentDoc = {
     {
       attribute: "data-variant",
       appliesTo: "Tabs.List / Tabs.Trigger",
-      values: '"default" | "underline"',
+      values: '"default" | "bracket" | "pill" | "underline"',
       description: "Visual variant propagated to list and triggers.",
+    },
+    {
+      attribute: "data-wrap",
+      appliesTo: "Tabs.List / Tabs.Trigger",
+      values: '"true" | "false"',
+      description: "Whether the horizontal list uses wrapped, row-local active treatments.",
     },
   ],
   props: {
@@ -100,9 +122,9 @@ export const tabsDoc: ComponentDoc = {
         description: "Tab list axis. Switches arrow-key navigation direction and aria-orientation.",
       },
       variant: {
-        type: '"default" | "underline"',
+        type: '"default" | "bracket" | "pill" | "underline"',
         required: false,
-        defaultValue: '"default"',
+        defaultValue: '"underline"',
         description: "Visual style applied to triggers and the list.",
       },
       activationMode: {
@@ -119,6 +141,13 @@ export const tabsDoc: ComponentDoc = {
       },
     },
     "Tabs.List": {
+      wrap: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description:
+          "Allows horizontal triggers and label text to wrap within the available width. Vertical lists ignore this option.",
+      },
       loop: {
         type: "boolean",
         required: false,

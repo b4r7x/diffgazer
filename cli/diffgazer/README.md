@@ -18,6 +18,8 @@ Requires Node.js >= 22.
 pnpm --filter diffgazer dev
 ```
 
+Set `PORT` to move the development API server. The launcher passes the matching API URL to the Vite child automatically. An explicit `VITE_API_URL` overrides that derived target.
+
 The terminal UI is opt-in while it is in beta:
 
 ```bash

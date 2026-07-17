@@ -1,22 +1,27 @@
 import type { Result } from "@diffgazer/core/result";
-import { ok } from "@diffgazer/core/result";
-import { sanitizeTerminalText } from "@diffgazer/core/review";
+import { err, ok } from "@diffgazer/core/result";
 import type { AgentStreamEvent, StepEvent } from "@diffgazer/core/schemas/events";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/core/schemas/events";
 import type {
   Lens,
+  LensReviewResult,
   ReviewIssue,
-  ReviewResult,
   SeverityFilter,
 } from "@diffgazer/core/schemas/review";
-import { ReviewResultSchema } from "@diffgazer/core/schemas/review";
+import { LensReviewResultSchema } from "@diffgazer/core/schemas/review";
 import { pluralize } from "@diffgazer/core/strings";
 import type { AIClient, AIError } from "../../../shared/lib/ai/types.js";
 import type { ParsedDiff } from "./diff/types.js";
-import { ensureIssueEvidence, normalizeIssueLineFields, severityMeetsMinimum } from "./issues.js";
+import {
+  createIssueEvidenceResolver,
+  normalizeIssueLineFields,
+  normalizeIssueTextFields,
+  severityMeetsMinimum,
+  validateIssueCompleteness,
+} from "./issues.js";
 import { buildReviewPrompt } from "./prompts.js";
 import { sanitizeIssue } from "./sanitize-issue.js";
-import type { AgentRunContext, LensResult } from "./types.js";
+import type { LensResult } from "./types.js";
 
 function estimateTokens(text: string): number {
   if (!text) return 0;
@@ -63,12 +68,50 @@ function ensureUniqueIssueIds(issues: ReviewIssue[], lensId: Lens["id"]): Review
   });
 }
 
+function resolvePromptFileIdentities(
+  issue: ReviewIssue,
+  filePathsById: ReadonlyMap<string, string>,
+): ReviewIssue | null {
+  const filePath = filePathsById.get(issue.file);
+  if (filePath === undefined) return null;
+
+  const evidence: ReviewIssue["evidence"] = [];
+  for (const reference of issue.evidence) {
+    if (reference.file === undefined) {
+      evidence.push(reference.type === "code" ? { ...reference, file: filePath } : reference);
+      continue;
+    }
+    const evidenceFilePath = filePathsById.get(reference.file);
+    if (evidenceFilePath === undefined) return null;
+    evidence.push({ ...reference, file: evidenceFilePath });
+  }
+
+  let fixPlan: ReviewIssue["fixPlan"];
+  if (issue.fixPlan) {
+    fixPlan = [];
+    for (const step of issue.fixPlan) {
+      if (step.files === undefined) {
+        fixPlan.push(step);
+        continue;
+      }
+      const files: string[] = [];
+      for (const fileId of step.files) {
+        const resolvedFile = filePathsById.get(fileId);
+        if (resolvedFile === undefined) return null;
+        files.push(resolvedFile);
+      }
+      fixPlan.push({ ...step, files });
+    }
+  }
+
+  return { ...issue, file: filePath, evidence, fixPlan };
+}
+
 export async function runLensAnalysis(
   client: AIClient,
   lens: Lens,
   diff: ParsedDiff,
   onEvent: (event: AgentStreamEvent | StepEvent) => void,
-  context: AgentRunContext,
   projectContext?: string,
   signal?: AbortSignal,
   severityFilter?: SeverityFilter,
@@ -76,16 +119,11 @@ export async function runLensAnalysis(
   const agentId = LENS_TO_AGENT[lens.id];
   const agentMeta = AGENT_METADATA[agentId];
   const startedAt = Date.now();
-  const traceId = context.traceId;
-  const spanId = context.spanId;
-  const parentSpanId = context.parentSpanId;
 
   onEvent({
     type: "agent_start",
     agent: agentMeta,
     timestamp: new Date().toISOString(),
-    traceId,
-    spanId,
   });
 
   onEvent({
@@ -93,8 +131,6 @@ export async function runLensAnalysis(
     agent: agentId,
     thought: getThinkingMessage(lens),
     timestamp: new Date().toISOString(),
-    traceId,
-    spanId,
   });
 
   onEvent({
@@ -103,73 +139,35 @@ export async function runLensAnalysis(
     progress: 15,
     message: `Gathering context (${diff.files.length} files)`,
     timestamp: new Date().toISOString(),
-    traceId,
-    spanId,
   });
 
-  for (const [i, file] of diff.files.entries()) {
-    if (signal?.aborted) break;
+  const { text: prompt, files: promptFiles } = buildReviewPrompt(lens, diff, projectContext);
 
-    onEvent({
-      type: "file_start",
-      file: file.filePath,
-      index: i,
-      total: diff.files.length,
-      timestamp: new Date().toISOString(),
-      agent: agentId,
-      scope: "agent",
-      traceId,
-      spanId,
-      parentSpanId,
-    });
-
+  for (const [index, { file }] of promptFiles.entries()) {
     onEvent({
       type: "file_progress",
       agent: agentId,
       file: file.filePath,
-      completed: i + 1,
-      total: diff.files.length,
+      completed: index + 1,
+      total: promptFiles.length,
       timestamp: new Date().toISOString(),
-      traceId,
-      spanId,
-    });
-
-    onEvent({
-      type: "file_complete",
-      file: file.filePath,
-      index: i,
-      total: diff.files.length,
-      timestamp: new Date().toISOString(),
-      agent: agentId,
-      scope: "agent",
-      traceId,
-      spanId,
-      parentSpanId,
-    });
-
-    const progress =
-      diff.files.length > 0 ? 15 + Math.round(((i + 1) / diff.files.length) * 35) : 50;
-    onEvent({
-      type: "agent_progress",
-      agent: agentId,
-      progress,
-      message: `Scanned ${i + 1}/${diff.files.length} files`,
-      timestamp: new Date().toISOString(),
-      traceId,
-      spanId,
     });
   }
-
-  const prompt = buildReviewPrompt(lens, diff, projectContext);
 
   onEvent({
     type: "agent_progress",
     agent: agentId,
     progress: 60,
-    message: `Prompt built: ${pluralize(diff.files.length, "file")}, ${pluralize(countDiffLines(diff), "diff line")}`,
+    message: `Prompt includes ${pluralize(promptFiles.length, "file")} and ${pluralize(countDiffLines(diff), "diff line")}`,
     timestamp: new Date().toISOString(),
-    traceId,
-    spanId,
+  });
+
+  onEvent({
+    type: "agent_progress",
+    agent: agentId,
+    progress: 65,
+    message: "Waiting for model response",
+    timestamp: new Date().toISOString(),
   });
 
   let progressTimer: ReturnType<typeof setInterval> | null = null;
@@ -186,14 +184,12 @@ export async function runLensAnalysis(
       progress: 65,
       message: `Waiting for model response — ${elapsedSec}s`,
       timestamp: new Date().toISOString(),
-      traceId,
-      spanId,
     });
   }, 2000);
 
-  let result: Result<ReviewResult, AIError>;
+  let result: Result<LensReviewResult, AIError>;
   try {
-    result = await client.generate(prompt, ReviewResultSchema, { signal });
+    result = await client.generate(prompt, LensReviewResultSchema, { signal });
   } finally {
     if (progressTimer) clearInterval(progressTimer);
   }
@@ -207,21 +203,41 @@ export async function runLensAnalysis(
       agent: agentId,
       error: errorLabel,
       timestamp: new Date().toISOString(),
-      traceId,
-      spanId,
     });
     return result;
   }
 
-  const diffFilePaths = new Set(diff.files.map((f) => f.filePath));
-  const processedIssues = ensureUniqueIssueIds(
-    result.value.issues
-      .filter((issue: ReviewIssue) => diffFilePaths.has(issue.file))
-      .map((issue: ReviewIssue) => normalizeIssueLineFields(issue))
-      .map((issue: ReviewIssue) => ensureIssueEvidence(issue, diff))
-      .map((issue: ReviewIssue) => sanitizeIssue(issue)),
-    lens.id,
-  );
+  const filePathsById = new Map(promptFiles.map(({ id, file }) => [id, file.filePath]));
+  const ensureEvidence = createIssueEvidenceResolver(diff);
+  const resolvedIssues: ReviewIssue[] = [];
+  for (const issue of result.value.issues) {
+    const resolvedIssue = resolvePromptFileIdentities(
+      normalizeIssueTextFields(issue),
+      filePathsById,
+    );
+    if (resolvedIssue === null) {
+      const error: AIError = {
+        code: "PARSE_ERROR",
+        message: "Model response referenced an unknown file identity.",
+      };
+      onEvent({
+        type: "agent_error",
+        agent: agentId,
+        error: `${error.code}: ${error.message}`,
+        timestamp: new Date().toISOString(),
+      });
+      return err(error);
+    }
+    resolvedIssues.push(resolvedIssue);
+  }
+
+  const normalizedIssues = resolvedIssues
+    .map((issue: ReviewIssue) => normalizeIssueLineFields(issue))
+    .map((issue: ReviewIssue) => ensureEvidence(issue))
+    .map((issue: ReviewIssue) => sanitizeIssue(issue));
+  const completeIssues = normalizedIssues.filter(validateIssueCompleteness);
+  const droppedIncompleteProviderIssues = normalizedIssues.length - completeIssues.length;
+  const processedIssues = ensureUniqueIssueIds(completeIssues, lens.id);
 
   // Stream only issues meeting the threshold; the full set is still returned.
   const streamedIssues = severityFilter
@@ -236,8 +252,6 @@ export async function runLensAnalysis(
       agent: agentId,
       issue,
       timestamp: new Date().toISOString(),
-      traceId,
-      spanId,
     });
   }
 
@@ -247,8 +261,6 @@ export async function runLensAnalysis(
     progress: 90,
     message: `Found ${pluralize(streamedIssues.length, "issue")}`,
     timestamp: new Date().toISOString(),
-    traceId,
-    spanId,
   });
 
   onEvent({
@@ -260,14 +272,11 @@ export async function runLensAnalysis(
     promptChars: prompt.length,
     outputChars: JSON.stringify(result.value).length,
     tokenEstimate: estimateTokens(prompt),
-    traceId,
-    spanId,
   });
 
   return ok({
     lensId: lens.id,
-    lensName: lens.name,
-    summary: sanitizeTerminalText(result.value.summary),
     issues: processedIssues,
+    droppedIncompleteProviderIssues,
   });
 }

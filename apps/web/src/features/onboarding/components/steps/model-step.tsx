@@ -3,10 +3,10 @@ import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { Badge } from "@diffgazer/ui/components/badge";
-import { Input } from "@diffgazer/ui/components/input";
+import { Button } from "@diffgazer/ui/components/button";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { Spinner } from "@diffgazer/ui/components/spinner";
-import { type KeyboardEvent, type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { resolveAvailableValue } from "../../lib/select";
 
 interface ModelStepProps {
@@ -135,28 +135,53 @@ export function ModelStep({
   enabled = true,
   onBoundaryReached,
 }: ModelStepProps) {
-  const { models, loading, error, isOpenRouter } = useModelSource(true, provider);
+  const { models, loading, error, isOpenRouter, source, fetchedAt, retry } = useModelSource(
+    true,
+    provider,
+  );
+  const loadingStateRef = useRef<HTMLDivElement>(null);
+  const retryButtonRef = useRef<HTMLButtonElement>(null);
+  const wasLoadingRef = useRef(false);
+  const canFocusRecoveryRef = useRef(false);
   const providerInfo = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
-  const manualEntryPlaceholder = isOpenRouter
-    ? "openai/gpt-4o"
-    : (providerInfo?.defaultModel ?? "model-id");
-  const manualEntryHint = isOpenRouter
-    ? "Enter a model ID manually (e.g. openai/gpt-4o):"
-    : "Enter a model ID manually:";
-  const ariaLabel = isOpenRouter ? "OpenRouter model ID" : "Model ID";
+  let fallbackNotice: string | null = null;
+  if (source === "cache") {
+    fallbackNotice = `Using cached catalog data from ${fetchedAt ?? "an unknown time"}.`;
+  } else if (source === "snapshot") {
+    fallbackNotice = "Using the bundled model catalog because live catalog data is unavailable.";
+  }
 
-  const handleManualEntryKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== "Enter" || !enabled) return;
-    const trimmed = (value ?? "").trim();
-    if (!trimmed) return;
-    event.preventDefault();
-    if (trimmed !== value) onChange(trimmed);
-    onCommit?.(trimmed);
-  };
+  useEffect(() => {
+    if (!loading) return;
+
+    wasLoadingRef.current = true;
+    canFocusRecoveryRef.current = true;
+    const ownerDocument = loadingStateRef.current?.ownerDocument;
+    if (!ownerDocument) return;
+
+    const preserveUserFocus = () => {
+      canFocusRecoveryRef.current = false;
+    };
+    ownerDocument.addEventListener("pointerdown", preserveUserFocus, true);
+    ownerDocument.addEventListener("focusin", preserveUserFocus, true);
+    return () => {
+      ownerDocument.removeEventListener("pointerdown", preserveUserFocus, true);
+      ownerDocument.removeEventListener("focusin", preserveUserFocus, true);
+    };
+  }, [loading]);
+
+  useEffect(() => {
+    if (loading || !wasLoadingRef.current) return;
+
+    wasLoadingRef.current = false;
+    const isRecovery = Boolean(error) || models.length === 0;
+    if (isRecovery && canFocusRecoveryRef.current) retryButtonRef.current?.focus();
+    canFocusRecoveryRef.current = false;
+  }, [error, loading, models.length]);
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div ref={loadingStateRef} className="space-y-4">
         <Spinner className="text-muted-foreground">
           {isOpenRouter ? "Loading OpenRouter models..." : "Loading models..."}
         </Spinner>
@@ -167,16 +192,12 @@ export function ModelStep({
   if (error) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-error-text font-mono">Failed to load models: {error}</p>
-        <p className="text-sm text-muted-foreground font-mono">{manualEntryHint}</p>
-        <Input
-          type="text"
-          aria-label={ariaLabel}
-          value={value ?? ""}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={handleManualEntryKeyDown}
-          placeholder={manualEntryPlaceholder}
-        />
+        <p role="alert" className="text-sm text-error-text font-mono">
+          Failed to load models: {error}
+        </p>
+        <Button ref={retryButtonRef} type="button" variant="secondary" onClick={retry}>
+          Retry
+        </Button>
       </div>
     );
   }
@@ -184,17 +205,13 @@ export function ModelStep({
   if (models.length === 0) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-muted-foreground font-mono">
-          No models available. {manualEntryHint}
-        </p>
-        <Input
-          type="text"
-          aria-label={ariaLabel}
-          value={value ?? ""}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={handleManualEntryKeyDown}
-          placeholder={manualEntryPlaceholder}
-        />
+        <p className="text-sm text-muted-foreground font-mono">No models available.</p>
+        {fallbackNotice ? (
+          <output className="text-sm text-warning-text font-mono">{fallbackNotice}</output>
+        ) : null}
+        <Button ref={retryButtonRef} type="button" variant="secondary" onClick={retry}>
+          Retry
+        </Button>
       </div>
     );
   }
@@ -215,8 +232,22 @@ export function ModelStep({
     />
   );
 
-  if (isOpenRouter) {
-    return <div className="max-h-64 overflow-y-auto scrollbar-hide">{list}</div>;
-  }
-  return list;
+  const content = isOpenRouter ? (
+    <div className="max-h-64 overflow-y-auto scrollbar-hide">{list}</div>
+  ) : (
+    list
+  );
+
+  if (!fallbackNotice) return content;
+  return (
+    <div className="space-y-3">
+      <output className="flex items-center justify-between gap-3 text-sm text-warning-text">
+        <span>{fallbackNotice}</span>
+        <Button type="button" size="sm" variant="secondary" onClick={retry}>
+          Retry
+        </Button>
+      </output>
+      {content}
+    </div>
+  );
 }

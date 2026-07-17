@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -10,10 +10,6 @@ import {
 } from "node:fs";
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { ENV } from "./lib/env.mjs";
-
-export function quoteArgs(args) {
-  return args.map((arg) => JSON.stringify(arg)).join(" ");
-}
 
 export function joinLines(...lines) {
   return lines.join("\n");
@@ -33,6 +29,56 @@ export class CommandFailedError extends Error {
   get output() {
     return `${this.stdout}${this.stderr}`;
   }
+}
+
+export class CommandTimedOutError extends Error {
+  constructor(cmd, { timeoutMs, stdout, stderr, cause }) {
+    super(`Command timed out after ${timeoutMs}ms: ${cmd}`);
+    this.name = "CommandTimedOutError";
+    this.cmd = cmd;
+    this.timeoutMs = timeoutMs;
+    this.stdout = stdout;
+    this.stderr = stderr;
+    if (cause !== undefined) this.cause = cause;
+  }
+
+  get output() {
+    return `${this.stdout}${this.stderr}`;
+  }
+}
+
+const DEFAULT_COMMAND_TIMEOUT_MS = 600_000;
+const DEFAULT_TERMINATION_GRACE_MS = 1_000;
+const PROCESS_GROUP_EXIT_TIMEOUT_MS = 5_000;
+const SUPPORTS_PROCESS_GROUPS = process.platform !== "win32";
+
+function signalProcessTree(child, processGroupId, signal) {
+  try {
+    if (processGroupId) process.kill(-processGroupId, signal);
+    else if (child.exitCode === null && child.signalCode === null) child.kill(signal);
+  } catch (error) {
+    if (error?.code !== "ESRCH") throw error;
+  }
+}
+
+function processGroupExists(processGroupId) {
+  try {
+    process.kill(-processGroupId, 0);
+    return true;
+  } catch (error) {
+    if (error?.code === "ESRCH") return false;
+    if (error?.code === "EPERM") return true;
+    throw error;
+  }
+}
+
+async function waitForProcessGroupExit(processGroupId) {
+  const deadline = Date.now() + PROCESS_GROUP_EXIT_TIMEOUT_MS;
+  while (processGroupExists(processGroupId)) {
+    if (Date.now() >= deadline) return false;
+    await new Promise((resolveImmediate) => setImmediate(resolveImmediate));
+  }
+  return true;
 }
 
 export function resolveAndCollectMissing(deps, resolveFn) {
@@ -61,6 +107,43 @@ export function networkAllowed() {
   return process.env[ENV.smokeAllowNetwork] === "1";
 }
 
+export async function fetchJsonWithLimit(url, { fetchImpl = fetch, label, maxBytes, signal }) {
+  const response = await fetchImpl(url, { redirect: "error", signal });
+  if (!response.ok) throw new Error(`${label}: HTTP ${response.status}`);
+
+  const declaredLength = response.headers.get("content-length")?.trim();
+  if (declaredLength && /^\d+$/.test(declaredLength)) {
+    const declaredBytes = Number(declaredLength);
+    if (!Number.isSafeInteger(declaredBytes) || declaredBytes > maxBytes) {
+      throw new Error(`${label}: response exceeds ${maxBytes} bytes`);
+    }
+  }
+
+  if (!response.body) throw new Error(`${label}: response body is empty`);
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let receivedBytes = 0;
+  let text = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+
+    receivedBytes += value.byteLength;
+    if (receivedBytes > maxBytes) {
+      const message = `${label}: response exceeds ${maxBytes} bytes`;
+      await reader.cancel(message);
+      throw new Error(message);
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+
+  text += decoder.decode();
+  return JSON.parse(text);
+}
+
 export function pnpmAddFlags() {
   return networkAllowed() ? ["--fetch-retries=0"] : ["--offline", "--fetch-retries=0"];
 }
@@ -71,6 +154,22 @@ export function resolveLocalDependency(root, packageName) {
     if (existsSync(depPath)) return `link:${realpathSync(depPath)}`;
   }
   throw new Error(`Cannot resolve local dependency for smoke test: ${packageName}`);
+}
+
+const TAILWIND_V4_SPEC = "^4.0.0";
+
+export function declareTailwindV4Dependency(fixture) {
+  const packageJsonPath = resolve(fixture, "package.json");
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+  if (packageJson.dependencies) {
+    delete packageJson.dependencies.tailwindcss;
+    if (Object.keys(packageJson.dependencies).length === 0) delete packageJson.dependencies;
+  }
+  packageJson.devDependencies = {
+    ...(packageJson.devDependencies ?? {}),
+    tailwindcss: TAILWIND_V4_SPEC,
+  };
+  writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
 }
 
 function viteFixtureDependencySpecs(root) {
@@ -91,12 +190,13 @@ function viteFixtureDependencySpecs(root) {
   ].map((packageName) => resolveLocalDependency(root, packageName));
 }
 
-export function installViteFixtureDeps(root, fixture) {
-  runArgv(
+export async function installViteFixtureDeps(root, fixture) {
+  await runArgv(
     "pnpm",
     ["add", "--offline", "--fetch-retries=0", ...viteFixtureDependencySpecs(root)],
     fixture,
   );
+  declareTailwindV4Dependency(fixture);
 }
 
 export function writeViteFixture(fixture, options = {}) {
@@ -118,6 +218,7 @@ export function writeViteFixture(fixture, options = {}) {
     private: true,
     type: "module",
     ...(packageManager ? { packageManager } : {}),
+    devDependencies: { tailwindcss: TAILWIND_V4_SPEC },
     scripts: {
       typecheck: "tsc -p tsconfig.json",
       build: "vite build",
@@ -368,24 +469,103 @@ export function assertBuiltCss(fixture, options = {}) {
 export function runArgv(command, args, cwdOrOptions = {}) {
   const options = typeof cwdOrOptions === "string" ? { cwd: cwdOrOptions } : cwdOrOptions;
   const cmdLabel = `${command} ${args.join(" ")}`;
-  try {
-    return execFileSync(command, args, {
-      encoding: "utf8",
+  const timeoutMs = options.timeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS;
+  const terminationGraceMs = options.terminationGraceMs ?? DEFAULT_TERMINATION_GRACE_MS;
+
+  return new Promise((resolvePromise, rejectPromise) => {
+    const child = spawn(command, args, {
       cwd: options.cwd,
       env: options.env ? { ...process.env, ...options.env } : undefined,
       stdio: ["ignore", "pipe", "pipe"],
+      detached: SUPPORTS_PROCESS_GROUPS,
     });
-  } catch (error) {
-    if (error && typeof error === "object" && typeof error.status === "number") {
-      throw new CommandFailedError(cmdLabel, {
-        exitCode: error.status,
-        stdout: error.stdout?.toString() ?? "",
-        stderr: error.stderr?.toString() ?? "",
-        cause: error,
-      });
-    }
-    throw error;
-  }
+    const processGroupId = SUPPORTS_PROCESS_GROUPS ? child.pid : undefined;
+    let stdout = "";
+    let stderr = "";
+    let spawnError;
+    let timedOut = false;
+    let directClosed = false;
+    let directExitCode = null;
+    let terminationFinished = false;
+    let terminationError;
+    let settled = false;
+    let killTimer;
+
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.once("error", (error) => {
+      spawnError = error;
+    });
+
+    const settle = () => {
+      if (settled || !directClosed || (timedOut && !terminationFinished)) return;
+      settled = true;
+
+      if (timedOut) {
+        rejectPromise(
+          new CommandTimedOutError(cmdLabel, {
+            timeoutMs,
+            stdout,
+            stderr,
+            cause: terminationError,
+          }),
+        );
+        return;
+      }
+      if (spawnError) {
+        rejectPromise(
+          new CommandFailedError(cmdLabel, { exitCode: null, stdout, stderr, cause: spawnError }),
+        );
+        return;
+      }
+      if (directExitCode !== 0) {
+        rejectPromise(
+          new CommandFailedError(cmdLabel, { exitCode: directExitCode, stdout, stderr }),
+        );
+        return;
+      }
+      resolvePromise(stdout);
+    };
+
+    const finishTermination = async () => {
+      try {
+        signalProcessTree(child, processGroupId, "SIGKILL");
+        if (processGroupId && !(await waitForProcessGroupExit(processGroupId))) {
+          throw new Error(
+            `Process group ${processGroupId} remained alive after SIGKILL for ${PROCESS_GROUP_EXIT_TIMEOUT_MS}ms`,
+          );
+        }
+      } catch (error) {
+        terminationError ??= error;
+      }
+      terminationFinished = true;
+      settle();
+    };
+
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      try {
+        signalProcessTree(child, processGroupId, "SIGTERM");
+      } catch (error) {
+        terminationError = error;
+      }
+      killTimer = setTimeout(() => void finishTermination(), terminationGraceMs);
+    }, timeoutMs);
+
+    child.once("close", (exitCode) => {
+      directClosed = true;
+      directExitCode = exitCode;
+      clearTimeout(timeout);
+      if (!timedOut) clearTimeout(killTimer);
+      settle();
+    });
+  });
 }
 
 export function parsePackOutput(raw) {
@@ -411,15 +591,25 @@ export function parsePackOutput(raw) {
 
 // pnpm pack --json reports `filename` as an absolute path or a bare filename depending on
 // version/destination; resolve both forms against packDir.
-export function packWorkspacePackage(root, workspacePackage, packDir) {
-  const packOutput = execFileSync(
-    "pnpm",
-    ["--dir", root, "--filter", workspacePackage, "pack", "--pack-destination", packDir, "--json"],
-    {
-      cwd: root,
-      encoding: "utf-8",
-      stdio: ["ignore", "pipe", "pipe"],
-    },
+export async function packWorkspacePackage(root, workspacePackage, packDir) {
+  const packOutput = (
+    await runArgv(
+      "pnpm",
+      [
+        "--dir",
+        root,
+        "--filter",
+        workspacePackage,
+        "pack",
+        "--pack-destination",
+        packDir,
+        "--json",
+      ],
+      {
+        cwd: root,
+        timeoutMs: 900_000,
+      },
+    )
   ).trim();
 
   const parsedPack = parsePackOutput(packOutput);

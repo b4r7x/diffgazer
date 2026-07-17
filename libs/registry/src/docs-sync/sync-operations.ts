@@ -1,13 +1,36 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { log } from "../logger.js";
+import { normalizeOrigin } from "../origin.js";
 import { collectJsonFiles, ensureExists, resetDir, resolveInside } from "../utils/fs.js";
 import { assertSafeLibraryId } from "./library-id-validation.js";
+import { assertManifestLibraryId } from "./loader.js";
 import type { AfterSyncContext, LoadedLibraryArtifacts, SyncOutputPaths } from "./types.js";
 
 function resolveNamespaceDir(baseDir: string, id: string, label: string): string {
   assertSafeLibraryId(id, label);
   return resolveInside(baseDir, id, label);
+}
+
+export function assertArtifactOrigins(
+  artifacts: LoadedLibraryArtifacts[],
+  requestedOrigin: string,
+): void {
+  const expectedOrigin = normalizeOrigin(requestedOrigin);
+
+  for (const artifact of artifacts) {
+    const artifactOrigin = artifact.manifest.origin;
+    if (!artifactOrigin) {
+      throw new Error(
+        `${artifact.id} artifact manifest is missing origin provenance. Rebuild artifacts for ${expectedOrigin}.`,
+      );
+    }
+    if (artifactOrigin !== expectedOrigin) {
+      throw new Error(
+        `${artifact.id} artifact origin ${JSON.stringify(artifactOrigin)} does not match requested origin ${JSON.stringify(expectedOrigin)}. Rebuild artifacts for the requested origin.`,
+      );
+    }
+  }
 }
 
 function assertNoUnrewrittenOrigin(dir: string, targetOrigin: string, sourceOrigin: string): void {
@@ -274,6 +297,12 @@ export function runDocsSyncPass(params: {
 }): void {
   const { artifacts, primaryArtifact, paths, origin, sourceOrigin, afterSync } = params;
 
+  assertArtifactOrigins(artifacts, origin);
+  for (const artifact of artifacts) {
+    assertManifestLibraryId(artifact.id, artifact.manifest);
+  }
+  assertManifestLibraryId(primaryArtifact.id, primaryArtifact.manifest);
+
   for (const artifact of artifacts) {
     const docsSource = resolve(artifact.artifactRoot, artifact.manifest.docs.contentDir);
     if (existsSync(docsSource)) {
@@ -281,9 +310,13 @@ export function runDocsSyncPass(params: {
     }
   }
   for (const artifact of artifacts) {
-    if (artifact.manifest.docs.assetsDir) {
-      resetDir(join(paths.libraryAssetsDir, artifact.id));
-    }
+    resetDir(
+      resolveNamespaceDir(
+        paths.libraryAssetsDir,
+        artifact.id,
+        `${artifact.id} assets namespace output`,
+      ),
+    );
   }
   syncPrimaryArtifacts(primaryArtifact, paths.generatedDir, paths.registryDir);
 

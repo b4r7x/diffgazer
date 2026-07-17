@@ -3,8 +3,10 @@ import { resolve } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { checkboxDoc } from "../registry/component-docs/checkbox";
+import { dialogDoc } from "../registry/component-docs/dialog";
 import { menuDoc } from "../registry/component-docs/menu";
 import { radioDoc } from "../registry/component-docs/radio";
+import { selectDoc } from "../registry/component-docs/select";
 import { activeHeadingDoc } from "../registry/hook-docs/active-heading";
 import { composedRefsDoc } from "../registry/hook-docs/composed-refs";
 import { controllableStateDoc } from "../registry/hook-docs/controllable-state";
@@ -23,6 +25,9 @@ type MetadataMember = {
 };
 
 type PropMetadata = {
+  type?: string;
+  required?: boolean;
+  defaultValue?: string | null;
   description?: string;
 };
 
@@ -55,6 +60,20 @@ type ComponentJsDocCase = {
 type MemberMetadataExclusion = {
   member: string;
   reason: string;
+};
+
+type RequiredSelectMetadataCase = {
+  sourcePath: string;
+  propsType: string;
+  partName: "SelectContent" | "SelectSearch" | "SelectValue";
+  members: Record<
+    string,
+    {
+      type: string;
+      defaultValue: string;
+      description: RegExp;
+    }
+  >;
 };
 
 const root = resolve(import.meta.dirname, "..");
@@ -162,6 +181,76 @@ const componentCases: ComponentJsDocCase[] = [
     partName: "RadioGroup",
     propsType: "RadioGroupProps",
   },
+  {
+    name: "select-content",
+    doc: selectDoc,
+    sourcePath: "registry/ui/select/select-content.tsx",
+    partName: "SelectContent",
+    propsType: "SelectContentProps",
+  },
+  {
+    name: "select-search",
+    doc: selectDoc,
+    sourcePath: "registry/ui/select/select-search.tsx",
+    partName: "SelectSearch",
+    propsType: "SelectSearchProps",
+  },
+  {
+    name: "select-value",
+    doc: selectDoc,
+    sourcePath: "registry/ui/select/select-value.tsx",
+    partName: "SelectValue",
+    propsType: "SelectValueProps",
+  },
+];
+
+const requiredSelectMetadataCases: RequiredSelectMetadataCase[] = [
+  {
+    sourcePath: "registry/ui/select/select-content.tsx",
+    propsType: "SelectContentProps",
+    partName: "SelectContent",
+    members: {
+      getResultsLabel: {
+        type: "(count: number) => string",
+        defaultValue: 'count => count + " results"',
+        description: /results count.*live region/i,
+      },
+    },
+  },
+  {
+    sourcePath: "registry/ui/select/select-value.tsx",
+    propsType: "SelectValueProps",
+    partName: "SelectValue",
+    members: {
+      getSelectedLabel: {
+        type: "(count: number) => string",
+        defaultValue: 'count => count + " selected"',
+        description: /summary.*display="count"/i,
+      },
+      getOverflowLabel: {
+        type: "(count: number) => string",
+        defaultValue: 'count => " +" + count + " more"',
+        description: /overflow suffix.*display="truncate"/i,
+      },
+    },
+  },
+  {
+    sourcePath: "registry/ui/select/select-search.tsx",
+    propsType: "SelectSearchProps",
+    partName: "SelectSearch",
+    members: {
+      placeholder: {
+        type: "string",
+        defaultValue: '"Search..."',
+        description: /placeholder.*search input/i,
+      },
+      "aria-label": {
+        type: "string",
+        defaultValue: '"Search options" unless aria-labelledby is present',
+        description: /accessible name.*search combobox/i,
+      },
+    },
+  },
 ];
 
 const documentedMemberExclusions: Record<string, MemberMetadataExclusion[]> = {
@@ -261,6 +350,57 @@ const documentedMemberExclusions: Record<string, MemberMetadataExclusion[]> = {
       reason: "React ref passthrough is intentionally omitted from the curated public props table.",
     },
   ],
+  "select-content:SelectContentProps": [
+    {
+      member: "children",
+      reason: "Composition is documented in anatomy and examples rather than the curated table.",
+    },
+    {
+      member: "className",
+      reason: "Styling passthrough is intentionally omitted from the curated table.",
+    },
+    {
+      member: "onKeyDown",
+      reason: "Native event passthrough is intentionally omitted from the curated table.",
+    },
+    {
+      member: "side",
+      reason: "Shared floating-position passthrough is documented by the floating panel primitive.",
+    },
+    {
+      member: "align",
+      reason: "Shared floating-position passthrough is documented by the floating panel primitive.",
+    },
+    {
+      member: "sideOffset",
+      reason: "Shared floating-position passthrough is documented by the floating panel primitive.",
+    },
+    {
+      member: "collisionPadding",
+      reason: "Shared floating-position passthrough is documented by the floating panel primitive.",
+    },
+    {
+      member: "portalContainer",
+      reason:
+        "Advanced portal ownership is documented in composition guidance rather than this table.",
+    },
+    {
+      member: "ref",
+      reason: "React ref passthrough is intentionally omitted from the curated table.",
+    },
+  ],
+  "select-search:SelectSearchProps": [
+    {
+      member: "className",
+      reason: "Styling passthrough is intentionally omitted from the curated table.",
+    },
+  ],
+  "select-value:SelectValueProps": [
+    {
+      member: "className",
+      reason: "Styling passthrough is intentionally omitted from the curated table.",
+    },
+  ],
 };
 
 function readSource(relativePath: string): ts.SourceFile {
@@ -300,6 +440,25 @@ function getInterfaceMemberDocs(source: ts.SourceFile, interfaceName: string): M
   });
 
   return docs;
+}
+
+function getInterfaceMember(
+  source: ts.SourceFile,
+  interfaceName: string,
+  memberName: string,
+): ts.PropertySignature | ts.MethodSignature | undefined {
+  let match: ts.PropertySignature | ts.MethodSignature | undefined;
+
+  source.forEachChild((node) => {
+    if (!ts.isInterfaceDeclaration(node) || node.name.text !== interfaceName) return;
+    match = node.members.find(
+      (member): member is ts.PropertySignature | ts.MethodSignature =>
+        (ts.isPropertySignature(member) || ts.isMethodSignature(member)) &&
+        normalizeMemberName(member.name.getText(source)) === memberName,
+    );
+  });
+
+  return match;
 }
 
 function normalizeMemberName(name: string): string {
@@ -439,6 +598,14 @@ describe("hook metadata JSDoc sync", () => {
       }
     }
 
+    expect(failures).toEqual([]);
+  });
+});
+
+describe("component metadata JSDoc sync", () => {
+  it("documents every exported component JSDoc member or records a justified exclusion", () => {
+    const failures: string[] = [];
+
     for (const item of componentCases) {
       const source = readSource(item.sourcePath);
 
@@ -460,9 +627,7 @@ describe("hook metadata JSDoc sync", () => {
 
     expect(failures).toEqual([]);
   });
-});
 
-describe("component metadata JSDoc sync", () => {
   it("backs documented component props with exported JSDoc", () => {
     const failures: string[] = [];
 
@@ -482,5 +647,57 @@ describe("component metadata JSDoc sync", () => {
     }
 
     expect(failures).toEqual([]);
+  });
+
+  it("keeps Select output and accessible-name controls aligned with source props", () => {
+    for (const item of requiredSelectMetadataCases) {
+      const source = readSource(item.sourcePath);
+      const publicMetadata: Record<string, PropMetadata> = selectDoc.props?.[item.partName] ?? {};
+
+      for (const [memberName, expected] of Object.entries(item.members)) {
+        const sourceMember = getInterfaceMember(source, item.propsType, memberName);
+        expect(
+          sourceMember,
+          `${item.propsType}.${memberName} is missing from source`,
+        ).toBeDefined();
+        if (!sourceMember) continue;
+
+        expect(
+          sourceMember.questionToken,
+          `${item.propsType}.${memberName} must stay optional`,
+        ).toBeDefined();
+        expect(sourceMember.type?.getText(source)).toBe(expected.type);
+        expect(jsDocDescription(sourceMember).trim()).not.toBe("");
+
+        const metadata = publicMetadata[memberName];
+        expect(
+          metadata,
+          `${item.partName}.${memberName} is missing from public metadata`,
+        ).toBeDefined();
+        expect(metadata).toMatchObject({
+          type: expected.type,
+          required: false,
+          defaultValue: expected.defaultValue,
+        });
+        expect(metadata?.description).toMatch(expected.description);
+      }
+    }
+  });
+
+  it("documents DialogClose accessible-name precedence and fallback", () => {
+    expect(dialogDoc.props?.DialogClose?.["aria-label"]).toEqual({
+      type: "string",
+      required: false,
+      defaultValue: null,
+      description:
+        'Explicit accessible name. aria-labelledby wins when both attributes are set. With neither attribute, visible child text names the button; empty, decorative, or hidden content falls back to "Close dialog".',
+    });
+    expect(dialogDoc.props?.DialogClose?.["aria-labelledby"]).toEqual({
+      type: "string",
+      required: false,
+      defaultValue: null,
+      description:
+        'ID reference for an external label. It takes precedence over aria-label and suppresses the automatic "Close dialog" fallback.',
+    });
   });
 });

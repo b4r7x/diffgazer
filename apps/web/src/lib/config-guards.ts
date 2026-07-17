@@ -4,13 +4,6 @@ import { api } from "@/lib/api";
 import { queryClient } from "@/lib/query-client";
 
 async function fetchConfigured(): Promise<boolean> {
-  try {
-    const result = await queryClient.ensureQueryData(configQueries.check(api));
-    if (result.configured) return true;
-  } catch {
-    // Fall through to init endpoint as source of truth for onboarding completion.
-  }
-
   const init = await queryClient.ensureQueryData(configQueries.init(api));
   return init.setup.isConfigured;
 }

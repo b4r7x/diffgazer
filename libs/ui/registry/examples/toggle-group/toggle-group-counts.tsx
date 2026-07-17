@@ -3,14 +3,19 @@
 import { useState } from "react";
 import { ToggleGroup } from "@/components/ui/toggle-group";
 
+type SmallSeverity = "error" | "warning" | "info";
+type MediumSeverity = "error" | "warning";
+
 export default function ToggleGroupCounts() {
-  const [filter, setFilter] = useState<string | null>("error");
+  const [smallFilter, setSmallFilter] = useState<SmallSeverity | null>("error");
+  const [mediumFilter, setMediumFilter] = useState<MediumSeverity | null>("error");
+
   return (
     <div className="flex flex-col gap-4">
       <ToggleGroup
         label="Severity filter (small)"
-        value={filter}
-        onChange={setFilter}
+        value={smallFilter}
+        onChange={setSmallFilter}
         allowDeselect
         size="sm"
       >
@@ -26,8 +31,8 @@ export default function ToggleGroupCounts() {
       </ToggleGroup>
       <ToggleGroup
         label="Severity filter (medium)"
-        value={filter}
-        onChange={setFilter}
+        value={mediumFilter}
+        onChange={setMediumFilter}
         allowDeselect
         size="md"
       >

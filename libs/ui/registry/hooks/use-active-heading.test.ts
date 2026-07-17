@@ -1,5 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { JSDOM } from "jsdom";
+import { createElement } from "react";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { requireElement } from "../testing/assertions";
 import { type ActiveHeadingActivation, useActiveHeading } from "./use-active-heading";
@@ -146,6 +148,30 @@ afterEach(() => {
 });
 
 describe("useActiveHeading", () => {
+  it("renders null on the server when initially disabled", () => {
+    function Probe() {
+      const { activeId } = useActiveHeading({ ids: ["h1"], enabled: false });
+      return createElement("span", null, activeId ?? "none");
+    }
+
+    expect(renderToString(createElement(Probe))).toContain(">none<");
+  });
+
+  it("keeps disabled state accurate across rerenders", () => {
+    const { result, rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) =>
+        useActiveHeading({ ids: ["h1"], enabled, observe: false }),
+      { initialProps: { enabled: false } },
+    );
+
+    expect(result.current.activeId).toBeNull();
+    rerender({ enabled: true });
+    flushFrames();
+    expect(result.current.activeId).toBe("h1");
+    rerender({ enabled: false });
+    expect(result.current.activeId).toBeNull();
+  });
+
   it("syncs activeId when scroll, resize, and observed DOM changes move headings", () => {
     const { result } = renderActiveHeading({ ids: ["h1", "h2", "h3", "h4"] });
     flushFrames();
@@ -263,6 +289,41 @@ describe("useActiveHeading", () => {
       });
 
       expect(result.current.activeId).toBe("h2");
+    } finally {
+      restoreProperty(document, "onscrollend", originalScrollEnd);
+      vi.useRealTimers();
+    }
+  });
+
+  it("releases the programmatic-scroll guard when configuration changes before settle", () => {
+    const originalScrollEnd = Object.getOwnPropertyDescriptor(document, "onscrollend");
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      Object.defineProperty(document, "onscrollend", { configurable: true, value: null });
+      Object.defineProperty(window, "scrollTo", { configurable: true, value: vi.fn() });
+      const { result, rerender } = renderHook(
+        ({ topOffset }: { topOffset: number }) =>
+          useActiveHeading({
+            ids: ["h1", "h2", "h3"],
+            activation: "viewport-center",
+            topOffset,
+            scrollOffset: 50,
+            bottomLock: false,
+            observe: false,
+          }),
+        { initialProps: { topOffset: 0 } },
+      );
+      flushFrames();
+
+      act(() => result.current.scrollTo("h2"));
+      expect(result.current.activeId).toBe("h2");
+
+      rerender({ topOffset: 1 });
+      setHeadingRect("h3", 250);
+      act(() => window.dispatchEvent(new Event("scroll")));
+      flushFrames();
+
+      expect(result.current.activeId).toBe("h3");
     } finally {
       restoreProperty(document, "onscrollend", originalScrollEnd);
       vi.useRealTimers();

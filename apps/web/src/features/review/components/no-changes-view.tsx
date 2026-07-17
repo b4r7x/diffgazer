@@ -11,9 +11,15 @@ export interface NoChangesViewProps {
   mode: ReviewMode;
   onBack: () => void;
   onSwitchMode?: () => void;
+  switchDisabled?: boolean;
 }
 
-export function NoChangesView({ mode, onBack, onSwitchMode }: NoChangesViewProps) {
+export function NoChangesView({
+  mode,
+  onBack,
+  onSwitchMode,
+  switchDisabled = false,
+}: NoChangesViewProps) {
   useScope("no-changes");
 
   const focusFallbackRef = useRef<HTMLDivElement>(null);
@@ -22,9 +28,10 @@ export function NoChangesView({ mode, onBack, onSwitchMode }: NoChangesViewProps
   const actions = onSwitchMode ? [onSwitchMode, onBack] : [onBack];
   const actionCount = actions.length;
 
-  const footer = useActionRowNavigation({
+  const footer = useActionRowNavigation<readonly unknown[]>({
     enabled: true,
     actionCount,
+    disabledActions: onSwitchMode ? [switchDisabled, false] : [false],
     defaultZone: "actions",
     disabledFocusFallbackRef: focusFallbackRef,
     onAction: (index) => actions[index]?.(),
@@ -38,7 +45,7 @@ export function NoChangesView({ mode, onBack, onSwitchMode }: NoChangesViewProps
     actionCount > 1
       ? [
           { key: "←/→", label: "Move Action" },
-          { key: "Enter/Space", label: focusedLabel },
+          { key: "Enter/Space", label: focusedLabel, disabled: footer.isFocusedActionDisabled },
         ]
       : [{ key: "Enter/Space", label: focusedLabel }];
 
@@ -62,6 +69,7 @@ export function NoChangesView({ mode, onBack, onSwitchMode }: NoChangesViewProps
               {...footer.getActionProps(0)}
               variant="outline"
               bracket
+              disabled={switchDisabled}
               highlighted={footer.inActions && footer.focusedIndex === 0}
               onClick={onSwitchMode}
             >

@@ -1,13 +1,15 @@
 import { useModelSource } from "@diffgazer/core/providers";
 import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
-import { Box, Text } from "ink";
+import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { Badge } from "../../../../components/ui/badge";
-import { Input } from "../../../../components/ui/input";
 import { RadioGroup } from "../../../../components/ui/radio";
 import { Spinner } from "../../../../components/ui/spinner";
+import { useTerminalDimensions } from "../../../../hooks/use-terminal-dimensions";
 import { useTheme } from "../../../../theme/provider";
+
+const MODEL_STEP_RESERVED_ROWS = 12;
 
 interface ModelStepProps {
   value?: string;
@@ -45,9 +47,34 @@ export function ModelStep({
   isActive = true,
 }: ModelStepProps): ReactElement {
   const { tokens } = useTheme();
-  const { models: sourceModels, loading, error, isOpenRouter } = useModelSource(true, provider);
+  const { rows } = useTerminalDimensions();
+  const {
+    models: sourceModels,
+    loading,
+    error,
+    isOpenRouter,
+    source,
+    fetchedAt,
+    retry,
+  } = useModelSource(true, provider);
 
   const subtitle = isOpenRouter ? "Select a model from OpenRouter." : getSubtitle(provider);
+  let fallbackNotice: string | null = null;
+  if (source === "cache") {
+    fallbackNotice = `Using cached catalog data from ${fetchedAt ?? "an unknown time"}.`;
+  } else if (source === "snapshot") {
+    fallbackNotice = "Using the bundled model catalog because live catalog data is unavailable.";
+  }
+
+  useInput(
+    (input) => {
+      if (input.toLowerCase() === "r") retry();
+    },
+    {
+      isActive:
+        isActive && (Boolean(error) || sourceModels.length === 0 || fallbackNotice !== null),
+    },
+  );
 
   if (loading) {
     return (
@@ -63,17 +90,7 @@ export function ModelStep({
       <Box flexDirection="column" gap={1}>
         <Text color={tokens.muted}>{subtitle}</Text>
         <Text color={tokens.error}>Failed to load models: {error}</Text>
-        <Text color={tokens.muted}>
-          {isOpenRouter
-            ? "Enter a model ID manually (e.g. openai/gpt-4o):"
-            : "Enter a model ID manually:"}
-        </Text>
-        <Input
-          value={value}
-          onChange={onChange}
-          placeholder={isOpenRouter ? "openai/gpt-4o" : undefined}
-          isActive={isActive}
-        />
+        <Text color={tokens.muted}>Press r to retry.</Text>
       </Box>
     );
   }
@@ -85,6 +102,8 @@ export function ModelStep({
       <Box flexDirection="column" gap={1}>
         <Text color={tokens.muted}>{subtitle}</Text>
         <Text dimColor>No models available for this provider.</Text>
+        {fallbackNotice ? <Text color={tokens.warning}>{fallbackNotice}</Text> : null}
+        <Text color={tokens.muted}>Press r to retry.</Text>
       </Box>
     );
   }
@@ -92,7 +111,15 @@ export function ModelStep({
   return (
     <Box flexDirection="column" gap={1}>
       <Text color={tokens.muted}>{subtitle}</Text>
-      <RadioGroup value={value} onChange={onChange} isActive={isActive}>
+      {fallbackNotice ? (
+        <Text color={tokens.warning}>{fallbackNotice} Press r to retry.</Text>
+      ) : null}
+      <RadioGroup
+        value={value}
+        onChange={onChange}
+        isActive={isActive}
+        maxVisibleItems={Math.max(1, rows - MODEL_STEP_RESERVED_ROWS)}
+      >
         {models.map((model) => (
           <RadioGroup.Item
             key={model.id}

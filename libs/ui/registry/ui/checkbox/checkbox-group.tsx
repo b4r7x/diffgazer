@@ -22,6 +22,7 @@ import { isHTMLElementForContainer, mergeIds, resolveAriaInvalid } from "@/lib/a
 import {
   getEnabledSelectableCollectionItems,
   resolveSelectableCollectionItem,
+  useFieldsetDisabled,
   useSelectableCollection,
 } from "@/lib/selectable-collection";
 import { type SelectableVariant, selectableLabelVariants } from "@/lib/selectable-variants";
@@ -137,6 +138,8 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
   const generatedId = useId();
   const labelId = `${generatedId}-label`;
   const hasAutoFocusedRef = useRef(false);
+  const fieldsetDisabled = useFieldsetDisabled(containerRef);
+  const isDisabled = disabled || fieldsetDisabled;
   const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
   // Read through a ref so the dev-mode unregistered-value guard does not pull
   // `items` into the stable `toggle` callback's deps.
@@ -146,27 +149,48 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
     itemsRef.current = items;
   });
 
-  const [value, setValue] = useControllableState<T[]>({
+  const [value, setValue, , resetValue] = useControllableState<T[]>({
     value: "value" in props ? (controlledValue ?? []) : undefined,
     controlled: "value" in props,
     defaultValue,
     onChange,
   });
   const [nativeInvalid, setNativeInvalid] = useState(false);
-  useFormReset(
+  const enabledItemValues = new Set(
+    getEnabledSelectableCollectionItems(items, isDisabled).map((item) => item.value),
+  );
+  const hasValidSelectedValue = value.some((itemValue) => enabledItemValues.has(itemValue));
+  const isValueControlled = "value" in props;
+  const controlledFormReset = isValueControlled
+    ? {
+        syncResetBaseline: () => {
+          const selectedValues = new Set<string>(value);
+          for (const input of containerRef.current?.querySelectorAll<HTMLInputElement>(
+            'input[data-slot="checkbox-form-mirror"]',
+          ) ?? []) {
+            const item = input.nextElementSibling;
+            if (!item?.hasAttribute("data-diffgazer-checkbox-group-item")) continue;
+            if (item.closest('[data-slot="checkbox-group"]') !== containerRef.current) continue;
+            input.defaultChecked = selectedValues.has(input.value);
+          }
+          const validation = containerRef.current?.querySelector<HTMLInputElement>(
+            ':scope > input[data-slot="checkbox-group-validation"]',
+          );
+          if (validation) validation.defaultChecked = hasValidSelectedValue;
+        },
+        onReset: () => setNativeInvalid(false),
+      }
+    : undefined;
+  const invalidatePendingReset = useFormReset(
     containerRef,
     defaultValue,
     (value) => {
       setNativeInvalid(false);
-      setValue(value);
+      resetValue(value);
     },
-    !("value" in props),
+    !isValueControlled,
+    controlledFormReset,
   );
-
-  const enabledItemValues = new Set(
-    getEnabledSelectableCollectionItems(items, disabled).map((item) => item.value),
-  );
-  const hasValidSelectedValue = value.some((itemValue) => enabledItemValues.has(itemValue));
   const resolvedAriaLabelledBy = ariaLabel
     ? undefined
     : mergeIds(ariaLabelledBy, label ? labelId : undefined);
@@ -182,7 +206,7 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
     containerRef,
     role: "checkbox",
     wrap,
-    enabled: keyboardNavigation && !disabled,
+    enabled: keyboardNavigation && !isDisabled,
     onNavigationBoundaryReached,
     highlighted: highlightedValue,
     onHighlightChange: setHighlightedValue,
@@ -193,13 +217,13 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
   });
 
   useEffect(() => {
-    if (!autoFocus || !keyboardNavigation || disabled) {
+    if (!autoFocus || !keyboardNavigation || isDisabled) {
       hasAutoFocusedRef.current = false;
       return;
     }
     if (hasAutoFocusedRef.current) return;
 
-    const activeItems = getEnabledSelectableCollectionItems(items, disabled);
+    const activeItems = getEnabledSelectableCollectionItems(items, isDisabled);
     const target = resolveSelectableCollectionItem(activeItems, highlightedValue, ...value);
     if (!target?.element) return;
 
@@ -209,7 +233,7 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
   }, [
     autoFocus,
     keyboardNavigation,
-    disabled,
+    isDisabled,
     items,
     highlightedValue,
     value,
@@ -218,12 +242,13 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
 
   const toggle = useCallback(
     (itemValue: string) => {
-      if (disabled) return;
+      if (isDisabled) return;
       warnUnregisteredValue(
         "CheckboxGroup",
         itemValue,
         itemsRef.current.map((item) => item.value),
       );
+      invalidatePendingReset();
       setNativeInvalid(false);
       setValue((cur) => {
         const nextValue = itemValue as T;
@@ -231,7 +256,7 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
         return selected ? cur.filter((v) => v !== itemValue) : [...cur, nextValue];
       });
     },
-    [disabled, setValue],
+    [invalidatePendingReset, isDisabled, setValue],
   );
 
   const handleKeyDown = (event: ReactKeyboardEvent) => {
@@ -252,7 +277,7 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
       toggle,
       registerItem,
       unregisterItem,
-      disabled,
+      disabled: isDisabled,
       size,
       variant,
       strikethrough,
@@ -264,7 +289,7 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
       toggle,
       registerItem,
       unregisterItem,
-      disabled,
+      isDisabled,
       size,
       variant,
       strikethrough,
@@ -292,10 +317,11 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
         {...rootProps}
         ref={composedRef}
         role="group"
+        data-slot="checkbox-group"
         data-diffgazer-selectable-owner="checkbox"
         aria-label={ariaLabel}
         aria-labelledby={resolvedAriaLabelledBy}
-        aria-disabled={disabled || undefined}
+        aria-disabled={isDisabled || undefined}
         aria-invalid={resolveAriaInvalid(
           ariaInvalid,
           nativeInvalid && required && !hasValidSelectedValue,
@@ -308,17 +334,18 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
           // so naming and invalid state live on the visible role="group".
           <input
             type="checkbox"
+            data-slot="checkbox-group-validation"
             required
             checked={hasValidSelectedValue}
-            disabled={disabled}
+            disabled={isDisabled}
             tabIndex={-1}
             aria-hidden={true}
-            readOnly
             className="sr-only"
+            onChange={() => {}}
             onInvalid={(event) => {
               event.preventDefault();
               setNativeInvalid(true);
-              getEnabledSelectableCollectionItems(items, disabled)[0]?.element?.focus();
+              getEnabledSelectableCollectionItems(items, isDisabled)[0]?.element?.focus();
             }}
           />
         )}

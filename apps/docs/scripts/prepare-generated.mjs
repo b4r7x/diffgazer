@@ -5,7 +5,6 @@ import {
   collectMissingWorkspaceArtifactFiles,
   getArtifactLibraries,
   readDocsLibrariesConfig,
-  resolveArtifactSyncMode,
 } from "@diffgazer/registry";
 import { generateSectionsWithIndex } from "./generate-sections-with-index.mjs";
 import { syncArtifacts } from "./sync-artifacts.mjs";
@@ -17,7 +16,6 @@ const DOCS_LIBRARIES_CONFIG_PATH = resolve(DOCS_ROOT, "config/docs-libraries.jso
 
 export function shouldPrepareLibraryArtifacts(options = {}) {
   const env = options.env ?? process.env;
-  const docsRoot = options.docsRoot ?? DOCS_ROOT;
   const workspaceRoot = options.workspaceRoot ?? WORKSPACE_ROOT;
   const configPath = options.configPath ?? DOCS_LIBRARIES_CONFIG_PATH;
   const warn = options.warn ?? console.warn;
@@ -26,12 +24,6 @@ export function shouldPrepareLibraryArtifacts(options = {}) {
 
   const docsLibraries = readDocsLibrariesConfig(configPath);
   const artifactLibraries = getArtifactLibraries(docsLibraries);
-  const syncMode = resolveArtifactSyncMode(env, {
-    libraries: artifactLibraries,
-    resolveFromDir: docsRoot,
-  });
-  if (syncMode !== "workspace") return false;
-
   const missingFiles = collectMissingWorkspaceArtifactFiles(workspaceRoot, artifactLibraries);
   if (missingFiles.length === 0) return false;
 

@@ -3,7 +3,11 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { computeFilledCount, useBlockBarContext } from "./block-bar-context";
+import {
+  computeFilledCount,
+  useBlockBarContext,
+  useBlockBarSegmentCount,
+} from "./block-bar-context";
 
 const segmentVariants = cva("", {
   variants: {
@@ -44,7 +48,8 @@ export function BlockBarSegment({
   ...props
 }: BlockBarSegmentProps) {
   const { max, barWidth, filledChar } = useBlockBarContext();
-  const chars = computeFilledCount(value, max, barWidth);
+  const allocatedCount = useBlockBarSegmentCount();
+  const chars = allocatedCount ?? computeFilledCount(value, max, barWidth);
   const displayChar = char ?? filledChar;
 
   return (

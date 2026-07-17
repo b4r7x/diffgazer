@@ -7,7 +7,7 @@ export const fieldDoc: ComponentDoc = {
     {
       title: "Form Contract",
       content:
-        "Field.Control clones one control element and applies id, required, disabled, aria-invalid, and aria-describedby from Field.Root. Use it with Input, Textarea, Select, or another control that accepts those props. A consumer id on the control child wins: Field keeps the child's own id and points Field.Label's htmlFor at it. Slots register through context, so wrapping Field.Label, Field.Description, or Field.Error in a layout element keeps the ARIA wiring intact.",
+        "Field.Control clones one control element and applies id, required, disabled, aria-invalid, and aria-describedby from Field.Root. A disabled Field.Root remains authoritative even if the child explicitly sets disabled={false}. Use Field.Control with Input, Textarea, Select, or another control that accepts those props. A consumer id on the control child wins: Field keeps the child's own id and points Field.Label's htmlFor at it. Slots register through context, so wrapping Field.Label, Field.Description, or Field.Error in a layout element keeps the ARIA wiring intact.",
     },
     {
       title: "InputGroup vs Field",
@@ -48,7 +48,8 @@ export const fieldDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: null,
-        description: "Disables the control and applies data-disabled to the field root.",
+        description:
+          "Disables the control and applies data-disabled to the field root. This remains authoritative when the child sets disabled={false}.",
       },
     },
     "Field.Label": {

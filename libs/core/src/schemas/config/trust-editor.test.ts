@@ -16,11 +16,11 @@ function makeTrust(overrides: Partial<TrustConfig> = {}): TrustConfig {
 }
 
 describe("editorKey", () => {
-  test("uses trust.projectId and trustedAt when trust is present", () => {
+  test("uses current and trusted project identities when trust is present", () => {
     expect(
       getInitialDraft({ projectId: "proj-1", repoRoot: "/work/proj", trust: makeTrust() })
         .editorKey,
-    ).toBe(`proj-1:${TRUSTED_AT}`);
+    ).toBe(`proj-1:/work/proj:proj-1:/work/proj:${TRUSTED_AT}`);
   });
 
   test("falls back to projectId/repoRoot composite when untrusted", () => {
@@ -47,7 +47,7 @@ describe("getInitialDraft", () => {
     });
     expect(draft.capabilities.readFiles).toBe(true);
     expect(draft.capabilities.runCommands).toBe(false);
-    expect(draft.editorKey).toBe(`proj-1:${TRUSTED_AT}`);
+    expect(draft.editorKey).toBe(`proj-1:/work/proj:proj-1:/work/proj:${TRUSTED_AT}`);
   });
 
   test("defaults to no capabilities when project is untrusted", () => {
@@ -93,11 +93,11 @@ describe("resolveEditorView", () => {
       trust: refreshedTrust,
     };
     const view = resolveEditorView(draft, refreshedInput);
-    expect(view.editorKey).toBe(`proj-1:${refreshedTrust.trustedAt}`);
+    expect(view.editorKey).toBe(`proj-1:/work/proj:proj-1:/work/proj:${refreshedTrust.trustedAt}`);
     expect(view.capabilities).toEqual({ readFiles: true, runCommands: false });
   });
 
-  test("isTrusted reflects current trust.capabilities.readFiles only", () => {
+  test("isTrusted reflects current repository read access", () => {
     const view = resolveEditorView(
       { editorKey: "irrelevant", capabilities: { readFiles: false, runCommands: false } },
       {
@@ -106,6 +106,28 @@ describe("resolveEditorView", () => {
         trust: makeTrust({ capabilities: { readFiles: false, runCommands: false } }),
       },
     );
+    expect(view.isTrusted).toBe(false);
+  });
+
+  test("resets a stale draft and access state when the repository root moves", () => {
+    const trust = makeTrust();
+    const originalInput = {
+      projectId: "proj-1",
+      repoRoot: "/work/proj",
+      trust,
+    };
+    const draft = {
+      editorKey: getInitialDraft(originalInput).editorKey,
+      capabilities: { readFiles: true, runCommands: false },
+    };
+
+    const view = resolveEditorView(draft, {
+      ...originalInput,
+      repoRoot: "/work/moved-proj",
+    });
+
+    expect(view.editorKey).not.toBe(draft.editorKey);
+    expect(view.capabilities).toEqual({ readFiles: false, runCommands: false });
     expect(view.isTrusted).toBe(false);
   });
 });

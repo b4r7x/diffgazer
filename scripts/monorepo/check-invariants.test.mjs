@@ -1,10 +1,25 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, test } from "node:test";
 import {
+  checkCoreUsesExplicitSubpathExports,
+  checkDependencyOverridesDocumented,
+  checkDockerArtifactFormatterInputs,
+  checkDockerFrozenInstallsCopyPatches,
+  checkDocsE2eScreenshotsUseBaselineDirectory,
+  checkInternalLocalDepsUseWorkspaceProtocol,
+  checkLicenseFilesMatch,
+  checkNoLinkOrFileLocalDeps,
+  checkNoNestedGitDirectories,
+  checkNoNestedPnpmLocks,
+  checkNoNestedPnpmWorkspaces,
+  checkPnpmPinsMatchRootPackageManager,
   checkSecurityReportingChannelsAgree,
+  checkTurboDocsBuildIncludesOutput,
+  checkWebBuildUsesTurbo,
   INVARIANT_CHECKS,
   runInvariantChecks,
 } from "./check-invariants.mjs";
@@ -22,6 +37,8 @@ const PACKAGE_FILES = [
   "libs/ui/package.json",
 ];
 
+const FIXTURE_REPO_FILES = ["Dockerfile", "deploy/landing.Dockerfile"];
+
 const EMPTY_COMMAND_OUTPUTS = {
   gitLsFilesStaged: "",
   nestedRepoConfig: "",
@@ -29,6 +46,11 @@ const EMPTY_COMMAND_OUTPUTS = {
   nestedLocks: "",
   nestedWorkspaces: "",
 };
+
+const STALE_DOCS_E2E_SNAPSHOT_PATH =
+  "apps/docs/tests/e2e/select.e2e.ts-snapshots/select-listbox-open-chromium-darwin.png";
+const CANONICAL_DOCS_E2E_SNAPSHOT_PATH =
+  "apps/docs/tests/e2e/baselines/select.e2e.ts-snapshots/select-listbox-open-chromium-darwin.png";
 
 const tempRoots = [];
 
@@ -54,6 +76,10 @@ function writeJson(root, relPath, value) {
   writeText(root, relPath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+function trackedFileEntry(path) {
+  return `100644 ${"a".repeat(40)} 0\t${path}\n`;
+}
+
 function readPackage(root, relPath) {
   return JSON.parse(readFileSync(join(root, relPath), "utf8"));
 }
@@ -61,6 +87,40 @@ function readPackage(root, relPath) {
 function updatePackage(root, relPath, update) {
   writeJson(root, relPath, update(readPackage(root, relPath)));
 }
+
+for (const protocol of ["file:../fixture", "link:../fixture"]) {
+  test(`rejects ${protocol.split(":")[0]}: entries in optionalDependencies`, () => {
+    const root = createConformingFixture();
+    updatePackage(root, "apps/docs/package.json", (pkg) => ({
+      ...pkg,
+      optionalDependencies: { fixture: protocol },
+    }));
+
+    const result = resultByName(
+      runFixture(root, { checks: [checkNoLinkOrFileLocalDeps] }),
+      "no link: or file: local deps",
+    );
+
+    assert.equal(result.ok, false);
+    assert.match(result.details, /optional|fixture|file:|link:/);
+  });
+}
+
+test("requires workspace: for internal optionalDependencies", () => {
+  const root = createConformingFixture();
+  updatePackage(root, "apps/docs/package.json", (pkg) => ({
+    ...pkg,
+    optionalDependencies: { "@diffgazer/ui": "^1.0.0" },
+  }));
+
+  const result = resultByName(
+    runFixture(root, { checks: [checkInternalLocalDepsUseWorkspaceProtocol] }),
+    "internal local deps use workspace protocol",
+  );
+
+  assert.equal(result.ok, false);
+  assert.match(result.details, /@diffgazer\/ui/);
+});
 
 function createWorkspacePackage(root, relPath, pkg) {
   writeJson(root, relPath, pkg);
@@ -78,6 +138,7 @@ function createConformingFixture() {
 
   writeJson(root, "package.json", {
     private: true,
+    packageManager: "pnpm@11.13.0",
     repository: { url: "git+https://github.com/b4r7x/diffgazer.git" },
     homepage: "https://github.com/b4r7x/diffgazer",
     bugs: { url: "https://github.com/b4r7x/diffgazer/issues" },
@@ -85,6 +146,15 @@ function createConformingFixture() {
   });
   writeText(root, "SECURITY.md", "security\n");
   writeText(root, "SUPPORT.md", "support\n");
+  const dockerfile = [
+    "COPY biome.json .gitignore ./",
+    "COPY patches/ patches/",
+    "RUN corepack prepare pnpm@11.13.0 --activate",
+    "RUN pnpm install --frozen-lockfile",
+    "",
+  ].join("\n");
+  writeText(root, "Dockerfile", dockerfile);
+  writeText(root, "deploy/landing.Dockerfile", dockerfile);
   writeText(
     root,
     "pnpm-workspace.yaml",
@@ -95,6 +165,8 @@ function createConformingFixture() {
       "  - libs/*",
       "  - libs/keys/artifacts",
       "  - libs/keys/examples/*",
+      "patchedDependencies:",
+      "  nitro@3.0.260429-beta: patches/nitro@3.0.260429-beta.patch",
       "",
     ].join("\n"),
   );
@@ -121,6 +193,9 @@ function createConformingFixture() {
   createWorkspacePackage(root, "libs/core/package.json", {
     name: "@diffgazer/core",
     private: true,
+    exports: {
+      "./errors": "./dist/errors.js",
+    },
   });
   createWorkspacePackage(root, "libs/registry/package.json", {
     name: "@diffgazer/registry",
@@ -209,6 +284,7 @@ function runFixture(root, options = {}) {
   return runInvariantChecks({
     rootDir: root,
     packageFiles: options.packageFiles ?? PACKAGE_FILES,
+    repoFiles: options.repoFiles ?? FIXTURE_REPO_FILES,
     commandOutputs: { ...EMPTY_COMMAND_OUTPUTS, ...(options.commandOutputs ?? {}) },
     checks: options.checks,
   });
@@ -227,6 +303,430 @@ test("the conforming fixture passes every invariant", () => {
   assert.deepEqual(failures, []);
 });
 
+test("core export invariant accepts any number of explicit named subpaths", () => {
+  const root = createConformingFixture();
+  updatePackage(root, "libs/core/package.json", (pkg) => ({
+    ...pkg,
+    exports: {
+      ...pkg.exports,
+      "./review": "./dist/review.js",
+      "./schemas/config": "./dist/schemas/config.js",
+    },
+  }));
+
+  const result = resultByName(
+    runFixture(root, { checks: [checkCoreUsesExplicitSubpathExports] }),
+    "@diffgazer/core uses explicit subpath exports without a root entry",
+  );
+
+  assert.equal(result.ok, true);
+});
+
+for (const [caseName, exports] of [
+  ["root entry", { ".": "./dist/index.js", "./errors": "./dist/errors.js" }],
+  ["wildcard entry", { "./*": "./dist/*.js" }],
+  ["empty exports", {}],
+]) {
+  test(`core export invariant rejects ${caseName}`, () => {
+    const root = createConformingFixture();
+    updatePackage(root, "libs/core/package.json", (pkg) => ({ ...pkg, exports }));
+
+    const result = resultByName(
+      runFixture(root, { checks: [checkCoreUsesExplicitSubpathExports] }),
+      "@diffgazer/core uses explicit subpath exports without a root entry",
+    );
+
+    assert.equal(result.ok, false);
+  });
+}
+
+test("license validation rejects a declared license when the sibling LICENSE file is missing", () => {
+  const root = createConformingFixture();
+  rmSync(join(root, "libs/ui/LICENSE"));
+
+  const result = resultByName(
+    runFixture(root, { checks: [checkLicenseFilesMatch] }),
+    "package license fields match LICENSE files",
+  );
+
+  assert.equal(result.ok, false);
+  assert.match(result.details, /libs\/ui\/package\.json.*libs\/ui\/LICENSE is missing/);
+});
+
+test("nested metadata scan ignores git-ignored paths and reports nonignored paths", () => {
+  const root = createConformingFixture();
+  execFileSync("git", ["init", "--quiet"], { cwd: root });
+  writeText(root, ".gitignore", "ignored-fixtures/\n");
+
+  for (const base of ["ignored-fixtures/repo", "visible-fixtures/repo"]) {
+    mkdirSync(join(root, base, ".git"), { recursive: true });
+    writeText(root, `${base}/pnpm-lock.yaml`, "lockfileVersion: '9.0'\n");
+    writeText(root, `${base}/pnpm-workspace.yaml`, "packages: []\n");
+  }
+
+  const checks = [checkNoNestedGitDirectories, checkNoNestedPnpmLocks, checkNoNestedPnpmWorkspaces];
+  const scan = () =>
+    runInvariantChecks({
+      rootDir: root,
+      packageFiles: PACKAGE_FILES,
+      commandOutputs: { gitLsFilesStaged: "", nestedRepoConfig: "" },
+      checks,
+    });
+
+  for (const result of scan()) {
+    assert.equal(result.ok, false);
+    assert.match(result.details, /visible-fixtures\/repo/);
+    assert.doesNotMatch(result.details, /ignored-fixtures\/repo/);
+  }
+
+  rmSync(join(root, "visible-fixtures"), { recursive: true });
+  assert.deepEqual(
+    scan().map(({ ok }) => ok),
+    [true, true, true],
+  );
+});
+
+test("nested metadata scan prunes nuke audit workspaces but still reports authored topology", () => {
+  const root = createConformingFixture();
+  execFileSync("git", ["init", "--quiet"], { cwd: root });
+
+  for (const base of [".nuke/audit-probe/repo", "visible-fixtures/repo"]) {
+    mkdirSync(join(root, base, ".git"), { recursive: true });
+    writeText(root, `${base}/pnpm-lock.yaml`, "lockfileVersion: '9.0'\n");
+    writeText(root, `${base}/pnpm-workspace.yaml`, "packages: []\n");
+  }
+
+  const checks = [checkNoNestedGitDirectories, checkNoNestedPnpmLocks, checkNoNestedPnpmWorkspaces];
+  const scan = () =>
+    runInvariantChecks({
+      rootDir: root,
+      packageFiles: PACKAGE_FILES,
+      commandOutputs: { gitLsFilesStaged: "", nestedRepoConfig: "" },
+      checks,
+    });
+
+  for (const result of scan()) {
+    assert.equal(result.ok, false);
+    assert.match(result.details, /visible-fixtures\/repo/);
+    assert.doesNotMatch(result.details, /\.nuke\/audit-probe/);
+  }
+
+  rmSync(join(root, "visible-fixtures"), { recursive: true });
+  assert.deepEqual(
+    scan().map(({ ok }) => ok),
+    [true, true, true],
+  );
+});
+
+test("docs e2e snapshot invariant rejects the stale default Playwright path", () => {
+  const root = createConformingFixture();
+  writeText(root, STALE_DOCS_E2E_SNAPSHOT_PATH, "stale");
+  writeText(root, CANONICAL_DOCS_E2E_SNAPSHOT_PATH, "canonical");
+
+  const stale = resultByName(
+    runFixture(root, {
+      commandOutputs: {
+        gitLsFilesStaged: trackedFileEntry(STALE_DOCS_E2E_SNAPSHOT_PATH),
+      },
+      checks: [checkDocsE2eScreenshotsUseBaselineDirectory],
+    }),
+    "docs e2e screenshots use configured baseline directory",
+  );
+  const canonical = resultByName(
+    runFixture(root, {
+      commandOutputs: {
+        gitLsFilesStaged: trackedFileEntry(CANONICAL_DOCS_E2E_SNAPSHOT_PATH),
+      },
+      checks: [checkDocsE2eScreenshotsUseBaselineDirectory],
+    }),
+    "docs e2e screenshots use configured baseline directory",
+  );
+
+  assert.equal(stale.ok, false);
+  assert.match(stale.details, /apps\/docs\/tests\/e2e\/select\.e2e\.ts-snapshots/);
+  assert.equal(canonical.ok, true);
+});
+
+test("dependency overrides must use the pnpm 11 workspace location", () => {
+  const root = createConformingFixture();
+  updatePackage(root, "package.json", (pkg) => ({
+    ...pkg,
+    pnpm: { overrides: { leftpad: "^1.0.0" } },
+  }));
+
+  const [result] = runFixture(root, { checks: [checkDependencyOverridesDocumented] });
+
+  assert.equal(result.ok, false);
+  assert.match(result.details, /pnpm-workspace\.yaml/);
+});
+
+test("top-level package overrides are rejected under pnpm 11", () => {
+  const root = createConformingFixture();
+  updatePackage(root, "package.json", (pkg) => ({
+    ...pkg,
+    overrides: { leftpad: "^1.0.0" },
+  }));
+
+  const [result] = runFixture(root, { checks: [checkDependencyOverridesDocumented] });
+
+  assert.equal(result.ok, false);
+  assert.match(result.details, /pnpm-workspace\.yaml/);
+});
+
+test("Docker pnpm pins must match the root packageManager", () => {
+  const root = createConformingFixture();
+  writeText(root, "deploy/landing.Dockerfile", "RUN corepack prepare pnpm@10.28.2 --activate\n");
+
+  const [result] = runFixture(root, { checks: [checkPnpmPinsMatchRootPackageManager] });
+
+  assert.equal(result.ok, false);
+  assert.match(result.details, /deploy\/landing\.Dockerfile/);
+});
+
+test("Docker artifact builds must copy formatter inputs", () => {
+  const root = createConformingFixture();
+  writeText(
+    root,
+    "deploy/landing.Dockerfile",
+    ["COPY biome.json ./", "RUN corepack prepare pnpm@11.13.0 --activate", ""].join("\n"),
+  );
+
+  const [result] = runFixture(root, { checks: [checkDockerArtifactFormatterInputs] });
+
+  assert.equal(result.ok, false);
+  assert.match(result.details, /deploy\/landing\.Dockerfile: \.gitignore/);
+});
+
+test("Docker frozen installs must copy configured patches before installing", () => {
+  const root = createConformingFixture();
+  writeText(
+    root,
+    "deploy/landing.Dockerfile",
+    [
+      "COPY biome.json .gitignore ./",
+      "RUN corepack prepare pnpm@11.13.0 --activate",
+      "RUN pnpm install --frozen-lockfile",
+      "COPY patches/ patches/",
+      "",
+    ].join("\n"),
+  );
+
+  const [result] = runFixture(root, { checks: [checkDockerFrozenInstallsCopyPatches] });
+
+  assert.equal(result.ok, false);
+  assert.match(
+    result.details,
+    /deploy\/landing\.Dockerfile: stage 0: patches\/nitro@3\.0\.260429-beta\.patch/,
+  );
+});
+
+test("Docker patch validation rejects copies to a path pnpm does not read", () => {
+  const root = createConformingFixture();
+  writeText(
+    root,
+    "deploy/landing.Dockerfile",
+    [
+      "FROM node:22-alpine",
+      "WORKDIR /app",
+      "COPY patches/ /tmp/patches/",
+      "RUN pnpm install --frozen-lockfile",
+      "",
+    ].join("\n"),
+  );
+
+  const [result] = runFixture(root, { checks: [checkDockerFrozenInstallsCopyPatches] });
+
+  assert.equal(result.ok, false);
+  assert.match(result.details, /deploy\/landing\.Dockerfile: stage 1/);
+});
+
+test("Docker patch validation retains the workdir where a relative copy occurred", () => {
+  const root = createConformingFixture();
+  writeText(
+    root,
+    "deploy/landing.Dockerfile",
+    [
+      "FROM node:22-alpine",
+      "WORKDIR /app",
+      "COPY patches/ patches/",
+      "WORKDIR /other",
+      "RUN pnpm install --frozen-lockfile",
+      "",
+    ].join("\n"),
+  );
+
+  const [result] = runFixture(root, { checks: [checkDockerFrozenInstallsCopyPatches] });
+
+  assert.equal(result.ok, false);
+  assert.match(result.details, /deploy\/landing\.Dockerfile: stage 1/);
+});
+
+test("Docker patch validation tracks a relative workdir after a copy", () => {
+  const root = createConformingFixture();
+  writeText(
+    root,
+    "deploy/landing.Dockerfile",
+    [
+      "FROM node:22-alpine",
+      "COPY patches/ patches/",
+      "WORKDIR app",
+      "RUN pnpm install --frozen-lockfile",
+      "",
+    ].join("\n"),
+  );
+
+  const [result] = runFixture(root, { checks: [checkDockerFrozenInstallsCopyPatches] });
+
+  assert.equal(result.ok, false);
+  assert.match(result.details, /deploy\/landing\.Dockerfile: stage 1/);
+});
+
+for (const [caseName, runInstruction] of [
+  ["chained command", "RUN cd /app && pnpm install --prod --frozen-lockfile"],
+  ["BuildKit option", "RUN --mount=type=cache,target=/pnpm/store pnpm install --frozen-lockfile"],
+  [
+    "multiline command",
+    ["RUN corepack enable && \\", "    pnpm install \\", "      --frozen-lockfile"].join("\n"),
+  ],
+  ["exec-form command", 'RUN ["pnpm", "install", "--prod", "--frozen-lockfile"]'],
+]) {
+  test(`Docker patch validation detects a frozen install in ${caseName}`, () => {
+    const root = createConformingFixture();
+    writeText(
+      root,
+      "deploy/landing.Dockerfile",
+      [
+        "FROM node:22-alpine",
+        "COPY biome.json .gitignore ./",
+        "RUN corepack prepare pnpm@11.13.0 --activate",
+        runInstruction,
+        "",
+      ].join("\n"),
+    );
+
+    const [result] = runFixture(root, { checks: [checkDockerFrozenInstallsCopyPatches] });
+
+    assert.equal(result.ok, false);
+    assert.match(
+      result.details,
+      /deploy\/landing\.Dockerfile: stage 1: patches\/nitro@3\.0\.260429-beta\.patch/,
+    );
+  });
+}
+
+for (const runInstruction of [
+  'RUN echo "pnpm install --frozen-lockfile"',
+  "RUN pnpm install --frozen-lockfile=false",
+]) {
+  test(`Docker patch validation ignores non-install text: ${runInstruction}`, () => {
+    const root = createConformingFixture();
+    writeText(root, "deploy/landing.Dockerfile", `${runInstruction}\n`);
+
+    const [result] = runFixture(root, { checks: [checkDockerFrozenInstallsCopyPatches] });
+
+    assert.equal(result.ok, true);
+  });
+}
+
+test("Docker patch validation discovers additional frozen-install Dockerfiles", () => {
+  const root = createConformingFixture();
+  const dockerfile = "deploy/preview.Dockerfile";
+  writeText(
+    root,
+    dockerfile,
+    ["FROM node:22-alpine", "RUN pnpm install --frozen-lockfile", ""].join("\n"),
+  );
+
+  const [result] = runFixture(root, {
+    repoFiles: [...FIXTURE_REPO_FILES, dockerfile],
+    checks: [checkDockerFrozenInstallsCopyPatches],
+  });
+
+  assert.equal(result.ok, false);
+  assert.match(result.details, /deploy\/preview\.Dockerfile: stage 1/);
+});
+
+test("Docker patch validation resets copied inputs for every build stage", () => {
+  const root = createConformingFixture();
+  writeText(
+    root,
+    "deploy/landing.Dockerfile",
+    [
+      "FROM node:22-alpine AS first",
+      "COPY patches/ patches/",
+      "RUN pnpm install --frozen-lockfile",
+      "FROM node:22-alpine AS second",
+      "RUN pnpm install --frozen-lockfile",
+      "",
+    ].join("\n"),
+  );
+
+  const [result] = runFixture(root, { checks: [checkDockerFrozenInstallsCopyPatches] });
+
+  assert.equal(result.ok, false);
+  assert.match(result.details, /deploy\/landing\.Dockerfile: stage 2/);
+  assert.doesNotMatch(result.details, /deploy\/landing\.Dockerfile: stage 1/);
+});
+
+test("docs build output rejects paths that only contain the .output sentinel", () => {
+  const root = createConformingFixture();
+  writeJson(root, "turbo.json", {
+    tasks: { "@diffgazer/docs#build": { outputs: ["dist/**", "not.output/**"] } },
+  });
+
+  const [result] = runFixture(root, { checks: [checkTurboDocsBuildIncludesOutput] });
+
+  assert.equal(result.ok, false);
+});
+
+for (const script of [
+  "echo turbo run build --filter=@diffgazer/web",
+  "# turbo run build --filter=@diffgazer/web",
+  "turbo run build --filter=@diffgazer/docs",
+  "turbo run test --filter=@diffgazer/web",
+  "turbo run build --filter=@diffgazer/web --dry-run",
+  "turbo run build --filter=@diffgazer/web --dry-run=json",
+  "turbo run build --filter=@diffgazer/web --dry",
+  "turbo run build --filter=@diffgazer/web --dry=json",
+  "turbo run build --filter=@diffgazer/web --graph",
+  "turbo run build --filter=@diffgazer/web --graph=graph.dot",
+  "turbo run build --filter=@diffgazer/web --graph graph.dot",
+  "turbo run build --filter=@diffgazer/web --help",
+  "turbo run build --filter=@diffgazer/web -h",
+  "turbo run build --filter=@diffgazer/web --version",
+  "turbo run build --filter=@diffgazer/web -v",
+  "turbo run build --filter=@diffgazer/web --force",
+]) {
+  test(`web build rejects non-semantic Turbo command: ${script}`, () => {
+    const root = createConformingFixture();
+    updatePackage(root, "package.json", (pkg) => ({
+      ...pkg,
+      scripts: { ...pkg.scripts, "web:build": script },
+    }));
+
+    const [result] = runFixture(root, { checks: [checkWebBuildUsesTurbo] });
+
+    assert.equal(result.ok, false);
+  });
+}
+
+for (const script of [
+  "turbo run build --filter=@diffgazer/web",
+  "pnpm exec turbo run build --filter @diffgazer/web",
+]) {
+  test(`web build accepts the Web Turbo dependency chain: ${script}`, () => {
+    const root = createConformingFixture();
+    updatePackage(root, "package.json", (pkg) => ({
+      ...pkg,
+      scripts: { ...pkg.scripts, "web:build": script },
+    }));
+
+    const [result] = runFixture(root, { checks: [checkWebBuildUsesTurbo] });
+
+    assert.equal(result.ok, true);
+  });
+}
+
 const failureCases = [
   {
     name: "root workspace file exists",
@@ -240,6 +740,38 @@ const failureCases = [
     name: "root repository metadata",
     mutate: (root) =>
       updatePackage(root, "package.json", (pkg) => ({ ...pkg, homepage: "https://example.com" })),
+  },
+  {
+    name: "pnpm pins match root packageManager",
+    mutate: (root) =>
+      writeText(
+        root,
+        "deploy/landing.Dockerfile",
+        "RUN corepack prepare pnpm@10.28.2 --activate\n",
+      ),
+  },
+  {
+    name: "Docker artifact builds copy formatter inputs",
+    mutate: (root) =>
+      writeText(
+        root,
+        "deploy/landing.Dockerfile",
+        ["COPY biome.json ./", "RUN corepack prepare pnpm@11.13.0 --activate", ""].join("\n"),
+      ),
+  },
+  {
+    name: "Docker frozen installs copy configured patches",
+    mutate: (root) =>
+      writeText(
+        root,
+        "deploy/landing.Dockerfile",
+        [
+          "COPY biome.json .gitignore ./",
+          "RUN corepack prepare pnpm@11.13.0 --activate",
+          "RUN pnpm install --frozen-lockfile",
+          "",
+        ].join("\n"),
+      ),
   },
   {
     name: "workspace globs match target roots",
@@ -268,6 +800,15 @@ const failureCases = [
   {
     name: "no nested pnpm-workspace.yaml",
     options: { commandOutputs: { nestedWorkspaces: "./vendor/pnpm-workspace.yaml\n" } },
+  },
+  {
+    name: "docs e2e screenshots use configured baseline directory",
+    mutate: (root) => writeText(root, STALE_DOCS_E2E_SNAPSHOT_PATH, "stale"),
+    options: {
+      commandOutputs: {
+        gitLsFilesStaged: trackedFileEntry(STALE_DOCS_E2E_SNAPSHOT_PATH),
+      },
+    },
   },
   {
     name: "no link: or file: local deps",
@@ -299,6 +840,14 @@ const failureCases = [
     name: "nested package.json files are documented exceptions",
     mutate: (root) => writeJson(root, "apps/web/fixtures/package.json", { name: "fixture" }),
     options: { packageFiles: [...PACKAGE_FILES, "apps/web/fixtures/package.json"] },
+  },
+  {
+    name: "@diffgazer/core uses explicit subpath exports without a root entry",
+    mutate: (root) =>
+      updatePackage(root, "libs/core/package.json", (pkg) => ({
+        ...pkg,
+        exports: { ...pkg.exports, ".": "./dist/index.js" },
+      })),
   },
   {
     name: "libs/ui/package.json: package metadata",
@@ -388,10 +937,11 @@ const failureCases = [
   {
     name: "dependency overrides match governance doc",
     mutate: (root) => {
-      updatePackage(root, "package.json", (pkg) => ({
-        ...pkg,
-        pnpm: { overrides: { leftpad: "^1.0.0" } },
-      }));
+      writeText(
+        root,
+        "pnpm-workspace.yaml",
+        "packages:\n  - apps/*\noverrides:\n  leftpad: ^1.0.0\n",
+      );
       writeText(
         root,
         "PACKAGE_GOVERNANCE.md",

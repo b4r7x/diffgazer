@@ -1,0 +1,18 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "accessible-text",
+  "title": "Accessible Text",
+  "description": "Detects whether React children contain text that can contribute to a control's accessible name.",
+  "files": [
+    {
+      "path": "registry/lib/accessible-text.ts",
+      "content": "import {\n  Children,\n  type CSSProperties,\n  isValidElement,\n  type ReactElement,\n  type ReactNode,\n} from \"react\";\n\ninterface TextContentProps {\n  \"aria-hidden\"?: boolean | \"true\" | \"false\";\n  children?: ReactNode;\n  hidden?: boolean;\n  style?: CSSProperties;\n}\n\nconst NON_NAMING_ELEMENTS = new Set([\"script\", \"style\", \"template\"]);\n\nfunction isHiddenFromAccessibleName(element: ReactElement<TextContentProps>): boolean {\n  const { hidden, style } = element.props;\n  if (hidden) return true;\n  if (element.props[\"aria-hidden\"] === true || element.props[\"aria-hidden\"] === \"true\") {\n    return true;\n  }\n  if (style?.display === \"none\" || style?.visibility === \"hidden\") return true;\n  return typeof element.type === \"string\" && NON_NAMING_ELEMENTS.has(element.type);\n}\n\nexport function hasAccessibleTextContent(node: ReactNode): boolean {\n  return Children.toArray(node).some((child) => {\n    if (typeof child === \"string\") return child.trim().length > 0;\n    if (typeof child === \"number\" || typeof child === \"bigint\") return true;\n    if (!isValidElement<TextContentProps>(child)) return false;\n    if (isHiddenFromAccessibleName(child)) return false;\n    return hasAccessibleTextContent(child.props.children);\n  });\n}\n",
+      "type": "registry:lib"
+    }
+  ],
+  "meta": {
+    "client": false,
+    "hidden": true
+  },
+  "type": "registry:lib"
+}

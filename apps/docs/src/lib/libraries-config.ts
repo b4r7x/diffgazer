@@ -3,7 +3,6 @@ import rawConfig from "../../config/docs-libraries.json";
 
 const ArtifactSourceSchema = z.object({
   workspaceDir: z.string().min(1),
-  packageName: z.string().min(1),
 });
 
 const InstallerSchema = z.object({
@@ -30,7 +29,23 @@ export const DocsLibrariesConfigSchema = z
   .refine((config) => config.libraries.some((library) => library.id === config.primaryLibraryId), {
     error: "primaryLibraryId must match one of libraries[].id",
     path: ["primaryLibraryId"],
-  });
+  })
+  .refine(
+    (config) =>
+      new Set(config.libraries.map((library) => library.id)).size === config.libraries.length,
+    {
+      error: "libraries[].id values must be unique",
+      path: ["libraries"],
+    },
+  )
+  .refine(
+    (config) =>
+      config.libraries.find((library) => library.id === config.primaryLibraryId)?.enabled === true,
+    {
+      error: "primaryLibraryId must refer to an enabled library",
+      path: ["primaryLibraryId"],
+    },
+  );
 
 export type ArtifactSourceConfig = z.infer<typeof ArtifactSourceSchema>;
 export type DocsLibraryConfigData = z.infer<typeof DocsLibraryConfigSchema>;

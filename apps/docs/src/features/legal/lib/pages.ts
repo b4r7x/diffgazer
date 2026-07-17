@@ -30,15 +30,6 @@ export function legalRouteOptions(slug: LegalPageSlug) {
       const { loadLegalPage } = await import("@/features/legal/lib/load-legal-page");
       const data = await loadLegalPage({ data: { slug } });
       if (!data) throw notFound();
-
-      if (typeof window !== "undefined") {
-        // Dynamic import: a static one would close a module cycle back into
-        // this file (page-view -> page-layout -> legal-sidebar ->
-        // LEGAL_LINKS) and TDZ at SSR module init.
-        const { legalClientLoader } = await import("@/features/legal/components/page-view");
-        await legalClientLoader.preload(data.path);
-      }
-
       return data;
     },
     head: ({ loaderData }: { loaderData?: LegalPageLoaderData }) => {

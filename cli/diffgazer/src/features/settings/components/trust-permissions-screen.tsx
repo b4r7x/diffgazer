@@ -120,7 +120,7 @@ function LoadedTrustPermissionsScreen({
                   disabled={isLoading}
                   isActive={isButtonActive(0)}
                 >
-                  {isSaving ? "[ Saving... ]" : "[ Save Changes ]"}
+                  {isSaving ? "Saving..." : "Save Changes"}
                 </Button>
                 <Button
                   variant="destructive"
@@ -128,7 +128,7 @@ function LoadedTrustPermissionsScreen({
                   disabled={isLoading}
                   isActive={isButtonActive(1)}
                 >
-                  {isRevoking ? "[ Revoking... ]" : "[ Revoke Trust ]"}
+                  {isRevoking ? "Revoking..." : "Revoke Trust"}
                 </Button>
               </Box>
               {statusMessage && (

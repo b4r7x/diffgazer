@@ -5,6 +5,8 @@ import { type ReactNode, useState } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
+import { tabsDoc } from "../../component-docs/tabs";
+import { SEGMENTED_VARIANTS } from "../../lib/segmented-variants";
 import { requireElement, requireValue } from "../../testing/assertions";
 import { Tabs } from "./index";
 import type { TabsProps } from "./tabs";
@@ -672,12 +674,67 @@ describe("Tabs", () => {
     const panel = screen.getByRole("tabpanel", { name: "Release" });
 
     expect(tab).toHaveAttribute("data-value", value);
+    expect(panel).toHaveAttribute("data-value", value);
     expect(tab.id).toContain(encodeURIComponent(value));
     expect(tab).toHaveAttribute("aria-controls", panel.id);
     expect(panel).toHaveAttribute("aria-labelledby", tab.id);
 
     await user.click(screen.getByRole("tab", { name: "Other" }));
     expect(screen.getByRole("tab", { name: "Other" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("protects generated panel ids and inactive visibility from native overrides", () => {
+    render(
+      <Tabs defaultValue="one">
+        <Tabs.List>
+          <Tabs.Trigger value="one">One</Tabs.Trigger>
+          <Tabs.Trigger value="two">Two</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="one" id="consumer-panel-id">
+          Content one
+        </Tabs.Content>
+        <Tabs.Content value="two" hidden={false}>
+          Content two
+        </Tabs.Content>
+      </Tabs>,
+    );
+
+    const tab = screen.getByRole("tab", { name: "One" });
+    const activePanel = screen.getByRole("tabpanel", { name: "One" });
+    const inactivePanel = screen.getByText("Content two");
+
+    expect(activePanel).not.toHaveAttribute("id", "consumer-panel-id");
+    expect(tab).toHaveAttribute("aria-controls", activePanel.id);
+    expect(inactivePanel).toHaveAttribute("hidden");
+  });
+
+  it("protects tablist semantics and state attributes from native overrides", () => {
+    const hostileProps = {
+      role: "list",
+      "aria-orientation": "vertical",
+      "data-variant": "consumer-variant",
+      "data-orientation": "consumer-orientation",
+      "data-wrap": "consumer-wrap",
+    };
+
+    render(
+      <Tabs defaultValue="one" orientation="horizontal" variant="pill">
+        <Tabs.List {...hostileProps} wrap={false} aria-label="Owned tab list">
+          <Tabs.Trigger value="one">One</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="one">Content one</Tabs.Content>
+      </Tabs>,
+    );
+
+    const tablist = screen.getByRole("tablist", { name: "Owned tab list" });
+    expect(tablist).toHaveAttribute("aria-orientation", "horizontal");
+    expect(tablist).toHaveAttribute("data-variant", "pill");
+    expect(tablist).toHaveAttribute("data-orientation", "horizontal");
+    expect(tablist).toHaveAttribute("data-wrap", "false");
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+
+    const ownershipNote = tabsDoc.notes?.find((note) => note.title === "Tab list semantics");
+    expect(ownershipNote?.content).toContain("owns its tablist role");
   });
 
   it("only emits aria-controls for tabs with a rendered panel", () => {
@@ -800,9 +857,38 @@ describe("Tabs keyboard navigation", () => {
 });
 
 describe("Tabs variants", () => {
+  it("keeps variant metadata aligned with runtime values, default, and data attributes", () => {
+    const documentedVariants = SEGMENTED_VARIANTS.map((variant) => JSON.stringify(variant)).join(
+      " | ",
+    );
+    const variantProp = tabsDoc.props?.Tabs?.variant;
+    const variantAttribute = tabsDoc.dataAttributes?.find(
+      (entry) => entry.attribute === "data-variant",
+    );
+
+    expect(variantProp?.type).toBe(documentedVariants);
+    expect(variantProp?.defaultValue).toBe('"underline"');
+    expect(variantAttribute).toMatchObject({
+      appliesTo: "Tabs.List / Tabs.Trigger",
+      values: documentedVariants,
+    });
+
+    for (const variant of SEGMENTED_VARIANTS) {
+      const rendered = renderTabs({ variant });
+      expect(screen.getByRole("tablist")).toHaveAttribute("data-variant", variant);
+      for (const trigger of screen.getAllByRole("tab")) {
+        expect(trigger).toHaveAttribute("data-variant", variant);
+      }
+      rendered.unmount();
+    }
+  });
+
   it("defaults to variant='underline' and propagates it via data-variant on the tablist", () => {
     renderTabs();
     expect(screen.getByRole("tablist")).toHaveAttribute("data-variant", "underline");
+    for (const trigger of screen.getAllByRole("tab")) {
+      expect(trigger).toHaveAttribute("data-variant", "underline");
+    }
   });
 
   it("propagates variant='default' via data-variant on the tablist", () => {
@@ -810,10 +896,37 @@ describe("Tabs variants", () => {
     expect(screen.getByRole("tablist")).toHaveAttribute("data-variant", "default");
   });
 
-  it("renders a sliding pill indicator for variant='pill'", () => {
+  it("uses wrapped row-local treatments for horizontal pill and underline variants", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <Tabs defaultValue="a" variant="pill">
+        <Tabs.List aria-label="Wrapped tabs">
+          <Tabs.Trigger value="a">Alpha label with spaces</Tabs.Trigger>
+          <Tabs.Trigger value="b">Beta label with spaces</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="a">Alpha content</Tabs.Content>
+        <Tabs.Content value="b">Beta content</Tabs.Content>
+      </Tabs>,
+    );
+
+    const tablist = screen.getByRole("tablist", { name: "Wrapped tabs" });
+    const alpha = screen.getByRole("tab", { name: "Alpha label with spaces" });
+    const beta = screen.getByRole("tab", { name: "Beta label with spaces" });
+    expect(tablist).toHaveAttribute("data-wrap", "true");
+    expect(alpha).toHaveAttribute("data-wrap", "true");
+    expect(beta).toHaveAttribute("data-wrap", "true");
+    expect(container.querySelector('[data-slot="tabs-pill"]')).toBeNull();
+
+    alpha.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(beta).toHaveFocus();
+    expect(beta).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("renders a sliding pill indicator when wrapping is disabled", () => {
     const { container } = render(
       <Tabs defaultValue="b" variant="pill">
-        <Tabs.List>
+        <Tabs.List wrap={false}>
           <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
           <Tabs.Trigger value="b">Beta</Tabs.Trigger>
         </Tabs.List>
@@ -821,6 +934,7 @@ describe("Tabs variants", () => {
         <Tabs.Content value="b">Beta content</Tabs.Content>
       </Tabs>,
     );
+    expect(screen.getByRole("tablist")).toHaveAttribute("data-wrap", "false");
     expect(container.querySelectorAll('[data-slot="tabs-pill"]').length).toBe(1);
   });
 
@@ -837,7 +951,7 @@ describe("Tabs variants", () => {
 
     render(
       <Tabs defaultValue="b" variant="pill">
-        <Tabs.List>
+        <Tabs.List wrap={false}>
           <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
           <Tabs.Trigger value="b">Beta</Tabs.Trigger>
         </Tabs.List>
@@ -866,10 +980,10 @@ describe("Tabs variants", () => {
     expect(container.querySelector('[data-slot="tabs-pill"]')).toBeNull();
   });
 
-  it("renders a floating underline indicator for variant='underline'", () => {
+  it("renders a floating underline indicator when wrapping is disabled", () => {
     const { container } = render(
       <Tabs defaultValue="b" variant="underline">
-        <Tabs.List>
+        <Tabs.List wrap={false}>
           <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
           <Tabs.Trigger value="b">Beta</Tabs.Trigger>
         </Tabs.List>

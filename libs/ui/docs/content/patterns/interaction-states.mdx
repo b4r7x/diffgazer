@@ -25,6 +25,8 @@ disabled focused > disabled > highlight (focused) > selected > normal
 
 This comes from `getItemState()` in `menu-item-variants.ts`. A disabled item that owns the menu highlight renders `disabledFocused`, so APG-style disabled menu items can still be the keyboard cursor without looking enabled. Otherwise, disabled wins over selection. A highlighted enabled item always shows highlight visuals even if it is also the selected item. This ensures the keyboard cursor is always visible.
 
+The same `disabledFocused` state applies to submenu triggers. Disabled submenu triggers and checkbox items keep `data-highlighted` when they own the virtual focus, while their disabled styling and activation guards remain in effect.
+
 ## Visual mapping (CVA variants)
 
 The `menuItemBase` CVA maps each state to Tailwind classes:

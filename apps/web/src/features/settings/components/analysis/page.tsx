@@ -1,7 +1,6 @@
-import { useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
-import { getErrorMessage } from "@diffgazer/core/errors";
+import { useSettings } from "@diffgazer/core/api/hooks";
 import { buildLensOptions } from "@diffgazer/core/schemas/events";
-import { BACK_SHORTCUT, NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
+import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import {
   ANALYSIS_SETTINGS_SUBTITLE,
   isLensId,
@@ -9,25 +8,21 @@ import {
   type LensId,
   resolveEffectiveLenses,
 } from "@diffgazer/core/schemas/review";
-import { useKey, useScope } from "@diffgazer/keys";
+import { useScope } from "@diffgazer/keys";
 import { Callout } from "@diffgazer/ui/components/callout";
-import { useNavigate } from "@tanstack/react-router";
-import { useRef, useState } from "react";
-import { useSettingsFormFooter } from "../../hooks/use-settings-form-footer";
+import { useId, useRef, useState } from "react";
+import { useSettingsFormActions } from "../../hooks/use-settings-form-actions";
 import { SettingsFormPage } from "../form-page";
 import { AnalysisSelectorContent } from "./selector-content";
 
 const lensOptions = buildLensOptions();
 
 export function SettingsAnalysisPage() {
-  const navigate = useNavigate();
+  const lensSelectionMessageId = useId();
   const focusFallbackRef = useRef<HTMLDivElement>(null);
   const settingsQuery = useSettings();
   const settings = settingsQuery.data;
-  const saveSettings = useSaveSettings();
   const [selectedLenses, setSelectedLenses] = useState<LensId[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const isSaving = saveSettings.isPending;
 
   const defaultLenses = settings?.defaultLenses ?? [];
   const persistedLenses = defaultLenses.filter((lens): lens is LensId => isLensId(lens));
@@ -39,32 +34,14 @@ export function SettingsAnalysisPage() {
   const isDirty = settings ? isLensSelectionDirty(currentLenses, selectedLenses) : false;
 
   useScope("settings-analysis");
-  useKey("Escape", () => navigate({ to: "/settings" }), { enabled: !isSaving });
 
-  const canSave = !isSaving && isDirty && hasLensSelection;
-
-  const handleCancel = () => navigate({ to: "/settings" });
-
-  const handleSave = async (): Promise<void> => {
-    if (!canSave) return;
-    setError(null);
-    try {
-      await saveSettings.mutateAsync({ defaultLenses: effectiveLenses });
-      navigate({ to: "/settings" });
-    } catch (err) {
-      setError(getErrorMessage(err, "Failed to save settings"));
-    }
-  };
-
-  const footer = useSettingsFormFooter({
-    disabledActions: [isSaving, !canSave],
-    canSave,
-    onCancel: handleCancel,
-    onSave: () => void handleSave(),
+  const actions = useSettingsFormActions({
+    canSave: isDirty && hasLensSelection,
+    getSettingsPayload: () => ({ defaultLenses: effectiveLenses }),
     contentShortcuts: [NAVIGATE_SHORTCUT, { key: "Enter/Space", label: "Toggle Lens" }],
-    rightShortcuts: [BACK_SHORTCUT],
     focusFallbackRef,
   });
+  const { canSave, error, footer, isSaving, onCancel, onSave } = actions;
 
   return (
     <SettingsFormPage
@@ -74,8 +51,8 @@ export function SettingsAnalysisPage() {
       footer={footer}
       isSaving={isSaving}
       canSave={canSave}
-      onCancel={handleCancel}
-      onSave={() => void handleSave()}
+      onCancel={onCancel}
+      onSave={onSave}
     >
       <div ref={focusFallbackRef} tabIndex={-1} className="space-y-3 focus:outline-none">
         <AnalysisSelectorContent
@@ -85,13 +62,23 @@ export function SettingsAnalysisPage() {
           enabled={!footer.inActions}
           autoFocusList={!footer.inActions}
           disabled={isSaving}
+          required
+          invalid={!hasLensSelection}
+          descriptionId={lensSelectionMessageId}
           onBoundaryReached={(direction) => {
             if (direction === "down") {
               footer.enterActions();
             }
           }}
         />
-        {!hasLensSelection && <p className="text-error-text text-xs">Select at least one lens.</p>}
+        <output
+          id={lensSelectionMessageId}
+          aria-live="polite"
+          aria-atomic="true"
+          className={hasLensSelection ? "sr-only" : "text-error-text text-xs"}
+        >
+          {hasLensSelection ? null : "Select at least one lens."}
+        </output>
       </div>
       {error && (
         <Callout tone="error" live className="text-sm">

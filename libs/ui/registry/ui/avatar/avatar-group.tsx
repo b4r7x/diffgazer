@@ -22,7 +22,8 @@ export const avatarGroupSpacingVariants = cva("", {
 export interface AvatarGroupProps extends Omit<ComponentProps<"div">, "role"> {
   /**
    * Hard cap on visible avatars. Extras render as an AvatarIndicator. When omitted, AvatarGroup
-   * measures overflow with Overflow.
+   * measures overflow with Overflow. Values are rounded down; negative and non-finite values
+   * become zero.
    */
   max?: number;
   /** Overlap stacks avatars; gap spaces them apart. */
@@ -45,8 +46,9 @@ export function AvatarGroup({
   const groupContextValue = useMemo(() => ({ size }), [size]);
 
   if (max != null) {
-    const visibleItems = allItems.slice(0, max);
-    const overflowCount = allItems.length - max;
+    const normalizedMax = Number.isFinite(max) ? Math.max(0, Math.floor(max)) : 0;
+    const visibleItems = allItems.slice(0, normalizedMax);
+    const overflowCount = allItems.length - visibleItems.length;
 
     return (
       <AvatarGroupContext value={groupContextValue}>

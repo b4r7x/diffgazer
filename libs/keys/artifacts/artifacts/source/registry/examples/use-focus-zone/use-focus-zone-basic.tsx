@@ -1,7 +1,7 @@
 "use client";
 
 import { KeyboardProvider, useFocusZone, useScopedNavigation } from "@diffgazer/keys";
-import { useRef } from "react";
+import { useId, useRef } from "react";
 
 type Zone = "sidebar" | "main";
 
@@ -54,6 +54,7 @@ function Pane({
   enabled: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const headingId = useId();
 
   const { isHighlighted } = useScopedNavigation({
     containerRef,
@@ -72,8 +73,8 @@ function Pane({
         borderColor: active ? "currentColor" : "transparent",
       }}
     >
-      <h4>{title}</h4>
-      <div ref={containerRef} role="listbox">
+      <h4 id={headingId}>{title}</h4>
+      <div ref={containerRef} role="listbox" aria-labelledby={headingId}>
         {items.map((item) => (
           // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — options stay non-focusable; the listbox container holds focus and active state is tracked via aria-selected.
           <div

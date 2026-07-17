@@ -1,10 +1,20 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { applyReducedMotionFixture } from "../../../testing/prefers-reduced-motion";
+import { tooltipDoc } from "../../component-docs/tooltip";
+import PopoverBasicExample from "../../examples/popover/popover-basic";
+import PopoverControlledExample from "../../examples/popover/popover-controlled";
+import PopoverMenuExample from "../../examples/popover/popover-menu";
+import PopoverPlacementExample from "../../examples/popover/popover-placement";
+import { Tooltip } from "../tooltip/index";
 import { Popover, type PopoverProps } from "./index";
+
+const tooltipSource = readFileSync(join(import.meta.dirname, "../tooltip/tooltip.tsx"), "utf8");
 
 function renderClickPopover(props: Partial<PopoverProps> = {}) {
   return render(
@@ -52,6 +62,26 @@ afterEach(() => {
 });
 
 describe("Popover", () => {
+  it.each([
+    ["basic", PopoverBasicExample, "click me", "Popover content with interactive elements."],
+    ["controlled", PopoverControlledExample, "open", "Controlled popover"],
+    ["menu", PopoverMenuExample, "Actions", "Copy link"],
+    ["placement", PopoverPlacementExample, "top", "Placed on top"],
+  ])("keeps the %s example trigger from submitting an enclosing form", async (_, Example, triggerName, content) => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn((event: FormEvent) => event.preventDefault());
+    render(
+      <form onSubmit={onSubmit}>
+        <Example />
+      </form>,
+    );
+
+    await user.click(screen.getByRole("button", { name: triggerName }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText(content)).toBeInTheDocument();
+  });
+
   it("opens on click and closes on second click", async () => {
     const user = userEvent.setup();
     renderClickPopover();
@@ -208,6 +238,158 @@ describe("Popover", () => {
       expectClosedOrUnmounted(tooltip);
     });
 
+    it("keeps the tooltip visible when pointer leaves a focused trigger", () => {
+      render(
+        <Popover triggerMode="hover" delayMs={0} closeDelayMs={100}>
+          <Popover.Trigger>Hover me</Popover.Trigger>
+          <Popover.Content>Tooltip body</Popover.Content>
+        </Popover>,
+      );
+      const trigger = screen.getByText("Hover me");
+
+      // fireEvent retained: fake timers in use and the regression needs independent pointer/focus ownership transitions.
+      fireEvent.mouseEnter(trigger);
+      fireEvent.focus(trigger);
+      const tooltip = screen.getByRole("tooltip");
+      // fireEvent retained: fake timers in use.
+      fireEvent.mouseLeave(trigger);
+      act(() => vi.advanceTimersByTime(100));
+
+      expect(tooltip).toHaveAttribute("data-state", "open");
+      expect(trigger).toHaveAttribute("aria-describedby", tooltip.id);
+
+      // fireEvent retained: the final focus owner releases visibility synchronously.
+      fireEvent.blur(trigger);
+      act(() => vi.advanceTimersByTime(100));
+      expectClosedOrUnmounted(tooltip);
+    });
+
+    it("keeps the tooltip visible when focus blurs from a hovered trigger", () => {
+      render(
+        <Popover triggerMode="hover" delayMs={0} closeDelayMs={100}>
+          <Popover.Trigger>Hover me</Popover.Trigger>
+          <Popover.Content>Tooltip body</Popover.Content>
+        </Popover>,
+      );
+      const trigger = screen.getByText("Hover me");
+
+      // fireEvent retained: fake timers in use and the regression needs independent focus/pointer ownership transitions.
+      fireEvent.focus(trigger);
+      fireEvent.mouseEnter(trigger);
+      const tooltip = screen.getByRole("tooltip");
+      // fireEvent retained: fake timers require a synchronous focus-owner transition.
+      fireEvent.blur(trigger);
+      act(() => vi.advanceTimersByTime(100));
+
+      expect(tooltip).toHaveAttribute("data-state", "open");
+      expect(trigger).toHaveAttribute("aria-describedby", tooltip.id);
+
+      // fireEvent retained: fake timers in use.
+      fireEvent.mouseLeave(trigger);
+      act(() => vi.advanceTimersByTime(100));
+      expectClosedOrUnmounted(tooltip);
+    });
+
+    it("lets Escape dismiss a tooltip while trigger focus still owns visibility", () => {
+      render(
+        <Popover triggerMode="hover" delayMs={0} closeDelayMs={100}>
+          <Popover.Trigger>Hover me</Popover.Trigger>
+          <Popover.Content>Tooltip body</Popover.Content>
+        </Popover>,
+      );
+      const trigger = screen.getByText("Hover me");
+
+      act(() => trigger.focus());
+      expect(trigger).toHaveFocus();
+      const tooltip = screen.getByRole("tooltip");
+      // fireEvent retained: direct keydown isolates Escape dismissal while focus remains owned.
+      fireEvent.keyDown(trigger, { key: "Escape" });
+
+      expectClosedOrUnmounted(tooltip);
+      expect(trigger).not.toHaveAttribute("aria-describedby");
+      act(() => vi.advanceTimersByTime(1_000));
+      expectClosedOrUnmounted(tooltip);
+      expect(trigger).toHaveFocus();
+    });
+
+    it("lets outside pointerdown dismiss a tooltip while trigger focus still owns visibility", () => {
+      render(
+        <div>
+          <button type="button">Outside</button>
+          <Popover triggerMode="hover" delayMs={0} closeDelayMs={100}>
+            <Popover.Trigger>Hover me</Popover.Trigger>
+            <Popover.Content>Tooltip body</Popover.Content>
+          </Popover>
+        </div>,
+      );
+      const trigger = screen.getByText("Hover me");
+
+      act(() => trigger.focus());
+      expect(trigger).toHaveFocus();
+      const tooltip = screen.getByRole("tooltip");
+      expect(trigger).toHaveAttribute("aria-describedby", tooltip.id);
+
+      // fireEvent retained: document-level pointerdown dismissal is the behavior under test.
+      fireEvent.pointerDown(screen.getByRole("button", { name: "Outside" }));
+
+      expectClosedOrUnmounted(tooltip);
+      expect(trigger).not.toHaveAttribute("aria-describedby");
+      expect(trigger).toHaveFocus();
+      act(() => vi.advanceTimersByTime(1_000));
+      expectClosedOrUnmounted(tooltip);
+      expect(trigger).not.toHaveAttribute("aria-describedby");
+    });
+
+    it("keeps Tooltip pointer/focus timing docs and JSDoc in parity with runtime", () => {
+      render(
+        <Tooltip content="Tooltip body">
+          <button type="button">Hover me</button>
+        </Tooltip>,
+      );
+      const trigger = screen.getByRole("button", { name: "Hover me" });
+      const delayNote = tooltipDoc.notes?.find((note) => note.title === "Delay");
+
+      expect(delayNote?.content).toContain("pointer show delay is 500ms");
+      expect(delayNote?.content).toContain("keyboard focus opens immediately");
+      expect(delayNote?.content).toContain("hide delay after pointer or focus leaves is 150ms");
+      expect(delayNote?.content).toContain("`delayMs` and `closeDelayMs`");
+      expect(tooltipDoc.props?.Tooltip?.delayMs?.defaultValue).toBe("500");
+      expect(tooltipDoc.props?.Tooltip?.closeDelayMs?.defaultValue).toBe("150");
+      expect(tooltipDoc.props?.Tooltip?.delayMs?.description).toContain(
+        "keyboard focus opens immediately",
+      );
+      expect(tooltipSource).toContain(
+        "Show delay after pointer enters the trigger; keyboard focus opens immediately.",
+      );
+
+      // fireEvent retained: fake timers in use — user-event hover requires real timers.
+      fireEvent.mouseEnter(trigger);
+      act(() => {
+        vi.advanceTimersByTime(499);
+      });
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      const tooltip = screen.getByRole("tooltip");
+
+      // fireEvent retained: fake timers in use — user-event unhover requires real timers.
+      fireEvent.mouseLeave(trigger);
+      act(() => {
+        vi.advanceTimersByTime(149);
+      });
+      expect(tooltip).toHaveAttribute("data-state", "open");
+
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expectClosedOrUnmounted(tooltip);
+
+      // fireEvent retained: focus timing is synchronous and must not advance the pointer delay.
+      fireEvent.focus(trigger);
+      expect(screen.getByRole("tooltip")).toBeInTheDocument();
+    });
+
     it("opens immediately on keyboard focus without advancing the hover delay", () => {
       render(
         <Popover triggerMode="hover" delayMs={200}>
@@ -342,16 +524,20 @@ describe("Popover", () => {
 
   it("closes only the top nested popover on outside click and Escape", async () => {
     const user = userEvent.setup();
+    const onOuterOpenChange = vi.fn();
+    const onInnerOpenChange = vi.fn();
     render(
       <div>
         <button type="button">Outside</button>
-        <Popover defaultOpen>
+        <Popover defaultOpen onOpenChange={onOuterOpenChange}>
           <Popover.Trigger>Outer</Popover.Trigger>
           <Popover.Content role="dialog" aria-label="Outer popover">
-            <Popover defaultOpen>
+            <Popover defaultOpen onOpenChange={onInnerOpenChange}>
               <Popover.Trigger>Inner</Popover.Trigger>
               <Popover.Content role="dialog" aria-label="Inner popover">
-                Inner body
+                <button id="inner-action" type="button">
+                  Inner action
+                </button>
               </Popover.Content>
             </Popover>
           </Popover.Content>
@@ -368,9 +554,21 @@ describe("Popover", () => {
       "data-state",
       "open",
     );
+    expect(screen.getByRole("dialog", { name: "Outer popover" })).toContainElement(
+      screen.getByRole("button", { name: "Inner" }),
+    );
+    const innerTrigger = screen.getByRole("button", { name: "Inner" });
+    const innerAction = screen.getByRole("button", { name: "Inner action" });
+    innerTrigger.focus();
+    innerAction.focus();
+    expect(innerAction).toHaveFocus();
+    expect(onOuterOpenChange).not.toHaveBeenCalledWith(false);
 
     const inner = screen.getByRole("dialog", { name: "Inner popover" });
     await user.click(outside);
+    expect(onInnerOpenChange).toHaveBeenCalledOnce();
+    expect(onInnerOpenChange).toHaveBeenCalledWith(false);
+    expect(onOuterOpenChange).not.toHaveBeenCalledWith(false);
     expectClosedOrUnmounted(inner);
     expect(screen.getByRole("dialog", { name: "Outer popover" })).toHaveAttribute(
       "data-state",
@@ -539,18 +737,284 @@ describe("Popover hover-mode trigger click toggle", () => {
   });
 });
 
+describe("Popover cloned-trigger activation cancellation", () => {
+  it.each(["click", "hover"] as const)("honors a canceled click in %s mode", (triggerMode) => {
+    render(
+      <Popover triggerMode={triggerMode}>
+        <Popover.Trigger>
+          <button type="button" onClick={(event) => event.preventDefault()}>
+            Open
+          </button>
+        </Popover.Trigger>
+        <Popover.Content>Popover body</Popover.Content>
+      </Popover>,
+    );
+
+    // fireEvent retained: focus would independently open a hover trigger before click dispatch.
+    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+
+    expect(screen.queryByText("Popover body")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    "click",
+    "hover",
+  ] as const)("keeps an uncancelled cloned control active in %s mode", (triggerMode) => {
+    render(
+      <Popover triggerMode={triggerMode}>
+        <Popover.Trigger>
+          <button type="button">Open</button>
+        </Popover.Trigger>
+        <Popover.Content>Popover body</Popover.Content>
+      </Popover>,
+    );
+
+    // fireEvent retained: this isolates click activation from hover-mode focus synchronization.
+    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+
+    expect(screen.getByText("Popover body")).toBeInTheDocument();
+  });
+
+  it("honors a canceled passive touch pointerdown", () => {
+    restorePointerEventSupport();
+    render(
+      <Popover triggerMode="hover">
+        <Popover.Trigger>
+          <span onPointerDown={(event) => event.preventDefault()}>Passive label</span>
+        </Popover.Trigger>
+        <Popover.Content>Popover body</Popover.Content>
+      </Popover>,
+    );
+
+    // fireEvent retained: pointerType is required to exercise the passive touch boundary.
+    fireEvent.pointerDown(screen.getByText("Passive label"), { pointerType: "touch" });
+
+    expect(screen.queryByText("Popover body")).not.toBeInTheDocument();
+  });
+
+  it("keeps an uncancelled passive touch trigger active", () => {
+    restorePointerEventSupport();
+    render(
+      <Popover triggerMode="hover">
+        <Popover.Trigger>
+          <span>Passive label</span>
+        </Popover.Trigger>
+        <Popover.Content>Popover body</Popover.Content>
+      </Popover>,
+    );
+
+    // fireEvent retained: pointerType is required to exercise the passive touch boundary.
+    fireEvent.pointerDown(screen.getByText("Passive label"), { pointerType: "touch" });
+
+    expect(screen.getByText("Popover body")).toBeInTheDocument();
+  });
+
+  it("keeps native keyboard activation in click mode", async () => {
+    const user = userEvent.setup();
+    render(
+      <Popover triggerMode="click">
+        <Popover.Trigger>
+          <button type="button">Open</button>
+        </Popover.Trigger>
+        <Popover.Content>Popover body</Popover.Content>
+      </Popover>,
+    );
+
+    screen.getByRole("button", { name: "Open" }).focus();
+    await user.keyboard("{Enter}");
+
+    expect(screen.getByText("Popover body")).toBeInTheDocument();
+  });
+
+  it("keeps keyboard toggle activation in hover mode", async () => {
+    const user = userEvent.setup();
+    render(
+      <Popover triggerMode="hover">
+        <Popover.Trigger>
+          <button type="button">Open</button>
+        </Popover.Trigger>
+        <Popover.Content>Popover body</Popover.Content>
+      </Popover>,
+    );
+
+    const trigger = screen.getByRole("button", { name: "Open" });
+    await user.tab();
+    expect(trigger).toHaveFocus();
+    const content = screen.getByText("Popover body");
+    expect(content).toBeInTheDocument();
+
+    await user.keyboard("{Enter}");
+
+    expectClosedOrUnmounted(content);
+  });
+});
+
 function renderClickPopoverWithFocusables() {
   return render(
-    <Popover triggerMode="click" defaultOpen>
-      <Popover.Trigger>Open</Popover.Trigger>
-      <Popover.Content role="dialog" aria-label="Actions">
-        <button type="button">First</button>
-        <button type="button">Second</button>
-        <button type="button">Third</button>
+    <div>
+      <Popover triggerMode="click" defaultOpen>
+        <Popover.Trigger>Open</Popover.Trigger>
+        <Popover.Content role="dialog" aria-label="Actions">
+          <button type="button">First</button>
+          <button type="button">Second</button>
+          <button type="button">Third</button>
+        </Popover.Content>
+      </Popover>
+      <button type="button">Outside</button>
+    </div>,
+  );
+}
+
+function FocusBoundaryHarness({
+  controlled,
+  onOpenChange,
+}: {
+  controlled: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [open, setOpen] = useState(true);
+  const handleOpenChange = (nextOpen: boolean) => {
+    onOpenChange(nextOpen);
+    setOpen(nextOpen);
+  };
+  const stateProps = controlled
+    ? { open, onOpenChange: handleOpenChange }
+    : { defaultOpen: true, onOpenChange };
+
+  return (
+    <div>
+      <Popover triggerMode="click" {...stateProps}>
+        <Popover.Trigger>Boundary trigger</Popover.Trigger>
+        <Popover.Content autoFocus={false}>
+          <button type="button">Boundary content</button>
+        </Popover.Content>
+      </Popover>
+      <button type="button">Boundary outside</button>
+    </div>
+  );
+}
+
+describe.each([
+  ["uncontrolled", false],
+  ["controlled", true],
+] as const)("Popover %s focus boundary", (_mode, controlled) => {
+  it("preserves trigger-to-content and content-to-trigger transitions", () => {
+    const onOpenChange = vi.fn();
+    render(<FocusBoundaryHarness controlled={controlled} onOpenChange={onOpenChange} />);
+    const trigger = screen.getByRole("button", { name: "Boundary trigger" });
+    const content = screen.getByRole("button", { name: "Boundary content" });
+
+    trigger.focus();
+    content.focus();
+    expect(content).toHaveFocus();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+
+    trigger.focus();
+    expect(trigger).toHaveFocus();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+    expect(screen.getByText("Boundary content").closest("[data-state]")).toHaveAttribute(
+      "data-state",
+      "open",
+    );
+  });
+
+  it("requests one close when focus moves from the trigger outside", () => {
+    const onOpenChange = vi.fn();
+    render(<FocusBoundaryHarness controlled={controlled} onOpenChange={onOpenChange} />);
+    const trigger = screen.getByRole("button", { name: "Boundary trigger" });
+    const outside = screen.getByRole("button", { name: "Boundary outside" });
+
+    trigger.focus();
+    act(() => outside.focus());
+
+    expect(onOpenChange).toHaveBeenCalledOnce();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(outside).toHaveFocus();
+  });
+
+  it("requests one close when pointer focus moves from content outside", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    render(<FocusBoundaryHarness controlled={controlled} onOpenChange={onOpenChange} />);
+    const content = screen.getByRole("button", { name: "Boundary content" });
+    const outside = screen.getByRole("button", { name: "Boundary outside" });
+
+    content.focus();
+    await user.click(outside);
+
+    expect(onOpenChange).toHaveBeenCalledOnce();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(outside).toHaveFocus();
+  });
+});
+
+it("allows a controlled popover that refused close to receive a later dismissal request", async () => {
+  const onOpenChange = vi.fn();
+  render(
+    <div>
+      <Popover open onOpenChange={onOpenChange}>
+        <Popover.Trigger>Refusing trigger</Popover.Trigger>
+        <Popover.Content autoFocus={false}>
+          <button type="button">Refusing content</button>
+        </Popover.Content>
+      </Popover>
+      <button type="button">Refusing outside</button>
+    </div>,
+  );
+  const trigger = screen.getByRole("button", { name: "Refusing trigger" });
+  const outside = screen.getByRole("button", { name: "Refusing outside" });
+
+  trigger.focus();
+  act(() => outside.focus());
+  expect(onOpenChange).toHaveBeenCalledTimes(1);
+  expect(onOpenChange).toHaveBeenLastCalledWith(false);
+
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  trigger.focus();
+  act(() => outside.focus());
+
+  expect(onOpenChange).toHaveBeenCalledTimes(2);
+  expect(onOpenChange).toHaveBeenLastCalledWith(false);
+  expect(screen.getByText("Refusing content").closest("[data-state]")).toHaveAttribute(
+    "data-state",
+    "open",
+  );
+});
+
+it("keeps the parent open when focus enters a nested portaled popover by its controlled id", () => {
+  const onParentOpenChange = vi.fn();
+  render(
+    <Popover defaultOpen onOpenChange={onParentOpenChange}>
+      <Popover.Trigger>Parent trigger</Popover.Trigger>
+      <Popover.Content autoFocus={false}>
+        <Popover defaultOpen>
+          <Popover.Trigger>Nested trigger</Popover.Trigger>
+          <Popover.Content autoFocus={false}>
+            <button id="nested-action" type="button">
+              Nested portaled action
+            </button>
+          </Popover.Content>
+        </Popover>
       </Popover.Content>
     </Popover>,
   );
-}
+  const parentTrigger = screen.getByRole("button", { name: "Parent trigger" });
+  const nestedTrigger = screen.getByRole("button", { name: "Nested trigger" });
+  const nestedAction = screen.getByRole("button", { name: "Nested portaled action" });
+  const nestedContentId = nestedTrigger.getAttribute("aria-controls");
+
+  expect(nestedContentId).toBeTruthy();
+  expect(nestedAction.id).toBe("nested-action");
+  expect(document.getElementById(nestedContentId ?? "")).toContainElement(nestedAction);
+  nestedTrigger.focus();
+  nestedAction.focus();
+
+  expect(nestedAction).toHaveFocus();
+  expect(parentTrigger).toHaveAttribute("aria-expanded", "true");
+  expect(onParentOpenChange).not.toHaveBeenCalledWith(false);
+});
 
 describe("Popover dialog focus", () => {
   beforeEach(() => {
@@ -564,32 +1028,28 @@ describe("Popover dialog focus", () => {
     vi.restoreAllMocks();
   });
 
-  it("does not trap Tab within click-mode dialog content and dismisses when focus leaves", async () => {
+  it("lets native Tab advance within content without closing", async () => {
+    const user = userEvent.setup();
     renderClickPopoverWithFocusables();
     const first = screen.getByRole("button", { name: "First" });
-    const trigger = screen.getByRole("button", { name: "Open" });
 
     expect(first).toHaveFocus();
+    await user.tab();
 
-    const dialog = screen.getByRole("dialog");
-    // fireEvent retained: this asserts the content keydown handler's synchronous focus return.
-    fireEvent.keyDown(first, { key: "Tab" });
-    expectClosedOrUnmounted(dialog);
-    expect(trigger).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Second" })).toHaveFocus();
+    expect(screen.getByRole("dialog")).toHaveAttribute("data-state", "open");
   });
 
-  it("closes the popover when Shift+Tab leaves dialog content", async () => {
+  it("keeps the popover open when focus moves from content to trigger", () => {
     renderClickPopoverWithFocusables();
     const first = screen.getByRole("button", { name: "First" });
     const trigger = screen.getByRole("button", { name: "Open" });
 
     expect(first).toHaveFocus();
+    trigger.focus();
 
-    const dialog = screen.getByRole("dialog");
-    // fireEvent retained: this asserts the content keydown handler's synchronous focus return.
-    fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
-    expectClosedOrUnmounted(dialog);
     expect(trigger).toHaveFocus();
+    expect(screen.getByRole("dialog")).toHaveAttribute("data-state", "open");
   });
 
   it("restores focus to the trigger when the popover is closed programmatically while focus is inside the content", async () => {
@@ -622,23 +1082,22 @@ describe("Popover dialog focus", () => {
     });
   });
 
-  it("returns focus to the trigger when Tab moves focus out of the content", async () => {
+  it("closes without stealing focus when focus moves outside the pair", () => {
     renderClickPopoverWithFocusables();
-    const trigger = screen.getByRole("button", { name: "Open" });
+    const outside = screen.getByRole("button", { name: "Outside" });
 
     expect(screen.getByRole("button", { name: "First" })).toHaveFocus();
-
     const dialog = screen.getByRole("dialog");
-    // fireEvent retained: this asserts the content keydown handler's synchronous focus return.
-    fireEvent.keyDown(screen.getByRole("button", { name: "First" }), { key: "Tab" });
+    act(() => outside.focus());
 
     expectClosedOrUnmounted(dialog);
-    expect(trigger).toHaveFocus();
+    expect(outside).toHaveFocus();
   });
 });
 
 describe("Popover non-modal focus", () => {
-  it("closes default click-mode content on Tab and returns focus to the trigger", async () => {
+  it("does not intercept Tab before the browser moves focus", async () => {
+    const user = userEvent.setup();
     render(
       <Popover triggerMode="click" defaultOpen>
         <Popover.Trigger>Open</Popover.Trigger>
@@ -649,15 +1108,14 @@ describe("Popover non-modal focus", () => {
       </Popover>,
     );
     const first = screen.getByRole("button", { name: "First" });
-    const trigger = screen.getByRole("button", { name: "Open" });
     const content = first.closest("[data-state]");
     first.focus();
 
-    // fireEvent retained: this asserts the content keydown handler's synchronous focus return.
-    fireEvent.keyDown(first, { key: "Tab" });
+    await user.tab();
+
     expect(content).toBeInstanceOf(HTMLElement);
-    if (content instanceof HTMLElement) expectClosedOrUnmounted(content);
-    expect(trigger).toHaveFocus();
+    if (content instanceof HTMLElement) expect(content).toHaveAttribute("data-state", "open");
+    expect(screen.getByRole("button", { name: "Second" })).toHaveFocus();
   });
 });
 
@@ -856,6 +1314,33 @@ function createSameOriginIframe() {
 }
 
 describe("Popover cross-document behavior", () => {
+  it("closes click-mode popover when focus leaves its pair in the trigger ownerDocument", () => {
+    const onOpenChange = vi.fn();
+    const { iframe, iframeDoc, mount, portalRoot } = createSameOriginIframe();
+
+    render(
+      <div>
+        <button type="button">Outside</button>
+        <Popover triggerMode="click" open onOpenChange={onOpenChange}>
+          <Popover.Trigger>Open</Popover.Trigger>
+          <Popover.Content portalContainer={portalRoot} autoFocus={false}>
+            <button type="button">Popover action</button>
+          </Popover.Content>
+        </Popover>
+      </div>,
+      { container: mount },
+    );
+
+    const trigger = within(iframeDoc.body).getByRole("button", { name: "Open" });
+    const outside = within(iframeDoc.body).getByRole("button", { name: "Outside" });
+    trigger.focus();
+    outside.focus();
+
+    expect(onOpenChange).toHaveBeenCalledOnce();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    iframe.remove();
+  });
+
   it("closes click-mode popover on outside pointerdown in the trigger ownerDocument", () => {
     const { iframe, iframeDoc, mount, portalRoot } = createSameOriginIframe();
 

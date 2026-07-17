@@ -29,3 +29,8 @@ export function isFirstStepIndex(index: number): boolean {
 export function isLastStepIndex(index: number): boolean {
   return index === WIZARD_STEPS.length - 1;
 }
+
+export function getOnboardingProgressLabel(index: number): string {
+  const step = getStepAt(index);
+  return `Step ${index + 1} of ${WIZARD_STEPS.length}: ${STEP_LABELS[step]}`;
+}

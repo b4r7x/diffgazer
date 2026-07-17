@@ -32,7 +32,7 @@ const FileDiffSchema = z.object({
   stats: DiffStatsSchema,
 });
 
-const ParsedDiffSchema = z.object({
+export const ParsedDiffSchema = z.object({
   files: z.array(FileDiffSchema),
   totalStats: z.object({
     filesChanged: CountFieldSchema,
@@ -53,6 +53,7 @@ export const ReviewMetadataSchema = z
     profile: ProfileIdSchema.nullable(),
     lenses: z.array(LensIdSchema),
     issueCount: CountFieldSchema,
+    failedLensCount: CountFieldSchema.optional(),
     blockerCount: CountFieldSchema.default(0),
     highCount: CountFieldSchema.default(0),
     mediumCount: CountFieldSchema.default(0),
@@ -93,9 +94,32 @@ export const SavedReviewSchema = z.object({
 });
 export type SavedReview = z.infer<typeof SavedReviewSchema>;
 
+export const ReviewCursorSchema = z
+  .string()
+  .min(5)
+  .max(512)
+  .regex(/^dg1_[A-Za-z0-9_-]+$/);
+export type ReviewCursor = z.infer<typeof ReviewCursorSchema>;
+
+export const ReviewListWarningSchema = z.discriminatedUnion("kind", [
+  z.strictObject({
+    kind: z.literal("unreadable_review"),
+    reviewId: UuidSchema,
+  }),
+  z.strictObject({
+    kind: z.literal("invalid_issues_dropped"),
+    reviewId: UuidSchema,
+    count: CountFieldSchema.positive(),
+  }),
+  z.strictObject({ kind: z.literal("index_build_failed") }),
+  z.strictObject({ kind: z.literal("index_rewrite_failed") }),
+]);
+export type ReviewListWarning = z.infer<typeof ReviewListWarningSchema>;
+
 export const ReviewsResponseSchema = z.object({
   reviews: z.array(ReviewMetadataSchema),
-  warnings: z.array(z.string()).optional(),
+  nextCursor: ReviewCursorSchema.nullable().optional(),
+  warnings: z.array(ReviewListWarningSchema).optional(),
 });
 export type ReviewsResponse = z.infer<typeof ReviewsResponseSchema>;
 

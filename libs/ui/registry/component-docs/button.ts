@@ -16,7 +16,7 @@ export const buttonDoc: ComponentDoc = {
     {
       title: "Render-Prop Composition",
       content:
-        "Pass a function as children to control the rendered element. Button provides computed props (className, disabled, ARIA attributes) and the consumer renders any element or component. Use for Next.js Link, React Router NavLink, or other custom components.",
+        "Pass a function as children to control the rendered element. Button provides computed props, including an onClick activation guard. Spread them onto the rendered host so disabled and loading states prevent navigation for anchors and framework links.",
     },
   ],
   anatomy: [{ name: "Button", indent: 0, note: "Root button element" }],
@@ -29,6 +29,14 @@ export const buttonDoc: ComponentDoc = {
     { name: "button-render-prop", title: "Render-Prop" },
   ],
   keyboard: null,
+  dataAttributes: [
+    {
+      attribute: "data-highlighted",
+      appliesTo: "Button in button, anchor, and render-prop modes",
+      values: "present when highlighted",
+      description: "Marks the button as highlighted by a parent collection.",
+    },
+  ],
   props: {
     Button: {
       variant: {
@@ -81,7 +89,7 @@ export const buttonDoc: ComponentDoc = {
         required: true,
         defaultValue: null,
         description:
-          "Button label, or a render function that receives computed props (className, disabled, ARIA attributes) for full polymorphism.",
+          "Button label, or a render function that receives computed props including the disabled/loading activation guard.",
       },
     },
   },

@@ -11,7 +11,7 @@ pnpm --filter @diffgazer/server dev
 pnpm --filter @diffgazer/web dev
 ```
 
-The web dev server listens on port `3001` and proxies `/api` to `http://127.0.0.1:3000` by default. Set `VITE_API_URL` to point at a different API server. Packaged CLI mode injects the shutdown token through `window.__DIFFGAZER_SHUTDOWN_TOKEN__`; dev can use `VITE_DIFFGAZER_SHUTDOWN_TOKEN`.
+The web dev server listens on port `3001` and proxies `/api` to `http://127.0.0.1:3000` by default. Set `VITE_API_URL` to point at a different API server. The combined `diffgazer dev` launcher derives this target from its resolved `PORT` unless `VITE_API_URL` is set explicitly. Packaged CLI mode injects the shutdown token through `window.__DIFFGAZER_SHUTDOWN_TOKEN__`; dev can use `VITE_DIFFGAZER_SHUTDOWN_TOKEN`.
 
 ## Commands
 

@@ -6,6 +6,7 @@ import {
   type LensId,
   type ProfileId,
   ReviewErrorCode,
+  ReviewErrorSchema,
   type ReviewMode,
   type ReviewResult,
   type ReviewSeverity,
@@ -13,17 +14,16 @@ import {
 } from "@diffgazer/core/schemas/review";
 import type { AIClient } from "../../shared/lib/ai/types.js";
 import { getStore } from "../../shared/lib/config/store.js";
-import type { createGitService } from "../../shared/lib/git/service.js";
 import { log } from "../../shared/lib/log.js";
-import { reviewAbort } from "./abort.js";
+import { type ReviewAbort, reviewAbort } from "./abort.js";
 import { buildProjectContextSnapshot } from "./context/snapshot.js";
 import type { ParsedDiff } from "./engine/diff/types.js";
 import { orchestrateReview } from "./engine/orchestrate.js";
 import { getProfile } from "./engine/profiles.js";
 import { saveReview } from "./storage/reviews.js";
 import { stepComplete, stepError, stepStart } from "./stream/steps.js";
-import { generateReport } from "./summary.js";
-import type { EmitFn, ResolvedConfig, ReviewAbort, ReviewOutcome } from "./types.js";
+import { markCommitted, markCommitting, markComplete } from "./stream/store.js";
+import type { EmitFn, ResolvedConfig, ResolvedReviewDefaults, ReviewOutcome } from "./types.js";
 
 const DEFAULT_LENSES: LensId[] = ["correctness"];
 
@@ -33,10 +33,12 @@ function resolveActiveLenses(
   profile: ReturnType<typeof getProfile> | undefined,
   settings: SettingsConfig,
 ): LensId[] {
-  if (lensIds) return lensIds;
-  if (profile?.lenses) return profile.lenses;
-  if (settings.defaultLenses) return settings.defaultLenses;
-  return DEFAULT_LENSES;
+  const selected =
+    (lensIds?.length ? lensIds : undefined) ??
+    (profile?.lenses.length ? profile.lenses : undefined) ??
+    (settings.defaultLenses.length ? settings.defaultLenses : undefined) ??
+    DEFAULT_LENSES;
+  return [...new Set(selected)];
 }
 
 function resolveEffectiveProfileId(
@@ -63,7 +65,7 @@ export function resolveReviewDefaults(params: {
   lensIds?: LensId[];
   profileId?: ProfileId;
   settings?: SettingsConfig;
-}): Omit<ResolvedConfig, "projectContext"> {
+}): ResolvedReviewDefaults {
   const settings = params.settings ?? getStore().getSettings();
   const effectiveProfileId = resolveEffectiveProfileId(params.profileId, settings);
   const profile = effectiveProfileId ? getProfile(effectiveProfileId) : undefined;
@@ -75,28 +77,34 @@ export function resolveReviewDefaults(params: {
     effectiveProfileId,
     profile,
     severityFilter,
+    concurrency: settings.agentExecution === "parallel" ? activeLenses.length : 1,
   };
 }
 
 export async function resolveReviewConfig(params: {
-  lensIds?: LensId[];
-  profileId?: ProfileId;
+  defaults: ResolvedReviewDefaults;
   projectPath: string;
   emit: EmitFn;
+  signal?: AbortSignal;
 }): Promise<ResolvedConfig> {
-  const { projectPath, emit } = params;
-  const defaults = resolveReviewDefaults(params);
+  const { defaults, projectPath, emit, signal } = params;
 
+  signal?.throwIfAborted();
   await emit(stepStart("context"));
+  signal?.throwIfAborted();
   let projectContext = "";
   try {
     const contextSnapshot = await buildProjectContextSnapshot(projectPath);
+    signal?.throwIfAborted();
     projectContext = contextSnapshot.markdown;
     await emit(stepComplete("context"));
+    signal?.throwIfAborted();
   } catch (error) {
+    signal?.throwIfAborted();
     log("warn", "review_context_snapshot_failed", { error: getErrorMessage(error) });
     projectContext = "";
     await emit(stepError("context", `Context build failed: ${getErrorMessage(error)}`));
+    signal?.throwIfAborted();
   }
 
   return { ...defaults, projectContext };
@@ -124,8 +132,7 @@ export async function executeReview(params: {
       await emit(event);
     },
     {
-      concurrency:
-        getStore().getSettings().agentExecution === "parallel" ? config.activeLenses.length : 1,
+      concurrency: config.concurrency,
       projectContext: config.projectContext,
       partialOnAllFailed: false,
       signal,
@@ -133,14 +140,20 @@ export async function executeReview(params: {
   );
 
   if (!result.ok) {
-    return err(reviewAbort(result.error.message, ReviewErrorCode.AI_ERROR, "review"));
+    const classified = ReviewErrorSchema.safeParse(result.error);
+    return err(
+      reviewAbort(
+        result.error.message,
+        classified.success ? classified.data.code : ReviewErrorCode.AI_ERROR,
+        "review",
+      ),
+    );
   }
 
   await emit(stepComplete("review"));
 
   return ok({
     issues: result.value.issues,
-    summary: result.value.summary,
     lensStats: result.value.lensStats,
     droppedDuplicates: result.value.droppedDuplicates,
     droppedBelowThreshold: result.value.droppedBelowThreshold,
@@ -150,7 +163,6 @@ export async function executeReview(params: {
 
 export async function finalizeReview(params: {
   outcome: ReviewOutcome;
-  gitService: ReturnType<typeof createGitService>;
   emit: EmitFn;
   reviewId: string;
   projectPath: string;
@@ -158,13 +170,13 @@ export async function finalizeReview(params: {
   parsed: ParsedDiff;
   profileId?: ProfileId;
   activeLenses: LensId[];
-  startTime: number;
+  durationMs: number;
   signal?: AbortSignal;
-  headCommit?: string;
+  branch: string | null;
+  headCommit: string | null;
 }): Promise<Result<ReviewResult, ReviewAbort>> {
   const {
     outcome,
-    gitService,
     emit,
     reviewId,
     projectPath,
@@ -172,8 +184,9 @@ export async function finalizeReview(params: {
     parsed,
     profileId,
     activeLenses,
-    startTime,
+    durationMs,
     signal,
+    branch,
     headCommit,
   } = params;
 
@@ -181,11 +194,14 @@ export async function finalizeReview(params: {
 
   // outcome.issues are already deduplicated, severity-filtered, and
   // completeness-validated inside orchestrateReview; no second filter pass.
-  const finalResult = generateReport(outcome.issues, outcome.summary);
+  const finalResult: ReviewResult = { issues: outcome.issues };
 
-  const statusResult = await gitService.getStatus().catch(() => null);
   signal?.throwIfAborted();
-  const status = statusResult?.ok ? statusResult.value : null;
+
+  if (!markCommitting(reviewId)) {
+    signal?.throwIfAborted();
+    return err(reviewAbort("Review is no longer pending.", ReviewErrorCode.CANCELLED));
+  }
 
   const saveResult = await saveReview({
     reviewId,
@@ -193,11 +209,11 @@ export async function finalizeReview(params: {
     mode,
     result: finalResult,
     diff: parsed,
-    branch: status?.branch ?? null,
-    commit: headCommit ?? null,
+    branch,
+    commit: headCommit,
     profile: profileId,
     lenses: activeLenses,
-    durationMs: Date.now() - startTime,
+    durationMs,
     lensStats: outcome.lensStats,
     droppedDuplicates: outcome.droppedDuplicates,
     droppedBelowThreshold: outcome.droppedBelowThreshold,
@@ -208,10 +224,21 @@ export async function finalizeReview(params: {
     return err(reviewAbort(saveResult.error.message, ReviewErrorCode.INTERNAL_ERROR));
   }
 
+  if (!markCommitted(reviewId)) {
+    return err(reviewAbort("Review commit state was lost.", ReviewErrorCode.INTERNAL_ERROR));
+  }
+
   // Complete the report step only after the durable save — so a save failure
   // never emits report=completed, and the client's View Results gate stays
   // truthful (the terminal `complete` signal is the equivalent guard).
   await emit(stepComplete("report"));
+  await emit({
+    type: "complete",
+    result: finalResult,
+    reviewId,
+    durationMs,
+  });
+  markComplete(reviewId);
 
   return ok(finalResult);
 }

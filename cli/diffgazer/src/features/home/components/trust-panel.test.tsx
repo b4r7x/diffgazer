@@ -1,9 +1,11 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
+import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { Footer } from "../../../components/layout/footer";
 import { CliThemeProvider } from "../../../theme/provider";
 import { TrustPanel } from "./trust-panel";
 
@@ -57,10 +59,20 @@ function Wrapper({ children, api }: { children: ReactNode; api: BoundApi }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ApiProvider value={api}>
-        <CliThemeProvider initialTheme="dark">{children}</CliThemeProvider>
+        <CliThemeProvider initialTheme="dark">
+          <FooterProvider initialShortcuts={[]}>
+            {children}
+            <FooterConsumer />
+          </FooterProvider>
+        </CliThemeProvider>
       </ApiProvider>
     </QueryClientProvider>
   );
+}
+
+function FooterConsumer() {
+  const footer = useFooterData();
+  return <Footer shortcuts={footer.shortcuts} rightShortcuts={footer.rightShortcuts} />;
 }
 
 describe("TrustPanel", () => {
@@ -70,7 +82,7 @@ describe("TrustPanel", () => {
 
   test("marks runCommands unavailable and never submits it when accepting trust", async () => {
     const loadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse());
-    const saveTrust = vi.fn<BoundApi["saveTrust"]>().mockResolvedValue({
+    const saveResponse: Awaited<ReturnType<BoundApi["saveTrust"]>> = {
       trust: {
         projectId: "project-1",
         repoRoot: "/tmp/repo",
@@ -78,7 +90,14 @@ describe("TrustPanel", () => {
         trustMode: "persistent",
         trustedAt: new Date().toISOString(),
       },
-    });
+    };
+    let resolveSaveTrust!: (value: typeof saveResponse) => void;
+    const saveTrust = vi.fn<BoundApi["saveTrust"]>().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSaveTrust = resolve;
+        }),
+    );
     const api = {
       ...createApi({ baseUrl: "http://localhost" }),
       loadInit,
@@ -96,11 +115,26 @@ describe("TrustPanel", () => {
 
     const frame = view.lastFrame() ?? "";
     expect(frame).toContain("Currently unavailable");
+    expect(frame).toContain("[Tab] Focus Actions");
+    expect(frame).toContain("[Enter/Space] Toggle");
 
     view.stdin.write("\t");
     await flush();
+    expect(view.lastFrame()).toContain("[Enter] Trust & Continue");
+    expect(view.lastFrame()).toContain("[Tab] Focus Permissions");
     view.stdin.write("\r");
-    await flush(8);
+    await flushUntil(() => {
+      const pendingFrame = view.lastFrame() ?? "";
+      return (
+        pendingFrame.includes("Saving...") && !pendingFrame.includes("[Tab] Focus Permissions")
+      );
+    });
+
+    expect(view.lastFrame()).not.toContain("[Tab] Focus Permissions");
+    expect(view.lastFrame()).not.toContain("[Enter] Saving...");
+
+    resolveSaveTrust(saveResponse);
+    await flushUntil(() => onAccept.mock.calls.length > 0);
 
     expect(saveTrust).toHaveBeenCalledWith(
       expect.objectContaining({

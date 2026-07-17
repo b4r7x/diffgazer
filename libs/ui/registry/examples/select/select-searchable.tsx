@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   Select,
   SelectContent,
+  SelectEmpty,
   SelectItem,
   SelectSearch,
   SelectTrigger,
@@ -27,6 +28,7 @@ export default function SelectSearchable() {
           <SelectItem value="git-stash">git stash</SelectItem>
           <SelectItem value="git-rebase">git rebase</SelectItem>
           <SelectItem value="git-cherry-pick">git cherry-pick</SelectItem>
+          <SelectEmpty />
           <SelectSearch placeholder="Filter..." />
         </SelectContent>
       </Select>

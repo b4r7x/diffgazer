@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type { AgentStreamEvent, LensStat, StepEvent } from "@diffgazer/core/schemas/events";
@@ -7,12 +6,7 @@ import type { LensId, ReviewIssue, ReviewOptions } from "@diffgazer/core/schemas
 import type { AIClient } from "../../../shared/lib/ai/types.js";
 import { runLensAnalysis } from "./analysis.js";
 import type { ParsedDiff } from "./diff/types.js";
-import {
-  deduplicateIssues,
-  filterIssuesByMinSeverity,
-  sortIssuesBySeverity,
-  validateIssueCompleteness,
-} from "./issues.js";
+import { deduplicateIssues, filterIssuesByMinSeverity, sortIssuesBySeverity } from "./issues.js";
 import { getLenses } from "./lenses.js";
 import type { OrchestrationOptions, OrchestrationOutcome, ReviewError } from "./types.js";
 
@@ -93,12 +87,14 @@ export async function orchestrateReview(
     return err({ code: "NO_DIFF", message: "No files changed" });
   }
 
-  const lensIds = reviewOptions.lenses ?? reviewOptions.profile?.lenses ?? ["correctness"];
+  const selectedLensIds = (reviewOptions.lenses?.length ? reviewOptions.lenses : undefined) ??
+    (reviewOptions.profile?.lenses.length ? reviewOptions.profile.lenses : undefined) ?? [
+      "correctness",
+    ];
+  const lensIds = [...new Set(selectedLensIds)];
   const lenses = getLenses(lensIds);
   const filter = reviewOptions.filter ?? reviewOptions.profile?.filter;
 
-  const traceId = randomUUID();
-  const orchestratorSpanId = randomUUID();
   const concurrency = Math.min(orchestrationOptions.concurrency, Math.max(1, lenses.length));
 
   onEvent({
@@ -106,14 +102,11 @@ export async function orchestrateReview(
     agents: lenses.map((lens) => AGENT_METADATA[LENS_TO_AGENT[lens.id]]),
     concurrency,
     timestamp: new Date().toISOString(),
-    traceId,
-    spanId: orchestratorSpanId,
   });
 
   const tasks = lenses.map((lens, index) => {
     const agentId = LENS_TO_AGENT[lens.id];
     const agentMeta = AGENT_METADATA[agentId];
-    const spanId = randomUUID();
 
     onEvent({
       type: "agent_queued",
@@ -121,11 +114,9 @@ export async function orchestrateReview(
       position: index + 1,
       total: lenses.length,
       timestamp: new Date().toISOString(),
-      traceId,
-      spanId,
     });
 
-    return { lens, agentId, spanId };
+    return { lens, agentId };
   });
 
   const settledResults = await runWithConcurrency(
@@ -138,11 +129,6 @@ export async function orchestrateReview(
           task.lens,
           diff,
           onEvent,
-          {
-            traceId,
-            spanId: task.spanId,
-            parentSpanId: orchestratorSpanId,
-          },
           orchestrationOptions.projectContext,
           orchestrationOptions.signal,
           filter,
@@ -153,8 +139,6 @@ export async function orchestrateReview(
           agent: task.agentId,
           error: String(error),
           timestamp: new Date().toISOString(),
-          traceId,
-          spanId: task.spanId,
         });
         throw error;
       }
@@ -163,10 +147,10 @@ export async function orchestrateReview(
   );
 
   const allIssues: ReviewIssue[] = [];
-  const summaries: string[] = [];
   const lensStats: LensStat[] = [];
   const failedLenses: Array<{ lensId: LensId; errorCode?: string; errorMessage?: string }> = [];
   let lastError: ReviewError | null = null;
+  let droppedIncompleteProviderIssues = 0;
 
   settledResults.forEach((settled, i) => {
     const lens = lenses[i];
@@ -211,7 +195,7 @@ export async function orchestrateReview(
     }
 
     allIssues.push(...result.value.issues);
-    summaries.push(`[${result.value.lensName}] ${result.value.summary}`);
+    droppedIncompleteProviderIssues += result.value.droppedIncompleteProviderIssues;
     // Count only issues that meet the severity threshold, matching the streamed
     // per-agent counter so the persisted lens stats stay consistent with the UI.
     lensStats.push({
@@ -225,27 +209,18 @@ export async function orchestrateReview(
   const droppedDuplicates = allIssues.length - deduplicated.length;
   const filtered = filterIssuesByMinSeverity(deduplicated, filter);
   const droppedBelowThreshold = deduplicated.length - filtered.length;
-  const validated = filtered.filter(validateIssueCompleteness);
-  const sorted = sortIssuesBySeverity(validated);
-
-  const failedSummary =
-    failedLenses.length > 0
-      ? `Partial analysis: ${failedLenses.map((f) => `${f.lensId}${f.errorCode ? ` (${f.errorCode})` : ""}`).join(", ")} failed.`
-      : "";
-  const combinedSummary = [summaries.join("\n\n"), failedSummary].filter(Boolean).join("\n\n");
+  const sorted = sortIssuesBySeverity(filtered);
 
   onEvent({
     type: "orchestrator_complete",
-    summary: combinedSummary,
     totalIssues: sorted.length,
     lensStats,
     filesAnalyzed: diff.files.length,
     droppedDuplicates,
     droppedBelowThreshold,
+    droppedIncompleteProviderIssues,
     minSeverity: filter?.minSeverity,
     timestamp: new Date().toISOString(),
-    traceId,
-    spanId: orchestratorSpanId,
   });
 
   const allLensesFailed = failedLenses.length === lenses.length && lenses.length > 0;
@@ -253,12 +228,12 @@ export async function orchestrateReview(
   if (allLensesFailed && lastError !== null) {
     if (orchestrationOptions.partialOnAllFailed) {
       return ok({
-        summary: combinedSummary || `Analysis incomplete: ${getErrorMessage(lastError)}`,
         issues: [],
         lensStats,
         failedLenses,
         droppedDuplicates,
         droppedBelowThreshold,
+        droppedIncompleteProviderIssues,
         minSeverity: filter?.minSeverity,
       });
     }
@@ -266,12 +241,12 @@ export async function orchestrateReview(
   }
 
   return ok({
-    summary: combinedSummary,
     issues: sorted,
     lensStats,
     failedLenses,
     droppedDuplicates,
     droppedBelowThreshold,
+    droppedIncompleteProviderIssues,
     minSeverity: filter?.minSeverity,
   });
 }

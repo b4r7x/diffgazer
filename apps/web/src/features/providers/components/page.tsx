@@ -66,7 +66,6 @@ export function ProvidersPage() {
     isLoading,
     filteredProviders,
     selectedProvider,
-    needsModel,
     search,
     selection,
     dialogs,
@@ -84,30 +83,35 @@ export function ProvidersPage() {
   usePageFooter({ shortcuts: footer.shortcuts, rightShortcuts: footer.rightShortcuts });
 
   const actions = {
-    onSetApiKey: () => dialogs.setApiKeyOpen(true),
-    onSelectModel: () => dialogs.setModelOpen(true),
+    onSetApiKey: () => {
+      if (isSubmitting) return;
+      if (selectedProvider) dialogs.openApiKey(selectedProvider.id);
+    },
+    onSelectModel: () => {
+      if (isSubmitting) return;
+      if (selectedProvider) dialogs.openModel(selectedProvider.id);
+    },
     onRemoveKey: () => {
+      if (isSubmitting) return;
       if (selectedProvider) void handlers.removeKey(selectedProvider.id);
     },
     onSelectProvider: () => {
-      if (selectedProvider)
-        void handlers.selectProvider(
-          selectedProvider.id,
-          selectedProvider.name,
-          selectedProvider.model,
-        );
+      if (selectedProvider) handlers.activateProvider(selectedProvider);
     },
   };
 
-  const handleProviderActivate = (id: string) => {
+  const handleProviderListActivate = (id: string) => {
     const provider = filteredProviders.find((candidate) => candidate.id === id);
     if (!provider) return;
-    void handlers.selectProvider(provider.id, provider.name, provider.model);
+    handlers.activateProvider(provider);
   };
 
   if (isLoading) {
     return <CenteredStatus>Loading providers...</CenteredStatus>;
   }
+
+  const apiKeyDialog = dialogs.current?.kind === "api-key" ? dialogs.current : null;
+  const modelDialog = dialogs.current?.kind === "model" ? dialogs.current : null;
 
   return (
     <div className="flex-1 flex overflow-hidden">
@@ -137,7 +141,7 @@ export function ProvidersPage() {
           onListKeyDown={keyboard.handleListKeyDown}
           highlighted={selection.effectiveSelectedId}
           onHighlightChange={(id) => selection.setSelectedId(id)}
-          onActivate={handleProviderActivate}
+          onActivate={handleProviderListActivate}
           onBoundaryReached={keyboard.handleListBoundary}
         />
       </div>
@@ -145,7 +149,7 @@ export function ProvidersPage() {
         <ProviderDetails
           provider={selectedProvider}
           actions={actions}
-          disableSelectProvider={needsModel}
+          isPending={isSubmitting}
           focusedButtonIndex={
             keyboard.focusZone === "buttons" && selectedProvider ? keyboard.buttonIndex : undefined
           }
@@ -154,32 +158,38 @@ export function ProvidersPage() {
         />
       </div>
 
-      {selectedProvider && (
-        <>
-          <ApiKeyDialog
-            key={selectedProvider.id}
-            open={dialogs.apiKeyOpen}
-            onOpenChange={dialogs.setApiKeyOpen}
-            providerName={selectedProvider.name}
-            envVarName={PROVIDER_ENV_VARS[selectedProvider.id]}
-            secretsStorage={secretsStorage}
-            onSubmit={(method, value) => {
-              const apiKey: string | CredentialRef =
-                method === "env" ? { kind: "env", varName: value } : value;
-              return handlers.saveApiKey(selectedProvider.id, apiKey, {
-                openModelDialog: selectedProvider.id === "openrouter" && !selectedProvider.model,
-              });
-            }}
-          />
-          <ModelSelectDialog
-            open={dialogs.modelOpen}
-            onOpenChange={dialogs.setModelOpen}
-            provider={selectedProvider.id}
-            currentModel={selectedProvider.model}
-            isSaving={isSubmitting}
-            onSelect={(modelId) => void handlers.selectModel(selectedProvider.id, modelId)}
-          />
-        </>
+      {apiKeyDialog && (
+        <ApiKeyDialog
+          key={`${apiKeyDialog.provider.id}:${String(apiKeyDialog.owner.id)}`}
+          open
+          onOpenChange={(open) => {
+            if (!open) dialogs.close(apiKeyDialog.owner);
+          }}
+          providerName={apiKeyDialog.provider.name}
+          envVarName={PROVIDER_ENV_VARS[apiKeyDialog.provider.id]}
+          secretsStorage={secretsStorage}
+          onSubmit={(method, value) => {
+            const apiKey: string | CredentialRef =
+              method === "env" ? { kind: "env", varName: value } : value;
+            return handlers.saveApiKey(apiKeyDialog.owner, apiKey, {
+              openModelDialog:
+                apiKeyDialog.provider.id === "openrouter" && !apiKeyDialog.provider.model,
+            });
+          }}
+        />
+      )}
+      {modelDialog && (
+        <ModelSelectDialog
+          key={`${modelDialog.provider.id}:${String(modelDialog.owner.id)}`}
+          open
+          onOpenChange={(open) => {
+            if (!open) dialogs.close(modelDialog.owner);
+          }}
+          provider={modelDialog.provider.id}
+          currentModel={modelDialog.provider.model}
+          isSaving={isSubmitting}
+          onSelect={(modelId) => void handlers.selectModel(modelDialog.owner, modelId)}
+        />
       )}
     </div>
   );

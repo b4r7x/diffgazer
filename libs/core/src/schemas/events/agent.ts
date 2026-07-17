@@ -91,9 +91,6 @@ const FileStartEventSchema = z.object({
   timestamp: z.string(),
   agent: AgentIdSchema.optional(),
   scope: z.enum(["orchestrator", "agent"]).optional(),
-  traceId: z.string().optional(),
-  spanId: z.string().optional(),
-  parentSpanId: z.string().optional(),
 });
 
 const FileCompleteEventSchema = z.object({
@@ -104,9 +101,6 @@ const FileCompleteEventSchema = z.object({
   timestamp: z.string(),
   agent: AgentIdSchema.optional(),
   scope: z.enum(["orchestrator", "agent"]).optional(),
-  traceId: z.string().optional(),
-  spanId: z.string().optional(),
-  parentSpanId: z.string().optional(),
 });
 
 const OrchestratorStartEventSchema = z.object({
@@ -114,8 +108,6 @@ const OrchestratorStartEventSchema = z.object({
   agents: z.array(AgentMetaSchema),
   concurrency: z.number(),
   timestamp: z.string(),
-  traceId: z.string().optional(),
-  spanId: z.string().optional(),
 });
 
 const AgentQueuedEventSchema = z.object({
@@ -124,16 +116,12 @@ const AgentQueuedEventSchema = z.object({
   position: z.number(),
   total: z.number(),
   timestamp: z.string(),
-  traceId: z.string().optional(),
-  spanId: z.string().optional(),
 });
 
 const AgentStartEventSchema = z.object({
   type: z.literal("agent_start"),
   agent: AgentMetaSchema,
   timestamp: z.string(),
-  traceId: z.string().optional(),
-  spanId: z.string().optional(),
 });
 
 const AgentThinkingEventSchema = z.object({
@@ -141,8 +129,6 @@ const AgentThinkingEventSchema = z.object({
   agent: AgentIdSchema,
   thought: z.string(),
   timestamp: z.string(),
-  traceId: z.string().optional(),
-  spanId: z.string().optional(),
 });
 
 const AgentProgressEventSchema = z.object({
@@ -151,8 +137,6 @@ const AgentProgressEventSchema = z.object({
   progress: z.number().min(0).max(100),
   message: z.string().optional(),
   timestamp: z.string(),
-  traceId: z.string().optional(),
-  spanId: z.string().optional(),
 });
 
 const AgentErrorEventSchema = z.object({
@@ -160,54 +144,6 @@ const AgentErrorEventSchema = z.object({
   agent: AgentIdSchema,
   error: z.string(),
   timestamp: z.string(),
-  traceId: z.string().optional(),
-  spanId: z.string().optional(),
-});
-
-const ToolCallEventSchema = z.object({
-  type: z.literal("tool_call"),
-  agent: AgentIdSchema,
-  tool: z.string(),
-  input: z.string(),
-  timestamp: z.string(),
-  traceId: z.string().optional(),
-  spanId: z.string().optional(),
-  parentSpanId: z.string().optional(),
-});
-
-const ToolResultEventSchema = z.object({
-  type: z.literal("tool_result"),
-  agent: AgentIdSchema,
-  tool: z.string(),
-  summary: z.string(),
-  timestamp: z.string(),
-  traceId: z.string().optional(),
-  spanId: z.string().optional(),
-  parentSpanId: z.string().optional(),
-});
-
-const ToolStartEventSchema = z.object({
-  type: z.literal("tool_start"),
-  agent: AgentIdSchema,
-  tool: z.string(),
-  input: z.string(),
-  timestamp: z.string(),
-  traceId: z.string().optional(),
-  spanId: z.string().optional(),
-  parentSpanId: z.string().optional(),
-});
-
-const ToolEndEventSchema = z.object({
-  type: z.literal("tool_end"),
-  agent: AgentIdSchema,
-  tool: z.string(),
-  summary: z.string(),
-  status: z.enum(["success", "error"]),
-  error: z.string().optional(),
-  timestamp: z.string(),
-  traceId: z.string().optional(),
-  spanId: z.string().optional(),
-  parentSpanId: z.string().optional(),
 });
 
 // Honest per-lens diff-coverage progress. Drives the UI's files-k/n metric from
@@ -220,8 +156,6 @@ const FileProgressEventSchema = z.object({
   completed: z.number(),
   total: z.number(),
   timestamp: z.string(),
-  traceId: z.string().optional(),
-  spanId: z.string().optional(),
 });
 
 const IssueFoundEventSchema = z.object({
@@ -229,8 +163,6 @@ const IssueFoundEventSchema = z.object({
   agent: AgentIdSchema,
   issue: ReviewIssueSchema,
   timestamp: z.string(),
-  traceId: z.string().optional(),
-  spanId: z.string().optional(),
 });
 
 const AgentCompleteEventSchema = z.object({
@@ -243,8 +175,6 @@ const AgentCompleteEventSchema = z.object({
   outputChars: z.number().optional(),
   tokenEstimate: z.number().optional(),
   costUsd: z.number().optional(),
-  traceId: z.string().optional(),
-  spanId: z.string().optional(),
 });
 
 export const LensStatSchema = z.object({
@@ -256,22 +186,20 @@ export const LensStatSchema = z.object({
 });
 export type LensStat = z.infer<typeof LensStatSchema>;
 
-const OrchestratorCompleteEventSchema = z.object({
+const OrchestratorCompleteEventSchema = z.strictObject({
   type: z.literal("orchestrator_complete"),
-  summary: z.string(),
   totalIssues: z.number(),
   lensStats: z.array(LensStatSchema),
   filesAnalyzed: z.number(),
   // Counts the dedup/filter passes removed from the streamed total so the UI can
   // explain why the live counter snaps down at `complete`.
-  droppedDuplicates: z.number().optional(),
+  droppedDuplicates: z.number().int().nonnegative().optional(),
   droppedBelowThreshold: z.number().optional(),
+  droppedIncompleteProviderIssues: z.number().int().nonnegative().optional(),
   // The resolved severity floor the dropped issues fell below, so the hidden-count
   // notice can name the threshold the user can lower to surface them.
   minSeverity: ReviewSeveritySchema.optional(),
   timestamp: z.string(),
-  traceId: z.string().optional(),
-  spanId: z.string().optional(),
 });
 
 export const AgentStreamEventSchema = z.discriminatedUnion("type", [
@@ -283,10 +211,6 @@ export const AgentStreamEventSchema = z.discriminatedUnion("type", [
   AgentThinkingEventSchema,
   AgentProgressEventSchema,
   AgentErrorEventSchema,
-  ToolCallEventSchema,
-  ToolResultEventSchema,
-  ToolStartEventSchema,
-  ToolEndEventSchema,
   FileProgressEventSchema,
   IssueFoundEventSchema,
   AgentCompleteEventSchema,
@@ -301,7 +225,6 @@ const AgentStateSchema = z.object({
   progress: z.number().min(0).max(100),
   issueCount: z.number(),
   currentAction: z.string().optional(),
-  lastToolCall: z.string().optional(),
   error: z.string().optional(),
   startedAt: z.string().optional(),
   completedAt: z.string().optional(),

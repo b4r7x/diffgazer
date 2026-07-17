@@ -17,7 +17,12 @@ export {
 } from "./core/navigation-directions.js";
 export type { Decline, KeyHandler } from "./core/normalize-key-input.js";
 export { DECLINE } from "./core/normalize-key-input.js";
-export { isEditableElement, isInputElement } from "./dom/element-guards.js";
+export {
+  composedClosest,
+  composedContains,
+  isEditableElement,
+  isInputElement,
+} from "./dom/element-guards.js";
 export type { RestoreFocusOptions } from "./dom/focus-restore.js";
 export {
   getRestorableFocusTarget,
@@ -29,6 +34,7 @@ export {
   getFocusableElements,
   getTabbableElements,
   isFocusable,
+  isReachable,
 } from "./dom/focusable.js";
 export type { HotkeyModifier, ValidateHotkey } from "./dom/hotkey.js";
 export { canonicalizeHotkey } from "./dom/hotkey.js";

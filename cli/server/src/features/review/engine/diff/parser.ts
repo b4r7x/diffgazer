@@ -1,14 +1,6 @@
 import { unquoteGitPath } from "../../../../shared/lib/git/quote.js";
 import { computeTotalStats } from "./total-stats.js";
-import type { DiffHunk, DiffLineType, DiffOperation, FileDiff, ParsedDiff } from "./types.js";
-
-function classifyDiffLine(line: string): DiffLineType {
-  if (line.startsWith("+") && !isNewFileHeader(line)) return "addition";
-  if (line.startsWith("-") && !isOldFileHeader(line)) return "deletion";
-  if (line.startsWith("@@")) return "hunk-header";
-  if (line.startsWith("diff ") || line.startsWith("index ")) return "file-header";
-  return "context";
-}
+import type { DiffHunk, DiffOperation, FileDiff, ParsedDiff } from "./types.js";
 
 const DIFF_HEADER_PATTERN = /^diff --git a\/(.+) b\/(.+)$/;
 const DIFF_HEADER_QUOTED_PATTERN = /^diff --git "a\/(.+)" "b\/(.+)"$/;
@@ -20,10 +12,6 @@ const NEW_FILE_QUOTED_PATTERN = /^\+\+\+ "b\/(.+)"$/;
 
 function isOldFileHeader(line: string): boolean {
   return OLD_FILE_PATTERN.test(line) || OLD_FILE_QUOTED_PATTERN.test(line);
-}
-
-function isNewFileHeader(line: string): boolean {
-  return NEW_FILE_PATTERN.test(line) || NEW_FILE_QUOTED_PATTERN.test(line);
 }
 
 function determineOperation(
@@ -87,12 +75,11 @@ function countChanges(hunks: DiffHunk[]): { additions: number; deletions: number
   let deletions = 0;
 
   for (const hunk of hunks) {
-    const lines = hunk.content.split("\n");
+    const lines = hunk.content.split("\n").slice(1);
     for (const line of lines) {
-      const lineType = classifyDiffLine(line);
-      if (lineType === "addition") {
+      if (line.startsWith("+")) {
         additions++;
-      } else if (lineType === "deletion") {
+      } else if (line.startsWith("-")) {
         deletions++;
       }
     }

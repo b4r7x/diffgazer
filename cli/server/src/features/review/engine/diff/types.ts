@@ -1,5 +1,4 @@
 export type DiffOperation = "add" | "modify" | "delete" | "rename";
-export type DiffLineType = "addition" | "deletion" | "hunk-header" | "file-header" | "context";
 
 /** Server-side hunk for multi-file analysis. @see libs/ui/registry/lib/diff/parse.ts for the UI-oriented single-file variant. */
 export interface DiffHunk {

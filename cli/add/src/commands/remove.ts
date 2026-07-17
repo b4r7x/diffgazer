@@ -279,6 +279,12 @@ function toPublicName(itemName: string): string {
   return parseInstallName(itemName).publicName;
 }
 
+export function resolveRemoveTransactionFiles(cwd: string, config: ResolvedConfig): string[] {
+  const paths = [resolveProjectPath(cwd, "diffgazer.json")];
+  if (config.tailwind?.css) paths.push(resolveProjectPath(cwd, config.tailwind.css));
+  return paths;
+}
+
 // Trims records kept only for a drifted CSS chunk down to chunk tracking plus
 // provenance. Their source files were deleted, so keeping `files` would make
 // `dgadd diff` report spurious drift; `cssChunks` is narrowed to the hashes
@@ -323,22 +329,33 @@ export const removeCommand = createRemoveCommand({
     return isNamespacedInstalled(cwd, config, item.name);
   },
   resolveFilesForItem: ({ cwd, config, item }) => {
+    const publicName = toPublicName(item.name);
+    const retiredFiles = (loadManifest(cwd)[publicName]?.files ?? [])
+      .filter((file) => file.retired)
+      .map((file) => ({ absolutePath: resolveProjectPath(cwd, file.path) }));
     const keyName = resolveKeyName(item.name);
     if (keyName) {
       const { files, missingHooks } = resolveKeysCopyHookFiles([keyName]);
       if (missingHooks.length > 0) {
         throw new Error(`Missing bundled keys hook(s): ${missingHooks.join(", ")}`);
       }
-      return files.map((file) => ({
-        absolutePath: resolveInstallPath(cwd, config.hooksFsPath, file.relativePath),
-      }));
+      return [
+        ...files.map((file) => ({
+          absolutePath: resolveInstallPath(cwd, config.hooksFsPath, file.relativePath),
+        })),
+        ...retiredFiles,
+      ];
     }
 
-    return item.files.map((file) => {
+    const currentFiles = item.files.map((file) => {
       const installBase = getInstallBaseForFilePath(file.path);
       const installDir = getInstallDirForBase(installBase, config);
       return { absolutePath: resolveInstallPath(cwd, installDir, ctx.registry.relativePath(file)) };
     });
+    const byPath = new Map(
+      [...currentFiles, ...retiredFiles].map((file) => [file.absolutePath, file]),
+    );
+    return [...byPath.values()];
   },
   canRemoveFile: ({ cwd, item, file, force }) => {
     if (force) return true;
@@ -352,6 +369,7 @@ export const removeCommand = createRemoveCommand({
     resolveProjectPath(cwd, config.libFsPath),
     resolveProjectPath(cwd, config.stylesFsPath),
   ],
+  resolveTransactionFiles: ({ cwd, config }) => resolveRemoveTransactionFiles(cwd, config),
   updateManifest: ({ cwd, removedNames }) => {
     // Items whose drifted chunk was preserved stay tracked (trimmed to chunk
     // tracking, see retainCssChunkTrackingOnly) so the block stays targetable.

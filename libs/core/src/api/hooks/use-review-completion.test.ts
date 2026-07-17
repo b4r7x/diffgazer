@@ -48,6 +48,8 @@ describe("useReviewCompletion", () => {
     rerender({ ...initialProps, isStreaming: false, isComplete: true });
 
     expect(result.current.isCompleting).toBe(true);
+    const completedAt = result.current.completedAt;
+    expect(completedAt).toEqual(new Date());
     expect(onComplete).not.toHaveBeenCalled();
 
     act(() => {
@@ -55,6 +57,7 @@ describe("useReviewCompletion", () => {
     });
 
     expect(result.current.isCompleting).toBe(false);
+    expect(result.current.completedAt).toBe(completedAt);
     // call-count IS the contract: onComplete must fire exactly once when the completion delay elapses (no double-fire from timer + state change)
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
@@ -186,6 +189,7 @@ describe("useReviewCompletion", () => {
 
     rerender({ ...initialProps, isStreaming: false, isComplete: true });
     expect(result.current.isCompleting).toBe(true);
+    expect(result.current.completedAt).not.toBeNull();
 
     act(() => {
       result.current.skipDelay();
@@ -194,6 +198,7 @@ describe("useReviewCompletion", () => {
     // call-count IS the contract: skipDelay must fire onComplete exactly once (immediate fire)
     expect(onComplete).toHaveBeenCalledTimes(1);
     expect(result.current.isCompleting).toBe(false);
+    expect(result.current.completedAt).not.toBeNull();
 
     act(() => {
       vi.advanceTimersByTime(3000);
@@ -254,6 +259,7 @@ describe("useReviewCompletion", () => {
     });
 
     expect(result.current.isCompleting).toBe(false);
+    expect(result.current.completedAt).toBeNull();
 
     act(() => {
       vi.advanceTimersByTime(3000);

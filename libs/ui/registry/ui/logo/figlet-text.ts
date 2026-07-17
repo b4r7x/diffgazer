@@ -8,9 +8,11 @@ export type FigletFont = "Big" | "Small";
 
 type FigletModule = typeof figlet;
 
-const FONT_FILES: Record<FigletFont, string> = {
-  Big: "figlet/importable-fonts/Big.js",
-  Small: "figlet/importable-fonts/Small.js",
+type FontModule = { default: string };
+
+const FONT_LOADERS: Record<FigletFont, () => Promise<FontModule>> = {
+  Big: () => import("figlet/importable-fonts/Big.js"),
+  Small: () => import("figlet/importable-fonts/Small.js"),
 };
 
 const MISSING_DEPENDENCY_MESSAGE =
@@ -34,7 +36,7 @@ function loadFiglet(): Promise<FigletModule> {
 function loadFont(figletModule: FigletModule, font: FigletFont): Promise<void> {
   let promise = fontPromises.get(font);
   if (!promise) {
-    promise = import(/* @vite-ignore */ FONT_FILES[font])
+    promise = FONT_LOADERS[font]()
       .then((mod) => {
         const data = (mod.default ?? mod) as string;
         figletModule.parseFont(font, data);

@@ -1,6 +1,6 @@
 "use client";
 
-import { type Ref, useCallback } from "react";
+import { type Ref, useMemo, useRef } from "react";
 import { composeRefs } from "@/lib/compose-refs";
 
 /**
@@ -11,8 +11,13 @@ import { composeRefs } from "@/lib/compose-refs";
  * of calling `composeRefs(...)` inline during render.
  */
 export function useComposedRefs<T>(...refs: Array<Ref<T> | null | undefined>) {
-  // refs is a fresh array each render; spreading it into the deps keeps the
-  // memo keyed on the individual ref identities, not the array wrapper.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: deps are the spread refs themselves.
-  return useCallback(composeRefs(...refs), refs);
+  const cachedRefs = useRef(refs);
+  const refsChanged =
+    cachedRefs.current.length !== refs.length ||
+    cachedRefs.current.some((ref, index) => !Object.is(ref, refs[index]));
+
+  if (refsChanged) cachedRefs.current = refs;
+
+  const stableRefs = cachedRefs.current;
+  return useMemo(() => composeRefs(...stableRefs), [stableRefs]);
 }

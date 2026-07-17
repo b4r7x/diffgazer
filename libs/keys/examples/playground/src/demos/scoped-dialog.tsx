@@ -1,5 +1,6 @@
 import { useKey, useScope } from "@diffgazer/keys";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { DemoDialog } from "../components/demo-dialog";
 import { DemoWrapper } from "../components/demo-wrapper";
 import { useTransientValue } from "./use-transient-value";
 
@@ -7,6 +8,7 @@ export function ScopedDialogDemo() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<number | null>(null);
   const [confirmed, showConfirmed] = useTransientValue(false, 1500);
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   useScope("dialog", { enabled: dialogOpen });
 
@@ -80,33 +82,29 @@ export function ScopedDialogDemo() {
       )}
 
       {dialogOpen && (
-        <div className="demo-overlay">
-          <button
-            type="button"
-            aria-label="Close dialog"
-            className="demo-overlay-backdrop"
-            onClick={() => setDialogOpen(false)}
-          />
-          <div className="demo-dialog">
-            <h3 style={{ marginBottom: 8 }}>Confirm Action</h3>
-            <p style={{ fontSize: 14, color: "var(--color-text-muted)", marginBottom: 20 }}>
-              Are you sure you want to proceed? Notice that pressing 1-5 does nothing while this
-              dialog is open.
-            </p>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                className="demo-button--secondary demo-button"
-                onClick={() => setDialogOpen(false)}
-              >
-                Cancel
-              </button>
-              <button type="button" className="demo-button" onClick={confirmAction}>
-                Confirm
-              </button>
-            </div>
+        <DemoDialog
+          title="Confirm Action"
+          initialFocus={cancelRef}
+          onClose={() => setDialogOpen(false)}
+        >
+          <p style={{ fontSize: 14, color: "var(--color-text-muted)", marginBottom: 20 }}>
+            Are you sure you want to proceed? Notice that pressing 1-5 does nothing while this
+            dialog is open.
+          </p>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button
+              ref={cancelRef}
+              type="button"
+              className="demo-button--secondary demo-button"
+              onClick={() => setDialogOpen(false)}
+            >
+              Cancel
+            </button>
+            <button type="button" className="demo-button" onClick={confirmAction}>
+              Confirm
+            </button>
           </div>
-        </div>
+        </DemoDialog>
       )}
     </DemoWrapper>
   );

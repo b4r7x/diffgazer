@@ -19,14 +19,20 @@ export function SectionHeader({
   const color = variant === "muted" ? tokens.muted : tokens.fg;
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" flexShrink={0}>
       <Text bold={bold} color={color}>
         {children.toUpperCase()}
       </Text>
       {bordered ? (
-        <Box width="100%" overflowX="hidden">
-          <Text color={tokens.border}>{"─".repeat(9999)}</Text>
-        </Box>
+        <Box
+          width="100%"
+          borderStyle="single"
+          borderColor={tokens.border}
+          borderTop
+          borderBottom={false}
+          borderLeft={false}
+          borderRight={false}
+        />
       ) : null}
     </Box>
   );

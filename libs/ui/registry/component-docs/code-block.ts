@@ -2,7 +2,7 @@ import type { ComponentDoc } from "./types";
 
 export const codeBlockDoc: ComponentDoc = {
   description:
-    "Compound code display with three visual variants (hairline, bare, terminal), per-line diff/highlight states, an optional copy button, and optional lowlight-powered syntax highlighting. Renders as a <figure> with accessible name resolution via aria-labelledby (CodeBlock.Label) or aria-label fallback.",
+    "Compound code display with three visual variants (hairline, bare, terminal), per-line diff/highlight states, an optional copy button, and syntax highlighting through a caller-provided lowlight instance. Renders as a <figure> with accessible name resolution via aria-labelledby (CodeBlock.Label) or aria-label fallback.",
   notes: [
     {
       title: "Variants",
@@ -12,7 +12,7 @@ export const codeBlockDoc: ComponentDoc = {
     {
       title: "Compound API",
       content:
-        "CodeBlock is the root <figure>. CodeBlock.Header holds the filename label and inline actions. CodeBlock.Label renders the filename and is registered as the accessible name via aria-labelledby. CodeBlock.Content is the scrollable code body — pass a string for auto-line splitting, or map line data to CodeBlock.Line children. CodeBlock.CopyButton copies a string to the clipboard with an aria-live announcement. CodeBlockHighlight (imported from @diffgazer/ui/components/code-block/highlight) optionally renders syntax-colored code via lowlight (~190 languages).",
+        "CodeBlock is the root <figure>. CodeBlock.Header holds the filename label and inline actions. CodeBlock.Label renders the filename and is registered as the accessible name via aria-labelledby. CodeBlock.Content is the scrollable code body — pass a string for auto-line splitting, or map line data to CodeBlock.Line children. CodeBlock.CopyButton copies a string to the clipboard with an aria-live announcement. CodeBlockHighlight (imported from @diffgazer/ui/components/code-block/highlight) renders syntax-colored code with a required caller-created lowlight instance.",
     },
     {
       title: "Accessible Name",
@@ -25,9 +25,9 @@ export const codeBlockDoc: ComponentDoc = {
         'Each CodeBlock.Line exposes a `state` prop: "added" tints the row with success color and renders a sr-only "Added: " prefix; "removed" tints with destructive color and a "Removed: " prefix; "highlight" tints with foreground color. The tint is applied to the row, not the <code>, so syntax-color themes remain readable.',
     },
     {
-      title: "Optional Auto-Coloring",
+      title: "Injected Syntax Highlighting",
       content:
-        "CodeBlockHighlight is optional and split from the main <CodeBlock> bundle so consumers who never render it are not charged for the lowlight grammar bundle. Package consumers can import it from @diffgazer/ui/components/code-block/highlight. Copy, dgadd, and direct registry consumers can add the separate ui/code-block-highlight item. `lowlight` is declared as an optional peer dependency — install it only when you use CodeBlockHighlight. The component emits highlight.js-compatible class names (hljs-keyword, hljs-string, ...) which the shared CSS maps onto the --code-* theme tokens.",
+        "CodeBlockHighlight is split from the main <CodeBlock> bundle so consumers who never render it are not charged for syntax-highlighting code. Package consumers import it from @diffgazer/ui/components/code-block/highlight. Copy, dgadd, and direct registry consumers add the separate ui/code-block-highlight item. Install the optional `lowlight` peer, create an instance with the desired language set, and pass it through the required `lowlight` prop. The component emits highlight.js-compatible class names (hljs-keyword, hljs-string, ...) which the shared CSS maps onto the --code-* theme tokens.",
     },
     {
       title: "Keyboard Scrolling",
@@ -66,7 +66,7 @@ export const codeBlockDoc: ComponentDoc = {
     {
       name: "CodeBlockHighlight",
       indent: 1,
-      note: "Optional auto-colored content (subpath import; uses lowlight)",
+      note: "Runtime-highlighted content with a required caller-owned lowlight instance",
     },
   ],
   usage: { example: "code-block-default" },
@@ -121,12 +121,6 @@ export const codeBlockDoc: ComponentDoc = {
       appliesTo: "CodeBlock.CopyButton",
       values: '"idle" | "copied"',
       description: "Copy feedback state used for the button label and styling.",
-    },
-    {
-      attribute: "data-tone",
-      appliesTo: "CodeBlock.Content",
-      values: '"default" | "diff"',
-      description: "Content tone for plain code or diff-like rows.",
     },
   ],
   props: {
@@ -191,13 +185,6 @@ export const codeBlockDoc: ComponentDoc = {
         defaultValue: "true",
         description: "Auto-split mode only. Renders a line-number gutter for string children.",
       },
-      tone: {
-        type: '"default" | "diff"',
-        required: false,
-        defaultValue: '"default"',
-        description:
-          'Surfaces as data-tone on the <pre>. Use "diff" when the content contains added/removed lines.',
-      },
       children: {
         type: "string | ReactNode",
         required: false,
@@ -234,6 +221,18 @@ export const codeBlockDoc: ComponentDoc = {
         description:
           'Per-line visual state. "highlight" tints the row; "added"/"removed" render gutter sign characters (+/−), color tint, and an sr-only "Added: "/"Removed: " prefix for assistive tech.',
       },
+      addedLineLabel: {
+        type: "string",
+        required: false,
+        defaultValue: '"Added: "',
+        description: "Screen-reader prefix for an added diff line.",
+      },
+      removedLineLabel: {
+        type: "string",
+        required: false,
+        defaultValue: '"Removed: "',
+        description: "Screen-reader prefix for a removed diff line.",
+      },
     },
     CodeBlockCopyButton: {
       source: {
@@ -268,6 +267,13 @@ export const codeBlockDoc: ComponentDoc = {
       },
     },
     CodeBlockHighlight: {
+      lowlight: {
+        type: "LowlightInstance",
+        required: true,
+        defaultValue: null,
+        description:
+          "Caller-created lowlight instance containing the language registrations this code block may use.",
+      },
       code: {
         type: "string",
         required: true,

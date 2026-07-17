@@ -100,6 +100,7 @@ export function ThemeSelectorContent({
               value={option.value}
               label={option.label}
               description={option.description}
+              onFocus={() => handleHighlightChange(option.value)}
             />
           </div>
         ))}

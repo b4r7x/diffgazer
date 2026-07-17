@@ -38,6 +38,12 @@ type ListboxProps = {
 /** Props for searchable listbox. */
 export type SearchableListboxProps = Omit<ListboxProps, "onKeyDown">;
 
+interface PartitionWrapperProps extends Record<string, unknown> {
+  children?: ReactNode;
+}
+
+type PartitionKind = "search" | "options" | "empty";
+
 /**
  * Dropdown select with search, multiple selection, card variant, and controlled keyboard
  * integration points. 8 composable parts.
@@ -73,14 +79,21 @@ export function SearchableContent({
   );
 }
 
-function getSearchPosition(searchChildren: ReactNode[]): "top" | "bottom" {
-  const search = searchChildren.find((child) =>
-    isValidElement<SelectSearchProps>(child),
-  ) as ReactNode;
-  if (isValidElement<SelectSearchProps>(search)) {
-    return search.props.position ?? "bottom";
+function getSearchPosition(searchChildren: ReactNode): "top" | "bottom" {
+  return findSearchPosition(searchChildren) ?? "bottom";
+}
+
+function findSearchPosition(searchChildren: ReactNode): "top" | "bottom" | null {
+  for (const child of Children.toArray(searchChildren)) {
+    if (isSelectSearchElement(child) && isValidElement<SelectSearchProps>(child)) {
+      return child.props.position ?? "bottom";
+    }
+    if (isValidElement<{ children?: ReactNode }>(child)) {
+      const nestedPosition = findSearchPosition(child.props.children);
+      if (nestedPosition !== null) return nestedPosition;
+    }
   }
-  return "bottom";
+  return null;
 }
 
 function isSelectSearchElement(child: ReactNode): boolean {
@@ -100,44 +113,93 @@ function partitionSelectSearchChildren(children: ReactNode): {
   const optionChildren: ReactNode[] = [];
   const emptyChildren: ReactNode[] = [];
 
-  Children.forEach(children, (child) => {
+  for (const child of Children.toArray(children)) {
     if (isSelectSearchElement(child)) {
       searchChildren.push(child);
-      return;
+      continue;
     }
 
     if (isSelectEmptyElement(child)) {
       emptyChildren.push(child);
-      return;
+      continue;
     }
 
     if (
-      !isValidElement<{ children?: ReactNode }>(child) ||
+      !isValidElement<PartitionWrapperProps>(child) ||
       !containsPartitionedSelectElement(child.props.children)
     ) {
       optionChildren.push(child);
-      return;
+      continue;
     }
 
     const nested = partitionSelectSearchChildren(child.props.children);
-    searchChildren.push(...nested.searchChildren);
-    emptyChildren.push(...nested.emptyChildren);
-    if (nested.optionChildren.length === 0) return;
-
     if (child.type === Fragment) {
+      searchChildren.push(...nested.searchChildren);
       optionChildren.push(...nested.optionChildren);
+      emptyChildren.push(...nested.emptyChildren);
     } else {
-      optionChildren.push(cloneElement(child, undefined, nested.optionChildren));
+      const primaryPartition = getPrimaryPartition(nested);
+      const partitions = [
+        { kind: "search", children: nested.searchChildren, target: searchChildren },
+        { kind: "options", children: nested.optionChildren, target: optionChildren },
+        { kind: "empty", children: nested.emptyChildren, target: emptyChildren },
+      ] satisfies Array<{
+        kind: PartitionKind;
+        children: ReactNode[];
+        target: ReactNode[];
+      }>;
+
+      for (const partition of partitions) {
+        if (partition.children.length === 0) continue;
+        const overrides =
+          partition.kind === primaryPartition
+            ? undefined
+            : getSecondaryWrapperSemanticOverrides(child.props);
+        partition.target.push(
+          cloneElement(
+            child,
+            { ...overrides, key: `${child.key}:${partition.kind}` },
+            partition.children,
+          ),
+        );
+      }
     }
-  });
+  }
 
   return { searchChildren, optionChildren, emptyChildren };
+}
+
+function getPrimaryPartition({
+  searchChildren,
+  optionChildren,
+}: {
+  searchChildren: ReactNode[];
+  optionChildren: ReactNode[];
+}): PartitionKind {
+  if (optionChildren.length > 0) return "options";
+  if (searchChildren.length > 0) return "search";
+  return "empty";
+}
+
+function getSecondaryWrapperSemanticOverrides(
+  props: PartitionWrapperProps,
+): Partial<PartitionWrapperProps> {
+  const overrides: Partial<PartitionWrapperProps> = {
+    id: undefined,
+    role: undefined,
+    tabIndex: undefined,
+    htmlFor: undefined,
+  };
+  for (const name of Object.keys(props)) {
+    if (name.startsWith("aria-")) overrides[name] = undefined;
+  }
+  return overrides;
 }
 
 function containsPartitionedSelectElement(children: ReactNode): boolean {
   return Children.toArray(children).some((child) => {
     if (isSelectSearchElement(child) || isSelectEmptyElement(child)) return true;
-    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
+    if (!isValidElement<PartitionWrapperProps>(child)) return false;
     return containsPartitionedSelectElement(child.props.children);
   });
 }

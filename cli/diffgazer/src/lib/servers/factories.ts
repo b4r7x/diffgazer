@@ -1,4 +1,4 @@
-import { parsePortEnv } from "@diffgazer/core/env";
+import { buildLocalhostOrigin, parsePortEnv } from "@diffgazer/core/env";
 import type { CliMode } from "../../cli-options";
 import { config } from "../../config";
 import { createApiServer } from "./api";
@@ -44,12 +44,14 @@ export function createServerFactories(
 
   if (options.mode === "dev") {
     const apiPort = parsePortEnv(process.env.PORT, config.ports.api);
+    const apiUrl = process.env.VITE_API_URL ?? buildLocalhostOrigin(apiPort);
     const factories: Array<() => ServerController> = [
       () =>
         makeApiServer({
           cwd: config.paths.server,
           port: apiPort,
           projectRoot,
+          onFailure: options.onStartupFailure,
         }),
     ];
 
@@ -59,7 +61,9 @@ export function createServerFactories(
         makeWebServer({
           cwd: config.paths.web,
           port: config.ports.web,
+          apiUrl,
           onReady,
+          onFailure: options.onStartupFailure,
         }),
       );
     }

@@ -36,7 +36,7 @@ export const tooltipDoc: ComponentDoc = {
     {
       title: "Delay",
       content:
-        "Default show delay is 500ms (hover intent). Hide is instant. Customize via `delayMs` prop.",
+        "Default pointer show delay is 500ms (hover intent); keyboard focus opens immediately. The hide delay after pointer or focus leaves is 150ms. Customize them with `delayMs` and `closeDelayMs`.",
     },
     {
       title: "Built on Popover",
@@ -98,7 +98,8 @@ export const tooltipDoc: ComponentDoc = {
         type: "number",
         required: false,
         defaultValue: "500",
-        description: "Show delay after pointer/focus enters the trigger.",
+        description:
+          "Show delay after the pointer enters the trigger; keyboard focus opens immediately.",
       },
       closeDelayMs: {
         type: "number",

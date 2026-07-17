@@ -12,12 +12,20 @@ export default function SearchInputCustom() {
         onChange={setQuery}
         placeholder="Type and press Enter..."
         onEscape={() => setQuery("")}
-        prefix={<span className="text-success font-bold">$</span>}
+        prefix={
+          <span className="text-success font-bold" aria-hidden="true">
+            $
+          </span>
+        }
       />
       <SearchInput
         defaultValue=""
         placeholder="Uncontrolled search"
-        prefix={<span className="text-muted-foreground font-bold">&gt;</span>}
+        prefix={
+          <span className="text-muted-foreground font-bold" aria-hidden="true">
+            &gt;
+          </span>
+        }
       />
     </div>
   );

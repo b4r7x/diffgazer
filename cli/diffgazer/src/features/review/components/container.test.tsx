@@ -4,13 +4,14 @@ import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review
 import { makeCreateReviewResponse } from "@diffgazer/core/testing/factories";
 import { Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
-import { type ReactElement, useEffect } from "react";
+import { act, type ReactElement, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
 import { NavigationProvider } from "../../../app/providers/navigation-provider";
 import { useNavigation } from "../../../hooks/use-navigation";
 import type { Route } from "../../../lib/routes";
 import { makeReviewLifecycleBase } from "../../../testing/review-lifecycle-base";
+import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
 
 const apiMocks = vi.hoisted(() => ({
@@ -36,6 +37,7 @@ import { ReviewContainer } from "./container";
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.useRealTimers();
 });
 
 beforeEach(() => {
@@ -47,6 +49,15 @@ beforeEach(() => {
     data: {
       config: { provider: "gemini", model: "gemini-2.5-flash" },
       configured: true,
+      setup: {
+        hasSecretsStorage: true,
+        hasProvider: true,
+        hasModel: true,
+        hasTrust: true,
+        isConfigured: true,
+        isReady: true,
+        missing: [],
+      },
     },
     isLoading: false,
   });
@@ -67,21 +78,20 @@ async function flush(times = 4): Promise<void> {
   }
 }
 
-async function waitUntil(predicate: () => boolean, attempts = 100): Promise<void> {
-  for (let i = 0; i < attempts; i += 1) {
-    if (predicate()) return;
-    await new Promise((resolve) => setTimeout(resolve, 10));
-  }
-}
-
 function RouteHarness(): ReactElement {
   const { route } = useNavigation();
 
   if (route.screen !== "review") {
-    return <Text>Home route</Text>;
+    return <Text>{route.screen === "home" ? "Home route" : `Route: ${route.screen}`}</Text>;
   }
 
-  return <ReviewContainer mode={route.mode} reviewId={route.reviewId} />;
+  return (
+    <ReviewContainer
+      mode={route.mode}
+      reviewId={route.reviewId}
+      allowResumeWithoutSetup={route.live}
+    />
+  );
 }
 
 function FooterProbe(): ReactElement {
@@ -116,6 +126,77 @@ function renderContainer({
 }
 
 describe("ReviewContainer", () => {
+  test("shows live orchestrator lens failures and filtered issue counts in the immediate summary", async () => {
+    apiMocks.useReviewLifecycleBase.mockImplementation(({ onComplete }) => {
+      useEffect(() => {
+        onComplete();
+      }, [onComplete]);
+
+      return makeReviewLifecycleBase({
+        events: [
+          {
+            type: "orchestrator_complete",
+            totalIssues: 1,
+            filesAnalyzed: 1,
+            lensStats: [
+              { lensId: "correctness", issueCount: 1, status: "success" },
+              { lensId: "tests", issueCount: 1, status: "success" },
+              {
+                lensId: "security",
+                issueCount: 0,
+                status: "failed",
+                errorCode: "PROVIDER_ERROR",
+              },
+            ],
+            droppedDuplicates: 1,
+            droppedBelowThreshold: 2,
+            minSeverity: "medium",
+            timestamp: "2026-01-01T00:00:05.000Z",
+          },
+        ],
+      });
+    });
+
+    const { lastFrame } = renderContainer();
+    await flush();
+    const summary = lastFrame() ?? "";
+
+    expect(summary).toContain("Security");
+    expect(summary).toContain("failed (PROVIDER_ERROR)");
+    expect(summary).toContain("1 duplicate issue collapsed across lenses (2 → 1 issue)");
+    expect(summary).toContain("2 below-threshold issues hidden (threshold: medium)");
+  });
+
+  test("uses one completion timestamp for progress and summary across the completion delay", () => {
+    vi.useFakeTimers();
+    const startedAt = new Date("2026-01-01T00:00:00.000Z");
+    const completedAt = new Date("2026-01-01T00:00:05.000Z");
+    vi.setSystemTime(completedAt);
+    let isCompleting = true;
+    let finishCompletion = () => {};
+
+    apiMocks.useReviewLifecycleBase.mockImplementation(({ onComplete }) => {
+      finishCompletion = () => {
+        isCompleting = false;
+        onComplete();
+      };
+      return makeReviewLifecycleBase({ isCompleting, startedAt, completedAt });
+    });
+
+    const { lastFrame } = renderContainer();
+
+    expect(lastFrame() ?? "").toContain("Time: 00:05");
+
+    act(() => {
+      vi.advanceTimersByTime(2300);
+      finishCompletion();
+    });
+
+    const summary = lastFrame() ?? "";
+    expect(summary).toMatch(/Review Complete/i);
+    expect(summary).toContain("Duration: 5.0s");
+  });
+
   test("summary Escape resets and navigates back to home", async () => {
     const { stdin, lastFrame } = renderContainer();
 
@@ -233,6 +314,15 @@ describe("ReviewContainer", () => {
       data: {
         config: { provider: null, model: null },
         configured: false,
+        setup: {
+          hasSecretsStorage: true,
+          hasProvider: false,
+          hasModel: false,
+          hasTrust: true,
+          isConfigured: false,
+          isReady: false,
+          missing: ["provider", "model"],
+        },
       },
       isLoading: false,
     });
@@ -250,5 +340,51 @@ describe("ReviewContainer", () => {
     const frame = lastFrame() ?? "";
     expect(frame).not.toContain("Home Menu");
     expect(frame).toContain("right: Esc Back");
+    expect(frame).toContain("API Key Required");
+    expect(frame).not.toContain("Model Required");
+  });
+
+  test("Switch Mode from an unconfigured resumed no-diff review opens provider setup without resetting first", async () => {
+    apiMocks.useInit.mockReturnValue({
+      data: {
+        config: { provider: null, model: null },
+        configured: false,
+        setup: {
+          hasSecretsStorage: true,
+          hasProvider: false,
+          hasModel: false,
+          hasTrust: true,
+          isConfigured: false,
+          isReady: false,
+          missing: ["provider", "model"],
+        },
+      },
+      isLoading: false,
+    });
+    const lifecycle = makeReviewLifecycleBase({
+      gate: "no-diff",
+      isNoDiffError: true,
+      error: "No changes to review.",
+      errorCode: ReviewErrorCode.NO_DIFF,
+    });
+    apiMocks.useReviewLifecycleBase.mockReturnValue(lifecycle);
+
+    const { stdin, lastFrame } = renderContainer({
+      initialRoute: {
+        screen: "review",
+        reviewId: "review-123",
+        mode: "staged",
+        live: true,
+      },
+    });
+
+    expect(lastFrame() ?? "").toContain("No staged changes");
+    stdin.write("\r");
+    await waitUntil(() => (lastFrame() ?? "").includes("Route: settings/providers"));
+
+    expect(lastFrame() ?? "").toContain("Route: settings/providers");
+    expect(apiMocks.createReview).not.toHaveBeenCalled();
+    expect(lifecycle.stream.abort).not.toHaveBeenCalled();
+    expect(lifecycle.completion.resetCompletion).not.toHaveBeenCalled();
   });
 });

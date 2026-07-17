@@ -9,17 +9,17 @@ import { capitalize, pluralize } from "../strings.js";
 
 export interface ReviewSummary {
   severityCounts: SeverityCounts;
-  filesAnalyzed: number;
+  filesWithIssues: number;
   blockerCount: number;
   total: number;
 }
 
 export function buildReviewSummary(issues: ReviewIssue[]): ReviewSummary {
   const severityCounts = calculateSeverityCounts(issues);
-  const filesAnalyzed = new Set(issues.map((issue) => issue.file)).size;
+  const filesWithIssues = new Set(issues.map((issue) => issue.file)).size;
   return {
     severityCounts,
-    filesAnalyzed,
+    filesWithIssues,
     blockerCount: severityCounts.blocker,
     total: issues.length,
   };
@@ -39,6 +39,15 @@ export function buildHiddenIssuesNotice(
   if (!droppedBelowThreshold || droppedBelowThreshold <= 0) return null;
   const hidden = `${pluralize(droppedBelowThreshold, "below-threshold issue")} hidden`;
   return minSeverity ? `${hidden} (threshold: ${minSeverity})` : hidden;
+}
+
+export function buildDuplicateCollapseNotice(
+  droppedDuplicates: number | undefined,
+  finalIssueCount: number,
+): string | null {
+  if (!droppedDuplicates || droppedDuplicates <= 0) return null;
+  const streamedIssueCount = finalIssueCount + droppedDuplicates;
+  return `${pluralize(droppedDuplicates, "duplicate issue")} collapsed across lenses (${streamedIssueCount} → ${pluralize(finalIssueCount, "issue")})`;
 }
 
 export interface LensSummaryRow {

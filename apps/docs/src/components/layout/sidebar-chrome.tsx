@@ -4,7 +4,7 @@ import { toast } from "@diffgazer/ui/components/toast";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useMobileNav } from "@/hooks/mobile-nav-context";
 import { usePendingDocsRoute } from "@/hooks/use-pending-docs-route";
@@ -53,9 +53,30 @@ export function SidebarChrome({ library, tree }: { library: DocsLibraryId; tree:
   const pendingDocsPathname = usePendingDocsRoute();
   const navigate = useNavigate();
   const { setOpen: setMobileNavOpen } = useMobileNav();
-  const [switching, setSwitching] = useState(false);
+  const transitionTokenRef = useRef(0);
+  const currentRouteRef = useRef({ library, pathname, pendingPathname: pendingDocsPathname });
+  const [pendingSwitch, setPendingSwitch] = useState<{
+    token: number;
+    library: DocsLibraryId;
+    pathname: string;
+    pendingPathname: string | null;
+  } | null>(null);
   const activeLibrary = getDocsLibraryConfig(library);
+  const switching =
+    pendingSwitch !== null &&
+    pendingSwitch.token === transitionTokenRef.current &&
+    pendingSwitch.library === library &&
+    pendingSwitch.pathname === pathname &&
+    pendingSwitch.pendingPathname === pendingDocsPathname;
   const isHeaderBusy = switching || pendingDocsPathname !== null;
+
+  useLayoutEffect(() => {
+    currentRouteRef.current = { library, pathname, pendingPathname: pendingDocsPathname };
+    transitionTokenRef.current += 1;
+    return () => {
+      transitionTokenRef.current += 1;
+    };
+  }, [library, pathname, pendingDocsPathname]);
 
   const pathParts = pathname.split("/").filter(Boolean);
   const showBreadcrumbs = isDocsLibraryId(pathParts[0] ?? "") && pathParts.length > 1;
@@ -67,7 +88,23 @@ export function SidebarChrome({ library, tree }: { library: DocsLibraryId; tree:
     const targetLibrary = getDocsLibraryConfig(nextValue);
     if (!targetLibrary.enabled || nextValue === library) return;
 
-    setSwitching(true);
+    const token = transitionTokenRef.current + 1;
+    transitionTokenRef.current = token;
+    const ownsTransition = () => {
+      const currentRoute = currentRouteRef.current;
+      return (
+        transitionTokenRef.current === token &&
+        currentRoute.library === library &&
+        currentRoute.pathname === pathname &&
+        currentRoute.pendingPathname === pendingDocsPathname
+      );
+    };
+    setPendingSwitch({
+      token,
+      library,
+      pathname,
+      pendingPathname: pendingDocsPathname,
+    });
     try {
       const currentSlugs = getRouteSlugsFromPathname(pathname, library);
       const { library: targetLib, slugs } = await resolveLibrarySwitchPath({
@@ -76,15 +113,17 @@ export function SidebarChrome({ library, tree }: { library: DocsLibraryId; tree:
           currentSlugs,
         },
       });
+      if (!ownsTransition()) return;
 
       await navigate({
         to: "/$lib/$",
         params: { lib: targetLib, _splat: slugs.join("/") },
       });
     } catch {
+      if (!ownsTransition()) return;
       toast.error("Couldn't switch library");
     } finally {
-      setSwitching(false);
+      if (ownsTransition()) setPendingSwitch(null);
     }
   };
 

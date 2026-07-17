@@ -1,9 +1,5 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import {
-  convertAgentEventsToLogEntries,
-  mapStepsToProgressData,
-  sanitizeTerminalText,
-} from "@diffgazer/core/review";
+import { mapStepsToProgressData, sanitizeTerminalText } from "@diffgazer/core/review";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { Box, useInput } from "ink";
@@ -13,7 +9,7 @@ import { Callout } from "../../../components/ui/callout";
 import { Spinner } from "../../../components/ui/spinner";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { useReviewLifecycle } from "../hooks/use-lifecycle";
-import { ApiKeyMissingView } from "./api-key-missing-view";
+import { ApiKeyMissingView, ConfigurationErrorView } from "./api-key-missing-view";
 import { NoChangesView } from "./no-changes-view";
 import { ReviewProgressView } from "./progress-view";
 import { ReviewResultsView } from "./results-view";
@@ -75,11 +71,13 @@ export function ReviewContainer({
   allowResumeWithoutSetup = false,
 }: ReviewContainerProps): ReactElement {
   const { navigate, goBack } = useNavigation();
-  const { state, start, cancel, goToSummary, goToResults, reset } = useReviewLifecycle({
-    mode,
-    reviewId,
-    allowResumeWithoutSetup,
-  });
+  const { state, start, cancel, goToSummary, goToResults, retryConfig, reset } = useReviewLifecycle(
+    {
+      mode,
+      reviewId,
+      allowResumeWithoutSetup,
+    },
+  );
 
   function handleGateBack() {
     reset({ clearActiveSession: true });
@@ -100,6 +98,22 @@ export function ReviewContainer({
     }
   }, [mode, reviewId, start, state.gate]);
 
+  if (state.initState.status === "loading") {
+    return <ReviewLoadingView message="Loading configuration..." />;
+  }
+
+  if (state.initState.status === "error") {
+    return (
+      <ConfigurationErrorView
+        error={state.initState.message}
+        onRetry={() => {
+          void retryConfig();
+        }}
+        onBack={handleGateBack}
+      />
+    );
+  }
+
   if (state.gate === "loading") {
     return <ReviewLoadingView message={state.loadingMessage ?? "Loading review..."} />;
   }
@@ -108,7 +122,7 @@ export function ReviewContainer({
     return (
       <ApiKeyMissingView
         provider={state.provider ?? undefined}
-        missingModel={!state.model}
+        missing={state.initState.missing}
         onGoToSettings={() => {
           reset();
           navigate({ screen: "settings/providers" });
@@ -125,8 +139,11 @@ export function ReviewContainer({
       <NoChangesView
         mode={currentMode}
         onSwitchMode={() => {
-          reset({ clearActiveSession: true });
-          void start(otherMode);
+          void start(otherMode).then((result) => {
+            if (result === "setup-required") {
+              navigate({ screen: "settings/providers" });
+            }
+          });
         }}
         onBack={handleGateBack}
       />
@@ -153,7 +170,8 @@ export function ReviewContainer({
         <ReviewProgressView
           progressSteps={mapStepsToProgressData(state.steps, state.agents)}
           agents={state.agents}
-          logEntries={convertAgentEventsToLogEntries(state.events)}
+          lensStats={state.completion?.lensStats}
+          events={state.events}
           fileProgress={state.fileProgress}
           isStreaming={state.phase === "streaming"}
           error={state.error}
@@ -170,6 +188,7 @@ export function ReviewContainer({
           onBack={state.phase === "streaming" ? handleRunningBack : undefined}
           issuesFound={state.issues.length}
           startedAt={state.startedAt}
+          completedAt={state.completedAt}
           reviewId={state.reviewId}
           contextSnapshot={state.contextSnapshot}
           onViewResults={goToSummary}
@@ -181,7 +200,15 @@ export function ReviewContainer({
         <ReviewSummaryView
           issues={state.issues}
           reviewId={state.reviewId ?? undefined}
-          durationMs={state.startedAt ? Date.now() - state.startedAt.getTime() : undefined}
+          durationMs={
+            state.startedAt && state.completedAt
+              ? state.completedAt.getTime() - state.startedAt.getTime()
+              : undefined
+          }
+          lensStats={state.completion?.lensStats}
+          droppedDuplicates={state.completion?.droppedDuplicates}
+          droppedBelowThreshold={state.completion?.droppedBelowThreshold}
+          minSeverity={state.completion?.minSeverity}
           onContinue={goToResults}
           onBack={handleGateBack}
         />

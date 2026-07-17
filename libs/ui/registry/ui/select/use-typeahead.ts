@@ -6,6 +6,7 @@ import type { SelectOptionMetadata } from "./select-context";
 import { getVisibleEnabledOptionEntries } from "./visible-options";
 
 interface UseSelectTypeaheadOptions {
+  open: boolean;
   options: ReadonlyMap<string, SelectOptionMetadata>;
   searchQuery: string;
   /** Controlled highlighted item id. Pair with onHighlightChange. */
@@ -16,12 +17,13 @@ interface UseSelectTypeaheadOptions {
 
 /** Provides select typeahead behavior. */
 export function useSelectTypeahead({
+  open,
   options,
   searchQuery,
   highlighted,
   setHighlighted,
 }: UseSelectTypeaheadOptions) {
-  const readTypeaheadQuery = useTypeaheadBuffer();
+  const readTypeaheadQuery = useTypeaheadBuffer(undefined, open);
 
   // Returns true when the key was buffered into the typeahead query so callers
   // can suppress a competing Space-select for the same keystroke.

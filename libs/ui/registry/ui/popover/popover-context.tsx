@@ -15,7 +15,7 @@ export interface PopoverContextValue {
   triggerRef: RefObject<HTMLElement | null>;
   /** DOM id for popover. */
   popoverId: string;
-  /** Click toggles; hover opens on pointer/focus enter with a delay and closes on leave. */
+  /** Click toggles; hover delays pointer-open, keyboard focus opens immediately, and leave closes. */
   triggerMode: PopoverTriggerMode;
   /** Overrides the auto-detected aria-haspopup value applied to the trigger. */
   popupRole?: PopoverPopupRole;
@@ -25,8 +25,10 @@ export interface PopoverContextValue {
   onTriggerEnter: () => void;
   /** Called when trigger focus occurs. */
   onTriggerFocus: () => void;
-  /** Called when trigger leave occurs. */
+  /** Called when pointer leaves the trigger. */
   onTriggerLeave: () => void;
+  /** Called when focus leaves the trigger. */
+  onTriggerBlur: () => void;
   /** Called when trigger click occurs. */
   onTriggerClick: () => void;
   /** Called when trigger pointer down occurs. */

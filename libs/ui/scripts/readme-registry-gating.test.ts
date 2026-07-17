@@ -21,6 +21,34 @@ function read(relativePath: string): string {
   return readFileSync(resolve(ROOT, relativePath), "utf-8");
 }
 
+function packageExports(): Record<string, unknown> {
+  const manifest = JSON.parse(read("package.json")) as { exports?: Record<string, unknown> };
+  return manifest.exports ?? {};
+}
+
+function packageManifest(): {
+  peerDependencies?: Record<string, string>;
+  peerDependenciesMeta?: Record<string, { optional?: boolean }>;
+} {
+  return JSON.parse(read("package.json"));
+}
+
+function registryItem(name: string): {
+  dependencies?: string[];
+  files?: Array<{ path: string }>;
+} {
+  const registry = JSON.parse(read("registry/registry.json")) as {
+    items: Array<{
+      name: string;
+      dependencies?: string[];
+      files?: Array<{ path: string }>;
+    }>;
+  };
+  const item = registry.items.find((candidate) => candidate.name === name);
+  expect(item, `missing registry item ${name}`).toBeDefined();
+  return item ?? {};
+}
+
 function sectionIsGated(lines: string[], index: number): boolean {
   let sectionStart = index;
   while (sectionStart > 0 && !lines[sectionStart]?.startsWith("#")) {
@@ -81,6 +109,37 @@ describe("hosted-registry gating", () => {
     const readme = read("README.md");
     expect(readme).toContain("pnpm exec dgadd add ui/button");
     expect(readme).toMatch(/Until then/);
+  });
+
+  it("maps lowlight guidance to the exported highlight entry and its caller-owned dependency", () => {
+    const readme = read("README.md");
+    const baseEntry = "./components/code-block";
+    const highlightEntry = `${baseEntry}/highlight`;
+    const manifest = packageManifest();
+    const highlightItem = registryItem("code-block-highlight");
+
+    expect(readme).toContain(`| \`lowlight\` | \`${highlightEntry}\` (caller-created instance) |`);
+    expect(readme).toContain(`The base \`${baseEntry}\` entry does not need \`lowlight\`.`);
+    expect(Object.hasOwn(packageExports(), highlightEntry)).toBe(true);
+    expect(manifest.peerDependencies?.lowlight).toBeDefined();
+    expect(manifest.peerDependenciesMeta?.lowlight?.optional).toBe(true);
+    expect(highlightItem.dependencies).toContain("lowlight");
+    expect(highlightItem.files?.map(({ path }) => path)).toEqual(
+      expect.arrayContaining([
+        "registry/ui/code-block/code-block-highlight.tsx",
+        "registry/ui/code-block/highlight.ts",
+      ]),
+    );
+
+    const baseSource = read("registry/ui/code-block/index.ts");
+    const highlightSource = read("registry/ui/code-block/code-block-highlight.tsx");
+    const highlightedExample = read("registry/examples/code-block/code-block-highlighted.tsx");
+    expect(baseSource).not.toContain('from "lowlight"');
+    expect(baseSource).not.toContain('import("lowlight")');
+    expect(highlightSource).not.toContain('from "lowlight"');
+    expect(highlightSource).not.toContain('import("lowlight")');
+    expect(highlightSource).toContain("lowlight: LowlightInstance");
+    expect(highlightedExample).toContain('from "lowlight"');
   });
 
   it("root README requires the tarball pack-and-install prerequisite before the first dgadd command", () => {

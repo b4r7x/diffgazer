@@ -1,8 +1,25 @@
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, posix, win32 } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { resetDir, toPosixPath } from "./fs.js";
+import { isContainedRelativePath, resetDir, toPosixPath } from "./fs.js";
+
+describe("isContainedRelativePath", () => {
+  it("distinguishes POSIX dot-prefixed names from parent traversal", () => {
+    expect(
+      isContainedRelativePath(posix.relative("/project", "/project/..components"), posix),
+    ).toBe(true);
+    expect(isContainedRelativePath(posix.relative("/project", "/escape"), posix)).toBe(false);
+  });
+
+  it("handles Windows same-drive names, parent traversal, and cross-drive paths", () => {
+    expect(
+      isContainedRelativePath(win32.relative("C:\\project", "C:\\project\\..components"), win32),
+    ).toBe(true);
+    expect(isContainedRelativePath(win32.relative("C:\\project", "C:\\escape"), win32)).toBe(false);
+    expect(isContainedRelativePath(win32.relative("C:\\project", "D:\\escape"), win32)).toBe(false);
+  });
+});
 
 describe("resetDir", () => {
   let tempDir: string;

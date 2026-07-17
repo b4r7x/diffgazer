@@ -3,14 +3,25 @@ import {
   useSaveConfig,
   useSaveSettings,
 } from "@diffgazer/core/api/hooks";
-import { INPUT_METHODS, type InputMethod, useWizardState } from "@diffgazer/core/onboarding";
+import {
+  INPUT_METHODS,
+  type InputMethod,
+  type OnboardingStep,
+  useWizardState,
+} from "@diffgazer/core/onboarding";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { AI_PROVIDERS, isAgentExecution, isSecretsStorage } from "@diffgazer/core/schemas/config";
 import type { LensId } from "@diffgazer/core/schemas/review";
-import { useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
+import { useRegisterExitPreparation } from "../../../hooks/use-exit";
 import { useNavigation } from "../../../hooks/use-navigation";
 
 type FocusArea = "step" | "nav";
+type WizardFocusZone = "step" | "nav" | "api-key-method" | "api-key-input";
+
+function getStepFocusZone(step: OnboardingStep): WizardFocusZone {
+  return step === "api-key" ? "api-key-method" : "step";
+}
 
 function isAIProvider(v: string): v is AIProvider {
   return (AI_PROVIDERS as readonly string[]).includes(v);
@@ -20,14 +31,17 @@ function isInputMethod(v: string): v is InputMethod {
   return (INPUT_METHODS as readonly string[]).includes(v);
 }
 
+function reportCleanupError(message: string): void {
+  console.error(`Warning: ${message}`);
+}
+
 export function useOnboardingWizard() {
   const { navigate } = useNavigation();
   const saveSettings = useSaveSettings();
   const saveConfig = useSaveConfig();
   const deleteCredentials = useDeleteProviderCredentials();
-  const [focusArea, setFocusArea] = useState<FocusArea>("step");
+  const [focusZone, setFocusZone] = useState<WizardFocusZone>("step");
   const [navIndex, setNavIndex] = useState(0);
-  const [apiKeyInputFocused, setApiKeyInputFocused] = useState(false);
 
   const wizard = useWizardState({
     callbacks: {
@@ -36,9 +50,25 @@ export function useOnboardingWizard() {
       deleteCredentials: (provider) => deleteCredentials.mutateAsync(provider),
     },
     onComplete: () => navigate({ screen: "home" }),
+    onCleanupError: reportCleanupError,
   });
 
+  useRegisterExitPreparation(wizard.cleanupEarlySave);
+
+  const cleanupEarlySaveOnUnmount = useEffectEvent(() => {
+    void wizard.cleanupEarlySave();
+  });
+
+  useEffect(
+    () => () => {
+      cleanupEarlySaveOnUnmount();
+    },
+    [],
+  );
+
   const isSaving = saveSettings.isPending || saveConfig.isPending || wizard.isEarlySaving;
+  const focusArea: FocusArea = focusZone === "nav" ? "nav" : "step";
+  const apiKeyInputFocused = focusZone === "api-key-input";
 
   function handleProviderChange(v: string) {
     if (isAIProvider(v)) wizard.setProvider(v);
@@ -74,27 +104,51 @@ export function useOnboardingWizard() {
       void wizard.complete();
       return;
     }
+    const nextStep = wizard.steps[wizard.stepIndex + 1];
     wizard.next();
-    setFocusArea("step");
+    setFocusZone(nextStep ? getStepFocusZone(nextStep) : "step");
     setNavIndex(0);
-    setApiKeyInputFocused(false);
   }
 
   function handleBack() {
     if (wizard.isFirstStep) return;
+    const previousStep = wizard.steps[wizard.stepIndex - 1];
     wizard.back();
-    setFocusArea("step");
+    setFocusZone(previousStep ? getStepFocusZone(previousStep) : "step");
     setNavIndex(0);
-    setApiKeyInputFocused(false);
   }
 
   function toggleFocusArea() {
-    setFocusArea((prev) => (prev === "step" ? "nav" : "step"));
+    setFocusZone((current) => (current === "nav" ? getStepFocusZone(wizard.currentStep) : "nav"));
     setNavIndex(0);
   }
 
-  function toggleApiKeyInputFocus() {
-    setApiKeyInputFocused((focused) => !focused);
+  function cycleFocusZone() {
+    if (wizard.currentStep !== "api-key") {
+      toggleFocusArea();
+      return;
+    }
+
+    if (focusZone === "api-key-input") {
+      setFocusZone("nav");
+      setNavIndex(wizard.isFirstStep ? 0 : 1);
+      return;
+    }
+    if (focusZone === "nav") {
+      setFocusZone("api-key-method");
+      setNavIndex(0);
+      return;
+    }
+    if (wizard.wizardData.inputMethod === "paste") {
+      setFocusZone("api-key-input");
+      return;
+    }
+    setFocusZone("nav");
+    setNavIndex(wizard.isFirstStep ? 0 : 1);
+  }
+
+  function setApiKeyInputFocused(focused: boolean) {
+    setFocusZone(focused ? "api-key-input" : "api-key-method");
   }
 
   function moveNavIndex(direction: 1 | -1) {
@@ -110,6 +164,7 @@ export function useOnboardingWizard() {
     isFirstStep: wizard.isFirstStep,
     isLastStep: wizard.isLastStep,
     canProceed: wizard.canProceed,
+    focusZone,
     focusArea,
     navIndex,
     apiKeyInputFocused,
@@ -127,7 +182,7 @@ export function useOnboardingWizard() {
     handleNext,
     handleBack,
     toggleFocusArea,
-    toggleApiKeyInputFocus,
+    cycleFocusZone,
     setApiKeyInputFocused,
     moveNavIndex,
   };

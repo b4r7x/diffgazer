@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { relative, resolve } from "node:path";
+import { extractImportSpecifiers } from "@diffgazer/registry";
 import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
 import { validatePublicComponentProps, validatePublicExportShape } from "./registry/exports.js";
 import {
@@ -132,8 +133,6 @@ function validateExamplesAvoidHiddenPaths(items: RegistryItem[]): string[] {
   return errors;
 }
 
-const BARE_KEYS_IMPORT_RE = /from\s+["']@diffgazer\/keys["']/;
-
 function validateNoPublicKeysImports(): string[] {
   const errors: string[] = [];
   const registryDir = resolve(ROOT, "public/r");
@@ -143,20 +142,22 @@ function validateNoPublicKeysImports(): string[] {
     if (!entry.endsWith(".json") || entry === "registry.json") continue;
 
     const filePath = resolve(registryDir, entry);
-    let data: { meta?: { hidden?: boolean }; files?: { content?: string; path?: string }[] };
+    let data: { files?: { content?: string; path?: string }[] };
     try {
       data = JSON.parse(readFileSync(filePath, "utf-8"));
     } catch {
       continue;
     }
 
-    if (data.meta?.hidden) continue;
-
     for (const file of data.files ?? []) {
       if (typeof file.content !== "string") continue;
-      if (BARE_KEYS_IMPORT_RE.test(file.content)) {
+      const residual = extractImportSpecifiers(file.content).filter(
+        ({ specifier }) => specifier === "@diffgazer/keys",
+      );
+      if (residual.length > 0) {
+        const forms = [...new Set(residual.map(({ kind }) => kind))].join(", ");
         errors.push(
-          `Public (non-hidden) registry item "${entry}" file "${file.path ?? "(unknown)"}" contains bare @diffgazer/keys import; only hidden shims may reference the package directly`,
+          `Public registry item "${entry}" file "${file.path ?? "(unknown)"}" contains unsupported @diffgazer/keys root import (${forms}); public copy source must use rewritten local hooks`,
         );
       }
     }

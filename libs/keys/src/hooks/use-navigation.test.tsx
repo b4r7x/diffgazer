@@ -1,7 +1,15 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { runInNewContext } from "node:vm";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useRef, useState } from "react";
+import * as React from "react";
+import { type ComponentType, useRef, useState } from "react";
+import * as jsxRuntime from "react/jsx-runtime";
+import { JsxEmit, ModuleKind, ScriptTarget, transpileModule } from "typescript";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import { useNavigationDoc } from "../../docs/hook-docs/use-navigation.js";
+import { useScopedNavigationDoc } from "../../docs/hook-docs/use-scoped-navigation.js";
 import { testNavigationBehavior } from "../testing/navigation-behavior.js";
 import {
   type UseNavigationOptions,
@@ -70,7 +78,72 @@ async function focusListbox() {
   return user;
 }
 
+function loadNavigationGuideExample(): ComponentType {
+  const guide = readFileSync(join(process.cwd(), "docs/content/guides/navigation.mdx"), "utf8");
+  const source = guide.match(/### DOM setup[\s\S]*?```tsx\n([\s\S]*?)\n```/)?.[1];
+  if (!source) throw new Error("Navigation guide DOM setup example is missing");
+
+  const exportableSource = source.replace("function FileList()", "export function FileList()");
+  if (exportableSource === source) throw new Error("Navigation guide FileList example is missing");
+
+  const { outputText } = transpileModule(exportableSource, {
+    compilerOptions: {
+      jsx: JsxEmit.ReactJSX,
+      module: ModuleKind.CommonJS,
+      target: ScriptTarget.ES2022,
+    },
+  });
+  const exports: { FileList?: ComponentType } = {};
+  const requireModule = (specifier: string) => {
+    if (specifier === "@diffgazer/keys") return { useNavigation };
+    if (specifier === "react") return React;
+    if (specifier === "react/jsx-runtime") return jsxRuntime;
+    throw new Error(`Unexpected guide import: ${specifier}`);
+  };
+  runInNewContext(outputText, { console, exports, require: requireModule });
+  if (!exports.FileList) throw new Error("Navigation guide did not export FileList");
+  return exports.FileList;
+}
+
 describe("useNavigation", () => {
+  it("keeps standalone and scoped activation callback metadata aligned", () => {
+    const parameterDescriptions = (name: "onSelect" | "onEnter") =>
+      [useNavigationDoc, useScopedNavigationDoc].map((doc) => {
+        if (!doc.parameters) throw new Error("Navigation callback metadata is missing");
+        return doc.parameters.find((parameter) => parameter.name === name)?.description;
+      });
+    const onSelectDescriptions = parameterDescriptions("onSelect");
+    const onEnterDescriptions = parameterDescriptions("onEnter");
+
+    expect(onSelectDescriptions).toEqual([onSelectDescriptions[0], onSelectDescriptions[0]]);
+    expect(onSelectDescriptions[0]).toBe(
+      "Called when Space selects the highlighted item, and as the Enter fallback when onEnter is not provided.",
+    );
+    expect(onEnterDescriptions).toEqual([onEnterDescriptions[0], onEnterDescriptions[0]]);
+    expect(onEnterDescriptions[0]).toBe(
+      "Called when Enter is pressed on the highlighted item. When provided, it overrides the onSelect Enter fallback.",
+    );
+  });
+
+  it("executes the actual guide listbox fence through Tab and ArrowDown", async () => {
+    const NavigationGuideListbox = loadNavigationGuideExample();
+    const user = userEvent.setup();
+    render(<NavigationGuideListbox />);
+
+    await user.tab();
+    const listbox = screen.getByRole("listbox", { name: "Project files" });
+    expect(document.activeElement).toBe(listbox);
+    expect(listbox.getAttribute("aria-activedescendant")).toBe("file-source");
+
+    await user.keyboard("{ArrowDown}");
+
+    expect(document.activeElement).toBe(listbox);
+    expect(listbox.getAttribute("aria-activedescendant")).toBe("file-tests");
+    expect(screen.getByRole("option", { name: "Tests" }).getAttribute("aria-selected")).toBe(
+      "true",
+    );
+  });
+
   describe("vertical arrow / Home / End navigation matrix", () => {
     testNavigationBehavior({
       setup: () => {
@@ -132,6 +205,48 @@ describe("useNavigation", () => {
     });
     expect(arrowDown.defaultPrevented).toBe(true);
     expect(listbox.getAttribute("aria-activedescendant")).toBe("item-b");
+  });
+
+  it("leaves a descendant's prevented navigation action as the only action", async () => {
+    const localAction = vi.fn();
+
+    function NestedNavigation() {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "button",
+        defaultHighlighted: "first",
+        moveFocus: true,
+      });
+
+      return (
+        <div ref={ref} role="group" aria-label="Nested actions" onKeyDown={result.onKeyDown}>
+          <button
+            type="button"
+            data-value="first"
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowDown") return;
+              event.preventDefault();
+              localAction();
+            }}
+          >
+            First
+          </button>
+          <button type="button" data-value="second">
+            Second
+          </button>
+        </div>
+      );
+    }
+
+    render(<NestedNavigation />);
+    const first = screen.getByRole("button", { name: "First" });
+    first.focus();
+
+    await userEvent.setup().keyboard("{ArrowDown}");
+
+    expect(localAction).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(first);
   });
 
   it("reports non-wrapping boundary callbacks with event and key arguments", async () => {
@@ -840,6 +955,114 @@ describe("useNavigation", () => {
       expect(
         screen.getByRole("listbox", { name: "Items" }).getAttribute("aria-activedescendant"),
       ).toBe("item-a");
+    });
+
+    it("uses the composed target for an editable descendant in an open shadow root", async () => {
+      function ListWithShadowInput() {
+        const ref = useRef<HTMLDivElement>(null);
+        const result = useNavigation({
+          containerRef: ref,
+          role: "option",
+          defaultHighlighted: "a",
+        });
+
+        return (
+          <div onKeyDown={result.onKeyDown}>
+            <div
+              data-testid="shadow-input-host"
+              ref={(host) => {
+                if (!host || host.shadowRoot) return;
+                const input = document.createElement("input");
+                input.setAttribute("aria-label", "Shadow search");
+                host.attachShadow({ mode: "open" }).append(input);
+              }}
+            />
+            <div
+              ref={ref}
+              role="listbox"
+              aria-label="Items"
+              aria-activedescendant={
+                result.highlighted === null ? undefined : itemId(result.highlighted)
+              }
+              tabIndex={0}
+            >
+              <div id="item-a" role="option" data-value="a">
+                A
+              </div>
+              <div id="item-b" role="option" data-value="b">
+                B
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      render(<ListWithShadowInput />);
+      const host = screen.getByTestId("shadow-input-host");
+      const input = host.shadowRoot?.querySelector("input");
+      expect(input).not.toBeNull();
+      if (!input) return;
+      input.focus();
+
+      await userEvent.setup().keyboard("{ArrowDown}");
+
+      expect(
+        screen.getByRole("listbox", { name: "Items" }).getAttribute("aria-activedescendant"),
+      ).toBe("item-a");
+    });
+
+    it("navigates from an editable open-shadow descendant of an owned item", async () => {
+      function ListWithOwnedShadowInput() {
+        const ref = useRef<HTMLDivElement>(null);
+        const result = useNavigation({
+          containerRef: ref,
+          role: "option",
+          defaultHighlighted: "a",
+        });
+
+        return (
+          <div
+            ref={ref}
+            role="listbox"
+            aria-label="Items"
+            aria-activedescendant={
+              result.highlighted === null ? undefined : itemId(result.highlighted)
+            }
+            tabIndex={0}
+            onKeyDown={result.onKeyDown}
+          >
+            <div id="item-a" role="option" data-value="a">
+              A
+              <span
+                data-testid="owned-shadow-input-host"
+                ref={(host) => {
+                  if (!host || host.shadowRoot) return;
+                  const input = document.createElement("input");
+                  input.setAttribute("aria-label", "Owned shadow input");
+                  host.attachShadow({ mode: "open" }).append(input);
+                }}
+              />
+            </div>
+            <div id="item-b" role="option" data-value="b">
+              B
+            </div>
+          </div>
+        );
+      }
+
+      render(<ListWithOwnedShadowInput />);
+      const input = screen
+        .getByTestId("owned-shadow-input-host")
+        .shadowRoot?.querySelector("input");
+      expect(input).not.toBeNull();
+      if (!input) return;
+      input.focus();
+
+      await userEvent.setup().keyboard("{ArrowDown}");
+
+      expect(
+        screen.getByRole("listbox", { name: "Items" }).getAttribute("aria-activedescendant"),
+      ).toBe("item-b");
     });
 
     it("still navigates when an editable element is itself a navigation item", async () => {

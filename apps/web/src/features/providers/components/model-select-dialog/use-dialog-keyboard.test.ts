@@ -109,11 +109,13 @@ function TestModelDialogKeyboard({
 function TestModelFooterKeyboard({
   models,
   filteredModels = models,
+  isSaving = false,
   onSelect,
   onOpenChange,
 }: {
   models: ModelInfo[];
   filteredModels?: ModelInfo[];
+  isSaving?: boolean;
   onSelect: (modelId: string) => void;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -121,6 +123,7 @@ function TestModelFooterKeyboard({
   const listContainerRef = useRef<HTMLDivElement>(null);
   const keyboard = useModelDialogKeyboard({
     open: true,
+    isSaving,
     currentModel: undefined,
     models,
     filteredModels,
@@ -143,7 +146,7 @@ function TestModelFooterKeyboard({
     createElement(
       "div",
       { ref: listContainerRef, role: "radiogroup" },
-      ...filteredModels.map((model) =>
+      ...(isSaving ? [] : filteredModels).map((model) =>
         createElement(
           "div",
           {
@@ -162,6 +165,7 @@ function TestModelFooterKeyboard({
         type: "button",
         ref: cancelProps.ref,
         onFocus: cancelProps.onFocus,
+        disabled: isSaving,
       },
       "Cancel",
     ),
@@ -172,7 +176,7 @@ function TestModelFooterKeyboard({
         ref: confirmProps.ref,
         onFocus: confirmProps.onFocus,
         onClick: () => keyboard.handleConfirm(),
-        disabled: filteredModels.length === 0,
+        disabled: isSaving || filteredModels.length === 0,
       },
       "Confirm",
     ),
@@ -195,7 +199,7 @@ function renderDialogSubject(models: ModelInfo[], currentModel?: string) {
   return { user, onSelect, onOpenChange };
 }
 
-function renderFooterSubject(models: ModelInfo[], filteredModels = models) {
+function renderFooterSubject(models: ModelInfo[], filteredModels = models, isSaving = false) {
   const user = userEvent.setup();
   const onSelect = vi.fn();
   const onOpenChange = vi.fn();
@@ -204,11 +208,17 @@ function renderFooterSubject(models: ModelInfo[], filteredModels = models) {
     createElement(
       KeyboardProvider,
       null,
-      createElement(TestModelFooterKeyboard, { models, filteredModels, onSelect, onOpenChange }),
+      createElement(TestModelFooterKeyboard, {
+        models,
+        filteredModels,
+        isSaving,
+        onSelect,
+        onOpenChange,
+      }),
     ),
   );
 
-  const rerenderFooterSubject = (nextFilteredModels: ModelInfo[]) => {
+  const rerenderFooterSubject = (nextFilteredModels: ModelInfo[], nextIsSaving = isSaving) => {
     view.rerender(
       createElement(
         KeyboardProvider,
@@ -216,6 +226,7 @@ function renderFooterSubject(models: ModelInfo[], filteredModels = models) {
         createElement(TestModelFooterKeyboard, {
           models,
           filteredModels: nextFilteredModels,
+          isSaving: nextIsSaving,
           onSelect,
           onOpenChange,
         }),
@@ -432,6 +443,27 @@ describe("useModelDialogKeyboard", () => {
 
     expect(onSelect).not.toHaveBeenCalled();
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("repairs footer focus when saving ends after the filtered list emptied", async () => {
+    const visibleModel = makeModel("visible-model");
+    const { rerenderFooterSubject } = renderFooterSubject([visibleModel]);
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "visible-model" })).toHaveFocus();
+    });
+
+    rerenderFooterSubject([visibleModel], true);
+    rerenderFooterSubject([], true);
+
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    expect(cancel).toBeDisabled();
+    expect(cancel).not.toHaveFocus();
+
+    rerenderFooterSubject([], false);
+
+    await waitFor(() => expect(cancel).toHaveFocus());
+    expect(cancel).not.toBeDisabled();
   });
 
   it("does not repair list focus on a parent rerender with identical filtered results", async () => {

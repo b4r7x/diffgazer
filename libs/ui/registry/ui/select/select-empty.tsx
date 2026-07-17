@@ -13,7 +13,7 @@ export interface SelectEmptyProps {
   className?: string;
 }
 
-/** Shows '> no results.' when no items match the search query. Accepts children. */
+/** Shows '> no results.' when a nonempty search query matches no items. Accepts children. */
 export function SelectEmpty({ children, className }: SelectEmptyProps) {
   const { searchQuery, options } = useSelectContext("SelectEmpty");
 

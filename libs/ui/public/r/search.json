@@ -6,7 +6,7 @@
   "files": [
     {
       "path": "registry/lib/search.ts",
-      "content": "/** Case-insensitive substring search using the host locale. */\nexport function matchesSearch(value: string, query: string): boolean {\n  return !query || value.toLocaleLowerCase().includes(query.toLocaleLowerCase());\n}\n",
+      "content": "function foldSearchValue(value: string): string {\n  return value.normalize(\"NFC\").toUpperCase().normalize(\"NFC\");\n}\n\n/** Locale-independent Unicode substring search using NFC normalization and uppercase expansion. */\nexport function matchesSearch(value: string, query: string): boolean {\n  return foldSearchValue(value).includes(foldSearchValue(query));\n}\n",
       "type": "registry:lib"
     }
   ],

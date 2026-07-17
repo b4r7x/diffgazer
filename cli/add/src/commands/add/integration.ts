@@ -32,9 +32,7 @@ export function applyIntegrationDeps(
   integrationSelection: ResolvedIntegrationSelection,
   keysVersionSpec: string,
 ): string[] {
-  const depSet = new Set(
-    deps.filter((dep) => !dep.startsWith("/keys@") && !dep.startsWith("@diffgazer/keys@")),
-  );
+  const depSet = new Set(deps.filter((dep) => !dep.startsWith("@diffgazer/keys@")));
 
   if (integrationSelection.mode === "copy") {
     depSet.delete("@diffgazer/keys");

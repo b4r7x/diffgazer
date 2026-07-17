@@ -41,9 +41,29 @@ function resolveTheme(theme: WebTheme, systemTheme: ResolvedTheme): ResolvedThem
   return theme;
 }
 
+function accessThemeStorage<T>(operation: (storage: Storage) => T, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    return operation(window.localStorage);
+  } catch (error) {
+    if (error instanceof DOMException) return fallback;
+    throw error;
+  }
+}
+
+function readStoredTheme(): string | null {
+  return accessThemeStorage((storage) => storage.getItem(STORAGE_KEY), null);
+}
+
+function writeStoredTheme(theme: string | null): void {
+  accessThemeStorage((storage) => {
+    if (theme === null) storage.removeItem(STORAGE_KEY);
+    else storage.setItem(STORAGE_KEY, theme);
+  }, undefined);
+}
+
 function getInitialFallbackTheme(): WebTheme {
-  if (typeof window === "undefined") return "auto";
-  return resolveWebTheme(localStorage.getItem(STORAGE_KEY));
+  return resolveWebTheme(readStoredTheme());
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -70,15 +90,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setTheme = useCallback(
     async (newTheme: WebTheme): Promise<void> => {
       const previousOverride = localOverride;
-      const previousStored = localStorage.getItem(STORAGE_KEY);
+      const previousStored = readStoredTheme();
       setLocalOverride(newTheme);
-      localStorage.setItem(STORAGE_KEY, newTheme);
+      writeStoredTheme(newTheme);
       try {
         await saveSettingsAsync({ theme: newTheme });
       } catch (error) {
         setLocalOverride(previousOverride);
-        if (previousStored === null) localStorage.removeItem(STORAGE_KEY);
-        else localStorage.setItem(STORAGE_KEY, previousStored);
+        writeStoredTheme(previousStored);
         throw error;
       }
     },

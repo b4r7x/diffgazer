@@ -1,8 +1,10 @@
 import { LensStatSchema } from "@diffgazer/core/schemas/events";
+import { calculateSeverityCounts } from "@diffgazer/core/schemas/presentation";
 import {
   type DrilldownResult,
   DrilldownResultSchema,
   LensIdSchema,
+  ParsedDiffSchema,
   ProfileIdSchema,
   type ReviewGitContext,
   ReviewGitContextSchema,
@@ -17,38 +19,14 @@ import { normalizeIssueLineFields } from "../engine/issues.js";
 
 const CountFieldSchema = z.number().int().nonnegative();
 
-const DiffStatsSchema = z.object({
-  additions: CountFieldSchema,
-  deletions: CountFieldSchema,
-  sizeBytes: CountFieldSchema,
-});
+interface SalvagedItems<T> {
+  items: T[];
+  droppedItemCount: number;
+}
 
-const DiffHunkSchema = z.object({
-  oldStart: CountFieldSchema,
-  oldCount: CountFieldSchema,
-  newStart: CountFieldSchema,
-  newCount: CountFieldSchema,
-  content: z.string(),
-});
-
-const FileDiffSchema = z.object({
-  filePath: z.string(),
-  previousPath: z.string().nullable(),
-  operation: z.enum(["add", "modify", "delete", "rename"]),
-  hunks: z.array(DiffHunkSchema),
-  rawDiff: z.string(),
-  stats: DiffStatsSchema,
-});
-
-const ParsedDiffSchema = z.object({
-  files: z.array(FileDiffSchema),
-  totalStats: z.object({
-    filesChanged: CountFieldSchema,
-    additions: CountFieldSchema,
-    deletions: CountFieldSchema,
-    totalSizeBytes: CountFieldSchema,
-  }),
-});
+export interface ReviewSalvageDiagnostics {
+  droppedIssueCount: number;
+}
 
 // Older records may carry lens/profile ids the current closed enums reject.
 // Coerce them to valid vocabulary (drop unknown lenses, null an unknown profile)
@@ -64,29 +42,29 @@ export function coerceMetadataVocab(raw: unknown): unknown {
   return { ...metadata, lenses, profile };
 }
 
-function salvageIssues(raw: unknown): ReviewIssue[] {
-  if (!Array.isArray(raw)) return [];
-  const issues: ReviewIssue[] = [];
+function salvageItems<T>(
+  raw: unknown,
+  schema: z.ZodType<T>,
+  transform: (item: T) => T,
+): SalvagedItems<T> {
+  if (!Array.isArray(raw)) return { items: [], droppedItemCount: 0 };
+  const items: T[] = [];
   for (const candidate of raw) {
-    const parsed = ReviewIssueSchema.safeParse(candidate);
-    if (parsed.success) issues.push(normalizeIssueLineFields(parsed.data));
+    const parsed = schema.safeParse(candidate);
+    if (parsed.success) items.push(transform(parsed.data));
   }
-  return issues;
+  return { items, droppedItemCount: raw.length - items.length };
+}
+
+function salvageIssues(raw: unknown): SalvagedItems<ReviewIssue> {
+  return salvageItems(raw, ReviewIssueSchema, normalizeIssueLineFields);
 }
 
 function salvageDrilldowns(raw: unknown): DrilldownResult[] {
-  if (!Array.isArray(raw)) return [];
-  const drilldowns: DrilldownResult[] = [];
-  for (const candidate of raw) {
-    const parsed = DrilldownResultSchema.safeParse(candidate);
-    if (parsed.success) {
-      drilldowns.push({
-        ...parsed.data,
-        issue: normalizeIssueLineFields(parsed.data.issue),
-      });
-    }
-  }
-  return drilldowns;
+  return salvageItems(raw, DrilldownResultSchema, (drilldown) => ({
+    ...drilldown,
+    issue: normalizeIssueLineFields(drilldown.issue),
+  })).items;
 }
 
 function withParsedOptional<T>(
@@ -139,7 +117,9 @@ export function normalizeSavedReviewLineFields(review: SavedReview): SavedReview
  * DELETE's ownership read succeeds, or `null` when the metadata cannot be read
  * (the caller then surfaces the original validation error / listing warning).
  */
-export function lenientReadSavedReview(parsed: unknown): SavedReview | null {
+export function lenientReadSavedReview(
+  parsed: unknown,
+): { item: SavedReview; diagnostics: ReviewSalvageDiagnostics } | null {
   if (typeof parsed !== "object" || parsed === null) return null;
   const record = parsed as Record<string, unknown>;
 
@@ -153,19 +133,31 @@ export function lenientReadSavedReview(parsed: unknown): SavedReview | null {
     : { branch: null, commit: null, fileCount: 0, additions: 0, deletions: 0 };
 
   const result = (record.result ?? {}) as Record<string, unknown>;
+  const salvagedIssues = salvageIssues(result.issues);
+  const severityCounts = calculateSeverityCounts(salvagedIssues.items);
 
-  return normalizeSavedReviewLineFields({
-    metadata: metadataResult.data,
-    result: {
-      summary: typeof result.summary === "string" ? result.summary : "",
-      issues: salvageIssues(result.issues),
-    },
-    ...withParsedOptional(record, "diff", ParsedDiffSchema),
-    gitContext,
-    drilldowns: salvageDrilldowns(record.drilldowns),
-    ...withParsedOptional(record, "lensStats", z.array(LensStatSchema)),
-    ...withParsedOptional(record, "droppedDuplicates", CountFieldSchema),
-    ...withParsedOptional(record, "droppedBelowThreshold", CountFieldSchema),
-    ...withParsedOptional(record, "minSeverity", ReviewSeveritySchema),
-  });
+  return {
+    item: normalizeSavedReviewLineFields({
+      metadata: {
+        ...metadataResult.data,
+        issueCount: salvagedIssues.items.length,
+        blockerCount: severityCounts.blocker,
+        highCount: severityCounts.high,
+        mediumCount: severityCounts.medium,
+        lowCount: severityCounts.low,
+        nitCount: severityCounts.nit,
+      },
+      result: {
+        issues: salvagedIssues.items,
+      },
+      ...withParsedOptional(record, "diff", ParsedDiffSchema),
+      gitContext,
+      drilldowns: salvageDrilldowns(record.drilldowns),
+      ...withParsedOptional(record, "lensStats", z.array(LensStatSchema)),
+      ...withParsedOptional(record, "droppedDuplicates", CountFieldSchema),
+      ...withParsedOptional(record, "droppedBelowThreshold", CountFieldSchema),
+      ...withParsedOptional(record, "minSeverity", ReviewSeveritySchema),
+    }),
+    diagnostics: { droppedIssueCount: salvagedIssues.droppedItemCount },
+  };
 }

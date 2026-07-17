@@ -7,4 +7,5 @@ Use Changesets for public package releases from this monorepo:
 - `@diffgazer/ui`
 - `@diffgazer/keys`
 
-Private workspace packages are listed in `ignore` and are versioned only as internal implementation details.
+Private package manifests exclude those workspaces from releases. The `ignore` list records explicit
+release-plan exclusions; it is not the inventory of private workspaces.

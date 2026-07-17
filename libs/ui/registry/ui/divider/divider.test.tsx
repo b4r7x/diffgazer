@@ -1,8 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
-import { Divider } from "./index";
-
-// axe skipped: aria-hidden vs role=separator semantics are asserted directly in tests below.
+import { describe, expect, expectTypeOf, it } from "vitest";
+import { Divider, type DividerProps } from "./index";
 
 describe("Divider", () => {
   it("hides decorative spaced text from the accessibility tree", () => {
@@ -14,13 +12,24 @@ describe("Divider", () => {
 
   it("exposes meaningful separators when decorative is false", () => {
     render(
-      <Divider decorative={false} orientation="vertical" variant="spaced">
+      <Divider
+        decorative={false}
+        aria-label="Section boundary"
+        orientation="vertical"
+        variant="spaced"
+      >
         Section
       </Divider>,
     );
 
-    const separator = screen.getByRole("separator");
+    const separator = screen.getByRole("separator", { name: "Section boundary" });
     expect(separator).toHaveAttribute("aria-orientation", "vertical");
     expect(screen.getByText("Section")).toBeInTheDocument();
+  });
+
+  it("requires an explicit aria-label for semantic separators", () => {
+    expectTypeOf<{ decorative: false; "aria-label": string }>().toMatchTypeOf<DividerProps>();
+    expectTypeOf<{ decorative: false }>().not.toMatchTypeOf<DividerProps>();
+    expectTypeOf<{ decorative: true }>().toMatchTypeOf<DividerProps>();
   });
 });

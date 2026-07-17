@@ -11,6 +11,12 @@ function TuiShellChrome({ children }: { children: ReactNode }) {
   return (
     <div className="docs-chrome flex h-dvh flex-col overflow-hidden bg-background text-foreground">
       <div className="contents" inert={chromeInert}>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[calc(var(--z-toast)+1)] focus:bg-foreground focus:text-background focus:px-3 focus:py-1 focus:text-xs focus:font-mono"
+        >
+          Skip to content
+        </a>
         <StatusBar />
       </div>
       <div className="contents" inert={chromeInert}>

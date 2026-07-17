@@ -55,17 +55,24 @@ function ReferenceTable({
   columns: string[];
   rows: string[][];
 }) {
+  const headingId = title.toLowerCase().replace(/\s+/g, "-");
+
   return (
     <div className="mt-8">
       <Typography
         as="h3"
         size="sm"
-        id={title.toLowerCase().replace(/\s+/g, "-")}
+        id={headingId}
         className="mb-3 font-bold text-foreground scroll-mt-16"
       >
         {title}
       </Typography>
-      <div className="overflow-x-auto">
+      <section
+        className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        aria-labelledby={headingId}
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: horizontal overflow must be keyboard reachable.
+        tabIndex={0}
+      >
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-border/60">
@@ -98,7 +105,7 @@ function ReferenceTable({
             ))}
           </tbody>
         </table>
-      </div>
+      </section>
     </div>
   );
 }

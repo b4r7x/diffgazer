@@ -44,6 +44,70 @@ describe("useFocusRestore", () => {
     expect(document.activeElement).toBe(outsideTrigger);
   });
 
+  it("carries an outer restore target through a still-open child", () => {
+    const outsideTrigger = button("Outside");
+    const parentControl = button("Parent control");
+    const childControl = button("Child control");
+    const parentRestore = renderHook(() => useFocusRestore({ restoreOnUnmount: false }));
+    const childRestore = renderHook(() => useFocusRestore({ restoreOnUnmount: false }));
+
+    outsideTrigger.focus();
+    act(() => {
+      parentRestore.result.current.capture();
+    });
+
+    parentControl.focus();
+    act(() => {
+      childRestore.result.current.capture();
+    });
+
+    childControl.focus();
+    act(() => {
+      expect(parentRestore.result.current.restore()).toBe(false);
+    });
+    parentControl.remove();
+
+    act(() => {
+      expect(childRestore.result.current.restore()).toBe(true);
+    });
+    expect(document.activeElement).toBe(outsideTrigger);
+  });
+
+  it("restores the nearest surviving target from a three-level fallback chain", () => {
+    const outsideTrigger = button("Outside");
+    const outerControl = button("Outer control");
+    const middleControl = button("Middle control");
+    const innerControl = button("Inner control");
+    const outerRestore = renderHook(() => useFocusRestore({ restoreOnUnmount: false }));
+    const middleRestore = renderHook(() => useFocusRestore({ restoreOnUnmount: false }));
+    const innerRestore = renderHook(() => useFocusRestore({ restoreOnUnmount: false }));
+
+    outsideTrigger.focus();
+    act(() => {
+      outerRestore.result.current.capture();
+    });
+    outerControl.focus();
+    act(() => {
+      middleRestore.result.current.capture();
+    });
+    middleControl.focus();
+    act(() => {
+      innerRestore.result.current.capture();
+    });
+    innerControl.focus();
+
+    act(() => {
+      expect(outerRestore.result.current.restore()).toBe(false);
+      expect(middleRestore.result.current.restore()).toBe(false);
+    });
+    middleControl.remove();
+
+    act(() => {
+      expect(innerRestore.result.current.restore()).toBe(true);
+    });
+    expect(document.activeElement).toBe(outerControl);
+  });
+
   it("restores on unmount when enabled", () => {
     const trigger = button("Trigger");
     const inside = button("Inside");

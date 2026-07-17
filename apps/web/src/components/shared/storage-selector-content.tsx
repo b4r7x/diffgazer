@@ -14,6 +14,7 @@ export interface StorageSelectorContentProps {
   disabled?: boolean;
   keyboardNavigation?: boolean;
   autoFocusList?: boolean;
+  onFocus?: (value: SecretsStorage) => void;
   onBoundaryReached?: (direction: "up" | "down") => void;
 }
 
@@ -24,6 +25,7 @@ export function StorageSelectorContent({
   disabled = false,
   keyboardNavigation = true,
   autoFocusList = false,
+  onFocus,
   onBoundaryReached,
 }: StorageSelectorContentProps) {
   const labelId = useId();
@@ -39,7 +41,6 @@ export function StorageSelectorContent({
 
   const handleEnter = (nextValue: string) => {
     if (!isSecretsStorage(nextValue)) return;
-    onChange(nextValue);
     onEnter?.(nextValue);
   };
 
@@ -74,6 +75,10 @@ export function StorageSelectorContent({
             value={option.value}
             label={option.label}
             description={option.description}
+            onFocus={() => {
+              setFocusedStorage(option.value);
+              onFocus?.(option.value);
+            }}
           />
         ))}
       </RadioGroup>

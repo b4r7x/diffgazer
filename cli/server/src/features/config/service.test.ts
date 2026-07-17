@@ -1,7 +1,11 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { AIProvider, TrustConfig } from "@diffgazer/core/schemas/config";
+import {
+  type AIProvider,
+  SaveConfigRequestSchema,
+  type TrustConfig,
+} from "@diffgazer/core/schemas/config";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { requireValue } from "../../testing/assertions.js";
 
@@ -29,6 +33,7 @@ let diffgazerHome: string;
 let projectRoot: string;
 
 const configPath = (): string => join(diffgazerHome, "config.json");
+const secretsPath = (): string => join(diffgazerHome, "secrets.json");
 
 function writeJson(filePath: string, value: unknown): void {
   mkdirSync(dirname(filePath), { recursive: true });
@@ -133,6 +138,33 @@ describe("config service", () => {
     expect(checkConfig()).toMatchObject({ ok: true, value: { configured: false } });
   });
 
+  it("reports a persisted active provider without a model as not configured", async () => {
+    writeJson(configPath(), {
+      settings: { secretsStorage: "file" },
+      providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
+    });
+    writeJson(secretsPath(), { providers: { gemini: "file-key" } });
+    const { checkConfig, getConfig, getInitState } = await loadService();
+
+    expect(getConfig()).toEqual({
+      ok: true,
+      value: { provider: "gemini", model: undefined },
+    });
+    expect(checkConfig()).toEqual({ ok: true, value: { configured: false } });
+    expect(getInitState()).toMatchObject({
+      ok: true,
+      value: {
+        configured: false,
+        setup: {
+          hasProvider: true,
+          hasModel: false,
+          isConfigured: false,
+          missing: expect.arrayContaining(["model"]),
+        },
+      },
+    });
+  });
+
   it("propagates secret storage errors from the store", async () => {
     writeJson(configPath(), {
       settings: { secretsStorage: "keyring" },
@@ -201,6 +233,21 @@ describe("config service", () => {
     expect(result.ok === false && result.error.message).toContain("gemini");
   });
 
+  it("enforces model membership when the provider catalog comes from the bundled snapshot", async () => {
+    await configureProvider("gemini", { model: "gemini-2.5-flash" });
+    catalog.getProviderModels.mockResolvedValue({
+      models: [{ id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "", tier: "free" }],
+      fetchedAt: "2026-06-02T00:00:00.000Z",
+      source: "snapshot",
+      cached: false,
+    });
+    const { activateProvider } = await loadService();
+
+    const result = await activateProvider({ provider: "gemini", model: "missing-from-snapshot" });
+
+    expect(result).toMatchObject({ ok: false, error: { code: "MODEL_ERROR" } });
+  });
+
   it("exempts openrouter from catalog membership validation", async () => {
     await configureProvider("openrouter", { apiKey: "sk-openrouter", model: "some-router-model" });
     const { activateProvider } = await loadService();
@@ -233,7 +280,7 @@ describe("config service", () => {
     const result = await activateProvider({ provider: "gemini", model: "gemini-2.5-flash" });
 
     expect(catalog.getProviderModels).not.toHaveBeenCalled();
-    expect(result).toMatchObject({ ok: false, error: { code: "INVALID_BODY" } });
+    expect(result).toMatchObject({ ok: false, error: { code: "KEYRING_READ_FAILED" } });
   });
 
   it("fetches OpenRouter models with the stored OpenRouter API key", async () => {
@@ -282,41 +329,50 @@ describe("config service", () => {
     const store = await loadStore();
 
     const before = getInitState(projectRoot);
-    expect(before.setup.hasSecretsStorage).toBe(false);
-    expect(before.setup.isReady).toBe(false);
+    expect(before.ok).toBe(true);
+    if (!before.ok) throw new Error(before.error.message);
+    expect(before.value.setup.hasSecretsStorage).toBe(false);
+    expect(before.value.setup.isReady).toBe(false);
 
     await store.updateSettings({ secretsStorage: "file" });
 
     const after = getInitState(projectRoot);
-    expect(after.setup.hasSecretsStorage).toBe(true);
-    expect(after.setup.missing).not.toContain("secretsStorage");
+    expect(after.ok).toBe(true);
+    if (!after.ok) throw new Error(after.error.message);
+    expect(after.value.setup.hasSecretsStorage).toBe(true);
+    expect(after.value.setup.missing).not.toContain("secretsStorage");
   });
 
   it("derives setup readiness from settings, provider config, and project trust", async () => {
     const getSetupStatus = await loadSetupStatus();
 
     const initial = getSetupStatus(projectRoot);
-    expect(initial).toMatchObject({
+    expect(initial.ok).toBe(true);
+    if (!initial.ok) throw new Error(initial.error.message);
+    expect(initial.value).toMatchObject({
       hasSecretsStorage: false,
       hasProvider: false,
       hasModel: false,
       hasTrust: false,
       isReady: false,
     });
-    expect(initial.missing).toEqual(["secretsStorage", "provider", "model", "trust"]);
+    expect(initial.value.missing).toEqual(["secretsStorage", "provider", "model", "trust"]);
 
     const store = await configureProvider("gemini", { model: "gemini-2.5-flash" });
     const project = store.ensureProjectFile(projectRoot);
     await store.saveTrust(trustConfig(requireValue(project.projectId, "project id")));
 
     expect(getSetupStatus(projectRoot)).toMatchObject({
-      hasSecretsStorage: true,
-      hasProvider: true,
-      hasModel: true,
-      hasTrust: true,
-      isConfigured: true,
-      isReady: true,
-      missing: [],
+      ok: true,
+      value: {
+        hasSecretsStorage: true,
+        hasProvider: true,
+        hasModel: true,
+        hasTrust: true,
+        isConfigured: true,
+        isReady: true,
+        missing: [],
+      },
     });
   });
 
@@ -341,6 +397,30 @@ describe("config service", () => {
   });
 
   describe("credential validation", () => {
+    it("persists direct and structured literal credentials with equivalent whitespace", async () => {
+      const store = await loadStore();
+      await store.updateSettings({ secretsStorage: "file" });
+      const { saveConfig } = await loadService();
+      const storedValues: Array<string | null> = [];
+
+      for (const apiKey of [
+        "  sk-live  ",
+        { kind: "literal", value: "  sk-live  " },
+        "sk live",
+        { kind: "literal", value: "sk live" },
+      ] as const) {
+        const input = SaveConfigRequestSchema.parse({ provider: "openrouter", apiKey });
+        const result = await saveConfig(input);
+        expect(result.ok).toBe(true);
+
+        const stored = store.getProviderApiKey("openrouter");
+        expect(stored.ok).toBe(true);
+        storedValues.push(stored.ok ? stored.value : null);
+      }
+
+      expect(storedValues).toEqual(["sk-live", "sk-live", "sk live", "sk live"]);
+    });
+
     it("rejects env credential refs whose var name is not the provider's own key", async () => {
       const store = await loadStore();
       await store.updateSettings({ secretsStorage: "file" });
@@ -488,6 +568,8 @@ describe("getProviderModels (catalog)", () => {
           description: "1M context",
           tier: "free",
           recommended: true,
+          contextLength: 1048576,
+          maxOutputTokens: 65536,
         },
       ],
       fetchedAt: "2026-06-02T00:00:00.000Z",
@@ -500,7 +582,15 @@ describe("getProviderModels (catalog)", () => {
     expect(result).toMatchObject({
       ok: true,
       value: {
-        models: [{ id: "gemini-2.5-flash", tier: "free", recommended: true }],
+        models: [
+          {
+            id: "gemini-2.5-flash",
+            tier: "free",
+            recommended: true,
+            contextLength: 1048576,
+            maxOutputTokens: 65536,
+          },
+        ],
         source: "live",
         cached: false,
       },

@@ -49,7 +49,10 @@ export const UserConfigSchema = z
 export type UserConfig = z.infer<typeof UserConfigSchema>;
 
 export const CredentialRefSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("literal"), value: z.string().min(1) }),
+  z.object({
+    kind: z.literal("literal"),
+    value: z.string().trim().min(1, "API key must not be empty"),
+  }),
   z.object({ kind: z.literal("env"), varName: z.string().min(1) }),
 ]);
 export type CredentialRef = z.infer<typeof CredentialRefSchema>;

@@ -1,19 +1,76 @@
 import { execFile } from "node:child_process";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 import * as clack from "@clack/prompts";
 import type { PackageManager } from "./detect.js";
 import { readPackageJson } from "./detect.js";
+import { PACKAGE_MANAGER_LOCKFILES } from "./lockfiles.js";
 import { error, isSilentMode } from "./terminal.js";
 
 const VALID_PKG_NAME = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/i;
 const VERSION_SPEC_PATTERN = /^[a-zA-Z0-9._\-~/^*@:+]+$/;
+const REGISTRY_VERSION_SOURCE_PATTERN = /^[a-zA-Z0-9._~^*+<>=| -]+$/;
 
-const REJECTED_PROTOCOLS = ["file:", "git+", "git:", "https:", "http:", "link:", "npm:"];
+const REJECTED_PROTOCOLS = [
+  "file:",
+  "git+",
+  "git:",
+  "https:",
+  "http:",
+  "link:",
+  "npm:",
+  "ssh:",
+  "github:",
+  "gitlab:",
+  "bitbucket:",
+  "gist:",
+];
 
-export function depName(dep: string): string {
-  if (!dep.includes("@")) return dep;
+export { PACKAGE_MANAGER_LOCKFILES } from "./lockfiles.js";
+
+const PACKAGE_MANAGER_STATE_FILES = ["package.json", ...PACKAGE_MANAGER_LOCKFILES] as const;
+
+export interface PackageManagerFileSnapshot {
+  files: ReadonlyMap<string, Buffer | null>;
+}
+
+export function snapshotPackageManagerFiles(cwd: string): PackageManagerFileSnapshot {
+  const files = new Map<string, Buffer | null>();
+  for (const fileName of PACKAGE_MANAGER_STATE_FILES) {
+    const path = resolve(cwd, fileName);
+    files.set(path, existsSync(path) ? readFileSync(path) : null);
+  }
+  return { files };
+}
+
+export function restorePackageManagerFiles(snapshot: PackageManagerFileSnapshot): void {
+  const failures: unknown[] = [];
+  for (const [path, content] of snapshot.files) {
+    try {
+      if (content === null) {
+        rmSync(path, { force: true });
+      } else {
+        writeFileSync(path, content);
+      }
+    } catch (error) {
+      failures.push(error);
+    }
+  }
+  if (failures.length > 0) {
+    throw new AggregateError(failures, "Failed to restore package-manager files.");
+  }
+}
+
+function splitDependencySpec(dep: string): { name: string; source: string | null } {
+  if (!dep.includes("@")) return { name: dep, source: null };
   const searchFrom = dep.startsWith("@") ? dep.indexOf("/") + 1 : 0;
   const versionAt = dep.indexOf("@", searchFrom);
-  return versionAt > 0 ? dep.slice(0, versionAt) : dep;
+  if (versionAt <= 0) return { name: dep, source: null };
+  return { name: dep.slice(0, versionAt), source: dep.slice(versionAt + 1) };
+}
+
+export function depName(dep: string): string {
+  return splitDependencySpec(dep).name;
 }
 
 export function normalizeVersionSpec(raw: unknown, packageName = "package"): string {
@@ -45,17 +102,30 @@ export function validateDependencyProtocol(dep: string): void {
   if (dep.startsWith("-")) {
     throw new Error(`Rejected dependency "${dep}": option-shaped names are not allowed.`);
   }
-  const lower = dep.toLowerCase();
+  const { source } = splitDependencySpec(dep);
+  const dependencySource = source ?? dep;
+  const lower = dependencySource.toLowerCase();
   for (const protocol of REJECTED_PROTOCOLS) {
     if (lower.startsWith(protocol)) {
       throw new Error(`Rejected dependency "${dep}": ${protocol} sources are not allowed.`);
     }
   }
-  if (dep.startsWith("/") || dep.startsWith("\\")) {
+  if (source?.includes("/")) {
+    throw new Error(`Rejected dependency "${dep}": package source paths are not allowed.`);
+  }
+  if (dependencySource.startsWith("/") || dependencySource.startsWith("\\")) {
     throw new Error(`Rejected dependency "${dep}": absolute paths are not allowed.`);
   }
   if (dep.includes("..")) {
     throw new Error(`Rejected dependency "${dep}": path traversal is not allowed.`);
+  }
+  if (source?.startsWith(".")) {
+    throw new Error(`Rejected dependency "${dep}": local directory sources are not allowed.`);
+  }
+  if (source !== null && !REGISTRY_VERSION_SOURCE_PATTERN.test(source)) {
+    throw new Error(
+      `Rejected dependency "${dep}": only registry versions, ranges, and dist tags are allowed.`,
+    );
   }
 }
 

@@ -5,7 +5,6 @@ import { Callout } from "../callout/index";
 import { Dialog } from "../dialog/index";
 import { Panel } from "../panel/index";
 
-// axe skipped: type/ref contract helper; consumer components carry accessibility coverage.
 // F-286 / T-65: the compound parts below extend ComponentProps<"tag"> so a
 // consumer can attach a typed ref. This file type-checks that contract for the
 // 12 previously ref-less parts; rendering one confirms the ref actually attaches.

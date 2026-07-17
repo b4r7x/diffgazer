@@ -69,10 +69,6 @@ export async function processReviewStream(
         case "agent_thinking":
         case "agent_progress":
         case "agent_error":
-        case "tool_call":
-        case "tool_result":
-        case "tool_start":
-        case "tool_end":
         case "issue_found":
         case "agent_complete":
         case "orchestrator_start":

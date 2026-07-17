@@ -1,5 +1,4 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { createRequire } from "node:module";
 import { basename, relative, resolve } from "node:path";
 import type { ArtifactManifest } from "../manifest.js";
 import { validateManifest } from "../manifest.js";
@@ -60,54 +59,6 @@ function resolveArtifactPath(baseDir: string, relPath: string, label: string): s
     }
     throw error;
   }
-}
-
-function makePackageResolver(resolveFromDir: string): (packageName: string) => boolean {
-  const requireFromDir = createRequire(resolve(resolveFromDir, "__docs-artifacts-resolver__.cjs"));
-
-  return (packageName: string) => {
-    try {
-      requireFromDir.resolve(packageName);
-      return true;
-    } catch {
-      return false;
-    }
-  };
-}
-
-interface ResolveSyncModeOptions {
-  libraries?: ArtifactLibrary[];
-  resolveFromDir?: string;
-  resolvePackage?: (packageName: string) => boolean;
-}
-
-export function resolveArtifactSyncMode(
-  env: Record<string, string | undefined> = process.env,
-  options: ResolveSyncModeOptions = {},
-): "workspace" | "package" {
-  const override = env.DIFFGAZER_ARTIFACT_SYNC_MODE;
-  if (override) {
-    if (override === "workspace" || override === "package") return override;
-    throw new Error(
-      `DIFFGAZER_ARTIFACT_SYNC_MODE must be "workspace" or "package", got "${override}"`,
-    );
-  }
-
-  if (env.DIFFGAZER_DEV) return "workspace";
-
-  const {
-    libraries = [],
-    resolveFromDir = process.cwd(),
-    resolvePackage = makePackageResolver(resolveFromDir),
-  } = options;
-
-  if (libraries.length === 0) return "package";
-
-  const hasUnresolvableArtifactPackage = libraries.some(
-    (library) => !resolvePackage(library.packageName),
-  );
-
-  return hasUnresolvableArtifactPackage ? "workspace" : "package";
 }
 
 export function collectMissingWorkspaceArtifactFiles(
@@ -382,15 +333,19 @@ function collectBaseOutputErrors(docsRoot: string, artifact: LoadedArtifact): st
 }
 
 function collectAssetOutputErrors(docsRoot: string, artifact: LoadedArtifact): string[] {
-  if (!artifact.manifest.docs?.assetsDir) return [];
-
   const libraryId = artifact.id;
+  const outputAssetsDir = resolve(docsRoot, "public/library-assets", libraryId);
+  if (!artifact.manifest.docs?.assetsDir) {
+    return existsSync(outputAssetsDir) && directoryHasFiles(outputAssetsDir)
+      ? [`${libraryId} assets sync: stale output directory ${outputAssetsDir}`]
+      : [];
+  }
+
   const artifactAssetsDir = resolveArtifactPath(
     artifact.artifactRoot,
     artifact.manifest.docs.assetsDir,
     `${libraryId} assets artifact path`,
   );
-  const outputAssetsDir = resolve(docsRoot, "public/library-assets", libraryId);
   if (existsSync(artifactAssetsDir)) {
     return collectTreeParityErrors(artifactAssetsDir, outputAssetsDir, `${libraryId} assets sync`);
   }

@@ -17,12 +17,12 @@ export const selectDoc: ComponentDoc = {
     {
       name: "SelectValue",
       indent: 2,
-      note: "Displays selected value or placeholder. Props: display (count|list|truncate), truncateAfter, children as render function.",
+      note: "Displays selected value or placeholder. Props: display (count|list|truncate), truncateAfter, and an optional render-function child.",
     },
     {
       name: "SelectTags",
       indent: 2,
-      note: "Displays selected items as outlined chips (multiple select)",
+      note: "Displays selected items as outlined chips in multi-select mode. Its placeholder is a string.",
     },
     {
       name: "SelectContent",
@@ -42,7 +42,7 @@ export const selectDoc: ComponentDoc = {
     {
       name: "SelectEmpty",
       indent: 2,
-      note: "Shows '> no results.' when no items match the search query. Accepts children.",
+      note: "Shows '> no results.' when a nonempty search query matches no items. Accepts children.",
     },
   ],
   notes: [
@@ -74,12 +74,12 @@ export const selectDoc: ComponentDoc = {
     {
       title: "SelectTags vs SelectValue",
       content:
-        "Use SelectTags inside SelectTrigger for multiselect — it renders each selected item as an outlined chip showing the option label. Use SelectValue for single-select or multiselect with display modes: 'count' (default, 'N selected'), 'list' (comma-separated), or 'truncate' (first N + '+M more'). Both accept ReactNode placeholder.",
+        "Use SelectTags inside SelectTrigger for multiselect. It renders each selected item as an outlined chip showing the option label, and its placeholder accepts a string. Use SelectValue for single-select or multiselect with display modes: 'count' (default, 'N selected'), 'list' (comma-separated), or 'truncate' (first N + '+M more'). Its placeholder accepts ReactNode.",
     },
     {
       title: "Search Position",
       content:
-        "SelectSearch can go anywhere inside SelectContent — its position prop, not its JSX order, decides where it renders. position='bottom' (default) renders the search row below the option list with a top border; position='top' renders it above the list with a bottom border.",
+        "SelectSearch can go anywhere inside SelectContent — its position prop, not its JSX order, decides where it renders. position='bottom' (default) renders the search row below the option list with a top border; position='top' renders it above the list with a bottom border. DOM and Fragment wrappers around SelectSearch or SelectEmpty are preserved when those parts are hoisted outside the listbox.",
     },
     {
       title: "Searchable APG semantics",
@@ -89,7 +89,7 @@ export const selectDoc: ComponentDoc = {
     {
       title: "Empty State",
       content:
-        "Add SelectEmpty inside SelectContent to show a message when no items exist or none match the current search query. Default: '> no results.' Pass children to customize.",
+        "Add SelectEmpty inside SelectContent to show a message after a nonempty search query matches no items. It renders nothing before a query is entered, including when the option list is empty. Default: '> no results.' Pass children to customize.",
     },
     {
       title: "Keyboard Navigation",
@@ -308,6 +308,15 @@ export const selectDoc: ComponentDoc = {
           "ID reference for the trigger label. Field.Control supplies this automatically when SelectTrigger is wrapped in Field.",
       },
     },
+    SelectContent: {
+      getResultsLabel: {
+        type: "(count: number) => string",
+        required: false,
+        defaultValue: 'count => count + " results"',
+        description:
+          "Localizes the searchable results count announced by the live region when a query is present.",
+      },
+    },
     SelectValue: {
       placeholder: {
         type: "ReactNode",
@@ -328,12 +337,24 @@ export const selectDoc: ComponentDoc = {
         defaultValue: "2",
         description: 'Number of items shown before "+N more" when display="truncate".',
       },
+      getSelectedLabel: {
+        type: "(count: number) => string",
+        required: false,
+        defaultValue: 'count => count + " selected"',
+        description: 'Localizes the multi-select summary rendered when display="count".',
+      },
+      getOverflowLabel: {
+        type: "(count: number) => string",
+        required: false,
+        defaultValue: 'count => " +" + count + " more"',
+        description: 'Localizes the overflow suffix rendered when display="truncate".',
+      },
       children: {
         type: "(state: { selected: string[]; labels: ReadonlyMap<string, string> }) => ReactNode",
         required: false,
         defaultValue: null,
         description:
-          "Render function for fully custom selection display. Example: selected.map((value) => labels.get(value) ?? value).join(', ').",
+          "Render-function child for fully custom selection display; static ReactNode children are not accepted. Example: selected.map((value) => labels.get(value) ?? value).join(', ').",
       },
     },
     SelectTags: {
@@ -341,16 +362,30 @@ export const selectDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: '"Select..."',
-        description: "Rendered when nothing is selected. Only available in multi-select mode.",
+        description:
+          "String rendered when nothing is selected. Only available in multi-select mode.",
       },
     },
     SelectSearch: {
+      placeholder: {
+        type: "string",
+        required: false,
+        defaultValue: '"Search..."',
+        description: "Placeholder shown in the search input when its value is empty.",
+      },
       position: {
         type: '"top" | "bottom"',
         required: false,
         defaultValue: '"bottom"',
         description:
           'Where the search row renders relative to the option list. "bottom" (default) renders it below the list with a top border; "top" renders it above with a bottom border.',
+      },
+      "aria-label": {
+        type: "string",
+        required: false,
+        defaultValue: '"Search options" unless aria-labelledby is present',
+        description:
+          "Accessible name for the search combobox. A composed Field label takes precedence through aria-labelledby.",
       },
     },
     SelectItem: {
@@ -385,7 +420,7 @@ export const selectDoc: ComponentDoc = {
         type: "ReactNode",
         required: false,
         defaultValue: '"> no results."',
-        description: "Custom empty-state content.",
+        description: "Custom content shown when a nonempty search query matches no items.",
       },
     },
   },

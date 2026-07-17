@@ -2,7 +2,12 @@
 
 import { type RefObject, useEffect, useEffectEvent, useRef, useState } from "react";
 import { DECLINE } from "../core/normalize-key-input.js";
-import { getComposedEventTarget, isEditableElement, isHTMLElement } from "../dom/element-guards.js";
+import {
+  composedContains,
+  getComposedEventTarget,
+  isEditableElement,
+  isHTMLElement,
+} from "../dom/element-guards.js";
 import { containsActiveElement, getFirstFocusableElement, isFocusable } from "../dom/focusable.js";
 import type { UseKeyOptions } from "./use-key.js";
 import { useKey } from "./use-key.js";
@@ -277,7 +282,7 @@ export function useFocusZone<T extends string>(
     if (!focus) return;
     for (const zone of zones) {
       const { container } = resolveFocusTarget(focus.targets[zone]);
-      if (container?.contains(target)) {
+      if (container && composedContains(container, target)) {
         setZoneValue(zone);
         return;
       }
@@ -312,7 +317,7 @@ export function useFocusZone<T extends string>(
     for (const doc of docs) {
       if (attached.has(doc)) continue;
       const handler = (event: FocusEvent) => {
-        const target = event.target;
+        const target = getComposedEventTarget(event);
         if (!isHTMLElement(target)) return;
         syncZoneFromFocusTarget(target);
       };

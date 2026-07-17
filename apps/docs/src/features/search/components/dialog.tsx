@@ -108,7 +108,6 @@ export function SearchDialog() {
       }}
       search={query}
       onSearchChange={search}
-      onActivate={(id) => navigate({ to: id })}
       shouldFilter={false}
     >
       <CommandPaletteContent size="md">
@@ -117,7 +116,11 @@ export function SearchDialog() {
         <CommandPaletteList className={showsResults ? "min-h-[240px]" : undefined}>
           {showsResults &&
             results.map((result) => (
-              <CommandPaletteItem key={result.id} id={result.url}>
+              <CommandPaletteItem
+                key={result.id}
+                id={result.id}
+                onSelect={() => navigate({ to: result.url })}
+              >
                 <div className="flex flex-col gap-0.5">
                   <div className="flex items-center gap-2">
                     <span>{result.title}</span>

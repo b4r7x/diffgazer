@@ -17,6 +17,7 @@ import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { mergeIds, resolveAriaInvalid } from "@/lib/aria";
+import { useFieldsetDisabled } from "@/lib/selectable-collection";
 import {
   type SelectableSize,
   type SelectableVariant,
@@ -37,6 +38,7 @@ const RADIO_CHECK_EVENT = "diffgazer:radio-check";
 interface RadioCheckEventDetail {
   name: string;
   form: HTMLFormElement | null;
+  root: Node;
   source: HTMLElement;
 }
 
@@ -46,6 +48,7 @@ function dispatchRadioCheck(source: HTMLElement, name: string) {
       detail: {
         name,
         form: source.closest("form"),
+        root: source.getRootNode(),
         source,
       },
     }),
@@ -154,12 +157,15 @@ export function Radio({
   const descriptionId = `${generatedId}-desc`;
 
   const rootRef = useRef<HTMLDivElement>(null);
+  const nativeInputRef = useRef<HTMLInputElement>(null);
   const composedRef = useComposedRefs(rootRef, ref);
-  const [isChecked, setIsChecked, isControlled] = useControllableState<boolean>({
+  const [isChecked, setIsChecked, , resetChecked] = useControllableState<boolean>({
     value: checked,
     defaultValue: defaultChecked,
     onChange,
   });
+  const fieldsetDisabled = useFieldsetDisabled(rootRef);
+  const isDisabled = disabled || fieldsetDisabled;
   const [nativeInvalid, setNativeInvalid] = useState(false);
   const resolvedAriaInvalid = resolveAriaInvalid(
     ariaInvalid,
@@ -172,15 +178,29 @@ export function Radio({
     ariaDescribedBy,
     description ? descriptionId : undefined,
   );
+  const controlledFormReset =
+    checked === undefined
+      ? undefined
+      : {
+          syncResetBaseline: () => {
+            if (rootRef.current?.hasAttribute("data-diffgazer-radio-group-item")) return;
+            if (nativeInputRef.current) nativeInputRef.current.defaultChecked = isChecked;
+          },
+          onReset: () => {
+            if (rootRef.current?.hasAttribute("data-diffgazer-radio-group-item")) return;
+            setNativeInvalid(false);
+          },
+        };
 
-  useFormReset(
+  const invalidatePendingReset = useFormReset(
     rootRef,
     defaultChecked,
     (value) => {
       setNativeInvalid(false);
-      setIsChecked(value);
+      resetChecked(value);
     },
     checked === undefined,
+    controlledFormReset,
   );
 
   const notifySameNameRadios = useCallback(() => {
@@ -189,7 +209,7 @@ export function Radio({
   }, [name]);
 
   useEffect(() => {
-    if (!name || isControlled) return;
+    if (!name || rootRef.current?.hasAttribute("data-diffgazer-radio-group-item")) return;
 
     const ownerDocument = rootRef.current?.ownerDocument;
     if (!ownerDocument) return;
@@ -200,30 +220,33 @@ export function Radio({
         !detail ||
         detail.name !== name ||
         detail.source === rootRef.current ||
-        detail.form !== (rootRef.current?.closest("form") ?? null)
+        detail.form !== (rootRef.current?.closest("form") ?? null) ||
+        detail.root !== rootRef.current?.getRootNode()
       ) {
         return;
       }
 
+      invalidatePendingReset();
       setIsChecked(false);
     };
 
     ownerDocument.addEventListener(RADIO_CHECK_EVENT, handleRadioCheck);
     return () => ownerDocument.removeEventListener(RADIO_CHECK_EVENT, handleRadioCheck);
-  }, [isControlled, name, setIsChecked]);
+  }, [invalidatePendingReset, name, setIsChecked]);
 
   useEffect(() => {
     if (isChecked) notifySameNameRadios();
   }, [isChecked, notifySameNameRadios]);
 
   const toggle = () => {
-    if (disabled) return;
+    if (isDisabled) return;
+    invalidatePendingReset();
     setNativeInvalid(false);
     setIsChecked(true);
   };
 
   const handleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (disabled) {
+    if (isDisabled) {
       event.preventDefault();
       return;
     }
@@ -232,7 +255,7 @@ export function Radio({
   };
 
   const handleKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (disabled) return;
+    if (isDisabled) return;
     onKeyDown?.(e);
     if (e.defaultPrevented) return;
     if (e.key === " ") {
@@ -245,16 +268,18 @@ export function Radio({
     <>
       {(name || required) && (
         <input
+          ref={nativeInputRef}
           type="radio"
+          data-slot="radio-form-mirror"
           name={name}
           value={value}
           checked={isChecked}
           required={required}
-          disabled={disabled}
+          disabled={isDisabled}
           className="sr-only"
           tabIndex={-1}
-          readOnly
           aria-hidden={true}
+          onChange={() => {}}
           onInvalid={(event) => {
             event.preventDefault();
             onNativeInvalid?.();
@@ -275,20 +300,20 @@ export function Radio({
         data-slot="radio"
         data-value={dataValue ?? value}
         data-state={isChecked ? "checked" : "unchecked"}
-        data-disabled={disabled ? "" : undefined}
+        data-disabled={isDisabled ? "" : undefined}
         data-highlighted={highlighted ? "" : undefined}
         aria-checked={isChecked}
-        aria-disabled={disabled || undefined}
+        aria-disabled={isDisabled || undefined}
         aria-invalid={resolvedAriaInvalid}
         aria-label={ariaLabel}
         aria-labelledby={resolvedAriaLabelledBy}
         aria-describedby={resolvedAriaDescribedBy}
-        tabIndex={!disabled && isTabTarget ? 0 : -1}
+        tabIndex={!isDisabled && isTabTarget ? 0 : -1}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         onMouseEnter={onMouseEnter}
         className={cn(
-          selectableVariants({ highlighted, disabled }),
+          selectableVariants({ highlighted, disabled: isDisabled }),
           selectableContainerClass,
           description && "items-start",
           className,

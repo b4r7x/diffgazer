@@ -3,23 +3,23 @@ import { Button } from "@/components/ui/button";
 export default function ButtonRenderProp() {
   return (
     <div className="flex flex-wrap gap-3">
-      <Button variant="link">
-        {({ ref, ...props }) => (
-          <a href="/docs" {...props}>
+      <Button<HTMLAnchorElement> variant="link">
+        {({ ref, disabled: _disabled, onClick, ...props }) => (
+          <a ref={ref} href="/docs" onClick={onClick} {...props}>
             Render-prop link
           </a>
         )}
       </Button>
-      <Button variant="secondary">
-        {({ ref, ...props }) => (
-          <a href="/docs" {...props}>
-            Secondary link
+      <Button<HTMLAnchorElement> variant="secondary" disabled>
+        {({ ref, disabled: _disabled, onClick, ...props }) => (
+          <a ref={ref} href="/docs" onClick={onClick} {...props}>
+            Disabled link
           </a>
         )}
       </Button>
-      <Button variant="ghost" loading>
-        {({ ref, ...props }) => (
-          <a href="/docs" {...props}>
+      <Button<HTMLAnchorElement> variant="ghost" loading>
+        {({ ref, disabled: _disabled, onClick, ...props }) => (
+          <a ref={ref} href="/docs" onClick={onClick} {...props}>
             Loading link
           </a>
         )}

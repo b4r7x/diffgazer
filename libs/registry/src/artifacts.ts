@@ -127,7 +127,7 @@ export function buildRegistryArtifacts(
   const manifestPath = resolve(artifactRootPath, manifestFile);
   const fingerprintPath = resolve(artifactRootPath, fingerprintFile);
 
-  writeJson(manifestPath, manifest);
+  writeJson(manifestPath, { ...manifest, origin });
   writeFileSync(fingerprintPath, `${fingerprint}\n`);
 
   return {

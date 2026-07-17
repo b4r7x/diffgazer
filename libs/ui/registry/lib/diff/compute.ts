@@ -2,12 +2,25 @@ import { buildLcsTable } from "./lcs";
 import type { DiffChange, DiffHunk, ParsedDiff } from "./parse";
 
 const CONTEXT = 3;
+export const NO_NEWLINE_MARKER = "\\ No newline at end of file";
 
 /** Computes a single-file parsed diff from before/after text. */
 export function computeDiff(before: string, after: string): ParsedDiff {
+  if (before === after) return { oldPath: null, newPath: null, hunks: [] };
+
   const oldLines = splitDiffLines(before);
   const newLines = splitDiffLines(after);
   const edits = lcsEdits(oldLines, newLines);
+  const beforeHasNoNewline = before !== "" && !before.endsWith("\n");
+  const afterHasNoNewline = after !== "" && !after.endsWith("\n");
+  if (beforeHasNoNewline !== afterHasNoNewline) {
+    edits.push({
+      type: afterHasNoNewline ? "add" : "remove",
+      content: NO_NEWLINE_MARKER,
+      oldLine: null,
+      newLine: null,
+    });
+  }
   return { oldPath: null, newPath: null, hunks: groupHunks(edits) };
 }
 
@@ -107,14 +120,14 @@ function buildHunk(edits: DiffChange[], range: [number, number], context: number
   let oldCount = 0;
   let newCount = 0;
   for (const e of changes) {
-    if (e.type !== "add") oldCount++;
-    if (e.type !== "remove") newCount++;
+    if (e.oldLine !== null) oldCount++;
+    if (e.newLine !== null) newCount++;
   }
 
   return {
-    oldStart: firstOld?.oldLine ?? 1,
+    oldStart: firstOld?.oldLine ?? 0,
     oldCount,
-    newStart: firstNew?.newLine ?? 1,
+    newStart: firstNew?.newLine ?? 0,
     newCount,
     heading: "",
     changes,

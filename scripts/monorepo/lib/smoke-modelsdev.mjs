@@ -27,11 +27,37 @@ export function enabledSnapshotProviders(overlay) {
     .map(([id]) => id);
 }
 
+const RELATIVE_BUNDLE_IMPORT_RE = /(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)(["'])(\.\/[^"']+\.js)\1/g;
+
+export function collectReachableBundleFiles(entryFile, readFile, resolveImport) {
+  const files = [];
+  const seen = new Set();
+  const pending = [entryFile];
+
+  for (let index = 0; index < pending.length; index++) {
+    const file = pending[index];
+    if (seen.has(file)) continue;
+    seen.add(file);
+    files.push(file);
+
+    for (const match of readFile(file).matchAll(RELATIVE_BUNDLE_IMPORT_RE)) {
+      pending.push(resolveImport(file, match[2]));
+    }
+  }
+
+  return files;
+}
+
 /**
- * Return the first bundle file whose contents inline `marker`, or null if none
- * do. Reads via the injected `readFile` so the scan is unit-testable without a
- * real tsup build.
+ * Return the first bundle file whose contents inline every snapshot marker, or
+ * null if none do. Reads via the injected `readFile` so the scan is unit-testable
+ * without a real tsup build.
  */
-export function findSnapshotInBundle(files, readFile, marker) {
-  return files.find((path) => readFile(path).includes(marker)) ?? null;
+export function findSnapshotInBundle(files, readFile, markers) {
+  return (
+    files.find((path) => {
+      const source = readFile(path);
+      return markers.every((marker) => source.includes(marker));
+    }) ?? null
+  );
 }

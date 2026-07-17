@@ -9,7 +9,8 @@ import {
   errorResponse,
   zodErrorHandler,
 } from "../../shared/lib/http/response.js";
-import { cancelSessionsForProject } from "../../shared/lib/session-registry.js";
+import { storeErrorStatus } from "../../shared/lib/http/store-error.js";
+import { cancelSessionsForProvider } from "../../shared/lib/session-registry.js";
 import {
   createBodyLimitMiddleware,
   DEFAULT_BODY_LIMIT_KB,
@@ -48,14 +49,27 @@ const catalogModelFetchLimit = createRateLimitMiddleware("config:catalog-models"
 
 configRouter.get("/init", (c): Response => {
   const projectRoot = getProjectRoot(c);
-  const data = getInitState(projectRoot);
-  return c.json(data);
+  const result = getInitState(projectRoot);
+  if (!result.ok) {
+    return errorResponse(
+      c,
+      result.error.message,
+      result.error.code,
+      storeErrorStatus(result.error.code),
+    );
+  }
+  return c.json(result.value);
 });
 
 configRouter.get("/check", (c): Response => {
   const result = checkConfig();
   if (!result.ok) {
-    return errorResponse(c, result.error.message, result.error.code, 400);
+    return errorResponse(
+      c,
+      result.error.message,
+      result.error.code,
+      storeErrorStatus(result.error.code),
+    );
   }
   return c.json(result.value);
 });
@@ -63,7 +77,12 @@ configRouter.get("/check", (c): Response => {
 configRouter.get("/", (c): Response => {
   const result = getConfig();
   if (!result.ok) {
-    return errorResponse(c, result.error.message, result.error.code, 400);
+    return errorResponse(
+      c,
+      result.error.message,
+      result.error.code,
+      storeErrorStatus(result.error.code),
+    );
   }
   if (!result.value) {
     return errorResponse(c, "Configuration not found", ErrorCode.CONFIG_NOT_FOUND, 404);
@@ -82,8 +101,12 @@ configRouter.get(
   async (c): Promise<Response> => {
     const result = await getOpenRouterModels();
     if (!result.ok) {
-      const status = result.error.code === ErrorCode.API_KEY_MISSING ? 400 : 500;
-      return errorResponse(c, result.error.message, result.error.code, status);
+      return errorResponse(
+        c,
+        result.error.message,
+        result.error.code,
+        storeErrorStatus(result.error.code),
+      );
     }
     return c.json(result.value);
   },
@@ -120,7 +143,12 @@ configRouter.post(
     const body = c.req.valid("json");
     const result = await saveConfig(body);
     if (!result.ok) {
-      return errorResponse(c, result.error.message, result.error.code, 400);
+      return errorResponse(
+        c,
+        result.error.message,
+        result.error.code,
+        storeErrorStatus(result.error.code),
+      );
     }
     return c.json(result.value);
   },
@@ -137,8 +165,12 @@ configRouter.post(
     const { model } = c.req.valid("json");
     const result = await activateProvider({ provider: providerId, model });
     if (!result.ok) {
-      const status = result.error.code === "PROVIDER_NOT_FOUND" ? 404 : 400;
-      return errorResponse(c, result.error.message, result.error.code, status);
+      return errorResponse(
+        c,
+        result.error.message,
+        result.error.code,
+        storeErrorStatus(result.error.code),
+      );
     }
     return c.json(result.value);
   },
@@ -150,14 +182,17 @@ configRouter.delete(
   zValidator("param", ProviderParamSchema, zodErrorHandler),
   async (c): Promise<Response> => {
     const { providerId } = c.req.valid("param");
-    const projectRoot = getProjectRoot(c);
     const result = await deleteProvider(providerId);
     if (!result.ok) {
-      return errorResponse(c, result.error.message, result.error.code, 400);
+      return errorResponse(
+        c,
+        result.error.message,
+        result.error.code,
+        storeErrorStatus(result.error.code),
+      );
     }
     if (result.value.deleted) {
-      cancelSessionsForProject(projectRoot, {
-        provider: providerId,
+      cancelSessionsForProvider(providerId, {
         message: "Review session cancelled because its provider configuration was deleted.",
         reason: "provider_deleted",
       });
@@ -167,20 +202,24 @@ configRouter.delete(
 );
 
 configRouter.delete("/", requireRepoAccess, async (c): Promise<Response> => {
-  const projectRoot = getProjectRoot(c);
   const currentConfig = getConfig();
   const activeProvider = currentConfig.ok ? (currentConfig.value?.provider ?? null) : null;
   const result = await deleteConfig();
   if (!result.ok) {
-    const status = result.error.code === ErrorCode.CONFIG_NOT_FOUND ? 404 : 400;
-    return errorResponse(c, result.error.message, result.error.code, status);
+    return errorResponse(
+      c,
+      result.error.message,
+      result.error.code,
+      storeErrorStatus(result.error.code),
+    );
   }
   if (result.value.deleted) {
-    cancelSessionsForProject(projectRoot, {
-      provider: activeProvider ?? undefined,
-      message: "Review session cancelled because its provider configuration was deleted.",
-      reason: "config_deleted",
-    });
+    if (activeProvider) {
+      cancelSessionsForProvider(activeProvider, {
+        message: "Review session cancelled because its provider configuration was deleted.",
+        reason: "config_deleted",
+      });
+    }
   }
   return c.json(result.value);
 });

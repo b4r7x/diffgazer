@@ -1,6 +1,5 @@
 import type { DetailedHTMLProps, LinkHTMLAttributes, MetaHTMLAttributes } from "react";
-
-const DEFAULT_ORIGIN = "https://docs.b4r7.dev";
+import { resolvePublicOrigin } from "./public-origin";
 
 /**
  * This module is isomorphic: it runs during server prerender (Nitro/Node) and
@@ -13,8 +12,7 @@ export const PUBLIC_ORIGIN: string = (() => {
   const raw =
     (typeof process !== "undefined" ? process.env.VITE_PUBLIC_ORIGIN : undefined) ??
     import.meta.env.VITE_PUBLIC_ORIGIN;
-  if (typeof raw !== "string" || raw.length === 0) return DEFAULT_ORIGIN;
-  return raw.replace(/\/+$/, "");
+  return resolvePublicOrigin(raw);
 })();
 
 export const DEFAULT_SITE_NAME = "diffgazer docs";

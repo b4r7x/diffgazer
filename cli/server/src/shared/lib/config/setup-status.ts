@@ -1,20 +1,27 @@
+import { ok, type Result } from "@diffgazer/core/result";
 import type { SetupField, SetupStatus } from "@diffgazer/core/schemas/config";
 import { getStore } from "./store.js";
+import type { SecretsStorageError } from "./types.js";
 
-function isKeyReadable(provider: { provider: string } | null): boolean {
-  if (!provider) return false;
+function isKeyReadable(
+  provider: { provider: string } | null,
+): Result<boolean, SecretsStorageError> {
+  if (!provider) return ok(false);
   const keyResult = getStore().getProviderApiKey(provider.provider);
-  return keyResult.ok && keyResult.value !== null;
+  if (!keyResult.ok) return keyResult;
+  return ok(keyResult.value !== null);
 }
 
-export const getSetupStatus = (projectRoot?: string): SetupStatus => {
+export const getSetupStatus = (projectRoot?: string): Result<SetupStatus, SecretsStorageError> => {
   const settings = getStore().getSettings();
   const providers = getStore().getProviders();
   const activeProvider = providers.find((p) => p.isActive) ?? null;
+  const keyReadable = isKeyReadable(activeProvider);
+  if (!keyReadable.ok) return keyReadable;
   const project = getStore().getProjectInfo(projectRoot);
 
   const hasSecretsStorage = settings.secretsStorage !== null;
-  const hasProvider = activeProvider !== null && isKeyReadable(activeProvider);
+  const hasProvider = activeProvider !== null && keyReadable.value;
   const hasModel = Boolean(activeProvider?.model);
   const hasTrust = Boolean(project.trust?.capabilities.readFiles);
 
@@ -26,7 +33,7 @@ export const getSetupStatus = (projectRoot?: string): SetupStatus => {
 
   const isConfigured = hasSecretsStorage && hasProvider && hasModel;
 
-  return {
+  return ok({
     hasSecretsStorage,
     hasProvider,
     hasModel,
@@ -34,5 +41,5 @@ export const getSetupStatus = (projectRoot?: string): SetupStatus => {
     isConfigured,
     isReady: isConfigured && hasTrust,
     missing,
-  };
+  });
 };

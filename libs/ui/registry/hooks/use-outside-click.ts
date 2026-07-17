@@ -7,12 +7,13 @@ type ExcludeRefs = ReadonlyArray<RefObject<HTMLElement | null>> | undefined;
 type OutsideClickEntry = {
   id: symbol;
   ref: RefObject<HTMLElement | null>;
+  node: HTMLElement;
   handler: () => void;
   // Read through a ref so an inline excludeRefs array does not re-register the
   // stack entry (and reorder equal-priority tie-breaks) on every consumer render.
   excludeRefsRef: { current: ExcludeRefs };
   priority: number;
-  ownerDocument: Document;
+  ownerDocuments: Set<Document>;
 };
 
 type EscapeKeyEntry = {
@@ -41,6 +42,7 @@ const outsideClickEntries: OutsideClickEntry[] = [];
 const escapeKeyEntries: EscapeKeyEntry[] = [];
 const pointerListenerCounts = new Map<Document, number>();
 const keydownListenerCounts = new Map<Document, number>();
+const handledPointerEvents = new WeakSet<Event>();
 
 function getComposedPath(event: Event): EventTarget[] {
   return typeof event.composedPath === "function" ? event.composedPath() : [];
@@ -58,8 +60,7 @@ function isTargetInside(target: Node, element: HTMLElement | null): boolean {
 
 function isInEntry(event: Event, target: Node, entry: OutsideClickEntry): boolean {
   const path = getComposedPath(event);
-  if (pathContains(path, entry.ref.current) || isTargetInside(target, entry.ref.current))
-    return true;
+  if (pathContains(path, entry.node) || isTargetInside(target, entry.node)) return true;
   return (
     entry.excludeRefsRef.current?.some(
       (r) => pathContains(path, r.current) || isTargetInside(target, r.current),
@@ -68,10 +69,7 @@ function isInEntry(event: Event, target: Node, entry: OutsideClickEntry): boolea
 }
 
 function getEntryElements(entry: OutsideClickEntry): HTMLElement[] {
-  const elements = [
-    entry.ref.current,
-    ...(entry.excludeRefsRef.current?.map((ref) => ref.current) ?? []),
-  ];
+  const elements = [entry.node, ...(entry.excludeRefsRef.current?.map((ref) => ref.current) ?? [])];
   return elements.filter((element): element is HTMLElement => element != null);
 }
 
@@ -86,7 +84,9 @@ function isNestedAbove(entry: OutsideClickEntry, below: OutsideClickEntry): bool
 
 function getTopOutsideClickEntry(ownerDocument: Document): OutsideClickEntry | undefined {
   return outsideClickEntries.reduce<OutsideClickEntry | undefined>((top, entry) => {
-    if (entry.ownerDocument !== ownerDocument) return top;
+    if (!entry.ownerDocuments.has(ownerDocument)) return top;
+    if (entry.ref.current !== entry.node) return top;
+    if (!entry.node.isConnected || !entry.ownerDocuments.has(entry.node.ownerDocument)) return top;
     if (!top) return entry;
     if (entry.priority > top.priority) return entry;
     if (entry.priority < top.priority) return top;
@@ -215,6 +215,8 @@ function makeDocumentOutsidePointerHandler(ownerDocument: Document) {
     if (!View || !(event.target instanceof View.Node)) return;
     const entry = getTopOutsideClickEntry(ownerDocument);
     if (!entry) return;
+    if (handledPointerEvents.has(event)) return;
+    handledPointerEvents.add(event);
     if (isInEntry(event, event.target, entry)) return;
     swallowNextClick(ownerDocument, View, event.type);
     entry.handler();
@@ -317,7 +319,41 @@ function removeEntry<Entry extends { id: symbol }>(entries: Entry[], id: symbol)
   if (index >= 0) entries.splice(index, 1);
 }
 
-/** Detects pointer presses outside a referenced element. */
+function unregisterOutsideClickEntry(entry: OutsideClickEntry): void {
+  removeEntry(outsideClickEntries, entry.id);
+  for (const ownerDocument of entry.ownerDocuments) detachPointerListeners(ownerDocument);
+}
+
+function getOutsideClickDocuments(node: HTMLElement, excludeRefs: ExcludeRefs): Set<Document> {
+  const ownerDocuments = new Set<Document>([node.ownerDocument]);
+  for (const excludeRef of excludeRefs ?? []) {
+    if (excludeRef.current) ownerDocuments.add(excludeRef.current.ownerDocument);
+  }
+  return ownerDocuments;
+}
+
+function syncOutsideClickDocuments(
+  entry: OutsideClickEntry,
+  nextOwnerDocuments: Set<Document>,
+): void {
+  for (const ownerDocument of entry.ownerDocuments) {
+    if (!nextOwnerDocuments.has(ownerDocument)) detachPointerListeners(ownerDocument);
+  }
+  for (const ownerDocument of nextOwnerDocuments) {
+    if (!entry.ownerDocuments.has(ownerDocument)) attachPointerListeners(ownerDocument);
+  }
+  entry.ownerDocuments = nextOwnerDocuments;
+}
+
+/**
+ * Detects pointer presses outside a referenced element.
+ *
+ * @param ref Inside boundary for outside-pointer detection.
+ * @param handler Called when the topmost enabled layer receives an outside press.
+ * @param enabled Whether this layer participates in dismissal.
+ * @param excludeRefs Additional inside boundaries for outside-pointer detection.
+ * @param options Fifth positional argument for stack priority and nested-overlay ordering.
+ */
 export function useOutsideClick(
   ref: RefObject<HTMLElement | null>,
   handler: () => void,
@@ -329,33 +365,51 @@ export function useOutsideClick(
   // Keep the latest excludeRefs without making it an effect dep, so an inline
   // array does not re-register (and reorder) the stack entry every render.
   const excludeRefsRef = useRef<ExcludeRefs>(excludeRefs);
+  const entryRef = useRef<OutsideClickEntry | null>(null);
   const priority = options?.priority ?? DEFAULT_OVERLAY_PRIORITY;
 
   useLayoutEffect(() => {
     excludeRefsRef.current = excludeRefs;
-  });
+    const node = enabled ? ref.current : null;
+    const current = entryRef.current;
 
-  useLayoutEffect(() => {
-    if (!enabled) return;
-    // Resolve after commit so portaled nodes exist and expose their ownerDocument.
-    const ownerDocument = ref.current?.ownerDocument;
-    if (!ownerDocument) return;
-    const id = Symbol("outside-click-layer");
-    outsideClickEntries.push({
-      id,
+    if (current && (current.node !== node || current.priority !== priority)) {
+      unregisterOutsideClickEntry(current);
+      entryRef.current = null;
+    }
+
+    if (!node) return;
+    const ownerDocuments = getOutsideClickDocuments(node, excludeRefs);
+    if (entryRef.current) {
+      entryRef.current.ref = ref;
+      entryRef.current.handler = handleOutsideClick;
+      syncOutsideClickDocuments(entryRef.current, ownerDocuments);
+      return;
+    }
+
+    const entry: OutsideClickEntry = {
+      id: Symbol("outside-click-layer"),
       ref,
+      node,
       handler: handleOutsideClick,
       excludeRefsRef,
       priority,
-      ownerDocument,
-    });
-    attachPointerListeners(ownerDocument);
-
-    return () => {
-      removeEntry(outsideClickEntries, id);
-      detachPointerListeners(ownerDocument);
+      ownerDocuments,
     };
-  }, [enabled, priority, ref]);
+    outsideClickEntries.push(entry);
+    for (const ownerDocument of ownerDocuments) attachPointerListeners(ownerDocument);
+    entryRef.current = entry;
+  });
+
+  useLayoutEffect(
+    () => () => {
+      const entry = entryRef.current;
+      if (!entry) return;
+      entryRef.current = null;
+      unregisterOutsideClickEntry(entry);
+    },
+    [],
+  );
 }
 
 /** Registers an Escape-key dismissal handler in the shared overlay stack. */

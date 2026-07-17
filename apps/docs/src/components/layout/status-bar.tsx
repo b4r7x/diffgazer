@@ -11,7 +11,8 @@ type NavLinkProps = { label: string; params: { lib: DocsLibraryId } };
 
 function NavLink({ label, params }: NavLinkProps) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const isActive = pathname.startsWith(`/${params.lib}`);
+  const libraryPath = `/${params.lib}`;
+  const isActive = pathname === libraryPath || pathname.startsWith(`${libraryPath}/`);
   const ariaCurrent = isActive ? ("page" as const) : undefined;
   const className = cn(
     "px-1 transition-colors hover:bg-secondary",

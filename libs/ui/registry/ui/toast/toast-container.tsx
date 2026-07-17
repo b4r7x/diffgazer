@@ -180,6 +180,7 @@ export function Toaster({ position = "bottom-right", hotkey = "F8" }: ToasterPro
     const ownerDocument = element?.ownerDocument;
     if (!ownerDocument) return;
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
       if (event.key !== hotkey) return;
       // Shadow DOM retargets event.target to the host on the document listener;
       // composedPath()[0] is the real inner target so a focused input/select in

@@ -62,12 +62,12 @@ When you run a review, Diffgazer builds a client for your active provider, one o
 
 ### Model-catalog requests, during setup
 
-Before any review, opening the model picker for a provider makes Diffgazer fetch that provider's model list so the picker shows models your account can actually use. This runs during setup, ahead of your first review, and what it sends depends on the provider:
+Before any review, opening the model picker for a provider can make Diffgazer fetch a current model list. This runs during setup, ahead of your first review, and what it sends depends on the provider:
 
-- For every provider except OpenRouter, Diffgazer reads the public models.dev catalog at `https://models.dev/api.json`. That request carries no key and no code; it is a plain read of an external catalog shared across providers. Setting `DIFFGAZER_OFFLINE` skips the live fetch and serves cached or bundled catalog data instead, so no catalog request leaves for these providers.
-- For OpenRouter, Diffgazer calls `https://openrouter.ai/api/v1/models` with your OpenRouter API key, so the returned list is scoped to your account. This is the one setup request that carries a credential, and `DIFFGAZER_OFFLINE` does not cover it: the flag governs only the models.dev catalog, so choosing OpenRouter and opening the picker still reaches OpenRouter even when the flag is set.
+- For Google Gemini, Z.AI, Z.AI Coding Plan, Groq, and Cerebras, Diffgazer reads the public models.dev catalog at `https://models.dev/api.json`. That request carries no key and no code; it is a plain read of an external catalog shared across those five providers. Setting `DIFFGAZER_OFFLINE` skips the live fetch and serves cached or bundled catalog data instead, so no catalog request leaves for these providers.
+- For OpenRouter, a non-empty cache that is less than a day old and belongs to the same API key is served without a network request. When that matching cache is missing or stale, Diffgazer calls `https://openrouter.ai/api/v1/models` with your OpenRouter API key, so the returned list is scoped to your account. This is the one setup request that carries a credential. `DIFFGAZER_OFFLINE` governs only the models.dev catalog and does not suppress a needed OpenRouter refresh. If that refresh fails, Diffgazer can fall back to a stale cache only when it belongs to the same API key; a cache from another key is never reused.
 
-Both catalogs are cached for a day, so the picker does not re-fetch on every open, and neither request includes your source or your diff.
+Both catalog caches treat an entry as fresh for up to one day, so the picker does not re-fetch on every open, and neither request includes your source or your diff.
 
 > Note: A provider may use what you send according to its own terms. Diffgazer keeps your code local up to the moment you send a review, but it cannot control what happens on the provider side. Choose a provider whose data policy you are comfortable with.
 

@@ -10,7 +10,7 @@ const SEVERITY_BASE_CLASS: Record<SeverityPart["severity"], string> = {
   nit: "text-muted-foreground",
 };
 
-export function severityChipClass(severity: SeverityPart["severity"]): string {
+function severityChipClass(severity: SeverityPart["severity"]): string {
   return `${SEVERITY_BASE_CLASS[severity]} group-data-[highlighted]:text-primary-foreground/85`;
 }
 
@@ -18,7 +18,7 @@ export function getRunSummary(metadata: ReviewMetadata): ReactNode {
   const summary = getRunSummaryParts(metadata);
 
   // Non-chip branches reuse the core sentence so the strings never drift.
-  if (summary.passed || summary.parts.length === 0) {
+  if (summary.partial || summary.passed || summary.parts.length === 0) {
     return getRunSummaryText(metadata);
   }
 

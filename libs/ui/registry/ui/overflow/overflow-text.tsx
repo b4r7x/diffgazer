@@ -126,10 +126,6 @@ export function OverflowText({
     </div>
   );
 
-  if (resolvedTooltip != null && !isOverflowing) {
-    return content;
-  }
-
   if (resolvedTooltip != null) {
     return (
       <Tooltip enabled={isOverflowing}>

@@ -217,9 +217,18 @@
       "title": "Callout",
       "description": "Highlighted message block for tips, warnings, and errors",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["theme", "controllable-state", "utils", "composed-refs"],
+      "registryDependencies": [
+        "theme",
+        "controllable-state",
+        "accessible-text",
+        "@diffgazer-keys/focus-restore",
+        "@diffgazer-keys/focusable",
+        "utils",
+        "composed-refs"
+      ],
       "meta": {
-        "client": true
+        "client": true,
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -748,6 +757,7 @@
       "registryDependencies": [
         "theme",
         "button",
+        "accessible-text",
         "controllable-state",
         "@diffgazer-keys/focus-restore",
         "dialog-shell",
@@ -1005,6 +1015,10 @@
         },
         {
           "path": "registry/ui/menu/menu-item-radio.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/menu/use-menu-item-interactions.ts",
           "type": "registry:ui"
         },
         {
@@ -2157,6 +2171,22 @@
       ]
     },
     {
+      "name": "accessible-text",
+      "type": "registry:lib",
+      "title": "Accessible Text",
+      "description": "Detects whether React children contain text that can contribute to a control's accessible name.",
+      "meta": {
+        "client": false,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/lib/accessible-text.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
       "name": "warn-unregistered-value",
       "type": "registry:lib",
       "title": "warnUnregisteredValue",
@@ -2248,9 +2278,10 @@
       "title": "Selectable Collection",
       "description": "Shared selectable item collection and DOM-order utilities for compound selection components.",
       "dependencies": [],
-      "registryDependencies": [],
+      "registryDependencies": ["@diffgazer-keys/focusable"],
       "meta": {
-        "client": true
+        "client": true,
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -2281,7 +2312,7 @@
       "name": "step-status",
       "type": "registry:lib",
       "title": "Step Status",
-      "description": "Shared StepStatus type for stepper components (completed, active, pending, error).",
+      "description": "Shared StepStatus type for stepper components (pending, active, completed, error, skipped, disabled).",
       "meta": {
         "client": false,
         "hidden": true

@@ -11,9 +11,9 @@
   "bugs": {
     "url": "https://github.com/b4r7x/diffgazer/issues"
   },
-  "packageManager": "pnpm@10.28.2",
+  "packageManager": "pnpm@11.13.0",
   "scripts": {
-    "build": "turbo run build",
+    "build": "pnpm run prepare:artifacts && DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run build",
     "format": "biome format --write .",
     "type-check": "sh scripts/monorepo/run-with-artifacts.sh turbo run type-check",
     "test": "sh scripts/monorepo/run-with-artifacts.sh turbo run test",
@@ -28,7 +28,7 @@
     "test-ci": "sh scripts/monorepo/run-with-artifacts.sh sh -c 'pnpm run validate:artifacts:check && pnpm run secret-scan && pnpm run check && turbo run type-check && turbo run test && turbo run test:types && pnpm run test:scripts && DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke && DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench && pnpm run verify:monorepo'",
     "release-check": "sh scripts/monorepo/run-with-artifacts.sh sh -c 'pnpm audit --prod --audit-level=high && pnpm run secret-scan && pnpm run build && pnpm run check:packages && pnpm run validate:artifacts:check && pnpm run check && pnpm run test:scripts && turbo run type-check && turbo run test && turbo run test:types && DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke && DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench && pnpm run registry:live-check && pnpm --filter @diffgazer/add pack --dry-run && pnpm --filter @diffgazer/ui pack --dry-run && pnpm --filter @diffgazer/keys pack --dry-run && pnpm --filter diffgazer pack --dry-run && pnpm run verify:monorepo && git diff --check'",
     "verify:monorepo": "node scripts/monorepo/check-invariants.mjs",
-    "prepare:library-artifacts": "pnpm --filter @diffgazer/core generate:catalog-snapshot && biome format --write libs/core/src/catalog/catalog-snapshot.ts libs/core/src/catalog/provider-derived.ts && pnpm --filter @diffgazer/registry build && pnpm --filter @diffgazer/keys build && pnpm --filter @diffgazer/ui build && pnpm --filter @diffgazer/add generate:bundles && node --import tsx cli/add/scripts/copy-generated.ts",
+    "prepare:library-artifacts": "pnpm --filter @diffgazer/core generate:catalog-snapshot && biome format --write libs/core/src/catalog/catalog-snapshot.ts libs/core/src/catalog/provider-derived.ts && pnpm --filter @diffgazer/registry build && pnpm --filter @diffgazer/keys build && pnpm --filter @diffgazer/ui build && pnpm --filter @diffgazer/add generate:bundles && pnpm --filter @diffgazer/add generate:schema && node --import tsx cli/add/scripts/copy-generated.ts",
     "prepare:artifacts": "pnpm run prepare:library-artifacts && DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm --filter @diffgazer/docs prepare:generated",
     "validate:artifacts": "sh scripts/monorepo/run-with-artifacts.sh pnpm run validate:artifacts:check",
     "validate:artifacts:check": "node scripts/monorepo/validate-artifacts.mjs",
@@ -61,7 +61,7 @@
     "keys:playground": "pnpm --dir libs/keys/examples/playground dev",
     "changeset": "changeset",
     "version-packages": "changeset version && pnpm run prepare:library-artifacts",
-    "release": "node scripts/monorepo/guard-publish.mjs && changeset publish"
+    "release": "node scripts/monorepo/guard-publish.mjs"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.3",
@@ -85,35 +85,9 @@
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "turbo": "^2.9.14",
+    "typescript": "^5.9.3",
     "vitest": "^4.1.0",
     "yaml": "^2.9.0"
   },
-  "type": "module",
-  "pnpm": {
-    "overrides": {
-      "@types/node": "^25.2.3",
-      "@types/react": "^19.2.13",
-      "@types/react-dom": "^19.2.3",
-      "vitest": "^4.1.0",
-      "@testing-library/react": "^16.3.2",
-      "@testing-library/jest-dom": "^6.9.1",
-      "jsdom": "^28.1.0",
-      "@vitejs/plugin-react": "^5.1.3",
-      "axe-core": "^4.11.4",
-      "tailwindcss": "^4.3.0",
-      "postcss": "^8.5.14",
-      "picomatch": "^4.0.4",
-      "rollup": "^4.59.0",
-      "vite": "^7.3.5",
-      "jiti": "^2.7.0",
-      "undici": "^7.28.0",
-      "hono": "^4.12.25",
-      "ws": "^8.21.0",
-      "fast-uri": ">=3.1.2",
-      "express-rate-limit": ">=8.2.2",
-      "qs": ">=6.15.2",
-      "h3": ">=2.0.1-rc.18",
-      "h3-v2": "npm:h3@>=2.0.1-rc.18"
-    }
-  }
+  "type": "module"
 }

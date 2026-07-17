@@ -119,6 +119,11 @@ export const activeHeadingDoc: HookDoc = {
   },
   notes: [
     {
+      title: "Disabled state",
+      content:
+        "When enabled is false, activeId is null from the first render, including server rendering. Enabling observation later starts from the first available heading; disabling it again clears activeId.",
+    },
+    {
       title: "Activation Modes",
       content:
         'Use "top-line" (default) for fixed-header layouts where headings activate near the top. Use "viewport-center" for centered reading experiences. Pass a number (0–1) for a custom viewport fraction.',

@@ -18,7 +18,7 @@ export interface ProviderActions {
 export interface ProviderDetailsProps {
   provider: ProviderWithStatus | null;
   actions: ProviderActions;
-  disableSelectProvider?: boolean;
+  isPending?: boolean;
   focusedButtonIndex?: number;
   isFocused?: boolean;
   getButtonProps?: (index: number) => {
@@ -30,27 +30,32 @@ export interface ProviderDetailsProps {
 function getButtonConfig(
   actions: ProviderActions,
   provider: ProviderWithStatus,
-  disableSelectProvider: boolean,
+  isPending: boolean,
 ) {
   return [
     {
       action: actions.onSelectProvider,
       label: "Select Provider",
       variant: "primary" as const,
-      disabled: disableSelectProvider || !provider.hasApiKey,
+      disabled: isPending,
     },
-    { action: actions.onSetApiKey, label: "Set API Key", variant: "secondary" as const },
+    {
+      action: actions.onSetApiKey,
+      label: "Set API Key",
+      variant: "secondary" as const,
+      disabled: isPending,
+    },
     {
       action: actions.onRemoveKey,
       label: "Remove Key",
       variant: "destructive" as const,
-      disabled: !provider.hasApiKey,
+      disabled: isPending || !provider.hasApiKey,
     },
     {
       action: actions.onSelectModel,
       label: "Select Model...",
       variant: "link" as const,
-      disabled: !provider.hasApiKey,
+      disabled: isPending || !provider.hasApiKey,
     },
   ];
 }
@@ -64,7 +69,7 @@ function getEmptyModelPlaceholder(provider: ProviderWithStatus): string {
 export function ProviderDetails({
   provider,
   actions,
-  disableSelectProvider = false,
+  isPending = false,
   focusedButtonIndex,
   isFocused = false,
   getButtonProps,
@@ -96,7 +101,7 @@ export function ProviderDetails({
     );
   }
 
-  const buttons = getButtonConfig(actions, provider, disableSelectProvider);
+  const buttons = getButtonConfig(actions, provider, isPending);
 
   return (
     <div className="flex-1 flex flex-col overflow-y-auto">

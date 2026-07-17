@@ -59,7 +59,13 @@ export function EmptyState({
     <div
       data-slot="empty-state"
       data-size={size}
-      {...(live ? { role: "status" as const, "aria-live": "polite" as const } : undefined)}
+      {...(live
+        ? {
+            role: "status" as const,
+            "aria-live": "polite" as const,
+            "aria-atomic": "true" as const,
+          }
+        : undefined)}
       className={cn(emptyStateVariants({ variant, size }), className)}
       {...props}
     >

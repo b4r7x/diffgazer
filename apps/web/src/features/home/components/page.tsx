@@ -3,13 +3,14 @@ import { deriveTrustStatus, selectResumableSession } from "@diffgazer/core/navig
 import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
 import { buildHomeContextInfo, MENU_ITEMS } from "@diffgazer/core/schemas/presentation";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { ConfigurationStatus } from "@/components/shared/configuration-status";
 import { shutdown } from "@/features/home/lib/shutdown";
 import { useConfigData } from "@/hooks/use-config";
 import { clearScopedRouteState, useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { HomePagePresentation } from "./presentation";
 
 export function HomePage() {
-  const { provider, model, trust, repoRoot, projectId } = useConfigData();
+  const { loadState, provider, model, trust, repoRoot, projectId } = useConfigData();
   const reviews = useReviews().data?.reviews ?? [];
   const navigate = useNavigate();
   const search = useSearch({ strict: false });
@@ -33,6 +34,10 @@ export function HomePage() {
     "highlighted",
     MENU_ITEMS[0]?.id ?? null,
   );
+
+  if (loadState.status !== "ready") {
+    return <ConfigurationStatus status={loadState.status} />;
+  }
 
   return (
     <HomePagePresentation

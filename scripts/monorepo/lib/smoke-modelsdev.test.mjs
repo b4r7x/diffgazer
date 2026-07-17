@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   assertCatalogProviders,
+  collectReachableBundleFiles,
   enabledSnapshotProviders,
   findSnapshotInBundle,
 } from "./smoke-modelsdev.mjs";
@@ -46,19 +47,54 @@ test("enabledSnapshotProviders returns enabled providers that ship in the snapsh
   ]);
 });
 
-test("findSnapshotInBundle returns the first bundle file containing the snapshot marker", () => {
+test("findSnapshotInBundle returns the first bundle file containing every snapshot marker", () => {
   const files = ["chunk-a.js", "chunk-b.js"];
-  const contents = { "chunk-a.js": "no marker here", "chunk-b.js": "...gpt-oss-120b..." };
+  const contents = {
+    "chunk-a.js": "...snapshot-model-id...but no display name",
+    "chunk-b.js": "...snapshot-model-id...Snapshot Model Name...",
+  };
   assert.equal(
-    findSnapshotInBundle(files, (path) => contents[path], "gpt-oss-120b"),
+    findSnapshotInBundle(files, (path) => contents[path], [
+      "snapshot-model-id",
+      "Snapshot Model Name",
+    ]),
     "chunk-b.js",
   );
 });
 
-test("findSnapshotInBundle returns null when no bundle file inlines the snapshot marker", () => {
+test("findSnapshotInBundle rejects a complete overlay when its snapshot-only evidence is absent", () => {
   const files = ["chunk-a.js", "chunk-b.js"];
+  const completeOverlayWithoutSnapshot = JSON.stringify({
+    cerebras: {
+      enabled: true,
+      defaultModel: "gpt-oss-120b",
+      recommendedModelId: "gpt-oss-120b",
+    },
+  });
   assert.equal(
-    findSnapshotInBundle(files, () => "no marker", "gpt-oss-120b"),
+    findSnapshotInBundle(files, () => completeOverlayWithoutSnapshot, [
+      "llama3.1-8b",
+      "Llama 3.1 8B",
+    ]),
     null,
+  );
+});
+
+test("collectReachableBundleFiles excludes stale chunks outside the current entry graph", () => {
+  const contents = {
+    "/dist/index.js": 'import "./current.js"; void import("./lazy.js");',
+    "/dist/current.js": 'export { value } from "./shared.js";',
+    "/dist/lazy.js": "export const lazy = true;",
+    "/dist/shared.js": "export const value = true;",
+    "/dist/stale.js": "snapshot-only evidence from an obsolete build",
+  };
+
+  assert.deepEqual(
+    collectReachableBundleFiles(
+      "/dist/index.js",
+      (file) => contents[file],
+      (_file, specifier) => `/dist/${specifier.slice(2)}`,
+    ),
+    ["/dist/index.js", "/dist/current.js", "/dist/lazy.js", "/dist/shared.js"],
   );
 });

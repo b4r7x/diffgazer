@@ -49,20 +49,22 @@ export const getProvidersStatus = (): ProvidersStatusResponse => {
   };
 };
 
-export const getInitState = (projectRoot?: string): InitResponse => {
+export const getInitState = (projectRoot?: string): Result<InitResponse, SecretsStorageError> => {
   const providers = getStore().getProviders();
   const activeProvider = providers.find((provider) => provider.isActive) ?? null;
+  const setupResult = getSetupStatus(projectRoot);
+  if (!setupResult.ok) return setupResult;
 
-  return {
+  return ok({
     config: activeProvider
       ? { provider: activeProvider.provider, model: activeProvider.model }
       : null,
     settings: getStore().getSettings(),
     providers,
-    configured: providers.some((provider) => provider.isActive),
+    configured: setupResult.value.isConfigured,
     project: getStore().getProjectInfo(projectRoot),
-    setup: getSetupStatus(projectRoot),
-  };
+    setup: setupResult.value,
+  });
 };
 
 /** Validate a credential ref or literal API key before persisting. */
@@ -154,6 +156,10 @@ export const getConfig = (): Result<ConfigResponse | null, SecretsStorageError> 
 };
 
 export const checkConfig = (): Result<ConfigCheckResponse, SecretsStorageError> => {
+  const setupResult = getSetupStatus();
+  if (!setupResult.ok) return setupResult;
+  if (!setupResult.value.isConfigured) return ok({ configured: false });
+
   const configResult = getConfig();
   if (!configResult.ok) return configResult;
   if (!configResult.value) {
@@ -180,27 +186,25 @@ export const activateProvider = async (input: {
     return err(createError(ErrorCode.PROVIDER_NOT_FOUND, "Provider not found"));
   }
 
-  if (!model && !existing.model) {
+  const effectiveModel = model ?? existing.model ?? PROVIDER_OVERLAY[provider].defaultModel;
+  if (!effectiveModel) {
     return err(createError("INVALID_BODY", "Model selection is required"));
   }
 
   // Block activation when the credential cannot be confirmed: a failed read fails
   // closed, and a successful read with no key means none is configured yet.
   const apiKeyResult = getStore().getProviderApiKey(provider);
-  if (!apiKeyResult.ok) {
-    return err(createError("INVALID_BODY", apiKeyResult.error.message));
-  }
+  if (!apiKeyResult.ok) return apiKeyResult;
   if (!apiKeyResult.value) {
     return err(createError("INVALID_BODY", "API key required before selecting model"));
   }
 
-  const effectiveModel = model ?? existing.model;
   const modelValidation = await validateProviderModelSelection(provider, effectiveModel);
   if (!modelValidation.ok) {
     return modelValidation;
   }
 
-  const result = await getStore().activateProvider(input);
+  const result = await getStore().activateProvider({ provider, model: effectiveModel });
   if (!result.ok) return result;
   if (!result.value) {
     return err(createError(ErrorCode.PROVIDER_NOT_FOUND, "Provider not found"));

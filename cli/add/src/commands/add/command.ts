@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import {
   createAddCommand,
   depName,
@@ -7,6 +8,7 @@ import {
   normalizeVersionSpec,
   parseEnumOption,
   readPackageJson,
+  withFileLock,
 } from "@diffgazer/registry/cli";
 import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
 import type { ResolvedConfig } from "../../context.js";
@@ -24,7 +26,16 @@ import {
   type ResolvedIntegrationSelection,
   resolveIntegrations,
 } from "./integration.js";
-import { buildManifestMetadata, updateOwnedManifestEntries } from "./manifest.js";
+import {
+  applyIntegrationModeMigration,
+  assertIntegrationModeChangesAllowed,
+  buildManifestMetadata,
+  planIntegrationModeMigration,
+  reconcileRetiredOwnership,
+  rollbackIntegrationModeMigration,
+  rollbackRetiredOwnership,
+  updateOwnedManifestEntries,
+} from "./manifest.js";
 
 // Hidden items not depended upon by any other item are opt-in leaf add-ons
 // (directly installable, kept out of the public index); hidden items that ARE
@@ -105,107 +116,171 @@ export function computeMissingDeps(
   });
 }
 
-const addBaseCommand = createAddCommand<ResolvedConfig>({
-  itemLabel: "Item",
-  itemPlural: "items",
-  listCommand: "dgadd list",
-  emptyRequestedMessage: "No items specified. Usage: dgadd add ui/button keys/navigation",
-  allIgnoresSpecifiedWarning: "--all flag ignores specified item names.",
-  requireConfig: ctx.items.requireConfig,
-  // Public index plus opt-in leaf add-ons; gates both --all and explicit names
-  // so neither reaches pure transitive internals.
-  getPublicNames: () => [...new Set([...publicAvailableNames(), ...installableAddonNames()])],
-  validateRequestedNames: validateInstallableNames,
-  extraOptions: [
-    {
-      flags: "--integration <mode>",
-      description: "Optional keyboard integration mode: ask | none | copy | keys",
-      default: "ask",
-    },
-    {
-      flags: "--keys-version <version>",
-      description: "Version/range of @diffgazer/keys used for package mode",
-    },
-  ],
-  buildPlan: async ({ cwd, config, names, opts }) => {
-    const namesByNamespace = splitInstallNames(names);
-    const keysVersionSpec = normalizeVersionSpec(
-      opts.keysVersion ?? getDefaultKeysVersionSpec(),
-      "@diffgazer/keys",
-    );
-    const integrationMode = parseEnumOption(
-      String(opts.integration ?? "ask").toLowerCase(),
-      ["ask", "none", "copy", "@diffgazer/keys", "keys"] as const,
-      "--integration",
-    );
-    const normalizedIntegrationMode =
-      integrationMode === "keys" ? "@diffgazer/keys" : integrationMode;
-    const resolved = ctx.registry.resolveDeps(namesByNamespace.ui);
-    const selection = await resolveIntegrations(
-      resolved,
-      normalizedIntegrationMode,
-      Boolean(opts.yes),
-    );
-    logIntegrationMode(selection.mode);
+export function createDiffgazerAddCommand() {
+  const addBaseCommand = createAddCommand<ResolvedConfig>({
+    itemLabel: "Item",
+    itemPlural: "items",
+    listCommand: "dgadd list",
+    emptyRequestedMessage: "No items specified. Usage: dgadd add ui/button keys/navigation",
+    allIgnoresSpecifiedWarning: "--all flag ignores specified item names.",
+    requireConfig: ctx.items.requireConfig,
+    // Keep leaf add-ons available for explicit requests. buildPlan narrows --all
+    // back to the public index before resolving transitive dependencies.
+    getPublicNames: () => [...new Set([...publicAvailableNames(), ...installableAddonNames()])],
+    validateRequestedNames: validateInstallableNames,
+    withLock: (cwd, operation) => withFileLock(resolve(cwd, ".diffgazer", "add.lock"), operation),
+    extraOptions: [
+      {
+        flags: "--integration <mode>",
+        description: "Optional keyboard integration mode: ask | none | copy | keys",
+        default: "ask",
+      },
+      {
+        flags: "--keys-version <version>",
+        description: "Version/range of @diffgazer/keys used for package mode",
+      },
+    ],
+    buildPlan: async ({ cwd, config, names, all, opts }) => {
+      const namesByNamespace = splitInstallNames(all ? publicAvailableNames() : names);
+      const keysVersionSpec = normalizeVersionSpec(
+        opts.keysVersion ?? getDefaultKeysVersionSpec(),
+        "@diffgazer/keys",
+      );
+      const integrationMode = parseEnumOption(
+        String(opts.integration ?? "ask").toLowerCase(),
+        ["ask", "none", "copy", "@diffgazer/keys", "keys"] as const,
+        "--integration",
+      );
+      const normalizedIntegrationMode =
+        integrationMode === "keys" ? "@diffgazer/keys" : integrationMode;
+      const resolved = ctx.registry.resolveDeps(namesByNamespace.ui);
+      const selection = await resolveIntegrations(
+        resolved,
+        normalizedIntegrationMode,
+        Boolean(opts.yes),
+      );
+      const explicitNames = new Set<string>([
+        ...namesByNamespace.ui.map((name) => `ui/${name}`),
+        ...namesByNamespace.keys.map((name) => `keys/${name}`),
+      ]);
+      const integrationMigration = planIntegrationModeMigration(
+        cwd,
+        config,
+        resolved,
+        selection.mode,
+        explicitNames,
+      );
+      assertIntegrationModeChangesAllowed(
+        integrationMigration.changedNames,
+        selection.mode,
+        Boolean(opts.overwrite),
+      );
+      logIntegrationMode(selection.mode);
 
-    const neededKeysHooks = resolveKeysHooksFromRegistry(
-      resolved.map((name) => ctx.items.getOrThrow(name)),
-    );
-    const explicitNames = new Set<string>([
-      ...namesByNamespace.ui.map((name) => `ui/${name}`),
-      ...namesByNamespace.keys.map((name) => `keys/${name}`),
-    ]);
-    const collected = collectFileOps(
-      resolved,
-      cwd,
-      config,
-      selection,
-      neededKeysHooks,
-      Boolean(opts.overwrite),
-    );
-
-    return {
-      resolvedNames: [
+      const neededKeysHooks = resolveKeysHooksFromRegistry(
+        resolved.map((name) => ctx.items.getOrThrow(name)),
+      );
+      const collected = collectFileOps(
+        resolved,
+        cwd,
+        config,
+        selection,
+        neededKeysHooks,
+        Boolean(opts.overwrite),
+      );
+      const resolvedPublicNames = [
         ...resolved.map((name) => `ui/${name}`),
         ...namesByNamespace.keys.map((name) => `keys/${name}`),
-      ],
-      fileOps: [...collected.fileOps, ...buildKeysFileOps(namesByNamespace.keys, cwd, config)],
-      missingDeps: computeMissingDeps(resolved, selection, keysVersionSpec, cwd),
-      extraDependencies: resolved
-        .filter((r) => !namesByNamespace.ui.includes(r))
-        .map((name) => `ui/${name}`),
-      headingMessage: "Adding Diffgazer items...",
-      onDryRun: () => {
-        if (selection.hasKeyboardIntegration && selection.mode === "copy") {
-          info("Keys hooks would be installed from bundled offline sources.");
-        }
-      },
-      onApplied: ({ writeResult }) => {
-        updateOwnedManifestEntries(cwd, {
-          writeResult,
-          metadata: buildManifestMetadata(selection.mode, keysVersionSpec),
-          explicitNames,
-          cssChunksByItem: collected.cssChunksByItem,
-        });
-        if (selection.hasKeyboardIntegration && selection.mode === "copy") {
-          info("Keyboard hooks copied alongside components. No additional packages needed.");
-          info("For package imports, re-run with --integration=keys to use @diffgazer/keys.");
-        }
-      },
-    };
-  },
-});
+      ];
+      const updatedNames = new Set([
+        ...resolvedPublicNames,
+        ...(selection.mode === "copy" ? neededKeysHooks.map((name) => `keys/${name}`) : []),
+      ]);
 
-addBaseCommand.description("Add ui/* components or keys/* hooks to your project");
+      return {
+        resolvedNames: resolvedPublicNames,
+        fileOps: [...collected.fileOps, ...buildKeysFileOps(namesByNamespace.keys, cwd, config)],
+        missingDeps: computeMissingDeps(resolved, selection, keysVersionSpec, cwd),
+        extraDependencies: resolved
+          .filter((r) => !namesByNamespace.ui.includes(r))
+          .map((name) => `ui/${name}`),
+        headingMessage: "Adding Diffgazer items...",
+        onDryRun: () => {
+          if (selection.hasKeyboardIntegration && selection.mode === "copy") {
+            info("Keys hooks would be installed from bundled offline sources.");
+          }
+        },
+        onApplied: ({ writeResult }) => {
+          let appliedMigration: ReturnType<typeof applyIntegrationModeMigration> | undefined;
+          let retiredOwnership: ReturnType<typeof reconcileRetiredOwnership> | undefined;
+          try {
+            if (integrationMigration.changedNames.length > 0) {
+              appliedMigration = applyIntegrationModeMigration(integrationMigration);
+            }
+            if (opts.overwrite) {
+              retiredOwnership = reconcileRetiredOwnership(
+                cwd,
+                writeResult,
+                selection.mode,
+                updatedNames,
+              );
+            }
+            updateOwnedManifestEntries(cwd, {
+              writeResult,
+              metadata: buildManifestMetadata(selection.mode, keysVersionSpec),
+              explicitNames,
+              cssChunksByItem: collected.cssChunksByItem,
+              removeNames: integrationMigration.removeManifestNames,
+              updatedNames,
+              retainedFilesByItem: retiredOwnership?.retainedFilesByItem,
+            });
+          } catch (error) {
+            const rollbackErrors: unknown[] = [];
+            if (retiredOwnership) {
+              try {
+                rollbackRetiredOwnership(retiredOwnership);
+              } catch (rollbackError) {
+                rollbackErrors.push(rollbackError);
+              }
+            }
+            if (integrationMigration.changedNames.length > 0) {
+              try {
+                rollbackIntegrationModeMigration(integrationMigration, appliedMigration);
+              } catch (rollbackError) {
+                rollbackErrors.push(rollbackError);
+              }
+            }
+            if (rollbackErrors.length > 0) {
+              throw new AggregateError(
+                [error, ...rollbackErrors],
+                "Add finalization failed and rollback was incomplete.",
+              );
+            }
+            throw error;
+          }
+          for (const notice of retiredOwnership?.notices ?? []) info(notice);
+          if (selection.hasKeyboardIntegration && selection.mode === "copy") {
+            info("Keyboard hooks copied alongside components. No additional packages needed.");
+            info("For package imports, re-run with --integration=keys to use @diffgazer/keys.");
+          }
+        },
+      };
+    },
+  });
 
-// Guarded and deferred to help render: eager-reading the generated
-// keys-version.json at import time would crash every subcommand when it is absent.
-addBaseCommand.addHelpText("after", () => {
-  try {
-    return `\nDefault --keys-version: ${getDefaultKeysVersionSpec()} (caret range of the bundled @diffgazer/keys release)`;
-  } catch {
-    return "";
-  }
-});
+  addBaseCommand.description("Add ui/* components or keys/* hooks to your project");
 
-export const addCommand = addBaseCommand;
+  // Guarded and deferred to help render: eager-reading the generated
+  // keys-version.json at import time would crash every subcommand when it is absent.
+  addBaseCommand.addHelpText("after", () => {
+    try {
+      return `\nDefault --keys-version: ${getDefaultKeysVersionSpec()} (caret range of the bundled @diffgazer/keys release)`;
+    } catch {
+      return "";
+    }
+  });
+
+  return addBaseCommand;
+}
+
+export const addCommand = createDiffgazerAddCommand();

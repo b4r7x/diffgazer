@@ -14,7 +14,17 @@ Think of an IDE layout. Enter in the file sidebar opens a file. Enter in the edi
 Define your zones as a union type, list them out, set up transitions, and use `getKeyOptions` to scope your key handlers.
 
 ```tsx
+import { KeyboardProvider, useFocusZone, useKey } from "@diffgazer/keys";
+
 type Zone = "sidebar" | "content" | "preview";
+
+function App() {
+  return (
+    <KeyboardProvider>
+      <ThreePanelLayout />
+    </KeyboardProvider>
+  );
+}
 
 function ThreePanelLayout() {
   const { zone, getKeyOptions, isZone } = useFocusZone<Zone>({

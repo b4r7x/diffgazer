@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useState } from "react";
-import type { CliColorTokens } from "./palettes";
-import { darkPalette, lightPalette, palettes } from "./palettes";
+import type { CliColorTokens, PaletteName } from "./palettes";
+import { darkPalette, isPaletteName, lightPalette, palettes } from "./palettes";
 
 interface CliThemeContextValue {
   tokens: CliColorTokens;
-  themeName: string;
+  themeName: PaletteName;
   setTheme: (name: string) => void;
 }
 
@@ -32,18 +32,17 @@ export function detectPaletteNameFromColorFgBg(value: string | undefined): "dark
   return num === 7 || (num >= 9 && num <= 15) ? "light" : "dark";
 }
 
-export function detectDefaultPalette(): { name: string; tokens: CliColorTokens } {
+export function detectDefaultPalette(): { name: PaletteName; tokens: CliColorTokens } {
   const name = detectPaletteNameFromColorFgBg(process.env.COLORFGBG);
   return { name, tokens: name === "light" ? lightPalette : darkPalette };
 }
 
-function resolvePalette(name: string): { name: string; tokens: CliColorTokens } {
+function resolvePalette(name: string): { name: PaletteName; tokens: CliColorTokens } {
   if (name === "auto") {
     return detectDefaultPalette();
   }
-  const tokens = palettes[name];
-  if (tokens) {
-    return { name, tokens };
+  if (isPaletteName(name)) {
+    return { name, tokens: palettes[name] };
   }
   return { name: "dark", tokens: darkPalette };
 }

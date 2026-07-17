@@ -1,69 +1,45 @@
-import { useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
-import { getErrorMessage } from "@diffgazer/core/errors";
+import { useSettings } from "@diffgazer/core/api/hooks";
 import { deriveSaveState } from "@diffgazer/core/forms";
 import {
   AGENT_EXECUTION_OPTIONS,
   type AgentExecution,
   isAgentExecution,
 } from "@diffgazer/core/schemas/config";
-import { BACK_SHORTCUT, NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
+import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { toVerticalBoundaryDirection, useKey, useScope } from "@diffgazer/keys";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
-import { useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
-import { useSettingsFormFooter } from "../../hooks/use-settings-form-footer";
+import { useSettingsFormActions } from "../../hooks/use-settings-form-actions";
 import { SettingsFormPage } from "../form-page";
 
 export function SettingsAgentExecutionPage() {
-  const navigate = useNavigate();
   const focusFallbackRef = useRef<HTMLDivElement>(null);
   const settingsQuery = useSettings();
-  const saveSettings = useSaveSettings();
   const [modeChoice, setModeChoice] = useState<AgentExecution | null>(null);
   const [focusedMode, setFocusedMode] = useState<AgentExecution | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const isSaving = saveSettings.isPending;
 
   const settings = settingsQuery.data;
   const { effective: effectiveMode, canSave: canSaveDerived } = deriveSaveState<AgentExecution>({
     persisted: settings?.agentExecution,
     choice: modeChoice,
-    saving: isSaving,
+    saving: false,
     fallback: "sequential",
   });
   const effectiveFocusedMode = focusedMode ?? effectiveMode;
 
   useScope("settings-agent-execution");
-  useKey("Escape", () => navigate({ to: "/settings" }), { enabled: !isSaving });
 
   // Until settings load there is no persisted value to diff against, so keep the
   // save action disabled (the loading guard returns before render, but the footer
   // hook runs).
-  const canSave = settings !== undefined && canSaveDerived;
-
-  const handleCancel = () => navigate({ to: "/settings" });
-
-  const handleSave = async (): Promise<void> => {
-    if (!canSave) return;
-    setError(null);
-    try {
-      await saveSettings.mutateAsync({ agentExecution: effectiveMode });
-      navigate({ to: "/settings" });
-    } catch (err) {
-      setError(getErrorMessage(err, "Failed to save settings"));
-    }
-  };
-
-  const footer = useSettingsFormFooter({
-    disabledActions: [isSaving, !canSave],
-    canSave,
-    onCancel: handleCancel,
-    onSave: () => void handleSave(),
+  const actions = useSettingsFormActions({
+    canSave: settings !== undefined && canSaveDerived,
+    getSettingsPayload: () => ({ agentExecution: effectiveMode }),
     contentShortcuts: [NAVIGATE_SHORTCUT, { key: "Enter/Space", label: "Select Mode" }],
-    rightShortcuts: [BACK_SHORTCUT],
     focusFallbackRef,
   });
+  const { canSave, error, footer, isSaving, onCancel, onSave } = actions;
 
   const navigationEnabled = settings !== undefined && !footer.inActions && !isSaving;
 
@@ -84,8 +60,8 @@ export function SettingsAgentExecutionPage() {
       footer={footer}
       isSaving={isSaving}
       canSave={canSave}
-      onCancel={handleCancel}
-      onSave={() => void handleSave()}
+      onCancel={onCancel}
+      onSave={onSave}
     >
       <div ref={focusFallbackRef} tabIndex={-1} className="space-y-6 focus:outline-none">
         <RadioGroup

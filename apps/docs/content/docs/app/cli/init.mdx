@@ -39,10 +39,13 @@ It does not edit `tsconfig.json`, Vite, Next, or your app CSS entrypoint. Config
 | `--cwd <path>` | Working directory | `.` |
 | `--components-dir <path>` | Component install directory | `src/components/ui` |
 | `--allow-missing-alias` | Continue when no source alias is detected | `false` |
+| `--reset-manifest` | Recovery only: discard the installed-component ownership ledger, orphaning previously installed files | `false` |
 | `--force` | Overwrite existing configuration | `false` |
 | `--dry-run` | Preview initialization without writing files | `false` |
 | `--skip-install` | Write files without installing npm dependencies | `false` |
 | `--yes` | Skip confirmation prompts | `false` |
+
+`--reset-manifest` is a destructive recovery operation. It removes the ownership ledger from `diffgazer.json` without deleting previously installed files, so subsequent `dgadd diff` and `dgadd remove` commands can no longer track those orphaned files.
 
 ## Example
 

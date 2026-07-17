@@ -169,11 +169,9 @@ export function IssueListPane({
             );
           })}
         </NavigationList>
-        {issues.length === 0 && (
-          <EmptyState live className="flex-1">
-            {emptyMessage}
-          </EmptyState>
-        )}
+        <EmptyState live className={issues.length > 0 ? "sr-only" : "flex-1"}>
+          {issues.length === 0 ? emptyMessage : null}
+        </EmptyState>
       </div>
     </Panel>
   );

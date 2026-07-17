@@ -28,6 +28,7 @@ export interface UseHistoryScreenStateOptions {
 
 export interface HistoryScreenState {
   reviewsQuery: ReturnType<typeof useReviews>;
+  reviewDetailQuery: ReturnType<typeof useReview>;
   reviews: ReviewMetadata[];
   isLoading: boolean;
   error: string | null;
@@ -51,6 +52,9 @@ export interface HistoryScreenState {
   hasReviews: boolean;
   hasSearchQuery: boolean;
   emptyRunsMessage: string;
+  hasMoreReviews: boolean;
+  isLoadingMoreReviews: boolean;
+  loadMoreReviews: () => Promise<void>;
 }
 
 /**
@@ -78,8 +82,8 @@ export function useHistoryScreenState(
   const selectedDateId = resolveSelectedDateId(rawSelectedDateId, timelineItems);
 
   const filteredReviews = filterReviewsForHistory(reviews, selectedDateId, searchQuery);
-  const mappedRuns = filteredReviews.map(buildHistoryRunSummary);
-
+  const peerRunIds = reviews.map((review) => review.id);
+  const mappedRuns = filteredReviews.map((review) => buildHistoryRunSummary(review, peerRunIds));
   const selectedRunId = resolveSelectedId(rawSelectedRunId, mappedRuns);
   const selectedRun = reviews.find((review) => review.id === selectedRunId) ?? null;
 
@@ -93,6 +97,9 @@ export function useHistoryScreenState(
   const hasReviews = reviews.length > 0;
   const hasSearchQuery = searchQuery.trim().length > 0;
   const emptyRunsMessage = getEmptyRunsMessage(hasReviews, hasSearchQuery, selectedDateId);
+  const loadMoreReviews = async () => {
+    await reviewsQuery.fetchNextPage();
+  };
 
   const resetSelectedRun = () => {
     if (rawSelectedRunId !== null) setRawSelectedRunId(null);
@@ -110,6 +117,7 @@ export function useHistoryScreenState(
 
   return {
     reviewsQuery,
+    reviewDetailQuery,
     reviews,
     isLoading: reviewsQuery.isLoading,
     error: reviewsQuery.error?.message ?? null,
@@ -128,5 +136,8 @@ export function useHistoryScreenState(
     hasReviews,
     hasSearchQuery,
     emptyRunsMessage,
+    hasMoreReviews: reviewsQuery.hasNextPage,
+    isLoadingMoreReviews: reviewsQuery.isFetchingNextPage,
+    loadMoreReviews,
   };
 }

@@ -1,4 +1,4 @@
-import type { AIProvider } from "@diffgazer/core/schemas/config";
+import type { AIProvider, ProviderWithStatus } from "@diffgazer/core/schemas/config";
 import { useFocusZone, useKey } from "@diffgazer/keys";
 import { useNavigate } from "@tanstack/react-router";
 import type { KeyboardEvent as ReactKeyboardEvent, RefCallback, RefObject } from "react";
@@ -12,7 +12,7 @@ const PROVIDER_ZONES = ["input", "filters", "list", "buttons"] as const;
 type FocusZone = (typeof PROVIDER_ZONES)[number];
 
 interface ProvidersKeyboardOptions {
-  selectedProvider: { id: AIProvider; hasApiKey: boolean; model?: string; name: string } | null;
+  selectedProvider: ProviderWithStatus | null;
   filteredProviders: Array<{ id: string }>;
   listReady: boolean;
   filter: ProviderFilter;
@@ -23,7 +23,7 @@ interface ProvidersKeyboardOptions {
   onSetApiKey: () => void;
   onSelectModel: () => void;
   onRemoveKey: (id: AIProvider) => Promise<void>;
-  onSelectProvider: (id: AIProvider, name: string, model: string | undefined) => Promise<void>;
+  onActivateProvider: (provider: ProviderWithStatus) => void;
 }
 
 interface ProvidersKeyboardReturn {
@@ -60,7 +60,7 @@ export function useProvidersKeyboard({
   onSetApiKey,
   onSelectModel,
   onRemoveKey,
-  onSelectProvider,
+  onActivateProvider,
 }: ProvidersKeyboardOptions): ProvidersKeyboardReturn {
   const navigate = useNavigate();
 
@@ -94,7 +94,7 @@ export function useProvidersKeyboard({
     onSetApiKey,
     onSelectModel,
     onRemoveKey,
-    onSelectProvider,
+    onActivateProvider,
   });
 
   const list = useProvidersListNavigation({

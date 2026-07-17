@@ -27,7 +27,7 @@ export interface NavigationListProgressProps {
   value: number;
   /** Bar style. "block" uses █░ characters, "bar" uses [==-] characters. */
   variant?: ProgressVariant;
-  /** Number of characters for the progress bar. */
+  /** Number of characters for the progress bar. Rounded down; invalid values become zero. */
   width?: number;
   /** Color token. Auto selects color based on value thresholds. */
   color?: ProgressColor;
@@ -56,12 +56,13 @@ function buildBar(variant: ProgressVariant, filled: number, empty: number): stri
 export function NavigationListProgress({
   value: rawValue,
   variant = "block",
-  width = 10,
+  width: rawWidth = 10,
   color = "auto",
   showLabel = true,
   className,
 }: NavigationListProgressProps) {
   const value = Math.min(100, Math.max(0, rawValue));
+  const width = Number.isFinite(rawWidth) ? Math.max(0, Math.floor(rawWidth)) : 0;
   const filled = Math.round((value / 100) * width);
   const empty = width - filled;
   const bar = buildBar(variant, filled, empty);

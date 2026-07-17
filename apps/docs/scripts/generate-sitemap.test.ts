@@ -1,5 +1,54 @@
-import { describe, expect, it } from "vitest";
-import { getPreRenderPages } from "./generate-sitemap.ts";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { getPreRenderPages, resolveGeneratorOutputDir, resolveOrigin } from "./generate-sitemap.ts";
+
+const PAGER_EXAMPLES = [
+  "../../../libs/ui/registry/examples/pager/pager-default.tsx",
+  "../../../libs/ui/registry/examples/pager/pager-single.tsx",
+];
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.resetModules();
+});
+
+describe("resolveOrigin", () => {
+  it("matches the runtime resolver's normalized origin", async () => {
+    vi.stubEnv("VITE_PUBLIC_ORIGIN", "https://docs.example.test///");
+    vi.resetModules();
+
+    expect(resolveOrigin()).toBe("https://docs.example.test");
+    expect((await import("../src/lib/seo.ts")).PUBLIC_ORIGIN).toBe(resolveOrigin());
+  });
+
+  it("fails for a configured non-HTTP origin", () => {
+    vi.stubEnv("VITE_PUBLIC_ORIGIN", "ftp://docs.example.test");
+
+    expect(() => resolveOrigin()).toThrow(/absolute HTTP\(S\) origin/);
+  });
+});
+
+describe("resolveGeneratorOutputDir", () => {
+  const cwd = "/workspace/apps/docs";
+
+  it.each([
+    ["public"],
+    ["--", "public"],
+  ])("resolves the package-script output directory from %j", (...args) => {
+    expect(resolveGeneratorOutputDir(args, cwd)).toBe("/workspace/apps/docs/public");
+  });
+
+  it("uses the generator default when no output directory is passed", () => {
+    expect(resolveGeneratorOutputDir([], cwd)).toBeUndefined();
+  });
+
+  it("rejects ambiguous output directories", () => {
+    expect(() => resolveGeneratorOutputDir(["public", "other"], cwd)).toThrow(
+      "Expected at most one generator output directory",
+    );
+  });
+});
 
 describe("getPreRenderPages", () => {
   it("emits unique page paths so sitemap entries are not duplicated", () => {
@@ -108,5 +157,22 @@ describe("getPreRenderPages", () => {
     expect(paths).toContain("/ui/getting-started");
     expect(paths).toContain("/keys/getting-started");
     expect(paths).toContain("/app/getting-started");
+  });
+
+  it("keeps every Pager example href on a prerendered route", () => {
+    const prerenderedPaths = new Set(getPreRenderPages().map((page) => page.path));
+    const hrefs = PAGER_EXAMPLES.flatMap((relativePath) => {
+      const source = readFileSync(resolve(import.meta.dirname, relativePath), "utf-8");
+      return [...source.matchAll(/href="([^"]+)"/g)]
+        .map((match) => match[1])
+        .filter((href): href is string => href !== undefined);
+    });
+
+    expect(hrefs).toEqual([
+      "/ui/components/button",
+      "/ui/components/checkbox",
+      "/ui/getting-started",
+    ]);
+    for (const href of hrefs) expect(prerenderedPaths.has(href)).toBe(true);
   });
 });

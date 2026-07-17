@@ -59,7 +59,6 @@ interface ModelDialogKeyboardReturn {
   setFocusZone: (zone: FocusZone) => void;
   handleFilterKeyDown: (event: ReactKeyboardEvent) => void;
   handleConfirm: (modelId?: string) => void;
-  handleUseCustom: () => void;
   handleSearchEscape: () => void;
   handleSearchArrowDown: () => void;
   handleListHighlightChange: (modelId: string | null) => void;
@@ -100,6 +99,7 @@ export function useModelDialogKeyboard({
   const [filterIndex, setFilterIndex] = useState(0);
   const [tabFocusedFooterIndex, setTabFocusedFooterIndex] = useState<number | null>(null);
   const hasHandledInitialFocusRef = useRef(false);
+  const hadFilteredModelsRef = useRef(false);
   const filterButtonRefs = useRef(new Map<number, HTMLButtonElement>());
   const canConfirm = !isSaving && filteredModels.length > 0;
 
@@ -115,7 +115,6 @@ export function useModelDialogKeyboard({
   const blurSearchInput = () => searchInputRef.current?.blur();
 
   const handleCancel = () => {
-    if (isSaving) return;
     onOpenChange(false);
   };
 
@@ -270,6 +269,7 @@ export function useModelDialogKeyboard({
 
   const resetDialogState = useEffectEvent(() => {
     hasHandledInitialFocusRef.current = false;
+    hadFilteredModelsRef.current = false;
     resetFilters();
     setFocusZone("list");
     setFilterIndex(0);
@@ -301,6 +301,11 @@ export function useModelDialogKeyboard({
     }
   });
 
+  const moveEmptyListFocusToCancel = useEffectEvent(() => {
+    if (isSaving) return;
+    enterFooter(0);
+  });
+
   useEffect(() => {
     if (!open) {
       hasHandledInitialFocusRef.current = false;
@@ -311,22 +316,23 @@ export function useModelDialogKeyboard({
 
   const filteredIdsKey = filteredModels.map((m) => m.id).join("\0");
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filteredIdsKey is the serialized form of filteredModels (ids joined); depending on the array identity would re-run this effect on every commit while the dialog is open, so the filteredModels read inside repairListFocus is covered by filteredIdsKey.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filteredIdsKey is the serialized form of filteredModels (ids joined); depending on the array identity would re-run this effect on every commit while the dialog is open, so the filteredModels read inside repairListFocus is covered by filteredIdsKey. isSaving retries empty-list recovery when saving completes.
   useEffect(() => {
-    if (!open || focusZone !== "list" || filteredModels.length === 0) return;
+    if (!open) return;
+    if (filteredModels.length === 0) {
+      if (focusZone === "list" && hadFilteredModelsRef.current) {
+        moveEmptyListFocusToCancel();
+      }
+      return;
+    }
+    hadFilteredModelsRef.current = true;
+    if (focusZone !== "list") return;
     repairListFocus();
-  }, [open, focusZone, filteredIdsKey]);
+  }, [open, focusZone, filteredIdsKey, isSaving]);
 
   useEffect(() => {
     if (focusZone !== "footer") setTabFocusedFooterIndex(null);
   }, [focusZone]);
-
-  const handleUseCustom = () => {
-    if (isSaving) return;
-    const customId = searchQuery.trim();
-    if (!customId) return;
-    onSelect(customId);
-  };
 
   const handleListSelect = (modelId: string) => {
     setFocusZone("list");
@@ -353,7 +359,6 @@ export function useModelDialogKeyboard({
     setFocusZone,
     handleFilterKeyDown: filters.handleFilterKeyDown,
     handleConfirm,
-    handleUseCustom,
     handleSearchEscape: search.handleSearchEscape,
     handleSearchArrowDown: search.handleSearchArrowDown,
     handleListHighlightChange,

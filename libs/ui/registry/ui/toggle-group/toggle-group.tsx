@@ -1,12 +1,15 @@
 "use client";
 
 import {
+  Children,
+  isValidElement,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   type Ref,
   useCallback,
   useMemo,
   useRef,
+  useState,
 } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
@@ -22,12 +25,11 @@ import {
 } from "@/lib/segmented-variants";
 import {
   getEnabledSelectableCollectionItems,
-  getSelectableCollectionItemValue,
-  resolveSelectableCollectionItemValue,
   useSelectableCollection,
 } from "@/lib/selectable-collection";
 import { cn } from "@/lib/utils";
 import { ToggleGroupContext, type ToggleGroupSelectionMode } from "./toggle-group-context";
+import { ToggleGroupItem, type ToggleGroupItemProps } from "./toggle-group-item";
 
 /** Props for toggle group in single-selection mode. */
 interface ToggleGroupSingleProps<TValue extends string = string> {
@@ -103,6 +105,23 @@ interface ToggleGroupBaseProps<TValue extends string = string> {
 export type ToggleGroupProps<TValue extends string = string> = ToggleGroupBaseProps<TValue> &
   (ToggleGroupSingleProps<TValue> | ToggleGroupMultipleProps<TValue>);
 
+function collectEnabledDirectToggleValues(children: ReactNode): string[] {
+  return Children.toArray(children).flatMap((child) => {
+    if (!isValidElement<ToggleGroupItemProps>(child) || child.type !== ToggleGroupItem) return [];
+    const props = child.props;
+    if (
+      props.disabled ||
+      props.hidden ||
+      props.inert ||
+      props["aria-hidden"] === true ||
+      props["aria-hidden"] === "true"
+    ) {
+      return [];
+    }
+    return [props.value];
+  });
+}
+
 /** Compound toggle button group with keyboard navigation for single or multiple selection. */
 export function ToggleGroup<TValue extends string = string>(props: ToggleGroupProps<TValue>) {
   const {
@@ -128,6 +147,14 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
   const containerRef = useRef<HTMLDivElement>(null);
   const composedRef = useComposedRefs(containerRef, ref);
   const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
+  const [hasLiveRegistrations, setHasLiveRegistrations] = useState(false);
+  const registerLiveItem = useCallback(
+    (itemId: string, itemValue: string, itemDisabled: boolean, element: HTMLElement | null) => {
+      setHasLiveRegistrations(true);
+      registerItem(itemId, itemValue, itemDisabled, element);
+    },
+    [registerItem],
+  );
 
   // Public props narrow on TValue; internal state stays string-typed because the
   // selectable-collection layer keys items by data-value strings.
@@ -135,25 +162,33 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
   const multipleProps = selectionMode === "multiple" ? (props as ToggleGroupMultipleProps) : null;
 
   const isValueControlled = "value" in props;
-  const [singleValue, setSingleValue] = useControllableState<string | null>({
+  const [singleValue, setSingleValue, , resetSingleValue] = useControllableState<string | null>({
     value: isValueControlled ? (singleProps?.value ?? null) : undefined,
     controlled: isValueControlled,
     defaultValue: singleProps?.defaultValue ?? null,
     onChange: singleProps?.onChange as ((value: string | null) => void) | undefined,
   });
-  useFormReset(
+  const invalidatePendingSingleReset = useFormReset(
     containerRef,
     singleProps?.defaultValue ?? null,
-    setSingleValue,
+    resetSingleValue,
     !isValueControlled && selectionMode === "single",
   );
 
-  const [multipleValue, setMultipleValue] = useControllableState<readonly string[]>({
+  const [multipleValue, setMultipleValue, , resetMultipleValue] = useControllableState<
+    readonly string[]
+  >({
     value: isValueControlled ? (multipleProps?.value ?? []) : undefined,
     controlled: isValueControlled,
     defaultValue: multipleProps?.defaultValue ?? [],
     onChange: multipleProps?.onChange as ((value: readonly string[]) => void) | undefined,
   });
+  const invalidatePendingMultipleReset = useFormReset(
+    containerRef,
+    multipleProps?.defaultValue ?? [],
+    resetMultipleValue,
+    !isValueControlled && selectionMode === "multiple",
+  );
 
   const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({
     value: controlledHighlighted,
@@ -177,24 +212,39 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
     (newValue: string | null) => {
       if (newValue === null) return;
       if (selectionMode === "multiple") {
+        invalidatePendingMultipleReset();
         setMultipleValue((prev) =>
           prev.includes(newValue) ? prev.filter((v) => v !== newValue) : [...prev, newValue],
         );
         return;
       }
+      invalidatePendingSingleReset();
       setSingleValue((prev) => (prev === newValue && allowDeselect ? null : newValue));
     },
-    [allowDeselect, selectionMode, setMultipleValue, setSingleValue],
+    [
+      allowDeselect,
+      invalidatePendingMultipleReset,
+      invalidatePendingSingleReset,
+      selectionMode,
+      setMultipleValue,
+      setSingleValue,
+    ],
   );
 
   const enabledItems = getEnabledSelectableCollectionItems(items, disabled);
-  const activeHighlightedValue = getSelectableCollectionItemValue(enabledItems, highlightedValue);
+  const seededEnabledValues = disabled ? [] : collectEnabledDirectToggleValues(children);
+  const enabledValues = hasLiveRegistrations
+    ? enabledItems.map((item) => item.value)
+    : seededEnabledValues;
+  const activeHighlightedValue =
+    highlightedValue !== null && enabledValues.includes(highlightedValue) ? highlightedValue : null;
   const selectedAnchor = selectionMode === "single" ? singleValue : null;
-  const tabTargetValue = resolveSelectableCollectionItemValue(
-    enabledItems,
-    highlightedValue,
-    selectedAnchor,
-  );
+  const tabTargetValue =
+    [highlightedValue, selectedAnchor].find(
+      (candidate): candidate is string => candidate !== null && enabledValues.includes(candidate),
+    ) ??
+    enabledValues[0] ??
+    null;
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
@@ -231,7 +281,7 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
       containerRef,
       usesButtonSemantics,
       tabTargetValue,
-      registerItem,
+      registerItem: registerLiveItem,
       unregisterItem,
     }),
     [
@@ -245,7 +295,7 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
       activeHighlightedValue,
       usesButtonSemantics,
       tabTargetValue,
-      registerItem,
+      registerLiveItem,
       unregisterItem,
     ],
   );
@@ -254,7 +304,9 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
   // item's rect. The hook is null-fed for `selectionMode="multiple"` (which
   // uses button semantics with no single-active concept) and when the variant
   // doesn't use a pill indicator, so the observer is never created.
-  const pillTargetValue = variant === "pill" && selectionMode === "single" ? singleValue : null;
+  const usesWrappedPillLayout = variant === "pill" && orientation === "horizontal" && wrap;
+  const pillTargetValue =
+    variant === "pill" && selectionMode === "single" && !usesWrappedPillLayout ? singleValue : null;
   const pillRect = useFloatingIndicator(containerRef, pillTargetValue);
 
   const underlineTargetValue =
@@ -262,6 +314,8 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
   const underlineRect = useFloatingIndicator(containerRef, underlineTargetValue);
 
   const hiddenInputValue = selectionMode === "single" && name ? singleValue : null;
+  const isHiddenInputDisabled =
+    disabled || !enabledItems.some((item) => item.value === hiddenInputValue);
 
   return (
     <ToggleGroupContext value={contextValue}>
@@ -280,12 +334,13 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
         onKeyDown={handleKeyDown}
         className={cn(
           segmentedContainerVariants({ variant, orientation }),
-          "w-fit",
-          wrap && orientation === "horizontal" && variant !== "pill" && "flex-wrap",
+          "w-fit max-w-full",
+          wrap && orientation === "horizontal" && "flex-wrap",
+          usesWrappedPillLayout && "gap-1 [&>[data-state=on]]:bg-primary",
           className,
         )}
       >
-        {variant === "pill" && pillRect && (
+        {!usesWrappedPillLayout && variant === "pill" && pillRect && (
           <span
             aria-hidden="true"
             data-slot="toggle-group-pill"
@@ -306,7 +361,12 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
           />
         )}
         {hiddenInputValue != null && (
-          <input type="hidden" name={name} value={hiddenInputValue} disabled={disabled} />
+          <input
+            type="hidden"
+            name={name}
+            value={hiddenInputValue}
+            disabled={isHiddenInputDisabled}
+          />
         )}
         {children}
       </div>

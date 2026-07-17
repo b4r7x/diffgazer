@@ -9,8 +9,16 @@ import {
   useMemo,
 } from "react";
 import { cn } from "@/lib/utils";
-import { BlockBarContext } from "./block-bar-context";
-import { BlockBarSegment, type SegmentVariant } from "./block-bar-segment";
+import {
+  allocateFilledCounts,
+  BlockBarContext,
+  BlockBarSegmentCountContext,
+} from "./block-bar-context";
+import {
+  BlockBarSegment,
+  type BlockBarSegmentProps,
+  type SegmentVariant,
+} from "./block-bar-segment";
 
 const MAX_BAR_WIDTH = 200;
 
@@ -37,8 +45,8 @@ export interface BlockBarProps
     | "role"
   > {
   /**
-   * Current value. Required unless segments are provided or BlockBar.Segment children are
-   * passed (in which case the value is derived from their sum).
+   * Current value. Defaults to zero when omitted without segments or BlockBar.Segment children;
+   * otherwise the value is derived from their sum.
    */
   value?: number;
   /** Maximum value the bar represents. Used for aria-valuemax and fill ratio. */
@@ -80,11 +88,14 @@ export interface BlockBarProps
   children?: ReactNode;
 }
 
-function getSegmentChildValue(child: ReactNode): number | null {
-  if (!isValidElement(child) || child.type !== BlockBarSegment) return null;
+function isBlockBarSegmentElement(child: ReactNode): child is ReactElement<BlockBarSegmentProps> {
+  return isValidElement<BlockBarSegmentProps>(child) && child.type === BlockBarSegment;
+}
 
-  const segment = child as ReactElement<BlockBarSegmentData>;
-  return Number.isFinite(segment.props.value) ? Math.max(0, segment.props.value) : 0;
+function getSegmentChildValue(child: ReactNode): number | null {
+  if (!isBlockBarSegmentElement(child)) return null;
+
+  return Number.isFinite(child.props.value) ? Math.max(0, child.props.value) : 0;
 }
 
 function deriveValueFromSegmentChildren(children: ReactNode): number | null {
@@ -125,7 +136,8 @@ function BlockBarRoot({
     ? Math.min(MAX_BAR_WIDTH, Math.max(0, Math.floor(barWidth)))
     : 0;
   const hasChildren = children !== undefined && children !== null;
-  const childValue = hasChildren ? deriveValueFromSegmentChildren(children) : null;
+  const childArray = hasChildren ? Children.toArray(children) : [];
+  const childValue = hasChildren ? deriveValueFromSegmentChildren(childArray) : null;
   if (hasChildren && value === undefined && !segments && childValue === null) {
     throw new Error(
       "BlockBar requires `value` when custom children are not BlockBar.Segment elements.",
@@ -148,6 +160,19 @@ function BlockBarRoot({
         value: Number.isFinite(segment.value) ? Math.min(Math.max(0, segment.value), safeMax) : 0,
       }))
     : [{ value: displayValue, variant }];
+  const rendersGeneratedSegments = Boolean(segments || !hasChildren);
+  const segmentValues = rendersGeneratedSegments
+    ? resolvedSegments.map((segment) => segment.value)
+    : childArray.map((child) => getSegmentChildValue(child) ?? 0);
+  const filledCounts = allocateFilledCounts(segmentValues, safeMax, safeBarWidth);
+  const resolvedChildren = childArray.map((child, index) => {
+    if (!isBlockBarSegmentElement(child)) return child;
+    return (
+      <BlockBarSegmentCountContext value={filledCounts[index] ?? 0} key={child.key ?? index}>
+        {child}
+      </BlockBarSegmentCountContext>
+    );
+  });
 
   const contextValue = useMemo(
     () => ({ max: safeMax, barWidth: safeBarWidth, filledChar, emptyChar }),
@@ -180,17 +205,17 @@ function BlockBarRoot({
             {emptyChar.repeat(safeBarWidth)}
           </span>
           <span className="absolute inset-0 flex">
-            {segments || !hasChildren
+            {rendersGeneratedSegments
               ? resolvedSegments.map((seg, i) => (
-                  <BlockBarSegment
+                  <BlockBarSegmentCountContext
                     // biome-ignore lint/suspicious/noArrayIndexKey: bar segments render in fixed left-to-right order and are never reordered; segments have no stable id, so the index is the identity.
                     key={i}
-                    value={seg.value}
-                    variant={seg.variant}
-                    char={seg.char}
-                  />
+                    value={filledCounts[i] ?? 0}
+                  >
+                    <BlockBarSegment value={seg.value} variant={seg.variant} char={seg.char} />
+                  </BlockBarSegmentCountContext>
                 ))
-              : children}
+              : resolvedChildren}
           </span>
         </span>
         {(!hasChildren || segments) && (

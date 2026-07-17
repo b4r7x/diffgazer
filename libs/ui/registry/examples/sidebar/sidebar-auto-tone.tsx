@@ -10,14 +10,10 @@ import {
 } from "@/components/ui/sidebar";
 
 /**
- * Demonstrates `autoTone`: each item's intent dot color is derived from its
- * `value` via the built-in dictionary (passed → success, running → info,
- * pending → neutral, etc.). Because each row's `value` must also be unique
- * (it's the keyboard-nav identifier exposed as `data-value`), the demo uses
- * row-specific values and supplies an explicit `intent` per item so the
- * status semantics stay attached to the row, not the id. The last entry
- * overrides resolution with `intent="danger"`. Color is decoration only —
- * the badge text carries the same meaning for assistive tech.
+ * Demonstrates `autoTone` with explicit intents. Each row keeps a unique navigation `value`, while
+ * `intent` supplies the status dot independently of that identifier and takes precedence over the
+ * built-in value dictionary. Color is decoration only; the badge text carries the same meaning for
+ * assistive tech.
  */
 export default function SidebarAutoTone() {
   return (

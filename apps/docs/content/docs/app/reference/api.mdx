@@ -5,7 +5,7 @@ description: The localhost API exposed by the embedded Diffgazer server.
 
 The API documented here is the local API used by the Diffgazer web app. It is not a hosted public API and it is not meant to be deployed as a standalone internet service.
 
-In web mode, the `diffgazer` CLI starts the embedded server, serves the browser app, and keeps both on the same localhost origin. Packaged runs require the internal shutdown token header for API access outside health checks and preflight requests.
+In web mode, the `diffgazer` CLI starts the embedded server, serves the browser app, and keeps both on the same localhost origin. `DIFFGAZER_SHUTDOWN_TOKEN` enables the API gate in every mode. Packaged runs require the `x-diffgazer-shutdown-token` header for API access outside health checks and preflight requests. A split-development web build must use the same value through `VITE_DIFFGAZER_SHUTDOWN_TOKEN`; packaged web mode receives it through `window.__DIFFGAZER_SHUTDOWN_TOKEN__`. See [Environment variables](/app/reference/environment-variables) for the paired setup.
 
 ## Health
 
@@ -28,7 +28,7 @@ Health responses include a status and timestamp. They are intentionally lightwei
 | `GET` | `/api/config/providers` | List provider status and availability. |
 | `GET` | `/api/config/provider/openrouter/models` | Fetch OpenRouter models. |
 | `GET` | `/api/config/provider/:id/models` | Fetch catalog-backed models for a provider. |
-| `POST` | `/api/config/provider/:providerId/activate` | Activate a provider and model for the current project. |
+| `POST` | `/api/config/provider/:providerId/activate` | Set the global active provider and model. Requires trust for the requesting project. |
 | `DELETE` | `/api/config/provider/:providerId` | Remove a provider from saved config. |
 
 Config writes use JSON body validation and body-size limits. Provider model routes have route-specific rate limits.
@@ -45,7 +45,7 @@ Config writes use JSON body validation and body-size limits. Provider model rout
 
 The server derives project identity itself when saving trust. Client-supplied identity fields are not trusted. Command execution trust is currently stripped to `false` because command execution is not supported.
 
-Unlike the rest of the API, the three trust routes always require the internal shutdown token header, independent of packaged mode. When no token is configured they fail closed with `401`, so a split-dev server started without `DIFFGAZER_SHUTDOWN_TOKEN` cannot read, save, or delete trust at all.
+Unlike the rest of the API, the three trust routes always require the `x-diffgazer-shutdown-token` header, including in split development. When no token is configured they fail closed with `401`, so a split-dev server started without `DIFFGAZER_SHUTDOWN_TOKEN` cannot read, save, or delete trust at all.
 
 ## Git
 

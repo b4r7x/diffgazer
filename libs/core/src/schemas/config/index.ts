@@ -95,6 +95,7 @@ export {
   fromSelectedCapabilityIds,
   getInitialFocusedCapability,
   getTrustButtonLabel,
+  hasRepositoryReadAccess,
   isFocusableCapability,
   NO_TRUST_CAPABILITIES,
   normalizeTrustCapabilities,

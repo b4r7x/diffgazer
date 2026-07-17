@@ -6,7 +6,13 @@ export type { GitDiffErrorCode } from "./types.js";
 
 const GIT_ERROR_RULES: ErrorRule<GitDiffErrorCode>[] = [
   {
-    patterns: ["enoent", "spawn git", "not found"],
+    patterns: [
+      "enoent",
+      "spawn git",
+      "git command not found",
+      "git: command not found",
+      "command not found: git",
+    ],
     code: "GIT_NOT_FOUND",
     message: "Git is not installed or not in PATH. Please install git and try again.",
   },
@@ -27,7 +33,7 @@ const GIT_ERROR_RULES: ErrorRule<GitDiffErrorCode>[] = [
     message: "Git diff output exceeded buffer limit. The changes may be too large to process.",
   },
   {
-    patterns: ["not a git repository", "fatal:"],
+    patterns: ["not a git repository"],
     code: "NOT_A_REPOSITORY",
     message: "Not a git repository. Please run this command from within a git repository.",
   },

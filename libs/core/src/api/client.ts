@@ -30,7 +30,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
 
   const projectHeaders: Record<string, string> = { ...baseHeaders };
   if (projectRoot) {
-    projectHeaders[PROJECT_ROOT_HEADER] = projectRoot;
+    projectHeaders[PROJECT_ROOT_HEADER] = encodeURIComponent(projectRoot);
   }
 
   async function parse<T>(response: Response, validate?: ResponseValidator<T>): Promise<T> {

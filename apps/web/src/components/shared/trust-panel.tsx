@@ -89,6 +89,7 @@ export function TrustPanel({ directory }: TrustPanelProps) {
           directory={directory}
           value={capabilities}
           onChange={setCapabilities}
+          isLoading={isLoading}
           showActions={false}
           onListBoundaryNext={handleListBoundaryNext}
           autoFocusList

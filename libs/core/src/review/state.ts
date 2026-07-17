@@ -5,17 +5,74 @@ import type {
   StepId,
   StepState,
 } from "../schemas/events/index.js";
-import { createInitialSteps, isStepEvent } from "../schemas/events/index.js";
+import { createInitialSteps } from "../schemas/events/index.js";
 import { ReviewErrorCode, type ReviewIssue } from "../schemas/review/index.js";
 
 export interface FileProgress {
   total: number;
   current: number;
   currentFile: string | null;
+  /** File paths covered by file_progress events; review analysis uses this for prompt inclusion. */
   completed: string[];
 }
 
 export type ReviewEvent = AgentStreamEvent | StepEvent;
+
+export interface ReviewEventSequence {
+  readonly firstIndex: number;
+  readonly nextIndex: number;
+  readonly stream: symbol;
+  readonly token: object;
+}
+
+const eventSequences = new WeakMap<readonly ReviewEvent[], ReviewEventSequence>();
+const eventTransitions = new WeakMap<object, WeakMap<ReviewEvent, object>>();
+
+function createSequenceToken(): object {
+  return Object.freeze({});
+}
+
+function getTransitionToken(parentToken: object, event: ReviewEvent): object {
+  let transitions = eventTransitions.get(parentToken);
+  if (!transitions) {
+    transitions = new WeakMap();
+    eventTransitions.set(parentToken, transitions);
+  }
+
+  const existing = transitions.get(event);
+  if (existing) return existing;
+  const token = createSequenceToken();
+  transitions.set(event, token);
+  return token;
+}
+
+export function getReviewEventSequence(
+  events: readonly ReviewEvent[],
+): ReviewEventSequence | undefined {
+  return eventSequences.get(events);
+}
+
+export function isReviewEventSequenceContinuation(
+  previous: ReviewEventSequence,
+  next: ReviewEventSequence,
+  nextEvents: readonly ReviewEvent[],
+): boolean {
+  if (previous.stream !== next.stream) return false;
+  if (next.nextIndex - next.firstIndex !== nextEvents.length) return false;
+  if (next.firstIndex < previous.firstIndex || next.firstIndex > previous.nextIndex) return false;
+  if (next.nextIndex < previous.nextIndex) return false;
+
+  const firstAppendedEvent = previous.nextIndex - next.firstIndex;
+  let token = previous.token;
+  for (let eventIndex = firstAppendedEvent; eventIndex < nextEvents.length; eventIndex += 1) {
+    const event = nextEvents[eventIndex];
+    if (!event) return false;
+    const nextToken = eventTransitions.get(token)?.get(event);
+    if (!nextToken) return false;
+    token = nextToken;
+  }
+  return token === next.token;
+}
 
 // Unified review state for web and CLI
 export interface ReviewState {
@@ -48,10 +105,31 @@ export type ReviewAction =
 const MAX_EVENTS = 5000;
 
 function appendEvent(events: ReviewEvent[], event: ReviewEvent): ReviewEvent[] {
-  if (events.length < MAX_EVENTS) {
-    return [...events, event];
-  }
-  return [...events.slice(events.length - MAX_EVENTS + 1), event];
+  const droppedCount = Math.max(0, events.length - MAX_EVENTS + 1);
+  const nextEvents = [...events.slice(droppedCount), event];
+  const previousSequence = eventSequences.get(events);
+  const firstIndex = previousSequence ? previousSequence.firstIndex + droppedCount : 0;
+
+  eventSequences.set(nextEvents, {
+    firstIndex,
+    nextIndex: previousSequence ? previousSequence.nextIndex + 1 : nextEvents.length,
+    stream: previousSequence?.stream ?? Symbol("review-event-stream"),
+    token: previousSequence
+      ? getTransitionToken(previousSequence.token, event)
+      : createSequenceToken(),
+  });
+  return nextEvents;
+}
+
+function createEventHistory(): ReviewEvent[] {
+  const events: ReviewEvent[] = [];
+  eventSequences.set(events, {
+    firstIndex: 0,
+    nextIndex: 0,
+    stream: Symbol("review-event-stream"),
+    token: createSequenceToken(),
+  });
+  return events;
 }
 
 export function createInitialReviewState(): ReviewState {
@@ -59,7 +137,7 @@ export function createInitialReviewState(): ReviewState {
     steps: createInitialSteps(),
     agents: [],
     issues: [],
-    events: [],
+    events: createEventHistory(),
     fileProgress: { total: 0, current: 0, currentFile: null, completed: [] },
     isStreaming: false,
     error: null,
@@ -120,20 +198,6 @@ function updateAgents(agents: AgentState[], event: AgentStreamEvent): AgentState
         a.id === event.agent
           ? { ...a, progress: event.progress, currentAction: event.message ?? a.currentAction }
           : a,
-      );
-
-    case "tool_call":
-    case "tool_start":
-      return agents.map((a) =>
-        a.id === event.agent
-          ? { ...a, currentAction: `Using tool: ${event.tool}`, lastToolCall: event.tool }
-          : a,
-      );
-
-    case "tool_result":
-    case "tool_end":
-      return agents.map((a) =>
-        a.id === event.agent ? { ...a, currentAction: event.summary || undefined } : a,
       );
 
     case "agent_error":
@@ -267,17 +331,46 @@ function handleFileProgressEvent(
       total: Math.max(state.fileProgress.total, event.total),
       completed: newCompleted,
       current: event.completed,
-      currentFile: event.file,
+      currentFile: event.completed < event.total ? event.file : null,
     },
     events: appendEvent(state.events, event),
   };
 }
 
+function isStepReviewEvent(event: ReviewEvent): event is StepEvent {
+  switch (event.type) {
+    case "review_started":
+    case "step_start":
+    case "step_complete":
+    case "step_error":
+      return true;
+
+    case "orchestrator_start":
+    case "agent_queued":
+    case "file_start":
+    case "file_complete":
+    case "agent_start":
+    case "agent_thinking":
+    case "agent_progress":
+    case "agent_error":
+    case "file_progress":
+    case "issue_found":
+    case "agent_complete":
+    case "orchestrator_complete":
+      return false;
+
+    default: {
+      const _exhaustive: never = event;
+      return _exhaustive;
+    }
+  }
+}
+
 // Routes a review event to the handler that owns its sub-type. Step, file, and
 // file-progress events have dedicated handlers; the orchestrator-complete total
-// and all remaining agent/tool/issue events fall through to the agent path.
+// and all remaining agent/issue events fall through to the agent path.
 function dispatchEvent(state: ReviewState, event: ReviewEvent): ReviewState {
-  if (isStepEvent(event)) {
+  if (isStepReviewEvent(event)) {
     return handleStepEvent(state, event);
   }
 

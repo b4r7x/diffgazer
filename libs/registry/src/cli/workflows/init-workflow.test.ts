@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const fsObserver = vi.hoisted(() => ({
   reads: [] as string[],
   recording: false,
+  rmFailurePath: null as string | null,
 }));
 
 // Boundary mock: node:fs wraps actual readFileSync to observe snapshot paths while delegating real fs behavior.
@@ -21,7 +22,14 @@ vi.mock("node:fs", async (importOriginal) => {
     }
     return actual.readFileSync(...args);
   }) as typeof actual.readFileSync;
-  return { ...actual, readFileSync: observedReadFileSync };
+  const observedRmSync = ((...args: Parameters<typeof actual.rmSync>) => {
+    if (String(args[0]) === fsObserver.rmFailurePath) {
+      fsObserver.rmFailurePath = null;
+      throw new Error("cleanup failed");
+    }
+    return actual.rmSync(...args);
+  }) as typeof actual.rmSync;
+  return { ...actual, readFileSync: observedReadFileSync, rmSync: observedRmSync };
 });
 
 import { runInitWorkflow } from "./init.js";
@@ -30,6 +38,7 @@ describe("runInitWorkflow rollback", () => {
   let tempDir: string;
 
   beforeEach(() => {
+    fsObserver.rmFailurePath = null;
     tempDir = mkdtempSync(join(tmpdir(), "rk-init-"));
     writeFileSync(join(tempDir, "package.json"), "{}\n");
   });
@@ -104,6 +113,60 @@ describe("runInitWorkflow rollback", () => {
     expect(readFileSync(join(tempDir, "pre-existing.txt"), "utf-8")).toBe("original\n");
     expect(existsSync(join(tempDir, "created.txt"))).toBe(false);
     expect(existsSync(join(tempDir, "tool.json"))).toBe(false);
+  });
+
+  it("runs every compensation and preserves the primary error when the first removal fails", async () => {
+    const packagePath = join(tempDir, "package.json");
+    const lockfilePath = join(tempDir, "pnpm-lock.yaml");
+    const configPath = join(tempDir, "tool.json");
+    const outputPath = join(tempDir, "generated", "output.ts");
+    writeFileSync(packagePath, '{"name":"before"}\n');
+    writeFileSync(lockfilePath, "before-lock\n");
+    writeFileSync(configPath, '{"enabled":true}\n');
+    const primaryError = new Error("config failed");
+    fsObserver.rmFailurePath = outputPath;
+
+    let caught: unknown;
+    try {
+      await runInitWorkflow({
+        cwd: tempDir,
+        configFileName: "tool.json",
+        yes: true,
+        force: true,
+        loadConfig: () => ({ ok: true, config: { enabled: true } }),
+        detectProject: () => ({ display: [] }),
+        plannedPaths: () => ["generated/", "package.json", "pnpm-lock.yaml"],
+        createFiles: (cwd) => {
+          mkdirSync(join(cwd, "generated"), { recursive: true });
+          writeFileSync(outputPath, "created\n");
+          return [{ action: "created", path: "generated/output.ts" }];
+        },
+        afterFiles: async (cwd) => {
+          writeFileSync(join(cwd, "package.json"), '{"name":"after"}\n');
+          writeFileSync(join(cwd, "pnpm-lock.yaml"), "after-lock\n");
+        },
+        writeConfig: (cwd) => {
+          writeFileSync(join(cwd, "tool.json"), '{"enabled":false}\n');
+          throw primaryError;
+        },
+        nextSteps: [],
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBe(primaryError);
+    expect(primaryError.cause).toBeInstanceOf(AggregateError);
+    expect((primaryError.cause as AggregateError).errors).toEqual([
+      expect.objectContaining({ message: `Failed to remove ${outputPath}` }),
+      expect.objectContaining({
+        message: `Failed to remove directory ${join(tempDir, "generated")}`,
+      }),
+    ]);
+    expect(readFileSync(packagePath, "utf-8")).toBe('{"name":"before"}\n');
+    expect(readFileSync(lockfilePath, "utf-8")).toBe("before-lock\n");
+    expect(readFileSync(configPath, "utf-8")).toBe('{"enabled":true}\n');
+    expect(readFileSync(outputPath, "utf-8")).toBe("created\n");
   });
 
   it("preserves an existing config (including ownership manifest) when forced re-init fails mid-write", async () => {

@@ -1,15 +1,13 @@
-import { useFocusTrap, useKey, useScrollLock } from "@diffgazer/keys";
+import { useKey } from "@diffgazer/keys";
 import { useRef, useState } from "react";
+import { DemoDialog } from "../components/demo-dialog";
 import { DemoWrapper } from "../components/demo-wrapper";
 
 export function FocusTrapDemo() {
   const [modalOpen, setModalOpen] = useState(false);
-  const modalRef = useRef<HTMLDivElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
-  useFocusTrap(modalRef, { enabled: modalOpen });
-  useScrollLock({ enabled: modalOpen });
-
-  useKey("Escape", () => setModalOpen(false), { enabled: modalOpen });
+  useKey("Escape", () => setModalOpen(false), { allowInInput: true, enabled: modalOpen });
 
   return (
     <DemoWrapper
@@ -45,13 +43,13 @@ export function FocusTrapDemo() {
         </p>
         <p style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 16 }}>
           Try opening the modal below and pressing Tab repeatedly. You'll notice focus stays within
-          the three interactive elements: the name input, the checkbox, and the submit button.
-          Shift+Tab moves backwards through the same cycle.
+          the four interactive elements: the name input, the checkbox, the Close button, and the
+          Submit button. Shift+Tab moves backwards through the same cycle.
         </p>
         <p style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 16 }}>
-          These hooks work independently of the KeyboardProvider. They attach their own event
-          listeners directly to the container element, making them lightweight and composable with
-          other keyboard management solutions.
+          These hooks work independently of the KeyboardProvider. The focus trap registers capture
+          listeners on the container&apos;s owner document. The scroll lock installs no event
+          listeners; it mutates the target element and reference-counts overlapping locks.
         </p>
 
         <button type="button" className="demo-button" onClick={() => setModalOpen(true)}>
@@ -60,66 +58,61 @@ export function FocusTrapDemo() {
       </div>
 
       {modalOpen && (
-        <div className="demo-overlay">
-          <button
-            type="button"
-            aria-label="Close modal"
-            className="demo-overlay-backdrop"
-            onClick={() => setModalOpen(false)}
-          />
-          <div ref={modalRef} className="demo-dialog">
-            <h3 style={{ marginBottom: 16 }}>Modal Form</h3>
-
-            <div style={{ marginBottom: 12 }}>
-              <label
-                htmlFor="focus-trap-name"
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  marginBottom: 4,
-                  color: "var(--color-text-muted)",
-                }}
-              >
-                Name
-              </label>
-              <input
-                id="focus-trap-name"
-                type="text"
-                className="demo-input"
-                style={{ width: "100%" }}
-                placeholder="Enter your name"
-              />
-            </div>
-
-            <div style={{ marginBottom: 20 }}>
-              <label
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  fontSize: 14,
-                  cursor: "pointer",
-                }}
-              >
-                <input type="checkbox" />
-                Agree to terms
-              </label>
-            </div>
-
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                className="demo-button--secondary demo-button"
-                onClick={() => setModalOpen(false)}
-              >
-                Close
-              </button>
-              <button type="button" className="demo-button" onClick={() => setModalOpen(false)}>
-                Submit
-              </button>
-            </div>
+        <DemoDialog
+          title="Modal Form"
+          initialFocus={nameInputRef}
+          onClose={() => setModalOpen(false)}
+        >
+          <div style={{ marginBottom: 12 }}>
+            <label
+              htmlFor="focus-trap-name"
+              style={{
+                display: "block",
+                fontSize: 13,
+                marginBottom: 4,
+                color: "var(--color-text-muted)",
+              }}
+            >
+              Name
+            </label>
+            <input
+              ref={nameInputRef}
+              id="focus-trap-name"
+              type="text"
+              className="demo-input"
+              style={{ width: "100%" }}
+              placeholder="Enter your name"
+            />
           </div>
-        </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 14,
+                cursor: "pointer",
+              }}
+            >
+              <input type="checkbox" />
+              Agree to terms
+            </label>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              className="demo-button--secondary demo-button"
+              onClick={() => setModalOpen(false)}
+            >
+              Close
+            </button>
+            <button type="button" className="demo-button" onClick={() => setModalOpen(false)}>
+              Submit
+            </button>
+          </div>
+        </DemoDialog>
       )}
     </DemoWrapper>
   );

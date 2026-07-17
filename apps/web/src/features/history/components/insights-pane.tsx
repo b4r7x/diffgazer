@@ -2,6 +2,7 @@ import type { SeverityCounts } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { capitalize } from "@diffgazer/core/strings";
 import { isListNavigationKey } from "@diffgazer/keys";
+import { Button } from "@diffgazer/ui/components/button";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
@@ -11,14 +12,21 @@ import type { KeyboardEvent, Ref } from "react";
 import { SeverityBreakdown } from "@/components/shared/severity/breakdown";
 import { SEVERITY_CONFIG } from "@/components/shared/severity/constants";
 
+export type HistoryInsightsDetailState =
+  | { status: "loading" }
+  | { status: "error"; message: string; retry: () => void }
+  | { status: "ready" };
+
 export interface HistoryInsightsPaneProps {
   runId: string | null;
   severityCounts: SeverityCounts | null;
   issues: ReviewIssue[];
+  detailState?: HistoryInsightsDetailState;
   duration?: string;
   highlightedIssueId?: string | null;
   isFocused?: boolean;
   listRef?: Ref<HTMLDivElement>;
+  retryRef?: Ref<HTMLButtonElement>;
   onSelectIssue?: (id: string) => void;
   onHighlightIssue?: (id: string | null) => void;
   onListBoundaryReached?: (direction: "previous" | "next") => void;
@@ -30,10 +38,12 @@ export function HistoryInsightsPane({
   runId,
   severityCounts,
   issues,
+  detailState = { status: "ready" },
   duration,
   highlightedIssueId = null,
   isFocused = false,
   listRef,
+  retryRef,
   onSelectIssue,
   onHighlightIssue,
   onListBoundaryReached,
@@ -60,7 +70,20 @@ export function HistoryInsightsPane({
           </div>
         )}
 
-        {issues.length > 0 && (
+        {detailState.status === "loading" ? (
+          <output className="text-sm text-muted-foreground">Loading review details...</output>
+        ) : null}
+
+        {detailState.status === "error" ? (
+          <div role="alert" className="space-y-3 text-sm text-error-text">
+            <p>Could not load review details: {detailState.message}</p>
+            <Button ref={retryRef} size="sm" variant="secondary" onClick={detailState.retry}>
+              Retry
+            </Button>
+          </div>
+        ) : null}
+
+        {detailState.status === "ready" && issues.length > 0 && (
           <div>
             <SectionHeader bordered className="border-border">
               {issues.length} Issues
@@ -71,7 +94,6 @@ export function HistoryInsightsPane({
               highlighted={highlightedIssueId}
               onFocus={onListFocus}
               onEnter={(id) => onSelectIssue?.(id)}
-              onSelect={(id) => onSelectIssue?.(id)}
               onHighlightChange={onHighlightIssue}
               onNavigationBoundaryReached={(direction) => onListBoundaryReached?.(direction)}
               onKeyDown={(event: KeyboardEvent) => {
@@ -87,6 +109,7 @@ export function HistoryInsightsPane({
                 <NavigationList.Item
                   key={issue.id}
                   id={issue.id}
+                  onClick={() => onSelectIssue?.(issue.id)}
                   density="compact"
                   className="border-b border-border last:border-b-0"
                 >

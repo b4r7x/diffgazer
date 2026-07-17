@@ -2,7 +2,7 @@ import type { ComponentDoc } from "./types";
 
 export const popoverDoc: ComponentDoc = {
   description:
-    "Floating content anchored to a trigger element. Supports click-to-open (popover) and hover (infotip) modes with full 4-side positioning, automatic flip, shift, and viewport collision detection. Zero external dependencies.",
+    "Floating content anchored to a trigger element. Supports click-to-open (popover) and hover (infotip) modes with built-in 4-side positioning, automatic flip, shift, and viewport collision detection without a third-party positioning dependency.",
   anatomy: [
     {
       name: "Popover",
@@ -67,7 +67,7 @@ export const popoverDoc: ComponentDoc = {
   ],
   keyboard: {
     description:
-      "Click-mode triggers toggle with pointer or keyboard activation. Escape closes open content and returns focus to the trigger. Dialog and menu content can auto-focus on open. Tab or Shift+Tab from content closes the popover and returns focus to the trigger.",
+      "Click-mode triggers toggle with pointer or keyboard activation. Escape closes open content and returns focus to the trigger. Dialog and menu content can auto-focus on open. Tab follows the browser's normal order; the popover stays open while focus moves between its trigger and content, then closes when focus leaves both.",
     keys: [
       { keys: "Enter / Space", action: "Toggles the trigger in click mode." },
       {
@@ -76,7 +76,8 @@ export const popoverDoc: ComponentDoc = {
       },
       {
         keys: "Tab / Shift+Tab",
-        action: "Closes click-mode content and returns focus to the trigger.",
+        action:
+          "Moves normally and closes click-mode content only after focus leaves the trigger/content pair.",
       },
     ],
     examples: [{ name: "popover-basic", title: "Basic" }],
@@ -132,7 +133,7 @@ export const popoverDoc: ComponentDoc = {
         required: false,
         defaultValue: '"click"',
         description:
-          "Click toggles; hover opens on pointer/focus enter with a delay and closes on leave.",
+          "Click toggles; hover delays pointer-open, keyboard focus opens immediately, and leave closes.",
       },
       popupRole: {
         type: '"dialog" | "menu" | "listbox" | "tree" | "grid"',
@@ -151,7 +152,8 @@ export const popoverDoc: ComponentDoc = {
         type: "number",
         required: false,
         defaultValue: "500",
-        description: "Hover mode only. Delay before opening on hover or focus.",
+        description:
+          "Hover mode only. Delay before opening after pointer enter; keyboard focus opens immediately.",
       },
       closeDelayMs: {
         type: "number",

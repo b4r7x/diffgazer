@@ -7,7 +7,11 @@ import { usePanelContext } from "./panel-context";
 /** Props for panel description. */
 export interface PanelDescriptionProps extends ComponentProps<"p"> {}
 
-/** Paragraph description. Auto-wires aria-describedby on the Panel root. */
+/**
+ * Paragraph description. Direct child trees are wired to the Panel root on the server and client.
+ * A description created inside an opaque wrapper registers after client render; for SSR, give it a
+ * stable id and pass that id through Panel aria-describedby.
+ */
 export function PanelDescription({ className, id, ...props }: PanelDescriptionProps) {
   const { descriptionId, registerDescription, unregisterDescription } = usePanelContext();
   const resolvedId = id ?? descriptionId;

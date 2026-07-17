@@ -1,7 +1,8 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { useControllableState } from "./use-controllable-state";
 import { useFormReset } from "./use-form-reset";
 
 function ResettableInput({
@@ -18,7 +19,7 @@ function ResettableInput({
   const ref = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState(defaultValue);
 
-  useFormReset(
+  const invalidatePendingReset = useFormReset(
     ref,
     defaultValue,
     (nextValue) => {
@@ -33,7 +34,10 @@ function ResettableInput({
       ref={ref}
       aria-label="Name"
       value={value}
-      onChange={(event) => setValue(event.currentTarget.value)}
+      onChange={(event) => {
+        invalidatePendingReset();
+        setValue(event.currentTarget.value);
+      }}
     />
   );
 
@@ -52,7 +56,7 @@ function MovableResettableInput({
   const ref = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState(defaultValue);
 
-  useFormReset(ref, defaultValue, (nextValue) => {
+  const invalidatePendingReset = useFormReset(ref, defaultValue, (nextValue) => {
     onReset?.(nextValue);
     setValue(nextValue);
   });
@@ -62,7 +66,10 @@ function MovableResettableInput({
       ref={ref}
       aria-label="Name"
       value={value}
-      onChange={(event) => setValue(event.currentTarget.value)}
+      onChange={(event) => {
+        invalidatePendingReset();
+        setValue(event.currentTarget.value);
+      }}
     />
   );
 
@@ -74,7 +81,81 @@ function MovableResettableInput({
   );
 }
 
+function SilentResetInput({ onChange }: { onChange: (value: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [value, setValue, , resetValue] = useControllableState({
+    defaultValue: "initial",
+    onChange,
+  });
+  const invalidatePendingReset = useFormReset(ref, "initial", resetValue);
+
+  return (
+    <form aria-label="Silent reset">
+      <input
+        ref={ref}
+        aria-label="Silent name"
+        value={value}
+        onChange={(event) => {
+          invalidatePendingReset();
+          setValue(event.currentTarget.value);
+        }}
+      />
+    </form>
+  );
+}
+
 describe("useFormReset", () => {
+  it("keeps a later same-task mutation newer than an accepted reset", async () => {
+    const onReset = vi.fn();
+    render(<ResettableInput defaultValue="initial" onReset={onReset} />);
+    const form = screen.getByRole("form", { name: /profile/i }) as HTMLFormElement;
+    const input = screen.getByRole("textbox", { name: /name/i });
+
+    // fireEvent retained: both mutations must stay in the reset dispatch task before microtasks flush.
+    fireEvent.change(input, { target: { value: "changed" } });
+    form.reset();
+    // fireEvent retained: userEvent would flush the pending reset before this same-task mutation.
+    fireEvent.change(input, { target: { value: "later" } });
+    await Promise.resolve();
+
+    expect(input).toHaveValue("later");
+    expect(onReset).not.toHaveBeenCalled();
+  });
+
+  it("applies an accepted reset before a mutation in a later task", async () => {
+    const onReset = vi.fn();
+    render(<ResettableInput defaultValue="initial" onReset={onReset} />);
+    const form = screen.getByRole("form", { name: /profile/i }) as HTMLFormElement;
+    const input = screen.getByRole("textbox", { name: /name/i });
+
+    // fireEvent retained: synchronous setup keeps the reset boundary independent of userEvent scheduling.
+    fireEvent.change(input, { target: { value: "changed" } });
+    form.reset();
+    await waitFor(() => expect(input).toHaveValue("initial"));
+    // fireEvent retained: direct change isolates behavior after the pending reset has visibly settled.
+    fireEvent.change(input, { target: { value: "later" } });
+
+    expect(input).toHaveValue("later");
+    expect(onReset).toHaveBeenCalledOnce();
+  });
+
+  it("can reset controllable state without emitting its public change callback", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<SilentResetInput onChange={onChange} />);
+    const input = screen.getByRole("textbox", { name: "Silent name" });
+
+    await user.clear(input);
+    await user.type(input, "changed");
+    const callbackCount = onChange.mock.calls.length;
+    expect(callbackCount).toBeGreaterThan(0);
+
+    screen.getByRole("form", { name: "Silent reset" }).dispatchEvent(new Event("reset"));
+
+    await waitFor(() => expect(input).toHaveValue("initial"));
+    expect(onChange).toHaveBeenCalledTimes(callbackCount);
+  });
+
   it("does not reset when disabled", async () => {
     const user = userEvent.setup();
     const onReset = vi.fn();
@@ -114,6 +195,18 @@ describe("useFormReset", () => {
 
     unmount();
     form.dispatchEvent(new Event("reset", { bubbles: true }));
+
+    expect(onReset).not.toHaveBeenCalled();
+  });
+
+  it("invalidates accepted reset work when the control unmounts", async () => {
+    const onReset = vi.fn();
+    const { unmount } = render(<ResettableInput defaultValue="initial" onReset={onReset} />);
+    const form = screen.getByRole("form", { name: /profile/i }) as HTMLFormElement;
+
+    form.reset();
+    unmount();
+    await Promise.resolve();
 
     expect(onReset).not.toHaveBeenCalled();
   });

@@ -16,7 +16,8 @@ import type { FloatingAlign, FloatingSide } from "@/hooks/use-floating-position"
 import { useNavigation } from "@/hooks/use-navigation";
 import { matchesSearch } from "@/lib/search";
 import { cn } from "@/lib/utils";
-import { FloatingPanel } from "../floating-panel";
+import { FloatingPanel, useFloatingPanelContext } from "../floating-panel";
+import { useAriaLinkedPortalContainer } from "../shared/portal";
 import { SearchableContent, type SearchableListboxProps } from "./searchable-content";
 import type { SelectOptionMetadata } from "./select-context";
 import { useSelectContext } from "./select-context";
@@ -31,6 +32,51 @@ function containsRefElement(ref: RefObject<HTMLElement | null>, target: Node | n
 
 function isComposingKeyEvent(event: { isComposing?: boolean; keyCode?: number }): boolean {
   return event.isComposing === true || event.keyCode === 229;
+}
+
+function SelectDropdownInitializer({
+  open,
+  containerRef,
+  onInitialize,
+}: {
+  open: boolean;
+  containerRef: RefObject<HTMLDivElement | null>;
+  onInitialize: () => boolean;
+}) {
+  const { positioned } = useFloatingPanelContext();
+  const { options, searchInputRef, triggerRef } = useSelectContext("SelectDropdownInitializer");
+  const focusedRef = useRef(false);
+  const highlightInitializedRef = useRef(false);
+  const initialize = useEffectEvent(onInitialize);
+
+  useLayoutEffect(() => {
+    if (!open || !positioned) {
+      focusedRef.current = false;
+      highlightInitializedRef.current = false;
+      return;
+    }
+
+    if (!focusedRef.current) {
+      const focusTarget = searchInputRef.current ?? containerRef.current;
+      if (focusTarget) {
+        const { activeElement, body } = focusTarget.ownerDocument;
+        if (
+          activeElement === null ||
+          activeElement === body ||
+          activeElement === triggerRef.current
+        ) {
+          focusTarget.focus();
+        }
+        focusedRef.current = true;
+      }
+    }
+
+    if (!highlightInitializedRef.current && options.size > 0) {
+      highlightInitializedRef.current = initialize();
+    }
+  }, [containerRef, open, options, positioned, searchInputRef, triggerRef]);
+
+  return null;
 }
 
 /** Props for select content. */
@@ -58,6 +104,34 @@ export interface SelectContentProps {
 }
 
 const SEARCH_INPUT_NAV_KEYS = new Set(["ArrowUp", "ArrowDown", "Enter"]);
+interface OpenDropdown {
+  token: object;
+  contains: (target: Node | null) => boolean;
+}
+
+const openDropdowns = new WeakMap<Document, OpenDropdown[]>();
+
+function registerOpenDropdown(ownerDocument: Document, dropdown: OpenDropdown): () => void {
+  const stack = openDropdowns.get(ownerDocument) ?? [];
+  stack.push(dropdown);
+  openDropdowns.set(ownerDocument, stack);
+
+  return () => {
+    const current = openDropdowns.get(ownerDocument);
+    if (!current) return;
+    const index = current.lastIndexOf(dropdown);
+    if (index !== -1) current.splice(index, 1);
+    if (current.length === 0) openDropdowns.delete(ownerDocument);
+  };
+}
+
+function isTopDropdown(ownerDocument: Document, token: object): boolean {
+  return openDropdowns.get(ownerDocument)?.at(-1)?.token === token;
+}
+
+function isInsideOpenDropdown(ownerDocument: Document, target: Node | null): boolean {
+  return openDropdowns.get(ownerDocument)?.some((dropdown) => dropdown.contains(target)) ?? false;
+}
 
 /** Dropdown listbox with keyboard navigation. */
 export function SelectContent({
@@ -94,11 +168,17 @@ export function SelectContent({
     ariaDescribedBy,
   } = useSelectContext("SelectContent");
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownTokenRef = useRef({});
   const isDropdown = variant !== "card";
   const hasSearch = containsSelectSearchElement(children, isSelectSearchElement);
   const searchComposedRef = useComposedRefs(selectContentRef, ref);
   const fullComposedRef = useComposedRefs(containerRef, selectContentRef, ref);
   const composedRef = hasSearch ? searchComposedRef : fullComposedRef;
+  const resolvedPortalContainer = useAriaLinkedPortalContainer(
+    portalContainer,
+    triggerRef,
+    "Select",
+  );
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
@@ -132,6 +212,7 @@ export function SelectContent({
   );
 
   const handleTypeahead = useSelectTypeahead({
+    open,
     options,
     searchQuery,
     highlighted,
@@ -169,9 +250,13 @@ export function SelectContent({
   }
 
   const initHighlight = () => {
-    if (highlighted !== null) {
+    const isAvailable = (optionValue: string) => {
+      const option = options.get(optionValue);
+      return option !== undefined && !option.disabled && matchesSearch(option.label, searchQuery);
+    };
+    if (highlighted !== null && isAvailable(highlighted)) {
       scrollOptionIntoView(highlighted);
-      return;
+      return true;
     }
     let selectedValues: string[] = [];
     if (Array.isArray(value)) {
@@ -180,37 +265,61 @@ export function SelectContent({
       selectedValues = [value];
     }
     const firstSelected = selectedValues[0];
-    if (firstSelected !== undefined && !options.get(firstSelected)?.disabled) {
+    if (firstSelected !== undefined && isAvailable(firstSelected)) {
       setHighlightedAndScroll(firstSelected);
-      return;
+      return true;
     }
     for (const [itemValue, option] of options) {
-      if (!option.disabled) {
+      if (!option.disabled && matchesSearch(option.label, searchQuery)) {
         setHighlightedAndScroll(itemValue);
-        return;
+        return true;
       }
     }
+    return false;
   };
 
-  // Effect Event so open-init reads current values without re-firing (and
-  // re-stealing focus) on unrelated re-renders while open.
+  // Read current option state without re-running initialization on unrelated renders.
   const runOpenInit = useEffectEvent(() => {
-    if (!searchInputRef.current) {
-      containerRef.current?.focus();
+    const focusTarget = searchInputRef.current ?? containerRef.current;
+    if (focusTarget) {
+      const { activeElement, body } = focusTarget.ownerDocument;
+      if (
+        activeElement === null ||
+        activeElement === body ||
+        activeElement === triggerRef.current
+      ) {
+        focusTarget.focus();
+      }
     }
-    initHighlight();
+    return initHighlight();
   });
 
+  const inlineHighlightInitializedRef = useRef(false);
   useLayoutEffect(() => {
-    if (!open) return;
-    runOpenInit();
-  }, [open]);
+    if (!open || isDropdown) {
+      inlineHighlightInitializedRef.current = false;
+      return;
+    }
+    if (!inlineHighlightInitializedRef.current && options.size > 0) {
+      inlineHighlightInitializedRef.current = runOpenInit();
+    }
+  }, [isDropdown, open, options]);
+
+  const closeDropdown = useEffectEvent(() => {
+    onOpenChange(false);
+    triggerRef.current?.focus();
+  });
 
   useLayoutEffect(() => {
     if (!open || !isDropdown) return;
 
     const ownerDocument = containerRef.current?.ownerDocument ?? triggerRef.current?.ownerDocument;
     if (!ownerDocument) return;
+    const token = dropdownTokenRef.current;
+    const unregister = registerOpenDropdown(ownerDocument, {
+      token,
+      contains: (target) => containsRefElement(selectContentRef, target),
+    });
 
     const handleDocumentKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -219,16 +328,24 @@ export function SelectContent({
       const NodeCtor = ownerDocument.defaultView?.Node;
       const targetNode = NodeCtor && event.target instanceof NodeCtor ? event.target : null;
       const targetIsInsideContent = containsRefElement(selectContentRef, targetNode);
-      if (event.defaultPrevented && targetIsInsideContent) return;
+      if (
+        event.defaultPrevented &&
+        (targetIsInsideContent || isInsideOpenDropdown(ownerDocument, targetNode))
+      ) {
+        return;
+      }
+      if (!targetIsInsideContent && !isTopDropdown(ownerDocument, token)) return;
 
       event.preventDefault();
-      onOpenChange(false);
-      triggerRef.current?.focus();
+      closeDropdown();
     };
 
     ownerDocument.addEventListener("keydown", handleDocumentKeyDown);
-    return () => ownerDocument.removeEventListener("keydown", handleDocumentKeyDown);
-  }, [isDropdown, open, onOpenChange, selectContentRef, triggerRef]);
+    return () => {
+      ownerDocument.removeEventListener("keydown", handleDocumentKeyDown);
+      unregister();
+    };
+  }, [isDropdown, open, selectContentRef, triggerRef]);
 
   useLayoutEffect(() => {
     if (hasSearch || !searchInputRef.current || process.env.NODE_ENV === "production") {
@@ -328,7 +445,7 @@ export function SelectContent({
       {...(hasSearch ? { onKeyDown: handleKeyDown } : listboxProps)}
       open={open}
       triggerRef={triggerRef}
-      portalContainer={portalContainer}
+      portalContainer={resolvedPortalContainer}
       side={side}
       align={align}
       sideOffset={sideOffset}
@@ -347,6 +464,11 @@ export function SelectContent({
         maxHeight: "var(--floating-panel-available-height)",
       }}
     >
+      <SelectDropdownInitializer
+        open={open}
+        containerRef={containerRef}
+        onInitialize={initHighlight}
+      />
       {contentBody}
       {hasSearch && (
         <MatchCount options={options} searchQuery={searchQuery} getResultsLabel={getResultsLabel} />

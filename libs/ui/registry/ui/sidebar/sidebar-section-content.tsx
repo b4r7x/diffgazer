@@ -1,7 +1,6 @@
 "use client";
 
 import type { ComponentProps } from "react";
-import { cn } from "@/lib/utils";
 import { useSidebarSectionContext } from "./sidebar-section-context";
 
 /** Props for sidebar section content. */
@@ -29,8 +28,9 @@ export function SidebarSectionContent({
       data-state={open ? "open" : "closed"}
       aria-hidden={isClosed || undefined}
       inert={isClosed || undefined}
+      className={className}
     >
-      <div data-slot="sidebar-section-content-inner" className={cn("flex flex-col", className)}>
+      <div data-slot="sidebar-section-content-inner" className="flex flex-col">
         {children}
       </div>
     </div>

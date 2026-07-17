@@ -5,7 +5,7 @@ description: Manage focus traps, focus restoration, and scroll locking with `@di
 
 > Try the [Focus Trap demo](https://github.com/b4r7x/diffgazer/tree/main/libs/keys/examples/playground) to see focus trapping in action.
 
-Three utility hooks for managing focus traps, focus restoration, and scroll locking. All are independent of `KeyboardProvider` and work anywhere in your component tree.
+The three focus and scroll hooks on this page are independent of `KeyboardProvider`. Recipes that also call `useScope` or `useKey` still need the provider shown below.
 
 ## useFocusTrap
 
@@ -141,6 +141,28 @@ useFocusTrap(containerRef, {
 The three hooks you'll typically combine for a modal:
 
 ```tsx
+import { useRef, useState } from "react";
+import {
+  KeyboardProvider,
+  useFocusTrap,
+  useKey,
+  useScope,
+  useScrollLock,
+} from "@diffgazer/keys";
+
+function App() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <KeyboardProvider>
+      <div inert={open || undefined}>
+        <button onClick={() => setOpen(true)}>Open modal</button>
+      </div>
+      <Modal open={open} onClose={() => setOpen(false)} />
+    </KeyboardProvider>
+  );
+}
+
 function Modal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -152,8 +174,14 @@ function Modal({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   if (!open) return null;
   return (
-    <div ref={ref} tabIndex={-1} role="dialog">
-      <h2>Modal title</h2>
+    <div
+      ref={ref}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+      tabIndex={-1}
+    >
+      <h2 id="modal-title">Modal title</h2>
       <button onClick={onClose}>Close</button>
     </div>
   );
@@ -173,12 +201,14 @@ All three clean up on unmount or when `open` becomes `false`.
 Captures the currently focused element before temporary UI opens, then restores focus when it closes. Use it when a component owns its own open/close lifecycle and is not already using a primitive such as `Dialog` or `CommandPalette` that restores focus for you.
 
 ```tsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useFocusRestore } from "@diffgazer/keys";
 
 function TemporaryPanel() {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const panelId = useId();
+  const panelTitleId = `${panelId}-title`;
   const focusRestore = useFocusRestore();
 
   useEffect(() => {
@@ -195,12 +225,24 @@ function TemporaryPanel() {
     focusRestore.restore();
   }
 
-  return open ? (
-    <div ref={panelRef} role="dialog" tabIndex={-1}>
-      <button onClick={closePanel}>Close</button>
-    </div>
-  ) : (
-    <button onClick={openPanel}>Open panel</button>
+  return (
+    <>
+      <button aria-controls={panelId} aria-expanded={open} onClick={openPanel}>
+        Open panel
+      </button>
+      {open && (
+        <div
+          ref={panelRef}
+          id={panelId}
+          role="dialog"
+          aria-labelledby={panelTitleId}
+          tabIndex={-1}
+        >
+          <h2 id={panelTitleId}>Temporary panel</h2>
+          <button onClick={closePanel}>Close</button>
+        </div>
+      )}
+    </>
   );
 }
 ```

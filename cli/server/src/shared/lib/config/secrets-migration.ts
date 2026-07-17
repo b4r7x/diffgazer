@@ -22,32 +22,35 @@ export interface KeyringWriteRollback {
   previousValue: string | null;
 }
 
-/** Best-effort rollback of keyring writes on migration failure. */
-export function rollbackKeyringWrites(entries: readonly KeyringWriteRollback[]): void {
+export function rollbackKeyringWrites(
+  entries: readonly KeyringWriteRollback[],
+): Result<void, SecretsStorageError> {
+  let failed = false;
   for (const entry of entries) {
     const result =
       entry.previousValue === null
         ? deleteKeyringSecret(getApiKeyName(entry.providerId))
         : writeKeyringSecret(getApiKeyName(entry.providerId), entry.previousValue);
     if (!result.ok) {
+      failed = true;
       log("warn", "keyring_rollback_write_failed", {
         providerId: entry.providerId,
         error: result.error.message,
       });
     }
   }
+  return failed
+    ? err(
+        createError<SecretsStorageErrorCode>(
+          "ROLLBACK_FAILED",
+          "Failed to restore keyring state after a migration failure",
+        ),
+      )
+    : ok(undefined);
 }
 
 export interface MigrationResult {
   nextSecrets: SecretsState;
-  removedFileSecrets: boolean;
-  /**
-   * When true, the caller must delete the secrets file AFTER the new config
-   * state (secretsStorage changed) has been durably persisted. If a crash
-   * occurs before deletion, the file still exists and `reconcileKeyringSecrets`
-   * completes the migration on the next store creation.
-   */
-  shouldDeleteSecretsFile: boolean;
   /**
    * Provider IDs whose keyring entries must be deleted AFTER the file copy of
    * the secrets has been durably persisted. The caller is responsible for
@@ -69,8 +72,6 @@ export function migrateSecretsStorage(
   if (fromStorage === toStorage) {
     return ok({
       nextSecrets: secretsState,
-      removedFileSecrets: false,
-      shouldDeleteSecretsFile: false,
       keyringDeletions: [],
       keyringWrites: [],
     });
@@ -96,46 +97,40 @@ export function migrateSecretsStorage(
       }
       const apiKey = typeof entry === "string" ? entry : "";
       const previousResult = readKeyringSecret(getApiKeyName(providerId));
-      if (!previousResult.ok) return previousResult;
-
-      const writeResult = writeKeyringSecret(getApiKeyName(providerId), apiKey);
-      if (!writeResult.ok) {
-        rollbackKeyringWrites(writtenProviders);
-        return writeResult;
-      }
-
-      const verifyResult = readKeyringSecret(getApiKeyName(providerId));
-      if (!verifyResult.ok || verifyResult.value !== apiKey) {
-        rollbackKeyringWrites(writtenProviders);
-        return err(
-          createError<SecretsStorageErrorCode>(
-            "SECRETS_MIGRATION_FAILED",
-            `Keyring read-back verification failed for provider '${providerId}'`,
-          ),
-        );
+      if (!previousResult.ok) {
+        const rollbackResult = rollbackKeyringWrites(writtenProviders);
+        return rollbackResult.ok ? previousResult : rollbackResult;
       }
 
       writtenProviders.push({
         providerId,
         previousValue: previousResult.value,
       });
-    }
 
-    // File deletion is deferred to the caller -- the caller must persist the
-    // updated config state (secretsStorage = "keyring") BEFORE deleting the
-    // old secrets file. A crash between config persist and file deletion is
-    // safe: the file still holds the literals and `reconcileKeyringSecrets`
-    // completes the migration on the next store creation.
-    const hasUnknownSecrets = Object.keys(secretsState.unknownSecrets ?? {}).length > 0;
-    const shouldDelete = Object.keys(envEntries).length === 0 && !hasUnknownSecrets;
+      const writeResult = writeKeyringSecret(getApiKeyName(providerId), apiKey);
+      if (!writeResult.ok) {
+        const rollbackResult = rollbackKeyringWrites(writtenProviders);
+        return rollbackResult.ok ? writeResult : rollbackResult;
+      }
+
+      const verifyResult = readKeyringSecret(getApiKeyName(providerId));
+      if (!verifyResult.ok || verifyResult.value !== apiKey) {
+        const failure = err<SecretsStorageError>(
+          createError<SecretsStorageErrorCode>(
+            "SECRETS_MIGRATION_FAILED",
+            `Keyring read-back verification failed for provider '${providerId}'`,
+          ),
+        );
+        const rollbackResult = rollbackKeyringWrites(writtenProviders);
+        return rollbackResult.ok ? failure : rollbackResult;
+      }
+    }
 
     return ok({
       nextSecrets: {
         providers: envEntries,
         ...(secretsState.unknownSecrets ? { unknownSecrets: secretsState.unknownSecrets } : {}),
       },
-      removedFileSecrets: false,
-      shouldDeleteSecretsFile: shouldDelete,
       keyringDeletions: [],
       keyringWrites: writtenProviders,
     });
@@ -172,8 +167,6 @@ export function migrateSecretsStorage(
         providers: nextSecrets,
         ...(secretsState.unknownSecrets ? { unknownSecrets: secretsState.unknownSecrets } : {}),
       },
-      removedFileSecrets: false,
-      shouldDeleteSecretsFile: false,
       keyringDeletions: keyringMigrated,
       keyringWrites: [],
     });
@@ -181,8 +174,6 @@ export function migrateSecretsStorage(
 
   return ok({
     nextSecrets: secretsState,
-    removedFileSecrets: false,
-    shouldDeleteSecretsFile: false,
     keyringDeletions: [],
     keyringWrites: [],
   });
@@ -241,28 +232,30 @@ export function reconcileKeyringSecrets(
     const apiKey = entry as string;
     const previousResult = readKeyringSecret(getApiKeyName(providerId));
     if (!previousResult.ok) {
-      rollbackKeyringWrites(written);
-      return previousResult;
+      const rollbackResult = rollbackKeyringWrites(written);
+      return rollbackResult.ok ? previousResult : rollbackResult;
     }
+
+    written.push({ providerId, previousValue: previousResult.value });
 
     const writeResult = writeKeyringSecret(getApiKeyName(providerId), apiKey);
     if (!writeResult.ok) {
-      rollbackKeyringWrites(written);
-      return writeResult;
+      const rollbackResult = rollbackKeyringWrites(written);
+      return rollbackResult.ok ? writeResult : rollbackResult;
     }
 
     const verifyResult = readKeyringSecret(getApiKeyName(providerId));
     if (!verifyResult.ok || verifyResult.value !== apiKey) {
-      rollbackKeyringWrites(written);
-      return err(
+      const failure = err<SecretsStorageError>(
         createError<SecretsStorageErrorCode>(
           "SECRETS_MIGRATION_FAILED",
           `Keyring read-back verification failed for provider '${providerId}'`,
         ),
       );
+      const rollbackResult = rollbackKeyringWrites(written);
+      return rollbackResult.ok ? failure : rollbackResult;
     }
 
-    written.push({ providerId, previousValue: previousResult.value });
     migrated.push(providerId);
   }
 
@@ -276,21 +269,23 @@ export function reconcileKeyringSecrets(
 }
 
 /**
- * Completes an interrupted keyring→file migration at startup (F-449): when the
- * effective storage is "file" but the keyring still holds a provider's secret —
- * left there by a crash between writing secrets.json and deleting the keyring
- * entry — that entry is an orphan because the file is now the source of truth.
+ * Completes an interrupted keyring→file migration at startup (F-449). The
+ * explicit file setting is the recovery marker, and each provider must also
+ * have its completed copy in secrets.json before its keyring entry is orphaned.
  * Returns the provider ids whose stale keyring entry should be finalized so the
  * caller can `finalizeKeyringDeletions` them. Only providers known to the config
  * are probed, so this never prompts the OS keyring for providers it never used.
  */
 export function findOrphanedKeyringEntries(
   configState: ConfigState,
+  secretsState: SecretsState,
 ): Result<readonly string[], SecretsStorageError> {
+  if (configState.settings.secretsStorage !== "file") return ok([]);
   if (!isKeyringAvailable()) return ok([]);
 
   const orphans: string[] = [];
   for (const provider of configState.providers) {
+    if (!Object.hasOwn(secretsState.providers, provider.provider)) continue;
     const result = readKeyringSecret(getApiKeyName(provider.provider));
     if (!result.ok) return result;
     if (result.value !== null) orphans.push(provider.provider);

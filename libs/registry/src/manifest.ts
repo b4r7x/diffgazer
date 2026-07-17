@@ -35,6 +35,7 @@ export const ArtifactManifestIntegritySchema = z.object({
 
 export const ArtifactManifestSchema = z.object({
   schemaVersion: z.literal(1),
+  origin: z.string().url().optional(),
   library: z.string().min(1),
   package: z.string().min(1),
   version: z.string().min(1),

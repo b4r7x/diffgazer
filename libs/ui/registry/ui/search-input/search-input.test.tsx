@@ -2,6 +2,7 @@ import { createEvent, fireEvent, render, screen, waitFor } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
+import SearchInputCustom from "../../examples/search-input/search-input-custom";
 import { SearchInput, type SearchInputProps } from "./index";
 
 function renderSearchInput(props: Partial<SearchInputProps> = {}) {
@@ -98,11 +99,34 @@ describe("SearchInput", () => {
     expect(onEnter).not.toHaveBeenCalled();
   });
 
+  it.each([
+    { name: "composition state", event: { isComposing: true } },
+    { name: "legacy IME key code", event: { keyCode: 229 } },
+  ])("leaves Enter and Escape untouched during $name", ({ event }) => {
+    const onEnter = vi.fn();
+    const onEscape = vi.fn();
+    renderSearchInput({ defaultValue: "composing", onEnter, onEscape });
+    const input = screen.getByRole("searchbox");
+
+    for (const key of ["Enter", "Escape"]) {
+      const keyDown = createEvent.keyDown(input, { key, ...event });
+      // fireEvent retained: the same KeyboardEvent instance proves the IME path does not cancel
+      // the browser's composition-confirmation or composition-cancellation behavior.
+      fireEvent(input, keyDown);
+      expect(keyDown.defaultPrevented).toBe(false);
+    }
+
+    expect(input).toHaveValue("composing");
+    expect(onEnter).not.toHaveBeenCalled();
+    expect(onEscape).not.toHaveBeenCalled();
+  });
+
   it("resets uncontrolled value with native form reset", async () => {
     const user = userEvent.setup();
+    const onChange = vi.fn();
     render(
       <form>
-        <SearchInput name="query" aria-label="Search" defaultValue="initial" />
+        <SearchInput name="query" aria-label="Search" defaultValue="initial" onChange={onChange} />
         <button type="reset">Reset search</button>
       </form>,
     );
@@ -111,9 +135,53 @@ describe("SearchInput", () => {
     await user.clear(input);
     await user.type(input, "changed");
     expect(input).toHaveValue("changed");
+    const callbackCount = onChange.mock.calls.length;
+    expect(callbackCount).toBeGreaterThan(0);
 
     await user.click(screen.getByRole("button", { name: "Reset search" }));
     await waitFor(() => expect(input).toHaveValue("initial"));
+    expect(onChange).toHaveBeenCalledTimes(callbackCount);
+  });
+
+  it("keeps an input mutation newer than a same-task form reset", async () => {
+    render(
+      <form aria-label="Search form">
+        <SearchInput aria-label="Search" defaultValue="initial" />
+      </form>,
+    );
+    const input = screen.getByRole("searchbox");
+    const form = screen.getByRole("form", { name: "Search form" }) as HTMLFormElement;
+
+    form.reset();
+    // fireEvent retained: mutation must remain in the reset task before its microtask can flush.
+    fireEvent.change(input, { target: { value: "later" } });
+    await Promise.resolve();
+
+    expect(input).toHaveValue("later");
+  });
+
+  it("applies a SearchInput reset before a later mutation", async () => {
+    const user = userEvent.setup();
+    render(
+      <form aria-label="Search form">
+        <SearchInput name="query" aria-label="Search" defaultValue="initial" />
+      </form>,
+    );
+    const input = screen.getByRole("searchbox");
+    const form = screen.getByRole("form", { name: "Search form" }) as HTMLFormElement;
+
+    await user.clear(input);
+    await user.type(input, "changed");
+    expect(new FormData(form).get("query")).toBe("changed");
+
+    form.reset();
+    await waitFor(() => expect(input).toHaveValue("initial"));
+    expect(new FormData(form).get("query")).toBe("initial");
+
+    await user.clear(input);
+    await user.type(input, "later");
+    expect(input).toHaveValue("later");
+    expect(new FormData(form).get("query")).toBe("later");
   });
 
   it("has no a11y violations", async () => {
@@ -134,6 +202,18 @@ describe("SearchInput", () => {
   it("renders a custom prefix", () => {
     renderSearchInput({ prefix: <span>find:</span> });
     expect(screen.getByText("find:")).toBeInTheDocument();
+  });
+
+  it("keeps decorative default and public-example prefixes out of the accessibility tree", () => {
+    const { rerender } = renderSearchInput();
+    expect(screen.getByText("/")).toHaveAttribute("aria-hidden", "true");
+
+    rerender(<SearchInputCustom />);
+
+    expect(screen.getByText("$")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByText(">")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByRole("searchbox", { name: "Type and press Enter..." })).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "Uncontrolled search" })).toBeInTheDocument();
   });
 
   it("preserves caller-provided aria-invalid values", () => {

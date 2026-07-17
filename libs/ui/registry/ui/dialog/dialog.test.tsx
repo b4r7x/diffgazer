@@ -80,6 +80,26 @@ describe("Dialog", () => {
     expect(dialog).toHaveAttribute("data-state", "closed");
   });
 
+  it("forwards the native close event to Dialog.Content consumers", () => {
+    const onClose = vi.fn();
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content onClose={onClose}>
+          <Dialog.Title>Close event dialog</Dialog.Title>
+          <Dialog.Close>Close</Dialog.Close>
+        </Dialog.Content>
+      </Dialog>,
+    );
+    const dialog = screen.getByRole("dialog", { name: "Close event dialog" });
+
+    // fireEvent retained: HTMLDialogElement's non-bubbling native close event has no
+    // user-event equivalent, and jsdom's close() polyfill does not synthesize it.
+    fireEvent(dialog, new Event("close", { bubbles: false }));
+
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(onClose.mock.calls[0]?.[0]).toMatchObject({ type: "close" });
+  });
+
   it("closes on Escape key via cancel event", () => {
     renderDialog({ defaultOpen: true });
     const dialog = screen.getByRole("dialog");
@@ -87,6 +107,108 @@ describe("Dialog", () => {
     // fireEvent retained: native <dialog> cancel event has no user-event equivalent
     fireEvent(dialog, new Event("cancel", { bubbles: false }));
     expect(dialog).toHaveAttribute("data-state", "closed");
+  });
+
+  it("keeps a native dialog open when its top popover owns Escape from a sibling", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>Outer dialog</Dialog.Title>
+          <Popover defaultOpen>
+            <Popover.Trigger>Popover trigger</Popover.Trigger>
+            <Popover.Content role="dialog" aria-label="Nested popover" autoFocus={false}>
+              <button type="button">Popover action</button>
+            </Popover.Content>
+          </Popover>
+          <button type="button">Dialog sibling</button>
+        </Dialog.Content>
+      </Dialog>,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Outer dialog" });
+    const popover = screen.getByRole("dialog", { name: "Nested popover" });
+    const sibling = screen.getByRole("button", { name: "Dialog sibling" });
+    sibling.focus();
+    const escapeEvent = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+    });
+
+    // fireEvent retained: the event instance exposes whether the overlay stack cancelled the
+    // native dialog's Escape default action.
+    fireEvent(sibling, escapeEvent);
+
+    expect(escapeEvent.defaultPrevented).toBe(true);
+    expect(popover).toHaveAttribute("data-state", "closed");
+    expect(dialog).toHaveAttribute("data-state", "open");
+    expect(sibling).toHaveFocus();
+  });
+
+  it("keeps a native dialog open when its top hover popover owns Escape from a sibling", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>Outer hover dialog</Dialog.Title>
+          <Popover triggerMode="hover" defaultOpen>
+            <Popover.Trigger>Hover trigger</Popover.Trigger>
+            <Popover.Content>Hover content</Popover.Content>
+          </Popover>
+          <button type="button">Hover dialog sibling</button>
+        </Dialog.Content>
+      </Dialog>,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Outer hover dialog" });
+    const popover = screen.getByRole("tooltip");
+    const sibling = screen.getByRole("button", { name: "Hover dialog sibling" });
+    sibling.focus();
+    const escapeEvent = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+    });
+
+    // fireEvent retained: the event instance exposes whether the hover overlay cancelled the
+    // native dialog's Escape default action.
+    fireEvent(sibling, escapeEvent);
+
+    expect(escapeEvent.defaultPrevented).toBe(true);
+    expect(popover).toHaveAttribute("data-state", "closed");
+    expect(dialog).toHaveAttribute("data-state", "open");
+    expect(sibling).toHaveFocus();
+  });
+
+  it("makes the closing subtree inert and blocks focused actions and close clicks", async () => {
+    const user = userEvent.setup();
+    const onAction = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>Closing actions</Dialog.Title>
+          <Dialog.Close onClick={onClose}>Cancel</Dialog.Close>
+          <Dialog.Action onClick={onAction}>Confirm</Dialog.Action>
+        </Dialog.Content>
+      </Dialog>,
+    );
+    const dialog = screen.getByRole("dialog", { name: "Closing actions" });
+    const action = screen.getByRole("button", { name: "Confirm" });
+    const close = screen.getByRole("button", { name: "Cancel" });
+    action.focus();
+
+    // fireEvent retained: native <dialog> cancel has no user-event equivalent.
+    fireEvent(dialog, new Event("cancel", { bubbles: false }));
+
+    expect(dialog).toHaveAttribute("data-state", "closed");
+    expect(dialog).toHaveAttribute("inert");
+    await user.keyboard("{Enter}");
+    // fireEvent retained: the regression must exercise the closing subtree's capture guard even
+    // though user-event correctly refuses pointer interaction with pointer-events:none content.
+    fireEvent.click(close);
+
+    expect(onAction).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("closes on backdrop click", async () => {
@@ -489,6 +611,42 @@ describe("Dialog", () => {
     expect(screen.getByRole("dialog", { name: "Wrapped title" })).toBeInTheDocument();
   });
 
+  it.each([
+    ["closed", false],
+    ["open", true],
+  ])("does not borrow title or description semantics from an %s nested dialog", (_state, open) => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog open={open}>
+            <Dialog.Trigger>Open inner dialog</Dialog.Trigger>
+            <Dialog.Content>
+              <Dialog.Title>Inner title</Dialog.Title>
+              <Dialog.Description>Inner description</Dialog.Description>
+            </Dialog.Content>
+          </Dialog>
+        </Dialog.Content>
+      </Dialog>,
+    );
+
+    const outerDialog = screen.getByRole("dialog", { name: "Dialog" });
+    expect(outerDialog).toHaveAttribute("aria-label", "Dialog");
+    expect(outerDialog).not.toHaveAttribute("aria-labelledby");
+    expect(outerDialog).not.toHaveAttribute("aria-describedby");
+
+    if (open) {
+      const innerDialog = screen.getByRole("dialog", { name: "Inner title" });
+      const innerDescription = screen.getByText("Inner description");
+      expect(innerDialog).toHaveAttribute(
+        "aria-labelledby",
+        screen.getByRole("heading", { name: "Inner title" }).id,
+      );
+      expect(innerDialog).toHaveAttribute("aria-describedby", innerDescription.id);
+    } else {
+      expect(screen.queryByRole("dialog", { name: "Inner title" })).not.toBeInTheDocument();
+    }
+  });
+
   it("wires aria-labelledby for a Dialog.Title rendered by a consumer wrapper component", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     function CustomHeader({ title }: { title: string }) {
@@ -624,6 +782,32 @@ describe("Dialog", () => {
 
     expect(html).toContain("aria-describedby=");
     expect(html).toContain("SSR description");
+  });
+
+  it("emits explicit native name and description attributes for opaque wrappers during SSR", () => {
+    function OpaqueDialogParts() {
+      return (
+        <>
+          <Dialog.Title>Opaque title</Dialog.Title>
+          <Dialog.Description>Opaque description</Dialog.Description>
+        </>
+      );
+    }
+
+    const html = renderToString(
+      <Dialog defaultOpen>
+        <Dialog.Content aria-label="Server-visible title" aria-description="Server-visible body">
+          <OpaqueDialogParts />
+        </Dialog.Content>
+      </Dialog>,
+    );
+
+    expect(html).toContain('aria-label="Server-visible title"');
+    expect(html).toContain('aria-description="Server-visible body"');
+    expect(html).not.toContain("aria-labelledby=");
+    expect(html).not.toContain("aria-describedby=");
+    expect(html).toContain("Opaque title");
+    expect(html).toContain("Opaque description");
   });
 
   it("emits the same accessible-name shape on SSR and on client render (no post-mount flip)", () => {

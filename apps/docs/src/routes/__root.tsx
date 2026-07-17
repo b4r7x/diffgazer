@@ -11,7 +11,7 @@ import { TuiFaultPanel } from "@/components/layout/tui-fault-panel";
 import { TuiShell } from "@/components/layout/tui-shell";
 import { SearchDialog } from "@/features/search/components/dialog";
 import { SearchProvider } from "@/hooks/search-context";
-import { ThemeProvider } from "@/hooks/theme-context";
+import { THEME_INIT_SCRIPT, ThemeProvider } from "@/hooks/theme-context";
 import { PRIMARY_DOCS_LIBRARY_ID } from "@/lib/library";
 import { buildRootHeadDefaults } from "@/lib/seo";
 import appCss from "../index.css?url";
@@ -37,11 +37,8 @@ export const Route = createRootRoute({
   errorComponent: RootErrorBoundary,
 });
 
-// Set data-theme before hydration so the persisted choice paints on first frame
-// with no flash of the default theme. Mirrors the dark-mode docs flash-prevention
-// pattern; falls back to "dark" (the lib default) when no preference is stored.
-const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem("@diffgazer/docs-theme");document.documentElement.setAttribute("data-theme",t==="light"||t==="dark"?t:"dark");}catch(e){document.documentElement.setAttribute("data-theme","dark");}})();`;
-
+// Apply the persisted theme and synchronize the SSR toggle as its markup is parsed,
+// before either can paint with stale dark-fallback state.
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   // Carry the per-request CSP nonce (server.ts) on the manually-injected theme
   // bootstrap; TanStack's own HeadContent/Scripts read the same nonce.
@@ -66,12 +63,6 @@ function RootLayout() {
     <TanstackProvider>
       <ThemeProvider>
         <KeyboardProvider>
-          <a
-            href="#main-content"
-            className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[calc(var(--z-toast)+1)] focus:bg-foreground focus:text-background focus:px-3 focus:py-1 focus:text-xs focus:font-mono"
-          >
-            Skip to content
-          </a>
           <SearchProvider>
             <TuiShell>
               <Outlet />
@@ -85,7 +76,9 @@ function RootLayout() {
   );
 }
 
-function RootErrorBoundary({ error, reset }: ErrorComponentProps) {
+function RootErrorBoundary({ error }: ErrorComponentProps) {
+  const router = useRouter();
+
   return (
     <div className="docs-chrome flex h-dvh flex-col overflow-hidden bg-background text-foreground">
       <main
@@ -97,9 +90,14 @@ function RootErrorBoundary({ error, reset }: ErrorComponentProps) {
           statusCode="ERR_RENDER"
           title="Something went wrong"
           description="An unexpected error occurred while rendering this page."
+          actionLabel="TRY_AGAIN"
           detail={import.meta.env.DEV ? error.message : undefined}
           primaryAction={
-            <Button variant="primary" bracket onClick={() => reset()}>
+            <Button
+              variant="primary"
+              bracket
+              onClick={() => void router.invalidate().catch(() => {})}
+            >
               Try again
             </Button>
           }

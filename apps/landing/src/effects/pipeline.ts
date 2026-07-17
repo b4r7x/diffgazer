@@ -59,7 +59,7 @@ export function initPipeline(
   const status = root.querySelector<HTMLElement>("#rp-status");
   const foot = root.querySelector<HTMLElement>("#rp-foot");
   const meta = root.querySelector<HTMLElement>("#rp-meta");
-  if (!wrap || !findingsWrap || !glyph || !status || !foot || !meta) return () => {};
+  if (!wrap || !findingsWrap || !glyph || !status || !foot || !meta) return scope.cleanup;
 
   findingsWrap.textContent = "";
   for (const finding of pipelineFindings) {

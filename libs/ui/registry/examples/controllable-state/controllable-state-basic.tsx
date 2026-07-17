@@ -4,10 +4,14 @@ import { useState } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 
 function CustomInput({
+  id,
+  name,
   value,
   defaultValue = "",
   onChange,
 }: {
+  id: string;
+  name: string;
   value?: string;
   defaultValue?: string;
   onChange?: (value: string) => void;
@@ -20,6 +24,8 @@ function CustomInput({
 
   return (
     <input
+      id={id}
+      name={name}
       className="border border-border bg-background px-3 py-1.5 text-sm text-foreground"
       value={current}
       onChange={(e) => setCurrent(e.target.value)}
@@ -33,13 +39,22 @@ export default function ControllableStateBasic() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs text-muted-foreground">Uncontrolled</span>
-        <CustomInput defaultValue="type here…" />
+        <label className="text-xs text-muted-foreground" htmlFor="uncontrolled-input">
+          Uncontrolled
+        </label>
+        <CustomInput id="uncontrolled-input" name="uncontrolled" defaultValue="type here…" />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs text-muted-foreground">Controlled: {controlled}</span>
-        <CustomInput value={controlled} onChange={setControlled} />
+        <label className="text-xs text-muted-foreground" htmlFor="controlled-input">
+          Controlled: {controlled}
+        </label>
+        <CustomInput
+          id="controlled-input"
+          name="controlled"
+          value={controlled}
+          onChange={setControlled}
+        />
       </div>
     </div>
   );

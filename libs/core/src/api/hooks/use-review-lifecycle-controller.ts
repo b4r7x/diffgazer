@@ -1,3 +1,5 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import {
   isCheckingForChanges as checkForChanges,
   isNoDiffError as checkNoDiffError,
@@ -7,10 +9,12 @@ import {
 import { ReviewErrorCode } from "../../schemas/review/index.js";
 import type { ReviewContextResponse } from "../types.js";
 import { useSettings } from "./config.js";
+import { useApi } from "./context.js";
+import { refreshReviewContextCache } from "./queries/review.js";
 import { useReviewContext } from "./review.js";
 import { useReviewCompletion } from "./use-review-completion.js";
 import { useReviewStart } from "./use-review-start.js";
-import type { ReviewStreamState } from "./use-review-stream.js";
+import type { CancelReviewOptions, ReviewStreamState } from "./use-review-stream.js";
 import { useReviewStream } from "./use-review-stream.js";
 
 /**
@@ -34,7 +38,7 @@ export interface UseReviewLifecycleBaseResult {
   stream: {
     stop: () => void;
     abort: () => void;
-    cancel: (reviewId: string | null) => Promise<string | null>;
+    cancel: (reviewId: string | null, options?: CancelReviewOptions) => Promise<string | null>;
     state: ReviewStreamState;
   };
 
@@ -47,6 +51,7 @@ export interface UseReviewLifecycleBaseResult {
 
   completion: {
     isCompleting: boolean;
+    completedAt: Date | null;
     skipDelay: () => void;
     resetCompletion: () => void;
   };
@@ -83,6 +88,8 @@ function hasTerminalStreamError(state: ReviewStreamState): boolean {
 export function useReviewLifecycleBase(
   options: UseReviewLifecycleBaseOptions,
 ): UseReviewLifecycleBaseResult {
+  const api = useApi();
+  const queryClient = useQueryClient();
   const stream = useReviewStream();
   const { isLoading: settingsLoading } = useSettings();
   const allowResumeWithoutSetup = Boolean(options.reviewId && options.allowResumeWithoutSetup);
@@ -102,6 +109,7 @@ export function useReviewLifecycleBase(
 
   const {
     isCompleting,
+    completedAt,
     skipDelay,
     reset: resetCompletion,
   } = useReviewCompletion({
@@ -128,12 +136,32 @@ export function useReviewLifecycleBase(
   });
 
   const contextStep = stream.state.steps.find((step) => step.id === "context");
-  const contextReady = contextStep?.status === "completed" && !!stream.state.reviewId;
+  const contextReviewId =
+    contextStep?.status === "completed" ? (stream.state.reviewId ?? null) : null;
+  const contextReady = contextReviewId !== null;
   const { data: contextData } = useReviewContext({
-    enabled: contextReady,
-    reviewId: stream.state.reviewId,
+    enabled: false,
   });
-  const contextSnapshot = contextReady ? (contextData ?? null) : null;
+  const [refreshedContextReviewId, setRefreshedContextReviewId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!contextReviewId) return;
+    let isCurrent = true;
+
+    void (async () => {
+      await refreshReviewContextCache(queryClient, api);
+      if (isCurrent) setRefreshedContextReviewId(contextReviewId);
+    })().catch(() => {
+      if (isCurrent) setRefreshedContextReviewId(null);
+    });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [api, contextReviewId, queryClient]);
+
+  const contextSnapshot =
+    contextReviewId === refreshedContextReviewId ? (contextData ?? null) : null;
 
   const gate = deriveReviewGate({
     loadingMessage,
@@ -157,6 +185,7 @@ export function useReviewLifecycleBase(
     },
     completion: {
       isCompleting,
+      completedAt,
       skipDelay,
       resetCompletion,
     },

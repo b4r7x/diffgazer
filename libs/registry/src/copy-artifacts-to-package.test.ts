@@ -21,7 +21,10 @@ afterEach(() => {
 function setupSourceArtifacts(root: string): string {
   const artifactsDir = join(root, "dist/artifacts");
   mkdirSync(artifactsDir, { recursive: true });
-  writeFileSync(join(artifactsDir, "artifact-manifest.json"), JSON.stringify({ schemaVersion: 1 }));
+  writeFileSync(
+    join(artifactsDir, "artifact-manifest.json"),
+    JSON.stringify({ schemaVersion: 1, origin: "https://registry.example.com" }),
+  );
   writeFileSync(join(artifactsDir, "fingerprint.sha256"), "abc123\n");
   writeFileSync(join(artifactsDir, "some-file.json"), '{"test": true}');
   return artifactsDir;
@@ -46,6 +49,9 @@ describe("copyArtifactsToPackage", () => {
     expect(readFileSync(join(target, "some-file.json"), "utf-8")).toBe('{"test": true}');
     expect(readFileSync(join(target, "artifact-manifest.json"), "utf-8")).toContain(
       '"artifactRoot": "artifacts"',
+    );
+    expect(JSON.parse(readFileSync(join(target, "artifact-manifest.json"), "utf-8")).origin).toBe(
+      "https://registry.example.com",
     );
     expect(existsSync(join(packageRoot, "dist/artifacts"))).toBe(false);
   });

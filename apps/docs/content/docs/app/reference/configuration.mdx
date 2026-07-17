@@ -5,6 +5,8 @@ description: Where Diffgazer stores config and what each setting does.
 
 Diffgazer keeps its configuration global by default. There is no single unified config file: settings, secrets, and trust each live in their own JSON file under `~/.diffgazer`, and a tiny per-project file records the repository's identity. Think of the global directory as your account-level defaults, with the per-project file pinning a stable id for the repo you are reviewing.
 
+The active provider and model are global settings for this Diffgazer installation. Activating them through the API still requires trust for the project making the request, but the selection is not stored per project.
+
 ## File locations
 
 | Path | Purpose |

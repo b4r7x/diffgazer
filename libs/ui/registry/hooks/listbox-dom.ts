@@ -1,13 +1,22 @@
 import {
+  findNavigationItemByValue,
+  getNavigationItems,
+  type NavigationItemType,
+} from "@diffgazer/keys";
+import {
   hasEnabledMetadataItem,
   hasMetadataItem,
   type ListboxMetadataItem,
 } from "./listbox-metadata";
 
 type ContainerRole = "listbox" | "menu";
+type ListboxItemRole = Extract<
+  NavigationItemType,
+  "option" | "menuitem" | "menuitemcheckbox" | "menuitemradio"
+>;
 
 interface ListboxQuery {
-  itemRole: string;
+  itemRole: ListboxItemRole;
   containerRole: ContainerRole;
   idPrefix: string;
   getItemId: (idPrefix: string, id: string) => string;
@@ -42,37 +51,38 @@ export function hasDomItem(options: {
 }): boolean {
   const { container, query, id, includeDisabled = false } = options;
   if (!container || id === null) return false;
-  const element = container.ownerDocument.getElementById(query.getItemId(query.idPrefix, id));
-  const disabled =
-    element?.getAttribute("aria-disabled") === "true" || element?.hasAttribute("data-disabled");
+  const element = findNavigationItemByValue(container, {
+    type: query.itemRole,
+    value: id,
+    skipDisabled: !includeDisabled,
+    ownerSelector: getListboxOwnerSelector(query.containerRole),
+  });
   return Boolean(
     element &&
-      container.contains(element) &&
-      isOwnedListboxItem(element, container, query.containerRole) &&
-      element.getAttribute("role") === query.itemRole &&
+      element.id === query.getItemId(query.idPrefix, id) &&
       element.dataset.value === id &&
-      (includeDisabled || !disabled),
+      isOwnedListboxItem(element, container, query.containerRole),
   );
 }
 
 /** Returns owned item elements for keyboard navigation or typeahead. */
 export function getListboxItems(
   container: HTMLElement | null,
-  itemRole: string,
+  itemRole: ListboxItemRole,
   containerRole: ContainerRole,
   includeDisabled = false,
 ) {
-  if (!container) return [];
-  const disabledFilter = includeDisabled ? "" : ':not([aria-disabled="true"]):not([data-disabled])';
-  return Array.from(
-    container.querySelectorAll<HTMLElement>(`[role="${itemRole}"]${disabledFilter}`),
-  ).filter((item) => isOwnedListboxItem(item, container, containerRole));
+  return getNavigationItems(container, {
+    type: itemRole,
+    skipDisabled: !includeDisabled,
+    ownerSelector: getListboxOwnerSelector(containerRole),
+  });
 }
 
 /** Resolves the first item id that keyboard navigation can highlight. */
 export function getFirstNavigableItemId<TId extends string>(
   container: HTMLElement | null,
-  itemRole: string,
+  itemRole: ListboxItemRole,
   containerRole: ContainerRole,
   items?: ListboxMetadataItem<TId>[],
 ): TId | null {
@@ -112,10 +122,36 @@ export function resolveActiveDescendant<TId extends string>(
   return null;
 }
 
+const NON_NAMING_ELEMENTS = new Set(["script", "style", "template", "noscript"]);
+
+function isHiddenFromAccessibleName(el: HTMLElement): boolean {
+  if (
+    el.hidden ||
+    el.hasAttribute("inert") ||
+    el.getAttribute("aria-hidden") === "true" ||
+    NON_NAMING_ELEMENTS.has(el.localName)
+  ) {
+    return true;
+  }
+
+  const styles = el.ownerDocument.defaultView?.getComputedStyle(el);
+  return (
+    styles?.display === "none" ||
+    styles?.visibility === "hidden" ||
+    styles?.visibility === "collapse" ||
+    styles?.getPropertyValue("content-visibility") === "hidden"
+  );
+}
+
 /** Reads accessible text from aria-label, aria-labelledby, and visible descendant text. */
-export function getAccessibleText(el: HTMLElement, visited: Set<HTMLElement> = new Set()): string {
+export function getAccessibleText(
+  el: HTMLElement,
+  visited: Set<HTMLElement> = new Set(),
+  allowHiddenRoot = false,
+): string {
   if (visited.has(el)) return "";
   visited.add(el);
+  if (!allowHiddenRoot && isHiddenFromAccessibleName(el)) return "";
 
   const ariaLabel = el.getAttribute("aria-label")?.trim();
   if (ariaLabel) return ariaLabel;
@@ -126,7 +162,9 @@ export function getAccessibleText(el: HTMLElement, visited: Set<HTMLElement> = n
       .split(/\s+/)
       .map((id) => el.ownerDocument.getElementById(id))
       .filter((node): node is HTMLElement => node !== null)
-      .map((node) => getAccessibleText(node, visited))
+      // The accessible-name algorithm allows a directly referenced hidden label
+      // to contribute, while its hidden descendants still follow normal rules.
+      .map((node) => getAccessibleText(node, visited, true))
       .join(" ")
       .trim();
     if (label) return label;
@@ -138,9 +176,7 @@ export function getAccessibleText(el: HTMLElement, visited: Set<HTMLElement> = n
       text += node.textContent;
     } else if (node.nodeType === Node.ELEMENT_NODE) {
       const child = node as HTMLElement;
-      if (child.getAttribute("aria-hidden") !== "true") {
-        text += getAccessibleText(child, visited);
-      }
+      text += getAccessibleText(child, visited);
     }
   }
   return text;

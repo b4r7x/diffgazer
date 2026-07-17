@@ -1,3 +1,5 @@
+"use client";
+
 export {
   CommandPaletteHighlightItem,
   type CommandPaletteHighlightItemProps,

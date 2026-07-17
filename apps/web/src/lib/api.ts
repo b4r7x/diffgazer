@@ -1,5 +1,6 @@
 import { createApi, SHUTDOWN_TOKEN_GLOBAL } from "@diffgazer/core/api";
 import { buildLocalhostOrigin, DEFAULT_API_PORT } from "@diffgazer/core/env";
+import { resolveApiEndpoint } from "@/lib/api-endpoint";
 
 function getDefaultApiUrl(): string {
   if (typeof window !== "undefined") {
@@ -15,7 +16,7 @@ function getShutdownToken(): string | undefined {
   );
 }
 
-const BASE_URL = import.meta.env.VITE_API_URL || getDefaultApiUrl();
+const BASE_URL = resolveApiEndpoint(import.meta.env.VITE_API_URL, getDefaultApiUrl());
 
 export const api = createApi({
   baseUrl: BASE_URL,

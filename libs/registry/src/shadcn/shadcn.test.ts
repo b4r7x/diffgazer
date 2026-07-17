@@ -1,6 +1,14 @@
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { RegistryFile, RegistryItem } from "../registry-types.js";
@@ -50,6 +58,23 @@ function writeShadcnBin(tempDir: string, segments: string[]): string {
   return binPath;
 }
 
+function resolveFixtureSourcePath(rootDir: string, sourcePath: string): string | null {
+  const normalizedPath = sourcePath.replaceAll("\\", "/");
+  if (isAbsolute(normalizedPath) || /^[A-Za-z]:\//.test(normalizedPath)) return null;
+
+  const resolvedPath = resolve(rootDir, normalizedPath);
+  const relativePath = relative(rootDir, resolvedPath);
+  if (
+    relativePath === "" ||
+    relativePath === ".." ||
+    relativePath.startsWith(`..${sep}`) ||
+    isAbsolute(relativePath)
+  ) {
+    return null;
+  }
+  return resolvedPath;
+}
+
 function setupRegistry(
   tempDir: string,
   sourceItems: RegistryItemFixture[],
@@ -72,8 +97,9 @@ function setupRegistry(
 
   for (const item of normalizedSource) {
     for (const file of item.files ?? []) {
-      const filePath = join(tempDir, file.path);
-      mkdirSync(join(filePath, ".."), { recursive: true });
+      const filePath = resolveFixtureSourcePath(tempDir, file.path);
+      if (!filePath) continue;
+      mkdirSync(dirname(filePath), { recursive: true });
       writeFileSync(filePath, `// ${item.name} - ${file.path}\n`);
     }
   }
@@ -158,13 +184,60 @@ describe("shadcn binary lifecycle", () => {
 
 describe("validatePublicRegistryFresh", () => {
   let tempDir: string;
+  let escapeSentinel: string | null;
 
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), "rk-shadcn-validate-"));
+    escapeSentinel = null;
   });
 
   afterEach(() => {
     rmSync(tempDir, { recursive: true, force: true });
+    if (escapeSentinel) {
+      const fixtureEscaped = existsSync(escapeSentinel);
+      rmSync(escapeSentinel, { force: true });
+      expect(fixtureEscaped).toBe(false);
+    }
+  });
+
+  it("appends a shared CSS source once in first-seen order", () => {
+    const sharedPath = "registry/ui/shared/stepper.css";
+    setupRegistry(tempDir, [
+      { name: "stepper", files: [{ path: sharedPath }] },
+      { name: "stepper-trigger", files: [{ path: sharedPath }] },
+      { name: "stepper-content", files: [{ path: sharedPath }] },
+    ]);
+    writeFileSync(resolve(tempDir, sharedPath), "/* shared-stepper */\n");
+
+    const styles = aggregateThemeStyles({
+      rootDir: tempDir,
+      sourceRegistryPath: "registry/registry.json",
+      seedContent: "/* seed */\n",
+    });
+
+    expect(styles.match(/shared-stepper/g)).toHaveLength(1);
+    expect(styles.indexOf("seed")).toBeLessThan(styles.indexOf("shared-stepper"));
+  });
+
+  it("deduplicates normalized CSS paths in the package aggregation", async () => {
+    const collectComponentCssFiles = await loadExport<
+      (items: unknown[], rootDir: string) => string[]
+    >(resolve(repoRoot, "libs/ui/tsup.config.ts"), "collectComponentCssFiles");
+    const sharedFile = { path: "registry/ui/shared/stepper.css", type: "registry:style" };
+
+    const paths = collectComponentCssFiles(
+      [
+        { name: "stepper", type: "registry:ui", files: [sharedFile] },
+        {
+          name: "stepper-trigger",
+          type: "registry:ui",
+          files: [{ ...sharedFile, path: "registry/ui/stepper/../shared/stepper.css" }],
+        },
+      ],
+      tempDir,
+    );
+
+    expect(paths).toEqual([sharedFile.path]);
   });
 
   it.each([
@@ -554,13 +627,24 @@ describe("validatePublicRegistryFresh", () => {
 
   it.each([
     { label: "absolute source file path", path: "/etc/passwd" },
-    { label: "parent-escaping source file path", path: "../escape.tsx" },
     { label: "windows absolute source file path", path: "C:\\windows\\system32" },
   ])("rejects an $label in the public registry validation path", ({ path }) => {
     setupRegistry(tempDir, [{ name: "button", files: [{ path }] }], undefined, {
       button: [{ path, content: "// button\n" }],
     });
     expectValidationThrows(tempDir, /Unsafe registry file path/);
+  });
+
+  it("rejects a parent-escaping source path without materializing it outside the fixture", () => {
+    const path = `../${basename(tempDir)}-escape.tsx`;
+    escapeSentinel = resolve(tempDir, path);
+
+    setupRegistry(tempDir, [{ name: "button", files: [{ path }] }], undefined, {
+      button: [{ path, content: "// button\n" }],
+    });
+
+    expectValidationThrows(tempDir, /Unsafe registry file path/);
+    expect(existsSync(escapeSentinel)).toBe(false);
   });
 
   it("rejects an unsafe file path that only appears in the public registry artifact", () => {

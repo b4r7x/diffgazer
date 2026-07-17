@@ -37,7 +37,7 @@ The container ref is the first positional argument; options follow as the second
 | `Shift+Tab` | Moves backward; wraps from the first to the last. |
 | `Tab` (no tabbables) | Prevented; focus stays on the container so the trap is never escaped. |
 
-Focusable and tabbable are treated as distinct: programmatic recapture may target a `tabIndex={-1}` container, while Tab cycling only visits tabbable elements. A `MutationObserver` re-captures focus if the focused element is removed or becomes unfocusable.
+Focusable and tabbable are treated as distinct: programmatic recapture may target a `tabIndex={-1}` container, while Tab cycling only visits tabbable elements. Focus detection and Tab order follow the composed tree. A trap can be rendered inside an open shadow root or contain nested open shadow roots; their tabbable descendants participate in the same order as light-DOM controls. A `MutationObserver` re-captures focus if the focused element is removed or becomes unfocusable.
 
 ## Examples
 
@@ -52,6 +52,7 @@ Focusable and tabbable are treated as distinct: programmatic recapture may targe
 - **`initialFocus`.** Defaults to the first focusable element. Provide a ref to focus a specific control — for a destructive prompt, point it at Cancel rather than Confirm.
 - **`restoreFocus`.** On by default; focus returns to the element that was focused before the trap activated. When an outer trap is still active, focus returns to that trap instead of the pre-trap element.
 - **Container `tabindex`.** If the container has no `tabindex`, the hook adds `tabindex="-1"` while active and removes it on release so an empty trap can still hold focus.
+- **Open shadow roots.** Containers rendered inside an open shadow root and containers with nested open shadow roots use the same initial focus, composed Tab order, escape recapture, and restoration behavior as light-DOM containers. Closed shadow roots remain opaque.
 
 ## Related
 

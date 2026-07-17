@@ -68,6 +68,15 @@ function isPlainLeftClick(event: MouseEvent<HTMLAnchorElement>): boolean {
   return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 }
 
+function getScrollBehavior(element: Element): ScrollBehavior {
+  const view = element.ownerDocument.defaultView;
+  return view &&
+    typeof view.matchMedia === "function" &&
+    view.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : "smooth";
+}
+
 interface TableOfContentsPanelProps {
   toc: TableOfContents;
   activation?: ActiveHeadingActivation;
@@ -154,12 +163,12 @@ export function TableOfContentsPanel({
     if (elRect.top < parentRect.top) {
       scrollParent.scrollBy({
         top: elRect.top - parentRect.top - 8,
-        behavior: "smooth",
+        behavior: getScrollBehavior(el),
       });
     } else if (elRect.bottom > parentRect.bottom) {
       scrollParent.scrollBy({
         top: elRect.bottom - parentRect.bottom + 8,
-        behavior: "smooth",
+        behavior: getScrollBehavior(el),
       });
     }
   }, [activeId]);

@@ -27,6 +27,7 @@ export function ExecutionStep({
 
   const handleEnter = (nextValue: string) => {
     if (!isAgentExecution(nextValue)) return;
+    setHighlighted(nextValue);
     onCommit?.(nextValue);
   };
 
@@ -38,7 +39,9 @@ export function ExecutionStep({
       <RadioGroup
         value={value}
         onChange={(nextValue) => {
-          if (isAgentExecution(nextValue)) onChange(nextValue);
+          if (!isAgentExecution(nextValue)) return;
+          setHighlighted(nextValue);
+          onChange(nextValue);
         }}
         highlighted={enabled ? highlighted : null}
         onHighlightChange={(nextValue) => {

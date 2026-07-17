@@ -4,8 +4,9 @@ import { createRef, Fragment, type ReactNode, useState } from "react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { applyReducedMotionFixture } from "../../../testing/prefers-reduced-motion";
+import { selectDoc } from "../../component-docs/select";
 import { Field } from "../field/index";
-import { Select, type SelectProps } from "./index";
+import { Select, type SelectProps, type SelectTagsProps, type SelectValueProps } from "./index";
 import { useSelectContext } from "./select-context";
 import type { SelectItemProps } from "./select-item";
 
@@ -38,6 +39,7 @@ function renderSelect({
   items = ["Apple", "Banana", "Cherry"],
   withSearch = false,
   variant = "card",
+  tagsClassName,
 }: {
   multiple?: boolean;
   defaultValue?: string | string[];
@@ -51,6 +53,7 @@ function renderSelect({
   items?: string[];
   withSearch?: boolean;
   variant?: "default" | "card";
+  tagsClassName?: string;
 } = {}) {
   const commonProps = {
     variant,
@@ -81,7 +84,7 @@ function renderSelect({
     <Select {...props}>
       <Select.Trigger aria-label="Fruit">
         {multiple ? (
-          <Select.Tags placeholder="Pick fruits" />
+          <Select.Tags placeholder="Pick fruits" className={tagsClassName} />
         ) : (
           <Select.Value placeholder={PICK_FRUIT} />
         )}
@@ -157,6 +160,26 @@ function renderSelectInline({
 }
 
 describe("Select selection", () => {
+  it("passes selected values and registered labels to the SelectValue render function", async () => {
+    render(
+      <Select defaultOpen defaultValue="banana">
+        <Select.Trigger aria-label="Fruit">
+          <Select.Value>
+            {({ selected, labels }) =>
+              `${selected.join(", ")}: ${selected.map((value) => labels.get(value)).join(", ")}`
+            }
+          </Select.Value>
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="apple">Apple</Select.Item>
+          <Select.Item value="banana">Banana</Select.Item>
+        </Select.Content>
+      </Select>,
+    );
+
+    expect(await screen.findByText("banana: Banana")).toBeInTheDocument();
+  });
+
   it("supports direct namespaced parts with custom option UI inside Select.Item", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -315,6 +338,19 @@ describe("Select selection", () => {
     expect(screen.queryByRole("button", { name: /Remove/i })).not.toBeInTheDocument();
   });
 
+  it.each([
+    { state: "empty", defaultValue: [] as string[], visibleText: "Pick fruits" },
+    { state: "selected", defaultValue: ["apple"], visibleText: "Apple" },
+  ])("merges SelectTags className in the $state state", ({ defaultValue, visibleText }) => {
+    renderSelect({
+      multiple: true,
+      defaultValue,
+      tagsClassName: "custom-select-tags",
+    });
+
+    expect(screen.getByText(visibleText).closest(".custom-select-tags")).not.toBeNull();
+  });
+
   it("removes a selected tag by selecting its option again", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -350,6 +386,38 @@ describe("Select controlled state", () => {
     await user.click(getSelectTrigger());
     expect(onOpenChange).toHaveBeenCalledWith(true);
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("clears a searchable session when controlled open changes to false", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+
+    function ControlledSelect({ open }: { open: boolean }) {
+      return (
+        <Select open={open} onOpenChange={onOpenChange}>
+          <Select.Trigger aria-label="Fruit">
+            <Select.Value placeholder={PICK_FRUIT} />
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Search />
+            <Select.Item value="apple">Apple</Select.Item>
+            <Select.Item value="banana">Banana</Select.Item>
+          </Select.Content>
+        </Select>
+      );
+    }
+
+    const { rerender } = render(<ControlledSelect open />);
+    await user.type(getSearchInput(), "ban");
+    expect(getSearchInput()).toHaveValue("ban");
+    expect(screen.queryByRole("option", { name: "Apple" })).not.toBeInTheDocument();
+
+    rerender(<ControlledSelect open={false} />);
+    rerender(<ControlledSelect open />);
+
+    expect(getSearchInput()).toHaveValue("");
+    expect(screen.getByRole("option", { name: "Apple" })).toBeInTheDocument();
+    expect(onOpenChange).not.toHaveBeenCalled();
   });
 
   it("closes the dropdown and notifies onOpenChange when disabled while open", async () => {
@@ -615,6 +683,13 @@ describe("Select results live region", () => {
 });
 
 describe("Select search filtering", () => {
+  it("renders no empty state before a query, even when the option list is empty", () => {
+    renderSelect({ withSearch: true, defaultOpen: true, items: [] });
+
+    expect(getSearchInput()).toHaveValue("");
+    expect(screen.queryByText("> no results.")).not.toBeInTheDocument();
+  });
+
   it("filters items based on search query", async () => {
     const user = userEvent.setup();
     renderSelect({ withSearch: true });
@@ -712,6 +787,111 @@ describe("Select search filtering", () => {
     expect(listbox).not.toContainElement(getSearchInput());
     expect(listbox).not.toContainElement(screen.getByRole("combobox", { name: /filter options/i }));
   });
+
+  it("preserves a DOM wrapper around hoisted Search and Empty children", async () => {
+    const user = userEvent.setup();
+    renderSelectInline({
+      defaultOpen: true,
+      children: (
+        <div data-testid="search-only-wrapper">
+          <Select.Search />
+          <Select.Empty>No matches</Select.Empty>
+        </div>
+      ),
+    });
+
+    await user.type(getSearchInput(), "missing");
+
+    const listbox = screen.getByRole("listbox");
+    const wrappers = screen.getAllByTestId("search-only-wrapper");
+    const searchWrapper = getSearchInput().closest<HTMLElement>(
+      '[data-testid="search-only-wrapper"]',
+    );
+    const emptyWrapper = screen
+      .getByText("No matches")
+      .closest<HTMLElement>('[data-testid="search-only-wrapper"]');
+
+    expect(wrappers).toHaveLength(2);
+    expect(searchWrapper).not.toBeNull();
+    expect(emptyWrapper).not.toBeNull();
+    expect(listbox).not.toContainElement(searchWrapper);
+    expect(listbox).not.toContainElement(emptyWrapper);
+  });
+
+  it("clones a mixed DOM wrapper for hoisted parts and listbox options", async () => {
+    const user = userEvent.setup();
+    renderSelectInline({
+      defaultOpen: true,
+      children: (
+        <section data-testid="mixed-select-wrapper">
+          <Select.Search position="top" />
+          <Select.Item value="apple">Apple</Select.Item>
+          <Select.Empty>No matching fruit</Select.Empty>
+        </section>
+      ),
+    });
+
+    const listbox = screen.getByRole("listbox");
+    const option = screen.getByRole("option", { name: "Apple" });
+    const searchWrapper = getSearchInput().closest<HTMLElement>(
+      '[data-testid="mixed-select-wrapper"]',
+    );
+    const optionWrapper = option.closest<HTMLElement>('[data-testid="mixed-select-wrapper"]');
+
+    expect(searchWrapper).not.toBeNull();
+    expect(optionWrapper).not.toBeNull();
+    expect(listbox).not.toContainElement(searchWrapper);
+    expect(listbox).toContainElement(optionWrapper);
+
+    await user.type(getSearchInput(), "missing");
+    const emptyWrapper = screen
+      .getByText("No matching fruit")
+      .closest<HTMLElement>('[data-testid="mixed-select-wrapper"]');
+    expect(emptyWrapper).not.toBeNull();
+    expect(listbox).not.toContainElement(emptyWrapper);
+    expect(screen.getAllByTestId("mixed-select-wrapper")).toHaveLength(3);
+  });
+
+  it("assigns wrapper identity and ARIA semantics to only one partition", async () => {
+    const user = userEvent.setup();
+    const { container } = renderSelectInline({
+      defaultOpen: true,
+      children: (
+        // biome-ignore lint/a11y/useSemanticElements: a generic wrapper verifies that secondary clones lose explicit semantics; fieldset would keep an implicit group role.
+        <section
+          id="partitioned-select-wrapper"
+          role="group"
+          aria-label="Partitioned fruit"
+          tabIndex={-1}
+          className="consumer-wrapper"
+          data-testid="semantic-select-wrapper"
+        >
+          <Select.Search />
+          <Select.Item value="apple">Apple</Select.Item>
+          <Select.Empty>No matching fruit</Select.Empty>
+        </section>
+      ),
+    });
+
+    const semanticWrapper = screen.getByRole("group", { name: "Partitioned fruit" });
+    expect(semanticWrapper).toContainElement(screen.getByRole("option", { name: "Apple" }));
+
+    await user.type(getSearchInput(), "missing");
+
+    const wrappers = screen.getAllByTestId("semantic-select-wrapper");
+    expect(wrappers).toHaveLength(3);
+    expect(container.querySelectorAll("#partitioned-select-wrapper")).toHaveLength(1);
+    expect(semanticWrapper).toHaveAttribute("id", "partitioned-select-wrapper");
+    for (const wrapper of wrappers) {
+      expect(wrapper).toHaveClass("consumer-wrapper");
+      if (wrapper === semanticWrapper) continue;
+      expect(wrapper).not.toHaveAttribute("id");
+      expect(wrapper).not.toHaveAttribute("role");
+      expect(wrapper).not.toHaveAttribute("aria-label");
+      expect(wrapper).not.toHaveAttribute("tabindex");
+    }
+    expect(await axe(container)).toHaveNoViolations();
+  });
 });
 
 describe("Select keyboard navigation", () => {
@@ -721,6 +901,15 @@ describe("Select keyboard navigation", () => {
     getSelectTrigger().focus();
     await user.keyboard(key === " " ? " " : `{${key}}`);
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("transfers focus from its trigger to the listbox when opening", async () => {
+    const user = userEvent.setup();
+    renderSelect({ variant: "default" });
+    getSelectTrigger().focus();
+    await user.keyboard("{Enter}");
+
+    expect(screen.getByRole("listbox")).toHaveFocus();
   });
 
   it("transfers focus from trigger toggle to search combobox when opening searchable Select via keyboard", async () => {
@@ -902,6 +1091,44 @@ describe("Select keyboard navigation", () => {
     expect(getSearchInput()).toBeInTheDocument();
   });
 
+  it("closes only the focused or topmost Select on Escape", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <Select defaultOpen>
+          <Select.Trigger aria-label="First fruit">
+            <Select.Value placeholder="Pick first" />
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="apple">Apple</Select.Item>
+          </Select.Content>
+        </Select>
+        <Select defaultOpen>
+          <Select.Trigger aria-label="Second fruit">
+            <Select.Value placeholder="Pick second" />
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="banana">Banana</Select.Item>
+          </Select.Content>
+        </Select>
+      </>,
+    );
+    const firstTrigger = screen.getByRole("combobox", { name: "First fruit" });
+    const secondTrigger = screen.getByRole("combobox", { name: "Second fruit" });
+    const [firstListbox] = screen.getAllByRole("listbox");
+    firstListbox?.focus();
+
+    await user.keyboard("{Escape}");
+
+    expect(firstTrigger).toHaveAttribute("aria-expanded", "false");
+    expect(secondTrigger).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getAllByRole("listbox")).toHaveLength(1);
+
+    // fireEvent retained: an Escape dispatched outside every Select has no userEvent focus target.
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(secondTrigger).toHaveAttribute("aria-expanded", "false");
+  });
+
   it("honors preventDefault in content key handlers", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -1026,6 +1253,26 @@ describe("Select keyboard navigation", () => {
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true");
     const listbox = screen.getByRole("listbox");
     expect(listbox).toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("option", { name: /banana/i }).id,
+    );
+  });
+
+  it("starts a fresh typeahead query after close and reopen", async () => {
+    const user = userEvent.setup();
+    renderSelect();
+    getSelectTrigger().focus();
+
+    await user.keyboard("a");
+    expect(screen.getByRole("listbox")).toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("option", { name: /apple/i }).id,
+    );
+
+    await user.keyboard("{Escape}");
+    await user.keyboard("b");
+
+    expect(screen.getByRole("listbox")).toHaveAttribute(
       "aria-activedescendant",
       screen.getByRole("option", { name: /banana/i }).id,
     );
@@ -1175,6 +1422,131 @@ describe("Select Tab-close focus restore", () => {
 });
 
 describe("Select open-focus stability", () => {
+  it.each([
+    { initialState: "missing", initialDisabled: false },
+    { initialState: "disabled", initialDisabled: true },
+  ])("initializes a late enabled option after opening with it $initialState", async ({
+    initialDisabled,
+  }) => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    function Harness({ ready }: { ready: boolean }) {
+      const showOption = initialDisabled || ready;
+      return (
+        <Select variant="default" onChange={onChange}>
+          <Select.Trigger aria-label="Fruit">
+            <Select.Value placeholder={PICK_FRUIT} />
+          </Select.Trigger>
+          <Select.Content>
+            {showOption && (
+              <Select.Item value="apple" disabled={!ready}>
+                Apple
+              </Select.Item>
+            )}
+          </Select.Content>
+        </Select>
+      );
+    }
+
+    const { rerender } = render(<Harness ready={false} />);
+    await user.click(getSelectTrigger());
+    const listbox = screen.getByRole("listbox");
+    expect(listbox).not.toHaveAttribute("aria-activedescendant");
+
+    rerender(<Harness ready />);
+
+    const apple = screen.getByRole("option", { name: "Apple" });
+    await waitFor(() => expect(listbox).toHaveAttribute("aria-activedescendant", apple.id));
+    expect(listbox).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+    expect(onChange).toHaveBeenCalledWith("apple");
+  });
+
+  it("requests a controlled highlight when the first option arrives", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    function Harness({ ready }: { ready: boolean }) {
+      const [highlighted, setHighlighted] = useState<string | null>(null);
+      return (
+        <Select
+          variant="default"
+          highlighted={highlighted}
+          onHighlightChange={setHighlighted}
+          onChange={onChange}
+        >
+          <Select.Trigger aria-label="Fruit">
+            <Select.Value placeholder={PICK_FRUIT} />
+          </Select.Trigger>
+          <Select.Content>{ready && <Select.Item value="apple">Apple</Select.Item>}</Select.Content>
+        </Select>
+      );
+    }
+
+    const { rerender } = render(<Harness ready={false} />);
+    await user.click(getSelectTrigger());
+    const listbox = screen.getByRole("listbox");
+
+    rerender(<Harness ready />);
+
+    const apple = screen.getByRole("option", { name: "Apple" });
+    await waitFor(() => expect(listbox).toHaveAttribute("aria-activedescendant", apple.id));
+    await user.keyboard("{Enter}");
+    expect(onChange).toHaveBeenCalledWith("apple");
+  });
+
+  it("focuses searchable content when default-open Select mounts with unowned focus", async () => {
+    renderSelect({ variant: "default", defaultOpen: true, withSearch: true });
+
+    await waitFor(() => expect(getSearchInput()).toHaveFocus());
+  });
+
+  it.each([
+    { label: "non-searchable", searchable: false },
+    { label: "searchable", searchable: true },
+  ])("does not steal focus when a $label default-open Select mounts late", async ({
+    searchable,
+  }) => {
+    const user = userEvent.setup();
+
+    function Harness() {
+      const [isMounted, setIsMounted] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setIsMounted(true)}>
+            Mount Select
+          </button>
+          {isMounted && (
+            <Select variant="card" defaultOpen>
+              <Select.Trigger aria-label="Fruit">
+                <Select.Value placeholder={PICK_FRUIT} />
+              </Select.Trigger>
+              <Select.Content>
+                {searchable && <Select.Search />}
+                <Select.Item value="apple">Apple</Select.Item>
+                <Select.Item value="banana">Banana</Select.Item>
+              </Select.Content>
+            </Select>
+          )}
+        </>
+      );
+    }
+
+    render(<Harness />);
+    const focusOwner = screen.getByRole("button", { name: "Mount Select" });
+    await user.click(focusOwner);
+
+    const listbox = screen.getByRole("listbox");
+    const apple = screen.getByRole("option", { name: "Apple" });
+    const activeDescendantOwner = searchable ? getSearchInput() : listbox;
+    await waitFor(() =>
+      expect(activeDescendantOwner).toHaveAttribute("aria-activedescendant", apple.id),
+    );
+    expect(focusOwner).toHaveFocus();
+  });
+
   it("focuses the listbox on open but does not re-steal focus on later re-renders while open", async () => {
     function Harness({ extra }: { extra: string }) {
       return (
@@ -1489,6 +1861,7 @@ describe("Select form submission", () => {
     defaultOpen,
     disabled,
     required,
+    onChange,
     items = ["Apple", "Banana", "Cherry"],
     formLabel = "Test form",
   }: {
@@ -1498,6 +1871,7 @@ describe("Select form submission", () => {
     defaultOpen?: boolean;
     disabled?: boolean;
     required?: boolean;
+    onChange?: (value: string | string[]) => void;
     items?: string[];
     formLabel?: string;
   }) {
@@ -1513,18 +1887,20 @@ describe("Select form submission", () => {
       ? {
           ...commonProps,
           multiple: true,
+          onChange: onChange as ((value: string[]) => void) | undefined,
           ...(Array.isArray(defaultValue) ? { defaultValue } : {}),
         }
       : {
           ...commonProps,
           multiple: false,
+          onChange: onChange as ((value: string) => void) | undefined,
           ...(typeof defaultValue === "string" ? { defaultValue } : {}),
         };
 
     return render(
       <form aria-label={formLabel}>
         <Select {...props}>
-          <Select.Trigger>
+          <Select.Trigger aria-label={multiple ? "Fruits" : "Fruit"}>
             {multiple ? <Select.Tags placeholder="Pick" /> : <Select.Value placeholder="Pick" />}
           </Select.Trigger>
           <Select.Content>
@@ -1588,9 +1964,71 @@ describe("Select form submission", () => {
     }
   });
 
+  it("omits a retained single value when its option becomes disabled", async () => {
+    function SingleSelect({ optionDisabled }: { optionDisabled: boolean }) {
+      return (
+        <form aria-label="Single fruit form">
+          <Select name="fruit" value="banana">
+            <Select.Trigger aria-label="Fruit">
+              <Select.Value placeholder="Pick" />
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="banana" disabled={optionDisabled}>
+                Banana
+              </Select.Item>
+            </Select.Content>
+          </Select>
+        </form>
+      );
+    }
+
+    const { rerender } = render(<SingleSelect optionDisabled={false} />);
+    const form = getTestForm("Single fruit form");
+    expect(new FormData(form).get("fruit")).toBe("banana");
+
+    rerender(<SingleSelect optionDisabled />);
+
+    await waitFor(() => expect(new FormData(form).has("fruit")).toBe(false));
+    expect(getSelectTrigger()).toHaveTextContent("Banana");
+  });
+
+  it("submits only enabled retained values when multiple options become disabled", async () => {
+    function MultipleSelect({ disabledValues }: { disabledValues: ReadonlySet<string> }) {
+      return (
+        <form aria-label="Multiple fruit form">
+          <Select name="fruit" multiple value={["apple", "banana"]}>
+            <Select.Trigger aria-label="Fruits">
+              <Select.Tags placeholder="Pick" />
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="apple" disabled={disabledValues.has("apple")}>
+                Apple
+              </Select.Item>
+              <Select.Item value="banana" disabled={disabledValues.has("banana")}>
+                Banana
+              </Select.Item>
+            </Select.Content>
+          </Select>
+        </form>
+      );
+    }
+
+    const { rerender } = render(<MultipleSelect disabledValues={new Set()} />);
+    const form = getTestForm("Multiple fruit form");
+    expect(new FormData(form).getAll("fruit")).toEqual(["apple", "banana"]);
+
+    rerender(<MultipleSelect disabledValues={new Set(["apple"])} />);
+    await waitFor(() => expect(new FormData(form).getAll("fruit")).toEqual(["banana"]));
+
+    rerender(<MultipleSelect disabledValues={new Set(["apple", "banana"])} />);
+    await waitFor(() => expect(new FormData(form).has("fruit")).toBe(false));
+    expect(getSelectTrigger()).toHaveTextContent("Apple");
+    expect(getSelectTrigger()).toHaveTextContent("Banana");
+  });
+
   it("uses native validity for required single and multiple selects", async () => {
     const user = userEvent.setup();
-    const { unmount } = renderFormSelect({ name: "fruit", required: true });
+    const { container, unmount } = renderFormSelect({ name: "fruit", required: true });
     const form = getTestForm();
 
     expect(form.checkValidity()).toBe(false);
@@ -1598,6 +2036,7 @@ describe("Select form submission", () => {
     expect(getSelectTrigger()).toHaveFocus();
     expect(getSelectTrigger()).toHaveAttribute("aria-required", "true");
     expect(screen.getAllByRole("combobox")).toHaveLength(1);
+    expect(await axe(container)).toHaveNoViolations();
 
     await user.click(getSelectTrigger());
     await user.click(screen.getByRole("option", { name: /banana/i }));
@@ -1634,8 +2073,8 @@ describe("Select form submission", () => {
     expect(new FormData(form).entries().next().done).toBe(true);
   });
 
-  it("propagates required and invalid semantics to searchable visible controls", () => {
-    render(
+  it("puts searchable required semantics on the search combobox, not its toggle", async () => {
+    const { container } = render(
       <form aria-label="Test form">
         <Select variant="card" name="fruit" required aria-invalid defaultOpen>
           <Select.Trigger>
@@ -1649,10 +2088,11 @@ describe("Select form submission", () => {
       </form>,
     );
 
-    expect(getSelectTrigger()).toHaveAttribute("aria-required", "true");
+    expect(getSelectTrigger()).not.toHaveAttribute("aria-required");
     expect(getSelectTrigger()).toHaveAttribute("aria-invalid", "true");
     expect(getSearchInput()).toHaveAttribute("aria-required", "true");
     expect(getSearchInput()).toHaveAttribute("aria-invalid", "true");
+    expect(await axe(container)).toHaveNoViolations();
   });
 
   it("updates FormData when selection changes", async () => {
@@ -1664,14 +2104,56 @@ describe("Select form submission", () => {
 
   it("resets uncontrolled single and multiple selects with native form reset", async () => {
     const user = userEvent.setup();
-    renderFormSelect({ name: "fruit", defaultValue: "banana", defaultOpen: true });
+    const singleOnChange = vi.fn();
+    renderFormSelect({
+      name: "fruit",
+      defaultValue: "banana",
+      defaultOpen: true,
+      onChange: singleOnChange,
+    });
     await user.click(screen.getByRole("option", { name: /cherry/i }));
 
     let form = getTestForm();
     expect(new FormData(form).get("fruit")).toBe("cherry");
+    expect(singleOnChange).toHaveBeenCalledTimes(1);
 
     form.reset();
     await waitFor(() => expect(new FormData(form).get("fruit")).toBe("banana"));
+    expect(singleOnChange).toHaveBeenCalledTimes(1);
+
+    const multipleOnChange = vi.fn();
+    renderFormSelect({
+      name: "fruits",
+      multiple: true,
+      defaultValue: ["apple"],
+      defaultOpen: true,
+      items: ["Apple", "Banana"],
+      formLabel: "Multi fruit form",
+      onChange: multipleOnChange,
+    });
+    await user.click(screen.getByRole("option", { name: /banana/i }));
+    form = getTestForm(/multi fruit form/i);
+    expect(new FormData(form).getAll("fruits")).toEqual(["apple", "banana"]);
+    expect(multipleOnChange).toHaveBeenCalledTimes(1);
+
+    form.reset();
+    await waitFor(() => expect(new FormData(form).getAll("fruits")).toEqual(["apple"]));
+    expect(multipleOnChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps single and multiple selections newer than a same-task form reset", async () => {
+    renderFormSelect({
+      name: "fruit",
+      defaultValue: "banana",
+      defaultOpen: true,
+    });
+    let form = getTestForm();
+
+    form.reset();
+    // fireEvent retained: selection must remain in the reset task before its microtask can flush.
+    fireEvent.click(screen.getByRole("option", { name: /cherry/i }));
+    await Promise.resolve();
+    expect(new FormData(form).get("fruit")).toBe("cherry");
 
     renderFormSelect({
       name: "fruits",
@@ -1681,12 +2163,55 @@ describe("Select form submission", () => {
       items: ["Apple", "Banana"],
       formLabel: "Multi fruit form",
     });
-    await user.click(screen.getByRole("option", { name: /banana/i }));
     form = getTestForm(/multi fruit form/i);
-    expect(new FormData(form).getAll("fruits")).toEqual(["apple", "banana"]);
 
     form.reset();
-    await waitFor(() => expect(new FormData(form).getAll("fruits")).toEqual(["apple"]));
+    // fireEvent retained: selection must remain in the reset task before its microtask can flush.
+    fireEvent.click(screen.getByRole("option", { name: /banana/i }));
+    await Promise.resolve();
+    expect(new FormData(form).getAll("fruits")).toEqual(["apple", "banana"]);
+  });
+
+  it.each([
+    {
+      label: "single",
+      multiple: false,
+      name: "fruit",
+      defaultValue: "banana",
+      changedValue: "cherry",
+      defaultEntries: ["banana"],
+      changedEntries: ["cherry"],
+    },
+    {
+      label: "multiple",
+      multiple: true,
+      name: "fruits",
+      defaultValue: ["apple"],
+      changedValue: "banana",
+      defaultEntries: ["apple"],
+      changedEntries: ["apple", "banana"],
+    },
+  ])("applies a $label Select reset before a later activation", async ({
+    multiple,
+    name,
+    defaultValue,
+    changedValue,
+    defaultEntries,
+    changedEntries,
+  }) => {
+    const user = userEvent.setup();
+    renderFormSelect({ name, multiple, defaultValue, defaultOpen: true });
+    const form = getTestForm();
+
+    await user.click(screen.getByRole("option", { name: new RegExp(changedValue, "i") }));
+    expect(new FormData(form).getAll(name)).toEqual(changedEntries);
+
+    form.reset();
+    await waitFor(() => expect(new FormData(form).getAll(name)).toEqual(defaultEntries));
+
+    if (!multiple) await user.click(getSelectTrigger());
+    await user.click(screen.getByRole("option", { name: new RegExp(changedValue, "i") }));
+    expect(new FormData(form).getAll(name)).toEqual(changedEntries);
   });
 
   it("omits FormData when name prop is omitted", () => {
@@ -1941,6 +2466,28 @@ describe("Select unified label derivation (JSX children)", () => {
 });
 
 describe("Select types", () => {
+  it("keeps placeholder types aligned with public metadata", () => {
+    expectTypeOf<SelectTagsProps["placeholder"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<SelectValueProps["placeholder"]>().toEqualTypeOf<ReactNode>();
+
+    expect(selectDoc.props?.SelectTags?.placeholder).toMatchObject({
+      type: "string",
+      required: false,
+      defaultValue: '"Select..."',
+    });
+    expect(selectDoc.props?.SelectValue?.placeholder).toMatchObject({
+      type: "ReactNode",
+      required: false,
+      defaultValue: '"Select..."',
+    });
+  });
+
+  it("accepts only a render function as SelectValue children", () => {
+    expectTypeOf<NonNullable<ReactNode>>().not.toMatchTypeOf<
+      NonNullable<SelectValueProps["children"]>
+    >();
+  });
+
   it("narrows value/onChange in single mode to the supplied union", () => {
     type SingleNarrow = Extract<SelectProps<"a" | "b">, { multiple?: false }>;
 

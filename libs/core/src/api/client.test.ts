@@ -102,16 +102,19 @@ describe("createApiClient", () => {
       expect(lastHeaders().get("Content-Type")).toBeNull();
     });
 
-    it("includes projectRoot header when configured", async () => {
+    it.each([
+      "/home/zażółć/project",
+      "/home/🚀/project",
+    ])("encodes a projectRoot header as ASCII-safe transport for %s", async (projectRoot) => {
       const projectClient = createApiClient({
         baseUrl: "http://localhost:3000",
-        projectRoot: "/home/user/project",
+        projectRoot,
       });
       mockFetch.mockResolvedValue(jsonResponse({}));
 
       await projectClient.get("/api/test");
 
-      expect(lastHeaders().get(PROJECT_ROOT_HEADER)).toBe("/home/user/project");
+      expect(lastHeaders().get(PROJECT_ROOT_HEADER)).toBe(encodeURIComponent(projectRoot));
     });
 
     it("includes custom base headers", async () => {

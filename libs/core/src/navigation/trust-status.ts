@@ -1,4 +1,5 @@
 import type { TrustConfig } from "../schemas/config/settings.js";
+import { hasRepositoryReadAccess } from "../schemas/config/trust-capabilities.js";
 
 export interface TrustStatusInput {
   trust: TrustConfig | null | undefined;
@@ -16,7 +17,7 @@ export interface DerivedTrustStatus {
 export function deriveTrustStatus(input: TrustStatusInput): DerivedTrustStatus {
   const { trust, projectId, repoRoot } = input;
 
-  const isTrusted = Boolean(trust?.capabilities.readFiles);
+  const isTrusted = hasRepositoryReadAccess(trust, repoRoot);
   const needsTrust = Boolean(projectId && repoRoot && trust === null);
 
   return { needsTrust, isTrusted };
