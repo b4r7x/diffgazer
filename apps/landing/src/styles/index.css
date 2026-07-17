@@ -41,7 +41,7 @@ html[data-scene-theme="light"] {
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; overflow-x: clip; }
 body {
   background: var(--background);
   color: var(--foreground);
@@ -50,7 +50,7 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.7s ease, color 0.7s ease;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 ::selection { background: var(--selection); }
 a { color: inherit; text-decoration: none; }
@@ -81,9 +81,8 @@ main { position: relative; z-index: 10; }
   display: inline-flex; align-items: center; height: 34px; padding: 0 14px;
   background: var(--foreground); color: var(--background); font-weight: 700; font-size: 12px;
   letter-spacing: 0.08em; border-radius: var(--radius);
-  transition: background-color 0.7s ease, color 0.7s ease, transform 0.15s ease;
+  transition: background-color 0.7s ease, color 0.7s ease;
 }
-.hud-install:hover { transform: translateY(-1px); }
 #osd-spin { color: var(--diff-hunk); }
 
 /* Fixed viewport corner brackets */
