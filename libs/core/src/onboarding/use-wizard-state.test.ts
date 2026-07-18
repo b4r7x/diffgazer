@@ -154,6 +154,39 @@ describe("useWizardState", () => {
     expect(result.current.currentStep).toBe("model");
   });
 
+  it("coalesces rapid next calls during an early save and advances once to model", async () => {
+    const saveConfigGate = deferred<void>();
+    const callbacks = makeCallbacks({
+      saveConfig: vi.fn(() => saveConfigGate.promise),
+    });
+
+    const { result } = renderHook(() => useWizardState({ initial: OPENROUTER_DATA, callbacks }));
+
+    advanceToEarlySave(result);
+
+    act(() => {
+      result.current.next();
+      result.current.next();
+    });
+
+    expect(result.current.currentStep).toBe("api-key");
+    expect(result.current.isEarlySaving).toBe(true);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(callbacks.saveConfig).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      saveConfigGate.resolve();
+    });
+
+    expect(result.current.currentStep).toBe("model");
+    expect(result.current.stepIndex).toBe(3);
+    expect(callbacks.saveSettings).toHaveBeenCalledTimes(1);
+    expect(callbacks.saveConfig).toHaveBeenCalledTimes(1);
+  });
+
   it("captures an early-save failure and clears it on step change", async () => {
     const callbacks = makeCallbacks({
       saveConfig: vi.fn().mockRejectedValue(new Error("STORAGE_NOT_CONFIGURED")),

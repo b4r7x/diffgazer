@@ -5,7 +5,6 @@ import type {
   AnchorHTMLAttributes,
   ButtonHTMLAttributes,
   MouseEventHandler,
-  MouseEvent as ReactMouseEvent,
   ReactNode,
   Ref,
 } from "react";
@@ -259,13 +258,7 @@ export function SidebarItem(props: SidebarItemProps): ReactNode {
       ref={ref}
       {...sharedProps}
       // biome-ignore lint/a11y/useValidAnchor: href is supplied by the consumer through anchorProps (spread), which Biome cannot see; the onClick guards disabled navigation rather than replacing the href.
-      onClick={(event: ReactMouseEvent<HTMLAnchorElement>) => {
-        if (disabled) {
-          event.preventDefault();
-          return;
-        }
-        onClick?.(event);
-      }}
+      onClick={guardedClick(onClick)}
     >
       {itemPrefix}
       {children}

@@ -1,11 +1,10 @@
 import { Children, isValidElement, type ReactNode } from "react";
+import { encodeDomIdSegment } from "@/lib/dom-id";
 
-/** Returns whether value selected. */
 export function isValueSelected(value: string | null | string[], itemValue: string): boolean {
   return Array.isArray(value) ? value.includes(itemValue) : value === itemValue;
 }
 
-/** Returns node text. */
 export function getNodeText(node: ReactNode): string | undefined {
   if (typeof node === "string" || typeof node === "number") return String(node);
   if (Array.isArray(node)) {
@@ -22,11 +21,10 @@ export function toSelectedArray(value: string | null | string[], multiple: boole
 }
 
 export function toOptionId(listboxId: string, value: string): string {
-  const encoded = Array.from(value, (char) => char.codePointAt(0)?.toString(36) ?? "0").join("-");
+  const encoded = encodeDomIdSegment(value);
   return `${listboxId}-opt-${encoded || "empty"}`;
 }
 
-/** Returns whether active option visible. */
 export function isActiveOptionVisible(
   options: ReadonlyMap<string, { label: string; disabled: boolean }>,
   value: string | null,

@@ -6,6 +6,7 @@ import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { resolveAriaInvalid } from "@/lib/aria";
+import { useFieldsetDisabled } from "@/lib/fieldset-disabled";
 import { cn } from "@/lib/utils";
 
 /** Allowed switch size values. */
@@ -138,6 +139,8 @@ export function Switch({
     defaultValue: defaultChecked,
     onChange,
   });
+  const fieldsetDisabled = useFieldsetDisabled(rootRef);
+  const isDisabled = disabled || fieldsetDisabled;
   const [nativeInvalid, setNativeInvalid] = useState(false);
   const resolvedAriaInvalid = resolveAriaInvalid(
     ariaInvalid,
@@ -165,14 +168,14 @@ export function Switch({
   );
 
   const toggle = () => {
-    if (disabled) return;
+    if (isDisabled) return;
     invalidatePendingReset();
     setNativeInvalid(false);
     setIsChecked(!isChecked);
   };
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    if (disabled) {
+    if (isDisabled) {
       event.preventDefault();
       return;
     }
@@ -192,7 +195,7 @@ export function Switch({
           value={value}
           checked={isChecked}
           required={required}
-          disabled={disabled}
+          disabled={isDisabled}
           className="sr-only"
           tabIndex={-1}
           aria-hidden={true}
@@ -212,17 +215,17 @@ export function Switch({
         role="switch"
         data-slot="switch"
         data-state={isChecked ? "checked" : "unchecked"}
-        data-disabled={disabled ? "" : undefined}
+        data-disabled={isDisabled ? "" : undefined}
         aria-checked={isChecked}
-        aria-disabled={disabled || undefined}
+        aria-disabled={isDisabled || undefined}
         aria-required={required || undefined}
         aria-invalid={resolvedAriaInvalid}
         aria-label={ariaLabel}
         aria-labelledby={ariaLabelledBy}
         aria-describedby={ariaDescribedBy}
-        disabled={disabled}
+        disabled={isDisabled}
         onClick={handleClick}
-        className={cn(trackVariants({ size, checked: isChecked, disabled }), className)}
+        className={cn(trackVariants({ size, checked: isChecked, disabled: isDisabled }), className)}
       >
         <span
           aria-hidden="true"

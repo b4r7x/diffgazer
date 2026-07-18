@@ -2,10 +2,6 @@
 
 import { createContext, useContext } from "react";
 
-/**
- * Compound component for displaying labeled data. KeyValue wraps one or more KeyValue.Item rows
- * in a semantic description list.
- */
 export type KeyValueLayout = "horizontal" | "vertical";
 /** Allowed key value variant values. */
 export type KeyValueVariant = "default" | "warning" | "info" | "success" | "error";

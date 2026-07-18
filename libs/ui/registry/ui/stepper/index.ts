@@ -13,7 +13,6 @@ import {
 } from "./stepper-substep";
 import { StepperTrigger, type StepperTriggerProps } from "./stepper-trigger";
 
-/** Root provider (manages expansion + variant) */
 const Stepper = Object.assign(StepperRoot, {
   Step: StepperStep,
   Trigger: StepperTrigger,

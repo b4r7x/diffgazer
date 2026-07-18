@@ -48,6 +48,7 @@ export function useReviewCompletion({
       : DEFAULT_COMPLETE_DELAY_MS;
   });
   const emitComplete = useEffectEvent(onComplete);
+  const emitStreamComplete = useEffectEvent(() => onStreamComplete?.());
 
   function clearTimer() {
     if (timerRef.current) {
@@ -76,7 +77,7 @@ export function useReviewCompletion({
     if (canComplete && !handledCompletionRef.current) {
       handledCompletionRef.current = true;
       setCompletion({ status: "delaying", completedAt: new Date() });
-      onStreamComplete?.();
+      emitStreamComplete();
       const delayMs = getCompletionDelay();
 
       if (timerRef.current) {
@@ -109,7 +110,7 @@ export function useReviewCompletion({
       timerRef.current = null;
       setCompletion({ status: "idle" });
     }
-  }, [isStreaming, isComplete, error, errorCode, hasStreamed, onStreamComplete]);
+  }, [isStreaming, isComplete, error, errorCode, hasStreamed]);
 
   function skipDelay() {
     clearTimer();

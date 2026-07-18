@@ -28,7 +28,7 @@ function getComposedParentElement(element: Element): Element | null {
   return element.assignedSlot ?? element.parentElement ?? getShadowHost(element);
 }
 
-function getComposedChildren(element: Element): Element[] {
+export function getComposedChildren(element: Element): Element[] {
   if (element.shadowRoot) return Array.from(element.shadowRoot.children);
   if (element.localName === "slot") {
     const assigned = (element as HTMLSlotElement).assignedElements({ flatten: true });
@@ -95,7 +95,7 @@ export function isReachable(element: HTMLElement): boolean {
   );
 }
 
-function isInsideDisabledFieldset(element: HTMLElement): boolean {
+export function isInsideDisabledFieldset(element: HTMLElement): boolean {
   let fieldset = element.closest<HTMLFieldSetElement>("fieldset[disabled]");
   while (fieldset) {
     const legend = fieldset.querySelector(":scope > legend");

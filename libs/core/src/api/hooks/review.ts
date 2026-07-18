@@ -92,8 +92,10 @@ function cancelActiveReviewSessionQuery(
   api: BoundApi,
   mode: ReviewMode | undefined,
 ) {
-  // biome-ignore format: keep this exact cancellation call grep-checkable for the fix spec.
-  return qc.cancelQueries({ queryKey: reviewQueries.activeSession(api, mode).queryKey, exact: true });
+  return qc.cancelQueries({
+    queryKey: reviewQueries.activeSession(api, mode).queryKey,
+    exact: true,
+  });
 }
 
 async function cancelActiveSessionQueries(qc: QueryClient, api: BoundApi, mode: ReviewMode) {

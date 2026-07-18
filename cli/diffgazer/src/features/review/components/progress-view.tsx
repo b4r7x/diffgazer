@@ -9,7 +9,7 @@ import {
 import type { AgentState, LensStat } from "@diffgazer/core/schemas/events";
 import type { ProgressStepData, Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
-import type { ReactElement } from "react";
+import { type ReactElement, useEffect, useState } from "react";
 import { ProgressList } from "../../../components/shared/progress/list";
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
@@ -87,6 +87,19 @@ export function ReviewProgressView({
 }: ReviewProgressViewProps): ReactElement {
   const { tokens } = useTheme();
   const { isMedium, isWide } = useResponsive();
+  // Lazy now-seed: a zero seed renders a negative elapsed on the first frame
+  // and permanently for runs that mount already stopped (error/abort).
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!isStreaming || !startedAt || completedAt) return;
+
+    const updateCurrentTime = () => setCurrentTime(Date.now());
+    updateCurrentTime();
+    const interval = setInterval(updateCurrentTime, 1000);
+
+    return () => clearInterval(interval);
+  }, [completedAt, isStreaming, startedAt]);
 
   useInput(
     (_input, key) => {
@@ -108,7 +121,7 @@ export function ReviewProgressView({
     rightShortcuts: onBack ? BACK_SHORTCUTS : [],
   });
 
-  const elapsed = startedAt ? (completedAt?.getTime() ?? Date.now()) - startedAt.getTime() : 0;
+  const elapsed = startedAt ? (completedAt?.getTime() ?? currentTime) - startedAt.getTime() : 0;
 
   const sideBySide = isWide || isMedium;
   const progressWidth = getResponsiveWidth(isWide, isMedium, {
@@ -150,7 +163,6 @@ export function ReviewProgressView({
           filesIncluded={fileProgress.completed.length}
           issuesFound={issuesFound}
           elapsed={elapsed}
-          isStreaming={isStreaming}
         />
       </Box>
     </Box>

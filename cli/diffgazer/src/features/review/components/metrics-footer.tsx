@@ -6,14 +6,12 @@ export interface ReviewMetricsFooterProps {
   filesIncluded: number;
   issuesFound: number;
   elapsed: number;
-  isStreaming: boolean;
 }
 
 export function ReviewMetricsFooter({
   filesIncluded,
   issuesFound,
   elapsed,
-  isStreaming,
 }: ReviewMetricsFooterProps) {
   const { tokens } = useTheme();
 
@@ -25,7 +23,6 @@ export function ReviewMetricsFooter({
       <Text color={issuesFound > 0 ? tokens.warning : tokens.fg}>{issuesFound}</Text>
       <Text color={tokens.muted}> | Time: </Text>
       <Text color={tokens.info}>{formatTime(elapsed)}</Text>
-      {isStreaming ? <Text color={tokens.muted}> ...</Text> : null}
     </Box>
   );
 }

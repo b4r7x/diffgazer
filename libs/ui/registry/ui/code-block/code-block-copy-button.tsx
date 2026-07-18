@@ -12,7 +12,7 @@ export interface CodeBlockCopyButtonProps
   copyLabel?: string;
   /** Status message announced via aria-live after a successful copy. */
   copiedMessage?: string;
-  /** Header and Content subparts. */
+  /** Optional button content or a render function that receives the copy state. */
   children?: ((state: "idle" | "copied") => ReactNode) | ReactNode;
   /** Called after a successful clipboard write. */
   onCopy?: (source: string) => void;

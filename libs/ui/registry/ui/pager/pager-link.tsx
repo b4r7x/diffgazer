@@ -3,11 +3,6 @@
 import type { AnchorHTMLAttributes, ComponentPropsWithRef, ReactNode, Ref } from "react";
 import { cn } from "@/lib/utils";
 
-const DIRECTION_CONFIG = {
-  previous: { rel: "prev" },
-  next: { rel: "next" },
-} as const;
-
 /** Props for pager link render. */
 export type PagerLinkRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
   ref: Ref<HTMLAnchorElement>;
@@ -27,9 +22,9 @@ export interface PagerLinkProps extends Omit<ComponentPropsWithRef<"a">, "childr
   direction: "previous" | "next";
 }
 
-/** direction="next" - right-aligned with → arrow. */
+/** Renders a previous or next pagination link. */
 export function PagerLink({ className, ref, children, direction, ...props }: PagerLinkProps) {
-  const { rel } = DIRECTION_CONFIG[direction];
+  const rel = direction === "previous" ? "prev" : "next";
   const resolvedClassName = cn(
     "text-xs font-mono text-muted-foreground hover:text-foreground transition-colors",
     direction === "next" && "ml-auto",

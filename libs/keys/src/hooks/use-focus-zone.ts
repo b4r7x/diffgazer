@@ -1,6 +1,14 @@
 "use client";
 
-import { type RefObject, useEffect, useEffectEvent, useRef, useState } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { DECLINE } from "../core/normalize-key-input.js";
 import {
   composedContains,
@@ -170,19 +178,40 @@ export function useFocusZone<T extends string>(
 
   const currentZone: T = controlledZone ?? internalZone;
   const lastFocusedZoneRef = useRef<T | null>(null);
+  const zoneStateRef = useRef({
+    currentZone,
+    zones,
+    controlledZone,
+    onLeaveZone,
+    onEnterZone,
+    onZoneChange,
+  });
+  // Latest-ref sync: the public setter is called from consumer event handlers,
+  // where useEffectEvent is forbidden; runs every render by design.
+  useLayoutEffect(() => {
+    zoneStateRef.current = {
+      currentZone,
+      zones,
+      controlledZone,
+      onLeaveZone,
+      onEnterZone,
+      onZoneChange,
+    };
+  });
 
   const validatedTabCycle = tabCycle?.filter((entry) => zones.includes(entry));
 
   const canCycleTabs = enabled && validatedTabCycle != null && validatedTabCycle.length > 1;
 
-  const setZoneValue = (next: T) => {
-    if (next === currentZone) return;
-    if (!zones.includes(next)) return;
-    onLeaveZone?.(currentZone);
-    onEnterZone?.(next);
-    if (controlledZone === undefined) setInternalZone(next);
-    onZoneChange?.(next);
-  };
+  const setZoneValue = useCallback((next: T) => {
+    const latest = zoneStateRef.current;
+    if (next === latest.currentZone) return;
+    if (!latest.zones.includes(next)) return;
+    latest.onLeaveZone?.(latest.currentZone);
+    latest.onEnterZone?.(next);
+    if (latest.controlledZone === undefined) setInternalZone(next);
+    latest.onZoneChange?.(next);
+  }, []);
 
   const handleArrowTransition = (key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown") => {
     const next = transitions?.({ zone: currentZone, key });

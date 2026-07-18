@@ -4,7 +4,7 @@ import {
   useKey,
   useScopedNavigation,
 } from "@diffgazer/keys";
-import { type RefObject, useLayoutEffect, useRef } from "react";
+import { type RefObject, useLayoutEffect, useRef, useState } from "react";
 
 export type TrustFormFocusZone = "list" | "buttons";
 export type TrustFormAction = "save" | "revoke";
@@ -46,7 +46,7 @@ export function useTrustFormKeyboard({
 }: UseTrustFormKeyboardOptions) {
   const actionRowRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef<HTMLButtonElement | null>(null);
-  const pendingActionRef = useRef<TrustFormAction | null>(null);
+  const [pendingAction, setPendingAction] = useState<TrustFormAction | null>(null);
   const wasActionsDisabledRef = useRef(false);
   const keyboardEnabled = enabled && !actionsDisabled;
   const { zone, setZone, getKeyOptions } = useFocusZone<TrustFormFocusZone>({
@@ -96,7 +96,7 @@ export function useTrustFormKeyboard({
 
   const activateAction = (action: TrustFormAction) => {
     if (actionsDisabled) return;
-    pendingActionRef.current = action;
+    setPendingAction(action);
     restoreFocusRef.current = getActionButton(actionRowRef.current, action);
     if (action === "save") onSave?.();
     else onRevoke?.();
@@ -117,7 +117,7 @@ export function useTrustFormKeyboard({
     if (wasActionsDisabled && !actionsDisabled) {
       restoreFocusRef.current?.focus();
       restoreFocusRef.current = null;
-      pendingActionRef.current = null;
+      setPendingAction(null);
     }
   }, [actionsDisabled, busyStatusRef]);
 
@@ -136,6 +136,6 @@ export function useTrustFormKeyboard({
     focusActionButton,
     handleActionFocus,
     activateAction,
-    pendingAction: pendingActionRef.current,
+    pendingAction,
   };
 }

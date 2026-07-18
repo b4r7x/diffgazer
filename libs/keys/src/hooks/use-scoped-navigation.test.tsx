@@ -2,7 +2,8 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
-import { KeyboardWrapper } from "../testing/test-utils.js";
+import { fireKey, KeyboardWrapper } from "../testing/test-utils.js";
+import { useKey } from "./use-key.js";
 import { useScope } from "./use-scope.js";
 import {
   type UseScopedNavigationOptions,
@@ -237,6 +238,26 @@ describe("useScopedNavigation", () => {
 
     await user.keyboard("{ArrowDown}");
     expectActiveOptionText("b");
+  });
+
+  it("declines ArrowDown for an empty list so lower-priority handlers run", () => {
+    const lowerPriorityHandler = vi.fn();
+
+    function EmptyListHarness() {
+      useScope("empty-list");
+      useKey("ArrowDown", lowerPriorityHandler, { scope: "empty-list" });
+      return <TestList scope="empty-list" items={[]} label="Empty items" />;
+    }
+
+    render(<EmptyListHarness />, { wrapper: KeyboardWrapper });
+
+    let event!: KeyboardEvent;
+    act(() => {
+      event = fireKey("ArrowDown");
+    });
+
+    expect(lowerPriorityHandler).toHaveBeenCalledWith(expect.any(KeyboardEvent));
+    expect(event.defaultPrevented).toBe(false);
   });
 
   it("composes with a scope returned from useScope when the scope is disabled and re-enabled", async () => {

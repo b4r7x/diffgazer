@@ -12,7 +12,11 @@ import {
   useRef,
   useState,
 } from "react";
-import { isSelectableItemEligible, useSelectableCollection } from "@/lib/selectable-collection";
+import {
+  isSelectableElementSkipped,
+  isSelectableItemEligible,
+  useSelectableCollection,
+} from "@/lib/selectable-collection";
 import { isStepInteractive, type StepStatus } from "@/lib/step-status";
 import { type StepperVariant, stepperRootVariants } from "@/lib/stepper-variants";
 import { cn } from "@/lib/utils";
@@ -217,9 +221,7 @@ export function Stepper({
       (el) =>
         el.getAttribute("aria-disabled") !== "true" &&
         !el.disabled &&
-        // Mirror isSelectableElementSkipped: a hidden/inert/aria-hidden step
-        // never receives roving arrow focus.
-        el.closest('[hidden],[inert],[aria-hidden="true"]') === null,
+        !isSelectableElementSkipped(el),
     );
     if (triggers.length === 0) return false;
     const activeElement = list.ownerDocument.activeElement;
@@ -229,8 +231,8 @@ export function Stepper({
     const nextIndex = next(triggers.length, currentIndex);
     const target = triggers[nextIndex];
     if (!target) return false;
-    target.focus();
-    return true;
+    if (target !== activeElement) target.focus();
+    return list.ownerDocument.activeElement === target;
   };
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLOListElement>) => {

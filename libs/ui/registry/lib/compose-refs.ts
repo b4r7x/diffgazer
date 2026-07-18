@@ -1,14 +1,5 @@
 import type { Ref, RefCallback, RefObject } from "react";
 
-function assignRef<T>(ref: Ref<T>, element: T | null): void {
-  if (typeof ref === "function") {
-    ref(element);
-    return;
-  }
-
-  (ref as RefObject<T | null>).current = element;
-}
-
 /** Composes object refs and callback refs into one callback ref with React 19 cleanup support. */
 export function composeRefs<T>(...refs: Array<Ref<T> | null | undefined>): RefCallback<T> {
   return (element: T | null) => {
@@ -44,7 +35,7 @@ export function composeRefs<T>(...refs: Array<Ref<T> | null | undefined>): RefCa
         ref(null);
       }
       for (const ref of objectRefs) {
-        assignRef(ref, null);
+        ref.current = null;
       }
     };
   };

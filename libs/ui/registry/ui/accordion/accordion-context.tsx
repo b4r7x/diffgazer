@@ -4,7 +4,10 @@ import { createContext, useContext } from "react";
 
 /** Context value shared by accordion. */
 export interface AccordionContextValue {
-  /** Controlled open value(s). string for single mode, string[] for multiple. */
+  /**
+   * Normalized open values; single mode contains zero or one item, while multiple mode may contain
+   * several.
+   */
   value: string[];
   /** Called when an item should toggle. */
   onToggle: (itemValue: string) => void;

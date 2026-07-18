@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "trigger-interop",
+  "title": "Trigger Interop",
+  "description": "Shared native trigger detection and event-handler merging helpers",
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/ui/shared/trigger-interop.ts",
+      "content": "import type { ReactElement } from \"react\";\n\nconst nativeInteractiveElements = new Set([\n  \"button\",\n  \"a\",\n  \"input\",\n  \"select\",\n  \"textarea\",\n  \"summary\",\n]);\n\nexport function isNativeInteractiveElement<T>(element: ReactElement<T>): boolean {\n  return typeof element.type === \"string\" && nativeInteractiveElements.has(element.type);\n}\n\nexport function mergeHandlers<Event extends { defaultPrevented?: boolean }>(\n  existing: ((event: Event) => void) | undefined,\n  added: ((event: Event) => void) | undefined,\n  skipWhenDefaultPrevented = false,\n): (event: Event) => void {\n  return (event) => {\n    existing?.(event);\n    if (skipWhenDefaultPrevented && event.defaultPrevented) return;\n    added?.(event);\n  };\n}\n",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": false,
+    "hidden": true
+  },
+  "type": "registry:ui"
+}

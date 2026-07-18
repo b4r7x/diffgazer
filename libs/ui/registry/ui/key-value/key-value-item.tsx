@@ -60,10 +60,6 @@ export const keyValueValueVariants = cva("", {
   defaultVariants: { variant: "default", bordered: false, layout: "horizontal" },
 });
 
-/**
- * Compound component for displaying labeled data. KeyValue wraps one or more KeyValue.Item rows
- * in a semantic description list.
- */
 export function KeyValueItem({
   label,
   value,

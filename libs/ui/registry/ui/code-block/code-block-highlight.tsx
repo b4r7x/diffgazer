@@ -18,13 +18,10 @@ interface HastRoot {
   children: HastNode[];
 }
 
-type LowlightAuto = {
-  [K in `highlight${"Auto"}`]: (value: string) => HastRoot;
-};
-
 export type LowlightInstance = {
   highlight(language: string, value: string): HastRoot;
-} & LowlightAuto;
+  highlightAuto(value: string): HastRoot;
+};
 
 /** Props for code block highlight. */
 export interface CodeBlockHighlightProps extends Omit<CodeBlockContentProps, "children"> {

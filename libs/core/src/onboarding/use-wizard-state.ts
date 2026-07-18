@@ -105,6 +105,7 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
       callbacks &&
       (projectedData.apiKey || projectedData.inputMethod === "env")
     ) {
+      if (pendingSaveRef.current) return;
       setIsEarlySaving(true);
       setEarlySaveError(null);
       // Track the in-flight commit so a racing abandon-cleanup can await it and not leak credentials.
@@ -118,7 +119,7 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
           setEarlySaveError(getErrorMessage(cause, "Failed to save credentials"));
         })
         .finally(() => {
-          pendingSaveRef.current = null;
+          if (pendingSaveRef.current === savePromise) pendingSaveRef.current = null;
           setIsEarlySaving(false);
         });
       return;
@@ -166,11 +167,10 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
 
   const complete = async () => {
     if (!callbacks) return false;
+    if (pendingSaveRef.current) return false;
     setIsSubmitting(true);
     setError(null);
     try {
-      const pending = pendingSaveRef.current;
-      if (pending) await pending;
       await reconcileEarlySavedProvider(wizardData.provider);
       const result = await saveWizard(wizardData, callbacks);
       if (result.status === "partial") {

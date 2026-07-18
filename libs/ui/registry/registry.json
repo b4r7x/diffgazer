@@ -185,6 +185,26 @@
           "type": "registry:ui"
         },
         {
+          "path": "registry/ui/field/field-context.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/field/field-label.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/field/field-control.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/field/field-description.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/field/field-error.tsx",
+          "type": "registry:ui"
+        },
+        {
           "path": "registry/ui/field/field.tsx",
           "type": "registry:ui"
         }
@@ -289,6 +309,23 @@
       ]
     },
     {
+      "name": "trigger-interop",
+      "type": "registry:ui",
+      "title": "Trigger Interop",
+      "description": "Shared native trigger detection and event-handler merging helpers",
+      "registryDependencies": [],
+      "meta": {
+        "client": false,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/shared/trigger-interop.ts",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
       "name": "checkbox",
       "type": "registry:ui",
       "title": "Checkbox",
@@ -301,6 +338,7 @@
         "form-reset",
         "@diffgazer-keys/navigation",
         "compose-refs",
+        "fieldset-disabled",
         "selectable-collection",
         "selectable-variants",
         "utils",
@@ -368,6 +406,7 @@
         "form-reset",
         "compose-refs",
         "@diffgazer-keys/navigation",
+        "fieldset-disabled",
         "selectable-collection",
         "selectable-variants",
         "utils",
@@ -765,7 +804,8 @@
         "kbd",
         "aria",
         "utils",
-        "composed-refs"
+        "composed-refs",
+        "trigger-interop"
       ],
       "meta": {
         "client": true,
@@ -841,7 +881,8 @@
         "presence",
         "@diffgazer-keys/focus-trap",
         "aria",
-        "composed-refs"
+        "composed-refs",
+        "top-layer-stack"
       ],
       "meta": {
         "client": true,
@@ -1118,7 +1159,8 @@
         "outside-click",
         "spinner",
         "utils",
-        "@diffgazer-keys/navigation"
+        "@diffgazer-keys/navigation",
+        "top-layer-stack"
       ],
       "meta": {
         "client": true,
@@ -1429,7 +1471,8 @@
         "selectable-collection",
         "kbd",
         "utils",
-        "composed-refs"
+        "composed-refs",
+        "dom-id"
       ],
       "meta": {
         "client": true,
@@ -1516,7 +1559,8 @@
         "typeahead",
         "typeahead-buffer",
         "utils",
-        "composed-refs"
+        "composed-refs",
+        "dom-id"
       ],
       "meta": {
         "client": true,
@@ -2171,6 +2215,22 @@
       ]
     },
     {
+      "name": "top-layer-stack",
+      "type": "registry:lib",
+      "title": "Top Layer Stack",
+      "description": "Per-document top-layer election with a React hook for tracking the active element.",
+      "meta": {
+        "client": true,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/lib/top-layer-stack.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
       "name": "accessible-text",
       "type": "registry:lib",
       "title": "Accessible Text",
@@ -2286,6 +2346,42 @@
       "files": [
         {
           "path": "registry/lib/selectable-collection.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "fieldset-disabled",
+      "type": "registry:lib",
+      "title": "Fieldset Disabled",
+      "description": "Tracks native disabled-fieldset inheritance for a control element, including the first-legend exception.",
+      "dependencies": [],
+      "registryDependencies": ["@diffgazer-keys/focusable"],
+      "meta": {
+        "client": true,
+        "hidden": true,
+        "optionalIntegrations": ["keyboard-navigation"]
+      },
+      "files": [
+        {
+          "path": "registry/lib/fieldset-disabled.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "dom-id",
+      "type": "registry:lib",
+      "title": "DOM ID",
+      "description": "Base36 encoding for stable DOM id parts.",
+      "registryDependencies": [],
+      "meta": {
+        "client": true,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/lib/dom-id.ts",
           "type": "registry:lib"
         }
       ]
@@ -2611,7 +2707,8 @@
         "outside-click",
         "@diffgazer-keys/focusable",
         "utils",
-        "composed-refs"
+        "composed-refs",
+        "trigger-interop"
       ],
       "meta": {
         "client": true,
@@ -2660,6 +2757,7 @@
         "controllable-state",
         "form-reset",
         "compose-refs",
+        "fieldset-disabled",
         "utils",
         "composed-refs"
       ],

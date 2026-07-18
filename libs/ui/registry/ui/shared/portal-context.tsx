@@ -13,7 +13,6 @@ export function usePortalContainer() {
   return useContext(PortalContainerContext);
 }
 
-/** Returns whether pending portal container. */
 export function isPendingPortalContainer(value: unknown): value is typeof PENDING_PORTAL_CONTAINER {
   return value === PENDING_PORTAL_CONTAINER;
 }

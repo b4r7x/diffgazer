@@ -53,7 +53,7 @@ export {
   type UseReviewLifecycleBaseOptions,
   type UseReviewLifecycleBaseResult,
   useReviewLifecycleBase,
-} from "./use-review-lifecycle-controller.js";
+} from "./use-review-lifecycle-base.js";
 export {
   type UseReviewStartOptions,
   type UseReviewStartResult,

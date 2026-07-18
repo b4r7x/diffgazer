@@ -7,12 +7,10 @@ function encodeIdPart(value: string): string {
   return encodeURIComponent(value);
 }
 
-/** Returns tab trigger id. */
 export function getTabTriggerId(tabsId: string, value: string): string {
   return `${tabsId}-tab-${encodeIdPart(value)}`;
 }
 
-/** Returns tab panel id. */
 export function getTabPanelId(tabsId: string, value: string): string {
   return `${tabsId}-tabpanel-${encodeIdPart(value)}`;
 }

@@ -9,10 +9,6 @@ import {
   keyValueValueVariants,
 } from "./key-value-item";
 
-/**
- * Compound component for displaying labeled data. KeyValue wraps one or more KeyValue.Item rows
- * in a semantic description list.
- */
 const KeyValue = Object.assign(KeyValueRoot, { Item: KeyValueItem });
 
 export { KeyValue, keyValueVariants, type KeyValueProps, type KeyValueLayout };

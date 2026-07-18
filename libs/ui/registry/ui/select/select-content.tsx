@@ -5,7 +5,6 @@ import {
   type KeyboardEvent,
   type ReactNode,
   type Ref,
-  type RefObject,
   useCallback,
   useEffectEvent,
   useLayoutEffect,
@@ -14,6 +13,7 @@ import {
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import type { FloatingAlign, FloatingSide } from "@/hooks/use-floating-position";
 import { useNavigation } from "@/hooks/use-navigation";
+import { useEscapeKey } from "@/hooks/use-outside-click";
 import { matchesSearch } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { FloatingPanel, useFloatingPanelContext } from "../floating-panel";
@@ -26,27 +26,25 @@ import { containsSelectSearchElement, isActiveOptionVisible, toOptionId } from "
 import { useSelectTypeahead } from "./use-typeahead";
 import { getVisibleEnabledOptions } from "./visible-options";
 
-function containsRefElement(ref: RefObject<HTMLElement | null>, target: Node | null): boolean {
-  return target !== null && (ref.current?.contains(target) ?? false);
-}
-
 function isComposingKeyEvent(event: { isComposing?: boolean; keyCode?: number }): boolean {
   return event.isComposing === true || event.keyCode === 229;
 }
 
 function SelectDropdownInitializer({
   open,
-  containerRef,
+  onFocus,
   onInitialize,
 }: {
   open: boolean;
-  containerRef: RefObject<HTMLDivElement | null>;
+  onFocus: () => boolean;
   onInitialize: () => boolean;
 }) {
   const { positioned } = useFloatingPanelContext();
-  const { options, searchInputRef, triggerRef } = useSelectContext("SelectDropdownInitializer");
+  const { options } = useSelectContext("SelectDropdownInitializer");
   const focusedRef = useRef(false);
   const highlightInitializedRef = useRef(false);
+  // Effect events must be created where they run; parents pass plain closures.
+  const focus = useEffectEvent(onFocus);
   const initialize = useEffectEvent(onInitialize);
 
   useLayoutEffect(() => {
@@ -57,24 +55,13 @@ function SelectDropdownInitializer({
     }
 
     if (!focusedRef.current) {
-      const focusTarget = searchInputRef.current ?? containerRef.current;
-      if (focusTarget) {
-        const { activeElement, body } = focusTarget.ownerDocument;
-        if (
-          activeElement === null ||
-          activeElement === body ||
-          activeElement === triggerRef.current
-        ) {
-          focusTarget.focus();
-        }
-        focusedRef.current = true;
-      }
+      focusedRef.current = focus();
     }
 
     if (!highlightInitializedRef.current && options.size > 0) {
       highlightInitializedRef.current = initialize();
     }
-  }, [containerRef, open, options, positioned, searchInputRef, triggerRef]);
+  }, [open, options, positioned]);
 
   return null;
 }
@@ -104,35 +91,6 @@ export interface SelectContentProps {
 }
 
 const SEARCH_INPUT_NAV_KEYS = new Set(["ArrowUp", "ArrowDown", "Enter"]);
-interface OpenDropdown {
-  token: object;
-  contains: (target: Node | null) => boolean;
-}
-
-const openDropdowns = new WeakMap<Document, OpenDropdown[]>();
-
-function registerOpenDropdown(ownerDocument: Document, dropdown: OpenDropdown): () => void {
-  const stack = openDropdowns.get(ownerDocument) ?? [];
-  stack.push(dropdown);
-  openDropdowns.set(ownerDocument, stack);
-
-  return () => {
-    const current = openDropdowns.get(ownerDocument);
-    if (!current) return;
-    const index = current.lastIndexOf(dropdown);
-    if (index !== -1) current.splice(index, 1);
-    if (current.length === 0) openDropdowns.delete(ownerDocument);
-  };
-}
-
-function isTopDropdown(ownerDocument: Document, token: object): boolean {
-  return openDropdowns.get(ownerDocument)?.at(-1)?.token === token;
-}
-
-function isInsideOpenDropdown(ownerDocument: Document, target: Node | null): boolean {
-  return openDropdowns.get(ownerDocument)?.some((dropdown) => dropdown.contains(target)) ?? false;
-}
-
 /** Dropdown listbox with keyboard navigation. */
 export function SelectContent({
   children,
@@ -168,7 +126,6 @@ export function SelectContent({
     ariaDescribedBy,
   } = useSelectContext("SelectContent");
   const containerRef = useRef<HTMLDivElement>(null);
-  const dropdownTokenRef = useRef({});
   const isDropdown = variant !== "card";
   const hasSearch = containsSelectSearchElement(children, isSelectSearchElement);
   const searchComposedRef = useComposedRefs(selectContentRef, ref);
@@ -278,19 +235,20 @@ export function SelectContent({
     return false;
   };
 
+  const focusOpenContent = () => {
+    const focusTarget = searchInputRef.current ?? containerRef.current;
+    if (!focusTarget) return false;
+
+    const { activeElement, body } = focusTarget.ownerDocument;
+    if (activeElement === null || activeElement === body || activeElement === triggerRef.current) {
+      focusTarget.focus();
+    }
+    return true;
+  };
+
   // Read current option state without re-running initialization on unrelated renders.
   const runOpenInit = useEffectEvent(() => {
-    const focusTarget = searchInputRef.current ?? containerRef.current;
-    if (focusTarget) {
-      const { activeElement, body } = focusTarget.ownerDocument;
-      if (
-        activeElement === null ||
-        activeElement === body ||
-        activeElement === triggerRef.current
-      ) {
-        focusTarget.focus();
-      }
-    }
+    focusOpenContent();
     return initHighlight();
   });
 
@@ -305,47 +263,20 @@ export function SelectContent({
     }
   }, [isDropdown, open, options]);
 
-  const closeDropdown = useEffectEvent(() => {
-    onOpenChange(false);
-    triggerRef.current?.focus();
-  });
-
-  useLayoutEffect(() => {
-    if (!open || !isDropdown) return;
-
-    const ownerDocument = containerRef.current?.ownerDocument ?? triggerRef.current?.ownerDocument;
-    if (!ownerDocument) return;
-    const token = dropdownTokenRef.current;
-    const unregister = registerOpenDropdown(ownerDocument, {
-      token,
-      contains: (target) => containsRefElement(selectContentRef, target),
-    });
-
-    const handleDocumentKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      if (isComposingKeyEvent(event)) return;
-
-      const NodeCtor = ownerDocument.defaultView?.Node;
-      const targetNode = NodeCtor && event.target instanceof NodeCtor ? event.target : null;
-      const targetIsInsideContent = containsRefElement(selectContentRef, targetNode);
-      if (
-        event.defaultPrevented &&
-        (targetIsInsideContent || isInsideOpenDropdown(ownerDocument, targetNode))
-      ) {
-        return;
-      }
-      if (!targetIsInsideContent && !isTopDropdown(ownerDocument, token)) return;
-
+  useEscapeKey(
+    (event) => {
+      // Consume the key so an ancestor native <dialog> does not treat the same
+      // press as cancel and close together with the dropdown.
       event.preventDefault();
-      closeDropdown();
-    };
-
-    ownerDocument.addEventListener("keydown", handleDocumentKeyDown);
-    return () => {
-      ownerDocument.removeEventListener("keydown", handleDocumentKeyDown);
-      unregister();
-    };
-  }, [isDropdown, open, selectContentRef, triggerRef]);
+      onOpenChange(false);
+      triggerRef.current?.focus();
+    },
+    open && isDropdown,
+    {
+      ref: selectContentRef,
+      contains: (target) => target !== null && (selectContentRef.current?.contains(target) ?? false),
+    },
+  );
 
   useLayoutEffect(() => {
     if (hasSearch || !searchInputRef.current || process.env.NODE_ENV === "production") {
@@ -466,7 +397,7 @@ export function SelectContent({
     >
       <SelectDropdownInitializer
         open={open}
-        containerRef={containerRef}
+        onFocus={focusOpenContent}
         onInitialize={initHighlight}
       />
       {contentBody}

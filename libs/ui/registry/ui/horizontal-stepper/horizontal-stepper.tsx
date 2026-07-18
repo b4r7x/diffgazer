@@ -40,8 +40,11 @@ export function HorizontalStepperRoot({
 
   return (
     <HorizontalStepperContext value={contextValue}>
+      {/* biome-ignore lint/a11y/useSemanticElements: this already is an <ol>; the explicit role="list" below restores list semantics that Tailwind preflight strips, and Biome should not suggest swapping the element. */}
       <ol
-        aria-label={ariaLabel ?? "Progress"}
+        // biome-ignore lint/a11y/noRedundantRoles: Tailwind preflight sets list-style:none on <ol>, which drops list semantics in Safari/VoiceOver; role="list" restores them.
+        role="list"
+        aria-label={ariaLabel || "Progress"}
         data-slot="horizontal-stepper"
         data-variant={variant}
         className={cn(horizontalStepperRootVariants({ variant }), className)}

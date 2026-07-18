@@ -21,6 +21,7 @@ type EscapeKeyEntry = {
   handler: (event: KeyboardEvent) => void;
   ref?: RefObject<HTMLElement | null>;
   excludeRefsRef: { current: ExcludeRefs };
+  containsRef: { current: ((target: Node | null) => boolean) | undefined };
   priority: number;
   ownerDocument: Document;
 };
@@ -33,6 +34,8 @@ export interface OverlayStackOptions {
   ref?: RefObject<HTMLElement | null>;
   /** Additional refs treated as part of the overlay for dismissal and stack ordering. */
   excludeRefs?: ReadonlyArray<RefObject<HTMLElement | null>>;
+  /** Escape target matcher used to route a keypress to a specific overlay. */
+  contains?: (target: Node | null) => boolean;
 }
 
 const DEFAULT_OVERLAY_PRIORITY = 1;
@@ -73,27 +76,17 @@ function getEntryElements(entry: OutsideClickEntry): HTMLElement[] {
   return elements.filter((element): element is HTMLElement => element != null);
 }
 
-function isNestedAbove(entry: OutsideClickEntry, below: OutsideClickEntry): boolean {
-  const belowElements = getEntryElements(below);
-  return getEntryElements(entry).some((element) =>
+function isNestedAbove<Entry>(
+  entry: Entry,
+  below: Entry,
+  getElements: (entry: Entry) => HTMLElement[],
+): boolean {
+  const belowElements = getElements(below);
+  return getElements(entry).some((element) =>
     belowElements.some(
       (belowElement) => belowElement !== element && belowElement.contains(element),
     ),
   );
-}
-
-function getTopOutsideClickEntry(ownerDocument: Document): OutsideClickEntry | undefined {
-  return outsideClickEntries.reduce<OutsideClickEntry | undefined>((top, entry) => {
-    if (!entry.ownerDocuments.has(ownerDocument)) return top;
-    if (entry.ref.current !== entry.node) return top;
-    if (!entry.node.isConnected || !entry.ownerDocuments.has(entry.node.ownerDocument)) return top;
-    if (!top) return entry;
-    if (entry.priority > top.priority) return entry;
-    if (entry.priority < top.priority) return top;
-    if (isNestedAbove(entry, top)) return entry;
-    if (isNestedAbove(top, entry)) return top;
-    return entry;
-  }, undefined);
 }
 
 function getEscapeEntryElements(entry: EscapeKeyEntry): HTMLElement[] {
@@ -104,25 +97,54 @@ function getEscapeEntryElements(entry: EscapeKeyEntry): HTMLElement[] {
   return elements.filter((element): element is HTMLElement => element != null);
 }
 
-function isEscapeNestedAbove(entry: EscapeKeyEntry, below: EscapeKeyEntry): boolean {
-  const belowElements = getEscapeEntryElements(below);
-  return getEscapeEntryElements(entry).some((element) =>
-    belowElements.some(
-      (belowElement) => belowElement !== element && belowElement.contains(element),
-    ),
+function isEscapeTargetInsideEntry(entry: EscapeKeyEntry, target: Node | null): boolean {
+  if (entry.containsRef.current?.(target) === true) return true;
+  if (target === null) return false;
+  return getEscapeEntryElements(entry).some((element) => element.contains(target));
+}
+
+function isEscapeTargetInsideAnyEntry(ownerDocument: Document, target: Node | null): boolean {
+  return escapeKeyEntries.some(
+    (entry) => entry.ownerDocument === ownerDocument && isEscapeTargetInsideEntry(entry, target),
   );
 }
 
-function getTopEscapeKeyEntry(ownerDocument: Document): EscapeKeyEntry | undefined {
-  return escapeKeyEntries.reduce<EscapeKeyEntry | undefined>((top, entry) => {
-    if (entry.ownerDocument !== ownerDocument) return top;
+function getTopEntry<Entry extends { priority: number }>(
+  entries: Entry[],
+  getElements: (entry: Entry) => HTMLElement[],
+  isEligible: (entry: Entry) => boolean,
+): Entry | undefined {
+  return entries.reduce<Entry | undefined>((top, entry) => {
+    if (!isEligible(entry)) return top;
     if (!top) return entry;
     if (entry.priority > top.priority) return entry;
     if (entry.priority < top.priority) return top;
-    if (isEscapeNestedAbove(entry, top)) return entry;
-    if (isEscapeNestedAbove(top, entry)) return top;
+    if (isNestedAbove(entry, top, getElements)) return entry;
+    if (isNestedAbove(top, entry, getElements)) return top;
     return entry;
   }, undefined);
+}
+
+function getTopOutsideClickEntry(ownerDocument: Document): OutsideClickEntry | undefined {
+  return getTopEntry(outsideClickEntries, getEntryElements, (entry) => {
+    if (!entry.ownerDocuments.has(ownerDocument)) return false;
+    if (entry.ref.current !== entry.node) return false;
+    return entry.node.isConnected && entry.ownerDocuments.has(entry.node.ownerDocument);
+  });
+}
+
+function getTopEscapeKeyEntry(
+  ownerDocument: Document,
+  target: Node | null,
+): EscapeKeyEntry | undefined {
+  const routedEntries = escapeKeyEntries.filter(
+    (entry) => entry.ownerDocument === ownerDocument && entry.containsRef.current?.(target),
+  );
+  const entries = routedEntries.length > 0 ? routedEntries : escapeKeyEntries;
+  return getTopEntry(entries, getEscapeEntryElements, (entry) => {
+    if (entry.ownerDocument !== ownerDocument) return false;
+    return routedEntries.length === 0 || entry.containsRef.current?.(target) === true;
+  });
 }
 
 let lastTouchTarget: EventTarget | null = null;
@@ -225,9 +247,12 @@ function makeDocumentOutsidePointerHandler(ownerDocument: Document) {
 
 function makeDocumentKeyDownHandler(ownerDocument: Document) {
   return (event: KeyboardEvent) => {
-    if (event.defaultPrevented || event.key !== "Escape") return;
+    if (event.key !== "Escape") return;
     if (event.isComposing || event.keyCode === 229) return;
-    const entry = getTopEscapeKeyEntry(ownerDocument);
+    const NodeCtor = ownerDocument.defaultView?.Node;
+    const target = NodeCtor && event.target instanceof NodeCtor ? event.target : null;
+    if (event.defaultPrevented && isEscapeTargetInsideAnyEntry(ownerDocument, target)) return;
+    const entry = getTopEscapeKeyEntry(ownerDocument, target);
     if (!entry) return;
     entry.handler(event);
   };
@@ -241,77 +266,80 @@ type PointerListenerHandle = {
 const pointerHandlers = new Map<Document, PointerListenerHandle>();
 const keydownHandlers = new Map<Document, (event: KeyboardEvent) => void>();
 
-function attachPointerListeners(ownerDocument: Document) {
-  const next = (pointerListenerCounts.get(ownerDocument) ?? 0) + 1;
-  pointerListenerCounts.set(ownerDocument, next);
-  if (next > 1) return;
-
-  const handler = makeDocumentOutsidePointerHandler(ownerDocument);
-  const usesPointerEvents = supportsPointerEvents(ownerDocument);
-  pointerHandlers.set(ownerDocument, { handler, usesPointerEvents });
-  if (usesPointerEvents) {
-    ownerDocument.addEventListener("pointerdown", handler, DOCUMENT_POINTER_LISTENER_OPTIONS);
-  } else {
-    ownerDocument.addEventListener("touchstart", handler, DOCUMENT_POINTER_LISTENER_OPTIONS);
-    ownerDocument.addEventListener("mousedown", handler, DOCUMENT_POINTER_LISTENER_OPTIONS);
-  }
+function refCountedDocumentListener<Handler>(
+  counts: Map<Document, number>,
+  handlers: Map<Document, Handler>,
+  attach: (ownerDocument: Document, handler: Handler) => void,
+  detach: (ownerDocument: Document, handler: Handler) => void,
+) {
+  return {
+    add(ownerDocument: Document, handler: Handler): void {
+      const count = counts.get(ownerDocument) ?? 0;
+      counts.set(ownerDocument, count + 1);
+      if (count > 0) return;
+      handlers.set(ownerDocument, handler);
+      attach(ownerDocument, handler);
+    },
+    remove(ownerDocument: Document): void {
+      const count = counts.get(ownerDocument) ?? 0;
+      if (count <= 0) return;
+      if (count > 1) {
+        counts.set(ownerDocument, count - 1);
+        return;
+      }
+      counts.delete(ownerDocument);
+      const handler = handlers.get(ownerDocument);
+      handlers.delete(ownerDocument);
+      if (handler) detach(ownerDocument, handler);
+    },
+  };
 }
 
-function detachPointerListeners(ownerDocument: Document) {
-  const current = pointerListenerCounts.get(ownerDocument) ?? 0;
-  if (current <= 0) return;
-  const next = current - 1;
-  if (next > 0) {
-    pointerListenerCounts.set(ownerDocument, next);
-    return;
-  }
-  pointerListenerCounts.delete(ownerDocument);
-  const stored = pointerHandlers.get(ownerDocument);
-  pointerHandlers.delete(ownerDocument);
-  if (!stored) return;
-  if (stored.usesPointerEvents) {
-    ownerDocument.removeEventListener(
-      "pointerdown",
-      stored.handler,
-      DOCUMENT_POINTER_LISTENER_OPTIONS,
-    );
-  } else {
-    ownerDocument.removeEventListener(
-      "touchstart",
-      stored.handler,
-      DOCUMENT_POINTER_LISTENER_OPTIONS,
-    );
-    ownerDocument.removeEventListener(
-      "mousedown",
-      stored.handler,
-      DOCUMENT_POINTER_LISTENER_OPTIONS,
-    );
-  }
+const pointerListeners = refCountedDocumentListener(
+  pointerListenerCounts,
+  pointerHandlers,
+  (ownerDocument, { handler, usesPointerEvents }) => {
+    if (usesPointerEvents) {
+      ownerDocument.addEventListener("pointerdown", handler, DOCUMENT_POINTER_LISTENER_OPTIONS);
+    } else {
+      ownerDocument.addEventListener("touchstart", handler, DOCUMENT_POINTER_LISTENER_OPTIONS);
+      ownerDocument.addEventListener("mousedown", handler, DOCUMENT_POINTER_LISTENER_OPTIONS);
+    }
+  },
+  (ownerDocument, { handler, usesPointerEvents }) => {
+    if (usesPointerEvents) {
+      ownerDocument.removeEventListener("pointerdown", handler, DOCUMENT_POINTER_LISTENER_OPTIONS);
+    } else {
+      ownerDocument.removeEventListener("touchstart", handler, DOCUMENT_POINTER_LISTENER_OPTIONS);
+      ownerDocument.removeEventListener("mousedown", handler, DOCUMENT_POINTER_LISTENER_OPTIONS);
+    }
+  },
+);
+
+const keydownListeners = refCountedDocumentListener(
+  keydownListenerCounts,
+  keydownHandlers,
+  (ownerDocument, handler) => ownerDocument.addEventListener("keydown", handler),
+  (ownerDocument, handler) => ownerDocument.removeEventListener("keydown", handler),
+);
+
+function attachPointerListeners(ownerDocument: Document): void {
+  pointerListeners.add(ownerDocument, {
+    handler: makeDocumentOutsidePointerHandler(ownerDocument),
+    usesPointerEvents: supportsPointerEvents(ownerDocument),
+  });
 }
 
-function attachKeydownListener(ownerDocument: Document) {
-  const next = (keydownListenerCounts.get(ownerDocument) ?? 0) + 1;
-  keydownListenerCounts.set(ownerDocument, next);
-  if (next > 1) return;
-
-  const handler = makeDocumentKeyDownHandler(ownerDocument);
-  keydownHandlers.set(ownerDocument, handler);
-  ownerDocument.addEventListener("keydown", handler);
+function detachPointerListeners(ownerDocument: Document): void {
+  pointerListeners.remove(ownerDocument);
 }
 
-function detachKeydownListener(ownerDocument: Document) {
-  const current = keydownListenerCounts.get(ownerDocument) ?? 0;
-  if (current <= 0) return;
-  const next = current - 1;
-  if (next > 0) {
-    keydownListenerCounts.set(ownerDocument, next);
-    return;
-  }
-  keydownListenerCounts.delete(ownerDocument);
-  const handler = keydownHandlers.get(ownerDocument);
-  keydownHandlers.delete(ownerDocument);
-  if (!handler) return;
-  ownerDocument.removeEventListener("keydown", handler);
+function attachKeydownListener(ownerDocument: Document): void {
+  keydownListeners.add(ownerDocument, makeDocumentKeyDownHandler(ownerDocument));
+}
+
+function detachKeydownListeners(ownerDocument: Document): void {
+  keydownListeners.remove(ownerDocument);
 }
 
 function removeEntry<Entry extends { id: symbol }>(entries: Entry[], id: symbol) {
@@ -368,6 +396,7 @@ export function useOutsideClick(
   const entryRef = useRef<OutsideClickEntry | null>(null);
   const priority = options?.priority ?? DEFAULT_OVERLAY_PRIORITY;
 
+  // Latest-ref sync: inline boundary arrays must update every render without re-registering the stack entry.
   useLayoutEffect(() => {
     excludeRefsRef.current = excludeRefs;
     const node = enabled ? ref.current : null;
@@ -424,9 +453,12 @@ export function useEscapeKey(
   // Keep the latest excludeRefs off the effect deps (inline arrays/objects
   // otherwise re-register the stack entry on every render).
   const excludeRefsRef = useRef<ExcludeRefs>(options?.excludeRefs);
+  const containsRef = useRef<((target: Node | null) => boolean) | undefined>(options?.contains);
 
+  // Latest-ref sync: inline Escape options must update every render without re-registering the stack entry.
   useLayoutEffect(() => {
     excludeRefsRef.current = options?.excludeRefs;
+    containsRef.current = options?.contains;
   });
 
   useLayoutEffect(() => {
@@ -440,6 +472,7 @@ export function useEscapeKey(
       handler: handleEscape,
       ref: optionsRef,
       excludeRefsRef,
+      containsRef,
       priority,
       ownerDocument,
     });
@@ -447,7 +480,7 @@ export function useEscapeKey(
 
     return () => {
       removeEntry(escapeKeyEntries, id);
-      detachKeydownListener(ownerDocument);
+      detachKeydownListeners(ownerDocument);
     };
   }, [enabled, priority, optionsRef]);
 }

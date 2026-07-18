@@ -57,10 +57,6 @@ export interface InputGroupProps
   inputClassName?: string;
 }
 
-/**
- * Terminal-styled text input primitives with size variants, invalid state, and optional
- * prefix/suffix grouping.
- */
 export function InputGroup({
   className,
   inputClassName,

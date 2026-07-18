@@ -64,8 +64,8 @@ export function ReviewPage() {
     reviewId && isLiveNavigation ? { phase: "streaming", reviewId } : null,
   );
   const [streamNotFound, setStreamNotFound] = useState(false);
-  const notFoundReportedRef = useRef(false);
-  const reportErrorReportedRef = useRef(false);
+  const notFoundReportedRef = useRef<string | null>(null);
+  const reportErrorReportedRef = useRef<string | null>(null);
 
   // Reset the screen state when the route's review identity changes, during
   // render (no derived-state effect): a new reviewId/live navigation starts a
@@ -76,8 +76,6 @@ export function ReviewPage() {
     setRouteKey(nextRouteKey);
     setLiveState(reviewId && isLiveNavigation ? { phase: "streaming", reviewId } : null);
     setStreamNotFound(false);
-    notFoundReportedRef.current = false;
-    reportErrorReportedRef.current = false;
   }
 
   const router = useRouter();
@@ -117,21 +115,21 @@ export function ReviewPage() {
   };
 
   useEffect(() => {
-    if (savedOutcomeKind === "report-error" && !reportErrorReportedRef.current) {
-      reportErrorReportedRef.current = true;
+    if (savedOutcomeKind === "report-error" && reportErrorReportedRef.current !== nextRouteKey) {
+      reportErrorReportedRef.current = nextRouteKey;
       handleApiError(savedErrorForReport);
     }
-  }, [savedOutcomeKind, savedErrorForReport, handleApiError]);
+  }, [nextRouteKey, savedOutcomeKind, savedErrorForReport, handleApiError]);
 
   useEffect(() => {
-    if (savedOutcomeKind === "not-found" && !notFoundReportedRef.current) {
-      notFoundReportedRef.current = true;
+    if (savedOutcomeKind === "not-found" && notFoundReportedRef.current !== nextRouteKey) {
+      notFoundReportedRef.current = nextRouteKey;
       toast.error("Review Not Found", {
         message: "The live session has expired and no saved results are available.",
       });
       navigate({ to: "/" });
     }
-  }, [savedOutcomeKind, navigate]);
+  }, [nextRouteKey, savedOutcomeKind, navigate]);
 
   // `fallback-to-stream` is handled by deriving the streaming view below
   // (the live state falls back to a fresh stream), so it intentionally does

@@ -12,10 +12,6 @@ export type SpinnerSize = "sm" | "md" | "lg";
 //   6 7 8
 const SNAKE_PERIMETER = [0, 1, 2, 5, 8, 7, 6, 3] as const;
 
-/**
- * Root element - renders the animation glyph. Accepts variant, size, labelPosition, gap, and
- * speed props. Pass children for a label.
- */
 export const SNAKE_FRAME_COUNT = SNAKE_PERIMETER.length;
 
 const PERIMETER_POSITION = new Map<number, number>(SNAKE_PERIMETER.map((cell, i) => [cell, i]));
@@ -60,14 +56,10 @@ function getCellOpacity(frame: number, cellIndex: number): number {
 interface SnakeGridProps {
   /** Animation frame index. */
   frame: number;
-  /** Font size token applied to the glyph and label. */
+  /** Font size token applied to the snake grid. */
   size: SpinnerSize;
 }
 
-/**
- * Root element - renders the animation glyph. Accepts variant, size, labelPosition, gap, and
- * speed props. Pass children for a label.
- */
 export function SnakeGrid({ frame, size }: SnakeGridProps) {
   const dotClassName = snakeGridDotVariants({ size });
 

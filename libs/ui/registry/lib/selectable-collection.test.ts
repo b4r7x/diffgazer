@@ -1,4 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getEnabledSelectableCollectionItems,
@@ -76,102 +77,105 @@ describe("resolveSelectableCollectionItem", () => {
 });
 
 describe("useSelectableCollection", () => {
-  it("shares one event-driven document boundary and restores instrumentation after the last subscriber", async () => {
-    const originalInsertRule = CSSStyleSheet.prototype.insertRule;
-    const setInterval = vi.spyOn(window, "setInterval");
+  it("shares document change notifications and unsubscribes after the last subscriber", async () => {
+    const queueMicrotask = vi.spyOn(window, "queueMicrotask");
     const firstContainer = document.createElement("div");
     const secondContainer = document.createElement("div");
     document.body.append(firstContainer, secondContainer);
 
     const first = renderHook(() => useSelectableCollection({ current: firstContainer }));
-    await waitFor(() => expect(CSSStyleSheet.prototype.insertRule).not.toBe(originalInsertRule));
-    setInterval.mockClear();
-    const sharedInsertRule = CSSStyleSheet.prototype.insertRule;
     const second = renderHook(() => useSelectableCollection({ current: secondContainer }));
-
-    expect(CSSStyleSheet.prototype.insertRule).toBe(sharedInsertRule);
-    expect(setInterval).not.toHaveBeenCalled();
-
-    first.unmount();
-    expect(CSSStyleSheet.prototype.insertRule).toBe(sharedInsertRule);
-    second.unmount();
-    expect(CSSStyleSheet.prototype.insertRule).toBe(originalInsertRule);
-  });
-
-  it("coalesces CSSOM invalidations and stops scheduling after final unsubscribe", async () => {
-    const style = document.createElement("style");
-    document.head.append(style);
-    const sheet = style.sheet;
-    if (!sheet) throw new Error("Expected a fixture stylesheet");
-    const container = document.createElement("div");
-    document.body.append(container);
-    const containerRef = { current: container };
-    const originalInsertRule = CSSStyleSheet.prototype.insertRule;
-    const queueMicrotask = vi.spyOn(window, "queueMicrotask");
-    const collection = renderHook(() => useSelectableCollection(containerRef));
-    await waitFor(() => expect(CSSStyleSheet.prototype.insertRule).not.toBe(originalInsertRule));
     queueMicrotask.mockClear();
 
-    sheet.insertRule(".first-rule { display: block; }");
-    sheet.insertRule(".second-rule { display: block; }");
-    sheet.deleteRule(1);
-
+    window.dispatchEvent(new Event("resize"));
+    window.dispatchEvent(new Event("resize"));
     expect(queueMicrotask).toHaveBeenCalledOnce();
     await act(async () => Promise.resolve());
 
-    collection.unmount();
+    first.unmount();
     queueMicrotask.mockClear();
-    sheet.insertRule(".after-unsubscribe { display: block; }");
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(queueMicrotask).toHaveBeenCalledOnce();
+    await act(async () => Promise.resolve());
+
+    second.unmount();
+    queueMicrotask.mockClear();
+    window.dispatchEvent(new Event("resize"));
     expect(queueMicrotask).not.toHaveBeenCalled();
   });
 
-  it("resynchronizes eligibility after CSSOM rule insertion and deletion", async () => {
-    const style = document.createElement("style");
-    document.head.append(style);
-    const sheet = style.sheet;
-    if (!sheet) throw new Error("Expected a fixture stylesheet");
+  it("keeps the item array stable when a sync does not change collection content", async () => {
     const container = document.createElement("div");
-    const hiddenByRule = document.createElement("button");
-    hiddenByRule.className = "hidden-by-cssom";
-    const visible = document.createElement("button");
-    container.append(hiddenByRule, visible);
     document.body.append(container);
     const containerRef = { current: container };
-    const nativeGetComputedStyle = window.getComputedStyle.bind(window);
-    vi.spyOn(window, "getComputedStyle").mockImplementation((element, pseudoElement) => {
-      const computedStyle = nativeGetComputedStyle(element, pseudoElement);
-      const isHiddenByRule =
-        element === hiddenByRule &&
-        Array.from(sheet.cssRules).some((rule) => rule.cssText.includes("visibility: hidden"));
-      if (isHiddenByRule) {
-        Object.defineProperty(computedStyle, "visibility", {
-          configurable: true,
-          value: "hidden",
-        });
-      }
-      return computedStyle;
-    });
     const { result } = renderHook(() => useSelectableCollection(containerRef));
+    const item = document.createElement("button");
+    container.append(item);
 
     act(() => {
-      result.current.registerItem("hidden", "hidden", false, hiddenByRule);
-      result.current.registerItem("visible", "visible", false, visible);
+      result.current.registerItem("item", "item", false, item);
     });
-    await waitFor(() => expect(result.current.items).toHaveLength(2));
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    const items = result.current.items;
 
-    const ruleIndex = sheet.insertRule(".hidden-by-cssom { visibility: hidden; }");
-    await waitFor(() => {
-      expect(
-        getEnabledSelectableCollectionItems(result.current.items, false).map((item) => item.value),
-      ).toEqual(["visible"]);
+    window.dispatchEvent(new Event("resize"));
+    await act(async () => Promise.resolve());
+
+    expect(result.current.items).toBe(items);
+  });
+
+  it("keeps visible items stable while StrictMode tracks fieldset eligibility changes", async () => {
+    const container = document.createElement("div");
+    const ancestor = document.createElement("fieldset");
+    const item = document.createElement("button");
+    ancestor.disabled = true;
+    ancestor.append(item);
+    container.append(ancestor);
+    document.body.append(container);
+
+    const containerRef = { current: container };
+    const { result } = renderHook(() => useSelectableCollection(containerRef), {
+      wrapper: StrictMode,
     });
 
-    sheet.deleteRule(ruleIndex);
-    await waitFor(() => {
-      expect(
-        getEnabledSelectableCollectionItems(result.current.items, false).map((item) => item.value),
-      ).toEqual(["hidden", "visible"]);
+    act(() => {
+      result.current.registerItem("item", "item", false, item);
     });
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    expect(result.current.eligibleItems).toHaveLength(0);
+    const items = result.current.items;
+
+    ancestor.disabled = false;
+    await waitFor(() =>
+      expect(result.current.eligibleItems.map((entry) => entry.value)).toEqual(["item"]),
+    );
+    expect(result.current.items).toBe(items);
+
+    ancestor.disabled = true;
+    await waitFor(() => expect(result.current.eligibleItems).toHaveLength(0));
+    expect(result.current.items).toBe(items);
+  });
+
+  it("resynchronizes inert eligibility under StrictMode", async () => {
+    const container = document.createElement("div");
+    const ancestor = document.createElement("div");
+    const item = document.createElement("button");
+    ancestor.append(item);
+    container.append(ancestor);
+    document.body.append(container);
+
+    const { result } = renderHook(() => useSelectableCollection({ current: container }), {
+      wrapper: StrictMode,
+    });
+
+    act(() => result.current.registerItem("item", "item", false, item));
+    await waitFor(() => expect(result.current.eligibleItems).toHaveLength(1));
+
+    ancestor.setAttribute("inert", "");
+    await waitFor(() => expect(result.current.eligibleItems).toHaveLength(0));
+
+    ancestor.removeAttribute("inert");
+    await waitFor(() => expect(result.current.eligibleItems).toHaveLength(1));
   });
 
   it.each<SkippedAttribute>([

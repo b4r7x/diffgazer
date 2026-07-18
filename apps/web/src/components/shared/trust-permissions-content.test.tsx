@@ -240,6 +240,7 @@ describe("TrustPermissionsContent", () => {
 
     const busyStatus = await screen.findByRole("status");
     expect(busyStatus).toHaveFocus();
+    expect(busyStatus).toHaveTextContent("Saving trust permissions...");
     expect(getTrustPermissionsGroup()).toHaveAttribute("aria-disabled", "true");
     expect(onSave).toHaveBeenCalledOnce();
     expect(onSave).toHaveBeenCalledWith({ readFiles: true, runCommands: false });

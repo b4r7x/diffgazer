@@ -1,14 +1,6 @@
 import { Box, type DOMElement, Text, useBoxMetrics, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
-import {
-  Children,
-  cloneElement,
-  Fragment,
-  isValidElement,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { Children, cloneElement, Fragment, isValidElement, useRef, useState } from "react";
 import { useTheme } from "../../theme/provider";
 
 interface BaseScrollAreaProps {
@@ -40,6 +32,13 @@ interface ColumnChildProps {
   flexDirection?: string;
 }
 
+interface ScrollState {
+  offset: number;
+  rowCount: number;
+  userScrolled: boolean;
+  contentIdentity: unknown;
+}
+
 function isFlattenableColumnChild(child: ReactNode): child is ReactElement<ColumnChildProps> {
   if (!isValidElement<ColumnChildProps>(child)) return false;
   return child.type === Fragment || (child.type === Box && child.props.flexDirection === "column");
@@ -64,64 +63,66 @@ export function ScrollArea({
   totalRows,
 }: ScrollAreaProps) {
   const { tokens } = useTheme();
-  const [scrollOffset, setScrollOffset] = useState(0);
+  const [scrollState, setScrollState] = useState<ScrollState>(() => ({
+    offset: 0,
+    rowCount: 0,
+    userScrolled: false,
+    contentIdentity,
+  }));
   const staticContentRef = useRef<DOMElement>(null);
   const { height: measuredStaticRowCount } = useBoxMetrics(staticContentRef);
-  const previousRowCountRef = useRef(0);
-  const previousContentIdentityRef = useRef(contentIdentity);
-  const [userScrolled, setUserScrolled] = useState(false);
 
   const isWindowed = typeof children === "function";
   const rowCount = totalRows ?? measuredStaticRowCount;
   const maxOffset = Math.max(0, rowCount - height);
-  const clampedOffset = Math.min(scrollOffset, maxOffset);
 
-  useEffect(() => {
-    setScrollOffset((currentOffset) => Math.min(currentOffset, maxOffset));
-  }, [maxOffset]);
+  const contentChanged = !Object.is(scrollState.contentIdentity, contentIdentity);
+  let nextOffset = Math.min(scrollState.offset, maxOffset);
+  if (contentChanged) {
+    nextOffset = autoTail ? maxOffset : 0;
+  } else if (autoTail && rowCount > scrollState.rowCount && !scrollState.userScrolled) {
+    nextOffset = maxOffset;
+  }
+  const nextUserScrolled = contentChanged ? false : scrollState.userScrolled;
 
-  useEffect(() => {
-    const previousRowCount = previousRowCountRef.current;
-    const contentChanged = !Object.is(previousContentIdentityRef.current, contentIdentity);
-    previousRowCountRef.current = rowCount;
-    previousContentIdentityRef.current = contentIdentity;
+  if (
+    contentChanged ||
+    scrollState.rowCount !== rowCount ||
+    scrollState.offset !== nextOffset ||
+    scrollState.userScrolled !== nextUserScrolled
+  ) {
+    setScrollState({
+      offset: nextOffset,
+      rowCount,
+      userScrolled: nextUserScrolled,
+      contentIdentity,
+    });
+  }
 
-    if (contentChanged) {
-      setUserScrolled(false);
-      setScrollOffset(autoTail ? maxOffset : 0);
-      return;
-    }
-
-    if (autoTail && rowCount > previousRowCount && !userScrolled) {
-      setScrollOffset(maxOffset);
-    }
-  }, [autoTail, contentIdentity, rowCount, maxOffset, userScrolled]);
+  const clampedOffset = nextOffset;
+  const updateScrollState = (offset: number, userScrolled = offset < maxOffset) => {
+    setScrollState({ offset, rowCount, userScrolled, contentIdentity });
+  };
 
   useInput(
     (_input, key) => {
       if (key.upArrow) {
         const next = Math.max(0, clampedOffset - 1);
-        setUserScrolled(next < maxOffset);
-        setScrollOffset(next);
+        updateScrollState(next);
       } else if (key.downArrow) {
         const next = Math.min(maxOffset, clampedOffset + 1);
-        setUserScrolled(next < maxOffset);
-        setScrollOffset(next);
+        updateScrollState(next);
       } else if (key.pageUp) {
         const next = Math.max(0, clampedOffset - height);
-        setUserScrolled(next < maxOffset);
-        setScrollOffset(next);
+        updateScrollState(next);
       } else if (key.pageDown) {
         const next = Math.min(maxOffset, clampedOffset + height);
-        setUserScrolled(next < maxOffset);
-        setScrollOffset(next);
+        updateScrollState(next);
       } else if (key.home) {
         const next = 0;
-        setUserScrolled(next < maxOffset);
-        setScrollOffset(next);
+        updateScrollState(next);
       } else if (key.end) {
-        setUserScrolled(false);
-        setScrollOffset(maxOffset);
+        updateScrollState(maxOffset, false);
       }
     },
     { isActive },

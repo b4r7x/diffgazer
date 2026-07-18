@@ -24,6 +24,7 @@ type OverflowItemsProps = DivRootProps & {
   tooltip?: never;
   gap?: string;
   indicator?: OverflowIndicatorRender;
+  getOverflowLabel?: (count: number) => string;
   children: ReactNode;
 };
 

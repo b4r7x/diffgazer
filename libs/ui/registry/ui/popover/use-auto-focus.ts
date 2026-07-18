@@ -11,13 +11,16 @@ export function useAutoFocus(
 ): void {
   useEffect(() => {
     if (!enabled) return;
-    const frame = requestAnimationFrame(() => {
+    const element = ref.current;
+    if (!element) return;
+    const view = element.ownerDocument.defaultView ?? globalThis;
+    const frame = view.requestAnimationFrame(() => {
       const el = ref.current;
       if (!el || el.contains(el.ownerDocument.activeElement)) return;
       const target = getFirstFocusableElement(el);
       const focusTarget = target ?? (fallbackToContainer ? el : null);
       focusTarget?.focus({ preventScroll: true });
     });
-    return () => cancelAnimationFrame(frame);
+    return () => view.cancelAnimationFrame(frame);
   }, [ref, enabled, fallbackToContainer]);
 }

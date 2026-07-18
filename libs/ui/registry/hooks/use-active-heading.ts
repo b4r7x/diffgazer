@@ -143,8 +143,19 @@ export function useActiveHeading({
   const [settleSignal, setSettleSignal] = useState(0);
   const scrollingToRef = useRef<string | null>(null);
   const settleTimerRef = useRef<number>(0);
+  // Seed only when the tracked document, heading set, or enabled state changes.
+  // Tuning options must not reset a user's current heading.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: idsKey represents the ids array contents.
+  useEffect(() => {
+    if (doc === null || !enabled || ids.length === 0) {
+      setActiveId(null);
+      return;
+    }
+    setActiveId(ids[0] ?? null);
+  }, [doc, idsKey, enabled]);
+
   const update = useEffectEvent((): void => {
-    if (doc === null || scrollingToRef.current !== null) return;
+    if (doc === null || !enabled || scrollingToRef.current !== null) return;
 
     const container = getContainer(doc, containerId);
     const elements = ids
@@ -152,7 +163,7 @@ export function useActiveHeading({
       .filter((el): el is HTMLElement => isOwnerHTMLElement(doc, el));
 
     if (elements.length === 0) {
-      setActiveId(ids[0] ?? null);
+      setActiveId(null);
       return;
     }
 
@@ -184,8 +195,6 @@ export function useActiveHeading({
       setActiveId(null);
       return;
     }
-
-    setActiveId(ids[0] ?? null);
 
     const view = doc.defaultView;
     if (!view) return;
@@ -240,7 +249,7 @@ export function useActiveHeading({
       mutationObs.observe(container ?? doc.body, { childList: true, subtree: true });
     }
 
-    scheduleUpdate();
+    update();
 
     return () => {
       scrollTarget.removeEventListener("scroll", scheduleUpdate);
@@ -274,7 +283,7 @@ export function useActiveHeading({
 
   const scrollTo = useCallback(
     (id: string) => {
-      if (doc === null) return;
+      if (doc === null || !enabled) return;
       const heading = doc.getElementById(id);
       if (!isOwnerHTMLElement(doc, heading)) return;
 
@@ -308,7 +317,7 @@ export function useActiveHeading({
         }, settleDelay);
       }
     },
-    [doc, containerId, scrollOffset, settleDelay],
+    [doc, containerId, scrollOffset, settleDelay, enabled],
   );
 
   return { activeId, scrollTo };

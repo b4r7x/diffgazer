@@ -24,9 +24,7 @@ const LazySpinner = lazy(() => import("../spinner/spinner").then((m) => ({ defau
 interface ToastProps extends ToastType {
   /** Placement position. */
   position: ToastPosition;
-  /** Called when dismiss occurs. */
   onDismiss: (id: string) => void;
-  /** Called when remove occurs. */
   onRemove: (id: string) => void;
   dismissing?: boolean;
 }
@@ -254,6 +252,7 @@ function CountdownBar({ id, tone }: { id: string; tone: ToastTone }) {
   useLayoutEffect(() => {
     const fill = fillRef.current;
     if (!fill) return;
+    const view = fill.ownerDocument.defaultView ?? globalThis;
 
     const tick = () => {
       const snap = getTimerSnapshot(id);
@@ -267,7 +266,7 @@ function CountdownBar({ id, tone }: { id: string; tone: ToastTone }) {
       const remaining = Math.max(0, snap.remaining - (Date.now() - snap.startedAt));
       const ratio = Math.max(0, Math.min(1, remaining / snap.duration));
       fill.style.setProperty("--remain", String(ratio));
-      rafRef.current = requestAnimationFrame(tick);
+      rafRef.current = view.requestAnimationFrame(tick);
     };
 
     // While paused the remaining time is frozen, so paint the parked position
@@ -281,9 +280,9 @@ function CountdownBar({ id, tone }: { id: string; tone: ToastTone }) {
       return;
     }
 
-    rafRef.current = requestAnimationFrame(tick);
+    rafRef.current = view.requestAnimationFrame(tick);
     return () => {
-      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+      if (rafRef.current != null) view.cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     };
   }, [id, paused, timerVersion]);

@@ -26,10 +26,7 @@ export interface CodeBlockContextValue {
   chrome: CodeBlockChrome;
   /** Registers the id of a label that actually rendered. */
   registerLabel: (id: string) => () => void;
-  /**
-   * Language identifier exposed as data-language and used in the default aria-label
-   * ("{language} code").
-   */
+  /** Resolved accessible label for the code block. */
   ariaLabel: string | undefined;
   ariaLabelledBy: string | undefined;
 }

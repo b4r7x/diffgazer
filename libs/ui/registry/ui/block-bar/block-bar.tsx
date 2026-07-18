@@ -22,7 +22,7 @@ import {
 
 const MAX_BAR_WIDTH = 200;
 
-/** Customizable colored segment with optional children content. */
+/** Data describing a colored BlockBar segment. */
 export interface BlockBarSegmentData {
   /** Segment value in the same units as BlockBar max. */
   value: number;

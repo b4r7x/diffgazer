@@ -17,6 +17,7 @@ import {
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { mergeIds } from "@/lib/aria";
 import { cn } from "@/lib/utils";
+import { isNativeInteractiveElement, mergeHandlers } from "../shared/trigger-interop";
 import { type PopoverPopupRole, usePopoverContext } from "./popover-context";
 
 /** Props for popover trigger render. */
@@ -93,31 +94,6 @@ interface HoverTriggerElementProps {
   onBlur?: FocusEventHandler<HTMLElement>;
   onKeyDown?: KeyboardEventHandler<HTMLElement>;
   disabled?: boolean;
-}
-
-const nativeInteractiveElements = new Set([
-  "button",
-  "a",
-  "input",
-  "select",
-  "textarea",
-  "summary",
-]);
-
-function mergeHandlers<Event extends { defaultPrevented?: boolean }>(
-  existing: ((event: Event) => void) | undefined,
-  added: ((event: Event) => void) | undefined,
-  skipWhenDefaultPrevented = false,
-): (event: Event) => void {
-  return (event) => {
-    existing?.(event);
-    if (skipWhenDefaultPrevented && event.defaultPrevented) return;
-    added?.(event);
-  };
-}
-
-function isNativeInteractiveElement(element: ReactElement<HoverTriggerElementProps>): boolean {
-  return typeof element.type === "string" && nativeInteractiveElements.has(element.type);
 }
 
 function usesButtonLikeHoverSemantics(element: ReactElement<HoverTriggerElementProps>): boolean {

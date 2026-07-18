@@ -11,7 +11,7 @@
   "files": [
     {
       "path": "registry/ui/kbd/index.ts",
-      "content": "import { type KbdProps, Kbd as KbdRoot, kbdVariants } from \"./kbd\";\nimport { KbdGroup, type KbdGroupProps } from \"./kbd-group\";\n\n/** Keyboard key indicator rendered as an inline kbd element with terminal styling. */\nconst Kbd = Object.assign(KbdRoot, {\n  Group: KbdGroup,\n});\n\nexport { Kbd, kbdVariants, type KbdProps };\nexport { KbdGroup, type KbdGroupProps };\n",
+      "content": "import { type KbdProps, Kbd as KbdRoot, kbdVariants } from \"./kbd\";\nimport { KbdGroup, type KbdGroupProps } from \"./kbd-group\";\n\nconst Kbd = Object.assign(KbdRoot, {\n  Group: KbdGroup,\n});\n\nexport { Kbd, kbdVariants, type KbdProps };\nexport { KbdGroup, type KbdGroupProps };\n",
       "type": "registry:ui"
     },
     {
@@ -21,7 +21,7 @@
     },
     {
       "path": "registry/ui/kbd/kbd-group.tsx",
-      "content": "import type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for kbd group. */\nexport interface KbdGroupProps extends ComponentProps<\"kbd\"> {}\n\n/** Keyboard key indicator rendered as an inline kbd element with terminal styling. */\nexport function KbdGroup({ ref, className, children, ...props }: KbdGroupProps) {\n  return (\n    <kbd ref={ref} className={cn(\"inline-flex items-center gap-1\", className)} {...props}>\n      {children}\n    </kbd>\n  );\n}\n",
+      "content": "import type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for kbd group. */\nexport interface KbdGroupProps extends ComponentProps<\"kbd\"> {}\n\n/** Groups inline keyboard key indicators with a small gap. */\nexport function KbdGroup({ ref, className, children, ...props }: KbdGroupProps) {\n  return (\n    <kbd ref={ref} className={cn(\"inline-flex items-center gap-1\", className)} {...props}>\n      {children}\n    </kbd>\n  );\n}\n",
       "type": "registry:ui"
     }
   ],

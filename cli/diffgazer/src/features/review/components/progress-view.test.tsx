@@ -1,6 +1,7 @@
 import { FooterProvider } from "@diffgazer/core/footer";
 import { AGENT_METADATA, type AgentState } from "@diffgazer/core/schemas/events";
 import { cleanup, render } from "ink-testing-library";
+import { act } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { CliThemeProvider } from "../../../theme/provider";
@@ -10,6 +11,12 @@ afterEach(() => {
   cleanup();
   vi.useRealTimers();
 });
+
+async function flush(times = 4): Promise<void> {
+  for (let index = 0; index < times; index += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+}
 
 function renderViewNode(overrides: Partial<ReviewProgressViewProps> = {}) {
   return (
@@ -86,7 +93,7 @@ describe("ReviewProgressView (TUI) notices", () => {
     });
 
     const frame = lastFrame() ?? "";
-    expect(frame).toContain("Prompt:2");
+    expect(frame).toContain("Prompt: 2");
     expect(frame).not.toContain("Files processed");
   });
 
@@ -109,6 +116,30 @@ describe("ReviewProgressView (TUI) notices", () => {
 describe("ReviewProgressView (TUI) elapsed time", () => {
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  test("advances elapsed time during a silent stream", async () => {
+    vi.useFakeTimers({
+      toFake: ["Date", "setTimeout", "clearTimeout", "setInterval", "clearInterval"],
+    });
+    const startedAt = new Date("2026-01-01T00:00:00.000Z");
+    vi.setSystemTime(startedAt);
+
+    const { lastFrame } = renderView({
+      events: [],
+      isStreaming: true,
+      startedAt,
+    });
+
+    await flush();
+    expect(lastFrame() ?? "").toMatch(/Time:\s*00:00/);
+
+    act(() => {
+      vi.advanceTimersByTime(1_000);
+    });
+
+    await flush();
+    expect(lastFrame() ?? "").toMatch(/Time:\s*00:01/);
   });
 
   test.each([

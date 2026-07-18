@@ -9,7 +9,6 @@ import {
   type PopoverTriggerRenderProps,
 } from "./popover-trigger";
 
-/** Root - manages open state, trigger mode (click/hover), delay. */
 const Popover = Object.assign(PopoverRoot, {
   Trigger: PopoverTrigger,
   Content: PopoverContent,

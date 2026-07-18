@@ -11,6 +11,7 @@ import {
 import { restoreFocus as restoreFocusTarget } from "../dom/focus-restore.js";
 import {
   documentOrder,
+  getComposedChildren,
   getFocusableElements,
   getTabbableElements,
   isFocusable,
@@ -63,15 +64,6 @@ const TRAP_MUTATION_OPTIONS = {
     "class",
   ],
 } as const satisfies MutationObserverInit;
-
-function getComposedChildren(element: Element): Element[] {
-  if (element.shadowRoot) return Array.from(element.shadowRoot.children);
-  if (element.localName === "slot") {
-    const assigned = (element as HTMLSlotElement).assignedElements({ flatten: true });
-    if (assigned.length > 0) return assigned;
-  }
-  return Array.from(element.children);
-}
 
 function getOpenShadowRoots(container: HTMLElement): ShadowRoot[] {
   const roots: ShadowRoot[] = [];
@@ -184,23 +176,24 @@ function isInsideContainer(
 }
 
 function getTabbableFromAnchor(
-  tabbableEls: HTMLElement[],
+  tabbableEls: [HTMLElement, ...HTMLElement[]],
   activeElement: HTMLElement,
   shiftKey: boolean,
-): HTMLElement | null {
+): HTMLElement {
+  const firstTabbable = tabbableEls[0];
   const documentOrderEls = [...tabbableEls].sort(documentOrder);
   if (shiftKey) {
     for (let index = documentOrderEls.length - 1; index >= 0; index -= 1) {
       const candidate = documentOrderEls[index];
       if (candidate && documentOrder(candidate, activeElement) < 0) return candidate;
     }
-    return documentOrderEls.at(-1) ?? null;
+    return documentOrderEls.at(-1) ?? firstTabbable;
   }
 
   for (const candidate of documentOrderEls) {
     if (documentOrder(activeElement, candidate) < 0) return candidate;
   }
-  return documentOrderEls[0] ?? null;
+  return documentOrderEls[0] ?? firstTabbable;
 }
 
 function hasExcludedCheckedRadioPeer(container: HTMLElement, element: HTMLElement): boolean {
@@ -257,6 +250,10 @@ export function useFocusTrap(
     if (!nextContainer) return;
     const container = nextContainer;
     const ownerDocument = container.ownerDocument;
+    // Resolve the observer BEFORE any side effect (focus capture, tabindex mutation)
+    // so a document without MutationObserver bails out leaving the container untouched.
+    const MutationObserverCtor = ownerDocument.defaultView?.MutationObserver;
+    if (typeof MutationObserverCtor !== "function") return;
     // Capture the opener before focus moves inside, so a false-to-true toggle can still restore to it.
     const activeAtActivation = getDeepActiveElement(ownerDocument);
     const opener =
@@ -319,10 +316,11 @@ export function useFocusTrap(
 
       if (!focusableEls.includes(activeElement)) {
         event.preventDefault();
-        const anchorTarget = isInsideContainer(container, activeElement)
-          ? getTabbableFromAnchor(focusableEls, activeElement, event.shiftKey)
-          : null;
-        (anchorTarget ?? (event.shiftKey ? last : first))?.focus();
+        getTabbableFromAnchor(
+          focusableEls as [HTMLElement, ...HTMLElement[]],
+          activeElement,
+          event.shiftKey,
+        ).focus();
         return;
       }
 
@@ -347,7 +345,7 @@ export function useFocusTrap(
       }
     };
 
-    const observer = new MutationObserver(() => {
+    const observer = new MutationObserverCtor(() => {
       const entry = trapEntryRef.current;
       if (entry && !entry.suspended) observeNewTrapTargets(entry);
       if (

@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { StrictMode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
@@ -318,6 +319,46 @@ describe("Field", () => {
     const input = screen.getByRole("textbox", { name: "Project name" });
     expect(input).toHaveAttribute("id", "field-default");
     expect(screen.getByText("Project name")).toHaveAttribute("for", "field-default");
+  });
+
+  it("resets the label htmlFor when a wrapped control with its own id unmounts", () => {
+    const renderField = (showControl: boolean) => (
+      <Field controlId="field-default">
+        <Field.Label>Project name</Field.Label>
+        <div>
+          {showControl && (
+            <Field.Control>
+              <Input id="custom" />
+            </Field.Control>
+          )}
+        </div>
+      </Field>
+    );
+    const { rerender } = render(renderField(true));
+
+    expect(screen.getByText("Project name")).toHaveAttribute("for", "custom");
+
+    rerender(renderField(false));
+
+    expect(screen.getByText("Project name")).toHaveAttribute("for", "field-default");
+  });
+
+  it("keeps a wrapped control's own id registered under StrictMode", () => {
+    render(
+      <StrictMode>
+        <Field controlId="field-default">
+          <Field.Label>Project name</Field.Label>
+          <div>
+            <Field.Control>
+              <Input id="custom" />
+            </Field.Control>
+          </div>
+        </Field>
+      </StrictMode>,
+    );
+
+    expect(screen.getByRole("textbox", { name: "Project name" })).toHaveAttribute("id", "custom");
+    expect(screen.getByText("Project name")).toHaveAttribute("for", "custom");
   });
 
   it("keeps a div-based Checkbox accessible name through a wrapper", () => {

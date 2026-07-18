@@ -1110,4 +1110,30 @@ describe("useFocusTrap", () => {
       outsideButton.remove();
     });
   });
+
+  describe("environment without MutationObserver", () => {
+    it("leaves the container untouched and focus in place when MutationObserver is unavailable", () => {
+      container = document.createElement("div");
+      container.insertAdjacentHTML("beforeend", '<button id="a">A</button>');
+      document.body.appendChild(container);
+      expect(container.hasAttribute("tabindex")).toBe(false);
+
+      const outsideButton = document.createElement("button");
+      outsideButton.id = "outside";
+      document.body.appendChild(outsideButton);
+      outsideButton.focus();
+
+      vi.stubGlobal("MutationObserver", undefined);
+      try {
+        renderTrap(container, { restoreFocus: true });
+      } finally {
+        vi.unstubAllGlobals();
+      }
+
+      expect(container.hasAttribute("tabindex")).toBe(false);
+      expect(document.activeElement).toBe(outsideButton);
+
+      outsideButton.remove();
+    });
+  });
 });

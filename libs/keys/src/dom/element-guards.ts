@@ -22,12 +22,6 @@ export function isHTMLTextAreaElement(value: unknown): value is HTMLTextAreaElem
   return Boolean(View && value instanceof View.HTMLTextAreaElement);
 }
 
-/** Realm-safe HTMLDialogElement guard. */
-export function isHTMLDialogElement(value: unknown): value is HTMLDialogElement {
-  const View = getOwnerView(value);
-  return Boolean(View && value instanceof View.HTMLDialogElement);
-}
-
 /** Realm-safe Node guard using a known owner window. */
 export function isNode(
   value: unknown,

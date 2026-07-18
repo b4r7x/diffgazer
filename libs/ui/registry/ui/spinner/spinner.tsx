@@ -11,10 +11,6 @@ export type { SpinnerSize } from "./spinner-snake-grid";
 export type SpinnerVariant = "snake" | "braille" | "dots" | "pulse";
 /** Allowed spinner label position values. */
 export type SpinnerLabelPosition = "right" | "left" | "top" | "bottom";
-/**
- * Root element - renders the animation glyph. Accepts variant, size, labelPosition, gap, and
- * speed props. Pass children for a label.
- */
 export type SpinnerGap = "none" | "sm" | "md" | "lg";
 
 const BRAILLE_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;

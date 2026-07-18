@@ -26,7 +26,6 @@ function normalizeIntentKey(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, "-");
 }
 
-/** Resolves sidebar intent. */
 export function resolveSidebarIntent(
   explicitIntent: SidebarIntent | undefined,
   value: string | undefined,

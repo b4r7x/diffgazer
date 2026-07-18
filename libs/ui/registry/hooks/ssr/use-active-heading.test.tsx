@@ -1,6 +1,6 @@
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { useActiveHeading } from "../../use-active-heading";
+import { useActiveHeading } from "../use-active-heading";
 
 // Runs in the "ssr" vitest project (node environment, no jsdom), so `document`
 // and `window` are undefined here, so the hook must not read browser globals

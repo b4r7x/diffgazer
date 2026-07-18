@@ -19,10 +19,10 @@ import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { useNavigation } from "@/hooks/use-navigation";
 import { isHTMLElementForContainer, mergeIds, resolveAriaInvalid } from "@/lib/aria";
+import { useFieldsetDisabled } from "@/lib/fieldset-disabled";
 import {
   getEnabledSelectableCollectionItems,
   resolveSelectableCollectionItem,
-  useFieldsetDisabled,
   useSelectableCollection,
 } from "@/lib/selectable-collection";
 import { type SelectableVariant, selectableLabelVariants } from "@/lib/selectable-variants";
@@ -61,7 +61,7 @@ export type CheckboxGroupProps<T extends string = string> = CheckboxGroupRootPro
   onChange?: (value: T[]) => void;
   /** Called when keyboard navigation highlights a new item or clears highlight. */
   onHighlightChange?: (value: string | null) => void;
-  /** Called after the built-in group key handling runs. */
+  /** Called before the built-in group key handling; call event.preventDefault() to suppress it. */
   onKeyDown?: (event: ReactKeyboardEvent) => void;
   /** Controlled highlighted item value for keyboard navigation. */
   highlighted?: string | null;
@@ -147,7 +147,7 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
 
   useLayoutEffect(() => {
     itemsRef.current = items;
-  });
+  }, [items]);
 
   const [value, setValue, , resetValue] = useControllableState<T[]>({
     value: "value" in props ? (controlledValue ?? []) : undefined,

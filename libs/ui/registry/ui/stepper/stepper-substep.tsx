@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { Badge } from "../badge/badge";
 import type { SubstepStatus } from "./stepper-context";
 
-/** Root provider (manages expansion + variant) */
 export interface SubstepData {
   /** ID applied to the rendered element. */
   id: string;
@@ -31,7 +30,6 @@ export const substepVariants = cva("flex items-center gap-2 py-1 text-sm", {
   defaultVariants: { status: "pending" },
 });
 
-/** Root provider (manages expansion + variant) */
 export const SUBSTEP_STATUS_BADGE_VARIANTS: Record<
   SubstepStatus,
   "success" | "info" | "error" | "neutral"

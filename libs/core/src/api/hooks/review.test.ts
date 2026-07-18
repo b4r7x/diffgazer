@@ -24,7 +24,7 @@ import {
   useReviewSessionCache,
   useReviews,
 } from "./review.js";
-import { useReviewLifecycleBase } from "./use-review-lifecycle-controller.js";
+import { useReviewLifecycleBase } from "./use-review-lifecycle-base.js";
 import { type UseReviewStartOptions, useReviewStart } from "./use-review-start.js";
 
 function makeWrapper(api: BoundApi, queryClient: QueryClient) {

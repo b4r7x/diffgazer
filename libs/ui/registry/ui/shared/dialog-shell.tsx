@@ -11,12 +11,12 @@ import {
   useCallback,
   useLayoutEffect,
   useRef,
-  useState,
 } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { usePresence } from "@/hooks/use-presence";
 import { isHTMLDialogElement } from "@/lib/aria";
+import { createTopLayerStack, useTopLayerPosition } from "@/lib/top-layer-stack";
 
 /** Props for dialog shell. */
 export interface DialogShellProps extends ComponentProps<"dialog"> {
@@ -40,51 +40,7 @@ export interface DialogShellProps extends ComponentProps<"dialog"> {
   initialFocus?: RefObject<HTMLElement | null>;
 }
 
-// Per-document stacks of currently mounted, open DialogShell elements. Only the
-// topmost shell in each document runs its focus trap so peer/stacked dialogs do
-// not fight over focus via competing focusin listeners on ownerDocument.
-// Subscribers are notified after every push/pop with the new top element for
-// their document; each shell updates its local isTopShell state in response.
-const openShellStacks = new WeakMap<Document, HTMLElement[]>();
-
-interface ShellStackSubscriber {
-  ownerDocument: Document;
-  onTopChange: (top: HTMLElement | null) => void;
-}
-
-const shellStackSubscribers = new Set<ShellStackSubscriber>();
-
-function getOpenShellStack(ownerDocument: Document): HTMLElement[] {
-  let stack = openShellStacks.get(ownerDocument);
-  if (!stack) {
-    stack = [];
-    openShellStacks.set(ownerDocument, stack);
-  }
-  return stack;
-}
-
-function notifyShellStack(ownerDocument: Document): void {
-  const top = getOpenShellStack(ownerDocument).at(-1) ?? null;
-  for (const subscriber of shellStackSubscribers) {
-    if (subscriber.ownerDocument === ownerDocument) {
-      subscriber.onTopChange(top);
-    }
-  }
-}
-
-function pushShell(element: HTMLElement): void {
-  const ownerDocument = element.ownerDocument;
-  getOpenShellStack(ownerDocument).push(element);
-  notifyShellStack(ownerDocument);
-}
-
-function popShell(element: HTMLElement): void {
-  const ownerDocument = element.ownerDocument;
-  const stack = getOpenShellStack(ownerDocument);
-  const index = stack.lastIndexOf(element);
-  if (index >= 0) stack.splice(index, 1);
-  notifyShellStack(ownerDocument);
-}
+const dialogShellStack = createTopLayerStack();
 
 function isEventOutsideDialogRect(
   event: { clientX: number; clientY: number },
@@ -144,31 +100,7 @@ export function DialogShell({
   // configured with restoreFocus: false.
   const trapActive = open && present;
 
-  // When dialogs stack (peer Dialog defaultOpen or programmatically opened
-  // dialog-in-dialog), only the topmost shell's trap stays enabled. Outer
-  // traps go dormant so their ownerDocument-level focusin listeners do not
-  // fight the inner trap. isTopShell defaults to false so the first-render
-  // useFocusTrap effect is a no-op; the layout effect then pushes onto the
-  // stack and notifies all subscribers, and the resulting setState triggers a
-  // follow-up render where exactly one shell activates its trap.
-  const [isTopShell, setIsTopShell] = useState(false);
-  useLayoutEffect(() => {
-    if (!trapActive) return;
-    const element = shellRef.current;
-    if (!element) return;
-    const ownerDocument = element.ownerDocument;
-    const subscriber: ShellStackSubscriber = {
-      ownerDocument,
-      onTopChange: (top) => setIsTopShell(top === element),
-    };
-    shellStackSubscribers.add(subscriber);
-    pushShell(element);
-    return () => {
-      shellStackSubscribers.delete(subscriber);
-      popShell(element);
-      setIsTopShell(false);
-    };
-  }, [trapActive]);
+  const isTopShell = useTopLayerPosition(dialogShellStack, shellRef, trapActive);
 
   useFocusTrap(shellRef, { enabled: trapActive && isTopShell, restoreFocus: false, initialFocus });
 

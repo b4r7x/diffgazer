@@ -57,6 +57,7 @@ export function ScrollArea({
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     onKeyDown?.(e);
     if (e.defaultPrevented) return;
+    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
     if (e.target !== e.currentTarget) return;
 
     const el = e.currentTarget;

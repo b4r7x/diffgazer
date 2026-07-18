@@ -70,7 +70,12 @@ export function Breadcrumbs({
         className={cn("text-xs text-muted-foreground", className)}
         {...props}
       >
-        <ol className="m-0 flex list-none flex-wrap items-center gap-1.5 p-0">
+        {/* biome-ignore lint/a11y/useSemanticElements: this already is an <ol>; the explicit role="list" below restores list semantics that Tailwind preflight strips, and Biome should not suggest swapping the element. */}
+        <ol
+          // biome-ignore lint/a11y/noRedundantRoles: Tailwind preflight sets list-style:none on <ol>, which drops list semantics in Safari/VoiceOver; role="list" restores them.
+          role="list"
+          className="m-0 flex list-none flex-wrap items-center gap-1.5 p-0"
+        >
           {resolvedChildren}
         </ol>
       </nav>

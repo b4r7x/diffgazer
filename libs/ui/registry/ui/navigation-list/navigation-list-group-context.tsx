@@ -30,7 +30,6 @@ export function useNavigationListGroupContext() {
 
 /** Context value shared by navigation list group position. */
 export interface NavigationListGroupPositionContextValue {
-  /** Whether navigation list group position is last. */
   isLast: boolean;
 }
 

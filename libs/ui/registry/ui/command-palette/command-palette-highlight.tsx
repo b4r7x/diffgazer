@@ -91,11 +91,6 @@ export interface CommandPaletteHighlightItemProps extends Omit<CommandPaletteIte
   label?: string;
 }
 
-/**
- * Terminal-styled command palette with built-in search filtering, grouped items, and keyboard
- * navigation. Uses native dialog element with backdrop blur. Two orthogonal visual axes on
- * Content (frame and density) keep visual chrome configurable without touching internals.
- */
 export function CommandPaletteHighlightItem({
   tone,
   value,

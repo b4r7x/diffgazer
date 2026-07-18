@@ -88,6 +88,7 @@ export function useOverflowItems({
     }
 
     const generation = attachmentRef.current.generation;
+    const view = container.ownerDocument.defaultView ?? globalThis;
     let active = true;
     let frame: number | null = null;
     const isCurrentAttachment = () => {
@@ -104,7 +105,7 @@ export function useOverflowItems({
       }
 
       const containerWidth = container.offsetWidth;
-      const gap = parseFloat(getComputedStyle(container).gap) || 0;
+      const gap = parseFloat(view.getComputedStyle(container).gap) || 0;
       const items = children.slice(0, safeItemCount);
       const indicator = children[safeItemCount];
       const itemWidths = items.map((element) => element.offsetWidth);
@@ -119,41 +120,52 @@ export function useOverflowItems({
     };
     const scheduleRecalculate = () => {
       if (!isCurrentAttachment() || frame != null) return;
-      frame = requestAnimationFrame(() => {
+      if (typeof view.requestAnimationFrame !== "function") {
+        recalculate();
+        return;
+      }
+      frame = view.requestAnimationFrame(() => {
         frame = null;
         recalculate();
       });
     };
 
-    const resizeObserver = new ResizeObserver(scheduleRecalculate);
+    const ResizeObserverCtor = view.ResizeObserver;
+    const resizeObserver =
+      typeof ResizeObserverCtor === "function" ? new ResizeObserverCtor(scheduleRecalculate) : null;
     const observeChildren = () => {
       if (!isCurrentAttachment()) return;
-      resizeObserver.disconnect();
-      resizeObserver.observe(container);
+      resizeObserver?.disconnect();
+      resizeObserver?.observe(container);
       for (const child of Array.from(container.children)) {
-        resizeObserver.observe(child);
+        resizeObserver?.observe(child);
       }
     };
-    const mutationObserver = new MutationObserver(() => {
-      if (!isCurrentAttachment()) return;
-      observeChildren();
-      scheduleRecalculate();
-    });
+    const MutationObserverCtor = view.MutationObserver;
+    const mutationObserver =
+      typeof MutationObserverCtor === "function"
+        ? new MutationObserverCtor(() => {
+            if (!isCurrentAttachment()) return;
+            observeChildren();
+            scheduleRecalculate();
+          })
+        : null;
 
     observeChildren();
-    mutationObserver.observe(container, {
+    mutationObserver?.observe(container, {
       childList: true,
       characterData: true,
       subtree: true,
+      attributes: true,
     });
     recalculate();
 
     return () => {
       active = false;
-      resizeObserver.disconnect();
-      mutationObserver.disconnect();
+      resizeObserver?.disconnect();
+      mutationObserver?.disconnect();
       if (frame != null) {
-        cancelAnimationFrame(frame);
+        if (typeof view.cancelAnimationFrame === "function") view.cancelAnimationFrame(frame);
         frame = null;
       }
     };

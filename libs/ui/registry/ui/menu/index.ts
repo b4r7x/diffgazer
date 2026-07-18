@@ -14,14 +14,8 @@ import {
   type MenuSubProps,
   MenuSubTrigger,
   type MenuSubTriggerProps,
-  type MenuSubTriggerVariantProps,
-  menuSubTriggerBase,
 } from "./menu-sub";
 
-/**
- * Terminal-styled selection list with keyboard navigation, highlighting and optional hotkey
- * indicators.
- */
 const Menu = Object.assign(MenuRoot, {
   Item: MenuItem,
   ItemCheckbox: MenuItemCheckbox,
@@ -42,10 +36,5 @@ export { MenuDivider, type MenuDividerProps };
 export { MenuGroup, type MenuGroupProps };
 export { MenuLabel, type MenuLabelProps };
 export { MenuSub, type MenuSubProps };
-export {
-  MenuSubTrigger,
-  menuSubTriggerBase,
-  type MenuSubTriggerProps,
-  type MenuSubTriggerVariantProps,
-};
+export { MenuSubTrigger, type MenuSubTriggerProps };
 export { MenuSubContent, type MenuSubContentProps };

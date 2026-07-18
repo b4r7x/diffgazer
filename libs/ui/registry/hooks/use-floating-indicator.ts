@@ -38,6 +38,7 @@ export function useFloatingIndicator(
   const [rect, setRect] = useState<FloatingIndicatorRect | null>(null);
   const [container, setContainer] = useState<HTMLElement | null>(null);
 
+  // Ref-to-state promotion with equality bail; must observe every render.
   useLayoutEffect(() => {
     const nextContainer = containerRef.current;
     setContainer((currentContainer) =>
@@ -51,31 +52,28 @@ export function useFloatingIndicator(
       return;
     }
 
-    const selector = `[data-value="${CSS.escape(activeValue)}"]`;
-
-    const findTarget = (): HTMLElement | null => {
-      const node = container.querySelector(selector);
-      const HTMLElementCtor = container.ownerDocument.defaultView?.HTMLElement;
-      return HTMLElementCtor && node instanceof HTMLElementCtor ? node : null;
-    };
+    const findTarget = (): HTMLElement | null =>
+      Array.from(container.querySelectorAll<HTMLElement>("[data-value]")).find(
+        (node) => node.getAttribute("data-value") === activeValue,
+      ) ?? null;
 
     let currentTarget: HTMLElement | null = null;
-    const resizeObserver = new ResizeObserver(() => measure());
-    const mutationObserver = new MutationObserver(() => measure());
+    let resizeObserver: ResizeObserver | null = null;
+    let mutationObserver: MutationObserver | null = null;
 
     const measure = () => {
       const target = findTarget();
       if (!target) {
         if (currentTarget) {
-          resizeObserver.unobserve(currentTarget);
+          resizeObserver?.unobserve(currentTarget);
           currentTarget = null;
         }
         setRect(null);
         return;
       }
       if (target !== currentTarget) {
-        if (currentTarget) resizeObserver.unobserve(currentTarget);
-        resizeObserver.observe(target);
+        if (currentTarget) resizeObserver?.unobserve(currentTarget);
+        resizeObserver?.observe(target);
         currentTarget = target;
       }
       const containerBox = container.getBoundingClientRect();
@@ -89,12 +87,22 @@ export function useFloatingIndicator(
     };
 
     measure();
-    resizeObserver.observe(container);
-    mutationObserver.observe(container, { childList: true, subtree: true });
+    const view = container.ownerDocument.defaultView ?? globalThis;
+    const ResizeObserverCtor = view.ResizeObserver;
+    if (typeof ResizeObserverCtor === "function") {
+      resizeObserver = new ResizeObserverCtor(measure);
+      resizeObserver.observe(container);
+      if (currentTarget) resizeObserver.observe(currentTarget);
+    }
+    const MutationObserverCtor = view.MutationObserver;
+    if (typeof MutationObserverCtor === "function") {
+      mutationObserver = new MutationObserverCtor(measure);
+      mutationObserver.observe(container, { childList: true, subtree: true });
+    }
 
     return () => {
-      resizeObserver.disconnect();
-      mutationObserver.disconnect();
+      resizeObserver?.disconnect();
+      mutationObserver?.disconnect();
     };
   }, [container, activeValue]);
 

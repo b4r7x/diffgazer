@@ -70,10 +70,10 @@ export function StepperTrigger({
       ? STATUS_SR_PREFIX[status]
       : (statusLabels?.[status] ?? STATUS_SR_PREFIX[status]);
 
-  // Report the rendered label text up to the step so the Stepper live region can
-  // announce it, mirroring the previous static label extraction but resilient to
-  // JSX/wrapper-rendered trigger content.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: children is the label source; re-read the rendered text whenever it changes.
+  // Re-read the rendered label when the children prop identity changes. A child-owned
+  // subscription that changes text in place is not observed; dynamic labels must flow
+  // through updated props or children.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the effect intentionally tracks children identity; descendant text updates do not trigger it.
   useLayoutEffect(() => {
     setTriggerLabel(labelRef.current?.textContent?.trim() || undefined);
   }, [children, setTriggerLabel]);
@@ -110,11 +110,9 @@ export function StepperTrigger({
   );
 }
 
-/** Props for glyph. */
 interface GlyphProps {
   /** Visual variant. Controls the indicator glyph and connector treatment across every step. */
   variant: StepperVariant;
-  /** Current status value. */
   status: StepStatus;
   /** Accessible label for tag. */
   tagLabel: string;
@@ -153,7 +151,6 @@ function Glyph({ variant, status, tagLabel }: GlyphProps) {
   return <>{STEP_INDICATOR_GLYPHS[variant][status]}</>;
 }
 
-/** Returns stepper indicator glyph. */
 export function getStepperIndicatorGlyph(variant: StepperVariant, status: StepStatus): string {
   if (variant === "numbered") {
     switch (status) {

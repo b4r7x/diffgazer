@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
 import {
+  getDocument,
   getRestorableFocusTarget,
   type RestoreFocusOptions,
   restoreFocus,
@@ -34,10 +35,6 @@ interface FocusRestoreEntry {
 }
 
 const focusRestoreStacks = new WeakMap<Document, FocusRestoreEntry[]>();
-
-function getDefaultDocument(): Document | null {
-  return typeof document === "undefined" ? null : document;
-}
 
 function getFocusRestoreStack(ownerDocument: Document): FocusRestoreEntry[] {
   let stack = focusRestoreStacks.get(ownerDocument);
@@ -106,24 +103,26 @@ export function useFocusRestore(options: UseFocusRestoreOptions = {}): UseFocusR
   const entryRef = useRef<FocusRestoreEntry | null>(null);
   const [target, setTarget] = useState<HTMLElement | null>(null);
 
+  const teardown = useEffectEvent(
+    (shouldRestore: boolean, options: Required<UseFocusRestoreOptions>) => {
+      const entry = entryRef.current;
+      if (!entry) return;
+
+      entryRef.current = null;
+      releaseEntry(entry, shouldRestore, options);
+      setTarget(null);
+    },
+  );
+
+  // Latest-ref sync: stable focus callbacks read optionsRef, so it must update every render by design.
   useLayoutEffect(() => {
     optionsRef.current = resolvedOptions;
   });
 
   const capture = useCallback((ownerDocument?: Document) => {
     const resolvedOptions = optionsRef.current;
-    if (!resolvedOptions.enabled) {
-      const entry = entryRef.current;
-      if (entry) {
-        entryRef.current = null;
-        removeEntry(entry);
-      }
-      setTarget(null);
-      return null;
-    }
-
-    const doc = ownerDocument ?? resolvedOptions.fallback?.ownerDocument ?? getDefaultDocument();
-    if (!doc) {
+    const doc = ownerDocument ?? resolvedOptions.fallback?.ownerDocument ?? getDocument();
+    if (!resolvedOptions.enabled || !doc) {
       const entry = entryRef.current;
       if (entry) {
         entryRef.current = null;
@@ -166,21 +165,12 @@ export function useFocusRestore(options: UseFocusRestoreOptions = {}): UseFocusR
   useEffect(() => {
     if (resolvedOptions.enabled) return;
 
-    const entry = entryRef.current;
-    if (!entry) return;
-
-    entryRef.current = null;
-    removeEntry(entry);
-    setTarget(null);
+    teardown(false, optionsRef.current);
   }, [resolvedOptions.enabled]);
 
   useEffect(() => {
     return () => {
-      const entry = entryRef.current;
-      if (!entry) return;
-
-      entryRef.current = null;
-      releaseEntry(entry, optionsRef.current.restoreOnUnmount, optionsRef.current);
+      teardown(optionsRef.current.restoreOnUnmount, optionsRef.current);
     };
   }, []);
 

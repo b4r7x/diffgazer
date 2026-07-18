@@ -98,7 +98,6 @@ function OverflowTooltipTrigger({
   );
 }
 
-/** Root - text mode by default; set mode="items" for fitting child items. */
 export function OverflowText({
   children,
   lines = 1,

@@ -23,11 +23,6 @@ import { useDialogContext } from "./dialog-context";
 import { DialogDescription } from "./dialog-description";
 import { DialogTitle } from "./dialog-title";
 
-/**
- * Modal dialog with compound component architecture. Built on the native dialog element with
- * two orthogonal visual axes: frame (border or none) and corners (none, subtle, standard, bold,
- * or outset), and an optional header marker bar spanning the title and description.
- */
 export type DialogCorners = "none" | "subtle" | "standard" | "bold" | "outset";
 
 /** Class variants for dialog content. */
@@ -207,14 +202,12 @@ export function DialogContent({
     // computed) clears the fallback before we warn — avoiding a false warning.
     const view = shellRef.current?.ownerDocument.defaultView ?? globalThis;
     const frame = view.requestAnimationFrame(() => {
-      if (fallbackAriaLabel === FALLBACK_DIALOG_LABEL) {
-        console.warn(
-          "Dialog: No accessible name provided. Add a <Dialog.Title>, aria-label, or aria-labelledby prop.",
-        );
-      }
+      console.warn(
+        "Dialog: No accessible name provided. Add a <Dialog.Title>, aria-label, or aria-labelledby prop.",
+      );
     });
     return () => view.cancelAnimationFrame(frame);
-  }, [fallbackAriaLabel, isFallbackName, open]);
+  }, [isFallbackName, open]);
 
   const resolvedDescribedBy = mergeIds(
     ariaDescribedBy,

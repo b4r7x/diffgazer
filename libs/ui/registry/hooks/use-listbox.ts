@@ -85,7 +85,11 @@ export interface UseListboxOptions<TId extends string = string> {
   ) => void;
   /** Whether keyboard navigation wraps from last item to first and vice versa. @default true */
   wrap?: boolean;
-  /** Prefix for generating aria-activedescendant IDs. Each option should use id="{idPrefix}-{itemId}". */
+  /**
+   * Prefix for generating aria-activedescendant IDs. By default, each option uses
+   `id="${idPrefix}-${encodeURIComponent(itemId)}"` via `getEncodedListboxItemId`; pass
+   `getItemId` to use a different encoding.
+   */
   idPrefix: string;
   /** Focus the container on mount and initialize highlight to the selected item or first navigable item. @default false */
   autoFocus?: boolean;
@@ -264,13 +268,17 @@ export function useListbox<TId extends string = string>({
       attributes: true,
       attributeFilter: [
         "aria-disabled",
+        "aria-expanded",
         "aria-hidden",
         "data-disabled",
+        "data-state",
         "data-value",
+        "class",
         "hidden",
         "id",
         "inert",
         "role",
+        "style",
       ],
     });
     return () => observer.disconnect();
@@ -332,10 +340,13 @@ export function useListbox<TId extends string = string>({
     }
     if (autoFocusInitialized.current) return;
 
-    const frame = requestAnimationFrame(() => {
+    const view = containerRef.current?.ownerDocument.defaultView;
+    const requestFrame = view?.requestAnimationFrame?.bind(view) ?? requestAnimationFrame;
+    const cancelFrame = view?.cancelAnimationFrame?.bind(view) ?? cancelAnimationFrame;
+    const frame = requestFrame(() => {
       if (runAutoFocusInit()) autoFocusInitialized.current = true;
     });
-    return () => cancelAnimationFrame(frame);
+    return () => cancelFrame(frame);
   }, [autoFocus, items]);
 
   const { onKeyDown: navKeyDown } = useNavigation<TId>({

@@ -233,7 +233,6 @@ export function NavigationList({
       unregisterItem,
       registerGroupHeader,
       unregisterGroupHeader,
-      groupHeaders: groupHeadersRef.current,
     }),
     [
       selectedId,

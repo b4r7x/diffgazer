@@ -6,7 +6,7 @@ import { type AriaAttributes, createContext, type RefObject, useContext } from "
 export interface SelectOptionMetadata {
   /** Accessible label text. */
   label: string;
-  /** Disable the trigger and prevent open. */
+  /** Disables the option so it cannot be selected. */
   disabled: boolean;
 }
 

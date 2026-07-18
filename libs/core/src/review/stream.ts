@@ -12,7 +12,7 @@ import type {
   ReviewMode,
   ReviewResult,
 } from "../schemas/review/index.js";
-import { parseSSEStream } from "../sse-parser.js";
+import { parseSSEStream } from "./sse-parser.js";
 
 interface StreamReviewRequest {
   mode?: ReviewMode;

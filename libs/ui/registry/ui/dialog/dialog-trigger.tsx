@@ -12,6 +12,7 @@ import {
 } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { cn } from "@/lib/utils";
+import { isNativeInteractiveElement, mergeHandlers } from "../shared/trigger-interop";
 import { useDialogContext } from "./dialog-context";
 
 /** Props for dialog trigger render. */
@@ -25,7 +26,7 @@ export interface DialogTriggerRenderProps {
   /** ARIA expanded state forwarded to the rendered element. */
   "aria-expanded": boolean;
   /** ID of the element controlled by the rendered element. */
-  "aria-controls": string;
+  "aria-controls"?: string;
   /** Called when click occurs. */
   onClick: MouseEventHandler<HTMLElement>;
 }
@@ -51,7 +52,7 @@ interface DialogTriggerElementProps {
   ref?: Ref<HTMLElement>;
   /** Additional class names merged onto the rendered element. */
   className?: string;
-  /** Selection mode. */
+  /** HTML button type forwarded to the rendered trigger. */
   type?: string;
   /** ARIA popup type forwarded to the rendered element. */
   "aria-haspopup"?: "dialog";
@@ -61,29 +62,6 @@ interface DialogTriggerElementProps {
   "aria-controls"?: string;
   /** Called when click occurs. */
   onClick?: MouseEventHandler<HTMLElement>;
-}
-
-const nativeInteractiveElements = new Set([
-  "button",
-  "a",
-  "input",
-  "select",
-  "textarea",
-  "summary",
-]);
-
-function isNativeInteractiveElement(element: ReactElement<DialogTriggerElementProps>): boolean {
-  return typeof element.type === "string" && nativeInteractiveElements.has(element.type);
-}
-
-function mergeClickHandlers(
-  existing: MouseEventHandler<HTMLElement> | undefined,
-  added: MouseEventHandler<HTMLElement>,
-): MouseEventHandler<HTMLElement> {
-  return (event) => {
-    existing?.(event);
-    if (!event.defaultPrevented) added(event);
-  };
 }
 
 /** Opens the dialog. */
@@ -104,7 +82,7 @@ export function DialogTrigger({ children, className, onClick, ref }: DialogTrigg
     className,
     "aria-haspopup": "dialog",
     "aria-expanded": open,
-    "aria-controls": contentId,
+    "aria-controls": open ? contentId : undefined,
     onClick: handleClick,
   };
 
@@ -122,7 +100,7 @@ export function DialogTrigger({ children, className, onClick, ref }: DialogTrigg
         "aria-haspopup": triggerProps["aria-haspopup"],
         "aria-expanded": triggerProps["aria-expanded"],
         "aria-controls": triggerProps["aria-controls"],
-        onClick: mergeClickHandlers(child.props.onClick, triggerProps.onClick),
+        onClick: mergeHandlers(child.props.onClick, triggerProps.onClick, true),
       });
     }
   }

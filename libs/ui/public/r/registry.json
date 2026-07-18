@@ -206,6 +206,26 @@
           "type": "registry:ui"
         },
         {
+          "path": "registry/ui/field/field-context.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/field/field-label.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/field/field-control.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/field/field-description.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/field/field-error.tsx",
+          "type": "registry:ui"
+        },
+        {
           "path": "registry/ui/field/field.tsx",
           "type": "registry:ui"
         }
@@ -304,6 +324,7 @@
         "https://r.b4r7.dev/r/ui/form-reset.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
         "https://r.b4r7.dev/r/ui/compose-refs.json",
+        "https://r.b4r7.dev/r/ui/fieldset-disabled.json",
         "https://r.b4r7.dev/r/ui/selectable-collection.json",
         "https://r.b4r7.dev/r/ui/selectable-variants.json",
         "https://r.b4r7.dev/r/ui/utils.json",
@@ -374,6 +395,7 @@
         "https://r.b4r7.dev/r/ui/form-reset.json",
         "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
+        "https://r.b4r7.dev/r/ui/fieldset-disabled.json",
         "https://r.b4r7.dev/r/ui/selectable-collection.json",
         "https://r.b4r7.dev/r/ui/selectable-variants.json",
         "https://r.b4r7.dev/r/ui/utils.json",
@@ -804,7 +826,8 @@
         "https://r.b4r7.dev/r/ui/kbd.json",
         "https://r.b4r7.dev/r/ui/aria.json",
         "https://r.b4r7.dev/r/ui/utils.json",
-        "https://r.b4r7.dev/r/ui/composed-refs.json"
+        "https://r.b4r7.dev/r/ui/composed-refs.json",
+        "https://r.b4r7.dev/r/ui/trigger-interop.json"
       ],
       "meta": {
         "client": true,
@@ -1133,7 +1156,8 @@
         "https://r.b4r7.dev/r/ui/outside-click.json",
         "https://r.b4r7.dev/r/ui/spinner.json",
         "https://r.b4r7.dev/r/ui/utils.json",
-        "https://r.b4r7.dev/r/keys/navigation.json"
+        "https://r.b4r7.dev/r/keys/navigation.json",
+        "https://r.b4r7.dev/r/ui/top-layer-stack.json"
       ],
       "meta": {
         "client": true,
@@ -1458,7 +1482,8 @@
         "https://r.b4r7.dev/r/ui/selectable-collection.json",
         "https://r.b4r7.dev/r/ui/kbd.json",
         "https://r.b4r7.dev/r/ui/utils.json",
-        "https://r.b4r7.dev/r/ui/composed-refs.json"
+        "https://r.b4r7.dev/r/ui/composed-refs.json",
+        "https://r.b4r7.dev/r/ui/dom-id.json"
       ],
       "meta": {
         "client": true,
@@ -1545,7 +1570,8 @@
         "https://r.b4r7.dev/r/ui/typeahead.json",
         "https://r.b4r7.dev/r/ui/typeahead-buffer.json",
         "https://r.b4r7.dev/r/ui/utils.json",
-        "https://r.b4r7.dev/r/ui/composed-refs.json"
+        "https://r.b4r7.dev/r/ui/composed-refs.json",
+        "https://r.b4r7.dev/r/ui/dom-id.json"
       ],
       "meta": {
         "client": true,
@@ -2245,7 +2271,8 @@
         "https://r.b4r7.dev/r/ui/outside-click.json",
         "https://r.b4r7.dev/r/keys/focusable.json",
         "https://r.b4r7.dev/r/ui/utils.json",
-        "https://r.b4r7.dev/r/ui/composed-refs.json"
+        "https://r.b4r7.dev/r/ui/composed-refs.json",
+        "https://r.b4r7.dev/r/ui/trigger-interop.json"
       ],
       "meta": {
         "client": true,
@@ -2294,6 +2321,7 @@
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/ui/form-reset.json",
         "https://r.b4r7.dev/r/ui/compose-refs.json",
+        "https://r.b4r7.dev/r/ui/fieldset-disabled.json",
         "https://r.b4r7.dev/r/ui/utils.json",
         "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],

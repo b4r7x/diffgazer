@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -347,6 +347,32 @@ describe("Stepper", () => {
     expect(s1).toHaveFocus();
   });
 
+  it("consumes arrow keys when the only focusable trigger is already focused", () => {
+    render(
+      <Stepper>
+        <Stepper.Step stepId="s1" status="active">
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s2" status="disabled">
+          <Stepper.Trigger>Step 2</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    );
+
+    const trigger = screen.getByRole("button", { name: /Step 1/ });
+    trigger.focus();
+
+    const event = new KeyboardEvent("keydown", {
+      key: "ArrowDown",
+      bubbles: true,
+      cancelable: true,
+    });
+    trigger.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(trigger).toHaveFocus();
+  });
+
   it("arrow navigation skips a trigger disabled via the disabled prop", async () => {
     const user = userEvent.setup();
     render(
@@ -397,6 +423,39 @@ describe("Stepper", () => {
 
     await user.keyboard("{ArrowUp}");
     expect(s1).toHaveFocus();
+  });
+
+  it("arrow navigation skips a step hidden by its class", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <>
+        <style>{`.css-hidden-step { display: none; }`}</style>
+        <Stepper>
+          <Stepper.Step stepId="s1" status="completed">
+            <Stepper.Trigger>Step 1</Stepper.Trigger>
+          </Stepper.Step>
+          <Stepper.Step stepId="s2" status="active" className="css-hidden-step">
+            <Stepper.Trigger>Step 2</Stepper.Trigger>
+          </Stepper.Step>
+          <Stepper.Step stepId="s3" status="pending">
+            <Stepper.Trigger>Step 3</Stepper.Trigger>
+          </Stepper.Step>
+        </Stepper>
+      </>,
+    );
+
+    const s1 = screen.getByRole("button", { name: /Step 1/ });
+    const s3 = screen.getByRole("button", { name: /Step 3/ });
+    const hiddenStep = container.querySelector<HTMLElement>('[data-step-id="s2"]');
+    if (!hiddenStep) throw new Error("Expected class-hidden step trigger");
+
+    await waitFor(() => {
+      expect(hiddenStep).toHaveAttribute("tabIndex", "-1");
+    });
+
+    s1.focus();
+    await user.keyboard("{ArrowDown}");
+    expect(s3).toHaveFocus();
   });
 
   it("marks disabled steps with aria-disabled and excludes them from tab order", () => {

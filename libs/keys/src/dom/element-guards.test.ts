@@ -4,7 +4,6 @@ import {
   getComposedEventTarget,
   getOwnerView,
   isEditableElement,
-  isHTMLDialogElement,
   isHTMLElement,
   isHTMLInputElement,
   isHTMLTextAreaElement,
@@ -35,17 +34,6 @@ describe("isHTMLElement", () => {
   it("rejects non-elements", () => {
     expect(isHTMLElement(null)).toBe(false);
     expect(isHTMLElement({})).toBe(false);
-  });
-});
-
-describe("isHTMLDialogElement", () => {
-  it("narrows on dialog elements in the element owner realm", () => {
-    expect(isHTMLDialogElement(document.createElement("dialog"))).toBe(true);
-    expect(isHTMLDialogElement(document.createElement("div"))).toBe(false);
-  });
-
-  it("rejects null", () => {
-    expect(isHTMLDialogElement(null)).toBe(false);
   });
 });
 

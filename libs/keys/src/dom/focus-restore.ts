@@ -6,7 +6,7 @@ export interface RestoreFocusOptions {
   preventScroll?: boolean;
 }
 
-function getDocument(): Document | null {
+export function getDocument(): Document | null {
   return typeof document === "undefined" ? null : document;
 }
 

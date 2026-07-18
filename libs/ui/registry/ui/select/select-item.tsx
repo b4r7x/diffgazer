@@ -64,10 +64,6 @@ function getItemState(isSelected: boolean, isHighlighted: boolean, multiple: boo
   return "selected";
 }
 
-/**
- * Dropdown select with search, multiple selection, card variant, and controlled keyboard
- * integration points. 8 composable parts.
- */
 export type SelectItemIndicator = "auto" | "checkbox" | "radio" | "none";
 
 /** Props for select item. */

@@ -50,15 +50,7 @@ export const labelWrapperVariants = cva(
   },
 );
 
-/**
- * Styled label with optional form control wrapping. Standalone mode renders colored uppercase
- * text. Wrapper mode (via label prop) renders the label above or beside children content.
- */
 export type LabelColor = NonNullable<VariantProps<typeof labelVariants>["color"]>;
-/**
- * Styled label with optional form control wrapping. Standalone mode renders colored uppercase
- * text. Wrapper mode (via label prop) renders the label above or beside children content.
- */
 export type LabelOrientation = NonNullable<
   VariantProps<typeof labelWrapperVariants>["orientation"]
 >;

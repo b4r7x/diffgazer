@@ -1,7 +1,8 @@
 "use client";
 
 import { isEditableElement } from "@diffgazer/keys";
-import { type FocusEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type FocusEvent, useEffect, useRef, useState } from "react";
+import { createTopLayerStack, useTopLayerPosition } from "@/lib/top-layer-stack";
 import { cn } from "@/lib/utils";
 import { Toast } from "./toast";
 import {
@@ -43,43 +44,7 @@ interface ToastAnnouncement {
   text: string;
 }
 
-interface ToasterStackSubscriber {
-  ownerDocument: Document;
-  onTopChange: (top: HTMLElement | null) => void;
-}
-
-const toasterStacks = new WeakMap<Document, HTMLElement[]>();
-const toasterStackSubscribers = new Set<ToasterStackSubscriber>();
-
-function getToasterStack(ownerDocument: Document): HTMLElement[] {
-  let stack = toasterStacks.get(ownerDocument);
-  if (!stack) {
-    stack = [];
-    toasterStacks.set(ownerDocument, stack);
-  }
-  return stack;
-}
-
-function notifyToasterStack(ownerDocument: Document): void {
-  const top = getToasterStack(ownerDocument).at(-1) ?? null;
-  for (const subscriber of toasterStackSubscribers) {
-    if (subscriber.ownerDocument === ownerDocument) subscriber.onTopChange(top);
-  }
-}
-
-function pushToaster(element: HTMLElement): void {
-  const ownerDocument = element.ownerDocument;
-  getToasterStack(ownerDocument).push(element);
-  notifyToasterStack(ownerDocument);
-}
-
-function popToaster(element: HTMLElement): void {
-  const ownerDocument = element.ownerDocument;
-  const stack = getToasterStack(ownerDocument);
-  const index = stack.lastIndexOf(element);
-  if (index >= 0) stack.splice(index, 1);
-  notifyToasterStack(ownerDocument);
-}
+const toasterStack = createTopLayerStack();
 
 /** Props for toaster. */
 export interface ToasterProps {
@@ -97,24 +62,7 @@ export interface ToasterProps {
 export function Toaster({ position = "bottom-right", hotkey = "F8" }: ToasterProps) {
   const { toasts, dismissingIds } = useToastStore();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [isTopToaster, setIsTopToaster] = useState(false);
-
-  useLayoutEffect(() => {
-    const element = containerRef.current;
-    if (!element) return;
-    const ownerDocument = element.ownerDocument;
-    const subscriber: ToasterStackSubscriber = {
-      ownerDocument,
-      onTopChange: (top) => setIsTopToaster(top === element),
-    };
-    toasterStackSubscribers.add(subscriber);
-    pushToaster(element);
-    return () => {
-      toasterStackSubscribers.delete(subscriber);
-      popToaster(element);
-      setIsTopToaster(false);
-    };
-  }, []);
+  const isTopToaster = useTopLayerPosition(toasterStack, containerRef, true);
 
   const visibleToasts = isTopToaster ? toasts : [];
   useToastContainer(visibleToasts, dismissingIds, containerRef, isTopToaster);

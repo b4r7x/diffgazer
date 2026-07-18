@@ -29,7 +29,7 @@ import {
 } from "@/lib/selectable-collection";
 import { cn } from "@/lib/utils";
 import { ToggleGroupContext, type ToggleGroupSelectionMode } from "./toggle-group-context";
-import { ToggleGroupItem, type ToggleGroupItemProps } from "./toggle-group-item";
+import { ToggleGroupItem } from "./toggle-group-item";
 
 /** Props for toggle group in single-selection mode. */
 interface ToggleGroupSingleProps<TValue extends string = string> {
@@ -105,21 +105,41 @@ interface ToggleGroupBaseProps<TValue extends string = string> {
 export type ToggleGroupProps<TValue extends string = string> = ToggleGroupBaseProps<TValue> &
   (ToggleGroupSingleProps<TValue> | ToggleGroupMultipleProps<TValue>);
 
-function collectEnabledDirectToggleValues(children: ReactNode): string[] {
-  return Children.toArray(children).flatMap((child) => {
-    if (!isValidElement<ToggleGroupItemProps>(child) || child.type !== ToggleGroupItem) return [];
-    const props = child.props;
-    if (
-      props.disabled ||
-      props.hidden ||
-      props.inert ||
-      props["aria-hidden"] === true ||
-      props["aria-hidden"] === "true"
-    ) {
-      return [];
+interface ToggleGroupSeedElementProps {
+  children?: ReactNode;
+  value?: string;
+  disabled?: boolean;
+  hidden?: boolean;
+  inert?: boolean;
+  "aria-hidden"?: boolean | "true" | "false";
+}
+
+function isToggleSeedElementSkipped(props: ToggleGroupSeedElementProps): boolean {
+  return (
+    props.hidden === true ||
+    props.inert === true ||
+    props["aria-hidden"] === true ||
+    props["aria-hidden"] === "true"
+  );
+}
+
+function collectEnabledToggleValues(children: ReactNode, skippedAncestor = false): string[] {
+  const enabledValues: string[] = [];
+
+  Children.forEach(children, (child) => {
+    if (!isValidElement<ToggleGroupSeedElementProps>(child)) return;
+    if (child.type === ToggleGroup) return;
+
+    const skipped = skippedAncestor || isToggleSeedElementSkipped(child.props);
+    if (child.type === ToggleGroupItem && typeof child.props.value === "string") {
+      if (!child.props.disabled && !skipped) enabledValues.push(child.props.value);
+      return;
     }
-    return [props.value];
+
+    enabledValues.push(...collectEnabledToggleValues(child.props.children, skipped));
   });
+
+  return enabledValues;
 }
 
 /** Compound toggle button group with keyboard navigation for single or multiple selection. */
@@ -146,7 +166,8 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
 
   const containerRef = useRef<HTMLDivElement>(null);
   const composedRef = useComposedRefs(containerRef, ref);
-  const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
+  const { items, registeredItems, registerItem, unregisterItem } =
+    useSelectableCollection(containerRef);
   const [hasLiveRegistrations, setHasLiveRegistrations] = useState(false);
   const registerLiveItem = useCallback(
     (itemId: string, itemValue: string, itemDisabled: boolean, element: HTMLElement | null) => {
@@ -232,7 +253,7 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
   );
 
   const enabledItems = getEnabledSelectableCollectionItems(items, disabled);
-  const seededEnabledValues = disabled ? [] : collectEnabledDirectToggleValues(children);
+  const seededEnabledValues = disabled ? [] : collectEnabledToggleValues(children);
   const enabledValues = hasLiveRegistrations
     ? enabledItems.map((item) => item.value)
     : seededEnabledValues;
@@ -314,8 +335,14 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
   const underlineRect = useFloatingIndicator(containerRef, underlineTargetValue);
 
   const hiddenInputValue = selectionMode === "single" && name ? singleValue : null;
+  const selectedItem = registeredItems.find((item) => item.value === hiddenInputValue);
   const isHiddenInputDisabled =
-    disabled || !enabledItems.some((item) => item.value === hiddenInputValue);
+    disabled ||
+    (hasLiveRegistrations
+      ? selectedItem === undefined ||
+        selectedItem.disabled ||
+        selectedItem.element?.matches(":disabled") === true
+      : !seededEnabledValues.includes(hiddenInputValue ?? ""));
 
   return (
     <ToggleGroupContext value={contextValue}>

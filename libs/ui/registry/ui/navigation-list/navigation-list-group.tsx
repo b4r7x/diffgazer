@@ -6,6 +6,7 @@ import {
   isValidElement,
   type MouseEvent,
   type ReactNode,
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -87,7 +88,7 @@ export function NavigationListGroup({
     return parentGroup.linePrefix + (isLast ? "    " : "│   ");
   }, [variant, depth, position?.isLast, parentGroup.linePrefix]);
 
-  const toggle = () => setExpanded((prev) => !prev);
+  const toggle = useCallback(() => setExpanded((prev) => !prev), [setExpanded]);
 
   const arrayChildren = Children.toArray(children);
 
@@ -115,7 +116,8 @@ export function NavigationListGroup({
   if (variant === "section") {
     return (
       <div className={cn("border-t border-border first:border-t-0", className)}>
-        <SectionHeader
+        <NavigationListGroupHeader
+          variant="section"
           headerId={headerId}
           label={label}
           count={count}
@@ -132,7 +134,8 @@ export function NavigationListGroup({
   return (
     // biome-ignore lint/a11y/useSemanticElements: role="group" labels a related set of navigation options; <fieldset> is for form controls and is not appropriate here.
     <div role="group" aria-label={groupLabel} className={className}>
-      <TreeHeader
+      <NavigationListGroupHeader
+        variant="tree"
         headerId={headerId}
         label={label}
         expanded={expanded}
@@ -148,178 +151,127 @@ export function NavigationListGroup({
   );
 }
 
-function SectionHeader({
+function useNavigationListGroupHeader({
+  headerId,
+  accessibleLabel,
+  expanded,
+  toggle,
+}: {
+  headerId: string;
+  accessibleLabel: string;
+  expanded: boolean;
+  toggle: () => void;
+}) {
+  const {
+    highlighted,
+    highlight,
+    focusContainer,
+    focused,
+    idPrefix,
+    registerItem,
+    unregisterItem,
+    registerGroupHeader,
+    unregisterGroupHeader,
+  } = useNavigationListContext();
+  const registrationId = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  const itemId = getEncodedListboxItemId(idPrefix, headerId);
+  const isHighlighted = highlighted === headerId;
+  const isActive = focused && isHighlighted;
+
+  useLayoutEffect(() => {
+    registerItem(registrationId, headerId, false, rootRef.current);
+    return () => unregisterItem(registrationId);
+  }, [registerItem, unregisterItem, registrationId, headerId]);
+
+  useEffect(() => {
+    registerGroupHeader(headerId, { toggle, expanded });
+    return () => unregisterGroupHeader(headerId);
+  }, [headerId, toggle, expanded, registerGroupHeader, unregisterGroupHeader]);
+
+  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    toggle();
+    highlight(headerId);
+    focusContainer();
+  };
+
+  const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
+    if (!event.defaultPrevented) highlight(headerId);
+  };
+
+  return { rootRef, itemId, isActive, accessibleLabel, handleClick, handleFocus };
+}
+
+function NavigationListGroupHeader({
+  variant,
   headerId,
   label,
   count,
   expanded,
   toggle,
+  depth = 0,
+  parentLinePrefix = "",
+  isLast = false,
   expandLabel,
   collapseLabel,
 }: {
+  variant: "tree" | "section";
   headerId: string;
   label: string;
   count?: number;
   expanded: boolean;
   toggle: () => void;
+  depth?: number;
+  parentLinePrefix?: string;
+  isLast?: boolean;
   expandLabel: string;
   collapseLabel: string;
 }) {
-  const {
-    highlighted,
-    highlight,
-    focusContainer,
-    focused,
-    idPrefix,
-    registerItem,
-    unregisterItem,
-    registerGroupHeader,
-    unregisterGroupHeader,
-  } = useNavigationListContext();
-  const registrationId = useId();
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  const itemId = getEncodedListboxItemId(idPrefix, headerId);
-  const accessibleLabel = count !== undefined ? `${label} (${count})` : label;
-  const isHighlighted = highlighted === headerId;
-  const isActive = focused && isHighlighted;
-
-  useLayoutEffect(() => {
-    registerItem(registrationId, headerId, false, rootRef.current);
-    return () => unregisterItem(registrationId);
-  }, [registerItem, unregisterItem, registrationId, headerId]);
-
-  useEffect(() => {
-    registerGroupHeader(headerId, { toggle, expanded });
-    return () => unregisterGroupHeader(headerId);
-  }, [headerId, toggle, expanded, registerGroupHeader, unregisterGroupHeader]);
-
-  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    toggle();
-    highlight(headerId);
-    focusContainer();
-  };
-
-  const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
-    if (!event.defaultPrevented) highlight(headerId);
-  };
+  const isTree = variant === "tree";
+  const header = useNavigationListGroupHeader({
+    headerId,
+    accessibleLabel: isTree || count === undefined ? label : `${label} (${count})`,
+    expanded,
+    toggle,
+  });
 
   return (
     // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — this collapsible group header is an option that stays non-focusable while the container holds focus and aria-activedescendant tracks the active option.
     // biome-ignore lint/a11y/useKeyWithClickEvents: Enter/Space toggle is handled centrally by the navigation list container, not per header.
     <div
-      ref={rootRef}
-      id={itemId}
+      ref={header.rootRef}
+      id={header.itemId}
       role="option"
       aria-selected={false}
-      aria-label={`${accessibleLabel}, ${expanded ? collapseLabel : expandLabel} section`}
+      aria-label={`${header.accessibleLabel}, ${expanded ? collapseLabel : expandLabel} section`}
       data-value={headerId}
-      data-highlighted={isActive ? "" : undefined}
+      data-highlighted={header.isActive ? "" : undefined}
       data-group-header="true"
       data-expanded={expanded}
-      onClick={handleClick}
-      onFocus={handleFocus}
+      onClick={header.handleClick}
+      onFocus={header.handleFocus}
       className={cn(
-        "flex w-full items-center gap-1 px-3 py-2 text-[11px] uppercase tracking-wider font-mono cursor-pointer select-none",
-        isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground/80",
+        isTree
+          ? "flex w-full items-center py-0.5 font-mono text-sm cursor-pointer select-none"
+          : "flex w-full items-center gap-1 px-3 py-2 text-[11px] uppercase tracking-wider font-mono cursor-pointer select-none",
+        header.isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground/80",
       )}
     >
-      <Chevron open={expanded} size="sm" />
-      <span aria-hidden="true">{label}</span>
-      {count !== undefined && <span aria-hidden="true">({count})</span>}
-    </div>
-  );
-}
-
-function TreeHeader({
-  headerId,
-  label,
-  expanded,
-  toggle,
-  depth,
-  parentLinePrefix,
-  isLast,
-  expandLabel,
-  collapseLabel,
-}: {
-  headerId: string;
-  label: string;
-  expanded: boolean;
-  toggle: () => void;
-  depth: number;
-  parentLinePrefix: string;
-  isLast: boolean;
-  expandLabel: string;
-  collapseLabel: string;
-}) {
-  const {
-    highlighted,
-    highlight,
-    focusContainer,
-    focused,
-    idPrefix,
-    registerItem,
-    unregisterItem,
-    registerGroupHeader,
-    unregisterGroupHeader,
-  } = useNavigationListContext();
-  const registrationId = useId();
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  const itemId = getEncodedListboxItemId(idPrefix, headerId);
-  const isHighlighted = highlighted === headerId;
-  const isActive = focused && isHighlighted;
-
-  useLayoutEffect(() => {
-    registerItem(registrationId, headerId, false, rootRef.current);
-    return () => unregisterItem(registrationId);
-  }, [registerItem, unregisterItem, registrationId, headerId]);
-
-  useEffect(() => {
-    registerGroupHeader(headerId, { toggle, expanded });
-    return () => unregisterGroupHeader(headerId);
-  }, [headerId, toggle, expanded, registerGroupHeader, unregisterGroupHeader]);
-
-  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    toggle();
-    highlight(headerId);
-    focusContainer();
-  };
-
-  const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
-    if (!event.defaultPrevented) highlight(headerId);
-  };
-
-  return (
-    // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — this collapsible group header is an option that stays non-focusable while the container holds focus and aria-activedescendant tracks the active option.
-    // biome-ignore lint/a11y/useKeyWithClickEvents: Enter/Space toggle is handled centrally by the navigation list container, not per header.
-    <div
-      ref={rootRef}
-      id={itemId}
-      role="option"
-      aria-selected={false}
-      aria-label={`${label}, ${expanded ? collapseLabel : expandLabel} section`}
-      data-value={headerId}
-      data-highlighted={isActive ? "" : undefined}
-      data-group-header="true"
-      data-expanded={expanded}
-      onClick={handleClick}
-      onFocus={handleFocus}
-      className={cn(
-        "flex w-full items-center py-0.5 font-mono text-sm cursor-pointer select-none",
-        isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground/80",
-      )}
-    >
-      {depth > 1 && (
+      {isTree && depth > 1 && (
         <span aria-hidden="true" className="text-muted-foreground font-mono">
           {parentLinePrefix}
           {isLast ? "└── " : "├── "}
         </span>
       )}
-      <Chevron open={expanded} size="sm" className={depth > 1 ? "mx-1" : "mr-1"} />
-      <span aria-hidden="true">{label}/</span>
+      <Chevron
+        open={expanded}
+        size="sm"
+        className={cn(isTree && depth > 1 && "mx-1", isTree && depth <= 1 && "mr-1")}
+      />
+      <span aria-hidden="true">{isTree ? `${label}/` : label}</span>
+      {!isTree && count !== undefined && <span aria-hidden="true">({count})</span>}
     </div>
   );
 }

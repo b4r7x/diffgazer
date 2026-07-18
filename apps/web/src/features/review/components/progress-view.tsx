@@ -261,7 +261,6 @@ export function ReviewProgressView({
               events={events}
               sourceFilter={agentFilter}
               showCursor={isRunning}
-              autoScroll={true}
               className="flex-1 min-h-0 px-2 pb-2"
             />
           )}

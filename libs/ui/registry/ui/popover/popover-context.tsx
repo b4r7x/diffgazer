@@ -2,9 +2,7 @@
 
 import { createContext, type RefObject, useContext } from "react";
 
-/** Root - manages open state, trigger mode (click/hover), delay. */
 export type PopoverTriggerMode = "click" | "hover";
-/** Root - manages open state, trigger mode (click/hover), delay. */
 export type PopoverPopupRole = "dialog" | "menu" | "listbox" | "tree" | "grid";
 
 /** Context value shared by popover. */

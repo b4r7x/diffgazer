@@ -17,16 +17,6 @@ export function useSpinnerAnimation({ totalFrames, speed }: UseSpinnerAnimationO
   const [frame, setFrame] = useState(0);
 
   useEffect(() => {
-    if (
-      !Number.isFinite(totalFrames) ||
-      totalFrames <= 0 ||
-      !Number.isFinite(speed) ||
-      speed <= 0
-    ) {
-      setFrame(0);
-      return;
-    }
-
     let intervalId: ReturnType<typeof setInterval> | undefined;
     const mql =
       typeof window !== "undefined" && typeof window.matchMedia === "function"

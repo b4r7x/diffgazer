@@ -16,10 +16,6 @@ import {
   accordionTriggerVariants,
 } from "./accordion-trigger";
 
-/**
- * Collapsible content sections with single or multiple open items. Supports controlled and
- * uncontrolled modes.
- */
 const Accordion = Object.assign(AccordionRoot, {
   Header: AccordionHeader,
   Item: AccordionItem,

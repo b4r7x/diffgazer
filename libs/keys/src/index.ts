@@ -34,6 +34,7 @@ export {
   getFocusableElements,
   getTabbableElements,
   isFocusable,
+  isInsideDisabledFieldset,
   isReachable,
 } from "./dom/focusable.js";
 export type { HotkeyModifier, ValidateHotkey } from "./dom/hotkey.js";

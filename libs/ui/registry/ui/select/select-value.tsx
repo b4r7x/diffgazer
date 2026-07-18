@@ -17,15 +17,11 @@ const selectValuePlaceholderVariants = cva("", {
   defaultVariants: { variant: "default" },
 });
 
-/**
- * Dropdown select with search, multiple selection, card variant, and controlled keyboard
- * integration points. 8 composable parts.
- */
 export type SelectValueDisplay = "count" | "list" | "truncate";
 
 /** Props for select value render. */
 export interface SelectValueRenderProps {
-  /** Marks the item as selected. */
+  /** Selected option values provided to the custom render function. */
   selected: string[];
   labels: ReadonlyMap<string, string>;
 }

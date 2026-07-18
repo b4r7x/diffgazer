@@ -160,7 +160,7 @@ export function resolveCollisionPosition(
       sideOffset,
       alignOffset,
     );
-    if (!wouldOverflow(pos.x, pos.y, contentRect, collisionPadding, vp)) {
+    if (!wouldOverflowOnPlacementAxis(pos.x, pos.y, contentRect, collisionPadding, vp, side)) {
       return { ...pos, side };
     }
   }
@@ -174,4 +174,18 @@ export function resolveCollisionPosition(
     alignOffset,
   );
   return { ...fallback, side: preferredSide };
+}
+
+function wouldOverflowOnPlacementAxis(
+  x: number,
+  y: number,
+  contentRect: DOMRect,
+  padding: number,
+  vp: Viewport,
+  side: FloatingSide,
+): boolean {
+  if (side === "top" || side === "bottom") {
+    return y < padding || y + contentRect.height > vp.height - padding;
+  }
+  return x < padding || x + contentRect.width > vp.width - padding;
 }

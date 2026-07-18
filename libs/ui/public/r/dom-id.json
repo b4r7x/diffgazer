@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "dom-id",
+  "title": "DOM ID",
+  "description": "Base36 encoding for stable DOM id parts.",
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/lib/dom-id.ts",
+      "content": "export function encodeDomIdSegment(value: string): string {\n  const segments: string[] = [];\n  for (const char of value) {\n    const codePoint = char.codePointAt(0);\n    if (codePoint !== undefined) segments.push(codePoint.toString(36));\n  }\n  return segments.join(\"-\");\n}\n",
+      "type": "registry:lib"
+    }
+  ],
+  "meta": {
+    "client": true,
+    "hidden": true
+  },
+  "type": "registry:lib"
+}

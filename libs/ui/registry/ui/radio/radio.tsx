@@ -17,7 +17,7 @@ import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { mergeIds, resolveAriaInvalid } from "@/lib/aria";
-import { useFieldsetDisabled } from "@/lib/selectable-collection";
+import { useFieldsetDisabled } from "@/lib/fieldset-disabled";
 import {
   type SelectableSize,
   type SelectableVariant,

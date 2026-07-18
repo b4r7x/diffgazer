@@ -26,11 +26,6 @@ import {
   type DialogTriggerRenderProps,
 } from "./dialog-trigger";
 
-/**
- * Modal dialog with compound component architecture. Built on the native dialog element with
- * two orthogonal visual axes: frame (border or none) and corners (none, subtle, standard, bold,
- * or outset), and an optional header marker bar spanning the title and description.
- */
 const Dialog = Object.assign(DialogRoot, {
   Trigger: DialogTrigger,
   Content: DialogContent,

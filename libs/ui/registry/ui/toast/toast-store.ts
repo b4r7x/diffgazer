@@ -271,7 +271,6 @@ export interface ToastTimerSnapshot {
   startedAt: number;
 }
 
-/** Returns timer snapshot. */
 export function getTimerSnapshot(id: string): ToastTimerSnapshot | null {
   const entry = timers.get(id);
   if (!entry) return null;

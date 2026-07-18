@@ -1,23 +1,20 @@
 "use client";
 
-import type { RefObject } from "react";
 import { dispatchNavigationKey, resolveDirectionKeys } from "../core/navigation-dispatch.js";
+import type { KeyHandler } from "../core/normalize-key-input.js";
+import { DECLINE } from "../core/normalize-key-input.js";
 import { useKeyboardRegistryContext } from "../providers/keyboard-context.js";
 import { useKey } from "./use-key.js";
 import { type UseNavigationOptions, useNavigationCore } from "./use-navigation.js";
 
 /** Options for provider-backed, scope-aware role-based navigation. */
-export type UseScopedNavigationOptions<TValue extends string = string> = Omit<
-  UseNavigationOptions<TValue>,
-  "containerRef"
-> & {
-  /** Ref to the container element holding navigable items. */
-  containerRef: RefObject<HTMLElement | null>;
+export interface UseScopedNavigationOptions<TValue extends string = string>
+  extends UseNavigationOptions<TValue> {
   /** Only handle navigation keys when focus is within the container element. */
   focusWithinOnly?: boolean;
   /** Keyboard scope name to register navigation handlers under; null skips registration. */
   scope?: string | null;
-};
+}
 
 /** Return value from `useScopedNavigation`. */
 export interface UseScopedNavigationReturn<TValue extends string = string> {
@@ -72,19 +69,22 @@ export function useScopedNavigation<TValue extends string = string>(
 
   // Editable-target filtering is handled by the keyboard provider via `allowInInput`.
   const dispatch = (key: string, nativeEvent: globalThis.KeyboardEvent) => {
-    dispatchNavigationKey(key, {
+    const total = getElements().length;
+    if (total === 0) return DECLINE;
+
+    return dispatchNavigationKey(key, {
       resolvedUpKeys,
       resolvedDownKeys,
       move: (delta) => move(delta, nativeEvent, key),
       focusIndex,
       handleSelect: handlesSpace ? (e) => handleSelect(e) : undefined,
       handleEnter: handlesEnter ? (e) => handleEnter(e) : undefined,
-      total: getElements().length,
+      total,
       nativeEvent,
     });
   };
 
-  const handlers: Record<string, (event: globalThis.KeyboardEvent) => void> = {
+  const handlers: Record<string, KeyHandler> = {
     ...Object.fromEntries(
       resolvedUpKeys.map((key) => [key, (event: globalThis.KeyboardEvent) => dispatch(key, event)]),
     ),

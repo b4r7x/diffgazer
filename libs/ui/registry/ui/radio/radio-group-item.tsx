@@ -32,7 +32,7 @@ export interface RadioGroupItemProps<TValue extends string = string>
   disabled?: boolean;
 }
 
-/** Standalone radio button (controlled or uncontrolled) */
+/** Radio item composed inside RadioGroup. */
 export function RadioGroupItem<TValue extends string = string>({
   value,
   label,

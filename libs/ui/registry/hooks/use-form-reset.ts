@@ -47,11 +47,13 @@ export function useFormReset<T>(
   // Track the attached form so target swaps don't churn the listener every render.
   const subscriptionRef = useRef<FormSubscription | null>(null);
 
+  // Latest-ref sync: controlled reset baselines must reflect the latest value before native reset handling.
   useLayoutEffect(() => {
     if (isUncontrolled || !controlled) return;
     syncControlledResetBaseline();
   });
 
+  // Latest-ref sync: form ownership can change through refs, so subscription reconciliation must run every render.
   useLayoutEffect(() => {
     const nextForm = isUncontrolled || controlled ? resolveForm(ref.current) : null;
     const current = subscriptionRef.current;

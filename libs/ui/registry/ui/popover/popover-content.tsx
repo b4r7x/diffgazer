@@ -381,7 +381,7 @@ export function PopoverContent({
 interface PopoverAutoFocusProps {
   /** Ref for the content element. */
   contentRef: RefObject<HTMLDivElement | null>;
-  /** When false, the popover never opens and trigger handlers are no-ops. */
+  /** Whether autofocus runs when the popover is positioned. */
   enabled: boolean;
   fallbackToContainer: boolean;
 }

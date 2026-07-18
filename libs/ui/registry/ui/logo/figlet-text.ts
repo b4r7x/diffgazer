@@ -1,9 +1,6 @@
 import type figlet from "figlet";
 
-/**
- * Renders static text or caller-provided ASCII art without loading figlet from the default
- * component export.
- */
+/** Font names supported by the optional figlet loader. */
 export type FigletFont = "Big" | "Small";
 
 type FigletModule = typeof figlet;

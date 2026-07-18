@@ -15,11 +15,7 @@ import {
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import type { SegmentedSize, SegmentedVariant } from "@/lib/segmented-variants";
-import {
-  isSelectableElementSkipped,
-  isSelectableItemEligible,
-  useSelectableCollection,
-} from "@/lib/selectable-collection";
+import { useSelectableCollection } from "@/lib/selectable-collection";
 import { cn } from "@/lib/utils";
 import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";
 import { TabsContent } from "./tabs-content";
@@ -129,6 +125,7 @@ function TabsRoot<TValue extends string = string>(props: TabsProps<TValue>) {
   const composedRef = useComposedRefs(rootRef, ref);
   const {
     items: registeredTriggers,
+    eligibleItems: eligibleTriggers,
     registerItem: registerTrigger,
     unregisterItem: unregisterTrigger,
   } = useSelectableCollection(rootRef);
@@ -145,17 +142,8 @@ function TabsRoot<TValue extends string = string>(props: TabsProps<TValue>) {
   );
   const enabledValues = useMemo(() => {
     if (!registeredTriggers.length) return seed.enabledValues;
-    // When an ancestor hides the whole tablist, keep its internal selection rather
-    // than collapsing it; only exclude hidden/inert/aria-hidden triggers while the
-    // tablist itself is reachable. The MutationObserver watches only this subtree,
-    // so an ancestor toggling visibility resettles this on the next trigger
-    // (un)registration, which any real show/hide of a Tabs subtree emits.
-    const root = rootRef.current;
-    const tablistHidden = root !== null && isSelectableElementSkipped(root);
-    return registeredTriggers
-      .filter((item) => (tablistHidden ? !item.disabled : isSelectableItemEligible(item)))
-      .map((item) => item.value);
-  }, [registeredTriggers, seed.enabledValues]);
+    return eligibleTriggers.map((item) => item.value);
+  }, [eligibleTriggers, registeredTriggers.length, seed.enabledValues]);
   const panelValues = useMemo(
     () => (registeredPanels.length ? registeredPanels.map((item) => item.value) : seed.panelValues),
     [registeredPanels, seed.panelValues],

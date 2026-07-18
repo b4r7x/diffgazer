@@ -48,7 +48,6 @@ function BracketMarkers({ children }: { children: ReactNode }) {
   );
 }
 
-/** Compound toggle button group with keyboard navigation for single or multiple selection. */
 export function ToggleGroupItem<TValue extends string = string>({
   value,
   count,

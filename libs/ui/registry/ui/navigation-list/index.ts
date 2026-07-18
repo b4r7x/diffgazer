@@ -16,10 +16,6 @@ import {
 } from "./navigation-list-subtitle";
 import { NavigationListTitle, type NavigationListTitleProps } from "./navigation-list-title";
 
-/**
- * Terminal-styled navigation sidebar list with selection, keyboard navigation, and composable
- * item parts.
- */
 const NavigationList = Object.assign(NavigationListRoot, {
   Item: NavigationListItem,
   Badge: NavigationListBadge,

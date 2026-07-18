@@ -20,10 +20,10 @@ import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { useNavigation } from "@/hooks/use-navigation";
 import { isHTMLElementForContainer, mergeIds, resolveAriaInvalid } from "@/lib/aria";
+import { useFieldsetDisabled } from "@/lib/fieldset-disabled";
 import {
   getEnabledSelectableCollectionItems,
   resolveSelectableCollectionItem,
-  useFieldsetDisabled,
   useSelectableCollection,
 } from "@/lib/selectable-collection";
 import { type SelectableVariant, selectableLabelVariants } from "@/lib/selectable-variants";
@@ -69,7 +69,7 @@ export interface RadioGroupProps<TValue extends string = string> extends RadioGr
   onEnter?: (value: TValue, event: ReactKeyboardEvent<HTMLDivElement>) => void;
   /** Called when keyboard navigation highlights a new item or clears highlight. */
   onHighlightChange?: (value: TValue | null) => void;
-  /** Called after the built-in radiogroup key handling runs. */
+  /** Called before the built-in group key handling; call event.preventDefault() to suppress it. */
   onKeyDown?: (event: ReactKeyboardEvent) => void;
   /** Controlled highlighted item value for keyboard navigation. */
   highlighted?: TValue | null;
@@ -443,8 +443,6 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
           disabled={isDisabled}
           tabIndex={-1}
           aria-hidden={true}
-          aria-label={ariaLabel}
-          aria-labelledby={resolvedAriaLabelledBy}
           className="sr-only"
           onChange={() => {}}
           onInvalid={(event) => {

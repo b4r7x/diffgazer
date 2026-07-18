@@ -34,22 +34,13 @@ export function usePresence({
 }: UsePresenceOptions) {
   const [phase, setPhase] = useState<Phase>(open ? "open" : "hidden");
   const [prevOpen, setPrevOpen] = useState(open);
-  const phaseRef = useRef(phase);
-  phaseRef.current = phase;
   const exitCompletedRef = useRef(false);
   // Pinned exit names filter the stray animationcancel fired when CSS swaps enter→exit keyframes.
   const exitAnimationNamesRef = useRef<readonly string[]>([]);
-  const completeExitFromEffect = useEffectEvent(() => {
-    if (phaseRef.current !== "closing" || exitCompletedRef.current) return;
-    exitCompletedRef.current = true;
-    setPhase("hidden");
-    onExitComplete?.();
-  });
 
   // Adjust phase during render (React's store-prev-render pattern), not in an effect that stale-commits.
   if (open !== prevOpen) {
     setPrevOpen(open);
-    if (open || phase === "open") exitCompletedRef.current = false;
     setPhase((current) => {
       if (open) return "open";
       return current === "open" ? "closing" : current;
@@ -57,11 +48,17 @@ export function usePresence({
   }
 
   function commitExit() {
-    if (phaseRef.current !== "closing" || exitCompletedRef.current) return;
+    if (phase !== "closing" || exitCompletedRef.current) return;
     exitCompletedRef.current = true;
     setPhase("hidden");
     onExitComplete?.();
   }
+
+  const completeExitFromEffect = useEffectEvent(commitExit);
+
+  useEffect(() => {
+    if (open) exitCompletedRef.current = false;
+  }, [open]);
 
   function matchesExitAnimation(animationName: string) {
     const expected = exitAnimationNamesRef.current;
@@ -103,6 +100,7 @@ export function usePresence({
     return () => {
       element.removeEventListener("animationend", handleAnimation);
       element.removeEventListener("animationcancel", handleAnimation);
+      exitAnimationNamesRef.current = [];
     };
   }, [phase, ref]);
 

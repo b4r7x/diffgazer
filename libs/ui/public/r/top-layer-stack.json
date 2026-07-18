@@ -1,0 +1,18 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "top-layer-stack",
+  "title": "Top Layer Stack",
+  "description": "Per-document top-layer election with a React hook for tracking the active element.",
+  "files": [
+    {
+      "path": "registry/lib/top-layer-stack.ts",
+      "content": "\"use client\";\n\nimport { type RefObject, useLayoutEffect, useState } from \"react\";\n\ntype TopLayerSubscriber = () => void;\n\n/** Creates a stack that tracks the top registered element in each document. */\nexport function createTopLayerStack() {\n  const topLayerStacks = new WeakMap<Document, HTMLElement[]>();\n  const topLayerSubscribers = new WeakMap<Document, Set<TopLayerSubscriber>>();\n\n  function getStack(ownerDocument: Document): HTMLElement[] {\n    let stack = topLayerStacks.get(ownerDocument);\n    if (!stack) {\n      stack = [];\n      topLayerStacks.set(ownerDocument, stack);\n    }\n    return stack;\n  }\n\n  function getSubscribers(ownerDocument: Document): Set<TopLayerSubscriber> {\n    let subscribers = topLayerSubscribers.get(ownerDocument);\n    if (!subscribers) {\n      subscribers = new Set();\n      topLayerSubscribers.set(ownerDocument, subscribers);\n    }\n    return subscribers;\n  }\n\n  function notify(ownerDocument: Document): void {\n    for (const subscriber of getSubscribers(ownerDocument)) subscriber();\n  }\n\n  function push(element: HTMLElement): void {\n    const ownerDocument = element.ownerDocument;\n    getStack(ownerDocument).push(element);\n    notify(ownerDocument);\n  }\n\n  function pop(element: HTMLElement): void {\n    const ownerDocument = element.ownerDocument;\n    const stack = getStack(ownerDocument);\n    const index = stack.lastIndexOf(element);\n    if (index < 0) return;\n    stack.splice(index, 1);\n    notify(ownerDocument);\n  }\n\n  function isTop(element: HTMLElement): boolean {\n    return getStack(element.ownerDocument).at(-1) === element;\n  }\n\n  function subscribe(ownerDocument: Document, subscriber: TopLayerSubscriber): () => void {\n    const subscribers = getSubscribers(ownerDocument);\n    subscribers.add(subscriber);\n    return () => subscribers.delete(subscriber);\n  }\n\n  return { push, pop, isTop, subscribe };\n}\n\n/** Registers an element while active and reports whether it is topmost. */\nexport function useTopLayerPosition(\n  stack: ReturnType<typeof createTopLayerStack>,\n  ref: RefObject<HTMLElement | null>,\n  active: boolean,\n): boolean {\n  const [isTop, setIsTop] = useState(false);\n\n  useLayoutEffect(() => {\n    if (!active) return;\n\n    const element = ref.current;\n    if (!element) return;\n\n    const ownerDocument = element.ownerDocument;\n    const unsubscribe = stack.subscribe(ownerDocument, () => setIsTop(stack.isTop(element)));\n\n    stack.push(element);\n\n    return () => {\n      unsubscribe();\n      stack.pop(element);\n      setIsTop(false);\n    };\n  }, [active, ref, stack]);\n\n  return isTop;\n}\n",
+      "type": "registry:lib"
+    }
+  ],
+  "meta": {
+    "client": true,
+    "hidden": true
+  },
+  "type": "registry:lib"
+}

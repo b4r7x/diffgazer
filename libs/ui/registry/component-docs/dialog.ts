@@ -2,7 +2,7 @@ import type { ComponentDoc } from "./types";
 
 export const dialogDoc: ComponentDoc = {
   description:
-    "Modal dialog with compound component architecture. Built on the native dialog element with two orthogonal visual axes: frame (border or none) and corners (none, subtle, standard, bold, or outset), and an optional header marker bar spanning the title and description.",
+    "Native modal dialog with compound parts, configurable frame and corner treatments, and an optional header marker bar spanning the title and description.",
   anatomy: [
     { name: "Dialog", indent: 0, note: "Root (manages open state)" },
     { name: "DialogTrigger", indent: 1, note: "Opens the dialog" },

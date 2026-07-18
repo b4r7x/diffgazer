@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Dialog } from "../dialog/index";
 import { Menu } from "../menu/index";
 import { Popover } from "../popover/index";
+import { Select, SelectContent, SelectItem, SelectValue } from "../select/index";
 
 describe("Nested overlay: Popover inside Dialog", () => {
   it("Escape on open popover closes only the popover, not the dialog", async () => {
@@ -46,6 +47,48 @@ describe("Nested overlay: Popover inside Dialog", () => {
     expect(onDialogChange).not.toHaveBeenCalled();
     expect(dialog).toHaveAttribute("data-state", "open");
     expect(popoverTrigger).toHaveAttribute("aria-expanded", "false");
+    expect(popover).toHaveAttribute("data-state", "closed");
+  });
+});
+
+describe("Nested overlay: Select inside Popover", () => {
+  it("closes the select before the surrounding popover on successive Escape presses", async () => {
+    const user = userEvent.setup();
+    const onPopoverChange = vi.fn();
+    const onSelectChange = vi.fn();
+
+    render(
+      <Popover triggerMode="click" defaultOpen onOpenChange={onPopoverChange}>
+        <Popover.Trigger>Open Popover</Popover.Trigger>
+        <Popover.Content role="dialog" aria-label="Settings" autoFocus={false}>
+          <Select defaultOpen onOpenChange={onSelectChange}>
+            <Select.Trigger aria-label="Branch">
+              <SelectValue placeholder="Choose a branch" />
+            </Select.Trigger>
+            <SelectContent>
+              <SelectItem value="main">main</SelectItem>
+              <SelectItem value="develop">develop</SelectItem>
+            </SelectContent>
+          </Select>
+        </Popover.Content>
+      </Popover>,
+    );
+
+    const popover = screen.getByRole("dialog", { name: "Settings" });
+    const selectTrigger = screen.getByRole("combobox", { name: "Branch" });
+    const listbox = await screen.findByRole("listbox");
+    await waitFor(() => expect(listbox).toHaveFocus());
+
+    await user.keyboard("{Escape}");
+
+    expect(onSelectChange).toHaveBeenCalledWith(false);
+    expect(onPopoverChange).not.toHaveBeenCalled();
+    expect(selectTrigger).toHaveAttribute("aria-expanded", "false");
+    expect(popover).toHaveAttribute("data-state", "open");
+
+    await user.keyboard("{Escape}");
+
+    expect(onPopoverChange).toHaveBeenCalledWith(false);
     expect(popover).toHaveAttribute("data-state", "closed");
   });
 });

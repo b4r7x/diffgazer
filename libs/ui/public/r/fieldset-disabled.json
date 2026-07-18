@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "fieldset-disabled",
+  "title": "Fieldset Disabled",
+  "description": "Tracks native disabled-fieldset inheritance for a control element, including the first-legend exception.",
+  "dependencies": [],
+  "registryDependencies": ["https://r.b4r7.dev/r/keys/focusable.json"],
+  "files": [
+    {
+      "path": "registry/lib/fieldset-disabled.ts",
+      "content": "\"use client\";\n\nimport { isInsideDisabledFieldset } from \"@/hooks/utils/focusable\";\nimport { type RefObject, useLayoutEffect, useState } from \"react\";\n\nfunction getAncestorFieldsets(element: HTMLElement): HTMLElement[] {\n  const fieldsets: HTMLElement[] = [];\n  let ancestor = element.parentElement;\n  while (ancestor) {\n    if (ancestor.tagName === \"FIELDSET\") fieldsets.push(ancestor);\n    ancestor = ancestor.parentElement;\n  }\n  return fieldsets;\n}\n\n/** Tracks native disabled-fieldset inheritance, including the first-legend exception. */\nexport function useFieldsetDisabled(ref: RefObject<HTMLElement | null>): boolean {\n  const [isDisabled, setIsDisabled] = useState(false);\n\n  useLayoutEffect(() => {\n    const element = ref.current;\n    const View = element?.ownerDocument.defaultView;\n    if (!element || !View?.MutationObserver) return;\n\n    const update = () => setIsDisabled(isInsideDisabledFieldset(element));\n    const observer = new View.MutationObserver(update);\n    for (const fieldset of getAncestorFieldsets(element)) {\n      observer.observe(fieldset, {\n        attributes: true,\n        attributeFilter: [\"disabled\"],\n        childList: true,\n        subtree: true,\n      });\n    }\n    update();\n    return () => observer.disconnect();\n  }, [ref]);\n\n  return isDisabled;\n}\n",
+      "type": "registry:lib"
+    }
+  ],
+  "meta": {
+    "client": true,
+    "hidden": true,
+    "optionalIntegrations": ["keyboard-navigation"]
+  },
+  "type": "registry:lib"
+}

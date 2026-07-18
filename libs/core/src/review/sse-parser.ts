@@ -1,4 +1,4 @@
-import { safeParseJson } from "./json.js";
+import { safeParseJson } from "../json.js";
 
 const MAX_BUFFER_SIZE = 16 * 1024 * 1024;
 

@@ -53,13 +53,9 @@ function MenuItemIconSlot({
   );
 }
 
-/** Props for default item layout. */
 interface DefaultItemLayoutProps {
-  /** Whether default item layout is focused. */
   isFocused: boolean;
-  /** Whether default item layout is selected. */
   isSelected: boolean;
-  /** Whether default item layout is danger. */
   isDanger: boolean;
   /** Decorative hotkey label rendered as [n]. */
   hotkey?: number | string;
@@ -69,10 +65,6 @@ interface DefaultItemLayoutProps {
   children: ReactNode;
 }
 
-/**
- * Terminal-styled selection list with keyboard navigation, highlighting and optional hotkey
- * indicators.
- */
 export function DefaultItemLayout({
   isFocused,
   isSelected,
@@ -119,11 +111,8 @@ export function DefaultItemLayout({
   );
 }
 
-/** Props for detail item layout. */
 interface DetailItemLayoutProps {
-  /** Whether detail item layout is focused. */
   isFocused: boolean;
-  /** Whether detail item layout is selected. */
   isSelected: boolean;
   /** Controlled value. */
   value?: ReactNode;
@@ -134,10 +123,6 @@ interface DetailItemLayoutProps {
   children: ReactNode;
 }
 
-/**
- * Terminal-styled selection list with keyboard navigation, highlighting and optional hotkey
- * indicators.
- */
 export function DetailItemLayout({
   isFocused,
   isSelected,

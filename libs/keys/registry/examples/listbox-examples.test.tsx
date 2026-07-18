@@ -2,9 +2,9 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axeCore from "axe-core";
 import { describe, expect, it } from "vitest";
-import UseFocusZoneBasic from "../../registry/examples/use-focus-zone/use-focus-zone-basic.js";
-import UseNavigationBasic from "../../registry/examples/use-navigation/use-navigation-basic.js";
-import UseScopedNavigationBasic from "../../registry/examples/use-scoped-navigation/use-scoped-navigation-basic.js";
+import UseFocusZoneBasic from "./use-focus-zone/use-focus-zone-basic.js";
+import UseNavigationBasic from "./use-navigation/use-navigation-basic.js";
+import UseScopedNavigationBasic from "./use-scoped-navigation/use-scoped-navigation-basic.js";
 
 async function expectNoAxeViolations(container: Element) {
   const result = await axeCore.run(container, {

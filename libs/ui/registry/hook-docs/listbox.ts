@@ -40,7 +40,7 @@ return (
       type: "string",
       required: true,
       description:
-        'Prefix for generating aria-activedescendant IDs. Each option should have id="{idPrefix}-{itemId}".',
+        'Prefix for generating aria-activedescendant IDs. By default, each option uses id="${idPrefix}-${encodeURIComponent(itemId)}" via getEncodedListboxItemId; pass getItemId to use a different encoding.',
     },
     {
       name: "autoFocus",

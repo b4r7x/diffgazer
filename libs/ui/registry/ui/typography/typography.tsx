@@ -54,7 +54,6 @@ export const typographyVariants = cva("font-mono", {
 
 /** Allowed typography size values. */
 type TypographySize = NonNullable<VariantProps<typeof typographyVariants>["size"]>;
-type TypographyWeight = NonNullable<VariantProps<typeof typographyVariants>["weight"]>;
 
 type HeadingTag = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
@@ -65,15 +64,6 @@ const HEADING_DEFAULT_SIZE: Record<HeadingTag, TypographySize> = {
   h4: "lg",
   h5: "base",
   h6: "sm",
-};
-
-const HEADING_DEFAULT_WEIGHT: Record<HeadingTag, TypographyWeight> = {
-  h1: "bold",
-  h2: "bold",
-  h3: "bold",
-  h4: "bold",
-  h5: "bold",
-  h6: "bold",
 };
 
 type TypographyElement = "div" | "p" | "span" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
@@ -104,11 +94,7 @@ export function Typography<T extends TypographyElement = "div">(props: Typograph
     (Tag in HEADING_DEFAULT_SIZE
       ? HEADING_DEFAULT_SIZE[Tag as keyof typeof HEADING_DEFAULT_SIZE]
       : undefined);
-  const resolvedWeight =
-    weight ??
-    (Tag in HEADING_DEFAULT_WEIGHT
-      ? HEADING_DEFAULT_WEIGHT[Tag as keyof typeof HEADING_DEFAULT_WEIGHT]
-      : undefined);
+  const resolvedWeight = weight ?? (Tag in HEADING_DEFAULT_SIZE ? "bold" : undefined);
   return (
     <Tag
       // polymorphic ref: the element type is only known at the call site,

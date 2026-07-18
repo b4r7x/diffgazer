@@ -90,7 +90,7 @@ export function useApiKeyDialogKeyboard({
 
   useScope("api-key-dialog", { enabled: open });
 
-  const { zone, setZone, isZone } = useFocusZone<FocusZone>({
+  const { setZone, isZone } = useFocusZone<FocusZone>({
     initial: "radios",
     zones: ["radios", "input", "footer"] as const,
     enabled: open,
@@ -224,12 +224,6 @@ export function useApiKeyDialogKeyboard({
     }
     if (!isSubmitting) onSubmit("env");
   };
-
-  useEffect(() => {
-    if (open && zone === "input") {
-      inputRef.current?.focus();
-    }
-  }, [open, zone, inputRef]);
 
   useKey(
     "ArrowUp",

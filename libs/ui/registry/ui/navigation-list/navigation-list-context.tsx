@@ -2,16 +2,8 @@
 
 import { createContext, useContext } from "react";
 
-/**
- * Terminal-styled navigation sidebar list with selection, keyboard navigation, and composable
- * item parts.
- */
 export type NavigationListIndicator = "bar" | "bar-thick" | "arrow" | "bracket";
 
-/**
- * Terminal-styled navigation sidebar list with selection, keyboard navigation, and composable
- * item parts.
- */
 export interface GroupHeaderRegistration {
   /** Toggles the group header registration item. */
   toggle: () => void;
@@ -51,7 +43,6 @@ export interface NavigationListContextValue {
   registerGroupHeader: (id: string, registration: GroupHeaderRegistration) => void;
   /** Unregisters group header from navigation list. */
   unregisterGroupHeader: (id: string) => void;
-  groupHeaders: Map<string, GroupHeaderRegistration>;
 }
 
 /** React context backing navigation list. */

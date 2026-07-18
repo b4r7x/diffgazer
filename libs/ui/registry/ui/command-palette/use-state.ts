@@ -12,6 +12,7 @@ import {
 } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useNavigation } from "@/hooks/use-navigation";
+import { encodeDomIdSegment } from "@/lib/dom-id";
 import { matchesSearch } from "@/lib/search";
 import {
   isSelectableItemEligible,
@@ -74,9 +75,8 @@ function areCommandPaletteItemsEqual(
   );
 }
 
-/** Returns command palette item dom id. */
 export function getCommandPaletteItemDomId(listId: string, id: string): string {
-  const encoded = Array.from(id, (char) => char.codePointAt(0)?.toString(36) ?? "0").join("-");
+  const encoded = encodeDomIdSegment(id);
   return `${listId}-item-${encoded || "empty"}`;
 }
 
@@ -152,14 +152,33 @@ export function useCommandPaletteState({
     const view = list?.ownerDocument.defaultView;
     if (!list || !view?.MutationObserver) return;
 
+    const attributeFilter = [
+      "hidden",
+      "inert",
+      "aria-hidden",
+      "class",
+      "style",
+      "disabled",
+      "open",
+    ];
+    // Keep collection eligibility invalidation aligned with lib/selectable-collection.ts.
     const observer = new view.MutationObserver(() => {
       setRegisteredItems((current) => [...current]);
     });
     observer.observe(list, {
       subtree: true,
       attributes: true,
-      attributeFilter: ["hidden", "inert", "aria-hidden"],
+      attributeFilter,
     });
+
+    let ancestor = list.parentElement;
+    while (ancestor) {
+      observer.observe(ancestor, {
+        attributes: true,
+        attributeFilter,
+      });
+      ancestor = ancestor.parentElement;
+    }
 
     return () => observer.disconnect();
   }, [isOpen]);
@@ -280,11 +299,6 @@ export interface CommandPaletteItemMetadata {
   onSelect?: () => void;
 }
 
-/**
- * Terminal-styled command palette with built-in search filtering, grouped items, and keyboard
- * navigation. Uses native dialog element with backdrop blur. Two orthogonal visual axes on
- * Content (frame and density) keep visual chrome configurable without touching internals.
- */
 export interface CommandPaletteItemRegistration extends CommandPaletteItemMetadata {
   /** DOM id for registration. */
   registrationId: string;

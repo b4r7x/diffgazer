@@ -30,6 +30,7 @@ export function useOverflowDetection<T extends HTMLElement = HTMLElement>(
     }
 
     const generation = attachmentRef.current.generation;
+    const view = node.ownerDocument.defaultView ?? globalThis;
     let active = true;
     let frame: number | null = null;
     const isCurrentAttachment = () => {
@@ -45,29 +46,52 @@ export function useOverflowDetection<T extends HTMLElement = HTMLElement>(
     };
     const scheduleCheck = () => {
       if (!isCurrentAttachment() || frame != null) return;
-      frame = requestAnimationFrame(() => {
+      if (typeof view.requestAnimationFrame !== "function") {
+        check();
+        return;
+      }
+      frame = view.requestAnimationFrame(() => {
         frame = null;
         check();
       });
     };
 
-    const resizeObserver = new ResizeObserver(scheduleCheck);
-    resizeObserver.observe(node);
+    const ResizeObserverCtor = view.ResizeObserver;
+    const resizeObserver =
+      typeof ResizeObserverCtor === "function" ? new ResizeObserverCtor(scheduleCheck) : null;
+    const observeChildren = () => {
+      if (!isCurrentAttachment()) return;
+      resizeObserver?.disconnect();
+      resizeObserver?.observe(node);
+      for (const child of Array.from(node.children)) {
+        resizeObserver?.observe(child);
+      }
+    };
 
-    const mutationObserver = new MutationObserver(scheduleCheck);
-    mutationObserver.observe(node, {
+    const MutationObserverCtor = view.MutationObserver;
+    const mutationObserver =
+      typeof MutationObserverCtor === "function"
+        ? new MutationObserverCtor(() => {
+            if (!isCurrentAttachment()) return;
+            observeChildren();
+            scheduleCheck();
+          })
+        : null;
+    observeChildren();
+    mutationObserver?.observe(node, {
       childList: true,
       characterData: true,
       subtree: true,
+      attributes: true,
     });
     check();
 
     return () => {
       active = false;
-      resizeObserver.disconnect();
-      mutationObserver.disconnect();
+      resizeObserver?.disconnect();
+      mutationObserver?.disconnect();
       if (frame != null) {
-        cancelAnimationFrame(frame);
+        if (typeof view?.cancelAnimationFrame === "function") view.cancelAnimationFrame(frame);
         frame = null;
       }
     };

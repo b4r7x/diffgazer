@@ -4,11 +4,6 @@ import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 import { Kbd } from "../kbd/kbd";
 
-/**
- * Modal dialog with compound component architecture. Built on the native dialog element with
- * two orthogonal visual axes: frame (border or none) and corners (none, subtle, standard, bold,
- * or outset), and an optional header marker bar spanning the title and description.
- */
 export interface KeyboardHint {
   key: string;
   /** Accessible label text. */
@@ -22,11 +17,6 @@ export interface DialogKeyboardHintsProps extends ComponentProps<"div"> {
   size?: "sm" | "md";
 }
 
-/**
- * Modal dialog with compound component architecture. Built on the native dialog element with
- * two orthogonal visual axes: frame (border or none) and corners (none, subtle, standard, bold,
- * or outset), and an optional header marker bar spanning the title and description.
- */
 export function DialogKeyboardHints({
   hints,
   size = "md",

@@ -430,6 +430,42 @@ describe("ToggleGroup", () => {
     await waitFor(() => expect(new FormData(form).get("option")).toBe("a"));
   });
 
+  it("submits the selected value when its item has a hidden ancestor", async () => {
+    render(
+      <form aria-label="Test form">
+        <ToggleGroup label="Options" name="option" defaultValue="a">
+          <div hidden>
+            <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+          </div>
+          <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+        </ToggleGroup>
+      </form>,
+    );
+
+    const form = screen.getByRole("form", { name: "Test form" }) as HTMLFormElement;
+    await waitFor(() => expect(new FormData(form).get("option")).toBe("a"));
+  });
+
+  it("does not disable the SSR-seeded single-mode hidden input", () => {
+    const markup = renderToString(
+      <form aria-label="Test form">
+        <ToggleGroup label="Options" name="option" defaultValue="a">
+          <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+          <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+        </ToggleGroup>
+      </form>,
+    );
+    const container = document.createElement("div");
+    container.innerHTML = markup;
+
+    const form = container.querySelector<HTMLFormElement>("form");
+    const input = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+    if (!form || !input) throw new Error("Expected SSR form and hidden input");
+
+    expect(input).not.toBeDisabled();
+    expect(new FormData(form).get("option")).toBe("a");
+  });
+
   it("has no a11y violations", async () => {
     const { container } = renderGroup();
     expect(await axe(container)).toHaveNoViolations();

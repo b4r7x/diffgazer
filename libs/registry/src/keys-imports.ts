@@ -27,6 +27,7 @@ export const KEYS_PACKAGE_IMPORT_TARGETS = new Map<string, string>([
   ["getFirstFocusableElement", "utils/focusable"],
   ["getTabbableElements", "utils/focusable"],
   ["isFocusable", "utils/focusable"],
+  ["isInsideDisabledFieldset", "utils/focusable"],
   ["isReachable", "utils/focusable"],
   ["composedClosest", "utils/element-guards"],
   ["composedContains", "utils/element-guards"],

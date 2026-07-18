@@ -152,6 +152,7 @@ export function useFloatingPosition({
   }, []);
   const frameRef = useRef<number | null>(null);
 
+  // Ref-to-state promotion with equality bail; must observe every render.
   useLayoutEffect(() => {
     const nextTrigger = triggerRef.current;
     if (nextTrigger !== trigger) setTrigger(nextTrigger);

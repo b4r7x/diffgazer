@@ -17,7 +17,6 @@ export interface ActivityLogProps extends React.HTMLAttributes<HTMLDivElement> {
   events: readonly ReviewEvent[];
   sourceFilter?: string | null;
   showCursor?: boolean;
-  autoScroll?: boolean;
 }
 
 interface LogWindowState {
@@ -33,7 +32,6 @@ export function ActivityLog({
   events,
   sourceFilter,
   showCursor,
-  autoScroll = true,
   className,
   onKeyDown,
   onScroll,
@@ -64,7 +62,7 @@ export function ActivityLog({
   const isCurrentWindow =
     windowState.cacheRevision === cacheRevision &&
     windowState.sourceFilter === normalizedSourceFilter;
-  const shouldRenderTail = !isCurrentWindow || (autoScroll && windowState.isNearBottom);
+  const shouldRenderTail = !isCurrentWindow || windowState.isNearBottom;
   const windowEnd = shouldRenderTail
     ? rowBounds.end
     : getAnchoredWindowEnd(rowBounds, windowState.endRow);
@@ -129,40 +127,23 @@ export function ActivityLog({
     );
   };
 
-  useEffect(() => {
-    if (!shouldRenderTail) return;
-
-    setWindowState((current) =>
-      current.cacheRevision === cacheRevision &&
-      current.endRow === rowBounds.end &&
-      current.isNearBottom &&
-      current.sourceFilter === normalizedSourceFilter
-        ? current
-        : {
-            cacheRevision,
-            endRow: rowBounds.end,
-            isNearBottom: true,
-            sourceFilter: normalizedSourceFilter,
-          },
-    );
-  }, [cacheRevision, normalizedSourceFilter, rowBounds.end, shouldRenderTail]);
-
+  // biome-ignore lint/correctness/useExhaustiveDependencies: windowState is the commit trigger for aligning a newly rendered log window; the pending alignment is stored in a ref.
   useLayoutEffect(() => {
     const alignment = pendingScrollAlignmentRef.current;
     const container = scrollRef.current;
     if (!alignment || !container) return;
     pendingScrollAlignmentRef.current = null;
     container.scrollTop = alignment === "start" ? 0 : container.scrollHeight;
-  });
+  }, [windowState]);
 
   const tailToken = getEventRowTail(rowIndex);
   useEffect(() => {
-    if (!autoScroll || !shouldRenderTail || !tailToken) return;
+    if (!shouldRenderTail || !tailToken) return;
     const container = scrollRef.current;
     if (container) {
       container.scrollTop = container.scrollHeight;
     }
-  }, [autoScroll, shouldRenderTail, tailToken]);
+  }, [shouldRenderTail, tailToken]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     onKeyDown?.(event);

@@ -11,7 +11,6 @@ export interface OverflowIndicatorRenderProps {
   count: number;
 }
 
-/** Root - text mode by default; set mode="items" for fitting child items. */
 export type OverflowIndicatorRender =
   | ((props: OverflowIndicatorRenderProps) => ReactNode)
   | ReactNode;
@@ -54,7 +53,6 @@ function IndicatorDisplay({
   return <>{indicator ?? <DefaultBadge />}</>;
 }
 
-/** Root - text mode by default; set mode="items" for fitting child items. */
 export function OverflowItems({
   children,
   indicator,

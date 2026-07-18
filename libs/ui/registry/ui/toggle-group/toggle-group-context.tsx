@@ -3,7 +3,6 @@
 import { createContext, type RefObject, useContext } from "react";
 import type { SegmentedSize, SegmentedVariant } from "@/lib/segmented-variants";
 
-/** Compound toggle button group with keyboard navigation for single or multiple selection. */
 export type ToggleGroupSelectionMode = "single" | "multiple";
 
 /** Context value shared by toggle group. */

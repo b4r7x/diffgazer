@@ -2,10 +2,6 @@
 
 import { createContext, useContext } from "react";
 
-/**
- * Terminal-styled selection list with keyboard navigation, highlighting and optional hotkey
- * indicators.
- */
 export type CustomActivator = () => void;
 
 /** Context value shared by menu. */

@@ -15,7 +15,7 @@ import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { mergeIds, resolveAriaInvalid } from "@/lib/aria";
-import { useFieldsetDisabled } from "@/lib/selectable-collection";
+import { useFieldsetDisabled } from "@/lib/fieldset-disabled";
 import {
   type SelectableSize,
   type SelectableVariant,
@@ -194,13 +194,6 @@ export function Checkbox({
   };
 
   const indicator = selectableIndicators[variant][state];
-  let dataState = "unchecked";
-  if (isIndeterminate) {
-    dataState = "indeterminate";
-  } else if (isChecked) {
-    dataState = "checked";
-  }
-
   return (
     <>
       {(name || required) && (
@@ -233,7 +226,7 @@ export function Checkbox({
         role="checkbox"
         data-slot="checkbox"
         data-value={dataValue ?? value}
-        data-state={dataState}
+        data-state={state}
         data-disabled={isDisabled ? "" : undefined}
         data-highlighted={highlighted ? "" : undefined}
         aria-checked={isIndeterminate ? "mixed" : isChecked}

@@ -335,6 +335,9 @@ describe("useActiveHeading", () => {
     try {
       const { unmount } = renderActiveHeading();
 
+      act(() => {
+        window.dispatchEvent(new Event("scroll"));
+      });
       unmount();
 
       // call-count IS the contract: MutationObserver must be disconnected exactly once on cleanup (double-disconnect leaks observers)

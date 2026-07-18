@@ -78,6 +78,8 @@ export function SearchInput({
   size,
   disabled,
   "aria-label": ariaLabel,
+  "aria-labelledby": ariaLabelledBy,
+  id,
   ...rest
 }: SearchInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -134,7 +136,9 @@ export function SearchInput({
         }}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        aria-label={ariaLabel ?? placeholder}
+        id={id}
+        aria-label={ariaLabel ?? (!id && !ariaLabelledBy ? placeholder : undefined)}
+        aria-labelledby={ariaLabelledBy}
         disabled={disabled}
         {...rest}
         className="flex-1 bg-transparent font-mono text-foreground placeholder:text-foreground/55 focus:outline-none disabled:cursor-not-allowed [&::-webkit-search-cancel-button]:appearance-none"

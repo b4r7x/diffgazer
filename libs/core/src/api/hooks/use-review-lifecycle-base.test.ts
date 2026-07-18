@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveReviewGate } from "./use-review-lifecycle-controller.js";
+import { deriveReviewGate } from "./use-review-lifecycle-base.js";
 
 describe("deriveReviewGate", () => {
   it("gates on loading when a loadingMessage is present, even if other flags are set", () => {

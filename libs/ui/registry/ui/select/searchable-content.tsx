@@ -44,10 +44,6 @@ interface PartitionWrapperProps extends Record<string, unknown> {
 
 type PartitionKind = "search" | "options" | "empty";
 
-/**
- * Dropdown select with search, multiple selection, card variant, and controlled keyboard
- * integration points. 8 composable parts.
- */
 export function SearchableContent({
   children,
   listboxProps,
