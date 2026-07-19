@@ -1,9 +1,8 @@
-import { isApiError } from "@diffgazer/core/api";
 import { useReview } from "@diffgazer/core/api/hooks";
 import {
   type ReviewScreenPhase,
   resolveSavedReviewOutcome,
-  type SavedReviewQueryState,
+  toSavedReviewQueryState,
 } from "@diffgazer/core/review";
 import { toast } from "@diffgazer/ui/components/toast";
 import {
@@ -35,24 +34,6 @@ function getLiveReviewId(state: LiveReviewState | null): string | null {
   return state.reviewData.reviewId;
 }
 
-function toSavedReviewQueryState(
-  savedReviewQuery: ReturnType<typeof useReview>,
-): SavedReviewQueryState {
-  let status: SavedReviewQueryState["status"] = "pending";
-  if (savedReviewQuery.isSuccess) {
-    status = "success";
-  } else if (savedReviewQuery.isError) {
-    status = "error";
-  }
-
-  return {
-    status,
-    review: savedReviewQuery.data?.review ?? null,
-    error: savedReviewQuery.error,
-    notFound: isApiError(savedReviewQuery.error) && savedReviewQuery.error.status === 404,
-  };
-}
-
 export function ReviewPage() {
   const params = useParams({ from: REVIEW_ROUTE });
   const search = useSearch({ from: REVIEW_ROUTE });
@@ -64,6 +45,7 @@ export function ReviewPage() {
     reviewId && isLiveNavigation ? { phase: "streaming", reviewId } : null,
   );
   const [streamNotFound, setStreamNotFound] = useState(false);
+  const [savedResultsOpen, setSavedResultsOpen] = useState(false);
   const notFoundReportedRef = useRef<string | null>(null);
   const reportErrorReportedRef = useRef<string | null>(null);
 
@@ -76,6 +58,7 @@ export function ReviewPage() {
     setRouteKey(nextRouteKey);
     setLiveState(reviewId && isLiveNavigation ? { phase: "streaming", reviewId } : null);
     setStreamNotFound(false);
+    setSavedResultsOpen(false);
   }
 
   const router = useRouter();
@@ -136,11 +119,31 @@ export function ReviewPage() {
   // not short-circuit here.
   if (savedOutcome && savedOutcome.kind !== "fallback-to-stream") {
     if (savedOutcome.kind === "results") {
+      const savedIssueId =
+        initialIssueId && savedOutcome.data.issues.some((issue) => issue.id === initialIssueId)
+          ? initialIssueId
+          : null;
+
+      if (!savedResultsOpen && !savedIssueId) {
+        return (
+          <ReviewSummaryView
+            issues={savedOutcome.data.issues}
+            reviewId={savedOutcome.data.reviewId}
+            durationMs={savedOutcome.data.durationMs}
+            lensStats={savedOutcome.data.lensStats}
+            droppedDuplicates={savedOutcome.data.droppedDuplicates}
+            droppedBelowThreshold={savedOutcome.data.droppedBelowThreshold}
+            minSeverity={savedOutcome.data.minSeverity}
+            onEnterReview={() => setSavedResultsOpen(true)}
+            onBack={handleBack}
+          />
+        );
+      }
       return (
         <ReviewResultsView
           issues={savedOutcome.data.issues}
           reviewId={savedOutcome.data.reviewId}
-          initialIssueId={initialIssueId}
+          initialIssueId={savedIssueId}
           droppedDuplicates={savedOutcome.data.droppedDuplicates}
         />
       );
@@ -170,6 +173,7 @@ export function ReviewPage() {
         <ReviewSummaryView
           issues={currentLiveState.reviewData.issues}
           reviewId={currentLiveState.reviewData.reviewId}
+          durationMs={currentLiveState.reviewData.durationMs}
           lensStats={currentLiveState.reviewData.lensStats}
           droppedDuplicates={currentLiveState.reviewData.droppedDuplicates}
           droppedBelowThreshold={currentLiveState.reviewData.droppedBelowThreshold}

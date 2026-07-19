@@ -1,8 +1,6 @@
 import { LensStatSchema } from "@diffgazer/core/schemas/events";
 import { calculateSeverityCounts } from "@diffgazer/core/schemas/presentation";
 import {
-  type DrilldownResult,
-  DrilldownResultSchema,
   LensIdSchema,
   ParsedDiffSchema,
   ProfileIdSchema,
@@ -30,8 +28,8 @@ export interface ReviewSalvageDiagnostics {
 
 // Older records may carry lens/profile ids the current closed enums reject.
 // Coerce them to valid vocabulary (drop unknown lenses, null an unknown profile)
-// so the strict metadata schema parses and the record opens/deletes. New writes
-// still go through the strict schema unchanged.
+// so the strict metadata schema parses. New writes still go through the strict
+// schema unchanged.
 export function coerceMetadataVocab(raw: unknown): unknown {
   if (typeof raw !== "object" || raw === null) return raw;
   const metadata = raw as Record<string, unknown>;
@@ -60,13 +58,6 @@ function salvageIssues(raw: unknown): SalvagedItems<ReviewIssue> {
   return salvageItems(raw, ReviewIssueSchema, normalizeIssueLineFields);
 }
 
-function salvageDrilldowns(raw: unknown): DrilldownResult[] {
-  return salvageItems(raw, DrilldownResultSchema, (drilldown) => ({
-    ...drilldown,
-    issue: normalizeIssueLineFields(drilldown.issue),
-  })).items;
-}
-
 function withParsedOptional<T>(
   record: Record<string, unknown>,
   key: string,
@@ -86,36 +77,22 @@ function normalizeIssues(issues: ReviewIssue[]): ReviewIssue[] {
   return changed ? normalized : issues;
 }
 
-function normalizeDrilldowns(drilldowns: DrilldownResult[]): DrilldownResult[] {
-  let changed = false;
-  const normalized = drilldowns.map((drilldown) => {
-    const issue = normalizeIssueLineFields(drilldown.issue);
-    if (issue === drilldown.issue) return drilldown;
-    changed = true;
-    return { ...drilldown, issue };
-  });
-  return changed ? normalized : drilldowns;
-}
-
 export function normalizeSavedReviewLineFields(review: SavedReview): SavedReview {
   const issues = normalizeIssues(review.result.issues);
-  const drilldowns = normalizeDrilldowns(review.drilldowns);
-
-  if (issues === review.result.issues && drilldowns === review.drilldowns) return review;
+  if (issues === review.result.issues) return review;
 
   return {
     ...review,
     result: { ...review.result, issues },
-    drilldowns,
   };
 }
 
 /**
  * Salvages an immutable stored review whose strict-schema parse failed (e.g. a
  * 0.1.3-era record with line/evidence/vocabulary values the current write-side
- * schema rejects). Returns a structurally valid `SavedReview` so GET opens it and
- * DELETE's ownership read succeeds, or `null` when the metadata cannot be read
- * (the caller then surfaces the original validation error / listing warning).
+ * schema rejects). Returns a structurally valid `SavedReview` for reads and
+ * history listings, or `null` when the metadata cannot be read (the caller then
+ * surfaces the original validation error or listing warning).
  */
 export function lenientReadSavedReview(
   parsed: unknown,
@@ -152,7 +129,6 @@ export function lenientReadSavedReview(
       },
       ...withParsedOptional(record, "diff", ParsedDiffSchema),
       gitContext,
-      drilldowns: salvageDrilldowns(record.drilldowns),
       ...withParsedOptional(record, "lensStats", z.array(LensStatSchema)),
       ...withParsedOptional(record, "droppedDuplicates", CountFieldSchema),
       ...withParsedOptional(record, "droppedBelowThreshold", CountFieldSchema),

@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { createError, getErrorMessage } from "@diffgazer/core/errors";
 import { err } from "@diffgazer/core/result";
+import { buildReviewContextResponse } from "@diffgazer/core/review";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { ActiveReviewSession, CreateReviewResponse } from "@diffgazer/core/schemas/review";
 import { zValidator } from "@hono/zod-validator";
@@ -9,7 +10,6 @@ import { initializeAIClient } from "../../shared/lib/ai/client.js";
 import { createGitService } from "../../shared/lib/git/service.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 import {
-  type ErrorStatus,
   errorResponse,
   zodErrorHandler as handleZodError,
 } from "../../shared/lib/http/response.js";
@@ -25,32 +25,24 @@ import { createRateLimitMiddleware } from "../../shared/middlewares/rate-limit.j
 import { requireSetup } from "../../shared/middlewares/setup-guard.js";
 import { hasRepoReadAccess, requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
 import { buildProjectContextSnapshot, loadContextSnapshot } from "./context/snapshot.js";
-import { handleDrilldownRequest } from "./drilldown.js";
 import { handleStoreError } from "./errors.js";
 import {
   ActiveSessionQuerySchema,
   ContextRefreshSchema,
   CreateReviewBodySchema,
-  DrilldownRequestSchema,
   ReviewIdParamSchema,
   ReviewListQuerySchema,
 } from "./schemas.js";
 import { createReviewSession } from "./service.js";
-import {
-  deleteReview as deleteStoredReview,
-  getReview as getStoredReview,
-  listReviewPage,
-} from "./storage/reviews.js";
+import { getReview as getStoredReview, listReviewPage } from "./storage/reviews.js";
 import { resumeStreamById } from "./stream/resume.js";
 import {
   type ActiveSession,
   cancelSessionForUser,
-  deleteSession,
   getActiveSessionForProject,
   getSession,
   hasReadySessionForProjectMode,
 } from "./stream/store.js";
-import type { HandleDrilldownError } from "./types.js";
 import { isValidProjectPath, resolvesToSameProject } from "./validation.js";
 
 const reviewRouter = new Hono();
@@ -78,11 +70,6 @@ const reviewCreationLimit = createRateLimitMiddleware("review:create", {
   maxRequests: 10,
   windowMs: 60_000,
 });
-const drilldownLimit = createRateLimitMiddleware("review:drilldown", {
-  maxRequests: 20,
-  windowMs: 60_000,
-});
-
 function toActiveReviewSessionResponse(session: ActiveSession): ActiveReviewSession {
   return {
     reviewId: session.reviewId,
@@ -211,14 +198,7 @@ reviewRouter.get("/context", requireSetup, requireRepoAccess, async (c): Promise
     return errorResponse(c, "Context snapshot not found", ErrorCode.NOT_FOUND, 404);
   }
 
-  // `text` and `markdown` carry the same content; the web client offers both a
-  // plain-text and a Markdown download of the snapshot from these two fields.
-  return c.json({
-    text: snapshot.markdown,
-    markdown: snapshot.markdown,
-    graph: snapshot.graph,
-    meta: snapshot.meta,
-  });
+  return c.json(buildReviewContextResponse(snapshot));
 });
 
 reviewRouter.post(
@@ -238,12 +218,7 @@ reviewRouter.post(
       const snapshot = await buildProjectContextSnapshot(projectRoot, {
         force: body.force,
       });
-      return c.json({
-        text: snapshot.markdown,
-        markdown: snapshot.markdown,
-        graph: snapshot.graph,
-        meta: snapshot.meta,
-      });
+      return c.json(buildReviewContextResponse(snapshot));
     } catch (error) {
       log("error", "context_refresh_failed", { error: getErrorMessage(error) });
       return errorResponse(c, "Failed to refresh project context", ErrorCode.INTERNAL_ERROR, 500);
@@ -279,72 +254,8 @@ reviewRouter.get(
     const { id } = c.req.valid("param");
     const result = await getReviewForProject(id, getProjectRoot(c));
     if (!result.ok) return handleStoreError(c, result.error);
-    return c.json({ review: result.value });
-  },
-);
-
-reviewRouter.delete(
-  "/reviews/:id",
-  requireRepoAccess,
-  zValidator("param", ReviewIdParamSchema, handleZodError),
-  async (c): Promise<Response> => {
-    const { id } = c.req.valid("param");
-    const projectPath = getProjectRoot(c);
-    const existing = await getStoredReview(id);
-    if (!existing.ok) {
-      if (existing.error.code === "NOT_FOUND") {
-        return c.json({ existed: false });
-      }
-      return handleStoreError(c, existing.error);
-    }
-    if (existing.value.metadata.projectPath !== projectPath) {
-      return c.json({ existed: false });
-    }
-
-    const result = await deleteStoredReview(id, projectPath);
-    if (!result.ok) return handleStoreError(c, result.error);
-    if (result.value.existed) {
-      deleteSession(id);
-    }
-    return c.json({ existed: result.value.existed });
-  },
-);
-
-reviewRouter.post(
-  "/reviews/:id/drilldown",
-  bodyLimitMiddleware,
-  drilldownLimit,
-  requireSetup,
-  requireRepoAccess,
-  zValidator("param", ReviewIdParamSchema, handleZodError),
-  zValidator("json", DrilldownRequestSchema, handleZodError),
-  async (c): Promise<Response> => {
-    const { id } = c.req.valid("param");
-    const body = c.req.valid("json");
-    const projectPath = getProjectRoot(c);
-    const reviewResult = await getReviewForProject(id, projectPath);
-    if (!reviewResult.ok) return handleStoreError(c, reviewResult.error);
-
-    const clientResult = await initializeAIClient();
-    if (!clientResult.ok) {
-      return errorResponse(c, clientResult.error.message, clientResult.error.code, 500);
-    }
-
-    const result = await handleDrilldownRequest(clientResult.value, id, body.issueId, projectPath, {
-      review: reviewResult.value,
-      signal: c.req.raw.signal,
-    });
-
-    if (!result.ok) {
-      return errorResponse(
-        c,
-        result.error.message,
-        result.error.code,
-        drilldownErrorStatus(result.error.code),
-      );
-    }
-
-    return c.json({ drilldown: result.value });
+    const { diff: _diff, ...review } = result.value;
+    return c.json({ review });
   },
 );
 
@@ -390,18 +301,6 @@ async function getRequestedProjectPath(c: Context): Promise<RequestedProjectPath
   }
 
   return { ok: true, projectPath };
-}
-
-function drilldownErrorStatus(code: HandleDrilldownError["code"]): ErrorStatus {
-  switch (code) {
-    case "ISSUE_NOT_FOUND":
-    case "NOT_FOUND":
-      return 404;
-    case "VALIDATION_ERROR":
-      return 400;
-    default:
-      return 500;
-  }
 }
 
 export { reviewRouter };

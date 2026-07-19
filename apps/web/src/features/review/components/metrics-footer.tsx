@@ -1,4 +1,8 @@
-import type { ReviewProgressMetrics } from "@diffgazer/core/schemas/presentation";
+import {
+  buildReviewMetricsRows,
+  type ReviewMetricId,
+  type ReviewProgressMetrics,
+} from "@diffgazer/core/schemas/presentation";
 import { KeyValue } from "@diffgazer/ui/components/key-value";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { Timer } from "./timer";
@@ -9,31 +13,29 @@ interface ReviewMetricsFooterProps {
   isRunning: boolean;
 }
 
+function getMetricVariant(id: ReviewMetricId, issuesFound: number) {
+  if (id === "elapsed") return "info";
+  if (id === "issues-found" && issuesFound > 0) return "warning";
+  return "default";
+}
+
 export function ReviewMetricsFooter({ metrics, startTime, isRunning }: ReviewMetricsFooterProps) {
+  const rows = buildReviewMetricsRows(metrics, <Timer startTime={startTime} running={isRunning} />);
+
   return (
     <div className="shrink-0 pt-4 pb-6 border-t border-border">
       <SectionHeader variant="muted" bordered>
         Metrics
       </SectionHeader>
       <KeyValue className="pt-2">
-        <KeyValue.Item
-          label="Files in Prompt"
-          value={
-            metrics.filesTotal > 0
-              ? `${metrics.filesProcessed}/${metrics.filesTotal}`
-              : `${metrics.filesProcessed}/...`
-          }
-        />
-        <KeyValue.Item
-          label="Issues Found"
-          value={metrics.issuesFound}
-          variant={metrics.issuesFound > 0 ? "warning" : "default"}
-        />
-        <KeyValue.Item
-          label="Elapsed"
-          value={<Timer startTime={startTime} running={isRunning} />}
-          variant="info"
-        />
+        {rows.map((row) => (
+          <KeyValue.Item
+            key={row.id}
+            label={row.label}
+            value={row.value}
+            variant={getMetricVariant(row.id, metrics.issuesFound)}
+          />
+        ))}
       </KeyValue>
     </div>
   );

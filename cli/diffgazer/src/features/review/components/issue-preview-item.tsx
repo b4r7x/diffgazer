@@ -1,9 +1,10 @@
 import { sanitizeTerminalText } from "@diffgazer/core/review";
+import { SEVERITY_LABELS } from "@diffgazer/core/schemas/presentation";
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
 import { Badge } from "../../../components/ui/badge";
 import { useTheme } from "../../../theme/provider";
-import { severityVariant } from "../../../theme/severity-variant";
+import { severityColor } from "../../../theme/severity";
 
 export interface IssuePreviewItemProps {
   severity: ReviewSeverity;
@@ -21,9 +22,9 @@ function toSingleLine(value: string): string {
   return sanitizeTerminalText(value).replace(/\s+/g, " ").trim();
 }
 
-function getTextColumnBudget(severity: ReviewSeverity, contentWidth: number) {
+function getTextColumnBudget(severityLabel: string, contentWidth: number) {
   const textColumns = Math.max(
-    contentWidth - severity.length - BADGE_FRAME_COLUMNS - ITEM_GAP_COLUMNS,
+    contentWidth - severityLabel.length - BADGE_FRAME_COLUMNS - ITEM_GAP_COLUMNS,
     2,
   );
   const pathColumns = Math.min(
@@ -41,43 +42,35 @@ export function IssuePreviewItem({
   isHighlighted = false,
 }: IssuePreviewItemProps) {
   const { tokens } = useTheme();
-  const variant = severityVariant(severity);
+  const label = SEVERITY_LABELS[severity];
+  const color = severityColor(severity, tokens);
   const pathDisplay = toSingleLine(filePath);
   const titleDisplay = toSingleLine(title);
-  const { pathColumns, titleColumns } = getTextColumnBudget(severity, contentWidth);
-
-  if (isHighlighted) {
-    return (
-      <Box gap={1} width={contentWidth} height={1} overflow="hidden" flexWrap="nowrap">
-        <Box flexShrink={0}>
-          <Badge variant={variant}>{severity}</Badge>
-        </Box>
-        <Box width={pathColumns} flexShrink={0}>
-          <Text backgroundColor={tokens.fg} color={tokens.bg} wrap="truncate-start">
-            {pathDisplay}
-          </Text>
-        </Box>
-        <Box width={titleColumns} flexShrink={0}>
-          <Text backgroundColor={tokens.fg} color={tokens.bg} bold wrap="truncate-end">
-            {titleDisplay}
-          </Text>
-        </Box>
-      </Box>
-    );
-  }
+  const { pathColumns, titleColumns } = getTextColumnBudget(label, contentWidth);
 
   return (
     <Box gap={1} width={contentWidth} height={1} overflow="hidden" flexWrap="nowrap">
       <Box flexShrink={0}>
-        <Badge variant={variant}>{severity}</Badge>
+        <Badge color={color}>{label}</Badge>
       </Box>
       <Box width={pathColumns} flexShrink={0}>
-        <Text color={tokens.muted} wrap="truncate-start">
+        <Text
+          color={isHighlighted ? tokens.bg : tokens.muted}
+          backgroundColor={isHighlighted ? tokens.fg : undefined}
+          wrap="truncate-start"
+        >
           {pathDisplay}
         </Text>
       </Box>
       <Box width={titleColumns} flexShrink={0}>
-        <Text wrap="truncate-end">{titleDisplay}</Text>
+        <Text
+          color={isHighlighted ? tokens.bg : undefined}
+          backgroundColor={isHighlighted ? tokens.fg : undefined}
+          bold={isHighlighted}
+          wrap="truncate-end"
+        >
+          {titleDisplay}
+        </Text>
       </Box>
     </Box>
   );

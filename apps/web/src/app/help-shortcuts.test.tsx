@@ -18,11 +18,19 @@ import {
 } from "@/features/home/components/presentation";
 import { useReviewDetailsTabKeyboard } from "@/features/review/hooks/use-details-tab-keyboard";
 
-const mockNavigate = vi.fn();
+const { mockNavigate, mockShutdown } = vi.hoisted(() => ({
+  mockNavigate: vi.fn(),
+  mockShutdown: vi.fn(async () => ({ status: "closed" as const })),
+}));
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
+  useLocation: () => ({ pathname: "/" }),
 }));
+
+vi.mock("@/features/home/lib/shutdown", () => ({ shutdown: mockShutdown }));
+
+import { GlobalShortcuts } from "@/components/layout/global";
 
 function NavigationContract({
   onNavigate,
@@ -97,7 +105,7 @@ function ReviewContract({
 
 const HOME_CONTEXT: ContextInfo = {
   providerName: "openrouter",
-  providerMode: "openrouter/test-model",
+  providerModel: "openrouter/test-model",
   trustedDir: "/repo",
 };
 
@@ -188,20 +196,21 @@ describe("help shortcut integration", () => {
     observedLabels.add("Scroll Content");
     cleanup();
 
-    const navigate = vi.fn(async () => {});
-    const shutdown = vi.fn(async () => ({ status: "closed" as const }));
     render(
       <FooterProvider>
         <KeyboardProvider>
-          <HomePagePresentation {...buildHomeProps({ navigate, shutdown })} />
+          <GlobalShortcuts />
+          <HomePagePresentation
+            {...buildHomeProps({ navigate: mockNavigate, shutdown: mockShutdown })}
+          />
         </KeyboardProvider>
       </FooterProvider>,
     );
     await user.keyboard("sh{Shift>}?{/Shift}q");
-    expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/settings" }));
-    expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/history" }));
-    expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/help" }));
-    await waitFor(() => expect(shutdown).toHaveBeenCalledOnce());
+    expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/settings" }));
+    expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/history" }));
+    expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/help" }));
+    await waitFor(() => expect(mockShutdown).toHaveBeenCalledOnce());
     observedLabels.add("Open Settings");
     observedLabels.add("Open History");
     observedLabels.add("Open Help");

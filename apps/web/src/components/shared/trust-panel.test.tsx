@@ -48,7 +48,7 @@ function renderTrustPanel(api: BoundApi, options: { seedReviewQueries?: boolean 
   );
 }
 
-describe("TrustPanel query invalidation", () => {
+describe("TrustPanel", () => {
   let saveTrust: BoundApi["saveTrust"];
 
   beforeEach(() => {
@@ -100,10 +100,8 @@ describe("TrustPanel query invalidation", () => {
 
     renderTrustPanel(api);
 
-    // F-087: a trust branch with no footer of its own (e.g. history) keeps the
-    // previous page's stale "q Quit"/"s Settings" hints over dead handlers.
     expect(await screen.findByText("Navigate Permissions")).toBeInTheDocument();
-    expect(screen.getByText("Toggle Permission")).toBeInTheDocument();
+    expect(screen.getByText("Toggle")).toBeInTheDocument();
     expect(screen.queryByText("Quit")).not.toBeInTheDocument();
     expect(screen.queryByText("Settings")).not.toBeInTheDocument();
   });

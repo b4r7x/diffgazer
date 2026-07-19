@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api/protocol";
@@ -278,7 +278,7 @@ describe("review router project boundaries", () => {
     expect(response.status).toBe(400);
   });
 
-  it("does not read or delete reviews from another project", async () => {
+  it("does not read reviews from another project", async () => {
     await trustProject(projectA);
     await saveReview(REVIEW_B, projectB);
     const app = await createReviewApp();
@@ -289,29 +289,45 @@ describe("review router project boundaries", () => {
     );
     expect(readResponse.status).toBe(404);
 
-    const deleteResponse = await app.request(`/api/review/reviews/${REVIEW_B}`, {
-      ...requestOptions(projectA),
-      method: "DELETE",
-    });
-    expect(deleteResponse.status).toBe(200);
-    await expect(deleteResponse.json()).resolves.toEqual({ existed: false });
-
     const { getReview } = await import("./storage/reviews.js");
     const stored = await getReview(REVIEW_B);
     expect(stored.ok).toBe(true);
   });
 
-  it("keeps review deletion idempotent when a review does not exist", async () => {
+  it("omits the persisted diff from review detail responses", async () => {
     await trustProject(projectA);
+    await saveReview(REVIEW_A, projectA);
     const app = await createReviewApp();
 
-    const response = await app.request(`/api/review/reviews/${REVIEW_A}`, {
-      ...requestOptions(projectA),
-      method: "DELETE",
-    });
+    const response = await app.request(`/api/review/reviews/${REVIEW_A}`, requestOptions(projectA));
+    const body = (await response.json()) as { review: Record<string, unknown> };
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ existed: false });
+    expect(body.review).not.toHaveProperty("diff");
+
+    const { getReview } = await import("./storage/reviews.js");
+    const stored = await getReview(REVIEW_A);
+    expect(stored.ok).toBe(true);
+    if (stored.ok) expect(stored.value.diff).toBeDefined();
+  });
+
+  it.each([
+    ["DELETE", `/api/review/reviews/${REVIEW_A}`],
+    ["POST", `/api/review/reviews/${REVIEW_A}/drilldown`],
+  ])("does not mount the retired %s %s endpoint", async (method, path) => {
+    const app = await createReviewApp();
+
+    const response = await app.request(path, {
+      ...requestOptions(projectA),
+      method,
+      headers: {
+        ...requestOptions(projectA).headers,
+        "content-type": "application/json",
+      },
+      body: method === "POST" ? JSON.stringify({ issueId: "issue-1" }) : undefined,
+    });
+
+    expect(response.status).toBe(404);
   });
 });
 
@@ -338,11 +354,7 @@ describe("GET /api/review/reviews pagination", () => {
     expect(first.nextCursor).not.toBe(REVIEW_B);
 
     await saveReview(REVIEW_D, projectA);
-    const deleteResponse = await app.request(`/api/review/reviews/${REVIEW_B}`, {
-      ...requestOptions(projectA),
-      method: "DELETE",
-    });
-    expect(deleteResponse.status).toBe(200);
+    await unlink(join(tempHome, "triage-reviews", `${REVIEW_B}.json`));
     const secondResponse = await app.request(
       `/api/review/reviews?limit=2&cursor=${first.nextCursor}`,
       requestOptions(projectA),
@@ -1196,10 +1208,12 @@ describe("GET /api/review/context read-path security", () => {
     const app = await createReviewApp();
 
     const response = await app.request("/api/review/context", requestOptions(projectA));
-    const body = (await response.json()) as { markdown: string };
+    const body = (await response.json()) as { text: string; markdown: string };
 
     expect(response.status).toBe(200);
     expect(body.markdown).toContain("# current project context");
+    expect(body.text).toContain("current project context");
+    expect(body.text).not.toContain("# current project context");
   });
 
   it("returns 404 for a snapshot whose stored root belongs to a different checkout", async () => {
@@ -1246,20 +1260,6 @@ describe("review router param validation", () => {
     const app = await createReviewApp();
 
     const response = await app.request("/api/review/reviews/not-a-uuid", requestOptions(projectA));
-
-    expect(response.status).toBe(400);
-    const body = (await response.json()) as { error: { code: string } };
-    expect(body.error.code).toBe("VALIDATION_ERROR");
-  });
-
-  it("rejects a non-UUID review id on DELETE", async () => {
-    await trustProject(projectA);
-    const app = await createReviewApp();
-
-    const response = await app.request("/api/review/reviews/not-a-uuid", {
-      ...requestOptions(projectA),
-      method: "DELETE",
-    });
 
     expect(response.status).toBe(400);
     const body = (await response.json()) as { error: { code: string } };

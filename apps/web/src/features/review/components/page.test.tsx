@@ -36,7 +36,7 @@ const {
     canGoBack: false,
     params: {} as { reviewId?: string },
     pathname: "/review/test-id",
-    search: {} as { mode?: ReviewMode; live?: boolean },
+    search: {} as { mode?: ReviewMode; live?: boolean; issueId?: string },
   },
 }));
 
@@ -61,6 +61,7 @@ vi.mock("@diffgazer/core/api/hooks", async () => {
     typeof import("@diffgazer/core/testing/factories")
   >("@diffgazer/core/testing/factories");
   const initResponse = {
+    configPath: "/tmp/diffgazer/config.json",
     config: { provider: "gemini", model: "gemini-2.5-flash" },
     providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
     settings: {
@@ -207,7 +208,8 @@ describe("ReviewPage saved review loading", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Loading review...");
   });
 
-  it("renders saved review results with fetched issues and review id", async () => {
+  it("opens a saved review at its summary before letting the user view results", async () => {
+    const user = userEvent.setup();
     const issue = makeIssue({
       id: "issue-1",
       title: "Saved result issue",
@@ -220,7 +222,7 @@ describe("ReviewPage saved review loading", () => {
         isSuccess: true,
         data: {
           review: {
-            metadata: { id: "review-saved" },
+            metadata: { id: "review-saved", durationMs: 2500 },
             result: {
               issues: [issue],
             },
@@ -231,6 +233,15 @@ describe("ReviewPage saved review loading", () => {
 
     renderPage();
 
+    expect(
+      await screen.findByText(`Review Complete ${formatRunId("review-saved")}`),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Duration:").parentElement).toHaveTextContent("Duration: 2.5s");
+    expect(screen.getByText("Saved result issue")).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /saved result issue/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /view results/i }));
+
     expect(await screen.findByText(`Review ${formatRunId("review-saved")}`)).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /saved result issue/i })).toHaveAttribute(
       "aria-selected",
@@ -240,7 +251,72 @@ describe("ReviewPage saved review loading", () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("explains persisted duplicate collapse in reopened review results", async () => {
+  it("opens a valid saved-review issue deep link directly in results", async () => {
+    const firstIssue = makeIssue({
+      id: "issue-1",
+      title: "First saved issue",
+      symptom: "First saved symptom",
+    });
+    const linkedIssue = makeIssue({
+      id: "issue-2",
+      title: "Linked saved issue",
+      symptom: "Linked saved symptom",
+    });
+    routeState.params = { reviewId: "review-saved" };
+    routeState.search = { mode: "staged", issueId: "issue-2" };
+    mockUseReview.mockReturnValue(
+      reviewQuery({
+        isSuccess: true,
+        data: {
+          review: {
+            metadata: { id: "review-saved" },
+            result: { issues: [firstIssue, linkedIssue] },
+            droppedDuplicates: 1,
+          },
+        },
+      }),
+    );
+
+    renderPage();
+
+    expect(await screen.findByRole("option", { name: /linked saved issue/i })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByText("Linked saved symptom")).toBeInTheDocument();
+    expect(
+      screen.queryByText(`Review Complete ${formatRunId("review-saved")}`),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "1 duplicate issue collapsed across lenses (3 → 2 issues)",
+    );
+  });
+
+  it("keeps an invalid saved-review issue deep link on the safe summary view", async () => {
+    const issue = makeIssue({ id: "issue-1", title: "Saved result issue" });
+    routeState.params = { reviewId: "review-saved" };
+    routeState.search = { mode: "staged", issueId: "missing-issue" };
+    mockUseReview.mockReturnValue(
+      reviewQuery({
+        isSuccess: true,
+        data: {
+          review: {
+            metadata: { id: "review-saved" },
+            result: { issues: [issue] },
+          },
+        },
+      }),
+    );
+
+    renderPage();
+
+    expect(
+      await screen.findByText(`Review Complete ${formatRunId("review-saved")}`),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /saved result issue/i })).not.toBeInTheDocument();
+  });
+
+  it("explains persisted duplicate collapse in a reopened review summary", async () => {
     const issue = makeIssue({ id: "issue-1", title: "Saved result issue" });
     routeState.params = { reviewId: "review-saved" };
     routeState.search = { mode: "staged" };
@@ -463,9 +539,10 @@ describe("ReviewPage stale live session falls back to saved review", () => {
       captured.onNotFoundInSession?.(STALE_REVIEW_ID);
     });
 
-    // Falls back to saved review results
-    expect(await screen.findByText(`Review ${formatRunId(STALE_REVIEW_ID)}`)).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: /saved fallback issue/i })).toBeInTheDocument();
+    expect(
+      await screen.findByText(`Review Complete ${formatRunId(STALE_REVIEW_ID)}`),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Saved fallback issue")).toBeInTheDocument();
     expect(mockClearActiveSession).toHaveBeenCalledWith("staged", STALE_REVIEW_ID);
     expect(mockNavigate).not.toHaveBeenCalledWith({ to: "/" });
   });

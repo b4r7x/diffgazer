@@ -1,3 +1,4 @@
+export { DARK_PALETTE_VALUES, LIGHT_PALETTE_VALUES } from "./palette-values.js";
 export type {
   PrimitiveTokenKey,
   SemanticTokenKey,

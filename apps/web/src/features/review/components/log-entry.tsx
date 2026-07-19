@@ -1,19 +1,10 @@
 import { formatTimestamp } from "@diffgazer/core/format";
-import type { LogTagType } from "@diffgazer/core/schemas/presentation";
+import { type LogTagType, TAG_BADGE_VARIANTS } from "@diffgazer/core/schemas/presentation";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { cn } from "@diffgazer/ui/lib/utils";
 
-const TAG_VARIANTS: Record<
-  LogTagType,
-  { variant: "success" | "warning" | "error" | "info" | "neutral"; className?: string }
-> = {
-  system: { variant: "neutral" },
-  tool: { variant: "info" },
-  lens: { variant: "info" },
-  warning: { variant: "warning" },
-  error: { variant: "error" },
-  agent: { variant: "info" },
-  thinking: { variant: "neutral", className: "opacity-70" },
+const TAG_CLASS_NAMES: Partial<Record<LogTagType, string>> = {
+  thinking: "opacity-70",
 };
 
 export interface LogEntryProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "children"> {
@@ -35,15 +26,16 @@ export function LogEntry({
   isWarning,
   isError,
   className,
+  ...props
 }: LogEntryProps) {
-  const tagStyle = TAG_VARIANTS[tagType ?? "system"];
+  const resolvedTagType = tagType ?? "system";
   return (
-    <div className={cn("font-mono text-sm leading-relaxed", className)}>
+    <div className={cn("min-w-0 font-mono text-sm leading-relaxed", className)} {...props}>
       <span className="text-muted-foreground">[{formatTimestamp(timestamp)}]</span>{" "}
       <Badge
-        variant={tagStyle.variant}
+        variant={TAG_BADGE_VARIANTS[resolvedTagType] ?? "neutral"}
         size="sm"
-        className={cn("mx-1 min-w-[48px] justify-center", tagStyle.className)}
+        className={cn("mx-1 min-w-[48px] justify-center", TAG_CLASS_NAMES[resolvedTagType])}
       >
         {tag}
       </Badge>
@@ -55,7 +47,7 @@ export function LogEntry({
       )}
       <span
         className={cn(
-          "text-muted-foreground",
+          "wrap-anywhere text-muted-foreground",
           isWarning && "text-warning-text",
           isError && "text-error-text",
         )}

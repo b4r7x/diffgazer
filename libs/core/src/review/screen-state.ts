@@ -1,5 +1,7 @@
+import { isApiError } from "../api/types.js";
 import type { LensStat } from "../schemas/events/index.js";
-import type { ReviewIssue, ReviewSeverity } from "../schemas/review/index.js";
+import type { ReviewIssue, ReviewResponse, ReviewSeverity } from "../schemas/review/index.js";
+import type { ReviewEvent } from "./state.js";
 
 /**
  * The phase vocabulary for a live review screen: streaming progress, then the
@@ -39,6 +41,54 @@ export interface SavedReviewQueryState {
     | undefined;
   error: unknown;
   notFound: boolean;
+}
+
+export interface SavedReviewQuery {
+  isSuccess: boolean;
+  isError: boolean;
+  data: ReviewResponse | undefined;
+  error: unknown;
+}
+
+export interface OrchestratorStats {
+  lensStats?: LensStat[];
+  droppedDuplicates?: number;
+  droppedBelowThreshold?: number;
+  minSeverity?: ReviewSeverity;
+}
+
+export function extractOrchestratorStats(
+  state: { events: readonly ReviewEvent[] } | null,
+): OrchestratorStats {
+  const events = state?.events ?? [];
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    const event = events[index];
+    if (event?.type === "orchestrator_complete") {
+      return {
+        lensStats: event.lensStats,
+        droppedDuplicates: event.droppedDuplicates,
+        droppedBelowThreshold: event.droppedBelowThreshold,
+        minSeverity: event.minSeverity,
+      };
+    }
+  }
+  return {};
+}
+
+export function toSavedReviewQueryState(query: SavedReviewQuery): SavedReviewQueryState {
+  let status: SavedReviewQueryState["status"] = "pending";
+  if (query.isSuccess) {
+    status = "success";
+  } else if (query.isError) {
+    status = "error";
+  }
+
+  return {
+    status,
+    review: query.data?.review ?? null,
+    error: query.error,
+    notFound: isApiError(query.error) && query.error.status === 404,
+  };
 }
 
 export type SavedReviewOutcome =

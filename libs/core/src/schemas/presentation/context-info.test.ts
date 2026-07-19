@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import ts from "typescript";
 import { describe, expect, expectTypeOf, it } from "vitest";
-import { buildHomeContextInfo } from "./context-info.js";
+import { buildHomeContextInfo, buildHomeContextRows } from "./context-info.js";
 import {
   BadgeVariantSchema,
   type ContextInfo,
@@ -31,7 +31,7 @@ describe("buildHomeContextInfo", () => {
     );
     expect(context).toEqual({
       providerName: "openrouter",
-      providerMode: "openrouter/test",
+      providerModel: "openrouter/test",
       lastRunId: "rev-1",
       lastRunIssueCount: 3,
       trustedDir: "/repo",
@@ -55,10 +55,38 @@ describe("buildHomeContextInfo", () => {
     );
     expect(context).toEqual({
       providerName: undefined,
-      providerMode: undefined,
+      providerModel: undefined,
       lastRunId: undefined,
       lastRunIssueCount: undefined,
       trustedDir: undefined,
+    });
+  });
+
+  it("builds the three visible rows when context data is present", () => {
+    expect(
+      buildHomeContextRows({
+        context: {
+          trustedDir: "/repo",
+          providerName: "openrouter",
+          providerModel: "openrouter/test",
+          lastRunId: "12345678-1234-4123-8123-123456789abc",
+          lastRunIssueCount: 3,
+        },
+        isTrusted: true,
+        projectPath: "/repo",
+      }),
+    ).toEqual({
+      trust: { label: "Trusted", value: "/repo" },
+      provider: { label: "Provider", value: "openrouter (openrouter/test)" },
+      lastRun: { label: "Last Run", value: "#12345678", issueCount: "(3 issues)" },
+    });
+  });
+
+  it("builds explicit values for all three rows when context data is absent", () => {
+    expect(buildHomeContextRows({ context: {}, isTrusted: false })).toEqual({
+      trust: { label: "Not trusted", value: "—" },
+      provider: { label: "Provider", value: "Not configured" },
+      lastRun: { label: "Last Run", value: "None", issueCount: undefined },
     });
   });
 });
@@ -76,7 +104,7 @@ describe("presentation type runtime", () => {
     expectTypeOf<ContextInfo>().toEqualTypeOf<{
       trustedDir?: string;
       providerName?: string;
-      providerMode?: string;
+      providerModel?: string;
       lastRunId?: string;
       lastRunIssueCount?: number;
     }>();

@@ -3,10 +3,8 @@ import { buildLensOptions } from "@diffgazer/core/schemas/events";
 import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import {
   ANALYSIS_SETTINGS_SUBTITLE,
-  isLensId,
-  isLensSelectionDirty,
+  deriveLensSelectionState,
   type LensId,
-  resolveEffectiveLenses,
 } from "@diffgazer/core/schemas/review";
 import { useScope } from "@diffgazer/keys";
 import { Callout } from "@diffgazer/ui/components/callout";
@@ -24,14 +22,12 @@ export function SettingsAnalysisPage() {
   const settings = settingsQuery.data;
   const [selectedLenses, setSelectedLenses] = useState<LensId[] | null>(null);
 
-  const defaultLenses = settings?.defaultLenses ?? [];
-  const persistedLenses = defaultLenses.filter((lens): lens is LensId => isLensId(lens));
   const fallbackLenses = lensOptions.map((lens) => lens.id);
-  const currentLenses = persistedLenses.length > 0 ? persistedLenses : fallbackLenses;
-  const effectiveLenses = resolveEffectiveLenses(persistedLenses, selectedLenses, fallbackLenses);
-  const hasLensSelection = effectiveLenses.length > 0;
-
-  const isDirty = settings ? isLensSelectionDirty(currentLenses, selectedLenses) : false;
+  const {
+    effective: effectiveLenses,
+    isDirty,
+    hasSelection: hasLensSelection,
+  } = deriveLensSelectionState(settings?.defaultLenses ?? [], selectedLenses, fallbackLenses);
 
   useScope("settings-analysis");
 

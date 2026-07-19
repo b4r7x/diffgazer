@@ -1,8 +1,15 @@
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ModelList } from "./list";
+
+vi.mock("@diffgazer/ui/components/badge", () => ({
+  Badge: ({ children, variant }: { children: ReactNode; variant: string }) => (
+    <span data-tone={variant}>{children}</span>
+  ),
+}));
 
 const MODELS: ModelInfo[] = [
   {
@@ -20,6 +27,24 @@ const MODELS: ModelInfo[] = [
 ];
 
 describe("ModelList", () => {
+  it("presents free tiers as informational and paid tiers as neutral", () => {
+    render(
+      <ModelList
+        models={MODELS}
+        focusedModelId="model-a"
+        currentModelId="model-a"
+        isFocused={false}
+        onSelect={vi.fn()}
+        onConfirm={vi.fn()}
+        onHighlightChange={vi.fn()}
+        onBoundaryReached={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("free")).toHaveAttribute("data-tone", "info");
+    expect(screen.getByText("paid")).toHaveAttribute("data-tone", "neutral");
+  });
+
   it("confirms the double-clicked model directly", async () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn();

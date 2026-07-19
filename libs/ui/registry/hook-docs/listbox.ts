@@ -39,8 +39,7 @@ return (
       name: "idPrefix",
       type: "string",
       required: true,
-      description:
-        'Prefix for generating aria-activedescendant IDs. By default, each option uses id="${idPrefix}-${encodeURIComponent(itemId)}" via getEncodedListboxItemId; pass getItemId to use a different encoding.',
+      description: `Prefix for generating aria-activedescendant IDs. By default, each option uses id="\${idPrefix}-\${encodeURIComponent(itemId)}" via getEncodedListboxItemId; pass getItemId to use a different encoding.`,
     },
     {
       name: "autoFocus",
@@ -82,7 +81,8 @@ return (
       name: "onSelect",
       type: "(id: string) => void",
       required: false,
-      description: "Called when the selected item changes.",
+      description:
+        "Called when an item is activated by click, Space, or Enter, including re-activating the already-selected item.",
     },
     {
       name: "onEnter",

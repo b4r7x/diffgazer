@@ -130,12 +130,18 @@ export const positionToSide: Record<ToastPosition, ToastSide> = {
 export const toastPositionVariants = cva("", {
   variants: {
     position: {
-      "top-left": "flex-col top-4 left-4 right-4 sm:right-auto sm:left-8 sm:w-80",
-      "top-center": "flex-col top-4 left-4 right-4 sm:inset-x-0 sm:mx-auto sm:w-80",
-      "top-right": "flex-col top-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-80",
-      "bottom-left": "flex-col-reverse bottom-4 left-4 right-4 sm:right-auto sm:left-8 sm:w-80",
-      "bottom-center": "flex-col-reverse bottom-4 left-4 right-4 sm:inset-x-0 sm:mx-auto sm:w-80",
-      "bottom-right": "flex-col-reverse bottom-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-80",
+      "top-left":
+        "flex-col top-[max(1rem,env(safe-area-inset-top))] left-[max(1rem,env(safe-area-inset-left))] right-[max(1rem,env(safe-area-inset-right))] sm:right-auto sm:left-[max(2rem,env(safe-area-inset-left))] sm:w-80",
+      "top-center":
+        "flex-col top-[max(1rem,env(safe-area-inset-top))] left-[max(1rem,env(safe-area-inset-left))] right-[max(1rem,env(safe-area-inset-right))] sm:inset-x-0 sm:mx-auto sm:w-80",
+      "top-right":
+        "flex-col top-[max(1rem,env(safe-area-inset-top))] left-[max(1rem,env(safe-area-inset-left))] right-[max(1rem,env(safe-area-inset-right))] sm:left-auto sm:right-[max(2rem,env(safe-area-inset-right))] sm:w-80",
+      "bottom-left":
+        "flex-col-reverse bottom-[max(1rem,env(safe-area-inset-bottom))] left-[max(1rem,env(safe-area-inset-left))] right-[max(1rem,env(safe-area-inset-right))] pointer-coarse:top-[max(1rem,env(safe-area-inset-top))] pointer-coarse:bottom-auto pointer-coarse:flex-col sm:right-auto sm:left-[max(2rem,env(safe-area-inset-left))] sm:w-80",
+      "bottom-center":
+        "flex-col-reverse bottom-[max(1rem,env(safe-area-inset-bottom))] left-[max(1rem,env(safe-area-inset-left))] right-[max(1rem,env(safe-area-inset-right))] pointer-coarse:top-[max(1rem,env(safe-area-inset-top))] pointer-coarse:bottom-auto pointer-coarse:flex-col sm:inset-x-0 sm:mx-auto sm:w-80",
+      "bottom-right":
+        "flex-col-reverse bottom-[max(1rem,env(safe-area-inset-bottom))] left-[max(1rem,env(safe-area-inset-left))] right-[max(1rem,env(safe-area-inset-right))] pointer-coarse:top-[max(1rem,env(safe-area-inset-top))] pointer-coarse:bottom-auto pointer-coarse:flex-col sm:left-auto sm:right-[max(2rem,env(safe-area-inset-right))] sm:w-80",
     },
   },
   defaultVariants: { position: "bottom-right" },

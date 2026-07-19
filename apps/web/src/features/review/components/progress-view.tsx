@@ -1,5 +1,10 @@
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
-import { getPartialFailureWarning, type ReviewEvent } from "@diffgazer/core/review";
+import {
+  classifyReviewStreamError,
+  getPartialFailureWarning,
+  type ReviewEvent,
+  type ReviewStreamErrorGuidance,
+} from "@diffgazer/core/review";
 import type { AgentState, LensStat } from "@diffgazer/core/schemas/events";
 import type {
   BadgeVariant,
@@ -11,7 +16,6 @@ import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
-import { cn } from "@diffgazer/ui/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { ProgressList } from "@/components/shared/progress/list";
@@ -39,6 +43,9 @@ export interface ReviewProgressViewProps {
   data: ReviewProgressData;
   isRunning: boolean;
   error?: string | null;
+  errorCode?: string | null;
+  reviewId?: string | null;
+  onRetry?: (reviewId: string) => void;
   onViewResults?: () => void;
   onCancel?: () => void;
   onBack?: () => void;
@@ -68,14 +75,17 @@ function AgentFilterBar({
       label="Agent filter"
       className="items-center pb-2"
     >
-      <ToggleGroupItem value="all" className="min-h-0 min-w-0 px-2 py-1 text-2xs">
+      <ToggleGroupItem
+        value="all"
+        className="h-auto min-h-6 px-2 py-1 text-2xs pointer-coarse:min-h-11 pointer-coarse:px-3"
+      >
         All
       </ToggleGroupItem>
       {agents.map((agent) => (
         <ToggleGroupItem
           key={agent.id}
           value={agent.name}
-          className="min-h-0 min-w-0 px-2 py-1 text-2xs"
+          className="h-auto min-h-6 px-2 py-1 text-2xs pointer-coarse:min-h-11 pointer-coarse:px-3"
         >
           <Badge variant={agent.badgeVariant ?? "info"} size="sm" className="mr-1">
             {agent.badgeLabel}
@@ -89,31 +99,34 @@ function AgentFilterBar({
 
 function ErrorDisplay({
   error,
-  isApiKeyError,
+  guidance,
   onBack,
+  onRetry,
 }: {
   error: string;
-  isApiKeyError: boolean;
+  guidance: ReviewStreamErrorGuidance;
   onBack?: () => void;
+  onRetry?: () => void;
 }) {
   const navigate = useNavigate();
+  const isApiKeyError = guidance.kind === "api-key";
 
   return (
-    <div className="flex-1 flex items-center justify-center">
-      <div role="alert" aria-live="assertive" className="text-center p-6 max-w-md">
-        <div className="text-error-text text-lg font-bold mb-2">
-          {isApiKeyError ? "API Key Error" : "Error"}
-        </div>
+    <div className="shrink-0 px-4 pb-3">
+      <div
+        role="alert"
+        aria-live="assertive"
+        className="rounded-md border border-error/40 bg-error/5 p-4 text-center"
+      >
+        <div className="text-error-text mb-2 text-lg font-bold">{guidance.title}</div>
         <div className="text-muted-foreground font-mono text-sm mb-2">{error}</div>
-        {isApiKeyError && (
-          <div className="text-muted-foreground text-sm mb-4">
-            Your API key may be invalid or expired.
-          </div>
-        )}
-        <div className={cn("flex gap-3 justify-center", !isApiKeyError && "mt-4")}>
-          <Button variant="secondary" bracket onClick={onBack}>
-            Back to Home
-          </Button>
+        <div className="text-muted-foreground mb-4 text-sm">{guidance.guidance}</div>
+        <div className="flex flex-wrap justify-center gap-3">
+          {onBack && (
+            <Button variant="secondary" bracket onClick={onBack}>
+              Back to Home
+            </Button>
+          )}
           {isApiKeyError && (
             <Button
               variant="outline"
@@ -121,7 +134,12 @@ function ErrorDisplay({
               className="border-warning text-warning-text hover:bg-warning/10"
               onClick={() => navigate({ to: "/settings/providers" })}
             >
-              Configure Provider
+              {guidance.ctaLabel}
+            </Button>
+          )}
+          {guidance.kind === "transport" && onRetry && (
+            <Button variant="outline" bracket onClick={onRetry}>
+              {guidance.ctaLabel}
             </Button>
           )}
         </div>
@@ -130,12 +148,13 @@ function ErrorDisplay({
   );
 }
 
-const API_KEY_ERROR_PATTERN = /api.?key/i;
-
 export function ReviewProgressView({
   data,
   isRunning,
   error,
+  errorCode,
+  reviewId,
+  onRetry,
   onViewResults,
   onCancel,
   onBack,
@@ -160,7 +179,7 @@ export function ReviewProgressView({
     hasError,
   });
 
-  const isApiKeyError = error ? API_KEY_ERROR_PATTERN.test(error) : false;
+  const errorGuidance = error ? classifyReviewStreamError(error, errorCode) : null;
 
   const agentOptions = agents.map((agent) => ({
     id: agent.id,
@@ -172,14 +191,14 @@ export function ReviewProgressView({
   const partialFailure = getPartialFailureWarning(agents, error ?? null, lensStats);
 
   return (
-    <div className="flex flex-1 gap-4 overflow-hidden px-4 pt-4 pb-4">
+    <div className="flex flex-1 flex-col gap-4 overflow-hidden px-4 pt-4 pb-4 md:flex-row">
       <Panel
         ref={progressPaneRef}
         as="section"
         aria-label="Progress"
         data-pane="progress"
         data-focused={focusPane === "progress" || undefined}
-        className="w-1/3 flex flex-col min-h-0 border border-border data-[focused]:border-info"
+        className="flex min-h-0 w-full basis-1/2 flex-col border border-border data-[focused]:border-info md:w-1/3 md:basis-auto"
       >
         <Panel.Label variant="border" aria-hidden="true">
           Progress
@@ -223,7 +242,7 @@ export function ReviewProgressView({
         aria-label="Live Activity Log"
         data-pane="log"
         data-focused={focusPane === "log" || focusPane === "filters" || undefined}
-        className="flex-1 flex flex-col min-h-0 border border-border data-[focused]:border-info"
+        className="flex min-h-0 w-full basis-1/2 flex-col border border-border data-[focused]:border-info md:w-auto md:basis-auto md:flex-1"
       >
         <Panel.Label variant="border" aria-hidden="true">
           Live Activity Log
@@ -254,16 +273,24 @@ export function ReviewProgressView({
             </output>
           )}
 
-          {error ? (
-            <ErrorDisplay error={error} isApiKeyError={isApiKeyError} onBack={onBack} />
-          ) : (
-            <ActivityLog
-              events={events}
-              sourceFilter={agentFilter}
-              showCursor={isRunning}
-              className="flex-1 min-h-0 px-2 pb-2"
+          {error && errorGuidance && (
+            <ErrorDisplay
+              error={error}
+              guidance={errorGuidance}
+              onBack={onBack}
+              onRetry={
+                errorGuidance.kind === "transport" && reviewId && onRetry
+                  ? () => onRetry(reviewId)
+                  : undefined
+              }
             />
           )}
+          <ActivityLog
+            events={events}
+            sourceFilter={agentFilter}
+            showCursor={isRunning}
+            className="flex-1 min-h-0 px-2 pb-2"
+          />
         </div>
       </Panel>
     </div>

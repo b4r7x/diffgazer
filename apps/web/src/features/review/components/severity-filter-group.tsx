@@ -1,4 +1,9 @@
-import { SEVERITY_LABELS, SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
+import { formatSeverityFilterLabel } from "@diffgazer/core/review";
+import {
+  SEVERITY_LABELS,
+  SEVERITY_ORDER,
+  type UISeverityFilter,
+} from "@diffgazer/core/schemas/presentation";
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { pluralize } from "@diffgazer/core/strings";
 import { Button } from "@diffgazer/ui/components/button";
@@ -7,14 +12,12 @@ import { cn } from "@diffgazer/ui/lib/utils";
 import type { KeyboardEvent, Ref } from "react";
 import { SEVERITY_CONFIG } from "@/components/shared/severity/constants";
 
-export type SeverityFilter = ReadonlySet<ReviewSeverity>;
-
 export const RESET_FILTER_VALUE = "__reset__";
 
 export interface SeverityFilterGroupProps {
   counts: Record<ReviewSeverity, number>;
-  activeFilter: SeverityFilter;
-  onFilterChange: (filter: SeverityFilter) => void;
+  activeFilter: UISeverityFilter;
+  onFilterChange: (filter: UISeverityFilter) => void;
   onReset?: () => void;
   onNavigationBoundaryReached?: (direction: "previous" | "next") => void;
   isFocused?: boolean;
@@ -75,7 +78,7 @@ export function SeverityFilterGroup({
   return (
     <div
       ref={ref}
-      className={cn("flex items-center gap-2 text-xs", className)}
+      className={cn("flex flex-wrap items-center gap-x-2 gap-y-1 text-xs", className)}
       data-severity-filter-row=""
     >
       <ToggleGroup
@@ -87,12 +90,13 @@ export function SeverityFilterGroup({
         highlighted={highlightedSeverity}
         onKeyDown={onKeyDown}
         label="Severity filter"
-        className="gap-2"
+        className="flex-wrap gap-2 gap-y-1"
         wrap={false}
       >
         {SEVERITY_ORDER.map((sev) => {
           const count = counts[sev];
           const label = SEVERITY_LABELS[sev];
+          const visibleLabel = formatSeverityFilterLabel(sev, count);
           const isActive = activeFilter.has(sev);
           return (
             <ToggleGroupItem
@@ -100,13 +104,11 @@ export function SeverityFilterGroup({
               value={sev}
               aria-label={`${label} severity, ${pluralize(count, "issue")}`}
               className={cn(
-                "h-5 min-h-0 min-w-fit px-1.5 text-xs inline-flex items-center whitespace-nowrap tabular-nums",
+                "min-w-fit px-1.5 text-xs inline-flex items-center whitespace-nowrap tabular-nums pointer-coarse:min-h-11 pointer-coarse:px-3",
                 isActive && SEVERITY_CONFIG[sev].color,
               )}
             >
-              <span aria-hidden="true">
-                [{label} {count}]
-              </span>
+              <span aria-hidden="true">[{visibleLabel}]</span>
             </ToggleGroupItem>
           );
         })}
@@ -114,6 +116,7 @@ export function SeverityFilterGroup({
       {isFilterActive && (
         <Button
           variant="secondary"
+          size="sm"
           data-diffgazer-navigation-item="button"
           data-value={RESET_FILTER_VALUE}
           tabIndex={isResetFocused ? 0 : -1}
@@ -124,7 +127,7 @@ export function SeverityFilterGroup({
           onKeyDown={onKeyDown}
           aria-label="Reset severity filter"
           highlighted={isResetFocused}
-          className="h-5 min-h-0 min-w-fit px-1.5 text-xs"
+          className="min-w-fit px-1.5 text-xs pointer-coarse:min-h-11 pointer-coarse:px-3"
           bracket
         >
           Reset

@@ -243,6 +243,13 @@ describe("Part C: CSS-heavy components declare CSS in registry metadata", () => 
     expect(cssFile?.type).toBe("registry:style");
     expect(cssFile?.target).toMatch(/\.css$/);
   });
+
+  it("dialog declares its copied scroll-lock hook dependency", () => {
+    const registry = readSourceRegistry();
+    const dialog = registry.items?.find((item) => item.name === "dialog");
+
+    expect(dialog?.registryDependencies).toContain("@diffgazer-keys/scroll-lock");
+  });
 });
 
 describe("Part D: public surface items are intentional", () => {

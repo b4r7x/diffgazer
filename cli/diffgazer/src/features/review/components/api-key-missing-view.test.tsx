@@ -60,6 +60,7 @@ describe("ApiKeyMissingView (TUI)", () => {
     );
 
     expect(lastFrame()).toContain("API Key Required");
+    expect(lastFrame()).toContain("Configure Provider");
     expect(lastFrame()).toContain("Back");
 
     stdin.write(ESCAPE);
@@ -78,6 +79,7 @@ describe("ApiKeyMissingView (TUI)", () => {
 
   test("offers a real init retry instead of guessing setup state after config-check succeeds", async () => {
     const recoveredInit: Awaited<ReturnType<BoundApi["loadInit"]>> = {
+      configPath: "/tmp/diffgazer/config.json",
       config: { provider: "openrouter" },
       providers: [],
       settings: {

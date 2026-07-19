@@ -1,3 +1,4 @@
+export * from "./detail-presentation.js";
 export * from "./display-status.js";
 export * from "./list.js";
 export * from "./models.js";

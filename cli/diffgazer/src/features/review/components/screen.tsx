@@ -1,4 +1,3 @@
-import { isApiError } from "@diffgazer/core/api";
 import { useReview } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { usePageFooter } from "@diffgazer/core/footer";
@@ -6,7 +5,7 @@ import {
   type ReviewScreenPhase,
   resolveSavedReviewOutcome,
   type SavedReviewData,
-  type SavedReviewQueryState,
+  toSavedReviewQueryState,
 } from "@diffgazer/core/review";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { Box } from "ink";
@@ -53,6 +52,7 @@ function SavedReviewView({ saved, initialIssueId, onClose }: SavedReviewViewProp
       issues={saved.issues}
       reviewId={saved.reviewId}
       initialIssueId={hasInitialIssue ? initialIssueId : undefined}
+      droppedDuplicates={saved.droppedDuplicates}
       onBack={() => setPhase("summary")}
     />
   );
@@ -106,22 +106,7 @@ export function ReviewScreen(): ReactElement {
   const savedReview = useReview(shouldLoadSavedReview ? (reviewId ?? "") : "");
 
   if (reviewId && shouldLoadSavedReview) {
-    let status: SavedReviewQueryState["status"] = "pending";
-    if (savedReview.isSuccess) {
-      status = "success";
-    } else if (savedReview.isError) {
-      status = "error";
-    }
-
-    const outcome = resolveSavedReviewOutcome(
-      {
-        status,
-        review: savedReview.data?.review ?? null,
-        error: savedReview.error,
-        notFound: isApiError(savedReview.error) && savedReview.error.status === 404,
-      },
-      false,
-    );
+    const outcome = resolveSavedReviewOutcome(toSavedReviewQueryState(savedReview), false);
 
     if (outcome.kind === "loading") {
       return <LoadingSavedView />;

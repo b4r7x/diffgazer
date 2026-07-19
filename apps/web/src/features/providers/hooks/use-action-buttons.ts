@@ -12,7 +12,7 @@ interface UseProvidersActionButtonsOptions {
   focusProviderList: () => void;
   onSetApiKey: () => void;
   onSelectModel: () => void;
-  onRemoveKey: (id: AIProvider) => Promise<void>;
+  onRemoveKey: (id: AIProvider) => Promise<unknown>;
   onActivateProvider: (provider: ProviderWithStatus) => void;
 }
 

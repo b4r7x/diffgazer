@@ -1,0 +1,15 @@
+diff --git a/scripts/post-install.js b/scripts/post-install.js
+index 8dbac507ea9c64169ea500a0115816056c0bc309..36b1fdace2f7078dc77b867f476fb502e0b2185f 100644
+--- a/scripts/post-install.js
++++ b/scripts/post-install.js
+@@ -49,6 +49,10 @@ try {
+ 
+ console.log(`\x1b[32m> Moving conpty.dll...\x1b[0m`);
+ if (os.platform() !== 'win32') {
++  const spawnHelper = path.join(__dirname, `../prebuilds/${process.platform}-${process.arch}/spawn-helper`);
++  if (fs.existsSync(spawnHelper)) {
++    fs.chmodSync(spawnHelper, 0o755);
++  }
+   console.log('  SKIPPED (not Windows)');
+ } else {
+   let windowsArch;

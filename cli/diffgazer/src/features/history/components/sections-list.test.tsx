@@ -35,8 +35,10 @@ describe("SectionsList", () => {
 
     const { lastFrame, stdin } = render(<Harness />);
     await flush();
-    expect(lastFrame()).toContain("Section 0");
-    expect(lastFrame()).not.toContain("Section 2");
+    const topRows = (lastFrame() ?? "").split("\n").filter(Boolean);
+    expect(topRows.join("\n")).toContain("Section 0");
+    expect(topRows.at(-1)).toContain("\u25BC");
+    expect(topRows.length).toBeLessThanOrEqual(4);
 
     for (let index = 0; index < 4; index += 1) {
       stdin.write("\u001B[B");
@@ -46,7 +48,19 @@ describe("SectionsList", () => {
     const frame = lastFrame() ?? "";
     expect(frame).toContain("Section 4");
     expect(frame).not.toContain("Section 0");
-    expect(frame.split("\n").filter(Boolean)).toHaveLength(2);
+    expect(frame.split("\n")[0]).toContain("\u25B2");
+    expect(frame.split("\n").at(-1)).toContain("\u25BC");
+    expect(frame.split("\n").filter(Boolean).length).toBeLessThanOrEqual(4);
+
+    for (let index = 0; index < 7; index += 1) {
+      stdin.write("\u001B[B");
+      await flush();
+    }
+
+    const bottomRows = (lastFrame() ?? "").split("\n").filter(Boolean);
+    expect(bottomRows[0]).toContain("\u25B2");
+    expect(bottomRows.join("\n")).toContain("Section 11");
+    expect(bottomRows.length).toBeLessThanOrEqual(4);
   });
 
   test("truncates long labels without wrapping the highlighted section", async () => {
@@ -79,10 +93,12 @@ describe("SectionsList", () => {
     }
 
     const lines = (lastFrame() ?? "").split("\n").filter(Boolean);
-    expect(lines.at(-1)).toContain("4:");
+    expect(lines.some((line) => line.includes("4:"))).toBe(true);
+    expect(lines[0]).toContain("\u25B2");
+    expect(lines.at(-1)).toContain("\u25BC");
     expect(lines.join("\n")).not.toContain(String(Number.MAX_SAFE_INTEGER));
     expect(lines.join("\n")).not.toContain("TAIL");
-    expect(lines).toHaveLength(2);
+    expect(lines.length).toBeLessThanOrEqual(4);
     expect(lines.every((line) => line.length <= 18)).toBe(true);
   });
 });

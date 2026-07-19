@@ -1,12 +1,16 @@
 import { useActivateProvider } from "@diffgazer/core/api/hooks";
 import { getCompatibilityLabel, useModelFilter, useModelSource } from "@diffgazer/core/providers";
+import { sanitizeTerminalText } from "@diffgazer/core/review";
 import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useEffect, useEffectEvent, useState } from "react";
+import { getContentZoneRows } from "../../../components/layout/global";
 import { Dialog } from "../../../components/ui/dialog";
 import { Spinner } from "../../../components/ui/spinner";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
+import { getListWindow } from "../../../lib/list-window";
+import { terminalCellWidth } from "../../../lib/terminal-width";
 import type { CliColorTokens } from "../../../theme/palettes";
 import { useTheme } from "../../../theme/provider";
 import { ModelListItem } from "./model-list-item";
@@ -15,56 +19,26 @@ import { TierFilterTabs } from "./tier-filter-tabs";
 
 type FocusZone = "search" | "filters" | "list";
 const MIN_MODEL_VIEWPORT_SIZE = 4;
-const MODEL_DIALOG_RESERVED_ROWS = 14;
+const MODEL_DIALOG_BASE_CHROME_ROWS = 12;
 
-function getModelViewportSize(rows: number, total: number): number {
-  const availableRows = Math.max(MIN_MODEL_VIEWPORT_SIZE, rows - MODEL_DIALOG_RESERVED_ROWS);
+function getRenderedRows(text: string, contentWidth: number): number {
+  return Math.max(Math.ceil(terminalCellWidth(text) / contentWidth), 1);
+}
+
+function getModelViewportSize({
+  contentRows,
+  total,
+  conditionalRows,
+}: {
+  contentRows: number;
+  total: number;
+  conditionalRows: number;
+}): number {
+  const availableRows = Math.max(
+    MIN_MODEL_VIEWPORT_SIZE,
+    contentRows - MODEL_DIALOG_BASE_CHROME_ROWS - conditionalRows,
+  );
   return Math.min(total, availableRows);
-}
-
-function getCenteredModelWindow({
-  total,
-  highlightedIndex,
-  visibleCount,
-}: {
-  total: number;
-  highlightedIndex: number;
-  visibleCount: number;
-}): { start: number; end: number } {
-  if (total <= visibleCount) return { start: 0, end: total };
-
-  const halfViewport = Math.floor(visibleCount / 2);
-  const maxStart = total - visibleCount;
-  const start = Math.min(Math.max(highlightedIndex - halfViewport, 0), maxStart);
-  return { start, end: start + visibleCount };
-}
-
-function getVisibleModelWindow({
-  total,
-  highlightedIndex,
-  viewportSize,
-}: {
-  total: number;
-  highlightedIndex: number;
-  viewportSize: number;
-}): { start: number; end: number; canScrollUp: boolean; canScrollDown: boolean } {
-  let visibleCount = Math.min(total, viewportSize);
-  let window = getCenteredModelWindow({ total, highlightedIndex, visibleCount });
-  let canScrollUp = window.start > 0;
-  let canScrollDown = window.end < total;
-
-  for (let i = 0; i < 2; i += 1) {
-    const indicatorRows = Number(canScrollUp) + Number(canScrollDown);
-    const nextVisibleCount = Math.max(1, Math.min(total, viewportSize - indicatorRows));
-    if (nextVisibleCount === visibleCount) break;
-
-    visibleCount = nextVisibleCount;
-    window = getCenteredModelWindow({ total, highlightedIndex, visibleCount });
-    canScrollUp = window.start > 0;
-    canScrollDown = window.end < total;
-  }
-
-  return { ...window, canScrollUp, canScrollDown };
 }
 
 function renderModelListBody({
@@ -94,7 +68,7 @@ function renderModelListBody({
     return <Spinner label="Loading models…" />;
   }
   if (sourceError) {
-    return <Text color={tokens.error}>{sourceError}</Text>;
+    return <Text color={tokens.error}>{sanitizeTerminalText(sourceError)}</Text>;
   }
   if (filteredModels.length === 0) {
     return (
@@ -103,15 +77,15 @@ function renderModelListBody({
       </Text>
     );
   }
-  const window = getVisibleModelWindow({
+  const window = getListWindow({
     total: filteredModels.length,
-    highlightedIndex: safeHighlightIndex,
-    viewportSize,
+    selectedIndex: safeHighlightIndex,
+    viewportRows: viewportSize,
   });
   const visibleModels = filteredModels.slice(window.start, window.end);
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" height={viewportSize} flexShrink={0}>
       {window.canScrollUp ? <Text color={tokens.muted}>{"\u25B2"}</Text> : null}
       {visibleModels.map((model, idx) => {
         const absoluteIndex = window.start + idx;
@@ -135,7 +109,7 @@ interface ModelSelectOverlayProps {
   onOpenChange: (open: boolean) => void;
   providerId: AIProvider;
   selectedId?: string;
-  onSelect: (id: string) => void;
+  onSelect?: (id: string) => void;
 }
 
 export function ModelSelectOverlay({
@@ -213,11 +187,22 @@ export function ModelSelectOverlay({
       { providerId, model: modelId },
       {
         onSuccess: () => {
-          onSelect(modelId);
+          onSelect?.(modelId);
           onOpenChange(false);
         },
       },
     );
+  }
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen && saving) return;
+    onOpenChange(nextOpen);
+  }
+
+  function handleEscapeKeyDown(): boolean {
+    if (focusZone !== "search" || searchQuery.length === 0) return false;
+    setSearchQuery("");
+    return true;
   }
 
   useInput(
@@ -288,12 +273,22 @@ export function ModelSelectOverlay({
   );
 
   const contentWidth = Math.min(columns - 8, 70);
-  const modelViewportSize = getModelViewportSize(rows, filteredModels.length);
-
   const compatibilityLabel = isOpenRouter ? getCompatibilityLabel(openRouter) : null;
+  const conditionalRows = [
+    compatibilityLabel && !loading && !sourceError ? 1 : 0,
+    fallbackNotice ? getRenderedRows(`${fallbackNotice} Press r to retry.`, contentWidth) : 0,
+    sourceError ? 1 : 0,
+    activationError ? getRenderedRows(sanitizeTerminalText(activationError), contentWidth) : 0,
+    saving ? 1 : 0,
+  ].reduce((total, rowCount) => total + rowCount, 0);
+  const modelViewportSize = getModelViewportSize({
+    contentRows: getContentZoneRows(rows),
+    total: filteredModels.length,
+    conditionalRows,
+  });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange} onEscapeKeyDown={handleEscapeKeyDown}>
       <Dialog.Content>
         <Dialog.Header>
           <Dialog.Title>Select Model</Dialog.Title>
@@ -332,7 +327,9 @@ export function ModelSelectOverlay({
               viewportSize: modelViewportSize,
               tokens,
             })}
-            {activationError ? <Text color={tokens.error}>{activationError}</Text> : null}
+            {activationError ? (
+              <Text color={tokens.error}>{sanitizeTerminalText(activationError)}</Text>
+            ) : null}
             {saving && <Spinner label="Saving…" />}
           </Box>
         </Dialog.Body>

@@ -35,7 +35,7 @@ function getSettingsMenuHighlighted(value: string | null): string | null {
 
 export function SettingsHubPage() {
   const navigate = useNavigate();
-  const { loadState, provider, isConfigured, repoRoot, trust } = useConfigData();
+  const { loadState, provider, isConfigured, repoRoot, trust, configPath } = useConfigData();
   const { theme } = useTheme();
   const [highlighted, setHighlighted] = useScopedRouteState<string | null>(
     "highlighted",
@@ -107,8 +107,8 @@ export function SettingsHubPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-4 pb-12 pt-4">
-      <div className="w-full max-w-3xl">
+    <div className="flex flex-1 flex-col overflow-y-auto px-4 pb-12 pt-4">
+      <div className="m-auto w-full max-w-3xl">
         <Panel
           frame="hairline"
           density="compact"
@@ -145,7 +145,7 @@ export function SettingsHubPage() {
             })}
           </Menu>
           <Panel.Footer className="font-mono">
-            <span>config path: ~/.diffgazer/config.json</span>
+            <span>config path: {configPath}</span>
             <span>{settingsError ?? "local settings"}</span>
           </Panel.Footer>
         </Panel>

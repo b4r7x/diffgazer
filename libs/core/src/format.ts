@@ -15,6 +15,7 @@ const DATE_LABEL_MONTHS = [
   "Dec",
 ];
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const MIN_RUN_ID_PREFIX_LENGTH = 8;
 
 function getLocalDateKey(date: Date): string {
   if (Number.isNaN(date.getTime())) return "";
@@ -97,6 +98,26 @@ export function formatDuration(durationMs: number | null | undefined): string {
   if (seconds < 60) return `${seconds}.${Math.floor((durationMs % 1000) / 100)}s`;
   const minutes = Math.floor(seconds / 60);
   return `${minutes}m ${seconds % 60}s`;
+}
+
+function getRunIdPrefixLength(id: string, peerIds: readonly string[]): number {
+  const normalizedId = id.toLowerCase();
+  const normalizedPeers = peerIds
+    .map((peerId) => peerId.toLowerCase())
+    .filter((peerId) => peerId !== normalizedId);
+  let length = Math.min(MIN_RUN_ID_PREFIX_LENGTH, id.length);
+
+  while (
+    length < id.length &&
+    normalizedPeers.some((peerId) => peerId.startsWith(normalizedId.slice(0, length)))
+  ) {
+    length += 1;
+  }
+  return length;
+}
+
+export function formatRunId(id: string, peerIds: readonly string[] = []): string {
+  return `#${id.slice(0, getRunIdPrefixLength(id, peerIds))}`;
 }
 
 export function formatTimestampOrNA(value: string | null | undefined, fallback = "N/A"): string {

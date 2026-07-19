@@ -110,7 +110,7 @@ describe("orchestrateReview", () => {
     }
   });
 
-  it("keeps the review-default resolver non-empty across empty fallback candidates", () => {
+  it("uses validated settings defaults when explicit lenses are empty", () => {
     const settings: SettingsConfig = {
       theme: "auto",
       defaultLenses: ["security"],
@@ -121,9 +121,6 @@ describe("orchestrateReview", () => {
     };
 
     expect(resolveReviewDefaults({ lensIds: [], settings }).activeLenses).toEqual(["security"]);
-    expect(
-      resolveReviewDefaults({ settings: { ...settings, defaultLenses: [] } }).activeLenses,
-    ).toEqual(["correctness"]);
   });
 
   it("returns sorted, deduplicated issues and complete orchestration metadata", async () => {

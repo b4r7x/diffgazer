@@ -154,6 +154,7 @@ describe("config service", () => {
     expect(getInitState()).toMatchObject({
       ok: true,
       value: {
+        configPath: configPath(),
         configured: false,
         setup: {
           hasProvider: true,

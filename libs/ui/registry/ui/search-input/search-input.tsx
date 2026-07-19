@@ -18,8 +18,8 @@ const searchInputVariants = cva(
   {
     variants: {
       size: {
-        sm: "p-2 text-xs",
-        md: "p-3 text-sm",
+        sm: "p-2 text-xs max-md:text-base",
+        md: "p-3 text-sm max-md:text-base",
         lg: "p-3 text-base",
       },
       disabled: {
@@ -141,8 +141,25 @@ export function SearchInput({
         aria-labelledby={ariaLabelledBy}
         disabled={disabled}
         {...rest}
-        className="flex-1 bg-transparent font-mono text-foreground placeholder:text-foreground/55 focus:outline-none disabled:cursor-not-allowed [&::-webkit-search-cancel-button]:appearance-none"
+        className="min-w-0 flex-1 bg-transparent font-mono text-foreground placeholder:text-foreground/55 focus:outline-none disabled:cursor-not-allowed [&::-webkit-search-cancel-button]:appearance-none"
       />
+      {current.length > 0 ? (
+        <button
+          type="button"
+          data-slot="search-input-clear"
+          aria-label="Clear search"
+          disabled={disabled}
+          className="grid size-6 shrink-0 place-items-center text-base leading-none text-foreground/70 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:cursor-not-allowed pointer-coarse:size-11"
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={() => {
+            invalidatePendingReset();
+            setValue("");
+            inputRef.current?.focus();
+          }}
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+      ) : null}
     </div>
   );
 }

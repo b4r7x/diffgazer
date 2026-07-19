@@ -1,10 +1,31 @@
 import {
   HISTORY_SECTION_ALL_ID,
+  type HistoryScreenState,
   resolveSelectedDateId,
   resolveSelectedId,
 } from "@diffgazer/core/review";
-import { describe, expect, it } from "vitest";
+import { act, renderHook } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Run } from "@/features/history/types";
+import { useHistoryPage } from "./use-page";
+
+const { mockNavigate, mockUseHistoryScreenState } = vi.hoisted(() => ({
+  mockNavigate: vi.fn(),
+  mockUseHistoryScreenState: vi.fn(),
+}));
+
+vi.mock("@diffgazer/core/review", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@diffgazer/core/review")>()),
+  useHistoryScreenState: mockUseHistoryScreenState,
+}));
+
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => mockNavigate,
+}));
+
+vi.mock("@/hooks/use-scoped-route-state", () => ({
+  useScopedRouteState: <T>(_key: string, defaultValue: T) => [defaultValue, vi.fn()],
+}));
 
 function makeRun(id: string): Run {
   return {
@@ -33,5 +54,56 @@ describe("history selection resolution", () => {
     expect(resolveSelectedId("run-b", runs)).toBe("run-b");
     expect(resolveSelectedId("missing", runs)).toBe("run-a");
     expect(resolveSelectedId("missing", [])).toBeNull();
+  });
+});
+
+describe("useHistoryPage run pointer activation", () => {
+  beforeEach(() => {
+    mockNavigate.mockReset();
+    mockUseHistoryScreenState.mockReset();
+  });
+
+  it("navigates with the run id when a selected run is tapped a second time", () => {
+    let selectedRunId = "run-a";
+    mockUseHistoryScreenState.mockImplementation(
+      () =>
+        ({
+          reviewsQuery: { isSuccess: true },
+          reviewDetailQuery: { isLoading: false, isError: false },
+          reviews: [],
+          timelineItems: [],
+          selectedDateId: HISTORY_SECTION_ALL_ID,
+          setSelectedDateId: vi.fn(),
+          searchQuery: "",
+          setSearchQuery: vi.fn(),
+          mappedRuns: [makeRun("run-a"), makeRun("run-b")],
+          selectedRunId,
+          setSelectedRunId: (id: string) => {
+            selectedRunId = id;
+          },
+          selectedRun: null,
+          severityCounts: null,
+          sortedIssues: [],
+          duration: "",
+          hasReviews: true,
+          hasSearchQuery: false,
+          emptyRunsMessage: "",
+          hasMoreReviews: false,
+          isLoadingMoreReviews: false,
+          loadMoreReviews: vi.fn(),
+        }) as unknown as HistoryScreenState,
+    );
+
+    const { result, rerender } = renderHook(() => useHistoryPage());
+
+    act(() => result.current.handleRunSelect("run-b"));
+    expect(mockNavigate).not.toHaveBeenCalled();
+    rerender();
+
+    act(() => result.current.handleRunSelect("run-b"));
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/review/{-$reviewId}",
+      params: { reviewId: "run-b" },
+    });
   });
 });

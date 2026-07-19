@@ -5,7 +5,7 @@ import {
   sanitizeTerminalText,
   toIssueDetailsPresentation,
 } from "@diffgazer/core/review";
-import { type IssueTab, isIssueTab } from "@diffgazer/core/schemas/presentation";
+import { type IssueTab, isIssueTab, SEVERITY_LABELS } from "@diffgazer/core/schemas/presentation";
 import { type ReviewIssue, toEvidencePresentation } from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
 import { Badge } from "../../../components/ui/badge";
@@ -14,7 +14,7 @@ import { ScrollArea } from "../../../components/ui/scroll-area";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { Tabs } from "../../../components/ui/tabs";
 import { useTheme } from "../../../theme/provider";
-import { severityVariant } from "../../../theme/severity-variant";
+import { severityColor } from "../../../theme/severity";
 import { CodeSnippet } from "./code-snippet";
 import { DiffView } from "./diff-view";
 import { FixPlanChecklist } from "./fix-plan-checklist";
@@ -29,6 +29,8 @@ export interface IssueDetailsPaneProps {
   completedSteps: Set<number>;
   onToggleStep: (step: number) => void;
   subZone?: IssueDetailsSubZone;
+  truncateHeader?: boolean;
+  showTabs?: boolean;
 }
 
 export type IssueDetailsSubZone = "body" | "fix-plan";
@@ -36,21 +38,24 @@ export type IssueDetailsSubZone = "body" | "fix-plan";
 function IssueHeader({
   issue,
   presentation,
+  truncate,
 }: {
   issue: ReviewIssue;
   presentation: IssueDetailsPresentation;
+  truncate: boolean;
 }) {
   const { tokens } = useTheme();
+  const wrap = truncate ? "truncate-end" : "wrap";
 
   return (
-    <Box flexDirection="column">
-      <Text bold color={tokens.fg}>
+    <Box flexDirection="column" flexShrink={0}>
+      <Text bold color={tokens.fg} wrap={wrap}>
         {sanitizeTerminalText(issue.title)}
       </Text>
-      <Box gap={1}>
-        <Text color={tokens.muted}>Location:</Text>
-        <Text color={tokens.accent}>{sanitizeTerminalText(presentation.location)}</Text>
-      </Box>
+      <Text color={tokens.accent} wrap={wrap}>
+        <Text color={tokens.muted}>Location: </Text>
+        {sanitizeTerminalText(presentation.location)}
+      </Text>
     </Box>
   );
 }
@@ -79,11 +84,16 @@ function DetailsTab({
   const isFixPlanActive = subZone === "fix-plan";
 
   return (
-    <ScrollArea height={scrollHeight} isActive={isActive} contentIdentity={issue.id}>
+    <ScrollArea
+      height={scrollHeight}
+      isActive={isActive}
+      autoTail={isFixPlanActive}
+      contentIdentity={`${issue.id}:${subZone}`}
+    >
       <Box flexDirection="column" gap={1} paddingTop={1}>
         <Box gap={1}>
-          <Badge variant={severityVariant(issue.severity)} dot>
-            {issue.severity}
+          <Badge color={severityColor(issue.severity, tokens)} dot>
+            {SEVERITY_LABELS[issue.severity]}
           </Badge>
           <Badge variant="neutral">{presentation.category}</Badge>
           <Text color={tokens.muted}>confidence: {presentation.confidence}</Text>
@@ -200,11 +210,13 @@ function ExplainTab({
 }
 
 function TraceTab({
-  issue,
+  issueId,
+  trace,
   scrollHeight,
   isActive,
 }: {
-  issue: ReviewIssue;
+  issueId: string;
+  trace: IssueDetailsPresentation["trace"];
   scrollHeight: number;
   isActive: boolean;
 }) {
@@ -213,10 +225,10 @@ function TraceTab({
   // The trace tab is only rendered when issue.trace is non-empty (the tab is
   // gated in IssueDetailsPane), so trace steps are always present here.
   return (
-    <ScrollArea height={scrollHeight} isActive={isActive} contentIdentity={issue.id}>
+    <ScrollArea height={scrollHeight} isActive={isActive} contentIdentity={issueId}>
       <Box flexDirection="column" gap={1} paddingTop={1}>
         <SectionHeader variant="muted">Agent Trace</SectionHeader>
-        {issue.trace?.map((step) => (
+        {trace.map((step) => (
           <Box key={step.step} flexDirection="column">
             <Box gap={1}>
               <Text color={tokens.muted}>{`#${String(step.step)}`}</Text>
@@ -227,12 +239,12 @@ function TraceTab({
             </Box>
             <Box paddingLeft={2} flexDirection="column">
               <Text color={tokens.fg}>
-                <Text color={tokens.muted}>in: </Text>
-                {sanitizeTerminalText(step.inputSummary)}
+                <Text color={tokens.muted}>{`${step.input.label} `}</Text>
+                {sanitizeTerminalText(step.input.summary)}
               </Text>
               <Text color={tokens.fg}>
-                <Text color={tokens.muted}>out: </Text>
-                {sanitizeTerminalText(step.outputSummary)}
+                <Text color={tokens.muted}>{`${step.output.label} `}</Text>
+                {sanitizeTerminalText(step.output.summary)}
               </Text>
             </Box>
           </Box>
@@ -243,31 +255,21 @@ function TraceTab({
 }
 
 function PatchTab({
-  issue,
+  issueId,
+  patch,
   scrollHeight,
   isActive,
 }: {
-  issue: ReviewIssue;
+  issueId: string;
+  patch: string;
   scrollHeight: number;
   isActive: boolean;
 }) {
-  const { tokens } = useTheme();
-
-  if (!issue.suggested_patch) {
-    return (
-      <ScrollArea height={scrollHeight} isActive={isActive} contentIdentity={issue.id}>
-        <Box paddingTop={1}>
-          <Text color={tokens.muted}>No patch suggested</Text>
-        </Box>
-      </ScrollArea>
-    );
-  }
-
   return (
-    <ScrollArea height={scrollHeight} isActive={isActive} contentIdentity={issue.id}>
+    <ScrollArea height={scrollHeight} isActive={isActive} contentIdentity={issueId}>
       <Box flexDirection="column" gap={1} paddingTop={1}>
         <SectionHeader variant="muted">Suggested Patch</SectionHeader>
-        <DiffView patch={issue.suggested_patch} />
+        <DiffView patch={patch} />
       </Box>
     </ScrollArea>
   );
@@ -283,6 +285,8 @@ export function IssueDetailsPane({
   completedSteps,
   onToggleStep,
   subZone = "body",
+  truncateHeader = false,
+  showTabs = true,
 }: IssueDetailsPaneProps) {
   if (!issue) {
     const empty = getDetailsEmptyCopy(emptyKind);
@@ -301,7 +305,7 @@ export function IssueDetailsPane({
   return (
     <Box flexDirection="column">
       <Box paddingX={1} paddingTop={1}>
-        <IssueHeader issue={issue} presentation={presentation} />
+        <IssueHeader issue={issue} presentation={presentation} truncate={truncateHeader} />
       </Box>
       <Tabs
         value={activeTab}
@@ -309,12 +313,14 @@ export function IssueDetailsPane({
           if (isIssueTab(value)) onTabChange(value);
         }}
       >
-        <Tabs.List isActive={isActive}>
-          <Tabs.Trigger value="details">Details</Tabs.Trigger>
-          <Tabs.Trigger value="explain">Explain</Tabs.Trigger>
-          {issue.trace?.length ? <Tabs.Trigger value="trace">Trace</Tabs.Trigger> : null}
-          {issue.suggested_patch ? <Tabs.Trigger value="patch">Patch</Tabs.Trigger> : null}
-        </Tabs.List>
+        {showTabs ? (
+          <Tabs.List isActive={isActive}>
+            <Tabs.Trigger value="details">Details</Tabs.Trigger>
+            <Tabs.Trigger value="explain">Explain</Tabs.Trigger>
+            {issue.trace?.length ? <Tabs.Trigger value="trace">Trace</Tabs.Trigger> : null}
+            {issue.suggested_patch ? <Tabs.Trigger value="patch">Patch</Tabs.Trigger> : null}
+          </Tabs.List>
+        ) : null}
         <Tabs.Content value="details">
           <DetailsTab
             issue={issue}
@@ -331,12 +337,22 @@ export function IssueDetailsPane({
         </Tabs.Content>
         {issue.trace?.length ? (
           <Tabs.Content value="trace">
-            <TraceTab issue={issue} scrollHeight={scrollHeight} isActive={isActive} />
+            <TraceTab
+              issueId={issue.id}
+              trace={presentation.trace}
+              scrollHeight={scrollHeight}
+              isActive={isActive}
+            />
           </Tabs.Content>
         ) : null}
         {issue.suggested_patch ? (
           <Tabs.Content value="patch">
-            <PatchTab issue={issue} scrollHeight={scrollHeight} isActive={isActive} />
+            <PatchTab
+              issueId={issue.id}
+              patch={issue.suggested_patch}
+              scrollHeight={scrollHeight}
+              isActive={isActive}
+            />
           </Tabs.Content>
         ) : null}
       </Tabs>

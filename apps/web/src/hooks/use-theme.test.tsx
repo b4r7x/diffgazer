@@ -79,6 +79,12 @@ describe("ThemeProvider", () => {
     });
     localStorageStore.clear();
     document.documentElement.removeAttribute("data-theme");
+    document.documentElement.style.colorScheme = "";
+    document.querySelector('meta[name="theme-color"]')?.remove();
+    const themeColor = document.createElement("meta");
+    themeColor.name = "theme-color";
+    themeColor.content = "#0d1117";
+    document.head.append(themeColor);
   });
 
   afterEach(() => {
@@ -100,6 +106,11 @@ describe("ThemeProvider", () => {
     );
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+    expect(document.documentElement.style.colorScheme).toBe("light");
+    expect(document.querySelector('meta[name="theme-color"]')).toHaveAttribute(
+      "content",
+      "#ffffff",
+    );
   });
 
   it("falls back to the system preference when no user setting is present", () => {
@@ -166,6 +177,11 @@ describe("ThemeProvider", () => {
     );
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+    expect(document.documentElement.style.colorScheme).toBe("dark");
+    expect(document.querySelector('meta[name="theme-color"]')).toHaveAttribute(
+      "content",
+      "#0d1117",
+    );
   });
 
   it("persists the chosen theme to localStorage and saves it through the API", async () => {
@@ -259,7 +275,8 @@ describe("ThemeProvider", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
   });
 
-  it("renders the 'terminal' settings theme as dark", () => {
+  it("resolves the terminal settings theme to auto", () => {
+    let renderedTheme: ThemeContextValue["theme"] | undefined;
     mockUseSettings.mockReturnValue({
       data: { theme: "terminal" },
       isLoading: false,
@@ -269,11 +286,16 @@ describe("ThemeProvider", () => {
 
     render(
       <ThemeProvider>
-        <div />
+        <ThemeConsumer
+          onRender={(context) => {
+            renderedTheme = context.theme;
+          }}
+        />
       </ThemeProvider>,
     );
 
-    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+    expect(renderedTheme).toBe("auto");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
   it("rolls back the local theme override when persistence fails", async () => {

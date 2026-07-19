@@ -3,11 +3,11 @@ import type { ReviewMetadata } from "@diffgazer/core/schemas/review";
 import type { ReactNode } from "react";
 
 const SEVERITY_BASE_CLASS: Record<SeverityPart["severity"], string> = {
-  blocker: "text-error-text",
-  high: "text-warning-text",
-  medium: "text-info-text",
-  low: "text-info-text",
-  nit: "text-muted-foreground",
+  blocker: "text-severity-blocker",
+  high: "text-severity-high",
+  medium: "text-severity-medium",
+  low: "text-severity-low",
+  nit: "text-severity-nit",
 };
 
 function severityChipClass(severity: SeverityPart["severity"]): string {

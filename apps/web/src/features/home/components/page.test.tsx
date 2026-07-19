@@ -27,6 +27,7 @@ const {
   providers,
 } = vi.hoisted(() => {
   const initResponse = {
+    configPath: "/tmp/diffgazer/config.json",
     config: { provider: "openrouter", model: "openrouter/test-model" },
     providers: [{ provider: "openrouter", hasApiKey: true, isActive: true }],
     settings: {
@@ -94,7 +95,6 @@ vi.mock("@diffgazer/core/api/hooks", () => ({
   useActivateProvider: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
   useCreateReview: () => ({ mutateAsync: mockCreateReview }),
   useDeleteProviderCredentials: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
-  useDeleteReview: () => ({ mutateAsync: vi.fn() }),
   useInit: () => configQueriesState.init,
   useProviderStatus: () => configQueriesState.providers,
   useReview: () => ({ data: undefined, error: null, isLoading: false }),

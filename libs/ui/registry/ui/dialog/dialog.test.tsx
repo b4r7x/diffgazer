@@ -63,6 +63,52 @@ function fireDialogPointerClick(
 }
 
 describe("Dialog", () => {
+  it("locks background scrolling while open and restores it on unmount", () => {
+    document.body.style.overflow = "auto";
+
+    const { unmount } = renderDialog({ defaultOpen: true });
+
+    expect(document.body).toHaveAttribute("data-scroll-locked");
+    expect(document.body.style.overflow).toBe("hidden");
+
+    unmount();
+
+    expect(document.body).not.toHaveAttribute("data-scroll-locked");
+    expect(document.body.style.overflow).toBe("auto");
+  });
+
+  it("keeps background scrolling locked until the last open dialog closes", () => {
+    document.body.style.overflow = "scroll";
+
+    function DialogPair({ firstOpen, secondOpen }: { firstOpen: boolean; secondOpen: boolean }) {
+      return (
+        <>
+          <Dialog open={firstOpen}>
+            <Dialog.Content>
+              <Dialog.Title>First lock</Dialog.Title>
+            </Dialog.Content>
+          </Dialog>
+          <Dialog open={secondOpen}>
+            <Dialog.Content>
+              <Dialog.Title>Second lock</Dialog.Title>
+            </Dialog.Content>
+          </Dialog>
+        </>
+      );
+    }
+
+    const { rerender } = render(<DialogPair firstOpen secondOpen />);
+    expect(document.body.style.overflow).toBe("hidden");
+
+    rerender(<DialogPair firstOpen={false} secondOpen />);
+    expect(document.body.style.overflow).toBe("hidden");
+    expect(document.body).toHaveAttribute("data-scroll-locked");
+
+    rerender(<DialogPair firstOpen={false} secondOpen={false} />);
+    expect(document.body.style.overflow).toBe("scroll");
+    expect(document.body).not.toHaveAttribute("data-scroll-locked");
+  });
+
   it("opens when trigger is clicked and calls onOpenChange in controlled mode", async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();

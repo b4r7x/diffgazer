@@ -255,6 +255,17 @@ describe("NavigationList", () => {
     expect(onSelect).toHaveBeenCalledWith("one");
   });
 
+  it("fires onSelect when the already-selected item is clicked again", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    renderList({ selectedId: "one", onSelect });
+
+    await user.click(screen.getByText("One"));
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith("one");
+  });
+
   it("passes item root props and composes item click handlers", async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();

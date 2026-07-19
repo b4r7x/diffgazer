@@ -1,15 +1,11 @@
-import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
+import { SEVERITY_ORDER, type UISeverityFilter } from "@diffgazer/core/schemas/presentation";
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { findNavigationItemByValue, KeyboardProvider, useScope } from "@diffgazer/keys";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { describe, expect, it } from "vitest";
-import {
-  RESET_FILTER_VALUE,
-  type SeverityFilter,
-  SeverityFilterGroup,
-} from "../components/severity-filter-group";
+import { RESET_FILTER_VALUE, SeverityFilterGroup } from "../components/severity-filter-group";
 import { useReviewSeverityFilterKeyboard } from "./use-severity-filter-keyboard";
 
 const REVIEW_SCOPE = "review-test";
@@ -21,7 +17,7 @@ const COUNTS: Record<ReviewSeverity, number> = {
   nit: 1,
 };
 
-function toggleSeverity(filter: SeverityFilter, severity: ReviewSeverity): SeverityFilter {
+function toggleSeverity(filter: UISeverityFilter, severity: ReviewSeverity): UISeverityFilter {
   const next = new Set(filter);
   if (next.has(severity)) next.delete(severity);
   else next.add(severity);
@@ -29,7 +25,7 @@ function toggleSeverity(filter: SeverityFilter, severity: ReviewSeverity): Sever
 }
 
 function Harness() {
-  const [activeFilter, setActiveFilter] = useState<SeverityFilter>(new Set(["high"]));
+  const [activeFilter, setActiveFilter] = useState<UISeverityFilter>(new Set(["high"]));
   const [focusedIndex, setFocusedIndex] = useState<number>(SEVERITY_ORDER.length);
   const rowRef = useRef<HTMLDivElement>(null);
   const resetIndex = SEVERITY_ORDER.length;

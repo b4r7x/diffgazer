@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TrustCapabilities } from "./settings.js";
 import {
+  DEFAULT_TRUST_PROMPT_CAPABILITIES,
   fromSelectedCapabilityIds,
   getInitialFocusedCapability,
   getTrustButtonLabel,
@@ -14,6 +15,13 @@ import {
 } from "./trust-capabilities.js";
 
 describe("trust capabilities model", () => {
+  it("defaults trust prompts to repository reads without command execution", () => {
+    expect(DEFAULT_TRUST_PROMPT_CAPABILITIES).toEqual({
+      readFiles: true,
+      runCommands: false,
+    });
+  });
+
   describe("hasRepositoryReadAccess", () => {
     const trust = {
       repoRoot: "/work/repo",

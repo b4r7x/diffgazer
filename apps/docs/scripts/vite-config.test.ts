@@ -1,17 +1,32 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("Docs Vite aliases", () => {
-  it("resolves accessible text to the UI registry before the Docs source alias", async () => {
+  it("resolves every imported UI registry library before the Docs source alias", async () => {
     const configSource = await readFile(resolve(import.meta.dirname, "../vite.config.ts"), "utf8");
-    const accessibleTextAlias = '"@/lib/accessible-text": uiRegistryPath("lib/accessible-text"),';
-    const docsSourceAlias = '"@": resolve(import.meta.dirname, "./src"),';
+    const registryRoot = resolve(import.meta.dirname, "../../../libs/ui/registry");
+    const registryFiles = (await readdir(registryRoot, { recursive: true })).filter((path) =>
+      /\.[jt]sx?$/.test(path),
+    );
+    const registrySources = await Promise.all(
+      registryFiles.map((path) => readFile(resolve(registryRoot, path), "utf8")),
+    );
+    const importedLibraries = new Set(
+      registrySources.flatMap((source) =>
+        [...source.matchAll(/["']@\/lib\/([^"']+)["']/g)].map((match) => match[1]),
+      ),
+    );
     const configLines = configSource.split("\n").map((line) => line.trim());
-    const accessibleTextIndex = configLines.indexOf(accessibleTextAlias);
+    const docsSourceAlias = '"@": resolve(import.meta.dirname, "./src"),';
     const docsSourceIndex = configLines.indexOf(docsSourceAlias);
 
-    expect(accessibleTextIndex).toBeGreaterThanOrEqual(0);
-    expect(docsSourceIndex).toBeGreaterThan(accessibleTextIndex);
+    for (const library of importedLibraries) {
+      const registryAlias = `"@/lib/${library}": uiRegistryPath("lib/${library}"),`;
+      const registryAliasIndex = configLines.indexOf(registryAlias);
+
+      expect(registryAliasIndex).toBeGreaterThanOrEqual(0);
+      expect(docsSourceIndex).toBeGreaterThan(registryAliasIndex);
+    }
   });
 });

@@ -1,3 +1,4 @@
+import { sanitizeTerminalText } from "@diffgazer/core/review";
 import { Box, Text, useInput } from "ink";
 import { applyTextEditKey, useInputMode } from "../../../hooks/use-input-mode";
 import { useTheme } from "../../../theme/provider";
@@ -26,8 +27,8 @@ export function SearchInput({ value, onChange, isActive }: SearchInputProps) {
       <Text color={tokens.muted}>/ </Text>
       <Box borderStyle="single" borderColor={isActive ? tokens.accent : tokens.border} flexGrow={1}>
         {value ? (
-          <Text>
-            {value}
+          <Text wrap="truncate-start">
+            {sanitizeTerminalText(value)}
             <Text color={isActive ? tokens.fg : tokens.muted}>{isActive ? "\u2588" : ""}</Text>
           </Text>
         ) : (

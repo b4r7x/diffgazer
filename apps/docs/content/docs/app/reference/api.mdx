@@ -69,10 +69,8 @@ Git routes require repository trust. If the current directory is not a git repos
 | `POST` | `/api/review/context/refresh` | Refresh review context. |
 | `GET` | `/api/review/reviews` | List saved reviews. |
 | `GET` | `/api/review/reviews/:id` | Read one saved review. |
-| `DELETE` | `/api/review/reviews/:id` | Delete one saved review. |
-| `POST` | `/api/review/reviews/:id/drilldown` | Ask a follow-up question about a saved issue or review. |
 
-Review creation and drilldown routes require setup, repository trust, JSON validation, body-size limits, and route-specific rate limits.
+Review creation requires setup, repository trust, JSON validation, a body-size limit, and a route-specific rate limit.
 
 ## Shutdown
 

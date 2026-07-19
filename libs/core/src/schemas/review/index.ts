@@ -30,8 +30,6 @@ export {
   toEvidencePresentation,
 } from "./issues.js";
 export {
-  type DrilldownResult,
-  DrilldownResultSchema,
   LENS_IDS,
   type Lens,
   type LensId,
@@ -47,6 +45,7 @@ export {
 } from "./lens.js";
 export {
   ANALYSIS_SETTINGS_SUBTITLE,
+  deriveLensSelectionState,
   isLensId,
   isLensSelectionDirty,
   resolveEffectiveLenses,

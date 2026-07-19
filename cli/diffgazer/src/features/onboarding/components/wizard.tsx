@@ -11,9 +11,11 @@ import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
+import { useActionRow } from "../../../hooks/use-action-row";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import { useOnboardingWizard } from "../hooks/use-wizard";
 import { getStepShortcuts } from "../lib/step-shortcuts";
+import { getFullProgressWidth } from "../lib/wizard-progress";
 import { AnalysisStep } from "./steps/analysis-step";
 import { ApiKeyStep } from "./steps/api-key-step";
 import { ExecutionStep } from "./steps/execution-step";
@@ -23,9 +25,7 @@ import { StorageStep } from "./steps/storage-step";
 import { WizardProgress } from "./wizard-progress";
 
 const STEP_LABEL_LIST = WIZARD_STEPS.map((step) => STEP_LABELS[step]);
-const FULL_PROGRESS_WIDTH =
-  STEP_LABEL_LIST.reduce((width, label) => width + "[ ] ".length + label.length, 0) +
-  (STEP_LABEL_LIST.length - 1) * 2;
+const FULL_PROGRESS_WIDTH = getFullProgressWidth(STEP_LABEL_LIST);
 
 interface WizardStepBodyProps {
   step: OnboardingStep;
@@ -98,6 +98,18 @@ export function OnboardingWizard(): ReactElement {
   const { columns } = useTerminalDimensions();
   const compactProgress = columns < FULL_PROGRESS_WIDTH;
   const wizard = useOnboardingWizard();
+  const nextActionIndex = wizard.isFirstStep ? 0 : 1;
+  const actions = useActionRow({
+    actionCount: wizard.isFirstStep ? 1 : 2,
+    disabledActions: wizard.isFirstStep ? [!wizard.canProceed] : [false, !wizard.canProceed],
+    onAction: (index) => (index === nextActionIndex ? wizard.handleNext() : wizard.handleBack()),
+    isActive: wizard.focusArea === "nav" && !wizard.isSaving,
+    activeIndex: wizard.navIndex,
+    onNavigate: (index) => {
+      if (index > wizard.navIndex) wizard.moveNavIndex(1);
+      if (index < wizard.navIndex) wizard.moveNavIndex(-1);
+    },
+  });
 
   usePageFooter({
     shortcuts: getStepShortcuts({
@@ -117,15 +129,6 @@ export function OnboardingWizard(): ReactElement {
     if (key.tab) {
       wizard.cycleFocusZone();
       return;
-    }
-    if (wizard.focusArea === "nav") {
-      if (key.leftArrow) {
-        wizard.moveNavIndex(-1);
-        return;
-      }
-      if (key.rightArrow) {
-        wizard.moveNavIndex(1);
-      }
     }
   });
 
@@ -172,18 +175,16 @@ export function OnboardingWizard(): ReactElement {
             {!wizard.isFirstStep && (
               <Button
                 variant="ghost"
-                onPress={wizard.handleBack}
-                isActive={wizard.focusArea === "nav" && wizard.navIndex === 0}
+                onPress={() => actions.activate(0)}
+                isActive={actions.isActionActive(0)}
               >
                 Back
               </Button>
             )}
             <Button
               variant="primary"
-              onPress={wizard.handleNext}
-              isActive={
-                wizard.focusArea === "nav" && wizard.navIndex === (wizard.isFirstStep ? 0 : 1)
-              }
+              onPress={() => actions.activate(nextActionIndex)}
+              isActive={actions.isActionActive(nextActionIndex)}
               disabled={!wizard.canProceed}
             >
               {wizard.isLastStep ? "Complete Setup" : "Next"}

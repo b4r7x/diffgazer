@@ -15,8 +15,6 @@ import {
 } from "../lib/run-mapping";
 import type { HistoryFocusZone } from "../types";
 
-export type { MappedRun } from "../lib/run-mapping";
-
 export interface UseHistoryScreenResult {
   reviewsQuery: ReturnType<typeof useReviews>;
   reviewDetailQuery: HistoryScreenState["reviewDetailQuery"];

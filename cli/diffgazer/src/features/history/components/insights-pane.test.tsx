@@ -1,5 +1,6 @@
 import type { BoundApi } from "@diffgazer/core/api";
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
+import type { HistoryDetailState } from "@diffgazer/core/review";
 import type { ReviewIssue, ReviewResponse } from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeIssue, makeReviewMetadata } from "@diffgazer/core/testing/factories";
@@ -11,24 +12,45 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
 import { NavigationProvider } from "../../../app/providers/navigation-provider";
 import { useNavigation } from "../../../hooks/use-navigation";
+import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
 import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
-import type { HistoryDetailState } from "../types";
 import { HistoryInsightsPane } from "./insights-pane";
 import { HistoryScreen } from "./screen";
 
+const terminalSize = vi.hoisted(() => ({ columns: 100, rows: 30 }));
+const SUPPORT_FLOOR = { columns: 80, rows: 24 } as const;
+
+vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@diffgazer/core/api/hooks")>()),
+  useInit: () => ({ data: undefined, isLoading: false }),
+}));
+
 vi.mock("../../../hooks/use-terminal-dimensions", () => ({
-  useTerminalDimensions: () => ({ columns: 100, rows: 30 }),
+  useTerminalDimensions: () => terminalSize,
   useResponsive: () => ({
-    columns: 100,
-    rows: 30,
-    isNarrow: false,
-    isMedium: false,
+    columns: terminalSize.columns,
+    rows: terminalSize.rows,
+    isNarrow: terminalSize.columns < 80,
+    isMedium: terminalSize.columns >= 80 && terminalSize.columns < 100,
+  }),
+}));
+
+vi.mock("../../../components/layout/global", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../components/layout/global")>()),
+  useContentZone: () => ({
+    columns: terminalSize.columns,
+    rows: terminalSize.rows,
+    contentColumns: terminalSize.columns,
+    contentRows: terminalSize.rows - 4,
   }),
 }));
 
 afterEach(() => {
   cleanup();
+  cleanupRootFrames();
+  terminalSize.columns = 100;
+  terminalSize.rows = 30;
 });
 
 const ESC = String.fromCharCode(0x1b);
@@ -56,7 +78,6 @@ function makeReviewResponse(issues: ReviewIssue[]): ReviewResponse {
         additions: 0,
         deletions: 0,
       },
-      drilldowns: [],
     },
   };
 }
@@ -252,21 +273,105 @@ describe("HistoryInsightsPane (TUI)", () => {
     stdin.write("\r");
     await waitUntil(() => onOpenReview.mock.calls.length === 1);
   });
+
+  test("opens the highlighted issue from the active pane", async () => {
+    const onOpenReview = vi.fn();
+    const { stdin } = render(
+      <CliThemeProvider initialTheme="dark">
+        <HistoryInsightsPane
+          runId="run-1"
+          severityCounts={null}
+          issues={[
+            makeIssue({ id: "issue-1", title: "First issue" }),
+            makeIssue({ id: "issue-2", title: "Second issue" }),
+          ]}
+          isActive
+          onOpenReview={onOpenReview}
+        />
+      </CliThemeProvider>,
+    );
+
+    stdin.write("\u001b[B");
+    await new Promise((resolve) => setImmediate(resolve));
+    stdin.write("\r");
+
+    await waitUntil(() => onOpenReview.mock.calls.length === 1);
+    expect(onOpenReview).toHaveBeenCalledWith("issue-2");
+  });
+
+  test("keeps the highlighted issue visible in a constrained pane", async () => {
+    const onOpenReview = vi.fn();
+    const issues = Array.from({ length: 8 }, (_, index) =>
+      makeIssue({ id: `issue-${index + 1}`, title: `VISIBLE-ISSUE-${index + 1}` }),
+    );
+    const { stdin, lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <HistoryInsightsPane
+          runId="run-1"
+          severityCounts={null}
+          issues={issues}
+          scrollHeight={5}
+          isActive
+          onOpenReview={onOpenReview}
+        />
+      </CliThemeProvider>,
+    );
+
+    for (let index = 0; index < 7; index += 1) {
+      stdin.write("\u001b[B");
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+
+    expect(lastFrame() ?? "").toContain("VISIBLE-ISSUE-8");
+    stdin.write("\r");
+    await waitUntil(() => onOpenReview.mock.calls.length === 1);
+    expect(onOpenReview).toHaveBeenCalledWith("issue-8");
+  });
+
+  test("keeps a realistic insights window visible inside an 80x24 frame", async () => {
+    Object.assign(terminalSize, SUPPORT_FLOOR);
+    const issues = Array.from({ length: 12 }, (_, index) =>
+      makeIssue({
+        id: `floor-issue-${index + 1}`,
+        severity: index === 0 ? "blocker" : "high",
+        file: `packages/review/src/generated/deeply/nested/history-${index + 1}.typescript.ts`,
+        title: `HISTORY-FLOOR-${index + 1} long diagnostic title`,
+      }),
+    );
+    const { lastFrame } = renderRootFrame(
+      80,
+      24,
+      <HistoryInsightsPane
+        runId="#floor"
+        severityCounts={{ blocker: 1, high: 11, medium: 0, low: 0, nit: 0 }}
+        issues={issues}
+        scrollHeight={12}
+        isActive
+        onOpenReview={vi.fn()}
+      />,
+    );
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("HISTORY-FLOOR-1"));
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("12 ISSUES");
+    expect(frame).toContain("▼");
+    expect(frame.split("\n")).toHaveLength(24);
+  });
 });
 
 describe("HistoryScreen review details", () => {
-  test("opens Insights as a run-level review action without attaching issue identity", async () => {
+  test("opens the highlighted Insights issue directly", async () => {
     const issue = makeIssue({ id: "loaded-issue", title: "Loaded detail issue" });
     const getReview = vi.fn<BoundApi["getReview"]>().mockResolvedValue(makeReviewResponse([issue]));
     const { stdin, lastFrame } = renderHistoryScreen(getReview);
 
-    await waitUntil(() => (lastFrame() ?? "").includes("Loaded detail issue"));
+    await waitUntil(() => (lastFrame() ?? "").includes("Loaded detail"));
     stdin.write("\t");
     await waitUntil(() => (lastFrame() ?? "").includes("Enter Open Review"));
 
     stdin.write("\r");
 
-    await waitUntil(() => (lastFrame() ?? "").includes(`Route: review/${REVIEW_ID}/summary`));
+    await waitUntil(() => (lastFrame() ?? "").includes(`Route: review/${REVIEW_ID}/loaded-issue`));
   });
 
   test("opens an active zero-issue Insights review exactly as its footer advertises", async () => {
@@ -303,7 +408,7 @@ describe("HistoryScreen review details", () => {
     detail.resolve(
       makeReviewResponse([makeIssue({ id: "loaded-issue", title: "Loaded detail issue" })]),
     );
-    await waitUntil(() => (lastFrame() ?? "").includes("Loaded detail issue"));
+    await waitUntil(() => (lastFrame() ?? "").includes("Loaded detail"));
   });
 
   test("shows a rejected detail request and retries it from the focused Insights pane", async () => {

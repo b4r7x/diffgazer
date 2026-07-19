@@ -68,12 +68,10 @@ export function ReviewResultsView({
       </div>
       <section
         aria-label="Review result panes"
-        // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users need a focusable owner for horizontal scrolling at narrow widths.
-        tabIndex={0}
         data-viewport="review-results"
-        className="flex flex-1 min-h-0 overflow-x-auto overflow-y-hidden"
+        className="flex flex-1 min-h-0 overflow-hidden"
       >
-        <div data-row="review" className="flex flex-1 min-w-[768px] overflow-hidden">
+        <div data-row="review" className="flex flex-1 min-h-0 flex-col overflow-hidden md:flex-row">
           <IssueListPane
             listState={{
               issues: filteredIssues,

@@ -4,7 +4,7 @@ import {
   type ReviewState,
   reviewReducer,
 } from "@diffgazer/core/review";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { KeyboardEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -74,7 +74,7 @@ describe("ActivityLog native callbacks", () => {
 
     dispatchScroll(log);
 
-    expect(screen.getByText("event-1")).toBeInTheDocument();
+    expect(screen.getByText("event-2")).toBeInTheDocument();
     expect(onScroll).toHaveBeenCalledTimes(1);
 
     log.scrollTop = 900;
@@ -82,6 +82,62 @@ describe("ActivityLog native callbacks", () => {
 
     expect(screen.getByText("event-400")).toBeInTheDocument();
     expect(onScroll).toHaveBeenCalledTimes(2);
+  });
+
+  it("restores the first visible row offset after a scroll-triggered previous window", () => {
+    const offsetTop = vi
+      .spyOn(HTMLElement.prototype, "offsetTop", "get")
+      .mockImplementation(function getOffsetTop(this: HTMLElement) {
+        if (!this.dataset.logEntryId || !this.parentElement) return 0;
+        return Array.from(this.parentElement.children).indexOf(this) * 20 + 8;
+      });
+    const offsetHeight = vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(20);
+
+    try {
+      const state = createTaggedState(Array.from({ length: 401 }, (_, index) => makeEvent(index)));
+      render(<ActivityLog events={state.events} />);
+      const log = screen.getByRole("log");
+      setScrollMetrics(log, 0);
+
+      dispatchScroll(log);
+
+      expect(screen.getByText("event-201")).toBeInTheDocument();
+      expect(log.scrollTop).toBe(3_980);
+      expect(log.scrollTop).toBeGreaterThan(50);
+    } finally {
+      offsetTop.mockRestore();
+      offsetHeight.mockRestore();
+    }
+  });
+
+  it("keeps paged history quiet and throttles new streamed activity announcements", () => {
+    vi.useFakeTimers();
+    try {
+      let state = createTaggedState([makeEvent(0)]);
+      const { rerender } = render(<ActivityLog events={state.events} showCursor />);
+      const log = screen.getByRole("log");
+      const status = screen.getByRole("status");
+
+      expect(log).toHaveAttribute("aria-live", "off");
+      expect(status).toHaveTextContent("");
+
+      state = appendEvent(state, makeEvent(1));
+      rerender(<ActivityLog events={state.events} showCursor />);
+      act(() => vi.advanceTimersByTime(749));
+      expect(status).toHaveTextContent("");
+      act(() => vi.advanceTimersByTime(1));
+      expect(status).toHaveTextContent("event-1");
+
+      state = appendEvent(state, makeEvent(2));
+      rerender(<ActivityLog events={state.events} showCursor />);
+      state = appendEvent(state, makeEvent(3));
+      rerender(<ActivityLog events={state.events} showCursor />);
+      act(() => vi.advanceTimersByTime(750));
+      expect(status).toHaveTextContent("event-3");
+      expect(status).not.toHaveTextContent("event-2");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("calls onKeyDown once while Home, PageDown, PageUp, and End navigate", async () => {

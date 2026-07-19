@@ -85,6 +85,8 @@ export {
   isSecretsStorage,
   isSelectableTheme,
   isTheme,
+  type ResolvedSelectableTheme,
+  resolveSelectableTheme,
   SECRETS_STORAGE_OPTIONS,
   SELECTABLE_THEME_OPTIONS,
   type SelectableTheme,
@@ -92,6 +94,7 @@ export {
   toSelectableTheme,
 } from "./settings-options.js";
 export {
+  DEFAULT_TRUST_PROMPT_CAPABILITIES,
   fromSelectedCapabilityIds,
   getInitialFocusedCapability,
   getTrustButtonLabel,

@@ -1,4 +1,4 @@
-import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
+import { buildHomeContextRows, type ContextInfo } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import { KeyValue } from "../../../components/ui/key-value";
 import { Panel } from "../../../components/ui/panel";
@@ -10,17 +10,9 @@ export interface ContextSidebarProps {
   projectPath?: string;
 }
 
-function formatProviderValue(name: string | undefined, mode: string | undefined): string {
-  if (name == null) return "Not configured";
-  if (mode == null) return name;
-  return `${name} (${mode})`;
-}
-
 export function ContextSidebar({ context, isTrusted, projectPath }: ContextSidebarProps) {
   const { tokens } = useTheme();
-
-  const providerValue = formatProviderValue(context.providerName, context.providerMode);
-  const lastRunValue = renderLastRun(context.lastRunId, context.lastRunIssueCount, tokens.warning);
+  const rows = buildHomeContextRows({ context, isTrusted, projectPath });
 
   return (
     <Panel>
@@ -29,39 +21,51 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
         <Box flexDirection="column" gap={1}>
           {isTrusted ? (
             <KeyValue
-              label="Trusted"
-              value={<Text color={tokens.info}>{context.trustedDir ?? projectPath ?? "—"}</Text>}
+              label={rows.trust.label}
+              value={
+                <Box flexGrow={1} minWidth={1} overflow="hidden">
+                  <Text color={tokens.info} wrap="truncate-middle">
+                    {rows.trust.value}
+                  </Text>
+                </Box>
+              }
             />
           ) : (
             <KeyValue
-              label="Not trusted"
+              label={rows.trust.label}
               value={
-                <Box flexDirection="column">
-                  <Text color={tokens.warning}>{projectPath ?? "—"}</Text>
+                <Box flexDirection="column" flexGrow={1} minWidth={1} overflow="hidden">
+                  <Text color={tokens.warning} wrap="truncate-middle">
+                    {rows.trust.value}
+                  </Text>
                   <Text dimColor>Open Settings → Trust & Permissions to grant</Text>
                 </Box>
               }
             />
           )}
-          <KeyValue label="Provider" value={providerValue} />
-          <KeyValue label="Last Run" value={lastRunValue} />
+          <KeyValue
+            label={rows.provider.label}
+            value={
+              <Box flexGrow={1} minWidth={1} overflow="hidden">
+                <Text wrap="truncate-end">{rows.provider.value}</Text>
+              </Box>
+            }
+          />
+          <KeyValue
+            label={rows.lastRun.label}
+            value={
+              rows.lastRun.issueCount ? (
+                <Box>
+                  <Text>{rows.lastRun.value}</Text>
+                  <Text color={tokens.warning}> {rows.lastRun.issueCount}</Text>
+                </Box>
+              ) : (
+                rows.lastRun.value
+              )
+            }
+          />
         </Box>
       </Panel.Content>
     </Panel>
-  );
-}
-
-function renderLastRun(
-  lastRunId: string | undefined,
-  lastRunIssueCount: number | undefined,
-  issuesColor: string,
-) {
-  if (lastRunId == null) return "None";
-  if (lastRunIssueCount == null) return `#${lastRunId}`;
-  return (
-    <Box>
-      <Text>#{lastRunId}</Text>
-      <Text color={issuesColor}> ({lastRunIssueCount} issues)</Text>
-    </Box>
   );
 }

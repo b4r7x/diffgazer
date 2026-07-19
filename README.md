@@ -23,7 +23,7 @@ Run one command, get a review. Only the diff and prompt content go to the provid
 - **Local-first review** - the CLI starts an embedded server and web UI on localhost.
 - **Review pipeline** - diff, context, review, enrich, and report steps run in order.
 - **Web and terminal modes** - use the browser UI by default, or the Ink terminal UI when you want to stay in the shell.
-- **Issue drilldowns** - read findings inline against your diff and dig into details.
+- **Issue details** - read findings inline against your diff with evidence and fix guidance.
 - **Provider choice** - Gemini, Z.ai, Z.ai Coding Plan, OpenRouter, Groq, and Cerebras.
 - **Privacy controls** - localhost binding, host allowlist, CSRF protection, per-run token, and explicit repo trust.
 - **Registry and packages** - `@diffgazer/ui`, `@diffgazer/keys`, and `dgadd` support copy-first and package consumption paths.

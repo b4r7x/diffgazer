@@ -110,20 +110,36 @@ function KeyboardProbe({ onCtrlC, onNavigate }: KeyboardProbeProps) {
   return <Text>route:{route.screen}</Text>;
 }
 
+function StreamingReviewProbe({ onCancel }: { onCancel: () => void }) {
+  const keyboard = useContext(KeyboardContext);
+
+  useEffect(() => {
+    keyboard?.setReviewStreaming(true, onCancel);
+    return () => keyboard?.setReviewStreaming(false);
+  }, [keyboard, onCancel]);
+
+  return <Text>Progress Overview</Text>;
+}
+
 function KeyboardHarness({
   onCtrlC = () => {},
   onExit = () => {},
   onNavigate = () => {},
+  isStreaming = false,
+  onCancel = () => {},
 }: {
   onCtrlC?: () => void;
   onExit?: () => void;
   onNavigate?: () => void;
+  isStreaming?: boolean;
+  onCancel?: () => void;
 }) {
   return (
     <TerminalKeyboardProvider>
-      <NavigationProvider>
+      <NavigationProvider initialRoute={isStreaming ? { screen: "review", live: true } : undefined}>
         <GlobalShortcuts onExit={onExit} />
         <KeyboardProbe onCtrlC={onCtrlC} onNavigate={onNavigate} />
+        {isStreaming ? <StreamingReviewProbe onCancel={onCancel} /> : null}
       </NavigationProvider>
     </TerminalKeyboardProvider>
   );
@@ -187,6 +203,23 @@ describe("GlobalShortcuts terminal input", () => {
     stdin.write("\u001b[1;5A");
 
     await vi.waitFor(() => expect(onNavigate).toHaveBeenCalledTimes(1));
+  });
+
+  it("keeps a streaming review on screen when q is pressed", async () => {
+    const onExit = vi.fn();
+    const onCancel = vi.fn();
+    const { stdin, lastFrame } = render(
+      <KeyboardHarness isStreaming onExit={onExit} onCancel={onCancel} />,
+    );
+    await flush();
+
+    stdin.write("q");
+    await flush();
+
+    expect(lastFrame()).toContain("route:review");
+    expect(lastFrame()).toContain("Progress Overview");
+    expect(onCancel).toHaveBeenCalledOnce();
+    expect(onExit).not.toHaveBeenCalled();
   });
 });
 

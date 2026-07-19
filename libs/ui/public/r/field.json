@@ -13,7 +13,7 @@
   "files": [
     {
       "path": "registry/ui/field/index.ts",
-      "content": "\"use client\";\n\nimport { FieldControl, type FieldControlProps } from \"./field-control\";\nimport { FieldDescription, type FieldDescriptionProps } from \"./field-description\";\nimport { FieldError, type FieldErrorProps } from \"./field-error\";\nimport { FieldLabel, type FieldLabelProps } from \"./field-label\";\nimport { Field as FieldPrimitive, type FieldProps } from \"./field\";\n\nconst Field = Object.assign(FieldPrimitive, {\n  Label: FieldLabel,\n  Control: FieldControl,\n  Description: FieldDescription,\n  Error: FieldError,\n});\n\nexport { Field, FieldControl, FieldDescription, FieldError, FieldLabel };\n\nexport type {\n  FieldControlProps,\n  FieldDescriptionProps,\n  FieldErrorProps,\n  FieldLabelProps,\n  FieldProps,\n};\n",
+      "content": "\"use client\";\n\nimport { Field as FieldPrimitive, type FieldProps } from \"./field\";\nimport { FieldControl, type FieldControlProps } from \"./field-control\";\nimport { FieldDescription, type FieldDescriptionProps } from \"./field-description\";\nimport { FieldError, type FieldErrorProps } from \"./field-error\";\nimport { FieldLabel, type FieldLabelProps } from \"./field-label\";\n\nconst Field = Object.assign(FieldPrimitive, {\n  Label: FieldLabel,\n  Control: FieldControl,\n  Description: FieldDescription,\n  Error: FieldError,\n});\n\nexport { Field, FieldControl, FieldDescription, FieldError, FieldLabel };\n\nexport type {\n  FieldControlProps,\n  FieldDescriptionProps,\n  FieldErrorProps,\n  FieldLabelProps,\n  FieldProps,\n};\n",
       "type": "registry:ui"
     },
     {

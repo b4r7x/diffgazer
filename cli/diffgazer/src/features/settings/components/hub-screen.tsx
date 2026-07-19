@@ -1,5 +1,6 @@
 import { guardQueryState, useInit, useSettings } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
+import { sanitizeTerminalText } from "@diffgazer/core/review";
 import { buildHubValues, hasRepositoryReadAccess } from "@diffgazer/core/schemas/config";
 import {
   SETTINGS_MENU_ITEMS,
@@ -16,6 +17,7 @@ import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import type { Route } from "../../../lib/routes";
+import { useTheme } from "../../../theme/provider";
 
 const SETTINGS_ROUTE_MAP: Record<SettingsAction, Route> = {
   trust: { screen: "settings/trust-permissions" },
@@ -61,6 +63,7 @@ export function SettingsHubScreen(): ReactElement {
 
   const { navigate } = useNavigation();
   const { columns } = useTerminalDimensions();
+  const { tokens } = useTheme();
   const initQuery = useInit();
   const settingsQuery = useSettings();
 
@@ -76,7 +79,7 @@ export function SettingsHubScreen(): ReactElement {
     ),
     error: (err) => (
       <HubFrame columns={columns}>
-        <Text color="red">Error: {err.message}</Text>
+        <Text color={tokens.error}>Error: {sanitizeTerminalText(err.message)}</Text>
       </HubFrame>
     ),
   });
@@ -106,10 +109,12 @@ export function SettingsHubScreen(): ReactElement {
       columns={columns}
       footer={
         <Box marginTop={1} gap={2}>
-          <Text dimColor>config path: ~/.diffgazer/config.json</Text>
+          <Text dimColor>
+            config path: {sanitizeTerminalText(initQuery.data?.configPath ?? "unknown")}
+          </Text>
           <Text dimColor>|</Text>
-          <Text color={settingsError ? "red" : undefined} dimColor={!settingsError}>
-            {settingsError ?? "local settings"}
+          <Text color={settingsError ? tokens.error : undefined} dimColor={!settingsError}>
+            {settingsError ? sanitizeTerminalText(settingsError) : "local settings"}
           </Text>
         </Box>
       }

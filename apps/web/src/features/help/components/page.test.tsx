@@ -46,6 +46,7 @@ describe("HelpPage", () => {
     renderPage();
 
     expect(screen.getByRole("heading", { name: /keyboard shortcuts/i })).toBeVisible();
+    expect(screen.getByRole("list", { name: /keyboard shortcuts/i })).toBeVisible();
     expect(screen.getByText("Navigate Menus and Lists")).toBeVisible();
 
     await user.keyboard("{Escape}");

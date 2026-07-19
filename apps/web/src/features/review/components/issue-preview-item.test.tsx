@@ -37,4 +37,11 @@ describe("IssuePreviewItem", () => {
     expect(screen.getByText("HIGH")).toBeInTheDocument();
     expect(screen.getByText("security")).toBeInTheDocument();
   });
+
+  it("keeps the complete location available when the visible path is truncated", () => {
+    const file = "src/features/review/components/a/very/long/location/issue-preview-item.tsx";
+    render(<IssuePreviewItem {...BASE_PROPS} file={file} />);
+
+    expect(screen.getByText(`${file}:42`)).toHaveAttribute("title", `${file}:42`);
+  });
 });

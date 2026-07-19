@@ -2,9 +2,9 @@ import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { NavigationList } from "../../../components/ui/navigation-list";
-import { getVisibleSliceOffset } from "../../../lib/visible-slice-offset";
+import { getListWindow } from "../../../lib/list-window";
 import { useTheme } from "../../../theme/provider";
-import type { MappedRun } from "../hooks/use-screen";
+import type { MappedRun } from "../lib/run-mapping";
 
 export interface RunsListProps {
   runs: MappedRun[];
@@ -34,7 +34,7 @@ export function RunsList({
   const { tokens } = useTheme();
   const itemWidth = Math.max(width - 4, 1);
   const statusWidth = Math.max(width - 2, 1);
-  const paddingY = height >= 4 ? 1 : 0;
+  const paddingY = height >= 6 ? 1 : 0;
   const availableRows = Math.max(height - paddingY * 2, 1);
   let paginationStatus: string | null = null;
   if (isLoadingMore) paginationStatus = "Loading older runs...";
@@ -65,18 +65,28 @@ export function RunsList({
     );
   }
 
-  const itemRows = height < 3 ? 1 : 2;
-  const showsPaginationStatus = paginationStatus !== null && availableRows > itemRows;
-  const visibleItemCount = Math.max(
-    Math.floor((availableRows - (showsPaginationStatus ? 1 : 0)) / itemRows),
+  const itemRows = availableRows < 4 ? 1 : 2;
+  const scrollingIndicatorRows = runs.length > 1 ? 2 : 0;
+  const showsPaginationStatus =
+    paginationStatus !== null && availableRows >= itemRows + scrollingIndicatorRows + 1;
+  const listViewportRows = availableRows - (showsPaginationStatus ? 1 : 0);
+  const maxVisibleItems = Math.max(
+    Math.floor((listViewportRows - scrollingIndicatorRows) / itemRows),
     1,
   );
+  const indicatorAwareViewportRows =
+    maxVisibleItems + (runs.length > maxVisibleItems ? scrollingIndicatorRows : 0);
   const selectedIndex = Math.max(
     runs.findIndex((run) => run.id === selectedId),
     0,
   );
-  const offset = getVisibleSliceOffset(selectedIndex, runs.length, visibleItemCount);
-  const visibleRuns = runs.slice(offset, offset + visibleItemCount);
+  const window = getListWindow({
+    selectedIndex,
+    total: runs.length,
+    viewportRows: indicatorAwareViewportRows,
+    maxContentRows: maxVisibleItems,
+  });
+  const visibleRuns = runs.slice(window.start, window.end);
 
   return (
     <Box
@@ -87,6 +97,7 @@ export function RunsList({
       height={height}
       overflow="hidden"
     >
+      {window.canScrollUp ? <Text color={tokens.muted}>{"\u25B2"}</Text> : null}
       <NavigationList
         selectedId={selectedId}
         highlightedId={isActive ? selectedId : null}
@@ -128,6 +139,7 @@ export function RunsList({
           </NavigationList.Item>
         ))}
       </NavigationList>
+      {window.canScrollDown ? <Text color={tokens.muted}>{"\u25BC"}</Text> : null}
       {showsPaginationStatus ? (
         <Box width={statusWidth}>
           <Text color={tokens.muted} wrap="truncate-end">

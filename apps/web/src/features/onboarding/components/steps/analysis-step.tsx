@@ -48,7 +48,7 @@ export function AnalysisStep({
         <div id={labelId} className="text-sm font-mono text-foreground/60">
           Review Agents:
         </div>
-        <ScrollArea className="max-h-[35vh]">
+        <ScrollArea className="max-h-[50dvh]">
           <CheckboxGroup
             value={lenses}
             onChange={(nextValue) => {

@@ -11,6 +11,7 @@ export interface UseListNavigationOptions {
   highlightedId?: string | null;
   defaultHighlightedId?: string | null;
   onHighlightChange?: (id: string) => void;
+  onNavigationBoundaryReached?: (direction: 1 | -1) => void;
   wrap?: boolean;
 }
 
@@ -25,6 +26,7 @@ export function useListNavigation({
   highlightedId: controlledHighlightedId = null,
   defaultHighlightedId = null,
   onHighlightChange,
+  onNavigationBoundaryReached,
   wrap = true,
 }: UseListNavigationOptions): ListNavigation {
   const selectableItems = items.filter((item) => !item.disabled);
@@ -39,6 +41,12 @@ export function useListNavigation({
   const currentHighlightedId = controlledHighlightedId ?? uncontrolledHighlightedId;
 
   function moveBy(direction: 1 | -1) {
+    const currentIndex = selectableItems.findIndex((item) => item.id === currentHighlightedId);
+    const boundaryIndex = direction < 0 ? 0 : selectableItems.length - 1;
+    if (!wrap && currentIndex === boundaryIndex) {
+      onNavigationBoundaryReached?.(direction);
+      return;
+    }
     const result = moveHighlight(items, currentHighlightedId, direction, wrap);
     if (!result) return;
     if (controlledHighlightedId == null) {

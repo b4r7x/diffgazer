@@ -17,7 +17,7 @@ export function ModelListItem({ model, onDoubleClick }: ModelListItemProps) {
         <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <span className="min-w-0 font-bold">{model.name}</span>
           <Badge
-            variant={model.tier === "free" ? "success" : "neutral"}
+            variant={model.tier === "free" ? "info" : "neutral"}
             size="sm"
             className="uppercase border border-border px-1.5 py-0.5"
           >

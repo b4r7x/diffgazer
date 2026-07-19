@@ -33,7 +33,6 @@ export { configQueries } from "./queries/config.js";
 export {
   useActiveReviewSession,
   useCreateReview,
-  useDeleteReview,
   useRefreshReviewContext,
   useReview,
   useReviewContext,

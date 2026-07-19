@@ -1,4 +1,4 @@
-import type { Lens, ReviewIssue, SeverityRubric } from "@diffgazer/core/schemas/review";
+import type { Lens, SeverityRubric } from "@diffgazer/core/schemas/review";
 import type { FileDiff, ParsedDiff } from "./diff/types.js";
 
 const escapeXml = (value: string): string =>
@@ -260,73 +260,4 @@ For each issue found, provide:
 Respond with JSON: { "issues": [...] }`;
 
   return { text, files: fileIdentities };
-}
-
-export function buildDrilldownPrompt(
-  issue: ReviewIssue,
-  diff: ParsedDiff,
-  allIssues: ReviewIssue[],
-): string {
-  const targetFile = diff.files.find((f: FileDiff) => f.filePath === issue.file);
-  const fileDiff = targetFile ? escapeXml(targetFile.rawDiff) : "File diff not available";
-
-  const otherIssuesSummary = allIssues
-    .filter((i) => i.id !== issue.id)
-    .map(
-      (i) =>
-        `- [${escapeXml(i.id)}] ${escapeXml(i.severity)}: ${escapeXml(i.title)} (${sanitizePromptPath(i.file)}:${i.line_start ?? "?"})`,
-    )
-    .join("\n");
-
-  return `You are an expert code reviewer providing deep analysis of a specific issue.
-
-${SECURITY_HARDENING_PROMPT}
-
-<issue data-untrusted="true">
-ID: ${escapeXml(issue.id)}
-Severity: ${escapeXml(issue.severity)}
-Category: ${escapeXml(issue.category)}
-Title: ${escapeXml(issue.title)}
-File: ${sanitizePromptPath(issue.file)}
-Lines: ${issue.line_start ?? "?"}-${issue.line_end ?? "?"}
-Initial Rationale: ${escapeXml(issue.rationale)}
-Initial Recommendation: ${escapeXml(issue.recommendation)}
-</issue>
-
-<code-diff file="${sanitizePromptPath(issue.file)}">
-${fileDiff}
-</code-diff>
-
-<other-issues data-untrusted="true">
-${otherIssuesSummary || "No other issues identified"}
-</other-issues>
-
-Provide a deep analysis of this issue:
-
-1. **detailedAnalysis**: Thorough explanation of the issue, including:
-   - What exactly is wrong with the code
-   - Why the current implementation is problematic
-   - The technical details of the vulnerability/bug/issue
-
-2. **rootCause**: The fundamental reason this issue exists (design flaw, missing validation, etc.)
-
-3. **impact**: What could go wrong if this issue is not fixed:
-   - Affected users or systems
-   - Potential severity of failures
-   - Data integrity or security implications
-
-4. **suggestedFix**: Detailed step-by-step guidance to fix the issue:
-   - What needs to change
-   - How to implement the fix correctly
-   - Any edge cases to consider
-
-5. **patch**: If possible, provide a unified diff patch that fixes the issue.
-   Set to null if the fix is too complex or requires broader refactoring.
-   Format: unified diff starting with --- and +++
-
-6. **relatedIssues**: List IDs of related issues from <other-issues> that should be fixed together or are affected by this fix
-
-7. **references**: Links to relevant documentation, security advisories, or best practices
-
-Respond with JSON matching this schema.`;
 }

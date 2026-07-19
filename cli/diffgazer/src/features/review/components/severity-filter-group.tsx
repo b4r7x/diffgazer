@@ -1,6 +1,5 @@
-import { toggleSeverity } from "@diffgazer/core/review";
+import { formatSeverityFilterLabel, toggleSeverity } from "@diffgazer/core/review";
 import {
-  SEVERITY_LABELS,
   SEVERITY_ORDER,
   type SeverityCounts,
   type UISeverityFilter,
@@ -15,13 +14,23 @@ export interface SeverityFilterGroupProps {
   onFilterChange: (filter: UISeverityFilter) => void;
   issueCounts: SeverityCounts;
   isActive: boolean;
+  contentWidth: number;
 }
+
+const SHORT_SEVERITY_LABELS: Record<(typeof SEVERITY_ORDER)[number], string> = {
+  blocker: "B",
+  high: "H",
+  medium: "M",
+  low: "L",
+  nit: "N",
+};
 
 export function SeverityFilterGroup({
   currentFilter,
   onFilterChange,
   issueCounts,
   isActive,
+  contentWidth,
 }: SeverityFilterGroupProps) {
   const { tokens } = useTheme();
   const isFilterActive = currentFilter.size > 0;
@@ -32,6 +41,15 @@ export function SeverityFilterGroup({
   // becomes inactive the Reset chip disappears and maxIndex shrinks, so the
   // stored index is clamped for display until the next keyboard write.
   const focusedIndex = Math.min(rawFocusedIndex, maxIndex);
+  const fullLabels = SEVERITY_ORDER.map((severity) =>
+    formatSeverityFilterLabel(severity, issueCounts[severity]),
+  );
+  const resetLabel = isFilterActive ? "Reset" : null;
+  const fullRowWidth = [...fullLabels, ...(resetLabel ? [resetLabel] : [])].reduce(
+    (width, label, index) => width + label.length + 2 + (index > 0 ? 1 : 0),
+    0,
+  );
+  const useShortLabels = fullRowWidth > contentWidth;
 
   useInput(
     (input, key) => {
@@ -62,29 +80,30 @@ export function SeverityFilterGroup({
   );
 
   return (
-    <Box gap={1}>
+    <Box gap={1} width={contentWidth} flexWrap="wrap">
       {SEVERITY_ORDER.map((severity, index) => {
         const isSelected = currentFilter.has(severity);
         const isFocused = isActive && index === focusedIndex;
         const count = issueCounts[severity];
-        const label = `${SEVERITY_LABELS[severity]} (${count})`;
+        const label = useShortLabels
+          ? `${SHORT_SEVERITY_LABELS[severity]}${String(count)}`
+          : (fullLabels[index] ?? "");
         const color = severityColor(severity, tokens);
 
         return (
-          <Text
-            key={severity}
-            color={isSelected ? color : tokens.muted}
-            bold={isSelected}
-            inverse={isFocused}
-          >
-            [{label}]
-          </Text>
+          <Box key={severity} flexShrink={0}>
+            <Text color={isSelected ? color : tokens.muted} bold={isSelected} inverse={isFocused}>
+              {useShortLabels ? label : `[${label}]`}
+            </Text>
+          </Box>
         );
       })}
       {isFilterActive && (
-        <Text color={tokens.accent} bold inverse={isActive && focusedIndex === resetIndex}>
-          [Reset]
-        </Text>
+        <Box flexShrink={0}>
+          <Text color={tokens.accent} bold inverse={isActive && focusedIndex === resetIndex}>
+            {useShortLabels ? "R" : "[Reset]"}
+          </Text>
+        </Box>
       )}
     </Box>
   );

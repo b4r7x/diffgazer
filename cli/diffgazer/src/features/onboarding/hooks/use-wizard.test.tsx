@@ -137,7 +137,7 @@ describe("useOnboardingWizard", () => {
     );
 
     await flushInk();
-    expect(narrow.lastFrame()).toContain("[○] Step 1 of 6: Storage");
+    expect(narrow.lastFrame()).toContain("[o] Step 1 of 6: Storage");
     narrow.unmount();
 
     terminalDimensions.current = { columns: 80, rows: 24 };
@@ -155,10 +155,11 @@ describe("useOnboardingWizard", () => {
     const progressLine = wide
       .lastFrame()
       ?.split("\n")
-      .find((line) => line.includes("[○] Storage"));
+      .find((line) => line.includes("[o] Storage"));
     expect(progressLine).toContain("[ ] Provider");
     expect(progressLine).toContain("[ ] API Key");
     expect(progressLine).toContain("[ ] Execution");
+    expect(progressLine).not.toMatch(/[●○]/u);
     wide.unmount();
   });
 

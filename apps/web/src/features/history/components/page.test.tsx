@@ -1,7 +1,7 @@
 import type { BoundApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
-import { formatRunId } from "@diffgazer/core/review";
+import { formatRunId, HISTORY_SEARCH_PLACEHOLDER } from "@diffgazer/core/review";
 import type { InitResponse } from "@diffgazer/core/schemas/config";
 import type { ReviewIssue, ReviewMetadata, ReviewResponse } from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
@@ -45,6 +45,7 @@ const PROVIDERS_FIXTURE: InitResponse["providers"] = [
 
 function makeInitResponse(project: InitResponse["project"] = untrustedProject()): InitResponse {
   return {
+    configPath: "/tmp/diffgazer/config.json",
     config: { provider: "gemini", model: "gemini-2.5-flash" },
     providers: PROVIDERS_FIXTURE,
     settings: SETTINGS_FIXTURE,
@@ -122,7 +123,6 @@ function makeReviewResponse(
       metadata,
       result: { issues },
       gitContext: { branch: "main", commit: "abc123", fileCount: 1, additions: 0, deletions: 0 },
-      drilldowns: [],
     },
   };
 }
@@ -222,20 +222,20 @@ describe("HistoryPage trust workflow", () => {
     renderHistoryPage();
 
     expect(await screen.findByText("Trust This Repository?")).toBeInTheDocument();
-    expect(screen.queryByPlaceholderText(/search runs by id/i)).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER)).not.toBeInTheDocument();
   });
 
   it("shows history after trust is granted and returns to trust workflow when trust is revoked", async () => {
     mockLoadInit.mockResolvedValue(makeInitResponse(trustedProject()));
     const { queryClient } = renderHistoryPage();
-    expect(await screen.findByPlaceholderText(/search runs by id/i)).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER)).toBeInTheDocument();
 
     await act(async () => {
       queryClient.setQueryData(["config", "init"], makeInitResponse(untrustedProject()));
     });
 
     expect(await screen.findByText("Trust This Repository?")).toBeInTheDocument();
-    expect(screen.queryByPlaceholderText(/search runs by id/i)).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER)).not.toBeInTheDocument();
   });
 
   it("does not surface raw TRUST_REQUIRED errors when trust is missing", async () => {
@@ -259,7 +259,7 @@ describe("HistoryPage trust workflow", () => {
     renderHistoryPage();
 
     expect(await screen.findByText("Trust This Repository?")).toBeInTheDocument();
-    expect(screen.queryByPlaceholderText(/search runs by id/i)).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER)).not.toBeInTheDocument();
     expect(mockGetReviews).not.toHaveBeenCalled();
   });
 
@@ -270,7 +270,7 @@ describe("HistoryPage trust workflow", () => {
 
     expect(await screen.findByText("Trust This Repository?")).toBeInTheDocument();
     expect(screen.getByText("/moved/repo")).toBeInTheDocument();
-    expect(screen.queryByPlaceholderText(/search runs by id/i)).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER)).not.toBeInTheDocument();
     expect(mockGetReviews).not.toHaveBeenCalled();
   });
 
@@ -280,7 +280,7 @@ describe("HistoryPage trust workflow", () => {
 
     renderHistoryPage();
 
-    expect(await screen.findByPlaceholderText(/search runs by id/i)).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER)).toBeInTheDocument();
     expect(screen.queryByText("Trust This Repository?")).not.toBeInTheDocument();
   });
 });
@@ -447,7 +447,7 @@ describe("HistoryPage review-list warnings", () => {
 
     renderHistoryPage();
 
-    await screen.findByPlaceholderText(/search runs by id/i);
+    await screen.findByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER);
     expect(screen.queryByText(/could not be read/i)).not.toBeInTheDocument();
   });
 });
@@ -501,7 +501,7 @@ describe("HistoryPage empty-runs live region", () => {
     mockGetReviews.mockResolvedValue(defaultReviewsResponse());
     const { queryClient } = renderHistoryPage();
 
-    await screen.findByPlaceholderText(/search runs by id/i);
+    await screen.findByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER);
     const runsPanel = screen.getByRole("region", { name: "Review runs" });
     const liveRegion = within(runsPanel).getByRole("status");
     expect(liveRegion).toHaveTextContent("");
@@ -531,7 +531,7 @@ describe("HistoryPage keyboard navigation", () => {
 
     const runsList = await focusRunsList();
 
-    await user.click(screen.getByPlaceholderText(/search runs by id/i));
+    await user.click(screen.getByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER));
     await user.keyboard("{ArrowDown}");
     const sectionsList = screen.getByRole("listbox", { name: /review sections/i });
     await waitFor(() => expect(sectionsList).toHaveFocus());
@@ -562,6 +562,26 @@ describe("HistoryPage keyboard navigation", () => {
     expect(screen.getByRole("option", { name: "Feb 9" })).toHaveAttribute("aria-selected", "true");
   });
 
+  it("opens the already-selected run with a single pointer tap", async () => {
+    const user = userEvent.setup();
+    renderHistoryPage();
+
+    const runsList = await focusRunsList();
+    const [selectedRun] = within(runsList).getAllByRole("option");
+    if (selectedRun === undefined) {
+      throw new Error("Expected at least one review run option");
+    }
+    await waitFor(() => expect(selectedRun).toHaveAttribute("aria-selected", "true"));
+
+    mockNavigate.mockClear();
+    await user.click(selectedRun);
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/review/{-$reviewId}",
+      params: { reviewId: "11111111-1111-4111-8111-111111111111" },
+    });
+  });
+
   it("opens the highlighted run with the open shortcut", async () => {
     const user = userEvent.setup();
     renderHistoryPage();
@@ -584,7 +604,7 @@ describe("HistoryPage keyboard navigation", () => {
 
     await user.keyboard("/");
 
-    const search = screen.getByPlaceholderText(/search runs by id/i);
+    const search = screen.getByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER);
     expect(search).toHaveFocus();
     expect(search).toHaveValue("");
   });
@@ -712,7 +732,7 @@ describe("HistoryPage keyboard navigation", () => {
     const user = userEvent.setup();
     renderHistoryPage();
 
-    const search = await screen.findByPlaceholderText(/search runs by id/i);
+    const search = await screen.findByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER);
     await user.click(search);
     await waitFor(() => expect(search).toHaveFocus());
 
@@ -741,7 +761,7 @@ describe("HistoryPage keyboard navigation", () => {
     const user = userEvent.setup();
     renderHistoryPage();
 
-    const search = await screen.findByPlaceholderText(/search runs by id/i);
+    const search = await screen.findByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER);
     search.focus();
     await waitFor(() => expect(search).toHaveFocus());
 
@@ -763,7 +783,7 @@ describe("HistoryPage keyboard navigation", () => {
 
     await user.keyboard("{Tab}");
 
-    const search = screen.getByPlaceholderText(/search runs by id/i);
+    const search = screen.getByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER);
     await waitFor(() => expect(document.activeElement).toBe(search));
     expect(document.activeElement).not.toBe(runsList);
   });
@@ -778,7 +798,7 @@ describe("HistoryPage keyboard navigation", () => {
     await screen.findByText("Loading review details...");
     await user.keyboard("{Tab}");
     await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByPlaceholderText(/search runs by id/i)),
+      expect(document.activeElement).toBe(screen.getByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER)),
     );
 
     detail.resolve(
@@ -866,7 +886,7 @@ describe("HistoryPage keyboard navigation", () => {
 
     renderHistoryPage();
 
-    await screen.findByPlaceholderText(/search runs by id/i);
+    await screen.findByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER);
 
     const insightsPane = screen.getByRole("complementary", { name: "Review insights" });
     expect(document.activeElement).not.toBe(insightsPane);

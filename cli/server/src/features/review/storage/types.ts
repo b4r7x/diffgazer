@@ -2,7 +2,6 @@ import type { AppError } from "@diffgazer/core/errors";
 import type { Result } from "@diffgazer/core/result";
 import type { LensStat } from "@diffgazer/core/schemas/events";
 import type {
-  DrilldownResult,
   LensId,
   ProfileId,
   ReviewMode,
@@ -35,8 +34,8 @@ export interface CollectionConfig<T, M, D = never> {
    * older-version review with line/evidence/vocab values the current write-side
    * schema rejects). Receives the parsed JSON; returns the recovered record with
    * typed diagnostics, or `null` when nothing usable can be recovered. Strict
-   * validation still governs new writes — this only loosens the read path so old
-   * records open and delete.
+   * validation still governs new writes — this only loosens the read path for old
+   * records.
    */
   lenientRead?: (parsed: unknown) => LenientReadResult<T, D> | null;
 }
@@ -46,7 +45,6 @@ export interface Collection<T, M> {
   read(id: string): Promise<Result<T, StoreError>>;
   write(item: T): Promise<Result<void, StoreError>>;
   list(): Promise<Result<{ items: M[]; warnings: string[] }, StoreError>>;
-  remove(id: string): Promise<Result<{ existed: boolean }, StoreError>>;
 }
 
 export type DateFieldsOf<T> = {
@@ -63,7 +61,6 @@ export interface SaveReviewOptions {
   commit: string | null;
   profile?: ProfileId;
   lenses: LensId[];
-  drilldowns?: DrilldownResult[];
   durationMs?: number;
   lensStats?: LensStat[];
   droppedDuplicates?: number;

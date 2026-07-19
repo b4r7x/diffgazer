@@ -73,7 +73,9 @@ describe("web executable configuration type coverage", () => {
     });
     expect(e2eConfig.files).toEqual([
       "./playwright.config.ts",
+      "./tests/e2e/responsive-contracts.e2e.ts",
       "./tests/e2e/results-layout.e2e.ts",
+      "./tests/e2e/review-parity.e2e.ts",
       "./tests/fixtures/results-layout.tsx",
     ]);
   });

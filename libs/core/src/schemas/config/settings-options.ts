@@ -14,6 +14,7 @@ export interface SettingsOption<T extends string> {
 }
 
 export type SelectableTheme = Exclude<Theme, "terminal">;
+export type ResolvedSelectableTheme = Exclude<SelectableTheme, "auto">;
 
 export const SELECTABLE_THEME_OPTIONS = [
   { value: "auto", label: "Auto", description: "Follow system preference" },
@@ -64,6 +65,13 @@ export function isSelectableTheme(value: string | null): value is SelectableThem
 export function toSelectableTheme(value: Theme): SelectableTheme {
   if (value === "terminal") return "auto";
   return value;
+}
+
+export function resolveSelectableTheme(
+  theme: SelectableTheme,
+  systemTheme: ResolvedSelectableTheme,
+): ResolvedSelectableTheme {
+  return theme === "auto" ? systemTheme : theme;
 }
 
 export function isSecretsStorage(value: string | null): value is SecretsStorage {

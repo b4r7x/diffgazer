@@ -71,7 +71,7 @@ export interface UseListboxOptions<TId extends string = string> {
   highlighted?: TId | null;
   /** Initial highlighted item ID for uncontrolled mode. */
   defaultHighlighted?: TId | null;
-  /** Called when the selected item changes. */
+  /** Called when an item is activated by click, Space, or Enter — including re-activating the already-selected item. */
   onSelect?: (id: TId) => void;
   /** Called when Enter activates the highlighted item. Selection is committed before this callback runs. */
   onEnter?: (id: TId, event: globalThis.KeyboardEvent) => void;
@@ -215,9 +215,6 @@ export function useListbox<TId extends string = string>({
   const [selectedId, setSelectedId] = useControllableState<TId | null>({
     value: controlledSelectedId,
     defaultValue: defaultSelectedId,
-    onChange: (next) => {
-      if (next !== null) onSelect?.(next);
-    },
   });
 
   const [highlighted, setHighlighted] = useControllableState<TId | null>({
@@ -290,9 +287,13 @@ export function useListbox<TId extends string = string>({
       : hasDomItem({ container: containerRef.current, query, id });
   };
 
+  // onSelect has activation semantics, not change semantics: it must also fire
+  // when the already-selected item is re-activated (e.g. a pointer tap opening
+  // the current selection), so it lives here instead of the state onChange.
   const activateItem = (next: TId) => {
     setSelectedId(next);
     setHighlighted(next);
+    onSelect?.(next);
   };
 
   const handleItemActivate = (next: TId) => {

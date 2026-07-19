@@ -18,6 +18,8 @@ interface TrustPermissionsContentProps {
   onChange: (value: TrustCapabilities) => void;
   isTrusted?: boolean;
   isActive?: boolean;
+  compact?: boolean;
+  onDownBoundary?: () => void;
 }
 
 export function TrustPermissionsContent({
@@ -26,6 +28,8 @@ export function TrustPermissionsContent({
   onChange,
   isTrusted = false,
   isActive = true,
+  compact = false,
+  onDownBoundary,
 }: TrustPermissionsContentProps): ReactElement {
   const { tokens } = useTheme();
   const selected = toSelectedCapabilityIds(value);
@@ -36,32 +40,46 @@ export function TrustPermissionsContent({
 
   return (
     <Box flexDirection="column" gap={1}>
-      <Box flexDirection="column">
-        <Text color={tokens.muted}>TARGET REPOSITORY</Text>
-        <Box justifyContent="space-between" gap={1}>
-          <Text color={tokens.info} bold>
+      <Box flexDirection={compact ? "row" : "column"} gap={compact ? 1 : 0}>
+        <Text color={tokens.muted}>{compact ? "TARGET" : "TARGET REPOSITORY"}</Text>
+        <Box justifyContent="space-between" gap={1} flexGrow={1} overflow="hidden">
+          <Text color={tokens.info} bold wrap="truncate-end">
             {directory}
           </Text>
           {isTrusted && <Badge variant="success">TRUSTED</Badge>}
         </Box>
       </Box>
 
-      <CheckboxGroup value={selected} onChange={handleChange} isActive={isActive}>
+      <CheckboxGroup
+        value={selected}
+        onChange={handleChange}
+        isActive={isActive}
+        wrap={!onDownBoundary}
+        onNavigationBoundaryReached={(direction) => {
+          if (direction === 1) onDownBoundary?.();
+        }}
+      >
         {TRUST_CAPABILITY_OPTIONS.map(({ id, label, description, disabled }) => (
           <CheckboxGroup.Item
             key={id}
             value={id}
             label={label}
-            description={description}
+            description={compact ? undefined : description}
             disabled={disabled}
           />
         ))}
       </CheckboxGroup>
 
-      <Callout variant="warning">
-        <Callout.Title>{TRUST_SECURITY_WARNING.title}</Callout.Title>
-        <Callout.Content>{TRUST_SECURITY_WARNING.body}</Callout.Content>
-      </Callout>
+      {compact ? (
+        <Text color={tokens.warning} wrap="truncate-end">
+          {TRUST_SECURITY_WARNING.title}: {TRUST_SECURITY_WARNING.body}
+        </Text>
+      ) : (
+        <Callout variant="warning">
+          <Callout.Title>{TRUST_SECURITY_WARNING.title}</Callout.Title>
+          <Callout.Content>{TRUST_SECURITY_WARNING.body}</Callout.Content>
+        </Callout>
+      )}
     </Box>
   );
 }

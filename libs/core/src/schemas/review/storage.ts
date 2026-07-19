@@ -2,7 +2,7 @@ import { z } from "zod";
 import { LensStatSchema } from "../events/agent.js";
 import { createdAtField, UuidSchema } from "../fields.js";
 import { ReviewResultSchema, ReviewSeveritySchema } from "./issues.js";
-import { DrilldownResultSchema, LensIdSchema, ProfileIdSchema } from "./lens.js";
+import { LensIdSchema, ProfileIdSchema } from "./lens.js";
 
 export const ReviewModeSchema = z.enum(["staged", "unstaged", "files"]);
 export type ReviewMode = z.infer<typeof ReviewModeSchema>;
@@ -82,7 +82,6 @@ export const SavedReviewSchema = z.object({
   result: ReviewResultSchema,
   diff: ParsedDiffSchema.optional(),
   gitContext: ReviewGitContextSchema,
-  drilldowns: z.array(DrilldownResultSchema),
   lensStats: z.array(LensStatSchema).optional(),
   // Count of issues removed after streaming (silently dropped from the final
   // result) so the summary can surface "K below-threshold issue(s) hidden".

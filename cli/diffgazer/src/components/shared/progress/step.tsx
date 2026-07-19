@@ -11,11 +11,10 @@ export interface ProgressStepProps {
   substeps?: ProgressSubstepData[];
 }
 
-const STEP_ICON: Record<ProgressStatus, string> = {
-  active: "◐",
-  completed: "●",
-  pending: "○",
-};
+const STEP_ICON = {
+  completed: "*",
+  pending: "-",
+} satisfies Record<Exclude<ProgressStatus, "active">, string>;
 
 const SUBSTEP_BADGE_VARIANT = {
   pending: "neutral",

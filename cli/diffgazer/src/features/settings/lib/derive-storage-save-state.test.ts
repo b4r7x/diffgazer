@@ -2,10 +2,21 @@ import { describe, expect, test } from "vitest";
 import { deriveStorageSaveState } from "./derive-storage-save-state";
 
 describe("deriveStorageSaveState", () => {
-  test("falls back to 'file' when nothing is persisted or chosen", () => {
+  test("keeps storage unset and Save disabled when nothing is persisted or chosen", () => {
     const result = deriveStorageSaveState({
       persisted: null,
       choice: null,
+      saving: false,
+    });
+    expect(result.effective).toBeNull();
+    expect(result.isDirty).toBe(false);
+    expect(result.canSave).toBe(false);
+  });
+
+  test("enables Save after choosing storage from an unset configuration", () => {
+    const result = deriveStorageSaveState({
+      persisted: null,
+      choice: "file",
       saving: false,
     });
     expect(result.effective).toBe("file");

@@ -35,7 +35,6 @@ function TrustPermissionsEditor({ editorInput }: TrustPermissionsEditorProps) {
     useTrustEditor(editorInput, {
       onSaved: () => {
         toast.success("Saved", { message: TRUST_EDITOR_MESSAGES.saved });
-        navigate({ to: "/settings" });
       },
       onRevoked: () => {
         toast.success("Revoked", { message: TRUST_EDITOR_MESSAGES.revoked });
@@ -60,8 +59,8 @@ function TrustPermissionsEditor({ editorInput }: TrustPermissionsEditorProps) {
   });
 
   return (
-    <div className="flex-1 flex items-center justify-center p-4">
-      <Panel className="w-full max-w-2xl">
+    <div className="flex flex-1 overflow-y-auto p-4">
+      <Panel className="m-auto w-full max-w-2xl">
         <Panel.Header>
           <Panel.Title>TRUST &amp; PERMISSIONS</Panel.Title>
         </Panel.Header>

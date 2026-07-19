@@ -69,6 +69,7 @@ const OPENROUTER_MODELS: OpenRouterModelsResponse = {
 };
 
 const INIT_RESPONSE: InitResponse = {
+  configPath: "/tmp/diffgazer/config.json",
   config: { provider: "gemini", model: "gemini-2.5-flash" },
   configured: true,
   project: { projectId: "proj-1", path: "/repo", trust: null },
@@ -140,7 +141,7 @@ async function selectProvider(user: ReturnType<typeof userEvent.setup>, name: st
 }
 
 async function openApiKeyDialog(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: /Set API Key/i }));
+  await user.click(screen.getByRole("button", { name: /Configure API Key/i }));
   return screen.findByRole("dialog", { name: /API Key/i });
 }
 
@@ -328,7 +329,7 @@ describe("ProvidersPage dialog ownership", () => {
     expect(originalDialog).toBeInTheDocument();
     await selectProvider(user, "Google Gemini");
 
-    const setApiKey = screen.getByRole("button", { name: /Set API Key/i });
+    const setApiKey = screen.getByRole("button", { name: /Configure API Key/i });
     const selectModel = screen.getByRole("button", { name: /Select Model/i });
     expect(setApiKey).toBeDisabled();
     expect(selectModel).toBeDisabled();
@@ -358,12 +359,12 @@ describe("ProvidersPage dialog ownership", () => {
     await waitFor(() => expect(deleteProviderCredentials).toHaveBeenCalledOnce());
     await selectProvider(user, "OpenRouter");
 
-    const actions = ["Select Provider", "Set API Key", "Remove Key", "Select Model..."];
+    const actions = ["Select Provider", "Configure API Key", "Remove Key", "Select Model"];
     for (const name of actions) {
       expect(screen.getByRole("button", { name })).toBeDisabled();
     }
-    await user.click(screen.getByRole("button", { name: "Set API Key" }));
-    await user.click(screen.getByRole("button", { name: "Select Model..." }));
+    await user.click(screen.getByRole("button", { name: "Configure API Key" }));
+    await user.click(screen.getByRole("button", { name: "Select Model" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     await act(async () => {
@@ -371,7 +372,9 @@ describe("ProvidersPage dialog ownership", () => {
       await removal.promise;
     });
 
-    await waitFor(() => expect(screen.getByRole("button", { name: "Set API Key" })).toBeEnabled());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Configure API Key" })).toBeEnabled(),
+    );
   });
 
   it("blocks peer actions while a model selection owns the pending mutation", async () => {
@@ -389,7 +392,7 @@ describe("ProvidersPage dialog ownership", () => {
     await waitFor(() => expect(activateProvider).toHaveBeenCalledOnce());
 
     await selectProvider(user, "OpenRouter");
-    const setApiKey = screen.getByRole("button", { name: /Set API Key/i });
+    const setApiKey = screen.getByRole("button", { name: /Configure API Key/i });
     const selectModel = screen.getByRole("button", { name: /Select Model/i });
     expect(setApiKey).toBeDisabled();
     expect(selectModel).toBeDisabled();

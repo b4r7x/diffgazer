@@ -116,6 +116,16 @@ function renderDialog(options: RenderOptions = {}) {
 }
 
 describe("ModelSelectDialog (catalog)", () => {
+  it("keeps the footer actions accessible when keyboard-only hints are capability-gated", async () => {
+    renderDialog();
+
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByRole("radio", { name: /Gemini 2\.5 Flash/ });
+    expect(within(dialog).getByText("Search")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /cancel/i })).toBeEnabled();
+    expect(within(dialog).getByRole("button", { name: /confirm/i })).toBeEnabled();
+  });
+
   it("renders catalog models free-first with a free badge", async () => {
     renderDialog();
     await waitFor(() =>

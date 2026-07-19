@@ -9,6 +9,7 @@ import {
 } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { formatTimestampOrNA } from "@diffgazer/core/format";
+import { sanitizeTerminalText } from "@diffgazer/core/review";
 import { BACK_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import { type ReactElement, useState } from "react";
@@ -20,10 +21,12 @@ import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
+import { useTheme } from "../../../theme/provider";
 import { useSettingsZone } from "../hooks/use-settings-zone";
 
 export function DiagnosticsScreen(): ReactElement {
   const { columns } = useTerminalDimensions();
+  const { tokens } = useTheme();
   useBackHandler();
 
   const {
@@ -90,7 +93,7 @@ export function DiagnosticsScreen(): ReactElement {
                 label="Server"
                 value={
                   <Badge variant={server.variant} dot>
-                    {server.label}
+                    {sanitizeTerminalText(server.label)}
                   </Badge>
                 }
                 labelWidth={14}
@@ -99,7 +102,7 @@ export function DiagnosticsScreen(): ReactElement {
                 label="Setup"
                 value={
                   <Badge variant={setup.variant} dot>
-                    {setup.label}
+                    {sanitizeTerminalText(setup.label)}
                   </Badge>
                 }
                 labelWidth={14}
@@ -108,7 +111,7 @@ export function DiagnosticsScreen(): ReactElement {
                 label="Context"
                 value={
                   <Badge variant={context.variant} dot>
-                    {context.label}
+                    {sanitizeTerminalText(context.label)}
                   </Badge>
                 }
                 labelWidth={14}
@@ -140,7 +143,9 @@ export function DiagnosticsScreen(): ReactElement {
                 </Button>
               </Box>
               {isRefreshing && <Spinner label="Regenerating context snapshot..." />}
-              {contextError && <Text color="red">{contextError}</Text>}
+              {contextError && (
+                <Text color={tokens.error}>{sanitizeTerminalText(contextError)}</Text>
+              )}
             </Box>
           </Panel.Content>
         </Panel>

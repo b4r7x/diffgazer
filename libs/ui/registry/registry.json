@@ -799,6 +799,7 @@
         "accessible-text",
         "controllable-state",
         "@diffgazer-keys/focus-restore",
+        "@diffgazer-keys/scroll-lock",
         "dialog-shell",
         "portal",
         "kbd",

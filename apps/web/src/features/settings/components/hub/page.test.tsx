@@ -32,6 +32,7 @@ const SETTINGS_FIXTURE: SettingsConfig = {
 
 function makeInitResponse(): Awaited<ReturnType<BoundApi["loadInit"]>> {
   return {
+    configPath: "/custom/diffgazer/config.json",
     config: { provider: "openrouter", model: "openrouter/test-model" },
     providers: [{ provider: "openrouter", hasApiKey: true, isActive: true }],
     settings: SETTINGS_FIXTURE,
@@ -110,6 +111,7 @@ describe("SettingsHubPage", () => {
     await waitFor(() => {
       expect(screen.getByText("local settings")).toBeVisible();
     });
+    expect(screen.getByText("config path: /custom/diffgazer/config.json")).toBeVisible();
   });
 
   it("shows the settings load error in the footer instead of the default message", async () => {

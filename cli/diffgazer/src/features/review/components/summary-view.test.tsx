@@ -3,33 +3,36 @@ import type { LensStat } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { cleanup, render } from "ink-testing-library";
-import type { ReactNode } from "react";
-import { afterEach, describe, expect, test, vi } from "vitest";
-import { NavigationProvider } from "../../../app/providers/navigation-provider";
-import { GlobalLayout } from "../../../components/layout/global";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
 import { CliThemeProvider } from "../../../theme/provider";
 import { ReviewResultsView } from "./results-view";
 import { ReviewSummaryView } from "./summary-view";
-
-const terminalDimensions = vi.hoisted(() => ({ current: { columns: 80, rows: 24 } }));
 
 vi.mock("@diffgazer/core/api/hooks", () => ({
   useInit: () => ({ data: undefined, isLoading: false }),
 }));
 
-vi.mock("../../../hooks/use-terminal-dimensions", () => ({
-  useTerminalDimensions: () => terminalDimensions.current,
-  useResponsive: () => ({
-    ...terminalDimensions.current,
-    tier: "medium",
-    isNarrow: false,
-    isMedium: true,
-    isWide: false,
+const summaryContentZone = vi.hoisted(() => ({ columns: 100, rows: 40 }));
+
+vi.mock("../../../components/layout/global", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../components/layout/global")>()),
+  useContentZone: () => ({
+    columns: summaryContentZone.columns,
+    rows: summaryContentZone.rows,
+    contentColumns: summaryContentZone.columns,
+    contentRows: summaryContentZone.rows - 4,
   }),
 }));
 
+beforeEach(() => {
+  summaryContentZone.columns = 100;
+  summaryContentZone.rows = 40;
+});
+
 afterEach(() => {
   cleanup();
+  cleanupRootFrames();
 });
 
 function renderSummary(props?: {
@@ -54,19 +57,6 @@ function renderSummary(props?: {
         />
       </CliThemeProvider>
     </FooterProvider>,
-  );
-}
-
-function renderRootFrame(columns: 80 | 100, child: ReactNode) {
-  terminalDimensions.current = { columns, rows: 24 };
-  return render(
-    <NavigationProvider>
-      <FooterProvider initialShortcuts={[]}>
-        <CliThemeProvider initialTheme="dark">
-          <GlobalLayout>{child}</GlobalLayout>
-        </CliThemeProvider>
-      </FooterProvider>
-    </NavigationProvider>,
   );
 }
 
@@ -113,12 +103,33 @@ describe("ReviewSummaryView (TUI)", () => {
     expect(lastFrame() ?? "").not.toContain("below-threshold");
   });
 
+  test("formats a full review id with the shared compact label", () => {
+    const { lastFrame } = render(
+      <FooterProvider initialShortcuts={[]}>
+        <CliThemeProvider initialTheme="dark">
+          <ReviewSummaryView
+            issues={[]}
+            reviewId="12345678-1234-4123-8123-123456789abc"
+            durationMs={1200}
+            onContinue={vi.fn()}
+          />
+        </CliThemeProvider>
+      </FooterProvider>,
+    );
+
+    expect(lastFrame() ?? "").toContain("REVIEW COMPLETE #12345678");
+    expect(lastFrame() ?? "").not.toContain("12345678-1234");
+  });
+
   test.each([
     80, 100,
   ] as const)("keeps the %i-column summary heading, data, and actions in a 24-row root frame", async (columns) => {
+    summaryContentZone.columns = columns;
+    summaryContentZone.rows = 24;
     const issue = makeIssue({ id: "1", severity: "high", title: "Leaky state update" });
     const { lastFrame } = renderRootFrame(
       columns,
+      24,
       <ReviewSummaryView
         issues={[issue]}
         reviewId="review-1"
@@ -138,6 +149,8 @@ describe("ReviewSummaryView (TUI)", () => {
   });
 
   test("renders long top-issue previews as one row each at 100 columns", async () => {
+    summaryContentZone.columns = 100;
+    summaryContentZone.rows = 24;
     const issues = Array.from({ length: 3 }, (_, index) =>
       makeIssue({
         id: `summary-${index + 1}`,
@@ -147,6 +160,7 @@ describe("ReviewSummaryView (TUI)", () => {
     );
     const { lastFrame } = renderRootFrame(
       100,
+      24,
       <ReviewSummaryView
         issues={issues}
         reviewId="review-summary"
@@ -160,11 +174,128 @@ describe("ReviewSummaryView (TUI)", () => {
     expect(previewRows).toHaveLength(3);
   });
 
+  test("keeps summary actions visible with a realistic 80x24 issue floor", async () => {
+    summaryContentZone.columns = 80;
+    summaryContentZone.rows = 24;
+    const issues = Array.from({ length: 12 }, (_, index) =>
+      makeIssue({
+        id: `summary-floor-${index + 1}`,
+        severity: index < 3 ? "blocker" : "high",
+        file: `packages/review/src/generated/deeply/nested/summary-floor-${index + 1}.typescript.ts`,
+        title: `Summary floor issue ${index + 1} with a realistic long diagnostic title`,
+      }),
+    );
+    const { lastFrame } = renderRootFrame(
+      80,
+      24,
+      <ReviewSummaryView
+        issues={issues}
+        reviewId="summary-floor"
+        durationMs={1200}
+        droppedDuplicates={2}
+        droppedBelowThreshold={4}
+        minSeverity="low"
+        onContinue={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("View Results (Enter)"));
+    expect(lastFrame()?.split("\n")).toHaveLength(24);
+  });
+
+  test("scrolls overflowed summary sections while keeping actions visible", async () => {
+    summaryContentZone.columns = 80;
+    summaryContentZone.rows = 24;
+    const issues = Array.from({ length: 12 }, (_, index) =>
+      makeIssue({
+        id: `summary-scroll-${index + 1}`,
+        severity: index < 3 ? "blocker" : "high",
+        title: `Summary scroll issue ${index + 1}`,
+      }),
+    );
+    const { stdin, lastFrame } = renderRootFrame(
+      80,
+      24,
+      <ReviewSummaryView
+        issues={issues}
+        reviewId="summary-scroll"
+        durationMs={1200}
+        droppedBelowThreshold={4}
+        minSeverity="low"
+        lensStats={[
+          { lensId: "correctness", issueCount: 6, status: "success" },
+          { lensId: "security", issueCount: 6, status: "success" },
+        ]}
+        onContinue={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    expect(lastFrame() ?? "").not.toContain("4 below-threshold issues hidden");
+    for (let index = 0; index < 30; index += 1) {
+      stdin.write("\u001b[B");
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("4 below-threshold issues hidden");
+    expect(frame).toContain("View Results (Enter)");
+    expect(frame.split("\n")).toHaveLength(24);
+  });
+
+  test("paints every results list row and keeps the 80x24 frame stable while navigating", async () => {
+    summaryContentZone.columns = 80;
+    summaryContentZone.rows = 24;
+    const issues = Array.from({ length: 12 }, (_, index) =>
+      makeIssue({
+        id: `results-floor-${index + 1}`,
+        severity: index === 0 ? "blocker" : "high",
+        file: `packages/review/src/generated/deeply/nested/results-floor-${index + 1}.typescript.ts`,
+        title: `RESULTS-FLOOR-${index + 1} long diagnostic title`,
+      }),
+    );
+    const { stdin, lastFrame } = renderRootFrame(
+      80,
+      24,
+      <ReviewResultsView reviewId="results-floor" issues={issues} onBack={vi.fn()} />,
+    );
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("RESULTS-FLOOR-1"));
+    const initialFrame = lastFrame() ?? "";
+    const severityFilterRow = initialFrame.split("\n").find((row) => row.includes("B1 H11"));
+    expect(severityFilterRow).toBeDefined();
+    expect(severityFilterRow).not.toContain("[BLOCK");
+    expect(initialFrame.split("\n")).toHaveLength(24);
+
+    const paintedTitles = new Set(initialFrame.match(/RESULTS-FLOOR-\d+/g) ?? []);
+    for (let index = 0; index < 11; index += 1) {
+      stdin.write("\u001b[B");
+      for (let render = 0; render < 4; render += 1) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+      expect(lastFrame()?.split("\n")).toHaveLength(24);
+      for (const title of lastFrame()?.match(/RESULTS-FLOOR-\d+/g) ?? []) {
+        paintedTitles.add(title);
+      }
+    }
+    await vi.waitFor(() => expect(lastFrame()).toContain("RESULTS-FLOOR-12"));
+    const finalFrame = lastFrame() ?? "";
+    expect(paintedTitles).toEqual(
+      new Set(Array.from({ length: 12 }, (_, index) => `RESULTS-FLOOR-${index + 1}`)),
+    );
+    expect(finalFrame).toContain("RESULTS-FLOOR-12");
+    expect(lastFrame()?.split("\n")).toHaveLength(24);
+  });
+
   test.each([
     80, 100,
   ] as const)("keeps the %i-column results heading, data, and actions in a 24-row root frame", async (columns) => {
+    summaryContentZone.columns = columns;
+    summaryContentZone.rows = 24;
     const { lastFrame } = renderRootFrame(
       columns,
+      24,
       <ReviewResultsView
         reviewId="review-1"
         issues={[makeIssue({ id: "1", title: "Leaky state update" })]}

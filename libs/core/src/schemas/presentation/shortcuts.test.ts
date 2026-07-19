@@ -32,10 +32,13 @@ describe("HELP_SHORTCUTS", () => {
       key: "j/k",
       label: "Navigate Lists and Fix Plan",
     });
-    expect(HELP_SHORTCUTS).toContainEqual({
-      key: "↑/↓ · PgUp/PgDn · Home/End",
-      label: "Scroll Content",
-    });
+    expect(HELP_SHORTCUTS).toEqual(
+      expect.arrayContaining([
+        { key: "↑/↓", label: "Scroll Content" },
+        { key: "PgUp/PgDn", label: "Scroll Content" },
+        { key: "Home/End", label: "Scroll Content" },
+      ]),
+    );
   });
 });
 

@@ -1,35 +1,42 @@
 import { guardQueryState, useInit, useSaveTrust } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
+import { sanitizeTerminalText } from "@diffgazer/core/review";
 import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
-import { getTrustButtonLabel } from "@diffgazer/core/schemas/config";
+import {
+  DEFAULT_TRUST_PROMPT_CAPABILITIES,
+  getTrustButtonLabel,
+} from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { TRUST_FOOTER_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
+import { useQueryGuardPanels } from "../../../components/shared/query-guard-panels";
 import { TrustPermissionsContent } from "../../../components/shared/trust-permissions-content";
 import { Button } from "../../../components/ui/button";
-import { Callout } from "../../../components/ui/callout";
 import { Panel } from "../../../components/ui/panel";
 import { SectionHeader } from "../../../components/ui/section-header";
-import { Spinner } from "../../../components/ui/spinner";
+import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
+import { useTheme } from "../../../theme/provider";
 
 interface TrustPanelProps {
   onAccept: () => void;
 }
 
 export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
+  const { tokens } = useTheme();
+  const { rows } = useTerminalDimensions();
   const initQuery = useInit();
   const saveTrust = useSaveTrust();
-  const [capabilities, setCapabilities] = useState<TrustCapabilities>({
-    readFiles: true,
-    runCommands: false,
-  });
+  const [capabilities, setCapabilities] = useState<TrustCapabilities>(
+    DEFAULT_TRUST_PROMPT_CAPABILITIES,
+  );
   const [buttonActive, setButtonActive] = useState(false);
 
   const saving = saveTrust.isPending;
   const error = saveTrust.error?.message ?? null;
   const hasRepoAccess = capabilities.readFiles;
+  const compact = rows <= 24;
 
   const actionLabel = getTrustButtonLabel(saving, hasRepoAccess);
   const actionShortcuts: Shortcut[] = [
@@ -53,27 +60,11 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
   );
 
   function handleAccept() {
-    if (!initQuery.data) return;
-    if (!initQuery.data.project.projectId) return;
     saveTrust.mutate({ capabilities, trustMode: "persistent" }, { onSuccess: () => onAccept() });
   }
 
-  const guard = guardQueryState(initQuery, {
-    loading: () => (
-      <Panel>
-        <Panel.Content>
-          <Spinner label="Loading project info..." />
-        </Panel.Content>
-      </Panel>
-    ),
-    error: (err) => (
-      <Panel>
-        <Panel.Content>
-          <Text color="red">Error: {err.message}</Text>
-        </Panel.Content>
-      </Panel>
-    ),
-  });
+  const queryGuardPanels = useQueryGuardPanels("Loading project info...");
+  const guard = guardQueryState(initQuery, queryGuardPanels);
   if (guard) return guard;
 
   return (
@@ -83,32 +74,25 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
           <SectionHeader>Trust This Repository?</SectionHeader>
           <Text dimColor>Diffgazer needs permissions to review your code</Text>
 
-          <Callout variant="warning">
-            <Callout.Title>First-Time Setup</Callout.Title>
-            <Callout.Content>
-              Grant permissions so the AI reviewer can analyze your code. You can change these later
-              in Settings.
-            </Callout.Content>
-          </Callout>
-
           <TrustPermissionsContent
             directory={initQuery.data?.project.path ?? "Loading..."}
             value={capabilities}
             onChange={setCapabilities}
             isActive={!saving && !buttonActive}
+            compact={compact}
           />
 
           <Box gap={1}>
             <Button
               variant="success"
               onPress={handleAccept}
-              isActive={!saving && buttonActive && !!initQuery.data}
-              disabled={saving || !initQuery.data}
+              isActive={!saving && buttonActive}
+              disabled={saving}
             >
               {actionLabel}
             </Button>
           </Box>
-          {error && <Text color="red">{error}</Text>}
+          {error && <Text color={tokens.error}>{sanitizeTerminalText(error)}</Text>}
         </Box>
       </Panel.Content>
     </Panel>

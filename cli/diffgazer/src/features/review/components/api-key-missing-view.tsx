@@ -1,12 +1,16 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import { getApiKeyMissingCopy, sanitizeTerminalText } from "@diffgazer/core/review";
+import {
+  CONFIGURATION_ERROR_COPY,
+  CONFIGURE_PROVIDER_LABEL,
+  getApiKeyMissingCopy,
+} from "@diffgazer/core/review";
 import type { SetupStatus } from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Box, useInput } from "ink";
-import { useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
 import { Panel } from "../../../components/ui/panel";
+import { useActionRow } from "../../../hooks/use-action-row";
 
 export interface ApiKeyMissingViewProps {
   provider?: string;
@@ -16,7 +20,6 @@ export interface ApiKeyMissingViewProps {
 }
 
 export interface ConfigurationErrorViewProps {
-  error: string;
   onRetry: () => void;
   onBack: () => void;
 }
@@ -28,6 +31,7 @@ interface ReviewGateViewProps {
   primaryLabel: string;
   onPrimary: () => void;
   onBack: () => void;
+  disabled?: boolean;
 }
 
 const ACTION_SHORTCUTS: Shortcut[] = [
@@ -49,18 +53,18 @@ export function ApiKeyMissingView({
       title={title}
       body={body}
       variant="warning"
-      primaryLabel="Go to Settings"
+      primaryLabel={CONFIGURE_PROVIDER_LABEL}
       onPrimary={onGoToSettings}
       onBack={onBack}
     />
   );
 }
 
-export function ConfigurationErrorView({ error, onRetry, onBack }: ConfigurationErrorViewProps) {
+export function ConfigurationErrorView({ onRetry, onBack }: ConfigurationErrorViewProps) {
   return (
     <ReviewGateView
-      title="Configuration Unavailable"
-      body={`Diffgazer could not load the current configuration. ${sanitizeTerminalText(error)}`}
+      title={CONFIGURATION_ERROR_COPY.title}
+      body={CONFIGURATION_ERROR_COPY.body}
       variant="error"
       primaryLabel="Retry"
       onPrimary={onRetry}
@@ -69,30 +73,30 @@ export function ConfigurationErrorView({ error, onRetry, onBack }: Configuration
   );
 }
 
-function ReviewGateView({
+export function ReviewGateView({
   title,
   body,
   variant,
   primaryLabel,
   onPrimary,
   onBack,
+  disabled = false,
 }: ReviewGateViewProps) {
-  const [buttonIndex, setButtonIndex] = useState(0);
   usePageFooter({ shortcuts: ACTION_SHORTCUTS, rightShortcuts: BACK_SHORTCUTS });
-
-  useInput((_input, key) => {
-    if (key.leftArrow || key.upArrow) {
-      setButtonIndex(0);
-      return;
-    }
-    if (key.rightArrow || key.downArrow) {
-      setButtonIndex(1);
-      return;
-    }
-    if (key.escape) {
-      onBack();
-    }
+  const actions = useActionRow({
+    actionCount: 2,
+    disabledActions: [disabled, disabled],
+    onAction: (index) => (index === 0 ? onPrimary() : onBack()),
+    isActive: !disabled,
+    verticalNavigation: true,
   });
+
+  useInput(
+    (_input, key) => {
+      if (key.escape) onBack();
+    },
+    { isActive: !disabled },
+  );
 
   return (
     <Panel>
@@ -103,10 +107,20 @@ function ReviewGateView({
             <Callout.Content>{body}</Callout.Content>
           </Callout>
           <Box gap={2}>
-            <Button variant="primary" isActive={buttonIndex === 0} onPress={onPrimary}>
+            <Button
+              variant="primary"
+              isActive={actions.isActionActive(0)}
+              onPress={() => actions.activate(0)}
+              disabled={disabled}
+            >
               {primaryLabel}
             </Button>
-            <Button variant="secondary" isActive={buttonIndex === 1} onPress={onBack}>
+            <Button
+              variant="secondary"
+              isActive={actions.isActionActive(1)}
+              onPress={() => actions.activate(1)}
+              disabled={disabled}
+            >
               Back
             </Button>
           </Box>

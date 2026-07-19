@@ -77,6 +77,7 @@ function geminiModel(id: string) {
 
 function makeInitResponse(overrides: Partial<InitResponse> = {}): InitResponse {
   return {
+    configPath: "/tmp/diffgazer/config.json",
     config: { provider: "gemini", model: "gemini-2.5-flash" },
     providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
     settings: {
@@ -222,6 +223,17 @@ describe("OnboardingWizard", () => {
     mockDeleteProviderCredentials = vi
       .fn<BoundApi["deleteProviderCredentials"]>()
       .mockResolvedValue({ deleted: true, provider: "openrouter" });
+  });
+
+  it("uses compact progress below md and keeps the full stepper for md and above", async () => {
+    renderWizard();
+
+    await expectStep(/secrets storage/i);
+    const compactProgress = screen.getByText("Step 1/6 · Storage");
+    const fullProgress = screen.getByLabelText("Setup progress");
+
+    expect(compactProgress).toHaveTextContent("Step 1/6 · Storage");
+    expect(fullProgress).toBeInTheDocument();
   });
 
   it("disables the Next action on the api-key step until canProceed is satisfied", async () => {

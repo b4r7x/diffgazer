@@ -1,5 +1,9 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import { getApiKeyMissingCopy } from "@diffgazer/core/review";
+import {
+  CONFIGURATION_ERROR_COPY,
+  CONFIGURE_PROVIDER_LABEL,
+  getApiKeyMissingCopy,
+} from "@diffgazer/core/review";
 import type { AIProvider, SetupStatus } from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { BACK_SHORTCUT } from "@diffgazer/core/schemas/presentation";
@@ -114,7 +118,7 @@ export function ApiKeyMissingView({
     <ReviewSetupGateView
       title={copy.title}
       body={copy.body}
-      primaryLabel="Configure Provider"
+      primaryLabel={CONFIGURE_PROVIDER_LABEL}
       onPrimary={onNavigateSettings}
       onBack={onBack}
       primaryDisabled={primaryDisabled}
@@ -133,8 +137,8 @@ export function ConfigurationErrorView({
 }) {
   return (
     <ReviewSetupGateView
-      title="Configuration Unavailable"
-      body="Diffgazer could not load the current configuration. Retry the request or return home."
+      title={CONFIGURATION_ERROR_COPY.title}
+      body={CONFIGURATION_ERROR_COPY.body}
       primaryLabel="Retry"
       onPrimary={onRetry}
       onBack={onBack}

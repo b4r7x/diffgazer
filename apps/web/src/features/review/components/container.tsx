@@ -1,13 +1,9 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import { mapStepsToProgressData } from "@diffgazer/core/review";
+import { extractOrchestratorStats, mapStepsToProgressData } from "@diffgazer/core/review";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { CenteredStatus } from "@/components/shared/centered-status";
 import { useConfigActions, useConfigData } from "@/hooks/use-config";
-import {
-  extractOrchestratorStats,
-  type ReviewCompleteData,
-  useReviewLifecycle,
-} from "../hooks/use-lifecycle";
+import { type ReviewCompleteData, useReviewLifecycle } from "../hooks/use-lifecycle";
 import { ApiKeyMissingView, ConfigurationErrorView } from "./api-key-missing-view";
 import { NoChangesView } from "./no-changes-view";
 import { ReviewProgressView } from "./progress-view";
@@ -39,11 +35,12 @@ export function ReviewContainer({ mode, onComplete, onStreamNotFound }: ReviewCo
     handleCancel,
     handleBack,
     handleViewResults,
+    handleRetry,
     handleSetupProvider,
     handleSwitchMode,
   } = useReviewLifecycle({ mode, onComplete, onStreamNotFound });
 
-  const steps = mapStepsToProgressData(state.steps, state.agents);
+  const steps = mapStepsToProgressData(state.steps);
   const filesIncludedInPrompt = state.fileProgress.completed.length;
   const metrics = {
     filesProcessed: filesIncludedInPrompt,
@@ -111,6 +108,9 @@ export function ReviewContainer({ mode, onComplete, onStreamNotFound }: ReviewCo
       data={progressData}
       isRunning={state.isStreaming}
       error={state.error}
+      errorCode={state.errorCode}
+      reviewId={state.reviewId}
+      onRetry={handleRetry}
       onViewResults={canViewResults ? handleViewResults : undefined}
       onCancel={handleCancel}
       onBack={handleBack}

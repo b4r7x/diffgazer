@@ -38,6 +38,7 @@ import type {
   ConfigServiceErrorCode,
   ProviderModelsErrorCode,
 } from "../../shared/lib/http/error-codes.js";
+import { getGlobalConfigPath } from "../../shared/lib/paths.js";
 
 export const getProvidersStatus = (): ProvidersStatusResponse => {
   const providers = getStore().getProviders();
@@ -56,6 +57,7 @@ export const getInitState = (projectRoot?: string): Result<InitResponse, Secrets
   if (!setupResult.ok) return setupResult;
 
   return ok({
+    configPath: getGlobalConfigPath(),
     config: activeProvider
       ? { provider: activeProvider.provider, model: activeProvider.model }
       : null,

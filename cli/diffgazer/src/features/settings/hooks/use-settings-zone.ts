@@ -1,5 +1,7 @@
+import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
 import { useInput } from "ink";
 import { useState } from "react";
+import { getFirstEnabledAction, useActionRow } from "../../../hooks/use-action-row";
 
 type SettingsZone = "list" | "buttons";
 
@@ -16,37 +18,34 @@ interface SettingsZoneResult {
   buttonIndex: number;
   isListActive: boolean;
   isButtonActive: (index: number) => boolean;
+  enterButtons: () => void;
 }
 
-function findNextEnabledButton(
-  current: number,
-  direction: 1 | -1,
-  buttonCount: number,
-  disabledButtons: number[] | undefined,
-): number {
-  let next = current;
-  for (let step = 0; step < buttonCount; step += 1) {
-    next += direction;
-    if (next < 0 || next >= buttonCount) {
-      return current;
-    }
-    if (!disabledButtons?.includes(next)) {
-      return next;
-    }
-  }
-  return current;
+interface SettingsFooterOptions {
+  zone: SettingsZone;
+  listShortcuts: Shortcut[];
+  buttonActionLabel: string;
+  buttonActionDisabled?: boolean;
 }
 
-function findFirstEnabledButton(
-  buttonCount: number,
-  disabledButtons: number[] | undefined,
-): number {
-  for (let index = 0; index < buttonCount; index += 1) {
-    if (!disabledButtons?.includes(index)) {
-      return index;
-    }
-  }
-  return 0;
+export function getSettingsFooter({
+  zone,
+  listShortcuts,
+  buttonActionLabel,
+  buttonActionDisabled = false,
+}: SettingsFooterOptions): { shortcuts: Shortcut[]; rightShortcuts: Shortcut[] } {
+  const zoneShortcuts =
+    zone === "buttons"
+      ? [
+          { key: "←/→", label: "Move Action" },
+          { key: "Enter", label: buttonActionLabel, disabled: buttonActionDisabled },
+        ]
+      : listShortcuts;
+
+  return {
+    shortcuts: [...zoneShortcuts, { key: "Tab", label: "Switch Zone" }],
+    rightShortcuts: [BACK_SHORTCUT],
+  };
 }
 
 export function useSettingsZone({
@@ -57,16 +56,23 @@ export function useSettingsZone({
   hasList = true,
 }: UseSettingsZoneOptions): SettingsZoneResult {
   const [zone, setZone] = useState<SettingsZone>(hasList ? initialZone : "buttons");
-  const [buttonIndex, setButtonIndex] = useState(() =>
-    findFirstEnabledButton(buttonCount, disabledButtons),
-  );
   const effectiveZone = hasList ? zone : "buttons";
+  const disabledActions = Array.from({ length: buttonCount }, (_, index) =>
+    Boolean(disabledButtons?.includes(index)),
+  );
+  const actionRow = useActionRow({
+    actionCount: buttonCount,
+    disabledActions,
+    onAction: () => {},
+    isActive: effectiveZone === "buttons" && !disabled,
+    verticalNavigation: hasList,
+    onExitUp: hasList ? () => setZone("list") : undefined,
+  });
 
-  // Derive the effective button index during render so a disabled button never
-  // stays focused when disabledButtons changes (no state-sync effect).
-  const effectiveButtonIndex = disabledButtons?.includes(buttonIndex)
-    ? findFirstEnabledButton(buttonCount, disabledButtons)
-    : buttonIndex;
+  function enterButtons() {
+    actionRow.reset(getFirstEnabledAction(buttonCount, disabledActions));
+    setZone("buttons");
+  }
 
   useInput(
     (_input, key) => {
@@ -77,28 +83,10 @@ export function useSettingsZone({
         }
         const next = effectiveZone === "list" ? "buttons" : "list";
         if (next === "buttons") {
-          setButtonIndex(findFirstEnabledButton(buttonCount, disabledButtons));
+          actionRow.reset(getFirstEnabledAction(buttonCount, disabledActions));
         }
         setZone(next);
         return;
-      }
-
-      if (effectiveZone === "buttons") {
-        if (key.leftArrow) {
-          setButtonIndex(
-            findNextEnabledButton(effectiveButtonIndex, -1, buttonCount, disabledButtons),
-          );
-          return;
-        }
-        if (key.rightArrow) {
-          setButtonIndex(
-            findNextEnabledButton(effectiveButtonIndex, 1, buttonCount, disabledButtons),
-          );
-          return;
-        }
-        if (key.upArrow) {
-          if (hasList) setZone("list");
-        }
       }
     },
     { isActive: !disabled },
@@ -106,12 +94,13 @@ export function useSettingsZone({
 
   return {
     zone: effectiveZone,
-    buttonIndex: effectiveButtonIndex,
+    buttonIndex: actionRow.activeIndex,
     isListActive: hasList && effectiveZone === "list" && !disabled,
     isButtonActive: (index: number) =>
       effectiveZone === "buttons" &&
-      effectiveButtonIndex === index &&
+      actionRow.activeIndex === index &&
       !disabled &&
       !disabledButtons?.includes(index),
+    enterButtons,
   };
 }

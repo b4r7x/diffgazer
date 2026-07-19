@@ -1,19 +1,12 @@
+import type { LensOption } from "@diffgazer/core/schemas/events";
 import type { LensId } from "@diffgazer/core/schemas/review";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { useId, useState } from "react";
 
-export interface AnalysisOption {
-  id: LensId;
-  label: string;
-  badgeLabel: string;
-  badgeVariant: "success" | "warning" | "error" | "info" | "neutral";
-  description: string;
-}
-
 interface AnalysisSelectorContentProps {
-  options: AnalysisOption[];
+  options: LensOption[];
   value: LensId[];
   onChange: (value: LensId[]) => void;
   disabled?: boolean;

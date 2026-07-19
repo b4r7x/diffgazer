@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, unlink } from "node:fs/promises";
+import { mkdir, readdir, readFile } from "node:fs/promises";
 import { createError, getErrorMessage } from "@diffgazer/core/errors";
 import { safeParseJson } from "@diffgazer/core/json";
 import { err, ok, type Result } from "@diffgazer/core/result";
@@ -265,24 +265,5 @@ export function createCollection<T, M, D = never>(
     return ok({ items, warnings });
   }
 
-  async function remove(id: string): Promise<Result<{ existed: boolean }, StoreError>> {
-    const path = filePath(id);
-
-    try {
-      await unlink(path);
-      return ok({ existed: true });
-    } catch (error) {
-      if (isNodeError(error, "ENOENT")) {
-        return ok({ existed: false });
-      }
-      if (isNodeError(error, "EACCES")) {
-        return err(
-          storeIoError("PERMISSION_ERROR", `Permission denied deleting ${name}`, path, error),
-        );
-      }
-      return err(storeIoError("WRITE_ERROR", `Failed to delete ${name}`, path, error));
-    }
-  }
-
-  return { ensureDir, read, readDetailed, readMetadata, write, list, remove };
+  return { ensureDir, read, readDetailed, readMetadata, write, list };
 }

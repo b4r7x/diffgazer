@@ -155,7 +155,8 @@ export const navigationListDoc: ComponentDoc = {
         type: "(id: string) => void",
         required: false,
         defaultValue: null,
-        description: "Fired when an item is activated by click or Enter.",
+        description:
+          "Fired when an item is activated by click, Enter, or Space — including the already-selected item.",
       },
       onEnter: {
         type: "(id: string, event: KeyboardEvent) => void",

@@ -32,6 +32,11 @@ vi.mock("@diffgazer/core/api/hooks", () => ({
   }),
 }));
 
+vi.mock("../../../components/layout/global", () => ({
+  getContentZoneRows: (rows: number) => Math.max(rows - 4, 0),
+  useContentZone: () => ({ columns: 100, rows: 30, contentColumns: 100, contentRows: 26 }),
+}));
+
 import { ReviewContainer } from "./container";
 
 afterEach(() => {
@@ -185,7 +190,7 @@ describe("ReviewContainer", () => {
 
     const { lastFrame } = renderContainer();
 
-    expect(lastFrame() ?? "").toContain("Time: 00:05");
+    expect(lastFrame() ?? "").toContain("Elapsed: 00:05");
 
     act(() => {
       vi.advanceTimersByTime(2300);
@@ -242,7 +247,7 @@ describe("ReviewContainer", () => {
     expect(apiMocks.clearActiveSession).not.toHaveBeenCalled();
   });
 
-  test("running Cancel still cancels on the server and clears the active session", async () => {
+  test("running c cancels on the server while Enter remains inert", async () => {
     const cancel = vi.fn(async () => null);
     apiMocks.useReviewLifecycleBase.mockReturnValue(
       makeReviewLifecycleBase({ cancel, isStreaming: true, reviewId: "review-123" }),
@@ -251,6 +256,10 @@ describe("ReviewContainer", () => {
     const { stdin, lastFrame } = renderContainer();
 
     stdin.write("\r");
+    await flush();
+    expect(cancel).not.toHaveBeenCalled();
+
+    stdin.write("c");
 
     await waitUntil(() => (lastFrame() ?? "").includes("Home route"));
     expect(cancel).toHaveBeenCalledWith("review-123");
@@ -281,6 +290,24 @@ describe("ReviewContainer", () => {
     await waitUntil(() => (lastFrame() ?? "").includes("Home route"));
     expect(cancel).not.toHaveBeenCalled();
     expect(apiMocks.clearActiveSession).toHaveBeenCalledWith("staged", "review-123");
+  });
+
+  test("a reducer-stopped stream no longer exposes Cancel", () => {
+    const cancel = vi.fn(async () => null);
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        cancel,
+        error: "Review issues failed",
+        isStreaming: false,
+        reviewId: "review-123",
+      }),
+    );
+
+    const { lastFrame } = renderContainer();
+
+    expect(lastFrame() ?? "").toContain("Review issues failed");
+    expect(lastFrame() ?? "").not.toContain("Cancel");
+    expect(cancel).not.toHaveBeenCalled();
   });
 
   test("remote-cancel terminal states show Back/Escape instead of streaming Cancel", async () => {
@@ -386,5 +413,33 @@ describe("ReviewContainer", () => {
     expect(apiMocks.createReview).not.toHaveBeenCalled();
     expect(lifecycle.stream.abort).not.toHaveBeenCalled();
     expect(lifecycle.completion.resetCompletion).not.toHaveBeenCalled();
+  });
+
+  test("starts only one alternate review while the no-diff action is pending", async () => {
+    let releaseCreateReview: (() => void) | undefined;
+    apiMocks.createReview.mockImplementationOnce(async ({ mode = "staged" }) => {
+      await new Promise<void>((resolve) => {
+        releaseCreateReview = resolve;
+      });
+      return makeCreateReviewResponse({ reviewId: "review-alternate", session: { mode } });
+    });
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        gate: "no-diff",
+        isNoDiffError: true,
+        error: "No changes to review.",
+        errorCode: ReviewErrorCode.NO_DIFF,
+      }),
+    );
+
+    const { stdin } = renderContainer();
+    stdin.write("\r");
+    stdin.write("\r");
+    await flush();
+
+    expect(apiMocks.createReview).toHaveBeenCalledTimes(1);
+
+    releaseCreateReview?.();
+    await flush();
   });
 });

@@ -1,4 +1,4 @@
-import { getDateKey, getDateLabel, getTimestamp } from "../format.js";
+import { formatRunId, getDateKey, getDateLabel, getTimestamp } from "../format.js";
 import type { SeverityCounts, TimelineItem } from "../schemas/presentation/index.js";
 import { SEVERITY_ORDER } from "../schemas/presentation/index.js";
 import type {
@@ -17,6 +17,33 @@ export interface HistoryWarningSummary {
   droppedIssueCount: number;
   indexBuildFailed: boolean;
   indexRewriteFailed: boolean;
+}
+
+export type HistoryDetailState =
+  | { status: "loading" }
+  | { status: "error"; message: string; retry: () => void }
+  | { status: "ready" };
+
+export function deriveHistoryDetailState({
+  isLoading,
+  error,
+  refetch,
+}: {
+  isLoading: boolean;
+  error: Error | null;
+  refetch: () => unknown;
+}): HistoryDetailState {
+  if (isLoading) return { status: "loading" };
+  if (error) {
+    return {
+      status: "error",
+      message: error.message,
+      retry: () => {
+        void refetch();
+      },
+    };
+  }
+  return { status: "ready" };
 }
 
 export function summarizeHistoryWarnings(
@@ -53,6 +80,33 @@ export function summarizeHistoryWarnings(
   return summary;
 }
 
+export function buildHistoryWarningMessages(summary: HistoryWarningSummary): string[] {
+  const messages: string[] = [];
+
+  if (summary.unreadableReviewCount > 0) {
+    messages.push(`${pluralize(summary.unreadableReviewCount, "saved review")} could not be read.`);
+  }
+  if (summary.droppedIssueCount > 0) {
+    const issueCount = pluralize(summary.droppedIssueCount, "invalid saved issue");
+    const verb = summary.droppedIssueCount === 1 ? "was" : "were";
+    messages.push(
+      `${issueCount} ${verb} omitted. Re-run the affected reviews for complete results.`,
+    );
+  }
+  if (summary.indexBuildFailed) {
+    messages.push(
+      "The history index could not be rebuilt. Readable reviews are still shown; reopen History to retry.",
+    );
+  }
+  if (summary.indexRewriteFailed) {
+    messages.push(
+      "The history index could not be cleaned up. Readable reviews are still shown; reopen History to retry.",
+    );
+  }
+
+  return messages;
+}
+
 export interface SeverityPart {
   severity: ReviewSeverity;
   count: number;
@@ -66,27 +120,7 @@ export interface RunSummaryParts {
   issueCount: number;
 }
 
-const MIN_RUN_ID_PREFIX_LENGTH = 8;
-
-function getRunIdPrefixLength(id: string, peerIds: readonly string[]): number {
-  const normalizedId = id.toLowerCase();
-  const normalizedPeers = peerIds
-    .map((peerId) => peerId.toLowerCase())
-    .filter((peerId) => peerId !== normalizedId);
-  let length = Math.min(MIN_RUN_ID_PREFIX_LENGTH, id.length);
-
-  while (
-    length < id.length &&
-    normalizedPeers.some((peerId) => peerId.startsWith(normalizedId.slice(0, length)))
-  ) {
-    length += 1;
-  }
-  return length;
-}
-
-export function formatRunId(id: string, peerIds: readonly string[] = []): string {
-  return `#${id.slice(0, getRunIdPrefixLength(id, peerIds))}`;
-}
+export { formatRunId } from "../format.js";
 
 export function getRunDisplayId(metadata: ReviewMetadata, peerIds: readonly string[] = []): string {
   return formatRunId(metadata.id, peerIds);
@@ -243,7 +277,7 @@ export function resolveSelectedId<T extends { id: string }>(
   return items[0]?.id ?? null;
 }
 
-export const HISTORY_SEARCH_PLACEHOLDER = "Search runs by ID...";
+export const HISTORY_SEARCH_PLACEHOLDER = "Search ID, branch, path, staged...";
 
 export function getEmptyRunsMessage(
   hasReviews: boolean,

@@ -58,4 +58,23 @@ describe("NoChangesView (TUI)", () => {
     expect(onBack).toHaveBeenCalledTimes(2);
     expect(onSwitchMode).not.toHaveBeenCalled();
   });
+
+  test("ignores action input while an alternate review is starting", async () => {
+    const onSwitchMode = vi.fn();
+    const onBack = vi.fn();
+    const { stdin } = render(
+      <CliThemeProvider initialTheme="dark">
+        <FooterProvider initialShortcuts={[]}>
+          <NoChangesView mode="files" onSwitchMode={onSwitchMode} onBack={onBack} disabled />
+        </FooterProvider>
+      </CliThemeProvider>,
+    );
+
+    stdin.write("\r");
+    stdin.write(ESCAPE);
+    await flush();
+
+    expect(onSwitchMode).not.toHaveBeenCalled();
+    expect(onBack).not.toHaveBeenCalled();
+  });
 });

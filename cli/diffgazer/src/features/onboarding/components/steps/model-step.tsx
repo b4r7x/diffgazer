@@ -7,9 +7,14 @@ import { Badge } from "../../../../components/ui/badge";
 import { RadioGroup } from "../../../../components/ui/radio";
 import { Spinner } from "../../../../components/ui/spinner";
 import { useTerminalDimensions } from "../../../../hooks/use-terminal-dimensions";
+import { terminalCellWidth } from "../../../../lib/terminal-width";
 import { useTheme } from "../../../../theme/provider";
 
 const MODEL_STEP_RESERVED_ROWS = 12;
+
+function getWrappedRowCount(text: string, width: number): number {
+  return Math.max(Math.ceil(terminalCellWidth(text) / Math.max(width, 1)), 1);
+}
 
 interface ModelStepProps {
   value?: string;
@@ -47,7 +52,7 @@ export function ModelStep({
   isActive = true,
 }: ModelStepProps): ReactElement {
   const { tokens } = useTheme();
-  const { rows } = useTerminalDimensions();
+  const { columns, rows } = useTerminalDimensions();
   const {
     models: sourceModels,
     loading,
@@ -108,17 +113,20 @@ export function ModelStep({
     );
   }
 
+  const fallbackMessage = fallbackNotice ? `${fallbackNotice} Press r to retry.` : null;
+  const fallbackRows = fallbackMessage
+    ? getWrappedRowCount(fallbackMessage, Math.max(columns - 4, 1))
+    : 0;
+
   return (
     <Box flexDirection="column" gap={1}>
       <Text color={tokens.muted}>{subtitle}</Text>
-      {fallbackNotice ? (
-        <Text color={tokens.warning}>{fallbackNotice} Press r to retry.</Text>
-      ) : null}
+      {fallbackNotice ? <Text color={tokens.warning}>{fallbackMessage}</Text> : null}
       <RadioGroup
         value={value}
         onChange={onChange}
         isActive={isActive}
-        maxVisibleItems={Math.max(1, rows - MODEL_STEP_RESERVED_ROWS)}
+        maxVisibleItems={Math.max(1, rows - MODEL_STEP_RESERVED_ROWS - fallbackRows)}
       >
         {models.map((model) => (
           <RadioGroup.Item

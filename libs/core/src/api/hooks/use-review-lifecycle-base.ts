@@ -1,10 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import type { Result } from "../../result.js";
 import {
   isCheckingForChanges as checkForChanges,
   isNoDiffError as checkNoDiffError,
   getLoadingMessage,
   type SessionTerminationCode,
+  type StreamReviewError,
 } from "../../review/index.js";
 import { ReviewErrorCode } from "../../schemas/review/index.js";
 import type { ReviewContextResponse } from "../types.js";
@@ -39,6 +41,7 @@ export interface UseReviewLifecycleBaseResult {
     stop: () => void;
     abort: () => void;
     cancel: (reviewId: string | null, options?: CancelReviewOptions) => Promise<string | null>;
+    resume: (reviewId: string) => Promise<Result<void, StreamReviewError>>;
     state: ReviewStreamState;
   };
 
@@ -175,6 +178,7 @@ export function useReviewLifecycleBase(
       stop: stream.stop,
       abort: stream.abort,
       cancel: stream.cancel,
+      resume: stream.resume,
       state: stream.state,
     },
     checks: {

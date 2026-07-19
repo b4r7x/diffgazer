@@ -1,5 +1,10 @@
+import {
+  getProviderDetailModelLabel,
+  PROVIDER_DETAIL_ACTION_LABELS,
+  PROVIDER_DETAIL_EMPTY_LABEL,
+} from "@diffgazer/core/providers";
 import type { ProviderWithStatus } from "@diffgazer/core/schemas/config";
-import { OPENROUTER_PROVIDER_ID, PROVIDER_CAPABILITIES } from "@diffgazer/core/schemas/config";
+import { PROVIDER_CAPABILITIES } from "@diffgazer/core/schemas/config";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { Button } from "@diffgazer/ui/components/button";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
@@ -35,35 +40,29 @@ function getButtonConfig(
   return [
     {
       action: actions.onSelectProvider,
-      label: "Select Provider",
+      label: PROVIDER_DETAIL_ACTION_LABELS.selectProvider,
       variant: "primary" as const,
       disabled: isPending,
     },
     {
       action: actions.onSetApiKey,
-      label: "Set API Key",
+      label: PROVIDER_DETAIL_ACTION_LABELS.configureApiKey,
       variant: "secondary" as const,
       disabled: isPending,
     },
     {
       action: actions.onRemoveKey,
-      label: "Remove Key",
+      label: PROVIDER_DETAIL_ACTION_LABELS.removeKey,
       variant: "destructive" as const,
       disabled: isPending || !provider.hasApiKey,
     },
     {
       action: actions.onSelectModel,
-      label: "Select Model...",
+      label: PROVIDER_DETAIL_ACTION_LABELS.selectModel,
       variant: "link" as const,
       disabled: isPending || !provider.hasApiKey,
     },
   ];
-}
-
-function getEmptyModelPlaceholder(provider: ProviderWithStatus): string {
-  if (provider.id === OPENROUTER_PROVIDER_ID) return "Model required";
-  if (!provider.defaultModel) return "No default model";
-  return `${provider.defaultModel} (default)`;
 }
 
 export function ProviderDetails({
@@ -76,13 +75,13 @@ export function ProviderDetails({
 }: ProviderDetailsProps) {
   if (!provider) {
     return (
-      <div className="flex-1 flex flex-col overflow-y-auto">
+      <div className="@container flex flex-1 flex-col overflow-y-auto">
         <div className="p-3 border-b border-border bg-secondary/30 flex justify-between items-center">
           <SectionHeader as="h2" className="mb-0 text-foreground">
             Provider Details
           </SectionHeader>
         </div>
-        <EmptyState className="flex-1">Select a provider to view details</EmptyState>
+        <EmptyState className="flex-1">{PROVIDER_DETAIL_EMPTY_LABEL}</EmptyState>
       </div>
     );
   }
@@ -90,7 +89,7 @@ export function ProviderDetails({
   const capabilities = PROVIDER_CAPABILITIES[provider.id];
   if (!capabilities) {
     return (
-      <div className="flex-1 flex flex-col overflow-y-auto">
+      <div className="@container flex flex-1 flex-col overflow-y-auto">
         <div className="p-3 border-b border-border bg-secondary/30 flex justify-between items-center">
           <SectionHeader as="h2" className="mb-0 text-foreground">
             Provider Details: {provider.name}
@@ -104,7 +103,7 @@ export function ProviderDetails({
   const buttons = getButtonConfig(actions, provider, isPending);
 
   return (
-    <div className="flex-1 flex flex-col overflow-y-auto">
+    <div className="@container flex flex-1 flex-col overflow-y-auto">
       <div className="p-3 border-b border-border bg-secondary/30 flex justify-between items-center">
         <SectionHeader as="h2" className="mb-0 text-foreground">
           Provider Details: {provider.name}
@@ -121,7 +120,7 @@ export function ProviderDetails({
           <SectionHeader variant="muted" bordered className="mb-4 border-border text-accent">
             Capabilities
           </SectionHeader>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
             <CapabilityCard label="Tool Calling" value={capabilities.toolCalling} />
             <CapabilityCard label="JSON Mode" value={capabilities.jsonMode} />
             <CapabilityCard label="Streaming" value={capabilities.streaming} />
@@ -163,7 +162,11 @@ export function ProviderDetails({
                   <span className="text-foreground">{provider.model}</span>
                 ) : (
                   <span className="text-muted-foreground">
-                    {getEmptyModelPlaceholder(provider)}
+                    {getProviderDetailModelLabel(
+                      provider.id,
+                      provider.model,
+                      provider.defaultModel,
+                    )}
                   </span>
                 )
               }

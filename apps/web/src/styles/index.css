@@ -5,3 +5,21 @@
 
 @source "../components";
 @source "../features";
+
+@layer base {
+  html,
+  body,
+  #root {
+    overscroll-behavior-y: none;
+  }
+}
+
+@layer utilities {
+  .overflow-auto,
+  .overflow-x-auto,
+  .overflow-y-auto,
+  .scrollbar-hide,
+  .scrollbar-thin {
+    overscroll-behavior: contain;
+  }
+}

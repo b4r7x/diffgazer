@@ -4,6 +4,7 @@ import { useTheme } from "../../theme/provider";
 
 export interface BadgeProps {
   variant?: BadgeVariant;
+  color?: string;
   size?: "sm" | "md" | "lg";
   dot?: boolean;
   children: string;
@@ -15,7 +16,13 @@ const padding: Record<NonNullable<BadgeProps["size"]>, string> = {
   lg: "  ",
 };
 
-export function Badge({ variant = "neutral", size = "sm", dot = false, children }: BadgeProps) {
+export function Badge({
+  variant = "neutral",
+  color: colorOverride,
+  size = "sm",
+  dot = false,
+  children,
+}: BadgeProps) {
   const { tokens } = useTheme();
 
   const colorMap = {
@@ -26,7 +33,7 @@ export function Badge({ variant = "neutral", size = "sm", dot = false, children 
     neutral: tokens.muted,
   } as const;
 
-  const color = colorMap[variant];
+  const color = colorOverride ?? colorMap[variant];
   const pad = padding[size];
 
   const dotPrefix = dot ? "● " : "";

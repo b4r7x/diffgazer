@@ -1,3 +1,4 @@
+import { formatDuration } from "@diffgazer/core/format";
 import { formatRunId } from "@diffgazer/core/review";
 import type {
   AnalysisStats,
@@ -14,13 +15,12 @@ import { SeverityBreakdown } from "@/components/shared/severity/breakdown";
 import { type CategoryStats, CategoryStatsTable } from "./category-stats-table";
 import { IssuePreviewItem } from "./issue-preview-item";
 
-export type { IssuePreview };
-
 export interface ReviewCompleteSummaryProps {
   stats: AnalysisStats;
   severityCounts: SeverityCounts;
   categoryStats: CategoryStats[];
   topIssues: IssuePreview[];
+  durationMs?: number;
   onEnterReview?: () => void;
   onBack?: () => void;
   className?: string;
@@ -31,6 +31,7 @@ export function ReviewCompleteSummary({
   severityCounts,
   categoryStats,
   topIssues,
+  durationMs,
   onEnterReview,
   onBack,
   className,
@@ -61,6 +62,11 @@ export function ReviewCompleteSummary({
             </>
           )}
         </p>
+        {durationMs !== undefined ? (
+          <p className="mt-1 text-sm text-muted-foreground">
+            Duration: <span className="text-foreground">{formatDuration(durationMs)}</span>
+          </p>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -52,7 +52,7 @@ function buildTabCycle({
   return cycle;
 }
 
-export function getHistoryFooter(focusZone: HistoryFocusZone) {
+function getHistoryFooter(focusZone: HistoryFocusZone) {
   if (focusZone === "search") {
     return {
       shortcuts: [{ key: "↓", label: "Timeline" }],

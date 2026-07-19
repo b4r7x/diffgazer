@@ -140,6 +140,7 @@ export const SetupStatusSchema = z.object({
 export type SetupStatus = z.infer<typeof SetupStatusSchema>;
 
 export const InitResponseSchema = z.object({
+  configPath: z.string().min(1),
   config: z
     .object({
       provider: AIProviderSchema,

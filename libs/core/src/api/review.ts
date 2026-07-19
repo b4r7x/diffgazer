@@ -172,10 +172,6 @@ export async function refreshReviewContext(
   return client.post<ReviewContextResponse>("/api/review/context/refresh", options);
 }
 
-export async function deleteReview(client: ApiClient, id: string): Promise<{ existed: boolean }> {
-  return client.delete<{ existed: boolean }>(`/api/review/reviews/${id}`);
-}
-
 export async function cancelReviewSession(
   client: ApiClient,
   reviewId: string,
@@ -193,6 +189,5 @@ export const bindReview = (client: ApiClient) => ({
     getActiveReviewSession(client, mode, signal),
   getReviewContext: () => getReviewContext(client),
   refreshReviewContext: (options?: { force?: boolean }) => refreshReviewContext(client, options),
-  deleteReview: (id: string) => deleteReview(client, id),
   cancelReviewSession: (reviewId: string) => cancelReviewSession(client, reviewId),
 });

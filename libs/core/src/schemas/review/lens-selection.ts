@@ -23,3 +23,19 @@ export function isLensSelectionDirty(
 ): boolean {
   return isArrayDirty(currentLenses, selectedLenses);
 }
+
+export function deriveLensSelectionState(
+  persistedRaw: Array<string | null>,
+  selected: LensId[] | null,
+  fallback: LensId[],
+): { effective: LensId[]; isDirty: boolean; hasSelection: boolean } {
+  const persisted = persistedRaw.filter(isLensId);
+  const current = persisted.length > 0 ? persisted : fallback;
+  const effective = resolveEffectiveLenses(persisted, selected, fallback);
+
+  return {
+    effective,
+    isDirty: isLensSelectionDirty(current, selected),
+    hasSelection: effective.length > 0,
+  };
+}

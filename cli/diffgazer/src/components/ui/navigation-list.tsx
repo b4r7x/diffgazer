@@ -1,8 +1,8 @@
 import { Box, Text, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext } from "react";
+import { type ListNavigationItem, useListNavigation } from "../../hooks/use-list-navigation";
 import { collectChildItems } from "../../lib/collect-child-items";
-import { type ListNavigationItem, useListNavigation } from "../../lib/use-list-navigation";
 import type { CliColorTokens } from "../../theme/palettes";
 import { useTheme } from "../../theme/provider";
 

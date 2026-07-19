@@ -39,7 +39,7 @@ function Wrapper({ children }: { children: ReactNode }) {
 
 const baseContext: ContextInfo = {
   providerName: "openrouter",
-  providerMode: "openrouter/test-model",
+  providerModel: "openrouter/test-model",
   trustedDir: "/repo",
 };
 
@@ -82,6 +82,38 @@ describe("HomePagePresentation — Resume Last Review gating", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRouterNavigate.mockReset();
+  });
+
+  it("renders trusted, provider, and last-run context when data is present", () => {
+    renderPresentation(
+      buildProps({
+        context: {
+          ...baseContext,
+          lastRunId: "12345678-1234-4123-8123-123456789abc",
+          lastRunIssueCount: 2,
+        },
+      }),
+    );
+
+    expect(screen.getByText("Trusted")).toBeInTheDocument();
+    expect(screen.getByText("/repo")).toBeInTheDocument();
+    expect(screen.getByText("Provider")).toBeInTheDocument();
+    expect(screen.getByText("openrouter (openrouter/test-model)")).toBeInTheDocument();
+    expect(screen.getByText("Last Run")).toBeInTheDocument();
+    expect(screen.getByText("#12345678")).toBeInTheDocument();
+    expect(screen.getByText("(2 issues)")).toBeInTheDocument();
+    expect(screen.queryByText(/12345678-1234/)).not.toBeInTheDocument();
+  });
+
+  it("renders every context row with explicit values when data is absent", () => {
+    renderPresentation(buildProps({ context: {}, isTrusted: false, repoRoot: null }));
+
+    expect(screen.getByText("Not trusted")).toBeInTheDocument();
+    expect(screen.getByText("—")).toBeInTheDocument();
+    expect(screen.getByText("Provider")).toBeInTheDocument();
+    expect(screen.getByText("Not configured")).toBeInTheDocument();
+    expect(screen.getByText("Last Run")).toBeInTheDocument();
+    expect(screen.getByText("None")).toBeInTheDocument();
   });
 
   it("disables Resume Last Review when no resumable session exists", () => {
@@ -246,7 +278,7 @@ describe("HomePagePresentation — menu parity", () => {
     expect(screen.getByRole("menuitem", { name: "Help" })).toBeInTheDocument();
   });
 
-  it("navigates to history via the home shortcut", async () => {
+  it("navigates to history via the home menu", async () => {
     const navigateMock = createNavigateMock();
     const clearScopedRouteState = vi.fn();
     const user = userEvent.setup();
@@ -256,7 +288,7 @@ describe("HomePagePresentation — menu parity", () => {
         clearScopedRouteState,
       }),
     );
-    await user.keyboard("h");
+    await user.click(screen.getByRole("menuitem", { name: "History" }));
     expect(navigateMock.mock).toHaveBeenCalledWith(expect.objectContaining({ to: "/history" }));
   });
 
@@ -272,14 +304,14 @@ describe("HomePagePresentation — menu parity", () => {
     );
 
     // /history stores "run"/"date" — both must be reset so its selection clears (F-159).
-    await user.keyboard("h");
+    await user.click(screen.getByRole("menuitem", { name: "History" }));
     expect(clearScopedRouteState).toHaveBeenCalledWith("/history", "run");
     expect(clearScopedRouteState).toHaveBeenCalledWith("/history", "date");
     expect(clearScopedRouteState).not.toHaveBeenCalledWith("/history", "highlighted");
 
     clearScopedRouteState.mockClear();
 
-    await user.keyboard("s");
+    await user.click(screen.getByRole("menuitem", { name: "Settings" }));
     expect(clearScopedRouteState).toHaveBeenCalledWith("/settings", "highlighted");
     expect(clearScopedRouteState).toHaveBeenCalledTimes(1);
     expect(navigateMock.mock).toHaveBeenLastCalledWith(
@@ -289,7 +321,7 @@ describe("HomePagePresentation — menu parity", () => {
     clearScopedRouteState.mockClear();
 
     // /help stores nothing — no clear should fire.
-    await user.keyboard("{Shift>}?{/Shift}");
+    await user.click(screen.getByRole("menuitem", { name: "Help" }));
     expect(clearScopedRouteState).not.toHaveBeenCalled();
   });
 });

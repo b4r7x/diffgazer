@@ -50,13 +50,15 @@ export const HELP_SHORTCUTS: Shortcut[] = [
   SWITCH_PANE_SHORTCUT,
   { key: "1-4", label: "Switch Tab (in Review)" },
   { key: "j/k", label: "Navigate Lists and Fix Plan" },
-  { key: "↑/↓ · PgUp/PgDn · Home/End", label: "Scroll Content" },
+  { key: "↑/↓", label: "Scroll Content" },
+  { key: "PgUp/PgDn", label: "Scroll Content" },
+  { key: "Home/End", label: "Scroll Content" },
   { key: "s", label: "Open Settings" },
   { key: "q", label: "Quit" },
   { key: "?", label: "Open Help" },
 ];
 
-// Trust-panel footer shortcuts consumed by both surfaces' home trust prompt.
+// Both surfaces consume the permission entries; Tab and q are TUI-home shortcuts.
 export const TRUST_FOOTER_SHORTCUTS: Shortcut[] = [
   { key: "↑/↓", label: "Navigate Permissions" },
   { key: "Enter/Space", label: "Toggle" },

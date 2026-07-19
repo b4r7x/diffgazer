@@ -307,17 +307,15 @@ test("standalone keys hooks unreachable through the UI graph are side-effect imp
   const allKeys = allRegistryIndexNames(keysRegistryDir);
   const imports = standaloneKeysHookImports(keysRegistryDir, allKeys, uiRegistryDir);
 
-  // scroll-lock's entry hook is imported by no UI component, so it only enters
-  // the Vite build through this side-effect import (F-053 hardening).
-  assert.ok(
-    imports.includes("@/hooks/use-scroll-lock"),
-    "use-scroll-lock must be side-effect imported so the bundler transforms it",
-  );
-
-  // Entry hooks the UI graph already imports (dialog -> use-focus-restore,
-  // dialog-shell -> use-focus-trap) reach the build through their components and
-  // must not be redundantly re-imported here.
-  for (const reached of ["use-focus-restore", "use-focus-trap", "use-navigation"]) {
+  // Entry hooks the UI graph already imports (dialog -> use-focus-restore and
+  // use-scroll-lock, dialog-shell -> use-focus-trap) reach the build through
+  // their components and must not be redundantly re-imported here.
+  for (const reached of [
+    "use-focus-restore",
+    "use-focus-trap",
+    "use-navigation",
+    "use-scroll-lock",
+  ]) {
     assert.ok(
       !imports.includes(`@/hooks/${reached}`),
       `${reached} already enters the build via a UI component and must not be re-imported`,

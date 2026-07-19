@@ -28,6 +28,19 @@ interface LogWindowState {
 
 type ScrollAlignment = "end" | "start";
 
+interface ScrollWindowAnchor {
+  entryId: string;
+  pixelOffset: number;
+  row: number;
+}
+
+interface LogAnnouncement {
+  id: string;
+  message: string;
+}
+
+const ACTIVITY_ANNOUNCEMENT_DELAY_MS = 750;
+
 export function ActivityLog({
   events,
   sourceFilter,
@@ -39,7 +52,11 @@ export function ActivityLog({
 }: ActivityLogProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const pendingScrollAlignmentRef = useRef<ScrollAlignment | null>(null);
+  const pendingWindowAnchorRef = useRef<ScrollWindowAnchor | null>(null);
   const committedRowIndexRef = useRef<EventRowIndex | null>(null);
+  const announcementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingAnnouncementRef = useRef<LogAnnouncement | null>(null);
+  const [announcement, setAnnouncement] = useState<LogAnnouncement | null>(null);
   const normalizedSourceFilter = sourceFilter || null;
   const rowIndex = deriveEventRowIndex(
     committedRowIndexRef.current,
@@ -70,6 +87,24 @@ export function ActivityLog({
   const hasPrevious = windowStart > rowBounds.start;
   const hasNext = windowEnd < rowBounds.end;
   const entries = convertEventRowWindow(rowIndex, windowStart, windowEnd);
+
+  const captureScrollWindowAnchor = (): ScrollWindowAnchor | null => {
+    const container = scrollRef.current;
+    if (!container) return null;
+    const rows = Array.from(container.querySelectorAll<HTMLElement>("[data-log-entry-id]"));
+    const firstVisibleIndex = rows.findIndex(
+      (row) => row.offsetTop + Math.max(row.offsetHeight, 1) > container.scrollTop,
+    );
+    const index = firstVisibleIndex >= 0 ? firstVisibleIndex : rows.length - 1;
+    const row = rows[index];
+    const entry = entries[index];
+    if (!row || !entry) return null;
+    return {
+      entryId: entry.id,
+      pixelOffset: row.offsetTop - container.scrollTop,
+      row: windowStart + index,
+    };
+  };
 
   const showPreviousWindow = () => {
     if (!hasPrevious) return;
@@ -102,12 +137,29 @@ export function ActivityLog({
     const isAtRenderedBottom = distanceFromBottom <= 50;
 
     if (container.scrollTop <= 50 && hasPrevious) {
-      showPreviousWindow();
+      const anchor = captureScrollWindowAnchor();
+      if (!anchor) return;
+      pendingWindowAnchorRef.current = anchor;
+      setWindowState({
+        cacheRevision,
+        endRow: Math.min(rowBounds.end, anchor.row + 1),
+        isNearBottom: false,
+        sourceFilter: normalizedSourceFilter,
+      });
       return;
     }
 
     if (isAtRenderedBottom && hasNext) {
-      showNextWindow();
+      const anchor = captureScrollWindowAnchor();
+      if (!anchor) return;
+      const nextEnd = Math.min(rowBounds.end, anchor.row + LOG_WINDOW_SIZE);
+      pendingWindowAnchorRef.current = anchor;
+      setWindowState({
+        cacheRevision,
+        endRow: nextEnd,
+        isNearBottom: nextEnd === rowBounds.end,
+        sourceFilter: normalizedSourceFilter,
+      });
       return;
     }
 
@@ -130,13 +182,63 @@ export function ActivityLog({
   // biome-ignore lint/correctness/useExhaustiveDependencies: windowState is the commit trigger for aligning a newly rendered log window; the pending alignment is stored in a ref.
   useLayoutEffect(() => {
     const alignment = pendingScrollAlignmentRef.current;
+    const anchor = pendingWindowAnchorRef.current;
     const container = scrollRef.current;
-    if (!alignment || !container) return;
+    if (!container) return;
+    if (anchor) {
+      pendingWindowAnchorRef.current = null;
+      const anchoredRow = Array.from(
+        container.querySelectorAll<HTMLElement>("[data-log-entry-id]"),
+      ).find((row) => row.dataset.logEntryId === anchor.entryId);
+      if (anchoredRow) {
+        container.scrollTop = anchoredRow.offsetTop - anchor.pixelOffset;
+      }
+    }
+    if (!alignment) return;
     pendingScrollAlignmentRef.current = null;
     container.scrollTop = alignment === "start" ? 0 : container.scrollHeight;
   }, [windowState]);
 
   const tailToken = getEventRowTail(rowIndex);
+  const latestEntry = convertEventRowWindow(
+    rowIndex,
+    Math.max(rowBounds.start, rowBounds.end - 1),
+    rowBounds.end,
+  ).at(-1);
+  const announcedTailRef = useRef(tailToken);
+  const announcedSourceFilterRef = useRef(normalizedSourceFilter);
+
+  useEffect(() => {
+    if (announcedSourceFilterRef.current !== normalizedSourceFilter) {
+      announcedSourceFilterRef.current = normalizedSourceFilter;
+      announcedTailRef.current = tailToken;
+      pendingAnnouncementRef.current = null;
+      if (announcementTimerRef.current) {
+        clearTimeout(announcementTimerRef.current);
+        announcementTimerRef.current = null;
+      }
+      return;
+    }
+    if (announcedTailRef.current === tailToken) return;
+    announcedTailRef.current = tailToken;
+    if (!showCursor || !latestEntry) return;
+    pendingAnnouncementRef.current = { id: latestEntry.id, message: latestEntry.message };
+    if (announcementTimerRef.current) return;
+    announcementTimerRef.current = setTimeout(() => {
+      announcementTimerRef.current = null;
+      const announcement = pendingAnnouncementRef.current;
+      pendingAnnouncementRef.current = null;
+      if (announcement) setAnnouncement(announcement);
+    }, ACTIVITY_ANNOUNCEMENT_DELAY_MS);
+  }, [latestEntry, normalizedSourceFilter, showCursor, tailToken]);
+
+  useEffect(
+    () => () => {
+      if (announcementTimerRef.current) clearTimeout(announcementTimerRef.current);
+    },
+    [],
+  );
+
   useEffect(() => {
     if (!shouldRenderTail || !tailToken) return;
     const container = scrollRef.current;
@@ -184,33 +286,39 @@ export function ActivityLog({
   };
 
   return (
-    <ScrollArea
-      ref={scrollRef}
-      onScroll={handleScroll}
-      onKeyDown={handleKeyDown}
-      role="log"
-      aria-live="polite"
-      aria-label="Activity log"
-      className={cn("flex-1 font-mono text-sm leading-relaxed", className)}
-      {...props}
-    >
-      <div className="space-y-1 p-2">
-        {entries.map((entry) => (
-          <LogEntry
-            key={entry.id}
-            timestamp={entry.timestamp}
-            tag={entry.tag}
-            tagType={entry.tagType}
-            source={entry.source}
-            message={entry.message}
-            isWarning={entry.isWarning}
-            isError={entry.isError}
-          />
-        ))}
-        {showCursor && (
-          <span className="inline-block h-4 w-2 bg-foreground cursor-blink" aria-hidden="true" />
-        )}
-      </div>
-    </ScrollArea>
+    <>
+      <ScrollArea
+        ref={scrollRef}
+        onScroll={handleScroll}
+        onKeyDown={handleKeyDown}
+        role="log"
+        aria-live="off"
+        aria-label="Activity log"
+        className={cn("flex-1 font-mono text-sm leading-relaxed", className)}
+        {...props}
+      >
+        <div className="space-y-1 p-2">
+          {entries.map((entry) => (
+            <LogEntry
+              key={entry.id}
+              data-log-entry-id={entry.id}
+              timestamp={entry.timestamp}
+              tag={entry.tag}
+              tagType={entry.tagType}
+              source={entry.source}
+              message={entry.message}
+              isWarning={entry.isWarning}
+              isError={entry.isError}
+            />
+          ))}
+          {showCursor && (
+            <span className="inline-block h-4 w-2 bg-foreground cursor-blink" aria-hidden="true" />
+          )}
+        </div>
+      </ScrollArea>
+      <output aria-live="polite" aria-atomic="true" className="sr-only">
+        {announcement && <span key={announcement.id}>{announcement.message}</span>}
+      </output>
+    </>
   );
 }

@@ -1,6 +1,8 @@
 import { matchQueryState } from "@diffgazer/core/api/hooks";
 import { deriveTrustStatus } from "@diffgazer/core/navigation";
 import {
+  buildHistoryWarningMessages,
+  deriveHistoryDetailState,
   formatRunId,
   HISTORY_SEARCH_PLACEHOLDER,
   summarizeHistoryWarnings,
@@ -15,51 +17,21 @@ import { type KeyboardEvent, useRef } from "react";
 import { CenteredStatus } from "@/components/shared/centered-status";
 import { ConfigurationStatus } from "@/components/shared/configuration-status";
 import { TrustPanel } from "@/components/shared/trust-panel";
-import {
-  type HistoryInsightsDetailState,
-  HistoryInsightsPane,
-} from "@/features/history/components/insights-pane";
+import { HistoryInsightsPane } from "@/features/history/components/insights-pane";
 import { TimelineList } from "@/features/history/components/timeline-list";
 import { useHistoryKeyboard } from "@/features/history/hooks/use-keyboard";
 import { useHistoryPage } from "@/features/history/hooks/use-page";
 import { useConfigData } from "@/hooks/use-config";
 
 function HistoryWarnings({ warnings }: { warnings: readonly ReviewListWarning[] }) {
-  const summary = summarizeHistoryWarnings(warnings);
-  const hasWarnings =
-    summary.unreadableReviewCount > 0 ||
-    summary.droppedIssueCount > 0 ||
-    summary.indexBuildFailed ||
-    summary.indexRewriteFailed;
-  if (!hasWarnings) return null;
+  const messages = buildHistoryWarningMessages(summarizeHistoryWarnings(warnings));
+  if (messages.length === 0) return null;
 
   return (
     <output className="shrink-0 mb-1 block space-y-1 text-sm text-warning-text">
-      {summary.unreadableReviewCount > 0 ? (
-        <p>
-          {summary.unreadableReviewCount} saved review
-          {summary.unreadableReviewCount === 1 ? "" : "s"} could not be read.
-        </p>
-      ) : null}
-      {summary.droppedIssueCount > 0 ? (
-        <p>
-          {summary.droppedIssueCount} invalid saved issue
-          {summary.droppedIssueCount === 1 ? " was" : "s were"} omitted. Re-run the affected reviews
-          for complete results.
-        </p>
-      ) : null}
-      {summary.indexBuildFailed ? (
-        <p>
-          The history index could not be rebuilt. Readable reviews are still shown; reopen History
-          to retry.
-        </p>
-      ) : null}
-      {summary.indexRewriteFailed ? (
-        <p>
-          The history index could not be cleaned up. Readable reviews are still shown; reopen
-          History to retry.
-        </p>
-      ) : null}
+      {messages.map((message) => (
+        <p key={message}>{message}</p>
+      ))}
     </output>
   );
 }
@@ -108,6 +80,7 @@ function HistoryPageContent() {
     handleRunsBoundary,
     handleSearchEscape,
     handleSearchArrowDown,
+    handleRunSelect,
     handleRunActivate,
     handleIssueClick,
     highlightedIssueId,
@@ -120,18 +93,11 @@ function HistoryPageContent() {
   const insightsListRef = useRef<HTMLDivElement>(null);
   const retryRef = useRef<HTMLButtonElement>(null);
   const activeRunId = selectedRunId;
-  let insightsDetailState: HistoryInsightsDetailState = { status: "ready" };
-  if (reviewDetailQuery.isLoading) {
-    insightsDetailState = { status: "loading" };
-  } else if (reviewDetailQuery.isError) {
-    insightsDetailState = {
-      status: "error",
-      message: reviewDetailQuery.error.message,
-      retry: () => {
-        void reviewDetailQuery.refetch();
-      },
-    };
-  }
+  const insightsDetailState = deriveHistoryDetailState({
+    isLoading: reviewDetailQuery.isLoading,
+    error: reviewDetailQuery.error,
+    refetch: reviewDetailQuery.refetch,
+  });
 
   useHistoryKeyboard({
     enabled: reviewsQuery.isSuccess,
@@ -198,22 +164,25 @@ function HistoryPageContent() {
             /
           </span>
         }
-        className="border-border bg-background text-sm"
+        className="border-border bg-background"
       />
 
-      <div data-row="history" className="flex flex-1 overflow-hidden gap-px">
+      <div
+        data-row="history"
+        className="flex min-h-0 flex-1 flex-col gap-px overflow-y-auto md:flex-row md:overflow-hidden"
+      >
         <Panel
           ref={timelineRef}
           as="aside"
           aria-label="Review sections"
           data-pane="timeline"
           data-focused={focusZone === "timeline" || undefined}
-          className="mt-3 w-48 flex flex-col shrink-0 border border-border data-[focused]:border-info focus:outline-none"
+          className="mt-3 flex flex-col border border-border data-[focused]:border-info focus:outline-none md:w-48 md:shrink-0"
         >
           <Panel.Label variant="border" aria-hidden="true">
             Sections
           </Panel.Label>
-          <div className="flex-1 overflow-y-auto px-2 pb-2 pt-3">
+          <div className="px-2 pb-2 pt-3 md:flex-1 md:overflow-y-auto">
             <TimelineList
               items={timelineItems}
               selectedId={selectedDateId}
@@ -233,7 +202,7 @@ function HistoryPageContent() {
           aria-label="Review runs"
           data-pane="runs"
           data-focused={focusZone === "runs" || focusZone === "load-more" || undefined}
-          className="mt-3 flex-1 min-w-0 flex flex-col border border-border data-[focused]:border-info focus:outline-none"
+          className="mt-3 min-w-0 flex flex-col border border-border data-[focused]:border-info focus:outline-none md:flex-1 md:overflow-hidden"
         >
           <Panel.Label variant="border" aria-hidden="true">
             Runs
@@ -241,7 +210,7 @@ function HistoryPageContent() {
           <div className="flex justify-end px-3 pt-3">
             <span className="text-2xs text-muted-foreground font-mono">Sort: Recent</span>
           </div>
-          <div className="flex-1 overflow-y-auto p-2">
+          <div className="p-2 md:flex-1 md:overflow-y-auto">
             {mappedRuns.length > 0 ? (
               <NavigationList
                 ref={runsListRef}
@@ -249,10 +218,7 @@ function HistoryPageContent() {
                 selectedId={selectedRunId}
                 highlighted={focusZone === "runs" ? selectedRunId : null}
                 onFocus={() => setFocusZone("runs")}
-                onSelect={(id) => {
-                  setFocusZone("runs");
-                  setSelectedRunId(id);
-                }}
+                onSelect={handleRunSelect}
                 onEnter={handleRunActivate}
                 onHighlightChange={setSelectedRunId}
                 onNavigationBoundaryReached={(direction) => {
@@ -268,7 +234,6 @@ function HistoryPageContent() {
                   <NavigationList.Item
                     key={run.id}
                     id={run.id}
-                    onDoubleClick={() => handleRunActivate(run.id)}
                     className="border-b border-border last:border-b-0"
                   >
                     <NavigationList.Title>{run.displayId}</NavigationList.Title>
@@ -316,7 +281,7 @@ function HistoryPageContent() {
           aria-label="Review insights"
           data-pane="insights"
           data-focused={focusZone === "insights" || focusZone === "retry" || undefined}
-          className="mt-3 w-80 min-h-0 flex flex-col shrink-0 border border-border data-[focused]:border-info focus:outline-none"
+          className="mt-3 shrink-0 flex flex-col border border-border data-[focused]:border-info focus:outline-none md:min-h-0 md:w-80 md:overflow-hidden"
         >
           <Panel.Label variant="border" aria-hidden="true">
             Insights{selectedRun ? ` · ${formatRunId(selectedRun.id)}` : ""}

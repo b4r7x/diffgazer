@@ -7,14 +7,11 @@ import {
   buildReviewSummary,
 } from "@diffgazer/core/review";
 import type { LensStat } from "@diffgazer/core/schemas/events";
-import { BACK_SHORTCUT } from "@diffgazer/core/schemas/presentation";
+import { BACK_SHORTCUT, type IssuePreview } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue, ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { useKey, useScope } from "@diffgazer/keys";
 import type { CategoryStats } from "@/features/review/components/category-stats-table";
-import {
-  type IssuePreview,
-  ReviewCompleteSummary,
-} from "@/features/review/components/review-complete-summary";
+import { ReviewCompleteSummary } from "@/features/review/components/review-complete-summary";
 
 const DEFAULT_CATEGORY_COLOR = "text-info-text";
 
@@ -35,6 +32,7 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
 interface ReviewSummaryViewProps {
   issues: ReviewIssue[];
   reviewId: string | null;
+  durationMs?: number;
   lensStats?: LensStat[];
   droppedDuplicates?: number;
   droppedBelowThreshold?: number;
@@ -46,6 +44,7 @@ interface ReviewSummaryViewProps {
 export function ReviewSummaryView({
   issues,
   reviewId,
+  durationMs,
   lensStats,
   droppedDuplicates,
   droppedBelowThreshold,
@@ -102,6 +101,7 @@ export function ReviewSummaryView({
           severityCounts={summary.severityCounts}
           categoryStats={categoryStats}
           topIssues={topIssues}
+          durationMs={durationMs}
           onEnterReview={onEnterReview}
           onBack={onBack}
         />

@@ -1,4 +1,4 @@
-import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
+import { buildHomeContextRows, type ContextInfo } from "@diffgazer/core/schemas/presentation";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { useNavigate } from "@tanstack/react-router";
 import { InfoField } from "./info-field";
@@ -17,6 +17,7 @@ export function ContextSidebar({
   pending = false,
 }: ContextSidebarProps) {
   const navigate = useNavigate();
+  const rows = buildHomeContextRows({ context, isTrusted, projectPath });
 
   const navigateUnlessPending = (to: "/settings/providers" | "/settings/trust-permissions") => {
     if (pending) return;
@@ -30,47 +31,36 @@ export function ContextSidebar({
       </Panel.Header>
       <Panel.Content inert={pending || undefined}>
         {isTrusted ? (
-          context.trustedDir && (
-            <InfoField label="Trusted" color="blue">
-              <span className="break-all font-mono opacity-90">{context.trustedDir}</span>
-            </InfoField>
-          )
+          <InfoField label={rows.trust.label} color="blue">
+            <span className="break-all font-mono opacity-90">{rows.trust.value}</span>
+          </InfoField>
         ) : (
           <InfoField
-            label="Not trusted"
+            label={rows.trust.label}
             color="yellow"
             onClick={() => navigateUnlessPending("/settings/trust-permissions")}
             ariaLabel="Grant trust permissions"
           >
-            <span className="break-all font-mono opacity-90">{projectPath}</span>
+            <span className="break-all font-mono opacity-90">{rows.trust.value}</span>
             <span className="text-xs opacity-70 ml-2">Click to grant trust →</span>
           </InfoField>
         )}
-        {context.providerName && (
-          <InfoField
-            label="Provider"
-            color="violet"
-            onClick={() => navigateUnlessPending("/settings/providers")}
-            ariaLabel="Configure provider settings"
-          >
-            <span className="opacity-90">
-              {context.providerName}
-              {context.providerMode && ` (${context.providerMode})`}
-            </span>
-          </InfoField>
-        )}
-        {context.lastRunId && (
-          <InfoField label="Last Run" color="green">
-            <div className="flex justify-between items-center">
-              <span className="opacity-90">#{context.lastRunId}</span>
-              {context.lastRunIssueCount !== undefined && (
-                <span className="text-warning-text text-xs">
-                  ({context.lastRunIssueCount} issues)
-                </span>
-              )}
-            </div>
-          </InfoField>
-        )}
+        <InfoField
+          label={rows.provider.label}
+          color="violet"
+          onClick={() => navigateUnlessPending("/settings/providers")}
+          ariaLabel="Configure provider settings"
+        >
+          <span className="opacity-90">{rows.provider.value}</span>
+        </InfoField>
+        <InfoField label={rows.lastRun.label} color="green">
+          <div className="flex justify-between items-center">
+            <span className="opacity-90">{rows.lastRun.value}</span>
+            {rows.lastRun.issueCount !== undefined && (
+              <span className="text-warning-text text-xs">{rows.lastRun.issueCount}</span>
+            )}
+          </div>
+        </InfoField>
       </Panel.Content>
     </Panel>
   );

@@ -7,6 +7,11 @@ export const NO_TRUST_CAPABILITIES: TrustCapabilities = {
   runCommands: false,
 };
 
+export const DEFAULT_TRUST_PROMPT_CAPABILITIES: TrustCapabilities = {
+  readFiles: true,
+  runCommands: false,
+};
+
 export const TRUST_CAPABILITY_OPTIONS = [
   {
     id: "readFiles",

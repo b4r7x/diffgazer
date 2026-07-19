@@ -274,7 +274,8 @@ export function SelectContent({
     open && isDropdown,
     {
       ref: selectContentRef,
-      contains: (target) => target !== null && (selectContentRef.current?.contains(target) ?? false),
+      contains: (target) =>
+        target !== null && (selectContentRef.current?.contains(target) ?? false),
     },
   );
 

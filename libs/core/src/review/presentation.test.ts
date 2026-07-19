@@ -4,8 +4,15 @@ import { AGENT_METADATA, type AgentState } from "../schemas/events/index.js";
 import { SavedReviewSchema } from "../schemas/review/index.js";
 import {
   AGENT_STATUS_META,
+  buildSeverityBreakdownRows,
+  CONFIGURATION_ERROR_COPY,
+  CONFIGURE_PROVIDER_LABEL,
+  classifyReviewStreamError,
   DETAILS_EMPTY_COPY,
+  describeReviewStartError,
+  formatSeverityFilterLabel,
   getAgentStatusMeta,
+  getAlternateReviewMode,
   getApiKeyMissingCopy,
   getDetailsEmptyCopy,
   getNoChangesCopy,
@@ -32,6 +39,14 @@ function makeAgent(
 }
 
 describe("review presentation contracts", () => {
+  it("builds ordered severity rows with zero-count tracks", () => {
+    const rows = buildSeverityBreakdownRows({ blocker: 0, high: 3, medium: 1, low: 0, nit: 0 });
+
+    expect(rows.map((row) => row.severity)).toEqual(["blocker", "high", "medium", "low", "nit"]);
+    expect(rows[0]).toMatchObject({ count: 0, filledCells: 0, emptyCells: 16 });
+    expect(rows[1]).toMatchObject({ count: 3, total: 4, filledCells: 12, emptyCells: 4 });
+  });
+
   it("builds complete issue metadata and fix-step presentation from a saved review", () => {
     const saved = SavedReviewSchema.parse({
       metadata: {
@@ -75,6 +90,15 @@ describe("review presentation contracts", () => {
                 files: ["src/auth.ts", "src/auth.test.ts"],
               },
             ],
+            trace: [
+              {
+                step: 1,
+                tool: "search",
+                timestamp: "2026-07-14T08:00:01.000Z",
+                inputSummary: "find the caller",
+                outputSummary: "found one caller",
+              },
+            ],
           },
         ],
       },
@@ -85,7 +109,6 @@ describe("review presentation contracts", () => {
         additions: 5,
         deletions: 1,
       },
-      drilldowns: [],
     });
 
     const issue = saved.result.issues[0];
@@ -105,7 +128,20 @@ describe("review presentation contracts", () => {
           files: ["src/auth.ts", "src/auth.test.ts"],
         },
       ],
+      trace: [
+        {
+          step: 1,
+          tool: "search",
+          timestamp: "2026-07-14T08:00:01.000Z",
+          input: { label: "in:", summary: "find the caller" },
+          output: { label: "out:", summary: "found one caller" },
+        },
+      ],
     });
+  });
+
+  it("keeps the severity-filter label shared across surfaces", () => {
+    expect(formatSeverityFilterLabel("high", 3)).toBe("HIGH 3");
   });
 
   it("keeps the shared issue-details empty copy", () => {
@@ -137,6 +173,9 @@ describe("review presentation contracts", () => {
       switchLabel: "Review Unstaged",
     });
     expect(Object.keys(NO_CHANGES_COPY)).toEqual(["staged", "unstaged", "files"]);
+    expect(getAlternateReviewMode("staged")).toBe("unstaged");
+    expect(getAlternateReviewMode("unstaged")).toBe("staged");
+    expect(getAlternateReviewMode("files")).toBe("unstaged");
   });
 
   it("keeps the shared agent status badge metadata", () => {
@@ -233,5 +272,61 @@ describe("review presentation contracts", () => {
       title: "API Key Required",
       body: "No API key configured. Add your API key in Settings to start reviewing code.",
     });
+    expect(CONFIGURATION_ERROR_COPY).toEqual({
+      title: "Configuration Unavailable",
+      body: "Diffgazer could not load the current configuration. Retry the request or return home.",
+    });
+    expect(CONFIGURE_PROVIDER_LABEL).toBe("Configure Provider");
+  });
+
+  it.each([
+    {
+      code: "API_KEY_MISSING",
+      title: "API Key Missing",
+      message: "API key not found. Add one in Settings → Providers.",
+    },
+    {
+      code: "UNSUPPORTED_PROVIDER",
+      title: "Provider Not Configured",
+      message: "Pick an AI provider in Settings → Providers.",
+    },
+    {
+      code: "MODEL_ERROR",
+      title: "Model Not Selected",
+      message: "API key not found",
+    },
+    {
+      code: "KEYRING_READ_FAILED",
+      title: "Credential Storage Unavailable",
+      message: "API key not found. Check Settings → Storage.",
+    },
+  ])("describes $code review start failures", ({ code, title, message }) => {
+    const error = Object.assign(new Error("API key not found"), { code, status: 400 });
+
+    expect(describeReviewStartError(error)).toEqual({ title, message });
+  });
+
+  it("falls back for unstructured review start failures", () => {
+    expect(describeReviewStartError(new Error("network failed"))).toEqual({
+      title: "Failed to Start Review",
+      message: "Could not create a review session.",
+    });
+  });
+
+  it("classifies review stream failures by structured code before message fallback", () => {
+    expect(classifyReviewStreamError("credentials rejected", "API_KEY_MISSING")).toEqual({
+      kind: "api-key",
+      title: "API Key Error",
+      guidance: "Your API key may be invalid or expired.",
+      ctaLabel: "Configure Provider",
+    });
+    expect(classifyReviewStreamError("API key connection dropped", "STREAM_ERROR")).toEqual({
+      kind: "transport",
+      title: "Connection Lost",
+      guidance: "The review stream was interrupted. Retry to reconnect to the active review.",
+      ctaLabel: "Retry",
+    });
+    expect(classifyReviewStreamError("API-key rejected", "SESSION_STALE").kind).toBe("other");
+    expect(classifyReviewStreamError("API-key rejected", null).kind).toBe("api-key");
   });
 });

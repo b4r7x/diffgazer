@@ -134,7 +134,7 @@ export function ProviderList({
                 filterButtonProps?.onFocus();
                 onFilterFocus?.(index);
               }}
-              className="min-h-0 min-w-0 px-2 py-0.5 text-2xs"
+              className="text-2xs pointer-coarse:min-h-11 pointer-coarse:px-3"
             >
               {f.label}
             </ToggleGroupItem>

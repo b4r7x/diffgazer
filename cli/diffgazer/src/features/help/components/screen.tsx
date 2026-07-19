@@ -6,6 +6,9 @@ import { Panel } from "../../../components/ui/panel";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
+import { terminalCellWidth } from "../../../lib/terminal-width";
+
+const HELP_KEY_WIDTH = Math.max(...HELP_SHORTCUTS.map(({ key }) => terminalCellWidth(key)));
 
 export function HelpScreen(): ReactElement {
   usePageFooter({ shortcuts: BACK_SHORTCUTS });
@@ -21,8 +24,8 @@ export function HelpScreen(): ReactElement {
               <SectionHeader>Keyboard Shortcuts</SectionHeader>
               <Box flexDirection="column">
                 {HELP_SHORTCUTS.map((s) => (
-                  <Box key={s.key} gap={1}>
-                    <Box width={12}>
+                  <Box key={`${s.key}:${s.label}`} gap={1}>
+                    <Box width={HELP_KEY_WIDTH}>
                       <Text bold>{s.key}</Text>
                     </Box>
                     <Text>{s.label}</Text>

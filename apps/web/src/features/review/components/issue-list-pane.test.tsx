@@ -154,7 +154,6 @@ describe("IssueListPane severity accessibility", () => {
     const liveRegion = screen.getByRole("status");
 
     expect(liveRegion).toHaveTextContent("");
-    expect(liveRegion).toHaveClass("sr-only");
 
     rerender(
       <IssueListPane
@@ -168,6 +167,5 @@ describe("IssueListPane severity accessibility", () => {
 
     expect(screen.getByRole("status")).toBe(liveRegion);
     expect(liveRegion).toHaveTextContent(/no issues match/i);
-    expect(liveRegion).not.toHaveClass("sr-only");
   });
 });

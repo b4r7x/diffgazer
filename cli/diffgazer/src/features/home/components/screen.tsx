@@ -16,6 +16,7 @@ import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useExit } from "../../../hooks/use-exit";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions";
+import { useTheme } from "../../../theme/provider";
 import { createHomeMenuAction } from "../lib/create-menu-action";
 import { ContextSidebar } from "./context-sidebar";
 import { HomeMenu } from "./menu";
@@ -51,6 +52,7 @@ function HomeLoading(): ReactElement {
 }
 
 function HomeInitError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const { tokens } = useTheme();
   useInput((input) => {
     if (input === "r") onRetry();
   });
@@ -58,7 +60,7 @@ function HomeInitError({ message, onRetry }: { message: string; onRetry: () => v
 
   return (
     <Box flexDirection="column" flexGrow={1} alignItems="center" justifyContent="center">
-      <Text color="red">Home Data Unavailable</Text>
+      <Text color={tokens.error}>Home Data Unavailable</Text>
       <Text dimColor>{sanitizeTerminalText(message)}</Text>
       <Text dimColor>Press r to retry</Text>
     </Box>
@@ -66,7 +68,7 @@ function HomeInitError({ message, onRetry }: { message: string; onRetry: () => v
 }
 
 function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefresh: () => void }) {
-  const { columns } = useResponsive();
+  const { columns, isNarrow } = useResponsive();
   const { navigate } = useNavigation();
   const { handleExit } = useExit();
   const { data: reviewsData } = useReviews();
@@ -115,11 +117,11 @@ function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefre
   });
 
   const contentWidth = Math.min(columns, 90);
-  const sidebarWidth = Math.min(30, Math.floor(columns * 0.33));
+  const sidebarWidth = isNarrow ? contentWidth : Math.min(30, Math.floor(columns * 0.33));
 
   return (
     <Box justifyContent="center" alignItems="flex-start" flexGrow={1}>
-      <Box width={contentWidth}>
+      <Box width={contentWidth} flexDirection={isNarrow ? "column" : "row"}>
         <Box width={sidebarWidth}>
           <ContextSidebar
             context={context}

@@ -23,14 +23,19 @@ export function Footer({ shortcuts, rightShortcuts, className = "" }: FooterProp
   return (
     <footer
       className={cn(
-        "bg-foreground text-background p-2 font-bold text-xs shrink-0 flex justify-between items-center",
+        "shrink-0 bg-foreground px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-xs font-bold text-background pointer-coarse:px-0 pointer-coarse:pt-0",
         className,
       )}
     >
-      <div className="flex gap-4">{renderShortcuts(shortcuts)}</div>
-      {rightShortcuts && rightShortcuts.length > 0 && (
-        <div className="flex gap-4">{renderShortcuts(rightShortcuts)}</div>
-      )}
+      <div
+        data-shortcut-legend
+        className="flex items-center justify-between pointer-coarse:hidden pointer-fine:flex"
+      >
+        <div className="flex gap-4">{renderShortcuts(shortcuts)}</div>
+        {rightShortcuts && rightShortcuts.length > 0 && (
+          <div className="flex gap-4">{renderShortcuts(rightShortcuts)}</div>
+        )}
+      </div>
     </footer>
   );
 }

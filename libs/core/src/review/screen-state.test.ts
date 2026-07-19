@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { ReviewIssue } from "../schemas/review/index.js";
-import { resolveSavedReviewOutcome, type SavedReviewQueryState } from "./screen-state.js";
+import {
+  extractOrchestratorStats,
+  resolveSavedReviewOutcome,
+  type SavedReviewQueryState,
+  toSavedReviewQueryState,
+} from "./screen-state.js";
 
 function issue(id: string): ReviewIssue {
   return {
@@ -106,5 +111,41 @@ describe("resolveSavedReviewOutcome", () => {
       notFound: false,
     };
     expect(resolveSavedReviewOutcome(state, false).kind).toBe("loading");
+  });
+});
+
+describe("saved review query presentation", () => {
+  it("maps query status and recognizes API 404 errors", () => {
+    const error = Object.assign(new Error("missing"), { status: 404 });
+
+    expect(
+      toSavedReviewQueryState({ isSuccess: false, isError: true, data: undefined, error }),
+    ).toEqual({ status: "error", review: null, error, notFound: true });
+  });
+
+  it("uses the latest orchestrator completion event", () => {
+    const result = extractOrchestratorStats({
+      events: [
+        {
+          type: "orchestrator_complete",
+          totalIssues: 1,
+          filesAnalyzed: 2,
+          lensStats: [],
+          droppedDuplicates: 1,
+          timestamp: "2026-01-01T00:00:01.000Z",
+        },
+        {
+          type: "orchestrator_complete",
+          totalIssues: 2,
+          filesAnalyzed: 3,
+          lensStats: [],
+          droppedDuplicates: 2,
+          minSeverity: "medium",
+          timestamp: "2026-01-01T00:00:02.000Z",
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({ droppedDuplicates: 2, minSeverity: "medium" });
   });
 });

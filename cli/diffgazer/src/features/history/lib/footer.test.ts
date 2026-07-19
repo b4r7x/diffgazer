@@ -2,7 +2,7 @@ import type { TimelineItem } from "@diffgazer/core/schemas/presentation";
 import { Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import { createElement, Fragment, useState } from "react";
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { NavigationContext } from "../../../hooks/use-navigation";
 import { CliThemeProvider } from "../../../theme/provider";
 import { HistoryScreen } from "../components/screen";
@@ -10,6 +10,9 @@ import { SectionsList } from "../components/sections-list";
 import { getHistoryFooter } from "./footer";
 
 const useHistoryScreenStateMock = vi.hoisted(() => vi.fn());
+const usePageFooterMock = vi.hoisted(() => vi.fn());
+const terminalSize = vi.hoisted(() => ({ columns: 100, rows: 30 }));
+const SUPPORT_FLOOR = { columns: 80, rows: 24 } as const;
 
 vi.mock("@diffgazer/core/review", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@diffgazer/core/review")>()),
@@ -17,18 +20,32 @@ vi.mock("@diffgazer/core/review", async (importOriginal) => ({
 }));
 
 vi.mock("@diffgazer/core/footer", () => ({
-  usePageFooter: vi.fn(),
+  usePageFooter: usePageFooterMock,
 }));
 
 vi.mock("../../../hooks/use-terminal-dimensions", () => ({
   useResponsive: () => ({
-    columns: 100,
-    rows: 30,
-    isNarrow: false,
-    isMedium: false,
+    columns: terminalSize.columns,
+    rows: terminalSize.rows,
+    isNarrow: terminalSize.columns < 80,
+    isMedium: terminalSize.columns >= 80 && terminalSize.columns < 120,
   }),
-  useTerminalDimensions: () => ({ columns: 100, rows: 30 }),
+  useTerminalDimensions: () => terminalSize,
 }));
+
+vi.mock("../../../components/layout/global", () => ({
+  useContentZone: () => ({
+    columns: terminalSize.columns,
+    rows: terminalSize.rows,
+    contentColumns: terminalSize.columns,
+    contentRows: terminalSize.rows - 4,
+  }),
+}));
+
+beforeEach(() => {
+  terminalSize.columns = 100;
+  terminalSize.rows = 30;
+});
 
 afterEach(() => {
   cleanup();
@@ -88,11 +105,11 @@ describe("getHistoryFooter", () => {
     expect(view.lastFrame()).toContain("Selected date: today");
   });
 
-  test("runs zone exposes Open Review and the o shortcut", () => {
+  test("runs zone exposes one Open Review shortcut", () => {
     const footer = getHistoryFooter("runs");
-    const labels = footer.shortcuts.map((s) => s.label);
-    expect(labels.includes("Open Review")).toBeTruthy();
-    expect(footer.shortcuts.some((s) => s.key === "o")).toBeTruthy();
+    expect(footer.shortcuts.filter((shortcut) => shortcut.label === "Open Review")).toEqual([
+      { key: "Enter", label: "Open Review" },
+    ]);
     expect(footer.rightShortcuts).toEqual([{ key: "Esc", label: "Back" }]);
   });
 
@@ -167,7 +184,8 @@ describe("getHistoryFooter", () => {
     expect(!footer.shortcuts.some((s) => s.key === "Tab")).toBeTruthy();
   });
 
-  test("keeps Tab in the active Search input until Down explicitly enters Timeline", async () => {
+  test("keeps Tab in Search and the footer visible at the 80x24 support floor", async () => {
+    Object.assign(terminalSize, SUPPORT_FLOOR);
     const setSearchQuery = vi.fn();
     const setSelectedDateId = vi.fn();
     useHistoryScreenStateMock.mockReturnValue({
@@ -227,9 +245,15 @@ describe("getHistoryFooter", () => {
         ),
       ),
     );
+    expect(view.lastFrame()).toContain("RUNS");
+    expect((view.lastFrame() ?? "").split("\n").length).toBeLessThanOrEqual(SUPPORT_FLOOR.rows);
 
     view.stdin.write("/");
     await flush();
+    expect(usePageFooterMock).toHaveBeenLastCalledWith({
+      shortcuts: [{ key: "↓", label: "Timeline" }],
+      rightShortcuts: [{ key: "Esc", label: "Clear Search" }],
+    });
     view.stdin.write("\t");
     await flush();
     view.stdin.write("x");

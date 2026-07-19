@@ -5,7 +5,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { cleanup, render } from "ink-testing-library";
 import { createElement } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NavigationContext } from "../../../hooks/use-navigation";
 import { CliThemeProvider } from "../../../theme/provider";
 import { HistoryScreen } from "../components/screen";
@@ -13,6 +13,8 @@ import { getHistoryFooter } from "../lib/footer";
 import { useHistoryScreen } from "./use-screen";
 
 const useHistoryScreenStateMock = vi.hoisted(() => vi.fn());
+const terminalSize = vi.hoisted(() => ({ columns: 100, rows: 30 }));
+const SUPPORT_FLOOR = { columns: 80, rows: 24 } as const;
 const reviewDetailQuery = {
   isLoading: false,
   isError: false,
@@ -30,14 +32,29 @@ vi.mock("@diffgazer/core/footer", () => ({
   usePageFooter: vi.fn(),
 }));
 
-vi.mock("../../../hooks/use-terminal-dimensions", () => ({
-  useResponsive: () => ({
-    columns: 100,
-    rows: 30,
-    isNarrow: false,
-    isMedium: false,
+vi.mock("../../../components/layout/global", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../components/layout/global")>()),
+  useContentZone: () => ({
+    columns: terminalSize.columns,
+    rows: terminalSize.rows,
+    contentColumns: terminalSize.columns,
+    contentRows: terminalSize.rows - 4,
   }),
 }));
+
+vi.mock("../../../hooks/use-terminal-dimensions", () => ({
+  useResponsive: () => ({
+    columns: terminalSize.columns,
+    rows: terminalSize.rows,
+    isNarrow: terminalSize.columns < 80,
+    isMedium: terminalSize.columns >= 80 && terminalSize.columns < 120,
+  }),
+}));
+
+beforeEach(() => {
+  terminalSize.columns = 100;
+  terminalSize.rows = 30;
+});
 
 afterEach(() => {
   cleanup();
@@ -95,6 +112,7 @@ describe("useHistoryScreen", () => {
     ["error", { data: undefined, isLoading: false, error: new Error("history unavailable") }],
     ["empty", { data: { reviews: [] }, isLoading: false, error: null }],
   ])("returns to the previous route on one Escape from the %s branch", async (_branch, reviewsQuery) => {
+    Object.assign(terminalSize, SUPPORT_FLOOR);
     setHistoryQuery(reviewsQuery);
     const goBack = vi.fn();
     const view = render(
@@ -123,6 +141,7 @@ describe("useHistoryScreen", () => {
     });
     await new Promise((resolve) => setImmediate(resolve));
     expect(goBack).toHaveBeenCalledTimes(1);
+    expect((view.lastFrame() ?? "").split("\n").length).toBeLessThanOrEqual(SUPPORT_FLOOR.rows);
   });
 
   it("skips run-only zones when cycling focus with no runs", () => {

@@ -14,6 +14,7 @@ import {
   useState,
 } from "react";
 import { useFocusRestore } from "@/hooks/use-focus-restore";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { mergeIds } from "@/lib/aria";
 import { cn } from "@/lib/utils";
 import { DialogShell } from "../shared/dialog-shell";
@@ -27,7 +28,7 @@ export type DialogCorners = "none" | "subtle" | "standard" | "bold" | "outset";
 
 /** Class variants for dialog content. */
 export const dialogContentVariants = cva(
-  "relative w-full max-h-[90vh] flex flex-col bg-background text-foreground shadow-2xl m-auto",
+  "relative w-full max-h-[90dvh] flex flex-col bg-background text-foreground shadow-2xl m-auto",
   {
     variants: {
       size: {
@@ -167,8 +168,10 @@ export function DialogContent({
   } = useDialogContext();
   const close = () => onOpenChange(false);
   const shellRef = useRef<HTMLDialogElement>(null);
+  const scrollLockTargetRef = useRef<HTMLElement>(null);
   const [container, setContainer] = useState<Element | null>(null);
   const focusRestore = useFocusRestore({ restoreOnUnmount: true });
+  useScrollLock({ target: scrollLockTargetRef, enabled: open });
   // Restore focus to the captured opener; fall back to the trigger ref read at
   // restore time (not during render) so a programmatically-opened dialog still
   // returns focus somewhere sensible.
@@ -216,6 +219,7 @@ export function DialogContent({
 
   const setShellRef = useCallback((node: HTMLDialogElement | null) => {
     shellRef.current = node;
+    scrollLockTargetRef.current = node?.ownerDocument.body ?? null;
     setContainer(node);
   }, []);
 

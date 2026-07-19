@@ -25,8 +25,6 @@ import { stepComplete, stepError, stepStart } from "./stream/steps.js";
 import { markCommitted, markCommitting, markComplete } from "./stream/store.js";
 import type { EmitFn, ResolvedConfig, ResolvedReviewDefaults, ReviewOutcome } from "./types.js";
 
-const DEFAULT_LENSES: LensId[] = ["correctness"];
-
 /** Resolve the active lenses using an explicit ordered fallback. */
 function resolveActiveLenses(
   lensIds: LensId[] | undefined,
@@ -36,8 +34,7 @@ function resolveActiveLenses(
   const selected =
     (lensIds?.length ? lensIds : undefined) ??
     (profile?.lenses.length ? profile.lenses : undefined) ??
-    (settings.defaultLenses.length ? settings.defaultLenses : undefined) ??
-    DEFAULT_LENSES;
+    settings.defaultLenses;
   return [...new Set(selected)];
 }
 

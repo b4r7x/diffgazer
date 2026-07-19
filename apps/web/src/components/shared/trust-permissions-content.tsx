@@ -65,6 +65,7 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
     getInitialFocusedCapability(value),
   );
   const [passiveListHasFocus, setPassiveListHasFocus] = useState(false);
+  const [keyboardFocusVisible, setKeyboardFocusVisible] = useState(autoFocusList);
 
   const selectedCapabilities = toSelectedCapabilityIds(value);
   const initialFocusedCapability = getInitialFocusedCapability(value);
@@ -109,6 +110,15 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
   };
 
   const isListZone = showActions ? focusZone === "list" : passiveListHasFocus;
+  const showZoneHighlight = !showActions || keyboardFocusVisible;
+
+  function handleContentKeyDown() {
+    setKeyboardFocusVisible(true);
+  }
+
+  function handleContentPointerDown() {
+    setKeyboardFocusVisible(false);
+  }
 
   function handleContentFocus(e: ReactFocusEvent<HTMLDivElement>) {
     const target = e.target;
@@ -139,6 +149,8 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
       className="flex flex-col gap-6"
       onFocus={handleContentFocus}
       onBlur={handleContentBlur}
+      onKeyDownCapture={handleContentKeyDown}
+      onPointerDownCapture={handleContentPointerDown}
     >
       <div className="border-b border-border pb-3">
         <div className="text-muted-foreground text-xs mb-2 uppercase tracking-wide">
@@ -156,7 +168,7 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
         value={selectedCapabilities}
         onChange={handleValueChange}
         disabled={isLoading}
-        highlighted={isListZone ? effectiveListFocused : null}
+        highlighted={showZoneHighlight && isListZone ? effectiveListFocused : null}
         onHighlightChange={setListFocused}
         onNavigationBoundaryReached={(direction) => {
           if (direction !== "next") return;
@@ -169,7 +181,10 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
         keyboardNavigation={showActions ? isListZone : true}
         autoFocus={autoFocusList && (showActions ? isListZone : true) && !isLoading}
         wrap={false}
-        className={cn("transition-opacity duration-150", !isListZone && "opacity-60")}
+        className={cn(
+          "transition-opacity duration-150",
+          showZoneHighlight && !isListZone && "opacity-60",
+        )}
       >
         {TRUST_CAPABILITY_OPTIONS.map(({ id, label, description, disabled }) => (
           <CheckboxItem
@@ -189,38 +204,53 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
       </Callout>
 
       {showActions && (
-        <div ref={actionRowRef} className="flex justify-end gap-4 pt-2">
+        <div className="flex flex-col gap-2 pt-2">
           {isLoading && (
             <output
               ref={busyStatusRef}
               tabIndex={-1}
-              className="mr-auto text-sm text-muted-foreground focus:outline-none"
+              className="text-sm text-muted-foreground focus:outline-none"
             >
               {pendingAction === "revoke"
                 ? "Revoking trust permissions..."
                 : "Saving trust permissions..."}
             </output>
           )}
-          <Button
-            data-value="save"
-            variant="success"
-            onClick={() => activateAction("save")}
-            onFocus={() => handleActionFocus("save")}
-            disabled={isLoading}
-            highlighted={focusZone === "buttons" && focusedAction === "save" && !isLoading}
+          <div
+            ref={actionRowRef}
+            className="flex flex-wrap justify-end gap-4 [&>button]:w-full sm:[&>button]:w-auto"
           >
-            {isLoading ? "[ Saving... ]" : "[ Save Changes ]"}
-          </Button>
-          <Button
-            data-value="revoke"
-            variant="destructive"
-            onClick={() => activateAction("revoke")}
-            onFocus={() => handleActionFocus("revoke")}
-            disabled={isLoading}
-            highlighted={focusZone === "buttons" && focusedAction === "revoke" && !isLoading}
-          >
-            {isLoading ? "[ Revoking... ]" : "[ Revoke Trust ]"}
-          </Button>
+            <Button
+              data-value="save"
+              variant="success"
+              onClick={() => activateAction("save")}
+              onFocus={() => handleActionFocus("save")}
+              disabled={isLoading}
+              highlighted={
+                showZoneHighlight &&
+                focusZone === "buttons" &&
+                focusedAction === "save" &&
+                !isLoading
+              }
+            >
+              {isLoading ? "[ Saving... ]" : "[ Save Changes ]"}
+            </Button>
+            <Button
+              data-value="revoke"
+              variant="destructive"
+              onClick={() => activateAction("revoke")}
+              onFocus={() => handleActionFocus("revoke")}
+              disabled={isLoading}
+              highlighted={
+                showZoneHighlight &&
+                focusZone === "buttons" &&
+                focusedAction === "revoke" &&
+                !isLoading
+              }
+            >
+              {isLoading ? "[ Revoking... ]" : "[ Revoke Trust ]"}
+            </Button>
+          </div>
         </div>
       )}
     </div>

@@ -192,13 +192,18 @@ export function OnboardingWizard() {
       }
     >
       <div ref={focusFallbackRef} tabIndex={-1} className="space-y-4 focus:outline-none">
-        <HorizontalStepper steps={steps} value={currentStep} aria-label="Setup progress">
-          {steps.map((step) => (
-            <HorizontalStepper.Step key={step} value={step}>
-              {STEP_LABELS[step]}
-            </HorizontalStepper.Step>
-          ))}
-        </HorizontalStepper>
+        <p className="text-sm text-muted-foreground md:hidden">
+          Step {steps.indexOf(currentStep) + 1}/{steps.length} · {STEP_LABELS[currentStep]}
+        </p>
+        <div className="hidden md:block">
+          <HorizontalStepper steps={steps} value={currentStep} aria-label="Setup progress">
+            {steps.map((step) => (
+              <HorizontalStepper.Step key={step} value={step}>
+                {STEP_LABELS[step]}
+              </HorizontalStepper.Step>
+            ))}
+          </HorizontalStepper>
+        </div>
         {(error ?? earlySaveError) && (
           <Callout tone="error" live>
             <Callout.Content>{error ?? earlySaveError}</Callout.Content>

@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useEffectEvent, useReducer, useRef } from "react";
 import { getErrorMessage } from "../../errors.js";
 import { err, ok, type Result } from "../../result.js";
 import {
@@ -194,6 +194,37 @@ export function useReviewStream() {
       }
     }
   };
+
+  const resumeAfterReconnect = useEffectEvent((reviewId: string) => {
+    void resume(reviewId);
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+
+    const reconnect = () => {
+      const reviewId = state.reviewId;
+      if (
+        !reviewId ||
+        state.isStreaming ||
+        state.errorCode !== "STREAM_ERROR" ||
+        abortControllerRef.current
+      ) {
+        return;
+      }
+      resumeAfterReconnect(reviewId);
+    };
+    const reconnectWhenVisible = () => {
+      if (document.visibilityState === "visible") reconnect();
+    };
+
+    window.addEventListener("online", reconnect);
+    document.addEventListener("visibilitychange", reconnectWhenVisible);
+    return () => {
+      window.removeEventListener("online", reconnect);
+      document.removeEventListener("visibilitychange", reconnectWhenVisible);
+    };
+  }, [state.errorCode, state.isStreaming, state.reviewId]);
 
   useEffect(() => {
     return () => {

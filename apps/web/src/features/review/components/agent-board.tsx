@@ -17,7 +17,7 @@ export function AgentBoard({ agents }: AgentBoardProps) {
       <SectionHeader variant="muted" bordered>
         Agent Board
       </SectionHeader>
-      <div className="grid grid-cols-[auto_minmax(0,auto)_7rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5">
+      <div className="grid grid-cols-[auto_minmax(0,auto)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5">
         {agents.map((agent) => {
           const detail = getAgentDetail(agent);
           return (

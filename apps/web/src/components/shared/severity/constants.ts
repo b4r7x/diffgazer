@@ -7,11 +7,15 @@ export interface SeverityConfig {
 }
 
 export const SEVERITY_CONFIG: Record<ReviewSeverity, SeverityConfig> = {
-  blocker: { icon: "\u2716", color: "text-error-text", borderColor: "border-error" },
-  high: { icon: "\u25B2", color: "text-warning-text", borderColor: "border-warning" },
+  blocker: {
+    icon: "\u2716",
+    color: "text-severity-blocker",
+    borderColor: "border-severity-blocker",
+  },
+  high: { icon: "\u25B2", color: "text-severity-high", borderColor: "border-severity-high" },
   medium: { icon: "\u25CF", color: "text-severity-medium", borderColor: "border-severity-medium" },
-  low: { icon: "\u25CB", color: "text-info-text", borderColor: "border-info" },
-  nit: { icon: "\u00B7", color: "text-muted-foreground", borderColor: "border-muted-foreground" },
+  low: { icon: "\u25CB", color: "text-severity-low", borderColor: "border-severity-low" },
+  nit: { icon: "\u00B7", color: "text-severity-nit", borderColor: "border-severity-nit" },
 };
 
 export const BAR_FILLED_CHAR = "\u2588";

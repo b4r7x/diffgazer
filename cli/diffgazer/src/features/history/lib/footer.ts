@@ -1,10 +1,10 @@
+import type { HistoryDetailState } from "@diffgazer/core/review";
 import {
   BACK_SHORTCUTS,
   NAVIGATE_SHORTCUT,
   type Shortcut,
   SWITCH_PANE_SHORTCUT,
 } from "@diffgazer/core/schemas/presentation";
-import type { HistoryDetailState } from "../types";
 import type { HistoryInteractionMode } from "./run-mapping";
 
 export interface HistoryFooter {
@@ -56,7 +56,6 @@ export function getHistoryFooter(
       SWITCH_PANE_SHORTCUT,
       NAVIGATE_SHORTCUT,
       { key: "Enter", label: "Open Review" },
-      { key: "o", label: "Open Review" },
       { key: "/", label: "Search" },
     ],
     rightShortcuts: BACK_SHORTCUTS,

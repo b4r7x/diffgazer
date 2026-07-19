@@ -98,7 +98,9 @@ function ManualTextEdit({
           {placeholder}
         </Text>
       ) : (
-        <Text dimColor={disabled}>{display}</Text>
+        <Text dimColor={disabled} wrap="truncate-start">
+          {display}
+        </Text>
       )}
     </Box>
   );

@@ -1,22 +1,28 @@
 import { guardQueryState, useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { type Theme, toSelectableTheme } from "@diffgazer/core/schemas/config";
-import { BACK_SHORTCUT, NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
+import { deriveSaveState } from "@diffgazer/core/forms";
+import { sanitizeTerminalText } from "@diffgazer/core/review";
+import {
+  type SelectableTheme,
+  type Theme,
+  toSelectableTheme,
+} from "@diffgazer/core/schemas/config";
+import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
+import { useQueryGuardPanels } from "../../../components/shared/query-guard-panels";
 import { Button } from "../../../components/ui/button";
 import { Panel } from "../../../components/ui/panel";
 import { SectionHeader } from "../../../components/ui/section-header";
-import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useNavigation } from "../../../hooks/use-navigation";
-import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
+import { useResponsive } from "../../../hooks/use-terminal-dimensions";
 import type { CliColorTokens } from "../../../theme/palettes";
 import { useTheme } from "../../../theme/provider";
-import { useSettingsZone } from "../hooks/use-settings-zone";
+import { getSettingsFooter, useSettingsZone } from "../hooks/use-settings-zone";
 import { paletteForTheme, TOKEN_GROUPS } from "../lib/theme-preview";
-import { type CliTheme, ThemeSelector } from "./theme-selector";
+import { ThemeSelector } from "./theme-selector";
 
 interface PaletteSwatchGridProps {
   tokens: CliColorTokens;
@@ -44,23 +50,42 @@ function PaletteSwatchGrid({ tokens }: PaletteSwatchGridProps): ReactElement {
   );
 }
 
+function PaletteSwatchStrip({ tokens }: PaletteSwatchGridProps): ReactElement {
+  const keys = TOKEN_GROUPS.flatMap((group) => group.keys).slice(0, 5);
+  return (
+    <Box gap={1} overflow="hidden">
+      <Text color={tokens.muted}>Live Preview:</Text>
+      {keys.map((key) => (
+        <Text key={key} color={tokens[key]}>
+          ■ {key}
+        </Text>
+      ))}
+    </Box>
+  );
+}
+
 interface SettingsThemeEditorProps {
-  savedTheme: CliTheme;
+  savedTheme: SelectableTheme;
 }
 
 function SettingsThemeEditor({ savedTheme }: SettingsThemeEditorProps): ReactElement {
-  const { columns } = useTerminalDimensions();
+  const { columns, isWide } = useResponsive();
   const { tokens: activeTokens, setTheme: applyTheme } = useTheme();
   const saveSettings = useSaveSettings();
   const { goBack } = useNavigation();
 
-  const [selectedTheme, setSelectedTheme] = useState<CliTheme>(savedTheme);
-  const [focusedTheme, setFocusedTheme] = useState<CliTheme>(savedTheme);
+  const [selectedTheme, setSelectedTheme] = useState<SelectableTheme>(savedTheme);
+  const [focusedTheme, setFocusedTheme] = useState<SelectableTheme>(savedTheme);
 
   const isSaving = saveSettings.isPending;
-  const canSave = selectedTheme !== savedTheme;
+  const { effective: effectiveTheme, canSave } = deriveSaveState<SelectableTheme>({
+    persisted: savedTheme,
+    choice: selectedTheme,
+    saving: isSaving,
+    fallback: savedTheme,
+  });
 
-  const { isListActive, isButtonActive, zone } = useSettingsZone({
+  const { isListActive, isButtonActive, zone, enterButtons } = useSettingsZone({
     buttonCount: 2,
     disabled: isSaving,
     disabledButtons: canSave ? undefined : [1],
@@ -73,7 +98,7 @@ function SettingsThemeEditor({ savedTheme }: SettingsThemeEditorProps): ReactEle
     goBack();
   }
 
-  function commitAndExit(next: CliTheme): void {
+  function commitAndExit(next: SelectableTheme): void {
     saveSettings.mutate(
       { theme: next },
       {
@@ -87,57 +112,40 @@ function SettingsThemeEditor({ savedTheme }: SettingsThemeEditorProps): ReactEle
 
   function handleSave(): void {
     if (!canSave || isSaving) return;
-    commitAndExit(selectedTheme);
+    commitAndExit(effectiveTheme);
   }
 
-  // Web's `handleEnterOnList`: Enter in the list zone commits + exits, even when
-  // the highlighted option matches saved (web also returns immediately in that case).
   useInput(
     (_input, key) => {
       if (!key.return || !isListActive || isSaving) return;
       const next = focusedTheme;
-      if (next === savedTheme) {
-        goBack();
-        return;
-      }
       setSelectedTheme(next);
       commitAndExit(next);
     },
     { isActive: isListActive && !isSaving },
   );
 
-  usePageFooter({
-    shortcuts:
-      zone === "buttons"
-        ? [
-            { key: "←/→", label: "Move Action" },
-            {
-              key: "Enter",
-              label: isButtonActive(0) ? "Cancel" : "Save",
-              disabled: isButtonActive(1) && !canSave,
-            },
-            { key: "Tab", label: "Switch Zone" },
-            BACK_SHORTCUT,
-          ]
-        : [
-            NAVIGATE_SHORTCUT,
-            { key: "Space", label: "Select Theme" },
-            { key: "Enter", label: "Save & Exit" },
-            { key: "Tab", label: "Switch Zone" },
-            BACK_SHORTCUT,
-          ],
-  });
+  usePageFooter(
+    getSettingsFooter({
+      zone,
+      listShortcuts: [
+        NAVIGATE_SHORTCUT,
+        { key: "Space", label: "Select Theme" },
+        { key: "Enter", label: "Save & Exit" },
+      ],
+      buttonActionLabel: isButtonActive(0) ? "Cancel" : "Save",
+      buttonActionDisabled: isButtonActive(1) && !canSave,
+    }),
+  );
 
   const saveError = saveSettings.error?.message ?? null;
-  const isWide = columns >= 90;
-
   return (
     <Box flexGrow={1} justifyContent="center">
       <Box flexDirection={isWide ? "row" : "column"} gap={1} width={Math.min(columns, 120)}>
         <Box flexDirection="column" width={isWide ? "40%" : "100%"}>
           <Panel>
             <Panel.Content>
-              <Box flexDirection="column" gap={1}>
+              <Box flexDirection="column" gap={isWide ? 1 : 0}>
                 <SectionHeader>Theme Settings</SectionHeader>
                 <Text color={activeTokens.muted}>Select Interface Theme:</Text>
                 <ThemeSelector
@@ -148,10 +156,15 @@ function SettingsThemeEditor({ savedTheme }: SettingsThemeEditorProps): ReactEle
                   }}
                   onHighlightChange={setFocusedTheme}
                   isActive={isListActive}
+                  onDownBoundary={enterButtons}
                 />
                 <Text color={activeTokens.info}>
                   Focus previews themes live. Space selects, Enter saves & exits.
                 </Text>
+                {!isWide ? <PaletteSwatchStrip tokens={previewTokens} /> : null}
+                {saveError ? (
+                  <Text color={activeTokens.error}>{sanitizeTerminalText(saveError)}</Text>
+                ) : null}
                 <Box gap={2}>
                   <Button variant="ghost" onPress={handleCancel} isActive={isButtonActive(0)}>
                     Cancel
@@ -166,21 +179,22 @@ function SettingsThemeEditor({ savedTheme }: SettingsThemeEditorProps): ReactEle
                     Save
                   </Button>
                 </Box>
-                {saveError && <Text color="red">{saveError}</Text>}
               </Box>
             </Panel.Content>
           </Panel>
         </Box>
-        <Box flexDirection="column" width={isWide ? "60%" : "100%"}>
-          <Panel>
-            <Panel.Content>
-              <Box flexDirection="column" gap={1}>
-                <SectionHeader>Live Preview</SectionHeader>
-                <PaletteSwatchGrid tokens={previewTokens} />
-              </Box>
-            </Panel.Content>
-          </Panel>
-        </Box>
+        {isWide ? (
+          <Box flexDirection="column" width="60%">
+            <Panel>
+              <Panel.Content>
+                <Box flexDirection="column" gap={1}>
+                  <SectionHeader>Live Preview</SectionHeader>
+                  <PaletteSwatchGrid tokens={previewTokens} />
+                </Box>
+              </Panel.Content>
+            </Panel>
+          </Box>
+        ) : null}
       </Box>
     </Box>
   );
@@ -190,27 +204,13 @@ export function ThemeScreen(): ReactElement {
   useBackHandler();
 
   const settingsQuery = useSettings();
+  const queryGuardPanels = useQueryGuardPanels("Loading theme settings...");
 
-  const guard = guardQueryState(settingsQuery, {
-    loading: () => (
-      <Panel>
-        <Panel.Content>
-          <Spinner label="Loading theme settings..." />
-        </Panel.Content>
-      </Panel>
-    ),
-    error: (err) => (
-      <Panel>
-        <Panel.Content>
-          <Text color="red">Error: {err.message}</Text>
-        </Panel.Content>
-      </Panel>
-    ),
-  });
+  const guard = guardQueryState(settingsQuery, queryGuardPanels);
   if (guard) return guard;
 
   const savedTheme: Theme = settingsQuery.data?.theme ?? "auto";
-  const initialTheme: CliTheme = toSelectableTheme(savedTheme);
+  const initialTheme: SelectableTheme = toSelectableTheme(savedTheme);
 
   return <SettingsThemeEditor key={initialTheme} savedTheme={initialTheme} />;
 }

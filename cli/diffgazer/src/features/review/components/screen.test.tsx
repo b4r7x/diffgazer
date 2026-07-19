@@ -27,6 +27,11 @@ vi.mock("@diffgazer/core/api/hooks", () => ({
   }),
 }));
 
+vi.mock("../../../components/layout/global", () => ({
+  getContentZoneRows: (rows: number) => Math.max(rows - 4, 0),
+  useContentZone: () => ({ columns: 100, rows: 30, contentColumns: 100, contentRows: 26 }),
+}));
+
 import { CliThemeProvider } from "../../../theme/provider";
 import { ReviewScreen } from "./screen";
 
@@ -111,7 +116,7 @@ describe("ReviewScreen", () => {
     expect(lastFrame() ?? "").toContain("1 duplicate issue collapsed across lenses (2 → 1 issue)");
   });
 
-  test("opens a saved review directly on the issue named by the route", () => {
+  test("opens a saved issue directly with its duplicate-collapse disclosure", () => {
     const first = makeIssue({ id: "issue-1", title: "First issue", symptom: "First symptom" });
     const selected = makeIssue({
       id: "issue-2",
@@ -125,6 +130,7 @@ describe("ReviewScreen", () => {
         review: {
           metadata: { id: "review-123", durationMs: 10 },
           result: { issues: [first, selected] },
+          droppedDuplicates: 1,
         },
       },
       error: null,
@@ -138,6 +144,7 @@ describe("ReviewScreen", () => {
 
     const frame = lastFrame() ?? "";
     expect(frame).toContain("Selected issue symptom");
+    expect(frame).toContain("1 duplicate issue collapsed across lenses (3 → 2 issues)");
     expect(frame).not.toContain("First symptom");
     expect(frame).not.toMatch(/review complete/i);
   });

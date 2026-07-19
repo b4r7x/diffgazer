@@ -1,4 +1,5 @@
 import type { UseReviewLifecycleBaseResult } from "@diffgazer/core/api/hooks";
+import { ok } from "@diffgazer/core/result";
 import type { FileProgress, ReviewEvent } from "@diffgazer/core/review";
 import type { AgentState, StepState } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
@@ -26,6 +27,7 @@ export interface ReviewLifecycleBaseOverrides {
   isTerminalStreamError?: boolean;
   issues?: ReviewIssue[];
   reviewId?: string | null;
+  resume?: ReviewLifecycleBase["stream"]["resume"];
   startedAt?: Date | null;
   steps?: StepState[];
 }
@@ -56,6 +58,7 @@ export function makeReviewLifecycleBase(
       stop: vi.fn(),
       abort: overrides.abort ?? vi.fn(),
       cancel: overrides.cancel ?? vi.fn(async () => null),
+      resume: overrides.resume ?? vi.fn(async () => ok(undefined)),
       state: {
         steps: overrides.steps ?? [{ id: "diff", label: "Diff", status: "completed" }],
         agents: overrides.agents ?? [],

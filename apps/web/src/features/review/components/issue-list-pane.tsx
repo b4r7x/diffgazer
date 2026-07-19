@@ -1,4 +1,7 @@
-import { calculateSeverityCounts } from "@diffgazer/core/schemas/presentation";
+import {
+  calculateSeverityCounts,
+  type UISeverityFilter,
+} from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
@@ -6,7 +9,7 @@ import { Panel } from "@diffgazer/ui/components/panel";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { KeyboardEvent, Ref } from "react";
 import { SEVERITY_CONFIG } from "@/components/shared/severity/constants";
-import { type SeverityFilter, SeverityFilterGroup } from "./severity-filter-group";
+import { SeverityFilterGroup } from "./severity-filter-group";
 
 interface IssueListState {
   issues: ReviewIssue[];
@@ -23,8 +26,8 @@ interface IssueListCallbacks {
 }
 
 interface IssueListFilter {
-  severityFilter: SeverityFilter;
-  onSeverityFilterChange: (filter: SeverityFilter) => void;
+  severityFilter: UISeverityFilter;
+  onSeverityFilterChange: (filter: UISeverityFilter) => void;
   onSeverityFilterReset?: () => void;
   onSeverityFilterBoundary?: (direction: "previous" | "next") => void;
   focusedFilterIndex?: number;
@@ -88,7 +91,7 @@ export function IssueListPane({
       data-pane="list"
       data-focused={isPaneFocused || undefined}
       className={cn(
-        "mt-3 w-2/5 flex flex-col min-h-0 border border-border data-[focused]:border-info",
+        "mt-3 flex min-h-0 w-full basis-2/5 flex-col border border-border data-[focused]:border-info md:w-2/5 md:basis-auto",
         className,
       )}
     >
@@ -110,7 +113,11 @@ export function IssueListPane({
         />
       </div>
 
-      <div ref={listBodyRef} className="flex flex-1 flex-col overflow-y-auto scrollbar-hide">
+      <div
+        ref={listBodyRef}
+        data-list-body=""
+        className="flex min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden scrollbar-hide"
+      >
         <NavigationList
           ref={listRef}
           aria-label={title}
@@ -162,7 +169,7 @@ export function IssueListPane({
                   </span>
                   <span className="min-w-0 truncate">{issue.title}</span>
                 </NavigationList.Title>
-                <NavigationList.Meta>
+                <NavigationList.Meta className="min-w-0 overflow-hidden">
                   <NavigationList.Subtitle>{location}</NavigationList.Subtitle>
                 </NavigationList.Meta>
               </NavigationList.Item>

@@ -22,6 +22,7 @@ function renderSummary(props?: {
   lensStats?: LensStat[];
   issues?: ReviewIssue[];
   reviewId?: string | null;
+  durationMs?: number;
 }) {
   return render(
     <KeyboardProvider>
@@ -29,6 +30,7 @@ function renderSummary(props?: {
         <ReviewSummaryView
           issues={props?.issues ?? [makeIssue({ id: "1", severity: "high", title: "Issue 1" })]}
           reviewId={props?.reviewId === undefined ? "review-1" : props.reviewId}
+          durationMs={props?.durationMs}
           droppedBelowThreshold={props?.droppedBelowThreshold}
           droppedDuplicates={props?.droppedDuplicates}
           minSeverity={props?.minSeverity}
@@ -56,6 +58,12 @@ describe("ReviewSummaryView", () => {
     renderSummary({ reviewId: null });
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Review Complete #unknown");
+  });
+
+  it("renders the persisted review duration beside the summary totals", () => {
+    renderSummary({ durationMs: 2500 });
+
+    expect(screen.getByText("Duration:").parentElement).toHaveTextContent("Duration: 2.5s");
   });
 
   it("renders category names in the stats table without literal icon words", () => {

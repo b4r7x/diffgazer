@@ -64,6 +64,16 @@ beforeEach(() => {
 });
 
 describe("getDisplayPhase", () => {
+  test("exposes the reducer's canonical streaming state", () => {
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({ error: "Review failed", isStreaming: false }),
+    );
+
+    const { result } = renderHook(() => useReviewLifecycle());
+
+    expect(result.current.state.isStreaming).toBe(false);
+  });
+
   test("forwards the shared lifecycle completion timestamp", () => {
     const completedAt = new Date("2026-01-01T00:00:05.000Z");
     apiMocks.useReviewLifecycleBase.mockReturnValue(makeReviewLifecycleBase({ completedAt }));
@@ -264,6 +274,24 @@ describe("useReviewLifecycle active-session cache", () => {
 });
 
 describe("useReviewLifecycle resume and start routing", () => {
+  test("maps structured create-review failures to actionable settings guidance", async () => {
+    apiMocks.createReview.mockRejectedValue(
+      Object.assign(new Error("Could not read credentials"), {
+        code: "KEYRING_READ_FAILED",
+        status: 400,
+      }),
+    );
+    const { result } = renderHook(() => useReviewLifecycle({ mode: "staged" }));
+
+    await act(async () => {
+      await result.current.start("staged");
+    });
+
+    expect(result.current.state.error).toBe(
+      "Credential Storage Unavailable: Could not read credentials. Check Settings → Storage.",
+    );
+  });
+
   test("exposes failed init state and retries through the init query", async () => {
     apiMocks.useInit.mockReturnValue({
       data: undefined,

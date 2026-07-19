@@ -70,7 +70,7 @@ describe("rate limit middleware", () => {
 
   it("keeps state per static key, so request volume does not grow the window map", async () => {
     // The window map is keyed by the fixed middleware key (config:models,
-    // review:create, review:drilldown) — never per-request or per-client — so a
+    // review:create) — never per-request or per-client — so a
     // flood of requests reuses one entry rather than accumulating unbounded state.
     vi.useFakeTimers();
     const app = createApp("test:bounded", 5, 1_000);

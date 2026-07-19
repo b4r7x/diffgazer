@@ -362,6 +362,17 @@ describe("useListbox", () => {
     expect(option).toHaveAttribute("aria-selected", "true");
   });
 
+  it("fires onSelect again when the already-selected item is clicked", async () => {
+    const onSelect = vi.fn();
+    const user = userEvent.setup();
+    render(<Listbox items={defaultItems} selectedId="b" onSelect={onSelect} />);
+
+    await user.click(screen.getByText("Beta"));
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith("b");
+  });
+
   it("skips aria-disabled items in typeahead", async () => {
     const items = [
       { id: "d", label: "Disabled", disabled: true },

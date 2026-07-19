@@ -1,45 +1,32 @@
 import { guardQueryState, useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { deriveSaveState } from "@diffgazer/core/forms";
+import { sanitizeTerminalText } from "@diffgazer/core/review";
 import {
   AGENT_EXECUTION_OPTIONS,
   type AgentExecution,
   isAgentExecution,
 } from "@diffgazer/core/schemas/config";
-import {
-  BACK_SHORTCUT,
-  NAVIGATE_SHORTCUT,
-  type Shortcut,
-} from "@diffgazer/core/schemas/presentation";
+import { NAVIGATE_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
+import { useQueryGuardPanels } from "../../../components/shared/query-guard-panels";
 import { Button } from "../../../components/ui/button";
 import { Panel } from "../../../components/ui/panel";
 import { RadioGroup } from "../../../components/ui/radio";
 import { SectionHeader } from "../../../components/ui/section-header";
-import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
-import { useSettingsZone } from "../hooks/use-settings-zone";
+import { useTheme } from "../../../theme/provider";
+import { getSettingsFooter, useSettingsZone } from "../hooks/use-settings-zone";
 
-const LIST_SHORTCUTS: Shortcut[] = [
-  BACK_SHORTCUT,
-  { key: "Tab", label: "Switch Zone" },
-  NAVIGATE_SHORTCUT,
-  { key: "Enter", label: "Select Mode" },
-];
-
-const BUTTON_SHORTCUTS: Shortcut[] = [
-  BACK_SHORTCUT,
-  { key: "Tab", label: "Switch Zone" },
-  { key: "←/→", label: "Move Action" },
-  { key: "Enter", label: "Activate" },
-];
+const LIST_SHORTCUTS: Shortcut[] = [NAVIGATE_SHORTCUT, { key: "Enter", label: "Select Mode" }];
 
 export function AgentExecutionScreen(): ReactElement {
-  const { columns } = useTerminalDimensions();
+  const { columns, rows } = useTerminalDimensions();
+  const { tokens } = useTheme();
   useBackHandler();
 
   const { goBack } = useNavigation();
@@ -56,15 +43,20 @@ export function AgentExecutionScreen(): ReactElement {
     fallback: "sequential",
   });
 
-  const { isListActive, isButtonActive, zone } = useSettingsZone({
+  const { isListActive, isButtonActive, zone, enterButtons } = useSettingsZone({
     buttonCount: 2,
     disabled: isSaving,
     disabledButtons: canSave ? undefined : [1],
   });
 
-  usePageFooter({
-    shortcuts: zone === "buttons" ? [...BUTTON_SHORTCUTS] : [...LIST_SHORTCUTS],
-  });
+  usePageFooter(
+    getSettingsFooter({
+      zone,
+      listShortcuts: LIST_SHORTCUTS,
+      buttonActionLabel: isButtonActive(0) ? "Cancel" : "Save",
+      buttonActionDisabled: isButtonActive(1) && !canSave,
+    }),
+  );
 
   function handleModeChange(value: string) {
     if (!isAgentExecution(value)) return;
@@ -89,22 +81,8 @@ export function AgentExecutionScreen(): ReactElement {
     );
   }
 
-  const guard = guardQueryState(settingsQuery, {
-    loading: () => (
-      <Panel>
-        <Panel.Content>
-          <Spinner label="Loading agent execution settings..." />
-        </Panel.Content>
-      </Panel>
-    ),
-    error: (err) => (
-      <Panel>
-        <Panel.Content>
-          <Text color="red">{err.message}</Text>
-        </Panel.Content>
-      </Panel>
-    ),
-  });
+  const queryGuardPanels = useQueryGuardPanels("Loading agent execution settings...");
+  const guard = guardQueryState(settingsQuery, queryGuardPanels);
 
   if (guard) return guard;
 
@@ -113,7 +91,7 @@ export function AgentExecutionScreen(): ReactElement {
       <Box width={Math.min(columns, 60)} flexDirection="column">
         <Panel>
           <Panel.Content>
-            <Box flexDirection="column" gap={1}>
+            <Box flexDirection="column" gap={rows <= 24 ? 0 : 1}>
               <SectionHeader>Agent Execution Mode</SectionHeader>
               <Text dimColor>Choose whether analysis agents run in sequence or in parallel.</Text>
               <RadioGroup
@@ -121,16 +99,21 @@ export function AgentExecutionScreen(): ReactElement {
                 onChange={handleModeChange}
                 isActive={isListActive}
                 disabled={isSaving}
+                wrap={false}
+                onNavigationBoundaryReached={(direction) => {
+                  if (direction === 1) enterButtons();
+                }}
               >
                 {AGENT_EXECUTION_OPTIONS.map((option) => (
                   <RadioGroup.Item
                     key={option.value}
                     value={option.value}
                     label={option.label}
-                    description={option.description}
+                    description={rows <= 24 ? undefined : option.description}
                   />
                 ))}
               </RadioGroup>
+              {error ? <Text color={tokens.error}>{sanitizeTerminalText(error)}</Text> : null}
               <Box gap={1}>
                 <Button
                   variant="ghost"
@@ -149,7 +132,6 @@ export function AgentExecutionScreen(): ReactElement {
                   {isSaving ? "Saving..." : "Save"}
                 </Button>
               </Box>
-              {error && <Text color="red">{error}</Text>}
             </Box>
           </Panel.Content>
         </Panel>

@@ -1,9 +1,16 @@
 import { guardQueryState } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { HISTORY_SEARCH_PLACEHOLDER, summarizeHistoryWarnings } from "@diffgazer/core/review";
+import {
+  buildHistoryWarningMessages,
+  deriveHistoryDetailState,
+  formatRunId,
+  HISTORY_SEARCH_PLACEHOLDER,
+  summarizeHistoryWarnings,
+} from "@diffgazer/core/review";
 import type { ReviewListWarning } from "@diffgazer/core/schemas/review";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
+import { useContentZone } from "../../../components/layout/global";
 import { Callout } from "../../../components/ui/callout";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { Input } from "../../../components/ui/input";
@@ -16,80 +23,51 @@ import { useResponsive } from "../../../hooks/use-terminal-dimensions";
 import { useTheme } from "../../../theme/provider";
 import { useHistoryScreen } from "../hooks/use-screen";
 import { getHistoryFooter } from "../lib/footer";
-import type { HistoryDetailState } from "../types";
 import { HistoryInsightsPane } from "./insights-pane";
 import { RunsList } from "./runs-list";
 import { SectionsList } from "./sections-list";
 
-function getInsightScrollHeight({
-  isNarrow,
-  isMedium,
-  paneHeight,
-}: {
-  isNarrow: boolean;
-  isMedium: boolean;
-  paneHeight: number;
-}): number {
-  if (isNarrow) return Math.max(Math.floor(paneHeight / 2), 1);
-  if (isMedium) return Math.max(paneHeight - 4, 1);
-  return paneHeight;
+const HISTORY_CHROME_ROWS = 10;
+const HISTORY_INSIGHTS_CHROME_ROWS = 5;
+
+function getHistoryWarningRows(messageCount: number): number {
+  if (messageCount === 0) return 0;
+  return messageCount + 4;
+}
+
+function getInsightScrollHeight(paneHeight: number): number {
+  return Math.max(paneHeight - HISTORY_INSIGHTS_CHROME_ROWS, 1);
 }
 
 function HistoryWarnings({ warnings }: { warnings: readonly ReviewListWarning[] }) {
-  const summary = summarizeHistoryWarnings(warnings);
-  const hasWarnings =
-    summary.unreadableReviewCount > 0 ||
-    summary.droppedIssueCount > 0 ||
-    summary.indexBuildFailed ||
-    summary.indexRewriteFailed;
-  if (!hasWarnings) return null;
+  const messages = buildHistoryWarningMessages(summarizeHistoryWarnings(warnings));
+  if (messages.length === 0) return null;
 
   return (
     <Callout variant="warning">
       <Callout.Title>History warning</Callout.Title>
-      {summary.unreadableReviewCount > 0 ? (
-        <Callout.Content>{`${summary.unreadableReviewCount} saved review${summary.unreadableReviewCount === 1 ? "" : "s"} could not be read.`}</Callout.Content>
-      ) : null}
-      {summary.droppedIssueCount > 0 ? (
-        <Callout.Content>{`${summary.droppedIssueCount} invalid saved issue${summary.droppedIssueCount === 1 ? " was" : "s were"} omitted. Re-run the affected reviews for complete results.`}</Callout.Content>
-      ) : null}
-      {summary.indexBuildFailed ? (
-        <Callout.Content>
-          The history index could not be rebuilt. Readable reviews are still shown; reopen History
-          to retry.
-        </Callout.Content>
-      ) : null}
-      {summary.indexRewriteFailed ? (
-        <Callout.Content>
-          The history index could not be cleaned up. Readable reviews are still shown; reopen
-          History to retry.
-        </Callout.Content>
-      ) : null}
+      {messages.map((message) => (
+        <Callout.Content key={message}>{message}</Callout.Content>
+      ))}
     </Callout>
   );
 }
 
 export function HistoryScreen(): ReactElement {
   const { tokens } = useTheme();
-  const { columns, rows, isNarrow, isMedium } = useResponsive();
+  const { columns, isNarrow, isMedium } = useResponsive();
+  const { contentRows } = useContentZone();
   const { navigate } = useNavigation();
 
   const screen = useHistoryScreen({
     onOpenReview: (reviewId) => navigate({ screen: "review", reviewId }),
   });
 
-  let insightsDetailState: HistoryDetailState = { status: "ready" };
-  if (screen.reviewDetailQuery.isLoading) {
-    insightsDetailState = { status: "loading" };
-  } else if (screen.reviewDetailQuery.isError) {
-    insightsDetailState = {
-      status: "error",
-      message: screen.reviewDetailQuery.error.message,
-      retry: () => {
-        void screen.reviewDetailQuery.refetch();
-      },
-    };
-  }
+  const insightsDetailState = deriveHistoryDetailState({
+    isLoading: screen.reviewDetailQuery.isLoading,
+    error: screen.reviewDetailQuery.error,
+    refetch: screen.reviewDetailQuery.refetch,
+  });
 
   useBackHandler({ isActive: screen.interactionMode !== "search" });
 
@@ -101,6 +79,7 @@ export function HistoryScreen(): ReactElement {
 
   useInput(
     (_input, key) => {
+      if (screen.interactionMode === "search") return;
       if (key.tab) {
         screen.cycleFocusZone();
       }
@@ -152,15 +131,6 @@ export function HistoryScreen(): ReactElement {
   const runsPaneWidth = isNarrow
     ? contentWidth
     : Math.max(contentWidth - sectionsWidth - insightsWidth, 1);
-  const paneHeight = Math.max(rows - 8, 8);
-  const paneSlotHeight = isNarrow ? Math.max(Math.floor(paneHeight / 3), 3) : paneHeight;
-  const listHeight = Math.max(paneSlotHeight - 4, 1);
-  const insightScrollHeight = getInsightScrollHeight({
-    isNarrow,
-    isMedium,
-    paneHeight: paneSlotHeight,
-  });
-
   const guard = guardQueryState(screen.reviewsQuery, {
     loading: () => (
       <Panel>
@@ -191,6 +161,14 @@ export function HistoryScreen(): ReactElement {
   if (guard) return guard;
 
   const warnings = screen.reviewsQuery.data?.warnings ?? [];
+  const warningMessages = buildHistoryWarningMessages(summarizeHistoryWarnings(warnings));
+  const paneHeight = Math.max(
+    contentRows - HISTORY_CHROME_ROWS - getHistoryWarningRows(warningMessages.length),
+    1,
+  );
+  const paneSlotHeight = isNarrow ? Math.max(Math.floor(paneHeight / 3), 3) : paneHeight;
+  const listHeight = Math.max(paneSlotHeight - 4, 1);
+  const insightScrollHeight = getInsightScrollHeight(paneSlotHeight);
 
   if (!screen.hasReviews && !screen.hasMoreReviews) {
     return (
@@ -280,14 +258,24 @@ export function HistoryScreen(): ReactElement {
               borderColor={screen.focusZone === "insights" ? tokens.accent : tokens.border}
             >
               <HistoryInsightsPane
-                runId={screen.selectedRun ? `#${screen.selectedRun.id.slice(0, 4)}` : null}
+                runId={
+                  screen.selectedRun
+                    ? formatRunId(
+                        screen.selectedRun.id,
+                        screen.reviews.map((review) => review.id),
+                      )
+                    : null
+                }
                 severityCounts={screen.hasReviews ? screen.severityCounts : null}
                 issues={screen.hasReviews ? screen.sortedIssues : []}
                 detailState={insightsDetailState}
                 duration={screen.duration}
                 isActive={screen.focusZone === "insights"}
                 scrollHeight={insightScrollHeight}
-                onOpenReview={screen.handleOpenReview}
+                onOpenReview={(issueId) => {
+                  if (!screen.selectedRunId) return;
+                  navigate({ screen: "review", reviewId: screen.selectedRunId, issueId });
+                }}
               />
             </Box>
           </Box>

@@ -9,6 +9,8 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { spawn as spawnPty } from "node-pty";
+import stripAnsi from "strip-ansi";
 import { stringify as stringifyYaml } from "yaml";
 import {
   assertBuiltCss,
@@ -35,6 +37,8 @@ const diffgazerBin = resolve(root, "cli/diffgazer/dist/index.js");
 const rootPackageManager = JSON.parse(
   readFileSync(resolve(root, "package.json"), "utf-8"),
 ).packageManager;
+const TUI_BOOT_TIMEOUT_MS = 30_000;
+const TUI_EXIT_TIMEOUT_MS = 10_000;
 
 if (!existsSync(diffgazerBin)) {
   throw new Error(
@@ -63,6 +67,68 @@ function escapeRegExp(value) {
 
 function missingLocalDeps(deps) {
   return resolveAndCollectMissing(deps, (dep) => resolveWorkspaceDependency(root, dep));
+}
+
+async function runTuiBootSmoke() {
+  let output = "";
+
+  await new Promise((resolvePromise, rejectPromise) => {
+    let sawBootFrame = false;
+    let exitTimer;
+    const terminal = spawnPty(process.execPath, [diffgazerBin, "--tui"], {
+      name: "xterm-256color",
+      cols: 80,
+      rows: 24,
+      cwd: root,
+      env: { ...process.env, NO_COLOR: "1", TERM: "xterm-256color" },
+    });
+
+    const bootTimer = setTimeout(() => {
+      terminal.kill();
+      rejectPromise(
+        new Error(
+          `TUI did not render its home or size gate within ${TUI_BOOT_TIMEOUT_MS}ms:\n${stripAnsi(output).slice(-1_000)}`,
+        ),
+      );
+    }, TUI_BOOT_TIMEOUT_MS);
+
+    terminal.onData((data) => {
+      output = `${output}${data}`.slice(-64_000);
+      if (sawBootFrame || !/(Main Menu|Terminal too small)/.test(stripAnsi(output))) return;
+
+      sawBootFrame = true;
+      clearTimeout(bootTimer);
+      terminal.write("q");
+      exitTimer = setTimeout(() => {
+        terminal.kill();
+        rejectPromise(
+          new Error(
+            `TUI did not exit after q within ${TUI_EXIT_TIMEOUT_MS}ms:\n${stripAnsi(output).slice(-1_000)}`,
+          ),
+        );
+      }, TUI_EXIT_TIMEOUT_MS);
+    });
+
+    terminal.onExit(({ exitCode, signal }) => {
+      clearTimeout(bootTimer);
+      clearTimeout(exitTimer);
+      if (!sawBootFrame) {
+        rejectPromise(
+          new Error(
+            `TUI exited before rendering its home or size gate:\n${stripAnsi(output).slice(-1_000)}`,
+          ),
+        );
+        return;
+      }
+      if (exitCode !== 0) {
+        rejectPromise(new Error(`TUI exited with code ${exitCode} and signal ${signal}`));
+        return;
+      }
+      resolvePromise();
+    });
+  });
+
+  console.log("OK: diffgazer --tui boots in an 80x24 pseudo-terminal and exits with q");
 }
 
 async function installDeps(fixture, depSpecs) {
@@ -256,7 +322,7 @@ const commands = [
     name: "diffgazer --help",
     command: "node",
     args: [diffgazerBin, "--help"],
-    expect: /--tui[\s\S]*beta terminal UI \(incomplete; not recommended\)/i,
+    expect: /--tui\s+Start the terminal UI/i,
     label: "product CLI help",
   },
   {
@@ -310,6 +376,8 @@ for (const check of commands) {
 
   console.log(`OK: ${check.name}`);
 }
+
+await runTuiBootSmoke();
 
 const fixture = mkdtempSync(join(tmpdir(), "dgadd-smoke-"));
 try {

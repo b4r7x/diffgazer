@@ -82,7 +82,7 @@ function RouteErrorFallback({
   return (
     <div
       role="alert"
-      className="flex h-screen items-center justify-center bg-background text-foreground font-mono"
+      className="flex h-dvh items-center justify-center bg-background text-foreground font-mono"
     >
       {clearFooter ? <ClearPageFooter /> : null}
       <div className="text-center">
@@ -214,7 +214,7 @@ export function RootLayout() {
 
   if (state.status === "checking") {
     return (
-      <div className="flex h-screen flex-col">
+      <div className="flex h-dvh flex-col">
         <RouteLoadingFallback />
       </div>
     );
@@ -222,7 +222,7 @@ export function RootLayout() {
 
   if (state.status === "error") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground space-y-4">
+      <div className="flex min-h-dvh flex-col items-center justify-center space-y-4 bg-background text-foreground">
         <Typography as="h1" size="2xl" className="text-error-text">
           Server Disconnected
         </Typography>

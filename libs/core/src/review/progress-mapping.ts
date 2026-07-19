@@ -2,6 +2,7 @@ import type { AgentState, AgentStatus, StepState } from "../schemas/events/index
 import type {
   ProgressStatus,
   ProgressStepData,
+  ProgressStepWithSubstepsData,
   ProgressSubstepData,
 } from "../schemas/presentation/index.js";
 import { truncate } from "../strings.js";
@@ -53,19 +54,21 @@ function deriveSubstepsFromAgents(agents: AgentState[]): ProgressSubstepData[] {
   }));
 }
 
-export function mapStepsToProgressData(
+export function mapStepsToProgressData(steps: StepState[]): ProgressStepData[] {
+  return steps.map((step) => ({
+    id: step.id,
+    label: step.label,
+    status: mapStepStatusToProgress(step.status),
+  }));
+}
+
+export function mapStepsToProgressDataWithAgents(
   steps: StepState[],
   agents: AgentState[],
-): ProgressStepData[] {
-  return steps.map((step) => {
-    const substeps =
-      step.id === "review" && agents.length > 0 ? deriveSubstepsFromAgents(agents) : undefined;
-
-    return {
-      id: step.id,
-      label: step.label,
-      status: mapStepStatusToProgress(step.status),
-      substeps,
-    };
-  });
+): ProgressStepWithSubstepsData[] {
+  return mapStepsToProgressData(steps).map((step) => ({
+    ...step,
+    substeps:
+      step.id === "review" && agents.length > 0 ? deriveSubstepsFromAgents(agents) : undefined,
+  }));
 }

@@ -2,7 +2,7 @@ import type { TimelineItem } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { NavigationList } from "../../../components/ui/navigation-list";
-import { getVisibleSliceOffset } from "../../../lib/visible-slice-offset";
+import { getListWindow } from "../../../lib/list-window";
 import { useTheme } from "../../../theme/provider";
 
 export interface SectionsListProps {
@@ -26,14 +26,18 @@ export function SectionsList({
 }: SectionsListProps): ReactElement {
   const { tokens } = useTheme();
   const itemWidth = Math.max(width - 4, 1);
-  const paddingY = height >= 3 ? 1 : 0;
-  const visibleItemCount = Math.max(height - paddingY * 2, 1);
+  const paddingY = height >= 5 ? 1 : 0;
+  const viewportRows = Math.max(height - paddingY * 2, 1);
   const selectedIndex = Math.max(
     items.findIndex((item) => item.id === selectedId),
     0,
   );
-  const offset = getVisibleSliceOffset(selectedIndex, items.length, visibleItemCount);
-  const visibleItems = items.slice(offset, offset + visibleItemCount);
+  const window = getListWindow({
+    selectedIndex,
+    total: items.length,
+    viewportRows,
+  });
+  const visibleItems = items.slice(window.start, window.end);
 
   return (
     <Box
@@ -44,6 +48,7 @@ export function SectionsList({
       height={height}
       overflow="hidden"
     >
+      {window.canScrollUp ? <Text color={tokens.muted}>{"\u25B2"}</Text> : null}
       <NavigationList
         selectedId={selectedId}
         highlightedId={isActive ? selectedId : null}
@@ -70,6 +75,7 @@ export function SectionsList({
           </NavigationList.Item>
         ))}
       </NavigationList>
+      {window.canScrollDown ? <Text color={tokens.muted}>{"\u25BC"}</Text> : null}
     </Box>
   );
 }

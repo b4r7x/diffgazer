@@ -8,7 +8,7 @@ import type { SettingsConfig } from "@diffgazer/core/schemas/config";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -38,10 +38,17 @@ function makeSnapshot(label: string): ReviewContextResponse {
     graph: {
       generatedAt,
       root: `/tmp/repo-${label.toLowerCase()}`,
-      packages: [],
+      packages: [{ name: "web", dir: "apps/web", kind: "app" }],
       edges: [],
       fileTree: [],
-      changedFiles: [],
+      changedFiles: [
+        {
+          filePath: "src/index.ts",
+          operation: "modified",
+          additions: 3,
+          deletions: 1,
+        },
+      ],
     },
     meta: {
       generatedAt,
@@ -79,7 +86,7 @@ function LifecycleProgressHarness() {
   return (
     <ReviewProgressView
       data={{
-        steps: mapStepsToProgressData(state.steps, state.agents),
+        steps: mapStepsToProgressData(state.steps),
         events: state.events,
         agents: state.agents,
         metrics: {
@@ -141,11 +148,18 @@ describe("review context lifecycle integration", () => {
     );
 
     expect(await screen.findByText("context-B")).toBeInTheDocument();
+    expect(screen.getByText("1 changed file")).toBeInTheDocument();
+    expect(screen.getByText("+3 / -1")).toBeInTheDocument();
     expect(getReviewContext).toHaveBeenCalledOnce();
 
-    await user.click(screen.getByRole("button", { name: "Download .txt" }));
-    await user.click(screen.getByRole("button", { name: "Download .md" }));
-    await user.click(screen.getByRole("button", { name: "Download .json" }));
+    const downloadActions = screen.getByRole("group", { name: "Download context snapshot" });
+    const downloadButtons = within(downloadActions).getAllByRole("button");
+    expect(downloadButtons).toHaveLength(3);
+    expect(downloadButtons[0]).toHaveAccessibleName("Download .txt");
+    expect(downloadButtons[1]).toHaveAccessibleName("Download .md");
+    expect(downloadButtons[2]).toHaveAccessibleName("Download .json");
+
+    for (const button of downloadButtons) await user.click(button);
 
     expect(downloadAsFile).toHaveBeenNthCalledWith(1, "context-B", "context.txt", "text/plain");
     expect(downloadAsFile).toHaveBeenNthCalledWith(2, "# Context B", "context.md", "text/markdown");

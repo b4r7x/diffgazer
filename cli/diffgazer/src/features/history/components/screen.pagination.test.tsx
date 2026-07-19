@@ -3,33 +3,55 @@ import { cleanup, render } from "ink-testing-library";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NavigationContext } from "../../../hooks/use-navigation";
+import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
 import { CliThemeProvider } from "../../../theme/provider";
 import { HistoryScreen } from "./screen";
 
 const useHistoryScreenStateMock = vi.hoisted(() => vi.fn());
+const terminalSize = vi.hoisted(() => ({ columns: 100, rows: 30 }));
+const SUPPORT_FLOOR = { columns: 80, rows: 24 } as const;
+
+vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@diffgazer/core/api/hooks")>()),
+  useInit: () => ({ data: undefined, isLoading: false }),
+}));
 
 vi.mock("@diffgazer/core/review", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@diffgazer/core/review")>();
   return { ...actual, useHistoryScreenState: useHistoryScreenStateMock };
 });
 
-vi.mock("@diffgazer/core/footer", () => ({
+vi.mock("@diffgazer/core/footer", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@diffgazer/core/footer")>()),
   usePageFooter: vi.fn(),
 }));
 
 vi.mock("../../../hooks/use-terminal-dimensions", () => ({
   useResponsive: () => ({
-    columns: 100,
-    rows: 30,
-    isNarrow: false,
-    isMedium: false,
+    columns: terminalSize.columns,
+    rows: terminalSize.rows,
+    isNarrow: terminalSize.columns < 80,
+    isMedium: terminalSize.columns >= 80 && terminalSize.columns < 120,
   }),
-  useTerminalDimensions: () => ({ columns: 100, rows: 30 }),
+  useTerminalDimensions: () => terminalSize,
+}));
+
+vi.mock("../../../components/layout/global", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../components/layout/global")>()),
+  useContentZone: () => ({
+    columns: terminalSize.columns,
+    rows: terminalSize.rows,
+    contentColumns: terminalSize.columns,
+    contentRows: terminalSize.rows - 4,
+  }),
 }));
 
 afterEach(() => {
   cleanup();
+  cleanupRootFrames();
   vi.clearAllMocks();
+  terminalSize.columns = 100;
+  terminalSize.rows = 30;
 });
 
 function renderHistoryScreen() {
@@ -119,5 +141,50 @@ describe("HistoryScreen pagination", () => {
     releasePage.resolve();
     await vi.waitFor(() => expect(view.lastFrame()).toContain("Review from a later page"));
     expect(view.lastFrame()).not.toContain("Load older runs");
+  });
+
+  it("keeps the pagination affordance and long run content inside an 80x24 frame", async () => {
+    Object.assign(terminalSize, SUPPORT_FLOOR);
+    const runs = Array.from({ length: 1 }, (_, index) => ({
+      id: `review-${index + 1}`,
+      displayId: `#review-${index + 1}`,
+      branch: `feature/history-pagination-${index + 1}-with-a-long-branch-name`,
+      timestamp: "07/18/2026, 10:33:48 PM",
+      summary: `Historical review ${index + 1} with a long summary`,
+    }));
+    useHistoryScreenStateMock.mockReturnValue({
+      reviewsQuery: { data: { reviews: [] }, isLoading: false, error: null },
+      reviewDetailQuery: {
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: vi.fn(),
+      },
+      reviews: [],
+      timelineItems: [],
+      selectedDateId: "all",
+      setSelectedDateId: vi.fn(),
+      searchQuery: "",
+      setSearchQuery: vi.fn(),
+      mappedRuns: runs,
+      selectedRunId: runs[0]?.id ?? null,
+      setSelectedRunId: vi.fn(),
+      selectedRun: null,
+      severityCounts: null,
+      sortedIssues: [],
+      duration: "",
+      hasReviews: true,
+      hasSearchQuery: false,
+      emptyRunsMessage: "No runs yet",
+      hasMoreReviews: true,
+      isLoadingMoreReviews: false,
+      loadMoreReviews: vi.fn(async () => {}),
+    });
+
+    const { lastFrame } = renderRootFrame(80, 24, <HistoryScreen />);
+    await vi.waitFor(() => expect(lastFrame()).toContain("Load older runs"));
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("Historical review 1");
+    expect(frame.split("\n")).toHaveLength(24);
   });
 });

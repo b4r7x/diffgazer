@@ -47,7 +47,10 @@ vi.mock("../hooks/use-exit", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../hooks/use-exit")>();
   return { ...actual, useExit: () => ({ handleExit: () => {} }) };
 });
-vi.mock("../hooks/use-terminal-dimensions", () => ({ useResponsive: () => ({ columns: 100 }) }));
+vi.mock("../hooks/use-terminal-dimensions", () => ({
+  useResponsive: () => ({ columns: 100, rows: 30, isNarrow: false }),
+  useTerminalDimensions: () => ({ columns: 100, rows: 30 }),
+}));
 vi.mock("./providers/server", () => ({
   ServerProvider: ({ children }: { children: ReactNode }) => children,
   useServerControls: () => ({ restartServers: () => Promise.resolve() }),
@@ -66,6 +69,7 @@ const CONFIGURED_QUERY = {
 
 function makeInitResponse(): Awaited<ReturnType<BoundApi["loadInit"]>> {
   return {
+    configPath: "/tmp/diffgazer/config.json",
     config: { provider: "openrouter", model: "openrouter/test-model" },
     providers: [],
     settings: {
@@ -225,7 +229,7 @@ describe("useConfigGuard", () => {
   test("treats loaded trust:null as a real trust prompt", () => {
     useConfigCheckMock.mockReturnValue(CONFIGURED_QUERY);
     useInitMock.mockReturnValue({
-      data: makeInitResponse(),
+      data: { ...makeInitResponse(), config: { provider: "openai", model: null } },
       isLoading: false,
       error: null,
       refetch: refetchInitMock,
@@ -235,7 +239,7 @@ describe("useConfigGuard", () => {
 
     expect(view.lastFrame()).toContain("TRUST THIS REPOSITORY?");
     expect(view.lastFrame()).toContain("/tmp/repo");
-    expect(view.lastFrame()).toContain("openrouter");
+    expect(view.lastFrame()).toContain("openai");
     expect(view.lastFrame()).not.toContain("Loading home data");
     expect(view.lastFrame()).not.toContain("Home Data Unavailable");
     expect(view.lastFrame()).not.toContain("Not configured");

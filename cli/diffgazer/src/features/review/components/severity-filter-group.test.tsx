@@ -6,10 +6,15 @@ import {
 import { cleanup, render } from "ink-testing-library";
 import { useState } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
 import { CliThemeProvider } from "../../../theme/provider";
 import { SeverityFilterGroup } from "./severity-filter-group";
 
 const ARROW_RIGHT = "[C";
+
+vi.mock("@diffgazer/core/api/hooks", () => ({
+  useInit: () => ({ data: undefined, isLoading: false }),
+}));
 
 const ZERO_COUNTS = SEVERITY_ORDER.reduce(
   (acc, severity) => {
@@ -28,9 +33,11 @@ async function flush(times = 4): Promise<void> {
 function Harness({
   initialFilter = new Set<(typeof SEVERITY_ORDER)[number]>(),
   onChange,
+  contentWidth = 80,
 }: {
   initialFilter?: UISeverityFilter;
   onChange?: (filter: UISeverityFilter) => void;
+  contentWidth?: number;
 }) {
   const [filter, setFilter] = useState<UISeverityFilter>(initialFilter);
   return (
@@ -43,6 +50,7 @@ function Harness({
         }}
         issueCounts={ZERO_COUNTS}
         isActive
+        contentWidth={contentWidth}
       />
     </CliThemeProvider>
   );
@@ -51,6 +59,42 @@ function Harness({
 describe("CLI SeverityFilterGroup keyboard model", () => {
   afterEach(() => {
     cleanup();
+    cleanupRootFrames();
+  });
+
+  test("renders the shared severity count label", () => {
+    const { lastFrame } = render(<Harness />);
+
+    expect(lastFrame()).toContain("[BLOCKER 0]");
+    expect(lastFrame()).not.toContain("[BLOCKER (0)]");
+  });
+
+  test("abbreviates severity chips when the pane cannot fit the full labels", () => {
+    const { lastFrame } = render(<Harness contentWidth={24} />);
+    const frame = lastFrame() ?? "";
+
+    expect(frame).toContain("B0 H0 M0 L0 N0");
+    expect(frame).not.toContain("[BLOCK");
+    expect(frame.split("\n")).toHaveLength(1);
+  });
+
+  test("keeps all realistic severity chips on one row in an 80x24 root frame", async () => {
+    const { lastFrame } = renderRootFrame(
+      80,
+      24,
+      <SeverityFilterGroup
+        currentFilter={new Set()}
+        onFilterChange={vi.fn()}
+        issueCounts={{ blocker: 1, high: 3, medium: 3, low: 3, nit: 2 }}
+        isActive
+        contentWidth={24}
+      />,
+    );
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("B1 H3 M3 L3 N2"));
+    const frame = lastFrame() ?? "";
+    expect(frame.split("\n")).toHaveLength(24);
+    expect(frame.split("\n").filter((line) => /B1|H3|M3|L3|N2/.test(line))).toHaveLength(1);
   });
 
   test("Enter toggles the focused severity into the filter set", async () => {
@@ -147,6 +191,7 @@ describe("CLI SeverityFilterGroup focus clamping", () => {
           onFilterChange={onFilterChange}
           issueCounts={ZERO_COUNTS}
           isActive
+          contentWidth={80}
         />
       </CliThemeProvider>
     );

@@ -5,17 +5,19 @@ import {
   useSettings,
 } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
+import { sanitizeTerminalText } from "@diffgazer/core/review";
 import { toSelectableTheme } from "@diffgazer/core/schemas/config";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { useContext, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import type { CliMode } from "../cli-options";
-import { GlobalLayout } from "../components/layout/global";
+import { GlobalLayout, MIN_TERMINAL_COLUMNS, MIN_TERMINAL_ROWS } from "../components/layout/global";
 import { Spinner } from "../components/ui/spinner";
 import { ExitPreparationProvider, useExit } from "../hooks/use-exit";
 import { KeyboardContext } from "../hooks/use-keyboard";
 import { useNavigation } from "../hooks/use-navigation";
+import { useTerminalDimensions } from "../hooks/use-terminal-dimensions";
 import { api } from "../lib/api";
 import { createCliQueryClient } from "../lib/query-client";
 import { createServerFactories } from "../lib/servers/factories";
@@ -29,6 +31,31 @@ import { useConfigGuard } from "./use-config-guard";
 
 const queryClient = createCliQueryClient();
 
+function GateFrame({ children }: { children: ReactNode }): ReactElement {
+  const { columns, rows } = useTerminalDimensions();
+  if (columns < MIN_TERMINAL_COLUMNS || rows < MIN_TERMINAL_ROWS) {
+    return (
+      <Box width={columns} height={rows} justifyContent="center" alignItems="center">
+        <Text>
+          Terminal too small ({columns} columns x {rows} rows). Minimum: {MIN_TERMINAL_COLUMNS}{" "}
+          columns x {MIN_TERMINAL_ROWS} rows.
+        </Text>
+      </Box>
+    );
+  }
+  return (
+    <Box
+      width={columns}
+      height={rows}
+      overflow="hidden"
+      alignItems="center"
+      justifyContent="center"
+    >
+      {children}
+    </Box>
+  );
+}
+
 interface HealthGateProps {
   children: ReactNode;
   startupFailure: string | null;
@@ -40,6 +67,7 @@ function HealthGate({
   startupFailure,
   onClearStartupFailure,
 }: HealthGateProps): ReactElement {
+  const { tokens } = useTheme();
   const { state, retry } = useServerStatus();
   const { restartServers } = useServerControls();
   const [isRecovering, setIsRecovering] = useState(false);
@@ -69,8 +97,10 @@ function HealthGate({
   if (state.status === "error") {
     return (
       <Box flexDirection="column" alignItems="center" justifyContent="center" padding={1}>
-        <Text color="red">{startupFailure ? "Server Failed to Start" : "Server Disconnected"}</Text>
-        <Text dimColor>{startupFailure ?? state.message}</Text>
+        <Text color={tokens.error}>
+          {startupFailure ? "Server Failed to Start" : "Server Disconnected"}
+        </Text>
+        <Text dimColor>{sanitizeTerminalText(startupFailure ?? state.message)}</Text>
         <Text dimColor>Press r to retry</Text>
       </Box>
     );
@@ -80,6 +110,7 @@ function HealthGate({
 }
 
 export function ConfigGate({ children }: { children: ReactNode }): ReactElement {
+  const { tokens } = useTheme();
   const configState = useConfigGuard();
   const configCheck = useConfigCheck();
   const { route } = useNavigation();
@@ -104,9 +135,11 @@ export function ConfigGate({ children }: { children: ReactNode }): ReactElement 
   if (configState === "api-error") {
     return (
       <Box flexDirection="column" alignItems="center" justifyContent="center" padding={1}>
-        <Text color="red">Configuration Check Failed</Text>
+        <Text color={tokens.error}>Configuration Check Failed</Text>
         <Text dimColor>
-          {configCheck.error?.message ?? "Unable to reach the configuration API."}
+          {sanitizeTerminalText(
+            configCheck.error?.message ?? "Unable to reach the configuration API.",
+          )}
         </Text>
         <Text dimColor>Press r to retry</Text>
       </Box>
@@ -218,17 +251,19 @@ export function App({ mode, theme, terminalInputQueue }: AppProps): ReactElement
                 <ExitPreparationProvider>
                   <ServerProvider key={mode} servers={serverFactories}>
                     <AppGlobalShortcuts />
-                    <HealthGate
-                      startupFailure={startupFailure}
-                      onClearStartupFailure={() => setStartupFailure(null)}
-                    >
-                      <ConfigGate>
-                        <StartupThemeSync explicitTheme={theme} />
-                        <GlobalLayout>
-                          <ScreenRouter />
-                        </GlobalLayout>
-                      </ConfigGate>
-                    </HealthGate>
+                    <GateFrame>
+                      <HealthGate
+                        startupFailure={startupFailure}
+                        onClearStartupFailure={() => setStartupFailure(null)}
+                      >
+                        <ConfigGate>
+                          <StartupThemeSync explicitTheme={theme} />
+                          <GlobalLayout>
+                            <ScreenRouter />
+                          </GlobalLayout>
+                        </ConfigGate>
+                      </HealthGate>
+                    </GateFrame>
                   </ServerProvider>
                 </ExitPreparationProvider>
               </FooterProvider>

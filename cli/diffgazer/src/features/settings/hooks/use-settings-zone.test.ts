@@ -11,7 +11,7 @@ vi.mock("ink", () => ({
   useInput: useInputMock,
 }));
 
-import { useSettingsZone } from "./use-settings-zone";
+import { getSettingsFooter, useSettingsZone } from "./use-settings-zone";
 
 function getActiveHandler(): ((input: string, key: Record<string, boolean>) => void) | null {
   const lastCall = useInputMock.mock.calls.at(-1);
@@ -34,5 +34,41 @@ describe("useSettingsZone", () => {
     });
     expect(result.current.isButtonActive(0)).toBe(true);
     expect(result.current.isButtonActive(1)).toBe(false);
+  });
+});
+
+describe("getSettingsFooter", () => {
+  test("describes list controls while the list zone is active", () => {
+    expect(
+      getSettingsFooter({
+        zone: "list",
+        listShortcuts: [{ key: "Space", label: "Toggle" }],
+        buttonActionLabel: "Save",
+      }),
+    ).toEqual({
+      shortcuts: [
+        { key: "Space", label: "Toggle" },
+        { key: "Tab", label: "Switch Zone" },
+      ],
+      rightShortcuts: [{ key: "Esc", label: "Back" }],
+    });
+  });
+
+  test("describes the focused button action while the button zone is active", () => {
+    expect(
+      getSettingsFooter({
+        zone: "buttons",
+        listShortcuts: [],
+        buttonActionLabel: "Save Changes",
+        buttonActionDisabled: true,
+      }),
+    ).toEqual({
+      shortcuts: [
+        { key: "←/→", label: "Move Action" },
+        { key: "Enter", label: "Save Changes", disabled: true },
+        { key: "Tab", label: "Switch Zone" },
+      ],
+      rightShortcuts: [{ key: "Esc", label: "Back" }],
+    });
   });
 });

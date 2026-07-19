@@ -1,4 +1,5 @@
 import { useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
+import { resolveSelectableTheme, toSelectableTheme } from "@diffgazer/core/schemas/config";
 import {
   createContext,
   type ReactNode,
@@ -23,22 +24,16 @@ function getSystemTheme(): ResolvedTheme {
 }
 
 const STORAGE_KEY = "diffgazer-theme";
+const THEME_COLORS: Record<ResolvedTheme, string> = {
+  dark: "#0d1117",
+  light: "#ffffff",
+};
 
 export const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 function resolveWebTheme(value: string | null): WebTheme {
   if (value === "dark" || value === "light" || value === "auto") return value;
   return "auto";
-}
-
-function mapSettingsTheme(theme: string): WebTheme {
-  if (theme === "terminal") return "dark";
-  return resolveWebTheme(theme);
-}
-
-function resolveTheme(theme: WebTheme, systemTheme: ResolvedTheme): ResolvedTheme {
-  if (theme === "auto") return systemTheme;
-  return theme;
 }
 
 function accessThemeStorage<T>(operation: (storage: Storage) => T, fallback: T): T {
@@ -79,12 +74,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     () => "dark" as const,
   );
 
-  const settingsTheme = settings?.theme ? mapSettingsTheme(settings.theme) : null;
+  const settingsTheme = settings?.theme ? toSelectableTheme(settings.theme) : null;
   const effectiveTheme: WebTheme = localOverride ?? settingsTheme ?? fallbackTheme;
-  const resolved = resolveTheme(effectiveTheme, system);
+  const resolved = resolveSelectableTheme(effectiveTheme, system);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", resolved);
+    document.documentElement.style.colorScheme = resolved;
+    document
+      .querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+      ?.setAttribute("content", THEME_COLORS[resolved]);
   }, [resolved]);
 
   const setTheme = useCallback(

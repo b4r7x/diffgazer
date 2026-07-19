@@ -9,11 +9,22 @@ describe("Header", () => {
     expect(screen.getByRole("img", { name: "DIFFGAZER" })).toBeInTheDocument();
   });
 
+  it("provides a plain-text brand for the narrow header", () => {
+    render(<Header providerName="OpenAI" providerStatus="idle" />);
+
+    expect(screen.getByText("DIFFGAZER")).toHaveClass("sm:hidden");
+  });
+
   it("shows provider name and status when supplied", () => {
-    render(<Header providerName="OpenAI" providerStatus="active" />);
-    const status = screen.getByLabelText(/provider: openai, status: active/i);
+    render(
+      <Header
+        providerName="OpenAI / a-provider-model-name-that-needs-to-fit"
+        providerStatus="active"
+      />,
+    );
+    const status = screen.getByLabelText(/provider: openai \/ a-provider-model-name/i);
     expect(status).toBeInTheDocument();
-    expect(status).toHaveTextContent("OpenAI");
+    expect(status).toHaveTextContent("OpenAI / a-provider-model-name-that-needs-to-fit");
     expect(status).toHaveTextContent(/active/i);
   });
 

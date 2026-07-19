@@ -1,3 +1,4 @@
+import { Box } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test } from "vitest";
 import { CliThemeProvider } from "../../../theme/provider";
@@ -31,5 +32,26 @@ describe("CodeSnippet (TUI)", () => {
 
     expect(frame).toMatch(/\b42\s+alpha\(\);/);
     expect(frame).toMatch(/\b43\s+beta\(\);/);
+  });
+
+  test("truncates a long code line to one row without dropping its gutter", async () => {
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <Box width={80}>
+          <CodeSnippet
+            filePath="src/example.ts"
+            startLine={42}
+            code={`const value = "${"x".repeat(200)}";`}
+          />
+        </Box>
+      </CliThemeProvider>,
+    );
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+    const codeRows = (lastFrame() ?? "").split("\n").filter((row) => row.includes("const value"));
+
+    expect(codeRows).toHaveLength(1);
+    expect(codeRows[0]).toMatch(/42\s+const value/);
+    expect(codeRows[0]?.length).toBeLessThanOrEqual(80);
   });
 });

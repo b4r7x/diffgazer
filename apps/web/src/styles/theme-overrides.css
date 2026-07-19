@@ -56,8 +56,19 @@
 }
 
 [data-theme="light"] {
-  /* Domain-specific tokens (diffgazer-only); the rest of the light palette is
-     the lib light palette verbatim and is intentionally not re-stated. */
+  /* GitHub-light primitive overrides */
+  --base-bg: #ffffff;
+  --base-fg: #1f2328;
+  --base-info: #0969da;
+  --base-accent: #8250df;
+  --base-success: #1a7f37;
+  --base-danger: #cf222e;
+  --base-warning: #9a6700;
+  --base-border: #d0d7de;
+  --base-muted: #656d76;
+  --muted-foreground: var(--base-muted);
+
+  /* Domain-specific tokens (diffgazer-only) */
   --severity-blocker: var(--base-danger);
   --severity-high: #bc4c00;
   --severity-medium: var(--base-warning);
@@ -95,4 +106,17 @@
   --color-row-active-fg: var(--row-active-fg);
 
   --color-input-well: var(--input-well);
+}
+
+@media (prefers-contrast: more) {
+  [data-theme="dark"] {
+    --base-border: #777777;
+    --base-muted: #999999;
+    --base-accent: #b3b3b3;
+  }
+
+  [data-theme="light"] {
+    --base-border: #6e6e6e;
+    --base-muted: #555555;
+  }
 }

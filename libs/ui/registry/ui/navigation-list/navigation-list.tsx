@@ -39,7 +39,7 @@ export interface NavigationListProps
   highlighted?: string | null;
   /** Initial highlighted id for uncontrolled mode. */
   defaultHighlighted?: string | null;
-  /** Fired when an item is activated by click or Enter. */
+  /** Fired when an item is activated by click, Enter, or Space — including the already-selected item. */
   onSelect?: (id: string) => void;
   /**
    * Fired when Enter activates an item. Receives the raw keyboard event for modifier-key

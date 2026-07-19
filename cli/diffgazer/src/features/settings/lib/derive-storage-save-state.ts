@@ -8,17 +8,21 @@ export interface StorageSaveInput {
 }
 
 export interface StorageSaveState {
-  effective: SecretsStorage;
+  effective: SecretsStorage | null;
   isDirty: boolean;
   canSave: boolean;
 }
-
-const DEFAULT_STORAGE: SecretsStorage = "file";
 
 export function deriveStorageSaveState({
   persisted,
   choice,
   saving,
 }: StorageSaveInput): StorageSaveState {
-  return deriveSaveState({ persisted, choice, saving, fallback: DEFAULT_STORAGE });
+  const state = deriveSaveState<SecretsStorage | null>({
+    persisted,
+    choice,
+    saving,
+    fallback: null,
+  });
+  return { ...state, canSave: state.effective !== null && state.canSave };
 }

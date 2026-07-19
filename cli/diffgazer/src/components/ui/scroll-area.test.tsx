@@ -54,7 +54,7 @@ describe("ScrollArea autoTail", () => {
 
     const frame = lastFrame() ?? "";
     expect(frame).toContain("item-5");
-    expect(frame).toContain("item-3");
+    expect(frame).toContain("item-4");
     expect(frame).not.toContain("item-0");
   });
 
@@ -85,7 +85,7 @@ describe("ScrollArea autoTail", () => {
     await flush();
 
     const frame = lastFrame() ?? "";
-    expect(frame).toContain("item-3");
+    expect(frame).toContain("item-4");
     expect(frame).toContain("item-5");
     expect(frame).not.toContain("item-0");
   });
@@ -105,7 +105,7 @@ describe("ScrollArea autoTail", () => {
     // User scrolls up: auto-tail must be suppressed.
     stdin.write(ARROW_UP);
     await flush();
-    expect(lastFrame()).toContain("item-2");
+    expect(lastFrame()).toContain("item-3");
     expect(lastFrame()).not.toContain("item-5");
 
     // New items arrive while scrolled up: the view stays put, not pinned to tail.
@@ -117,7 +117,7 @@ describe("ScrollArea autoTail", () => {
       </CliThemeProvider>,
     );
     await flush();
-    expect(lastFrame()).toContain("item-2");
+    expect(lastFrame()).toContain("item-3");
     expect(lastFrame()).not.toContain("item-8");
 
     // Returning to the bottom (End) re-enables auto-tail.
@@ -225,11 +225,11 @@ describe("ScrollArea autoTail", () => {
         </ScrollArea>
       </CliThemeProvider>,
     );
-    await flush();
+    await vi.waitFor(() => expect(lastFrame()).toContain("item-3"));
 
     const frame = lastFrame() ?? "";
     expect(frame).toContain("item-3");
-    expect(frame).toContain("item-1");
+    expect(frame).toContain("item-2");
   });
 
   test("ArrowDown back to the bottom re-enables auto-tail after scrolling up", async () => {
@@ -248,14 +248,14 @@ describe("ScrollArea autoTail", () => {
     await flush();
     stdin.write(ARROW_UP);
     await flush();
-    expect(lastFrame()).toContain("item-1");
+    expect(lastFrame()).toContain("item-2");
     expect(lastFrame()).not.toContain("item-5");
 
     // ArrowDown back to the bottom re-enables auto-tail (next === maxOffset).
-    stdin.write(ARROW_DOWN);
-    await flush();
-    stdin.write(ARROW_DOWN);
-    await flush();
+    for (let step = 0; step < 3; step += 1) {
+      stdin.write(ARROW_DOWN);
+      await flush();
+    }
     expect(lastFrame()).toContain("item-5");
 
     rerender(
@@ -286,13 +286,45 @@ describe("ScrollArea autoTail", () => {
     await flush();
 
     const frame = lastFrame() ?? "";
-    expect(frame).toContain("item-1");
-    expect(frame).toContain("item-3");
+    expect(frame).toContain("item-2");
     expect(frame).not.toContain("item-0");
   });
 });
 
 describe("ScrollArea rendered terminal rows", () => {
+  test("keeps indicators inside a stable top, middle, and bottom viewport", async () => {
+    const { stdin, lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <ScrollArea height={5} isActive totalRows={10}>
+          {({ start, end }) =>
+            Array.from({ length: end - start }, (_, index) => `row-${start + index}`).map(
+              (label) => <Text key={label}>{label}</Text>,
+            )
+          }
+        </ScrollArea>
+      </CliThemeProvider>,
+    );
+    await flush();
+
+    const top = (lastFrame() ?? "").split("\n");
+    expect(top).toHaveLength(5);
+    expect(top.at(-1)).toContain("\u25BC");
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    const middle = (lastFrame() ?? "").split("\n");
+    expect(middle).toHaveLength(5);
+    expect(middle[0]).toContain("\u25B2");
+    expect(middle.at(-1)).toContain("\u25BC");
+
+    stdin.write(END);
+    await flush();
+    const bottom = (lastFrame() ?? "").split("\n");
+    expect(bottom).toHaveLength(5);
+    expect(bottom[0]).toContain("\u25B2");
+    expect(bottom.at(-1)).toContain("row-9");
+  });
+
   test("scrolls multiline rows emitted by an opaque DiffView child", async () => {
     const { stdin, lastFrame } = render(
       <CliThemeProvider initialTheme="dark">
@@ -354,10 +386,35 @@ describe("ScrollArea rendered terminal rows", () => {
     expect(lastFrame()).toContain("wrapped-tail");
   });
 
+  test("keeps truthful boundaries inside a two-row viewport", async () => {
+    const { stdin, lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <ScrollArea height={2} isActive>
+          {items(5)}
+        </ScrollArea>
+      </CliThemeProvider>,
+    );
+    await flush();
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    stdin.write(ARROW_DOWN);
+    await flush();
+    const middleRows = (lastFrame() ?? "").split("\n").filter(Boolean);
+    expect(middleRows).toEqual(["▲", "▼"]);
+
+    stdin.write(ARROW_UP);
+    await flush();
+    stdin.write(ARROW_UP);
+    await flush();
+    expect(lastFrame()).toContain("item-0");
+    expect((lastFrame() ?? "").split("\n").filter(Boolean)).toHaveLength(2);
+  });
+
   test("counts compound child gaps, padding, and borders", async () => {
     const { stdin, lastFrame } = render(
       <CliThemeProvider initialTheme="dark">
-        <ScrollArea height={3} isActive>
+        <ScrollArea height={4} isActive>
           <Box flexDirection="column" borderStyle="round" paddingY={1} gap={1}>
             <Text>compound-start</Text>
             <Text>compound-tail</Text>

@@ -13,6 +13,7 @@ import { ConfigProvider } from "@/hooks/use-config";
 // Boundary mock: Router is the routing library; the shell reads location/back state.
 vi.mock("@tanstack/react-router", () => ({
   useRouter: () => ({ history: { back: vi.fn() }, navigate: vi.fn() }),
+  useNavigate: () => vi.fn(),
   useLocation: () => ({ pathname: "/" }),
   useCanGoBack: () => false,
 }));
@@ -43,7 +44,9 @@ function renderShell(children: ReactNode = <p>Help content</p>) {
       <ApiProvider value={mockApi}>
         <ConfigProvider>
           <FooterProvider>
-            <GlobalLayout>{children}</GlobalLayout>
+            <KeyboardProvider>
+              <GlobalLayout>{children}</GlobalLayout>
+            </KeyboardProvider>
           </FooterProvider>
         </ConfigProvider>
       </ApiProvider>
@@ -117,7 +120,7 @@ describe("GlobalLayout", () => {
     expect(screen.getByRole("button", { name: "First content action" })).toHaveFocus();
   });
 
-  it("keeps the real review-results viewport keyboard reachable inside the shell", () => {
+  it("keeps both stacked review panes reachable without a horizontal viewport focus stop", () => {
     const issue = makeIssue({
       id: "narrow-layout",
       severity: "high",
@@ -135,12 +138,13 @@ describe("GlobalLayout", () => {
 
     const main = screen.getByRole("main");
     const resultsViewport = screen.getByRole("region", { name: "Review result panes" });
+    const issueList = screen.getByRole("complementary", { name: "Issue list" });
+    const issueDetails = screen.getByRole("complementary", { name: "Issue details" });
     expect(main).toContainElement(resultsViewport);
+    expect(resultsViewport).toContainElement(issueList);
+    expect(resultsViewport).toContainElement(issueDetails);
     expect(resultsViewport).toHaveAttribute("data-viewport", "review-results");
-    expect(resultsViewport).toHaveAttribute("tabindex", "0");
-
-    resultsViewport.focus();
-    expect(resultsViewport).toHaveFocus();
+    expect(resultsViewport).not.toHaveAttribute("tabindex");
   });
 
   it("keeps the configured header when only provider status fails", async () => {

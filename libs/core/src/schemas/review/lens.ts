@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { LensIdSchema } from "./enums.js";
-import { ReviewIssueSchema, TraceRefSchema } from "./issues.js";
 
 export {
   LENS_IDS,
@@ -30,17 +29,3 @@ export const LensSchema = z.object({
   severityRubric: SeverityRubricSchema,
 });
 export type Lens = z.infer<typeof LensSchema>;
-
-export const DrilldownResultSchema = z.object({
-  issueId: z.string(),
-  issue: ReviewIssueSchema,
-  detailedAnalysis: z.string(),
-  rootCause: z.string(),
-  impact: z.string(),
-  suggestedFix: z.string(),
-  patch: z.string().nullable(),
-  relatedIssues: z.array(z.string()),
-  references: z.array(z.string()),
-  trace: z.array(TraceRefSchema).optional(),
-});
-export type DrilldownResult = z.infer<typeof DrilldownResultSchema>;

@@ -11,6 +11,7 @@ import { TrustPanel } from "./trust-panel";
 
 function makeInitResponse(): Awaited<ReturnType<BoundApi["loadInit"]>> {
   return {
+    configPath: "/tmp/diffgazer/config.json",
     config: null,
     providers: [],
     settings: {
@@ -111,10 +112,11 @@ describe("TrustPanel", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => view.lastFrame()?.includes("Currently unavailable") ?? false);
+    await flushUntil(() => /currently unavailable/i.test(view.lastFrame() ?? ""));
 
     const frame = view.lastFrame() ?? "";
-    expect(frame).toContain("Currently unavailable");
+    expect(frame).toMatch(/currently unavailable/i);
+    expect(frame).not.toContain("First-Time Setup");
     expect(frame).toContain("[Tab] Focus Actions");
     expect(frame).toContain("[Enter/Space] Toggle");
 

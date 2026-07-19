@@ -1,7 +1,8 @@
-import { isApiError, type ShutdownResult } from "@diffgazer/core/api";
+import type { ShutdownResult } from "@diffgazer/core/api";
 import { usePageFooter } from "@diffgazer/core/footer";
 import type { NavigableMenuAction } from "@diffgazer/core/navigation";
 import { resolveHomeMenuActivation } from "@diffgazer/core/navigation";
+import { describeReviewStartError } from "@diffgazer/core/review";
 import type { ContextInfo, MenuAction } from "@diffgazer/core/schemas/presentation";
 import {
   MAIN_MENU_SHORTCUTS,
@@ -9,7 +10,7 @@ import {
   TRUST_FOOTER_RIGHT_SHORTCUTS,
 } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
-import { useKey, useScope } from "@diffgazer/keys";
+import { useScope } from "@diffgazer/keys";
 import { toast } from "@diffgazer/ui/components/toast";
 import type { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -39,38 +40,6 @@ const MENU_ROUTE_SCOPED_KEYS: Record<NavigableMenuAction, readonly string[]> = {
   settings: ["highlighted"],
   help: [],
 };
-
-function describeReviewStartError(error: unknown): { title: string; message: string } {
-  if (isApiError(error)) {
-    switch (error.code) {
-      case "API_KEY_MISSING":
-        return {
-          title: "API Key Missing",
-          message: `${error.message}. Add one in Settings → Providers.`,
-        };
-      case "UNSUPPORTED_PROVIDER":
-        return {
-          title: "Provider Not Configured",
-          message: "Pick an AI provider in Settings → Providers.",
-        };
-      case "MODEL_ERROR":
-        return {
-          title: "Model Not Selected",
-          message: error.message,
-        };
-      case "KEYRING_READ_FAILED":
-        return {
-          title: "Credential Storage Unavailable",
-          message: `${error.message}. Check Settings → Storage.`,
-        };
-    }
-    return { title: "Failed to Start Review", message: error.message };
-  }
-  return {
-    title: "Failed to Start Review",
-    message: "Could not create a review session.",
-  };
-}
 
 export interface HomePagePresentationProps {
   context: ContextInfo;
@@ -229,17 +198,6 @@ export function HomePagePresentation({
     rightShortcuts: needsTrust ? TRUST_FOOTER_RIGHT_SHORTCUTS : [],
   });
   useScope("home");
-  useKey(
-    "q",
-    () => {
-      void handleQuit();
-    },
-    { enabled: !isStartingReview },
-  );
-  useKey("s", () => handleActivate("settings"), { enabled: !isStartingReview });
-  useKey("h", () => handleActivate("history"), { enabled: !isStartingReview });
-
-  useKey("shift+?", () => handleActivate("help"), { enabled: !isStartingReview });
 
   if (needsTrust && projectId && repoRoot) {
     return <TrustPanel directory={repoRoot} />;

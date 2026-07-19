@@ -36,13 +36,15 @@ function IssuePreviewContent({
   borderColor: string;
   isClickable: boolean;
 }) {
+  const location = line == null ? file : `${file}:${line}`;
+
   return (
     <>
-      <div className="flex items-center gap-4">
+      <div className="flex min-w-0 flex-1 items-center gap-4">
         <span className={cn("font-bold text-lg", color)} aria-hidden="true">
           {icon}
         </span>
-        <div>
+        <div className="min-w-0">
           <div
             className={cn(
               "text-sm font-bold transition-colors",
@@ -51,12 +53,15 @@ function IssuePreviewContent({
           >
             {title}
           </div>
-          <div className="text-xs text-muted-foreground font-mono">
-            {line == null ? file : `${file}:${line}`}
+          <div
+            className="min-w-0 truncate text-xs text-muted-foreground font-mono"
+            title={location}
+          >
+            {location}
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex shrink-0 items-center gap-4">
         <span className="hidden sm:inline text-xs text-muted-foreground">{category}</span>
         <Badge size="sm" className={cn("text-2xs uppercase", borderColor, color, "bg-transparent")}>
           {label}

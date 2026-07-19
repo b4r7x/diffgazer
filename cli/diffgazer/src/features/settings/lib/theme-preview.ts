@@ -1,3 +1,4 @@
+import type { SelectableTheme } from "@diffgazer/core/schemas/config";
 import {
   PRIMITIVE_TOKEN_KEYS,
   SEMANTIC_TOKEN_KEYS,
@@ -7,7 +8,6 @@ import {
 } from "@diffgazer/core/theme";
 import { type CliColorTokens, darkPalette, lightPalette } from "../../../theme/palettes";
 import { detectDefaultPalette } from "../../../theme/provider";
-import type { CliTheme } from "../components/theme-selector";
 
 /** Palette swatch grouping shown in the Live Preview panel. */
 export const TOKEN_GROUPS: ReadonlyArray<{
@@ -20,7 +20,7 @@ export const TOKEN_GROUPS: ReadonlyArray<{
   { title: "Status", keys: STATUS_TOKEN_KEYS },
 ];
 
-export function paletteForTheme(theme: CliTheme): CliColorTokens {
+export function paletteForTheme(theme: SelectableTheme): CliColorTokens {
   if (theme === "dark") return darkPalette;
   if (theme === "light") return lightPalette;
   return detectDefaultPalette().tokens;

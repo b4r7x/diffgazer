@@ -1,6 +1,6 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import type { CredentialRef } from "@diffgazer/core/schemas/config";
-import { PROVIDER_ENV_VARS } from "@diffgazer/core/schemas/config";
+import { OPENROUTER_PROVIDER_ID, PROVIDER_ENV_VARS } from "@diffgazer/core/schemas/config";
 import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
 import { CenteredStatus } from "@/components/shared/centered-status";
 import { ApiKeyDialog } from "@/features/providers/components/api-key-dialog/dialog";
@@ -114,8 +114,8 @@ export function ProvidersPage() {
   const modelDialog = dialogs.current?.kind === "model" ? dialogs.current : null;
 
   return (
-    <div className="flex-1 flex overflow-hidden">
-      <div className="w-2/5 flex flex-col border-r border-border">
+    <div className="flex flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
+      <div className="flex w-full flex-col border-b border-border md:h-full md:w-2/5 md:border-r md:border-b-0">
         <ProviderList
           ref={keyboard.listContainerRef}
           providers={filteredProviders}
@@ -145,7 +145,7 @@ export function ProvidersPage() {
           onBoundaryReached={keyboard.handleListBoundary}
         />
       </div>
-      <div className="w-3/5 flex flex-col bg-background">
+      <div className="flex w-full flex-col bg-background md:h-full md:w-3/5">
         <ProviderDetails
           provider={selectedProvider}
           actions={actions}
@@ -173,7 +173,7 @@ export function ProvidersPage() {
               method === "env" ? { kind: "env", varName: value } : value;
             return handlers.saveApiKey(apiKeyDialog.owner, apiKey, {
               openModelDialog:
-                apiKeyDialog.provider.id === "openrouter" && !apiKeyDialog.provider.model,
+                apiKeyDialog.provider.id === OPENROUTER_PROVIDER_ID && !apiKeyDialog.provider.model,
             });
           }}
         />

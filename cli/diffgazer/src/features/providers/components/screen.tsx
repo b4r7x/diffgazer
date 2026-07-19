@@ -1,10 +1,12 @@
 import {
   guardQueryState,
+  useActivateProvider,
   useDeleteProviderCredentials,
   useProviderStatus,
 } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { mapProvidersWithStatus } from "@diffgazer/core/providers";
+import { sanitizeTerminalText } from "@diffgazer/core/review";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { AVAILABLE_PROVIDERS, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
 import { BACK_SHORTCUT } from "@diffgazer/core/schemas/presentation";
@@ -28,15 +30,6 @@ const PROVIDER_IDS = AVAILABLE_PROVIDERS.map((provider) => provider.id);
 
 function isProviderId(value: string | undefined): value is AIProvider {
   return PROVIDER_IDS.some((providerId) => providerId === value);
-}
-
-function toListItem(provider: ProviderListItem): ProviderListItem {
-  return {
-    id: provider.id,
-    name: provider.name,
-    displayStatus: provider.displayStatus,
-    model: provider.model,
-  };
 }
 
 function toDetailData(provider: ProviderListItem): ProviderDetailData {
@@ -74,16 +67,19 @@ export function ProvidersScreen(): ReactElement {
 
   const providerQuery = useProviderStatus();
   const deleteCredentials = useDeleteProviderCredentials();
+  const activateProvider = useActivateProvider();
 
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [apiKeyOpen, setApiKeyOpen] = useState(false);
   const [modelSelectOpen, setModelSelectOpen] = useState(false);
   const [zone, setZone] = useState<"list" | "details">("list");
 
-  const providers = providerQuery.data
-    ? mapProvidersWithStatus(providerQuery.data).map(toListItem)
-    : [];
-  const error = deleteCredentials.error?.message ?? providerQuery.error?.message ?? null;
+  const providers = providerQuery.data ? mapProvidersWithStatus(providerQuery.data) : [];
+  const error =
+    activateProvider.error?.message ??
+    deleteCredentials.error?.message ??
+    providerQuery.error?.message ??
+    null;
 
   const selectedProvider = providers.find((p) => p.id === selectedId);
   const selectedDetail = selectedProvider ? toDetailData(selectedProvider) : undefined;
@@ -105,13 +101,23 @@ export function ProvidersScreen(): ReactElement {
     }
   }
 
-  function handleModelSelect(_modelId: string) {
-    void providerQuery.refetch();
-  }
-
   function handleRemoveProvider() {
     if (!selectedId) return;
     deleteCredentials.mutate(selectedId);
+  }
+
+  function handleSetActive() {
+    if (!selectedDetail || selectedDetail.displayStatus === "active") return;
+    if (selectedDetail.displayStatus === "needs-key") {
+      setApiKeyOpen(true);
+      return;
+    }
+    const model = selectedDetail.model ?? selectedDetail.defaultModel;
+    if (!model) {
+      setModelSelectOpen(true);
+      return;
+    }
+    activateProvider.mutate({ providerId: selectedDetail.id, model });
   }
 
   const isOverlayOpen = apiKeyOpen || modelSelectOpen;
@@ -150,7 +156,7 @@ export function ProvidersScreen(): ReactElement {
         <Panel.Content>
           <Box flexDirection="column" gap={1}>
             <SectionHeader>Providers</SectionHeader>
-            <Text color="red">Error: {err.message}</Text>
+            <Text color={tokens.error}>Error: {sanitizeTerminalText(err.message)}</Text>
           </Box>
         </Panel.Content>
       </Panel>
@@ -158,6 +164,28 @@ export function ProvidersScreen(): ReactElement {
   });
 
   if (guard) return guard;
+
+  if (selectedProviderId && apiKeyOpen) {
+    return (
+      <ApiKeyOverlay
+        open
+        onOpenChange={setApiKeyOpen}
+        providerId={selectedProviderId}
+        onSaved={handleApiKeySaved}
+      />
+    );
+  }
+
+  if (selectedProviderId && modelSelectOpen) {
+    return (
+      <ModelSelectOverlay
+        open
+        onOpenChange={setModelSelectOpen}
+        providerId={selectedProviderId}
+        selectedId={selectedDetail?.model}
+      />
+    );
+  }
 
   return (
     <Panel>
@@ -176,6 +204,8 @@ export function ProvidersScreen(): ReactElement {
                 selectedId={selectedId}
                 onSelect={setSelectedId}
                 isActive={isListActive}
+                contentWidth={Math.max((listWidth ?? columns) - 4, 1)}
+                compact={isMedium}
               />
             </Box>
             <Box
@@ -190,30 +220,15 @@ export function ProvidersScreen(): ReactElement {
                 onConfigureKey={handleConfigureKey}
                 onSelectModel={handleSelectModel}
                 onRemove={handleRemoveProvider}
+                onSetActive={handleSetActive}
+                isPending={activateProvider.isPending || deleteCredentials.isPending}
+                stackActions={isMedium}
               />
             </Box>
           </Box>
-          {error && <Text color={tokens.error}>{error}</Text>}
+          {error && <Text color={tokens.error}>{sanitizeTerminalText(error)}</Text>}
         </Box>
       </Panel.Content>
-
-      {selectedProviderId && (
-        <ApiKeyOverlay
-          open={apiKeyOpen}
-          onOpenChange={setApiKeyOpen}
-          providerId={selectedProviderId}
-          onSaved={handleApiKeySaved}
-        />
-      )}
-      {selectedProviderId && (
-        <ModelSelectOverlay
-          open={modelSelectOpen}
-          onOpenChange={setModelSelectOpen}
-          providerId={selectedProviderId}
-          selectedId={selectedDetail?.model}
-          onSelect={handleModelSelect}
-        />
-      )}
     </Panel>
   );
 }

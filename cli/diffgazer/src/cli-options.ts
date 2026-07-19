@@ -8,13 +8,14 @@ export const HELP_TEXT = `Usage: diffgazer [options]
 Review code changes with Diffgazer in your browser or terminal.
 
 Options:
-  --tui              Start the beta terminal UI (incomplete; not recommended)
+  --tui              Start the terminal UI
   --theme <theme>    Start TUI with a theme: ${TUI_THEME_NAMES.join(", ")} (only with --tui)
   -V, --version      Display version
   -h, --help         Display help
 `;
 
 const CLI_OPTIONS = {
+  // Source-checkout mode resolves workspace paths and is intentionally hidden from installed-CLI help.
   dev: { type: "boolean" },
   tui: { type: "boolean" },
   theme: { type: "string" },

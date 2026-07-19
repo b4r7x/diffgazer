@@ -18,8 +18,8 @@ export function HelpPage() {
   usePageFooter({ shortcuts: BACK_SHORTCUTS });
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-4 pt-4 pb-12">
-      <div className="w-full max-w-2xl">
+    <div className="flex flex-1 flex-col overflow-y-auto px-4 pt-4 pb-12">
+      <div className="m-auto w-full max-w-2xl">
         <Panel
           frame="hairline"
           density="compact"
@@ -40,14 +40,19 @@ export function HelpPage() {
                 >
                   Keyboard Shortcuts
                 </Typography>
-                <div className="flex flex-col gap-1">
+                <ul aria-label="Keyboard shortcuts" className="flex flex-col gap-2">
                   {SHORTCUTS.map((s) => (
-                    <div key={s.key} className="flex gap-3 text-sm">
-                      <Kbd className="w-20 shrink-0">{s.key}</Kbd>
-                      <span className="text-muted-foreground">{s.label}</span>
-                    </div>
+                    <li
+                      key={`${s.key}:${s.label}`}
+                      className="grid min-w-0 grid-cols-1 items-start gap-1 text-sm sm:grid-cols-[max-content_minmax(0,1fr)] sm:gap-3"
+                    >
+                      <Kbd className="h-auto w-fit max-w-full whitespace-nowrap text-center">
+                        {s.key}
+                      </Kbd>
+                      <span className="min-w-0 break-words text-muted-foreground">{s.label}</span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </section>
 
               <section>

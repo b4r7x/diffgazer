@@ -65,7 +65,7 @@ export function ModelList({
   const showList = !isSaving && models.length > 0;
 
   return (
-    <div ref={ref} className="px-4 py-3 max-h-[50vh] overflow-y-auto scrollbar-thin">
+    <div ref={ref} className="max-h-[50dvh] overflow-y-auto px-4 py-3 scrollbar-thin">
       {showList ? (
         <RadioGroup
           aria-label="Available models"

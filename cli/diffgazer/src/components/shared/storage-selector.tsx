@@ -7,23 +7,29 @@ import type { ReactElement } from "react";
 import { RadioGroup } from "../ui/radio";
 
 interface StorageSelectorProps {
-  value?: SecretsStorage;
+  value?: SecretsStorage | null;
   onChange?: (value: SecretsStorage) => void;
   isActive?: boolean;
+  onDownBoundary?: () => void;
 }
 
 export function StorageSelector({
   value,
   onChange,
   isActive = true,
+  onDownBoundary,
 }: StorageSelectorProps): ReactElement {
   return (
     <RadioGroup
-      value={value}
+      value={value ?? undefined}
       onChange={(nextValue) => {
         if (isSecretsStorage(nextValue)) onChange?.(nextValue);
       }}
       isActive={isActive}
+      wrap={!onDownBoundary}
+      onNavigationBoundaryReached={(direction) => {
+        if (direction === 1) onDownBoundary?.();
+      }}
     >
       {SECRETS_STORAGE_OPTIONS.map((option) => (
         <RadioGroup.Item

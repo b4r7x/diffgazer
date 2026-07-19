@@ -241,7 +241,7 @@ describe("ModelStep (TUI catalog)", () => {
 
     await flushUntil(() => view.lastFrame()?.includes(firstName) ?? false);
     expect(view.lastFrame()).not.toContain(targetName);
-    expect(names.filter((name) => view.lastFrame()?.includes(name))).toHaveLength(6);
+    expect(names.filter((name) => view.lastFrame()?.includes(name))).toHaveLength(5);
 
     for (let index = 0; index < 8; index += 1) {
       view.stdin.write("\u001b[B");
@@ -251,7 +251,7 @@ describe("ModelStep (TUI catalog)", () => {
 
     expect(view.lastFrame()).toContain(targetName);
     expect(view.lastFrame()).not.toContain(firstName);
-    expect(names.filter((name) => view.lastFrame()?.includes(name))).toHaveLength(6);
+    expect(names.filter((name) => view.lastFrame()?.includes(name))).toHaveLength(4);
     view.stdin.write("\r");
     await flushUntil(() => onChange.mock.calls.length > 0);
     expect(onChange).toHaveBeenCalledWith(targetId);

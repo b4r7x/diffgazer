@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import type { LensId } from "./lens.js";
 import {
   ANALYSIS_SETTINGS_SUBTITLE,
+  deriveLensSelectionState,
   isLensId,
   isLensSelectionDirty,
   resolveEffectiveLenses,
@@ -58,6 +59,36 @@ describe("isLensSelectionDirty", () => {
 
   test("is true when selection is cleared", () => {
     expect(isLensSelectionDirty(ALL, [])).toBe(true);
+  });
+});
+
+describe("deriveLensSelectionState", () => {
+  const fallback: LensId[] = ["correctness", "security"];
+
+  test("uses fallback lenses without marking an untouched selection dirty", () => {
+    expect(deriveLensSelectionState([], null, fallback)).toEqual({
+      effective: fallback,
+      isDirty: false,
+      hasSelection: true,
+    });
+  });
+
+  test("filters persisted values and detects a changed selection", () => {
+    expect(deriveLensSelectionState(["correctness", "not-a-lens"], ["security"], fallback)).toEqual(
+      {
+        effective: ["security"],
+        isDirty: true,
+        hasSelection: true,
+      },
+    );
+  });
+
+  test("reports an explicitly empty selection as dirty and invalid", () => {
+    expect(deriveLensSelectionState(["correctness"], [], fallback)).toEqual({
+      effective: [],
+      isDirty: true,
+      hasSelection: false,
+    });
   });
 });
 

@@ -313,7 +313,7 @@ describe("diffgazer CLI options", () => {
     const { stdout } = await runDiffgazer(["--help"]);
 
     expect(stdout).toMatch(/Usage: diffgazer \[options\]/);
-    expect(stdout).toMatch(/--tui\s+Start the beta terminal UI \(incomplete; not recommended\)/);
+    expect(stdout).toMatch(/--tui\s+Start the terminal UI/);
     expect(stdout).toMatch(
       /--theme <theme>\s+Start TUI with a theme: auto, dark, light, high-contrast \(only with --tui\)/,
     );

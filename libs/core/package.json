@@ -124,6 +124,10 @@
       "types": "./dist/testing/factories.d.ts",
       "import": "./dist/testing/factories.js"
     },
+    "./testing/review-facts": {
+      "types": "./dist/testing/review-facts.d.ts",
+      "import": "./dist/testing/review-facts.js"
+    },
     "./testing/match-media": {
       "types": "./dist/testing/match-media.d.ts",
       "import": "./dist/testing/match-media.js"

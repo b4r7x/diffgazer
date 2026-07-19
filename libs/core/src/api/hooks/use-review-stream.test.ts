@@ -461,4 +461,71 @@ describe("useReviewStream", () => {
       "Event cap reached; some progress events were dropped.",
     );
   });
+
+  it.each([
+    "online",
+    "visibilitychange",
+  ] as const)("reconnects an active review after a transport drop on %s", async (browserEvent) => {
+    const streamError: StreamReviewError = {
+      code: "STREAM_ERROR",
+      message: "connection dropped",
+    };
+    const resumeReviewStream = vi
+      .fn<BoundApi["resumeReviewStream"]>()
+      .mockResolvedValueOnce(err(streamError))
+      .mockResolvedValueOnce(ok(fakeResumeResult("active-review")));
+    const api = createApi({ resumeReviewStream });
+    const visibilityDescriptor = Object.getOwnPropertyDescriptor(document, "visibilityState");
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible",
+    });
+
+    try {
+      const { result } = renderHook(() => useReviewStream(), {
+        wrapper: createWrapper(api),
+      });
+
+      await act(async () => {
+        await result.current.resume("active-review");
+      });
+      expect(result.current.state.errorCode).toBe("STREAM_ERROR");
+
+      act(() => {
+        const target = browserEvent === "online" ? window : document;
+        target.dispatchEvent(new Event(browserEvent));
+      });
+
+      await waitFor(() => expect(resumeReviewStream).toHaveBeenCalledTimes(2));
+      expect(resumeReviewStream).toHaveBeenLastCalledWith(
+        expect.objectContaining({ reviewId: "active-review" }),
+      );
+    } finally {
+      if (visibilityDescriptor) {
+        Object.defineProperty(document, "visibilityState", visibilityDescriptor);
+      }
+    }
+  });
+
+  it("removes reconnect listeners when the stream hook unmounts", async () => {
+    const streamError: StreamReviewError = {
+      code: "STREAM_ERROR",
+      message: "connection dropped",
+    };
+    const resumeReviewStream = vi
+      .fn<BoundApi["resumeReviewStream"]>()
+      .mockResolvedValue(err(streamError));
+    const api = createApi({ resumeReviewStream });
+    const { result, unmount } = renderHook(() => useReviewStream(), {
+      wrapper: createWrapper(api),
+    });
+
+    await act(async () => {
+      await result.current.resume("active-review");
+    });
+    unmount();
+    act(() => window.dispatchEvent(new Event("online")));
+
+    expect(resumeReviewStream).toHaveBeenCalledTimes(1);
+  });
 });

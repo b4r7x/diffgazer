@@ -158,8 +158,8 @@ export const createApp = (): Hono<AppEnv> => {
   });
 
   // Domain failures use the Result<T, AppError> pattern and are mapped to status
-  // codes via errorResponse/handleStoreError/drilldownErrorStatus at the route
-  // layer, so no coded AppError ever reaches this global handler. Anything that
+  // codes via errorResponse/handleStoreError at the route layer, so no coded
+  // AppError ever reaches this global handler. Anything that
   // does throw is an unexpected bug, so this only logs and returns a generic 500;
   // branching on AppError.code here would be dead code.
   app.onError((err, c) => {

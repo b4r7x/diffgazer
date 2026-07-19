@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgentState, StepState } from "../schemas/events/index.js";
-import { mapStepsToProgressData } from "./progress-mapping.js";
+import { mapStepsToProgressData, mapStepsToProgressDataWithAgents } from "./progress-mapping.js";
 
 function makeStep(
   id: StepState["id"],
@@ -37,7 +37,7 @@ describe("mapStepsToProgressData", () => {
       makeAgent({ id: "simplifier", status: "error" }),
     ];
 
-    const result = mapStepsToProgressData(steps, agents);
+    const result = mapStepsToProgressDataWithAgents(steps, agents);
 
     expect(result[0]).toEqual({
       id: "diff",
@@ -62,11 +62,23 @@ describe("mapStepsToProgressData", () => {
       makeStep("report", "Save results", "active"),
     ];
 
-    const result = mapStepsToProgressData(steps, [makeAgent()]);
+    const result = mapStepsToProgressDataWithAgents(steps, [makeAgent()]);
 
     expect(result).toEqual([
       { id: "context", label: "Project context", status: "pending", substeps: undefined },
       { id: "report", label: "Save results", status: "active", substeps: undefined },
+    ]);
+  });
+
+  it("maps base progress rows without an unused substep field", () => {
+    const result = mapStepsToProgressData([
+      makeStep("diff", "Collect diff", "completed"),
+      makeStep("review", "Review issues", "active"),
+    ]);
+
+    expect(result).toEqual([
+      { id: "diff", label: "Collect diff", status: "completed" },
+      { id: "review", label: "Review issues", status: "active" },
     ]);
   });
 });

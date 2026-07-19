@@ -46,6 +46,7 @@ const SETTINGS: SettingsConfig = {
 
 function makeInitResponse(): InitResponse {
   return {
+    configPath: "/custom/diffgazer/config.json",
     config: { provider: "openrouter", model: "openrouter/test-model" },
     providers: [{ provider: "openrouter", hasApiKey: true, isActive: true }],
     settings: SETTINGS,
@@ -98,5 +99,6 @@ describe("SettingsHubScreen", () => {
     );
 
     expect(view.lastFrame()).toContain("Not trusted");
+    expect(view.lastFrame()).toContain("config path: /custom/diffgazer/config.json");
   });
 });

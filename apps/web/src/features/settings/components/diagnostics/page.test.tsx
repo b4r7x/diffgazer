@@ -23,6 +23,7 @@ function makeInitResponse(
   overrides: Partial<Awaited<ReturnType<BoundApi["loadInit"]>>> = {},
 ): Awaited<ReturnType<BoundApi["loadInit"]>> {
   return {
+    configPath: "/tmp/diffgazer/config.json",
     config: { provider: "openrouter", model: "openrouter/test-model" },
     providers: [{ provider: "openrouter", hasApiKey: true, isActive: true }],
     settings: {
@@ -156,6 +157,10 @@ describe("SettingsDiagnosticsPage keyboard footer navigation", () => {
     const initialContextCalls = mockGetReviewContext.mock.calls.length;
     const refreshButton = screen.getByRole("button", { name: "Refresh Diagnostics" });
     const regenerateButton = screen.getByRole("button", { name: "Regenerate Context" });
+    const actionGroup = screen.getByRole("group", { name: "Diagnostics actions" });
+
+    expect(within(actionGroup).getByRole("button", { name: "Refresh Diagnostics" })).toBeVisible();
+    expect(within(actionGroup).getByRole("button", { name: "Regenerate Context" })).toBeVisible();
 
     await user.click(regenerateButton);
 

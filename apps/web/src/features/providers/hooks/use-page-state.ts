@@ -99,9 +99,7 @@ export function useProvidersPageState() {
     onSelectModel: () => {
       if (selectedProvider) openModelDialog(selectedProvider.id);
     },
-    onRemoveKey: async (providerId) => {
-      void (await handleRemoveKey(providerId));
-    },
+    onRemoveKey: handleRemoveKey,
     onActivateProvider: activateProvider,
   });
 

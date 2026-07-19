@@ -1,9 +1,9 @@
-import type { ProgressStepData } from "@diffgazer/core/schemas/presentation";
+import type { ProgressStepWithSubstepsData } from "@diffgazer/core/schemas/presentation";
 import { Box } from "ink";
 import { ProgressStep } from "./step";
 
 export interface ProgressListProps {
-  steps: ProgressStepData[];
+  steps: ProgressStepWithSubstepsData[];
 }
 
 export function ProgressList({ steps }: ProgressListProps) {

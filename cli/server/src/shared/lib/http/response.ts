@@ -30,9 +30,7 @@ export type WireErrorCode =
   | SecretsStorageErrorCode
   | StoreErrorCode
   | ConfigServiceErrorCode
-  | ProviderModelsErrorCode
-  // The drilldown path emits this review-feature code alongside AIErrorCode.
-  | "ISSUE_NOT_FOUND";
+  | ProviderModelsErrorCode;
 
 const VALID_ERROR_STATUSES = {
   400: 400,

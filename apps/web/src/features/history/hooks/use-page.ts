@@ -63,6 +63,15 @@ export function useHistoryPage() {
     navigate({ to: "/review/{-$reviewId}", params: { reviewId: runId } });
   };
 
+  const handleRunSelect = (runId: string) => {
+    setFocusZone("runs");
+    if (runId === history.selectedRunId) {
+      handleRunActivate(runId);
+      return;
+    }
+    history.setSelectedRunId(runId);
+  };
+
   const handleRunsBoundary = (direction: "up" | "down") => {
     if (direction === "up") {
       setFocusZone("search");
@@ -106,6 +115,7 @@ export function useHistoryPage() {
     handleTimelineBoundary,
     handleSearchEscape,
     handleSearchArrowDown,
+    handleRunSelect,
     handleRunActivate,
     handleRunsBoundary,
     handleIssueClick,

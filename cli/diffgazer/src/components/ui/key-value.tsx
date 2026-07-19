@@ -15,7 +15,9 @@ export function KeyValue({ label, value, labelWidth }: KeyValueProps) {
 
   return (
     <Box flexDirection="row">
-      <Text color={tokens.muted}>{displayLabel}: </Text>
+      <Box flexShrink={0}>
+        <Text color={tokens.muted}>{`${displayLabel}: `}</Text>
+      </Box>
       {typeof value === "string" || typeof value === "number" ? (
         <Text color={tokens.fg}>{value}</Text>
       ) : (

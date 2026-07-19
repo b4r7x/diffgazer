@@ -9,6 +9,12 @@ interface TuiOptions {
 }
 
 export async function startTui(options: TuiOptions): Promise<void> {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    process.stderr.write("The TUI requires an interactive terminal (TTY).\n");
+    process.exitCode = 1;
+    return;
+  }
+
   ensureShutdownToken();
   const { App } = await import("./app/root");
   const terminalInput = createTerminalInputBoundary(process.stdin);
@@ -19,6 +25,8 @@ export async function startTui(options: TuiOptions): Promise<void> {
       {
         stdin: terminalInput.stdin,
         exitOnCtrlC: false,
+        alternateScreen: true,
+        incrementalRendering: true,
       },
     );
     void instance.waitUntilExit().then(terminalInput.dispose, terminalInput.dispose);

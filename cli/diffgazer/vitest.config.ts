@@ -5,6 +5,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts", "src/**/*.test.tsx", "tests/e2e/**/*.e2e.ts"],
+    setupFiles: ["./src/testing/vitest.setup.ts"],
     pool: "forks",
     fileParallelism: false,
     testTimeout: 45_000,

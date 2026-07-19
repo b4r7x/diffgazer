@@ -4,6 +4,7 @@ import {
   type ReviewState,
   reviewReducer,
 } from "@diffgazer/core/review";
+import { Box } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test } from "vitest";
 import { CliThemeProvider } from "../../../theme/provider";
@@ -95,7 +96,7 @@ describe("ActivityLog (TUI)", () => {
 
     stdin.write(ARROW_UP);
     await flush();
-    expect(lastFrame() ?? "").toContain("event-4996");
+    expect(lastFrame() ?? "").toContain("event-4997");
     expect(lastFrame() ?? "").not.toContain("event-4999");
 
     stdin.write(END);
@@ -136,5 +137,34 @@ describe("ActivityLog (TUI)", () => {
     const frame = lastFrame() ?? "";
     expect(frame).toContain("next-5");
     expect(frame).not.toContain("next-0");
+  });
+
+  test("keeps a long event on one row while auto-tail shows the newest event", async () => {
+    const events: ReviewEvent[] = [
+      {
+        type: "agent_thinking",
+        agent: "detective",
+        timestamp: "2024-01-01T00:00:00Z",
+        thought: "older-event",
+      },
+      {
+        type: "agent_thinking",
+        agent: "detective",
+        timestamp: "2024-01-01T00:00:01Z",
+        thought: `newest-event-${"x".repeat(200)}`,
+      },
+    ];
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <Box width={80}>
+          <ActivityLog events={events} height={2} />
+        </Box>
+      </CliThemeProvider>,
+    );
+    await flush();
+    const eventRows = (lastFrame() ?? "").split("\n").filter((row) => row.includes("newest-event"));
+
+    expect(eventRows).toHaveLength(1);
+    expect(eventRows[0]?.length).toBeLessThanOrEqual(80);
   });
 });

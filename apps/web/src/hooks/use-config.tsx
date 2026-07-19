@@ -23,6 +23,7 @@ interface ConfigDataContextValue {
   isLoading: boolean;
   provider?: AIProvider;
   model?: string;
+  configPath: string | null;
   isConfigured: boolean;
   providerStatus: ProviderStatus[];
   projectId: string | null;
@@ -82,6 +83,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 
   const provider = initData?.config?.provider;
   const model = initData?.config?.model;
+  const configPath = initData?.configPath ?? null;
   const isConfigured = initData?.setup.isConfigured ?? false;
   const providerStatus = providersQuery.data ?? initData?.providers ?? EMPTY_PROVIDERS;
   const projectId = initData?.project.projectId ?? null;
@@ -126,6 +128,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       isLoading,
       provider,
       model,
+      configPath,
       isConfigured,
       providerStatus,
       projectId,
@@ -140,6 +143,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       isLoading,
       provider,
       model,
+      configPath,
       isConfigured,
       providerStatus,
       projectId,

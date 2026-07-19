@@ -18,9 +18,13 @@ const ProgressStepDataSchema = z.object({
   id: z.string(),
   label: z.string(),
   status: ProgressStatusSchema,
-  substeps: z.array(ProgressSubstepDataSchema).optional(),
 });
 export type ProgressStepData = z.infer<typeof ProgressStepDataSchema>;
+
+const ProgressStepWithSubstepsDataSchema = ProgressStepDataSchema.extend({
+  substeps: z.array(ProgressSubstepDataSchema).optional(),
+});
+export type ProgressStepWithSubstepsData = z.infer<typeof ProgressStepWithSubstepsDataSchema>;
 
 const ReviewProgressMetricsSchema = z.object({
   filesProcessed: z.number().nonnegative(),
@@ -28,3 +32,28 @@ const ReviewProgressMetricsSchema = z.object({
   issuesFound: z.number().nonnegative(),
 });
 export type ReviewProgressMetrics = z.infer<typeof ReviewProgressMetricsSchema>;
+
+export type ReviewMetricId = "files-in-prompt" | "issues-found" | "elapsed";
+
+export interface ReviewMetricRow<TElapsed> {
+  id: ReviewMetricId;
+  label: string;
+  value: string | number | TElapsed;
+}
+
+export function buildReviewMetricsRows<TElapsed>(
+  metrics: ReviewProgressMetrics,
+  elapsed: TElapsed,
+): ReviewMetricRow<TElapsed>[] {
+  const filesTotal = metrics.filesTotal > 0 ? String(metrics.filesTotal) : "...";
+
+  return [
+    {
+      id: "files-in-prompt",
+      label: "Files in Prompt",
+      value: `${String(metrics.filesProcessed)}/${filesTotal}`,
+    },
+    { id: "issues-found", label: "Issues Found", value: metrics.issuesFound },
+    { id: "elapsed", label: "Elapsed", value: elapsed },
+  ];
+}

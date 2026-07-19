@@ -821,6 +821,7 @@
         "https://r.b4r7.dev/r/ui/accessible-text.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/keys/focus-restore.json",
+        "https://r.b4r7.dev/r/keys/scroll-lock.json",
         "https://r.b4r7.dev/r/ui/dialog-shell.json",
         "https://r.b4r7.dev/r/ui/portal.json",
         "https://r.b4r7.dev/r/ui/kbd.json",

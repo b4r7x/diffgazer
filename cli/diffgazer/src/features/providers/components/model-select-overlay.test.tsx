@@ -377,6 +377,35 @@ describe("ModelSelectOverlay saving state", () => {
     expect(countPrefixes(lastFrame(), secondName).highlighted).toBe(0);
   });
 
+  test("ignores Escape while model activation is pending", async () => {
+    const deferred = createDeferred<ActivateProviderResponse>();
+    const activateProvider = vi
+      .fn<(providerId: string, model?: string) => Promise<ActivateProviderResponse>>()
+      .mockReturnValue(deferred.promise);
+    const onOpenChange = vi.fn();
+    const api = { ...makeGeminiApi(), activateProvider } satisfies BoundApi;
+    const { stdin, lastFrame } = render(
+      <Wrapper api={api}>
+        <ModelSelectOverlay
+          open
+          onOpenChange={onOpenChange}
+          providerId="gemini"
+          onSelect={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
+    stdin.write("\r");
+    await flushUntil(() => lastFrame()?.includes("Saving") ?? false);
+    stdin.write("\u001B");
+    await flush();
+
+    expect(lastFrame()).toContain("Select Model");
+    expect(lastFrame()).toContain("Saving");
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
   test("keeps the failed row visible and navigable, then clears the error on retry", async () => {
     const onSelect = vi.fn();
     const activateProvider = vi
@@ -578,7 +607,7 @@ describe("ModelSelectOverlay large catalog windowing", () => {
       activateProvider,
     } satisfies BoundApi;
     const onSelect = vi.fn();
-    const expectedViewportRows = 5;
+    const expectedViewportRows = 4;
 
     const { stdin, lastFrame } = render(
       <Wrapper api={api}>
@@ -613,7 +642,10 @@ describe("ModelSelectOverlay large catalog windowing", () => {
     expect(navigatedFrame).toContain("\u25B2");
     expect(navigatedFrame).toContain("\u25BC");
     expect(navigatedFrame).toContain(getLargeModelName(25));
-    expect(countPrefixes(navigatedFrame, getLargeModelName(25)).highlighted).toBe(1);
+    expect(
+      countPrefixes(navigatedFrame, getLargeModelName(25)).highlighted,
+      `expected the navigated model to be highlighted:\n${navigatedFrame}`,
+    ).toBe(1);
     expect(navigatedFrame).not.toContain(getLargeModelName(0));
 
     stdin.write("\r");
@@ -730,6 +762,39 @@ describe("ModelSelectOverlay search input mode", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
+  test("Escape clears a populated search before closing the dialog", async () => {
+    const onOpenChange = vi.fn();
+    const { stdin, lastFrame } = render(
+      <Wrapper>
+        <ModelSelectOverlay
+          open={true}
+          onOpenChange={onOpenChange}
+          providerId="gemini"
+          onSelect={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
+    stdin.write("/");
+    await flush();
+    stdin.write("pro");
+    await flush();
+    expect(lastFrame()).toContain("pro");
+
+    stdin.write("\u001B");
+    await flushUntil(() => lastFrame()?.includes("Search models...") ?? false);
+
+    expect(lastFrame()).toContain("Select Model");
+    expect(lastFrame()).toContain("Search models...");
+    expect(onOpenChange).not.toHaveBeenCalled();
+
+    stdin.write("\u001B");
+    await flushUntil(() => onOpenChange.mock.calls.length > 0);
+    expect(onOpenChange).toHaveBeenCalledOnce();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
   test("one Escape closes from the filter zone", async () => {
     const onOpenChange = vi.fn();
     const { stdin, lastFrame } = render(
@@ -839,7 +904,7 @@ describe("ModelSelectOverlay long description", () => {
     const lines = frame.split("\n");
     expect(lines.filter((line) => line.includes("[ ]"))).toHaveLength(1);
     expect(lines.every((line) => terminalCellWidth(line) <= 40)).toBe(true);
-    expect(lines).toHaveLength(19);
+    expect(lines).toHaveLength(15);
     expect(frame).toContain("Tab: zone");
     expect(frame).not.toContain("FULLNAMEEND");
     expect(frame).not.toContain("FULLTAILVISIBLE");
@@ -874,7 +939,10 @@ describe("ModelSelectOverlay catalog provenance", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Using cached catalog data") ?? false);
-    expect(lastFrame()).toContain("2026-06-02T00:00:00.000Z");
+    const fallbackFrame = lastFrame() ?? "";
+    expect(fallbackFrame).toContain("2026-06-02T00:00:00.000Z");
+    expect(fallbackFrame).toContain("Tab: zone");
+    expect(fallbackFrame.split("\n")).toHaveLength(20);
 
     stdin.write("r");
     await flushUntil(() => getProviderModels.mock.calls.length === 2);

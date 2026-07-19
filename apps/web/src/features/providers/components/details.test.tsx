@@ -132,7 +132,7 @@ describe("ProviderDetails (catalog)", () => {
     );
 
     const firstAction = screen.getByRole("button", { name: "Select Provider" });
-    const secondAction = screen.getByRole("button", { name: "Set API Key" });
+    const secondAction = screen.getByRole("button", { name: "Configure API Key" });
     await user.click(firstAction);
 
     const handled = new KeyboardEvent("keydown", {
@@ -145,7 +145,7 @@ describe("ProviderDetails (catalog)", () => {
     expect(handled.defaultPrevented).toBe(true);
     await waitFor(() => expect(secondAction).toHaveFocus());
 
-    const lastAction = screen.getByRole("button", { name: "Select Model..." });
+    const lastAction = screen.getByRole("button", { name: "Select Model" });
     await user.click(lastAction);
     const boundary = new KeyboardEvent("keydown", {
       key: "ArrowDown",

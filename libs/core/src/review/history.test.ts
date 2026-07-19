@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import { makeIssue, makeReviewMetadata } from "../testing/factories.js";
 import {
   buildHistoryRunSummary,
+  buildHistoryWarningMessages,
   buildTimelineItems,
+  deriveHistoryDetailState,
   filterReviewsForHistory,
   formatRunId,
   getEmptyRunsMessage,
@@ -19,6 +21,29 @@ import {
   sortIssuesBySeverity,
   summarizeHistoryWarnings,
 } from "./history.js";
+
+describe("deriveHistoryDetailState", () => {
+  it("projects loading, error with retry, and ready query states", () => {
+    const refetch = vi.fn();
+
+    expect(deriveHistoryDetailState({ isLoading: true, error: null, refetch })).toEqual({
+      status: "loading",
+    });
+
+    const errorState = deriveHistoryDetailState({
+      isLoading: false,
+      error: new Error("disk unreadable"),
+      refetch,
+    });
+    expect(errorState).toMatchObject({ status: "error", message: "disk unreadable" });
+    if (errorState.status === "error") errorState.retry();
+    expect(refetch).toHaveBeenCalledOnce();
+
+    expect(deriveHistoryDetailState({ isLoading: false, error: null, refetch })).toEqual({
+      status: "ready",
+    });
+  });
+});
 
 describe("summarizeHistoryWarnings", () => {
   it("separates unreadable records, salvage loss, and index maintenance failures", () => {
@@ -47,6 +72,38 @@ describe("summarizeHistoryWarnings", () => {
       indexBuildFailed: true,
       indexRewriteFailed: true,
     });
+  });
+
+  it("builds all warning messages with singular grammar", () => {
+    expect(
+      buildHistoryWarningMessages({
+        unreadableReviewCount: 1,
+        droppedIssueCount: 1,
+        indexBuildFailed: true,
+        indexRewriteFailed: true,
+      }),
+    ).toEqual([
+      "1 saved review could not be read.",
+      "1 invalid saved issue was omitted. Re-run the affected reviews for complete results.",
+      "The history index could not be rebuilt. Readable reviews are still shown; reopen History to retry.",
+      "The history index could not be cleaned up. Readable reviews are still shown; reopen History to retry.",
+    ]);
+  });
+
+  it("builds all warning messages with plural grammar", () => {
+    expect(
+      buildHistoryWarningMessages({
+        unreadableReviewCount: 2,
+        droppedIssueCount: 3,
+        indexBuildFailed: true,
+        indexRewriteFailed: true,
+      }),
+    ).toEqual([
+      "2 saved reviews could not be read.",
+      "3 invalid saved issues were omitted. Re-run the affected reviews for complete results.",
+      "The history index could not be rebuilt. Readable reviews are still shown; reopen History to retry.",
+      "The history index could not be cleaned up. Readable reviews are still shown; reopen History to retry.",
+    ]);
   });
 });
 
@@ -439,7 +496,7 @@ describe("sortIssuesBySeverity", () => {
 });
 
 describe("HISTORY_SEARCH_PLACEHOLDER", () => {
-  it("is the single canonical run-search placeholder", () => {
-    expect(HISTORY_SEARCH_PLACEHOLDER).toBe("Search runs by ID...");
+  it("names every searchable run field in compact copy", () => {
+    expect(HISTORY_SEARCH_PLACEHOLDER).toBe("Search ID, branch, path, staged...");
   });
 });

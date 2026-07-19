@@ -108,6 +108,9 @@ function renderView(props: Partial<ReviewProgressViewProps> = {}) {
           data={props.data ?? makeProgressData()}
           isRunning={props.isRunning ?? false}
           error={props.error}
+          errorCode={props.errorCode}
+          reviewId={props.reviewId}
+          onRetry={props.onRetry}
           onViewResults={props.onViewResults}
           onCancel={props.onCancel}
           onBack={props.onBack}
@@ -291,6 +294,43 @@ describe("ReviewProgressView", () => {
     const alert = screen.getByRole("alert");
     expect(alert).toHaveAttribute("aria-live", "assertive");
     expect(alert).toHaveTextContent("Provider request failed");
+  });
+
+  it("keeps prior activity visible and retries a dropped transport stream", async () => {
+    const user = userEvent.setup();
+    const onRetry = vi.fn();
+
+    renderView({
+      isRunning: false,
+      error: "Connection closed unexpectedly",
+      errorCode: "STREAM_ERROR",
+      reviewId: "active-review",
+      onRetry,
+      onBack: vi.fn(),
+      data: makeProgressData({ events: makeLogEvents(2) }),
+    });
+
+    expect(screen.getByText("event-0")).toBeInTheDocument();
+    expect(screen.getByText("event-1")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(onRetry).toHaveBeenCalledWith("active-review");
+  });
+
+  it("keeps API-key recovery pointed at provider settings without offering stream retry", () => {
+    renderView({
+      isRunning: false,
+      error: "Credentials rejected",
+      errorCode: "API_KEY_MISSING",
+      reviewId: "active-review",
+      onRetry: vi.fn(),
+      onBack: vi.fn(),
+      data: makeProgressData({ events: makeLogEvents(1) }),
+    });
+
+    expect(screen.getByText("event-0")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Configure Provider" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
   });
 
   it("renders streamed server notices in a non-blocking live region", () => {
@@ -653,7 +693,7 @@ describe("ReviewProgressView", () => {
     await waitFor(() => expect(logPane).toHaveAttribute("data-focused"));
   });
 
-  it("shows agents once on the agent board instead of expandable step substeps", () => {
+  it("shows agent progress on the dedicated board without duplicating it under the workflow step", () => {
     renderView({
       isRunning: true,
       data: makeProgressData({
@@ -663,7 +703,6 @@ describe("ReviewProgressView", () => {
             id: "review",
             label: "Review",
             status: "active",
-            substeps: [{ id: "guardian", tag: "SEC", label: "Guardian", status: "active" }],
           },
         ],
         agents: [makeAgent()],

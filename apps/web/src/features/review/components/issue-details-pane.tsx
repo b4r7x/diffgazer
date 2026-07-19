@@ -131,14 +131,16 @@ export function IssueDetailsPane({
 
             <TabsContent value="explain" tabIndex={-1} className="mt-0">
               <div className="text-sm text-foreground/80">
+                <SectionHeader as="h2">Rationale</SectionHeader>
                 <p className="mb-4">{issue.rationale}</p>
+                <SectionHeader as="h2">Recommendation</SectionHeader>
                 <p>{issue.recommendation}</p>
               </div>
             </TabsContent>
 
             {hasTrace && (
               <TabsContent value="trace" tabIndex={-1} className="mt-0">
-                <TraceTabContent issue={issue} />
+                <TraceTabContent trace={presentation.trace} />
               </TabsContent>
             )}
 
@@ -177,7 +179,7 @@ function DetailsPanel({
       data-pane="details"
       data-focused={isFocused || undefined}
       className={cn(
-        "mt-3 w-3/5 flex flex-col min-h-0 border border-border data-[focused]:border-info",
+        "mt-3 flex min-h-0 w-full basis-3/5 flex-col border border-border data-[focused]:border-info md:w-3/5 md:basis-auto",
         className,
       )}
     >
@@ -417,19 +419,26 @@ function EvidenceReference({
   );
 }
 
-function TraceTabContent({ issue }: { issue: ReviewIssue }) {
-  if (!issue.trace || issue.trace.length === 0) {
+function TraceTabContent({ trace }: Pick<IssueDetailsPresentation, "trace">) {
+  if (trace.length === 0) {
     return <EmptyState variant="inline">No trace data available for this issue.</EmptyState>;
   }
 
   return (
     <div className="space-y-2">
-      {issue.trace.map((t) => (
-        <div key={t.step} className="border-l-2 border-border pl-2">
+      {trace.map((step) => (
+        <div key={step.step} className="border-l-2 border-border pl-2">
           <div className="text-foreground text-sm">
-            Step {t.step}: {t.tool}
+            Step {step.step}: {step.tool}
           </div>
-          <div className="text-muted-foreground text-xs">{t.outputSummary}</div>
+          <div className="text-muted-foreground text-xs">
+            <span>{step.input.label} </span>
+            {step.input.summary}
+          </div>
+          <div className="text-muted-foreground text-xs">
+            <span>{step.output.label} </span>
+            {step.output.summary}
+          </div>
         </div>
       ))}
     </div>

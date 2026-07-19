@@ -1,9 +1,13 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import { mapStepsToProgressData, sanitizeTerminalText } from "@diffgazer/core/review";
-import type { Shortcut } from "@diffgazer/core/schemas/presentation";
+import {
+  getAlternateReviewMode,
+  mapStepsToProgressDataWithAgents,
+  sanitizeTerminalText,
+} from "@diffgazer/core/review";
+import { BACK_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { Box, useInput } from "ink";
-import { type ReactElement, useEffect, useRef } from "react";
+import { type ReactElement, useEffect, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
 import { Spinner } from "../../../components/ui/spinner";
@@ -20,8 +24,6 @@ interface ReviewContainerProps {
   reviewId?: string;
   allowResumeWithoutSetup?: boolean;
 }
-
-const BACK_SHORTCUTS: Shortcut[] = [{ key: "Esc", label: "Back" }];
 
 function ReviewLoadingView({ message }: { message: string }): ReactElement {
   usePageFooter({ shortcuts: [] });
@@ -78,6 +80,8 @@ export function ReviewContainer({
       allowResumeWithoutSetup,
     },
   );
+  const [isSwitchingMode, setIsSwitchingMode] = useState(false);
+  const switchingModeRef = useRef(false);
 
   function handleGateBack() {
     reset({ clearActiveSession: true });
@@ -105,7 +109,6 @@ export function ReviewContainer({
   if (state.initState.status === "error") {
     return (
       <ConfigurationErrorView
-        error={state.initState.message}
         onRetry={() => {
           void retryConfig();
         }}
@@ -134,16 +137,22 @@ export function ReviewContainer({
 
   if (state.gate === "no-diff") {
     const currentMode = state.mode;
-    const otherMode = currentMode === "staged" ? "unstaged" : "staged";
+    const otherMode = getAlternateReviewMode(currentMode);
     return (
       <NoChangesView
         mode={currentMode}
-        onSwitchMode={() => {
-          void start(otherMode).then((result) => {
-            if (result === "setup-required") {
-              navigate({ screen: "settings/providers" });
-            }
-          });
+        disabled={isSwitchingMode}
+        onSwitchMode={async () => {
+          if (switchingModeRef.current) return;
+          switchingModeRef.current = true;
+          setIsSwitchingMode(true);
+          try {
+            const result = await start(otherMode);
+            if (result === "setup-required") navigate({ screen: "settings/providers" });
+          } finally {
+            switchingModeRef.current = false;
+            setIsSwitchingMode(false);
+          }
         }}
         onBack={handleGateBack}
       />
@@ -168,13 +177,14 @@ export function ReviewContainer({
     case "completing":
       return (
         <ReviewProgressView
-          progressSteps={mapStepsToProgressData(state.steps, state.agents)}
+          progressSteps={mapStepsToProgressDataWithAgents(state.steps, state.agents)}
           agents={state.agents}
           lensStats={state.completion?.lensStats}
           events={state.events}
           fileProgress={state.fileProgress}
-          isStreaming={state.phase === "streaming"}
+          isStreaming={state.isStreaming}
           error={state.error}
+          errorCode={state.errorCode}
           notices={state.notices}
           onCancel={() => {
             void cancel().then((error) => {
@@ -192,6 +202,7 @@ export function ReviewContainer({
           reviewId={state.reviewId}
           contextSnapshot={state.contextSnapshot}
           onViewResults={goToSummary}
+          onGoToSettings={() => navigate({ screen: "settings/providers" })}
         />
       );
 

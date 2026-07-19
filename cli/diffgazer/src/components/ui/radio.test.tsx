@@ -69,6 +69,26 @@ describe("RadioGroup navigation", () => {
     expect(onHighlightChange).toHaveBeenLastCalledWith("c");
   });
 
+  test("reports the down boundary without wrapping when actions follow the list", async () => {
+    const onHighlightChange = vi.fn();
+    const onNavigationBoundaryReached = vi.fn();
+    const { stdin } = renderGroup({
+      wrap: false,
+      onHighlightChange,
+      onNavigationBoundaryReached,
+    });
+    await flush();
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    expect(onHighlightChange).toHaveBeenLastCalledWith("c");
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    expect(onNavigationBoundaryReached).toHaveBeenCalledExactlyOnceWith(1);
+    expect(onHighlightChange).toHaveBeenCalledTimes(1);
+  });
+
   test("horizontal orientation navigates with left and right arrows", async () => {
     const onChange = vi.fn();
     const onHighlightChange = vi.fn();
@@ -149,7 +169,7 @@ describe("RadioGroup navigation", () => {
     expect(onChange).toHaveBeenLastCalledWith("d");
   });
 
-  test("windows a long list and keeps the keyboard highlight visible", async () => {
+  test("keeps top, middle, and bottom windows inside maxVisibleItems", async () => {
     const onChange = vi.fn();
     const view = render(
       <CliThemeProvider initialTheme="dark">
@@ -166,19 +186,33 @@ describe("RadioGroup navigation", () => {
     );
     await flush();
 
-    expect(view.lastFrame()).toContain("Model 0");
-    expect(view.lastFrame()).toContain("Model 2");
-    expect(view.lastFrame()).not.toContain("Model 3");
+    const top = (view.lastFrame() ?? "").split("\n").filter(Boolean);
+    expect(top).toHaveLength(3);
+    expect(top.join("\n")).toContain("Model 0");
+    expect(top.at(-1)).toContain("\u25BC");
 
     for (let index = 0; index < 5; index += 1) {
       view.stdin.write(ARROW_DOWN);
       await flush();
     }
 
-    expect(view.lastFrame()).not.toContain("Model 0");
-    expect(view.lastFrame()).toContain("Model 5");
+    const middle = (view.lastFrame() ?? "").split("\n").filter(Boolean);
+    expect(middle).toHaveLength(3);
+    expect(middle[0]).toContain("\u25B2");
+    expect(middle.join("\n")).toContain("Model 5");
+    expect(middle.at(-1)).toContain("\u25BC");
+
+    for (let index = 0; index < 2; index += 1) {
+      view.stdin.write(ARROW_DOWN);
+      await flush();
+    }
+
+    const bottom = (view.lastFrame() ?? "").split("\n").filter(Boolean);
+    expect(bottom).toHaveLength(3);
+    expect(bottom[0]).toContain("\u25B2");
+    expect(bottom.join("\n")).toContain("Model 7");
     view.stdin.write(RETURN);
     await flush();
-    expect(onChange).toHaveBeenLastCalledWith("model-5");
+    expect(onChange).toHaveBeenLastCalledWith("model-7");
   });
 });

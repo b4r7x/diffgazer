@@ -1,11 +1,15 @@
 import { Box, Text, useInput } from "ink";
 import type { ReactNode } from "react";
+import { useContext, useEffect } from "react";
+import { KeyboardContext } from "../../hooks/use-keyboard";
 import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions";
 import { useTheme } from "../../theme/provider";
+import { getContentZoneRows } from "../layout/global";
 
 export interface DialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onEscapeKeyDown?: () => boolean;
   children: ReactNode;
 }
 
@@ -97,12 +101,19 @@ function DialogFooter({ children }: DialogFooterProps) {
   );
 }
 
-function DialogRoot({ open = false, onOpenChange, children }: DialogProps) {
+function DialogRoot({ open = false, onOpenChange, onEscapeKeyDown, children }: DialogProps) {
   const { columns, rows } = useTerminalDimensions();
+  const keyboard = useContext(KeyboardContext);
+
+  useEffect(() => {
+    if (!open) return;
+    keyboard?.setModalActive(true);
+    return () => keyboard?.setModalActive(false);
+  }, [keyboard, open]);
 
   useInput(
     (_input, key) => {
-      if (key.escape) {
+      if (key.escape && !onEscapeKeyDown?.()) {
         onOpenChange?.(false);
       }
     },
@@ -117,7 +128,8 @@ function DialogRoot({ open = false, onOpenChange, children }: DialogProps) {
       justifyContent="center"
       alignItems="center"
       width={columns}
-      height={rows}
+      height={getContentZoneRows(rows)}
+      overflow="hidden"
     >
       {children}
     </Box>

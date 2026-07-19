@@ -1,8 +1,8 @@
 import { Box, Text, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext, useState } from "react";
+import { useListNavigation } from "../../hooks/use-list-navigation";
 import { collectChildItems } from "../../lib/collect-child-items";
-import { useListNavigation } from "../../lib/use-list-navigation";
 import type { CliColorTokens } from "../../theme/palettes";
 import { useTheme } from "../../theme/provider";
 
@@ -11,6 +11,7 @@ export interface CheckboxGroupProps<T extends string = string> {
   defaultValue?: T[];
   onChange?: (value: T[]) => void;
   onHighlightChange?: (value: string) => void;
+  onNavigationBoundaryReached?: (direction: 1 | -1) => void;
   wrap?: boolean;
   disabled?: boolean;
   isActive?: boolean;
@@ -110,6 +111,7 @@ function CheckboxGroupRoot<T extends string = string>({
   defaultValue,
   onChange,
   onHighlightChange,
+  onNavigationBoundaryReached,
   wrap = true,
   disabled = false,
   isActive = true,
@@ -127,7 +129,12 @@ function CheckboxGroupRoot<T extends string = string>({
     currentHighlightedId: highlightedValue,
     moveBy,
     selectItem,
-  } = useListNavigation({ items: navigableItems, onHighlightChange, wrap });
+  } = useListNavigation({
+    items: navigableItems,
+    onHighlightChange,
+    onNavigationBoundaryReached,
+    wrap,
+  });
 
   const checkedValues = value ?? internalValue;
 

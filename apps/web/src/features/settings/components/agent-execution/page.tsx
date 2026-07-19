@@ -49,7 +49,6 @@ export function SettingsAgentExecutionPage() {
     setModeChoice(value);
   };
 
-  useKey(" ", () => onExecutionChange(effectiveFocusedMode), { enabled: navigationEnabled });
   useKey("Enter", () => onExecutionChange(effectiveFocusedMode), { enabled: navigationEnabled });
 
   return (

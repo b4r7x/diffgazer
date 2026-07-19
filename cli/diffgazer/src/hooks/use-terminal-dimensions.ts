@@ -21,6 +21,10 @@ interface StreamStore {
 
 const stores = new WeakMap<NodeJS.WriteStream, StreamStore>();
 
+// Ink's useWindowSize installs one resize listener per consumer. The TUI mounts
+// this hook throughout the tree, so this shared external store deliberately
+// keeps one listener per stdout stream and one stable snapshot for all readers.
+
 function readDimensions(stdout: NodeJS.WriteStream): TerminalDimensions {
   return { columns: stdout.columns ?? 80, rows: stdout.rows ?? 24 };
 }

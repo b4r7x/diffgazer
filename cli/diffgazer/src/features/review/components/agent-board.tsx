@@ -8,12 +8,18 @@ import { useTheme } from "../../../theme/provider";
 
 export interface AgentBoardProps {
   agents: AgentState[];
+  maxRows?: number;
 }
 
-export function AgentBoard({ agents }: AgentBoardProps) {
+export function AgentBoard({ agents, maxRows = agents.length }: AgentBoardProps) {
   const { tokens } = useTheme();
 
   if (agents.length === 0) return null;
+
+  const availableRows = Math.max(maxRows, 1);
+  const hasOverflow = agents.length > availableRows;
+  const visibleAgentCount = hasOverflow ? Math.max(availableRows - 1, 0) : availableRows;
+  const visibleAgents = agents.slice(0, visibleAgentCount);
 
   return (
     <Box flexDirection="column">
@@ -21,7 +27,7 @@ export function AgentBoard({ agents }: AgentBoardProps) {
         Agent Board
       </SectionHeader>
       <Box flexDirection="column" paddingTop={1}>
-        {agents.map((agent) => {
+        {visibleAgents.map((agent) => {
           const status = getAgentStatusMeta(agent.status);
           const detail = getAgentDetail(agent);
 
@@ -39,6 +45,9 @@ export function AgentBoard({ agents }: AgentBoardProps) {
             </Box>
           );
         })}
+        {hasOverflow ? (
+          <Text color={tokens.muted}>… {agents.length - visibleAgentCount} more agents</Text>
+        ) : null}
       </Box>
     </Box>
   );

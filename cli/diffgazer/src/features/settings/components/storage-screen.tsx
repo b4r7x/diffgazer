@@ -1,25 +1,28 @@
 import { guardQueryState, useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { usePageFooter } from "@diffgazer/core/footer";
+import { sanitizeTerminalText } from "@diffgazer/core/review";
 import type { SecretsStorage } from "@diffgazer/core/schemas/config";
-import { BACK_SHORTCUT, NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
+import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
+import { useQueryGuardPanels } from "../../../components/shared/query-guard-panels";
 import { StorageSelector } from "../../../components/shared/storage-selector";
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
 import { Panel } from "../../../components/ui/panel";
 import { SectionHeader } from "../../../components/ui/section-header";
-import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
-import { useSettingsZone } from "../hooks/use-settings-zone";
+import { useTheme } from "../../../theme/provider";
+import { getSettingsFooter, useSettingsZone } from "../hooks/use-settings-zone";
 import { deriveStorageSaveState } from "../lib/derive-storage-save-state";
 
 export function StorageScreen(): ReactElement {
-  const { columns } = useTerminalDimensions();
+  const { columns, rows } = useTerminalDimensions();
+  const { tokens } = useTheme();
   const { goBack } = useNavigation();
   useBackHandler();
 
@@ -36,23 +39,23 @@ export function StorageScreen(): ReactElement {
     saving,
   });
 
-  const { isListActive, isButtonActive } = useSettingsZone({
+  const { isListActive, isButtonActive, zone, enterButtons } = useSettingsZone({
     buttonCount: 2,
     disabled: saving,
     disabledButtons: canSave ? undefined : [1],
   });
 
-  usePageFooter({
-    shortcuts: [
-      { key: "Tab", label: "Switch Zone" },
-      NAVIGATE_SHORTCUT,
-      { key: "Enter", label: "Select" },
-    ],
-    rightShortcuts: [BACK_SHORTCUT],
-  });
+  usePageFooter(
+    getSettingsFooter({
+      zone,
+      listShortcuts: [NAVIGATE_SHORTCUT, { key: "Enter", label: "Select Storage" }],
+      buttonActionLabel: isButtonActive(0) ? "Cancel" : "Save",
+      buttonActionDisabled: isButtonActive(1) && !canSave,
+    }),
+  );
 
   function handleSave() {
-    if (!canSave) return;
+    if (!canSave || !effectiveStorage) return;
     setSaveError(null);
     saveSettings.mutate(
       { secretsStorage: effectiveStorage },
@@ -67,22 +70,8 @@ export function StorageScreen(): ReactElement {
     );
   }
 
-  const guard = guardQueryState(settingsQuery, {
-    loading: () => (
-      <Panel>
-        <Panel.Content>
-          <Spinner label="Loading storage settings..." />
-        </Panel.Content>
-      </Panel>
-    ),
-    error: (err) => (
-      <Panel>
-        <Panel.Content>
-          <Text color="red">Error: {err.message}</Text>
-        </Panel.Content>
-      </Panel>
-    ),
-  });
+  const queryGuardPanels = useQueryGuardPanels("Loading storage settings...");
+  const guard = guardQueryState(settingsQuery, queryGuardPanels);
 
   if (guard) return guard;
 
@@ -91,17 +80,25 @@ export function StorageScreen(): ReactElement {
       <Box width={Math.min(columns, 60)} flexDirection="column">
         <Panel>
           <Panel.Content>
-            <Box flexDirection="column" gap={1}>
+            <Box flexDirection="column" gap={rows <= 24 ? 0 : 1}>
               <SectionHeader>Configure Secrets Storage</SectionHeader>
               <Text dimColor>Choose where API keys and sensitive data should be stored.</Text>
               <StorageSelector
                 value={effectiveStorage}
                 onChange={setStorage}
                 isActive={isListActive}
+                onDownBoundary={enterButtons}
               />
-              <Callout variant="info">
-                <Text>Changes will take effect immediately after saving.</Text>
-              </Callout>
+              {rows <= 24 ? (
+                <Text color={tokens.info}>Changes take effect after saving.</Text>
+              ) : (
+                <Callout variant="info">
+                  <Text>Changes will take effect immediately after saving.</Text>
+                </Callout>
+              )}
+              {saveError ? (
+                <Text color={tokens.error}>{sanitizeTerminalText(saveError)}</Text>
+              ) : null}
               <Box gap={1}>
                 <Button
                   variant="secondary"
@@ -120,7 +117,6 @@ export function StorageScreen(): ReactElement {
                   {saving ? "Saving..." : "Save"}
                 </Button>
               </Box>
-              {saveError && <Text color="red">{saveError}</Text>}
             </Box>
           </Panel.Content>
         </Panel>

@@ -1,7 +1,7 @@
 /**
  * Canonical theme token vocabulary shared between every rendering app
- * (web Tailwind/CSS variables, CLI Ink hex colors). Values are NOT part of
- * the contract — each app maps these keys to its own medium.
+ * (web Tailwind/CSS variables, CLI Ink hex colors). Canonical dark and light
+ * values live in palette-values.ts.
  *
  * Groupings:
  *   - PRIMITIVE_TOKEN_KEYS — raw color slots (bg/fg + palette ramps + chrome).

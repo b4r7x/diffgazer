@@ -198,7 +198,7 @@ export function ModelSelectDialog({
           />
         </DialogBody>
 
-        <DialogFooter hints={FOOTER_HINTS}>
+        <DialogFooter hints={FOOTER_HINTS} className="pointer-coarse:[&>div:first-child]:hidden">
           <DialogClose
             {...getFooterButtonProps(0)}
             variant="ghost"

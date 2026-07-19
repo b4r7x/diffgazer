@@ -20,8 +20,11 @@ export function IssueHeader({ title, severity, presentation, className }: IssueH
         <span className="sr-only">{severity} severity: </span>
         {title}
       </Typography>
-      <div className="text-xs text-muted-foreground">
-        Location: <span className="text-foreground">{presentation.location}</span>
+      <div className="flex min-w-0 text-xs text-muted-foreground">
+        <span className="shrink-0">Location:&nbsp;</span>
+        <span className="min-w-0 truncate text-foreground" title={presentation.location}>
+          {presentation.location}
+        </span>
       </div>
       <div className="flex flex-wrap gap-x-4 text-xs text-muted-foreground">
         <span>

@@ -1,21 +1,12 @@
 import { posix } from "node:path";
 import { UuidSchema } from "@diffgazer/core/schemas/fields";
-import {
-  DrilldownResultSchema,
-  LensIdSchema,
-  ProfileIdSchema,
-  ReviewModeSchema,
-} from "@diffgazer/core/schemas/review";
+import { LensIdSchema, ProfileIdSchema, ReviewModeSchema } from "@diffgazer/core/schemas/review";
 import { z } from "zod";
 import { isRepoRelativePath } from "../../shared/lib/paths.js";
 import { isReviewCursor } from "./storage/review-cursor.js";
 
 export const ReviewIdParamSchema = z.object({
   id: UuidSchema,
-});
-
-export const DrilldownRequestSchema = z.object({
-  issueId: z.string().min(1),
 });
 
 export const ContextRefreshSchema = z.object({
@@ -79,19 +70,3 @@ export const CreateReviewBodySchema = z
     error: "files[] must be non-empty when mode is 'files'",
     path: ["files"],
   });
-
-/**
- * AI response shape for drilldown — derived from the shared DrilldownResultSchema
- * by picking only the fields the AI generates (excludes issueId, issue, trace).
- */
-export const DrilldownResponseSchema = DrilldownResultSchema.pick({
-  detailedAnalysis: true,
-  rootCause: true,
-  impact: true,
-  suggestedFix: true,
-  patch: true,
-  relatedIssues: true,
-  references: true,
-});
-
-export type DrilldownAIResponse = z.infer<typeof DrilldownResponseSchema>;

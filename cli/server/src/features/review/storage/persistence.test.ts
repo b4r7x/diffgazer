@@ -60,7 +60,7 @@ async function writeRawItem(id: string, content: string): Promise<void> {
 }
 
 describe("createCollection", () => {
-  it("writes, reads, lists, and removes real JSON files", async () => {
+  it("writes, reads, and lists real JSON files", async () => {
     const collection = makeCollection();
     const writeResult = await collection.write(makeItem());
 
@@ -76,15 +76,6 @@ describe("createCollection", () => {
     expect(listResult).toEqual({
       ok: true,
       value: { items: [makeItem().metadata], warnings: [] },
-    });
-
-    await expect(collection.remove(TEST_ID)).resolves.toEqual({
-      ok: true,
-      value: { existed: true },
-    });
-    await expect(collection.remove(TEST_ID)).resolves.toEqual({
-      ok: true,
-      value: { existed: false },
     });
   });
 

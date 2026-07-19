@@ -2,6 +2,7 @@ import { getOnboardingProgressLabel } from "@diffgazer/core/onboarding";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { useTheme } from "../../../theme/provider";
+import { WIZARD_PROGRESS_MARKERS } from "../lib/wizard-progress";
 
 interface WizardProgressProps {
   steps: string[];
@@ -19,7 +20,7 @@ export function WizardProgress({
   if (compact) {
     return (
       <Text color={tokens.accent} bold>
-        [○] {getOnboardingProgressLabel(currentStep)}
+        {WIZARD_PROGRESS_MARKERS.current} {getOnboardingProgressLabel(currentStep)}
       </Text>
     );
   }
@@ -34,13 +35,13 @@ export function WizardProgress({
         let color: string;
 
         if (isCompleted) {
-          indicator = "[●]";
+          indicator = WIZARD_PROGRESS_MARKERS.completed;
           color = tokens.success;
         } else if (isCurrent) {
-          indicator = "[○]";
+          indicator = WIZARD_PROGRESS_MARKERS.current;
           color = tokens.accent;
         } else {
-          indicator = "[ ]";
+          indicator = WIZARD_PROGRESS_MARKERS.upcoming;
           color = tokens.muted;
         }
 

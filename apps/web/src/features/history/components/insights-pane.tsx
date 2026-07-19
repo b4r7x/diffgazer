@@ -1,3 +1,4 @@
+import type { HistoryDetailState } from "@diffgazer/core/review";
 import type { SeverityCounts } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { capitalize } from "@diffgazer/core/strings";
@@ -12,16 +13,11 @@ import type { KeyboardEvent, Ref } from "react";
 import { SeverityBreakdown } from "@/components/shared/severity/breakdown";
 import { SEVERITY_CONFIG } from "@/components/shared/severity/constants";
 
-export type HistoryInsightsDetailState =
-  | { status: "loading" }
-  | { status: "error"; message: string; retry: () => void }
-  | { status: "ready" };
-
 export interface HistoryInsightsPaneProps {
   runId: string | null;
   severityCounts: SeverityCounts | null;
   issues: ReviewIssue[];
-  detailState?: HistoryInsightsDetailState;
+  detailState?: HistoryDetailState;
   duration?: string;
   highlightedIssueId?: string | null;
   isFocused?: boolean;
@@ -57,8 +53,8 @@ export function HistoryInsightsPane({
   }
 
   return (
-    <div className={cn("flex h-full min-h-0 flex-col overflow-hidden", className)}>
-      <ScrollArea className="flex-1 min-h-0 p-4 pr-2 space-y-6">
+    <div className={cn("flex min-h-0 flex-col md:h-full md:overflow-hidden", className)}>
+      <ScrollArea className="min-h-0 space-y-6 overflow-visible p-4 pr-2 md:flex-1 md:overflow-x-hidden md:overflow-y-auto">
         {severityCounts && (
           <div>
             <SectionHeader bordered className="border-border">

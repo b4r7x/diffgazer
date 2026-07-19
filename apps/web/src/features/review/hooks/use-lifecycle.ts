@@ -1,11 +1,14 @@
 import { isApiError } from "@diffgazer/core/api";
-import type { ReviewStreamState } from "@diffgazer/core/api/hooks";
 import {
   useCreateReview,
   useReviewLifecycleBase,
   useReviewSessionCache,
 } from "@diffgazer/core/api/hooks";
-import { sessionTerminationCopy } from "@diffgazer/core/review";
+import {
+  extractOrchestratorStats,
+  getAlternateReviewMode,
+  sessionTerminationCopy,
+} from "@diffgazer/core/review";
 import type { LensStat } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue, ReviewMode, ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { toast } from "@diffgazer/ui/components/toast";
@@ -13,41 +16,14 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useConfigData } from "@/hooks/use-config";
 
-function getAlternateReviewMode(mode: ReviewMode): ReviewMode {
-  if (mode === "staged") return "unstaged";
-  if (mode === "unstaged") return "staged";
-  return "unstaged";
-}
-
 export interface ReviewCompleteData {
   issues: ReviewIssue[];
   reviewId: string | null;
+  durationMs?: number;
   lensStats?: LensStat[];
   droppedDuplicates?: number;
   droppedBelowThreshold?: number;
   minSeverity?: ReviewSeverity;
-}
-
-/** Pulls the persisted-equivalent lens stats and drop count from the live event log. */
-export function extractOrchestratorStats(
-  state: Pick<ReviewStreamState, "events"> | null,
-): Pick<
-  ReviewCompleteData,
-  "lensStats" | "droppedDuplicates" | "droppedBelowThreshold" | "minSeverity"
-> {
-  const events = state?.events ?? [];
-  for (let i = events.length - 1; i >= 0; i--) {
-    const event = events[i];
-    if (event?.type === "orchestrator_complete") {
-      return {
-        lensStats: event.lensStats,
-        droppedDuplicates: event.droppedDuplicates,
-        droppedBelowThreshold: event.droppedBelowThreshold,
-        minSeverity: event.minSeverity,
-      };
-    }
-  }
-  return {};
 }
 
 interface UseReviewLifecycleOptions {
@@ -124,10 +100,13 @@ export function useReviewLifecycle({
 
   function emitComplete() {
     const s = base.stream.state;
+    const completedAt = base.completion.completedAt;
     clearActiveSession(s.reviewId ?? activeReviewId);
     onComplete?.({
       issues: s.issues,
       reviewId: s.reviewId ?? null,
+      durationMs:
+        s.startedAt && completedAt ? completedAt.getTime() - s.startedAt.getTime() : undefined,
       ...extractOrchestratorStats(s),
     });
   }
@@ -187,6 +166,10 @@ export function useReviewLifecycle({
 
   const handleViewResults = () => {
     base.completion.skipDelay();
+  };
+
+  const handleRetry = (reviewId: string) => {
+    void base.stream.resume(reviewId);
   };
 
   const handleSetupProvider = () => {
@@ -249,6 +232,7 @@ export function useReviewLifecycle({
     handleCancel,
     handleBack,
     handleViewResults,
+    handleRetry,
     handleSetupProvider,
     handleSwitchMode,
   };

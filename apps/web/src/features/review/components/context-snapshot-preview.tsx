@@ -1,4 +1,6 @@
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
+import { buildContextSnapshotView } from "@diffgazer/core/review";
+import { pluralize } from "@diffgazer/core/strings";
 import { Button } from "@diffgazer/ui/components/button";
 import { CodeBlock } from "@diffgazer/ui/components/code-block";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
@@ -9,30 +11,48 @@ interface ContextSnapshotPreviewProps {
 }
 
 export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps) {
-  const lines = snapshot.text.split("\n");
-  const contextPreview = {
-    preview: lines.slice(0, 10).join("\n"),
-    truncated: lines.length > 10,
-  };
+  const view = buildContextSnapshotView(snapshot);
 
   return (
     <div className="mb-8">
       <SectionHeader variant="muted" bordered>
         Context Snapshot
       </SectionHeader>
-      <div className="text-xs text-muted-foreground">
-        {snapshot.meta.charCount.toLocaleString()} chars
-      </div>
+      <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <div>
+          <dt className="inline">Project: </dt>
+          <dd className="inline text-foreground">{view.project}</dd>
+        </div>
+        <div>
+          <dt className="sr-only">Changed files</dt>
+          <dd>{pluralize(view.changedFileCount, "changed file")}</dd>
+        </div>
+        <div>
+          <dt className="sr-only">Diff totals</dt>
+          <dd>
+            +{view.additions} / -{view.deletions}
+          </dd>
+        </div>
+        <div>
+          <dt className="sr-only">Packages</dt>
+          <dd>{pluralize(view.packageCount, "package")}</dd>
+        </div>
+        <div>
+          <dt className="sr-only">Context size</dt>
+          <dd>{view.charCount.toLocaleString()} chars</dd>
+        </div>
+      </dl>
       <CodeBlock label="Context snapshot preview" className="mt-3">
         <CodeBlock.Content
           showLineNumbers={false}
           className="max-h-28 text-2xs text-muted-foreground"
         >
-          {contextPreview.preview}
-          {contextPreview.truncated ? "\n... (preview)" : ""}
+          {view.previewLines.join("\n")}
+          {view.previewTruncated ? "\n... (preview)" : ""}
         </CodeBlock.Content>
       </CodeBlock>
-      <div className="flex gap-2 mt-3">
+      <fieldset className="mt-3 flex flex-wrap gap-2">
+        <legend className="sr-only">Download context snapshot</legend>
         <Button
           variant="secondary"
           size="sm"
@@ -63,7 +83,7 @@ export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps
         >
           Download .json
         </Button>
-      </div>
+      </fieldset>
     </div>
   );
 }

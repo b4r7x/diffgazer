@@ -5,34 +5,25 @@ import {
   useTrustEditor,
 } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { BACK_SHORTCUT, NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
+import { sanitizeTerminalText } from "@diffgazer/core/review";
+import { NAVIGATE_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
+import { useQueryGuardPanels } from "../../../components/shared/query-guard-panels";
 import { TrustPermissionsContent } from "../../../components/shared/trust-permissions-content";
 import { Button } from "../../../components/ui/button";
 import { Panel } from "../../../components/ui/panel";
 import { SectionHeader } from "../../../components/ui/section-header";
-import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
-import { useSettingsZone } from "../hooks/use-settings-zone";
+import { useTheme } from "../../../theme/provider";
+import { getSettingsFooter, useSettingsZone } from "../hooks/use-settings-zone";
 
-const TRUST_FORM_SHORTCUTS = [
-  NAVIGATE_SHORTCUT,
-  { key: "Tab", label: "Switch Zone" },
-  { key: "Space", label: "Toggle" },
-  { key: "Enter", label: "Activate" },
-];
-
-const TRUST_FORM_RIGHT_SHORTCUTS = [BACK_SHORTCUT];
+const TRUST_FORM_SHORTCUTS: Shortcut[] = [NAVIGATE_SHORTCUT, { key: "Space", label: "Toggle" }];
 
 export function TrustPermissionsScreen(): ReactElement {
-  const { columns } = useTerminalDimensions();
-  usePageFooter({
-    shortcuts: TRUST_FORM_SHORTCUTS,
-    rightShortcuts: TRUST_FORM_RIGHT_SHORTCUTS,
-  });
+  const { columns, rows } = useTerminalDimensions();
   useBackHandler();
 
   const initQuery = useInit();
@@ -44,36 +35,25 @@ export function TrustPermissionsScreen(): ReactElement {
     trust,
   };
 
-  const guard = guardQueryState(initQuery, {
-    loading: () => (
-      <Panel>
-        <Panel.Content>
-          <Spinner label="Loading trust permissions..." />
-        </Panel.Content>
-      </Panel>
-    ),
-    error: (err) => (
-      <Panel>
-        <Panel.Content>
-          <Text color="red">Error: {err.message}</Text>
-        </Panel.Content>
-      </Panel>
-    ),
-  });
+  const queryGuardPanels = useQueryGuardPanels("Loading trust permissions...");
+  const guard = guardQueryState(initQuery, queryGuardPanels);
   if (guard) return guard;
 
-  return <LoadedTrustPermissionsScreen columns={columns} editorInput={editorInput} />;
+  return <LoadedTrustPermissionsScreen columns={columns} rows={rows} editorInput={editorInput} />;
 }
 
 interface LoadedTrustPermissionsScreenProps {
   columns: number;
+  rows: number;
   editorInput: Parameters<typeof useTrustEditor>[0];
 }
 
 function LoadedTrustPermissionsScreen({
   columns,
+  rows,
   editorInput,
 }: LoadedTrustPermissionsScreenProps): ReactElement {
+  const { tokens } = useTheme();
   const [statusMessage, setStatusMessage] = useState<{
     tone: "success" | "error";
     text: string;
@@ -94,17 +74,26 @@ function LoadedTrustPermissionsScreen({
     onError: (text) => setStatusMessage({ tone: "error", text }),
   });
 
-  const { isListActive, isButtonActive } = useSettingsZone({
+  const { isListActive, isButtonActive, zone, enterButtons } = useSettingsZone({
     buttonCount: 2,
     disabled: isLoading,
   });
+
+  usePageFooter(
+    getSettingsFooter({
+      zone,
+      listShortcuts: TRUST_FORM_SHORTCUTS,
+      buttonActionLabel: isButtonActive(0) ? "Save Changes" : "Revoke Trust",
+      buttonActionDisabled: isLoading,
+    }),
+  );
 
   return (
     <Box justifyContent="center" flexGrow={1}>
       <Box width={Math.min(columns, 72)} flexDirection="column">
         <Panel>
           <Panel.Content>
-            <Box flexDirection="column" gap={1}>
+            <Box flexDirection="column" gap={rows <= 24 ? 0 : 1}>
               <SectionHeader>Trust &amp; Permissions</SectionHeader>
               <TrustPermissionsContent
                 directory={editorInput.repoRoot ?? "Loading..."}
@@ -112,7 +101,14 @@ function LoadedTrustPermissionsScreen({
                 onChange={handleCapabilitiesChange}
                 isTrusted={isTrusted}
                 isActive={isListActive}
+                compact={rows <= 24}
+                onDownBoundary={enterButtons}
               />
+              {statusMessage ? (
+                <Text color={statusMessage.tone === "success" ? tokens.success : tokens.error}>
+                  {sanitizeTerminalText(statusMessage.text)}
+                </Text>
+              ) : null}
               <Box justifyContent="flex-end" gap={1}>
                 <Button
                   variant="success"
@@ -131,11 +127,6 @@ function LoadedTrustPermissionsScreen({
                   {isRevoking ? "Revoking..." : "Revoke Trust"}
                 </Button>
               </Box>
-              {statusMessage && (
-                <Text color={statusMessage.tone === "success" ? "green" : "red"}>
-                  {statusMessage.text}
-                </Text>
-              )}
             </Box>
           </Panel.Content>
         </Panel>

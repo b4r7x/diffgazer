@@ -11,7 +11,6 @@ export const serverQueries = {
         await api.request("GET", "/api/health");
         return true as const;
       },
-      retry: false,
       refetchInterval: 30_000,
     }),
 };

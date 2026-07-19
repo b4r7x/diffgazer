@@ -1,4 +1,3 @@
-import type { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { FullReviewStreamEvent, LensStat } from "@diffgazer/core/schemas/events";
 import type {
   LensId,
@@ -8,9 +7,7 @@ import type {
   ReviewSeverity,
   SeverityFilter,
 } from "@diffgazer/core/schemas/review";
-import type { AIError } from "../../shared/lib/ai/types.js";
 import type { getProfile } from "./engine/profiles.js";
-import type { StoreError } from "./storage/types.js";
 
 export type EmitFn = (event: FullReviewStreamEvent) => Promise<void>;
 
@@ -42,10 +39,3 @@ export interface ReviewOutcome {
   droppedBelowThreshold?: number;
   minSeverity?: ReviewSeverity;
 }
-
-export type DrilldownError = AIError | { code: "ISSUE_NOT_FOUND"; message: string };
-
-export type HandleDrilldownError =
-  | DrilldownError
-  | StoreError
-  | { code: typeof ErrorCode.COMMAND_FAILED; message: string };

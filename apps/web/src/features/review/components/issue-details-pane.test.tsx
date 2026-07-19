@@ -186,6 +186,35 @@ describe("IssueDetailsPane", () => {
     expect(container.querySelectorAll('[data-slot="code-block-line-number"]')).toHaveLength(0);
   }
 
+  it("keeps the complete issue location available when the header truncates it", () => {
+    const file = "src/features/review/components/a/very/long/location/issue-details-pane.tsx";
+    renderPane(makeIssue({ file, line_start: 120, line_end: null }));
+
+    expect(screen.getByText(`${file}:120`)).toHaveAttribute("title", `${file}:120`);
+  });
+
+  it("shows both semantic input and output summaries in the trace tab", () => {
+    renderPane(makeAllEvidenceIssue(), "trace");
+
+    expect(screen.getByText("in:").parentElement).toHaveTextContent("in: Run parser test");
+    expect(screen.getByText("out:").parentElement).toHaveTextContent("out: Test failed");
+  });
+
+  it("labels rationale and recommendation as semantic explain sections", () => {
+    renderPane(
+      makeIssue({
+        rationale: "The parser trusts malformed input.",
+        recommendation: "Return a typed parse failure.",
+      }),
+      "explain",
+    );
+
+    expect(screen.getByRole("heading", { level: 2, name: "Rationale" })).toBeInTheDocument();
+    expect(screen.getByText("The parser trusts malformed input.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Recommendation" })).toBeInTheDocument();
+    expect(screen.getByText("Return a typed parse failure.")).toBeInTheDocument();
+  });
+
   it("prevents native scrolling and toggling defaults only while details bindings are active", () => {
     const onScroll = vi.fn();
     const onToggleStep = vi.fn();
@@ -310,7 +339,6 @@ describe("IssueDetailsPane", () => {
         additions: 1,
         deletions: 0,
       },
-      drilldowns: [],
     });
 
     const { container } = renderPane(saved.result.issues[0] ?? null);
@@ -372,7 +400,6 @@ describe("IssueDetailsPane", () => {
             additions: 1,
             deletions: 0,
           },
-          drilldowns: [],
         }),
       ),
     );

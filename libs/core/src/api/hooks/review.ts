@@ -181,18 +181,6 @@ export function useReviewContext(options?: { enabled?: boolean }) {
   return useQuery({ ...reviewQueries.context(api), ...options });
 }
 
-export function useDeleteReview() {
-  const api = useApi();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => api.deleteReview(id),
-    onSuccess: (_data, id) => {
-      qc.removeQueries({ queryKey: reviewQueries.detail(api, id).queryKey });
-      return qc.invalidateQueries({ queryKey: reviewQueries.all() });
-    },
-  });
-}
-
 export function useRefreshReviewContext() {
   const api = useApi();
   const qc = useQueryClient();

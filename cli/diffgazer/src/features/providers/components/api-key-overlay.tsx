@@ -1,6 +1,7 @@
 import { useSaveConfig } from "@diffgazer/core/api/hooks";
 import type { InputMethod } from "@diffgazer/core/onboarding";
 import { useApiKeyEntry } from "@diffgazer/core/providers";
+import { sanitizeTerminalText } from "@diffgazer/core/review";
 import {
   type AIProvider,
   type CredentialRef,
@@ -13,6 +14,7 @@ import { ApiKeyMethodSelector } from "../../../components/shared/api-key-method-
 import { Button } from "../../../components/ui/button";
 import { Dialog } from "../../../components/ui/dialog";
 import { Spinner } from "../../../components/ui/spinner";
+import { useActionRow } from "../../../hooks/use-action-row";
 import { useTheme } from "../../../theme/provider";
 import { isOverlayFooterNavActive } from "../lib/overlay-footer-gate";
 
@@ -31,7 +33,6 @@ export function ApiKeyOverlay({
 }: ApiKeyOverlayProps): ReactElement | null {
   const { tokens } = useTheme();
   const saveConfig = useSaveConfig();
-  const [footerIndex, setFooterIndex] = useState(0);
   const [inputFocused, setInputFocused] = useState(false);
   const envVarName = PROVIDER_ENV_VARS[providerId];
 
@@ -48,18 +49,6 @@ export function ApiKeyOverlay({
   });
 
   const { method, value, setMethod, setValue, canSubmit, isSubmitting: saving, error } = entry;
-
-  const resetSecrets = useEffectEvent(() => {
-    if (entry.isSubmitting) return;
-    entry.reset();
-    setFooterIndex(0);
-    setInputFocused(false);
-  });
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: open/providerId are the reset triggers; useEffectEvent keeps the reset body current without depending on mutation object identity.
-  useEffect(() => {
-    resetSecrets();
-  }, [open, providerId]);
 
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen && saving) return;
@@ -93,18 +82,24 @@ export function ApiKeyOverlay({
   );
 
   const footerNavActive = isOverlayFooterNavActive({ open, saving, inputFocused });
-  useInput(
-    (_input, key) => {
-      if (key.leftArrow) {
-        setFooterIndex((index) => Math.max(0, index - 1));
-        return;
-      }
-      if (key.rightArrow) {
-        setFooterIndex((index) => Math.min(1, index + 1));
-      }
-    },
-    { isActive: footerNavActive },
-  );
+  const actions = useActionRow({
+    actionCount: 2,
+    disabledActions: [!canSubmit, false],
+    onAction: (index) => (index === 0 ? handleSave() : handleClose()),
+    isActive: footerNavActive,
+  });
+
+  const resetSecrets = useEffectEvent(() => {
+    if (entry.isSubmitting) return;
+    entry.reset();
+    actions.reset();
+    setInputFocused(false);
+  });
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: open/providerId are the reset triggers; useEffectEvent keeps the reset body current without depending on mutation object identity.
+  useEffect(() => {
+    resetSecrets();
+  }, [open, providerId]);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -126,7 +121,7 @@ export function ApiKeyOverlay({
               inputFocused={inputFocused}
               onInputFocusedChange={setInputFocused}
             />
-            {error != null ? <Text color={tokens.error}>{error}</Text> : null}
+            {error != null ? <Text color={tokens.error}>{sanitizeTerminalText(error)}</Text> : null}
           </Box>
         </Dialog.Body>
         <Dialog.Footer>
@@ -137,15 +132,16 @@ export function ApiKeyOverlay({
               <>
                 <Button
                   variant="primary"
-                  onPress={handleSave}
-                  isActive={footerIndex === 0 && !inputFocused}
+                  onPress={() => actions.activate(0)}
+                  isActive={actions.isActionActive(0)}
+                  disabled={!canSubmit}
                 >
                   Save
                 </Button>
                 <Button
                   variant="ghost"
-                  onPress={handleClose}
-                  isActive={footerIndex === 1 && !inputFocused}
+                  onPress={() => actions.activate(1)}
+                  isActive={actions.isActionActive(1)}
                 >
                   Cancel
                 </Button>

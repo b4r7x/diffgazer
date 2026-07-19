@@ -24,22 +24,19 @@ export function ModelFilterTabs({
   onKeyDown,
   getTabProps,
 }: ModelFilterTabsProps) {
-  const handleFilterChange = (nextValue: string | null) => {
-    const index = TIER_FILTERS.indexOf(nextValue as TierFilter);
-    if (index === -1) return;
-    const nextFilter = TIER_FILTERS[index];
-    if (!nextFilter) return;
+  const handleFilterChange = (nextValue: TierFilter | null) => {
+    if (!nextValue) return;
+    const index = TIER_FILTERS.indexOf(nextValue);
     onTabClick(index);
-    onChange(nextFilter);
+    onChange(nextValue);
   };
 
-  const handleHighlightChange = (nextValue: string | null) => {
-    const index = TIER_FILTERS.indexOf(nextValue as TierFilter);
-    if (index >= 0) onTabClick(index);
+  const handleHighlightChange = (nextValue: TierFilter | null) => {
+    if (nextValue) onTabClick(TIER_FILTERS.indexOf(nextValue));
   };
 
   return (
-    <ToggleGroup
+    <ToggleGroup<TierFilter>
       value={value}
       onChange={handleFilterChange}
       onHighlightChange={handleHighlightChange}
@@ -63,7 +60,7 @@ export function ModelFilterTabs({
             onClick={() => {
               onTabClick(idx);
             }}
-            className="uppercase text-2xs min-h-0 min-w-0 h-auto px-2 py-0.5"
+            className="text-2xs uppercase pointer-coarse:min-h-11 pointer-coarse:px-3"
           >
             {filter}
           </ToggleGroupItem>

@@ -1,14 +1,24 @@
-import { getDisplayStatusBadge } from "@diffgazer/core/providers";
-import type { DisplayStatus } from "@diffgazer/core/schemas/config";
-import { Box, Text, useInput } from "ink";
-import { type ReactElement, useState } from "react";
+import {
+  getDisplayStatusBadge,
+  getProviderDetailModelLabel,
+  PROVIDER_DETAIL_ACTION_LABELS,
+  PROVIDER_DETAIL_EMPTY_LABEL,
+} from "@diffgazer/core/providers";
+import {
+  type AIProvider,
+  type DisplayStatus,
+  PROVIDER_CAPABILITIES,
+} from "@diffgazer/core/schemas/config";
+import { Box, Text } from "ink";
+import type { ReactElement } from "react";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { KeyValue } from "../../../components/ui/key-value";
+import { useActionRow } from "../../../hooks/use-action-row";
 import { useTheme } from "../../../theme/provider";
 
 export interface ProviderDetailData {
-  id: string;
+  id: AIProvider;
   name: string;
   displayStatus: DisplayStatus;
   model?: string;
@@ -21,12 +31,9 @@ interface ProviderDetailsProps {
   onConfigureKey?: () => void;
   onSelectModel?: () => void;
   onRemove?: () => void;
-}
-
-function formatProviderModel(model: string | undefined, defaultModel: string | undefined): string {
-  if (model) return model;
-  if (defaultModel) return `${defaultModel} (default)`;
-  return "none";
+  onSetActive?: () => void;
+  isPending?: boolean;
+  stackActions?: boolean;
 }
 
 export function ProviderDetails({
@@ -35,56 +42,41 @@ export function ProviderDetails({
   onConfigureKey,
   onSelectModel,
   onRemove,
+  onSetActive,
+  isPending = false,
+  stackActions = false,
 }: ProviderDetailsProps): ReactElement {
   const { tokens } = useTheme();
-  const [actionIndex, setActionIndex] = useState(0);
-
   const showRemove = provider?.displayStatus !== "needs-key";
   const selectModelDisabled = provider?.displayStatus === "needs-key";
-  const enabledActions = [true, !selectModelDisabled, showRemove];
-  const actionCount = enabledActions.filter(Boolean).length;
-
-  function moveActionIndex(direction: 1 | -1) {
-    if (actionCount === 0) return;
-    setActionIndex((current) => {
-      const clamped = Math.min(current, enabledActions.length - 1);
-      let next = clamped;
-      do {
-        next += direction;
-        if (next < 0 || next >= enabledActions.length) {
-          return clamped;
-        }
-      } while (!enabledActions[next]);
-      return next;
-    });
-  }
-
-  useInput(
-    (_input, key) => {
-      if (key.leftArrow) {
-        moveActionIndex(-1);
-        return;
-      }
-      if (key.rightArrow) {
-        moveActionIndex(1);
-      }
+  const setActiveDisabled = provider?.displayStatus === "active" || isPending;
+  const actions = useActionRow({
+    actionCount: 4,
+    disabledActions: [
+      setActiveDisabled,
+      isPending,
+      selectModelDisabled || isPending,
+      !showRemove || isPending,
+    ],
+    onAction: (index) => {
+      if (index === 0) onSetActive?.();
+      if (index === 1) onConfigureKey?.();
+      if (index === 2) onSelectModel?.();
+      if (index === 3) onRemove?.();
     },
-    { isActive },
-  );
+    isActive,
+  });
 
   if (!provider) {
     return (
       <Box>
-        <Text color={tokens.muted}>Select a provider to view details</Text>
+        <Text color={tokens.muted}>{PROVIDER_DETAIL_EMPTY_LABEL}</Text>
       </Box>
     );
   }
 
   const badge = getDisplayStatusBadge(provider.displayStatus);
-  const focusedIndex = enabledActions[actionIndex]
-    ? actionIndex
-    : enabledActions.findIndex((enabled) => enabled);
-
+  const capabilities = PROVIDER_CAPABILITIES[provider.id];
   return (
     <Box flexDirection="column" gap={1}>
       <KeyValue label="Name" value={provider.name} labelWidth={14} />
@@ -100,33 +92,47 @@ export function ProviderDetails({
       />
       <KeyValue
         label="Model"
-        value={formatProviderModel(provider.model, provider.defaultModel)}
+        value={getProviderDetailModelLabel(provider.id, provider.model, provider.defaultModel)}
         labelWidth={14}
       />
+      <KeyValue label="Tool Calling" value={capabilities.toolCalling} labelWidth={14} />
+      <KeyValue label="JSON Mode" value={capabilities.jsonMode} labelWidth={14} />
+      <KeyValue label="Streaming" value={capabilities.streaming} labelWidth={14} />
+      <KeyValue label="Context" value={capabilities.contextWindow} labelWidth={14} />
 
-      <Box gap={1} marginTop={1}>
+      <Box flexDirection={stackActions ? "column" : "row"} gap={1} marginTop={1}>
         <Button
           variant="primary"
-          isActive={isActive && focusedIndex === 0}
-          onPress={onConfigureKey}
+          isActive={actions.isActionActive(0)}
+          onPress={() => actions.activate(0)}
+          disabled={setActiveDisabled}
         >
-          Configure API Key
+          Set Active
         </Button>
         <Button
           variant="secondary"
-          isActive={isActive && focusedIndex === 1}
-          onPress={onSelectModel}
-          disabled={selectModelDisabled}
+          isActive={actions.isActionActive(1)}
+          onPress={() => actions.activate(1)}
+          disabled={isPending}
         >
-          Select Model
+          {PROVIDER_DETAIL_ACTION_LABELS.configureApiKey}
+        </Button>
+        <Button
+          variant="secondary"
+          isActive={actions.isActionActive(2)}
+          onPress={() => actions.activate(2)}
+          disabled={selectModelDisabled || isPending}
+        >
+          {PROVIDER_DETAIL_ACTION_LABELS.selectModel}
         </Button>
         {showRemove && (
           <Button
             variant="destructive"
-            isActive={isActive && focusedIndex === 2}
-            onPress={onRemove}
+            isActive={actions.isActionActive(3)}
+            onPress={() => actions.activate(3)}
+            disabled={isPending}
           >
-            Remove
+            {PROVIDER_DETAIL_ACTION_LABELS.removeKey}
           </Button>
         )}
       </Box>

@@ -17,6 +17,7 @@ const terminalDimensions = { columns: 100, rows: 24 };
 const MEDIUM_LIST_WIDTH = 35;
 
 beforeEach(() => {
+  terminalDimensions.columns = 100;
   terminalDimensions.rows = 24;
 });
 
@@ -31,6 +32,15 @@ vi.mock("../../../hooks/use-terminal-dimensions", () => ({
     isNarrow: false,
     isMedium: true,
     isWide: false,
+  }),
+}));
+
+vi.mock("../../../components/layout/global", () => ({
+  useContentZone: () => ({
+    columns: terminalDimensions.columns,
+    rows: terminalDimensions.rows,
+    contentColumns: terminalDimensions.columns,
+    contentRows: terminalDimensions.rows - 4,
   }),
 }));
 
@@ -83,6 +93,59 @@ function renderResults() {
 }
 
 describe("ReviewResultsView (TUI)", () => {
+  test("formats a full review id with the shared compact label", () => {
+    const { lastFrame } = render(
+      <FooterProvider initialShortcuts={[]}>
+        <CliThemeProvider initialTheme="dark">
+          <ReviewResultsView reviewId="12345678-1234-4123-8123-123456789abc" issues={[]} />
+        </CliThemeProvider>
+      </FooterProvider>,
+    );
+
+    expect(lastFrame() ?? "").toContain("Review #12345678");
+    expect(lastFrame() ?? "").not.toContain("12345678-1234");
+  });
+
+  test("renders the shared medium severity label instead of the raw severity value", () => {
+    const { lastFrame } = render(
+      resultsElement([makeIssue({ id: "medium-issue", severity: "medium" })]),
+    );
+    const frame = lastFrame() ?? "";
+
+    expect(frame).toContain("[MED]");
+    expect(frame).not.toContain("[medium]");
+  });
+
+  test("does not grow the 80x24 results layout for a duplicate disclosure", () => {
+    terminalDimensions.columns = 80;
+    const withoutNotice = render(
+      <FooterProvider initialShortcuts={[]}>
+        <CliThemeProvider initialTheme="dark">
+          <ReviewResultsView
+            reviewId="review-1"
+            issues={[makeIssue({ id: "duplicate-survivor" })]}
+          />
+        </CliThemeProvider>
+      </FooterProvider>,
+    ).lastFrame();
+    cleanup();
+    const { lastFrame } = render(
+      <FooterProvider initialShortcuts={[]}>
+        <CliThemeProvider initialTheme="dark">
+          <ReviewResultsView
+            reviewId="review-1"
+            issues={[makeIssue({ id: "duplicate-survivor" })]}
+            droppedDuplicates={1}
+          />
+        </CliThemeProvider>
+      </FooterProvider>,
+    );
+    const frame = lastFrame() ?? "";
+
+    expect(frame).toContain("1 duplicate issue collapsed across lenses (2 → 1 issue)");
+    expect(frame.split("\n")).toHaveLength((withoutNotice ?? "").split("\n").length);
+  });
+
   test("hides tab shortcuts and ignores numbers until an issue becomes visible", async () => {
     const issue = makeIssue({
       id: "issue-visible",
@@ -296,7 +359,7 @@ describe("ReviewResultsView (TUI)", () => {
       .split("\n")
       .map((line) => line.slice(0, MEDIUM_LIST_WIDTH))
       .filter((line) => line.includes("ISSUE-"));
-    expect(initialPreviewRows).toHaveLength(8);
+    expect(initialPreviewRows).toHaveLength(2);
 
     for (let index = 0; index < 9; index += 1) {
       stdin.write(ARROW_DOWN);
@@ -308,7 +371,7 @@ describe("ReviewResultsView (TUI)", () => {
       .split("\n")
       .map((line) => line.slice(0, MEDIUM_LIST_WIDTH))
       .filter((line) => line.includes("ISSUE-"));
-    expect(previewRows).toHaveLength(8);
+    expect(previewRows).toHaveLength(2);
     expect(frame).toContain("ISSUE-10");
     expect(frame).not.toContain("ISSUE-1 ");
   });

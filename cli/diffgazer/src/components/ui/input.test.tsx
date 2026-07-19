@@ -1,3 +1,4 @@
+import { HISTORY_SEARCH_PLACEHOLDER } from "@diffgazer/core/review";
 import { cleanup, render } from "ink-testing-library";
 import { useState } from "react";
 import { afterEach, describe, expect, test } from "vitest";
@@ -20,7 +21,9 @@ function ControlledInput() {
 
 function ControlledHistorySearch() {
   const [value, setValue] = useState("");
-  return <Input value={value} onChange={setValue} placeholder="Search runs by ID..." isActive />;
+  return (
+    <Input value={value} onChange={setValue} placeholder={HISTORY_SEARCH_PLACEHOLDER} isActive />
+  );
 }
 
 function ControlledPasswordInput() {
@@ -63,12 +66,12 @@ describe("Input", () => {
     );
     await flush();
 
-    expect(lastFrame()).toContain("Search runs by ID...");
+    expect(lastFrame()).toContain(HISTORY_SEARCH_PLACEHOLDER);
     stdin.write("security");
     await flush();
 
     expect(lastFrame()).toContain("security");
-    expect(lastFrame()).not.toContain("Search runs by ID...");
+    expect(lastFrame()).not.toContain(HISTORY_SEARCH_PLACEHOLDER);
   });
 
   test("password input masks Unicode characters and never renders the secret", async () => {
@@ -101,5 +104,18 @@ describe("Input", () => {
     await flush();
     expect(lastFrame()).toContain("OPENAI_API_KEY");
     expect(lastFrame()).not.toContain("ATTACKER_VAR");
+  });
+
+  test("keeps a long value on one row and preserves its terminal-cell-safe tail", () => {
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <Input value="prefix-いいいいいいいい-visible-tail" size="sm" />
+      </CliThemeProvider>,
+    );
+
+    const frame = lastFrame() ?? "";
+    expect(frame.split("\n")).toHaveLength(3);
+    expect(frame).toContain("visible-tail");
+    expect(frame).not.toContain("prefix-");
   });
 });

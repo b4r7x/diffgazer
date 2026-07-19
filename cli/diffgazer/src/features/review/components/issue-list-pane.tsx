@@ -6,7 +6,7 @@ import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { Box, Text, useInput } from "ink";
 import { useState } from "react";
 import { SectionHeader } from "../../../components/ui/section-header";
-import { getVisibleSliceOffset } from "../../../lib/visible-slice-offset";
+import { getListWindow } from "../../../lib/list-window";
 import { useTheme } from "../../../theme/provider";
 import { IssuePreviewItem } from "./issue-preview-item";
 import { SeverityFilterGroup } from "./severity-filter-group";
@@ -17,7 +17,6 @@ export interface IssueListPaneProps {
   issues: ReviewIssue[];
   allIssues: ReviewIssue[];
   selectedId?: string;
-  onSelect?: (id: string) => void;
   onHighlightChange?: (id: string) => void;
   isActive?: boolean;
   height?: number;
@@ -32,7 +31,6 @@ export function IssueListPane({
   issues,
   allIssues,
   selectedId,
-  onSelect,
   onHighlightChange,
   isActive = false,
   height = 15,
@@ -89,14 +87,6 @@ export function IssueListPane({
         }
         return;
       }
-
-      if (key.return) {
-        const issue = issues[highlightedIndex];
-        if (issue) {
-          onSelect?.(issue.id);
-        }
-        return;
-      }
     },
     { isActive },
   );
@@ -111,6 +101,7 @@ export function IssueListPane({
             onFilterChange={onSeverityFilterChange}
             issueCounts={counts}
             isActive={isActive && effectiveSubZone === "filter"}
+            contentWidth={contentWidth}
           />
         </Box>
         <Text color={tokens.muted}>No issues match filter</Text>
@@ -118,10 +109,12 @@ export function IssueListPane({
     );
   }
 
-  const sliceOffset = getVisibleSliceOffset(highlightedIndex, issues.length, height);
-  const visibleIssues = issues.slice(sliceOffset, sliceOffset + height);
-  const canScrollUp = sliceOffset > 0;
-  const canScrollDown = sliceOffset + height < issues.length;
+  const window = getListWindow({
+    selectedIndex: highlightedIndex,
+    total: issues.length,
+    viewportRows: height,
+  });
+  const visibleIssues = issues.slice(window.start, window.end);
 
   return (
     <Box flexDirection="column">
@@ -132,13 +125,14 @@ export function IssueListPane({
           onFilterChange={onSeverityFilterChange}
           issueCounts={counts}
           isActive={isActive && effectiveSubZone === "filter"}
+          contentWidth={contentWidth}
         />
       </Box>
       <Box flexDirection="column">
-        {canScrollUp ? <Text color={tokens.muted}>{"\u25b2"}</Text> : null}
-        <Box flexDirection="column" height={height} overflow="hidden">
+        {window.canScrollUp ? <Text color={tokens.muted}>{"\u25b2"}</Text> : null}
+        <Box flexDirection="column" height={window.end - window.start} overflow="hidden">
           {visibleIssues.map((issue, idx) => {
-            const absoluteIndex = sliceOffset + idx;
+            const absoluteIndex = window.start + idx;
             return (
               <Box key={issue.id}>
                 <Text color={selectedId === issue.id ? tokens.accent : tokens.muted}>
@@ -157,7 +151,7 @@ export function IssueListPane({
             );
           })}
         </Box>
-        {canScrollDown ? <Text color={tokens.muted}>{"\u25bc"}</Text> : null}
+        {window.canScrollDown ? <Text color={tokens.muted}>{"\u25bc"}</Text> : null}
       </Box>
     </Box>
   );

@@ -1,13 +1,9 @@
 import { createHash } from "node:crypto";
-import { chmod, mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getRunSummaryText } from "@diffgazer/core/review";
-import {
-  type DrilldownResult,
-  type SavedReview,
-  SavedReviewSchema,
-} from "@diffgazer/core/schemas/review";
+import type { SavedReview } from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeIssue } from "../../../shared/lib/testing/factories.js";
@@ -163,7 +159,6 @@ const makeSavedReview = (overrides: Partial<SavedReview> = {}): SavedReview => (
     additions: 10,
     deletions: 5,
   },
-  drilldowns: [],
   ...overrides,
 });
 
@@ -174,18 +169,6 @@ function makeProjectReview(id: string, createdAt: string, projectPath = "/proj/a
     metadata: { ...review.metadata, id, createdAt, projectPath },
   };
 }
-
-const makeDrilldown = (issueId: string, detailedAnalysis: string): DrilldownResult => ({
-  issueId,
-  issue: makeIssue({ id: issueId }),
-  detailedAnalysis,
-  rootCause: "Root cause",
-  impact: "Impact",
-  suggestedFix: "Suggested fix",
-  patch: null,
-  relatedIssues: [],
-  references: [],
-});
 
 describe("reviews storage", () => {
   it("saves a review and persists the complete JSON document", async () => {
@@ -222,7 +205,6 @@ describe("reviews storage", () => {
       metadata: { id: REVIEW_ID, issueCount: 3, blockerCount: 1, highCount: 1, nitCount: 1 },
       gitContext: { branch: "main", commit: "abc123", fileCount: 3, additions: 10, deletions: 5 },
       result: { issues: expect.any(Array) },
-      drilldowns: [],
     });
     expect(savedReview?.result).not.toHaveProperty("summary");
   });
@@ -697,21 +679,17 @@ describe("reviews storage", () => {
   it("rejects absolute and separator-bearing review ids before filesystem access", async () => {
     const actual = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
     const readFileSpy = vi.fn(actual.readFile);
-    const unlinkSpy = vi.fn(actual.unlink);
     vi.doMock("node:fs/promises", () => ({
       ...actual,
       readFile: readFileSpy,
-      unlink: unlinkSpy,
     }));
 
     try {
-      const { deleteReview, getReview } = await loadStorage();
+      const { getReview } = await loadStorage();
 
       await expect(getReview("../escaped")).rejects.toThrow("Invalid review id");
       await expect(getReview("/tmp/escaped")).rejects.toThrow("Invalid review id");
-      await expect(deleteReview("nested/escaped")).rejects.toThrow("Invalid review id");
       expect(readFileSpy).not.toHaveBeenCalled();
-      expect(unlinkSpy).not.toHaveBeenCalled();
     } finally {
       vi.doUnmock("node:fs/promises");
     }
@@ -1332,47 +1310,13 @@ describe("reviews storage", () => {
     }
   });
 
-  it("returns, deletes, and reports missing reviews through persisted files", async () => {
+  it("returns reviews through persisted files", async () => {
     await writeSavedReview(makeSavedReview());
-    const { getReview, deleteReview } = await loadStorage();
+    const { getReview } = await loadStorage();
 
     const readResult = await getReview(REVIEW_ID);
     expect(readResult.ok).toBe(true);
     if (readResult.ok) expect(readResult.value.metadata.id).toBe(REVIEW_ID);
-
-    await expect(deleteReview(REVIEW_ID)).resolves.toEqual({
-      ok: true,
-      value: { existed: true },
-    });
-    await expect(deleteReview(REVIEW_ID)).resolves.toEqual({
-      ok: true,
-      value: { existed: false },
-    });
-
-    const missing = await getReview(REVIEW_ID);
-    expect(missing.ok).toBe(false);
-    if (!missing.ok) expect(missing.error.code).toBe("NOT_FOUND");
-  });
-
-  it.skipIf(process.platform === "win32")("leaves a review listed when unlink fails", async () => {
-    await writeSavedReview(makeSavedReview());
-    await writeProjectIndexFile("/projects/test", [REVIEW_ID]);
-    const { deleteReview, listReviews } = await loadStorage();
-
-    await chmod(reviewsDir(), 0o500);
-    try {
-      const deleted = await deleteReview(REVIEW_ID, "/projects/test");
-      expect(deleted.ok).toBe(false);
-    } finally {
-      await chmod(reviewsDir(), 0o700);
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    const listed = await listReviews("/projects/test");
-    expect(listed.ok).toBe(true);
-    if (listed.ok) {
-      expect(listed.value.items.map((item) => item.id)).toContain(REVIEW_ID);
-    }
   });
 
   it("scrubs the daemon path from a project index build failure warning", async () => {
@@ -1408,67 +1352,6 @@ describe("reviews storage", () => {
 
     writeSpy.mockRestore();
     logSpy.mockRestore();
-  });
-
-  it("adds and replaces drilldowns in the saved review", async () => {
-    await writeSavedReview(makeSavedReview());
-    const { addDrilldownToReview, getReview } = await loadStorage();
-
-    await expect(addDrilldownToReview(REVIEW_ID, makeDrilldown("i1", "first"))).resolves.toEqual({
-      ok: true,
-      value: undefined,
-    });
-    await expect(
-      addDrilldownToReview(REVIEW_ID, makeDrilldown("i1", "replacement")),
-    ).resolves.toEqual({
-      ok: true,
-      value: undefined,
-    });
-
-    const review = await getReview(REVIEW_ID);
-    expect(review.ok).toBe(true);
-    if (review.ok) {
-      expect(review.value.drilldowns).toHaveLength(1);
-      expect(review.value.drilldowns[0]).toMatchObject({
-        issueId: "i1",
-        detailedAnalysis: "replacement",
-      });
-    }
-  });
-
-  it("returns missing and corrupt storage errors when adding a drilldown", async () => {
-    const { addDrilldownToReview } = await loadStorage();
-
-    const missing = await addDrilldownToReview(REVIEW_ID, makeDrilldown("i1", "missing"));
-    expect(missing.ok).toBe(false);
-    if (!missing.ok) expect(missing.error.code).toBe("NOT_FOUND");
-
-    await mkdir(reviewsDir(), { recursive: true });
-    await writeFile(reviewPath(REVIEW_ID), "{ not json", "utf-8");
-    const corrupt = await addDrilldownToReview(REVIEW_ID, makeDrilldown("i1", "corrupt"));
-    expect(corrupt.ok).toBe(false);
-    if (!corrupt.ok) expect(corrupt.error.code).toBe("PARSE_ERROR");
-  });
-
-  it("does not resurrect a review when deletion queues before a drilldown save", async () => {
-    await writeSavedReview(makeSavedReview());
-    const { withReviewLock } = await import("./review-lock.js");
-    const { addDrilldownToReview, deleteReview } = await loadStorage();
-
-    let releaseGate = (): void => {};
-    const gate = new Promise<void>((resolve) => {
-      releaseGate = resolve;
-    });
-    const gateHeld = withReviewLock(REVIEW_ID, () => gate);
-    const deletion = deleteReview(REVIEW_ID);
-    const save = addDrilldownToReview(REVIEW_ID, makeDrilldown("i1", "late"));
-
-    releaseGate();
-    const [, deleted, saved] = await Promise.all([gateHeld, deletion, save]);
-    expect(deleted).toEqual({ ok: true, value: { existed: true } });
-    expect(saved.ok).toBe(false);
-    if (!saved.ok) expect(saved.error.code).toBe("NOT_FOUND");
-    await expect(stat(reviewPath(REVIEW_ID))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("returns ok and warns when the project index write fails after a durable review save", async () => {
@@ -1574,163 +1457,7 @@ describe("reviews storage", () => {
     logSpy.mockRestore();
   });
 
-  it("does not resurrect a legacy review deleted during its background migration write", async () => {
-    const legacy = makeSavedReview({
-      metadata: {
-        ...makeSavedReview().metadata,
-        blockerCount: 0,
-        highCount: 0,
-        mediumCount: 0,
-        lowCount: 0,
-        nitCount: 0,
-        issueCount: 2,
-      },
-    });
-    await writeSavedReview(legacy);
-
-    const { getReview, deleteReview } = await loadStorage();
-
-    // getReview enqueues a background migration write through the review lock.
-    const read = await getReview(REVIEW_ID);
-    expect(read.ok).toBe(true);
-    // Delete before that write's re-read runs; the re-read must observe NOT_FOUND.
-    await deleteReview(REVIEW_ID, "/projects/test");
-
-    await new Promise((resolve) => setTimeout(resolve, 50));
-
-    await expect(stat(reviewPath(REVIEW_ID))).rejects.toMatchObject({ code: "ENOENT" });
-  });
-
-  it("preserves a concurrently-saved drilldown against a background migration write", async () => {
-    const legacy = makeSavedReview({
-      metadata: {
-        ...makeSavedReview().metadata,
-        blockerCount: 0,
-        highCount: 0,
-        mediumCount: 0,
-        lowCount: 0,
-        nitCount: 0,
-        issueCount: 2,
-      },
-    });
-    await writeSavedReview(legacy);
-
-    const { withReviewLock } = await import("./review-lock.js");
-    const { getReview, addDrilldownToReview } = await loadStorage();
-
-    // Hold the review lock so both mutations queue behind the same gate.
-    let releaseGate = (): void => {};
-    const gate = new Promise<void>((resolve) => {
-      releaseGate = resolve;
-    });
-    const gateHeld = withReviewLock(REVIEW_ID, () => gate);
-
-    const save = addDrilldownToReview(REVIEW_ID, makeDrilldown("i1", "deep dive"));
-
-    // The drilldown queues first; migration must later re-read its completed write.
-    const read = await getReview(REVIEW_ID);
-    expect(read.ok).toBe(true);
-
-    releaseGate();
-    const [, saved] = await Promise.all([gateHeld, save]);
-    expect(saved.ok).toBe(true);
-
-    const final = await waitForSavedReview(
-      REVIEW_ID,
-      (review) => review.metadata.highCount === 1 && review.drilldowns.length === 1,
-    );
-    expect(final.drilldowns[0]).toMatchObject({ issueId: "i1", detailedAnalysis: "deep dive" });
-    expect(final.metadata).toMatchObject({ highCount: 1, mediumCount: 1 });
-  });
-
-  it("preserves a drilldown that starts after migration has generated its write payload", async () => {
-    const legacy = makeSavedReview({
-      metadata: {
-        ...makeSavedReview().metadata,
-        blockerCount: 0,
-        highCount: 0,
-        mediumCount: 0,
-        lowCount: 0,
-        nitCount: 0,
-        issueCount: 2,
-      },
-    });
-    await writeSavedReview(legacy);
-
-    const migrationWriteRelease = createDeferred<void>();
-    const migrationWriteStarted = createDeferred<void>();
-    const migrationWritten = createDeferred<void>();
-    const drilldownWriteStarted = createDeferred<"unlocked">();
-    const secondLockRequested = createDeferred<"locked">();
-
-    const reviewLock = await import("./review-lock.js");
-    const realWithReviewLock = reviewLock.withReviewLock;
-    let reviewLockRequests = 0;
-    const lockSpy = vi.spyOn(reviewLock, "withReviewLock").mockImplementation((reviewId, fn) => {
-      reviewLockRequests += 1;
-      if (reviewLockRequests === 2) secondLockRequested.resolve("locked");
-      return realWithReviewLock(reviewId, fn);
-    });
-
-    const atomicWrite = await import("../../../shared/lib/fs.js");
-    const realAtomicWrite = atomicWrite.atomicWriteFile;
-    let migrationIntercepted = false;
-    const writeSpy = vi
-      .spyOn(atomicWrite, "atomicWriteFile")
-      .mockImplementation(async (filePath, content, mode) => {
-        if (filePath !== reviewPath(REVIEW_ID)) {
-          return realAtomicWrite(filePath, content, mode);
-        }
-
-        const pendingReview = SavedReviewSchema.parse(JSON.parse(content));
-        if (
-          !migrationIntercepted &&
-          pendingReview.metadata.highCount === 1 &&
-          pendingReview.drilldowns.length === 0
-        ) {
-          migrationIntercepted = true;
-          migrationWriteStarted.resolve();
-          await migrationWriteRelease.promise;
-          await realAtomicWrite(filePath, content, mode);
-          migrationWritten.resolve();
-          return;
-        }
-
-        if (pendingReview.drilldowns.length === 1) drilldownWriteStarted.resolve("unlocked");
-        return realAtomicWrite(filePath, content, mode);
-      });
-
-    try {
-      const { addDrilldownToReview, getReview } = await loadStorage();
-      const read = await getReview(REVIEW_ID);
-      expect(read.ok).toBe(true);
-      await migrationWriteStarted.promise;
-
-      const save = addDrilldownToReview(REVIEW_ID, makeDrilldown("i1", "deep dive"));
-      const ordering = await Promise.race([
-        secondLockRequested.promise,
-        drilldownWriteStarted.promise,
-      ]);
-      if (ordering === "unlocked") await save;
-
-      migrationWriteRelease.resolve();
-      const [, saved] = await Promise.all([migrationWritten.promise, save]);
-      expect(saved.ok).toBe(true);
-
-      const final = await readSavedReview(REVIEW_ID);
-      expect(final.drilldowns).toEqual([
-        expect.objectContaining({ issueId: "i1", detailedAnalysis: "deep dive" }),
-      ]);
-      expect(final.metadata).toMatchObject({ highCount: 1, mediumCount: 1 });
-      expect(ordering).toBe("locked");
-    } finally {
-      migrationWriteRelease.resolve();
-      writeSpy.mockRestore();
-      lockSpy.mockRestore();
-    }
-  });
-
-  it("opens, lists, and deletes a 0.1.3-era review with invalid line numbers and an out-of-range drilldown", async () => {
+  it("opens and lists a 0.1.3-era review with invalid line numbers", async () => {
     const rawReview = {
       metadata: {
         ...makeSavedReview().metadata,
@@ -1762,19 +1489,13 @@ describe("reviews storage", () => {
         ],
       },
       gitContext: makeSavedReview().gitContext,
-      drilldowns: [
-        {
-          ...makeDrilldown("ok", "deep"),
-          issue: makeIssue({ id: "ok", file: "a.ts", line_start: -1, line_end: 999999 }),
-        },
-      ],
     };
     await mkdir(reviewsDir(), { recursive: true });
     await writeFile(reviewPath(REVIEW_ID), `${JSON.stringify(rawReview, null, 2)}\n`, "utf-8");
     // A genuinely JSON-corrupt file — surfaced as a warning, not salvaged.
     await writeFile(reviewPath(REVIEW_ID_2), "{ not json", "utf-8");
 
-    const { getReview, deleteReview, listReviews } = await loadStorage();
+    const { getReview, listReviews } = await loadStorage();
 
     const read = await getReview(REVIEW_ID);
     expect(read.ok).toBe(true);
@@ -1794,7 +1515,6 @@ describe("reviews storage", () => {
       // Non-positive line fields nulled.
       expect(second?.line_start).toBeNull();
       expect(second?.line_end).toBeNull();
-      expect(read.value.drilldowns).toHaveLength(1);
     }
 
     const listed = await listReviews("/legacy/proj");
@@ -1810,9 +1530,6 @@ describe("reviews storage", () => {
         reviewId: REVIEW_ID_2,
       });
     }
-
-    await expect(deleteReview(REVIEW_ID)).resolves.toEqual({ ok: true, value: { existed: true } });
-    await expect(stat(reviewPath(REVIEW_ID))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("preserves a valid stored diff through lenient salvage", async () => {
@@ -1828,7 +1545,6 @@ describe("reviews storage", () => {
       },
       diff,
       gitContext: makeSavedReview().gitContext,
-      drilldowns: [],
     };
     await mkdir(reviewsDir(), { recursive: true });
     await writeFile(reviewPath(REVIEW_ID), `${JSON.stringify(rawReview, null, 2)}\n`, "utf-8");
@@ -1864,7 +1580,6 @@ describe("reviews storage", () => {
       },
       diff,
       gitContext: makeSavedReview().gitContext,
-      drilldowns: [],
     };
     await mkdir(reviewsDir(), { recursive: true });
     await writeFile(reviewPath(REVIEW_ID), `${JSON.stringify(rawReview, null, 2)}\n`, "utf-8");
@@ -1901,7 +1616,6 @@ describe("reviews storage", () => {
         ],
       },
       gitContext: makeSavedReview().gitContext,
-      drilldowns: [],
     };
     const rawBytes = `${JSON.stringify(rawReview, null, 2)}\n`;
     await mkdir(reviewsDir(), { recursive: true });
@@ -1963,13 +1677,6 @@ describe("reviews storage", () => {
         result: {
           issues: [makeIssue({ id: "i1", line_start: 8.9, line_end: 4 })],
         },
-        drilldowns: [
-          makeDrilldown("i1", "deep"),
-          {
-            ...makeDrilldown("i2", "range"),
-            issue: makeIssue({ id: "i2", line_start: null, line_end: 9 }),
-          },
-        ],
       }),
     );
 
@@ -1979,10 +1686,6 @@ describe("reviews storage", () => {
     expect(read.ok).toBe(true);
     if (read.ok) {
       expect(read.value.result.issues[0]).toMatchObject({ line_start: 4, line_end: 8 });
-      expect(read.value.drilldowns[1]?.issue).toMatchObject({
-        line_start: null,
-        line_end: null,
-      });
     }
   });
 

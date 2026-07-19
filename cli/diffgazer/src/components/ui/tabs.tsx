@@ -1,8 +1,8 @@
 import { Box, Text, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext, useState } from "react";
+import { useListNavigation } from "../../hooks/use-list-navigation";
 import { collectChildItems } from "../../lib/collect-child-items";
-import { useListNavigation } from "../../lib/use-list-navigation";
 import { useTheme } from "../../theme/provider";
 
 interface TabsProps {

@@ -6,19 +6,23 @@ import {
   useReviewSessionCache,
 } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
-import type { FileProgress, ReviewEvent, ReviewScreenPhase } from "@diffgazer/core/review";
-import { sessionTerminationCopy } from "@diffgazer/core/review";
+import type {
+  FileProgress,
+  OrchestratorStats,
+  ReviewEvent,
+  ReviewScreenPhase,
+} from "@diffgazer/core/review";
+import {
+  describeReviewStartError,
+  extractOrchestratorStats,
+  sessionTerminationCopy,
+} from "@diffgazer/core/review";
 import type { SetupStatus } from "@diffgazer/core/schemas/config";
 import type { AgentState, StepState } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue, ReviewMode } from "@diffgazer/core/schemas/review";
 import { useEffect, useState } from "react";
 
 type LifecyclePhase = ReviewScreenPhase | "completing" | "loading";
-type LiveCompletionPayload = Pick<
-  Extract<ReviewEvent, { type: "orchestrator_complete" }>,
-  "lensStats" | "droppedDuplicates" | "droppedBelowThreshold" | "minSeverity"
->;
-
 type ReviewInitState =
   | { status: "loading" }
   | { status: "error"; message: string }
@@ -50,15 +54,14 @@ export interface ReviewLifecycleState {
   steps: StepState[];
   agents: AgentState[];
   events: ReviewEvent[];
-  completion: LiveCompletionPayload | undefined;
+  completion: OrchestratorStats;
   fileProgress: FileProgress;
   notices: string[];
   error: string | null;
-  isConfigured: boolean;
+  errorCode: string | null;
+  isStreaming: boolean;
   provider: string | null;
   initState: ReviewInitState;
-  isNoDiffError: boolean;
-  isCheckingForChanges: boolean;
   loadingMessage: string | null;
 }
 
@@ -130,14 +133,7 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
   });
 
   const terminalReviewId = lifecycle.stream.state.reviewId ?? requestedReviewId ?? null;
-  let completion: LiveCompletionPayload | undefined;
-  for (let index = lifecycle.stream.state.events.length - 1; index >= 0; index -= 1) {
-    const event = lifecycle.stream.state.events[index];
-    if (event?.type === "orchestrator_complete") {
-      completion = event;
-      break;
-    }
-  }
+  const completion = extractOrchestratorStats(lifecycle.stream.state);
 
   useEffect(() => {
     if (lifecycle.checks.isNoDiffError && terminalReviewId) {
@@ -172,7 +168,8 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
       setStartedReviewId(result.reviewId);
       return "started";
     } catch (err) {
-      setStartError(getErrorMessage(err));
+      const description = describeReviewStartError(err);
+      setStartError(`${description.title}: ${description.message}`);
       return "failed";
     }
   }
@@ -227,11 +224,10 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
     fileProgress: lifecycle.stream.state.fileProgress,
     notices: lifecycle.stream.state.notices,
     error: startError ?? lifecycle.stream.state.error,
-    isConfigured,
+    errorCode: startError ? null : lifecycle.stream.state.errorCode,
+    isStreaming: lifecycle.stream.state.isStreaming,
     provider,
     initState,
-    isNoDiffError: lifecycle.checks.isNoDiffError,
-    isCheckingForChanges: lifecycle.checks.isCheckingForChanges,
     loadingMessage: lifecycle.checks.loadingMessage,
   };
 

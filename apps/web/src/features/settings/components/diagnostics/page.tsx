@@ -109,12 +109,12 @@ export function SettingsDiagnosticsPage() {
   });
 
   return (
-    <div className="flex flex-1 overflow-hidden px-4 justify-center items-center">
+    <div className="flex flex-1 overflow-y-auto px-4">
       <Panel
         as="section"
         aria-label="system diagnostics"
         aria-busy={isRefreshingAll || isRefreshing}
-        className="w-full max-w-2xl flex flex-col border-border bg-background shadow-lg"
+        className="m-auto flex w-full max-w-2xl flex-col border-border bg-background shadow-lg"
       >
         <Panel.Header className="bg-secondary border-border px-4 py-2">
           <Panel.Title className="text-foreground">System Diagnostics</Panel.Title>
@@ -128,26 +128,28 @@ export function SettingsDiagnosticsPage() {
           tabIndex={-1}
           className="p-6 space-y-8 focus:outline-none"
         >
-          <div className="grid grid-cols-2 gap-x-8 text-sm">
-            <div className="flex flex-col">
+          <div className="grid grid-cols-1 gap-y-4 text-sm sm:grid-cols-2 sm:gap-x-8">
+            <div className="flex min-w-0 flex-col">
               <span className="text-muted-foreground text-xs uppercase tracking-wider mb-1">
                 Version Info
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="text-info-text">Diffgazer Web</span>
                 <span className="text-border">|</span>
-                <span className="text-success-text">{import.meta.env.MODE.toUpperCase()}</span>
+                <span className="break-all text-success-text">
+                  {import.meta.env.MODE.toUpperCase()}
+                </span>
               </div>
             </div>
 
-            <div className="flex flex-col">
+            <div className="flex min-w-0 flex-col">
               <span className="text-muted-foreground text-xs uppercase tracking-wider mb-1">
                 Context Snapshot
               </span>
-              <div className="text-foreground flex items-center gap-2">
-                <span>{context.label}</span>
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-foreground">
+                <span className="break-words">{context.label}</span>
                 {contextStatus === "ready" && (
-                  <span className="text-xs text-warning-text">
+                  <span className="break-words text-xs text-warning-text">
                     {formatTimestampOrNA(contextGeneratedAt, "Unavailable")}
                   </span>
                 )}
@@ -191,7 +193,8 @@ export function SettingsDiagnosticsPage() {
 
           <Divider className="border-dashed" />
 
-          <div className="flex gap-4 pt-2">
+          <fieldset className="flex min-w-0 flex-wrap gap-4 border-0 p-0 pt-2">
+            <legend className="sr-only">Diagnostics actions</legend>
             <Button
               {...getActionProps(0)}
               variant="secondary"
@@ -214,7 +217,7 @@ export function SettingsDiagnosticsPage() {
             >
               {contextActionLabel}
             </Button>
-          </div>
+          </fieldset>
 
           {diagnosticsError && (
             <Callout tone="error" live className="text-sm">

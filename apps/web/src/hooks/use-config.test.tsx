@@ -22,6 +22,7 @@ function makeSetupStatus(overrides: Partial<SetupStatus> = {}): SetupStatus {
 
 function makeInitResponse(overrides: Partial<InitResponse> = {}): InitResponse {
   return {
+    configPath: "/tmp/diffgazer/config.json",
     config: { provider: "gemini", model: "gemini-2.5-flash" },
     providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
     settings: {

@@ -27,6 +27,45 @@ describe("SearchInput", () => {
     expect(onChange).toHaveBeenCalledWith("a");
   });
 
+  it("clears an uncontrolled value with the visible clear button and restores input focus", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderSearchInput({ defaultValue: "query", onChange });
+    const input = screen.getByRole("searchbox");
+    const clearButton = screen.getByRole("button", { name: "Clear search" });
+
+    await user.click(clearButton);
+
+    expect(input).toHaveValue("");
+    expect(input).toHaveFocus();
+    expect(onChange).toHaveBeenCalledWith("");
+    expect(screen.queryByRole("button", { name: "Clear search" })).not.toBeInTheDocument();
+  });
+
+  it("requests a controlled clear without changing the rendered value", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderSearchInput({ value: "query", onChange });
+
+    await user.click(screen.getByRole("button", { name: "Clear search" }));
+
+    expect(onChange).toHaveBeenCalledWith("");
+    expect(screen.getByRole("searchbox")).toHaveValue("query");
+    expect(screen.getByRole("button", { name: "Clear search" })).toBeInTheDocument();
+  });
+
+  it("disables the clear button with the search input", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderSearchInput({ defaultValue: "query", disabled: true, onChange });
+    const clearButton = screen.getByRole("button", { name: "Clear search" });
+
+    expect(clearButton).toBeDisabled();
+    await user.click(clearButton);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("searchbox")).toHaveValue("query");
+  });
+
   it("calls onEscape when Escape is pressed on an empty input", async () => {
     const user = userEvent.setup();
     const onEscape = vi.fn();
@@ -143,6 +182,24 @@ describe("SearchInput", () => {
     expect(onChange).toHaveBeenCalledTimes(callbackCount);
   });
 
+  it("removes the clear button when a form reset restores an empty default", async () => {
+    const user = userEvent.setup();
+    render(
+      <form>
+        <SearchInput name="query" aria-label="Search" />
+        <button type="reset">Reset search</button>
+      </form>,
+    );
+
+    await user.type(screen.getByRole("searchbox"), "query");
+    expect(screen.getByRole("button", { name: "Clear search" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Reset search" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "Clear search" })).not.toBeInTheDocument();
+    });
+  });
+
   it("keeps an input mutation newer than a same-task form reset", async () => {
     render(
       <form aria-label="Search form">
@@ -202,6 +259,16 @@ describe("SearchInput", () => {
   it("renders a custom prefix", () => {
     renderSearchInput({ prefix: <span>find:</span> });
     expect(screen.getByText("find:")).toBeInTheDocument();
+  });
+
+  it.each(["sm", "md"] satisfies NonNullable<
+    SearchInputProps["size"]
+  >[])("keeps the %s search variant at an iOS-safe font size below md", (size) => {
+    renderSearchInput({ size });
+
+    expect(screen.getByRole("searchbox").closest('[data-slot="search-input"]')).toHaveClass(
+      "max-md:text-base",
+    );
   });
 
   it("keeps decorative default and public-example prefixes out of the accessibility tree", () => {

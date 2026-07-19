@@ -39,7 +39,7 @@ Five lenses ship with Diffgazer, and each maps to exactly one agent. The lens is
 | simplicity | Simplifier | Reduces complexity and improves readability |
 | tests | Tester | Evaluates test coverage and quality |
 
-Which lenses run comes from an ordered fallback: an explicit lens list wins, then the active profile's lenses, then your configured default lenses, and finally correctness on its own if nothing else is set. See [providers and models](/app/concepts/providers-and-models) for how each agent reaches your AI provider.
+Which lenses run comes from an ordered fallback: an explicit lens list wins, then the active profile's lenses, then your configured default lenses. Settings validation guarantees that the configured list is non-empty. See [providers and models](/app/concepts/providers-and-models) for how each agent reaches your AI provider.
 
 ## Sequential vs parallel
 
@@ -47,7 +47,7 @@ The `agentExecution` setting decides whether agents run one at a time or all at 
 
 ## Backend capabilities not in the UI
 
-The review backend exposes more than the web app drives. Issue drilldown is the clearest example: there is a route at `POST /api/review/reviews/:id/drilldown` that re-analyzes a single issue in depth, but the web SPA never calls it, so it is not currently in the UI. The same goes for starting a review with a lens filter, a profile, or an explicit file list. The backend route accepts all of those, but the web app only ever sends the review mode and relies on your saved default lenses. The git status and diff routes are likewise backend endpoints with no dedicated screen. Treat these as backend capabilities, not features you can reach from the web app today. See the [API reference](/app/reference/api) for the complete mounted paths.
+The review backend accepts a lens filter, a profile, or an explicit file list when starting a review, but the web app only sends the review mode and relies on your saved default lenses. The git status and diff routes likewise have no dedicated screen. Treat these as backend capabilities, not features you can reach from the web app today. See the [API reference](/app/reference/api) for the complete mounted paths.
 
 ## Related
 

@@ -89,6 +89,22 @@ describe("SettingsAnalysisPage keyboard behavior", () => {
     expect(save).not.toHaveFocus();
   });
 
+  it("uses every lens as the untouched fallback when persisted defaults are empty", () => {
+    mockSettingsQuery.current = {
+      data: { defaultLenses: [] },
+      error: null,
+      isLoading: false,
+    };
+
+    renderPage();
+
+    const agentsGroup = screen.getByRole("group", { name: /active agents/i });
+    expect(within(agentsGroup).getAllByRole("checkbox", { checked: true })).toHaveLength(
+      allLenses.length,
+    );
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
   it("focuses and activates save after the lens selection changes", async () => {
     const user = userEvent.setup();
     renderPage();

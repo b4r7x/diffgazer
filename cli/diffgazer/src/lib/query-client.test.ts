@@ -14,9 +14,11 @@ describe("createCliQueryClient", () => {
     expect(retry(0, httpError(404))).toBe(false);
   });
 
-  test("retries transient errors at most once", () => {
+  test("keeps retrying transient errors while the embedded server starts", () => {
     const retry = createCliQueryClient().getDefaultOptions().queries?.retry as RetryFn;
     expect(retry(0, httpError(500))).toBe(true);
-    expect(retry(1, httpError(500))).toBe(false);
+    expect(retry(1, httpError(500))).toBe(true);
+    expect(retry(2, httpError(500))).toBe(true);
+    expect(retry(3, httpError(500))).toBe(false);
   });
 });

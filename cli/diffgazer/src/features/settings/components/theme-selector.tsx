@@ -6,13 +6,12 @@ import {
 import type { ReactElement } from "react";
 import { RadioGroup } from "../../../components/ui/radio";
 
-export type CliTheme = SelectableTheme;
-
 interface ThemeSelectorProps {
-  value: CliTheme;
-  onChange: (value: CliTheme) => void;
-  onHighlightChange?: (value: CliTheme) => void;
+  value: SelectableTheme;
+  onChange: (value: SelectableTheme) => void;
+  onHighlightChange?: (value: SelectableTheme) => void;
   isActive?: boolean;
+  onDownBoundary?: () => void;
 }
 
 export function ThemeSelector({
@@ -20,6 +19,7 @@ export function ThemeSelector({
   onChange,
   onHighlightChange,
   isActive = true,
+  onDownBoundary,
 }: ThemeSelectorProps): ReactElement {
   return (
     <RadioGroup
@@ -31,6 +31,10 @@ export function ThemeSelector({
         if (isSelectableTheme(next)) onHighlightChange?.(next);
       }}
       isActive={isActive}
+      wrap={!onDownBoundary}
+      onNavigationBoundaryReached={(direction) => {
+        if (direction === 1) onDownBoundary?.();
+      }}
     >
       {SELECTABLE_THEME_OPTIONS.map((opt) => (
         <RadioGroup.Item

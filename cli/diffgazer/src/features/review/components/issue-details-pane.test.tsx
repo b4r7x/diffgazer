@@ -120,7 +120,6 @@ describe("IssueDetailsPane (TUI) evidence presentation", () => {
             additions: 5,
             deletions: 1,
           },
-          drilldowns: [],
         }),
       ),
     );
@@ -282,13 +281,15 @@ describe("IssueDetailsPane (TUI) trace tab gating", () => {
     // SectionHeader renders its label uppercased.
     expect(frame).toContain("AGENT TRACE");
     expect(frame).toContain("inspectScope");
+    expect(frame).toContain("in: scanned scope");
+    expect(frame).toContain("out: found symbol");
   });
 });
 
 describe("IssueDetailsPane (TUI) body scroll", () => {
   test("Down on the focused body sub-zone scrolls the Details tab past its visible height", async () => {
     const issue = makeIssue({ symptom: "Symptom marker text" });
-    const { stdin, lastFrame } = renderPane(issue, "details", { isActive: true, scrollHeight: 2 });
+    const { stdin, lastFrame } = renderPane(issue, "details", { isActive: true, scrollHeight: 3 });
     await flush();
 
     let frame = lastFrame() ?? "";

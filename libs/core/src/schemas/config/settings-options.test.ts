@@ -5,6 +5,7 @@ import {
   isSecretsStorage,
   isSelectableTheme,
   isTheme,
+  resolveSelectableTheme,
   SECRETS_STORAGE_OPTIONS,
   SELECTABLE_THEME_OPTIONS,
   toSelectableTheme,
@@ -29,6 +30,13 @@ describe("settings option contracts", () => {
     expect(isSelectableTheme("terminal")).toBe(false);
     expect(isSelectableTheme(null)).toBe(false);
     expect(toSelectableTheme("terminal")).toBe("auto");
+  });
+
+  it("resolves auto from the system theme and preserves explicit themes", () => {
+    expect(resolveSelectableTheme("auto", "dark")).toBe("dark");
+    expect(resolveSelectableTheme("auto", "light")).toBe("light");
+    expect(resolveSelectableTheme("dark", "light")).toBe("dark");
+    expect(resolveSelectableTheme("light", "dark")).toBe("light");
   });
 
   it("keeps the canonical secrets storage options and guard", () => {

@@ -284,6 +284,7 @@ describe("ConfigurationErrorView", () => {
   it("uses valid init setup data when only provider status fails", () => {
     configQueriesState.init = {
       data: {
+        configPath: "/tmp/diffgazer/config.json",
         config: { provider: "openrouter" },
         providers: [{ provider: "openrouter", hasApiKey: true, isActive: true }],
         settings: {

@@ -7,17 +7,15 @@ import { severityColor } from "../../../theme/severity";
 export interface SeverityBarProps {
   severity: ReviewSeverity;
   count: number;
-  total: number;
+  filledCells: number;
+  emptyCells: number;
 }
 
-const BAR_WIDTH = 20;
-
-export function SeverityBar({ severity, count, total }: SeverityBarProps) {
+export function SeverityBar({ severity, count, filledCells, emptyCells }: SeverityBarProps) {
   const { tokens } = useTheme();
   const color = severityColor(severity, tokens);
 
-  const filled = total > 0 ? Math.round((count / total) * BAR_WIDTH) : 0;
-  const bar = "\u2588".repeat(filled);
+  const bar = `${"\u2588".repeat(filledCells)}${"\u2591".repeat(emptyCells)}`;
 
   const label = SEVERITY_LABELS[severity].padEnd(8);
 

@@ -7,7 +7,6 @@ import { err, ok, type Result } from "@diffgazer/core/result";
 import { UuidSchema } from "@diffgazer/core/schemas/fields";
 import { calculateSeverityCounts } from "@diffgazer/core/schemas/presentation";
 import {
-  type DrilldownResult,
   type ReviewGitContext,
   type ReviewListWarning,
   type ReviewMetadata,
@@ -323,10 +322,6 @@ async function addToProjectIndex(metadata: ReviewMetadata): Promise<void> {
   await writeCursorProjectIndex(metadata.projectPath, [metadata]);
 }
 
-async function removeFromProjectIndex(projectPath: string, reviewId: string): Promise<void> {
-  await writeCursorProjectIndex(projectPath, [], new Set([reviewId]));
-}
-
 async function removeInvalidProjectIndexEntries(
   projectPath: string,
   invalidIds: Set<string>,
@@ -419,8 +414,8 @@ const reviewStore = createCollection<SavedReview, ReviewMetadata, ReviewSalvageD
   metadataSchema: ReviewMetadataSchema,
   getMetadata: (review) => review.metadata,
   getId: (review) => review.metadata.id,
-  // Salvage older immutable reviews the strict write-side schema rejects, so GET
-  // opens and DELETE removes them (F-446).
+  // Salvage older immutable reviews the strict write-side schema rejects so they
+  // remain readable through review and history views (F-446).
   lenientRead: lenientReadSavedReview,
   coerceMetadata: coerceMetadataVocab,
   transformRead: normalizeSavedReviewLineFields,
@@ -548,8 +543,8 @@ function migrateReview(review: SavedReview): SavedReview | null {
   };
 }
 
-// Re-read inside the lock so this background write can never overwrite a just-saved
-// drilldown or resurrect a review deleted in the meantime.
+// Re-read inside the lock so this background write preserves a concurrent
+// project-path rekey.
 function persistMigrationLocked(reviewId: string): Promise<void> {
   return withReviewLock(reviewId, async () => {
     const current = await reviewStore.readDetailed(reviewId);
@@ -601,7 +596,6 @@ export async function saveReview(
     result: options.result,
     diff: options.diff,
     gitContext,
-    drilldowns: options.drilldowns ?? [],
     ...(options.lensStats ? { lensStats: options.lensStats } : {}),
     ...(options.droppedDuplicates !== undefined
       ? { droppedDuplicates: options.droppedDuplicates }
@@ -636,27 +630,6 @@ export async function saveReview(
     }
   }
   return ok(metadata);
-}
-
-export function addDrilldownToReview(
-  reviewId: string,
-  drilldown: DrilldownResult,
-): Promise<Result<void, StoreError>> {
-  return withReviewLock(reviewId, async () => {
-    const readResult = await reviewStore.read(reviewId);
-    if (!readResult.ok) return readResult;
-
-    const review = readResult.value;
-    const existingIndex = review.drilldowns.findIndex((d) => d.issueId === drilldown.issueId);
-
-    if (existingIndex >= 0) {
-      review.drilldowns[existingIndex] = drilldown;
-    } else {
-      review.drilldowns.push(drilldown);
-    }
-
-    return reviewStore.write(review);
-  });
 }
 
 async function migrateMetadataList(items: ReviewMetadata[]): Promise<ReviewMetadata[]> {
@@ -997,21 +970,6 @@ export async function getReview(reviewId: string): Promise<Result<SavedReview, S
   }
 
   return ok(review);
-}
-
-export async function deleteReview(
-  reviewId: string,
-  projectPath?: string,
-): Promise<Result<{ existed: boolean }, StoreError>> {
-  // Serialize the unlink through the review lock so a background migration write
-  // enqueued just before this delete cannot write the file back after removal.
-  const result = await withReviewLock(reviewId, () => reviewStore.remove(reviewId));
-  if (result.ok && projectPath) {
-    removeFromProjectIndex(projectPath, reviewId).catch((e) =>
-      log("warn", "reviews_index_removal_failed", { error: e }),
-    );
-  }
-  return result;
 }
 
 // Move a project's stored review history to a new path (repo dir moved/renamed):

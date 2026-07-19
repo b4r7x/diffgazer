@@ -2,8 +2,11 @@ import { useSaveTrust } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { usePageFooter } from "@diffgazer/core/footer";
 import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
-import { getTrustButtonLabel } from "@diffgazer/core/schemas/config";
-import type { Shortcut } from "@diffgazer/core/schemas/presentation";
+import {
+  DEFAULT_TRUST_PROMPT_CAPABILITIES,
+  getTrustButtonLabel,
+} from "@diffgazer/core/schemas/config";
+import { TRUST_FOOTER_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
 import { focusNavigationItem } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { toast } from "@diffgazer/ui/components/toast";
@@ -15,25 +18,15 @@ export interface TrustPanelProps {
   directory: string;
 }
 
-// The trust-panel's own permission shortcuts. TrustPanel registers these inside
-// itself so every trust-gated branch's footer matches the rendered screen (its
-// child-before-parent effect fixes the stale home "q/s" hints on history's trust
-// branch); the home trust branch appends its live "q Quit" to this same pair.
-export const TRUST_PANEL_FOOTER_SHORTCUTS: Shortcut[] = [
-  { key: "↑/↓", label: "Navigate Permissions" },
-  { key: "Enter/Space", label: "Toggle Permission" },
-];
-
-const DEFAULT_CAPABILITIES: TrustCapabilities = {
-  readFiles: true,
-  runCommands: false,
-};
+export const TRUST_PANEL_FOOTER_SHORTCUTS = TRUST_FOOTER_SHORTCUTS.slice(0, 2);
 
 export function TrustPanel({ directory }: TrustPanelProps) {
   usePageFooter({ shortcuts: TRUST_PANEL_FOOTER_SHORTCUTS });
   const saveTrust = useSaveTrust();
   const isLoading = saveTrust.isPending;
-  const [capabilities, setCapabilities] = useState<TrustCapabilities>(DEFAULT_CAPABILITIES);
+  const [capabilities, setCapabilities] = useState<TrustCapabilities>(
+    DEFAULT_TRUST_PROMPT_CAPABILITIES,
+  );
   const buttonRef = useRef<HTMLButtonElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
   const handleListBoundaryNext = () => buttonRef.current?.focus();

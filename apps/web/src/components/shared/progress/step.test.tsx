@@ -4,12 +4,11 @@ import { describe, expect, it } from "vitest";
 import { ProgressStep } from "./step";
 
 function renderInStepper(node: React.ReactNode) {
-  // Progress UI uses variant="tag" to render text status labels (DONE/RUN/etc).
   return render(<Stepper variant="tag">{node}</Stepper>);
 }
 
-describe("ProgressStep label bridge", () => {
-  it("passes app-specific step status labels (DONE/RUN/WAIT) to the stepper trigger", () => {
+describe("ProgressStep", () => {
+  it("renders the default tag label for each progress status", () => {
     renderInStepper(
       <>
         <ProgressStep stepId="s1" label="Parse" status="completed" />

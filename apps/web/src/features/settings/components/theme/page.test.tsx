@@ -122,7 +122,7 @@ describe("SettingsThemePage keyboard behavior", () => {
 
     const { queryClient } = renderPage();
 
-    expect(screen.queryByText("Theme Settings")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading settings");
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
 
     await act(async () => {
@@ -145,6 +145,15 @@ describe("SettingsThemePage keyboard behavior", () => {
     expect(darkRadio).toHaveFocus();
     expect(darkRadio).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("button", { name: /^save$/i })).toBeEnabled();
+  });
+
+  it("renders the settings-query error as an alert", async () => {
+    mockGetSettings.mockRejectedValue(new Error("Settings unavailable"));
+
+    renderPage();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Settings unavailable");
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
   });
 
   it("keeps radio focus and ArrowDown navigation after pointer re-entry from footer actions", async () => {
@@ -358,6 +367,7 @@ describe("SettingsThemePage keyboard behavior", () => {
 
     await user.keyboard("{ArrowDown}{Enter}");
     await waitFor(() => expect(mockSaveSettings).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("button", { name: /^cancel$/i })).toBeDisabled();
 
     // A save while one is in flight must be ignored, or a stale completion
     // could navigate or roll back over the newer state.

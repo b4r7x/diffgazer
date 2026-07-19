@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
+import { extractOrchestratorStats } from "@diffgazer/core/review";
 import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeCreateReviewResponse } from "@diffgazer/core/testing/factories";
@@ -51,7 +52,7 @@ vi.mock("@diffgazer/core/api/hooks", async () => {
   };
 });
 
-import { extractOrchestratorStats, useReviewLifecycle } from "./use-lifecycle";
+import { useReviewLifecycle } from "./use-lifecycle";
 
 describe("extractOrchestratorStats", () => {
   it("uses the latest orchestrator completion as the authoritative lens stats", () => {
@@ -145,6 +146,7 @@ function makeBaseReturn() {
       stop: vi.fn(),
       abort: vi.fn(),
       cancel: vi.fn(async (): Promise<string | null> => null),
+      resume: vi.fn(),
       state: {
         steps: [],
         agents: [],
@@ -442,6 +444,18 @@ describe("useReviewLifecycle Back from a running review", () => {
   });
 });
 
+describe("useReviewLifecycle stream retry", () => {
+  it("resumes the active review through the shared stream lifecycle", () => {
+    const base = makeBaseReturn();
+    mockUseReviewLifecycleBase.mockReturnValue(base);
+    const { result } = renderReviewLifecycle("unstaged");
+
+    result.current.handleRetry("active-review");
+
+    expect(base.stream.resume).toHaveBeenCalledWith("active-review");
+  });
+});
+
 describe("useReviewLifecycle completion cache cleanup", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
@@ -455,7 +469,21 @@ describe("useReviewLifecycle completion cache cleanup", () => {
     let emitComplete: (() => void) | undefined;
     mockUseReviewLifecycleBase.mockImplementation((options) => {
       emitComplete = options.onComplete;
-      return makeRunningBaseReturn();
+      const base = makeRunningBaseReturn();
+      return {
+        ...base,
+        stream: {
+          ...base.stream,
+          state: {
+            ...base.stream.state,
+            startedAt: new Date("2026-01-01T00:00:00.000Z"),
+          },
+        },
+        completion: {
+          ...base.completion,
+          completedAt: new Date("2026-01-01T00:00:02.500Z"),
+        },
+      };
     });
 
     renderHook(() => useReviewLifecycle({ mode: "staged", onComplete }), { wrapper: Wrapper });
@@ -472,6 +500,7 @@ describe("useReviewLifecycle completion cache cleanup", () => {
       expect.objectContaining({
         reviewId: "11111111-1111-4111-8111-111111111111",
         issues: [],
+        durationMs: 2500,
       }),
     );
     const clearCallOrder = mockClearActiveSession.mock.invocationCallOrder[0];

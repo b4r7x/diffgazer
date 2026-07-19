@@ -1,27 +1,25 @@
-import { useSettings } from "@diffgazer/core/api/hooks";
+import { matchQueryState, useSettings } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { deriveSaveState, useSubmitGuard } from "@diffgazer/core/forms";
-import { isSelectableTheme, SELECTABLE_THEME_OPTIONS } from "@diffgazer/core/schemas/config";
+import { isSelectableTheme, resolveSelectableTheme } from "@diffgazer/core/schemas/config";
 import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { useKey, useScope } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Panel } from "@diffgazer/ui/components/panel";
+import { Spinner } from "@diffgazer/ui/components/spinner";
 import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { CardLayout } from "@/components/ui/card-layout";
 import { useTheme } from "@/hooks/use-theme";
 import type { ResolvedTheme, WebTheme } from "@/types/theme";
 import { useSettingsFormFooter } from "../../hooks/use-settings-form-footer";
 import { ThemePreviewCard } from "./preview-card";
 import { ThemeSelectorContent } from "./selector-content";
 
-function resolveTheme(theme: WebTheme, system: ResolvedTheme): ResolvedTheme {
-  return theme === "auto" ? system : theme;
-}
-
 export function SettingsThemePage() {
-  const { data: settings } = useSettings();
+  const settingsQuery = useSettings();
   const { theme: savedTheme, system, setTheme } = useTheme();
   const navigate = useNavigate();
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -41,7 +39,23 @@ export function SettingsThemePage() {
     });
   };
 
-  if (!settings) return null;
+  const pendingUI = matchQueryState(settingsQuery, {
+    loading: () => (
+      <CardLayout title="Theme Settings" subtitle="Choose how Diffgazer appears.">
+        <Spinner className="text-muted-foreground">Loading settings...</Spinner>
+      </CardLayout>
+    ),
+    error: (error) => (
+      <CardLayout title="Theme Settings" subtitle="Choose how Diffgazer appears.">
+        <Callout tone="error" live className="text-sm">
+          <Callout.Content>{error.message}</Callout.Content>
+        </Callout>
+      </CardLayout>
+    ),
+    success: () => null,
+  });
+
+  if (pendingUI) return pendingUI;
 
   return (
     <SettingsThemeEditor
@@ -75,7 +89,7 @@ function SettingsThemeEditor({
   const [hoveredTheme, setHoveredTheme] = useState<WebTheme | null>(null);
 
   const previewTheme = hoveredTheme ?? focusedTheme ?? selectedTheme;
-  const previewResolved = resolveTheme(previewTheme, system);
+  const previewResolved = resolveSelectableTheme(previewTheme, system);
   useScope("settings-theme");
 
   const { canSave } = deriveSaveState<WebTheme>({
@@ -94,7 +108,7 @@ function SettingsThemeEditor({
   };
 
   const footer = useSettingsFormFooter({
-    disabledActions: [false, isSaveDisabled],
+    disabledActions: [isSaving, isSaveDisabled],
     canSave,
     onCancel: handleCancel,
     onSave: handleSave,
@@ -121,48 +135,11 @@ function SettingsThemeEditor({
     onSave(value);
   };
 
-  const themeOptions = SELECTABLE_THEME_OPTIONS.map((option) => option.value);
-
-  const moveFocus = (direction: 1 | -1) => {
-    const current = focusedTheme ?? selectedTheme;
-    const idx = themeOptions.indexOf(current);
-    const next = idx + direction;
-    if (next < 0) return;
-    if (next >= themeOptions.length) {
-      footer.enterActions();
-      return;
-    }
-    const nextTheme = themeOptions[next];
-    if (!nextTheme) return;
-    setFocusedTheme(nextTheme);
-  };
-
-  useKey("Escape", handleCancel);
-
-  useKey("ArrowDown", () => moveFocus(1), { enabled: !footer.inActions });
-  useKey("ArrowUp", () => moveFocus(-1), { enabled: !footer.inActions });
-
-  useKey(
-    " ",
-    () => {
-      const theme = focusedTheme ?? selectedTheme;
-      selectTheme(theme);
-    },
-    { enabled: !footer.inActions },
-  );
-
-  useKey(
-    "Enter",
-    () => {
-      const theme = focusedTheme ?? selectedTheme;
-      handleEnterOnList(theme);
-    },
-    { enabled: !footer.inActions },
-  );
+  useKey("Escape", handleCancel, { enabled: !isSaving });
 
   return (
-    <div className="flex-1 flex flex-col p-6 min-h-0">
-      <div className="grid grid-cols-[2fr_3fr] gap-6 w-full h-full min-h-0">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
+      <div className="grid min-h-full w-full grid-cols-1 gap-6 md:grid-cols-[2fr_3fr]">
         <Panel tone="accent" className="relative pt-4 flex flex-col h-full">
           <Panel.Header>
             <Panel.Title>Theme Settings</Panel.Title>
@@ -190,7 +167,7 @@ function SettingsThemeEditor({
             />
 
             <div className="mt-auto pt-6 space-y-4">
-              <Callout tone="info">
+              <Callout tone="info" className="pointer-coarse:hidden">
                 <Callout.Content>
                   Focus previews themes live. Space selects, Enter saves &amp; exits.
                 </Callout.Content>
@@ -207,7 +184,8 @@ function SettingsThemeEditor({
                   {...footer.getActionProps(0)}
                   variant="ghost"
                   onClick={handleCancel}
-                  highlighted={footer.inActions && footer.focusedIndex === 0}
+                  disabled={isSaving}
+                  highlighted={footer.inActions && footer.focusedIndex === 0 && !isSaving}
                 >
                   Cancel
                 </Button>
@@ -225,7 +203,7 @@ function SettingsThemeEditor({
           </Panel.Content>
         </Panel>
 
-        <Panel tone="info" className="relative pt-4 flex flex-col h-full overflow-hidden">
+        <Panel tone="info" className="relative pt-4 flex flex-col md:h-full md:overflow-hidden">
           <Panel.Header>
             <Panel.Title>Live Preview</Panel.Title>
           </Panel.Header>

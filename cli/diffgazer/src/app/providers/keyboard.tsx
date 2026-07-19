@@ -16,9 +16,21 @@ export function TerminalKeyboardProvider({
 }: TerminalKeyboardProviderProps) {
   const globalHandlersRef = useRef<Map<string, Set<() => void>>>(new Map());
   const inputActiveRef = useRef(false);
+  const modalActiveRef = useRef(false);
+  const reviewStreamingRef = useRef(false);
+  const reviewCancelRef = useRef<(() => void) | undefined>(undefined);
 
   const setInputActive = useCallback((active: boolean) => {
     inputActiveRef.current = active;
+  }, []);
+
+  const setModalActive = useCallback((active: boolean) => {
+    modalActiveRef.current = active;
+  }, []);
+
+  const setReviewStreaming = useCallback((streaming: boolean, onCancel?: () => void) => {
+    reviewStreamingRef.current = streaming;
+    reviewCancelRef.current = streaming ? onCancel : undefined;
   }, []);
 
   const registerGlobalHandler = useCallback((hotkey: string, handler: () => void): (() => void) => {
@@ -48,6 +60,11 @@ export function TerminalKeyboardProvider({
     if (!hotkey) return;
 
     if (inputActiveRef.current && isTypeableShortcutKey(hotkey)) return;
+    if (modalActiveRef.current) return;
+    if (reviewStreamingRef.current && hotkey === "q") {
+      reviewCancelRef.current?.();
+      return;
+    }
 
     const globalHandlers = globalHandlersRef.current.get(hotkey);
     if (globalHandlers) {
@@ -61,8 +78,10 @@ export function TerminalKeyboardProvider({
     () => ({
       registerGlobalHandler,
       setInputActive,
+      setModalActive,
+      setReviewStreaming,
     }),
-    [registerGlobalHandler, setInputActive],
+    [registerGlobalHandler, setInputActive, setModalActive, setReviewStreaming],
   );
 
   return <KeyboardContext value={value}>{children}</KeyboardContext>;

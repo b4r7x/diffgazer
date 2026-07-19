@@ -1,9 +1,9 @@
 import { Box, Text, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext, useState } from "react";
+import { useListNavigation } from "../../hooks/use-list-navigation";
 import { collectChildItems } from "../../lib/collect-child-items";
-import { useListNavigation } from "../../lib/use-list-navigation";
-import { getVisibleSliceOffset } from "../../lib/visible-slice-offset";
+import { getListWindow } from "../../lib/list-window";
 import type { CliColorTokens } from "../../theme/palettes";
 import { useTheme } from "../../theme/provider";
 
@@ -12,6 +12,7 @@ export interface RadioGroupProps {
   defaultValue?: string;
   onChange?: (value: string) => void;
   onHighlightChange?: (value: string) => void;
+  onNavigationBoundaryReached?: (direction: 1 | -1) => void;
   orientation?: "vertical" | "horizontal";
   wrap?: boolean;
   disabled?: boolean;
@@ -116,6 +117,7 @@ function RadioGroupRoot({
   defaultValue,
   onChange,
   onHighlightChange,
+  onNavigationBoundaryReached,
   orientation = "vertical",
   wrap = true,
   disabled = false,
@@ -139,6 +141,7 @@ function RadioGroupRoot({
     items: navigableItems,
     defaultHighlightedId: value ?? defaultValue,
     onHighlightChange,
+    onNavigationBoundaryReached,
     wrap,
   });
 
@@ -147,11 +150,14 @@ function RadioGroupRoot({
     items.findIndex((item) => item.value === highlightedValue),
     0,
   );
-  const visibleItemCount = Math.max(1, Math.min(maxVisibleItems ?? items.length, items.length));
-  const visibleOffset = getVisibleSliceOffset(highlightedIndex, items.length, visibleItemCount);
-  const visibleValues = new Set(
-    items.slice(visibleOffset, visibleOffset + visibleItemCount).map((item) => item.value),
-  );
+  const viewportRows = Math.max(1, Math.min(maxVisibleItems ?? items.length, items.length));
+  const isWindowed = viewportRows < items.length;
+  const window = getListWindow({
+    selectedIndex: highlightedIndex,
+    total: items.length,
+    viewportRows,
+  });
+  const visibleValues = new Set(items.slice(window.start, window.end).map((item) => item.value));
 
   function selectCurrent() {
     const item = selectItem(highlightedValue);
@@ -196,8 +202,15 @@ function RadioGroupRoot({
         tokens,
       }}
     >
-      <Box flexDirection={isVertical ? "column" : "row"} gap={isVertical ? 0 : 2}>
+      <Box
+        flexDirection={isVertical ? "column" : "row"}
+        gap={isVertical ? 0 : 2}
+        height={isVertical && isWindowed ? viewportRows : undefined}
+        overflow={isVertical && isWindowed ? "hidden" : undefined}
+      >
+        {isVertical && window.canScrollUp ? <Text color={tokens.muted}>{"\u25B2"}</Text> : null}
         {children}
+        {isVertical && window.canScrollDown ? <Text color={tokens.muted}>{"\u25BC"}</Text> : null}
       </Box>
     </RadioGroupContext>
   );

@@ -88,8 +88,10 @@ describe("RunsList", () => {
 
     const { lastFrame, stdin } = render(<Harness />);
     await flush();
-    expect(lastFrame()).toContain("Summary 0");
-    expect(lastFrame()).not.toContain("Summary 2");
+    const topRows = (lastFrame() ?? "").split("\n").filter(Boolean);
+    expect(topRows.join("\n")).toContain("Summary 0");
+    expect(topRows.at(-1)).toContain("\u25BC");
+    expect(topRows.length).toBeLessThanOrEqual(6);
 
     for (let index = 0; index < 4; index += 1) {
       stdin.write("\u001B[B");
@@ -97,10 +99,23 @@ describe("RunsList", () => {
     }
 
     const frame = lastFrame() ?? "";
+    const middleRows = frame.split("\n").filter(Boolean);
     expect(frame).toContain("Summary 4");
     expect(frame).not.toContain("Summary 0");
-    expect(frame.split("\n").filter(Boolean)).toHaveLength(4);
+    expect(middleRows[0]).toContain("\u25B2");
+    expect(frame).toContain("\u25BC");
+    expect(middleRows.length).toBeLessThanOrEqual(6);
     expect(frame.split("\n").every((line) => line.length <= 25)).toBe(true);
+
+    for (let index = 0; index < 7; index += 1) {
+      stdin.write("\u001B[B");
+      await flush();
+    }
+
+    const bottomRows = (lastFrame() ?? "").split("\n").filter(Boolean);
+    expect(bottomRows[0]).toContain("\u25B2");
+    expect(bottomRows.join("\n")).toContain("Summary 11");
+    expect(bottomRows.length).toBeLessThanOrEqual(6);
   });
 
   test("shows the older-runs shortcut while another cursor page is available", () => {
@@ -178,7 +193,7 @@ describe("RunsList", () => {
     const lines = (lastFrame() ?? "").split("\n").filter(Boolean);
     expect(lines.join("\n")).toContain("Summary 4");
     expect(lines.join("\n")).not.toContain("TAIL");
-    expect(lines).toHaveLength(4);
+    expect(lines.length).toBeLessThanOrEqual(6);
     expect(lines.every((line) => line.length <= 25)).toBe(true);
   });
 

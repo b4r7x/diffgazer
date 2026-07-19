@@ -1,5 +1,5 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
-import { ApiProvider, configQueries } from "@diffgazer/core/api/hooks";
+import { ApiProvider, configQueries, TRUST_EDITOR_MESSAGES } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
 import type { InitResponse, TrustConfig } from "@diffgazer/core/schemas/config";
 import { KeyboardProvider } from "@diffgazer/keys";
@@ -30,6 +30,7 @@ const TRUSTED_FIXTURE: TrustConfig = {
 
 function makeInitResponse(trust: TrustConfig | null = null): InitResponse {
   return {
+    configPath: "/tmp/diffgazer/config.json",
     config: { provider: "gemini", model: "gemini-2.5-flash" },
     providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
     settings: {
@@ -197,7 +198,7 @@ describe("SettingsTrustPermissionsPage", () => {
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
   });
 
-  it("saves edited trust permissions and returns to settings", async () => {
+  it("saves edited trust permissions, confirms success, and stays on the editor", async () => {
     const user = userEvent.setup();
     mockLoadInit.mockResolvedValue(makeInitResponse(TRUSTED_FIXTURE));
     renderPage();
@@ -218,7 +219,22 @@ describe("SettingsTrustPermissionsPage", () => {
         trustMode: "persistent",
       });
     });
-    expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
+    expect(await screen.findByText(TRUST_EDITOR_MESSAGES.saved)).toBeVisible();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("does not leave a keyboard-zone highlight after a pointer action", async () => {
+    const user = userEvent.setup();
+    mockLoadInit.mockResolvedValue(makeInitResponse(TRUSTED_FIXTURE));
+    renderPage();
+    await waitForConfigReady();
+
+    const saveButton = screen.getByRole("button", { name: /save changes/i });
+    await user.click(saveButton);
+
+    await waitFor(() => expect(mockSaveTrust).toHaveBeenCalledOnce());
+    expect(saveButton).not.toHaveAttribute("data-highlighted");
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it("revokes trust for the current project from the action row", async () => {

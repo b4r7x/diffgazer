@@ -5,13 +5,15 @@ import type { ReactElement } from "react";
 import { Badge } from "../ui/badge";
 import { CheckboxGroup } from "../ui/checkbox";
 
-export const lensOptions = buildLensOptions();
+const lensOptions = buildLensOptions();
 
 interface AnalysisSelectorProps {
   selectedLenses: LensId[];
   onChange: (lenses: LensId[]) => void;
   isActive?: boolean;
   disabled?: boolean;
+  compact?: boolean;
+  onDownBoundary?: () => void;
 }
 
 export function AnalysisSelector({
@@ -19,6 +21,8 @@ export function AnalysisSelector({
   onChange,
   isActive = true,
   disabled = false,
+  compact = false,
+  onDownBoundary,
 }: AnalysisSelectorProps): ReactElement {
   return (
     <CheckboxGroup<LensId>
@@ -26,6 +30,10 @@ export function AnalysisSelector({
       onChange={onChange}
       isActive={isActive}
       disabled={disabled}
+      wrap={!onDownBoundary}
+      onNavigationBoundaryReached={(direction) => {
+        if (direction === 1) onDownBoundary?.();
+      }}
     >
       {lensOptions.map((lens) => (
         <CheckboxGroup.Item
@@ -37,7 +45,7 @@ export function AnalysisSelector({
               <Text>{lens.label}</Text>
             </Box>
           }
-          description={lens.description}
+          description={compact ? undefined : lens.description}
         />
       ))}
     </CheckboxGroup>

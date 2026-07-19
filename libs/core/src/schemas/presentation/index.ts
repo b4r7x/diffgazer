@@ -2,6 +2,7 @@ export type { AnalysisStats, IssuePreview } from "./analysis.js";
 export type { CategoryStats } from "./category-stats.js";
 export {
   buildHomeContextInfo,
+  buildHomeContextRows,
   type ContextInfo,
   type HomeContextInit,
   type HomeContextReview,
@@ -22,11 +23,15 @@ export {
   type SettingsAction,
   type SettingsMenuItem,
 } from "./navigation.js";
-export type {
-  ProgressStatus,
-  ProgressStepData,
-  ProgressSubstepData,
-  ReviewProgressMetrics,
+export {
+  buildReviewMetricsRows,
+  type ProgressStatus,
+  type ProgressStepData,
+  type ProgressStepWithSubstepsData,
+  type ProgressSubstepData,
+  type ReviewMetricId,
+  type ReviewMetricRow,
+  type ReviewProgressMetrics,
 } from "./progress.js";
 export {
   calculateSeverityCounts,

@@ -397,7 +397,6 @@ describe("synthesized issue evidence envelope", () => {
         additions: 0,
         deletions: 0,
       },
-      drilldowns: [],
     });
     expect(legacyReview?.item.result.issues).toHaveLength(oversizedStoredIssues.length);
     expect(legacyReview?.item.result).not.toHaveProperty("summary");
