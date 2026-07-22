@@ -18,8 +18,13 @@ describe("DialogFooter responsive action structure", () => {
     const actions = footer.querySelector('[data-slot="dialog-footer-actions"]');
     if (!(actions instanceof HTMLElement)) throw new Error("Expected dialog footer actions");
 
-    expect(within(actions).getAllByRole("button")).toHaveLength(2);
-    expect(footer).toHaveTextContent("EscCancelDiscard localized changesSave localized changes");
+    expect(
+      within(actions)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["Discard localized changes", "Save localized changes"]);
+    expect(screen.getByText("Esc")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Discard localized changes" })).toBeInTheDocument();
   });
 
   it("preserves explicit action-row props and accessible action order", async () => {

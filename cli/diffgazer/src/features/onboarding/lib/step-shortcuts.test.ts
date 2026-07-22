@@ -15,10 +15,6 @@ describe("getStepShortcuts", () => {
         inputMethod: "paste",
         apiKeyInputFocused: false,
       });
-      expect(
-        shortcuts.length > 0,
-        `expected step '${step}' to expose shortcuts in step focus`,
-      ).toBeTruthy();
       const keys = shortcuts.map((shortcut) => shortcut.key);
       expect(
         keys.some((key) => key.includes("↑/↓")),
@@ -100,7 +96,7 @@ describe("getStepShortcuts", () => {
   });
 
   test("analysis step exposes a Space toggle hint distinct from radio steps", () => {
-    const analysisKeys = getStepShortcuts({
+    const analysisShortcuts = getStepShortcuts({
       currentStep: "analysis",
       focusArea: "step",
       navIndex: 0,
@@ -109,8 +105,25 @@ describe("getStepShortcuts", () => {
       canProceed: true,
       inputMethod: "paste",
       apiKeyInputFocused: false,
-    }).map((shortcut) => shortcut.key);
-    expect(analysisKeys.includes("Space")).toBeTruthy();
+    });
+    expect(analysisShortcuts).toContainEqual({ key: "Space", label: "Toggle Option" });
+
+    for (const step of WIZARD_STEPS.filter((wizardStep) => wizardStep !== "analysis")) {
+      const shortcuts = getStepShortcuts({
+        currentStep: step,
+        focusArea: "step",
+        navIndex: 0,
+        isFirstStep: step === "storage",
+        isLastStep: step === "execution",
+        canProceed: true,
+        inputMethod: "paste",
+        apiKeyInputFocused: false,
+      });
+      expect(
+        shortcuts.some((shortcut) => shortcut.key === "Space"),
+        `expected step '${step}' not to expose an exact Space shortcut`,
+      ).toBe(false);
+    }
   });
 
   test("every step in step-focus exposes a non-disabled Tab shortcut (focus is always available)", () => {

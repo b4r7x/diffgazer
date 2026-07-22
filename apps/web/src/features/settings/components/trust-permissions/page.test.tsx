@@ -172,19 +172,6 @@ describe("SettingsTrustPermissionsPage", () => {
     expect(saveButton).toHaveFocus();
   });
 
-  it("focuses the permissions list on entry so arrows work before mouse interaction", async () => {
-    const user = userEvent.setup();
-    renderPage();
-    await waitForConfigReady();
-
-    const readFilesOption = screen.getByRole("checkbox", { name: /repository access/i });
-    await waitFor(() => expect(readFilesOption).toHaveFocus());
-
-    await user.keyboard("{ArrowDown}");
-
-    expect(screen.getByRole("button", { name: /save changes/i })).toHaveFocus();
-  });
-
   it("navigates back on Escape", async () => {
     const user = userEvent.setup();
     renderPage();

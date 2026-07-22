@@ -208,6 +208,21 @@ describe("ReviewScreen", () => {
     expect(apiMocks.useReview).toHaveBeenCalledWith("");
   });
 
+  test("shows the loading state for a pending saved-review read on the default non-live route", () => {
+    apiMocks.useReview.mockReturnValue({
+      isSuccess: false,
+      isError: false,
+      data: undefined,
+      error: null,
+    });
+
+    const { lastFrame } = renderReviewScreen();
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("Loading review...");
+    expect(frame).not.toMatch(/progress overview/i);
+  });
+
   test("live active-session resume ignores saved-review read errors", () => {
     apiMocks.useReview.mockReturnValue({
       isSuccess: false,
@@ -266,9 +281,6 @@ describe("ReviewScreen", () => {
 
     expect(live.lastFrame()).toMatch(/progress overview/i);
     expect(live.lastFrame()).not.toMatch(/api key/i);
-    expect(apiMocks.useReviewLifecycleBase).toHaveBeenLastCalledWith(
-      expect.objectContaining({ allowResumeWithoutSetup: true }),
-    );
     cleanup();
     apiMocks.createReview.mockClear();
 

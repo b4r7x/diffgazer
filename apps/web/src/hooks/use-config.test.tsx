@@ -1,7 +1,7 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import type { InitResponse, ProviderStatus, SetupStatus } from "@diffgazer/core/schemas/config";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -212,10 +212,14 @@ describe("ConfigProvider", () => {
 
   it("reports loading=true while init requests are still pending", async () => {
     mockApi.loadInit.mockReturnValue(new Promise(() => {}));
-    mockApi.getProviderStatus.mockReturnValue(new Promise(() => {}));
 
     renderWithProvider();
 
+    await waitFor(() => {
+      expect(screen.getByText("Provider status load: ready")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Config load: loading")).toBeInTheDocument();
     expect(screen.getByText("Loading: true")).toBeInTheDocument();
   });
 
@@ -329,6 +333,7 @@ describe("ConfigProvider", () => {
     );
 
     const actionsRefs: Array<ReturnType<typeof useConfigActions>> = [];
+    let savePromise: Promise<void> | undefined;
 
     function ActionsProbe() {
       const actions = useConfigActions();
@@ -336,7 +341,9 @@ describe("ConfigProvider", () => {
       return (
         <button
           type="button"
-          onClick={() => void actions.saveCredentials("gemini", "sk-key", "gemini-2.5-flash")}
+          onClick={() => {
+            savePromise = actions.saveCredentials("gemini", "sk-key", "gemini-2.5-flash");
+          }}
         >
           Save
         </button>
@@ -354,9 +361,11 @@ describe("ConfigProvider", () => {
 
     resolveSave?.();
 
-    await waitFor(() => {
-      expect(mockApi.saveConfig).toHaveBeenCalled();
+    await act(async () => {
+      await savePromise;
     });
+
+    expect(mockApi.saveConfig).toHaveBeenCalled();
 
     // After the pending flag settles back, the actions value identity is still stable.
     expect(actionsRefs.at(-1)).toBe(initialActions);

@@ -34,7 +34,7 @@ export function getFirstEnabledAction(
   return 0;
 }
 
-export function getNextEnabledAction({
+function getNextEnabledAction({
   current,
   direction,
   actionCount,

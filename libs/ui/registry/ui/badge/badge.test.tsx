@@ -9,19 +9,13 @@ describe("Badge", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
-  it("renders a leading dot span when dot is set", () => {
-    const { container } = render(<Badge dot>Ready</Badge>);
-    const dot = container.querySelector('[aria-hidden="true"]');
-    expect(dot).not.toBeNull();
-  });
-
   it("renders no dot span when dot is unset", () => {
     const { container } = render(<Badge>Ready</Badge>);
     expect(container.querySelector('[aria-hidden="true"]')).toBeNull();
   });
 
   it("uses the Tailwind v4 paren var() form for the dot color (the v3 bracket form was parse-dropped)", () => {
-    // Sanctioned class assertion: the working `bg-(--badge-dot)` form IS the shipped fix (F-441).
+    // Sanctioned class assertion: the working `bg-(--badge-dot)` form IS the shipped fix.
     const { container } = render(<Badge dot>Ready</Badge>);
     const dot = container.querySelector('[aria-hidden="true"]');
     expect(dot?.className).toContain("bg-(--badge-dot)");

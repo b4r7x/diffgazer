@@ -96,17 +96,20 @@ function isNoticeGenerator(value: unknown): value is NoticeGenerator {
 let generator: NoticeGenerator;
 let tempDir: string;
 let viteModuleIds: string[];
+let noticeTextBeforeImport: string;
+let noticeMtimeBeforeImport: number;
+let noticeTextAfterImport: string;
+let noticeMtimeAfterImport: number;
 
 beforeAll(async () => {
-  const beforeText = readFileSync(NOTICE_PATH, "utf-8");
-  const beforeMtime = statSync(NOTICE_PATH).mtimeMs;
+  noticeTextBeforeImport = readFileSync(NOTICE_PATH, "utf-8");
+  noticeMtimeBeforeImport = statSync(NOTICE_PATH).mtimeMs;
   const moduleUrl = new URL("../scripts/generate-third-party-notices.ts", import.meta.url).href;
   const imported: unknown = await import(moduleUrl);
   if (!isNoticeGenerator(imported)) throw new Error("Invalid notice generator module");
   generator = imported;
-
-  expect(readFileSync(NOTICE_PATH, "utf-8")).toBe(beforeText);
-  expect(statSync(NOTICE_PATH).mtimeMs).toBe(beforeMtime);
+  noticeTextAfterImport = readFileSync(NOTICE_PATH, "utf-8");
+  noticeMtimeAfterImport = statSync(NOTICE_PATH).mtimeMs;
 
   tempDir = mkdtempSync(resolve(tmpdir(), "diffgazer-notices-"));
   viteModuleIds = await generator.collectViteBundleModuleIds();
@@ -118,7 +121,8 @@ afterAll(() => {
 
 describe("third-party notice bundle provenance", () => {
   it("has no import-time write side effect", () => {
-    expect(generator.generateThirdPartyNotices).toBeTypeOf("function");
+    expect(noticeTextAfterImport).toBe(noticeTextBeforeImport);
+    expect(noticeMtimeAfterImport).toBe(noticeMtimeBeforeImport);
   });
 
   it("maps every real Vite bundle module to package provenance and retains frozen notices", () => {

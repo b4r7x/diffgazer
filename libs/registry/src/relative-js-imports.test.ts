@@ -51,6 +51,42 @@ describe("stripRelativeJsExtensions", () => {
   });
 });
 
+describe("stripRelativeJsExtensions ignores non-executable text", () => {
+  it("leaves relative .js-looking text in comments byte-identical while still stripping real imports", () => {
+    const input = [
+      '// import { x } from "./fake.js";',
+      "/* import { y } from './fake2.js'; */",
+      'import { real } from "./real.js";',
+    ].join("\n");
+
+    const result = stripRelativeJsExtensions(input);
+
+    expect(result).toContain('// import { x } from "./fake.js";');
+    expect(result).toContain("/* import { y } from './fake2.js'; */");
+    expect(result).toContain('import { real } from "./real";');
+  });
+
+  it("leaves relative .js-looking text in ordinary strings byte-identical", () => {
+    const input = `const example = 'import { x } from "./fake.js"';`;
+    expect(stripRelativeJsExtensions(input)).toBe(input);
+  });
+
+  it("leaves relative .js-looking text in template literals byte-identical", () => {
+    const input = 'const code = `import { x } from "./fake.js"`;';
+    expect(stripRelativeJsExtensions(input)).toBe(input);
+  });
+
+  it("leaves relative .js-looking text in JSX strings byte-identical", () => {
+    const input = `const jsxExample = <code>{'import("./fake.js")'}</code>;`;
+    expect(stripRelativeJsExtensions(input)).toBe(input);
+  });
+
+  it("leaves relative .js-looking text in regex literals byte-identical", () => {
+    const input = 'const matcher = /import\\("\\.\\/fake\\.js"\\)/;';
+    expect(stripRelativeJsExtensions(input)).toBe(input);
+  });
+});
+
 describe("RELATIVE_JS_IMPORT_RE", () => {
   it("catches whitespace-before-paren forms the no-whitespace copies missed", () => {
     expect(matches('import ("./m.js")')).toBe(true);

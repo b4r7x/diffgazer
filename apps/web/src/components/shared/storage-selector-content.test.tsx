@@ -54,8 +54,8 @@ describe("StorageSelectorContent", () => {
   it("commits the focused storage with Enter after a controlled value change", async () => {
     const user = userEvent.setup();
     const calls: string[] = [];
-    const onChange = vi.fn((value: SecretsStorage) => calls.push(`change:${value}`));
-    const onEnter = vi.fn((value: SecretsStorage) => calls.push(`enter:${value}`));
+    const onChange = (value: SecretsStorage) => calls.push(`change:${value}`);
+    const onEnter = (value: SecretsStorage) => calls.push(`enter:${value}`);
     const { rerender } = render(
       <StorageSelectorContent value={null} onChange={onChange} onEnter={onEnter} autoFocusList />,
     );
@@ -69,10 +69,6 @@ describe("StorageSelectorContent", () => {
     );
     await user.keyboard("{Enter}");
 
-    expect(onEnter).toHaveBeenCalledWith("keyring");
-    expect(onEnter).toHaveBeenCalledOnce();
-    expect(onChange).toHaveBeenCalledWith("keyring");
-    expect(onChange).toHaveBeenCalledOnce();
     expect(calls).toEqual(["change:keyring", "enter:keyring"]);
   });
 

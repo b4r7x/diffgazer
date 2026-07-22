@@ -76,7 +76,9 @@ describe("startTui", () => {
 
     await startTui({ mode: "prod", theme: "dark" });
 
-    expect(renderMock).toHaveBeenCalledWith(expect.anything(), {
+    const [appElement, renderOptions] = renderMock.mock.calls[0] as [{ props: unknown }, unknown];
+    expect(appElement.props).toEqual({ mode: "prod", theme: "dark", terminalInputQueue: queue });
+    expect(renderOptions).toEqual({
       stdin: process.stdin,
       exitOnCtrlC: false,
       alternateScreen: true,

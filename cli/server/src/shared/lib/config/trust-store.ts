@@ -4,8 +4,13 @@ import type { TrustConfig } from "@diffgazer/core/schemas/config";
 import { getFileMtimeMs } from "../fs.js";
 import { log } from "../log.js";
 import { getGlobalTrustPath } from "../paths.js";
-import { loadTrust, persistTrustRecordAsync, persistTrustRemovalAsync } from "./persistence.js";
-import { createMutex, runConfigTransaction } from "./transaction.js";
+import {
+  loadTrust,
+  persistTrustRecordAsync,
+  persistTrustRemovalAsync,
+} from "./persistence/trust.js";
+import { runConfigTransaction } from "./transaction/mutation.js";
+import { createMutex } from "./transaction/mutex.js";
 import type { SecretsStorageError, SecretsStorageErrorCode, TrustState } from "./types.js";
 
 export interface TrustStore {
@@ -18,7 +23,7 @@ export interface TrustStore {
 // Owns persistent (file-backed) and per-session trust. A session grant shadows a
 // persistent record for the same project and does not survive restarts, so downgrading
 // to session trust also clears the persistent record — a restart cannot resurrect the
-// older persistent grant (F-045).
+// older persistent grant.
 export function createTrustStore(): TrustStore {
   let trustState: TrustState = loadTrust();
   const sessionTrust: Record<string, TrustConfig> = {};
@@ -40,7 +45,7 @@ export function createTrustStore(): TrustStore {
   };
 
   // Record-granular persist: the write re-reads and merges the single mutated record,
-  // so a record another instance wrote during this window is never erased (F-359).
+  // so a record another instance wrote during this window is never erased.
   const persistTrustWith = async (
     write: () => Promise<void>,
   ): Promise<Result<void, SecretsStorageError>> => {
@@ -51,7 +56,7 @@ export function createTrustStore(): TrustStore {
       return ok(undefined);
     } catch (cause) {
       // Log the raw cause (carries the absolute path) server-side; return a path-free
-      // message (F-085).
+      // message.
       log("error", "trust_persist_failed", { error: getErrorMessage(cause) });
       return err(createError<SecretsStorageErrorCode>("PERSIST_FAILED", "Failed to persist trust"));
     }
@@ -77,7 +82,7 @@ export function createTrustStore(): TrustStore {
 
   const saveTrust = (config: TrustConfig): Promise<Result<TrustConfig, SecretsStorageError>> => {
     if (config.trustMode === "session") {
-      // Drop the persistent record, then record the session grant (F-045). Apply the
+      // Drop the persistent record, then record the session grant. Apply the
       // session grant only after the removal persists: on failure the transaction
       // restores the persistent record and returns err, so getTrust must not report a
       // session grant that was never persisted.

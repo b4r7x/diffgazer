@@ -44,9 +44,12 @@ function isHidden(element: HTMLElement): boolean {
   let current: Element | null = element;
   while (current) {
     const style = current.ownerDocument.defaultView?.getComputedStyle(current);
+    // area is display:none by default in every UA stylesheet yet remains
+    // focusable via its own href; only its ancestors' display can hide it.
+    const isOwnAreaDisplayNone = current === element && current.localName === "area";
     if (
       current.getAttribute("hidden") === "until-found" ||
-      style?.display === "none" ||
+      (!isOwnAreaDisplayNone && style?.display === "none") ||
       style?.getPropertyValue("content-visibility") === "hidden"
     ) {
       return true;

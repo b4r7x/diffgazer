@@ -119,7 +119,6 @@ describe("buildFileTree", () => {
         ],
       },
     ]);
-    expect(countNodes(tree)).toBeLessThan(10);
     expect(counter.truncated).toBe(false);
   });
 

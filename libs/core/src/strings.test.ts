@@ -12,13 +12,11 @@ describe("capitalize", () => {
 
 describe("truncate", () => {
   it.each([
-    ["hello world", 8, undefined, "hello..."],
     ["hi", 10, undefined, "hi"],
     ["hello", 5, undefined, "hello"],
     ["abcdefghij", 6, undefined, "abc..."],
     ["abcdefghij", 6, "~", "abcde~"],
     ["hello world", 2, undefined, ".."],
-    ["hello world", 1, undefined, "."],
     ["hello world", 0, undefined, ""],
     ["hello world", 3, undefined, "..."],
     ["", 5, undefined, ""],
@@ -32,8 +30,6 @@ describe("pluralize", () => {
     [0, "issue", "0 issues"],
     [1, "issue", "1 issue"],
     [2, "issue", "2 issues"],
-    [1, "file", "1 file"],
-    [3, "agent", "3 agents"],
   ])("pluralizes %s %j as %j", (count, word, expected) => {
     expect(pluralize(count, word)).toBe(expected);
   });

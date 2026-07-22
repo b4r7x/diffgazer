@@ -4,7 +4,7 @@ import { err, ok } from "@diffgazer/core/result";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { FullReviewStreamEvent, StepId } from "@diffgazer/core/schemas/events";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
-import type { InitializedAIClient } from "../../shared/lib/ai/client.js";
+import type { InitializedAIClient } from "../../shared/lib/ai/client/initialize.js";
 import type { AIClient } from "../../shared/lib/ai/types.js";
 import { createGitService } from "../../shared/lib/git/service.js";
 import { log } from "../../shared/lib/log.js";

@@ -7,9 +7,9 @@ import { cleanup, render } from "ink-testing-library";
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NavigationContext } from "../../../hooks/use-navigation";
+import { buildResponsiveResult, getBreakpointTier } from "../../../lib/breakpoints";
 import { CliThemeProvider } from "../../../theme/provider";
 import { HistoryScreen } from "../components/screen";
-import { getHistoryFooter } from "../lib/footer";
 import { useHistoryScreen } from "./use-screen";
 
 const useHistoryScreenStateMock = vi.hoisted(() => vi.fn());
@@ -46,8 +46,7 @@ vi.mock("../../../hooks/use-terminal-dimensions", () => ({
   useResponsive: () => ({
     columns: terminalSize.columns,
     rows: terminalSize.rows,
-    isNarrow: terminalSize.columns < 80,
-    isMedium: terminalSize.columns >= 80 && terminalSize.columns < 120,
+    ...buildResponsiveResult(getBreakpointTier(terminalSize.columns)),
   }),
 }));
 
@@ -102,10 +101,6 @@ describe("useHistoryScreen", () => {
     const { result } = renderHook(() => useHistoryScreen({ onOpenReview: vi.fn() }));
 
     expect(result.current.interactionMode).toBe("route");
-    expect(getHistoryFooter(result.current.interactionMode)).toEqual({
-      shortcuts: [],
-      rightShortcuts: [{ key: "Esc", label: "Back" }],
-    });
   });
 
   it.each([
@@ -277,6 +272,5 @@ describe("useHistoryScreen", () => {
 
     expect(onOpenReview).toHaveBeenLastCalledWith("history-review-1");
     expect(onOpenReview).toHaveBeenCalledTimes(2);
-    expect(result.current.reviewDetailQuery).toBe(reviewDetailQuery);
   });
 });

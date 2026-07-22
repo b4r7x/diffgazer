@@ -229,16 +229,21 @@ function resolveCopyDependencyClosure(item: RegistryItem): {
 }
 
 function copyArchiveTarget(file: RegistryItem["files"][number]): string {
+  if (file.type === "registry:style" && file.target) return file.target;
   if (file.path.startsWith("registry/ui/")) return `@ui/${file.path.slice("registry/ui/".length)}`;
   if (file.path.startsWith("registry/hooks/")) {
     return `@hooks/${file.path.slice("registry/hooks/".length)}`;
   }
   if (file.path.startsWith("registry/lib/"))
     return `@lib/${file.path.slice("registry/lib/".length)}`;
-  if (file.path.startsWith("src/hooks/")) return `@hooks/${file.path.slice("src/hooks/".length)}`;
+  // An explicit target is the authoritative install location and must win over the
+  // source path: a split file like src/hooks/use-navigation/core.ts targets
+  // src/hooks/utils/navigation-core.ts, and deriving from the path would break the
+  // sibling imports that reference the target.
   if (file.target?.startsWith("src/hooks/")) {
     return `@hooks/${file.target.slice("src/hooks/".length)}`;
   }
+  if (file.path.startsWith("src/hooks/")) return `@hooks/${file.path.slice("src/hooks/".length)}`;
   if (file.target) return file.target;
   if (file.path.startsWith("styles/")) return `~/${file.path}`;
   throw new Error(`Unsupported copy archive path: ${file.path}`);

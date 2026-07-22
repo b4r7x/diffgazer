@@ -12,7 +12,7 @@ describe("HookSource", () => {
     const user = userEvent.setup();
     render(<HookSource library="keys" hook="use-navigation" />);
 
-    const trigger = screen.getByRole("button", { name: /useNavigation source \(6 files\)/i });
+    const trigger = screen.getByRole("button", { name: /useNavigation source \(7 files\)/i });
     expect(trigger).toBeInTheDocument();
     expect(
       screen.getByText("Standalone keyboard navigation for role-based lists and tabs"),
@@ -36,7 +36,16 @@ describe("LibraryHookSource", () => {
 
     expect(screen.getByRole("heading", { name: "Standalone Hooks" })).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /useNavigation source \(6 files\)/i }),
+      screen.getByRole("button", { name: /useNavigation source \(7 files\)/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /useFocusRestore source \(3 files\)/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /useFocusTrap source \(6 files\)/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "src/hooks/use-scroll-lock.ts" }),
     ).toBeInTheDocument();
   });
 });

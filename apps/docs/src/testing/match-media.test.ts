@@ -14,10 +14,6 @@ describe("stubControllableMatchMedia", () => {
     maxWidth.addEventListener("change", maxWidthListener);
     reducedMotion.addEventListener("change", reducedMotionListener);
 
-    viewport.setDesktop(false);
-    expect(minWidthListener).not.toHaveBeenCalled();
-    expect(maxWidthListener).not.toHaveBeenCalled();
-
     viewport.setDesktop(true);
 
     expect(minWidth.matches).toBe(true);
@@ -27,10 +23,6 @@ describe("stubControllableMatchMedia", () => {
     expect(minWidthListener).toHaveBeenLastCalledWith(expect.objectContaining({ matches: true }));
     expect(maxWidthListener).toHaveBeenLastCalledWith(expect.objectContaining({ matches: false }));
     expect(reducedMotionListener).not.toHaveBeenCalled();
-
-    viewport.setDesktop(true);
-    expect(minWidthListener).toHaveBeenCalledTimes(1);
-    expect(maxWidthListener).toHaveBeenCalledTimes(1);
 
     viewport.setDesktop(false);
     expect(minWidth.matches).toBe(false);

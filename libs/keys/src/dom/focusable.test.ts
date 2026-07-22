@@ -54,9 +54,26 @@ describe("focusable utilities", () => {
         <div id="g" tabindex="-1">G</div>
         <details><summary id="s">Summary</summary><p>Details</p></details>
         <div id="h">No tabindex</div>
+        <area id="i" href="#" shape="rect" coords="0,0,1,1" />
+        <iframe id="j"></iframe>
+        <object id="k"></object>
+        <embed id="l" />
+        <audio id="m" controls></audio>
+        <video id="n" controls></video>
       `);
       const ids = getFocusableElements(c).map((el) => el.id);
-      expect(ids).toEqual(["a", "b", "c", "d", "e", "f", "g", "s"]);
+      expect(ids).toEqual(["a", "b", "c", "d", "e", "f", "g", "s", "i", "j", "k", "l", "m", "n"]);
+    });
+
+    it("skips an area without href and audio/video without controls", () => {
+      const c = mount(`
+        <area id="a" shape="rect" coords="0,0,1,1" />
+        <audio id="b"></audio>
+        <video id="c"></video>
+        <button id="d">D</button>
+      `);
+      const ids = getFocusableElements(c).map((el) => el.id);
+      expect(ids).toEqual(["d"]);
     });
 
     it("sorts in document order without relying on the global Node constructor", () => {
@@ -137,16 +154,17 @@ describe("focusable utilities", () => {
       expect(ids).toEqual(["a"]);
     });
 
-    it("skips elements inside a disabled fieldset", () => {
+    it("skips elements inside a disabled fieldset except its first legend", () => {
       const c = mount(`
         <fieldset disabled>
+          <legend><button id="legend">Legend</button></legend>
           <button id="a">A</button>
           <input id="b" />
         </fieldset>
         <button id="c">C</button>
       `);
       const ids = getFocusableElements(c).map((el) => el.id);
-      expect(ids).toEqual(["c"]);
+      expect(ids).toEqual(["legend", "c"]);
     });
 
     it("skips elements with display:none on self or ancestor", () => {
@@ -285,6 +303,17 @@ describe("focusable utilities", () => {
 
       const ids = getTabbableElements(c).map((el) => el.id);
       expect(ids).toEqual(["c", "b", "a", "e"]);
+    });
+
+    it("includes area[href], iframe, and object using jsdom's native tabIndex defaults", () => {
+      const c = mount(`
+        <area id="a" href="#" shape="rect" coords="0,0,1,1" />
+        <iframe id="b"></iframe>
+        <object id="c"></object>
+      `);
+
+      const ids = getTabbableElements(c).map((el) => el.id);
+      expect(ids).toEqual(["a", "b", "c"]);
     });
 
     it("orders positive tabindex values across light DOM and an open shadow root", () => {

@@ -6,7 +6,7 @@ import {
   buildReviewSummary,
   type LensSummaryRow,
 } from "../review/build-summary.js";
-import { toIssueDetailsPresentation } from "../review/presentation.js";
+import { toIssueDetailsPresentation } from "../review/presentation/issue.js";
 import { SEVERITY_LABELS, SEVERITY_ORDER } from "../schemas/presentation/index.js";
 import type { ReviewSeverity, SavedReview } from "../schemas/review/index.js";
 import { makeIssue } from "./factories.js";

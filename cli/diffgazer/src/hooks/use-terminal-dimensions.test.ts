@@ -45,7 +45,22 @@ describe("useTerminalDimensions", () => {
       expect(consumer.result.current).toEqual({ columns: 120, rows: 40 });
     }
 
-    for (const consumer of consumers) consumer.unmount();
+    const [unmounted, ...survivors] = consumers;
+    if (!unmounted) throw new Error("Expected at least one mounted consumer");
+    unmounted.unmount();
+    expect(stdout.listenerCount("resize")).toBe(1);
+
+    stdout.columns = 100;
+    stdout.rows = 30;
+    act(() => {
+      stdout.emit("resize");
+    });
+
+    for (const consumer of survivors) {
+      expect(consumer.result.current).toEqual({ columns: 100, rows: 30 });
+    }
+
+    for (const consumer of survivors) consumer.unmount();
     expect(stdout.listenerCount("resize")).toBe(0);
   });
 

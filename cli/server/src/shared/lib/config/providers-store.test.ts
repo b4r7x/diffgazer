@@ -1,3 +1,4 @@
+import type { ProviderStatus } from "@diffgazer/core/schemas/config";
 import { describe, expect, it } from "vitest";
 import {
   activeProvider,
@@ -58,8 +59,8 @@ describe("ensureProviderEntry", () => {
   it("returns the existing entry without modifying providers", () => {
     const state = baseState();
     const result = ensureProviderEntry(state.providers, "gemini", true);
-    expect(result.providers).toBe(state.providers);
-    expect(result.entry.provider).toBe("gemini");
+    expect(result.providers).toEqual(state.providers);
+    expect(result.entry).toEqual(state.providers.find((p) => p.provider === "gemini"));
   });
 
   it("appends a new provider when none exists", () => {
@@ -77,11 +78,18 @@ describe("ensureProviderEntry", () => {
 
 describe("applyCredentialsWithoutModel", () => {
   it("keeps a provider active when it already has a model", () => {
-    const next = applyCredentialsWithoutModel(baseState().providers, "gemini");
+    const providers: ProviderStatus[] = [
+      ...baseState().providers.filter((p) => p.provider !== "openrouter"),
+      { provider: "openrouter", hasApiKey: false, isActive: false },
+    ];
+    const next = applyCredentialsWithoutModel(providers, "gemini");
     expect(next.find((p) => p.provider === "gemini")).toMatchObject({
       hasApiKey: true,
       isActive: true,
     });
+    expect(next.find((p) => p.provider === "openrouter")).toEqual(
+      providers.find((p) => p.provider === "openrouter"),
+    );
   });
 
   it("deactivates a provider without a model", () => {
@@ -93,12 +101,16 @@ describe("applyCredentialsWithoutModel", () => {
 
 describe("clearProviderCredentials", () => {
   it("strips api key, active flag, and model for the target provider", () => {
-    const next = clearProviderCredentials(baseState().providers, "gemini");
+    const state = baseState();
+    const next = clearProviderCredentials(state.providers, "gemini");
     expect(next.find((p) => p.provider === "gemini")).toMatchObject({
       hasApiKey: false,
       isActive: false,
       model: undefined,
     });
+    expect(next.find((p) => p.provider === "openrouter")).toEqual(
+      state.providers.find((p) => p.provider === "openrouter"),
+    );
   });
 });
 

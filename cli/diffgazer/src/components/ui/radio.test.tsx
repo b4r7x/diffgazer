@@ -215,4 +215,20 @@ describe("RadioGroup navigation", () => {
     await flush();
     expect(onChange).toHaveBeenLastCalledWith("model-7");
   });
+
+  test("shows distinct descriptions for enabled and disabled items", async () => {
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <RadioGroup isActive>
+          <RadioGroup.Item value="a" label="Alpha" description="Enabled description" />
+          <RadioGroup.Item value="b" label="Bravo" description="Disabled description" disabled />
+        </RadioGroup>
+      </CliThemeProvider>,
+    );
+    await flush();
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("Enabled description");
+    expect(frame).toContain("Disabled description");
+  });
 });

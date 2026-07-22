@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { FileTreeNode } from "@diffgazer/core/schemas/context";
-import { readFileDirectory } from "./workspace-discovery.js";
+import { readFileDirectory } from "./directory.js";
 
 const CONTEXT_EXCLUDE_DIRS = new Set([
   ".git",

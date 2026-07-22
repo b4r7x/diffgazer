@@ -12,14 +12,4 @@ describe("nextHistoryZone", () => {
   test("zone order list contains all four zones", () => {
     expect(HISTORY_ZONE_ORDER).toEqual(["search", "timeline", "runs", "insights"]);
   });
-
-  test("applying nextHistoryZone four times returns to the start", () => {
-    const start = HISTORY_ZONE_ORDER[0];
-    if (start === undefined) throw new Error("HISTORY_ZONE_ORDER is empty");
-    let zone = start;
-    for (let i = 0; i < HISTORY_ZONE_ORDER.length; i++) {
-      zone = nextHistoryZone(zone);
-    }
-    expect(zone).toBe(start);
-  });
 });

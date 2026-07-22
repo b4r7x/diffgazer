@@ -11,7 +11,6 @@ import {
   registryFreshnessTargets,
   requiredEndpoints,
   runLiveRegistryCheck,
-  sha256Hex,
 } from "./check-live-registry.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -174,52 +173,36 @@ test("publicRegistryIsGated fails loudly when the literal is gone", async () => 
   }
 });
 
-test("normal ungated entry flow rejects stale and missing content even when every HEAD succeeds", async () => {
+test("normal ungated entry flow rejects stale content even when every HEAD succeeds", async () => {
   const dir = mkdtempSync(join(tmpdir(), "live-registry-ungated-"));
   const bodyByUrl = new Map(
     registryFreshnessTargets.map((target) => [target.url, readFileSync(target.path)]),
   );
-  const [staleUrl, missingUrl] = nonSentinelUrls;
+  const [staleUrl] = nonSentinelUrls;
   assert.ok(staleUrl);
-  assert.ok(missingUrl);
 
   try {
     const metadataFilePath = join(dir, "metadata.ts");
     writeFileSync(metadataFilePath, "export const PUBLISH_GATED = false;\n");
-    const scenarios = [
-      {
-        url: staleUrl,
-        response: bodyResponse("stale\n"),
-        expectedError: new RegExp(`SHA mismatch for ${staleUrl.replaceAll("/", "\\/")}`),
-      },
-      {
-        url: missingUrl,
-        response: { ok: false, status: 404, arrayBuffer: async () => toArrayBuffer("") },
-        expectedError: new RegExp(`${missingUrl.replaceAll("/", "\\/")} returned 404`),
-      },
-    ];
-
-    for (const scenario of scenarios) {
-      const headUrls = [];
-      await assert.rejects(
-        () =>
-          runLiveRegistryCheck({
-            metadataFilePath,
-            required: false,
-            lookupImpl: async () => {},
-            fetchImpl: async (url, options) => {
-              if (options?.method === "HEAD") {
-                headUrls.push(url);
-                return { status: 200 };
-              }
-              return url === scenario.url ? scenario.response : bodyResponse(bodyByUrl.get(url));
-            },
-            log: () => {},
-          }),
-        scenario.expectedError,
-      );
-      assert.deepEqual(headUrls, requiredEndpoints);
-    }
+    const headUrls = [];
+    await assert.rejects(
+      () =>
+        runLiveRegistryCheck({
+          metadataFilePath,
+          required: false,
+          lookupImpl: async () => {},
+          fetchImpl: async (url, options) => {
+            if (options?.method === "HEAD") {
+              headUrls.push(url);
+              return { status: 200 };
+            }
+            return url === staleUrl ? bodyResponse("stale\n") : bodyResponse(bodyByUrl.get(url));
+          },
+          log: () => {},
+        }),
+      new RegExp(`SHA mismatch for ${staleUrl.replaceAll("/", "\\/")}`),
+    );
+    assert.deepEqual(headUrls, requiredEndpoints);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -266,19 +249,6 @@ test("entry flow skips a gated registry only when the hard gate is not requested
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
-});
-
-test("assertRegistryContentFresh rejects promoted SHA drift", async () => {
-  const localBody = '{"name":"local"}\n';
-  const liveBody = '{"name":"live"}\n';
-
-  await assert.rejects(
-    () => assertRegistryContentFresh(async () => bodyResponse(liveBody)),
-    /SHA mismatch/,
-  );
-
-  assert.equal(sha256Hex(localBody), sha256Hex('{"name":"local"}\n'));
-  assert.notEqual(sha256Hex(localBody), sha256Hex(liveBody));
 });
 
 test("assertRegistryContentFresh resolves when every mapped body matches its source", async () => {

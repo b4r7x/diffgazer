@@ -1,5 +1,4 @@
 import { type APIResponse, expect, test } from "@playwright/test";
-import { DOCS_BASE_SECURITY_HEADERS } from "../../src/security-headers";
 
 const PAGES = ["/", "/app/architecture", "/ui/theme"];
 const MISSING_STATIC_RESOURCES = [
@@ -8,9 +7,19 @@ const MISSING_STATIC_RESOURCES = [
   "/schema/__missing__.json",
 ] as const;
 
+const EXPECTED_BASE_SECURITY_HEADERS = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+  "Permissions-Policy":
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=()",
+  "Cache-Control": "public, max-age=0, must-revalidate",
+} as const;
+
 function expectBaseSecurityHeaders(response: APIResponse): void {
   const headers = response.headers();
-  for (const [name, value] of Object.entries(DOCS_BASE_SECURITY_HEADERS)) {
+  for (const [name, value] of Object.entries(EXPECTED_BASE_SECURITY_HEADERS)) {
     expect(headers[name.toLowerCase()]).toBe(value);
   }
 }
@@ -85,9 +94,23 @@ test.describe("Docs security headers", () => {
     const assetPath = html.match(/(?:src|href)="([^"]*\/assets\/[^"]+)"/)?.[1];
     if (!assetPath) throw new Error("Docs HTML did not reference a built asset");
 
-    for (const path of [assetPath, "/r/ui/registry.json", "/schema/diffgazer.json"]) {
-      expect((await request.get(path)).status()).toBe(200);
-    }
+    const assetResponse = await request.get(assetPath, {
+      headers: { "Accept-Encoding": "br" },
+    });
+    expect(assetResponse.status()).toBe(200);
+    expect(assetResponse.headers()["cache-control"]).toBe("public, max-age=31536000, immutable");
+    expect(assetResponse.headers()["content-encoding"]).toBe("br");
+
+    const registryResponse = await request.get("/r/ui/registry.json", {
+      headers: { "Accept-Encoding": "br" },
+    });
+    expect(registryResponse.status()).toBe(200);
+    expect(registryResponse.headers()["cache-control"]).toBe(
+      EXPECTED_BASE_SECURITY_HEADERS["Cache-Control"],
+    );
+    expect(registryResponse.headers()["content-encoding"]).toBe("br");
+
+    expect((await request.get("/schema/diffgazer.json")).status()).toBe(200);
 
     const navigation = await request.get("/app/architecture");
     expect(navigation.status()).toBe(200);

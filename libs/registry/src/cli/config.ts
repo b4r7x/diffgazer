@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { z } from "zod";
 import { detectSourceDir } from "./detect.js";
-import { atomicWriteFile } from "./fs.js";
+import { atomicWriteFile } from "./fs/writes.js";
 import { toErrorMessage, warn } from "./terminal.js";
 
 const ALIAS_PATTERN = /^(\.\.?\/|[@~#][\w-]*\/)/;

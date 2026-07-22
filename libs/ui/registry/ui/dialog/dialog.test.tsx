@@ -15,10 +15,10 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function renderDialog(
+function dialogTree(
   props: { open?: boolean; defaultOpen?: boolean; onOpenChange?: (open: boolean) => void } = {},
 ) {
-  return render(
+  return (
     <Dialog {...props}>
       <Dialog.Trigger>Open</Dialog.Trigger>
       <Dialog.Content>
@@ -32,8 +32,14 @@ function renderDialog(
           <Dialog.Action>Confirm</Dialog.Action>
         </Dialog.Footer>
       </Dialog.Content>
-    </Dialog>,
+    </Dialog>
   );
+}
+
+function renderDialog(
+  props: { open?: boolean; defaultOpen?: boolean; onOpenChange?: (open: boolean) => void } = {},
+) {
+  return render(dialogTree(props));
 }
 
 // Backdrop click logic compares the click coordinate to the dialog's bounding rect.
@@ -109,12 +115,25 @@ describe("Dialog", () => {
     expect(document.body).not.toHaveAttribute("data-scroll-locked");
   });
 
-  it("opens when trigger is clicked and calls onOpenChange in controlled mode", async () => {
+  it("round-trips open state through onOpenChange requests in controlled mode", async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();
-    renderDialog({ open: false, onOpenChange });
+    const { rerender } = renderDialog({ open: false, onOpenChange });
+
     await user.click(screen.getByRole("button", { name: "Open" }));
     expect(onOpenChange).toHaveBeenCalledWith(true);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    rerender(dialogTree({ open: true, onOpenChange }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("data-state", "open");
+
+    await user.click(screen.getByRole("button", { name: "Close dialog" }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(dialog).toHaveAttribute("data-state", "open");
+
+    rerender(dialogTree({ open: false, onOpenChange }));
+    expect(dialog).toHaveAttribute("data-state", "closed");
   });
 
   it("closes when close button is clicked", async () => {
@@ -322,26 +341,18 @@ describe("Dialog", () => {
   });
 
   it("returns focus to trigger after dialog closes", async () => {
-    const { rerender } = renderDialog({ defaultOpen: true });
+    const user = userEvent.setup();
+    renderDialog();
     const trigger = screen.getByRole("button", { name: "Open" });
-    trigger.focus();
 
-    rerender(
-      <Dialog open={false}>
-        <Dialog.Trigger>Open</Dialog.Trigger>
-        <Dialog.Content>
-          <Dialog.Header>
-            <Dialog.Title>Test Title</Dialog.Title>
-            <Dialog.Close />
-          </Dialog.Header>
-        </Dialog.Content>
-      </Dialog>,
-    );
+    await user.click(trigger);
+    const dialog = screen.getByRole("dialog");
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
 
-    // querySelector retained: the native <dialog> element drives the close-transition; the test needs the raw element to fire animationEnd against (the dialog role disappears once it begins closing)
-    const dialog = document.querySelector("dialog");
+    await user.click(screen.getByRole("button", { name: "Close dialog" }));
+    await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"));
     // fireEvent retained: animationend has no user-event equivalent; presence transitions complete on this event
-    if (dialog) fireEvent.animationEnd(dialog);
+    fireEvent.animationEnd(dialog);
 
     await waitFor(() => expect(trigger).toHaveFocus());
   });
@@ -451,6 +462,7 @@ describe("Dialog", () => {
     await waitFor(() => expect(childOpener).toHaveFocus());
 
     const parentDialog = screen.getByRole("dialog", { name: "Parent dialog" });
+    expect(parentDialog).toHaveAttribute("data-state", "open");
     await user.click(screen.getByRole("button", { name: "Close parent" }));
     await waitFor(() => expect(parentDialog).toHaveAttribute("data-state", "closed"));
     // fireEvent retained: animationend has no user-event equivalent
@@ -919,31 +931,6 @@ describe("Dialog", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("stacks multiple dialogs correctly", async () => {
-    render(
-      <>
-        <Dialog defaultOpen>
-          <Dialog.Trigger>Dialog 1</Dialog.Trigger>
-          <Dialog.Content>
-            <Dialog.Title>Dialog 1</Dialog.Title>
-            <Dialog.Close />
-          </Dialog.Content>
-        </Dialog>
-        <Dialog defaultOpen>
-          <Dialog.Trigger>Dialog 2</Dialog.Trigger>
-          <Dialog.Content>
-            <Dialog.Title>Dialog 2</Dialog.Title>
-            <Dialog.Close />
-          </Dialog.Content>
-        </Dialog>
-      </>,
-    );
-    const dialogs = screen.getAllByRole("dialog");
-    expect(dialogs).toHaveLength(2);
-    expect(screen.getByRole("dialog", { name: "Dialog 1" })).toHaveAttribute("data-state", "open");
-    expect(dialogs[1]).toHaveAttribute("data-state", "open");
-  });
-
   it("closes only the top dialog when closing nested dialogs", async () => {
     const user = userEvent.setup();
     const onOpenChange1 = vi.fn();
@@ -966,8 +953,12 @@ describe("Dialog", () => {
         </Dialog>
       </>,
     );
+    const dialogs = screen.getAllByRole("dialog");
+    expect(dialogs).toHaveLength(2);
     const firstDialog = screen.getByRole("dialog", { name: "Dialog 1" });
     const secondDialog = screen.getByRole("dialog", { name: "Dialog 2" });
+    expect(firstDialog).toHaveAttribute("data-state", "open");
+    expect(secondDialog).toHaveAttribute("data-state", "open");
     const closeButtons = screen.getAllByRole("button", { name: "Close dialog" });
     const lastClose = closeButtons[closeButtons.length - 1];
     if (!lastClose) throw new Error("expected close button");
@@ -1016,7 +1007,6 @@ describe("Dialog", () => {
       const navigateHint = within(dialog).getByText("Navigate");
       const footer = navigateHint.closest('[data-slot="dialog-footer"]');
       expect(footer).not.toBeNull();
-      expect(footer).toContainElement(navigateHint);
     });
 
     it("renders all hint glyphs as Kbd elements", () => {
@@ -1062,9 +1052,9 @@ describe("Dialog", () => {
 
       for (const hint of hints) {
         const kbd = screen.getByText(hint.key);
-        // Hint glyphs stay out of the tab order but remain exposed to AT (F-083).
+        // Hint glyphs stay out of the tab order; AT exposure is covered by the
+        // dedicated "exposes the hint key names" test above.
         expect(kbd.tabIndex).toBe(-1);
-        expect(kbd).not.toHaveAttribute("aria-hidden");
       }
     });
 
@@ -1083,7 +1073,6 @@ describe("Dialog", () => {
       const action = within(dialog).getByRole("button", { name: "OK" });
       const footer = action.closest('[data-slot="dialog-footer"]');
       if (!footer) throw new Error("Expected dialog footer to be present");
-      expect(within(dialog).getByRole("button", { name: "OK" })).toBeInTheDocument();
       expect(footer.querySelector("kbd")).toBeNull();
     });
 
@@ -1312,10 +1301,12 @@ describe("Dialog", () => {
 
     // fireEvent retained: backdrop click needs explicit pointer coordinates outside dialog bounds
     fireDialogPointerClick(dialog, { clientX: 80, clientY: 120 });
+    expect(onClick).toHaveBeenCalled();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    onOpenChange.mockClear();
+
     // fireEvent retained: native <dialog> cancel event has no user-event equivalent
     fireEvent(dialog, new Event("cancel", { bubbles: false }));
-
-    expect(onClick).toHaveBeenCalled();
     expect(onCancel).toHaveBeenCalled();
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
@@ -1689,18 +1680,6 @@ describe("DialogContent corner CSS tokens (CSS-only)", () => {
 });
 
 describe("Dialog.CloseIcon", () => {
-  it('renders a button with default aria-label="Close dialog" when placed inside Dialog.Content', () => {
-    render(
-      <Dialog defaultOpen>
-        <Dialog.Content>
-          <Dialog.Title>With close icon</Dialog.Title>
-          <Dialog.CloseIcon />
-        </Dialog.Content>
-      </Dialog>,
-    );
-    expect(screen.getByRole("button", { name: "Close dialog" })).toBeInTheDocument();
-  });
-
   it("accepts a custom aria-label override", () => {
     render(
       <Dialog defaultOpen>
@@ -1799,54 +1778,6 @@ describe("Dialog.CloseIcon", () => {
 });
 
 describe("Dialog focus trap", () => {
-  it("Tab from the last focusable wraps back to the first", async () => {
-    const user = userEvent.setup();
-    render(
-      <Dialog defaultOpen>
-        <Dialog.Content>
-          <Dialog.Title>Trapped dialog</Dialog.Title>
-          <Dialog.Footer>
-            <Dialog.Close>Cancel</Dialog.Close>
-            <Dialog.Action>Confirm</Dialog.Action>
-          </Dialog.Footer>
-        </Dialog.Content>
-      </Dialog>,
-    );
-
-    const cancel = screen.getByRole("button", { name: "Cancel" });
-    const confirm = screen.getByRole("button", { name: "Confirm" });
-
-    confirm.focus();
-    expect(confirm).toHaveFocus();
-
-    await user.tab();
-    expect(cancel).toHaveFocus();
-  });
-
-  it("Shift+Tab from the first focusable wraps to the last", async () => {
-    const user = userEvent.setup();
-    render(
-      <Dialog defaultOpen>
-        <Dialog.Content>
-          <Dialog.Title>Trapped dialog</Dialog.Title>
-          <Dialog.Footer>
-            <Dialog.Close>Cancel</Dialog.Close>
-            <Dialog.Action>Confirm</Dialog.Action>
-          </Dialog.Footer>
-        </Dialog.Content>
-      </Dialog>,
-    );
-
-    const cancel = screen.getByRole("button", { name: "Cancel" });
-    const confirm = screen.getByRole("button", { name: "Confirm" });
-
-    cancel.focus();
-    expect(cancel).toHaveFocus();
-
-    await user.tab({ shift: true });
-    expect(confirm).toHaveFocus();
-  });
-
   it("focuses the initialFocus target on open when provided", async () => {
     function InitialFocusDialog() {
       const confirmRef = useRef<HTMLButtonElement>(null);
@@ -1884,23 +1815,6 @@ describe("Dialog focus trap", () => {
 
     const confirm = screen.getByRole("button", { name: "Confirm" });
     await waitFor(() => expect(confirm).toHaveFocus());
-  });
-
-  it("focuses the first focusable element on open when no initialFocus is provided", async () => {
-    render(
-      <Dialog defaultOpen>
-        <Dialog.Content>
-          <Dialog.Title>Default focus dialog</Dialog.Title>
-          <Dialog.Footer>
-            <Dialog.Close>Cancel</Dialog.Close>
-            <Dialog.Action>Confirm</Dialog.Action>
-          </Dialog.Footer>
-        </Dialog.Content>
-      </Dialog>,
-    );
-
-    const cancel = screen.getByRole("button", { name: "Cancel" });
-    await waitFor(() => expect(cancel).toHaveFocus());
   });
 
   it("focuses the first footer action on open and Tab cycles through CloseIcon, wrapping at the boundaries", async () => {

@@ -1,5 +1,11 @@
 import { FooterProvider } from "@diffgazer/core/footer";
 import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
+import { HELP_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
+import {
+  createInitialReviewState,
+  type ReviewEvent,
+  reviewReducer,
+} from "@diffgazer/core/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { KeyboardProvider, useFocusZone, useScope } from "@diffgazer/keys";
 import {
@@ -10,7 +16,9 @@ import {
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { GlobalShortcuts } from "@/components/layout/global";
+import { ActivityLog } from "@/features/review/components/activity-log/log";
 import { HelpPage } from "@/features/help/components/page";
 import {
   HomePagePresentation,
@@ -30,7 +38,29 @@ vi.mock("@tanstack/react-router", () => ({
 
 vi.mock("@/features/home/lib/shutdown", () => ({ shutdown: mockShutdown }));
 
-import { GlobalShortcuts } from "@/components/layout/global";
+type ShortcutRow = { key: string; label: string };
+
+const WEB_HELP_SHORTCUTS: ShortcutRow[] = [
+  ...HELP_SHORTCUTS,
+  { key: "h", label: "Open History" },
+];
+
+function readDisplayedShortcutRows(container: HTMLElement): ShortcutRow[] {
+  return Array.from(container.querySelectorAll("kbd")).map((kbd) => ({
+    key: kbd.textContent ?? "",
+    label: kbd.nextElementSibling?.textContent ?? "",
+  }));
+}
+
+function renderHelpShortcutTable() {
+  return render(
+    <FooterProvider>
+      <KeyboardProvider>
+        <HelpPage />
+      </KeyboardProvider>
+    </FooterProvider>,
+  );
+}
 
 function NavigationContract({
   onNavigate,
@@ -130,92 +160,194 @@ function buildHomeProps(
   };
 }
 
+const timestamp = "2026-01-01T00:00:00.000Z";
+
+function makeLogEvent(index: number): ReviewEvent {
+  return {
+    type: "agent_thinking",
+    agent: "detective",
+    thought: `event-${index}`,
+    timestamp,
+  };
+}
+
+function createLogState(events: readonly ReviewEvent[]) {
+  return events.reduce(
+    (state, event) => reviewReducer(state, { type: "EVENT", event }),
+    createInitialReviewState(),
+  );
+}
+
+function orderVerifiedRows(rows: ShortcutRow[], canonical: ShortcutRow[]): ShortcutRow[] {
+  return canonical.filter((entry) =>
+    rows.some((row) => row.key === entry.key && row.label === entry.label),
+  );
+}
+
+function setLogScrollMetrics(log: HTMLElement, scrollTop: number) {
+  Object.defineProperties(log, {
+    clientHeight: { configurable: true, value: 100 },
+    scrollHeight: { configurable: true, value: 1_000 },
+    scrollTop: { configurable: true, value: scrollTop, writable: true },
+  });
+}
+
 describe("help shortcut integration", () => {
-  it("maps every displayed shortcut to live navigation, scrolling, or routing behavior", async () => {
-    const user = userEvent.setup();
-    const help = render(
-      <FooterProvider>
+  let displayedRows: ShortcutRow[];
+  const verifiedRows: ShortcutRow[] = [];
+
+  beforeAll(() => {
+    const help = renderHelpShortcutTable();
+    displayedRows = readDisplayedShortcutRows(help.container);
+    expect(displayedRows).toEqual(WEB_HELP_SHORTCUTS);
+    cleanup();
+  });
+
+  beforeEach(() => {
+    mockNavigate.mockReset();
+    mockShutdown.mockReset();
+  });
+
+  describe("navigation shortcuts", () => {
+    it("Go Back (Esc)", async () => {
+      const user = userEvent.setup();
+      renderHelpShortcutTable();
+
+      await user.keyboard("{Escape}");
+      expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
+      verifiedRows.push({ key: "Esc", label: "Go Back" });
+      cleanup();
+    });
+
+    it("Navigate Menus and Lists (↑/↓)", async () => {
+      const user = userEvent.setup();
+      const onNavigate = vi.fn();
+      const onSelect = vi.fn();
+      render(
         <KeyboardProvider>
-          <HelpPage />
-        </KeyboardProvider>
-      </FooterProvider>,
-    );
-    const displayedLabels = new Set(
-      Array.from(help.container.querySelectorAll("kbd")).map(
-        (key) => key.nextElementSibling?.textContent ?? "",
-      ),
-    );
-    const observedLabels = new Set<string>();
+          <NavigationContract onNavigate={onNavigate} onSelect={onSelect} />
+        </KeyboardProvider>,
+      );
+      screen.getByRole("listbox").focus();
+      await user.keyboard("{ArrowDown}{Enter}");
+      expect(onNavigate).toHaveBeenCalledOnce();
+      expect(onSelect).toHaveBeenCalledWith("second");
+      verifiedRows.push({ key: "↑/↓", label: "Navigate Menus and Lists" });
+      verifiedRows.push({ key: "Enter", label: "Select / Confirm" });
+      cleanup();
+    });
 
-    await user.keyboard("{Escape}");
-    expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
-    observedLabels.add("Go Back");
-    cleanup();
-
-    const onNavigate = vi.fn();
-    const onSelect = vi.fn();
-    render(
-      <KeyboardProvider>
-        <NavigationContract onNavigate={onNavigate} onSelect={onSelect} />
-      </KeyboardProvider>,
-    );
-    screen.getByRole("listbox").focus();
-    await user.keyboard("{ArrowDown}{Enter}");
-    expect(onNavigate).toHaveBeenCalledOnce();
-    expect(onSelect).toHaveBeenCalledWith("second");
-    observedLabels.add("Navigate Menus and Lists");
-    observedLabels.add("Select / Confirm");
-    cleanup();
-
-    const onSwitchPane = vi.fn();
-    render(
-      <KeyboardProvider>
-        <PaneContract onSwitch={onSwitchPane} />
-      </KeyboardProvider>,
-    );
-    await user.keyboard("{Tab}");
-    expect(onSwitchPane).toHaveBeenCalledWith("details");
-    observedLabels.add("Switch Pane");
-    cleanup();
-
-    const onScroll = vi.fn();
-    const onSwitchTab = vi.fn();
-    render(
-      <KeyboardProvider>
-        <ReviewContract onScroll={onScroll} onSwitchTab={onSwitchTab} />
-      </KeyboardProvider>,
-    );
-    await user.keyboard("j");
-    expect(screen.getByText("details:1")).toBeInTheDocument();
-    await user.keyboard("2{ArrowDown}");
-    expect(screen.getByText("explain:null")).toBeInTheDocument();
-    expect(onSwitchTab).toHaveBeenCalledOnce();
-    expect(onScroll).toHaveBeenCalledWith(80);
-    observedLabels.add("Navigate Lists and Fix Plan");
-    observedLabels.add("Switch Tab (in Review)");
-    observedLabels.add("Scroll Content");
-    cleanup();
-
-    render(
-      <FooterProvider>
+    it("Switch Pane (Tab)", async () => {
+      const user = userEvent.setup();
+      const onSwitchPane = vi.fn();
+      render(
         <KeyboardProvider>
-          <GlobalShortcuts />
-          <HomePagePresentation
-            {...buildHomeProps({ navigate: mockNavigate, shutdown: mockShutdown })}
-          />
-        </KeyboardProvider>
-      </FooterProvider>,
-    );
-    await user.keyboard("sh{Shift>}?{/Shift}q");
-    expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/settings" }));
-    expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/history" }));
-    expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/help" }));
-    await waitFor(() => expect(mockShutdown).toHaveBeenCalledOnce());
-    observedLabels.add("Open Settings");
-    observedLabels.add("Open History");
-    observedLabels.add("Open Help");
-    observedLabels.add("Quit");
+          <PaneContract onSwitch={onSwitchPane} />
+        </KeyboardProvider>,
+      );
+      await user.keyboard("{Tab}");
+      expect(onSwitchPane).toHaveBeenCalledWith("details");
+      verifiedRows.push({ key: "Tab", label: "Switch Pane" });
+      cleanup();
+    });
+  });
 
-    expect(observedLabels).toEqual(displayedLabels);
+  describe("review shortcuts", () => {
+    it("Navigate Lists and Fix Plan (j/k) and Switch Tab (1-4)", async () => {
+      const user = userEvent.setup();
+      const onScroll = vi.fn();
+      const onSwitchTab = vi.fn();
+      render(
+        <KeyboardProvider>
+          <ReviewContract onScroll={onScroll} onSwitchTab={onSwitchTab} />
+        </KeyboardProvider>,
+      );
+      await user.keyboard("j");
+      expect(screen.getByText("details:1")).toBeInTheDocument();
+      await user.keyboard("2");
+      expect(screen.getByText("explain:null")).toBeInTheDocument();
+      expect(onSwitchTab).toHaveBeenCalledOnce();
+      verifiedRows.push({ key: "j/k", label: "Navigate Lists and Fix Plan" });
+      verifiedRows.push({ key: "1-4", label: "Switch Tab (in Review)" });
+      cleanup();
+    });
+
+    it("Scroll Content (↑/↓) via review detail scrolling", async () => {
+      const user = userEvent.setup();
+      const onScroll = vi.fn();
+      render(
+        <KeyboardProvider>
+          <ReviewContract onScroll={onScroll} onSwitchTab={vi.fn()} />
+        </KeyboardProvider>,
+      );
+      await user.keyboard("{ArrowDown}{ArrowUp}");
+      expect(onScroll).toHaveBeenCalledWith(80);
+      expect(onScroll).toHaveBeenCalledWith(-80);
+      verifiedRows.push({ key: "↑/↓", label: "Scroll Content" });
+      cleanup();
+    });
+
+    it("Scroll Content (PgUp/PgDn and Home/End) via activity log", async () => {
+      const user = userEvent.setup();
+      const state = createLogState(
+        Array.from({ length: 401 }, (_, index) => makeLogEvent(index)),
+      );
+      render(<ActivityLog events={state.events} />);
+      const log = screen.getByRole("log");
+      setLogScrollMetrics(log, 1_000);
+      log.focus();
+
+      await user.keyboard("{Home}");
+      expect(await screen.findByText("event-0")).toBeInTheDocument();
+
+      await user.keyboard("{PageDown}");
+      expect(await screen.findByText("event-200")).toBeInTheDocument();
+      await user.keyboard("{PageUp}");
+      expect(await screen.findByText("event-0")).toBeInTheDocument();
+      verifiedRows.push({ key: "PgUp/PgDn", label: "Scroll Content" });
+
+      await user.keyboard("{End}");
+      expect(await screen.findByText("event-400")).toBeInTheDocument();
+      verifiedRows.push({ key: "Home/End", label: "Scroll Content" });
+      cleanup();
+    });
+  });
+
+  describe("global shortcuts", () => {
+    it("Open Settings, Open History, Open Help, and Quit", async () => {
+      const user = userEvent.setup();
+      render(
+        <FooterProvider>
+          <KeyboardProvider>
+            <GlobalShortcuts />
+            <HomePagePresentation
+              {...buildHomeProps({ navigate: mockNavigate, shutdown: mockShutdown })}
+            />
+          </KeyboardProvider>
+        </FooterProvider>,
+      );
+
+      await user.keyboard("s");
+      expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/settings" }));
+      verifiedRows.push({ key: "s", label: "Open Settings" });
+
+      await user.keyboard("h");
+      expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/history" }));
+      verifiedRows.push({ key: "h", label: "Open History" });
+
+      await user.keyboard("{Shift>}?{/Shift}");
+      expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/help" }));
+      verifiedRows.push({ key: "?", label: "Open Help" });
+
+      await user.keyboard("q");
+      await waitFor(() => expect(mockShutdown).toHaveBeenCalledOnce());
+      verifiedRows.push({ key: "q", label: "Quit" });
+      cleanup();
+    });
+  });
+
+  it("maps every displayed key/label row to live behavior", () => {
+    expect(verifiedRows).toHaveLength(displayedRows.length);
+    expect(orderVerifiedRows(verifiedRows, displayedRows)).toEqual(displayedRows);
   });
 });

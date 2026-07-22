@@ -15,6 +15,14 @@ import { resolveInside, toPosixPath } from "./paths.mjs";
 
 const HASH_RE = /^[a-f0-9]{64}$/;
 
+export function collectGeneratedDistParityErrors(rootDir) {
+  return collectTreeParityErrors(
+    resolve(rootDir, "cli/add/src/generated"),
+    resolve(rootDir, "cli/add/dist/generated"),
+    "@diffgazer/add dist generated",
+  );
+}
+
 function artifactCopyFilter(path) {
   return (
     !/\.(md)$/i.test(path) &&

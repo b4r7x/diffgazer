@@ -13,47 +13,56 @@
     {
       "path": "registry/ui/card/index.ts",
       "content": "import { type CardProps, Card as CardRoot, cardVariants } from \"./card\";\nimport { CardAction, type CardActionProps } from \"./card-action\";\nimport { CardContent, type CardContentProps } from \"./card-content\";\nimport { CardDescription, type CardDescriptionProps } from \"./card-description\";\nimport { CardFooter, type CardFooterProps } from \"./card-footer\";\nimport { CardHeader, type CardHeaderProps } from \"./card-header\";\nimport { CardLabel, type CardLabelProps } from \"./card-label\";\nimport { CardTitle, type CardTitleProps } from \"./card-title\";\n\n/** Main card surface with surface, size, interactive, and as props. */\nconst Card = Object.assign(CardRoot, {\n  Action: CardAction,\n  Header: CardHeader,\n  Label: CardLabel,\n  Title: CardTitle,\n  Description: CardDescription,\n  Content: CardContent,\n  Footer: CardFooter,\n});\n\nexport { Card, cardVariants, type CardProps };\nexport { CardAction, type CardActionProps };\nexport { CardHeader, type CardHeaderProps };\nexport { CardLabel, type CardLabelProps };\nexport { CardTitle, type CardTitleProps };\nexport { CardDescription, type CardDescriptionProps };\nexport { CardContent, type CardContentProps };\nexport { CardFooter, type CardFooterProps };\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/card/index.ts"
     },
     {
       "path": "registry/ui/card/card.tsx",
       "content": "import { cva, type VariantProps } from \"class-variance-authority\";\nimport type { ComponentPropsWithRef, ElementType } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Class variants for card. */\nexport const cardVariants = cva(\"w-full relative bg-background\", {\n  variants: {\n    surface: {\n      flat: \"border border-border/50\",\n      stacked:\n        \"border border-border/50 shadow-[3px_3px_0_0_var(--background),4px_4px_0_0_color-mix(in_oklab,var(--border)_50%,transparent)]\",\n      inset:\n        \"shadow-[inset_0_2px_4px_rgba(0,0,0,0.4),inset_0_0_0_1px_color-mix(in_oklab,var(--border)_25%,transparent)] bg-[color-mix(in_oklab,var(--foreground)_3%,var(--background))]\",\n      dotted: \"border border-dashed border-border/70 bg-transparent\",\n      glow: \"border border-border/50 shadow-[0_0_15px_color-mix(in_oklab,var(--border)_12%,transparent),0_0_5px_color-mix(in_oklab,var(--border)_8%,transparent)]\",\n    },\n    size: {\n      default: \"\",\n      sm: \"max-w-sm\",\n      md: \"max-w-md\",\n      lg: \"max-w-lg\",\n    },\n    interactive: {\n      true: \"cursor-pointer transition-[border-color,background-color,box-shadow] duration-150 ease-out hover:bg-[color-mix(in_oklab,var(--foreground)_4%,var(--background))] focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2\",\n      false: \"\",\n    },\n  },\n  compoundVariants: [\n    {\n      surface: \"flat\",\n      interactive: true,\n      className: \"hover:border-border\",\n    },\n    {\n      surface: \"stacked\",\n      interactive: true,\n      className:\n        \"hover:shadow-[5px_5px_0_0_var(--background),6px_6px_0_0_color-mix(in_oklab,var(--border)_50%,transparent)]\",\n    },\n    {\n      surface: \"inset\",\n      interactive: true,\n      className:\n        \"hover:shadow-[inset_0_2px_6px_rgba(0,0,0,0.5),inset_0_0_0_1px_color-mix(in_oklab,var(--border)_35%,transparent)]\",\n    },\n    {\n      surface: \"dotted\",\n      interactive: true,\n      className: \"hover:border-border\",\n    },\n    {\n      surface: \"glow\",\n      interactive: true,\n      className:\n        \"hover:border-border/70 hover:shadow-[0_0_20px_color-mix(in_oklab,var(--border)_18%,transparent),0_0_8px_color-mix(in_oklab,var(--border)_12%,transparent)]\",\n    },\n  ],\n  defaultVariants: { surface: \"flat\", size: \"default\", interactive: false },\n});\n\n/** Props for card own. */\ntype CardOwnProps = VariantProps<typeof cardVariants>;\ntype CardElement = \"div\" | \"article\" | \"section\" | \"aside\" | \"a\" | \"button\";\n\n/** Props for card. */\nexport type CardProps<T extends CardElement = \"div\"> = Omit<\n  ComponentPropsWithRef<T>,\n  keyof CardOwnProps | \"as\"\n> &\n  CardOwnProps & {\n    as?: T;\n  };\n\n/** Main card surface with surface, size, interactive, and as props. */\nexport function Card<T extends CardElement = \"div\">(props: CardProps<T>) {\n  const { as, ref, className, surface, size, interactive, ...rest } =\n    props as CardProps<CardElement>;\n  // The host element is only known at the call site, so the JSX tag is typed as\n  // a permissive ElementType; per-element prop validation happens at the call\n  // site through CardProps<T>.\n  const Tag = (as ?? \"div\") as ElementType;\n  return (\n    <Tag\n      data-slot=\"card\"\n      data-surface={surface ?? \"flat\"}\n      data-interactive={interactive || undefined}\n      // polymorphic ref: the element type is only known at the call site,\n      // so the ref type cannot be narrowed inside the generic component body.\n      ref={ref as never}\n      className={cn(cardVariants({ surface, size, interactive }), className)}\n      {...rest}\n    />\n  );\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/card/card.tsx"
     },
     {
       "path": "registry/ui/card/card-action.tsx",
       "content": "import type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for card action. */\nexport type CardActionProps = ComponentPropsWithRef<\"div\">;\n\n/** Action slot in header (positioned top-right via grid) */\nexport function CardAction({ className, ...props }: CardActionProps) {\n  return (\n    <div\n      data-slot=\"card-action\"\n      className={cn(\"col-start-2 row-span-2 row-start-1 self-start justify-self-end\", className)}\n      {...props}\n    />\n  );\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/card/card-action.tsx"
     },
     {
       "path": "registry/ui/card/card-header.tsx",
       "content": "import type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for card header. */\nexport type CardHeaderProps = ComponentPropsWithRef<\"div\">;\n\n/** Header region with grid layout and bottom border. */\nexport function CardHeader({ className, ...props }: CardHeaderProps) {\n  return (\n    <div\n      data-slot=\"card-header\"\n      className={cn(\n        \"grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 border-b border-border px-4 py-3 text-sm text-foreground has-data-[slot=card-action]:grid-cols-[1fr_auto]\",\n        className,\n      )}\n      {...props}\n    />\n  );\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/card/card-header.tsx"
     },
     {
       "path": "registry/ui/card/card-title.tsx",
       "content": "import type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for card title. */\nexport type CardTitleProps = ComponentPropsWithRef<\"h3\"> & {\n  as?: \"h2\" | \"h3\" | \"h4\" | \"h5\";\n};\n\n/** Title text with configurable heading level (as prop) */\nexport function CardTitle({ as: Tag = \"h3\", className, ...props }: CardTitleProps) {\n  return (\n    <Tag\n      data-slot=\"card-title\"\n      className={cn(\"text-xl font-bold text-foreground tracking-wide\", className)}\n      {...props}\n    />\n  );\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/card/card-title.tsx"
     },
     {
       "path": "registry/ui/card/card-description.tsx",
       "content": "import type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for card description. */\nexport type CardDescriptionProps = ComponentPropsWithRef<\"p\">;\n\n/** Supporting description text. */\nexport function CardDescription({ className, ...props }: CardDescriptionProps) {\n  return (\n    <p\n      data-slot=\"card-description\"\n      className={cn(\"text-sm text-muted-foreground\", className)}\n      {...props}\n    />\n  );\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/card/card-description.tsx"
     },
     {
       "path": "registry/ui/card/card-content.tsx",
       "content": "import type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for card content. */\nexport type CardContentProps = ComponentPropsWithRef<\"div\">;\n\n/** Body content region. */\nexport function CardContent({ className, ...props }: CardContentProps) {\n  return <div data-slot=\"card-content\" className={cn(\"p-6\", className)} {...props} />;\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/card/card-content.tsx"
     },
     {
       "path": "registry/ui/card/card-label.tsx",
       "content": "import type { VariantProps } from \"class-variance-authority\";\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cornerLabelVariants } from \"@/lib/corner-label-variants\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for card label. */\nexport type CardLabelProps = ComponentPropsWithRef<\"div\"> &\n  VariantProps<typeof cornerLabelVariants>;\n\n/** Floating border label with variant='border' or variant='gap'. */\nexport function CardLabel({ className, variant, ...props }: CardLabelProps) {\n  return (\n    <div\n      data-slot=\"card-label\"\n      className={cn(cornerLabelVariants({ variant }), className)}\n      {...props}\n    />\n  );\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/card/card-label.tsx"
     },
     {
       "path": "registry/ui/card/card-footer.tsx",
       "content": "import type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for card footer. */\nexport type CardFooterProps = ComponentPropsWithRef<\"div\">;\n\n/** Footer actions/meta region. */\nexport function CardFooter({ className, ...props }: CardFooterProps) {\n  return (\n    <div\n      data-slot=\"card-footer\"\n      className={cn(\n        \"flex justify-end gap-3 border-t border-border bg-background/50 px-6 py-4\",\n        className,\n      )}\n      {...props}\n    />\n  );\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/card/card-footer.tsx"
     }
   ],
   "meta": {

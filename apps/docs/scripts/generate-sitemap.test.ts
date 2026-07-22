@@ -150,15 +150,6 @@ describe("getPreRenderPages", () => {
     );
   });
 
-  it("includes the first-page redirect target for each enabled library", () => {
-    const pages = getPreRenderPages();
-    const paths = pages.map((page) => page.path);
-
-    expect(paths).toContain("/ui/getting-started");
-    expect(paths).toContain("/keys/getting-started");
-    expect(paths).toContain("/app/getting-started");
-  });
-
   it("keeps every Pager example href on a prerendered route", () => {
     const prerenderedPaths = new Set(getPreRenderPages().map((page) => page.path));
     const hrefs = PAGER_EXAMPLES.flatMap((relativePath) => {

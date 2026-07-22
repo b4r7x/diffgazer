@@ -2640,6 +2640,7 @@
   },
   "files": [
     "src/hooks/use-focus-trap.ts",
+    "src/hooks/utils/focus-trap-controller.ts",
     "src/hooks/use-focus-restore.ts",
     "src/hooks/utils/focus-restore.ts",
     "src/hooks/utils/focusable.ts",

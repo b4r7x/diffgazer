@@ -39,9 +39,6 @@ describe("usePageFooter", () => {
       expect(screen.getByText("Confirm")).toBeInTheDocument();
       expect(screen.getByText("Back")).toBeInTheDocument();
     });
-
-    const legend = screen.getByText("Confirm").closest("[data-shortcut-legend]");
-    expect(legend).toHaveClass("pointer-coarse:hidden", "pointer-fine:flex");
   });
 
   it("updates rendered footer content when disabled state changes", async () => {

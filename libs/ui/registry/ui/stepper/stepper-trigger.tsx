@@ -150,23 +150,3 @@ function Glyph({ variant, status, tagLabel }: GlyphProps) {
 
   return <>{STEP_INDICATOR_GLYPHS[variant][status]}</>;
 }
-
-export function getStepperIndicatorGlyph(variant: StepperVariant, status: StepStatus): string {
-  if (variant === "numbered") {
-    switch (status) {
-      case "completed":
-        return NUMBERED_COMPLETED_GLYPH;
-      case "error":
-        return NUMBERED_ERROR_GLYPH;
-      case "skipped":
-        return NUMBERED_SKIPPED_GLYPH;
-      case "disabled":
-        return NUMBERED_DISABLED_GLYPH;
-      default:
-        return ""; // CSS counter
-    }
-  }
-  if (variant === "ascii" && status === "active") return "[~]";
-  if (variant === "tag") return DEFAULT_STEP_STATUS_LABELS[status];
-  return STEP_INDICATOR_GLYPHS[variant][status];
-}

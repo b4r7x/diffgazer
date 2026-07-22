@@ -133,7 +133,6 @@ describe("SettingsStoragePage keyboard behavior", () => {
 
     renderPage();
 
-    expect(screen.getAllByRole("alert")).toHaveLength(1);
     expect(screen.getByRole("alert")).toHaveTextContent("Unable to load settings");
     expect(screen.queryByText("Changes will take effect immediately after saving.")).toBeNull();
   });

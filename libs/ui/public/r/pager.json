@@ -12,17 +12,20 @@
     {
       "path": "registry/ui/pager/index.ts",
       "content": "\"use client\";\n\nimport { type PagerProps, Pager as PagerRoot } from \"./pager\";\nimport { PagerLink, type PagerLinkProps, type PagerLinkRenderProps } from \"./pager-link\";\n\nconst Pager = Object.assign(PagerRoot, {\n  Link: PagerLink,\n});\n\nexport { Pager, type PagerProps };\nexport { PagerLink, type PagerLinkProps, type PagerLinkRenderProps };\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/pager/index.ts"
     },
     {
       "path": "registry/ui/pager/pager.tsx",
       "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for pager. */\nexport interface PagerProps extends ComponentPropsWithRef<\"nav\"> {}\n\n/** Root nav element with top border and flex layout. */\nexport function Pager({ className, ref, children, ...props }: PagerProps) {\n  return (\n    <nav\n      ref={ref}\n      data-slot=\"pager\"\n      aria-label=\"Page navigation\"\n      className={cn(\n        \"flex items-center justify-between gap-4 border-t border-border pt-4 mt-8\",\n        className,\n      )}\n      {...props}\n    >\n      {children}\n    </nav>\n  );\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/pager/pager.tsx"
     },
     {
       "path": "registry/ui/pager/pager-link.tsx",
       "content": "\"use client\";\n\nimport type { AnchorHTMLAttributes, ComponentPropsWithRef, ReactNode, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for pager link render. */\nexport type PagerLinkRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {\n  ref: Ref<HTMLAnchorElement>;\n  className: string;\n  rel: string;\n  direction: \"previous\" | \"next\";\n};\n\n/** Props for pager link. */\nexport interface PagerLinkProps extends Omit<ComponentPropsWithRef<\"a\">, \"children\"> {\n  /**\n   * Link label, or a render function that receives ref, className, rel, direction, and\n   * remaining anchor props for framework Link integration.\n   */\n  children: ReactNode | ((props: PagerLinkRenderProps) => ReactNode);\n  /** Selects the arrow glyph, rel attribute (prev/next), and alignment. */\n  direction: \"previous\" | \"next\";\n}\n\n/** Renders a previous or next pagination link. */\nexport function PagerLink({ className, ref, children, direction, ...props }: PagerLinkProps) {\n  const rel = direction === \"previous\" ? \"prev\" : \"next\";\n  const resolvedClassName = cn(\n    \"text-xs font-mono text-muted-foreground hover:text-foreground transition-colors\",\n    direction === \"next\" && \"ml-auto\",\n    className,\n  );\n\n  if (typeof children === \"function\") {\n    return (\n      <>{children({ ref: ref ?? null, className: resolvedClassName, rel, direction, ...props })}</>\n    );\n  }\n\n  return (\n    <a ref={ref} rel={rel} className={resolvedClassName} {...props}>\n      {direction === \"previous\" && <span aria-hidden=\"true\">&larr; </span>}\n      {children}\n      {direction === \"next\" && <span aria-hidden=\"true\"> &rarr;</span>}\n    </a>\n  );\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/pager/pager-link.tsx"
     }
   ],
   "meta": {

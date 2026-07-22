@@ -128,3 +128,98 @@ describe("createGitService with real git porcelain output", () => {
     expect(runGit("status", "--porcelain=v1")).toContain("DD conflicted.txt");
   });
 });
+
+describe("structured git branch status", () => {
+  const repositories: string[] = [];
+
+  afterEach(() => {
+    for (const repository of repositories.splice(0)) {
+      rmSync(repository, { recursive: true, force: true });
+    }
+  });
+
+  function createRepository(prefix: string): string {
+    const repository = mkdtempSync(join(tmpdir(), prefix));
+    repositories.push(repository);
+    return repository;
+  }
+
+  function runGitIn(repository: string, ...args: string[]): string {
+    return execFileSync("git", args, {
+      cwd: repository,
+      encoding: "utf8",
+      stdio: "pipe",
+    });
+  }
+
+  function configureAuthor(repository: string): void {
+    runGitIn(repository, "config", "user.name", "Diffgazer Test");
+    runGitIn(repository, "config", "user.email", "diffgazer@example.invalid");
+  }
+
+  function commitFile(repository: string, contents: string, message: string): void {
+    writeFileSync(join(repository, "tracked.txt"), contents);
+    runGitIn(repository, "add", "--", "tracked.txt");
+    runGitIn(repository, "commit", "--quiet", "-m", message);
+  }
+
+  it("reports the named branch in a real unborn repository", async () => {
+    const repository = createRepository("diffgazer-unborn-branch-");
+    runGitIn(repository, "init", "--quiet", "--initial-branch=trunk");
+
+    const result = await createGitService({ cwd: repository }).getStatus();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.branch).toBe("trunk");
+    expect(result.value.remoteBranch).toBeNull();
+    expect(result.value.ahead).toBe(0);
+    expect(result.value.behind).toBe(0);
+  });
+
+  it("represents a real detached HEAD without inventing a branch name", async () => {
+    const repository = createRepository("diffgazer-detached-branch-");
+    runGitIn(repository, "init", "--quiet", "--initial-branch=main");
+    configureAuthor(repository);
+    commitFile(repository, "base\n", "base");
+    runGitIn(repository, "checkout", "--quiet", "--detach", "HEAD");
+
+    const result = await createGitService({ cwd: repository }).getStatus();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.branch).toBeNull();
+    expect(result.value.remoteBranch).toBeNull();
+  });
+
+  it("reads structured upstream ahead and behind counts", async () => {
+    const remote = createRepository("diffgazer-upstream-remote-");
+    runGitIn(remote, "init", "--bare", "--quiet", "--initial-branch=main");
+
+    const local = createRepository("diffgazer-upstream-local-");
+    runGitIn(local, "init", "--quiet", "--initial-branch=main");
+    configureAuthor(local);
+    commitFile(local, "base\n", "base");
+    runGitIn(local, "remote", "add", "origin", remote);
+    runGitIn(local, "push", "--quiet", "--set-upstream", "origin", "main");
+
+    const peerParent = createRepository("diffgazer-upstream-peer-");
+    const peer = join(peerParent, "repository");
+    runGitIn(peerParent, "clone", "--quiet", remote, peer);
+    configureAuthor(peer);
+    commitFile(peer, "base\npeer\n", "peer");
+    runGitIn(peer, "push", "--quiet", "origin", "main");
+
+    commitFile(local, "base\nlocal\n", "local");
+    runGitIn(local, "fetch", "--quiet", "origin");
+
+    const result = await createGitService({ cwd: local }).getStatus();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.branch).toBe("main");
+    expect(result.value.remoteBranch).toBe("origin/main");
+    expect(result.value.ahead).toBe(1);
+    expect(result.value.behind).toBe(1);
+  });
+});

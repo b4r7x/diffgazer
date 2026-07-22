@@ -1,4 +1,4 @@
-import { render, waitFor, within } from "@testing-library/react";
+import { act, render, waitFor, within } from "@testing-library/react";
 import { type RefObject, useRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { useFloatingIndicator } from "./use-floating-indicator";
@@ -109,7 +109,7 @@ describe("useFloatingIndicator", () => {
     iframe.remove();
   });
 
-  it("disconnects from a replaced container and measures and observes its replacement", async () => {
+  it("re-measures when resize/mutation callbacks fire, and disconnects and re-observes a replaced container", async () => {
     const resizeObserverDescriptor = Object.getOwnPropertyDescriptor(globalThis, "ResizeObserver");
     const mutationObserverDescriptor = Object.getOwnPropertyDescriptor(
       globalThis,
@@ -118,18 +118,22 @@ describe("useFloatingIndicator", () => {
     const resizeObservers: Array<{
       observe: ReturnType<typeof vi.fn>;
       disconnect: ReturnType<typeof vi.fn>;
+      callback: ResizeObserverCallback;
     }> = [];
     const mutationObservers: Array<{
       observe: ReturnType<typeof vi.fn>;
       disconnect: ReturnType<typeof vi.fn>;
+      callback: MutationCallback;
     }> = [];
 
     class MockResizeObserver {
       observe = vi.fn();
       unobserve = vi.fn();
       disconnect = vi.fn();
+      callback: ResizeObserverCallback;
 
-      constructor(_callback: ResizeObserverCallback) {
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
         resizeObservers.push(this);
       }
     }
@@ -138,8 +142,10 @@ describe("useFloatingIndicator", () => {
       observe = vi.fn();
       disconnect = vi.fn();
       takeRecords = vi.fn(() => []);
+      callback: MutationCallback;
 
-      constructor(_callback: MutationCallback) {
+      constructor(callback: MutationCallback) {
+        this.callback = callback;
         mutationObservers.push(this);
       }
     }
@@ -156,22 +162,28 @@ describe("useFloatingIndicator", () => {
     const view = render(<ReplacingIndicatorProbe version="first" />);
     try {
       expect(view.getByTestId("rect")).toHaveTextContent("20:40");
-      const firstContainer = view.getByTestId("container");
+
       const firstTarget = view.getByTestId("target");
-      expect(resizeObservers[0]?.observe).toHaveBeenCalledWith(firstContainer);
-      expect(resizeObservers[0]?.observe).toHaveBeenCalledWith(firstTarget);
+      firstTarget.getBoundingClientRect = () =>
+        ({ left: 50, top: 10, width: 60, height: 20 }) as DOMRect;
+      act(() => {
+        resizeObservers[0]?.callback([], resizeObservers[0] as unknown as ResizeObserver);
+      });
+      expect(view.getByTestId("rect")).toHaveTextContent("40:60");
 
       view.rerender(<ReplacingIndicatorProbe version="second" />);
 
       await waitFor(() => expect(view.getByTestId("rect")).toHaveTextContent("80:80"));
-      expect(resizeObservers[0]?.disconnect).toHaveBeenCalledTimes(1);
-      expect(mutationObservers[0]?.disconnect).toHaveBeenCalledTimes(1);
-      expect(resizeObservers[1]?.observe).toHaveBeenCalledWith(view.getByTestId("container"));
-      expect(resizeObservers[1]?.observe).toHaveBeenCalledWith(view.getByTestId("target"));
-      expect(mutationObservers[1]?.observe).toHaveBeenCalledWith(view.getByTestId("container"), {
-        childList: true,
-        subtree: true,
+      expect(resizeObservers[0]?.disconnect).toHaveBeenCalled();
+      expect(mutationObservers[0]?.disconnect).toHaveBeenCalled();
+
+      const secondTarget = view.getByTestId("target");
+      secondTarget.getBoundingClientRect = () =>
+        ({ left: 120, top: 10, width: 30, height: 20 }) as DOMRect;
+      act(() => {
+        mutationObservers[1]?.callback([], mutationObservers[1] as unknown as MutationObserver);
       });
+      expect(view.getByTestId("rect")).toHaveTextContent("110:30");
     } finally {
       view.unmount();
       restoreProperty(globalThis, "ResizeObserver", resizeObserverDescriptor);

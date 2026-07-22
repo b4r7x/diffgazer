@@ -1,7 +1,8 @@
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { dirname } from "node:path";
 import pc from "picocolors";
-import { cleanEmptyDirs, type WriteResult, writeFileSafe } from "./fs.js";
+import { cleanEmptyDirs } from "./fs/directories.js";
+import { type WriteResult, writeFileSafe } from "./fs/writes.js";
 import { fileAction, toErrorMessage, warn } from "./terminal.js";
 
 export interface FileOp {

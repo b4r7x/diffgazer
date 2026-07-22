@@ -5,19 +5,17 @@ import {
   type RefObject,
   useCallback,
   useId,
-  useLayoutEffect,
   useMemo,
   useRef,
-  useState,
 } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useNavigation } from "@/hooks/use-navigation";
 import { encodeDomIdSegment } from "@/lib/dom-id";
 import { matchesSearch } from "@/lib/search";
 import {
-  isSelectableItemEligible,
-  sortSelectableCollectionItems,
-} from "@/lib/selectable-collection";
+  type CommandPaletteItemRegistration,
+  useCommandPaletteItemRegistry,
+} from "./use-item-registry";
 
 /** Context value shared by command palette. */
 export interface CommandPaletteContextValue {
@@ -60,20 +58,6 @@ export interface CommandPaletteContextValue {
 }
 
 const defaultFilter = matchesSearch;
-
-function areCommandPaletteItemsEqual(
-  current: CommandPaletteItemRegistration,
-  next: CommandPaletteItemRegistration,
-): boolean {
-  return (
-    current.registrationId === next.registrationId &&
-    current.id === next.id &&
-    current.value === next.value &&
-    current.disabled === next.disabled &&
-    current.onSelect === next.onSelect &&
-    current.element === next.element
-  );
-}
 
 export function getCommandPaletteItemDomId(listId: string, id: string): string {
   const encoded = encodeDomIdSegment(id);
@@ -120,7 +104,6 @@ export function useCommandPaletteState({
   shouldFilter = true,
   filter: filterProp,
 }: UseCommandPaletteStateOptions): CommandPaletteContextValue {
-  const [registeredItems, setRegisteredItems] = useState<CommandPaletteItemRegistration[]>([]);
   const filter = filterProp ?? defaultFilter;
   const [isOpen, setIsOpen] = useControllableState({
     value: controlledOpen,
@@ -144,54 +127,12 @@ export function useCommandPaletteState({
   const inputRef = useRef<HTMLInputElement>(null);
   const paletteId = useId();
 
-  // hidden/inert/aria-hidden toggles do not change the registered items array, so
-  // force a fresh reference on those mutations or activeItems keeps stale eligibility.
-  useLayoutEffect(() => {
-    if (!isOpen) return;
-    const list = listRef.current;
-    const view = list?.ownerDocument.defaultView;
-    if (!list || !view?.MutationObserver) return;
-
-    const attributeFilter = [
-      "hidden",
-      "inert",
-      "aria-hidden",
-      "class",
-      "style",
-      "disabled",
-      "open",
-    ];
-    // Keep collection eligibility invalidation aligned with lib/selectable-collection.ts.
-    const observer = new view.MutationObserver(() => {
-      setRegisteredItems((current) => [...current]);
-    });
-    observer.observe(list, {
-      subtree: true,
-      attributes: true,
-      attributeFilter,
-    });
-
-    let ancestor = list.parentElement;
-    while (ancestor) {
-      observer.observe(ancestor, {
-        attributes: true,
-        attributeFilter,
-      });
-      ancestor = ancestor.parentElement;
-    }
-
-    return () => observer.disconnect();
-  }, [isOpen]);
-
-  const activeItems = useMemo(
-    () => sortSelectableCollectionItems(registeredItems).filter(isSelectableItemEligible),
-    [registeredItems],
+  const { itemIds, getItemOnSelect, registerItem, unregisterItem } = useCommandPaletteItemRegistry(
+    {
+      listRef,
+      enabled: isOpen,
+    },
   );
-  const itemCallbacks = useMemo(
-    () => new Map(activeItems.map((item) => [item.id, item.onSelect])),
-    [activeItems],
-  );
-  const itemIds = useMemo(() => activeItems.map((item) => item.id), [activeItems]);
 
   const handleOpenChange = useCallback(
     (next: boolean) => {
@@ -203,39 +144,12 @@ export function useCommandPaletteState({
 
   const handleActivate = useCallback(
     (id: string) => {
-      itemCallbacks.get(id)?.();
+      getItemOnSelect(id)?.();
       onActivate?.(id);
       handleOpenChange(false);
     },
-    [handleOpenChange, itemCallbacks, onActivate],
+    [getItemOnSelect, handleOpenChange, onActivate],
   );
-
-  const registerItem = useCallback((item: CommandPaletteItemRegistration) => {
-    setRegisteredItems((current) => {
-      const existingIndex = current.findIndex(
-        (candidate) => candidate.registrationId === item.registrationId,
-      );
-      if (existingIndex === -1) return [...current, item];
-      const existingItem = current[existingIndex];
-      if (existingItem === undefined) return current;
-      if (areCommandPaletteItemsEqual(existingItem, item)) return current;
-
-      const next = [...current];
-      next[existingIndex] = item;
-      return next;
-    });
-  }, []);
-
-  const unregisterItem = useCallback((registrationId: string) => {
-    setRegisteredItems((current) => {
-      const existingIndex = current.findIndex((item) => item.registrationId === registrationId);
-      if (existingIndex === -1) return current;
-
-      const next = [...current];
-      next.splice(existingIndex, 1);
-      return next;
-    });
-  }, []);
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef: listRef,
@@ -285,24 +199,6 @@ export function useCommandPaletteState({
       unregisterItem,
     ],
   );
-}
-
-/** Selectable item with icon, shortcut, tone, value. */
-export interface CommandPaletteItemMetadata {
-  /** Stable unique id used for highlight state and aria-activedescendant. */
-  id: string;
-  /** Searchable text. Defaults to id when omitted. */
-  value: string;
-  /** Disable activation and skip in keyboard navigation. */
-  disabled: boolean;
-  /** Called when the item is activated. Runs before CommandPalette.onActivate. */
-  onSelect?: () => void;
-}
-
-export interface CommandPaletteItemRegistration extends CommandPaletteItemMetadata {
-  /** DOM id for registration. */
-  registrationId: string;
-  element: HTMLElement | null;
 }
 
 function getEffectiveHighlighted(

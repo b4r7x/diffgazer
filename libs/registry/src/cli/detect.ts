@@ -1,7 +1,8 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
-import { isEnoent, readTsConfigPaths } from "./fs.js";
+import { isEnoent } from "./fs/path-safety.js";
+import { readTsConfigPaths } from "./fs/tsconfig-paths.js";
 import { PACKAGE_MANAGER_LOCKFILE_ENTRIES } from "./lockfiles.js";
 import { toErrorMessage, warn } from "./terminal.js";
 

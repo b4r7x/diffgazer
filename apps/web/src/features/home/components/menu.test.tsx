@@ -75,10 +75,12 @@ describe("HomeMenu — Resume Last Review gating", () => {
   it("disables every menu item and shows a pending status while a review is starting", () => {
     renderHomeMenu({ pending: true });
     expect(screen.getByRole("status")).toHaveTextContent(/starting review/i);
-    expect(screen.getByRole("menuitem", { name: "Review Unstaged" })).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
+    for (const { label } of MENU_ITEMS) {
+      expect(screen.getByRole("menuitem", { name: label })).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+    }
   });
 
   it("disables all review actions when the directory is untrusted regardless of resumable session", () => {

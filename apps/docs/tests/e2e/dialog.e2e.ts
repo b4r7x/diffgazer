@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 test.describe("Dialog", () => {
-  test("opens, traps focus, closes via Escape with no a11y violations", async ({ page }) => {
+  test("opens, closes via Escape, and has no a11y violations", async ({ page }) => {
     await page.goto("/ui/components/dialog");
     await expect(page.getByRole("heading", { level: 1, name: /dialog/i })).toBeVisible();
 

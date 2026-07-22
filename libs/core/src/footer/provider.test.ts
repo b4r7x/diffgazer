@@ -4,7 +4,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
-import { MAIN_MENU_SHORTCUTS, type Shortcut } from "../schemas/presentation/index.js";
+import type { Shortcut } from "../schemas/presentation/index.js";
 import { FooterProvider, useFooterActions, useFooterData } from "./provider.js";
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -71,14 +71,22 @@ describe("FooterProvider", () => {
   it("throws when actions hook used without provider", () => {
     expect(() => renderHook(() => useFooterActions())).toThrow(/FooterProvider/);
   });
-});
 
-describe("MAIN_MENU_SHORTCUTS", () => {
-  it("uses the canonical Navigate/Select/Quit wording", () => {
-    expect(MAIN_MENU_SHORTCUTS).toEqual([
-      { key: "↑/↓", label: "Navigate" },
-      { key: "Enter", label: "Select" },
-      { key: "q", label: "Quit" },
-    ]);
+  it("keeps the actions reference stable across data changes (split contract)", () => {
+    const { result } = renderHook(() => ({ actions: useFooterActions(), data: useFooterData() }), {
+      wrapper,
+    });
+
+    const initialActions = result.current.actions;
+
+    act(() => {
+      result.current.actions.setShortcuts([{ key: "Enter", label: "Confirm" }]);
+    });
+    expect(result.current.actions).toBe(initialActions);
+
+    act(() => {
+      result.current.actions.setRightShortcuts([{ key: "Esc", label: "Back" }]);
+    });
+    expect(result.current.actions).toBe(initialActions);
   });
 });

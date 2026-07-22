@@ -4,6 +4,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -180,6 +181,53 @@ describe("shadcn binary lifecycle", () => {
       "Local shadcn CLI binary not found",
     );
   });
+
+  it("runs the shadcn binary from rootDir with the exact build/registry/--output arguments and copies the registry index", () => {
+    const binDir = join(tempDir, "node_modules", ".bin");
+    mkdirSync(binDir, { recursive: true });
+    const binPath = join(binDir, "shadcn");
+    const callLogPath = join(tempDir, "shadcn-call.log");
+    writeFileSync(
+      binPath,
+      [
+        "#!/bin/sh",
+        `mkdir -p "$4"`,
+        `{ pwd -P; printf '%s\\n' "$1" "$2" "$3" "$4"; } > "${callLogPath}"`,
+        "exit 0",
+      ].join("\n"),
+    );
+    chmodSync(binPath, 0o755);
+
+    const registryPath = "registry/registry.json";
+    mkdirSync(join(tempDir, "registry"), { recursive: true });
+    writeFileSync(join(tempDir, registryPath), '{"items":[]}\n');
+
+    runShadcnRegistryBuild({ rootDir: tempDir, registryPath, outputDir: "public/r" });
+
+    const [cwd, ...args] = readFileSync(callLogPath, "utf-8").trim().split("\n");
+    expect(cwd).toBe(realpathSync(tempDir));
+    expect(args).toEqual(["build", registryPath, "--output", "public/r"]);
+    expect(existsSync(join(tempDir, "public", "r"))).toBe(true);
+    expect(readFileSync(join(tempDir, "public", "r", "registry.json"), "utf-8")).toBe(
+      '{"items":[]}\n',
+    );
+  });
+
+  it("throws the failing command and exit status when the shadcn binary exits nonzero", () => {
+    const binDir = join(tempDir, "node_modules", ".bin");
+    mkdirSync(binDir, { recursive: true });
+    const binPath = join(binDir, "shadcn");
+    writeFileSync(binPath, "#!/bin/sh\nexit 7\n");
+    chmodSync(binPath, 0o755);
+
+    const registryPath = "registry/registry.json";
+    mkdirSync(join(tempDir, "registry"), { recursive: true });
+    writeFileSync(join(tempDir, registryPath), '{"items":[]}\n');
+
+    expect(() =>
+      runShadcnRegistryBuild({ rootDir: tempDir, registryPath, outputDir: "public/r" }),
+    ).toThrow(`${binPath} build ${registryPath} --output public/r failed with exit code 7`);
+  });
 });
 
 describe("validatePublicRegistryFresh", () => {
@@ -247,7 +295,7 @@ describe("validatePublicRegistryFresh", () => {
       fixCommand: "pnpm --filter @diffgazer/ui build:shadcn",
       transformModule: resolve(repoRoot, "libs/ui/scripts/registry/rewrite-keys-imports.ts"),
       transformExport: "transformUiPublicRegistryKeysImportContent",
-      transformItemExport: "transformUiPublicRegistryItem" as string | undefined,
+      transformItemExport: "transformUiPublicRegistrySourceItem" as string | undefined,
       skipSourceItemExport: "isHiddenKeysShim" as string | undefined,
       useFactory: false,
     },

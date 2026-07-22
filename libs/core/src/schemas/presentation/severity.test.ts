@@ -3,15 +3,8 @@ import type { ReviewSeverity } from "../review/issues.js";
 import { calculateSeverityCounts, severityRank } from "./severity.js";
 
 describe("severityRank", () => {
-  it("returns lower rank for more severe levels", () => {
-    expect(severityRank("blocker")).toBeLessThan(severityRank("high"));
-    expect(severityRank("high")).toBeLessThan(severityRank("medium"));
-    expect(severityRank("medium")).toBeLessThan(severityRank("low"));
-    expect(severityRank("low")).toBeLessThan(severityRank("nit"));
-  });
-
   it("sorts severities from most to least severe", () => {
-    const severities: ReviewSeverity[] = ["nit", "medium", "blocker", "low", "high"];
+    const severities: ReviewSeverity[] = ["nit", "low", "medium", "high", "blocker"];
 
     const sorted = [...severities].sort((a, b) => severityRank(a) - severityRank(b));
 

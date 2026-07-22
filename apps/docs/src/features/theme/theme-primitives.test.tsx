@@ -1,91 +1,24 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import {
-  orderThemeDocsPrimitives,
-  THEME_DOCS_COLOR_GRID_ORDER,
-  THEME_DOCS_PLAYGROUND_ORDER,
-  THEME_DOCS_PRIMITIVES,
-  THEME_DOCS_TOKENS,
-} from "@diffgazer/ui/theme";
-import { render, screen } from "@testing-library/react";
+import { THEME_DOCS_COLOR_GRID_ORDER, THEME_DOCS_PLAYGROUND_ORDER, THEME_DOCS_TOKENS } from "@diffgazer/ui/theme";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ThemeProvider } from "@/hooks/theme-context";
 import { ColorGrid } from "./components/color-grid";
 import { ThemePlayground } from "./components/playground";
 
-describe("orderThemeDocsPrimitives", () => {
-  it("returns primitives in the requested display order", () => {
-    const ordered = orderThemeDocsPrimitives(THEME_DOCS_COLOR_GRID_ORDER);
-    expect(ordered.map((primitive) => primitive.name)).toEqual(THEME_DOCS_COLOR_GRID_ORDER);
-  });
+function primitiveNamesFromCopyButtons(container: HTMLElement): string[] {
+  return within(container)
+    .getAllByRole("button")
+    .map((button) => {
+      const match = (button.getAttribute("aria-label") ?? "").match(/Copy (--[a-z0-9-]+)/);
+      return match?.[1];
+    })
+    .filter((name): name is string => name !== undefined);
+}
 
-  it("sources values from the shared UI theme primitives, not the order list", () => {
-    const ordered = orderThemeDocsPrimitives(THEME_DOCS_COLOR_GRID_ORDER);
-    for (const primitive of ordered) {
-      const canonical = THEME_DOCS_PRIMITIVES.find(
-        (candidate) => candidate.name === primitive.name,
-      );
-      expect(primitive.darkValue).toBe(canonical?.darkValue);
-    }
-  });
-
-  it("throws when the order list omits a primitive", () => {
-    expect(() => orderThemeDocsPrimitives([THEME_DOCS_PRIMITIVES[0].name])).toThrow();
-  });
-});
-
-describe("display orders", () => {
-  const swatchOrder = [
-    "--base-bg",
-    "--base-fg",
-    "--base-dim",
-    "--base-info",
-    "--base-success",
-    "--base-danger",
-    "--base-warning",
-    "--base-accent",
-    "--base-border",
-    "--base-highlight",
-    "--base-highlight-foreground",
-    "--base-selection",
-    "--base-muted",
-    "--base-input-bg",
-  ];
-
-  const editableOrder = [
-    "--base-bg",
-    "--base-fg",
-    "--base-dim",
-    "--base-info",
-    "--base-accent",
-    "--base-success",
-    "--base-danger",
-    "--base-warning",
-    "--base-border",
-    "--base-highlight",
-    "--base-highlight-foreground",
-    "--base-selection",
-    "--base-muted",
-    "--base-input-bg",
-  ];
-
-  it("keeps the color-grid swatch order", () => {
-    expect(THEME_DOCS_COLOR_GRID_ORDER).toEqual(swatchOrder);
-  });
-
-  it("keeps the playground editable-row order", () => {
-    expect(THEME_DOCS_PLAYGROUND_ORDER).toEqual(editableOrder);
-  });
-
-  it("covers every primitive exactly once", () => {
-    const names = THEME_DOCS_PRIMITIVES.map((primitive) => primitive.name).sort();
-    expect([...THEME_DOCS_COLOR_GRID_ORDER].sort()).toEqual(names);
-    expect([...THEME_DOCS_PLAYGROUND_ORDER].sort()).toEqual(names);
-  });
-});
-
-describe("docs theme visualizer", () => {
+describe("T-057 docs theme visualizer", () => {
   it("renders every documented theme token in the color grid", () => {
     render(
       <ThemeProvider>
@@ -100,6 +33,12 @@ describe("docs theme visualizer", () => {
     for (const token of THEME_DOCS_TOKENS) {
       expect(screen.getByText(token.name)).toBeInTheDocument();
     }
+
+    const primitivesSection = screen.getByRole("heading", { name: "Primitives" }).parentElement;
+    expect(primitivesSection).not.toBeNull();
+    expect(primitiveNamesFromCopyButtons(primitivesSection!)).toEqual([
+      ...THEME_DOCS_COLOR_GRID_ORDER,
+    ]);
   });
 
   it("renders a playground control for every editable primitive", () => {
@@ -109,8 +48,14 @@ describe("docs theme visualizer", () => {
       </ThemeProvider>,
     );
 
-    for (const primitive of orderThemeDocsPrimitives(THEME_DOCS_PLAYGROUND_ORDER)) {
-      expect(screen.getByLabelText(`Color picker for ${primitive.name}`)).toBeInTheDocument();
+    for (const name of THEME_DOCS_PLAYGROUND_ORDER) {
+      expect(screen.getByLabelText(`Color picker for ${name}`)).toBeInTheDocument();
     }
+
+    const pickerOrder = screen
+      .getAllByLabelText(/^Color picker for --base-/)
+      .map((picker) => (picker.getAttribute("aria-label") ?? "").replace("Color picker for ", ""));
+
+    expect(pickerOrder).toEqual([...THEME_DOCS_PLAYGROUND_ORDER]);
   });
 });

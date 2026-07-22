@@ -3,15 +3,21 @@ import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
+import {
+  createNitroReadyWatcher,
+  describeExit,
+  SERVER_READY_TIMEOUT_MS,
+} from "./nitro-server-ready.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DOCS_ROOT = resolve(HERE, "..");
 const SERVER_ENTRY = resolve(DOCS_ROOT, ".output/server/index.mjs");
-const SERVER_READY_TIMEOUT_MS = 30_000;
 const REQUEST_TIMEOUT_MS = 10_000;
 const PATHS = ["/", "/app/architecture"];
 
 const INLINE_SCRIPT = /<script(?![^>]*\bsrc=)([^>]*)>([\s\S]*?)<\/script>/g;
+
+const { waitForListeningOrigin } = createNitroReadyWatcher("[verify-csp]");
 
 function nonceAttr(attrs) {
   const match = attrs.match(/\bnonce=(?:"([^"]*)"|'([^']*)')/);
@@ -22,57 +28,6 @@ function waitForExit(child) {
   return new Promise((resolveExit, reject) => {
     child.once("error", reject);
     child.once("exit", (code, signal) => resolveExit({ code, signal }));
-  });
-}
-
-function describeExit({ code, signal }) {
-  return signal ? `signal ${signal}` : `code ${code ?? "unknown"}`;
-}
-
-export function parseListeningOrigin(output) {
-  const match = output.match(/Listening on:\s*http:\/\/127\.0\.0\.1:(\d+)\/?/);
-  if (!match) return undefined;
-
-  const port = Number(match[1]);
-  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
-    throw new Error(`[verify-csp] Nitro reported an invalid port: ${match[1]}`);
-  }
-  return `http://127.0.0.1:${port}`;
-}
-
-export function waitForListeningOrigin(stdout, serverFailure, timeoutMs = SERVER_READY_TIMEOUT_MS) {
-  return new Promise((resolveOrigin, reject) => {
-    let output = "";
-
-    const finish = (result) => {
-      clearTimeout(timeout);
-      stdout.off("data", onData);
-      stdout.off("error", onError);
-      if ("origin" in result) {
-        resolveOrigin(result.origin);
-        return;
-      }
-      reject(result.error);
-    };
-
-    const onData = (chunk) => {
-      output += chunk.toString();
-      try {
-        const origin = parseListeningOrigin(output);
-        if (origin) finish({ origin });
-      } catch (error) {
-        finish({ error });
-      }
-    };
-    const onError = (error) => finish({ error });
-    const timeout = setTimeout(
-      () => finish({ error: new Error("[verify-csp] Timed out waiting for Nitro to listen") }),
-      timeoutMs,
-    );
-
-    stdout.on("data", onData);
-    stdout.on("error", onError);
-    serverFailure.catch((error) => finish({ error }));
   });
 }
 

@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
@@ -77,20 +77,6 @@ describe("ContextSnapshotPreview (TUI)", () => {
     expect(frame).not.toContain("C:\\work");
   });
 
-  test.each([
-    ["POSIX root", "/", "/"],
-    ["Windows drive root", "C:\\", "C:\\"],
-    ["Windows share root", "\\\\server\\share\\", "share"],
-  ])("retains a useful project label for %s", (_label, root, expectedLabel) => {
-    const { lastFrame } = render(
-      <CliThemeProvider initialTheme="dark">
-        <ContextSnapshotPreview snapshot={makeSnapshot(root)} />
-      </CliThemeProvider>,
-    );
-
-    expect(lastFrame() ?? "").toContain(`Project     : ${expectedLabel}`);
-  });
-
   test("saves all three snapshot formats to the selected directory", async () => {
     const outputDirectory = await mkdtemp(join(tmpdir(), "diffgazer-context-"));
     const snapshot = makeSnapshot("/home/user/repo");
@@ -117,5 +103,27 @@ describe("ContextSnapshotPreview (TUI)", () => {
     await expect(readFile(join(outputDirectory, "context.json"), "utf8")).resolves.toBe(
       `${JSON.stringify(snapshot.graph, null, 2)}\n`,
     );
+  });
+
+  test("shows a filesystem diagnostic when the output directory does not exist", async () => {
+    const root = await mkdtemp(join(tmpdir(), "diffgazer-context-reject-"));
+    const outputDirectory = join(root, "missing-child");
+    try {
+      const { lastFrame, stdin } = render(
+        <CliThemeProvider initialTheme="dark">
+          <ContextSnapshotPreview
+            snapshot={makeSnapshot("/home/user/repo")}
+            outputDirectory={outputDirectory}
+          />
+        </CliThemeProvider>,
+      );
+
+      stdin.write("w");
+
+      await expect.poll(() => lastFrame() ?? "").toContain("ENOENT");
+      expect(lastFrame() ?? "").not.toContain("Saved context snapshot:");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });

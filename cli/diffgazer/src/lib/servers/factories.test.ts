@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { config } from "../../config";
+import type { ServerController } from "./controller";
 import { createServerFactories } from "./factories";
-import type { ProcessServerConfig, ServerController } from "./process";
+import type { ProcessServerConfig } from "./process/server";
 
 const createProcessServerMock = vi.hoisted(() =>
   vi.fn((_config: ProcessServerConfig) => ({
@@ -10,7 +11,7 @@ const createProcessServerMock = vi.hoisted(() =>
   })),
 );
 
-vi.mock("./process", () => ({ createProcessServer: createProcessServerMock }));
+vi.mock("./process/server", () => ({ createProcessServer: createProcessServerMock }));
 
 const createApiServer = vi.fn(() => createTestServer());
 const createWebServer = vi.fn(() => createTestServer());
@@ -118,34 +119,6 @@ describe("createServerFactories", () => {
     expect(createWebServer).toHaveBeenCalledWith(
       expect.objectContaining({ apiUrl: "http://localhost:9876" }),
     );
-  });
-
-  it("passes the canonical git root into the dev API child", () => {
-    const factories = createFactories({ mode: "dev", openBrowser: false });
-    factories[0]?.();
-
-    expect(createApiServer).toHaveBeenCalledWith(expect.objectContaining({ projectRoot: "/repo" }));
-  });
-
-  it.each([
-    "/repo/zażółć",
-    "/repo/🚀",
-  ])("passes a non-ASCII git root through the server environment for %s", (projectRoot) => {
-    const factories = createServerFactories(
-      { mode: "dev", openBrowser: false, includeWebServer: false },
-      {
-        createApiServer,
-        createEmbeddedServer,
-        createReadyHandler: () => readyHandler,
-        createWebServer,
-        findGitRoot: () => projectRoot,
-        getCwd: () => `${projectRoot}/src`,
-      },
-    );
-
-    factories[0]?.();
-
-    expect(createApiServer).toHaveBeenCalledWith(expect.objectContaining({ projectRoot }));
   });
 
   it("does not create a Vite child for dev TUI when includeWebServer is false", () => {

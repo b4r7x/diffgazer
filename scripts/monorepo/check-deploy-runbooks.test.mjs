@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   collectDeployRunbookFailures,
   collectRunbookStyleFailures,
@@ -44,4 +49,28 @@ test("deploy runbook check reads every configured runbook", () => {
 
   assert.deepEqual(seen, ["a.md", "b.md"]);
   assert.deepEqual(failures, ["b.md:1: trailing whitespace"]);
+});
+
+test("deploy runbook CLI entry fails closed with a path-specific diagnostic", () => {
+  const root = mkdtempSync(join(tmpdir(), "dg-deploy-runbooks-"));
+
+  try {
+    for (const path of DEPLOY_RUNBOOK_PATHS) {
+      mkdirSync(dirname(join(root, path)), { recursive: true });
+      writeFileSync(join(root, path), "# Title\n\nText\n");
+    }
+    writeFileSync(join(root, DEPLOY_RUNBOOK_PATHS[1]), "# Title  \n\nText\n");
+
+    const child = spawnSync(
+      process.execPath,
+      [fileURLToPath(new URL("./check-deploy-runbooks.mjs", import.meta.url))],
+      { cwd: root, encoding: "utf8" },
+    );
+
+    assert.equal(child.status, 1);
+    assert.match(child.stderr, /Deploy runbook style checks failed/);
+    assert.match(child.stderr, new RegExp(`${DEPLOY_RUNBOOK_PATHS[1]}:1: trailing whitespace`));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

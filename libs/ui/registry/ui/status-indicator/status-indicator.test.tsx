@@ -1,11 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
-import StatusIndicatorDefault from "../../examples/status-indicator/status-indicator-default";
 import { StatusIndicator } from "./status-indicator";
 
 function getDot(container: HTMLElement) {
-  return container.querySelector('[aria-hidden="true"]');
+  const dot = container.querySelector('[data-slot="status-indicator-dot"]');
+  if (!dot) throw new Error("expected a status-indicator-dot element");
+  return dot;
 }
 
 describe("StatusIndicator", () => {
@@ -19,6 +20,7 @@ describe("StatusIndicator", () => {
     const dot = getDot(container);
     expect(dot).toHaveAttribute("data-status", "online");
     expect(dot).toHaveAttribute("data-pulse", "true");
+    expect(dot).toHaveAttribute("aria-hidden", "true");
   });
 
   it("disables pulse when pulse=false", () => {
@@ -64,17 +66,6 @@ describe("StatusIndicator", () => {
     const root = screen.getByRole("status");
     expect(root).toHaveTextContent("Live");
     expect(root).not.toHaveTextContent("online");
-  });
-
-  it("does not duplicate matching status text in the canonical example", () => {
-    render(<StatusIndicatorDefault />);
-
-    expect(
-      screen
-        .getAllByRole("status")
-        .slice(0, 3)
-        .map((status) => status.textContent),
-    ).toEqual(["Online", "Busy", "Offline"]);
   });
 
   it("has no a11y violations", async () => {

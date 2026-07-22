@@ -99,4 +99,19 @@ describe("SettingsAgentExecutionPage", () => {
 
     expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
   });
+
+  it("saves the selected execution mode and navigates once the mutation resolves", async () => {
+    mockSaveSettings.mockResolvedValueOnce(undefined);
+    const user = userEvent.setup();
+    renderPage();
+
+    const modeGroup = screen.getByRole("radiogroup", { name: /agent execution mode/i });
+    const parallel = within(modeGroup).getByRole("radio", { name: /parallel/i });
+
+    await user.click(parallel);
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(mockSaveSettings).toHaveBeenCalledWith({ agentExecution: "parallel" });
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" }));
+  });
 });

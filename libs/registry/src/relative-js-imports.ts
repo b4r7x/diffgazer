@@ -1,3 +1,5 @@
+import { extractImportSpecifierRanges } from "./import-specifiers.js";
+
 /**
  * Canonical matcher for relative `.js` import specifiers in registry source.
  *
@@ -15,10 +17,27 @@
 export const RELATIVE_JS_IMPORT_RE =
   /((?:\bfrom\s+|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+(?=["']))(["']))(\.{1,2}\/[^"']+)\.js\2/g;
 
-/** Removes the `.js` extension from every relative import specifier. */
+function isRelativeJsSpecifier(specifier: string): boolean {
+  return /^\.{1,2}\//.test(specifier) && specifier.endsWith(".js");
+}
+
+/**
+ * Removes the `.js` extension from every executable relative import specifier.
+ *
+ * Uses the lexical import-specifier scanner so `.js`-looking text inside
+ * comments, ordinary strings, template literals, JSX strings, and regex
+ * literals is left byte-identical.
+ */
 export function stripRelativeJsExtensions(content: string): string {
-  return content.replace(
-    RELATIVE_JS_IMPORT_RE,
-    (_match, prefix: string, quote: string, specifier: string) => `${prefix}${specifier}${quote}`,
-  );
+  const ranges = extractImportSpecifierRanges(content);
+  let result = "";
+  let cursor = 0;
+
+  for (const { start, end, specifier } of ranges) {
+    result += content.slice(cursor, start);
+    result += isRelativeJsSpecifier(specifier) ? specifier.slice(0, -".js".length) : specifier;
+    cursor = end;
+  }
+
+  return result + content.slice(cursor);
 }

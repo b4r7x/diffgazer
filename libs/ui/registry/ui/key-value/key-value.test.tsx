@@ -22,21 +22,6 @@ describe("KeyValue", () => {
     expect(list.querySelector(":scope > div")).toBeNull();
   });
 
-  it("uses a two-column grid for horizontal values", () => {
-    render(
-      <KeyValue layout="horizontal">
-        <KeyValue.Item label="Status" value="Ready" />
-      </KeyValue>,
-    );
-
-    const label = screen.getByText("Status");
-    const value = screen.getByText("Ready");
-
-    expect(label.tagName).toBe("DT");
-    expect(value.tagName).toBe("DD");
-    expect(label.nextElementSibling).toBe(value);
-  });
-
   it("renders bordered values without wrapping label-value pairs", () => {
     render(
       <KeyValue bordered>

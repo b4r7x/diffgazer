@@ -32,5 +32,7 @@ apps/web/playwright-report/
 apps/web/test-results/
 libs/ui/playwright-report/
 libs/ui/test-results/
+apps/landing/playwright-report/
+apps/landing/test-results/
 /artifacts/parity/
 .nuke

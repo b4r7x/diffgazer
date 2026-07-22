@@ -72,27 +72,7 @@ describe("public registry import rewriting", () => {
   }
 });
 
-describe("public registry import parser coverage", () => {
-  it("strips .js from static, side-effect, dynamic, and require imports", () => {
-    const input = [
-      'import { value } from "./value.js";',
-      'export { value } from "./exported.js";',
-      'import "./setup.js";',
-      'const lazy = import("./lazy.js");',
-      'const required = require("./required.js");',
-    ].join("\n");
-
-    expect(transformKeysPublicRegistryImportContent(input)).toBe(
-      [
-        'import { value } from "./value";',
-        'export { value } from "./exported";',
-        'import "./setup";',
-        'const lazy = import("./lazy");',
-        'const required = require("./required");',
-      ].join("\n"),
-    );
-  });
-
+describe("target-layout import rewriting", () => {
   it("rewrites side-effect imports for the installed target layout", () => {
     const pathMap = new Map([
       ["src/hooks/use-demo.ts", "src/hooks/use-demo.ts"],

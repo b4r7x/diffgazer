@@ -1,4 +1,6 @@
 import { FooterProvider } from "@diffgazer/core/footer";
+import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
+import { KeyboardProvider } from "@diffgazer/keys";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -13,13 +15,23 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RouteLoadingFallback } from "@/components/layout/route-loading-fallback";
+import { ConfigProvider } from "@/hooks/use-config";
 import { lazyRoute } from "./route-import";
 import { router } from "./router";
-import { ConnectedRouteOutlet, NotFoundPage, RouteRecoveryPage } from "./routes/__root";
+import {
+  ConnectedRootLayout,
+  ConnectedRouteOutlet,
+  NotFoundPage,
+  RouteRecoveryPage,
+} from "./routes/__root";
 
 vi.mock("../lib/config-guards", () => ({
   requireConfigured: vi.fn(),
   requireNotConfigured: vi.fn(),
+}));
+
+vi.mock("@/features/home/lib/shutdown", () => ({
+  shutdown: vi.fn().mockResolvedValue({ status: "closed" as const }),
 }));
 
 function delay(ms: number) {
@@ -99,11 +111,11 @@ describe("router pending behavior", () => {
     expect(onPendingRender).not.toHaveBeenCalled();
   });
 
-  it("shows route content as soon as a slow guard resolves, without an artificial hold", async () => {
+  it("holds the pending fallback for the configured minimum after a slow guard resolves", async () => {
     const onPendingRender = vi.fn();
     const testRouter = createTestRouter({
       guardDelayMs: 150,
-      defaultPendingMinMs: 0,
+      defaultPendingMinMs: 300,
       onPendingRender,
     });
     render(<RouterProvider router={testRouter} />);
@@ -122,11 +134,17 @@ describe("router pending behavior", () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1);
     });
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading...");
     expect(onPendingRender).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(50);
+    });
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.queryByText("guarded ready")).not.toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250);
     });
     await nav;
 
@@ -248,6 +266,95 @@ function titleFromHead(head: unknown): string | undefined {
   return result.meta?.find((entry) => typeof entry.title === "string")?.title;
 }
 
+function productionRouteHead(fullPath: string) {
+  const match = Object.values(router.routesById).find(
+    (route) => route.fullPath === fullPath && route.options.head,
+  );
+  const title = titleFromHead(match?.options.head);
+  if (!title) {
+    throw new Error(`Expected production head metadata for ${fullPath}`);
+  }
+  return () => ({ meta: [{ title }] });
+}
+
+function createConnectedTitleRouter(initialEntries: string[]) {
+  const { Wrapper: QueryWrapper } = createTestQueryWrapper({
+    api: {
+      loadInit: vi.fn().mockResolvedValue({
+        config: { provider: "gemini", model: "gemini-2.5-flash" },
+        configured: true,
+        project: { projectId: "proj-1", path: "/repo", trust: null },
+        providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
+        settings: {
+          agentExecution: "parallel",
+          defaultLenses: [],
+          defaultProfile: null,
+          secretsStorage: null,
+          severityThreshold: "low",
+          theme: "terminal",
+        },
+        setup: {
+          hasModel: true,
+          hasProvider: true,
+          hasSecretsStorage: true,
+          hasTrust: false,
+          isConfigured: true,
+          isReady: true,
+          missing: [],
+        },
+      }),
+      getProviderStatus: vi
+        .fn()
+        .mockResolvedValue([{ provider: "gemini", hasApiKey: true, isActive: true }]),
+    },
+  });
+
+  const rootRoute = createRootRoute({
+    component: () => (
+      <QueryWrapper>
+        <ConfigProvider>
+          <KeyboardProvider>
+            <ConnectedRootLayout reloadDocument={vi.fn()} />
+          </KeyboardProvider>
+        </ConfigProvider>
+      </QueryWrapper>
+    ),
+  });
+
+  const homeRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => <div>Home page</div>,
+    head: productionRouteHead("/"),
+  });
+  const historyRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/history",
+    component: () => <div>History page</div>,
+    head: productionRouteHead("/history"),
+  });
+  const settingsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/settings",
+    component: () => <Outlet />,
+  });
+  const settingsThemeRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: "/theme",
+    component: () => <div>Theme page</div>,
+    head: productionRouteHead("/settings/theme"),
+  });
+
+  return createRouter({
+    routeTree: rootRoute.addChildren([
+      homeRoute,
+      historyRoute,
+      settingsRoute.addChildren([settingsThemeRoute]),
+    ]),
+    history: createMemoryHistory({ initialEntries }),
+  });
+}
+
 describe("route document titles", () => {
   it("declares a head title on every one of the 13 leaf routes", () => {
     const titlesByPath: Record<string, string> = {};
@@ -265,36 +372,20 @@ describe("route document titles", () => {
     expect(titles).toHaveLength(13);
   });
 
-  it("writes the matched route's title to document.title on navigation", async () => {
-    const root = createRootRoute({
-      component: () => (
-        <>
-          <HeadContent />
-          <Outlet />
-        </>
-      ),
-    });
-    const titleRoutes = Object.entries(EXPECTED_ROUTE_TITLES).map(([path, title]) =>
-      createRoute({
-        getParentRoute: () => root,
-        path: path === "/settings/" ? "/settings" : path,
-        component: () => <div>{title}</div>,
-        head: () => ({ meta: [{ title }] }),
-      }),
-    );
-    const titleRouter = createRouter({
-      routeTree: root.addChildren(titleRoutes),
-      history: createMemoryHistory({ initialEntries: ["/"] }),
-    });
+  it("writes the matched route's title to document.title through ConnectedRootLayout", async () => {
+    const titleRouter = createConnectedTitleRouter(["/"]);
 
     render(<RouterProvider router={titleRouter} />);
     await waitFor(() => expect(document.title).toBe("Home — Diffgazer"));
+    expect(screen.getByText("Home page")).toBeInTheDocument();
 
     await titleRouter.navigate({ to: "/history" });
     await waitFor(() => expect(document.title).toBe("History — Diffgazer"));
+    expect(screen.getByText("History page")).toBeInTheDocument();
 
     await titleRouter.navigate({ to: "/settings/theme" });
     await waitFor(() => expect(document.title).toBe("Theme — Diffgazer"));
+    expect(screen.getByText("Theme page")).toBeInTheDocument();
   });
 });
 

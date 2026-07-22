@@ -5,7 +5,8 @@ import type { KeyHandler } from "../core/normalize-key-input.js";
 import { DECLINE } from "../core/normalize-key-input.js";
 import { useKeyboardRegistryContext } from "../providers/keyboard-context.js";
 import { useKey } from "./use-key.js";
-import { type UseNavigationOptions, useNavigationCore } from "./use-navigation.js";
+import { useNavigationCore } from "./use-navigation/core.js";
+import type { UseNavigationOptions } from "./use-navigation.js";
 
 /** Options for provider-backed, scope-aware role-based navigation. */
 export interface UseScopedNavigationOptions<TValue extends string = string>

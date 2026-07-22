@@ -13,6 +13,7 @@ import {
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { cn } from "@/lib/utils";
 import { SelectContext, type SelectOptionMetadata } from "./select-context";
+import { SelectFormMirror } from "./select-form-mirror";
 import { SelectItem, type SelectItemProps } from "./select-item";
 import { SelectSearch } from "./select-search";
 import { containsSelectSearchElement, getNodeText } from "./selection";
@@ -114,17 +115,6 @@ interface DerivedSelectStateOptions {
   seedOptions: ReadonlyMap<string, SelectOptionMetadata>;
 }
 
-function getSubmittedValue(
-  value: string | string[] | null,
-  options: ReadonlyMap<string, SelectOptionMetadata>,
-): string | string[] | null {
-  if (Array.isArray(value)) {
-    return value.filter((itemValue) => !options.get(itemValue)?.disabled);
-  }
-  if (value !== null && options.get(value)?.disabled) return null;
-  return value;
-}
-
 // Single typed boundary for the public TValue -> internal string narrowing.
 // value/defaultValue/highlighted widen covariantly; only the value/highlight
 // callbacks are contravariant, so they get an explicit (identity-preserving)
@@ -219,10 +209,6 @@ export function Select<TValue extends string = string>(props: SelectProps<TValue
 
   const { contextValue, wrapperRef } = useSelectState(stateOptions);
   const composedRef = useComposedRefs(wrapperRef, ref);
-  const submittedValue = getSubmittedValue(contextValue.value, contextValue.options);
-  const logicalMultipleValues = Array.isArray(contextValue.value) ? contextValue.value : [];
-  const logicalSingleValue = Array.isArray(contextValue.value) ? null : contextValue.value;
-  const selectedSingleValueIsDisabled = logicalSingleValue !== null && submittedValue === null;
 
   return (
     <SelectContext value={contextValue}>
@@ -232,80 +218,7 @@ export function Select<TValue extends string = string>(props: SelectProps<TValue
         className={cn(selectRootVariants({ variant, width: width ?? undefined }), className)}
       >
         {children}
-        {(name || required) &&
-          (Array.isArray(submittedValue) ? (
-            <>
-              <select
-                name={name}
-                data-slot="select-form-mirror"
-                multiple
-                value={submittedValue}
-                required={required}
-                disabled={disabled}
-                tabIndex={-1}
-                aria-hidden={true}
-                className="sr-only"
-                // Value is driven by the custom select; the no-op keeps this
-                // hidden form mirror controlled without React's warning.
-                onChange={() => {}}
-                onInvalid={(event) => {
-                  event.preventDefault();
-                  contextValue.onNativeInvalid();
-                }}
-              >
-                {logicalMultipleValues.map((v) => (
-                  <option key={v} value={v} disabled={contextValue.options.get(v)?.disabled}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-              {required && (
-                <input
-                  type="checkbox"
-                  data-slot="select-required-validation"
-                  required
-                  checked={submittedValue.length > 0}
-                  disabled={disabled}
-                  tabIndex={-1}
-                  aria-hidden={true}
-                  className="sr-only"
-                  onChange={() => {}}
-                  onInvalid={(event) => {
-                    event.preventDefault();
-                    contextValue.onNativeInvalid();
-                  }}
-                />
-              )}
-            </>
-          ) : (
-            <select
-              name={name}
-              data-slot="select-form-mirror"
-              value={submittedValue ?? ""}
-              required={required}
-              disabled={disabled || selectedSingleValueIsDisabled}
-              tabIndex={-1}
-              aria-hidden={true}
-              className="sr-only"
-              // Value is driven by the custom select; the no-op keeps this
-              // hidden form mirror controlled without React's warning.
-              onChange={() => {}}
-              onInvalid={(event) => {
-                event.preventDefault();
-                contextValue.onNativeInvalid();
-              }}
-            >
-              <option value="" />
-              {logicalSingleValue !== null && (
-                <option
-                  value={logicalSingleValue}
-                  disabled={contextValue.options.get(logicalSingleValue)?.disabled}
-                >
-                  {logicalSingleValue}
-                </option>
-              )}
-            </select>
-          ))}
+        <SelectFormMirror name={name} required={required} disabled={disabled} />
       </div>
     </SelectContext>
   );

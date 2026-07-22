@@ -13,6 +13,8 @@ describe("Logo", () => {
   it("uses precomputed ascii text when provided", () => {
     render(<Logo text="OK" asciiText={" O \n K "} />);
 
-    expect(screen.getByRole("img", { name: "OK" })).toHaveTextContent("O");
+    expect(screen.getByRole("img", { name: "OK" })).toHaveTextContent(" O \n K ", {
+      normalizeWhitespace: false,
+    });
   });
 });

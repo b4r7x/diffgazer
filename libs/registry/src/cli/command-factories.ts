@@ -10,8 +10,8 @@ import {
   type DerivedRemovalPlan,
   type ExpandRequestedNamesResult,
   type RemoveWorkflowFile,
-  runRemoveWorkflow,
-} from "./workflows/remove.js";
+} from "./workflows/remove/types.js";
+import { runRemoveWorkflow } from "./workflows/remove/workflow.js";
 
 export interface ExtraOption {
   flags: string;

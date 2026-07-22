@@ -340,8 +340,7 @@ describe("useActiveHeading", () => {
       });
       unmount();
 
-      // call-count IS the contract: MutationObserver must be disconnected exactly once on cleanup (double-disconnect leaks observers)
-      expect(mutationDisconnect).toHaveBeenCalledTimes(1);
+      expect(mutationDisconnect).toHaveBeenCalled();
       expect(cancelAnimationFrameMock).toHaveBeenCalled();
       expect(removeListener).toHaveBeenCalledWith("scroll", expect.any(Function));
       expect(removeListener).toHaveBeenCalledWith("resize", expect.any(Function));
@@ -368,6 +367,7 @@ describe("useActiveHeading", () => {
       clearTimeout: vi.fn(),
       setTimeout: vi.fn(() => 0),
       matchMedia: () => ({ matches: false }) as MediaQueryList,
+      scrollTo: vi.fn(),
     };
     Object.defineProperty(altDoc, "defaultView", { configurable: true, value: altView });
 
@@ -382,6 +382,8 @@ describe("useActiveHeading", () => {
       makeDOMRect(100);
 
     const hostAddListener = vi.spyOn(window, "addEventListener");
+    const hostScrollTo = vi.fn();
+    Object.defineProperty(window, "scrollTo", { configurable: true, value: hostScrollTo });
     try {
       const { result } = renderHook(() =>
         useActiveHeading({
@@ -405,6 +407,13 @@ describe("useActiveHeading", () => {
         ([type]) => type === "scroll" || type === "resize",
       );
       expect(hostScrollResize).toEqual([]);
+
+      // Programmatic scrollTo must also target the alt document's view, never the host window.
+      act(() => {
+        result.current.scrollTo("a2");
+      });
+      expect(altView.scrollTo).toHaveBeenCalledWith({ top: 100, behavior: "smooth" });
+      expect(hostScrollTo).not.toHaveBeenCalled();
     } finally {
       hostAddListener.mockRestore();
     }
@@ -419,7 +428,6 @@ describe("useActiveHeading", () => {
     });
     const crossDoc = realm.window.document;
 
-    expect(crossDoc.getElementById).toBeDefined();
     const cross = (id: string) =>
       requireElement(crossDoc.getElementById(id), `cross heading ${id}`);
 

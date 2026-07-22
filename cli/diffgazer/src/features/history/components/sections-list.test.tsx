@@ -10,6 +10,40 @@ afterEach(() => {
 });
 
 describe("SectionsList", () => {
+  test("down arrow immediately updates the highlighted section id", async () => {
+    const items: TimelineItem[] = [
+      { id: "all", label: "All", count: 4 },
+      { id: "today", label: "Today", count: 2 },
+    ];
+    const onHighlightChange = vi.fn();
+
+    function Harness() {
+      const [selectedId, setSelectedId] = useState("all");
+      return (
+        <CliThemeProvider initialTheme="dark">
+          <SectionsList
+            items={items}
+            selectedId={selectedId}
+            onSelect={vi.fn()}
+            onHighlightChange={(id) => {
+              setSelectedId(id);
+              onHighlightChange(id);
+            }}
+            height={4}
+            width={18}
+          />
+        </CliThemeProvider>
+      );
+    }
+
+    const view = render(<Harness />);
+    view.stdin.write("\u001B[B");
+    await flush();
+
+    expect(onHighlightChange).toHaveBeenCalledWith("today");
+    expect(view.lastFrame()).toContain("Today");
+  });
+
   test("keeps keyboard highlight visible while rendering a bounded section window", async () => {
     const items: TimelineItem[] = Array.from({ length: 12 }, (_, index) => ({
       id: `section-${index}`,

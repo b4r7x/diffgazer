@@ -159,12 +159,13 @@ describe("ModelStep (TUI catalog)", () => {
   });
 
   test("renders the model list for an inactive step instead of a stuck loading spinner", async () => {
-    const { lastFrame } = render(
+    const onChange = vi.fn();
+    const { lastFrame, stdin } = render(
       <Wrapper>
         <ModelStep
           provider="gemini"
           value="gemini-2.5-flash"
-          onChange={() => {}}
+          onChange={onChange}
           isActive={false}
         />
       </Wrapper>,
@@ -175,6 +176,35 @@ describe("ModelStep (TUI catalog)", () => {
     const frame = lastFrame();
     expect(frame).toContain("Gemini 2.5 Flash");
     expect(frame).not.toContain("Loading models");
+
+    stdin.write("\u001b[B");
+    stdin.write("\r");
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  test("keeps a single retry request and the failure view for an inactive step", async () => {
+    const getProviderModels = vi
+      .fn<() => Promise<ProviderModelsResponse>>()
+      .mockRejectedValue(new Error("catalog unavailable"));
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      getProviderModels,
+    } satisfies BoundApi;
+
+    const { lastFrame, stdin } = render(
+      <Wrapper api={api}>
+        <ModelStep provider="gemini" onChange={() => {}} isActive={false} />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Failed to load models") ?? false);
+
+    stdin.write("r");
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(lastFrame()).toContain("Failed to load models: catalog unavailable");
+    expect(getProviderModels).toHaveBeenCalledTimes(1);
   });
 
   test("shows the empty-state message when the catalog returns no models", async () => {

@@ -29,10 +29,12 @@ import {
 import {
   applyIntegrationModeMigration,
   assertIntegrationModeChangesAllowed,
-  buildManifestMetadata,
   planIntegrationModeMigration,
-  reconcileRetiredOwnership,
   rollbackIntegrationModeMigration,
+} from "./integration-mode.js";
+import {
+  buildManifestMetadata,
+  reconcileRetiredOwnership,
   rollbackRetiredOwnership,
   updateOwnedManifestEntries,
 } from "./manifest.js";

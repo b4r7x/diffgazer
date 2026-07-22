@@ -65,7 +65,7 @@ describe("convertAgentEventsToLogEntries", () => {
     ]);
   });
 
-  it("exposes the same source and entry semantics for sparse range selection", () => {
+  it("converts an event at an arbitrary absolute index", () => {
     const event: AgentStreamEvent = {
       type: "agent_thinking",
       agent: "detective",
@@ -73,22 +73,10 @@ describe("convertAgentEventsToLogEntries", () => {
       timestamp,
     };
 
-    expect(getReviewEventLogSource(event)).toBe("Detective");
     expect(convertReviewEventToLogEntry(event, 42)).toMatchObject({
       id: "agent_thinking-42",
-      source: "Detective",
       message: "checking",
     });
-    expect(
-      getReviewEventLogSource({
-        type: "file_progress",
-        agent: "detective",
-        file: "src/index.ts",
-        completed: 1,
-        total: 1,
-        timestamp,
-      }),
-    ).toBeUndefined();
   });
 
   it.each<[string, AgentStreamEvent | StepEvent, string | undefined]>([
@@ -181,6 +169,7 @@ describe("convertAgentEventsToLogEntries", () => {
         isWarning?: boolean;
         isError?: boolean;
         messageIncludes?: string[];
+        messageExcludes?: string[];
       },
     ]
   >([
@@ -253,7 +242,7 @@ describe("convertAgentEventsToLogEntries", () => {
     [
       "agent_complete singular",
       { type: "agent_complete", agent: "detective", issueCount: 1, timestamp },
-      { messageIncludes: ["1 issue"] },
+      { messageIncludes: ["1 issue"], messageExcludes: ["1 issues"] },
     ],
     [
       "orchestrator_complete",
@@ -303,6 +292,9 @@ describe("convertAgentEventsToLogEntries", () => {
     for (const text of expected.messageIncludes ?? []) {
       expect(entry?.message).toContain(text);
     }
+    for (const text of expected.messageExcludes ?? []) {
+      expect(entry?.message).not.toContain(text);
+    }
   });
 
   it("truncates long agent thoughts", () => {
@@ -325,8 +317,5 @@ describe("convertAgentEventsToLogEntries", () => {
     expect(ids.every((id) => id.length > 0)).toBe(true);
     expect(new Set(ids).size).toBe(entries.length);
     expect(entries.map((entry) => entry.tag)).toEqual(["START", "DET", "SEC"]);
-    expect(entries[0]?.message).toContain("3 files");
-    expect(entries[1]?.message).toContain("1 issue");
-    expect(entries[1]?.message).not.toContain("1 issues");
   });
 });

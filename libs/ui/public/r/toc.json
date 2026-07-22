@@ -12,22 +12,26 @@
     {
       "path": "registry/ui/toc/index.ts",
       "content": "\"use client\";\n\nimport { type TocProps, Toc as TocRoot } from \"./toc\";\nimport { TocItem, type TocItemProps, type TocItemRenderProps, tocItemVariants } from \"./toc-item\";\nimport { TocList, type TocListProps } from \"./toc-list\";\n\n/** Root aside wrapper and optional heading label. */\nconst Toc = Object.assign(TocRoot, {\n  List: TocList,\n  Item: TocItem,\n});\n\nexport { Toc, type TocProps };\nexport { TocList, type TocListProps };\nexport { TocItem, type TocItemProps, type TocItemRenderProps, tocItemVariants };\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/toc/index.ts"
     },
     {
       "path": "registry/ui/toc/toc.tsx",
       "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for toc. */\nexport interface TocProps extends Omit<ComponentPropsWithRef<\"nav\">, \"title\"> {\n  /** Heading text and accessible label for the nav landmark. */\n  title?: string;\n  /** Heading level used for the title. */\n  as?: \"h2\" | \"h3\" | \"h4\";\n}\n\n/** Root aside wrapper and optional heading label. */\nexport function Toc({\n  title = \"On this page\",\n  as: Heading = \"h2\",\n  className,\n  children,\n  ref,\n  ...props\n}: TocProps) {\n  return (\n    <nav\n      ref={ref}\n      data-slot=\"toc\"\n      aria-label={title}\n      className={cn(\"w-56 shrink-0 py-8 pr-4\", className)}\n      {...props}\n    >\n      <Heading className=\"mb-3 text-2xs font-bold uppercase tracking-wider text-muted-foreground font-mono\">\n        {title}\n      </Heading>\n      {children}\n    </nav>\n  );\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/toc/toc.tsx"
     },
     {
       "path": "registry/ui/toc/toc-list.tsx",
       "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for toc list. */\nexport type TocListProps = ComponentPropsWithRef<\"ul\">;\n\n/** List container for TOC items. */\nexport function TocList({ className, children, ref, ...props }: TocListProps) {\n  return (\n    // biome-ignore lint/a11y/useSemanticElements: this already is a <ul>; the explicit role=\"list\" below restores list semantics that Tailwind preflight strips, and Biome should not suggest swapping the element.\n    <ul\n      ref={ref}\n      data-slot=\"toc-list\"\n      // biome-ignore lint/a11y/noRedundantRoles: Tailwind preflight sets list-style:none on <ul>, which drops list semantics in Safari/VoiceOver; role=\"list\" restores them.\n      role=\"list\"\n      className={cn(\"border-l border-border flex flex-col gap-1.5\", className)}\n      {...props}\n    >\n      {children}\n    </ul>\n  );\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/toc/toc-list.tsx"
     },
     {
       "path": "registry/ui/toc/toc-item.tsx",
       "content": "\"use client\";\n\nimport { cva } from \"class-variance-authority\";\nimport type {\n  AnchorHTMLAttributes,\n  ComponentPropsWithRef,\n  CSSProperties,\n  ReactNode,\n  Ref,\n} from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nconst INDENT_BASE_PX = 12;\nconst INDENT_PER_LEVEL_PX = 12;\n\n/** Class variants for toc item. */\nexport const tocItemVariants = cva(\n  \"block py-1 text-xs font-mono transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring\",\n  {\n    variants: {\n      active: {\n        true: \"text-primary font-bold\",\n        false: \"text-muted-foreground hover:text-foreground\",\n      },\n    },\n    defaultVariants: {\n      active: false,\n    },\n  },\n);\n\n/** Props for toc item render. */\nexport type TocItemRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {\n  ref: Ref<HTMLAnchorElement>;\n  className: string;\n  style: CSSProperties;\n  \"data-slot\": \"toc-item\";\n  \"data-selected\"?: true;\n};\n\n/** Props for toc item. */\nexport interface TocItemProps extends Omit<ComponentPropsWithRef<\"a\">, \"children\"> {\n  /** Link label, or a render function for framework Link integration. */\n  children: ReactNode | ((props: TocItemRenderProps) => ReactNode);\n  /** Marks the link as the current location. Adds aria-current=\"location\" and data-selected. */\n  active?: boolean;\n  /** Heading depth (2 = h2). Drives left padding; values below 2 are treated as 2. */\n  depth?: number;\n}\n\n/** Individual TOC entry with depth/active styling. */\nexport function TocItem({\n  children,\n  depth = 2,\n  active,\n  className,\n  style,\n  ref,\n  ...props\n}: TocItemProps) {\n  const indent = Math.max(0, depth - 2) * INDENT_PER_LEVEL_PX + INDENT_BASE_PX;\n\n  const renderProps: TocItemRenderProps = {\n    ref: ref ?? null,\n    \"aria-current\": active ? \"location\" : undefined,\n    \"data-slot\": \"toc-item\",\n    \"data-selected\": active || undefined,\n    className: cn(tocItemVariants({ active }), className),\n    style: { paddingLeft: `${indent}px`, ...style },\n    ...props,\n  };\n\n  if (typeof children === \"function\") return <li>{children(renderProps)}</li>;\n\n  return (\n    <li>\n      <a {...renderProps}>{children}</a>\n    </li>\n  );\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/toc/toc-item.tsx"
     }
   ],
   "meta": {

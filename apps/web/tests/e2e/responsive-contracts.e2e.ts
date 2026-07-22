@@ -37,6 +37,48 @@ async function emulateSafeArea(page: Page) {
   await session.send("Emulation.setSafeAreaInsetsOverride", { insets: safeAreaInsets });
 }
 
+const onboardingInitResponse = {
+  configPath: "/tmp/diffgazer/config.json",
+  config: { provider: "gemini", model: "gemini-2.5-flash" },
+  configured: false,
+  project: { projectId: "onboarding-responsive", path: "/repo", trust: null },
+  providers: [{ provider: "gemini", hasApiKey: false, isActive: false }],
+  settings: {
+    agentExecution: "parallel",
+    defaultLenses: ["correctness"],
+    defaultProfile: null,
+    secretsStorage: null,
+    severityThreshold: "low",
+    theme: "terminal",
+  },
+  setup: {
+    hasModel: false,
+    hasProvider: false,
+    hasSecretsStorage: false,
+    hasTrust: false,
+    isConfigured: false,
+    isReady: false,
+    missing: ["secretsStorage", "provider", "model"],
+  },
+};
+
+async function mockOnboardingApi(page: Page) {
+  await page.route("**/api/health", (route) => route.fulfill({ status: 200, json: { ok: true } }));
+  await page.route("**/api/settings", (route) =>
+    route.fulfill({ json: onboardingInitResponse.settings }),
+  );
+  await page.route("**/api/config/init", (route) =>
+    route.fulfill({ json: onboardingInitResponse }),
+  );
+  await page.route("**/api/config/providers", (route) =>
+    route.fulfill({
+      json: {
+        providers: onboardingInitResponse.providers,
+      },
+    }),
+  );
+}
+
 async function mockProviderApi(page: Page) {
   await page.route("**/api/config/init", (route) => route.fulfill({ json: initResponse }));
   await page.route("**/api/config/providers", (route) =>
@@ -61,16 +103,34 @@ async function mockProviderApi(page: Page) {
   );
 }
 
+test("onboarding progress shows compact text below md and the full stepper at md and above", async ({
+  page,
+}, testInfo) => {
+  await mockOnboardingApi(page);
+  await page.goto("/onboarding", { waitUntil: "domcontentloaded" });
+
+  await expect(page.getByRole("heading", { level: 1, name: /secrets storage/i })).toBeVisible();
+
+  const compactProgress = page.getByText("Step 1/6 · Storage");
+  const fullProgress = page.getByRole("list", { name: "Setup progress" });
+
+  if (testInfo.project.name === "mobile-chromium") {
+    await expect(compactProgress).toBeVisible();
+    await expect(fullProgress).toBeHidden();
+  } else {
+    await expect(compactProgress).toBeHidden();
+    await expect(fullProgress).toBeVisible();
+  }
+});
+
 test("provider panes and controls adapt to the rendered viewport", async ({ page }, testInfo) => {
   await mockProviderApi(page);
   await page.goto("/tests/fixtures/results-layout.html?view=providers");
 
-  const listPane = page.getByRole("heading", { name: "Providers", exact: true }).locator("../..");
+  const listPane = page.locator('[data-layout-pane="provider-list"]');
   await expect(listPane).toBeVisible();
   await page.getByRole("option", { name: /Google Gemini/ }).click();
-  const detailsPane = page
-    .getByRole("heading", { name: "Provider Details: Google Gemini" })
-    .locator("../../..");
+  const detailsPane = page.locator('[data-layout-pane="provider-details"]');
   await expect(detailsPane).toBeVisible();
 
   const listBounds = await listPane.boundingBox();
@@ -95,11 +155,8 @@ test("provider panes and controls adapt to the rendered viewport", async ({ page
     );
   }
 
-  const capabilityCards = page
-    .getByText("Tool Calling")
-    .locator("..")
-    .locator("..")
-    .locator("> div");
+  const capabilityGrid = page.locator('[data-layout-grid="provider-capabilities"]');
+  const capabilityCards = capabilityGrid.locator("> div");
   const firstCard = await capabilityCards.nth(0).boundingBox();
   const secondCard = await capabilityCards.nth(1).boundingBox();
   expect(firstCard).not.toBeNull();
@@ -113,7 +170,7 @@ test("provider panes and controls adapt to the rendered viewport", async ({ page
   await page.getByRole("button", { name: "Select Model" }).click();
   const dialog = page.getByRole("dialog", { name: "Select Model" });
   await expect(dialog).toBeVisible();
-  const modelList = dialog.getByRole("radiogroup", { name: "Available models" }).locator("..");
+  const modelList = dialog.locator('[data-layout-region="model-list"]');
   const listBox = await modelList.boundingBox();
   expect(listBox?.height).toBeLessThanOrEqual((page.viewportSize()?.height ?? 0) / 2);
 
@@ -128,12 +185,12 @@ test("provider panes and controls adapt to the rendered viewport", async ({ page
   }
 });
 
-test("the rendered app shell consumes nonzero safe-area insets", async ({ page }) => {
+test("the rendered app shell consumes nonzero safe-area insets", async ({ page }, testInfo) => {
   await emulateSafeArea(page);
   await mockProviderApi(page);
   await page.goto("/tests/fixtures/results-layout.html?view=shell");
 
-  const shell = page.getByText("Shell content").locator("../..");
+  const shell = page.locator('[data-layout="app-shell"]');
   const footer = page.locator("footer");
   await expect(shell).toBeVisible();
   await expect(footer).toBeVisible();
@@ -152,6 +209,20 @@ test("the rendered app shell consumes nonzero safe-area insets", async ({ page }
 
   expect(shellStyles).toEqual({ paddingTop: "40px", paddingRight: "36px", paddingLeft: "48px" });
   expect(footerPaddingBottom).toBe("56px");
+
+  const shortcutLegend = page.locator("[data-shortcut-legend]");
+  const narrowWordmark = page.locator("header pre:not([role='img'])");
+  const fullWordmark = page.getByRole("img", { name: "DIFFGAZER" });
+
+  if (testInfo.project.name === "mobile-chromium") {
+    await expect(shortcutLegend).toBeHidden();
+    await expect(narrowWordmark).toBeVisible();
+    await expect(fullWordmark).toBeHidden();
+  } else {
+    await expect(shortcutLegend).toBeVisible();
+    await expect(narrowWordmark).toBeHidden();
+    await expect(fullWordmark).toBeVisible();
+  }
 });
 
 test("toast edges and coarse-pointer relocation use compiled positioning styles", async ({

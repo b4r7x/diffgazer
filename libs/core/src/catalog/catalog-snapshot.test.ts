@@ -46,7 +46,7 @@ describe("CATALOG_SNAPSHOT", () => {
     }
   });
 
-  it("excludes audio-only (TTS) models from the derived picker (F-084)", () => {
+  it("excludes audio-only (TTS) models from the derived picker", () => {
     const audioOnlyByProvider: Partial<Record<AIProvider, string[]>> = {
       gemini: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
       groq: ["canopylabs/orpheus-arabic-saudi", "canopylabs/orpheus-v1-english"],

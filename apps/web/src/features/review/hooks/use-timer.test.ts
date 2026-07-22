@@ -14,8 +14,14 @@ describe("useTimer", () => {
     vi.useRealTimers();
   });
 
-  it("returns zero when not running", () => {
-    const { result } = renderHook(() => useTimer({ running: false }));
+  it("returns zero while running without a start time", () => {
+    vi.setSystemTime(new Date(0));
+    const { result } = renderHook(() => useTimer({ running: true }));
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
     expect(result.current.elapsed).toBe(0);
   });
 
@@ -47,6 +53,12 @@ describe("useTimer", () => {
 
     rerender({ running: false });
     expect(result.current.elapsed).toBe(500);
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(result.current.elapsed).toBe(500);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it("does nothing while running is false (no interval scheduled)", () => {

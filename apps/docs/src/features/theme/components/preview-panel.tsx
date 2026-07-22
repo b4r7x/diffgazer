@@ -7,7 +7,10 @@ import { DOT_GRID_CLASS } from "@/components/shared/dot-grid";
 
 export function PreviewPanel() {
   return (
-    <div className={`bg-background ${DOT_GRID_CLASS} p-4 space-y-4 border border-border`}>
+    <div
+      data-theme-preview
+      className={`bg-background ${DOT_GRID_CLASS} p-4 space-y-4 border border-border`}
+    >
       <div className="flex flex-wrap gap-2">
         <Button variant="primary">Primary</Button>
         <Button variant="secondary">Secondary</Button>

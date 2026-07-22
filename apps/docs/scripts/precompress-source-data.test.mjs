@@ -26,7 +26,7 @@ function makeFixture() {
 }
 
 describe("precompressSourceData", () => {
-  it("creates deterministic gzip and brotli siblings and reuses complete cache entries", async () => {
+  it("creates deterministic gzip and brotli siblings and repairs a corrupted cached sidecar", async () => {
     const fixture = makeFixture();
 
     await expect(precompressSourceData(fixture)).resolves.toEqual({
@@ -39,12 +39,17 @@ describe("precompressSourceData", () => {
     expect(gunzipSync(gzip)).toEqual(fixture.source);
     expect(brotliDecompressSync(brotli)).toEqual(fixture.source);
 
+    const corruptedGzip = Buffer.from(gzip.map((byte) => byte ^ 0xff));
+    writeFileSync(`${fixture.archivePath}.gz`, corruptedGzip);
+
     await expect(precompressSourceData(fixture)).resolves.toEqual({
       archives: 1,
-      createdSidecars: 0,
-      cachedFiles: 1,
+      createdSidecars: 1,
+      cachedFiles: 0,
     });
-    expect(readFileSync(`${fixture.archivePath}.gz`)).toEqual(gzip);
+    const repairedGzip = readFileSync(`${fixture.archivePath}.gz`);
+    expect(repairedGzip).not.toEqual(corruptedGzip);
+    expect(gunzipSync(repairedGzip)).toEqual(fixture.source);
     expect(readFileSync(`${fixture.archivePath}.br`)).toEqual(brotli);
   });
 

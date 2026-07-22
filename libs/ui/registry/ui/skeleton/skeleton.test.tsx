@@ -1,4 +1,5 @@
 import { render } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
 import { Skeleton } from "./index";
@@ -9,6 +10,12 @@ describe("Skeleton", () => {
     const el = container.firstElementChild;
     expect(el).toHaveAttribute("aria-hidden", "true");
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('keeps aria-hidden="true" when spread consumer props include a conflicting aria-hidden value', () => {
+    const consumerProps: ComponentProps<"div"> = { "aria-hidden": "false" };
+    const { container } = render(<Skeleton {...consumerProps} />);
+    expect(container.firstElementChild).toHaveAttribute("aria-hidden", "true");
   });
 
   it("forwards consumer style for dimensions", () => {

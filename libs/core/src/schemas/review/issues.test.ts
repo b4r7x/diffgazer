@@ -38,7 +38,7 @@ describe("ReviewIssueSchema", () => {
 
   // Line constraints are provider-unenforceable, so the schema is lenient: zero,
   // negative, inverted, and line_end-without-line_start values parse and are
-  // corrected by normalizeIssueLineFields on the write path (F-468/F-028).
+  // corrected by normalizeIssueLineFields on the write path.
   it("accepts non-positive line numbers without failing the parse", () => {
     expect(ReviewIssueSchema.safeParse(createIssueInput({ line_start: 0 })).success).toBe(true);
     expect(ReviewIssueSchema.safeParse(createIssueInput({ line_end: -1 })).success).toBe(true);

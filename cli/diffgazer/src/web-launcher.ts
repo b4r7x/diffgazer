@@ -2,7 +2,7 @@ import { printDiffgazerBanner } from "./banner";
 import type { CliMode } from "./cli-options";
 import { config } from "./config";
 import { createServerFactories as createModeServerFactories } from "./lib/servers/factories";
-import type { ServerController } from "./lib/servers/process";
+import type { ServerController } from "./lib/servers/controller";
 import { ensureShutdownToken } from "./lib/shutdown-token";
 import { stopWithTimeout } from "./lib/stop-with-timeout";
 

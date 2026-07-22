@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -110,6 +110,17 @@ describe("detectPackageManager", () => {
     process.env.npm_config_user_agent = "npm/10.0.0 node/v22";
 
     expect(detectPackageManager(root)).toBe(expected);
+  });
+
+  it("prefers the most recently modified lockfile over one discovered earlier", () => {
+    writeFileSync(join(root, "package.json"), "{}");
+    writeFileSync(join(root, "pnpm-lock.yaml"), "");
+    writeFileSync(join(root, "package-lock.json"), "{}");
+    const now = Date.now() / 1000;
+    utimesSync(join(root, "pnpm-lock.yaml"), now, now);
+    utimesSync(join(root, "package-lock.json"), now + 60, now + 60);
+
+    expect(detectPackageManager(root)).toBe("npm");
   });
 });
 

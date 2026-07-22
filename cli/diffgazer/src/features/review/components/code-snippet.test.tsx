@@ -34,6 +34,23 @@ describe("CodeSnippet (TUI)", () => {
     expect(frame).toMatch(/\b43\s+beta\(\);/);
   });
 
+  test("sanitizes OSC/ESC bytes from filePath and code without dropping surrounding text", () => {
+    const ESC = String.fromCharCode(0x1b);
+    const BEL = String.fromCharCode(0x07);
+    const OSC52 = `${ESC}]52;c;ZXZpbA==${BEL}`;
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <CodeSnippet filePath={`before${OSC52}after.ts`} code={`safe${OSC52}line`} />
+      </CliThemeProvider>,
+    );
+    const frame = lastFrame() ?? "";
+
+    expect(frame).toContain("beforeafter.ts");
+    expect(frame).toContain("safeline");
+    expect(frame).not.toContain(ESC);
+    expect(frame).not.toContain("52;c;");
+  });
+
   test("truncates a long code line to one row without dropping its gutter", async () => {
     const { lastFrame } = render(
       <CliThemeProvider initialTheme="dark">

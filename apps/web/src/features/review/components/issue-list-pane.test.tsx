@@ -79,7 +79,7 @@ describe("IssueListPane severity accessibility", () => {
       />,
     );
 
-    // Severity reaches AT textually (F-230): high vs low is not color-only.
+    // Severity reaches AT textually: high vs low is not color-only.
     expect(screen.getByRole("option", { name: /high severity.*avoid unsafe cast/i })).toBeVisible();
     expect(screen.getByRole("option", { name: /low severity.*tighten type/i })).toBeVisible();
   });

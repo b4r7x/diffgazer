@@ -130,7 +130,14 @@ describe("saved review query presentation", () => {
           type: "orchestrator_complete",
           totalIssues: 1,
           filesAnalyzed: 2,
-          lensStats: [],
+          lensStats: [
+            {
+              lensId: "security",
+              issueCount: 0,
+              status: "failed",
+              errorCode: "MODEL_ERROR",
+            },
+          ],
           droppedDuplicates: 1,
           timestamp: "2026-01-01T00:00:01.000Z",
         },
@@ -138,7 +145,14 @@ describe("saved review query presentation", () => {
           type: "orchestrator_complete",
           totalIssues: 2,
           filesAnalyzed: 3,
-          lensStats: [],
+          lensStats: [
+            {
+              lensId: "security",
+              issueCount: 0,
+              status: "failed",
+              errorCode: "RATE_LIMITED",
+            },
+          ],
           droppedDuplicates: 2,
           minSeverity: "medium",
           timestamp: "2026-01-01T00:00:02.000Z",
@@ -147,5 +161,6 @@ describe("saved review query presentation", () => {
     });
 
     expect(result).toMatchObject({ droppedDuplicates: 2, minSeverity: "medium" });
+    expect(result.lensStats?.[0]?.errorCode).toBe("RATE_LIMITED");
   });
 });

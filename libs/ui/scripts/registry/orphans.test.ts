@@ -34,17 +34,6 @@ describe("validateOrphanFiles", () => {
     expect(errors.some((e) => e.includes("registry/lib/orphan.ts"))).toBe(true);
   });
 
-  it("ignores test files when checking for orphans", () => {
-    const dir = setup({
-      "registry/lib/declared.ts": "export const a = 1;\n",
-      "registry/lib/declared.test.ts": "test stub\n",
-    });
-    const items = [
-      { name: "declared", type: "registry:lib", files: [{ path: "registry/lib/declared.ts" }] },
-    ];
-    expect(validateOrphanFiles(dir, items)).toEqual([]);
-  });
-
   it("finds an orphan in a nested production directory with no declared sibling", () => {
     const dir = setup({
       "registry/ui/declared/index.ts": "export const declared = 1;\n",
@@ -66,6 +55,7 @@ describe("validateOrphanFiles", () => {
   it("ignores tests, stories, testing helpers, and examples under production roots", () => {
     const dir = setup({
       "registry/lib/declared.ts": "export const declared = 1;\n",
+      "registry/lib/declared.test.ts": "test stub\n",
       "registry/lib/declared.spec.ts": "test stub\n",
       "registry/lib/declared.story.tsx": "story stub\n",
       "registry/lib/tests/helper.ts": "test helper\n",

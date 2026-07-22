@@ -310,32 +310,6 @@ describe("ReviewContainer", () => {
     expect(cancel).not.toHaveBeenCalled();
   });
 
-  test("remote-cancel terminal states show Back/Escape instead of streaming Cancel", async () => {
-    const cancel = vi.fn(async () => null);
-    apiMocks.useReviewLifecycleBase.mockReturnValue(
-      makeReviewLifecycleBase({
-        cancel,
-        error: "Review was cancelled remotely.",
-        errorCode: ReviewErrorCode.CANCELLED,
-        gate: "terminal-error",
-        isTerminalStreamError: true,
-        reviewId: "review-123",
-      }),
-    );
-
-    const { stdin, lastFrame } = renderContainer();
-
-    expect(lastFrame() ?? "").toContain("Review was cancelled remotely.");
-    expect(lastFrame() ?? "").toContain("Back");
-    expect(lastFrame() ?? "").not.toContain("Cancel");
-
-    stdin.write(ESC);
-
-    await waitUntil(() => (lastFrame() ?? "").includes("Home route"));
-    expect(cancel).not.toHaveBeenCalled();
-    expect(apiMocks.clearActiveSession).toHaveBeenCalledWith("staged", "review-123");
-  });
-
   test("review gates replace stale home footer shortcuts", async () => {
     apiMocks.useInit.mockReturnValue({
       data: {

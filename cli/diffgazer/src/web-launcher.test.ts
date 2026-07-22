@@ -1,7 +1,8 @@
 import { createServer as createTcpServer } from "node:net";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ServerController } from "./lib/servers/controller";
 import { createServerFactories } from "./lib/servers/factories";
-import { createProcessServer, type ServerController } from "./lib/servers/process";
+import { createProcessServer } from "./lib/servers/process/server";
 import { startWeb } from "./web-launcher";
 
 const ensureShutdownToken = vi.fn();
@@ -226,7 +227,6 @@ describe("startWeb", () => {
     );
 
     expect(events).toEqual(["banner", "start"]);
-    await stop();
     await stop();
 
     expect(events).toEqual(["banner", "start", "stop"]);

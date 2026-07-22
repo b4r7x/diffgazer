@@ -178,29 +178,6 @@ describe("runLensAnalysis", () => {
     if (result.ok) expect(result.value.issues).toHaveLength(2);
   });
 
-  it("drops incomplete provider issues before streaming and reports their diagnostic count", async () => {
-    const complete = makeLensIssue("complete", "file-1", "medium");
-    const incomplete = makeLensIssue("incomplete", "file-1", "high");
-    incomplete.symptom = "";
-    const client = makeMockAIClient(ok({ issues: [complete, incomplete] }));
-    const events: Array<AgentStreamEvent | StepEvent> = [];
-
-    const promise = runLensAnalysis(client, CORRECTNESS_LENS, makeAnalysisDiff(), (event) =>
-      events.push(event),
-    );
-    await vi.advanceTimersByTimeAsync(100);
-    const result = await promise;
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.value.issues.map((issue) => issue.id)).toEqual(["correctness:complete"]);
-    expect(result.value.droppedIncompleteProviderIssues).toBe(1);
-    expect(events.filter((event) => event.type === "issue_found")).toHaveLength(1);
-    expect(events.find((event) => event.type === "agent_complete")).toMatchObject({
-      issueCount: 1,
-    });
-  });
-
   it("normalizes provider text and keeps only complete references from mixed evidence", async () => {
     const complete = makeLensIssue(" mixed ", " file-1 ", "medium");
     complete.title = " Visible issue ";
@@ -230,6 +207,9 @@ describe("runLensAnalysis", () => {
       evidence: [{ type: "code", title: "Evidence", sourceId: "source:valid", excerpt: "code" }],
     });
     expect(events.filter((event) => event.type === "issue_found")).toHaveLength(1);
+    expect(events.find((event) => event.type === "agent_complete")).toMatchObject({
+      issueCount: 1,
+    });
   });
 
   it("sanitizes terminal-escape sequences in issue free-text fields", async () => {
@@ -321,27 +301,7 @@ describe("runLensAnalysis", () => {
     expect(errorEvents).toHaveLength(1);
     const errorEvent = errorEvents[0] as Extract<AgentStreamEvent, { type: "agent_error" }>;
     expect(errorEvent.error).toContain(code);
-  });
-
-  it("backfills empty issue evidence from the diff", async () => {
-    const diff = makeAnalysisDiff(1);
-    const issue = makeLensIssue("1", "file-1");
-    issue.evidence = [];
-
-    const client = makeMockAIClient(ok({ issues: [issue] }));
-    const events: Array<AgentStreamEvent | StepEvent> = [];
-    const onEvent = (e: AgentStreamEvent | StepEvent) => events.push(e);
-
-    const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, onEvent);
-    await vi.advanceTimersByTimeAsync(100);
-    const result = await promise;
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      const resultIssue = requireValue(result.value.issues[0], "result issue");
-      expect(resultIssue.evidence).toBeDefined();
-      expect(resultIssue.evidence?.length).toBeGreaterThan(0);
-    }
+    expect(events.filter((event) => event.type === "agent_complete")).toHaveLength(0);
   });
 
   it("streams evidence excerpts without malformed provider ranges", async () => {
@@ -525,6 +485,7 @@ describe("runLensAnalysis", () => {
     if (!result.ok) expect(result.error.code).toBe("PARSE_ERROR");
     expect(events.filter((event) => event.type === "issue_found")).toHaveLength(0);
     expect(events.filter((event) => event.type === "agent_error")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent_complete")).toHaveLength(0);
   });
 
   it("stops emitting progress events after the generate call rejects", async () => {

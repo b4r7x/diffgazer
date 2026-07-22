@@ -3,6 +3,7 @@ import { cleanup, render } from "ink-testing-library";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NavigationContext } from "../../../hooks/use-navigation";
+import { buildResponsiveResult, getBreakpointTier } from "../../../lib/breakpoints";
 import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
 import { CliThemeProvider } from "../../../theme/provider";
 import { HistoryScreen } from "./screen";
@@ -30,8 +31,7 @@ vi.mock("../../../hooks/use-terminal-dimensions", () => ({
   useResponsive: () => ({
     columns: terminalSize.columns,
     rows: terminalSize.rows,
-    isNarrow: terminalSize.columns < 80,
-    isMedium: terminalSize.columns >= 80 && terminalSize.columns < 120,
+    ...buildResponsiveResult(getBreakpointTier(terminalSize.columns)),
   }),
   useTerminalDimensions: () => terminalSize,
 }));

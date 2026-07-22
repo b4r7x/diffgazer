@@ -12,12 +12,6 @@ function getForm(name = "Test form"): HTMLFormElement {
 }
 
 describe("Switch", () => {
-  it("renders with role switch and default unchecked state", () => {
-    render(<Switch aria-label="Toggle" />);
-    const sw = screen.getByRole("switch");
-    expect(sw).toHaveAttribute("aria-checked", "false");
-  });
-
   it("renders checked state when controlled", () => {
     render(<Switch checked aria-label="Toggle" />);
     expect(screen.getByRole("switch")).toHaveAttribute("aria-checked", "true");
@@ -88,16 +82,49 @@ describe("Switch", () => {
     expect(sw).toHaveAttribute("aria-checked", "false");
   });
 
+  it("recovers activation and form participation after a disabled fieldset is enabled", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    function Fixture({ disabled }: { disabled: boolean }) {
+      return (
+        <form aria-label="Fieldset form">
+          <fieldset disabled={disabled}>
+            <Switch
+              name="notifications"
+              value="yes"
+              checked
+              onChange={onChange}
+              aria-label="Notifications"
+            />
+          </fieldset>
+        </form>
+      );
+    }
+
+    const { rerender } = render(<Fixture disabled />);
+    const form = getForm("Fieldset form");
+    const sw = screen.getByRole("switch", { name: "Notifications" });
+
+    expect(sw).toBeDisabled();
+    await user.click(sw);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(new FormData(form).has("notifications")).toBe(false);
+
+    rerender(<Fixture disabled={false} />);
+
+    await waitFor(() => expect(sw).not.toBeDisabled());
+    expect(new FormData(form).get("notifications")).toBe("yes");
+
+    await user.click(sw);
+    expect(onChange).toHaveBeenCalledWith(false);
+  });
+
   it("renders aria-invalid and aria-required when set", () => {
     render(<Switch aria-invalid required aria-label="Toggle" />);
     const sw = screen.getByRole("switch");
     expect(sw).toHaveAttribute("aria-invalid", "true");
     expect(sw).toHaveAttribute("aria-required", "true");
-  });
-
-  it("provides accessible name from aria-label", () => {
-    render(<Switch aria-label="Dark mode" />);
-    expect(screen.getByRole("switch", { name: "Dark mode" })).toBeInTheDocument();
   });
 
   it("provides accessible name from aria-labelledby", () => {
@@ -128,11 +155,6 @@ describe("Switch", () => {
     );
     const form = getForm();
     expect(new FormData(form).get("theme")).toBe("dark");
-  });
-
-  it("does not include hidden input when neither name nor required", () => {
-    const { container } = render(<Switch aria-label="Toggle" />);
-    expect(container.querySelector("input[type=checkbox]")).toBeNull();
   });
 
   it("resets uncontrolled state with native form reset", async () => {

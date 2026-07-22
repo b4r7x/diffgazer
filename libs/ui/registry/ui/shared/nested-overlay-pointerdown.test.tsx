@@ -131,21 +131,13 @@ describe("Nested overlay: outside-press consumes exactly one layer", () => {
 
       expect(trigger).toHaveAttribute("aria-expanded", "false");
       expect(onButtonClick).not.toHaveBeenCalled();
+
+      // fireEvent retained: a second, ordinary click on the same button proves
+      // the swallow was one-shot and normal clicks still reach the handler.
+      fireEvent.click(button);
+      expect(onButtonClick).toHaveBeenCalledOnce();
     } finally {
       vi.useRealTimers();
     }
-  });
-
-  it("does not swallow a normal click when no overlay is open", async () => {
-    const user = userEvent.setup();
-    const onButtonClick = vi.fn();
-    render(
-      <button type="button" onClick={onButtonClick}>
-        Plain
-      </button>,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Plain" }));
-    expect(onButtonClick).toHaveBeenCalledOnce();
   });
 });

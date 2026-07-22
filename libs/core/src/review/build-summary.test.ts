@@ -79,7 +79,6 @@ describe("buildCategoryStats", () => {
     const names = stats.map((stat) => stat.name);
 
     expect(names).toEqual(["Readability", "Style", "Correctness"]);
-    expect(names).not.toContain("Simplicity");
   });
 });
 

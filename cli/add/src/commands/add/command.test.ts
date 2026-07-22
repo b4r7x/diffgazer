@@ -15,7 +15,6 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { ctx } from "../../context.js";
 import { publicAvailableNames } from "../../utils/namespaces.js";
 import { computeMissingDeps, createDiffgazerAddCommand } from "./command.js";
-import { assertIntegrationModeChangesAllowed } from "./manifest.js";
 
 let root: string;
 let fakeBin: string | undefined;
@@ -147,22 +146,6 @@ describe("computeMissingDeps keys-version policy", () => {
     );
 
     expect(missing.some((dep) => dep.startsWith("@diffgazer/keys@"))).toBe(false);
-  });
-});
-
-describe("integration mode planning", () => {
-  test("requires overwrite before changing an installed mode", () => {
-    expect(() =>
-      assertIntegrationModeChangesAllowed(["ui/select"], "@diffgazer/keys", false),
-    ).toThrow(/--overwrite/);
-
-    expect(() =>
-      assertIntegrationModeChangesAllowed(["ui/select"], "@diffgazer/keys", true),
-    ).not.toThrow();
-  });
-
-  test("allows a plan when no installed item changes mode", () => {
-    expect(() => assertIntegrationModeChangesAllowed([], "copy", false)).not.toThrow();
   });
 });
 
@@ -341,25 +324,23 @@ describe("add command transaction", () => {
           lockfilesMutated: boolean;
         }
       | undefined;
-    const writeConfig = vi
-      .spyOn(ctx.config, "writeConfig")
-      .mockImplementationOnce((cwd, config) => {
-        writeConfigImpl(cwd, config);
-        const ownership = readInstalledComponents(root);
-        stateAtFailure = {
-          firstItemWritten:
-            existsSync(firstExplicitPath) &&
-            readFileSync(firstExplicitPath, "utf-8") !== "// local accordion bytes\n",
-          secondItemWritten: existsSync(secondExplicitPath),
-          firstItemOwned: ownership["ui/accordion"] !== undefined,
-          secondItemOwned: ownership["ui/toast"] !== undefined,
-          packageMutated: readFileSync(packagePath).equals(mutatedPackageBytes),
-          lockfilesMutated: PACKAGE_MANAGER_LOCKFILES.every(
-            (lockfile) => readFileSync(join(root, lockfile), "utf-8") === `mutated ${lockfile}\n`,
-          ),
-        };
-        throw new Error("forced two-item manifest finalization failure");
-      });
+    vi.spyOn(ctx.config, "writeConfig").mockImplementationOnce((cwd, config) => {
+      writeConfigImpl(cwd, config);
+      const ownership = readInstalledComponents(root);
+      stateAtFailure = {
+        firstItemWritten:
+          existsSync(firstExplicitPath) &&
+          readFileSync(firstExplicitPath, "utf-8") !== "// local accordion bytes\n",
+        secondItemWritten: existsSync(secondExplicitPath),
+        firstItemOwned: ownership["ui/accordion"] !== undefined,
+        secondItemOwned: ownership["ui/toast"] !== undefined,
+        packageMutated: readFileSync(packagePath).equals(mutatedPackageBytes),
+        lockfilesMutated: PACKAGE_MANAGER_LOCKFILES.every(
+          (lockfile) => readFileSync(join(root, lockfile), "utf-8") === `mutated ${lockfile}\n`,
+        ),
+      };
+      throw new Error("forced two-item manifest finalization failure");
+    });
     const exit = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
     const program = createAddTestCli("dgadd-transaction-test");
     const argv = [
@@ -377,7 +358,6 @@ describe("add command transaction", () => {
     await program.parseAsync(argv, { from: "user" });
 
     expect(exit).toHaveBeenCalledWith(1);
-    expect(writeConfig).toHaveBeenCalledTimes(1);
     expect(stateAtFailure).toEqual({
       firstItemWritten: true,
       secondItemWritten: true,

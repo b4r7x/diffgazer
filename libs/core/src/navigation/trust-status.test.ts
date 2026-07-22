@@ -52,7 +52,7 @@ describe("deriveTrustStatus", () => {
   });
 
   it("does not flag needsTrust when project is not identified", () => {
-    const result = deriveTrustStatus({ trust: null, projectId: null, repoRoot: null });
+    const result = deriveTrustStatus({ trust: null, projectId: null, repoRoot: "/repo" });
     expect(result).toEqual({ needsTrust: false, isTrusted: false });
   });
 

@@ -75,4 +75,30 @@ describe("computeStrictArtifactFingerprint", () => {
     expect(withSlash.missing).toEqual(["missing", "empty/*"]);
     expect(withSlash.fingerprint).toBe(withoutSlash.fingerprint);
   });
+
+  it("produces the same fingerprint regardless of file creation order", () => {
+    const first = createTempRoot();
+    const second = createTempRoot();
+    const files = ["input/a.txt", "input/Z.txt", "input/nested/B.txt"];
+
+    for (const relPath of files) {
+      writeText(first, relPath, `${relPath}\n`);
+    }
+    for (const relPath of files.toReversed()) {
+      writeText(second, relPath, `${relPath}\n`);
+    }
+
+    const firstFingerprint = computeStrictArtifactFingerprint(
+      first,
+      ["input"],
+      "https://r.b4r7.dev",
+    ).fingerprint;
+    const secondFingerprint = computeStrictArtifactFingerprint(
+      second,
+      ["input"],
+      "https://r.b4r7.dev",
+    ).fingerprint;
+
+    expect(secondFingerprint).toBe(firstFingerprint);
+  });
 });

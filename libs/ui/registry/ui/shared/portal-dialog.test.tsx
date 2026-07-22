@@ -60,6 +60,5 @@ describe("Portal-in-Dialog focus containment", () => {
     if (!listbox) throw new Error("Expected listbox to be mounted");
 
     expect(dialog.contains(listbox)).toBe(true);
-    expect(listbox.parentElement).not.toBe(document.body);
   });
 });

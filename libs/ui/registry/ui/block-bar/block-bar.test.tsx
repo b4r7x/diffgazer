@@ -20,16 +20,14 @@ describe("BlockBar", () => {
   });
 
   it("clamps invalid root values before rendering meter state", () => {
-    expect(() =>
-      render(
-        <BlockBar
-          label="Progress"
-          max={Number.NaN}
-          value={Number.POSITIVE_INFINITY}
-          barWidth={Number.NaN}
-        />,
-      ),
-    ).not.toThrow();
+    render(
+      <BlockBar
+        label="Progress"
+        max={Number.NaN}
+        value={Number.POSITIVE_INFINITY}
+        barWidth={Number.NaN}
+      />,
+    );
 
     const meter = screen.getByRole("meter", { name: "Progress" });
     expect(meter).toHaveAttribute("aria-valuemin", "0");

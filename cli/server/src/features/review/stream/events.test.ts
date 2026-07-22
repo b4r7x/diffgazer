@@ -48,6 +48,19 @@ describe("normalizeReviewStreamError", () => {
     });
   });
 
+  it("keeps a valid code when the step is invalid", () => {
+    const malformed = {
+      kind: "review_abort",
+      message: "unknown step",
+      code: ReviewErrorCode.AI_ERROR,
+      step: "not-a-step",
+    };
+    expect(normalizeReviewStreamError(malformed)).toEqual({
+      code: ReviewErrorCode.AI_ERROR,
+      message: "unknown step",
+    });
+  });
+
   it("uses the provided fallback when the error has no usable code", () => {
     expect(normalizeReviewStreamError({ message: "boom" }, ReviewErrorCode.SESSION_STALE)).toEqual({
       code: ReviewErrorCode.SESSION_STALE,

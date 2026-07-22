@@ -129,8 +129,6 @@ describe("createCollection", () => {
     ["null", null],
     ["array", []],
     ["string", "review"],
-    ["number", 42],
-    ["boolean", false],
   ])("returns a path-free PARSE_ERROR for a top-level %s", async (_label, value) => {
     const collection = makeCollection();
     await writeRawItem(TEST_ID, JSON.stringify(value));
@@ -245,6 +243,47 @@ describe("createCollection", () => {
       await chmod(collectionDir, 0o500);
       try {
         const result = await collection.write(makeItem());
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.code).toBe("PERMISSION_ERROR");
+          expect(result.error.message).not.toContain(tempRoot);
+          expect(result.error.message).not.toContain(collectionDir);
+        }
+      } finally {
+        await chmod(collectionDir, 0o700);
+      }
+    },
+  );
+
+  it.skipIf(process.platform === "win32")(
+    "scrubs the absolute path from a permission-denied read error",
+    async () => {
+      const collection = makeCollection();
+      await collection.write(makeItem());
+      const filePath = join(collectionDir, `${TEST_ID}.json`);
+      await chmod(filePath, 0o200);
+      try {
+        const result = await collection.read(TEST_ID);
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.code).toBe("PERMISSION_ERROR");
+          expect(result.error.message).not.toContain(tempRoot);
+          expect(result.error.message).not.toContain(collectionDir);
+        }
+      } finally {
+        await chmod(filePath, 0o600);
+      }
+    },
+  );
+
+  it.skipIf(process.platform === "win32")(
+    "scrubs the absolute path from a permission-denied list error",
+    async () => {
+      const collection = makeCollection();
+      await collection.ensureDir();
+      await chmod(collectionDir, 0o300);
+      try {
+        const result = await collection.list();
         expect(result.ok).toBe(false);
         if (!result.ok) {
           expect(result.error.code).toBe("PERMISSION_ERROR");

@@ -81,8 +81,9 @@ describe("DocsNotFoundBlock", () => {
   it("does not nest buttons inside links for recovery actions", () => {
     const { container } = renderBlock();
 
-    expect(screen.getByRole("link", { name: "Go to docs home" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Go home" })).toBeInTheDocument();
+    const docsHomeLink = screen.getByRole("link", { name: "Go to docs home" });
+    expect(docsHomeLink).toHaveAttribute("href", "/ui/getting-started/installation");
+    expect(screen.getByRole("link", { name: "Go home" })).toHaveAttribute("href", "/");
 
     for (const link of container.querySelectorAll("a")) {
       expect(link.querySelector("button")).toBeNull();
@@ -94,7 +95,8 @@ describe("DocsNotFoundBlock", () => {
   it("describes the global 404 action as GO_HOME", () => {
     render(<GlobalNotFound />);
 
-    expect(screen.getByRole("link", { name: "GO_HOME" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open docs" })).toHaveAttribute("href", "/ui");
+    expect(screen.getByRole("link", { name: "GO_HOME" })).toHaveAttribute("href", "/");
     expectPanelAction("Page not found", "GO_HOME");
   });
 });

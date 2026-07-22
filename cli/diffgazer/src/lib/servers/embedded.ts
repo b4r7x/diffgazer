@@ -7,7 +7,7 @@ import { getErrorMessage } from "@diffgazer/core/errors";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import type { Context } from "hono";
-import type { ServerController } from "./process";
+import type { ServerController } from "./controller";
 
 export interface EmbeddedServerConfig {
   port: number;

@@ -6,12 +6,12 @@ import {
   unregisterSession,
 } from "./session-registry.js";
 
-const sessionIds = ["project-a-gemini", "project-b-gemini", "project-b-openrouter"];
+const providerCancelSessionIds = ["project-a", "project-b-gemini", "project-b-openrouter"];
 
 beforeEach(() => {
   unregisterSession("a");
   unregisterSession("b");
-  for (const sessionId of sessionIds) unregisterSession(sessionId);
+  for (const sessionId of providerCancelSessionIds) unregisterSession(sessionId);
 });
 
 describe("session-registry", () => {
@@ -63,30 +63,29 @@ describe("session-registry", () => {
     });
   });
 
-  it("cancels matching provider sessions across projects without cancelling another provider", () => {
-    const projectAGemini = vi.fn();
-    const projectBGemini = vi.fn();
-    const projectBOpenRouter = vi.fn();
+  it("broadcasts the same provider-tagged options to every registered cancel callback", () => {
+    const cancelA = vi.fn();
+    const cancelB = vi.fn();
+    const cancelC = vi.fn();
 
-    registerSession(sessionIds[0] ?? "", { projectKey: "/project/a", cancel: projectAGemini });
-    registerSession(sessionIds[1] ?? "", { projectKey: "/project/b", cancel: projectBGemini });
-    registerSession(sessionIds[2] ?? "", {
+    registerSession(providerCancelSessionIds[0] ?? "", {
+      projectKey: "/project/a",
+      cancel: cancelA,
+    });
+    registerSession(providerCancelSessionIds[1] ?? "", {
       projectKey: "/project/b",
-      cancel: (options) => {
-        if (options?.provider === "openrouter") projectBOpenRouter(options);
-      },
+      cancel: cancelB,
+    });
+    registerSession(providerCancelSessionIds[2] ?? "", {
+      projectKey: "/project/b",
+      cancel: cancelC,
     });
 
     cancelSessionsForProvider("gemini", { reason: "provider_deleted" });
 
-    expect(projectAGemini).toHaveBeenCalledWith({
-      provider: "gemini",
-      reason: "provider_deleted",
-    });
-    expect(projectBGemini).toHaveBeenCalledWith({
-      provider: "gemini",
-      reason: "provider_deleted",
-    });
-    expect(projectBOpenRouter).not.toHaveBeenCalled();
+    const expected = { provider: "gemini", reason: "provider_deleted" };
+    expect(cancelA).toHaveBeenCalledWith(expected);
+    expect(cancelB).toHaveBeenCalledWith(expected);
+    expect(cancelC).toHaveBeenCalledWith(expected);
   });
 });

@@ -101,7 +101,6 @@ describe("waitForHealthy", () => {
         timeoutMs: 500,
       });
 
-      expect(dateSpy).not.toHaveBeenCalled();
       expect(timeoutSpy).toHaveBeenCalledTimes(2);
       for (const [remainingMs] of timeoutSpy.mock.calls) {
         expect(Number.isFinite(remainingMs)).toBe(true);

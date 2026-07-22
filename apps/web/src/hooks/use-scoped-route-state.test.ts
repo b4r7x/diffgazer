@@ -59,6 +59,11 @@ describe("useScopedRouteState", () => {
 
     expect(first.result.current[0]).toBe(50);
     expect(second.result.current[0]).toBe(50);
+
+    act(() => clearScopedRouteState(mockLocation.pathname, "shared"));
+
+    expect(first.result.current[0]).toBe(10);
+    expect(second.result.current[0]).toBe(10);
   });
 
   it("keeps separate values for different keys on the same route", () => {

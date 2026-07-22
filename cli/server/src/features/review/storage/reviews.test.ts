@@ -2,12 +2,10 @@ import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { getRunSummaryText } from "@diffgazer/core/review";
 import type { SavedReview } from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeIssue } from "../../../shared/lib/testing/factories.js";
-import { parseDiff } from "../engine/diff/parser.js";
 
 const REVIEW_ID = "550e8400-e29b-41d4-a716-446655440000";
 const REVIEW_ID_2 = "660e8400-e29b-41d4-a716-446655440001";
@@ -174,18 +172,17 @@ describe("reviews storage", () => {
   it("saves a review and persists the complete JSON document", async () => {
     const { saveReview } = await loadStorage();
 
-    const result = await saveReview(
-      makeSaveOptions({
-        reviewId: REVIEW_ID,
-        result: {
-          issues: [
-            makeIssue({ id: "i1", title: "A", severity: "blocker", file: "a.ts" }),
-            makeIssue({ id: "i2", title: "B", severity: "high", file: "b.ts" }),
-            makeIssue({ id: "i3", title: "C", severity: "nit", file: "c.ts" }),
-          ],
-        },
-      }),
-    );
+    const saveOptions = makeSaveOptions({
+      reviewId: REVIEW_ID,
+      result: {
+        issues: [
+          makeIssue({ id: "i1", title: "A", severity: "blocker", file: "a.ts" }),
+          makeIssue({ id: "i2", title: "B", severity: "high", file: "b.ts" }),
+          makeIssue({ id: "i3", title: "C", severity: "nit", file: "c.ts" }),
+        ],
+      },
+    });
+    const result = await saveReview(saveOptions);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -206,30 +203,8 @@ describe("reviews storage", () => {
       gitContext: { branch: "main", commit: "abc123", fileCount: 3, additions: 10, deletions: 5 },
       result: { issues: expect.any(Array) },
     });
+    expect(savedReview.diff).toEqual(saveOptions.diff);
     expect(savedReview?.result).not.toHaveProperty("summary");
-  });
-
-  it("persists header-shaped hunk payload counts in git context", async () => {
-    const { saveReview } = await loadStorage();
-    const diff = parseDiff(`diff --git a/file.ts b/file.ts
---- a/file.ts
-+++ b/file.ts
-@@ -1,2 +1,2 @@
---- a/path
---- "a/quoted path"
-+++ b/path
-+++ "b/quoted path"`);
-
-    const result = await saveReview(makeSaveOptions({ reviewId: REVIEW_ID, diff }));
-
-    expect(result.ok).toBe(true);
-    await expect(readSavedReview(REVIEW_ID)).resolves.toMatchObject({
-      diff: {
-        files: [{ stats: { additions: 2, deletions: 2 } }],
-        totalStats: { filesChanged: 1, additions: 2, deletions: 2 },
-      },
-      gitContext: { fileCount: 1, additions: 2, deletions: 2 },
-    });
   });
 
   it("persists failed lens count through save, list, and detail reads", async () => {
@@ -294,18 +269,12 @@ describe("reviews storage", () => {
       const listedMetadata = listed.value.items[0];
       expect(listedMetadata).toBeDefined();
       if (listedMetadata) {
-        expect(listedMetadata.failedLensCount).toBe(1);
-        expect(getRunSummaryText(listedMetadata)).toBe(
-          "Partial analysis: 1 lens failed; no issues found.",
-        );
+        expect(listedMetadata).toMatchObject({ issueCount: 0, failedLensCount: 1 });
       }
     }
     expect(detail.ok).toBe(true);
     if (detail.ok) {
-      expect(detail.value.metadata.failedLensCount).toBe(1);
-      expect(getRunSummaryText(detail.value.metadata)).toBe(
-        "Partial analysis: 1 lens failed; no issues found.",
-      );
+      expect(detail.value.metadata).toMatchObject({ issueCount: 0, failedLensCount: 1 });
     }
 
     await waitForSavedReview(REVIEW_ID, (review) => review.metadata.failedLensCount === 1);
@@ -344,7 +313,7 @@ describe("reviews storage", () => {
   });
 
   it("reconciles a durably-saved review the stale index omits and self-heals the index", async () => {
-    // Index lists only REVIEW_ID with a reconcile marker set (F-097).
+    // Index lists only REVIEW_ID with a reconcile marker set.
     await writeSavedReview(
       makeSavedReview({
         metadata: {
@@ -408,7 +377,7 @@ describe("reviews storage", () => {
   });
 
   it("serves a single-project listing without reading other projects' index files", async () => {
-    // F-097 perf guard: listing /proj/a must not fan out into /proj/b's index.
+    // Perf guard: listing /proj/a must not fan out into /proj/b's index.
     await writeSavedReview(
       makeSavedReview({
         metadata: {
@@ -1097,10 +1066,7 @@ describe("reviews storage", () => {
     if (!result.ok) return;
     expect(result.value.items).toHaveLength(1);
     const metadata = result.value.items[0];
-    expect(metadata?.failedLensCount).toBe(1);
-    if (metadata) {
-      expect(getRunSummaryText(metadata)).toBe("Partial analysis: 1 lens failed; no issues found.");
-    }
+    expect(metadata).toMatchObject({ issueCount: 0, failedLensCount: 1 });
     await waitForSavedReview(REVIEW_ID, (review) => review.metadata.failedLensCount === 1);
   });
 

@@ -22,6 +22,30 @@ function expectSelectedTabOwnsPanel(tablistName: string) {
   expect(panel.hidden).toBe(false);
 }
 
+function expectTabControlsVisiblePanel(tabName: string, expectedContent: string) {
+  const tab = screen.getByRole("tab", { name: tabName });
+  expect(tab.getAttribute("aria-selected")).toBe("true");
+
+  const panelId = tab.getAttribute("aria-controls");
+  if (!panelId) throw new Error(`expected the "${tabName}" tab to control a panel`);
+  const panel = document.getElementById(panelId);
+  if (!(panel instanceof HTMLElement))
+    throw new Error(`expected the "${tabName}" tab's panel to exist`);
+
+  expect(panel.hidden).toBe(false);
+  expect(panel.textContent).toBe(expectedContent);
+}
+
+function expectTabDeselectedAndHidden(tabName: string) {
+  const tab = screen.getByRole("tab", { name: tabName });
+  expect(tab.getAttribute("aria-selected")).toBe("false");
+
+  const panelId = tab.getAttribute("aria-controls");
+  if (!panelId) throw new Error(`expected the "${tabName}" tab to control a panel`);
+  const panel = document.getElementById(panelId);
+  expect(panel instanceof HTMLElement && panel.hidden).toBe(true);
+}
+
 describe("playground composite semantics", () => {
   it("renders command entries as uniquely named buttons without orphan option roles", async () => {
     const user = userEvent.setup();
@@ -44,9 +68,17 @@ describe("playground composite semantics", () => {
     expectSelectedTabOwnsPanel("Settings sections");
 
     await user.click(screen.getByRole("tab", { name: "Settings" }));
-    await user.click(screen.getByRole("tab", { name: "Security" }));
+    expectTabControlsVisiblePanel(
+      "Settings",
+      "Configure application preferences, themes, and notification settings.",
+    );
+    expectTabDeselectedAndHidden("Dashboard");
 
-    expectSelectedTabOwnsPanel("Account sections");
-    expectSelectedTabOwnsPanel("Settings sections");
+    await user.click(screen.getByRole("tab", { name: "Security" }));
+    expectTabControlsVisiblePanel(
+      "Security",
+      "Two-factor authentication, password policies, and session management.",
+    );
+    expectTabDeselectedAndHidden("General");
   });
 });

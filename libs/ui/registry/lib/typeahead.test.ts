@@ -98,10 +98,10 @@ describe("typeaheadSearch", () => {
     });
 
     it("matches German ß labels case-insensitively", () => {
-      const items = [{ id: "strasse", label: "STRASSE" }];
+      const items = [{ id: "strasse", label: "STRAẞE" }];
       const match = typeaheadSearch({
         items,
-        query: "strasse",
+        query: "straße",
         currentIndex: -1,
         getLabel: (item) => item.label,
       });

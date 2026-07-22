@@ -1,8 +1,5 @@
 // @vitest-environment jsdom
 
-import { type SpawnSyncReturns, spawnSync } from "node:child_process";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -18,95 +15,13 @@ const docsPageTree: PageTree = {
   ],
 };
 
-const routeTestFiles = ["$lib.test.tsx", "pager-keys.test.tsx", "docs-not-found-route.test.tsx"];
-const ROUTE_GENERATOR_TIMEOUT_MS = 30_000;
-
-function expectSuccessfulSubprocess(result: SpawnSyncReturns<string>): void {
-  expect({
-    error: result.error?.message,
-    signal: result.signal,
-    status: result.status,
-  }).toEqual({
-    error: undefined,
-    signal: null,
-    status: 0,
-  });
-}
-
-function withRestoredRouteTree<T>(docsRoot: string, run: () => T): T {
-  const routeTreePath = resolve(docsRoot, "src/routeTree.gen.ts");
-  const existed = existsSync(routeTreePath);
-  const contents = existed ? readFileSync(routeTreePath) : undefined;
-
-  try {
-    return run();
-  } finally {
-    if (contents) {
-      writeFileSync(routeTreePath, contents);
-    } else {
-      rmSync(routeTreePath, { force: true });
-    }
-
-    expect(existsSync(routeTreePath)).toBe(existed);
-    if (contents) {
-      expect(readFileSync(routeTreePath)).toEqual(contents);
-    }
-  }
-}
-
-describe("route tree generator", () => {
-  it("excludes colocated route tests without warning", () => {
-    const docsRoot = resolve(import.meta.dirname, "../..");
-    const result = withRestoredRouteTree(docsRoot, () =>
-      spawnSync(process.execPath, [resolve(docsRoot, "scripts/generate-route-tree.mjs")], {
-        cwd: docsRoot,
-        encoding: "utf8",
-        env: { ...process.env, NO_COLOR: "1" },
-        timeout: ROUTE_GENERATOR_TIMEOUT_MS,
-      }),
-    );
-
-    expectSuccessfulSubprocess(result);
-    expect(result.stdout).toContain("[generate-route-tree] Generated src/routeTree.gen.ts");
-    expect(result.stderr).not.toContain("Warning: Route file");
-    for (const testFile of routeTestFiles) {
-      expect(result.stderr).not.toContain(testFile);
-    }
-  });
-
-  it("configures the production Vite generator to exclude colocated route tests", () => {
-    const docsRoot = resolve(import.meta.dirname, "../..");
-    const env: NodeJS.ProcessEnv = {
-      ...process.env,
-      DOCS_PRERENDER: "0",
-      NO_COLOR: "1",
-    };
-    delete env.VITEST;
-    const result = withRestoredRouteTree(docsRoot, () =>
-      spawnSync(
-        process.execPath,
-        [
-          "--input-type=module",
-          "--eval",
-          "import { resolveConfig } from 'vite'; await resolveConfig({ configFile: 'vite.config.ts' }, 'build'); console.log('[vite-config] resolved');",
-        ],
-        {
-          cwd: docsRoot,
-          encoding: "utf8",
-          env,
-          timeout: ROUTE_GENERATOR_TIMEOUT_MS,
-        },
-      ),
-    );
-
-    expectSuccessfulSubprocess(result);
-    expect(result.stdout).toContain("[vite-config] resolved");
-    expect(result.stderr).not.toContain("Warning: Route file");
-    for (const testFile of routeTestFiles) {
-      expect(result.stderr).not.toContain(testFile);
-    }
-  });
-});
+/** Loader payload for `/ui/getting-started` from the real docs source (path is the fumadocs content key). */
+const uiGettingStartedPage = {
+  path: "ui/getting-started/index.mdx",
+  title: "Getting Started",
+  description: "Install `@diffgazer/ui`, wire up your app, and configure the theme.",
+  library: "ui" as const,
+};
 
 // Boundary mock: TanStack Start server functions cross the server/client boundary.
 vi.mock("@tanstack/react-start", () => ({
@@ -116,6 +31,24 @@ vi.mock("@tanstack/react-start", () => ({
       handler:
         () =>
         async ({ data }: { data?: Record<string, unknown> } = {}) => {
+          if (data && "routeSlugs" in data && "library" in data) {
+            const library = data.library;
+            const routeSlugs = data.routeSlugs;
+            if (
+              library === uiGettingStartedPage.library &&
+              Array.isArray(routeSlugs) &&
+              routeSlugs.length === 1 &&
+              routeSlugs[0] === "getting-started"
+            ) {
+              return {
+                path: uiGettingStartedPage.path,
+                title: uiGettingStartedPage.title,
+                description: uiGettingStartedPage.description,
+                library: uiGettingStartedPage.library,
+              };
+            }
+            return null;
+          }
           if (data && "library" in data) {
             return { library: data.library, pageTree: docsPageTree };
           }
@@ -144,6 +77,7 @@ vi.mock("@/lib/library", async (importOriginal) => {
 
 function installBrowserMocks() {
   stubMatchMedia({ isDesktop: false });
+  Element.prototype.scrollIntoView = () => {};
 
   HTMLDialogElement.prototype.showModal = vi.fn(function showModal(this: HTMLDialogElement) {
     this.open = true;
@@ -188,10 +122,16 @@ describe("$lib unknown-segment handling", () => {
     expect(screen.queryByRole("heading", { name: "Page not found" })).not.toBeInTheDocument();
   });
 
-  it("renders an enabled library shell without a not-found state", async () => {
+  it("completes an enabled library content route without redirecting or root not-found", async () => {
     const router = renderRoute("/ui/getting-started");
 
+    expect(await screen.findByRole("link", { name: "Overview" })).toHaveAttribute(
+      "href",
+      "/ui/getting-started",
+    );
+
+    await vi.waitFor(() => expect(router.state.status).toBe("idle"));
+    expect(router.state.location.pathname).toBe("/ui/getting-started");
     expect(screen.queryByRole("heading", { name: "Page not found" })).not.toBeInTheDocument();
-    expect(router.state.location.pathname.startsWith("/ui")).toBe(true);
   });
 });

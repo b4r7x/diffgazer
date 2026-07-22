@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "@/hooks/theme-context";
@@ -74,9 +74,18 @@ describe("StatusBar", () => {
     expect(screen.getByRole("link", { name: "Keys" })).not.toHaveAttribute("aria-current");
   });
 
-  it.each(["/app", "/ui", "/keys"])("marks the exact library root %s active", (pathname) => {
+  it.each([
+    ["/app", "Docs"],
+    ["/ui", "Components"],
+    ["/keys", "Keys"],
+  ])("marks the exact library root %s active", (pathname, expectedName) => {
     routerBoundary.pathname = pathname;
     renderStatusBar();
+
+    expect(screen.getByRole("link", { name: expectedName })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
 
     const activeLinks = screen
       .getAllByRole("link")
@@ -91,30 +100,28 @@ describe("StatusBar", () => {
     expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/app");
     expect(screen.getByRole("link", { name: "Components" })).toHaveAttribute("href", "/ui");
     expect(screen.getByRole("link", { name: "Keys" })).toHaveAttribute("href", "/keys");
+    expect(screen.getByRole("button", { name: /switch to light theme/i })).toBeInTheDocument();
   });
 
-  it("exposes focusable links inside the Primary navigation landmark", () => {
-    routerBoundary.pathname = "/";
-    renderStatusBar();
-
-    const nav = screen.getByRole("navigation", { name: "Primary" });
-    const links = within(nav).getAllByRole("link");
-    expect(links.length).toBeGreaterThan(0);
-    for (const link of links) {
-      link.focus();
-      expect(link).toHaveFocus();
-    }
-  });
-
-  it("toggles the document theme via the chrome toggle", async () => {
+  it("exposes focusable links inside the Primary navigation landmark", async () => {
     const user = userEvent.setup();
     routerBoundary.pathname = "/";
     renderStatusBar();
 
-    const toggle = screen.getByRole("button", { name: /switch to light theme/i });
-    await user.click(toggle);
+    screen.getByRole("navigation", { name: "Primary" });
 
-    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
-    expect(screen.getByRole("button", { name: /switch to dark theme/i })).toBeInTheDocument();
+    const tabOrder = [
+      screen.getByRole("link", { name: "diffgazer" }),
+      screen.getByRole("link", { name: "Docs" }),
+      screen.getByRole("link", { name: "Components" }),
+      screen.getByRole("link", { name: "Keys" }),
+      screen.getByRole("link", { name: "GitHub" }),
+      screen.getByRole("button", { name: /switch to light theme/i }),
+    ];
+
+    for (const element of tabOrder) {
+      await user.tab();
+      expect(element).toHaveFocus();
+    }
   });
 });

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   selectedIdentitySurfaces,
   verifySelectedSourceTags,
@@ -91,5 +93,19 @@ describe("deployed source identity", () => {
     });
 
     assert.deepEqual(origins.sort(), ["https://docs.example.com", "https://landing.example.com"]);
+  });
+
+  it("exits nonzero with an Unknown deploy target diagnostic when spawned directly", () => {
+    const child = spawnSync(
+      process.execPath,
+      [fileURLToPath(new URL("./verify-deployed-source-tags.mjs", import.meta.url))],
+      {
+        encoding: "utf8",
+        env: { ...process.env, SOURCE_TAG, DEPLOY_TARGET: "unknown" },
+      },
+    );
+
+    assert.notEqual(child.status, 0);
+    assert.match(child.stderr, /Unknown deploy target/);
   });
 });

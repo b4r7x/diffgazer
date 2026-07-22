@@ -21,6 +21,14 @@ describe("Progress", () => {
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");
   });
 
+  it("normalizes a NaN value to zero while remaining determinate", () => {
+    render(<Progress value={Number.NaN} aria-label="Progress" />);
+    const bar = screen.getByRole("progressbar");
+    expect(bar).toHaveAttribute("aria-valuenow", "0");
+    expect(bar).toHaveAttribute("data-state", "loaded");
+    expect(bar.firstElementChild).toHaveStyle({ width: "0%" });
+  });
+
   it("renders indeterminate mode when value is undefined", () => {
     render(<Progress aria-label="Loading" />);
     const bar = screen.getByRole("progressbar");

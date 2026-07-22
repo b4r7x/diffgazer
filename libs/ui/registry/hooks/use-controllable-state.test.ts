@@ -131,20 +131,34 @@ describe("useControllableState", () => {
     expect(result.current[0]).toBe("controlled");
   });
 
-  it("handles controlled undefined value", () => {
-    const onChange = vi.fn();
-    const { result, rerender } = renderHook(
-      ({ value }: { value: string | undefined }) =>
-        useControllableState({ value, defaultValue: "default", onChange }),
-      { initialProps: { value: undefined as string | undefined } },
-    );
+  it("warns once when switching from uncontrolled to controlled, and not again on a later switch", () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const onChange = vi.fn();
+      const { result, rerender } = renderHook(
+        ({ value }: { value: string | undefined }) =>
+          useControllableState({ value, defaultValue: "default", onChange }),
+        { initialProps: { value: undefined as string | undefined } },
+      );
 
-    expect(result.current[0]).toBe("default");
-    expect(result.current[2]).toBe(false);
+      expect(result.current[0]).toBe("default");
+      expect(result.current[2]).toBe(false);
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
 
-    rerender({ value: "controlled" });
-    expect(result.current[0]).toBe("controlled");
-    expect(result.current[2]).toBe(true);
+      rerender({ value: "controlled" });
+      expect(result.current[0]).toBe("controlled");
+      expect(result.current[2]).toBe(true);
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("changed from uncontrolled to controlled"),
+      );
+
+      rerender({ value: undefined });
+      expect(result.current[2]).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
   });
 
   it("supports explicitly controlled undefined values", () => {
@@ -195,5 +209,25 @@ describe("useControllableState", () => {
 
     expect(onChange).toHaveBeenCalledWith(15);
     expect(result.current[0]).toBe(10); // controlled value unchanged
+  });
+
+  it("resolves a setter captured before a rerender against the latest controlled value and onChange", () => {
+    const onChangeA = vi.fn();
+    const onChangeB = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ value, onChange }: { value: number; onChange: (value: number) => void }) =>
+        useControllableState({ value, defaultValue: 0, onChange }),
+      { initialProps: { value: 10, onChange: onChangeA } },
+    );
+    const setValue = result.current[1];
+
+    rerender({ value: 20, onChange: onChangeB });
+
+    act(() => {
+      setValue((prev) => prev + 5);
+    });
+
+    expect(onChangeB).toHaveBeenCalledWith(25);
+    expect(onChangeA).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,6 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
-import { makeIssue } from "@diffgazer/core/testing/factories";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
@@ -11,14 +10,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
 
 // Boundary mock: Router is the routing library; the shell reads location/back state.
-vi.mock("@tanstack/react-router", () => ({
-  useRouter: () => ({ history: { back: vi.fn() }, navigate: vi.fn() }),
-  useNavigate: () => vi.fn(),
-  useLocation: () => ({ pathname: "/" }),
-  useCanGoBack: () => false,
+const { navigateSpy, backSpy, routerState } = vi.hoisted(() => ({
+  navigateSpy: vi.fn(),
+  backSpy: vi.fn(),
+  routerState: { pathname: "/", canGoBack: false },
 }));
 
-import { ReviewResultsView } from "../../features/review/components/results-view";
+vi.mock("@tanstack/react-router", () => ({
+  useRouter: () => ({ history: { back: backSpy }, navigate: navigateSpy }),
+  useNavigate: () => navigateSpy,
+  useLocation: () => ({ pathname: routerState.pathname }),
+  useCanGoBack: () => routerState.canGoBack,
+}));
+
 import { GlobalLayout } from "./global";
 
 let queryClient: QueryClient;
@@ -32,6 +36,10 @@ beforeEach(() => {
     },
   });
   mockApi = createMockApi();
+  navigateSpy.mockClear();
+  backSpy.mockClear();
+  routerState.pathname = "/";
+  routerState.canGoBack = false;
 });
 
 afterEach(() => {
@@ -120,31 +128,28 @@ describe("GlobalLayout", () => {
     expect(screen.getByRole("button", { name: "First content action" })).toHaveFocus();
   });
 
-  it("keeps both stacked review panes reachable without a horizontal viewport focus stop", () => {
-    const issue = makeIssue({
-      id: "narrow-layout",
-      severity: "high",
-      title: "Details remain reachable",
-      symptom: "The details pane must remain reachable at narrow widths.",
-      rationale: "The review composition owns horizontal overflow.",
-      recommendation: "Keep the results row inside its explicit viewport.",
-    });
+  it("navigates to the settings route without calling history back on a settings subroute", async () => {
+    const user = userEvent.setup();
+    routerState.pathname = "/settings/theme";
+    routerState.canGoBack = true;
 
-    renderShell(
-      <KeyboardProvider>
-        <ReviewResultsView issues={[issue]} reviewId="layout-regression" />
-      </KeyboardProvider>,
-    );
+    renderShell();
+    await user.click(screen.getByRole("button", { name: /back/i }));
 
-    const main = screen.getByRole("main");
-    const resultsViewport = screen.getByRole("region", { name: "Review result panes" });
-    const issueList = screen.getByRole("complementary", { name: "Issue list" });
-    const issueDetails = screen.getByRole("complementary", { name: "Issue details" });
-    expect(main).toContainElement(resultsViewport);
-    expect(resultsViewport).toContainElement(issueList);
-    expect(resultsViewport).toContainElement(issueDetails);
-    expect(resultsViewport).toHaveAttribute("data-viewport", "review-results");
-    expect(resultsViewport).not.toHaveAttribute("tabindex");
+    expect(navigateSpy).toHaveBeenCalledWith({ to: "/settings" });
+    expect(backSpy).not.toHaveBeenCalled();
+  });
+
+  it("calls history back without navigating on a non-settings route with history", async () => {
+    const user = userEvent.setup();
+    routerState.pathname = "/history";
+    routerState.canGoBack = true;
+
+    renderShell();
+    await user.click(screen.getByRole("button", { name: /back/i }));
+
+    expect(backSpy).toHaveBeenCalledOnce();
+    expect(navigateSpy).not.toHaveBeenCalled();
   });
 
   it("keeps the configured header when only provider status fails", async () => {

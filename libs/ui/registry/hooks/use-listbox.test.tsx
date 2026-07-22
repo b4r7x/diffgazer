@@ -4,6 +4,7 @@
 // biome-ignore-all lint/a11y/useKeyWithClickEvents: option click activation is paired with the listbox container's centralized key handling, not per-item key handlers.
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { KeyboardEvent } from "react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { axe } from "../../testing/axe";
 import { listboxDoc } from "../hook-docs/listbox";
@@ -338,16 +339,23 @@ describe("useListbox", () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
-  it("forwards custom onKeyDown handler with the keyboard event", async () => {
-    const onKeyDown = vi.fn();
+  it("forwards custom onKeyDown handler and suppresses navigation when it cancels the event", async () => {
+    const onKeyDown = vi.fn((event: KeyboardEvent) => {
+      if (event.key === "ArrowDown") event.preventDefault();
+    });
+    const onHighlightChange = vi.fn();
     const user = userEvent.setup();
-    render(<Listbox items={defaultItems} onKeyDown={onKeyDown} />);
+    render(
+      <Listbox items={defaultItems} onKeyDown={onKeyDown} onHighlightChange={onHighlightChange} />,
+    );
 
     const listbox = screen.getByRole("listbox");
     listbox.focus();
     await user.keyboard("{ArrowDown}");
 
     expect(onKeyDown).toHaveBeenCalledWith(expect.objectContaining({ key: "ArrowDown" }));
+    expect(onHighlightChange).not.toHaveBeenCalled();
+    expect(listbox).not.toHaveAttribute("aria-activedescendant");
   });
 
   it("selects item on click and fires onSelect", async () => {
@@ -373,10 +381,10 @@ describe("useListbox", () => {
     expect(onSelect).toHaveBeenCalledWith("b");
   });
 
-  it("skips aria-disabled items in typeahead", async () => {
+  it("skips a disabled option sharing the searched prefix and highlights the enabled one", async () => {
     const items = [
-      { id: "d", label: "Disabled", disabled: true },
-      { id: "a", label: "Alpha" },
+      { id: "d", label: "Apple", disabled: true },
+      { id: "a", label: "Avocado" },
       { id: "b", label: "Beta" },
     ];
     const onHighlight = vi.fn();
@@ -388,6 +396,7 @@ describe("useListbox", () => {
     await user.keyboard("a");
 
     expect(onHighlight).toHaveBeenLastCalledWith("a");
+    expect(listbox).toHaveAttribute("aria-activedescendant", getEncodedListboxItemId("lb", "a"));
   });
 
   it("extends the typeahead query with Space and does not select while the buffer is non-empty", async () => {

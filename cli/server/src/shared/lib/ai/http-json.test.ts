@@ -67,6 +67,27 @@ describe("createResponseLimitingFetch", () => {
     );
     await vi.waitFor(() => expect(cancel).toHaveBeenCalledOnce());
   });
+
+  it("passes input and init through to the injected fetcher for a successful small response", async () => {
+    const upstream = new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+    const fetcher = vi.fn(async () => upstream) as unknown as typeof fetch;
+    const controller = new AbortController();
+    const input = "https://example.test/small";
+    const init: RequestInit = {
+      method: "POST",
+      headers: { "x-test-header": "distinctive-value" },
+      body: JSON.stringify({ hello: "world" }),
+      signal: controller.signal,
+    };
+
+    const response = await createResponseLimitingFetch(fetcher)(input, init);
+
+    expect(fetcher).toHaveBeenCalledWith(input, init);
+    await expect(response.json()).resolves.toEqual({ ok: true });
+  });
 });
 
 describe("readJsonResponseWithLimit", () => {
@@ -170,33 +191,26 @@ describe("readJsonResponseWithLimit", () => {
     if (!result.ok) expect(result.error.message.toLowerCase()).toContain("json");
   });
 
-  it("decodes a streamed multi-byte payload split across chunks", async () => {
-    const result = await readJsonResponseWithLimit(
-      makeChunkedResponse(`{"text":"żółć ${"a".repeat(70 * 1024)}"}`),
-      "models.dev catalog",
-    );
+  it("decodes a streamed multi-byte character split mid-codepoint across chunks", async () => {
+    const text = `{"text":"żółć"}`;
+    const bytes = new TextEncoder().encode(text);
+    const asciiPrefix = new TextEncoder().encode(text.slice(0, text.indexOf("ż")));
+    const firstByteOfZOffset = asciiPrefix.length;
+    const firstChunk = bytes.slice(0, firstByteOfZOffset + 1);
+    const secondChunk = bytes.slice(firstByteOfZOffset + 1);
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(firstChunk);
+        controller.enqueue(secondChunk);
+        controller.close();
+      },
+    });
+
+    const result = await readJsonResponseWithLimit(new Response(body), "models.dev catalog");
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect((result.value as { text: string }).text.startsWith("żółć ")).toBe(true);
+      expect((result.value as { text: string }).text).toBe("żółć");
     }
-  });
-
-  it("builds 64 KiB chunks and preserves response headers", async () => {
-    const response = makeChunkedResponse("x".repeat(64 * 1024 + 1), {
-      "x-test-header": "present",
-    });
-    const reader = response.body?.getReader();
-
-    expect(response.headers.get("x-test-header")).toBe("present");
-    expect(reader).toBeDefined();
-    if (!reader) return;
-
-    const first = await reader.read();
-    const second = await reader.read();
-    const end = await reader.read();
-    expect(first.value).toHaveLength(64 * 1024);
-    expect(second.value).toHaveLength(1);
-    expect(end.done).toBe(true);
   });
 });

@@ -83,6 +83,10 @@ function packageLink(name: RegExp): HTMLElement {
   return within(modules).getByRole("link", { name });
 }
 
+function indicator(link: HTMLElement): string {
+  return within(link).getByText(/^[▸›]$/).textContent ?? "";
+}
+
 beforeEach(() => {
   stubMatchMedia({ isDesktop: true });
   Element.prototype.scrollIntoView = () => {};
@@ -163,18 +167,18 @@ describe("HomeView", () => {
 
     const app = packageLink(/^diffgazer\b/i);
     const ui = packageLink(/^@diffgazer\/ui\b/i);
-    expect(app).not.toHaveAttribute("data-highlighted");
+    expect(indicator(app)).toBe("›");
 
     await user.keyboard("j");
-    expect(app).toHaveAttribute("data-highlighted", "");
+    expect(indicator(app)).toBe("▸");
 
     await user.keyboard("j");
-    expect(ui).toHaveAttribute("data-highlighted", "");
-    expect(app).not.toHaveAttribute("data-highlighted");
+    expect(indicator(ui)).toBe("▸");
+    expect(indicator(app)).toBe("›");
 
     await user.keyboard("k");
-    expect(app).toHaveAttribute("data-highlighted", "");
-    expect(ui).not.toHaveAttribute("data-highlighted");
+    expect(indicator(app)).toBe("▸");
+    expect(indicator(ui)).toBe("›");
   });
 
   it("activates the focused package link with native Enter behavior", async () => {
@@ -206,7 +210,7 @@ describe("HomeView", () => {
 
     const ui = packageLink(/^@diffgazer\/ui\b/i);
     await user.hover(ui);
-    expect(ui).toHaveAttribute("data-highlighted", "");
+    expect(indicator(ui)).toBe("▸");
   });
 
   it("ignores j while typing in an editable field", async () => {
@@ -224,7 +228,7 @@ describe("HomeView", () => {
     await user.click(probe);
     await user.keyboard("j");
 
-    expect(packageLink(/^diffgazer\b/i)).not.toHaveAttribute("data-highlighted");
+    expect(indicator(packageLink(/^diffgazer\b/i))).toBe("›");
     expect(probe).toHaveValue("j");
   });
 });

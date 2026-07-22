@@ -1,13 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
-import { createServer } from "node:http";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { applyBenchmarkEnvDefaults, timeRequest } from "./benchmark-server.mjs";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { ENV } from "./lib/env.mjs";
-import { runArgv } from "./smoke-shared.mjs";
 
 const rootPackageJson = JSON.parse(
   readFileSync(fileURLToPath(new URL("../../package.json", import.meta.url)), "utf-8"),
@@ -19,8 +15,12 @@ const rootTurboJson = JSON.parse(
 // The benchmark only gates latency/throughput SLOs under strict mode, so the
 // CI/release chains must run `pnpm run bench` with the strict env var or
 // breaches silently pass.
-test("test-ci runs the benchmark under strict skip mode", () => {
-  assert.match(rootPackageJson.scripts["test-ci"], /DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench/);
+test("test-ci runs an active strict pnpm run bench segment", () => {
+  assert.ok(
+    scriptSegments(rootPackageJson.scripts["test-ci"]).includes(
+      "DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench",
+    ),
+  );
 });
 
 test("release-check runs the benchmark under strict skip mode", () => {
@@ -29,6 +29,45 @@ test("release-check runs the benchmark under strict skip mode", () => {
     /DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench/,
   );
 });
+
+const RELEASE_READINESS_WORKFLOW_URL = new URL(
+  "../../.github/workflows/release-readiness.yml",
+  import.meta.url,
+);
+
+const RELEASE_CHECK_MIRRORED_GATES = [
+  "pnpm audit --prod --audit-level=high",
+  "pnpm run secret-scan",
+  "pnpm run build",
+  "pnpm run check:packages",
+  "pnpm run registry:live-check",
+];
+
+const RELEASE_CHECK_PACK_COMMANDS = [
+  "@diffgazer/add",
+  "@diffgazer/ui",
+  "@diffgazer/keys",
+  "diffgazer",
+].map((pkg) => `pnpm --filter ${pkg} pack --dry-run`);
+
+// Active `run:` commands in jobs.verify.steps, in order — a commented-out or
+// relocated command has no `run` key on that step and so is excluded here.
+function activeVerifyStepRunCommands(workflowSource) {
+  const workflow = parseYaml(workflowSource);
+  const steps = workflow?.jobs?.verify?.steps ?? [];
+  return steps.map((step) => step?.run).filter((run) => typeof run === "string");
+}
+
+// Exact `&&`-joined command segments of a package script, trimmed — so an
+// echo-only decoy segment (`echo pnpm run build`) never satisfies an exact
+// gate match the way a substring check on the whole script would. Scripts
+// wrapped in `run-with-artifacts.sh sh -c '...'` (like `release-check`) are
+// unwrapped to their inner chain first; scripts without that wrapper split
+// as-is.
+function scriptSegments(script) {
+  const inner = script.match(/sh -c '(.*)'$/s)?.[1] ?? script;
+  return inner.split("&&").map((segment) => segment.trim());
+}
 
 // CONTRIBUTING.md documents `pnpm run release-check` as the local mirror of the CI
 // no-publish readiness sequence (release-readiness.yml). Pin the gates the CI verify
@@ -39,31 +78,51 @@ test("release-check runs the benchmark under strict skip mode", () => {
 // release-check keeps `git diff --check` for whitespace), the PR-only `changeset
 // status --since=origin/main`, and the Docs E2E Playwright/Lighthouse job.
 test("release-check mirrors the CI no-publish readiness gates", () => {
-  const workflow = readFileSync(
-    fileURLToPath(new URL("../../.github/workflows/release-readiness.yml", import.meta.url)),
-    "utf-8",
-  );
-  const releaseCheck = rootPackageJson.scripts["release-check"];
+  const workflowSource = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
+  const verifyRunCommands = activeVerifyStepRunCommands(workflowSource);
+  const releaseCheck = scriptSegments(rootPackageJson.scripts["release-check"]);
 
-  const mirroredGates = [
-    "pnpm audit --prod --audit-level=high",
-    "pnpm run secret-scan",
-    "pnpm run build",
-    "pnpm run check:packages",
-    "pnpm run registry:live-check",
-  ];
-
-  for (const gate of mirroredGates) {
-    assert.ok(workflow.includes(gate), `CI workflow missing gate: ${gate}`);
-    assert.ok(releaseCheck.includes(gate), `release-check missing gate: ${gate}`);
+  for (const gate of RELEASE_CHECK_MIRRORED_GATES) {
+    assert.ok(verifyRunCommands.includes(gate), `CI verify job missing active step: ${gate}`);
+    assert.ok(releaseCheck.includes(gate), `release-check missing gate segment: ${gate}`);
   }
 
-  for (const pkg of ["@diffgazer/add", "@diffgazer/ui", "@diffgazer/keys", "diffgazer"]) {
+  for (const packCommand of RELEASE_CHECK_PACK_COMMANDS) {
     assert.ok(
-      releaseCheck.includes(`pnpm --filter ${pkg} pack --dry-run`),
-      `release-check missing pack dry-run: ${pkg}`,
+      verifyRunCommands.includes(packCommand),
+      `CI verify job missing active pack step: ${packCommand}`,
+    );
+    assert.ok(
+      releaseCheck.includes(packCommand),
+      `release-check missing pack dry-run segment: ${packCommand}`,
     );
   }
+});
+
+test("a commented-out verify step is not treated as an active gate", () => {
+  const workflowSource = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
+  const mutated = workflowSource.replace("run: pnpm run build", "# run: pnpm run build");
+  assert.ok(!activeVerifyStepRunCommands(mutated).includes("pnpm run build"));
+});
+
+test("a gate command that only runs outside jobs.verify is not treated as an active gate", () => {
+  const workflowSource = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
+  const workflow = parseYaml(workflowSource);
+  const buildStepIndex = workflow.jobs.verify.steps.findIndex(
+    (step) => step.run === "pnpm run build",
+  );
+  const [buildStep] = workflow.jobs.verify.steps.splice(buildStepIndex, 1);
+  workflow.jobs.e2e.steps.push(buildStep);
+  const mutated = stringifyYaml(workflow);
+  assert.ok(!activeVerifyStepRunCommands(mutated).includes("pnpm run build"));
+});
+
+test("an echo-only release-check segment does not satisfy the exact gate match", () => {
+  const mutatedReleaseCheck = rootPackageJson.scripts["release-check"].replace(
+    "pnpm run build",
+    "echo pnpm run build",
+  );
+  assert.ok(!scriptSegments(mutatedReleaseCheck).includes("pnpm run build"));
 });
 
 // `verify` is the local dev command and runs `bench`/`smoke` non-strict, so the
@@ -71,10 +130,7 @@ test("release-check mirrors the CI no-publish readiness gates", () => {
 // Pin that prefix on the real per-PR gate so a workflow refactor can't silently
 // drop SLO gating.
 test("the release-readiness Verify step runs verify under strict skip mode", () => {
-  const workflow = readFileSync(
-    fileURLToPath(new URL("../../.github/workflows/release-readiness.yml", import.meta.url)),
-    "utf-8",
-  );
+  const workflow = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
   assert.match(workflow, /DIFFGAZER_SMOKE_STRICT_SKIPS=1[^\n]*pnpm run verify/);
 });
 
@@ -87,127 +143,37 @@ test("the benchmark review opt-in env var is not part of the script env contract
   }
 });
 
-test("benchmark-server defaults request logging to warn unless explicitly overridden", () => {
-  const unsetEnv = {};
-  const presetEnv = { DIFFGAZER_LOG_LEVEL: "debug" };
+const CHECK_BIOME_TARGETS = [
+  "scripts/monorepo",
+  "package.json",
+  "turbo.json",
+  "biome.json",
+  "knip.jsonc",
+  ".dependency-cruiser.cjs",
+];
 
-  applyBenchmarkEnvDefaults(unsetEnv);
-  applyBenchmarkEnvDefaults(presetEnv);
-
-  assert.equal(unsetEnv.DIFFGAZER_LOG_LEVEL, "warn");
-  assert.equal(presetEnv.DIFFGAZER_LOG_LEVEL, "debug");
-});
-
-test("benchmark requests reject and release a connection that never ends", async () => {
-  const server = createServer((_request, _response) => {});
-  await new Promise((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", resolve);
-  });
-
-  try {
-    const address = server.address();
-    assert.ok(address && typeof address !== "string");
-    await assert.rejects(
-      timeRequest(`http://127.0.0.1:${address.port}`, "/never-ends", undefined, {
-        timeoutMs: 100,
-      }),
-      /GET \/never-ends timed out after 100ms/,
-    );
-  } finally {
-    await new Promise((resolve, reject) => {
-      server.close((error) => (error ? reject(error) : resolve()));
-    });
-  }
-});
-
-async function assertBenchmarkFailureCleanup({ runner, diagnostic }) {
-  const isolatedTemp = mkdtempSync(join(tmpdir(), "dg-benchmark-cleanup-"));
-  const before = new Set(readdirSync(isolatedTemp));
-  const parentExitCode = process.exitCode;
-  const benchmarkUrl = new URL("./benchmark-server.mjs", import.meta.url).href;
-  const script = [
-    `import { main } from ${JSON.stringify(benchmarkUrl)};`,
-    `await main(${runner});`,
-  ].join("\n");
-
-  try {
-    await assert.rejects(
-      runArgv(process.execPath, ["--input-type=module", "-e", script], {
-        env: { TEMP: isolatedTemp, TMP: isolatedTemp, TMPDIR: isolatedTemp },
-        timeoutMs: 10_000,
-      }),
-      (error) => {
-        assert.equal(error.exitCode, 1);
-        assert.match(error.stderr, diagnostic);
-        return true;
-      },
-    );
-    const after = new Set(readdirSync(isolatedTemp));
-    assert.deepEqual(after, before);
-    assert.deepEqual(
-      [...after].filter((entry) => entry.startsWith("diffgazer-bench-")),
-      [],
-    );
-    assert.equal(process.exitCode, parentExitCode);
-  } finally {
-    rmSync(isolatedTemp, { recursive: true, force: true });
-  }
-}
-
-for (const { name, runner, diagnostic } of [
-  {
-    name: "benchmark main cleans fixtures before a forced nonzero exit",
-    runner: 'async () => ["forced functional gate"]',
-    diagnostic: /Benchmark failed:\nforced functional gate/,
-  },
-  {
-    name: "benchmark main cleans fixtures after a synchronous runner error",
-    runner: '() => { throw new Error("forced sync runner failure"); }',
-    diagnostic: /Error: forced sync runner failure/,
-  },
-  {
-    name: "benchmark main cleans fixtures after a rejected runner promise",
-    runner: '() => Promise.reject(new Error("forced rejected runner failure"))',
-    diagnostic: /Error: forced rejected runner failure/,
-  },
-]) {
-  test(name, () => assertBenchmarkFailureCleanup({ runner, diagnostic }));
-}
-
-test("runArgv passes shell metacharacters as literal argv", async () => {
-  const literal = "x;echo injected";
-  const output = await runArgv(process.execPath, [
-    "-e",
-    "console.log(JSON.stringify(process.argv.at(-1)))",
-    literal,
-  ]);
-  assert.equal(output.trim(), JSON.stringify(literal));
-});
-
-test("root check's biome segment excludes markdown, .github, and pnpm-workspace.yaml", () => {
+test("root check's first segment is the exact biome command over its current targets", () => {
   const checkScript = rootPackageJson.scripts.check;
-  const biomeSegment = checkScript.split("&&")[0];
-  assert.match(checkScript, /biome check/);
-  assert.doesNotMatch(biomeSegment, /\.md\b/);
-  assert.doesNotMatch(biomeSegment, /\.github/);
-  assert.doesNotMatch(biomeSegment, /pnpm-workspace\.yaml/);
-  assert.match(biomeSegment, /scripts\/monorepo/);
-  assert.match(biomeSegment, /package\.json/);
-  assert.match(biomeSegment, /turbo\.json/);
-  assert.match(biomeSegment, /biome\.json/);
-  assert.match(biomeSegment, /knip\.jsonc/);
-  assert.match(biomeSegment, /\.dependency-cruiser\.cjs/);
+  const checkSegments = scriptSegments(checkScript);
+  assert.equal(checkSegments[0], `biome check ${CHECK_BIOME_TARGETS.join(" ")}`);
+  assert.doesNotMatch(checkSegments[0], /\.md\b/);
+  assert.doesNotMatch(checkSegments[0], /\.github/);
+  assert.doesNotMatch(checkSegments[0], /pnpm-workspace\.yaml/);
   assert.match(checkScript, /check-deploy-runbooks\.mjs/);
   assert.doesNotMatch(checkScript, /biome lint scripts\/monorepo &&/);
 });
 
-test("central artifact preparation regenerates the published installer schema", () => {
-  assert.match(
-    rootPackageJson.scripts["prepare:library-artifacts"],
-    /pnpm --filter @diffgazer\/add generate:schema/,
+test("central artifact preparation runs an active schema-generation segment and prepare:artifacts nests an active prepare:library-artifacts segment", () => {
+  assert.ok(
+    scriptSegments(rootPackageJson.scripts["prepare:library-artifacts"]).includes(
+      "pnpm --filter @diffgazer/add generate:schema",
+    ),
   );
-  assert.match(rootPackageJson.scripts["prepare:artifacts"], /pnpm run prepare:library-artifacts/);
+  assert.ok(
+    scriptSegments(rootPackageJson.scripts["prepare:artifacts"]).includes(
+      "pnpm run prepare:library-artifacts",
+    ),
+  );
 });
 
 test("the add test cache includes the published installer schema", () => {
@@ -225,6 +191,41 @@ test("UI tests wait for their public registry build", () => {
   assert.deepEqual(rootTurboJson.tasks["@diffgazer/ui#test"].dependsOn, ["build", "^build"]);
 });
 
-test("smoke builds diffgazer before product CLI validation", () => {
-  assert.match(rootPackageJson.scripts.smoke, /pnpm --filter diffgazer build/);
+test("smoke runs an active diffgazer build segment before product CLI validation", () => {
+  assert.equal(scriptSegments(rootPackageJson.scripts.smoke)[0], "pnpm --filter diffgazer build");
 });
+
+const NON_RELEASE_ECHO_DECOY_CASES = [
+  {
+    name: "test-ci",
+    script: rootPackageJson.scripts["test-ci"],
+    requiredSegment: "DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench",
+  },
+  {
+    name: "check",
+    script: rootPackageJson.scripts.check,
+    requiredSegment: `biome check ${CHECK_BIOME_TARGETS.join(" ")}`,
+  },
+  {
+    name: "prepare:library-artifacts",
+    script: rootPackageJson.scripts["prepare:library-artifacts"],
+    requiredSegment: "pnpm --filter @diffgazer/add generate:schema",
+  },
+  {
+    name: "prepare:artifacts",
+    script: rootPackageJson.scripts["prepare:artifacts"],
+    requiredSegment: "pnpm run prepare:library-artifacts",
+  },
+  {
+    name: "smoke",
+    script: rootPackageJson.scripts.smoke,
+    requiredSegment: "pnpm --filter diffgazer build",
+  },
+];
+
+for (const { name, script, requiredSegment } of NON_RELEASE_ECHO_DECOY_CASES) {
+  test(`an echo-only ${name} segment does not satisfy the exact gate match`, () => {
+    const mutated = script.replace(requiredSegment, `echo ${requiredSegment}`);
+    assert.ok(!scriptSegments(mutated).includes(requiredSegment));
+  });
+}

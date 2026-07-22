@@ -6,7 +6,11 @@ import type { LensId, ReviewIssue, ReviewOptions } from "@diffgazer/core/schemas
 import type { AIClient } from "../../../shared/lib/ai/types.js";
 import { runLensAnalysis } from "./analysis.js";
 import type { ParsedDiff } from "./diff/types.js";
-import { deduplicateIssues, filterIssuesByMinSeverity, sortIssuesBySeverity } from "./issues.js";
+import {
+  deduplicateIssues,
+  filterIssuesByMinSeverity,
+  sortIssuesBySeverity,
+} from "./issues/ordering.js";
 import { getLenses } from "./lenses.js";
 import type { OrchestrationOptions, OrchestrationOutcome, ReviewError } from "./types.js";
 

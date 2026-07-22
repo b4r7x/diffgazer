@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildCopyBundle } from "./copy-bundle.js";
+import { createRegistryLoader } from "./cli/registry.js";
+import { buildCopyBundle, CopyBundleSchema } from "./copy-bundle.js";
 
 const tempRoots: string[] = [];
 
@@ -75,6 +76,11 @@ describe("buildCopyBundle", () => {
     expect(output.items[0]?.files[0]?.path).toBe("hooks/use-alpha.ts");
 
     expect(result.integrity).toMatch(/^sha256-[a-f0-9]{64}$/);
+
+    const loadBundle = createRegistryLoader(outputPath, CopyBundleSchema, (bundle) => ({
+      items: bundle.items,
+    }));
+    expect(loadBundle().items[0]?.name).toBe("alpha");
   });
 
   it("writes output file with correct JSON structure", () => {
@@ -108,7 +114,6 @@ describe("buildCopyBundle", () => {
       integrity: string;
     };
 
-    expect(output).toHaveProperty("items");
     expect(output).toHaveProperty("integrity");
     expect(output.items[0]?.name).toBe("focus");
     expect(output.items[0]?.title).toBe("Focus");
@@ -147,12 +152,18 @@ describe("buildCopyBundle", () => {
 
   it("can transform file content before writing the bundle", () => {
     const root = createTempRoot();
-    writeHookFile(root, "use-focus.ts", "import '../internal/shared.js'\n");
+    mkdirSync(join(root, "src/dom"), { recursive: true });
+    writeFileSync(
+      join(root, "src/dom/navigation-items.ts"),
+      "export const navigationItems = () => null\n",
+    );
     writeRegistry(root, [
       {
-        name: "focus",
+        name: "navigation",
         type: "registry:hook",
-        files: [{ path: "src/hooks/use-focus.ts" }],
+        files: [
+          { path: "src/dom/navigation-items.ts", target: "src/hooks/utils/navigation-items.ts" },
+        ],
       },
     ]);
 
@@ -161,13 +172,15 @@ describe("buildCopyBundle", () => {
       sourceRoot: root,
       outputPath,
       itemType: "registry:hook",
-      transformContent: (content) => content.replace("../internal/", "./internal/"),
+      pathMapping: { from: "src/", to: "" },
+      transformContent: (content, sourcePath) => `${content}// source: ${sourcePath}\n`,
     });
 
     const output = JSON.parse(readFileSync(outputPath, "utf-8")) as {
-      items: Array<{ files: Array<{ content: string }> }>;
+      items: Array<{ files: Array<{ path: string; content: string }> }>;
     };
-    expect(output.items[0]?.files[0]?.content).toBe("import './internal/shared.js'\n");
+    expect(output.items[0]?.files[0]?.path).toBe("hooks/utils/navigation-items.ts");
+    expect(output.items[0]?.files[0]?.content).toContain("// source: src/dom/navigation-items.ts");
   });
 
   it.each([

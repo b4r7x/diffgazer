@@ -1,9 +1,11 @@
+import type { Root as FumadocsRoot } from "fumadocs-core/page-tree";
 import { describe, expect, it } from "vitest";
 import {
   collectLandingSections,
   findPageNeighbors,
   findTreeSectionPath,
   firstNavigablePage,
+  fromFumadocsRoot,
   mapPageTreeForLibrary,
   type PageTree,
 } from "@/lib/page-tree";
@@ -110,6 +112,39 @@ describe("mapPageTreeForLibrary", () => {
       }
       expect(separators[0]?.name).toBe("Getting Started");
     }
+  });
+});
+
+describe("fromFumadocsRoot", () => {
+  it("adapts a fumadocs root into the local PageTree, keeping page urls and recursive children but dropping folder urls", () => {
+    const fumadocsRoot: FumadocsRoot = {
+      name: "Documentation",
+      children: [
+        { type: "separator", name: "Getting Started" },
+        { type: "page", name: "Installation", url: "/docs/ui/installation" },
+        {
+          type: "folder",
+          name: "Components",
+          children: [{ type: "page", name: "Button", url: "/docs/ui/components/button" }],
+        },
+      ],
+    };
+
+    const localTree = fromFumadocsRoot(fumadocsRoot);
+
+    expect(localTree).toEqual<PageTree>({
+      name: "Documentation",
+      children: [
+        { type: "separator", name: "Getting Started" },
+        { type: "page", name: "Installation", url: "/docs/ui/installation" },
+        {
+          type: "folder",
+          name: "Components",
+          children: [{ type: "page", name: "Button", url: "/docs/ui/components/button" }],
+        },
+      ],
+    });
+    expect(localTree.children[2]).not.toHaveProperty("url");
   });
 });
 
@@ -254,7 +289,7 @@ describe("firstNavigablePage", () => {
 
   // The bare library root redirects to this page; it must equal the first item
   // the sidebar renders for the scoped library, derived from the same mapped tree.
-  it("derives the scoped library's first page as the redirect target", () => {
+  it("derives the scoped library's first page after mapPageTreeForLibrary scopes the tree", () => {
     const mergedRoot: PageTree = {
       name: "Documentation",
       children: [

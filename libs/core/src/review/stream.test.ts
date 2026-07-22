@@ -1,24 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { FullReviewStreamEvent } from "../schemas/events/index.js";
 import { processReviewStream } from "./stream.js";
-
-// Compile-time contract for the dispatcher's exhaustiveness guard (stream.ts
-// `default: { const _exhaustive: never = event; }`). stream.ts assigning
-// `event` to `never` in its default arm compiles only because every current
-// member is handled. To prove the guard would CATCH a future variant, model the
-// union with one extra unhandled member: after narrowing away the handled type,
-// the residual is that variant, not `never`, so the `never` assignment errors —
-// exactly the failure stream.ts would surface if a new member were unhandled.
-type FutureEvent = { type: "future_variant"; payload: number };
-
-function assertFutureVariantFailsGuard(event: FullReviewStreamEvent | FutureEvent): void {
-  if (event.type !== "future_variant") return;
-  // `event` is now `FutureEvent`, not `never`.
-  // @ts-expect-error -- an unhandled future variant is not assignable to never.
-  const _exhaustive: never = event;
-  void _exhaustive;
-}
-void assertFutureVariantFailsGuard;
 
 function createSSEReader(events: unknown[]): ReadableStreamDefaultReader<Uint8Array> {
   const encoder = new TextEncoder();

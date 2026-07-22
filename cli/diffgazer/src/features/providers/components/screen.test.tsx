@@ -185,6 +185,24 @@ describe("ProvidersScreen keyboard zones", () => {
     expect(lastFrame()?.split(message)).toHaveLength(2);
   });
 
+  test("renders the sanitized error and hides the provider prompt when provider status fails to load", async () => {
+    const message = "provider status failed";
+    const getProviderStatus = vi
+      .fn<BoundApi["getProviderStatus"]>()
+      .mockRejectedValue(new Error(message));
+    const api = { ...makeApi(), getProviderStatus } satisfies BoundApi;
+    const { lastFrame } = render(
+      <Wrapper api={api}>
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes(message) ?? false);
+
+    expect(lastFrame()).toContain(message);
+    expect(lastFrame()).not.toContain("Select a provider to view details");
+  });
+
   test("activates a configured provider with its resolved model", async () => {
     const activateProvider = vi
       .fn<BoundApi["activateProvider"]>()

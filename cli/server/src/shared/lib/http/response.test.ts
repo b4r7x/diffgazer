@@ -37,7 +37,7 @@ describe("errorResponse", () => {
   });
 
   it("emits each declared error status, including 413 payload-too-large", async () => {
-    for (const status of [400, 401, 403, 404, 409, 413, 422, 429, 500, 503] as const) {
+    for (const status of [400, 401, 403, 404, 409, 413, 422, 429, 500, 502, 503] as const) {
       const { response } = await requestError((ctx) =>
         errorResponse(ctx, "err", ErrorCode.INTERNAL_ERROR, status),
       );

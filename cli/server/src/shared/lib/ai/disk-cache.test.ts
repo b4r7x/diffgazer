@@ -94,6 +94,7 @@ describe("withTtlAndFallback", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.cached).toBe(true);
+      expect(result.value.cacheWasFresh).toBe(true);
       expect(result.value.entry.payload).toEqual(["cached"]);
     }
   });
@@ -129,7 +130,11 @@ describe("withTtlAndFallback", () => {
       fetcher,
     });
     expect(fetcher).toHaveBeenCalledOnce();
-    if (result.ok) expect(result.value.entry.payload).toEqual(["new"]);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.cacheWasFresh).toBe(false);
+      expect(result.value.entry.payload).toEqual(["new"]);
+    }
   });
 
   it("falls back to the stale cache when the fetch fails", async () => {
@@ -174,6 +179,7 @@ describe("withTtlAndFallback", () => {
       isCacheUsable: (c) => c.payload.length > 0,
     });
     expect(fetcher).toHaveBeenCalledOnce();
+    expect(result.ok).toBe(true);
     if (result.ok) expect(result.value.entry.payload).toEqual(["refreshed"]);
   });
 
@@ -323,30 +329,5 @@ describe("withTtlAndFallback", () => {
       "disk_cache_persist_failed",
       expect.objectContaining({ path: cachePath() }),
     );
-  });
-
-  it("reports whether the loaded cache was TTL-fresh", async () => {
-    persistDiskCache(cachePath(), { payload: ["cached"], fetchedAt: fresh() } satisfies Entry);
-    const fresh1 = await withTtlAndFallback({
-      path: cachePath(),
-      schema: EntrySchema,
-      ttlMs: ttl,
-      fetcher: vi.fn(),
-    });
-    expect(fresh1.ok).toBe(true);
-    if (fresh1.ok) expect(fresh1.value.cacheWasFresh).toBe(true);
-
-    persistDiskCache(cachePath(), { payload: ["old"], fetchedAt: stale() } satisfies Entry);
-    const stale1 = await withTtlAndFallback({
-      path: cachePath(),
-      schema: EntrySchema,
-      ttlMs: ttl,
-      fetcher: vi.fn().mockResolvedValue({
-        ok: true,
-        value: { payload: ["new"], fetchedAt: fresh() } satisfies Entry,
-      }),
-    });
-    expect(stale1.ok).toBe(true);
-    if (stale1.ok) expect(stale1.value.cacheWasFresh).toBe(false);
   });
 });

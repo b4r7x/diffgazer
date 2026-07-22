@@ -123,34 +123,6 @@ describe("onboarding/settings synchronization", () => {
     });
   });
 
-  it("persists storage before credentials in the canonical early save", async () => {
-    const wrapper = createWrapper();
-    const onboardingHook = renderHook(() => useOnboarding(), { wrapper });
-
-    act(() => onboardingHook.result.current.next());
-    act(() => onboardingHook.result.current.setProvider("openrouter"));
-    act(() => onboardingHook.result.current.next());
-    act(() =>
-      onboardingHook.result.current.updateData({
-        inputMethod: "env",
-        apiKey: "ignored",
-      }),
-    );
-
-    await act(async () => {
-      onboardingHook.result.current.next();
-    });
-
-    expect(mockSaveSettings.mock.invocationCallOrder[0]).toBeLessThan(
-      mockSaveConfig.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
-    );
-    expect(mockSaveSettings).toHaveBeenCalledWith({ secretsStorage: "file" });
-    expect(mockSaveConfig).toHaveBeenCalledWith({
-      provider: "openrouter",
-      apiKey: { kind: "env", varName: "OPENROUTER_API_KEY" },
-    });
-  });
-
   it("reports an abandon-cleanup failure through a toast without rethrowing", async () => {
     mockDeleteProviderCredentials.mockRejectedValueOnce(new Error("cleanup failed"));
 

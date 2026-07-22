@@ -146,6 +146,38 @@ describe("TrustPanel", () => {
     expect(onAccept).toHaveBeenCalled();
   });
 
+  test("keeps the sanitized failure message visible and skips onAccept when saveTrust rejects", async () => {
+    const loadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse());
+    const saveTrust = vi
+      .fn<BoundApi["saveTrust"]>()
+      .mockRejectedValue(new Error("Trust save failed\x1b[31m: disk full\x1b[0m"));
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      loadInit,
+      saveTrust,
+    } satisfies BoundApi;
+    const onAccept = vi.fn();
+
+    const view = render(
+      <Wrapper api={api}>
+        <TrustPanel onAccept={onAccept} />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => /currently unavailable/i.test(view.lastFrame() ?? ""));
+
+    view.stdin.write("\t");
+    await flush();
+    expect(view.lastFrame()).toContain("[Enter] Trust & Continue");
+
+    view.stdin.write("\r");
+    await flushUntil(() => (view.lastFrame() ?? "").includes("Trust save failed: disk full"));
+
+    await flush();
+    expect(view.lastFrame()).toContain("Trust save failed: disk full");
+    expect(onAccept).not.toHaveBeenCalled();
+  });
+
   test.each([
     { keyName: "Enter", input: "\r" },
     { keyName: "Space", input: " " },

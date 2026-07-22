@@ -45,15 +45,29 @@ describe("mapStepsToProgressData", () => {
       status: "completed",
       substeps: undefined,
     });
-    expect(result[1]?.substeps?.map((substep) => substep.status)).toEqual([
-      "pending",
-      "active",
-      "completed",
-      "error",
+    expect(result[1]?.substeps?.[0]).toMatchObject({
+      id: "detective",
+      tag: "SEC",
+      label: "Security",
+    });
+    expect(result[1]?.substeps).toEqual([
+      { id: "detective", tag: "SEC", label: "Security", status: "pending", detail: "queued" },
+      {
+        id: "guardian",
+        tag: "SEC",
+        label: "Security",
+        status: "active",
+        detail: "75% · Reading file",
+      },
+      {
+        id: "optimizer",
+        tag: "SEC",
+        label: "Security",
+        status: "completed",
+        detail: "1 issue",
+      },
+      { id: "simplifier", tag: "SEC", label: "Security", status: "error", detail: "error" },
     ]);
-    expect(result[1]?.substeps?.[1]?.detail).toContain("75%");
-    expect(result[1]?.substeps?.[1]?.detail).toContain("Reading file");
-    expect(result[1]?.substeps?.[2]?.detail).toBe("1 issue");
   });
 
   it("keeps non-review steps free of agent substeps and hides top-level errors from the progress UI", () => {

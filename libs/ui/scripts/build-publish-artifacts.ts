@@ -7,10 +7,11 @@ import {
 } from "@diffgazer/registry";
 import {
   aggregateThemeStylesInPublicRegistry,
+  applyUiRegistryTargetsInPublicRegistry,
   isHiddenKeysShim,
-  transformUiPublicRegistryItem,
   transformUiPublicRegistryKeysImportContent,
   transformUiPublicRegistryKeysImports,
+  transformUiPublicRegistrySourceItem,
 } from "./registry/rewrite-keys-imports.js";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -65,6 +66,7 @@ function main(): void {
       label: "ui public registry index",
       afterBuild: ({ outputDir }) => {
         transformUiPublicRegistryKeysImports(outputDir);
+        applyUiRegistryTargetsInPublicRegistry(outputDir);
         aggregateThemeStylesInPublicRegistry(outputDir, (seedContent) =>
           aggregateThemeStyles({
             rootDir: ROOT,
@@ -73,7 +75,7 @@ function main(): void {
           }),
         );
       },
-      transformSourceItem: ({ item }) => transformUiPublicRegistryItem(item),
+      transformSourceItem: ({ item }) => transformUiPublicRegistrySourceItem(item),
       shouldSkipSourceItem: ({ item }) => isHiddenKeysShim(item),
       // The theme's styles.css ships aggregated (seed + every component CSS) so the
       // shadcn install path carries component CSS; validation must compare the

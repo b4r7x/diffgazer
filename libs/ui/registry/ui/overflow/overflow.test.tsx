@@ -81,6 +81,49 @@ describe("OverflowText", () => {
     expect(trigger).toHaveFocus();
     expect(await screen.findByRole("tooltip")).toHaveTextContent("Long label");
   });
+
+  it("suppresses tooltip semantics entirely when tooltip is false, even while overflowing", () => {
+    render(<OverflowText tooltip={false}>Long label</OverflowText>);
+
+    const trigger = screen.getByText("Long label");
+    mockDimensions(trigger, {
+      scrollWidth: 300,
+      clientWidth: 100,
+      scrollHeight: 20,
+      clientHeight: 20,
+    });
+
+    act(flushObservers);
+
+    expect(trigger).not.toHaveAttribute("aria-describedby");
+    trigger.focus();
+    expect(trigger).not.toHaveFocus();
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it("shows the custom tooltip content instead of the label text", async () => {
+    const user = userEvent.setup();
+    render(<OverflowText tooltip={<span>Custom info</span>}>Long label</OverflowText>);
+
+    const trigger = screen.getByText("Long label");
+    mockDimensions(trigger, {
+      scrollWidth: 300,
+      clientWidth: 100,
+      scrollHeight: 20,
+      clientHeight: 20,
+    });
+
+    act(flushObservers);
+
+    expect(trigger).toHaveAttribute("tabindex", "0");
+
+    await user.tab();
+    expect(trigger).toHaveFocus();
+
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip).toHaveTextContent("Custom info");
+    expect(tooltip).not.toHaveTextContent("Long label");
+  });
 });
 
 describe("Overflow", () => {

@@ -30,6 +30,16 @@ function setupSourceArtifacts(root: string): string {
   return artifactsDir;
 }
 
+function seedPackageOutputs(packageRoot: string): { distMarker: string; artifactsMarker: string } {
+  const distMarker = join(packageRoot, "dist", "prior-dist.txt");
+  const artifactsMarker = join(packageRoot, "artifacts", "prior-artifact.txt");
+  mkdirSync(join(packageRoot, "dist"), { recursive: true });
+  mkdirSync(join(packageRoot, "artifacts"), { recursive: true });
+  writeFileSync(distMarker, "prior-dist-bytes");
+  writeFileSync(artifactsMarker, "prior-artifact-bytes");
+  return { distMarker, artifactsMarker };
+}
+
 describe("copyArtifactsToPackage", () => {
   it("copies artifacts from source dist/artifacts to package artifacts", () => {
     const sourceRoot = createTempDir();
@@ -43,9 +53,7 @@ describe("copyArtifactsToPackage", () => {
     });
 
     const target = join(packageRoot, "artifacts");
-    expect(existsSync(join(target, "artifact-manifest.json"))).toBe(true);
     expect(existsSync(join(target, "fingerprint.sha256"))).toBe(true);
-    expect(existsSync(join(target, "some-file.json"))).toBe(true);
     expect(readFileSync(join(target, "some-file.json"), "utf-8")).toBe('{"test": true}');
     expect(readFileSync(join(target, "artifact-manifest.json"), "utf-8")).toContain(
       '"artifactRoot": "artifacts"',
@@ -59,6 +67,7 @@ describe("copyArtifactsToPackage", () => {
   it("throws with label and rebuildHint when source artifacts directory does not exist", () => {
     const sourceRoot = createTempDir();
     const packageRoot = createTempDir();
+    const { distMarker, artifactsMarker } = seedPackageOutputs(packageRoot);
 
     const call = () =>
       copyArtifactsToPackage({
@@ -70,6 +79,8 @@ describe("copyArtifactsToPackage", () => {
 
     expect(call).toThrow("test-lib artifacts not found");
     expect(call).toThrow("pnpm --filter test-lib build:artifacts");
+    expect(readFileSync(distMarker, "utf-8")).toBe("prior-dist-bytes");
+    expect(readFileSync(artifactsMarker, "utf-8")).toBe("prior-artifact-bytes");
   });
 
   it.each([
@@ -92,6 +103,7 @@ describe("copyArtifactsToPackage", () => {
     const artifactsDir = join(sourceRoot, "dist/artifacts");
     mkdirSync(artifactsDir, { recursive: true });
     writeFileSync(join(artifactsDir, existingFile.name), existingFile.body);
+    const { distMarker, artifactsMarker } = seedPackageOutputs(packageRoot);
 
     expect(() =>
       copyArtifactsToPackage({
@@ -100,6 +112,8 @@ describe("copyArtifactsToPackage", () => {
         label: "test-lib",
       }),
     ).toThrow(expectedMessage);
+    expect(readFileSync(distMarker, "utf-8")).toBe("prior-dist-bytes");
+    expect(readFileSync(artifactsMarker, "utf-8")).toBe("prior-artifact-bytes");
   });
 
   it("cleans package dist before copying artifacts", () => {

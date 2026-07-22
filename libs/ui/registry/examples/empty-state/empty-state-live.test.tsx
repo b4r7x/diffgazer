@@ -15,6 +15,7 @@ describe("empty-state-live example", () => {
     await user.type(screen.getByRole("searchbox", { name: /filter hooks/i }), "zzz");
 
     // Same persistent region now carries the announcement.
-    expect(screen.getByRole("status")).toHaveTextContent(/no hooks match/i);
+    expect(screen.getByRole("status")).toBe(liveRegion);
+    expect(liveRegion).toHaveTextContent(/no hooks match/i);
   });
 });

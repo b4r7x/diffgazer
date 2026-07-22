@@ -43,6 +43,14 @@ describe("NavigationList navigation", () => {
     expect(lastFrame()).toContain("> Alpha");
   });
 
+  test("renders the selected item prefix independently from the highlighted item", async () => {
+    const { lastFrame } = renderList({ selectedId: "c" });
+    await flush();
+    const frame = lastFrame();
+    expect(frame).toContain("| Charlie");
+    expect(frame).toContain("> Alpha");
+  });
+
   test("skips disabled items when moving down and wraps at the boundary", async () => {
     const onHighlightChange = vi.fn();
     const { stdin } = renderList({ onHighlightChange });

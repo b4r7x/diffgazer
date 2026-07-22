@@ -43,8 +43,14 @@ describe("collectEditPairs", () => {
       ...collectEditPairs([change("remove", "a"), change("context", "ctx"), change("add", "b")]),
     ];
     expect(result).toHaveLength(3);
-    expect(isGroup(requireValue(result[0], "diff pair item 0"))).toBe(true);
+    const first = requireValue(result[0], "diff pair item 0");
+    if (!isGroup(first)) throw new Error("expected group before context");
+    expect(first.removes.map((c) => c.content)).toEqual(["a"]);
+    expect(first.adds).toEqual([]);
     expect(result[1]).toMatchObject({ type: "context", content: "ctx" });
-    expect(isGroup(requireValue(result[2], "diff pair item 2"))).toBe(true);
+    const second = requireValue(result[2], "diff pair item 2");
+    if (!isGroup(second)) throw new Error("expected group after context");
+    expect(second.removes).toEqual([]);
+    expect(second.adds.map((c) => c.content)).toEqual(["b"]);
   });
 });

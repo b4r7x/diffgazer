@@ -1,5 +1,6 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
+import type { CredentialRef } from "@diffgazer/core/schemas/config";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
@@ -71,7 +72,7 @@ describe("useProviderManagement", () => {
 
     await act(async () => {
       // Fire-and-forget handler must resolve (not reject) so void call sites
-      // never produce an unhandled rejection (F-024).
+      // never produce an unhandled rejection.
       await expect(
         result.current.handleSelectProvider("gemini", "Gemini", "gemini-2.5-flash"),
       ).resolves.toBe(false);
@@ -105,6 +106,10 @@ describe("useProviderManagement", () => {
 
     expect(result.current.dialogOwner).toBe(owner);
     expect(toastMocks.success).not.toHaveBeenCalled();
+    expect(toastMocks.error).toHaveBeenCalledWith(
+      "Failed to Select Model",
+      expect.objectContaining({ message: "Model save failed" }),
+    );
     expect(toastMocks.error).toHaveBeenCalledTimes(1);
   });
 
@@ -118,20 +123,53 @@ describe("useProviderManagement", () => {
       await expect(result.current.handleRemoveKey("gemini")).resolves.toBe(false);
     });
 
+    expect(toastMocks.error).toHaveBeenCalledWith(
+      "Failed to Remove",
+      expect.objectContaining({ message: "Remove failed" }),
+    );
     expect(toastMocks.error).toHaveBeenCalledTimes(1);
     expect(toastMocks.success).not.toHaveBeenCalled();
   });
 
-  it("returns true after remove, activation, and model selection commit", async () => {
+  it("returns true after a successful key removal with the expected API call and toast", async () => {
     const { result } = renderManagedHook();
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     await act(async () => {
       await expect(result.current.handleRemoveKey("gemini")).resolves.toBe(true);
+    });
+
+    expect(mockApi.deleteProviderCredentials).toHaveBeenCalledWith("gemini");
+    expect(mockApi.deleteProviderCredentials).toHaveBeenCalledOnce();
+    expect(toastMocks.success).toHaveBeenCalledWith("API Key Removed", {
+      message: "Provider key deleted",
+    });
+    expect(toastMocks.success).toHaveBeenCalledOnce();
+    expect(toastMocks.error).not.toHaveBeenCalled();
+  });
+
+  it("returns true after a successful provider activation with the expected API call and toast", async () => {
+    const { result } = renderManagedHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
       await expect(
         result.current.handleSelectProvider("gemini", "Gemini", "gemini-2.5-flash"),
       ).resolves.toBe(true);
     });
+
+    expect(mockApi.activateProvider).toHaveBeenCalledWith("gemini", "gemini-2.5-flash");
+    expect(mockApi.activateProvider).toHaveBeenCalledOnce();
+    expect(toastMocks.success).toHaveBeenCalledWith("Provider Activated", {
+      message: "Gemini is now active",
+    });
+    expect(toastMocks.success).toHaveBeenCalledOnce();
+    expect(toastMocks.error).not.toHaveBeenCalled();
+  });
+
+  it("returns true after model selection, closes the dialog, and toasts with the expected payload", async () => {
+    const { result } = renderManagedHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     act(() => result.current.openModelDialog("gemini"));
     const owner = result.current.dialogOwner;
@@ -141,9 +179,12 @@ describe("useProviderManagement", () => {
       await expect(result.current.handleSelectModel(owner, "gemini-2.5-pro")).resolves.toBe(true);
     });
 
-    expect(mockApi.deleteProviderCredentials).toHaveBeenCalledOnce();
-    expect(mockApi.activateProvider).toHaveBeenCalledTimes(2);
-    expect(toastMocks.success).toHaveBeenCalledTimes(3);
+    expect(mockApi.activateProvider).toHaveBeenCalledWith("gemini", "gemini-2.5-pro");
+    expect(mockApi.activateProvider).toHaveBeenCalledOnce();
+    expect(toastMocks.success).toHaveBeenCalledWith("Model Selected", {
+      message: "Selected gemini-2.5-pro",
+    });
+    expect(toastMocks.success).toHaveBeenCalledOnce();
     expect(toastMocks.error).not.toHaveBeenCalled();
     expect(result.current.dialogOwner).toBeNull();
   });
@@ -173,9 +214,17 @@ describe("useProviderManagement", () => {
     });
     const owner = result.current.dialogOwner;
     if (owner?.kind !== "api-key") throw new Error("Expected OpenRouter API-key dialog owner");
+    const apiKey: CredentialRef = { kind: "env", varName: "OPENROUTER_API_KEY" };
     await act(async () => {
-      await result.current.handleSaveApiKey(owner, "sk-test", { openModelDialog: true });
+      await result.current.handleSaveApiKey(owner, apiKey, { openModelDialog: true });
     });
+
+    expect(mockApi.saveConfig).toHaveBeenCalledWith({
+      provider: "openrouter",
+      apiKey,
+      model: undefined,
+    });
+    expect(mockApi.saveConfig).toHaveBeenCalledOnce();
 
     expect(result.current.dialogOwner).toMatchObject({
       kind: "model",

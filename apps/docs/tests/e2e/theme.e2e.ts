@@ -16,8 +16,8 @@ test.describe("Docs theme", () => {
     const bodyBackground = await page.evaluate(
       () => getComputedStyle(document.body).backgroundColor,
     );
-    // Light theme background (#f7f8f5) is far from the dark #0a0a0a; assert it is a light color.
-    expect(bodyBackground).not.toBe("rgb(10, 10, 10)");
+    // Light theme background is --base-bg: #f7f8f5.
+    expect(bodyBackground).toBe("rgb(247, 248, 245)");
 
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
@@ -30,20 +30,15 @@ test.describe("Docs theme", () => {
     const bgInput = page.getByLabel("Color picker for --base-bg");
     await expect(bgInput).toBeVisible();
 
-    const preview = page.locator("[data-slot='panel'] [data-theme]").first();
-    const previewBackground = () =>
-      preview
-        .locator(":scope > div")
-        .first()
-        .evaluate((el) => getComputedStyle(el).backgroundColor);
-    const before = await previewBackground();
+    const preview = page.getByRole("region", { name: "Preview" }).locator("[data-theme-preview]");
+    const previewBackground = () => preview.evaluate((el) => getComputedStyle(el).backgroundColor);
 
     // The color input's onChange is wired only after React hydration; the
     // first fill can land before the handler attaches, so re-fill until the
     // edit reaches the preview and re-tints it.
     await expect(async () => {
       await bgInput.fill("#3311aa");
-      expect(await previewBackground()).not.toBe(before);
+      expect(await previewBackground()).toBe("rgb(51, 17, 170)");
     }).toPass();
   });
 });

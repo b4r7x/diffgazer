@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { containsActiveElement } from "./focusable.js";
 import {
   findNavigationItemByValue,
   focusNavigationItem,
@@ -71,18 +70,6 @@ function withGlobalNodeUnavailable(run: () => void): void {
 describe("navigation item utilities", () => {
   afterEach(() => {
     document.body.replaceChildren();
-  });
-
-  it("merges data-contract and role items in DOM order", () => {
-    const container = mountContainer("listbox");
-    appendElement(container, {
-      value: "contract",
-      attributes: { [NAVIGATION_ITEM_ATTRIBUTE]: "option" },
-    });
-    appendElement(container, { role: "option", value: "role" });
-    appendElement(container, { attributes: { [NAVIGATION_ITEM_ATTRIBUTE]: "option" } });
-
-    expect(values(getNavigationItems(container, { type: "option" }))).toEqual(["contract", "role"]);
   });
 
   it("sorts merged selector groups in document order without the global Node constructor", () => {
@@ -296,14 +283,13 @@ describe("navigation item utilities", () => {
     expect(document.activeElement).toBe(emptyItem);
   });
 
-  it("finds focused descendants and exposes active containment", () => {
+  it("returns the value of the navigation item containing focus", () => {
     const container = mountContainer("listbox");
     const item = appendElement(container, { role: "option", value: "parent" });
     const child = appendElement(item, { tag: "button", text: "Child" });
 
     child.focus();
 
-    expect(containsActiveElement(item)).toBe(true);
     expect(getFocusedNavigationValue(container, { type: "option" })).toBe("parent");
   });
 
@@ -333,6 +319,7 @@ describe("navigation item utilities", () => {
       attributes: { [NAVIGATION_ITEM_ATTRIBUTE]: "option" },
     });
     appendElement(container, { role: "option", value: "role-third" });
+    appendElement(container, { attributes: { [NAVIGATION_ITEM_ATTRIBUTE]: "option" } });
 
     expect(values(getNavigationItems(container, { type: "option" }))).toEqual([
       "role-first",

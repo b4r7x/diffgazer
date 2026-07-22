@@ -1,18 +1,37 @@
 /**
  * @vitest-environment jsdom
  */
-import { act, renderHook } from "@testing-library/react";
+import { cleanup, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { Shortcut } from "../schemas/presentation/index.js";
-import { FooterProvider, useFooterActions, useFooterData } from "./provider.js";
+import { FooterProvider, useFooterData } from "./provider.js";
 import { usePageFooter } from "./use-page-footer.js";
 
 function wrapper({ children }: { children: ReactNode }) {
   return createElement(FooterProvider, null, children);
 }
 
+const PAGE_SHORTCUTS: Shortcut[] = [{ key: "Enter", label: "Run action" }];
+const PAGE_RIGHT_SHORTCUTS: Shortcut[] = [{ key: "Esc", label: "Back" }];
+
+function FooterPublisher() {
+  usePageFooter({ shortcuts: PAGE_SHORTCUTS, rightShortcuts: PAGE_RIGHT_SHORTCUTS });
+  return createElement("div", null, "page with footer");
+}
+
+function FooterStateView() {
+  const { shortcuts, rightShortcuts } = useFooterData();
+  return createElement(
+    "output",
+    { "aria-label": "Footer state" },
+    JSON.stringify({ shortcuts, rightShortcuts }),
+  );
+}
+
 describe("usePageFooter", () => {
+  afterEach(cleanup);
+
   it("publishes left and right shortcuts to footer data", () => {
     const shortcuts: Shortcut[] = [{ key: "Enter", label: "Confirm" }];
     const rightShortcuts: Shortcut[] = [{ key: "Esc", label: "Back" }];
@@ -47,21 +66,29 @@ describe("usePageFooter", () => {
     expect(result.current.shortcuts).toEqual(second);
   });
 
-  it("keeps the actions reference stable across data changes (split contract)", () => {
-    const { result } = renderHook(() => ({ actions: useFooterActions(), data: useFooterData() }), {
-      wrapper,
-    });
+  it("keeps the last page shortcuts when a healthy page unmounts", async () => {
+    function View({ showPublisher }: { showPublisher: boolean }) {
+      return createElement(
+        FooterProvider,
+        null,
+        createElement(FooterStateView),
+        showPublisher
+          ? createElement(FooterPublisher)
+          : createElement("div", null, "next healthy page"),
+      );
+    }
 
-    const initialActions = result.current.actions;
+    function readFooterState() {
+      const text = screen.getByRole("status", { name: "Footer state" }).textContent ?? "";
+      return JSON.parse(text) as { shortcuts: Shortcut[]; rightShortcuts: Shortcut[] };
+    }
 
-    act(() => {
-      result.current.actions.setShortcuts([{ key: "Enter", label: "Confirm" }]);
-    });
-    expect(result.current.actions).toBe(initialActions);
+    const { rerender } = render(createElement(View, { showPublisher: true }));
+    await waitFor(() => expect(readFooterState().shortcuts).toEqual(PAGE_SHORTCUTS));
 
-    act(() => {
-      result.current.actions.setRightShortcuts([{ key: "Esc", label: "Back" }]);
-    });
-    expect(result.current.actions).toBe(initialActions);
+    rerender(createElement(View, { showPublisher: false }));
+
+    expect(readFooterState().shortcuts).toEqual(PAGE_SHORTCUTS);
+    expect(readFooterState().rightShortcuts).toEqual(PAGE_RIGHT_SHORTCUTS);
   });
 });

@@ -2,6 +2,7 @@
 
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ComponentType, LazyExoticComponent } from "react";
 import { lazy } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DemoPreview } from "@/components/demo-preview";
@@ -11,13 +12,15 @@ import type { PreviewFrame } from "@/lib/example-frames";
 function renderPreview({
   frame = "default",
   rawCode = "const example = <Button />;",
+  demo = null,
 }: {
   frame?: PreviewFrame;
   rawCode?: string;
+  demo?: LazyExoticComponent<ComponentType> | null;
 } = {}) {
   return render(
     <ThemeProvider>
-      <DemoPreview demo={null} code={[]} rawCode={rawCode} frame={frame} />
+      <DemoPreview demo={demo} code={[]} rawCode={rawCode} frame={frame} />
     </ThemeProvider>,
   );
 }
@@ -46,17 +49,21 @@ describe("DemoPreview default (viewfinder) frame", () => {
 });
 
 describe("DemoPreview inset/fill frames", () => {
-  it("leaves the inset frame free of viewfinder chrome", () => {
-    renderPreview({ frame: "inset" });
+  const WorkingDemo = lazy(async () => ({ default: () => <p>Working preview</p> }));
+
+  it("leaves the inset frame free of viewfinder chrome", async () => {
+    renderPreview({ frame: "inset", demo: WorkingDemo });
     expect(screen.getByText(/sidebar in context/i)).toBeInTheDocument();
     expect(chromeLabels()).toHaveLength(0);
     expect(screen.queryByText("[copy jsx]")).not.toBeInTheDocument();
+    expect(await screen.findByText("Working preview")).toBeInTheDocument();
   });
 
-  it("leaves the fill frame free of viewfinder chrome", () => {
-    renderPreview({ frame: "fill" });
+  it("leaves the fill frame free of viewfinder chrome", async () => {
+    renderPreview({ frame: "fill", demo: WorkingDemo });
     expect(chromeLabels()).toHaveLength(0);
     expect(screen.queryByText("[copy jsx]")).not.toBeInTheDocument();
+    expect(await screen.findByText("Working preview")).toBeInTheDocument();
   });
 });
 

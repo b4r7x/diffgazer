@@ -13,7 +13,7 @@ import {
   type SavedReview,
 } from "@diffgazer/core/schemas/review";
 import { z } from "zod";
-import { normalizeIssueLineFields } from "../engine/issues.js";
+import { normalizeIssueLineFields } from "../engine/issues/normalization.js";
 
 const CountFieldSchema = z.number().int().nonnegative();
 

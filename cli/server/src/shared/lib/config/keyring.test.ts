@@ -151,18 +151,21 @@ describe("keyring (available)", () => {
   it("persists a value through writeKeyringSecret", async () => {
     const { isKeyringAvailable, writeKeyringSecret } = await import("./keyring.js");
     isKeyringAvailable();
-    mockSetPassword.mockReturnValue(undefined);
+    mockSetPassword.mockClear();
+    mockDeletePassword.mockClear();
 
     const result = writeKeyringSecret("api-key", "secret-value");
 
     expect(result.ok).toBe(true);
+    expect(mockSetPassword).toHaveBeenCalledWith("secret-value");
   });
 
   it("reports that a deletion happened when the key previously existed", async () => {
     const { isKeyringAvailable, deleteKeyringSecret } = await import("./keyring.js");
     isKeyringAvailable();
+    mockSetPassword.mockClear();
+    mockDeletePassword.mockClear();
     mockGetPassword.mockReturnValue("existing-value");
-    mockDeletePassword.mockReturnValue(undefined);
 
     const result = deleteKeyringSecret("api-key");
 
@@ -170,11 +173,14 @@ describe("keyring (available)", () => {
     if (result.ok) {
       expect(result.value).toBe(true);
     }
+    expect(mockDeletePassword).toHaveBeenCalledTimes(1);
   });
 
   it("reports that no deletion happened when the key was already absent", async () => {
     const { isKeyringAvailable, deleteKeyringSecret } = await import("./keyring.js");
     isKeyringAvailable();
+    mockSetPassword.mockClear();
+    mockDeletePassword.mockClear();
     mockGetPassword.mockReturnValue(null);
 
     const result = deleteKeyringSecret("nonexistent-key");
@@ -183,6 +189,7 @@ describe("keyring (available)", () => {
     if (result.ok) {
       expect(result.value).toBe(false);
     }
+    expect(mockDeletePassword).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -211,6 +218,21 @@ describe("keyring (available)", () => {
         return writeKeyringSecret("api-key", "value");
       },
       expectedCode: "KEYRING_WRITE_FAILED" as const,
+    },
+    {
+      operation: "delete",
+      throwingMock: () => {
+        mockGetPassword.mockReturnValue("existing-value");
+        mockDeletePassword.mockClear();
+        mockDeletePassword.mockImplementation(() => {
+          throw new Error("permission denied");
+        });
+      },
+      run: async () => {
+        const { deleteKeyringSecret } = await import("./keyring.js");
+        return deleteKeyringSecret("api-key");
+      },
+      expectedCode: "KEYRING_DELETE_FAILED" as const,
     },
   ])("surfaces $expectedCode when the underlying $operation throws", async ({
     throwingMock,

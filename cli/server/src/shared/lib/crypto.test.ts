@@ -11,7 +11,6 @@ describe("safeTokenMatch", () => {
   });
 
   it("returns false instead of throwing when UTF-8 byte lengths differ", () => {
-    expect(() => safeTokenMatch("abé", "abc")).not.toThrow();
     expect(safeTokenMatch("abé", "abc")).toBe(false);
   });
 

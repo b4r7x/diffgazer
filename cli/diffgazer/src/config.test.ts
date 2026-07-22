@@ -40,4 +40,17 @@ describe("shutdown timing", () => {
     expect(config.shutdown.forceKillMs).toBe(2000);
     expect(config.shutdown.gracefulMs).toBe(3000);
   });
+
+  it.each([
+    ["zero", "0"],
+    ["negative", "-100"],
+    ["fractional", "1.5"],
+    ["empty", ""],
+    ["nonnumeric", "abc"],
+  ])("falls back to the default shutdown pair for a %s force-kill delay", async (_label, value) => {
+    const config = await loadConfig(value);
+
+    expect(config.shutdown.forceKillMs).toBe(2000);
+    expect(config.shutdown.gracefulMs).toBe(3000);
+  });
 });

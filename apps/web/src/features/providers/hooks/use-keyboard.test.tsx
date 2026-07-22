@@ -213,48 +213,6 @@ function renderProviderListSubject(props: Parameters<typeof ProviderListSubject>
   );
 }
 
-describe("ProviderList", () => {
-  it("exposes provider badge and model as the option description", () => {
-    render(
-      <ProviderList
-        providers={PROVIDERS}
-        selectedId="gemini"
-        onSelect={vi.fn()}
-        filter="all"
-        onFilterChange={vi.fn()}
-        searchQuery=""
-        onSearchChange={vi.fn()}
-      />,
-    );
-
-    const option = screen.getByRole("option", { name: "Google Gemini" });
-
-    expect(option).toHaveAccessibleDescription("FREE gemini-2.5-flash");
-  });
-
-  it("keeps the same live status node when filtering removes every provider", () => {
-    const props = {
-      selectedId: "gemini",
-      onSelect: vi.fn(),
-      filter: "all" as const,
-      onFilterChange: vi.fn(),
-      searchQuery: "",
-      onSearchChange: vi.fn(),
-    };
-    const { rerender } = render(<ProviderList providers={PROVIDERS} {...props} />);
-    const liveRegion = screen.getByRole("status");
-
-    expect(liveRegion).toHaveTextContent("");
-    expect(liveRegion).toHaveClass("sr-only");
-
-    rerender(<ProviderList providers={[]} {...props} />);
-
-    expect(screen.getByRole("status")).toBe(liveRegion);
-    expect(liveRegion).toHaveTextContent("No providers match your filters");
-    expect(liveRegion).not.toHaveClass("sr-only");
-  });
-});
-
 describe("useProvidersKeyboard", () => {
   it("focuses the provider list after it becomes ready", async () => {
     const { rerender } = renderSubject({ listReady: false });
@@ -291,6 +249,20 @@ describe("useProvidersKeyboard", () => {
 
     await waitFor(() => expect(outsideAction).toHaveFocus());
     expect(screen.getByRole("listbox", { name: "Providers" })).not.toHaveFocus();
+  });
+
+  it("navigates to settings when Escape is pressed while the provider list is focused", async () => {
+    const user = userEvent.setup();
+    mockNavigate.mockReset();
+
+    renderSubject();
+
+    const providerList = screen.getByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(providerList).toHaveFocus());
+
+    await user.keyboard("{Escape}");
+
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
   });
 
   it("moves real focus from the provider list to the first enabled action and back", async () => {

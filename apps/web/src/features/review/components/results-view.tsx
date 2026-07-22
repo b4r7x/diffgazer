@@ -4,7 +4,7 @@ import {
   selectDetailsEmptyKind,
 } from "@diffgazer/core/review";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { IssueDetailsPane } from "@/features/review/components/issue-details-pane";
+import { IssueDetailsPane } from "@/features/review/components/issue-details-pane/pane";
 import { IssueListPane } from "@/features/review/components/issue-list-pane";
 import { useReviewResultsKeyboard } from "../hooks/use-results-keyboard";
 

@@ -4,15 +4,8 @@ import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-
-// Boundary mock: TanStack Router is the external routing library; summary footer/back behavior reads router state.
-vi.mock("@tanstack/react-router", () => ({
-  useRouter: () => ({ history: { back: vi.fn() }, navigate: vi.fn() }),
-  useCanGoBack: () => false,
-  useLocation: () => ({ pathname: "/review/test-id" }),
-}));
-
 import { ReviewSummaryView } from "./summary-view";
 
 function renderSummary(props?: {
@@ -154,5 +147,29 @@ describe("ReviewSummaryView", () => {
 
     expect(screen.getByText("src/db.ts")).toBeInTheDocument();
     expect(screen.queryByText("src/db.ts:0")).not.toBeInTheDocument();
+  });
+
+  it("invokes onEnterReview once for the global Enter shortcut and does not double-invoke it when Enter presses the focused View Results button", async () => {
+    const user = userEvent.setup();
+    const onEnterReview = vi.fn();
+    render(
+      <KeyboardProvider>
+        <FooterProvider>
+          <ReviewSummaryView
+            issues={[makeIssue({ id: "1", severity: "high", title: "Issue 1" })]}
+            reviewId="review-1"
+            onEnterReview={onEnterReview}
+            onBack={vi.fn()}
+          />
+        </FooterProvider>
+      </KeyboardProvider>,
+    );
+
+    await user.keyboard("{Enter}");
+    expect(onEnterReview).toHaveBeenCalledTimes(1);
+
+    screen.getByRole("button", { name: /view results/i }).focus();
+    await user.keyboard("{Enter}");
+    expect(onEnterReview).toHaveBeenCalledTimes(2);
   });
 });

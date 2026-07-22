@@ -67,17 +67,59 @@ describe("parseModelsDevCatalog", () => {
     expect(parsed.success).toBe(true);
   });
 
-  it("rejects JSON __proto__ keys without poisoning the result or Object.prototype", () => {
-    const raw = JSON.parse(
-      '{"__proto__":{"id":"__proto__","name":"poisoned","models":{}},"google":{"id":"google","models":{}}}',
-    );
+  const UNSAFE_KEY_CASES: Array<{ key: string; raw: unknown }> = [
+    {
+      key: "__proto__",
+      // __proto__ only lands as a genuine own key when it arrives as external JSON
+      // data, as the real models.dev payload does — object-literal syntax would
+      // instead set the prototype and never reach the code under test.
+      raw: JSON.parse(
+        '{"__proto__":{"id":"__proto__","name":"poisoned","models":{"__proto__":{"id":"poisoned","name":"poisoned"},"gemini-2.5-flash":{"id":"gemini-2.5-flash","name":"Flash"}}},"google":{"id":"google","models":{"__proto__":{"id":"poisoned","name":"poisoned"},"gemini-2.5-flash":{"id":"gemini-2.5-flash","name":"Flash"}}}}',
+      ),
+    },
+    {
+      key: "prototype",
+      raw: {
+        prototype: { id: "prototype", name: "poisoned", models: {} },
+        google: {
+          id: "google",
+          models: {
+            prototype: { id: "poisoned", name: "poisoned" },
+            "gemini-2.5-flash": { id: "gemini-2.5-flash", name: "Flash" },
+          },
+        },
+      },
+    },
+    {
+      key: "constructor",
+      raw: {
+        constructor: { id: "constructor", name: "poisoned", models: {} },
+        google: {
+          id: "google",
+          models: {
+            constructor: { id: "poisoned", name: "poisoned" },
+            "gemini-2.5-flash": { id: "gemini-2.5-flash", name: "Flash" },
+          },
+        },
+      },
+    },
+  ];
 
+  it.each(
+    UNSAFE_KEY_CASES,
+  )("drops a $key key at both the provider and nested-model level without poisoning the catalog, its models record, or Object.prototype", ({
+    key,
+    raw,
+  }) => {
     const catalog = parseModelsDevCatalog(raw);
+    const models = requireValue(catalog.google?.models, "Google provider models");
 
+    expect(Object.hasOwn(catalog, key)).toBe(false);
+    expect(Object.hasOwn(models, key)).toBe(false);
     expect(Object.getPrototypeOf(catalog)).toBe(Object.prototype);
-    expect(Object.hasOwn(catalog, "__proto__")).toBe(false);
-    expect("name" in catalog).toBe(false);
+    expect(Object.getPrototypeOf(models)).toBe(Object.prototype);
     expect(catalog.google?.id).toBe("google");
+    expect(models["gemini-2.5-flash"]?.id).toBe("gemini-2.5-flash");
     expect(Object.prototype).not.toHaveProperty("name");
   });
 });

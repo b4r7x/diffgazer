@@ -76,7 +76,7 @@ describe("ReviewMetadataSchema transform — mode backwards compat", () => {
   }>([
     {
       name: "explicit mode wins",
-      overrides: { mode: "staged" },
+      overrides: { mode: "staged", staged: false },
       expectedMode: "staged",
     },
     {

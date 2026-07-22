@@ -21,6 +21,11 @@ test.describe("Tabs", () => {
     const codeTab = tablist.getByRole("tab", { name: /code/i });
     await expect(codeTab).toHaveAttribute("aria-selected", "true");
 
+    const codePanelId = await codeTab.getAttribute("aria-controls");
+    if (!codePanelId) throw new Error("Code tab did not expose aria-controls");
+    const codePanel = page.locator(`[id="${codePanelId}"]`);
+    await expect(codePanel).toContainText("Source code displayed here with syntax highlighting.");
+
     const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
     expect(results.violations).toEqual([]);
   });

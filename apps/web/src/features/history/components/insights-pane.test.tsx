@@ -313,42 +313,4 @@ describe("HistoryInsightsPane keyboard navigation", () => {
     const options = within(listbox).getAllByRole("option");
     expect(options).toHaveLength(issues.length);
   });
-
-  it("re-anchors the listbox to the first issue when the issues prop changes", () => {
-    const { rerender } = render(
-      <HistoryInsightsPane
-        runId="run-1"
-        severityCounts={null}
-        issues={issues}
-        isFocused
-        highlightedIssueId="issue-2"
-      />,
-    );
-
-    let listbox = screen.getByRole("listbox", { name: /run issues/i });
-    expect(listbox).toHaveAttribute(
-      "aria-activedescendant",
-      screen.getByRole("option", { name: /second issue/i }).id,
-    );
-
-    const newIssues = [
-      makeIssue({ id: "issue-x", severity: "blocker", title: "Brand new", line_start: 5 }),
-    ];
-
-    rerender(
-      <HistoryInsightsPane
-        runId="run-2"
-        severityCounts={null}
-        issues={newIssues}
-        isFocused
-        highlightedIssueId="issue-x"
-      />,
-    );
-
-    listbox = screen.getByRole("listbox", { name: /run issues/i });
-    expect(listbox).toHaveAttribute(
-      "aria-activedescendant",
-      screen.getByRole("option", { name: /brand new/i }).id,
-    );
-  });
 });

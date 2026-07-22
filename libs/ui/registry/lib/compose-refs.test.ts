@@ -33,17 +33,6 @@ describe("composeRefs", () => {
     expect(ref.current).toBe(el);
   });
 
-  it("returns a cleanup function when callback ref returns one", () => {
-    const cleanup = vi.fn();
-    const callbackRef = () => cleanup;
-    const composed = composeRefs(callbackRef);
-    const el = document.createElement("div");
-
-    const result = composed(el);
-
-    expect(result).toBe(cleanup);
-  });
-
   it("invokes cleanup function when the composed ref is called", () => {
     const cleanup = vi.fn();
     const callbackRef = vi.fn(() => cleanup);

@@ -56,18 +56,29 @@ describe("initGaze", () => {
     controller.cleanup();
   });
 
-  it("clears the spinner interval for an already-aborted signal", () => {
+  it("does not animate gaze spinner or status for an already-aborted signal", async () => {
     vi.useFakeTimers();
     mountGaze();
 
     const abort = new AbortController();
     abort.abort();
-    const clearIntervalSpy = vi.spyOn(globalThis, "clearInterval");
+    const spin = document.querySelector("#gz-spin");
+    const status = document.querySelector("#gz-status");
+    const initialSpin = spin?.textContent ?? "";
+    const initialStatus = status?.textContent ?? "";
 
     const controller = initGaze(document, { reduced: false, finePointer: false }, abort.signal);
 
-    expect(clearIntervalSpy).toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(spin?.textContent).toBe(initialSpin);
+    expect(status?.textContent).toBe(initialStatus);
+    expect(vi.getTimerCount()).toBe(0);
 
     controller.cleanup();
+
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

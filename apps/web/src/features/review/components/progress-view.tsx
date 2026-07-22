@@ -23,7 +23,7 @@ import {
   REVIEW_PROGRESS_CONTROLS,
   useReviewProgressKeyboard,
 } from "../hooks/use-progress-keyboard";
-import { ActivityLog } from "./activity-log";
+import { ActivityLog } from "./activity-log/log";
 import { AgentBoard } from "./agent-board";
 import { ContextSnapshotPreview } from "./context-snapshot-preview";
 import { ReviewMetricsFooter } from "./metrics-footer";

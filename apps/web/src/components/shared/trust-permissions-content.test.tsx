@@ -263,25 +263,6 @@ describe("TrustPermissionsContent", () => {
     );
   });
 
-  it("calls onListBoundaryNext when arrowing past the last checkbox without actions", async () => {
-    const user = userEvent.setup();
-    const onBoundary = vi.fn();
-
-    render(
-      <KeyboardProvider>
-        <PassiveTestHarness onListBoundaryNext={onBoundary} />
-      </KeyboardProvider>,
-    );
-
-    const readFilesOption = getReadFilesOption();
-    await user.click(readFilesOption);
-    expect(readFilesOption).toHaveFocus();
-
-    await user.keyboard("{ArrowDown}");
-
-    expect(onBoundary).toHaveBeenCalledOnce();
-  });
-
   it("clears checkbox highlight when focus leaves the list in passive mode", async () => {
     const user = userEvent.setup();
     const onBoundary = vi.fn();

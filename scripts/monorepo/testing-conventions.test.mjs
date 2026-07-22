@@ -5,12 +5,27 @@ import ts from "typescript";
 import { listRepoFiles } from "./lib/files.mjs";
 
 const TEST_FILE_RE = /\.(?:test|spec)\.[cm]?[tj]sx?$/;
-const FIRE_EVENT_CALL_RE = /\bfireEvent(?:\.\w+\s*\(|\s*\()/;
+const FIRE_EVENT_MODULE = "@testing-library/react";
+const FIRE_EVENT_SOURCE_MODULES = new Set([FIRE_EVENT_MODULE, "@testing-library/dom"]);
+const FIRE_EVENT_RETAINED_TEXT = "fireEvent retained:";
+const FIRE_EVENT_COMMENT_LOOKBACK_LINES = 2;
 const UI_COMPONENT_FILE_RE = /^libs\/ui\/registry\/ui\/([^/]+)\//;
 const UI_COMPONENT_TEST_RE = /^libs\/ui\/registry\/ui\/.+\.test\.tsx$/;
 const UI_COMPONENT_DIRECT_TEST_RE = /^libs\/ui\/registry\/ui\/([^/]+)\/[^/]+\.test\.tsx$/;
 const AXE_HELPER_MODULE = "../../../testing/axe";
 const UI_TEST_AXE_EXEMPTIONS = new Map([
+  [
+    "libs/ui/registry/ui/code-block/code-block.test.tsx",
+    "code-block-accessibility.test.tsx owns the axe audit across all CodeBlock variants.",
+  ],
+  [
+    "libs/ui/registry/ui/code-block/code-block-copy-button.test.tsx",
+    "code-block-accessibility.test.tsx owns the axe audit; this file isolates clipboard behavior.",
+  ],
+  [
+    "libs/ui/registry/ui/code-block/highlight.test.tsx",
+    "code-block-accessibility.test.tsx owns the axe audit; this file isolates lowlight tokenization.",
+  ],
   [
     "libs/ui/registry/ui/block-bar/block-bar.test.tsx",
     "Meter label, value, minimum, and maximum semantics are asserted directly.",
@@ -58,6 +73,22 @@ const UI_TEST_AXE_EXEMPTIONS = new Map([
   [
     "libs/ui/registry/ui/typography/typography.test.tsx",
     "Semantics depend on the element selected by the consumer and are asserted directly.",
+  ],
+  [
+    "libs/ui/registry/ui/stepper/stepper-navigation.test.tsx",
+    "stepper.test.tsx owns the axe audit; this file isolates focus and owner-document navigation.",
+  ],
+  [
+    "libs/ui/registry/ui/stepper/stepper-announcements.test.tsx",
+    "stepper.test.tsx owns the axe audit; this file isolates live-region announcements.",
+  ],
+  [
+    "libs/ui/registry/ui/stepper/stepper-variants.test.tsx",
+    "stepper.test.tsx owns the axe audit; this file isolates variant rendering.",
+  ],
+  [
+    "libs/ui/registry/ui/stepper/stepper-motion.test.tsx",
+    "stepper.test.tsx owns the axe audit; this file isolates reduced-motion behavior.",
   ],
 ]);
 const UI_COMPONENT_TEST_EXEMPTIONS = new Map();
@@ -287,6 +318,21 @@ function hasReachableTestRegistration(testCallback, checker, describeSymbols) {
   }
 }
 
+function isNonNegatedToHaveNoViolationsAssertion(expectCall) {
+  let current = expectCall;
+  while (true) {
+    const parent = current.parent;
+    if (!parent || !ts.isPropertyAccessExpression(parent) || parent.expression !== current) {
+      return false;
+    }
+    if (parent.name.text === "not") return false;
+    if (parent.name.text === "toHaveNoViolations") {
+      return ts.isCallExpression(parent.parent) && parent.parent.expression === parent;
+    }
+    current = parent;
+  }
+}
+
 function hasAwaitedAxeCall(sourceFile, checker) {
   const axeSymbols = findAxeImportSymbols(sourceFile, checker);
   const { describeSymbols, testSymbols } = findVitestSymbols(sourceFile, checker);
@@ -301,10 +347,17 @@ function hasAwaitedAxeCall(sourceFile, checker) {
       ts.isAwaitExpression(node.parent)
     ) {
       const symbol = checker.getSymbolAtLocation(node.expression);
+      const awaitExpression = node.parent;
+      const expectCall = awaitExpression.parent;
       const testCallback = findContainingTestCallback(node, checker, testSymbols);
       if (
         symbol &&
         axeSymbols.has(symbol) &&
+        ts.isCallExpression(expectCall) &&
+        ts.isIdentifier(expectCall.expression) &&
+        expectCall.expression.text === "expect" &&
+        expectCall.arguments[0] === awaitExpression &&
+        isNonNegatedToHaveNoViolationsAssertion(expectCall) &&
         testCallback &&
         hasReachableTestRegistration(testCallback, checker, describeSymbols) &&
         !isWithinStaticDeadBranch(node, testCallback) &&
@@ -320,8 +373,78 @@ function hasAwaitedAxeCall(sourceFile, checker) {
   return found;
 }
 
-function sourceHasAwaitedAxeCall(source) {
-  const fileName = "/axe-convention-fixture.tsx";
+function findFireEventImportSymbols(sourceFile, checker) {
+  const symbols = new Set();
+
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement)) continue;
+    if (!ts.isStringLiteral(statement.moduleSpecifier)) continue;
+    if (!FIRE_EVENT_SOURCE_MODULES.has(statement.moduleSpecifier.text)) continue;
+    const bindings = statement.importClause?.namedBindings;
+    if (!bindings || !ts.isNamedImports(bindings)) continue;
+
+    for (const element of bindings.elements) {
+      const importedName = element.propertyName?.text ?? element.name.text;
+      if (importedName !== "fireEvent") continue;
+      const symbol = checker.getSymbolAtLocation(element.name);
+      if (symbol) symbols.add(symbol);
+    }
+  }
+
+  return symbols;
+}
+
+function collectRealComments(sourceFile) {
+  const text = sourceFile.text;
+  const seenStarts = new Set();
+  const comments = [];
+
+  function collectLeadingComments(pos) {
+    for (const range of ts.getLeadingCommentRanges(text, pos) ?? []) {
+      if (seenStarts.has(range.pos)) continue;
+      seenStarts.add(range.pos);
+      comments.push({
+        text: text.slice(range.pos, range.end),
+        endLine: sourceFile.getLineAndCharacterOfPosition(range.end).line,
+      });
+    }
+  }
+
+  function visit(node) {
+    collectLeadingComments(node.getFullStart());
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return comments;
+}
+
+function collectFireEventCalls(sourceFile, checker, fireEventSymbols) {
+  const calls = [];
+
+  function visit(node) {
+    if (ts.isCallExpression(node)) {
+      const descriptor = describeCall(node.expression);
+      const symbol = descriptor && checker.getSymbolAtLocation(descriptor.baseNode);
+      if (symbol && fireEventSymbols.has(symbol)) calls.push(node);
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return calls;
+}
+
+function isFireEventCallRationalized(callNode, sourceFile, comments) {
+  const callLine = sourceFile.getLineAndCharacterOfPosition(callNode.getStart(sourceFile)).line;
+  return comments.some((comment) => {
+    if (!comment.text.includes(FIRE_EVENT_RETAINED_TEXT)) return false;
+    const distance = callLine - comment.endLine;
+    return distance >= 0 && distance <= FIRE_EVENT_COMMENT_LOOKBACK_LINES;
+  });
+}
+
+function createFixtureSourceFile(source, fileName) {
   const options = { jsx: ts.JsxEmit.Preserve, noLib: true, noResolve: true };
   const sourceFile = ts.createSourceFile(
     fileName,
@@ -339,7 +462,24 @@ function sourceHasAwaitedAxeCall(source) {
       path === fileName ? sourceFile : defaultHost.getSourceFile(path, ...args),
   };
   const program = ts.createProgram([fileName], options, host);
-  return hasAwaitedAxeCall(sourceFile, program.getTypeChecker());
+  return { sourceFile, checker: program.getTypeChecker() };
+}
+
+function sourceHasAwaitedAxeCall(source) {
+  const { sourceFile, checker } = createFixtureSourceFile(source, "/axe-convention-fixture.tsx");
+  return hasAwaitedAxeCall(sourceFile, checker);
+}
+
+function sourceFireEventCallsAreRationalized(source) {
+  const { sourceFile, checker } = createFixtureSourceFile(
+    source,
+    "/fire-event-convention-fixture.tsx",
+  );
+  const fireEventSymbols = findFireEventImportSymbols(sourceFile, checker);
+  const comments = collectRealComments(sourceFile);
+  return collectFireEventCalls(sourceFile, checker, fireEventSymbols).every((call) =>
+    isFireEventCallRationalized(call, sourceFile, comments),
+  );
 }
 
 function listTestFiles() {
@@ -360,19 +500,31 @@ function listUiComponentFolders() {
 
 test("retained fireEvent calls carry inline rationale", () => {
   const violations = [];
+  const candidateFiles = listTestFiles().filter((file) =>
+    readFileSync(file, "utf8").includes("fireEvent"),
+  );
 
-  for (const file of listTestFiles()) {
-    const lines = readFileSync(file, "utf8").split(/\r?\n/);
-
-    lines.forEach((line, index) => {
-      if (line.trimStart().startsWith("//")) return;
-      if (!FIRE_EVENT_CALL_RE.test(line)) return;
-
-      const context = lines.slice(Math.max(0, index - 2), index + 1).join("\n");
-      if (!context.includes("fireEvent retained:")) {
-        violations.push(`${file}:${index + 1}: ${line.trim()}`);
-      }
+  if (candidateFiles.length > 0) {
+    const program = ts.createProgram(candidateFiles, {
+      jsx: ts.JsxEmit.Preserve,
+      noLib: true,
+      noResolve: true,
     });
+    const checker = program.getTypeChecker();
+
+    for (const file of candidateFiles) {
+      const sourceFile = program.getSourceFile(file);
+      if (!sourceFile) continue;
+      const fireEventSymbols = findFireEventImportSymbols(sourceFile, checker);
+      if (fireEventSymbols.size === 0) continue;
+
+      const comments = collectRealComments(sourceFile);
+      for (const call of collectFireEventCalls(sourceFile, checker, fireEventSymbols)) {
+        if (isFireEventCallRationalized(call, sourceFile, comments)) continue;
+        const line = sourceFile.getLineAndCharacterOfPosition(call.getStart(sourceFile)).line;
+        violations.push(`${file}:${line + 1}: ${call.getText(sourceFile)}`);
+      }
+    }
   }
 
   assert.deepEqual(violations, []);
@@ -425,13 +577,17 @@ test("UI component tests run axe or document why axe is skipped", () => {
   assert.deepEqual(violations, []);
 });
 
-test("axe convention requires an awaited call resolved to the approved helper import", () => {
+test("axe convention requires an awaited call resolved to the approved helper import and asserted with toHaveNoViolations()", () => {
   const rejected = [
     `import { it } from "vitest"; it("runs axe()", () => {});`,
     `// await axe(container)`,
     `import { axe } from "${AXE_HELPER_MODULE}";`,
     `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", () => { axe(container); });`,
     `// axe skipped: x`,
+    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { await axe(container); });`,
+    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { do { await axe(container); } while (false); });`,
+    `import { describe, it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; describe("suite", () => { it("audit", async () => { await axe(container); }); });`,
+    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { expect(await axe(container)).not.toHaveNoViolations(); });`,
     `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { const axe = async () => {}; await axe(); });`,
     `import { axe } from "${AXE_HELPER_MODULE}"; async function audit() { await axe(container); }`,
     `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it.skip("audit", async () => { await axe(container); });`,
@@ -460,19 +616,91 @@ test("axe convention requires an awaited call resolved to the approved helper im
 
   assert.equal(
     sourceHasAwaitedAxeCall(
+      `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { expect(await axe(container)).toHaveNoViolations(); });`,
+    ),
+    true,
+  );
+  assert.equal(
+    sourceHasAwaitedAxeCall(
       `import { it as scenario } from "vitest"; import { axe as runAxe } from "${AXE_HELPER_MODULE}"; scenario("audit", async () => { expect(await runAxe(container)).toHaveNoViolations(); });`,
     ),
     true,
   );
   assert.equal(
     sourceHasAwaitedAxeCall(
-      `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { do { await axe(container); } while (false); });`,
+      `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { do { expect(await axe(container)).toHaveNoViolations(); } while (false); });`,
     ),
     true,
   );
   assert.equal(
     sourceHasAwaitedAxeCall(
-      `import { describe, it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; describe("suite", () => { it("audit", async () => { await axe(container); }); });`,
+      `import { describe, it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; describe("suite", () => { it("audit", async () => { expect(await axe(container)).toHaveNoViolations(); }); });`,
+    ),
+    true,
+  );
+});
+
+test("fireEvent rationale convention requires a resolved call paired with a real leading comment", () => {
+  const rejected = [
+    `import { it } from "vitest";
+import { fireEvent } from "${FIRE_EVENT_MODULE}";
+it("audit", () => {
+  fireEvent.click(button);
+});`,
+    `import { it } from "vitest";
+import { fireEvent } from "${FIRE_EVENT_MODULE}";
+it("audit", () => {
+  const rationale = "fireEvent retained: fake";
+  fireEvent.click(button);
+});`,
+    `import { it } from "vitest";
+import { fireEvent as fe } from "${FIRE_EVENT_MODULE}";
+it("audit", () => {
+  fe(button, new Event("click"));
+});`,
+    `import { it } from "vitest";
+import { fireEvent } from "${FIRE_EVENT_MODULE}";
+it("audit", () => {
+  fireEvent
+    .click(button);
+});`,
+  ];
+
+  for (const source of rejected) {
+    assert.equal(sourceFireEventCallsAreRationalized(source), false, source);
+  }
+
+  assert.equal(
+    sourceFireEventCallsAreRationalized(
+      `import { it } from "vitest";
+import { fireEvent } from "${FIRE_EVENT_MODULE}";
+it("audit", () => {
+  // fireEvent retained: native dispatch exercises the exact browser event shape.
+  fireEvent.click(button);
+});`,
+    ),
+    true,
+  );
+  assert.equal(
+    sourceFireEventCallsAreRationalized(
+      `import { it } from "vitest";
+import { fireEvent as fe } from "${FIRE_EVENT_MODULE}";
+it("audit", () => {
+  // fireEvent retained: aliased callable form resolves to the imported binding.
+  fe(button, new Event("click"));
+});`,
+    ),
+    true,
+  );
+  assert.equal(
+    sourceFireEventCallsAreRationalized(
+      `import { it } from "vitest";
+import { fireEvent as fe } from "${FIRE_EVENT_MODULE}";
+it("audit", () => {
+  // fireEvent retained: aliased member access resolves across the wrapped property chain.
+  fe
+    .click(button);
+});`,
     ),
     true,
   );

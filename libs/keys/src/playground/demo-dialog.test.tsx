@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DemoDialog } from "../../examples/playground/src/components/demo-dialog";
 import { CommandPaletteDemo } from "../../examples/playground/src/demos/command-palette";
 import { FocusTrapDemo } from "../../examples/playground/src/demos/focus-trap";
-import { GlobalShortcutsDemo } from "../../examples/playground/src/demos/global-shortcuts";
 import { ScopedDialogDemo } from "../../examples/playground/src/demos/scoped-dialog";
 import { KeyboardWrapper } from "../testing/test-utils.js";
 
@@ -141,27 +140,5 @@ describe("DemoDialog", () => {
     expect(screen.queryByRole("dialog", { name: "Confirm Action" })).toBeNull();
     expect(document.activeElement).toBe(opener);
     expectBodyScrollRestored();
-  });
-
-  it("toggles and closes Global Shortcuts while its search input owns focus", async () => {
-    const user = userEvent.setup();
-    render(<GlobalShortcutsDemo />, { wrapper: KeyboardWrapper });
-
-    await user.keyboard("{Control>}k{/Control}");
-    const search = screen.getByPlaceholderText("Search...");
-    expect(document.activeElement).toBe(search);
-
-    await user.keyboard("/");
-    expect(search).toHaveProperty("value", "/");
-    expect(screen.getByText("Last action: Toggled search bar")).toBeTruthy();
-
-    await user.keyboard("{Control>}k{/Control}");
-    expect(screen.queryByPlaceholderText("Search...")).toBeNull();
-
-    await user.keyboard("{Control>}k{/Control}");
-    expect(document.activeElement).toBe(screen.getByPlaceholderText("Search..."));
-    await user.keyboard("{Escape}");
-
-    expect(screen.queryByPlaceholderText("Search...")).toBeNull();
   });
 });

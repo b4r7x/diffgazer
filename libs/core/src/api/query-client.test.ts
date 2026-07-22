@@ -41,8 +41,8 @@ describe("createQueryClientBase", () => {
 describe("createQueryRetry", () => {
   it("gives up on 4xx errors immediately", () => {
     const retry = createQueryRetry(2);
-    expect(retry(0, httpError(403))).toBe(false);
-    expect(retry(0, httpError(404))).toBe(false);
+    expect(retry(0, httpError(400))).toBe(false);
+    expect(retry(0, httpError(499))).toBe(false);
   });
 
   it("retries transient errors up to the cap", () => {

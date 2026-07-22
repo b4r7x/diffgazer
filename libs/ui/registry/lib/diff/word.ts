@@ -1,4 +1,4 @@
-import { buildLcsTable } from "./lcs";
+import { buildLcsTable, lcsTableCellCost } from "./lcs";
 import { collectEditPairs } from "./pairs";
 import type { DiffChange } from "./parse";
 
@@ -48,7 +48,7 @@ export function computeWordSegments(
 ): { old: WordSegment[]; new: WordSegment[] } {
   const oldWords = oldContent.split(/(\s+)/);
   const newWords = newContent.split(/(\s+)/);
-  const cellCost = oldWords.length * newWords.length;
+  const cellCost = lcsTableCellCost(oldWords.length, newWords.length);
 
   if (budget) {
     if (cellCost > budget.remainingCells) {

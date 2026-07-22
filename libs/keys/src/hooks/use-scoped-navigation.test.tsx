@@ -76,11 +76,11 @@ describe("useScopedNavigation", () => {
       wrapper: KeyboardWrapper,
     });
 
-    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{End}{Home} {Enter}");
+    await user.keyboard("{ArrowDown} {Enter}");
 
-    expectActiveOptionText("a");
-    expect(onSelect).toHaveBeenCalledWith("a", expect.any(KeyboardEvent));
-    expect(onEnter).toHaveBeenCalledWith("a", expect.any(KeyboardEvent));
+    expectActiveOptionText("b");
+    expect(onSelect).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
+    expect(onEnter).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
   });
 
   it("navigates with the documented 'up'/'down' hotkey aliases", async () => {
@@ -114,43 +114,6 @@ describe("useScopedNavigation", () => {
     );
 
     consoleError.mockRestore();
-  });
-
-  it("moves DOM focus and honors explicit activation handlers when moveFocus is true", async () => {
-    const user = userEvent.setup();
-    const onSelect = vi.fn();
-    const onEnter = vi.fn();
-
-    function MoveFocusList() {
-      const ref = useRef<HTMLDivElement>(null);
-      useScopedNavigation({
-        containerRef: ref,
-        role: "button",
-        defaultHighlighted: "a",
-        moveFocus: true,
-        onSelect,
-        onEnter,
-      });
-
-      return (
-        <div ref={ref} role="group" aria-label="Actions">
-          <button type="button" data-value="a">
-            A
-          </button>
-          <button type="button" data-value="b">
-            B
-          </button>
-        </div>
-      );
-    }
-
-    render(<MoveFocusList />, { wrapper: KeyboardWrapper });
-
-    await user.keyboard("{ArrowDown} {Enter}");
-
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "B" }));
-    expect(onSelect).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
-    expect(onEnter).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
   });
 
   it("moves focus from native checkbox controls", async () => {

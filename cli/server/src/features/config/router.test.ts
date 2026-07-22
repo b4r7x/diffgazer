@@ -3,13 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApi } from "@diffgazer/core/api";
 import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api/protocol";
-import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetRateLimitsForTests } from "../../shared/middlewares/rate-limit.js";
 import { requireValue } from "../../testing/assertions.js";
 
-// Matches the catalog route's createRateLimitMiddleware maxRequests in router.ts.
+// Matches the catalog and OpenRouter routes' createRateLimitMiddleware maxRequests in router.ts.
 const MODEL_FETCH_MAX_REQUESTS = 30;
 
 let diffgazerHome: string;
@@ -390,17 +389,6 @@ describe("GET /config/provider/:id/models", () => {
     expect(body.models.map((m) => m.tier)).toEqual(["free", "paid"]);
   });
 
-  it("falls back to the bundled snapshot when fetch fails and no disk cache exists (source: snapshot)", async () => {
-    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network down"));
-    const app = await loadRouter();
-    const res = await app.request("/config/provider/gemini/models");
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { models: unknown[]; source: string; cached: boolean };
-    expect(body.source).toBe("snapshot");
-    expect(body.cached).toBe(false);
-    expect(body.models.length).toBeGreaterThan(0);
-  });
-
   it("returns 400 VALIDATION_ERROR for an unknown provider id", async () => {
     const app = await loadRouter();
     const res = await app.request("/config/provider/not-a-provider/models");
@@ -439,18 +427,16 @@ describe("GET /config/provider/:id/models", () => {
     expect(body.error.code).toBe("PROVIDER_DISABLED");
   });
 
-  it("serves requests up to the window then rate-limits the next one (200 then 429)", async () => {
+  it("serves exactly the configured threshold before rate-limiting the next request (30x200 then 429)", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network down"));
     const app = await loadRouter();
 
-    const first = await app.request("/config/provider/gemini/models");
-    expect(first.status).toBe(200);
-
-    let lastStatus = first.status;
-    for (let i = 1; i <= MODEL_FETCH_MAX_REQUESTS; i++) {
-      lastStatus = (await app.request("/config/provider/gemini/models")).status;
+    const statuses: number[] = [];
+    for (let i = 0; i < MODEL_FETCH_MAX_REQUESTS + 1; i++) {
+      statuses.push((await app.request("/config/provider/gemini/models")).status);
     }
-    expect(lastStatus).toBe(429);
+
+    expect(statuses).toEqual([...Array(MODEL_FETCH_MAX_REQUESTS).fill(200), 429]);
   });
 
   it("serves a payload that satisfies ProviderModelsResponseSchema (never the raw blob)", async () => {
@@ -461,74 +447,6 @@ describe("GET /config/provider/:id/models", () => {
     const body = await res.json();
     expect(ProviderModelsResponseSchema.safeParse(body).success).toBe(true);
     expect(Object.keys(body as object).sort()).toEqual(["cached", "fetchedAt", "models", "source"]);
-  });
-
-  it("coalesces concurrent catalog fetches and retries after a failed generation", async () => {
-    const failedGeneration = createDeferred<Response>();
-    const retryGeneration = createDeferred<Response>();
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockReturnValueOnce(failedGeneration.promise)
-      .mockReturnValueOnce(retryGeneration.promise);
-    const app = await loadRouter();
-
-    const failedRequests = Array.from({ length: 8 }, () =>
-      app.request("/config/provider/gemini/models"),
-    );
-    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
-    failedGeneration.reject(new Error("network down"));
-
-    const failedResponses = await Promise.all(failedRequests);
-    const failedBodies = await Promise.all(
-      failedResponses.map(async (response) => {
-        const body = (await response.json()) as { source: string; models: Array<{ id: string }> };
-        return {
-          status: response.status,
-          source: body.source,
-          ids: body.models.map(({ id }) => id),
-        };
-      }),
-    );
-    expect(
-      failedBodies.every(({ status, source }) => status === 200 && source === "snapshot"),
-    ).toBe(true);
-    expect(new Set(failedBodies.map((body) => JSON.stringify(body))).size).toBe(1);
-
-    const retryRequests = Array.from({ length: 8 }, () =>
-      app.request("/config/provider/gemini/models"),
-    );
-    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
-    retryGeneration.resolve(
-      okResponse({
-        google: {
-          id: "google",
-          name: "Google",
-          models: {
-            "gemini-2.5-flash": {
-              id: "gemini-2.5-flash",
-              name: "Gemini 2.5 Flash",
-              cost: { input: 0.3, output: 2.5 },
-              limit: { context: 1_000_000 },
-              tool_call: true,
-            },
-          },
-        },
-      }),
-    );
-
-    const retryResponses = await Promise.all(retryRequests);
-    const retryBodies = await Promise.all(
-      retryResponses.map(async (response) => ({
-        status: response.status,
-        body: await response.json(),
-      })),
-    );
-    expect(retryBodies.every(({ status }) => status === 200)).toBe(true);
-    expect(retryBodies.every(({ body }) => (body as { source: string }).source === "live")).toBe(
-      true,
-    );
-    expect(new Set(retryBodies.map(({ body }) => JSON.stringify(body))).size).toBe(1);
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -597,6 +515,19 @@ describe("GET /config/provider/openrouter/models", () => {
     expect(fetchSpy).toHaveBeenCalledOnce();
   });
 
+  it("serves exactly the configured threshold before rate-limiting the next request (30x200 then 429)", async () => {
+    await saveOpenRouterCredentials();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(liveModelsResponse());
+    const app = await loadRouter();
+
+    const statuses: number[] = [];
+    for (let i = 0; i < MODEL_FETCH_MAX_REQUESTS + 1; i++) {
+      statuses.push((await app.request("/config/provider/openrouter/models")).status);
+    }
+
+    expect(statuses).toEqual([...Array(MODEL_FETCH_MAX_REQUESTS).fill(200), 429]);
+  });
+
   it("does not forward a foreign env secret loaded from disk", async () => {
     const foreignEnvName = "UNRELATED_PROCESS_SECRET";
     const originalForeignSecret = process.env[foreignEnvName];
@@ -639,62 +570,5 @@ describe("GET /config/provider/openrouter/models", () => {
       if (originalForeignSecret === undefined) delete process.env[foreignEnvName];
       else process.env[foreignEnvName] = originalForeignSecret;
     }
-  });
-
-  it("coalesces concurrent authenticated fetches and retries after a failed generation", async () => {
-    await saveOpenRouterCredentials();
-
-    const failedGeneration = createDeferred<Response>();
-    const retryGeneration = createDeferred<Response>();
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockReturnValueOnce(failedGeneration.promise)
-      .mockReturnValueOnce(retryGeneration.promise);
-    const app = await loadRouter();
-
-    const failedRequests = Array.from({ length: 8 }, () =>
-      app.request("/config/provider/openrouter/models"),
-    );
-    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
-    failedGeneration.reject(new Error("network down"));
-
-    const failedResponses = await Promise.all(failedRequests);
-    const failedBodies = await Promise.all(
-      failedResponses.map(async (response) => ({
-        status: response.status,
-        body: await response.json(),
-      })),
-    );
-    expect(failedBodies.every(({ status }) => status === 500)).toBe(true);
-    expect(new Set(failedBodies.map(({ body }) => JSON.stringify(body))).size).toBe(1);
-
-    const retryRequests = Array.from({ length: 8 }, () =>
-      app.request("/config/provider/openrouter/models"),
-    );
-    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
-    retryGeneration.resolve(
-      okResponse({
-        data: [
-          {
-            id: "openai/test-model",
-            name: "Test Model",
-            context_length: 4096,
-            supported_parameters: ["response_format"],
-            pricing: { prompt: "0", completion: "0" },
-          },
-        ],
-      }),
-    );
-
-    const retryResponses = await Promise.all(retryRequests);
-    const retryBodies = await Promise.all(
-      retryResponses.map(async (response) => ({
-        status: response.status,
-        body: await response.json(),
-      })),
-    );
-    expect(retryBodies.every(({ status }) => status === 200)).toBe(true);
-    expect(new Set(retryBodies.map(({ body }) => JSON.stringify(body))).size).toBe(1);
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 });

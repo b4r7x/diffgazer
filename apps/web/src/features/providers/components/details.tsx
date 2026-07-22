@@ -120,7 +120,10 @@ export function ProviderDetails({
           <SectionHeader variant="muted" bordered className="mb-4 border-border text-accent">
             Capabilities
           </SectionHeader>
-          <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
+          <div
+            className="grid grid-cols-1 gap-4 @md:grid-cols-2"
+            data-layout-grid="provider-capabilities"
+          >
             <CapabilityCard label="Tool Calling" value={capabilities.toolCalling} />
             <CapabilityCard label="JSON Mode" value={capabilities.jsonMode} />
             <CapabilityCard label="Streaming" value={capabilities.streaming} />

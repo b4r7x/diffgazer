@@ -12,12 +12,14 @@
     {
       "path": "registry/ui/section-header/index.ts",
       "content": "export {\n  SectionHeader,\n  type SectionHeaderProps,\n  sectionHeaderVariants,\n} from \"./section-header\";\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/section-header/index.ts"
     },
     {
       "path": "registry/ui/section-header/section-header.tsx",
       "content": "import { cva, type VariantProps } from \"class-variance-authority\";\nimport type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\ntype HeadingTag = \"h2\" | \"h3\" | \"h4\";\n\n/** Class variants for section header. */\nexport const sectionHeaderVariants = cva(\"font-bold mb-2 uppercase tracking-wider\", {\n  variants: {\n    variant: {\n      default: \"text-foreground\",\n      muted: \"text-muted-foreground\",\n    },\n    bordered: {\n      true: \"border-b border-border pb-2\",\n    },\n    as: {\n      h2: \"text-sm\",\n      h3: \"text-xs\",\n      h4: \"text-[11px]\",\n    },\n  },\n  defaultVariants: { variant: \"default\", bordered: false, as: \"h3\" },\n});\n\n/** Props for section header. */\nexport interface SectionHeaderProps\n  extends ComponentProps<\"h2\">,\n    VariantProps<typeof sectionHeaderVariants> {\n  /** Heading level. Choose the level that matches your document outline. */\n  as?: HeadingTag;\n}\n\n/**\n * Uppercase heading element for labeling content sections, with configurable heading level and\n * variant.\n */\nexport function SectionHeader({\n  ref,\n  className,\n  variant,\n  bordered,\n  as: Tag = \"h3\",\n  children,\n  ...props\n}: SectionHeaderProps) {\n  return (\n    <Tag\n      ref={ref}\n      data-slot=\"section-header\"\n      className={cn(sectionHeaderVariants({ variant, bordered, as: Tag }), className)}\n      {...props}\n    >\n      {children}\n    </Tag>\n  );\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/section-header/section-header.tsx"
     }
   ],
   "meta": {

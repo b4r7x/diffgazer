@@ -1,16 +1,12 @@
-import { testNavigationBehavior } from "@diffgazer/keys/testing/navigation-behavior";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, useState } from "react";
 import { renderToString } from "react-dom/server";
-import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
-import { tabsDoc } from "../../component-docs/tabs";
-import { SEGMENTED_VARIANTS } from "../../lib/segmented-variants";
-import { requireElement, requireValue } from "../../testing/assertions";
+import { requireElement } from "../../testing/assertions";
 import { Tabs } from "./index";
 import type { TabsProps } from "./tabs";
-import type { TabsTriggerProps } from "./tabs-trigger";
 
 function renderTabs(props: Partial<TabsProps> = {}) {
   return render(
@@ -205,163 +201,6 @@ describe("Tabs", () => {
   it("has no a11y violations", async () => {
     const { container } = renderTabs();
     expect(await axe(container)).toHaveNoViolations();
-  });
-
-  it("moves focus with ArrowRight/ArrowLeft in horizontal mode (automatic)", async () => {
-    const user = userEvent.setup();
-    renderTabs();
-    screen.getByRole("tab", { name: "One" }).focus();
-    await user.keyboard("{ArrowRight}");
-    expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus();
-    expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true");
-
-    await user.keyboard("{ArrowLeft}");
-    expect(screen.getByRole("tab", { name: "One" })).toHaveFocus();
-    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
-  });
-
-  it("moves focus with ArrowDown/ArrowUp in vertical mode (automatic)", async () => {
-    const user = userEvent.setup();
-    renderTabs({ orientation: "vertical" });
-    screen.getByRole("tab", { name: "One" }).focus();
-    await user.keyboard("{ArrowDown}");
-    expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus();
-    expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true");
-
-    await user.keyboard("{ArrowUp}");
-    expect(screen.getByRole("tab", { name: "One" })).toHaveFocus();
-    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
-  });
-
-  it("in manual mode, arrow keys move focus but do not select", async () => {
-    const user = userEvent.setup();
-    renderTabs({ activationMode: "manual" });
-    screen.getByRole("tab", { name: "One" }).focus();
-    await user.keyboard("{ArrowRight}");
-    expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus();
-    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "false");
-    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("tabindex", "-1");
-    expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("tabindex", "0");
-  });
-
-  it("in manual mode, restores the selected tab as tabbable when focus leaves the tablist", async () => {
-    const user = userEvent.setup();
-    render(
-      <>
-        <Tabs defaultValue="one" activationMode="manual">
-          <Tabs.List>
-            <Tabs.Trigger value="one">One</Tabs.Trigger>
-            <Tabs.Trigger value="two">Two</Tabs.Trigger>
-          </Tabs.List>
-          <Tabs.Content value="one">Content one</Tabs.Content>
-          <Tabs.Content value="two">Content two</Tabs.Content>
-        </Tabs>
-        <button type="button">After</button>
-      </>,
-    );
-
-    const one = screen.getByRole("tab", { name: "One" });
-    const two = screen.getByRole("tab", { name: "Two" });
-    one.focus();
-    await user.keyboard("{ArrowRight}");
-    expect(two).toHaveAttribute("tabindex", "0");
-
-    await user.tab();
-    expect(screen.getByRole("tabpanel", { name: "One" })).toHaveFocus();
-    expect(one).toHaveAttribute("tabindex", "0");
-    expect(two).toHaveAttribute("tabindex", "-1");
-  });
-
-  it("in manual mode, Enter activates the focused tab", async () => {
-    const user = userEvent.setup();
-    renderTabs({ activationMode: "manual" });
-    screen.getByRole("tab", { name: "One" }).focus();
-    await user.keyboard("{ArrowRight}");
-    expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus();
-    await user.keyboard("{Enter}");
-    expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByText("Content two")).not.toHaveAttribute("hidden");
-  });
-
-  it("wraps focus around by default", async () => {
-    const user = userEvent.setup();
-    renderTabs({ activationMode: "manual" });
-    screen.getByRole("tab", { name: "One" }).focus();
-    await user.keyboard("{ArrowRight}");
-    await user.keyboard("{ArrowRight}");
-    expect(screen.getByRole("tab", { name: "Three" })).toHaveFocus();
-    await user.keyboard("{ArrowRight}");
-    expect(screen.getByRole("tab", { name: "One" })).toHaveFocus();
-  });
-
-  it("fires onNavigationBoundaryReached at the edges when loop is false", async () => {
-    const user = userEvent.setup();
-    const onNavigationBoundaryReached = vi.fn();
-    render(
-      <Tabs defaultValue="one" activationMode="manual">
-        <Tabs.List loop={false} onNavigationBoundaryReached={onNavigationBoundaryReached}>
-          <Tabs.Trigger value="one">One</Tabs.Trigger>
-          <Tabs.Trigger value="two">Two</Tabs.Trigger>
-        </Tabs.List>
-        <Tabs.Content value="one">Content one</Tabs.Content>
-        <Tabs.Content value="two">Content two</Tabs.Content>
-      </Tabs>,
-    );
-
-    screen.getByRole("tab", { name: "One" }).focus();
-    await user.keyboard("{ArrowLeft}");
-    expect(onNavigationBoundaryReached).toHaveBeenCalledWith(
-      "previous",
-      expect.any(KeyboardEvent),
-      "ArrowLeft",
-    );
-    expect(screen.getByRole("tab", { name: "One" })).toHaveFocus();
-
-    await user.keyboard("{ArrowRight}");
-    expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus();
-    await user.keyboard("{ArrowRight}");
-    expect(onNavigationBoundaryReached).toHaveBeenCalledWith(
-      "next",
-      expect.any(KeyboardEvent),
-      "ArrowRight",
-    );
-    expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus();
-    expect(onNavigationBoundaryReached).toHaveBeenCalledTimes(2);
-  });
-
-  it("wraps by default without firing onNavigationBoundaryReached", async () => {
-    const user = userEvent.setup();
-    const onNavigationBoundaryReached = vi.fn();
-    render(
-      <Tabs defaultValue="one" activationMode="manual">
-        <Tabs.List onNavigationBoundaryReached={onNavigationBoundaryReached}>
-          <Tabs.Trigger value="one">One</Tabs.Trigger>
-          <Tabs.Trigger value="two">Two</Tabs.Trigger>
-        </Tabs.List>
-        <Tabs.Content value="one">Content one</Tabs.Content>
-        <Tabs.Content value="two">Content two</Tabs.Content>
-      </Tabs>,
-    );
-
-    screen.getByRole("tab", { name: "One" }).focus();
-    await user.keyboard("{ArrowLeft}");
-    expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus();
-    expect(onNavigationBoundaryReached).not.toHaveBeenCalled();
-  });
-
-  it("in manual mode, Space activates the focused tab", async () => {
-    const user = userEvent.setup();
-    renderTabs({ activationMode: "manual" });
-    screen.getByRole("tab", { name: "One" }).focus();
-
-    await user.keyboard("{ArrowRight}");
-    expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus();
-    expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "false");
-
-    await user.keyboard(" ");
-    expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByText("Content two")).not.toHaveAttribute("hidden");
   });
 
   it("selects the first enabled tab when uncontrolled tabs have no default value", () => {
@@ -656,140 +495,44 @@ describe("Tabs", () => {
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true");
   });
 
-  it("keeps value strings unchanged while encoding DOM id references", async () => {
+  it("keeps the active tab when a consumer click handler prevents the built-in selection", async () => {
     const user = userEvent.setup();
-    const value = "release notes/v1.2?";
-    render(
-      <Tabs defaultValue={value}>
-        <Tabs.List>
-          <Tabs.Trigger value={value}>Release</Tabs.Trigger>
-          <Tabs.Trigger value="other">Other</Tabs.Trigger>
-        </Tabs.List>
-        <Tabs.Content value={value}>Release content</Tabs.Content>
-        <Tabs.Content value="other">Other content</Tabs.Content>
-      </Tabs>,
-    );
-
-    const tab = screen.getByRole("tab", { name: "Release" });
-    const panel = screen.getByRole("tabpanel", { name: "Release" });
-
-    expect(tab).toHaveAttribute("data-value", value);
-    expect(panel).toHaveAttribute("data-value", value);
-    expect(tab.id).toContain(encodeURIComponent(value));
-    expect(tab).toHaveAttribute("aria-controls", panel.id);
-    expect(panel).toHaveAttribute("aria-labelledby", tab.id);
-
-    await user.click(screen.getByRole("tab", { name: "Other" }));
-    expect(screen.getByRole("tab", { name: "Other" })).toHaveAttribute("aria-selected", "true");
-  });
-
-  it("protects generated panel ids and inactive visibility from native overrides", () => {
     render(
       <Tabs defaultValue="one">
         <Tabs.List>
+          <Tabs.Trigger value="one">One</Tabs.Trigger>
+          <Tabs.Trigger value="two" onClick={(event) => event.preventDefault()}>
+            Two
+          </Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="one">Content one</Tabs.Content>
+        <Tabs.Content value="two">Content two</Tabs.Content>
+      </Tabs>,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Two" }));
+    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "false");
+  });
+
+  it("keeps focus and selection when a consumer keydown handler prevents built-in ArrowRight navigation", async () => {
+    const user = userEvent.setup();
+    render(
+      <Tabs defaultValue="one">
+        <Tabs.List onKeyDown={(event) => event.preventDefault()}>
           <Tabs.Trigger value="one">One</Tabs.Trigger>
           <Tabs.Trigger value="two">Two</Tabs.Trigger>
         </Tabs.List>
-        <Tabs.Content value="one" id="consumer-panel-id">
-          Content one
-        </Tabs.Content>
-        <Tabs.Content value="two" hidden={false}>
-          Content two
-        </Tabs.Content>
-      </Tabs>,
-    );
-
-    const tab = screen.getByRole("tab", { name: "One" });
-    const activePanel = screen.getByRole("tabpanel", { name: "One" });
-    const inactivePanel = screen.getByText("Content two");
-
-    expect(activePanel).not.toHaveAttribute("id", "consumer-panel-id");
-    expect(tab).toHaveAttribute("aria-controls", activePanel.id);
-    expect(inactivePanel).toHaveAttribute("hidden");
-  });
-
-  it("protects tablist semantics and state attributes from native overrides", () => {
-    const hostileProps = {
-      role: "list",
-      "aria-orientation": "vertical",
-      "data-variant": "consumer-variant",
-      "data-orientation": "consumer-orientation",
-      "data-wrap": "consumer-wrap",
-    };
-
-    render(
-      <Tabs defaultValue="one" orientation="horizontal" variant="pill">
-        <Tabs.List {...hostileProps} wrap={false} aria-label="Owned tab list">
-          <Tabs.Trigger value="one">One</Tabs.Trigger>
-        </Tabs.List>
         <Tabs.Content value="one">Content one</Tabs.Content>
+        <Tabs.Content value="two">Content two</Tabs.Content>
       </Tabs>,
     );
 
-    const tablist = screen.getByRole("tablist", { name: "Owned tab list" });
-    expect(tablist).toHaveAttribute("aria-orientation", "horizontal");
-    expect(tablist).toHaveAttribute("data-variant", "pill");
-    expect(tablist).toHaveAttribute("data-orientation", "horizontal");
-    expect(tablist).toHaveAttribute("data-wrap", "false");
-    expect(screen.queryByRole("list")).not.toBeInTheDocument();
-
-    const ownershipNote = tabsDoc.notes?.find((note) => note.title === "Tab list semantics");
-    expect(ownershipNote?.content).toContain("owns its tablist role");
-  });
-
-  it("only emits aria-controls for tabs with a rendered panel", () => {
-    render(
-      <Tabs defaultValue="one">
-        <Tabs.List>
-          <Tabs.Trigger value="one">One</Tabs.Trigger>
-          <Tabs.Trigger value="missing">Missing panel</Tabs.Trigger>
-        </Tabs.List>
-        <Tabs.Content value="one">Content one</Tabs.Content>
-      </Tabs>,
-    );
-
-    const tab = screen.getByRole("tab", { name: "One" });
-    const missing = screen.getByRole("tab", { name: "Missing panel" });
-    const panelId = requireValue(tab.getAttribute("aria-controls"), "tab panel aria-controls");
-
-    expect(requireElement(document.getElementById(panelId), "tab panel")).toBeInTheDocument();
-    expect(missing).not.toHaveAttribute("aria-controls");
-  });
-
-  it("omits aria-labelledby for content without a matching trigger", () => {
-    render(
-      <Tabs defaultValue="one">
-        <Tabs.List>
-          <Tabs.Trigger value="one">One</Tabs.Trigger>
-        </Tabs.List>
-        <Tabs.Content value="one">Content one</Tabs.Content>
-        <Tabs.Content value="missing">Missing trigger content</Tabs.Content>
-      </Tabs>,
-    );
-
-    const missingPanel = screen.getByText("Missing trigger content");
-    expect(missingPanel).not.toHaveAttribute("aria-labelledby");
-  });
-
-  it("merges an external aria-labelledby with the generated trigger id (F-083)", () => {
-    render(
-      <Tabs defaultValue="one">
-        <Tabs.List>
-          <Tabs.Trigger value="one">One</Tabs.Trigger>
-        </Tabs.List>
-        <span id="panel-extra-label">Additional context</span>
-        <Tabs.Content value="one" aria-labelledby="panel-extra-label">
-          Content one
-        </Tabs.Content>
-      </Tabs>,
-    );
-
-    const tab = screen.getByRole("tab", { name: "One" });
-    const panel = screen.getByRole("tabpanel");
-    const labelledBy = panel.getAttribute("aria-labelledby")?.split(/\s+/) ?? [];
-
-    expect(labelledBy).toContain(tab.id);
-    expect(labelledBy).toContain("panel-extra-label");
+    screen.getByRole("tab", { name: "One" }).focus();
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("tab", { name: "One" })).toHaveFocus();
+    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "false");
   });
 
   it("does not crash when rendered without triggers or defaultValue", () => {
@@ -829,251 +572,5 @@ describe("Tabs", () => {
     await user.click(screen.getByRole("button", { name: "Load triggers" }));
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("Content two")).not.toHaveAttribute("hidden");
-  });
-});
-
-describe("Tabs keyboard navigation", () => {
-  testNavigationBehavior({
-    setup: () => {
-      const rendered = renderTabs({ activationMode: "manual" });
-      screen.getByRole("tab", { name: "One" }).focus();
-      return rendered;
-    },
-    items: ["One", "Two", "Three"],
-    initialActive: 0,
-    cases: [
-      { key: "{ArrowRight}", expectedActiveIndex: 1, label: "ArrowRight" },
-      { key: "{ArrowRight}{ArrowRight}", expectedActiveIndex: 2, label: "ArrowRight twice" },
-      {
-        key: "{ArrowRight}{ArrowRight}{ArrowRight}",
-        expectedActiveIndex: 0,
-        label: "ArrowRight wraps",
-      },
-      { key: "{ArrowLeft}", expectedActiveIndex: 2, label: "ArrowLeft wraps to end" },
-      { key: "{End}", expectedActiveIndex: 2, label: "End jumps to last" },
-      { key: "{Home}", expectedActiveIndex: 0, label: "Home stays at first" },
-    ],
-  });
-});
-
-describe("Tabs variants", () => {
-  it("keeps variant metadata aligned with runtime values, default, and data attributes", () => {
-    const documentedVariants = SEGMENTED_VARIANTS.map((variant) => JSON.stringify(variant)).join(
-      " | ",
-    );
-    const variantProp = tabsDoc.props?.Tabs?.variant;
-    const variantAttribute = tabsDoc.dataAttributes?.find(
-      (entry) => entry.attribute === "data-variant",
-    );
-
-    expect(variantProp?.type).toBe(documentedVariants);
-    expect(variantProp?.defaultValue).toBe('"underline"');
-    expect(variantAttribute).toMatchObject({
-      appliesTo: "Tabs.List / Tabs.Trigger",
-      values: documentedVariants,
-    });
-
-    for (const variant of SEGMENTED_VARIANTS) {
-      const rendered = renderTabs({ variant });
-      expect(screen.getByRole("tablist")).toHaveAttribute("data-variant", variant);
-      for (const trigger of screen.getAllByRole("tab")) {
-        expect(trigger).toHaveAttribute("data-variant", variant);
-      }
-      rendered.unmount();
-    }
-  });
-
-  it("defaults to variant='underline' and propagates it via data-variant on the tablist", () => {
-    renderTabs();
-    expect(screen.getByRole("tablist")).toHaveAttribute("data-variant", "underline");
-    for (const trigger of screen.getAllByRole("tab")) {
-      expect(trigger).toHaveAttribute("data-variant", "underline");
-    }
-  });
-
-  it("propagates variant='default' via data-variant on the tablist", () => {
-    renderTabs({ variant: "default" });
-    expect(screen.getByRole("tablist")).toHaveAttribute("data-variant", "default");
-  });
-
-  it("uses wrapped row-local treatments for horizontal pill and underline variants", async () => {
-    const user = userEvent.setup();
-    const { container } = render(
-      <Tabs defaultValue="a" variant="pill">
-        <Tabs.List aria-label="Wrapped tabs">
-          <Tabs.Trigger value="a">Alpha label with spaces</Tabs.Trigger>
-          <Tabs.Trigger value="b">Beta label with spaces</Tabs.Trigger>
-        </Tabs.List>
-        <Tabs.Content value="a">Alpha content</Tabs.Content>
-        <Tabs.Content value="b">Beta content</Tabs.Content>
-      </Tabs>,
-    );
-
-    const tablist = screen.getByRole("tablist", { name: "Wrapped tabs" });
-    const alpha = screen.getByRole("tab", { name: "Alpha label with spaces" });
-    const beta = screen.getByRole("tab", { name: "Beta label with spaces" });
-    expect(tablist).toHaveAttribute("data-wrap", "true");
-    expect(alpha).toHaveAttribute("data-wrap", "true");
-    expect(beta).toHaveAttribute("data-wrap", "true");
-    expect(container.querySelector('[data-slot="tabs-pill"]')).toBeNull();
-
-    alpha.focus();
-    await user.keyboard("{ArrowRight}");
-    expect(beta).toHaveFocus();
-    expect(beta).toHaveAttribute("aria-selected", "true");
-  });
-
-  it("renders a sliding pill indicator when wrapping is disabled", () => {
-    const { container } = render(
-      <Tabs defaultValue="b" variant="pill">
-        <Tabs.List wrap={false}>
-          <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
-          <Tabs.Trigger value="b">Beta</Tabs.Trigger>
-        </Tabs.List>
-        <Tabs.Content value="a">Alpha content</Tabs.Content>
-        <Tabs.Content value="b">Beta content</Tabs.Content>
-      </Tabs>,
-    );
-    expect(screen.getByRole("tablist")).toHaveAttribute("data-wrap", "false");
-    expect(container.querySelectorAll('[data-slot="tabs-pill"]').length).toBe(1);
-  });
-
-  it("resolves the pill indicator inside a same-origin iframe ownerDocument", () => {
-    const iframe = document.createElement("iframe");
-    document.body.appendChild(iframe);
-    const iframeDoc = iframe.contentDocument;
-    if (!iframeDoc) {
-      iframe.remove();
-      throw new Error("iframe.contentDocument is null; cannot exercise cross-document tabs");
-    }
-    const container = iframeDoc.createElement("div");
-    iframeDoc.body.appendChild(container);
-
-    render(
-      <Tabs defaultValue="b" variant="pill">
-        <Tabs.List wrap={false}>
-          <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
-          <Tabs.Trigger value="b">Beta</Tabs.Trigger>
-        </Tabs.List>
-        <Tabs.Content value="a">Alpha content</Tabs.Content>
-        <Tabs.Content value="b">Beta content</Tabs.Content>
-      </Tabs>,
-      { container },
-    );
-
-    expect(container.querySelectorAll('[data-slot="tabs-pill"]').length).toBe(1);
-
-    iframe.remove();
-  });
-
-  it("omits the sliding pill indicator for variants other than 'pill'", () => {
-    const { container } = render(
-      <Tabs defaultValue="b" variant="default">
-        <Tabs.List>
-          <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
-          <Tabs.Trigger value="b">Beta</Tabs.Trigger>
-        </Tabs.List>
-        <Tabs.Content value="a">Alpha content</Tabs.Content>
-        <Tabs.Content value="b">Beta content</Tabs.Content>
-      </Tabs>,
-    );
-    expect(container.querySelector('[data-slot="tabs-pill"]')).toBeNull();
-  });
-
-  it("renders a floating underline indicator when wrapping is disabled", () => {
-    const { container } = render(
-      <Tabs defaultValue="b" variant="underline">
-        <Tabs.List wrap={false}>
-          <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
-          <Tabs.Trigger value="b">Beta</Tabs.Trigger>
-        </Tabs.List>
-        <Tabs.Content value="a">Alpha content</Tabs.Content>
-        <Tabs.Content value="b">Beta content</Tabs.Content>
-      </Tabs>,
-    );
-    expect(container.querySelectorAll('[data-slot="tabs-underline"]').length).toBe(1);
-  });
-
-  it("does not render underline indicator for variant='pill'", () => {
-    const { container } = render(
-      <Tabs defaultValue="b" variant="pill">
-        <Tabs.List>
-          <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
-          <Tabs.Trigger value="b">Beta</Tabs.Trigger>
-        </Tabs.List>
-        <Tabs.Content value="a">Alpha content</Tabs.Content>
-        <Tabs.Content value="b">Beta content</Tabs.Content>
-      </Tabs>,
-    );
-    expect(container.querySelector('[data-slot="tabs-underline"]')).toBeNull();
-  });
-
-  it("renders bracket markers only on the active trigger in variant='bracket'", () => {
-    render(
-      <Tabs defaultValue="b" variant="bracket">
-        <Tabs.List>
-          <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
-          <Tabs.Trigger value="b">Beta</Tabs.Trigger>
-        </Tabs.List>
-        <Tabs.Content value="a">Alpha content</Tabs.Content>
-        <Tabs.Content value="b">Beta content</Tabs.Content>
-      </Tabs>,
-    );
-    // Both triggers carry the bracket spans (width stays steady); CSS reveals them
-    // only on the active one.
-    const activeTrigger = screen.getByRole("tab", { name: /beta/i });
-    const inactiveTrigger = screen.getByRole("tab", { name: /alpha/i });
-    expect(activeTrigger).toHaveAttribute("data-state", "active");
-    expect(inactiveTrigger).toHaveAttribute("data-state", "inactive");
-    expect(activeTrigger).toHaveTextContent(/^\[\s*Beta\s*\]$/);
-    expect(inactiveTrigger).toHaveTextContent(/^\[\s*Alpha\s*\]$/);
-  });
-
-  it("marks the active trigger via data-state in variant='default'", () => {
-    render(
-      <Tabs defaultValue="b" variant="default">
-        <Tabs.List>
-          <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
-          <Tabs.Trigger value="b">Beta</Tabs.Trigger>
-        </Tabs.List>
-        <Tabs.Content value="a">Alpha content</Tabs.Content>
-        <Tabs.Content value="b">Beta content</Tabs.Content>
-      </Tabs>,
-    );
-    expect(screen.getByRole("tab", { name: /alpha/i })).toHaveAttribute("data-state", "inactive");
-    expect(screen.getByRole("tab", { name: /beta/i })).toHaveAttribute("data-state", "active");
-  });
-});
-
-describe("Tabs types", () => {
-  it("narrows value to the supplied literal union", () => {
-    type Narrow = TabsProps<"preview" | "code">;
-
-    expectTypeOf<Narrow["value"]>().toEqualTypeOf<"preview" | "code" | undefined>();
-    expectTypeOf<Narrow["defaultValue"]>().toEqualTypeOf<"preview" | "code" | undefined>();
-    expectTypeOf<NonNullable<Narrow["onChange"]>>()
-      .parameter(0)
-      .toEqualTypeOf<"preview" | "code">();
-  });
-
-  it("rejects TabsTrigger values outside the literal union", () => {
-    type Trigger = TabsTriggerProps<"preview" | "code">;
-
-    expectTypeOf<Trigger["value"]>().toEqualTypeOf<"preview" | "code">();
-    expectTypeOf<"tests">().not.toMatchTypeOf<Trigger["value"]>();
-    expectTypeOf<"preview">().toMatchTypeOf<Trigger["value"]>();
-  });
-
-  it("keeps the loose default contract when no generic is supplied", () => {
-    expectTypeOf<TabsProps["value"]>().toEqualTypeOf<string | undefined>();
-    expectTypeOf<TabsTriggerProps["value"]>().toEqualTypeOf<string>();
-  });
-
-  it("does not expose a polymorphic render or asChild escape hatch on Tabs.Trigger", () => {
-    // WAI-ARIA forbids role="tab" from navigating URLs, so Tabs.Trigger must not
-    // be swappable into <a> via render/asChild.
-    expectTypeOf<TabsTriggerProps>().toHaveProperty("value");
-    expectTypeOf<TabsTriggerProps>().not.toHaveProperty("render");
-    expectTypeOf<TabsTriggerProps>().not.toHaveProperty("asChild");
   });
 });

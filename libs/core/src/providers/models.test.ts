@@ -37,7 +37,7 @@ describe("filterModels", () => {
   });
 
   it("combines tier filter with search", () => {
-    expect(ids(filterModels(MODELS, "free", "g"))).toEqual(["gpt-35", "gemini"]);
+    expect(ids(filterModels(MODELS, "free", "gemini"))).toEqual(["gemini"]);
   });
 
   it("ignores leading/trailing whitespace in search", () => {

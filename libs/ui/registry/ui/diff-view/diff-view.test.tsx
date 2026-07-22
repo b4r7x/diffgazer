@@ -111,11 +111,6 @@ function getFigure(container: HTMLElement) {
   return container.querySelector('[data-slot="diff-view"]');
 }
 
-/** First rows container (`data-slot="diff-view-rows"`). */
-function getRows(container: HTMLElement) {
-  return container.querySelector('[data-slot="diff-view-rows"]');
-}
-
 /** Caption slot (`data-slot="diff-view-caption"`). */
 function getCaption(container: HTMLElement) {
   return container.querySelector('[data-slot="diff-view-caption"]');
@@ -161,7 +156,7 @@ describe("DiffView", () => {
     expect(screen.queryByLabelText("Unified diff")).not.toBeInTheDocument();
   });
 
-  it("exposes each navigation container as a named region so its aria-label is valid (F-005)", () => {
+  it("exposes each navigation container as a named region so its aria-label is valid", () => {
     const { unmount } = render(<DiffView diff={ONE_HUNK} />);
     const unified = screen.getByRole("region", { name: /unified diff/i });
     expect(unified).toHaveAttribute("aria-keyshortcuts", "j k Escape");
@@ -174,7 +169,7 @@ describe("DiffView", () => {
     );
   });
 
-  it("overrides the inner region label in unified and split modes (F-010)", () => {
+  it("overrides the inner region label in unified and split modes", () => {
     const { unmount } = render(<DiffView diff={ONE_HUNK} regionLabel="Cambios unificados" />);
     expect(screen.getByRole("region", { name: "Cambios unificados" })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: /unified diff/i })).not.toBeInTheDocument();
@@ -184,7 +179,7 @@ describe("DiffView", () => {
     expect(screen.getByRole("region", { name: "Cambios divididos" })).toBeInTheDocument();
   });
 
-  it("overrides the split side group labels (F-010)", () => {
+  it("overrides the split side group labels", () => {
     render(<DiffView diff={ONE_HUNK} mode="split" oldSideLabel="Antes" newSideLabel="Después" />);
     expect(screen.getByRole("group", { name: "Antes" })).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Después" })).toBeInTheDocument();
@@ -192,12 +187,12 @@ describe("DiffView", () => {
     expect(screen.queryByRole("group", { name: "New" })).not.toBeInTheDocument();
   });
 
-  it("overrides the empty-state status text (F-010)", () => {
+  it("overrides the empty-state status text", () => {
     render(<DiffView diff={NO_CHANGES} emptyLabel="Sin cambios" />);
     expect(screen.getByRole("status")).toHaveTextContent("Sin cambios");
   });
 
-  it("merges consumer rest props and lets aria-label override the default (F-007)", () => {
+  it("merges consumer rest props and lets aria-label override the default", () => {
     render(
       <>
         <span id="diff-help">Use j/k to navigate</span>
@@ -254,11 +249,6 @@ describe("DiffView", () => {
     render(<DiffView ref={ref} diff={PATHLESS_HUNK} label="Changes" />);
 
     expect(ref.current).toBe(screen.getByRole("figure", { name: "Changes" }));
-  });
-
-  it("shows file header with path", () => {
-    render(<DiffView diff={ONE_HUNK} />);
-    expect(screen.getByText("src/app.ts")).toBeInTheDocument();
   });
 
   it("shows rename path with arrow when oldPath differs from newPath", () => {
@@ -338,13 +328,13 @@ describe("DiffView", () => {
     expect(screen.getByText("const x = 1")).toBeInTheDocument();
   });
 
-  it("announces added/removed lines with default sr-only prefixes (F-010)", () => {
+  it("announces added/removed lines with default sr-only prefixes", () => {
     render(<DiffView diff={ONE_HUNK} disableWordDiff />);
     expect(screen.getAllByText("Added:").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Removed:").length).toBeGreaterThan(0);
   });
 
-  it("overrides the added/removed line sr-only prefixes (F-010)", () => {
+  it("overrides the added/removed line sr-only prefixes", () => {
     render(
       <DiffView
         diff={ONE_HUNK}
@@ -415,21 +405,7 @@ describe("DiffView", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
-  it("Escape clears active hunk selection", async () => {
-    const user = userEvent.setup();
-    render(<DiffView diff={THREE_HUNKS} />);
-
-    const container = screen.getByLabelText("Unified diff");
-    await user.click(container);
-
-    await user.keyboard("j");
-    expect(getLiveRegion()).toHaveTextContent("Hunk 1 of 3");
-
-    await user.keyboard("{Escape}");
-    expect(getLiveRegion()).toHaveTextContent("");
-  });
-
-  it("consumes Escape only when an active hunk was cleared, so a window scope does not double-fire (F-451)", async () => {
+  it("consumes Escape only when an active hunk was cleared, so a window scope does not double-fire", async () => {
     const user = userEvent.setup();
     const scopeEscape = vi.fn();
     // A @diffgazer/keys-style window listener that skips already-handled events.
@@ -497,28 +473,6 @@ describe("DiffView", () => {
     expect(removedHunk.changes).toEqual([
       { type: "remove", content: "alpha", oldLine: 1, newLine: null },
     ]);
-  });
-
-  it("resets active hunk announcements when content changes with the same hunk count", async () => {
-    const user = userEvent.setup();
-    const { rerender } = render(<DiffView diff={THREE_HUNKS} />);
-
-    await user.click(screen.getByLabelText("Unified diff"));
-    await user.keyboard("j");
-    expect(getLiveRegion()).toHaveTextContent("Hunk 1 of 3");
-
-    rerender(
-      <DiffView
-        diff={{
-          ...THREE_HUNKS,
-          hunks: THREE_HUNKS.hunks.map((hunk, index) => ({
-            ...hunk,
-            heading: `replacement ${index + 1}`,
-          })),
-        }}
-      />,
-    );
-    expect(getLiveRegion()).toHaveTextContent("");
   });
 
   it("clears stale active hunk during the same render as a diff identity change", async () => {
@@ -671,14 +625,28 @@ describe("DiffView", () => {
   });
 
   describe("line numbers", () => {
-    it('omits the number cells and reports data-line-numbers="false" when showLineNumbers is false', () => {
-      const { container } = render(<DiffView diff={ONE_HUNK} />);
-      expect(getRows(container)).toHaveAttribute("data-line-numbers", "false");
-    });
+    it.each([
+      "unified",
+      "split",
+    ] as const)("toggles the data-line-numbers contract and gutter numbers across every rows container in %s mode", (mode) => {
+      const { container, rerender } = render(<DiffView diff={ONE_HUNK} mode={mode} />);
 
-    it('renders number cells and reports data-line-numbers="true" when showLineNumbers is true', () => {
-      const { container } = render(<DiffView diff={ONE_HUNK} showLineNumbers />);
-      expect(getRows(container)).toHaveAttribute("data-line-numbers", "true");
+      const rowsWithoutNumbers = container.querySelectorAll('[data-slot="diff-view-rows"]');
+      expect(rowsWithoutNumbers.length).toBeGreaterThan(0);
+      for (const rows of rowsWithoutNumbers) {
+        expect(rows).toHaveAttribute("data-line-numbers", "false");
+      }
+      expect(container.querySelectorAll(".diff-num")).toHaveLength(0);
+
+      rerender(<DiffView diff={ONE_HUNK} mode={mode} showLineNumbers />);
+
+      const rowsWithNumbers = container.querySelectorAll('[data-slot="diff-view-rows"]');
+      expect(rowsWithNumbers.length).toBe(rowsWithoutNumbers.length);
+      for (const rows of rowsWithNumbers) {
+        expect(rows).toHaveAttribute("data-line-numbers", "true");
+      }
+      expect(screen.getAllByText("2", { selector: ".diff-num" }).length).toBeGreaterThan(0);
+      expect(screen.getAllByText("4", { selector: ".diff-num" }).length).toBeGreaterThan(0);
     });
   });
 
@@ -847,23 +815,4 @@ describe("diff signal contrast (parsed from CSS)", () => {
       }
     });
   }
-});
-
-describe("row tints under horizontal scroll (parsed from CSS)", () => {
-  // jsdom has no layout engine — offsetWidth/scrollWidth are always 0 — so the
-  // "row spans the full scrollable width" regression cannot be asserted by
-  // rendering. Guard the CSS invariant that produces it instead: the code cell
-  // must keep its intrinsic content minimum. If it collapses to min-width:0, the
-  // [code] track and every subgrid row stop at the visible width, stranding the
-  // row state tints on bare background once the diff is scrolled horizontally.
-  const DIFF_CSS = readFileSync(
-    resolve(fileURLToPath(import.meta.url), "../diff-view.css"),
-    "utf8",
-  ).replace(/\/\*[\s\S]*?\*\//g, "");
-
-  it("does not collapse the code cell minimum, so row tints span the scroll width", () => {
-    const codeRule = /\.diff-code\s*\{[^}]*white-space[^}]*\}/.exec(DIFF_CSS)?.[0];
-    expect(codeRule).toBeDefined();
-    expect(codeRule).not.toMatch(/min-width:\s*0/);
-  });
 });

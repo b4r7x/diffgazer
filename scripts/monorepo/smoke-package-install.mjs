@@ -7,16 +7,18 @@
 // finally cleanup and leak temp project directories.
 
 import {
-  verifyUiNextPackageSmoke,
-  verifyUiVitePackageSmoke,
   writeKeysPackageModeSmoke,
   writeKeysTestHelperSmoke,
+} from "./smoke-keys-package-fixtures.mjs";
+import {
+  verifyUiNextPackageSmoke,
+  verifyUiVitePackageSmoke,
   writeUiCommonImportSmoke,
   writeUiKeysAbsentSmoke,
   writeUiNextPackageSmoke,
   writeUiPackageModeSmoke,
   writeUiVitePackageSmoke,
-} from "./smoke-package-fixtures.mjs";
+} from "./smoke-ui-package-fixtures.mjs";
 import { shouldRunPackageSmoke, withTempPackageProject } from "./smoke-package-runner.mjs";
 
 const root = process.cwd();

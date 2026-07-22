@@ -62,6 +62,25 @@ describe("APIReference", () => {
     expect(within(dataAttributesRegion).getByRole("table")).toBeInTheDocument();
     expect(within(cssVariablesRegion).getByRole("table")).toBeInTheDocument();
 
+    const dataAttributesRow = within(dataAttributesRegion).getAllByRole("row")[1];
+    if (!dataAttributesRow) throw new Error("Expected a data-attributes data row");
+    expect(within(dataAttributesRow).getByRole("cell", { name: "data-state" })).toBeInTheDocument();
+    expect(within(dataAttributesRow).getByRole("cell", { name: "Root" })).toBeInTheDocument();
+    expect(
+      within(dataAttributesRow).getByRole("cell", { name: '"open" | "closed"' }),
+    ).toBeInTheDocument();
+    expect(
+      within(dataAttributesRow).getByRole("cell", { name: "Current state." }),
+    ).toBeInTheDocument();
+
+    const cssVariablesRow = within(cssVariablesRegion).getAllByRole("row")[1];
+    if (!cssVariablesRow) throw new Error("Expected a CSS-variables data row");
+    expect(
+      within(cssVariablesRow).getByRole("cell", { name: "--panel-width" }),
+    ).toBeInTheDocument();
+    expect(within(cssVariablesRow).getByRole("cell", { name: "20rem" })).toBeInTheDocument();
+    expect(within(cssVariablesRow).getByRole("cell", { name: "Panel width." })).toBeInTheDocument();
+
     await user.tab();
     expect(dataAttributesRegion).toHaveFocus();
     await user.tab();

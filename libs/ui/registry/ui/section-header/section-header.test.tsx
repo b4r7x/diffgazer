@@ -4,10 +4,13 @@ import { axe } from "../../../testing/axe";
 import { SectionHeader } from "./index";
 
 describe("SectionHeader", () => {
-  it("renders the requested heading level", () => {
-    render(<SectionHeader as="h2">Review summary</SectionHeader>);
+  it.each([
+    { label: "omitted as", as: undefined, level: 3 },
+    { label: "explicit as='h2'", as: "h2" as const, level: 2 },
+  ])("renders heading level $level when $label", ({ as, level }) => {
+    render(<SectionHeader as={as}>Review summary</SectionHeader>);
 
-    expect(screen.getByRole("heading", { level: 2, name: "Review summary" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level, name: "Review summary" })).toBeInTheDocument();
   });
 
   it("has no a11y violations", async () => {

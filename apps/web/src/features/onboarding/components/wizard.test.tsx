@@ -225,7 +225,7 @@ describe("OnboardingWizard", () => {
       .mockResolvedValue({ deleted: true, provider: "openrouter" });
   });
 
-  it("uses compact progress below md and keeps the full stepper for md and above", async () => {
+  it("shows the current step in compact progress and in the full stepper", async () => {
     renderWizard();
 
     await expectStep(/secrets storage/i);
@@ -515,7 +515,7 @@ describe("OnboardingWizard", () => {
     await expectStep(/api key/i);
   });
 
-  it("removes an early-saved OpenRouter credential before completing with Gemini", async () => {
+  it("switches an early-saved OpenRouter selection to Gemini", async () => {
     const user = userEvent.setup();
     renderWizard();
 
@@ -539,27 +539,25 @@ describe("OnboardingWizard", () => {
       expect(mockDeleteProviderCredentials).toHaveBeenCalledWith("openrouter");
       expect(getRadio(/google gemini/i)).toHaveAttribute("aria-checked", "true");
     });
+  });
 
+  it("deletes an early-saved OpenRouter credential when the wizard unmounts before completing", async () => {
+    const user = userEvent.setup();
+    const view = renderWizard();
+
+    await expectStep(/secrets storage/i);
+    await clickNext(user);
+    await expectStep(/ai provider/i);
+    await user.click(getRadio(/openrouter/i));
     await clickNext(user);
     await expectStep(/api key/i);
     await user.click(getRadio(/import from env/i));
     await clickNext(user);
     await expectStep(/model selection/i);
-    await clickNext(user);
-    await expectStep(/analysis configuration/i);
-    await clickNext(user);
-    await expectStep(/agent execution/i);
-    await user.click(screen.getByRole("button", { name: /complete setup/i }));
 
-    await waitFor(() =>
-      expect(mockSaveConfig).toHaveBeenLastCalledWith(
-        expect.objectContaining({ provider: "gemini" }),
-      ),
-    );
-    expect(mockDeleteProviderCredentials).toHaveBeenCalledTimes(1);
-    const deleteOrder = mockDeleteProviderCredentials.mock.invocationCallOrder[0];
-    const finalSaveOrder = mockSaveConfig.mock.invocationCallOrder.at(-1);
-    expect(deleteOrder).toBeLessThan(finalSaveOrder ?? Number.POSITIVE_INFINITY);
+    view.unmount();
+
+    await waitFor(() => expect(mockDeleteProviderCredentials).toHaveBeenCalledWith("openrouter"));
   });
 
   it("shows an inline error when completion fails and keeps the user on the wizard", async () => {

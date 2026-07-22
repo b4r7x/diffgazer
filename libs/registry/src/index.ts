@@ -30,17 +30,21 @@ export type {
 } from "./docs-data/types.js";
 export {
   type ArtifactLibrary,
-  type ArtifactSyncValidationParams,
-  assertArtifactSyncOutputs,
-  collectArtifactSyncValidationErrors,
-  collectMissingWorkspaceArtifactFiles,
-  collectPathParityErrors,
-  collectTreeParityErrors,
   type DocsLibrariesConfig,
   getArtifactLibraries,
   readDocsLibrariesConfig,
-  rewriteDemoIndexForViteGlob,
-} from "./docs-sync/artifact-sync.js";
+} from "./docs-sync/docs-libraries-config.js";
+export { collectMissingWorkspaceArtifactFiles } from "./docs-sync/artifact-availability.js";
+export {
+  type ArtifactSyncValidationParams,
+  assertArtifactSyncOutputs,
+  collectArtifactSyncValidationErrors,
+} from "./docs-sync/output-validation.js";
+export {
+  collectPathParityErrors,
+  collectTreeParityErrors,
+} from "./docs-sync/path-parity.js";
+export { rewriteDemoIndexForViteGlob } from "./docs-sync/demo-index-rewrite.js";
 export { syncDocsFromArtifacts } from "./docs-sync/sync.js";
 export {
   computeArtifactFingerprint,

@@ -16,7 +16,7 @@ function makeWrapper(api: BoundApi) {
       { client: queryClient },
       createElement(ApiProvider, { value: api }, children),
     );
-  return { queryClient, Wrapper };
+  return { Wrapper };
 }
 
 describe("useServerStatus", () => {
@@ -39,10 +39,10 @@ describe("useServerStatus", () => {
     expect(result.current.latestState).toEqual({ status: "error", message: "ECONNREFUSED" });
   });
 
-  it("keeps the gate connected across a failed poll and reports immediate recovery", async () => {
+  it("keeps the gate connected across a failed retry and reports immediate recovery", async () => {
     request.mockResolvedValueOnce(undefined);
     const latestStates: ServerState[] = [];
-    const { queryClient, Wrapper } = makeWrapper(api);
+    const { Wrapper } = makeWrapper(api);
 
     const { result } = renderHook(
       () => {
@@ -56,7 +56,7 @@ describe("useServerStatus", () => {
     await waitFor(() => expect(result.current.state.status).toBe("connected"));
     expect(result.current.latestState).toEqual({ status: "connected" });
 
-    // A subsequent poll fails, but the cached health success must keep the
+    // A subsequent retry fails, but the cached health success must keep the
     // gated tree mounted rather than flipping the whole app to "error".
     request.mockRejectedValue(new Error("transient drop"));
     await act(async () => {
@@ -71,7 +71,7 @@ describe("useServerStatus", () => {
     latestStates.length = 0;
     request.mockResolvedValueOnce(undefined);
     await act(async () => {
-      await queryClient.refetchQueries({ queryKey: ["server", "health"] });
+      await result.current.retry();
     });
 
     await waitFor(() => expect(result.current.latestState).toEqual({ status: "connected" }));

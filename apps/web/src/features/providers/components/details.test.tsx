@@ -35,7 +35,7 @@ function ActionNavigationSubject() {
     dialogOpen: false,
     inButtons: zone === "buttons",
     setZone,
-    focusProviderList: () => screen.getByTestId("outside-actions").focus(),
+    focusProviderList: () => screen.getByRole("button", { name: "Outside actions" }).focus(),
     onSetApiKey: vi.fn(),
     onSelectModel: vi.fn(),
     onRemoveKey: vi.fn(async () => {}),
@@ -44,7 +44,7 @@ function ActionNavigationSubject() {
 
   return (
     <>
-      <button type="button" data-testid="outside-actions" onFocus={() => setZone("list")}>
+      <button type="button" onFocus={() => setZone("list")}>
         Outside actions
       </button>
       <ProviderDetails
@@ -157,7 +157,7 @@ describe("ProviderDetails (catalog)", () => {
     expect(boundary.defaultPrevented).toBe(false);
     expect(lastAction).toHaveFocus();
 
-    const outside = screen.getByTestId("outside-actions");
+    const outside = screen.getByRole("button", { name: "Outside actions" });
     await user.click(outside);
     const native = new KeyboardEvent("keydown", {
       key: "ArrowDown",

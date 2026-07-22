@@ -10,7 +10,7 @@ vi.mock("@clack/prompts", () => ({
 }));
 
 import * as clack from "@clack/prompts";
-import { promptConfirm, promptSelect, setSilent } from "./terminal.js";
+import { CancelError, promptConfirm, promptSelect, setSilent } from "./terminal.js";
 
 const selectOptions = [
   { value: "copy", label: "Copy hooks" },
@@ -95,5 +95,30 @@ describe("terminal prompt non-interactive boundary", () => {
     expect(selected).toBe("copy");
     expect(clack.confirm).toHaveBeenCalledOnce();
     expect(clack.select).toHaveBeenCalledOnce();
+  });
+
+  it("sends the exact confirm request to clack, including a non-default initial value", async () => {
+    await promptConfirm("Remove 3 file(s)?", false);
+
+    expect(clack.confirm).toHaveBeenCalledWith({
+      message: "Remove 3 file(s)?",
+      initialValue: false,
+    });
+  });
+
+  it("throws CancelError when the user cancels a confirmation prompt", async () => {
+    vi.mocked(clack.isCancel).mockReturnValueOnce(true);
+
+    await expect(promptConfirm("Continue with initialization?")).rejects.toBeInstanceOf(
+      CancelError,
+    );
+  });
+
+  it("throws CancelError when the user cancels a selection prompt", async () => {
+    vi.mocked(clack.isCancel).mockReturnValueOnce(true);
+
+    await expect(
+      promptSelect("Choose keyboard integration mode:", selectOptions),
+    ).rejects.toBeInstanceOf(CancelError);
   });
 });

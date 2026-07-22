@@ -104,9 +104,9 @@ describe("generated docs source data loader", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith("/source-data/ui/components/select.source.json");
-    expect(data).toBe(componentSourceData);
-    expect(data?.source["@ui/select/select.tsx"]?.highlighted).toBe(componentHighlighted);
-    expect(data?.mergedSource).toBe(componentSourceData.mergedSource);
+    expect(data).toEqual(componentSourceData);
+    expect(data?.source["@ui/select/select.tsx"]?.highlighted).toEqual(componentHighlighted);
+    expect(data?.mergedSource).toEqual(componentSourceData.mergedSource);
   });
 
   it("fetches hook source from the hooks archive path", async () => {
@@ -117,8 +117,8 @@ describe("generated docs source data loader", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith("/source-data/keys/hooks/focus.source.json");
-    expect(data).toBe(hookSourceData);
-    expect(data?.source.highlighted).toBe(hookHighlighted);
+    expect(data).toEqual(hookSourceData);
+    expect(data?.source.highlighted).toEqual(hookHighlighted);
   });
 
   it("loads and validates every file in a hook source archive", async () => {
@@ -169,6 +169,16 @@ describe("generated docs source data loader", () => {
     ).rejects.toThrow("Missing generated docs data: ui/components/missing-component-source.source");
   });
 
+  it("rejects a response whose body is not valid JSON", async () => {
+    const response = new Response(null, { status: 200 });
+    vi.spyOn(response, "json").mockRejectedValue(new SyntaxError("Unexpected token"));
+    stubFetch(response);
+
+    await expect(
+      loadDocSourceData("ui", "components", "select", { throwIfMissing: true }),
+    ).rejects.toThrow("Invalid generated docs data: ui/components/select.source");
+  });
+
   it("rejects malformed source and allows a later retry", async () => {
     const malformedSource = {
       source: {
@@ -189,7 +199,7 @@ describe("generated docs source data loader", () => {
     ).rejects.toThrow("Invalid generated docs data: ui/components/select.source");
     await expect(
       loadDocSourceData("ui", "components", "select", { throwIfMissing: true }),
-    ).resolves.toBe(componentSourceData);
+    ).resolves.toEqual(componentSourceData);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 

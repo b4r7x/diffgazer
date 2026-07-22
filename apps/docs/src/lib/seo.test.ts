@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { writeLlmsFiles } from "../../scripts/generate-llms";
+import { writeLlmsFiles } from "../../scripts/generate-llms/output";
 import { resolveOrigin, writeSitemap } from "../../scripts/generate-sitemap";
 import { DEFAULT_PUBLIC_ORIGIN, resolvePublicOrigin } from "./public-origin";
 import {

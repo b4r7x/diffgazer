@@ -1,4 +1,5 @@
-import { createProcessServer, type ServerController } from "./process";
+import type { ServerController } from "./controller";
+import { createProcessServer } from "./process/server";
 
 export interface ApiServerConfig {
   cwd: string;

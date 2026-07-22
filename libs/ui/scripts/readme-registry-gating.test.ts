@@ -176,7 +176,13 @@ describe("hosted-registry gating", () => {
     const doc = read("docs/content/getting-started/installation.mdx");
     const installStart = doc.indexOf("## Install");
     const installSection = doc.slice(installStart, doc.indexOf("\n## ", installStart + 1));
-    expect(installSection).toContain("pnpm exec dgadd add ui/button");
+    const firstCommandBlock = installSection.match(/```(?:\w+)?\n([\s\S]*?)```/)?.[1];
+    expect(
+      firstCommandBlock,
+      "Install section must lead with a fenced shell command block",
+    ).toBeDefined();
+    expect(firstCommandBlock).toContain("pnpm exec dgadd");
+    expect(firstCommandBlock).not.toContain("@diffgazer/add");
   });
 
   it("keeps every runnable @diffgazer/add command in installation docs under a future/gated marker", () => {

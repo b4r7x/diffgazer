@@ -58,10 +58,11 @@ function entriesFromDom(doc: Document, containerId: string): TocEntry[] {
   return entries;
 }
 
-// Headings change identity only when their level or id changes, so the (depth,
-// id) sequence is enough to detect a real difference and skip redundant updates.
+// Headings change identity when their level, id, or title changes, so the
+// (depth, id, title) sequence is enough to detect a real difference and skip
+// redundant updates.
 function entriesSignature(entries: TocEntry[]): string {
-  return entries.map((e) => `${e.depth}:${e.id}`).join("\n");
+  return entries.map((e) => `${e.depth}:${e.id}:${e.title}`).join("\n");
 }
 
 function isPlainLeftClick(event: MouseEvent<HTMLAnchorElement>): boolean {
@@ -118,7 +119,13 @@ export function TableOfContentsPanel({
     sync();
 
     const observer = new MutationObserver(sync);
-    observer.observe(container, { childList: true, subtree: true });
+    observer.observe(container, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["id"],
+    });
     return () => observer.disconnect();
   }, [toc]);
 

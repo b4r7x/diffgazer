@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import type { ComponentType, ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { markdownMdxComponents } from "./markdown-renderers";
@@ -32,7 +32,7 @@ describe("markdownMdxComponents", () => {
 
     const region = screen.getByRole("region", { name: "Scrollable table" });
     expect(region).toHaveAttribute("tabindex", "0");
-    expect(region.querySelector("table")).toBeInTheDocument();
+    expect(within(region).getByRole("table")).toBeInTheDocument();
   });
 
   it("exposes an explicit list role on unordered lists", () => {
@@ -43,5 +43,26 @@ describe("markdownMdxComponents", () => {
   it("exposes an explicit list role on ordered lists", () => {
     renderComponent("ol", <li>item</li>);
     expect(screen.getByRole("list")).toBeInTheDocument();
+  });
+
+  it("opens external links in a new tab with a safe rel", () => {
+    const A = markdownMdxComponents.a as ComponentType<{ href?: string; children?: ReactNode }>;
+    render(<A href="https://example.com/guide">Guide</A>);
+
+    const link = screen.getByRole("link", { name: "Guide" });
+    expect(link).toHaveAttribute("href", "https://example.com/guide");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link.getAttribute("rel")).toContain("noopener");
+    expect(link.getAttribute("rel")).toContain("noreferrer");
+  });
+
+  it("keeps internal links in the same tab without a rel attribute", () => {
+    const A = markdownMdxComponents.a as ComponentType<{ href?: string; children?: ReactNode }>;
+    render(<A href="/docs/components/button">Button</A>);
+
+    const link = screen.getByRole("link", { name: "Button" });
+    expect(link).toHaveAttribute("href", "/docs/components/button");
+    expect(link).not.toHaveAttribute("target");
+    expect(link).not.toHaveAttribute("rel");
   });
 });

@@ -5,10 +5,12 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   atomicWriteFile,
+  isNodeError,
   readJsonFileSync,
   removeFileSync,
   writeJsonFile,
   writeJsonFileSync,
+  writeJsonFileSyncExclusive,
 } from "./fs.js";
 import { log } from "./log.js";
 
@@ -69,6 +71,26 @@ describe("JSON file helpers", () => {
 
     expect(() => writeJsonFileSync(filePath, { key: "value" })).toThrow();
 
+    const leftovers = (await readdir(tempRoot)).filter((name) => name.endsWith(".tmp"));
+    expect(leftovers).toEqual([]);
+  });
+});
+
+describe("writeJsonFileSyncExclusive", () => {
+  it("fails with EEXIST when the destination already exists, leaving the original file and any temp file untouched", async () => {
+    const filePath = join(tempRoot, "exclusive.json");
+    const originalContent = JSON.stringify({ key: "original" });
+    await writeFile(filePath, originalContent, "utf-8");
+
+    let error: unknown;
+    try {
+      writeJsonFileSyncExclusive(filePath, { key: "new" });
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(isNodeError(error, "EEXIST")).toBe(true);
+    await expect(readFile(filePath, "utf-8")).resolves.toBe(originalContent);
     const leftovers = (await readdir(tempRoot)).filter((name) => name.endsWith(".tmp"));
     expect(leftovers).toEqual([]);
   });

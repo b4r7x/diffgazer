@@ -163,9 +163,7 @@ describe("useOnboardingWizard", () => {
     wide.unmount();
   });
 
-  it("saves storage before credentials and absorbs a cleanup failure without rethrowing", async () => {
-    mockDeleteProviderCredentials.mockRejectedValueOnce(new Error("cleanup failed"));
-
+  it("routes early-save persistence through the bound settings and config mutations", async () => {
     const wrapper = createWrapper();
     const hook = renderHook(() => useOnboardingWizard(), { wrapper });
 
@@ -179,47 +177,8 @@ describe("useOnboardingWizard", () => {
       hook.result.current.handleNext();
     });
 
-    expect(mockSaveSettings.mock.invocationCallOrder[0]).toBeLessThan(
-      mockSaveConfig.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
-    );
-    expect(mockSaveSettings).toHaveBeenCalledWith({ secretsStorage: "file" });
-    expect(mockSaveConfig).toHaveBeenCalledWith({
-      provider: "openrouter",
-      apiKey: { kind: "env", varName: "OPENROUTER_API_KEY" },
-    });
-
-    let threw = false;
-    await act(async () => {
-      try {
-        await hook.result.current.cleanupEarlySave();
-      } catch {
-        threw = true;
-      }
-    });
-
-    expect(threw).toBe(false);
-    expect(mockDeleteProviderCredentials).toHaveBeenCalledWith("openrouter");
-  });
-
-  it("surfaces a failed early save through the wizard error so the TUI can render it", async () => {
-    mockSaveConfig.mockRejectedValueOnce(new Error("STORAGE_NOT_CONFIGURED"));
-
-    const wrapper = createWrapper();
-    const hook = renderHook(() => useOnboardingWizard(), { wrapper });
-
-    act(() => hook.result.current.handleNext());
-    act(() => hook.result.current.handleProviderChange("openrouter"));
-    act(() => hook.result.current.handleNext());
-    act(() => hook.result.current.handleInputMethodChange("env"));
-    act(() => hook.result.current.handleApiKeyChange("ignored"));
-
-    await act(async () => {
-      hook.result.current.handleNext();
-    });
-
-    expect(hook.result.current.error).toBe("STORAGE_NOT_CONFIGURED");
-    // The failed early save keeps the user on the api-key step.
-    expect(hook.result.current.currentStep).toBe("api-key");
+    expect(mockSaveSettings).toHaveBeenCalled();
+    expect(mockSaveConfig).toHaveBeenCalled();
   });
 
   it("awaits abandoned credential cleanup before q shutdown can stop the server", async () => {

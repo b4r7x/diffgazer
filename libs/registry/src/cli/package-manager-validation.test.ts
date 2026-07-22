@@ -130,4 +130,22 @@ describe("package-manager transaction files", () => {
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
+
+  it("restores a pre-existing bun.lockb byte-for-byte when it contains non-UTF-8 bytes", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "registry-package-manager-binary-"));
+    try {
+      const lockPath = join(tempDir, "bun.lockb");
+      const originalBuffer = Buffer.from([0xff, 0xfe, 0x00, 0x01, 0x80, 0x81, 0xc0, 0xaf]);
+      writeFileSync(lockPath, originalBuffer);
+
+      const snapshot = snapshotPackageManagerFiles(tempDir);
+      writeFileSync(lockPath, Buffer.from([0x01, 0x02, 0x03]));
+
+      restorePackageManagerFiles(snapshot);
+
+      expect(readFileSync(lockPath)).toEqual(originalBuffer);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
 });

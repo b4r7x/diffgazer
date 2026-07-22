@@ -9,18 +9,11 @@ test("summarizeStatuses reports zero failures for an all-200 run", () => {
   assert.deepEqual(result.countsByStatus, { 200: 3 });
 });
 
-test("summarizeStatuses tracks an earlier non-200 even when the final request is 200", () => {
-  const result = summarizeStatuses([200, 500, 200, 200]);
-  assert.equal(result.nonOkCount, 1);
-  assert.equal(result.firstFailingStatus, 500);
-  assert.deepEqual(result.countsByStatus, { 200: 3, 500: 1 });
-});
-
-test("summarizeStatuses counts every non-200 and keeps the first failing status", () => {
-  const result = summarizeStatuses([401, 500, 401, 200]);
+test("summarizeStatuses counts every earlier failure and retains the first even when the final request succeeds", () => {
+  const result = summarizeStatuses([200, 401, 500, 401, 200]);
   assert.equal(result.nonOkCount, 3);
   assert.equal(result.firstFailingStatus, 401);
-  assert.deepEqual(result.countsByStatus, { 200: 1, 401: 2, 500: 1 });
+  assert.deepEqual(result.countsByStatus, { 200: 2, 401: 2, 500: 1 });
 });
 
 test("checkSlo records a functional failure when any non-200 response occurred", () => {
@@ -95,5 +88,9 @@ test("checkSlo records latency breaches when all responses are 200", () => {
     minRequestsPerSecond: 500,
   });
   assert.deepEqual(functionalFailures, []);
-  assert.equal(latencyBreaches.length, 3);
+  assert.deepEqual(latencyBreaches, [
+    "GET /health p95 200.00ms exceeds SLO 50ms",
+    "GET /health p99 300.00ms exceeds SLO 100ms",
+    "GET /health 10 req/s is below SLO 500 req/s",
+  ]);
 });

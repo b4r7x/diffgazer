@@ -46,7 +46,7 @@ function normalizeLabel(value: string): string {
  * The section's index page is the item whose url is the parent path of the
  * other items in the same section (a sibling url starts with `indexUrl/`).
  */
-export function findSectionIndexUrl(items: PageTreeNode[]): string | null {
+function findSectionIndexUrl(items: PageTreeNode[]): string | null {
   for (const candidate of items) {
     if (!candidate.url) continue;
     const prefix = `${candidate.url}/`;
@@ -65,7 +65,7 @@ export function findSectionIndexUrl(items: PageTreeNode[]): string | null {
  * Items whose title already differs from the section (Introduction, dgadd CLI)
  * keep their own label.
  */
-export function sidebarItemLabel(
+function sidebarItemLabel(
   sectionTitle: string,
   indexUrl: string | null,
   item: PageTreeNode,
@@ -96,7 +96,7 @@ function pushSection(sections: Section[], title: string, items: PageTreeNode[]):
   sections.push({ key: sectionKey(title, items), title, items });
 }
 
-export function groupBySection(children: PageTreeNode[]): Section[] {
+function groupBySection(children: PageTreeNode[]): Section[] {
   const sections: Section[] = [];
   let current: { title: string; items: PageTreeNode[] } | null = null;
 

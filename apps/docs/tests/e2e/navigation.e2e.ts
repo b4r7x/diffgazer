@@ -31,6 +31,7 @@ test.describe("Docs navigation", () => {
 
     await expect(page).toHaveURL(/\/ui\/components\/accordion$/);
     await expect(page.getByRole("heading", { level: 1, name: "Accordion" })).toBeVisible();
+    await expect(page.locator("#main-content")).toBeFocused();
   });
 
   test("mobile drawer opens, navigates, and closes", async ({ page }) => {

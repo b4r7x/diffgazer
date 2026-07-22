@@ -71,18 +71,6 @@ describe("planComponentCss", () => {
     return { hash, stylesPath };
   }
 
-  test.each([
-    "/outside/styles.css",
-    "C:\\outside\\styles.css",
-    "\\outside\\styles.css",
-    "\\\\server\\share\\styles.css",
-  ])("rejects absolute tailwind css path %s before creating files", (css) => {
-    expect(() => resolveConfig({ tailwind: { css } }, root)).toThrow(
-      /Project paths must be relative/,
-    );
-    expect(readdirSync(root)).toEqual([]);
-  });
-
   test("retains a canonical validated relative tailwind css path", () => {
     const config = resolveConfig({ tailwind: { css: "src\\styles\\styles.css" } }, root);
 

@@ -8,8 +8,14 @@ describe("SeverityBreakdown", () => {
     const counts: SeverityCounts = { blocker: 0, high: 1, medium: 0, low: 0, nit: 0 };
     render(<SeverityBreakdown counts={counts} />);
 
-    for (const label of ["BLOCKER", "HIGH", "MED", "LOW", "NIT"]) {
-      expect(screen.getByText(label)).toBeInTheDocument();
+    const high = screen.getByRole("meter", { name: "HIGH" });
+    expect(high).toHaveAttribute("aria-valuenow", "1");
+    expect(high).toHaveAttribute("aria-valuetext", "HIGH: 1");
+
+    for (const label of ["BLOCKER", "MED", "LOW", "NIT"]) {
+      const meter = screen.getByRole("meter", { name: label });
+      expect(meter).toHaveAttribute("aria-valuenow", "0");
+      expect(meter).toHaveAttribute("aria-valuetext", `${label}: 0`);
     }
   });
 });

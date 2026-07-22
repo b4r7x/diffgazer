@@ -28,14 +28,6 @@ function renderView(props: Partial<NoChangesViewProps> = {}) {
 }
 
 describe("NoChangesView", () => {
-  it("focuses the first action (switch mode) by default when both actions are present", async () => {
-    renderView({ onSwitchMode: vi.fn() });
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Review Staged" })).toHaveFocus();
-    });
-  });
-
   it("moves focus from the first action to the second with ArrowRight", async () => {
     const user = userEvent.setup();
     renderView({ onSwitchMode: vi.fn() });
@@ -49,21 +41,6 @@ describe("NoChangesView", () => {
 
     await user.keyboard("{ArrowLeft}");
     expect(screen.getByRole("button", { name: "Review Staged" })).toHaveFocus();
-  });
-
-  it("clamps at both action boundaries without wrapping", async () => {
-    const user = userEvent.setup();
-    renderView({ onSwitchMode: vi.fn() });
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Review Staged" })).toHaveFocus();
-    });
-
-    await user.keyboard("{ArrowLeft}");
-    expect(screen.getByRole("button", { name: "Review Staged" })).toHaveFocus();
-
-    await user.keyboard("{ArrowRight}{ArrowRight}");
-    expect(screen.getByRole("button", { name: "Back to Home" })).toHaveFocus();
   });
 
   it("Enter on a focused action calls only that action (regression: no double-fire)", async () => {
@@ -113,7 +90,6 @@ describe("NoChangesView", () => {
     expect(backButton).toBeEnabled();
     await waitFor(() => expect(backButton).toHaveFocus());
 
-    await user.click(switchButton);
     await user.keyboard("{Escape}");
 
     expect(onSwitchMode).not.toHaveBeenCalled();

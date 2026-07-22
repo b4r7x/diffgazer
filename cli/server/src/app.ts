@@ -74,15 +74,6 @@ export const createApp = (): Hono<AppEnv> => {
   app.use("*", requestLogger);
 
   app.use("*", async (c, next) => {
-    const hostname = getHostname(c.req.header("host"));
-    if (!hostname || !ALLOWED_HOSTS.has(hostname)) {
-      return errorResponse(c, "Forbidden", ErrorCode.FORBIDDEN, 403);
-    }
-
-    return next();
-  });
-
-  app.use("*", async (c, next) => {
     c.res.headers.set("X-Frame-Options", "DENY");
     c.res.headers.set("X-Content-Type-Options", "nosniff");
     c.res.headers.set(
@@ -91,6 +82,15 @@ export const createApp = (): Hono<AppEnv> => {
     );
     c.res.headers.set("Referrer-Policy", "no-referrer");
     await next();
+  });
+
+  app.use("*", async (c, next) => {
+    const hostname = getHostname(c.req.header("host"));
+    if (!hostname || !ALLOWED_HOSTS.has(hostname)) {
+      return errorResponse(c, "Forbidden", ErrorCode.FORBIDDEN, 403);
+    }
+
+    return next();
   });
 
   app.use("/api/*", async (c, next) => {

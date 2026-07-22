@@ -45,12 +45,13 @@ describe("useSearch", () => {
     const { result } = renderHook(() => useSearch());
 
     act(() => result.current.search("bu"));
+    act(() => result.current.search("but"));
     expect(doSearchMock).not.toHaveBeenCalled();
 
     await flushSearchDebounce();
 
     expect(doSearchMock).toHaveBeenCalledTimes(1);
-    expect(doSearchMock).toHaveBeenCalledWith(expect.objectContaining({ data: "bu" }));
+    expect(doSearchMock).toHaveBeenCalledWith(expect.objectContaining({ data: "but" }));
   });
 
   it("aborts stale searches when the query changes", async () => {

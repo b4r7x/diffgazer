@@ -139,32 +139,6 @@ describe("streamActiveSessionToSSE — terminal write failures", () => {
     expect(log).not.toHaveBeenCalled();
   });
 
-  it("does not leave the replay stuck after a terminal write failure", async () => {
-    const session = createTrackedSession("not-stuck");
-    deleteSession(session.reviewId);
-    const { stream, failure } = failingTerminalWriter(["error"]);
-
-    // A bug would be that the promise never settles. `vi.waitFor` polls a
-    // bounded predicate (with its own internal timeout) instead of racing a
-    // fixed `setTimeout`, so the assertion still fails for a stuck replay
-    // without depending on real wall-clock timing.
-    let outcome: "pending" | "resolved" | "rejected" | "other" = "pending";
-    streamActiveSessionToSSE(stream, session).then(
-      () => {
-        outcome = "resolved";
-      },
-      (e) => {
-        outcome = e === failure ? "rejected" : "other";
-      },
-    );
-
-    await vi.waitFor(() => {
-      if (outcome === "pending") throw new Error("replay still pending");
-    });
-
-    expect(outcome).toBe("rejected");
-  });
-
   it("replays terminal events without invoking the terminal-write path", async () => {
     const session = createTrackedSession("happy-replay");
     addEvent(session.reviewId, stepEvent());

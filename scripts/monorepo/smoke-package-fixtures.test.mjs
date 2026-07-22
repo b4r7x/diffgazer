@@ -6,8 +6,8 @@ import test from "node:test";
 import {
   writeKeysPackageModeSmoke,
   writeKeysTestHelperSmoke,
-  writeUiNextPackageSmoke,
-} from "./smoke-package-fixtures.mjs";
+} from "./smoke-keys-package-fixtures.mjs";
+import { writeUiNextPackageSmoke } from "./smoke-ui-package-fixtures.mjs";
 
 const exceptionalClientEntries = [
   ["CodeBlockHighlight", "codeBlockHighlight", "@diffgazer/ui/components/code-block/highlight"],

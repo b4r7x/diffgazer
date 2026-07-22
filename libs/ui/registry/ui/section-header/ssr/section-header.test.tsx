@@ -10,7 +10,6 @@ describe("SectionHeader SSR", () => {
 
     // querySelector retained: SSR-string parsed by JSDOM; RTL screen/getByRole is not available against a detached jsdom document — direct DOM access is the only path
     const heading = dom.window.document.querySelector("h2");
-    expect(heading?.tagName).toBe("H2");
     expect(heading?.textContent).toBe("Details");
   });
 });

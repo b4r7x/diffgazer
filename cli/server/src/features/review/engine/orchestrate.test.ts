@@ -1,11 +1,9 @@
 import type { Result } from "@diffgazer/core/result";
 import { err, ok } from "@diffgazer/core/result";
-import type { SettingsConfig } from "@diffgazer/core/schemas/config";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { z } from "zod";
 import type { AIClient, AIError } from "../../../shared/lib/ai/types.js";
 import { makeFileDiff, makeIssue, makeParsedDiff } from "../../../shared/lib/testing/factories.js";
-import { resolveReviewDefaults } from "../pipeline.js";
 import { orchestrateReview } from "./orchestrate.js";
 
 function createDiffForFiles(files: string[]) {
@@ -108,19 +106,6 @@ describe("orchestrateReview", () => {
         "security",
       ]);
     }
-  });
-
-  it("uses validated settings defaults when explicit lenses are empty", () => {
-    const settings: SettingsConfig = {
-      theme: "auto",
-      defaultLenses: ["security"],
-      defaultProfile: null,
-      severityThreshold: "low",
-      secretsStorage: null,
-      agentExecution: "sequential",
-    };
-
-    expect(resolveReviewDefaults({ lensIds: [], settings }).activeLenses).toEqual(["security"]);
   });
 
   it("returns sorted, deduplicated issues and complete orchestration metadata", async () => {
@@ -386,5 +371,56 @@ describe("orchestrateReview", () => {
       droppedDuplicates: 0,
       droppedIncompleteProviderIssues: 1,
     });
+  });
+
+  it.each([
+    1, 2,
+  ])("bounds in-flight AI calls to a concurrency of %i across three lenses and completes them in order once released", async (concurrency) => {
+    const pendingReleases: Array<() => void> = [];
+    let started = 0;
+    let inFlight = 0;
+    let maxInFlight = 0;
+
+    const client: AIClient = {
+      provider: "openrouter",
+      generate: async <T extends z.ZodType>(_prompt: string, schema: T) => {
+        started++;
+        inFlight++;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await new Promise<void>((resolve) => pendingReleases.push(resolve));
+        inFlight--;
+        return ok(schema.parse({ issues: [] }) as z.output<T>);
+      },
+    };
+
+    const resultPromise = orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts"]),
+      { lenses: ["correctness", "security", "performance"] },
+      () => {},
+      { concurrency },
+    );
+
+    await vi.waitFor(() => expect(pendingReleases).toHaveLength(concurrency));
+    expect(maxInFlight).toBe(concurrency);
+
+    for (let i = 0; i < 3; i++) {
+      await vi.waitFor(() => expect(pendingReleases.length).toBeGreaterThan(0));
+      pendingReleases.shift()?.();
+    }
+
+    const result = await resultPromise;
+
+    expect(started).toBe(3);
+    expect(maxInFlight).toBe(concurrency);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.lensStats.map((lens) => lens.lensId)).toEqual([
+        "correctness",
+        "security",
+        "performance",
+      ]);
+      expect(result.value.failedLenses).toEqual([]);
+    }
   });
 });

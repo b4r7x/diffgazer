@@ -29,18 +29,28 @@ describe("createTopLayerStack", () => {
   it("notifies document subscribers for stack changes until unsubscribed", () => {
     const stack = createTopLayerStack();
     const element = document.createElement("div");
-    let notifications = 0;
-    const unsubscribe = stack.subscribe(document, () => {
-      notifications += 1;
+    let firstNotifications = 0;
+    let secondNotifications = 0;
+    const unsubscribeFirst = stack.subscribe(document, () => {
+      firstNotifications += 1;
+    });
+    const unsubscribeSecond = stack.subscribe(document, () => {
+      secondNotifications += 1;
     });
 
     stack.push(element);
-    stack.pop(element);
-    expect(notifications).toBe(2);
+    expect(firstNotifications).toBe(1);
+    expect(secondNotifications).toBe(1);
 
-    unsubscribe();
+    unsubscribeFirst();
+    stack.pop(element);
+    expect(firstNotifications).toBe(1);
+    expect(secondNotifications).toBe(2);
+
+    unsubscribeSecond();
     stack.push(element);
-    expect(notifications).toBe(2);
+    expect(firstNotifications).toBe(1);
+    expect(secondNotifications).toBe(2);
   });
 
   it("keeps top-layer state independent for each owner document", () => {

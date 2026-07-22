@@ -55,6 +55,27 @@ describe("isHTMLTextAreaElement", () => {
   });
 });
 
+describe("foreign realm (iframe)", () => {
+  it("recognizes elements created in an iframe's document as real DOM elements", () => {
+    const iframe = document.createElement("iframe");
+    document.body.appendChild(iframe);
+    try {
+      const iframeDocument = iframe.contentDocument;
+      if (!iframeDocument) throw new Error("iframe contentDocument is null");
+      const div = iframeDocument.createElement("div");
+      const input = iframeDocument.createElement("input");
+      const textarea = iframeDocument.createElement("textarea");
+
+      expect(getOwnerView(div)).toBe(iframe.contentWindow);
+      expect(isHTMLElement(div)).toBe(true);
+      expect(isHTMLInputElement(input)).toBe(true);
+      expect(isHTMLTextAreaElement(textarea)).toBe(true);
+    } finally {
+      iframe.remove();
+    }
+  });
+});
+
 describe("isNode", () => {
   it("returns true for any DOM Node when window is provided", () => {
     expect(isNode(document.createElement("div"), window)).toBe(true);
@@ -136,7 +157,7 @@ describe("isEditableElement", () => {
     expect(isEditableElement(document.createElement("div"))).toBe(false);
   });
 
-  it("returns false for null/undefined", () => {
+  it("returns false for null", () => {
     expect(isEditableElement(null)).toBe(false);
   });
 

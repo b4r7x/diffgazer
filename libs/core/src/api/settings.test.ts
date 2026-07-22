@@ -14,9 +14,10 @@ describe("settings API functions", () => {
     const trust = { projectId: "proj-1", trusted: true };
     vi.mocked(client.get).mockResolvedValue({ trust });
 
-    await getTrust(client);
+    const result = await getTrust(client);
 
     expect(client.get).toHaveBeenCalledWith("/api/settings/trust");
+    expect(result).toEqual({ trust });
   });
 
   it("deleteTrust removes the current project's trust entry and forwards the response", async () => {

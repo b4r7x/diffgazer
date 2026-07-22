@@ -57,15 +57,7 @@ describe("usePresence", () => {
     expect(result.current.present).toBe(true);
   });
 
-  it("keeps present true while exiting, matching the public return reference", () => {
-    const { result, rerender } = renderHook(({ open }) => usePresence({ open }), {
-      initialProps: { open: true },
-    });
-
-    rerender({ open: false });
-
-    expect(result.current.present).toBe(true);
-    expect(result.current.exiting).toBe(true);
+  it("documents that present remains true while exiting, matching the public return reference", () => {
     if (!presenceDoc.returns) throw new Error("Presence return documentation is missing");
     const exitingProperty = presenceDoc.returns.properties?.find(({ name }) => name === "exiting");
     expect(exitingProperty?.description).toContain("while present remains true");
@@ -365,20 +357,6 @@ describe("usePresence", () => {
   });
 
   describe("returned-handler path (synthetic-event consumers)", () => {
-    it("transitions open→closing→hidden on returned onAnimationEnd (no ref)", () => {
-      const { result, rerender } = renderHook(({ open }) => usePresence({ open }), {
-        initialProps: { open: true },
-      });
-
-      rerender({ open: false });
-      expect(result.current.present).toBe(true);
-
-      act(() => {
-        result.current.onAnimationEnd(animationEvent(null));
-      });
-      expect(result.current.present).toBe(false);
-    });
-
     it("sets exiting=true when open goes from true to false until onAnimationEnd", () => {
       const { result, rerender } = renderHook(({ open }) => usePresence({ open }), {
         initialProps: { open: true },

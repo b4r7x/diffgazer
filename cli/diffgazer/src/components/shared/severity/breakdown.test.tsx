@@ -22,5 +22,6 @@ describe("SeverityBreakdown (TUI)", () => {
     expect(frame).toContain("LOW");
     expect(frame).toContain("NIT");
     expect(frame).toContain("░".repeat(16));
+    expect(frame).toMatch(/HIGH\s+█{16}\s+1/);
   });
 });

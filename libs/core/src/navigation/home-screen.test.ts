@@ -90,6 +90,31 @@ describe("resolveHomeMenuActivation", () => {
     ).toEqual({ kind: "noop" });
   });
 
+  it("no-ops resume when untrusted", () => {
+    expect(
+      resolveHomeMenuActivation("resume-review", {
+        isTrusted: false,
+        hasResumableSession: true,
+      }),
+    ).toEqual({ kind: "noop" });
+  });
+
+  it("navigates to history, settings, and help when untrusted", () => {
+    const untrusted = { isTrusted: false, hasResumableSession: true };
+    expect(resolveHomeMenuActivation("history", untrusted)).toEqual({
+      kind: "navigate",
+      target: "history",
+    });
+    expect(resolveHomeMenuActivation("settings", untrusted)).toEqual({
+      kind: "navigate",
+      target: "settings",
+    });
+    expect(resolveHomeMenuActivation("help", untrusted)).toEqual({
+      kind: "navigate",
+      target: "help",
+    });
+  });
+
   it("navigates to history, settings, and help", () => {
     expect(resolveHomeMenuActivation("history", trusted)).toEqual({
       kind: "navigate",

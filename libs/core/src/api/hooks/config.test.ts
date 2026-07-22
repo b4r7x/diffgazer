@@ -35,12 +35,6 @@ describe("useProviderModels", () => {
     api = { getProviderModels } as unknown as BoundApi;
   });
 
-  it("fetches models for the requested provider", async () => {
-    const { result } = renderHook(() => useProviderModels("gemini"), { wrapper: makeWrapper(api) });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data?.models[0]?.id).toBe("gemini");
-  });
-
   it("does not fetch when disabled", () => {
     renderHook(() => useProviderModels("gemini", { enabled: false }), {
       wrapper: makeWrapper(api),
@@ -54,6 +48,7 @@ describe("useProviderModels", () => {
       { wrapper: makeWrapper(api), initialProps: { id: "gemini" } },
     );
     await waitFor(() => expect(result.current.data?.models[0]?.id).toBe("gemini"));
+    expect(result.current.isSuccess).toBe(true);
     rerender({ id: "groq" });
     await waitFor(() => expect(result.current.data?.models[0]?.id).toBe("groq"));
   });
@@ -124,13 +119,21 @@ describe("OpenRouter credential cache identity", () => {
       cached: false,
     });
 
-    const { result } = renderHook(() => useDeleteProviderCredentials(), {
-      wrapper: harness.Wrapper,
-    });
+    const { result } = renderHook(
+      () => ({
+        models: useOpenRouterModels({ enabled: false }),
+        deleteCredentials: useDeleteProviderCredentials(),
+      }),
+      { wrapper: harness.Wrapper },
+    );
+
+    expect(result.current.models.data?.models[0]?.id).toBe("old/model");
+
     await act(async () => {
-      await result.current.mutateAsync("openrouter");
+      await result.current.deleteCredentials.mutateAsync("openrouter");
     });
 
-    expect(harness.queryClient.getQueryData(queryKey)).toBeUndefined();
+    expect(deleteProviderCredentials).toHaveBeenCalledWith("openrouter");
+    await waitFor(() => expect(result.current.models.data).toBeUndefined());
   });
 });

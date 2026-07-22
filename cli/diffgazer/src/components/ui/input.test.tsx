@@ -1,7 +1,7 @@
 import { HISTORY_SEARCH_PLACEHOLDER } from "@diffgazer/core/review";
 import { cleanup, render } from "ink-testing-library";
 import { useState } from "react";
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { CliThemeProvider } from "../../theme/provider";
 import { Input } from "./input";
 
@@ -93,9 +93,10 @@ describe("Input", () => {
   });
 
   test("disabled input ignores edits while preserving its value", async () => {
+    const onChange = vi.fn();
     const { lastFrame, stdin } = render(
       <CliThemeProvider initialTheme="dark">
-        <Input value="OPENAI_API_KEY" onChange={() => {}} disabled isActive />
+        <Input value="OPENAI_API_KEY" onChange={onChange} disabled isActive />
       </CliThemeProvider>,
     );
     await flush();
@@ -104,6 +105,7 @@ describe("Input", () => {
     await flush();
     expect(lastFrame()).toContain("OPENAI_API_KEY");
     expect(lastFrame()).not.toContain("ATTACKER_VAR");
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   test("keeps a long value on one row and preserves its terminal-cell-safe tail", () => {

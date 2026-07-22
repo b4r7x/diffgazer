@@ -189,7 +189,25 @@ describe("initFindings", () => {
     cleanup();
   });
 
-  it("does not advance the intro sequence after abort and cleanup", async () => {
+  it("does not advance the intro sequence after the external controller aborts", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("IntersectionObserver", undefined);
+    mountLanding();
+
+    const controller = new AbortController();
+    initFindings(document, flags, controller.signal);
+    const selected = () =>
+      document.querySelector<HTMLElement>(".finding-row[aria-selected='true']");
+
+    expect(selected()?.textContent).toContain(demoFindings[0].title);
+
+    controller.abort();
+    await vi.advanceTimersByTimeAsync(3000);
+
+    expect(selected()?.textContent).toContain(demoFindings[0].title);
+  });
+
+  it("does not advance the intro sequence after cleanup runs without aborting the controller", async () => {
     vi.useFakeTimers();
     vi.stubGlobal("IntersectionObserver", undefined);
     mountLanding();
@@ -201,11 +219,33 @@ describe("initFindings", () => {
 
     expect(selected()?.textContent).toContain(demoFindings[0].title);
 
-    controller.abort();
     cleanup();
     await vi.advanceTimersByTimeAsync(3000);
 
     expect(selected()?.textContent).toContain(demoFindings[0].title);
+  });
+
+  it("advances the intro sequence through each finding when it completes without clicks", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("IntersectionObserver", undefined);
+    mountLanding();
+
+    const cleanup = initFindings(document, flags);
+    const selectedIndex = (): number => {
+      const row = document.querySelector<HTMLElement>(".finding-row[aria-selected='true']");
+      return Number(row?.dataset.idx);
+    };
+
+    const sequence = [selectedIndex()];
+    for (let i = 0; i < 8 && sequence.length < 4; i++) {
+      await vi.advanceTimersToNextTimerAsync();
+      const index = selectedIndex();
+      if (index !== sequence.at(-1)) sequence.push(index);
+    }
+
+    expect(sequence).toEqual([0, 1, 2, 0]);
+
+    cleanup();
   });
 
   it("keeps the first clicked finding selected after the intro has started", async () => {
@@ -268,32 +308,5 @@ describe("initFindings", () => {
     abort.abort();
 
     expect(disconnect).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("landing accessibility markup", () => {
-  afterEach(() => {
-    document.body.innerHTML = "";
-  });
-
-  it("announces copy state through a polite live region without losing the action label", () => {
-    mountLanding();
-
-    const buttons = [...document.querySelectorAll<HTMLButtonElement>(".copy-btn")];
-
-    expect(buttons).toHaveLength(2);
-    for (const button of buttons) {
-      expect(button.getAttribute("aria-label")).toBe("Copy install command");
-      expect(button.querySelector(".copy-label")?.getAttribute("aria-live")).toBe("polite");
-    }
-  });
-
-  it("exposes the install figlet as a single labeled image, not raw ascii", () => {
-    mountLanding();
-
-    const figlet = document.querySelector<HTMLElement>("#figlet");
-
-    expect(figlet?.getAttribute("role")).toBe("img");
-    expect(figlet?.getAttribute("aria-label")).toBe("Diffgazer");
   });
 });

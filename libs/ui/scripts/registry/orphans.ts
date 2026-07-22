@@ -12,7 +12,11 @@ const EXCLUDED_DIRECTORIES = new Set([
   "example",
   "examples",
 ]);
-const EXCLUDED_FILE_RE = /\.(?:test|spec|story|stories|example|examples)\.[cm]?[jt]sx?$/;
+// Test-only files never ship, so they are not registry items: `.test`/`.spec`/`.story`
+// suites, plus colocated test-support helpers whose marker may be dot- or hyphen-joined
+// (popover-test-utils.ts, select.test-utils.tsx).
+const EXCLUDED_FILE_RE =
+  /(?:\.(?:test|spec|story|stories|example|examples)|[.-]test-(?:utils|helpers|harness|support))\.[cm]?[jt]sx?$/;
 
 function listProductionFiles(root: string): string[] {
   const files: string[] = [];

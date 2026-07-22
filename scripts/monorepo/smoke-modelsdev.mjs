@@ -9,7 +9,7 @@ import {
   enabledSnapshotProviders,
   findSnapshotInBundle,
 } from "./lib/smoke-modelsdev.mjs";
-import { fetchJsonWithLimit, networkAllowed } from "./smoke-shared.mjs";
+import { fetchJsonWithLimit, networkAllowed } from "./smoke-shared/network.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const LABEL = "live models.dev catalog";

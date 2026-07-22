@@ -16,7 +16,7 @@ import type { AIClient } from "../../shared/lib/ai/types.js";
 import { getStore } from "../../shared/lib/config/store.js";
 import { log } from "../../shared/lib/log.js";
 import { type ReviewAbort, reviewAbort } from "./abort.js";
-import { buildProjectContextSnapshot } from "./context/snapshot.js";
+import { buildProjectContextSnapshot } from "./context/snapshot/build.js";
 import type { ParsedDiff } from "./engine/diff/types.js";
 import { orchestrateReview } from "./engine/orchestrate.js";
 import { getProfile } from "./engine/profiles.js";

@@ -1,15 +1,16 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Registry, RegistryItem } from "@diffgazer/registry/schemas";
 import { REGISTRY_ITEM_TYPE, RegistrySchema } from "@diffgazer/registry/schemas";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
-  extractRelativeImports as extractRegistryRelativeImports,
   validateContentFreshness,
   validatePublicTargetClosure,
-} from "./validate-registry-closure.js";
+} from "./validate-registry-closure/public-registry.js";
+import { extractRelativeImports as extractRegistryRelativeImports } from "./validate-registry-closure/types.js";
+import { validateRegistryClosure } from "./validate-registry-closure.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const KEYS_ROOT = resolve(__dirname, "..");
@@ -69,25 +70,17 @@ describe("public registry target paths", () => {
   }
 });
 
-describe("public registry import parser coverage", () => {
-  it("extracts static, side-effect, dynamic, and require relative imports", () => {
+describe("extractRelativeImports", () => {
+  it("deduplicates a repeated relative specifier and excludes bare-package specifiers", () => {
     const imports = extractRegistryRelativeImports(
       [
         'import { value } from "./value.js";',
-        'export { value } from "./exported.js";',
-        'import "./setup.js";',
-        'const lazy = import("./lazy.js");',
-        'const required = require("./required.js");',
+        'import { other } from "./value.js";',
+        'import { pkg } from "some-package";',
       ].join("\n"),
     );
 
-    expect(imports).toEqual([
-      "./value.js",
-      "./exported.js",
-      "./lazy.js",
-      "./required.js",
-      "./setup.js",
-    ]);
+    expect(imports).toEqual(["./value.js"]);
   });
 });
 
@@ -163,19 +156,6 @@ describe("provider-backed hooks are package-only", () => {
     }
   });
 
-  it("standalone hooks have public registry items", () => {
-    const publicRegistry = loadPublicRegistry();
-    const publicNames = new Set(
-      publicRegistry.items.filter((item) => !item.meta?.hidden).map((item) => item.name),
-    );
-
-    for (const [hookName, registryName] of Object.entries(STANDALONE_REGISTRY_NAMES)) {
-      expect(publicNames.has(registryName), `${hookName} should be public as ${registryName}`).toBe(
-        true,
-      );
-    }
-  });
-
   it("README documents package-only APIs", () => {
     const readme = readFileSync(resolve(KEYS_ROOT, "README.md"), "utf-8");
     expect(readme).toContain("Package-only");
@@ -219,8 +199,8 @@ describe("provider-backed hooks are package-only", () => {
 });
 
 describe("target-path install closure validation", () => {
-  it("all public registry items pass target closure check", () => {
-    expect(validatePublicTargetClosure(PUBLIC_DIR)).toEqual([]);
+  it("validateRegistryClosure passes for the real Keys registry", () => {
+    expect(validateRegistryClosure(REGISTRY_PATH)).toBe(true);
   });
 
   it("detects broken target-path imports in a synthetic bad item", () => {
@@ -255,10 +235,6 @@ describe("target-path install closure validation", () => {
     }
   });
 
-  it("current public registry embedded content is fresh against source", () => {
-    expect(validateContentFreshness(PUBLIC_DIR, KEYS_ROOT)).toEqual([]);
-  });
-
   it("detects stale embedded content that diverges from source", () => {
     const publicDir = mkdtempSync(join(tmpdir(), "dg-keys-freshness-"));
     try {
@@ -286,6 +262,80 @@ describe("target-path install closure validation", () => {
       ]);
     } finally {
       rmSync(publicDir, { recursive: true, force: true });
+    }
+  });
+
+  it("validateRegistryClosure fails with grouped diagnostics for target-closure, relative-.js, and stale-content violations", () => {
+    const root = mkdtempSync(join(tmpdir(), "dg-keys-closure-root-"));
+    try {
+      mkdirSync(join(root, "registry"), { recursive: true });
+      mkdirSync(join(root, "public", "r"), { recursive: true });
+      mkdirSync(join(root, "src", "hooks"), { recursive: true });
+
+      writeFileSync(join(root, "registry", "registry.json"), JSON.stringify({ items: [] }));
+
+      writeFileSync(
+        join(root, "public", "r", "target-bad.json"),
+        JSON.stringify({
+          name: "target-bad",
+          type: REGISTRY_ITEM_TYPE.hook,
+          files: [
+            {
+              path: "src/hooks/use-target-bad.ts",
+              target: "src/hooks/use-target-bad.ts",
+              content: 'import { missing } from "./missing";\n',
+              type: REGISTRY_ITEM_TYPE.hook,
+            },
+          ],
+        }),
+      );
+
+      writeFileSync(
+        join(root, "public", "r", "js-import-bad.json"),
+        JSON.stringify({
+          name: "js-import-bad",
+          type: REGISTRY_ITEM_TYPE.hook,
+          files: [
+            {
+              path: "src/hooks/use-js-import-bad.ts",
+              target: "src/hooks/use-js-import-bad.ts",
+              content: 'import { bar } from "./bar.js";\n',
+              type: REGISTRY_ITEM_TYPE.hook,
+            },
+          ],
+        }),
+      );
+
+      writeFileSync(join(root, "src", "hooks", "use-stale.ts"), "export const stale = 1;\n");
+      writeFileSync(
+        join(root, "public", "r", "stale.json"),
+        JSON.stringify({
+          name: "stale",
+          type: REGISTRY_ITEM_TYPE.hook,
+          files: [
+            {
+              path: "src/hooks/use-stale.ts",
+              target: "src/hooks/use-stale.ts",
+              content: "export const stale = 2;\n",
+              type: REGISTRY_ITEM_TYPE.hook,
+            },
+          ],
+        }),
+      );
+
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        expect(validateRegistryClosure(join(root, "registry", "registry.json"))).toBe(false);
+
+        const diagnostics = errorSpy.mock.calls.map((call) => call.join(" ")).join("\n");
+        expect(diagnostics).toContain("[PUBLIC_TARGET_CLOSURE]");
+        expect(diagnostics).toContain("[PUBLIC_JS_IMPORT]");
+        expect(diagnostics).toContain("[REGISTRY_STALE_CONTENT]");
+      } finally {
+        errorSpy.mockRestore();
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
   });
 

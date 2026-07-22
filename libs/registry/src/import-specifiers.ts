@@ -18,6 +18,13 @@ export interface ImportSpecifier {
   isTypeOnly: boolean;
 }
 
+/** Half-open range of a specifier's raw text, excluding its surrounding quotes/backticks. */
+export interface ImportSpecifierRange {
+  start: number;
+  end: number;
+  specifier: string;
+}
+
 export interface StaticNamedImport {
   /** Half-open range covering the import declaration, including its semicolon when present. */
   declarationStart: number;
@@ -95,13 +102,29 @@ export function extractStaticNamedImports(source: string): StaticNamedImport[] {
   return declarations;
 }
 
-export function extractImportSpecifiers(source: string): ImportSpecifier[] {
+type SpecifierToken =
+  | Extract<SourceToken, { kind: "string" }>
+  | Extract<SourceToken, { kind: "template" }>;
+
+function isSpecifierToken(token: SourceToken | undefined): token is SpecifierToken {
+  return token?.kind === "string" || token?.kind === "template";
+}
+
+interface ImportSpecifierMatch extends ImportSpecifier {
+  token: SpecifierToken;
+}
+
+function specifierRange(token: SpecifierToken): ImportSpecifierRange {
+  return { start: token.start + 1, end: token.end - 1, specifier: token.value ?? "" };
+}
+
+function findImportSpecifierMatches(source: string): ImportSpecifierMatch[] {
   const tokens = tokenizeSource(source);
-  const imports: ImportSpecifier[] = [];
-  const exports: ImportSpecifier[] = [];
-  const dynamicImports: ImportSpecifier[] = [];
-  const requires: ImportSpecifier[] = [];
-  const sideEffects: ImportSpecifier[] = [];
+  const imports: ImportSpecifierMatch[] = [];
+  const exports: ImportSpecifierMatch[] = [];
+  const dynamicImports: ImportSpecifierMatch[] = [];
+  const requires: ImportSpecifierMatch[] = [];
+  const sideEffects: ImportSpecifierMatch[] = [];
 
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
@@ -114,15 +137,26 @@ export function extractImportSpecifiers(source: string): ImportSpecifier[] {
     ) {
       const next = tokens[index + 1];
       if (next?.kind === "string") {
-        sideEffects.push({ specifier: next.value, kind: "side-effect", isTypeOnly: false });
+        sideEffects.push({
+          specifier: next.value,
+          kind: "side-effect",
+          isTypeOnly: false,
+          token: next,
+        });
         continue;
       }
-      const dynamicSpecifierValue = getStaticModuleSpecifier(tokens[index + 2]);
-      if (isToken(next, "punctuator", "(") && dynamicSpecifierValue !== undefined) {
+      const dynamicSpecifierToken = tokens[index + 2];
+      const dynamicSpecifierValue = getStaticModuleSpecifier(dynamicSpecifierToken);
+      if (
+        isToken(next, "punctuator", "(") &&
+        dynamicSpecifierValue !== undefined &&
+        isSpecifierToken(dynamicSpecifierToken)
+      ) {
         dynamicImports.push({
           specifier: dynamicSpecifierValue,
           kind: "dynamic-import",
           isTypeOnly: false,
+          token: dynamicSpecifierToken,
         });
         continue;
       }
@@ -137,6 +171,7 @@ export function extractImportSpecifiers(source: string): ImportSpecifier[] {
             specifier: specifier.value,
             kind: "import",
             isTypeOnly: isToken(next, "identifier", "type"),
+            token: specifier,
           });
         }
       }
@@ -150,27 +185,50 @@ export function extractImportSpecifiers(source: string): ImportSpecifier[] {
       if (isToken(exportedShape, "punctuator", "{") || isToken(exportedShape, "punctuator", "*")) {
         const specifier = findFromSpecifier(tokens, index + 2)?.token;
         if (specifier) {
-          exports.push({ specifier: specifier.value, kind: "export", isTypeOnly });
+          exports.push({
+            specifier: specifier.value,
+            kind: "export",
+            isTypeOnly,
+            token: specifier,
+          });
         }
       }
       continue;
     }
 
-    const requiredSpecifierValue = getStaticModuleSpecifier(tokens[index + 2]);
+    const requiredSpecifierToken = tokens[index + 2];
+    const requiredSpecifierValue = getStaticModuleSpecifier(requiredSpecifierToken);
     if (
       isToken(token, "identifier", "require") &&
       !isToken(previous, "punctuator", ".") &&
       !isToken(previous, "punctuator", "?.") &&
       isToken(tokens[index + 1], "punctuator", "(") &&
-      requiredSpecifierValue !== undefined
+      requiredSpecifierValue !== undefined &&
+      isSpecifierToken(requiredSpecifierToken)
     ) {
       requires.push({
         specifier: requiredSpecifierValue,
         kind: "require",
         isTypeOnly: false,
+        token: requiredSpecifierToken,
       });
     }
   }
 
   return [...imports, ...exports, ...dynamicImports, ...requires, ...sideEffects];
+}
+
+export function extractImportSpecifiers(source: string): ImportSpecifier[] {
+  return findImportSpecifierMatches(source).map(({ specifier, kind, isTypeOnly }) => ({
+    specifier,
+    kind,
+    isTypeOnly,
+  }));
+}
+
+/** Lexical ranges (excluding quotes/backticks) of every executable import/export/require specifier, in source order. */
+export function extractImportSpecifierRanges(source: string): ImportSpecifierRange[] {
+  return findImportSpecifierMatches(source)
+    .map(({ token }) => specifierRange(token))
+    .sort((a, b) => a.start - b.start);
 }

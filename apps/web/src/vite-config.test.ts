@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -12,6 +12,25 @@ interface JsonProject {
 
 function readProject(path: string): JsonProject {
   return JSON.parse(readFileSync(path, "utf8")) as JsonProject;
+}
+
+function discoverE2eTypeScriptFiles(packageRoot: string): string[] {
+  const files: string[] = [];
+  if (existsSync(resolve(packageRoot, "playwright.config.ts"))) {
+    files.push("./playwright.config.ts");
+  }
+
+  const testsRoot = resolve(packageRoot, "tests");
+  if (existsSync(testsRoot)) {
+    for (const entry of readdirSync(testsRoot, { recursive: true, encoding: "utf8" })) {
+      const normalized = entry.replaceAll("\\", "/");
+      if (/\.tsx?$/.test(normalized)) {
+        files.push(`./tests/${normalized}`);
+      }
+    }
+  }
+
+  return files.sort();
 }
 
 describe("web executable configuration type coverage", () => {
@@ -71,12 +90,10 @@ describe("web executable configuration type coverage", () => {
       tsBuildInfoFile: "./node_modules/.tmp/tsconfig.e2e.tsbuildinfo",
       types: ["node", "vite/client", "@playwright/test"],
     });
-    expect(e2eConfig.files).toEqual([
-      "./playwright.config.ts",
-      "./tests/e2e/responsive-contracts.e2e.ts",
-      "./tests/e2e/results-layout.e2e.ts",
-      "./tests/e2e/review-parity.e2e.ts",
-      "./tests/fixtures/results-layout.tsx",
-    ]);
+    const discoveredE2eFiles = discoverE2eTypeScriptFiles(packageRoot);
+    expect(discoveredE2eFiles.length).toBeGreaterThan(0);
+    for (const file of discoveredE2eFiles) {
+      expect(e2eConfig.files, `${file} should be included in tsconfig.e2e`).toContain(file);
+    }
   });
 });

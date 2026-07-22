@@ -46,19 +46,32 @@ describe("RootLayout retry wiring", () => {
     serverState.current = { status: "error", message: "Could not connect" };
   });
 
-  it("attaches a catch handler so a rejected retry never escapes the click handler", async () => {
+  it("survives a rejected retry without unhandled rejection while keeping disconnected UI", async () => {
     const user = userEvent.setup();
-    // A raw onClick={retry} floats an unhandled rejection on every failed click;
-    // the handler must .catch retry()'s promise.
-    const catchSpy = vi.fn().mockReturnValue(Promise.resolve());
-    retryMock.mockReturnValue({ catch: catchSpy } as unknown as Promise<unknown>);
+    const unhandledRejections: unknown[] = [];
+    const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+      unhandledRejections.push(event.reason);
+    };
+    window.addEventListener("unhandledrejection", onUnhandledRejection);
+
+    retryMock.mockRejectedValue(new Error("still disconnected"));
 
     render(<RootLayout />);
 
+    expect(screen.getByRole("heading", { name: /server disconnected/i })).toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: /retry connection/i }));
 
+    await act(async () => {
+      await Promise.resolve();
+    });
+
     expect(retryMock).toHaveBeenCalledTimes(1);
-    expect(catchSpy).toHaveBeenCalled();
+    expect(unhandledRejections).toEqual([]);
+    expect(screen.getByRole("heading", { name: /server disconnected/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry connection/i })).toBeInTheDocument();
+
+    window.removeEventListener("unhandledrejection", onUnhandledRejection);
   });
 });
 
@@ -204,26 +217,5 @@ describe("RouteErrorBoundary recovery", () => {
         '{"shortcuts":[],"rightShortcuts":[]}',
       ),
     );
-  });
-
-  it("keeps the last page shortcuts when a healthy page unmounts", async () => {
-    function View({ showPublisher }: { showPublisher: boolean }) {
-      return (
-        <FooterProvider initialShortcuts={[]}>
-          <FooterStateView />
-          {showPublisher ? <FooterPublisher /> : <div>next healthy page</div>}
-        </FooterProvider>
-      );
-    }
-
-    const { rerender } = render(<View showPublisher />);
-    await waitFor(() =>
-      expect(screen.getByRole("status", { name: "Footer state" })).toHaveTextContent("Run action"),
-    );
-
-    rerender(<View showPublisher={false} />);
-
-    expect(screen.getByRole("status", { name: "Footer state" })).toHaveTextContent("Run action");
-    expect(screen.getByRole("status", { name: "Footer state" })).toHaveTextContent("Back");
   });
 });

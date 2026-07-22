@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import test from "node:test";
-import { localDependencySpecs } from "./smoke-package-runner.mjs";
+import { createPackageTarballCache, localDependencySpecs } from "./smoke-package-runner.mjs";
+
+const repoRoot = process.cwd();
 
 test("offline package smoke links regular and optional runtime dependencies", () => {
   const root = mkdtempSync(join(tmpdir(), "diffgazer-package-smoke-"));
@@ -22,9 +24,39 @@ test("offline package smoke links regular and optional runtime dependencies", ()
 
     const specs = localDependencySpecs(root, "diffgazer", {});
 
-    assert.match(specs.get("direct-dependency"), /^link:/);
-    assert.match(specs.get("optional-dependency"), /^link:/);
+    assert.equal(
+      specs.get("direct-dependency"),
+      `link:${realpathSync(join(packageDir, "node_modules/direct-dependency"))}`,
+    );
+    assert.equal(
+      specs.get("optional-dependency"),
+      `link:${realpathSync(join(packageDir, "node_modules/optional-dependency"))}`,
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("package smoke cache packs each immutable workspace tarball once", async () => {
+  const packInvocations = [];
+  const cache = createPackageTarballCache(repoRoot, {
+    packDir: "/virtual/package-smoke-cache",
+    pack: async (_root, workspacePackage, packDir) => {
+      packInvocations.push(workspacePackage);
+      return resolve(packDir, `${workspacePackage.replaceAll("/", "-")}.tgz`);
+    },
+    cleanup: () => {},
+  });
+
+  const tarballs = await Promise.all([
+    cache.get("@diffgazer/ui"),
+    cache.get("@diffgazer/keys"),
+    cache.get("@diffgazer/ui"),
+    cache.get("@diffgazer/keys"),
+  ]);
+
+  assert.equal(tarballs[0], tarballs[2]);
+  assert.equal(tarballs[1], tarballs[3]);
+  assert.deepEqual(packInvocations, ["@diffgazer/ui", "@diffgazer/keys"]);
+  cache.dispose();
 });

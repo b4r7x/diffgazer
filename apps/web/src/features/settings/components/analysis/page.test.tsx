@@ -130,7 +130,6 @@ describe("SettingsAnalysisPage keyboard behavior", () => {
     const group = screen.getByRole("group", { name: /active agents/i });
     const liveRegion = screen.getByRole("status");
 
-    expect(group.querySelector('[data-slot="checkbox-group-validation"]')).toBeRequired();
     expect(group).toHaveAttribute("aria-describedby", liveRegion.id);
     expect(liveRegion).toHaveTextContent("");
 

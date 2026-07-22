@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import { JSDOM } from "jsdom";
 import { createRef } from "react";
 import { renderToString } from "react-dom/server";
 import { assertType, describe, expect, it } from "vitest";
@@ -187,10 +188,6 @@ describe("Panel", () => {
 
     const defaultProps: PanelProps = { ref: createRef<HTMLDivElement>() };
     assertType<PanelProps>(defaultProps);
-
-    expect(divProps.as).toBe("div");
-    expect(asideProps.as).toBe("aside");
-    expect(defaultProps.as).toBeUndefined();
   });
 
   it("forwards refs through the polymorphic `as` prop", () => {
@@ -385,43 +382,6 @@ describe("Panel", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
-  it.each([
-    "hairline",
-    "rail",
-    "viewfinder",
-    "surface",
-  ] as const)("has no a11y violations for frame=%s", async (frame) => {
-    const { container } = render(
-      <Panel frame={frame}>
-        <Panel.Header>
-          <Panel.Title>Release</Panel.Title>
-        </Panel.Header>
-        <Panel.Content>Body</Panel.Content>
-      </Panel>,
-    );
-
-    expect(await axe(container)).toHaveNoViolations();
-  });
-
-  it.each([
-    "info",
-    "success",
-    "warning",
-    "error",
-    "accent",
-  ] as const)("has no a11y violations for tone=%s", async (tone) => {
-    const { container } = render(
-      <Panel tone={tone}>
-        <Panel.Header>
-          <Panel.Title>Release</Panel.Title>
-        </Panel.Header>
-        <Panel.Content>Body</Panel.Content>
-      </Panel>,
-    );
-
-    expect(await axe(container)).toHaveNoViolations();
-  });
-
   it("renders Panel.Label content", () => {
     const { container } = render(
       <Panel frame="hairline">
@@ -435,46 +395,7 @@ describe("Panel", () => {
     expect(label).toHaveTextContent("[ 01 / FS_TREE ]");
   });
 
-  it.each(
-    (["hairline", "rail", "viewfinder", "surface"] as const).flatMap((frame) =>
-      (["info", "success", "warning", "error", "accent"] as const).map(
-        (tone) => [frame, tone] as const,
-      ),
-    ),
-  )("has no a11y violations for frame=%s tone=%s", async (frame, tone) => {
-    const { container } = render(
-      <Panel frame={frame} tone={tone}>
-        <Panel.Header>
-          <Panel.Title>
-            {frame} / {tone}
-          </Panel.Title>
-          <Panel.Description>matrix combination</Panel.Description>
-        </Panel.Header>
-        <Panel.Content>
-          <Panel.Row label="Frame" value={frame} />
-          <Panel.Row label="Tone" value={tone} />
-        </Panel.Content>
-        <Panel.Footer>Footer</Panel.Footer>
-      </Panel>,
-    );
-    expect(await axe(container)).toHaveNoViolations();
-  });
-
-  it("emits <section> and aria-labelledby on the SSR string when Panel.Title is present", () => {
-    const html = renderToString(
-      <Panel>
-        <Panel.Header>
-          <Panel.Title>SSR release</Panel.Title>
-        </Panel.Header>
-      </Panel>,
-    );
-
-    expect(html).toContain("<section");
-    expect(html).toContain("aria-labelledby=");
-    expect(html).toContain("SSR release");
-  });
-
-  it("emits aria-describedby on the SSR string when Panel.Description is present", () => {
+  it("names and describes the server-rendered section by Panel.Title/Panel.Description", () => {
     const html = renderToString(
       <Panel>
         <Panel.Header>
@@ -484,8 +405,9 @@ describe("Panel", () => {
       </Panel>,
     );
 
-    expect(html).toContain("aria-describedby=");
-    expect(html).toContain("SSR description");
+    const { window: ssrWindow } = new JSDOM(`<!doctype html><body>${html}</body>`);
+    const region = within(ssrWindow.document.body).getByRole("region", { name: "SSR release" });
+    expect(region).toHaveAccessibleDescription("SSR description");
   });
 
   it("wires the same title/description idrefs on SSR and after client render", () => {

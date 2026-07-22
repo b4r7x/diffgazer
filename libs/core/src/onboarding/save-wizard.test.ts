@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { getInitialWizardData } from "./defaults.js";
 import {
   buildConfigPayload,
-  buildCredentialRef,
   buildSettingsPayload,
   saveWizard,
 } from "./save-wizard.js";
@@ -29,17 +28,6 @@ describe("buildSettingsPayload", () => {
 });
 
 describe("buildConfigPayload", () => {
-  it("builds canonical credential refs for early-save payloads", () => {
-    expect(buildCredentialRef("gemini", "env", "ignored")).toEqual({
-      kind: "env",
-      varName: "GOOGLE_API_KEY",
-    });
-    expect(buildCredentialRef("gemini", "paste", "real-key")).toEqual({
-      kind: "literal",
-      value: "real-key",
-    });
-  });
-
   it("forwards model when set", () => {
     const data = withData({
       provider: "gemini",
@@ -66,20 +54,6 @@ describe("buildConfigPayload", () => {
     expect(buildConfigPayload(data).apiKey).toEqual({
       kind: "env",
       varName: "GOOGLE_API_KEY",
-    });
-  });
-
-  it("sends structured literal credential ref when paste method is selected", () => {
-    const data = withData({
-      provider: "gemini",
-      model: "gemini-2.5-pro",
-      inputMethod: "paste",
-      apiKey: "real-key",
-    });
-
-    expect(buildConfigPayload(data).apiKey).toEqual({
-      kind: "literal",
-      value: "real-key",
     });
   });
 

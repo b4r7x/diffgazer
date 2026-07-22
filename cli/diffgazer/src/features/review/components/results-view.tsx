@@ -15,7 +15,7 @@ import { useContentZone } from "../../../components/layout/global";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions";
 import { useTheme } from "../../../theme/provider";
 import { useReviewKeyboard } from "../hooks/use-keyboard";
-import { IssueDetailsPane, type IssueDetailsSubZone } from "./issue-details-pane";
+import { IssueDetailsPane, type IssueDetailsSubZone } from "./issue-details-pane/pane";
 import { IssueListPane, type IssueListSubZone } from "./issue-list-pane";
 
 export interface ReviewResultsViewProps {

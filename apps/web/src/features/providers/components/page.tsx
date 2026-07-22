@@ -115,7 +115,10 @@ export function ProvidersPage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
-      <div className="flex w-full flex-col border-b border-border md:h-full md:w-2/5 md:border-r md:border-b-0">
+      <div
+        className="flex w-full flex-col border-b border-border md:h-full md:w-2/5 md:border-r md:border-b-0"
+        data-layout-pane="provider-list"
+      >
         <ProviderList
           ref={keyboard.listContainerRef}
           providers={filteredProviders}
@@ -145,7 +148,10 @@ export function ProvidersPage() {
           onBoundaryReached={keyboard.handleListBoundary}
         />
       </div>
-      <div className="flex w-full flex-col bg-background md:h-full md:w-3/5">
+      <div
+        className="flex w-full flex-col bg-background md:h-full md:w-3/5"
+        data-layout-pane="provider-details"
+      >
         <ProviderDetails
           provider={selectedProvider}
           actions={actions}

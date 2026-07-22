@@ -10,6 +10,14 @@ describe("sanitizeIssue", () => {
     const issue = makeIssue({
       id: "issue",
       file: `src/app.ts${OSC52}`,
+      title: `title${OSC52}`,
+      rationale: `rationale${OSC52}`,
+      recommendation: `recommendation${OSC52}`,
+      symptom: `symptom${OSC52}`,
+      whyItMatters: `whyItMatters${OSC52}`,
+      suggested_patch: `patch${OSC52}`,
+      betterOptions: [`option-1${OSC52}`, `option-2${OSC52}`],
+      testsToAdd: [`test-1${OSC52}`, `test-2${OSC52}`],
       evidence: [
         {
           type: "code",
@@ -45,6 +53,14 @@ describe("sanitizeIssue", () => {
     expect(result).toMatchObject({
       id: "issue",
       file: "src/app.ts",
+      title: "title",
+      rationale: "rationale",
+      recommendation: "recommendation",
+      symptom: "symptom",
+      whyItMatters: "whyItMatters",
+      suggested_patch: "patch",
+      betterOptions: ["option-1", "option-2"],
+      testsToAdd: ["test-1", "test-2"],
       evidence: [{ title: "evidence", sourceId: "source", file: "src/evidence.ts", sha: "abc123" }],
       fixPlan: [{ action: "action", files: ["src/fix.ts"] }],
       trace: [

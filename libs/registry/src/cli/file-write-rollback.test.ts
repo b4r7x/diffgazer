@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { rollbackFiles, writeFilesWithRollback } from "./file-write-rollback.js";
 
-describe("writeFilesWithRollback dir tracking", () => {
+describe("writeFilesWithRollback filesystem result", () => {
   let tempDir: string;
 
   beforeEach(() => {
@@ -33,9 +33,6 @@ describe("writeFilesWithRollback dir tracking", () => {
     );
 
     expect(existsSync(targetPath)).toBe(true);
-    expect(result.createdDirs).toContain(resolve(tempDir, "src/components"));
-    expect(result.createdDirs).toContain(resolve(tempDir, "src/components/ui"));
-    expect(result.createdDirs).not.toContain(preExisting);
 
     rollbackFiles(result.newFiles, result.backups, result.createdDirs);
 

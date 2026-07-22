@@ -2,74 +2,34 @@
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { AnchorHTMLAttributes, MouseEventHandler, ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PageTree } from "@/lib/page-tree";
 import { stubMatchMedia } from "@/testing/match-media";
 import { DocsSidebar } from "./sidebar";
 
 const routerBoundary = vi.hoisted(() => ({
-  navigations: [] as string[],
   pathname: "/ui/components/button",
 }));
 
-type LinkProps = {
-  to: string;
-  params?: { lib?: string; _splat?: string };
-  children: ReactNode;
-  onClick?: MouseEventHandler<HTMLAnchorElement>;
-} & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href">;
-
-// Boundary mock: TanStack Router is the external routing library; the test controls link navigation semantics.
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ to, params, children, onClick, ...rest }: LinkProps) => {
-    let href = to;
-    if (params?.lib) href = href.replace("$lib", params.lib);
-    href = params?._splat ? href.replace("$", params._splat) : href.replace("/$", "");
-
-    return (
-      <a
-        {...rest}
-        href={href}
-        onClick={(event) => {
-          onClick?.(event);
-          if (
-            event.defaultPrevented ||
-            event.button !== 0 ||
-            event.metaKey ||
-            event.ctrlKey ||
-            event.shiftKey ||
-            event.altKey
-          ) {
-            return;
-          }
-          event.preventDefault();
-          routerBoundary.navigations.push(href);
-        }}
-      >
-        {children}
-      </a>
-    );
-  },
-  useLocation: ({
-    select,
-  }: {
-    select: (location: { href: string; pathname: string }) => unknown;
-  }) =>
-    select({
-      href: routerBoundary.pathname,
-      pathname: routerBoundary.pathname,
+// Boundary mock: @tanstack/react-router is the external route context boundary.
+vi.mock("@tanstack/react-router", async () => {
+  const { RouterLinkMock, useLocationMock, useRouterStateMock } = await import(
+    "@/testing/router-mock"
+  );
+  return {
+    Link: RouterLinkMock,
+    ...useLocationMock({
+      get pathname() {
+        return routerBoundary.pathname;
+      },
     }),
-  useRouterState: ({
-    select,
-  }: {
-    select: (state: { location: { pathname: string }; status: "idle" }) => unknown;
-  }) =>
-    select({
-      location: { pathname: routerBoundary.pathname },
-      status: "idle",
+    ...useRouterStateMock({
+      get pathname() {
+        return routerBoundary.pathname;
+      },
     }),
-}));
+  };
+});
 
 const TREE: PageTree = {
   name: "ui",
@@ -89,7 +49,6 @@ function renderSidebar(onNavigate = vi.fn()) {
 beforeEach(() => {
   stubMatchMedia({ isDesktop: true });
   Element.prototype.scrollIntoView = () => {};
-  routerBoundary.navigations.length = 0;
   routerBoundary.pathname = "/ui/components/button";
   window.history.replaceState(null, "", routerBoundary.pathname);
 });
@@ -97,11 +56,19 @@ beforeEach(() => {
 describe("DocsSidebar navigation", () => {
   it("does not navigate again when the active sidebar link is clicked", async () => {
     const user = userEvent.setup();
-    const onNavigate = renderSidebar();
+    const onNavigate = vi.fn();
+    const bubbledDefaultPrevented: boolean[] = [];
+
+    window.history.replaceState(null, "", routerBoundary.pathname);
+    render(
+      <div onClick={(event) => bubbledDefaultPrevented.push(event.defaultPrevented)}>
+        <DocsSidebar tree={TREE} library="ui" onNavigate={onNavigate} />
+      </div>,
+    );
 
     await user.click(screen.getByRole("link", { name: "Button" }));
 
-    expect(routerBoundary.navigations).toEqual([]);
+    expect(bubbledDefaultPrevented).toEqual([true]);
     expect(onNavigate).toHaveBeenCalledTimes(1);
   });
 
@@ -109,9 +76,11 @@ describe("DocsSidebar navigation", () => {
     const user = userEvent.setup();
     const onNavigate = renderSidebar();
 
-    await user.click(screen.getByRole("link", { name: "Callout" }));
+    const calloutLink = screen.getByRole("link", { name: "Callout" });
+    expect(calloutLink).toHaveAttribute("href", "/ui/components/callout");
 
-    expect(routerBoundary.navigations).toEqual(["/ui/components/callout"]);
+    await user.click(calloutLink);
+
     expect(onNavigate).toHaveBeenCalledTimes(1);
   });
 

@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
@@ -8,7 +9,7 @@ describe("Card", () => {
   it("renders children as a div by default", () => {
     render(<Card>Content</Card>);
 
-    expect(screen.getByText("Content")).toBeInTheDocument();
+    expect(screen.getByText("Content").tagName).toBe("DIV");
   });
 
   it("renders as the specified element when as prop is provided", () => {
@@ -31,13 +32,6 @@ describe("Card", () => {
     );
 
     expect(ref.current).toBe(screen.getByRole("article", { name: "Release" }));
-  });
-
-  it("renders with surface='stacked' and data-slot='card'", () => {
-    render(<Card surface="stacked">Stacked content</Card>);
-
-    const card = screen.getByText("Stacked content");
-    expect(card).toHaveAttribute("data-slot", "card");
   });
 
   it("sets data-interactive when interactive is true", () => {
@@ -87,35 +81,45 @@ describe("Card", () => {
     expect(card).toHaveAttribute("data-slot", "card");
   });
 
-  it("applies the size prop", () => {
-    render(<Card size="sm">Small card</Card>);
+  it.each([
+    ["sm", "max-w-sm"],
+    ["md", "max-w-md"],
+    ["lg", "max-w-lg"],
+  ] as const)("applies the documented cardVariants size mapping for size='%s'", (size, expectedClass) => {
+    render(<Card size={size}>{size} card</Card>);
 
-    const card = screen.getByText("Small card");
-    expect(card).toHaveAttribute("data-slot", "card");
+    const card = screen.getByText(`${size} card`);
+    expect(card).toHaveClass(expectedClass);
   });
 
-  it("renders an interactive card as a focusable button", () => {
+  it("renders an interactive card as a focusable button", async () => {
+    const user = userEvent.setup();
     render(
       <Card as="button" type="button" interactive>
         Open
       </Card>,
     );
 
+    document.body.focus();
+    await user.tab();
+
     const card = screen.getByRole("button", { name: "Open" });
-    card.focus();
     expect(card).toHaveFocus();
     expect(card).toHaveAttribute("data-interactive");
   });
 
-  it("renders an interactive card as a focusable link", () => {
+  it("renders an interactive card as a focusable link", async () => {
+    const user = userEvent.setup();
     render(
       <Card as="a" href="#details" interactive>
         Details
       </Card>,
     );
 
+    document.body.focus();
+    await user.tab();
+
     const card = screen.getByRole("link", { name: "Details" });
-    card.focus();
     expect(card).toHaveFocus();
     expect(card).toHaveAttribute("href", "#details");
   });

@@ -9,11 +9,11 @@ describe("theme preview", () => {
   });
 
   test("paletteForTheme returns darkPalette for 'dark'", () => {
-    expect(paletteForTheme("dark")).toBe(darkPalette);
+    expect(paletteForTheme("dark")).toEqual(darkPalette);
   });
 
   test("paletteForTheme returns lightPalette for 'light'", () => {
-    expect(paletteForTheme("light")).toBe(lightPalette);
+    expect(paletteForTheme("light")).toEqual(lightPalette);
   });
 
   test("paletteForTheme on 'auto' returns the terminal-detected palette", () => {
@@ -21,8 +21,8 @@ describe("theme preview", () => {
 
     const previewPalette = paletteForTheme("auto");
 
-    expect(previewPalette).toBe(lightPalette);
-    expect(previewPalette).not.toBe(darkPalette);
+    expect(previewPalette).toEqual(lightPalette);
+    expect(previewPalette).not.toEqual(darkPalette);
   });
 
   test("TOKEN_GROUPS covers every key in the cross-app vocabulary exactly once", () => {

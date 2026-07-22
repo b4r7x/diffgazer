@@ -15,7 +15,7 @@ const fallback = {
 
 describe("classifyError", () => {
   it("returns the first matching rule for an Error containing a known pattern", () => {
-    const result = classifyError(new Error("Connection ECONNREFUSED"), rules, fallback);
+    const result = classifyError(new Error("timeout while unauthorized"), rules, fallback);
 
     expect(result).toEqual({ code: "NETWORK", message: "Network error" });
   });

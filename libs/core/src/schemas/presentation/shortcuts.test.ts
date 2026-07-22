@@ -3,10 +3,21 @@ import {
   BACK_SHORTCUT,
   BACK_SHORTCUTS,
   HELP_SHORTCUTS,
+  MAIN_MENU_SHORTCUTS,
   NAVIGATE_SHORTCUT,
   TRUST_FOOTER_RIGHT_SHORTCUTS,
   TRUST_FOOTER_SHORTCUTS,
 } from "./shortcuts.js";
+
+describe("MAIN_MENU_SHORTCUTS", () => {
+  it("uses the canonical Navigate/Select/Quit wording", () => {
+    expect(MAIN_MENU_SHORTCUTS).toEqual([
+      { key: "↑/↓", label: "Navigate" },
+      { key: "Enter", label: "Select" },
+      { key: "q", label: "Quit" },
+    ]);
+  });
+});
 
 describe("footer shortcut constants", () => {
   it("declares the canonical Back/Navigate fragments", () => {

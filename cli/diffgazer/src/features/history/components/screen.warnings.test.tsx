@@ -2,6 +2,7 @@ import type { ReviewListWarning } from "@diffgazer/core/schemas/review";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NavigationContext } from "../../../hooks/use-navigation";
+import { buildResponsiveResult, getBreakpointTier } from "../../../lib/breakpoints";
 import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
 import { CliThemeProvider } from "../../../theme/provider";
 import { HistoryScreen } from "./screen";
@@ -29,8 +30,7 @@ vi.mock("../../../hooks/use-terminal-dimensions", () => ({
   useResponsive: () => ({
     columns: terminalSize.columns,
     rows: terminalSize.rows,
-    isNarrow: terminalSize.columns < 80,
-    isMedium: terminalSize.columns >= 80 && terminalSize.columns < 120,
+    ...buildResponsiveResult(getBreakpointTier(terminalSize.columns)),
   }),
   useTerminalDimensions: () => terminalSize,
 }));
@@ -135,10 +135,16 @@ describe("HistoryScreen unreadable review warnings", () => {
       }),
     );
 
-    const frame = renderHistoryScreen().lastFrame();
+    const frame = renderHistoryScreen().lastFrame() ?? "";
 
     expect(frame).toContain("2 saved reviews could not be read.");
     expect(frame).toContain("Readable review");
+
+    const warningIndex = frame.indexOf("2 saved reviews could not be read.");
+    const runLabelIndex = frame.indexOf("Readable review");
+    expect(warningIndex).toBeGreaterThanOrEqual(0);
+    expect(runLabelIndex).toBeGreaterThanOrEqual(0);
+    expect(warningIndex).toBeLessThan(runLabelIndex);
   });
 
   it("shows the warning when every saved review is unreadable", () => {

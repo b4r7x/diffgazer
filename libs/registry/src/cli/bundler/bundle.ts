@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { computeIntegrity } from "../../copy-bundle.js";
-import { atomicWriteFile } from "../fs.js";
+import { atomicWriteFile } from "../fs/writes.js";
 import { metaField, parseRegistryDependencyRef, RegistryContentItemSchema } from "../registry.js";
 import { heading, info, toErrorMessage } from "../terminal.js";
 import { type DetectNpmImportsOptions, detectNpmImports } from "./detect-imports.js";

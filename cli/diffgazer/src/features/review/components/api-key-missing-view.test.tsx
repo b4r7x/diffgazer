@@ -77,6 +77,32 @@ describe("ApiKeyMissingView (TUI)", () => {
     expect(onGoToSettings).not.toHaveBeenCalled();
   });
 
+  test("activates Configure Provider with Enter without needing to navigate to it first", async () => {
+    const onGoToSettings = vi.fn();
+    const onBack = vi.fn();
+    const missing: SetupStatus["missing"] = ["provider"];
+    const { stdin, lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <FooterProvider initialShortcuts={[]}>
+          <ApiKeyMissingView
+            provider="gemini"
+            missing={missing}
+            onGoToSettings={onGoToSettings}
+            onBack={onBack}
+          />
+        </FooterProvider>
+      </CliThemeProvider>,
+    );
+
+    expect(lastFrame()).toContain("Configure Provider");
+
+    stdin.write("\r");
+    await waitUntil(() => onGoToSettings.mock.calls.length === 1);
+
+    expect(onGoToSettings).toHaveBeenCalledTimes(1);
+    expect(onBack).not.toHaveBeenCalled();
+  });
+
   test("offers a real init retry instead of guessing setup state after config-check succeeds", async () => {
     const recoveredInit: Awaited<ReturnType<BoundApi["loadInit"]>> = {
       configPath: "/tmp/diffgazer/config.json",

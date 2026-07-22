@@ -198,7 +198,6 @@ describe("runInitWorkflow rollback", () => {
 
     const restored = JSON.parse(readFileSync(join(tempDir, "tool.json"), "utf-8"));
     expect(restored).toEqual(originalConfig);
-    expect(restored.installedComponents?.["ui/button"]).toBeDefined();
   });
 
   it("only snapshots files declared in plannedPaths (no recursive tree walk)", async () => {
@@ -334,5 +333,44 @@ describe("runInitWorkflow rollback", () => {
 
     expect(readFileSync(join(tempDir, "declared.txt"), "utf-8")).toBe("original\n");
     expect(readFileSync(join(tempDir, "undeclared.txt"), "utf-8")).toBe("modified\n");
+  });
+
+  it("skips re-init and points to --force without touching files when a valid config already exists and force is false", async () => {
+    const originalConfig = { aliases: { components: "@/ui" } };
+    writeFileSync(join(tempDir, "tool.json"), JSON.stringify(originalConfig, null, 2));
+    const originalBytes = readFileSync(join(tempDir, "tool.json"), "utf-8");
+
+    const createFiles = vi.fn(() => []);
+    const afterFiles = vi.fn(async () => {});
+    const writeConfig = vi.fn(() => {});
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    let output: string;
+
+    try {
+      await runInitWorkflow({
+        cwd: tempDir,
+        configFileName: "tool.json",
+        yes: true,
+        force: false,
+        loadConfig: () => ({ ok: true, config: originalConfig }),
+        detectProject: () => ({ display: [] }),
+        plannedPaths: () => [],
+        createFiles,
+        afterFiles,
+        writeConfig,
+        nextSteps: [],
+      });
+      output = [...warnSpy.mock.calls, ...logSpy.mock.calls].flat().join("\n");
+    } finally {
+      warnSpy.mockRestore();
+      logSpy.mockRestore();
+    }
+
+    expect(readFileSync(join(tempDir, "tool.json"), "utf-8")).toBe(originalBytes);
+    expect(output).toContain("--force");
+    expect(createFiles).not.toHaveBeenCalled();
+    expect(afterFiles).not.toHaveBeenCalled();
+    expect(writeConfig).not.toHaveBeenCalled();
   });
 });

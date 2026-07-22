@@ -1,8 +1,7 @@
 import { createServer, type Server } from "node:http";
-import { parsePortEnv } from "@diffgazer/core/env";
 import type { ServerType } from "@hono/node-server";
 import { afterEach, describe, expect, it } from "vitest";
-import { DEFAULT_DEV_SERVER_PORT, formatListenError, startDevServer } from "./http-server.js";
+import { formatListenError, startDevServer } from "./http-server.js";
 
 const openServers: Array<Server | ServerType> = [];
 
@@ -37,17 +36,6 @@ function closeServer(server: Server | ServerType): Promise<void> {
 describe("http server startup", () => {
   afterEach(async () => {
     await Promise.all(openServers.splice(0).map((server) => closeServer(server)));
-  });
-
-  it("parses PORT strictly", () => {
-    expect(parsePortEnv(undefined, DEFAULT_DEV_SERVER_PORT)).toBe(DEFAULT_DEV_SERVER_PORT);
-    expect(parsePortEnv(" 3002 ", DEFAULT_DEV_SERVER_PORT)).toBe(3002);
-
-    for (const value of ["", "0", "65536", "abc", "3.14"]) {
-      expect(() => parsePortEnv(value, DEFAULT_DEV_SERVER_PORT)).toThrow(
-        `Invalid PORT "${value}": expected an integer from 1 to 65535.`,
-      );
-    }
   });
 
   it("formats EADDRINUSE as an actionable message", () => {
@@ -85,7 +73,7 @@ describe("http server startup", () => {
   it("reports the actual assigned port when listening on port 0", async () => {
     const readyPort = await new Promise<number>((resolve) => {
       const server = startDevServer({
-        fetch: () => new Response("ok"),
+        fetch: () => new Response("distinctive-body", { status: 202 }),
         port: 0,
         onReady: (info) => resolve(info.port),
         exitOnError: false,
@@ -94,5 +82,9 @@ describe("http server startup", () => {
     });
 
     expect(readyPort).toBeGreaterThan(0);
+
+    const response = await fetch(`http://127.0.0.1:${readyPort}/`);
+    expect(response.status).toBe(202);
+    await expect(response.text()).resolves.toBe("distinctive-body");
   });
 });

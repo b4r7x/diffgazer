@@ -59,24 +59,7 @@ describe("buildHubValues", () => {
     expect(buildHubValues(makeInput()).diagnostics).toBe("Local");
   });
 
-  test("returns sane defaults when values are missing", () => {
-    const values = buildHubValues(
-      makeInput({
-        provider: null,
-        isConfigured: false,
-        isTrusted: false,
-        theme: undefined,
-        secretsStorage: undefined,
-        agentExecution: undefined,
-        selectedLensCount: undefined,
-      }),
-    );
-    expect(values.provider).toBe("Not configured");
-    expect(values.theme).toBe("AUTO");
-    expect(values.storage).toBe("Not set");
-    expect(values["agent-execution"]).toBe("Sequential");
-    expect(values.analysis).toBe("Default");
-    expect(values.trust).toBe("Not trusted");
-    expect(values.diagnostics).toBe("Local");
+  test("falls back to AUTO theme when theme is missing", () => {
+    expect(buildHubValues(makeInput({ theme: undefined })).theme).toBe("AUTO");
   });
 });

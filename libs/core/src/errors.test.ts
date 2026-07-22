@@ -7,7 +7,7 @@ describe("getErrorMessage", () => {
     ["raw string error", undefined, "raw string error"],
     [{ code: 42 }, undefined, "[object Object]"],
     [null, "fallback msg", "fallback msg"],
-    [undefined, "default", "default"],
+    [{ code: 99 }, "default", "default"],
     [123, undefined, "123"],
   ])("formats %j with fallback %j", (value, fallback, expected) => {
     expect(getErrorMessage(value, fallback)).toBe(expected);

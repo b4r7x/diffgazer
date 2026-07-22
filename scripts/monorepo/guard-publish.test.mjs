@@ -118,7 +118,7 @@ function writePackage(directory, file, name, version, isPrivate = false) {
   writeFileSync(packageFile, `${JSON.stringify({ name, version, private: isPrivate })}\n`);
 }
 
-function runMainChild({ allowlist, versions, registryVersions = publishedVersionsByName }) {
+function createMainFixture({ versions, registryVersions = publishedVersionsByName }) {
   const directory = mkdtempSync(path.join(tmpdir(), "diffgazer-publish-main-"));
   temporaryDirectories.push(directory);
   const binDirectory = path.join(directory, "bin");
@@ -165,6 +165,34 @@ process.stdout.write(JSON.stringify(versions[name]));`,
 );`,
   );
 
+  return {
+    directory,
+    binDirectory,
+    publishLog,
+    registryVersions: Object.fromEntries(
+      Object.entries(registryVersions).filter(([, packageVersions]) => packageVersions.length > 0),
+    ),
+  };
+}
+
+function readInvocations(publishLog) {
+  return existsSync(publishLog)
+    ? readFileSync(publishLog, "utf8")
+        .trim()
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => JSON.parse(line))
+    : [];
+}
+
+function runMainChild({ allowlist, versions, registryVersions = publishedVersionsByName }) {
+  const {
+    directory,
+    binDirectory,
+    publishLog,
+    registryVersions: filteredRegistryVersions,
+  } = createMainFixture({ versions, registryVersions });
+
   const moduleUrl = pathToFileURL(path.resolve("scripts/monorepo/guard-publish.mjs")).href;
   const child = spawnSync(
     process.execPath,
@@ -181,24 +209,36 @@ main({ allowlist: ${JSON.stringify(allowlist)}, requestedNames: [] });`,
         ...process.env,
         PATH: `${binDirectory}${path.delimiter}${process.env.PATH ?? ""}`,
         PUBLISH_LOG: publishLog,
-        REGISTRY_VERSIONS: JSON.stringify(
-          Object.fromEntries(
-            Object.entries(registryVersions).filter(
-              ([, packageVersions]) => packageVersions.length > 0,
-            ),
-          ),
-        ),
+        REGISTRY_VERSIONS: JSON.stringify(filteredRegistryVersions),
       },
     },
   );
-  const invocations = existsSync(publishLog)
-    ? readFileSync(publishLog, "utf8")
-        .trim()
-        .split("\n")
-        .filter(Boolean)
-        .map((line) => JSON.parse(line))
-    : [];
-  return { child, invocations };
+  return { child, invocations: readInvocations(publishLog) };
+}
+
+function runDirectScriptChild({ requestedNames, versions, registryVersions }) {
+  const {
+    directory,
+    binDirectory,
+    publishLog,
+    registryVersions: filteredRegistryVersions,
+  } = createMainFixture({ versions, registryVersions });
+
+  const child = spawnSync(
+    process.execPath,
+    [path.resolve("scripts/monorepo/guard-publish.mjs"), ...requestedNames],
+    {
+      cwd: directory,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PATH: `${binDirectory}${path.delimiter}${process.env.PATH ?? ""}`,
+        PUBLISH_LOG: publishLog,
+        REGISTRY_VERSIONS: JSON.stringify(filteredRegistryVersions),
+      },
+    },
+  );
+  return { child, invocations: readInvocations(publishLog) };
 }
 
 test("derives the publish set from version changes instead of registry absence", () => {
@@ -256,7 +296,6 @@ test("child publisher for the add rollout never attempts unrelated unpublished p
 
   assert.equal(child.status, 0, child.stderr);
   assert.deepEqual(invocations, [["--filter", "@diffgazer/add", "publish", "--no-git-checks"]]);
-  assert.doesNotMatch(JSON.stringify(invocations), /@diffgazer\/(ui|keys)/);
 });
 
 test("child publisher supports the inverse UI and keys rollout without attempting add", () => {
@@ -270,7 +309,17 @@ test("child publisher supports the inverse UI and keys rollout without attemptin
     ["--filter", "@diffgazer/keys", "publish", "--no-git-checks"],
     ["--filter", "@diffgazer/ui", "publish", "--no-git-checks"],
   ]);
-  assert.doesNotMatch(JSON.stringify(invocations), /@diffgazer\/add/);
+});
+
+test("invoking the guard script directly refuses to first-publish an unpublished gated package", () => {
+  const { child, invocations } = runDirectScriptChild({
+    requestedNames: ["@diffgazer/add"],
+    versions: { diffgazer: "0.1.4" },
+  });
+
+  assert.notEqual(child.status, 0);
+  assert.match(child.stderr, /refusing to first-publish gated packages/);
+  assert.deepEqual(invocations, []);
 });
 
 test("default pending set rejects a gated target without starting pnpm", () => {

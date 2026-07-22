@@ -3,9 +3,9 @@ import type { CliMode } from "../../cli-options";
 import { config } from "../../config";
 import { createApiServer } from "./api";
 import { createReadyHandler } from "./browser-launch";
+import type { ServerController } from "./controller";
 import { createEmbeddedServer } from "./embedded";
 import { findGitRoot } from "./git-root";
-import type { ServerController } from "./process";
 import { createWebServer } from "./web";
 
 interface ServerFactoryOptions {

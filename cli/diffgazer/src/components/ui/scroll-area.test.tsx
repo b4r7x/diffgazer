@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { CodeSnippet } from "../../features/review/components/code-snippet";
 import { DiffView } from "../../features/review/components/diff-view";
-import { IssueDetailsPane } from "../../features/review/components/issue-details-pane";
+import { IssueDetailsPane } from "../../features/review/components/issue-details-pane/pane";
 import { CliThemeProvider } from "../../theme/provider";
 import { ScrollArea } from "./scroll-area";
 
@@ -16,6 +16,7 @@ afterEach(() => {
 const ARROW_UP = "\u001b[A";
 const ARROW_DOWN = "\u001b[B";
 const PAGE_UP = "\u001b[5~";
+const PAGE_DOWN = "\u001b[6~";
 const HOME = "\u001b[H";
 const END = "\u001b[F";
 
@@ -288,6 +289,61 @@ describe("ScrollArea autoTail", () => {
     const frame = lastFrame() ?? "";
     expect(frame).toContain("item-2");
     expect(frame).not.toContain("item-0");
+  });
+});
+
+describe("ScrollArea isActive", () => {
+  test("ignores Arrow/Page/End input while inactive and resumes once reactivated", async () => {
+    const { stdin, rerender, lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <ScrollArea height={3} isActive>
+          {items(9)}
+        </ScrollArea>
+      </CliThemeProvider>,
+    );
+    await flush();
+
+    // Scroll while active.
+    stdin.write(ARROW_DOWN);
+    await flush();
+    const scrolledFrame = lastFrame();
+    expect(scrolledFrame).not.toContain("item-8");
+
+    // Deactivate: the viewport must not move on its own.
+    rerender(
+      <CliThemeProvider initialTheme="dark">
+        <ScrollArea height={3} isActive={false}>
+          {items(9)}
+        </ScrollArea>
+      </CliThemeProvider>,
+    );
+    await flush();
+    const frozenFrame = lastFrame();
+    expect(frozenFrame).toBe(scrolledFrame);
+
+    // Arrow/Page/End input while inactive must not move the frame or viewport.
+    stdin.write(ARROW_DOWN);
+    await flush();
+    stdin.write(PAGE_DOWN);
+    await flush();
+    stdin.write(END);
+    await flush();
+    expect(lastFrame()).toBe(frozenFrame);
+
+    // Reactivating resumes input handling.
+    rerender(
+      <CliThemeProvider initialTheme="dark">
+        <ScrollArea height={3} isActive>
+          {items(9)}
+        </ScrollArea>
+      </CliThemeProvider>,
+    );
+    await flush();
+    stdin.write(END);
+    await flush();
+
+    expect(lastFrame()).not.toBe(frozenFrame);
+    expect(lastFrame()).toContain("item-8");
   });
 });
 

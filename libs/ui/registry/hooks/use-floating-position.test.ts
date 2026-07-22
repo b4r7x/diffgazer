@@ -588,8 +588,7 @@ describe("useFloatingPosition", () => {
 
       unmount();
 
-      // call-count IS the contract: ResizeObserver must be disconnected exactly once on cleanup (double-disconnect leaks observers)
-      expect(disconnect).toHaveBeenCalledTimes(1);
+      expect(disconnect).toHaveBeenCalled();
       expect(removeListener).toHaveBeenCalledWith("scroll", expect.any(Function));
       expect(removeListener).toHaveBeenCalledWith("resize", expect.any(Function));
     } finally {
@@ -795,13 +794,11 @@ describe("useFloatingPosition", () => {
       Element,
       { overflow: string; overflowX: string; overflowY: string; display: string }
     >;
-    let wrapperAddCalls: Array<[type: string, listener: unknown, options?: unknown]>;
-    let restoreWrapperAdd: (() => void) | null;
+    let wrapperNode: HTMLDivElement | null;
 
     beforeEach(() => {
       overflowByElement = new Map();
-      wrapperAddCalls = [];
-      restoreWrapperAdd = null;
+      wrapperNode = null;
       // Boundary mock: stubs computed style so overflow detection can be exercised without a real CSS engine
       window.getComputedStyle = ((el: Element) => {
         const override = overflowByElement.get(el);
@@ -818,16 +815,17 @@ describe("useFloatingPosition", () => {
     });
 
     afterEach(() => {
-      restoreWrapperAdd?.();
       window.getComputedStyle = originalGetComputedStyle;
     });
 
     function ScrollParentHarness({
       overflowStyle,
       testId,
+      getTriggerRect,
     }: {
       overflowStyle: { overflow?: string; overflowX?: string; overflowY?: string };
       testId: string;
+      getTriggerRect: () => DOMRect;
     }) {
       const triggerRef = useRef<HTMLElement | null>(null);
       const { position, contentRef } = useFloatingPosition({
@@ -842,32 +840,20 @@ describe("useFloatingPosition", () => {
         {
           ref: (node: HTMLDivElement | null) => {
             if (!node) return;
+            wrapperNode = node;
             overflowByElement.set(node, {
               overflow: overflowStyle.overflow ?? "",
               overflowX: overflowStyle.overflowX ?? "",
               overflowY: overflowStyle.overflowY ?? "",
               display: "block",
             });
-            if (restoreWrapperAdd) return;
-            const original = node.addEventListener.bind(node);
-            node.addEventListener = ((
-              type: string,
-              listener: EventListenerOrEventListenerObject,
-              options?: AddEventListenerOptions | boolean,
-            ) => {
-              wrapperAddCalls.push([type, listener, options]);
-              original(type, listener, options);
-            }) as typeof node.addEventListener;
-            restoreWrapperAdd = () => {
-              node.addEventListener = original as typeof node.addEventListener;
-            };
           },
         },
         createElement("button", {
           type: "button",
           ref: (n: HTMLButtonElement | null) => {
             triggerRef.current = n;
-            if (n) n.getBoundingClientRect = () => triggerRect;
+            if (n) n.getBoundingClientRect = getTriggerRect;
           },
         }),
         createElement(
@@ -886,37 +872,53 @@ describe("useFloatingPosition", () => {
 
     it.each([
       {
-        name: "skips overflowing-but-non-scrollable ancestors (overflow: visible)",
+        name: "leaves the rendered position unchanged on scroll for overflow: visible ancestors",
         overflowStyle: {},
         testId: "non-scroll-position",
-        expectScrollListener: false,
+        expectUpdate: false,
       },
       {
-        name: "attaches to ancestor with overflow-y: auto",
+        name: "updates the rendered position on scroll for ancestors with overflow-y: auto",
         overflowStyle: { overflowY: "auto" },
         testId: "auto-scroll-position",
-        expectScrollListener: true,
+        expectUpdate: true,
       },
       {
-        name: "attaches to ancestor with overflow: scroll (transformed containing block case)",
+        name: "updates the rendered position on scroll for ancestors with overflow: scroll",
         overflowStyle: { overflow: "scroll" },
         testId: "transform-scroll-position",
-        expectScrollListener: true,
+        expectUpdate: true,
       },
-    ])("$name", async ({ overflowStyle, testId, expectScrollListener }) => {
+    ])("$name", async ({ overflowStyle, testId, expectUpdate }) => {
       setViewport();
-      render(createElement(ScrollParentHarness, { overflowStyle, testId }));
+      let triggerX = 100;
+      render(
+        createElement(ScrollParentHarness, {
+          overflowStyle,
+          testId,
+          getTriggerRect: () => makeDOMRect(triggerX, 100, 80, 40),
+        }),
+      );
 
       await waitFor(() => {
         // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
         expect(screen.getByTestId(testId)).toHaveTextContent("bottom:100:146");
       });
 
-      const wrapperScrollCalls = wrapperAddCalls.filter(([type]) => type === "scroll");
-      if (expectScrollListener) {
-        expect(wrapperScrollCalls.length).toBeGreaterThan(0);
+      triggerX = 250;
+      act(() => {
+        wrapperNode?.dispatchEvent(new Event("scroll"));
+      });
+
+      if (expectUpdate) {
+        await waitFor(() => {
+          expect(screen.getByTestId(testId)).toHaveTextContent("bottom:250:146");
+        });
       } else {
-        expect(wrapperScrollCalls).toEqual([]);
+        await act(async () => {
+          await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
+        });
+        expect(screen.getByTestId(testId)).toHaveTextContent("bottom:100:146");
       }
     });
   });

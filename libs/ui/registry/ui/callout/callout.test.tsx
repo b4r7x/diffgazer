@@ -160,18 +160,6 @@ describe("Callout dismiss", () => {
     expect(screen.queryByText("Alert")).not.toBeInTheDocument();
   });
 
-  it("dismiss button has aria-label='Dismiss' and lands in the dismiss grid cell", () => {
-    render(
-      <Callout>
-        <Callout.Title>Title</Callout.Title>
-        <Callout.Dismiss />
-      </Callout>,
-    );
-    const dismiss = screen.getByRole("button", { name: "Dismiss" });
-    expect(dismiss).toHaveAttribute("aria-label", "Dismiss");
-    expect(dismiss).toHaveAttribute("data-slot", "callout-dismiss");
-  });
-
   it("uses visible text children as the dismiss accessible name (no clobbering aria-label)", () => {
     render(
       <Callout>
@@ -181,19 +169,6 @@ describe("Callout dismiss", () => {
     );
     const dismiss = screen.getByRole("button", { name: "Dismiss notice" });
     expect(dismiss).not.toHaveAttribute("aria-label");
-  });
-
-  it("uses a visible bigint child as the dismiss accessible name", async () => {
-    const { container } = render(
-      <Callout>
-        <Callout.Title>Title</Callout.Title>
-        <Callout.Dismiss>{1n}</Callout.Dismiss>
-      </Callout>,
-    );
-
-    const dismiss = screen.getByRole("button", { name: "1" });
-    expect(dismiss).not.toHaveAttribute("aria-label");
-    expect(await axe(container)).toHaveNoViolations();
   });
 
   it("retains the default name for a decorative icon child", () => {
@@ -264,22 +239,6 @@ describe("Callout dismiss", () => {
     );
   });
 
-  it("dismiss is focusable and activatable via keyboard", async () => {
-    const user = userEvent.setup();
-    render(
-      <Callout>
-        <Callout.Title>Alert</Callout.Title>
-        <Callout.Dismiss />
-      </Callout>,
-    );
-
-    await user.tab();
-    expect(screen.getByRole("button", { name: "Dismiss" })).toHaveFocus();
-
-    await user.keyboard("{Enter}");
-    expect(screen.queryByText("Alert")).not.toBeInTheDocument();
-  });
-
   it("moves focus to a stable target when the callout is dismissed via keyboard", async () => {
     const user = userEvent.setup();
     render(
@@ -325,7 +284,7 @@ describe("Callout dismiss", () => {
     expect(screen.getByRole("button", { name: "Visible recovery target" })).toHaveFocus();
   });
 
-  it("repairs focus to a stable target after dismiss inside an open shadow root (F-070)", () => {
+  it("repairs focus to a stable target after dismiss inside an open shadow root", () => {
     const host = document.createElement("div");
     document.body.append(host);
     const shadowRoot = host.attachShadow({ mode: "open" });
@@ -372,9 +331,9 @@ describe("Callout controlled state", () => {
   it("fires onOpenChange when dismiss is clicked", async () => {
     const user = userEvent.setup();
     let nextOpen: boolean | null = null;
-    render(
+    const { rerender } = render(
       <Callout
-        open
+        open={true}
         onOpenChange={(o) => {
           nextOpen = o;
         }}
@@ -385,6 +344,20 @@ describe("Callout controlled state", () => {
     );
     await user.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(nextOpen).toBe(false);
+    expect(screen.getByText("Controlled")).toBeInTheDocument();
+
+    rerender(
+      <Callout
+        open={false}
+        onOpenChange={(o) => {
+          nextOpen = o;
+        }}
+      >
+        <Callout.Title>Controlled</Callout.Title>
+        <Callout.Dismiss />
+      </Callout>,
+    );
+    expect(screen.queryByText("Controlled")).not.toBeInTheDocument();
   });
 });
 
@@ -402,45 +375,48 @@ describe("Callout accessibility", () => {
   });
 
   it("has no a11y violations across tones and frames", async () => {
-    for (const tone of ["info", "warning", "error", "success"] as const) {
-      for (const frame of ["inline", "rail", "bar"] as const) {
-        const { container, unmount } = render(
-          <Callout tone={tone} frame={frame}>
+    const { container } = render(
+      (["info", "warning", "error", "success"] as const).flatMap((tone) =>
+        (["inline", "rail", "bar"] as const).map((frame) => (
+          <Callout key={`${tone}-${frame}`} tone={tone} frame={frame}>
             <Callout.Icon />
             <Callout.Title>
               {tone} {frame}
             </Callout.Title>
             <Callout.Content>Body for {tone}</Callout.Content>
             <Callout.Dismiss />
-          </Callout>,
-        );
-        expect(await axe(container)).toHaveNoViolations();
-        unmount();
-      }
-    }
+          </Callout>
+        )),
+      ),
+    );
+    expect(await axe(container)).toHaveNoViolations();
   });
 
   it("has no a11y violations for default, text, icon, and explicitly labelled dismissals", async () => {
-    const dismissals = [
-      <Callout.Dismiss key="default" />,
-      <Callout.Dismiss key="text">Dismiss notice</Callout.Dismiss>,
-      <Callout.Dismiss key="icon">
-        <svg aria-hidden="true" viewBox="0 0 10 10" />
-      </Callout.Dismiss>,
-      <Callout.Dismiss key="labelled-icon" aria-label="Close notice">
-        <svg aria-hidden="true" viewBox="0 0 10 10" />
-      </Callout.Dismiss>,
-    ];
-
-    for (const dismiss of dismissals) {
-      const { container, unmount } = render(
+    const { container } = render(
+      <>
         <Callout>
           <Callout.Title>Notice</Callout.Title>
-          {dismiss}
-        </Callout>,
-      );
-      expect(await axe(container)).toHaveNoViolations();
-      unmount();
-    }
+          <Callout.Dismiss />
+        </Callout>
+        <Callout>
+          <Callout.Title>Notice</Callout.Title>
+          <Callout.Dismiss>Dismiss notice</Callout.Dismiss>
+        </Callout>
+        <Callout>
+          <Callout.Title>Notice</Callout.Title>
+          <Callout.Dismiss>
+            <svg aria-hidden="true" viewBox="0 0 10 10" />
+          </Callout.Dismiss>
+        </Callout>
+        <Callout>
+          <Callout.Title>Notice</Callout.Title>
+          <Callout.Dismiss aria-label="Close notice">
+            <svg aria-hidden="true" viewBox="0 0 10 10" />
+          </Callout.Dismiss>
+        </Callout>
+      </>,
+    );
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

@@ -43,7 +43,7 @@
     "url": "https://github.com/b4r7x/diffgazer/issues"
   },
   "scripts": {
-    "build": "pnpm validate:registry && rm -rf dist && tsc && pnpm verify:dist-esm && pnpm verify:rsc && pnpm build:shadcn && pnpm build:artifacts",
+    "build": "pnpm build:shadcn && pnpm validate:registry && rm -rf dist && tsc && pnpm verify:dist-esm && pnpm verify:rsc && pnpm build:artifacts",
     "build:shadcn": "node --import tsx scripts/build-shadcn-registry.ts && biome format --write public/r",
     "build:artifacts": "pnpm build:docs-data && node --import tsx scripts/build-publish-artifacts.ts",
     "build:docs-data": "node --import tsx scripts/build-docs-data.ts",

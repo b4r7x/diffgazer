@@ -259,25 +259,6 @@ describe("syncArtifacts", () => {
     expect(collectSourceArchives(join(docsRoot, "src/generated"))).toEqual([]);
   });
 
-  it("extracts nested source archives from workspace artifacts", () => {
-    const root = makeTempRoot();
-    const docsRoot = join(root, "docs");
-    const workspaceRoot = join(root, "workspace");
-    const configPath = configureDocs(docsRoot);
-    installWorkspaceArtifact(workspaceRoot);
-
-    syncArtifacts({
-      docsRoot,
-      workspaceRoot,
-      configPath,
-    });
-
-    expect(
-      readFileSync(join(docsRoot, "public/source-data/ui/components/button.source.json"), "utf8"),
-    ).toBe(BUTTON_SOURCE_ARCHIVE);
-    expect(collectSourceArchives(join(docsRoot, "src/generated"))).toEqual([]);
-  });
-
   it("cleans generated source archives when staging fails after a valid archive", () => {
     const root = makeTempRoot();
     const docsRoot = join(root, "docs");

@@ -1,22 +1,17 @@
 import type { DiagnosticsData } from "@diffgazer/core/api/hooks";
+import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { CliThemeProvider } from "../../../theme/provider";
 
 const ARROW_RIGHT = "\u001B[C";
 
-type RefreshAllDiagnostics = (
-  data: Pick<DiagnosticsData, "retryServer" | "refetchContext">,
-) => Promise<PromiseSettledResult<unknown>[]>;
-
 const diagnosticsDataMock = vi.hoisted(() => vi.fn<() => DiagnosticsData>());
-const refreshAllDiagnosticsMock = vi.hoisted(() => vi.fn<RefreshAllDiagnostics>());
 
 vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@diffgazer/core/api/hooks")>();
   return {
     ...actual,
-    refreshAllDiagnostics: refreshAllDiagnosticsMock,
     useDiagnosticsData: diagnosticsDataMock,
   };
 });
@@ -75,8 +70,11 @@ function makeDiagnosticsData(overrides: Partial<DiagnosticsData> = {}): Diagnost
 describe("DiagnosticsScreen", () => {
   test("keeps button focus after Tab when no list zone exists", async () => {
     const handleRefreshContext = vi.fn();
-    diagnosticsDataMock.mockReturnValue(makeDiagnosticsData({ handleRefreshContext }));
-    refreshAllDiagnosticsMock.mockResolvedValue([]);
+    const retryServer = vi.fn().mockResolvedValue(undefined);
+    const refetchContext = vi.fn().mockResolvedValue(undefined);
+    diagnosticsDataMock.mockReturnValue(
+      makeDiagnosticsData({ handleRefreshContext, retryServer, refetchContext }),
+    );
 
     const view = render(
       <CliThemeProvider initialTheme="dark">
@@ -93,6 +91,48 @@ describe("DiagnosticsScreen", () => {
     await flush();
 
     expect(handleRefreshContext).toHaveBeenCalledTimes(1);
-    expect(refreshAllDiagnosticsMock).not.toHaveBeenCalled();
+    expect(retryServer).not.toHaveBeenCalled();
+    expect(refetchContext).not.toHaveBeenCalled();
+  });
+
+  test("refreshes both diagnostics collaborators once, stays busy while pending, and can run again after settling", async () => {
+    const retry = createDeferred<unknown>();
+    const refetch = createDeferred<unknown>();
+    const retryServer = vi.fn(() => retry.promise);
+    const refetchContext = vi.fn(() => refetch.promise);
+    diagnosticsDataMock.mockReturnValue(makeDiagnosticsData({ retryServer, refetchContext }));
+
+    const view = render(
+      <CliThemeProvider initialTheme="dark">
+        <DiagnosticsScreen />
+      </CliThemeProvider>,
+    );
+
+    await flush();
+    view.stdin.write("\r");
+    await flush();
+
+    expect(retryServer).toHaveBeenCalledTimes(1);
+    expect(refetchContext).toHaveBeenCalledTimes(1);
+    expect(view.lastFrame()).toContain("Refreshing...");
+
+    view.stdin.write("\r");
+    await flush();
+
+    expect(retryServer).toHaveBeenCalledTimes(1);
+    expect(refetchContext).toHaveBeenCalledTimes(1);
+
+    retry.resolve(undefined);
+    refetch.reject(new Error("boom"));
+    await flush();
+
+    expect(view.lastFrame()).not.toContain("Refreshing...");
+    expect(view.lastFrame()).toContain("Refresh Diagnostics");
+
+    view.stdin.write("\r");
+    await flush();
+
+    expect(retryServer).toHaveBeenCalledTimes(2);
+    expect(refetchContext).toHaveBeenCalledTimes(2);
   });
 });

@@ -13,12 +13,14 @@
     {
       "path": "registry/ui/textarea/index.ts",
       "content": "\"use client\";\n\nexport { Textarea, type TextareaProps } from \"./textarea\";\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/textarea/index.ts"
     },
     {
       "path": "registry/ui/textarea/textarea.tsx",
       "content": "\"use client\";\n\nimport type { VariantProps } from \"class-variance-authority\";\nimport type { Ref, TextareaHTMLAttributes } from \"react\";\nimport { inputVariants } from \"@/lib/input-variants\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for textarea. */\nexport interface TextareaProps\n  extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, \"size\">,\n    VariantProps<typeof inputVariants> {\n  /** Ref forwarded to the underlying element. */\n  ref?: Ref<HTMLTextAreaElement>;\n}\n\n/**\n * Terminal-styled multi-line text area with size variants and invalid state. Shares base\n * styling with Input via input-variants.\n */\nexport function Textarea({ className, size, ref, ...props }: TextareaProps) {\n  return (\n    <textarea\n      data-slot=\"textarea\"\n      className={cn(inputVariants({ size }), \"h-auto min-h-20 resize-y\", className)}\n      ref={ref}\n      {...props}\n    />\n  );\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/textarea/textarea.tsx"
     }
   ],
   "meta": {

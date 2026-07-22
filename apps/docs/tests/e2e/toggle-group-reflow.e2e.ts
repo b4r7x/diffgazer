@@ -88,7 +88,6 @@ test.describe("ToggleGroup reflow", () => {
     await expectWrappedWithoutOverflow(defaultGroup);
     await pillGroup.scrollIntoViewIfNeeded();
     await expectWrappedWithoutOverflow(pillGroup);
-    await expect(pillGroup.locator('[data-slot="toggle-group-pill"]')).toHaveCount(0);
 
     const modified = pillGroup.getByRole("radio", { name: "Modified" });
     const deleted = pillGroup.getByRole("radio", { name: "Deleted" });

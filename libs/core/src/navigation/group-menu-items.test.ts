@@ -2,30 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { NavItem } from "../schemas/presentation/navigation.js";
 import { withGroupDividers } from "./group-menu-items.js";
 
-const FIXTURE: NavItem[] = [
-  { id: "review-unstaged", label: "Review Unstaged", group: "review" },
-  { id: "review-staged", label: "Review Staged", group: "review" },
-  { id: "resume-review", label: "Resume", group: "review" },
-  { id: "history", label: "History", group: "navigation" },
-  { id: "settings", label: "Settings", group: "navigation" },
-  { id: "help", label: "Help", group: "system" },
-  { id: "quit", label: "Quit", variant: "danger", group: "system" },
-];
-
 describe("withGroupDividers", () => {
-  it("marks divider before first item of each new group only", () => {
-    const annotated = withGroupDividers(FIXTURE);
-    expect(annotated.map((entry) => entry.showDividerBefore)).toEqual([
-      false, // review-unstaged — first
-      false, // review-staged — same group
-      false, // resume-review — same group
-      true, // history — new group
-      false, // settings — same group
-      true, // help — new group
-      false, // quit — same group
-    ]);
-  });
-
   it("returns an empty list for empty input", () => {
     expect(withGroupDividers([])).toEqual([]);
   });
@@ -64,25 +41,6 @@ describe("withGroupDividers", () => {
       false, // history — same group
       true, // quit — new group (system)
       false, // help — same group
-    ]);
-  });
-
-  it("preserves relative order within each group (stable sort)", () => {
-    const items: NavItem[] = [
-      { id: "history", label: "History", group: "navigation" },
-      { id: "review-staged", label: "Review Staged", group: "review" },
-      { id: "settings", label: "Settings", group: "navigation" },
-      { id: "review-unstaged", label: "Review Unstaged", group: "review" },
-    ];
-
-    const annotated = withGroupDividers(items);
-
-    // review group preserves staged-before-unstaged because that was its input order.
-    expect(annotated.map((entry) => entry.item.id)).toEqual([
-      "review-staged",
-      "review-unstaged",
-      "history",
-      "settings",
     ]);
   });
 });

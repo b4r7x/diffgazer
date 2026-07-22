@@ -9,6 +9,7 @@ afterEach(() => {
 });
 
 const ARROW_DOWN = "\u001b[B";
+const ARROW_UP = "\u001b[A";
 const RETURN = "\r";
 const ESCAPE = "\u001b";
 
@@ -52,6 +53,11 @@ describe("Menu navigation", () => {
     stdin.write(ARROW_DOWN);
     await flush();
     expect(onHighlightChange).toHaveBeenLastCalledWith("a");
+
+    stdin.write(ARROW_UP);
+    await flush();
+    expect(onHighlightChange).toHaveBeenLastCalledWith("c");
+    expect(lastFrame()).toContain("> Charlie");
   });
 
   test("return selects the highlighted item and never selects a disabled item", async () => {
@@ -78,7 +84,6 @@ describe("Menu navigation", () => {
 
     stdin.write(ESCAPE);
     await waitUntil(() => onClose.mock.calls.length === 1);
-    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   test("a hotkey selects its item regardless of the current highlight", async () => {

@@ -1,4 +1,4 @@
-import { ok } from "@diffgazer/core/result";
+import { err, ok } from "@diffgazer/core/result";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
@@ -132,6 +132,28 @@ describe("resumeStreamById freshness gating", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/event-stream");
+  });
+
+  it("keeps an in-flight session streaming when the reconnect head-commit read fails", async () => {
+    const session = createSession(REVIEW_ID, {
+      projectPath: PROJECT_PATH,
+      headCommit: "abc123",
+      statusHash: "stored-hash",
+      statusHashKind: "full",
+      mode: "unstaged",
+    });
+    markReady(REVIEW_ID);
+    // A head-commit read failure means freshness cannot be verified, distinct from
+    // a genuinely changed hash, even though the status hash also changed here.
+    gitService.getHeadCommit.mockResolvedValue(err({ message: "git failed" }));
+    setStatusHash({ kind: "full", hash: "changed-hash" });
+
+    const response = await resume();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+    expect(getSession(REVIEW_ID)?.isComplete).toBe(false);
+    expect(session.controller.signal.aborted).toBe(false);
   });
 
   it("replays a completed session within retention even when the status hash changed", async () => {

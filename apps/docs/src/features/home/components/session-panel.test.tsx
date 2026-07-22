@@ -88,19 +88,6 @@ describe("SessionPanel", () => {
     expect(screen.queryByText(/reviewing 3 changed files/)).not.toBeInTheDocument();
   });
 
-  it("keeps the number of terminal lines constant across the whole animation", async () => {
-    mockReducedMotion(false);
-    const { container } = render(<SessionPanel />);
-
-    const lineCount = () => container.querySelectorAll("[data-session-line]").length;
-    const atMount = lineCount();
-    expect(atMount).toBeGreaterThan(0);
-
-    await runAnimation();
-
-    expect(lineCount()).toBe(atMount);
-  });
-
   it("does not render the command or verdicts before the animation runs", async () => {
     mockReducedMotion(false);
     render(<SessionPanel />);

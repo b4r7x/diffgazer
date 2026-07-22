@@ -38,7 +38,9 @@ describe("parsedDiffIdentity", () => {
     expect(parsedDiffIdentity(hunk("one"))).not.toBe(parsedDiffIdentity(hunk("two")));
   });
 
-  it("encodes an empty diff without throwing", () => {
-    expect(parsedDiffIdentity(EMPTY)).toContain("\x00");
+  it("returns the same identity for structurally equal empty diffs", () => {
+    expect(parsedDiffIdentity(EMPTY)).toBe(
+      parsedDiffIdentity({ oldPath: null, newPath: null, hunks: [] }),
+    );
   });
 });

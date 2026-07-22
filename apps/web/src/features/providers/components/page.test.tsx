@@ -1,6 +1,6 @@
 import type { BoundApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
-import { FooterProvider } from "@diffgazer/core/footer";
+import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
 import {
   AVAILABLE_PROVIDERS,
   type InitResponse,
@@ -10,10 +10,11 @@ import {
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { Footer } from "@/components/layout/footer";
 import { ConfigProvider } from "@/hooks/use-config";
 import { clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { ProvidersPage } from "./page";
@@ -107,7 +108,12 @@ beforeEach(() => {
   clearScopedRouteState("/providers-page-test", "providerId");
 });
 
-function renderProvidersPage(api: Partial<BoundApi>) {
+function FooterView() {
+  const { shortcuts, rightShortcuts } = useFooterData();
+  return <Footer shortcuts={shortcuts} rightShortcuts={rightShortcuts} />;
+}
+
+function renderProvidersPage(api: Partial<BoundApi>, ui: ReactNode = <ProvidersPage />) {
   const { Wrapper: ApiWrapper } = createTestQueryWrapper({
     ApiProvider,
     api: {
@@ -131,7 +137,7 @@ function renderProvidersPage(api: Partial<BoundApi>) {
     );
   }
 
-  return render(<ProvidersPage />, { wrapper: Wrapper });
+  return render(ui, { wrapper: Wrapper });
 }
 
 async function selectProvider(user: ReturnType<typeof userEvent.setup>, name: string) {
@@ -253,6 +259,41 @@ describe("ProvidersPage activation prerequisites", () => {
     expect(activateProvider).toHaveBeenCalledOnce();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
+});
+
+describe("ProvidersPage footer integration", () => {
+  it("clears page footer shortcuts while the API-key dialog is open and restores them after close", async () => {
+    const user = userEvent.setup();
+    renderProvidersPage(
+      {},
+      <>
+        <ProvidersPage />
+        <FooterView />
+      </>,
+    );
+
+    await selectProvider(user, "Google Gemini");
+    expect(screen.getByText("Navigate Providers")).toBeInTheDocument();
+    expect(screen.getByText("Back")).toBeInTheDocument();
+
+    const dialog = await openApiKeyDialog(user);
+    expect(screen.queryByText("Navigate Providers")).not.toBeInTheDocument();
+    expect(screen.queryByText("Back")).not.toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    const dialogElement = document.querySelector("dialog");
+    // fireEvent retained: animationEnd has no userEvent equivalent, and the dialog stays
+    // mounted until its close animation ends.
+    if (dialogElement) fireEvent.animationEnd(dialogElement);
+
+    const list = screen.getByRole("listbox", { name: "Providers" });
+    await user.click(within(list).getByRole("option", { name: /Google Gemini/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Navigate Providers")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Back")).toBeInTheDocument();
+  }, 15_000);
 });
 
 describe("ProvidersPage dialog ownership", () => {

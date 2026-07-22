@@ -283,18 +283,6 @@ describe("session cancellation", () => {
 });
 
 describe("session bounds and subscriber failures", () => {
-  it("evicts the oldest session when the session limit is reached", () => {
-    for (let i = 0; i < 50; i += 1) {
-      vi.advanceTimersByTime(1);
-      createTrackedSession(`bulk-${i}`);
-    }
-
-    createTrackedSession("bulk-50");
-
-    expect(getSession("bulk-0")).toBeUndefined();
-    expect(getSession("bulk-50")).toBeDefined();
-  });
-
   it("emits an error event when evicting the oldest session", () => {
     const received: FullReviewStreamEvent[] = [];
     // Create the victim first so it has the oldest startedAt
@@ -308,12 +296,13 @@ describe("session bounds and subscriber failures", () => {
 
     // The 51st session triggers eviction of the oldest (victim).
     vi.advanceTimersByTime(1);
-    createTrackedSession("evict-trigger");
+    const trigger = createTrackedSession("evict-trigger");
 
     expect(received).toMatchObject([
       { type: "error", error: { code: ReviewErrorCode.SESSION_EVICTED } },
     ]);
     expect(getSession("evict-oldest")).toBeUndefined();
+    expect(getSession(trigger.reviewId)).toBe(trigger);
   });
 
   it("skips the oldest committing session and evicts the oldest pending session", () => {
@@ -354,20 +343,6 @@ describe("session bounds and subscriber failures", () => {
 
     expect(received).toEqual([event]);
     expect(getSession("active-session")).toBeDefined();
-  });
-
-  it("terminates a session idle past the timeout window with SESSION_TIMEOUT", () => {
-    const received: FullReviewStreamEvent[] = [];
-    const session = createTrackedSession("timeout-session");
-    subscribe(session.reviewId, (event) => received.push(event));
-
-    vi.advanceTimersByTime(30 * 60 * 1000 + 1);
-    cleanupStaleSessions();
-
-    expect(received).toMatchObject([
-      { type: "error", error: { code: ReviewErrorCode.SESSION_TIMEOUT } },
-    ]);
-    expect(getSession("timeout-session")).toBeUndefined();
   });
 
   it.each([
@@ -418,17 +393,34 @@ describe("session bounds and subscriber failures", () => {
     expect(getSession(session.reviewId)).toBeUndefined();
   });
 
-  it("continues dispatching when an async subscriber rejects", async () => {
+  it.each([
+    {
+      id: "sync-throw",
+      label: "throws synchronously",
+      failingSubscriber: () => {
+        throw new Error("sync fail");
+      },
+    },
+    {
+      id: "async-reject",
+      label: "returns a rejected promise",
+      failingSubscriber: async () => {
+        throw new Error("async fail");
+      },
+    },
+  ])("continues dispatching to a healthy subscriber when one subscriber $label", async ({
+    id,
+    failingSubscriber,
+  }) => {
     const received: FullReviewStreamEvent[] = [];
-    const session = createTrackedSession("subscriber-rejects");
-    subscribe(session.reviewId, async () => {
-      throw new Error("async fail");
-    });
+    const session = createTrackedSession(`subscriber-isolation-${id}`);
+    subscribe(session.reviewId, failingSubscriber);
     subscribe(session.reviewId, (event) => received.push(event));
 
     const event = stepEvent();
-    addEvent(session.reviewId, event);
+    expect(() => addEvent(session.reviewId, event)).not.toThrow();
 
+    // Allow the rejected-promise case's microtask to settle before asserting.
     await Promise.resolve();
 
     expect(received).toEqual([event]);

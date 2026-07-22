@@ -15,11 +15,6 @@ describe("UserConfigSchema refine — model/provider validation", () => {
     success: boolean;
   }>([
     {
-      name: "gemini with a known gemini model",
-      overrides: { model: "gemini-2.5-flash" },
-      success: true,
-    },
-    {
       name: "gemini with a fresh (catalog-supplied) id",
       overrides: { model: "gemini-3-pro" },
       success: true,
@@ -73,11 +68,6 @@ describe("AI_PROVIDERS enum membership", () => {
       "groq",
       "cerebras",
     ]);
-  });
-
-  it("parses groq and cerebras as valid providers", () => {
-    expect(AIProviderSchema.safeParse("groq").success).toBe(true);
-    expect(AIProviderSchema.safeParse("cerebras").success).toBe(true);
   });
 
   it("rejects an unknown provider id", () => {

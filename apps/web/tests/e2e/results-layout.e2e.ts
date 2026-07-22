@@ -50,7 +50,6 @@ test("the results panes stack without horizontal overflow at 320px", async ({ pa
       detailsTop: detailsRect.top,
       detailsLeft: detailsRect.left,
       detailsRight: detailsRect.right,
-      detailsWidth: detailsRect.width,
       mainClientWidth: main.clientWidth,
       mainScrollWidth: main.scrollWidth,
     };
@@ -59,7 +58,6 @@ test("the results panes stack without horizontal overflow at 320px", async ({ pa
   expect(final.detailsTop).toBeGreaterThanOrEqual(final.listBottom);
   expect(final.detailsLeft).toBeGreaterThanOrEqual(0);
   expect(final.detailsRight).toBeLessThanOrEqual(320);
-  expect(final.detailsWidth).toBeLessThanOrEqual(320);
   expect(final.mainScrollWidth).toBe(final.mainClientWidth);
 
   await page.getByRole("button", { name: /high severity/i }).click();

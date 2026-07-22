@@ -261,46 +261,46 @@ describe("useOutsideClick", () => {
 
   it("does not re-register the stack entry when an inline excludeRefs array changes identity", async () => {
     const user = userEvent.setup();
-    const inside = document.createElement("div");
-    const outside = document.createElement("div");
+    const lower = document.createElement("div");
+    const upper = document.createElement("div");
     const excluded = document.createElement("div");
-    document.body.append(inside, outside, excluded);
+    const outside = document.createElement("button");
+    document.body.append(lower, upper, excluded, outside);
 
-    const ref = createRef<HTMLElement>() as React.MutableRefObject<HTMLElement | null>;
-    ref.current = inside;
+    const lowerRef = createRef<HTMLElement>() as React.MutableRefObject<HTMLElement | null>;
+    lowerRef.current = lower;
+    const upperRef = createRef<HTMLElement>() as React.MutableRefObject<HTMLElement | null>;
+    upperRef.current = upper;
     const excludeRef = createRef<HTMLElement>() as React.MutableRefObject<HTMLElement | null>;
     excludeRef.current = excluded;
-    const handler = vi.fn();
+    const lowerHandler = vi.fn();
+    const upperHandler = vi.fn();
 
-    // Detaching/re-pushing the stack entry would refcount the document listener
-    // down and back up — spy on the document to prove no churn occurs.
-    const addSpy = vi.spyOn(document, "addEventListener");
-    const removeSpy = vi.spyOn(document, "removeEventListener");
-
-    const { rerender } = renderHook(() =>
-      // New inline array identity every render.
-      useOutsideClick(ref, handler, true, [excludeRef]),
-    );
-    const addCallsAfterMount = addSpy.mock.calls.length;
+    const { rerender } = renderHook(() => {
+      // New inline array identity every render for the lower layer.
+      useOutsideClick(lowerRef, lowerHandler, true, [excludeRef]);
+      useOutsideClick(upperRef, upperHandler, true);
+    });
 
     rerender();
     rerender();
 
-    // No additional attach/detach from the re-renders (entry registered once).
-    expect(addSpy.mock.calls.length).toBe(addCallsAfterMount);
-    expect(removeSpy).not.toHaveBeenCalled();
-
-    // The latest excludeRefs is still honored.
-    await user.click(excluded);
-    expect(handler).not.toHaveBeenCalled();
+    // An outside press still dismisses only the unchanged upper (topmost) layer.
     await user.click(outside);
-    expect(handler).toHaveBeenCalledOnce();
+    expect(upperHandler).toHaveBeenCalledOnce();
+    expect(lowerHandler).not.toHaveBeenCalled();
 
-    addSpy.mockRestore();
-    removeSpy.mockRestore();
-    inside.remove();
-    outside.remove();
+    // The lower layer honors its latest excluded ref and dismisses on a real
+    // outside press once it becomes topmost.
+    upper.remove();
+    await user.click(excluded);
+    expect(lowerHandler).not.toHaveBeenCalled();
+    await user.click(outside);
+    expect(lowerHandler).toHaveBeenCalledOnce();
+
+    lower.remove();
     excluded.remove();
+    outside.remove();
   });
 
   it("does not call handler after unmount", async () => {
@@ -435,6 +435,29 @@ describe("useOutsideClick", () => {
     expect(lowerHandler).not.toHaveBeenCalled();
   });
 
+  it("routes Escape to the sole enabled layer, then to a newly enabled higher layer", async () => {
+    const user = userEvent.setup();
+    const lowerHandler = vi.fn();
+    const upperHandler = vi.fn();
+
+    const { rerender } = renderHook(
+      ({ upperEnabled }) => {
+        useEscapeKey(lowerHandler, true);
+        useEscapeKey(upperHandler, upperEnabled);
+      },
+      { initialProps: { upperEnabled: false } },
+    );
+
+    await user.keyboard("{Escape}");
+    expect(lowerHandler).toHaveBeenCalledOnce();
+    expect(upperHandler).not.toHaveBeenCalled();
+
+    rerender({ upperEnabled: true });
+    await user.keyboard("{Escape}");
+    expect(upperHandler).toHaveBeenCalledOnce();
+    expect(lowerHandler).toHaveBeenCalledOnce();
+  });
+
   it("ignores Escape dispatched during IME composition", () => {
     const handler = vi.fn();
 
@@ -487,37 +510,43 @@ describe("useOutsideClick", () => {
     expect(firstHandler).not.toHaveBeenCalled();
   });
 
-  it("attaches listeners to the ref's ownerDocument, not the host document", () => {
-    const altDoc = document.implementation.createHTMLDocument("alt");
-    const altInside = altDoc.createElement("div");
-    const altOutside = altDoc.createElement("div");
-    altDoc.body.append(altInside, altOutside);
+  it("dismisses on a fresh outside press in the ref's ownerDocument but ignores the host document", () => {
+    const iframe = document.createElement("iframe");
+    document.body.appendChild(iframe);
+    const iframeDocument = iframe.contentDocument;
+    if (!iframeDocument) throw new Error("Expected iframe document");
+    const inside = iframeDocument.createElement("div");
+    const outside = iframeDocument.createElement("button");
+    iframeDocument.body.append(inside, outside);
+    const hostOutside = document.createElement("button");
+    document.body.appendChild(hostOutside);
 
-    const ref = createRef<HTMLElement>() as React.MutableRefObject<HTMLElement | null>;
-    ref.current = altInside;
+    const ref: React.RefObject<HTMLElement | null> = { current: inside };
     const handler = vi.fn();
+    const { unmount } = renderHook(() => useOutsideClick(ref, handler, true));
 
-    const altAddSpy = vi.spyOn(altDoc, "addEventListener");
-    const hostAddSpy = vi.spyOn(document, "addEventListener");
+    // Dispatch fresh pointer events from the iframe's own realm — its window
+    // has its own PointerEvent constructor, distinct from the host window's.
+    if (!iframeDocument.defaultView) throw new Error("Expected iframe window");
+    const IframePointerEvent = iframeDocument.defaultView.PointerEvent;
 
-    try {
-      renderHook(() => useOutsideClick(ref, handler, true));
+    inside.dispatchEvent(new IframePointerEvent("pointerdown", { bubbles: true }));
+    expect(handler).not.toHaveBeenCalled();
 
-      // Listener registers on alt document, not host document.
-      const pointerLikeTypes = ["pointerdown", "mousedown", "touchstart"];
-      const altCalls = altAddSpy.mock.calls.filter(([type]) =>
-        pointerLikeTypes.includes(String(type)),
-      );
-      const hostCalls = hostAddSpy.mock.calls.filter(([type]) =>
-        pointerLikeTypes.includes(String(type)),
-      );
+    // A press in the host document is ignored: listeners attach only to the
+    // ref's ownerDocument.
+    hostOutside.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    expect(handler).not.toHaveBeenCalled();
 
-      expect(altCalls.length).toBeGreaterThan(0);
-      expect(hostCalls).toHaveLength(0);
-    } finally {
-      altAddSpy.mockRestore();
-      hostAddSpy.mockRestore();
-    }
+    outside.dispatchEvent(new IframePointerEvent("pointerdown", { bubbles: true }));
+    expect(handler).toHaveBeenCalledOnce();
+
+    unmount();
+    outside.dispatchEvent(new IframePointerEvent("pointerdown", { bubbles: true }));
+    expect(handler).toHaveBeenCalledOnce();
+
+    hostOutside.remove();
+    iframe.remove();
   });
 
   it("treats primary and excluded refs across documents as one logical layer", () => {
@@ -537,14 +566,23 @@ describe("useOutsideClick", () => {
     const handler = vi.fn();
     const { unmount } = renderHook(() => useOutsideClick(primaryRef, handler, true, [excludedRef]));
 
-    const press = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
-    hostOutside.dispatchEvent(press);
-    iframeOutside.dispatchEvent(press);
+    // Dispatch fresh pointer events from the iframe's own realm — its window
+    // has its own PointerEvent constructor, distinct from the host window's.
+    if (!iframeDocument.defaultView) throw new Error("Expected iframe window");
+    const IframePointerEvent = iframeDocument.defaultView.PointerEvent;
+
+    excluded.dispatchEvent(new IframePointerEvent("pointerdown", { bubbles: true }));
+    expect(handler).not.toHaveBeenCalled();
+
+    hostOutside.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
     expect(handler).toHaveBeenCalledOnce();
 
+    iframeOutside.dispatchEvent(new IframePointerEvent("pointerdown", { bubbles: true }));
+    expect(handler).toHaveBeenCalledTimes(2);
+
     unmount();
-    iframeOutside.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-    expect(handler).toHaveBeenCalledOnce();
+    iframeOutside.dispatchEvent(new IframePointerEvent("pointerdown", { bubbles: true }));
+    expect(handler).toHaveBeenCalledTimes(2);
 
     primary.remove();
     hostOutside.remove();
@@ -552,27 +590,24 @@ describe("useOutsideClick", () => {
   });
 
   it("routes Escape from the ref's ownerDocument only", () => {
-    const altDoc = document.implementation.createHTMLDocument("alt");
-    const altInside = altDoc.createElement("div");
-    altDoc.body.append(altInside);
+    const iframe = document.createElement("iframe");
+    document.body.appendChild(iframe);
+    const iframeDocument = iframe.contentDocument;
+    if (!iframeDocument) throw new Error("Expected iframe document");
+    const inside = iframeDocument.createElement("div");
+    iframeDocument.body.append(inside);
 
-    const ref = createRef<HTMLElement>() as React.MutableRefObject<HTMLElement | null>;
-    ref.current = altInside;
+    const ref: React.RefObject<HTMLElement | null> = { current: inside };
     const handler = vi.fn();
 
-    const altAddSpy = vi.spyOn(altDoc, "addEventListener");
-    const hostAddSpy = vi.spyOn(document, "addEventListener");
+    renderHook(() => useEscapeKey(handler, true, { ref }));
 
-    try {
-      renderHook(() => useEscapeKey(handler, true, { ref }));
+    iframeDocument.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    expect(handler).toHaveBeenCalledOnce();
 
-      const altKeydown = altAddSpy.mock.calls.filter(([type]) => type === "keydown");
-      const hostKeydown = hostAddSpy.mock.calls.filter(([type]) => type === "keydown");
-      expect(altKeydown.length).toBeGreaterThan(0);
-      expect(hostKeydown).toHaveLength(0);
-    } finally {
-      altAddSpy.mockRestore();
-      hostAddSpy.mockRestore();
-    }
+    document.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    expect(handler).toHaveBeenCalledOnce();
+
+    iframe.remove();
   });
 });

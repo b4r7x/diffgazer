@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createApiClient } from "./client.js";
 import {
   activateProvider,
   deleteProviderCredentials,
@@ -7,7 +8,7 @@ import {
   getProviderStatus,
 } from "./config.js";
 import { createMockClient } from "./test-helpers.js";
-import type { ApiClient } from "./types.js";
+import { type ApiClient, isApiError } from "./types.js";
 
 const providerPathCases = [
   ["slash", "unknown/provider", "unknown%2Fprovider"],
@@ -40,14 +41,31 @@ describe("config API functions", () => {
     expect(result).toEqual(providers);
   });
 
-  it("getProviderStatus validates the response shape, rejecting a drifted payload", async () => {
-    vi.mocked(client.get).mockResolvedValue({ providers: [] });
+  it("rejects a drifted provider payload with ApiError", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(Response.json({ providers: [{ provider: "not-a-provider" }] }));
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal("fetch", fetchMock);
 
-    await getProviderStatus(client);
+    const apiClient = createApiClient({ baseUrl: "http://localhost:3000" });
+    let error: unknown;
+    try {
+      await getProviderStatus(apiClient);
+    } catch (caught) {
+      error = caught;
+    } finally {
+      vi.stubGlobal("fetch", originalFetch);
+    }
 
-    const validate = vi.mocked(client.get).mock.calls[0]?.[2];
-    expect(validate).toBeDefined();
-    expect(() => validate?.({ providers: [{ provider: "not-a-provider" }] })).toThrow();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:3000/api/config/providers",
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(isApiError(error)).toBe(true);
+    if (!isApiError(error)) throw new Error("Expected ApiError");
+    expect(error.status).toBe(422);
+    expect(error.code).toBe("INVALID_RESPONSE");
   });
 
   it.each([

@@ -26,7 +26,12 @@ describe("Pager", () => {
 
   it("passes props to render function children", () => {
     const renderFn = (props: PagerLinkRenderProps) => (
-      <a href={props.href} aria-label="Custom destination">
+      <a
+        href={props.href}
+        rel={props.rel}
+        data-direction={props.direction}
+        aria-label="Custom destination"
+      >
         Custom
       </a>
     );
@@ -37,10 +42,10 @@ describe("Pager", () => {
         </Pager.Link>
       </Pager>,
     );
-    expect(screen.getByRole("link", { name: "Custom destination" })).toHaveAttribute(
-      "href",
-      "/next",
-    );
+    const link = screen.getByRole("link", { name: "Custom destination" });
+    expect(link).toHaveAttribute("href", "/next");
+    expect(link).toHaveAttribute("rel", "next");
+    expect(link).toHaveAttribute("data-direction", "next");
   });
 
   it("has no a11y violations", async () => {

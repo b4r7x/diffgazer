@@ -1,6 +1,6 @@
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import stripAnsi from "strip-ansi";
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
 import { ReviewResultsView } from "./results-view";
 
@@ -11,6 +11,15 @@ vi.mock("@diffgazer/core/api/hooks", () => ({
 afterEach(() => {
   cleanupRootFrames();
 });
+
+function expectNoRepeatedDividerRows(frame: string): void {
+  const dividerRows = frame
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && /^─+$/.test(line));
+
+  expect(dividerRows.length).toBeLessThanOrEqual(4);
+}
 
 function makeNarrowIssues() {
   return Array.from({ length: 8 }, (_, index) =>
@@ -61,4 +70,70 @@ test("shows the full tabs row at 60x24 where the narrow half-pane fits it", asyn
   expect(frame.split("\n")).toHaveLength(24);
   expect(frame).not.toContain("]E[");
   expect(frame).toMatch(/Details\s+Explain/);
+});
+
+describe("ReviewResultsView root frame", () => {
+  test("paints every results list row and keeps the 80x24 frame stable while navigating", async () => {
+    const issues = Array.from({ length: 12 }, (_, index) =>
+      makeIssue({
+        id: `results-floor-${index + 1}`,
+        severity: index === 0 ? "blocker" : "high",
+        file: `packages/review/src/generated/deeply/nested/results-floor-${index + 1}.typescript.ts`,
+        title: `RESULTS-FLOOR-${index + 1} long diagnostic title`,
+      }),
+    );
+    const { stdin, lastFrame } = renderRootFrame(
+      80,
+      24,
+      <ReviewResultsView reviewId="results-floor" issues={issues} onBack={vi.fn()} />,
+    );
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("RESULTS-FLOOR-1"));
+    const initialFrame = lastFrame() ?? "";
+    const severityFilterRow = initialFrame.split("\n").find((row) => row.includes("B1 H11"));
+    expect(severityFilterRow).toBeDefined();
+    expect(severityFilterRow).not.toContain("[BLOCK");
+    expect(initialFrame.split("\n")).toHaveLength(24);
+
+    const paintedTitles = new Set(initialFrame.match(/RESULTS-FLOOR-\d+/g) ?? []);
+    for (let index = 0; index < 11; index += 1) {
+      stdin.write("\u001b[B");
+      for (let render = 0; render < 4; render += 1) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+      expect(lastFrame()?.split("\n")).toHaveLength(24);
+      for (const title of lastFrame()?.match(/RESULTS-FLOOR-\d+/g) ?? []) {
+        paintedTitles.add(title);
+      }
+    }
+    await vi.waitFor(() => expect(lastFrame()).toContain("RESULTS-FLOOR-12"));
+    const finalFrame = lastFrame() ?? "";
+    expect(paintedTitles).toEqual(
+      new Set(Array.from({ length: 12 }, (_, index) => `RESULTS-FLOOR-${index + 1}`)),
+    );
+    expect(finalFrame).toContain("RESULTS-FLOOR-12");
+    expect(lastFrame()?.split("\n")).toHaveLength(24);
+  });
+
+  test.each([
+    80, 100,
+  ] as const)("keeps the %i-column results heading, data, and actions in a 24-row root frame", async (columns) => {
+    const { lastFrame } = renderRootFrame(
+      columns,
+      24,
+      <ReviewResultsView
+        reviewId="review-1"
+        issues={[makeIssue({ id: "1", title: "Leaky state update" })]}
+        onBack={vi.fn()}
+      />,
+    );
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("[Esc] Back"));
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("Review #review-1");
+    expect(frame).toContain("ISSUES (1)");
+    expect(frame).toContain("Leaky state update");
+    expect(frame.split("\n")).toHaveLength(24);
+    expectNoRepeatedDividerRows(frame);
+  });
 });

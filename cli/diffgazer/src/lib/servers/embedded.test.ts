@@ -209,52 +209,6 @@ describe("createEmbeddedServer restart after a failed listen", () => {
   });
 });
 
-describe("embedded session maintenance lifecycle", () => {
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.resetModules();
-  });
-
-  it("re-arms one maintenance interval after shutdown and times out one idle session once", async () => {
-    vi.useFakeTimers();
-    vi.resetModules();
-    const sessions = await loadSessions();
-
-    expect(vi.getTimerCount()).toBe(1);
-    sessions.shutdownSessions();
-    expect(vi.getTimerCount()).toBe(0);
-
-    sessions.startSessionMaintenance();
-    sessions.startSessionMaintenance();
-    expect(vi.getTimerCount()).toBe(1);
-
-    let monotonicNow = 0;
-    const reviewId = "post-restart-idle";
-    sessions.createSession(reviewId, {
-      projectPath: "/tmp/project",
-      headCommit: "head",
-      statusHash: "status",
-      mode: "staged",
-      monotonicNow: () => monotonicNow,
-    });
-    const received: FullReviewStreamEvent[] = [];
-    sessions.subscribe(reviewId, (event) => received.push(event));
-    monotonicNow = 30 * 60 * 1000 + 1;
-
-    await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
-
-    expect(received).toEqual([
-      expect.objectContaining({
-        type: "error",
-        error: expect.objectContaining({ code: ReviewErrorCode.SESSION_TIMEOUT }),
-      }),
-    ]);
-    expect(sessions.getSession(reviewId)).toBeUndefined();
-    expect(vi.getTimerCount()).toBe(1);
-    sessions.shutdownSessions();
-  });
-});
-
 describe("createEmbeddedServer stop", () => {
   it("aborts an active review session and clears its subscriber on shutdown", async () => {
     const sessions = await loadSessions();

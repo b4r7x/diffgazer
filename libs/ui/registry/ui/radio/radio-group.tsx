@@ -17,9 +17,7 @@ import {
 } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
-import { useFormReset } from "@/hooks/use-form-reset";
-import { useNavigation } from "@/hooks/use-navigation";
-import { isHTMLElementForContainer, mergeIds, resolveAriaInvalid } from "@/lib/aria";
+import { mergeIds, resolveAriaInvalid } from "@/lib/aria";
 import { useFieldsetDisabled } from "@/lib/fieldset-disabled";
 import {
   getEnabledSelectableCollectionItems,
@@ -32,6 +30,19 @@ import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";
 import type { RadioSize } from "./radio";
 import { RadioGroupContext, type RadioGroupContextValue } from "./radio-group-context";
 import { RadioGroupItem, type RadioGroupItemProps } from "./radio-group-item";
+import { useRadioGroupForm } from "./use-radio-group-form";
+import {
+  type RadioGroupActivationMode,
+  type RadioGroupBoundaryDirection,
+  type RadioGroupNavigationDirection,
+  useRadioGroupNavigation,
+} from "./use-radio-group-navigation";
+
+export type {
+  RadioGroupActivationMode,
+  RadioGroupBoundaryDirection,
+  RadioGroupNavigationDirection,
+};
 
 /** Props for radio group root. */
 type RadioGroupRootProps = Omit<
@@ -118,24 +129,6 @@ export interface RadioGroupProps<TValue extends string = string> extends RadioGr
   ref?: Ref<HTMLDivElement>;
 }
 
-/** Whether arrow navigation immediately selects or only highlights until commit. */
-export type RadioGroupActivationMode = "automatic" | "manual";
-/** Boundary reached by non-wrapping radio navigation. */
-export type RadioGroupBoundaryDirection = "previous" | "next";
-/** Direction emitted by radiogroup navigation callbacks. */
-export type RadioGroupNavigationDirection = "previous" | "next" | "first" | "last";
-
-const RADIO_PREVIOUS_KEYS = ["ArrowUp", "ArrowLeft"] as const;
-const RADIO_NEXT_KEYS = ["ArrowDown", "ArrowRight"] as const;
-
-function getRadioNavigationDirection(key: string): RadioGroupNavigationDirection | null {
-  if (key === "ArrowUp" || key === "ArrowLeft") return "previous";
-  if (key === "ArrowDown" || key === "ArrowRight") return "next";
-  if (key === "Home") return "first";
-  if (key === "End") return "last";
-  return null;
-}
-
 function collectEnabledDirectRadioValues(children: ReactNode): string[] {
   return Children.toArray(children).flatMap((child) => {
     if (!isValidElement<RadioGroupItemProps>(child) || child.type !== RadioGroupItem) return [];
@@ -185,17 +178,14 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
     ...rootProps
   } = props;
   const containerRef = useRef<HTMLDivElement>(null);
-  const validationInputRef = useRef<HTMLInputElement>(null);
   const composedRef = useComposedRefs(containerRef, ref);
   const generatedId = useId();
   const labelId = `${generatedId}-label`;
   const hasAutoFocusedRef = useRef(false);
-  const navigationEventRef = useRef<ReactKeyboardEvent<HTMLDivElement> | null>(null);
   const fieldsetDisabled = useFieldsetDisabled(containerRef);
   const isDisabled = disabled || fieldsetDisabled;
   const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
   const [hasLiveRegistrations, setHasLiveRegistrations] = useState(false);
-  const [requiredInvalid, setRequiredInvalid] = useState(false);
 
   const registerLiveItem = useCallback(
     (itemId: string, itemValue: string, itemDisabled: boolean, element: HTMLElement | null) => {
@@ -233,50 +223,55 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
   const enabledValues = hasLiveRegistrations
     ? enabledItems.map((item) => item.value)
     : seededEnabledValues;
-  const effectiveRequired = !!required && enabledValues.length > 0;
   const validHighlightedValue =
     highlightedValue !== null && enabledValues.includes(highlightedValue) ? highlightedValue : null;
   const validSelectedValue = value !== undefined && enabledValues.includes(value) ? value : null;
   const isValueControlled = "value" in props;
-  const controlledFormReset = isValueControlled
-    ? {
-        syncResetBaseline: () => {
-          for (const input of containerRef.current?.querySelectorAll<HTMLInputElement>(
-            'input[data-slot="radio-form-mirror"]',
-          ) ?? []) {
-            const item = input.nextElementSibling;
-            if (!item?.hasAttribute("data-diffgazer-radio-group-item")) continue;
-            if (item.closest('[data-slot="radio-group"]') !== containerRef.current) continue;
-            input.defaultChecked = input.value === value;
-          }
-          const validation = validationInputRef.current;
-          if (validation) validation.defaultChecked = validSelectedValue !== null;
-        },
-        onReset: () => setRequiredInvalid(false),
-      }
-    : undefined;
-  const invalidatePendingReset = useFormReset(
+
+  const {
+    effectiveRequired,
+    requiredInvalid,
+    validationInputRef,
+    invalidatePendingReset,
+    handleValueChange,
+    handleRequiredInvalid,
+    setRequiredInvalid,
+  } = useRadioGroupForm({
     containerRef,
+    value,
     defaultValue,
-    (value) => {
-      setRequiredInvalid(false);
-      resetValue(value);
-    },
-    !isValueControlled,
-    controlledFormReset,
-  );
+    enabledValues,
+    required,
+    isValueControlled,
+    validSelectedValue,
+    resetValue,
+    setValue,
+  });
+
   const resolvedAriaLabelledBy = ariaLabel
     ? undefined
     : mergeIds(ariaLabelledBy, label ? labelId : undefined);
-  const preferredTabValues =
-    activationMode === "manual" ? [highlightedValue, value] : [value, highlightedValue];
-  const tabTargetValue =
-    preferredTabValues.find(
-      (candidate): candidate is string =>
-        candidate !== null && candidate !== undefined && enabledValues.includes(candidate),
-    ) ??
-    enabledValues[0] ??
-    null;
+
+  const { tabTargetValue, handleKeyDown } = useRadioGroupNavigation<TValue>({
+    containerRef,
+    items,
+    value,
+    highlightedValue,
+    enabledValues,
+    activationMode,
+    keyboardNavigation,
+    isDisabled,
+    wrap,
+    onNavigationBoundaryReached,
+    onNavigate,
+    onEnter,
+    onKeyDown,
+    setHighlightedValue,
+    invalidatePendingReset,
+    setRequiredInvalid,
+    setValue,
+    handleValueChange,
+  });
 
   useEffect(() => {
     if (!autoFocus || !keyboardNavigation || isDisabled) {
@@ -301,90 +296,6 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
     value,
     setHighlightedValue,
   ]);
-
-  // Stable ref required: dep of the contextValue memo below.
-  const handleValueChange = useCallback(
-    (next: string) => {
-      invalidatePendingReset();
-      setRequiredInvalid(false);
-      setValue(next);
-    },
-    [invalidatePendingReset, setValue],
-  );
-
-  // Stable ref required: dep of the contextValue memo below.
-  const handleRequiredInvalid = useCallback(() => {
-    setRequiredInvalid(true);
-  }, []);
-
-  const handleNavigatedItem = (next: string | null) => {
-    if (next === null) return;
-    setHighlightedValue(next);
-    setRequiredInvalid(false);
-
-    const direction = getRadioNavigationDirection(navigationEventRef.current?.key ?? "");
-    if (direction !== null) {
-      warnUnregisteredValue(
-        "RadioGroup",
-        next,
-        items.map((item) => item.value),
-      );
-      onNavigate?.(next as TValue, direction);
-    }
-
-    if (activationMode === "automatic") {
-      invalidatePendingReset();
-      setValue(next);
-    }
-  };
-
-  const handleNavigationEnter = (next: string) => {
-    const event = navigationEventRef.current;
-    if (!event) return;
-
-    setHighlightedValue(next);
-    handleValueChange(next);
-    warnUnregisteredValue(
-      "RadioGroup",
-      next,
-      items.map((item) => item.value),
-    );
-    onEnter?.(next as TValue, event);
-  };
-
-  const { onKeyDown: navKeyDown } = useNavigation({
-    containerRef,
-    role: "radio",
-    highlighted: tabTargetValue,
-    onHighlightChange: handleNavigatedItem,
-    onEnter: handleNavigationEnter,
-    wrap,
-    enabled: keyboardNavigation && !isDisabled,
-    moveFocus: true,
-    scopeToContainer: true,
-    upKeys: RADIO_PREVIOUS_KEYS,
-    downKeys: RADIO_NEXT_KEYS,
-    onNavigationBoundaryReached,
-  });
-
-  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    const eventTarget = isHTMLElementForContainer(event.target, containerRef.current)
-      ? event.target
-      : null;
-    if (eventTarget && eventTarget.closest('[role="radiogroup"]') !== containerRef.current) {
-      return;
-    }
-
-    onKeyDown?.(event);
-    if (event.defaultPrevented || !keyboardNavigation || isDisabled) return;
-
-    navigationEventRef.current = event;
-    try {
-      navKeyDown(event);
-    } finally {
-      navigationEventRef.current = null;
-    }
-  };
 
   const contextValue: RadioGroupContextValue = useMemo(
     () => ({

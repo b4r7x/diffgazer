@@ -13,17 +13,20 @@
     {
       "path": "registry/ui/tooltip/index.ts",
       "content": "\"use client\";\n\nimport {\n  PopoverTrigger as TooltipTrigger,\n  type PopoverTriggerProps as TooltipTriggerProps,\n  type PopoverTriggerRenderProps as TooltipTriggerRenderProps,\n} from \"../popover/popover-trigger\";\nimport { type TooltipProps, TooltipRoot } from \"./tooltip\";\nimport { TooltipContent, type TooltipContentProps } from \"./tooltip-content\";\n\n/** Root - manages hover state, delay, and enabled toggle. */\nconst Tooltip = Object.assign(TooltipRoot, {\n  Trigger: TooltipTrigger,\n  Content: TooltipContent,\n});\n\nexport { Tooltip, type TooltipProps };\nexport {\n  TooltipTrigger,\n  TooltipContent,\n  type TooltipTriggerProps,\n  type TooltipTriggerRenderProps,\n  type TooltipContentProps,\n};\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/tooltip/index.ts"
     },
     {
       "path": "registry/ui/tooltip/tooltip.tsx",
       "content": "\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { PopoverRoot } from \"../popover/popover\";\nimport { PopoverTrigger } from \"../popover/popover-trigger\";\nimport { TooltipContent } from \"./tooltip-content\";\n\n/** Props for tooltip. */\nexport interface TooltipProps {\n  /** Trigger element (shorthand mode) or full Tooltip.Trigger/Tooltip.Content composition. */\n  children: ReactNode;\n  /**\n   * Shorthand: when set, Tooltip renders children inside Tooltip.Trigger and content inside\n   * Tooltip.Content automatically. When omitted, compose Tooltip.Trigger and Tooltip.Content\n   * explicitly via children.\n   */\n  content?: ReactNode;\n  /** Disables hover/focus triggering when false (use to suppress tooltips conditionally). */\n  enabled?: boolean;\n  /** Show delay after pointer enters the trigger; keyboard focus opens immediately. */\n  delayMs?: number;\n  /** Hide delay after pointer/focus leaves the trigger or content. */\n  closeDelayMs?: number;\n  /** Controlled open state. */\n  open?: boolean;\n  /** Initial open state for uncontrolled mode. */\n  defaultOpen?: boolean;\n  /** Fired when the open state changes. */\n  onOpenChange?: (open: boolean) => void;\n}\n\n/** Root - manages hover state, delay, and enabled toggle. */\nexport function TooltipRoot({\n  children,\n  content,\n  enabled = true,\n  delayMs = 500,\n  closeDelayMs,\n  open,\n  defaultOpen,\n  onOpenChange,\n}: TooltipProps) {\n  return (\n    <PopoverRoot\n      triggerMode=\"hover\"\n      enabled={enabled}\n      delayMs={delayMs}\n      closeDelayMs={closeDelayMs}\n      open={open}\n      defaultOpen={defaultOpen}\n      onOpenChange={onOpenChange}\n    >\n      {content != null ? (\n        <>\n          <PopoverTrigger>{children}</PopoverTrigger>\n          <TooltipContent>{content}</TooltipContent>\n        </>\n      ) : (\n        children\n      )}\n    </PopoverRoot>\n  );\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/tooltip/tooltip.tsx"
     },
     {
       "path": "registry/ui/tooltip/tooltip-content.tsx",
       "content": "\"use client\";\n\nimport { cn } from \"@/lib/utils\";\nimport { PopoverContent, type PopoverContentProps } from \"../popover/popover-content\";\n\n/** Props for tooltip content. */\nexport interface TooltipContentProps extends Omit<PopoverContentProps, \"autoFocus\"> {}\n\n/** Portal-rendered positioned content. */\nexport function TooltipContent({\n  children,\n  side = \"top\",\n  align = \"center\",\n  sideOffset = 4,\n  className,\n  ...rest\n}: TooltipContentProps) {\n  return (\n    <PopoverContent\n      side={side}\n      align={align}\n      sideOffset={sideOffset}\n      data-slot=\"tooltip-content\"\n      className={cn(\n        \"max-w-xs border border-border bg-background px-2 py-1 font-mono text-xs text-foreground shadow-md\",\n        className,\n      )}\n      {...rest}\n    >\n      {children}\n    </PopoverContent>\n  );\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/tooltip/tooltip-content.tsx"
     }
   ],
   "meta": {

@@ -326,13 +326,12 @@ describe("useWizardState", () => {
     expect(result.current.earlySaveError).toBeNull();
   });
 
-  it("complete persists settings then config, runs onComplete, and resolves true", async () => {
+  it("complete runs the final config save then onComplete, and resolves true", async () => {
     const callOrder: string[] = [];
-    const onComplete = vi.fn();
+    const onComplete = vi.fn(async () => {
+      callOrder.push("onComplete");
+    });
     const callbacks = makeCallbacks({
-      saveSettings: vi.fn(async () => {
-        callOrder.push("settings");
-      }),
       saveConfig: vi.fn(async () => {
         callOrder.push("config");
       }),
@@ -356,8 +355,7 @@ describe("useWizardState", () => {
     });
 
     expect(success).toBe(true);
-    expect(callOrder).toEqual(["settings", "config"]);
-    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(callOrder).toEqual(["config", "onComplete"]);
   });
 
   it("complete reports a save failure in error state and resolves false", async () => {

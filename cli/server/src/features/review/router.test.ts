@@ -58,7 +58,7 @@ afterEach(async () => {
   delete process.env.DIFFGAZER_HOME;
   delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
   delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
-  vi.doUnmock("../../shared/lib/ai/client.js");
+  vi.doUnmock("../../shared/lib/ai/client/initialize.js");
   vi.doUnmock("../../shared/lib/git/service.js");
   vi.doUnmock("./service.js");
   await rm(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });
@@ -199,7 +199,7 @@ function installDeferredGitServiceMock() {
 
 function installProviderWorkProbe() {
   const generate = vi.fn();
-  vi.doMock("../../shared/lib/ai/client.js", () => ({
+  vi.doMock("../../shared/lib/ai/client/initialize.js", () => ({
     initializeAIClient: () =>
       ok({
         provider: "gemini",
@@ -229,7 +229,7 @@ function installSuccessfulReviewCreationMock() {
   };
   const createReviewSession = vi.fn(async () => ok({ reviewId: REVIEW_A, session }));
 
-  vi.doMock("../../shared/lib/ai/client.js", () => ({
+  vi.doMock("../../shared/lib/ai/client/initialize.js", () => ({
     initializeAIClient: () => ok({ provider: "gemini" }),
   }));
   vi.doMock("./service.js", () => ({ createReviewSession }));
@@ -408,7 +408,7 @@ describe("POST /api/review/reviews", () => {
       headCommit: "abc123",
       statusHash: "status",
     };
-    vi.doMock("../../shared/lib/ai/client.js", () => ({
+    vi.doMock("../../shared/lib/ai/client/initialize.js", () => ({
       initializeAIClient: () => ok({ provider: "gemini" }),
     }));
     vi.doMock("./service.js", () => ({
@@ -444,7 +444,7 @@ describe("POST /api/review/reviews", () => {
 
   it("preserves a keyring read failure in the review creation response", async () => {
     const createReviewSession = vi.fn();
-    vi.doMock("../../shared/lib/ai/client.js", () => ({
+    vi.doMock("../../shared/lib/ai/client/initialize.js", () => ({
       initializeAIClient: () =>
         err({ code: "KEYRING_READ_FAILED", message: "Could not read the OS keyring" }),
     }));
@@ -482,7 +482,7 @@ describe("POST /api/review/reviews", () => {
       statusHash: "status",
     };
     const createReviewSession = vi.fn(async () => ok({ reviewId: REVIEW_A, session }));
-    vi.doMock("../../shared/lib/ai/client.js", () => ({ initializeAIClient }));
+    vi.doMock("../../shared/lib/ai/client/initialize.js", () => ({ initializeAIClient }));
     vi.doMock("./service.js", () => ({ createReviewSession }));
     await configureSetup(projectA);
     const app = await createReviewApp();
@@ -1137,8 +1137,6 @@ describe("GET /api/review/sessions/active", () => {
 
     expect(response.status).toBe(500);
     expect(body.error.code).toBe("INTERNAL_ERROR");
-    expect(gitService.getHeadCommit).toHaveBeenCalledOnce();
-    expect(gitService.getStatusHash).toHaveBeenCalledOnce();
   });
 
   it("returns the current project's active session and not another project's", async () => {
@@ -1252,6 +1250,50 @@ describe("GET /api/review/context read-path security", () => {
       }
     },
   );
+});
+
+describe("POST /api/review/context/refresh", () => {
+  it("rebuilds the cached snapshot from the changed package marker when forced", async () => {
+    await configureSetup(projectA);
+    installGitServiceMock();
+    await writeFile(
+      join(projectA, "package.json"),
+      JSON.stringify({ name: "first", version: "1.0.0" }),
+      "utf-8",
+    );
+    const app = await createReviewApp();
+
+    const seed = await app.request("/api/review/context/refresh", {
+      method: "POST",
+      headers: {
+        [PROJECT_ROOT_HEADER]: projectA,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+    const seeded = (await seed.json()) as { markdown: string };
+    expect(seed.status).toBe(200);
+    expect(seeded.markdown).toContain("- Name: first");
+
+    await writeFile(
+      join(projectA, "package.json"),
+      JSON.stringify({ name: "second", version: "1.0.0" }),
+      "utf-8",
+    );
+
+    const response = await app.request("/api/review/context/refresh", {
+      method: "POST",
+      headers: {
+        [PROJECT_ROOT_HEADER]: projectA,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ force: true }),
+    });
+    const body = (await response.json()) as { markdown: string };
+
+    expect(response.status).toBe(200);
+    expect(body.markdown).toContain("- Name: second");
+  });
 });
 
 describe("review router param validation", () => {

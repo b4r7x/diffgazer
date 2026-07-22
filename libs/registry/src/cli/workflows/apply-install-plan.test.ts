@@ -2,11 +2,19 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { installDepsWithSpinner, PACKAGE_MANAGER_LOCKFILES } from "../package-manager.js";
+import {
+  installDepsWithSpinner,
+  PACKAGE_MANAGER_LOCKFILES,
+  restorePackageManagerFiles,
+} from "../package-manager.js";
 
 vi.mock("../package-manager.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../package-manager.js")>();
-  return { ...actual, installDepsWithSpinner: vi.fn() };
+  return {
+    ...actual,
+    installDepsWithSpinner: vi.fn(),
+    restorePackageManagerFiles: vi.fn(actual.restorePackageManagerFiles),
+  };
 });
 
 import { applyInstallPlan } from "./apply-install-plan.js";
@@ -52,6 +60,7 @@ describe("applyInstallPlan", () => {
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), "rk-apply-plan-"));
     vi.mocked(installDepsWithSpinner).mockReset();
+    vi.mocked(restorePackageManagerFiles).mockClear();
   });
 
   afterEach(() => {
@@ -155,7 +164,53 @@ describe("applyInstallPlan", () => {
     expectPackageManagerFilesRestored(tempDir);
   });
 
-  it("keeps written files when manifest finalization succeeds", async () => {
+  it("throws an AggregateError with the primary and restore failures when package-manager rollback fails", async () => {
+    seedPackageManagerFiles(tempDir);
+    vi.mocked(installDepsWithSpinner).mockImplementation(async (_pm, _deps, cwd) => {
+      mutatePackageManagerFiles(cwd);
+      return true;
+    });
+    const restoreFailure = new Error("disk full");
+    vi.mocked(restorePackageManagerFiles).mockImplementationOnce(() => {
+      throw restoreFailure;
+    });
+    const targetPath = join(tempDir, "component.tsx");
+
+    await expect(
+      applyInstallPlan({
+        cwd: tempDir,
+        yes: true,
+        dryRun: false,
+        overwrite: false,
+        confirmMessage: "proceed?",
+        headingMessage: "Applying...",
+        fileOps: [
+          {
+            targetPath,
+            content: "export {};\n",
+            relativePath: "component.tsx",
+            installDir: ".",
+          },
+        ],
+        missingDeps: ["added@1.0.0"],
+        onApplied: () => {
+          throw new Error("manifest write failed");
+        },
+      }),
+    ).rejects.toMatchObject({
+      message: "Install-plan failed and package-manager rollback was incomplete.",
+      errors: [expect.objectContaining({ message: "manifest write failed" }), restoreFailure],
+    });
+
+    expect(existsSync(targetPath)).toBe(false);
+  });
+
+  it("keeps written files and installer mutations when manifest finalization succeeds", async () => {
+    seedPackageManagerFiles(tempDir);
+    vi.mocked(installDepsWithSpinner).mockImplementation(async (_pm, _deps, cwd) => {
+      mutatePackageManagerFiles(cwd);
+      return true;
+    });
     const targetPath = join(tempDir, "component.tsx");
 
     await applyInstallPlan({
@@ -163,7 +218,6 @@ describe("applyInstallPlan", () => {
       yes: true,
       dryRun: false,
       overwrite: false,
-      skipInstall: true,
       confirmMessage: "proceed?",
       headingMessage: "Applying...",
       fileOps: [
@@ -174,7 +228,7 @@ describe("applyInstallPlan", () => {
           installDir: ".",
         },
       ],
-      missingDeps: [],
+      missingDeps: ["added@1.0.0"],
       onApplied: () => {
         writeFileSync(join(tempDir, "manifest.json"), "{}\n");
       },
@@ -182,5 +236,11 @@ describe("applyInstallPlan", () => {
 
     expect(readFileSync(targetPath, "utf-8")).toBe("export const ok = true;\n");
     expect(existsSync(join(tempDir, "manifest.json"))).toBe(true);
+    expect(readFileSync(join(tempDir, "package.json"), "utf-8")).toBe(
+      '{"dependencies":{"added":"1.0.0"}}\n',
+    );
+    for (const lockfile of PACKAGE_MANAGER_LOCKFILES) {
+      expect(readFileSync(join(tempDir, lockfile), "utf-8")).toBe(`mutated ${lockfile}\n`);
+    }
   });
 });

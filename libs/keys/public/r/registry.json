@@ -15,6 +15,11 @@
           "target": "src/hooks/use-navigation.ts"
         },
         {
+          "path": "src/hooks/use-navigation/core.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/utils/navigation-core.ts"
+        },
+        {
           "path": "src/core/navigation-dispatch.ts",
           "type": "registry:hook",
           "target": "src/hooks/utils/navigation-dispatch.ts"
@@ -84,6 +89,11 @@
           "path": "src/hooks/use-focus-trap.ts",
           "type": "registry:hook",
           "target": "src/hooks/use-focus-trap.ts"
+        },
+        {
+          "path": "src/hooks/focus-trap-controller.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/utils/focus-trap-controller.ts"
         },
         {
           "path": "src/hooks/use-focus-restore.ts",

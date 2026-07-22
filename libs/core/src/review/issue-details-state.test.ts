@@ -47,7 +47,6 @@ function createReviewIssue(
 
 describe("getAvailableIssueTabs", () => {
   it("advertises no issue tabs without a selected issue", () => {
-    expect(getAvailableIssueTabs(undefined)).toEqual([]);
     expect(getAvailableIssueTabs(null)).toEqual([]);
   });
 

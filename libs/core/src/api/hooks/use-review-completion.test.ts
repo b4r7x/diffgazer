@@ -293,4 +293,29 @@ describe("useReviewCompletion", () => {
     expect(onStreamComplete).not.toHaveBeenCalled();
     expect(onComplete).not.toHaveBeenCalled();
   });
+
+  it("does not fire onComplete when unmounted before the completion delay elapses", () => {
+    const onComplete = vi.fn();
+    const initialProps = createOptions({
+      isStreaming: true,
+      hasStreamed: true,
+      onComplete,
+    });
+
+    const { rerender, unmount } = renderHook(
+      (props: UseReviewCompletionOptions) => useReviewCompletion(props),
+      { initialProps },
+    );
+
+    rerender({ ...initialProps, isStreaming: false, isComplete: true });
+    expect(onComplete).not.toHaveBeenCalled();
+
+    unmount();
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(onComplete).not.toHaveBeenCalled();
+  });
 });

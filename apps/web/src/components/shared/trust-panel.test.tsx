@@ -83,10 +83,18 @@ describe("TrustPanel", () => {
       expect(getActiveReviewSession).toHaveBeenCalledTimes(1);
     });
 
-    await user.click(screen.getByRole("button", { name: /trust & continue/i }));
+    const repoAccess = screen.getByRole("checkbox", { name: /repository access/i });
+    expect(repoAccess).toHaveAttribute("aria-checked", "true");
+    await user.click(repoAccess);
+    expect(repoAccess).toHaveAttribute("aria-checked", "false");
+
+    await user.click(screen.getByRole("button", { name: /continue without trust/i }));
 
     await waitFor(() => {
-      expect(saveTrust).toHaveBeenCalled();
+      expect(saveTrust).toHaveBeenCalledWith({
+        capabilities: { readFiles: false, runCommands: false },
+        trustMode: "persistent",
+      });
     });
 
     await waitFor(() => {

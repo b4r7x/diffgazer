@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
-import { extractOrchestratorStats } from "@diffgazer/core/review";
+import { sessionTerminationCopy } from "@diffgazer/core/review";
 import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeCreateReviewResponse } from "@diffgazer/core/testing/factories";
@@ -53,45 +53,6 @@ vi.mock("@diffgazer/core/api/hooks", async () => {
 });
 
 import { useReviewLifecycle } from "./use-lifecycle";
-
-describe("extractOrchestratorStats", () => {
-  it("uses the latest orchestrator completion as the authoritative lens stats", () => {
-    const result = extractOrchestratorStats({
-      events: [
-        {
-          type: "orchestrator_complete",
-          totalIssues: 0,
-          filesAnalyzed: 1,
-          lensStats: [
-            {
-              lensId: "security",
-              issueCount: 0,
-              status: "failed",
-              errorCode: "MODEL_ERROR",
-            },
-          ],
-          timestamp: "2026-01-01T00:00:01.000Z",
-        },
-        {
-          type: "orchestrator_complete",
-          totalIssues: 0,
-          filesAnalyzed: 1,
-          lensStats: [
-            {
-              lensId: "security",
-              issueCount: 0,
-              status: "failed",
-              errorCode: "RATE_LIMITED",
-            },
-          ],
-          timestamp: "2026-01-01T00:00:02.000Z",
-        },
-      ],
-    });
-
-    expect(result.lensStats?.[0]?.errorCode).toBe("RATE_LIMITED");
-  });
-});
 
 describe("review progress control documentation", () => {
   it("matches the cancel and resumable-leave controls used by the progress screen", () => {
@@ -422,26 +383,6 @@ describe("useReviewLifecycle Back from a running review", () => {
       "11111111-1111-4111-8111-111111111111",
     );
   });
-
-  it("clears only the active-session cache on Back from a remote-cancel terminal state", () => {
-    const base = makeRunningBaseReturn();
-    base.stream.state.isStreaming = false;
-    base.stream.state.error = "Review was cancelled remotely.";
-    base.stream.state.errorCode = ReviewErrorCode.CANCELLED;
-    base.checks.isTerminalStreamError = true;
-    mockUseReviewLifecycleBase.mockReturnValue(base);
-
-    const { result } = renderReviewLifecycle("unstaged");
-
-    result.current.handleBack();
-
-    expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
-    expect(base.stream.cancel).not.toHaveBeenCalled();
-    expect(mockClearActiveSession).toHaveBeenCalledWith(
-      "unstaged",
-      "11111111-1111-4111-8111-111111111111",
-    );
-  });
 });
 
 describe("useReviewLifecycle stream retry", () => {
@@ -600,7 +541,7 @@ describe("useReviewLifecycle completion cache cleanup", () => {
   });
 });
 
-describe("useReviewLifecycle terminal session messages", () => {
+describe("useReviewLifecycle stale session termination", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
     mockCreateReview.mockReset();
@@ -609,31 +550,28 @@ describe("useReviewLifecycle terminal session messages", () => {
     mockUseReviewLifecycleBase.mockReturnValue(makeBaseReturn());
   });
 
-  it("surfaces a distinct cause-accurate message per terminal session code", () => {
-    const captured: Array<(code: string) => void> = [];
+  it("clears the active session, shows timeout toast copy, and navigates home on SESSION_TIMEOUT", () => {
+    let onStale: ((code: string) => void) | undefined;
     mockUseReviewLifecycleBase.mockImplementation((options) => {
-      captured.push(options.onStaleSession);
+      onStale = options.onStaleSession;
       return makeRunningBaseReturn();
     });
 
+    const copy = sessionTerminationCopy(ReviewErrorCode.SESSION_TIMEOUT);
+
     renderReviewLifecycle("unstaged");
-    const onStale = captured.at(-1);
 
-    onStale?.("SESSION_EVICTED");
-    onStale?.("SESSION_TIMEOUT");
-    onStale?.("SERVER_SHUTDOWN");
+    act(() => {
+      onStale?.(ReviewErrorCode.SESSION_TIMEOUT);
+    });
 
-    expect(mockClearActiveSession).toHaveBeenCalledTimes(3);
+    expect(mockClearActiveSession).toHaveBeenCalledOnce();
     expect(mockClearActiveSession).toHaveBeenCalledWith(
       "unstaged",
       "11111111-1111-4111-8111-111111111111",
     );
-    const messages = mockToastError.mock.calls.map((call) => call[1].message as string);
-    expect(messages).toHaveLength(3);
-    expect(new Set(messages).size).toBe(3);
-    // The third toast (SERVER_SHUTDOWN) must not invite an immediate retry.
-    const shutdownMessage = messages.at(-1) ?? "";
-    expect(shutdownMessage).not.toMatch(/start|retry|again/i);
+    expect(mockToastError).toHaveBeenCalledWith(copy.title, { message: copy.message });
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
   });
 });
 

@@ -40,24 +40,26 @@ describe("RunsList", () => {
     expect(frame).toContain("#abcdef00-1");
   });
 
-  test("renders partial analysis instead of a pass for a zero-issue failed-lens run", () => {
-    const run = buildHistoryRunSummary(makeReviewMetadata({ issueCount: 0, failedLensCount: 1 }));
-    const { lastFrame } = render(
+  test("selects the highlighted run's id exactly once on Return", async () => {
+    const onSelect = vi.fn();
+    const run = buildHistoryRunSummary(makeReviewMetadata({ id: "selected-run" }));
+    const { stdin } = render(
       <CliThemeProvider initialTheme="dark">
         <RunsList
           runs={[run]}
           selectedId={run.id}
-          onSelect={vi.fn()}
+          onSelect={onSelect}
           emptyMessage="No runs"
           height={6}
-          width={80}
+          width={25}
         />
       </CliThemeProvider>,
     );
 
-    const frame = lastFrame() ?? "";
-    expect(frame).toContain("Partial analysis: 1 lens failed; no issues found.");
-    expect(frame).not.toContain("Passed with no issues.");
+    stdin.write("\r");
+    await flush();
+
+    expect(onSelect).toHaveBeenCalledExactlyOnceWith(run.id);
   });
 
   test("keeps keyboard highlight visible while rendering a bounded run window", async () => {

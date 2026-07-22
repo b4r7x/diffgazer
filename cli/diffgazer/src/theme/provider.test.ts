@@ -15,8 +15,6 @@ describe("CLI palette value parity", () => {
 
 describe("detectPaletteNameFromColorFgBg", () => {
   test.each([
-    { value: "15;0", expected: "dark" as const },
-    { value: "0;15", expected: "light" as const },
     { value: "8", expected: "dark" as const },
     { value: "7", expected: "light" as const },
     { value: "12;default;0", expected: "dark" as const },

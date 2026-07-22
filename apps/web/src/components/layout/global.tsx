@@ -103,7 +103,10 @@ interface GlobalLayoutProps {
 
 export function GlobalLayout({ children }: GlobalLayoutProps) {
   return (
-    <div className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] selection:bg-info selection:text-info-foreground">
+    <div
+      className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] selection:bg-info selection:text-info-foreground"
+      data-layout="app-shell"
+    >
       <a
         href={`#${MAIN_CONTENT_ID}`}
         onClick={() => getMainContent()?.focus()}

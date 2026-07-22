@@ -240,18 +240,6 @@ describe("useActionRowNavigation", () => {
     expectFocused(getButton("Save"));
   });
 
-  it("wraps navigation when requested", async () => {
-    const { user } = renderActionRow({ wrap: true });
-
-    await waitFor(() => expectFocused(getButton("Cancel")));
-
-    await user.keyboard("{ArrowLeft}");
-    expectFocused(getButton("Save"));
-
-    await user.keyboard("{ArrowRight}");
-    expectFocused(getButton("Cancel"));
-  });
-
   it("skips disabled actions during navigation", async () => {
     const { onAction, user } = renderActionRow({ disabledActions: [false, true] });
 
@@ -300,6 +288,19 @@ describe("useActionRowNavigation", () => {
     await user.keyboard("{Enter}");
     expect(onAction).toHaveBeenCalledWith(0);
     expect(onAction).not.toHaveBeenCalledWith(1);
+  });
+
+  it("moves focus to the content fallback when every action becomes disabled while focus is in the row", async () => {
+    const { onAction, rerenderActionRow, user } = renderActionRow();
+
+    await waitFor(() => expectFocused(getButton("Cancel")));
+
+    rerenderActionRow({ disabledActions: [true, true] });
+
+    await waitFor(() => expectFocused(screen.getByLabelText("Content fallback")));
+
+    await user.keyboard("{Enter}");
+    expect(onAction).not.toHaveBeenCalled();
   });
 
   it("repairs a disabled action inside an open shadow root without stealing outside focus", async () => {
@@ -458,10 +459,16 @@ describe("useActionRowNavigation", () => {
     await waitFor(() => expectFocused(getButton("Cancel")));
 
     await user.keyboard("{ArrowLeft}");
-    expect(onBoundary).toHaveBeenCalledWith("previous");
+    expect(onBoundary).toHaveBeenCalledTimes(1);
+    expect(onBoundary).toHaveBeenNthCalledWith(1, "previous");
 
-    await user.keyboard("{ArrowRight}{ArrowRight}");
-    expect(onBoundary).toHaveBeenCalledWith("next");
+    await user.keyboard("{ArrowRight}");
+    expectFocused(getButton("Save"));
+    expect(onBoundary).toHaveBeenCalledTimes(1);
+
+    await user.keyboard("{ArrowRight}");
+    expect(onBoundary).toHaveBeenCalledTimes(2);
+    expect(onBoundary).toHaveBeenNthCalledWith(2, "next");
   });
 
   it("calls onNavigationBoundaryReached when exiting via ArrowUp", async () => {

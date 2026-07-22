@@ -38,15 +38,7 @@ describe("CheckboxGroup navigation", () => {
     stdin.write(SPACE);
     await flush();
     expect(onChange).toHaveBeenLastCalledWith(["a"]);
-  });
 
-  test("toggling the same item twice clears it", async () => {
-    const onChange = vi.fn();
-    const { stdin } = renderGroup({ onChange });
-    await flush();
-
-    stdin.write(SPACE);
-    await flush();
     stdin.write(SPACE);
     await flush();
     expect(onChange).toHaveBeenLastCalledWith([]);

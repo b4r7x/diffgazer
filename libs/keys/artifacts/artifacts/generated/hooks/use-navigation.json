@@ -4548,6 +4548,7 @@
   },
   "files": [
     "src/hooks/use-navigation.ts",
+    "src/hooks/utils/navigation-core.ts",
     "src/hooks/utils/navigation-dispatch.ts",
     "src/hooks/utils/navigation-items.ts",
     "src/hooks/utils/navigation-directions.ts",

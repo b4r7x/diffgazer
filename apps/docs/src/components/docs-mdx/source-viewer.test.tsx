@@ -1,25 +1,11 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { HookSourceData } from "@/lib/generated-doc-data";
-import { loadDocPageData } from "@/lib/load-doc-data";
-import type { ComponentSourceData } from "@/types/data";
 import { CopyButton } from "../copy-button";
-import { SourceViewerBlock } from "./blocks/source-viewer";
-import { DocDataProvider } from "./doc-data-context";
 import { SourceViewer, type SourceViewerContent } from "./source-viewer";
-
-const currentLibrary = vi.hoisted(() => ({ value: "ui" as "keys" | "ui" }));
-
-vi.mock("./blocks/use-current-library", () => ({
-  useCurrentLibrary: () => currentLibrary.value,
-}));
 
 const files = [
   {
@@ -38,131 +24,10 @@ const multipleFiles = [
   },
 ];
 
-const staticSourceData = {
-  source: {
-    "@ui/select/select.tsx": {
-      raw: "RAW_SELECT_SOURCE_MARKER",
-      highlighted: [{ number: 1, content: [{ text: "HIGHLIGHTED_SELECT_SOURCE_MARKER" }] }],
-    },
-    "@ui/select/select-utils.ts": {
-      raw: "RAW_SELECT_UTILS_MARKER",
-      highlighted: [{ number: 1, content: [{ text: "HIGHLIGHTED_SELECT_UTILS_MARKER" }] }],
-    },
-  },
-  mergedSource: "MERGED_SELECT_SOURCE_MARKER",
-} satisfies ComponentSourceData;
-
-function responseWithJson(data: unknown): Response {
-  const response = new Response();
-  vi.spyOn(response, "json").mockResolvedValue(data);
-  return response;
-}
-
-afterEach(() => {
-  currentLibrary.value = "ui";
-  vi.restoreAllMocks();
-  vi.unstubAllGlobals();
-});
-
 describe("SourceViewer", () => {
-  it("keeps the static component archive out of the initial server render", async () => {
-    const pageData = await loadDocPageData("ui", "components", "select", {
-      throwIfMissing: true,
-    });
-    if (!pageData) throw new Error("Select docs data is missing");
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(responseWithJson(staticSourceData));
-    vi.stubGlobal("fetch", fetchMock);
-
-    const html = renderToStaticMarkup(
-      <DocDataProvider value={{ type: "component", data: pageData }}>
-        <SourceViewerBlock />
-      </DocDataProvider>,
-    );
-
-    expect(pageData).not.toHaveProperty("source");
-    expect(html).not.toContain("HIGHLIGHTED_SELECT_SOURCE_MARKER");
-    expect(html).not.toContain("MERGED_SELECT_SOURCE_MARKER");
-    expect(html).toContain("Browse the source repository");
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("fetches the static archive only after opening and preserves paths, highlighting, and copy", async () => {
-    const user = userEvent.setup();
-    const pageData = await loadDocPageData("ui", "components", "select", {
-      throwIfMissing: true,
-    });
-    if (!pageData) throw new Error("Select docs data is missing");
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(responseWithJson(staticSourceData));
-    vi.stubGlobal("fetch", fetchMock);
-
-    render(
-      <DocDataProvider value={{ type: "component", data: pageData }}>
-        <SourceViewerBlock />
-      </DocDataProvider>,
-    );
-
-    expect(fetchMock).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: /View component source/i }));
-
-    expect(fetchMock).toHaveBeenCalledWith("/source-data/ui/components/select.source.json");
-    expect(await screen.findByText("HIGHLIGHTED_SELECT_SOURCE_MARKER")).toBeInTheDocument();
-    expect(screen.getByText("HIGHLIGHTED_SELECT_UTILS_MARKER")).toBeInTheDocument();
-    expect(screen.getByText("@ui/select/select.tsx")).toBeInTheDocument();
-    expect(screen.getByText("@ui/select/select-utils.ts")).toBeInTheDocument();
-    expect(screen.getByText("[Copy Full Source]")).toBeInTheDocument();
-  });
-
-  it("renders and copies all six public use-navigation files", async () => {
-    currentLibrary.value = "keys";
-    const user = userEvent.setup();
-    const pageData = await loadDocPageData("keys", "hooks", "use-navigation", {
-      throwIfMissing: true,
-    });
-    if (!pageData) throw new Error("use-navigation docs data is missing");
-
-    const expectedPaths = [
-      "src/hooks/use-navigation.ts",
-      "src/hooks/utils/navigation-dispatch.ts",
-      "src/hooks/utils/navigation-items.ts",
-      "src/hooks/utils/navigation-directions.ts",
-      "src/hooks/utils/focusable.ts",
-      "src/hooks/utils/element-guards.ts",
-    ];
-    const archive = JSON.parse(
-      readFileSync(
-        resolve(
-          import.meta.dirname,
-          "../../../public/source-data/keys/hooks/use-navigation.source.json",
-        ),
-        "utf8",
-      ),
-    ) as HookSourceData;
-    const archiveFiles = archive.files ?? [];
-    const paths = archiveFiles.map((file) => file.path);
-    expect(pageData.files).toEqual(expectedPaths);
-    expect(paths).toEqual(expectedPaths);
-
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(responseWithJson(archive));
-    vi.stubGlobal("fetch", fetchMock);
-    vi.stubGlobal("isSecureContext", true);
-    const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
-
-    render(
-      <DocDataProvider value={{ type: "hook", data: pageData }}>
-        <SourceViewerBlock />
-      </DocDataProvider>,
-    );
-
-    await user.click(screen.getByRole("button", { name: "View hook source (6 files)" }));
-
-    expect(fetchMock).toHaveBeenCalledWith("/source-data/keys/hooks/use-navigation.source.json");
-    for (const path of paths) {
-      expect(await screen.findByText(path)).toBeInTheDocument();
-    }
-
-    await user.click(screen.getByText("[Copy useNavigation]"));
-    const copiedArchive = archiveFiles.map((file) => `// ${file.path}\n${file.raw}`).join("\n\n");
-    expect(writeText).toHaveBeenCalledWith(copiedArchive);
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("loads, caches, and mounts source only while the disclosure is open", async () => {
@@ -290,6 +155,28 @@ describe("SourceViewer", () => {
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(await screen.findByText("export function Button() {}")).toBeInTheDocument();
     expect(loadSource).toHaveBeenCalledTimes(2);
+  });
+
+  it("copies the merged archive source through the generated Copy Full Source control", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("isSecureContext", true);
+    const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
+    const loadSource = vi
+      .fn<() => Promise<SourceViewerContent>>()
+      .mockResolvedValue({ files, copyText: "MERGED_SELECT_SOURCE_MARKER" });
+
+    render(
+      <SourceViewer
+        cacheKey="ui:component:button:archive"
+        loadSource={loadSource}
+        copyLabel="Copy Full Source"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /View component source/i }));
+    await user.click(await screen.findByText("[Copy Full Source]"));
+
+    expect(writeText).toHaveBeenCalledWith("MERGED_SELECT_SOURCE_MARKER");
   });
 
   it("does not synthesize a public installer command when no installer is configured", () => {

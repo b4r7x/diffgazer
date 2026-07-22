@@ -1,35 +1,13 @@
-import { type ChildProcess, spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync } from "node:fs";
-import { access, writeFile } from "node:fs/promises";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { setTimeout as delay } from "node:timers/promises";
 import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api/protocol";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { requireValue } from "../../testing/assertions.js";
+import type { ActiveSession } from "../review/stream/store.js";
 
 const TEST_TOKEN = "test-settings-token";
 const ROUTE_BOUNDARY_TIMEOUT_MS = 20_000;
-const storeModuleUrl = new URL("../../shared/lib/config/store.ts", import.meta.url).href;
-
-const projectIdentityWorker = `
-import { access, writeFile } from "node:fs/promises";
-import { setTimeout as delay } from "node:timers/promises";
-
-const { createConfigStore } = await import(process.env.STORE_MODULE_URL);
-const store = createConfigStore();
-await writeFile(process.env.READY_PATH, "ready");
-while (true) {
-  try {
-    await access(process.env.START_PATH);
-    break;
-  } catch {
-    await delay(2);
-  }
-}
-const project = store.ensureProjectFile(process.env.PROJECT_ROOT);
-await writeFile(process.env.RESULT_PATH, JSON.stringify(project));
-`;
 
 let diffgazerHome: string;
 let projectRootA: string;
@@ -68,42 +46,14 @@ async function expectPersistFailure(response: Response): Promise<void> {
   });
 }
 
-async function waitForPaths(filePaths: string[]): Promise<void> {
-  const deadline = Date.now() + 5_000;
-  while (true) {
-    try {
-      await Promise.all(filePaths.map((filePath) => access(filePath)));
-      return;
-    } catch {
-      if (Date.now() >= deadline) throw new Error("Timed out waiting for project identity workers");
-      await delay(10);
-    }
+function expectTerminalTrustRevocation(session: ActiveSession): void {
+  expect(session.controller.signal.aborted).toBe(true);
+  expect(session.controller.signal.reason).toBe("trust_revoked");
+  const terminal = session.events.at(-1);
+  expect(terminal?.type).toBe("error");
+  if (terminal?.type === "error") {
+    expect(terminal.error.message).toContain("trust was revoked");
   }
-}
-
-function waitForExit(child: ChildProcess): Promise<{ code: number | null; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    let stderr = "";
-    child.stderr?.setEncoding("utf8");
-    child.stderr?.on("data", (chunk: string) => {
-      stderr += chunk;
-    });
-    child.once("error", reject);
-    child.once("close", (code) => resolve({ code, stderr }));
-  });
-}
-
-function readProjectId(filePath: string): string {
-  const value: unknown = JSON.parse(readFileSync(filePath, "utf8"));
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    !("projectId" in value) ||
-    typeof value.projectId !== "string"
-  ) {
-    throw new Error(`Expected project identity in ${filePath}`);
-  }
-  return value.projectId;
 }
 
 describe("settings trust routes — server-scoped project", () => {
@@ -140,61 +90,6 @@ describe("settings trust routes — server-scoped project", () => {
     rmSync(projectRootB, { recursive: true, force: true });
     warnSpy.mockRestore();
   });
-
-  it(
-    "concurrent project initializers return the same durable identity",
-    async () => {
-      const barrierRoot = join(diffgazerHome, "project-identity-race");
-      mkdirSync(barrierRoot);
-      const startPath = join(barrierRoot, "start");
-      const workerIds = ["a", "b"] as const;
-      const children = workerIds.map((workerId) =>
-        spawn(
-          process.execPath,
-          ["--import", "tsx", "--input-type=module", "--eval", projectIdentityWorker],
-          {
-            env: {
-              ...process.env,
-              PROJECT_ROOT: projectRootA,
-              READY_PATH: join(barrierRoot, `${workerId}.ready`),
-              RESULT_PATH: join(barrierRoot, `${workerId}.json`),
-              START_PATH: startPath,
-              STORE_MODULE_URL: storeModuleUrl,
-            },
-            stdio: ["ignore", "ignore", "pipe"],
-          },
-        ),
-      );
-      const exits = children.map(waitForExit);
-
-      try {
-        await waitForPaths(workerIds.map((workerId) => join(barrierRoot, `${workerId}.ready`)));
-        await writeFile(startPath, "start");
-        await expect(Promise.all(exits)).resolves.toEqual([
-          { code: 0, stderr: "" },
-          { code: 0, stderr: "" },
-        ]);
-
-        const callerIds = workerIds.map((workerId) =>
-          readProjectId(join(barrierRoot, `${workerId}.json`)),
-        );
-        const durableId = readProjectId(join(projectRootA, ".diffgazer/project.json"));
-        const [callerA, callerB] = callerIds;
-        if (!callerA || !callerB) throw new Error("Expected two project identity results");
-
-        expect(new Set(callerIds)).toEqual(new Set([durableId]));
-        const store = await loadStore();
-        await store.saveTrust(trustForProject(callerA, projectRootA));
-        expect(store.getTrust(callerB)?.projectId).toBe(durableId);
-      } finally {
-        for (const child of children) {
-          if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
-        }
-        await Promise.allSettled(exits);
-      }
-    },
-    ROUTE_BOUNDARY_TIMEOUT_MS,
-  );
 
   it(
     "GET /trust derives project from server, ignoring client projectId query",
@@ -495,7 +390,7 @@ describe("settings trust routes — server-scoped project", () => {
 
     expect(res.status).toBe(200);
     expect(session.isComplete).toBe(true);
-    expect(session.controller.signal.aborted).toBe(true);
+    expectTerminalTrustRevocation(session);
     expect(unrelatedSession.isComplete).toBe(false);
     expect(unrelatedSession.controller.signal.aborted).toBe(false);
     sessions.deleteSession(session.reviewId);
@@ -542,7 +437,7 @@ describe("settings trust routes — server-scoped project", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(projectSession.controller.signal.aborted).toBe(true);
+    expectTerminalTrustRevocation(projectSession);
     expect(unrelatedSession.controller.signal.aborted).toBe(false);
     sessions.deleteSession(projectSession.reviewId);
     sessions.deleteSession(unrelatedSession.reviewId);

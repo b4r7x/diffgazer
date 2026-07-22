@@ -76,4 +76,23 @@ describe("downloadAsFile", () => {
     downloadAsFile("hello", "notes.txt");
     expect(document.querySelector("a[download]")).toBeNull();
   });
+
+  it("builds the blob and anchor from the given content, MIME type, and filename", async () => {
+    const clickedAnchors: HTMLAnchorElement[] = [];
+    document.addEventListener(
+      "click",
+      (event) => {
+        clickedAnchors.push(event.target as HTMLAnchorElement);
+      },
+      { capture: true, once: true },
+    );
+
+    downloadAsFile("# Context", "context.md", "text/markdown");
+
+    const blob = vi.mocked(URL.createObjectURL).mock.calls[0]?.[0] as Blob;
+    expect(blob.type).toBe("text/markdown");
+    await expect(blob.text()).resolves.toBe("# Context");
+    expect(clickedAnchors).toHaveLength(1);
+    expect(clickedAnchors[0]?.download).toBe("context.md");
+  });
 });

@@ -77,11 +77,28 @@ describe("useModelSource", () => {
     expect(result.current.fetchedAt).toBe("2026-06-02T00:00:00.000Z");
   });
 
-  it("stays empty for both branches while the picker is closed", () => {
+  it("clears visible models once the picker closes", () => {
     mockUseOpenRouterModels.mockReturnValue(IDLE);
-    mockUseProviderModels.mockReturnValue(IDLE);
+    mockUseProviderModels.mockReturnValue({
+      data: {
+        models: [
+          { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "", tier: "free" },
+        ],
+        fetchedAt: "2026-06-02T00:00:00.000Z",
+        source: "cache",
+        cached: true,
+      },
+      isLoading: false,
+      error: null,
+    });
 
-    const { result } = renderHook(() => useModelSource(false, "gemini"));
+    const { result, rerender } = renderHook(({ open }) => useModelSource(open, "gemini"), {
+      initialProps: { open: true },
+    });
+
+    expect(result.current.models.map((m) => m.id)).toEqual(["gemini-2.5-flash"]);
+
+    rerender({ open: false });
 
     expect(result.current.models).toEqual([]);
     expect(result.current.loading).toBe(false);

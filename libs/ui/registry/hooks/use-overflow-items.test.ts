@@ -1,16 +1,19 @@
 import { act, render, renderHook, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { requireValue } from "../testing/assertions";
 import { computeVisibleCount, useOverflowItems } from "./use-overflow-items";
 
 let resizeCallbacks: (() => void)[] = [];
 let retainedResizeCallbacks: (() => void)[] = [];
+let resizeObservations: { target: Element; cb: () => void }[] = [];
 let mutationCallbacks: (() => void)[] = [];
 let animationCallbacks: FrameRequestCallback[] = [];
 
 beforeEach(() => {
   resizeCallbacks = [];
   retainedResizeCallbacks = [];
+  resizeObservations = [];
   mutationCallbacks = [];
   animationCallbacks = [];
 
@@ -18,13 +21,15 @@ beforeEach(() => {
     "ResizeObserver",
     class {
       constructor(private cb: () => void) {}
-      observe() {
+      observe(target: Element) {
         if (!resizeCallbacks.includes(this.cb)) resizeCallbacks.push(this.cb);
         if (!retainedResizeCallbacks.includes(this.cb)) retainedResizeCallbacks.push(this.cb);
+        resizeObservations.push({ target, cb: this.cb });
       }
       unobserve() {}
       disconnect() {
         resizeCallbacks = resizeCallbacks.filter((callback) => callback !== this.cb);
+        resizeObservations = resizeObservations.filter((observation) => observation.cb !== this.cb);
       }
     },
   );
@@ -62,6 +67,15 @@ function flushScheduledChecks() {
   const callbacks = animationCallbacks;
   animationCallbacks = [];
   for (const cb of callbacks) cb(0);
+}
+
+function triggerResizeFor(target: Element) {
+  const callbacks = new Set(
+    resizeObservations
+      .filter((observation) => observation.target === target)
+      .map((observation) => observation.cb),
+  );
+  for (const cb of callbacks) cb();
 }
 
 function TestOverflowItems({
@@ -234,10 +248,11 @@ describe("useOverflowItems", () => {
         indicatorWidth: 80,
       }),
     );
-    setRenderedWidths(150);
+    const indicator = screen.getByLabelText("overflow indicator");
+    mockOffsetWidth(indicator, 80);
 
     act(() => {
-      for (const cb of resizeCallbacks) cb();
+      triggerResizeFor(indicator);
       flushScheduledChecks();
     });
 
@@ -375,5 +390,104 @@ describe("useOverflowItems", () => {
     act(() => replacementResizeCallback?.());
     expect(animationCallbacks).toHaveLength(0);
     expect(screen.getByLabelText("counts")).toHaveTextContent("3/0/100");
+  });
+
+  it("recalculates using the iframe's own window for style/observers/rAF, and disconnects them on unmount", () => {
+    const iframe = document.createElement("iframe");
+    document.body.appendChild(iframe);
+    const frameDocument = requireValue(iframe.contentDocument, "iframe document");
+    const frameWindow = requireValue(iframe.contentWindow, "iframe window");
+
+    const frameResizeCallbacks: (() => void)[] = [];
+    const frameAnimationCallbacks: FrameRequestCallback[] = [];
+    const resizeDisconnect = vi.fn();
+    const mutationDisconnect = vi.fn();
+
+    class FrameResizeObserver {
+      constructor(private cb: () => void) {}
+      observe() {
+        frameResizeCallbacks.push(this.cb);
+      }
+      unobserve() {}
+      disconnect = resizeDisconnect;
+    }
+    class FrameMutationObserver {
+      observe() {}
+      disconnect = mutationDisconnect;
+      takeRecords() {
+        return [];
+      }
+    }
+
+    Object.defineProperty(frameWindow, "ResizeObserver", {
+      configurable: true,
+      writable: true,
+      value: FrameResizeObserver,
+    });
+    Object.defineProperty(frameWindow, "MutationObserver", {
+      configurable: true,
+      writable: true,
+      value: FrameMutationObserver,
+    });
+    Object.defineProperty(frameWindow, "requestAnimationFrame", {
+      configurable: true,
+      writable: true,
+      value: (cb: FrameRequestCallback) => {
+        frameAnimationCallbacks.push(cb);
+        return frameAnimationCallbacks.length;
+      },
+    });
+    Object.defineProperty(frameWindow, "cancelAnimationFrame", {
+      configurable: true,
+      writable: true,
+      value: vi.fn(),
+    });
+    const realGetComputedStyle = frameWindow.getComputedStyle.bind(frameWindow);
+    Object.defineProperty(frameWindow, "getComputedStyle", {
+      configurable: true,
+      writable: true,
+      value: vi.fn((el: Element, pseudoElt?: string | null) => {
+        const style = realGetComputedStyle(el, pseudoElt);
+        return new Proxy(style, {
+          get(target, prop) {
+            if (prop === "gap") return "10px";
+            const value = Reflect.get(target, prop, target);
+            return typeof value === "function" ? value.bind(target) : value;
+          },
+        });
+      }),
+    });
+
+    const rendered = render(
+      React.createElement(TestOverflowItems, {
+        widths: [50, 50, 50],
+        containerWidth: 150,
+        indicatorWidth: 30,
+      }),
+      { container: frameDocument.body, baseElement: frameDocument.body },
+    );
+
+    mockOffsetWidth(rendered.getByRole("list", { name: "items" }), 150);
+    for (const el of rendered.getAllByRole("listitem")) {
+      mockOffsetWidth(el, Number(el.getAttribute("data-width")));
+    }
+    mockOffsetWidth(rendered.getByLabelText("overflow indicator"), 30);
+
+    act(() => {
+      for (const cb of frameResizeCallbacks) cb();
+      const callbacks = frameAnimationCallbacks.splice(0);
+      for (const cb of callbacks) cb(0);
+    });
+
+    expect(rendered.getByLabelText("counts")).toHaveTextContent("2/1/150");
+    // The top window's own observer/rAF fakes were never engaged.
+    expect(resizeCallbacks).toHaveLength(0);
+    expect(animationCallbacks).toHaveLength(0);
+
+    rendered.unmount();
+    expect(resizeDisconnect).toHaveBeenCalled();
+    expect(mutationDisconnect).toHaveBeenCalled();
+
+    iframe.remove();
   });
 });

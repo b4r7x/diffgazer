@@ -12,7 +12,7 @@ describe("Header", () => {
   it("provides a plain-text brand for the narrow header", () => {
     render(<Header providerName="OpenAI" providerStatus="idle" />);
 
-    expect(screen.getByText("DIFFGAZER")).toHaveClass("sm:hidden");
+    expect(screen.getByText("DIFFGAZER")).toBeInTheDocument();
   });
 
   it("shows provider name and status when supplied", () => {

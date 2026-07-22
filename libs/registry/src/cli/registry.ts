@@ -7,8 +7,18 @@ import {
   RegistryFileSchema as BaseRegistryFileSchema,
   RegistryItemSchema as BaseRegistryItemSchema,
 } from "../registry-types.js";
-import { getRelativePath } from "./fs.js";
 import { toErrorMessage } from "./terminal.js";
+
+function relativeRegistryPath(file: { path: string }, prefixes: string[]): string {
+  for (const prefix of prefixes) {
+    if (file.path.startsWith(prefix)) {
+      return file.path.slice(prefix.length);
+    }
+  }
+  throw new Error(
+    `Unsupported registry file path "${file.path}". Expected path to start with one of: ${prefixes.map((p) => `"${p}"`).join(", ")}.`,
+  );
+}
 
 export const RegistryFileSchema = BaseRegistryFileSchema.extend({
   path: z
@@ -268,7 +278,7 @@ export function createRegistryAccessors(
     getPublicItems,
     getAllItems,
     resolveDeps: (names) => resolveRegistryDeps(names, getItem, itemLabel),
-    relativePath: (file) => getRelativePath(file, pathPrefixes),
+    relativePath: (file) => relativeRegistryPath(file, pathPrefixes),
     npmDeps: (names) => collectNpmDeps(names, getItem),
   };
 }

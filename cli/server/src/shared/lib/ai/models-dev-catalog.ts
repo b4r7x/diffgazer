@@ -54,10 +54,6 @@ const catalogFlights = new Map<string, CatalogFlight>();
 
 let parsedCacheMemo: ParsedCacheMemo | null = null;
 
-export const resetCatalogParseMemo = (): void => {
-  parsedCacheMemo = null;
-};
-
 const CacheGenerationSchema = z.object({ generationId: z.uuid() });
 
 const getCacheIdentity = (raw: unknown): string => {

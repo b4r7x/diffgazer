@@ -240,6 +240,43 @@ describe("useReviewStream", () => {
     });
   });
 
+  it("cancel(reviewId, { preserveState: true }) invokes the server cancel without resetting stream state", async () => {
+    let resolveResume: (result: Result<ResumeReviewResult, StreamReviewError>) => void = () => {};
+    const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>().mockReturnValue(
+      new Promise((resolve) => {
+        resolveResume = resolve;
+      }),
+    );
+    const cancelReviewSession = vi.fn().mockResolvedValue({ cancelled: true });
+    const api = createApi({ resumeReviewStream, cancelReviewSession });
+
+    const { result } = renderHook(() => useReviewStream(), {
+      wrapper: createWrapper(api),
+    });
+
+    let resumePromise: Promise<Result<void, StreamReviewError>> | undefined;
+    act(() => {
+      resumePromise = result.current.resume("preserve-review");
+    });
+
+    await waitFor(() => expect(result.current.state.isStreaming).toBe(true));
+
+    await act(async () => {
+      await result.current.cancel("preserve-review", { preserveState: true });
+    });
+
+    expect(result.current.state.reviewId).toBe("preserve-review");
+    expect(result.current.state.isStreaming).toBe(true);
+    expect(result.current.state.error).toBeNull();
+    expect(result.current.state.notices).toEqual([]);
+    expect(cancelReviewSession).toHaveBeenCalledWith("preserve-review");
+
+    await act(async () => {
+      resolveResume(ok(fakeResumeResult("preserve-review")));
+      await requirePromise(resumePromise, "preserve-state cancel resume promise");
+    });
+  });
+
   it("treats a terminal/absent session cancel as success without an error", async () => {
     let resolveResume: (result: Result<ResumeReviewResult, StreamReviewError>) => void = () => {};
     const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>().mockReturnValue(
@@ -351,10 +388,12 @@ describe("useReviewStream", () => {
 
     await waitFor(() => expect(result.current.state.isStreaming).toBe(true));
 
+    let cancelError: string | null | undefined;
     await act(async () => {
-      await result.current.cancel("cancel-throws-review");
+      cancelError = await result.current.cancel("cancel-throws-review");
     });
 
+    expect(cancelError).toBe("cancel endpoint down");
     expect(result.current.state.error).toBe("cancel endpoint down");
 
     await act(async () => {
@@ -371,10 +410,12 @@ describe("useReviewStream", () => {
       wrapper: createWrapper(api),
     });
 
-    act(() => {
-      result.current.cancel(null);
+    let cancelResult: string | null | undefined;
+    await act(async () => {
+      cancelResult = await result.current.cancel(null);
     });
 
+    expect(cancelResult).toBeNull();
     expect(cancelReviewSession).not.toHaveBeenCalled();
   });
 
@@ -436,11 +477,9 @@ describe("useReviewStream", () => {
   });
 
   it("surfaces a streamed cap-warning chunk as a user-visible notice", async () => {
-    let onChunk: ((content: string) => void) | undefined;
     const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>().mockImplementation(
       (options) =>
         new Promise((resolve) => {
-          onChunk = options.onChunk;
           // Emit the cap warning mid-stream, then complete.
           options.onChunk?.("Event cap reached; some progress events were dropped.");
           resolve(ok(fakeResumeResult("noticed-review")));
@@ -456,7 +495,6 @@ describe("useReviewStream", () => {
       await result.current.resume("noticed-review");
     });
 
-    expect(onChunk).toBeDefined();
     expect(result.current.state.notices).toContain(
       "Event cap reached; some progress events were dropped.",
     );
@@ -505,6 +543,33 @@ describe("useReviewStream", () => {
         Object.defineProperty(document, "visibilityState", visibilityDescriptor);
       }
     }
+  });
+
+  it("aborts the pending stream boundary signal when the hook unmounts", async () => {
+    const deferred = createDeferred<Result<ResumeReviewResult, StreamReviewError>>();
+    const resumeReviewStream = vi
+      .fn<BoundApi["resumeReviewStream"]>()
+      .mockReturnValue(deferred.promise);
+    const api = createApi({ resumeReviewStream });
+
+    const { result, unmount } = renderHook(() => useReviewStream(), {
+      wrapper: createWrapper(api),
+    });
+
+    act(() => {
+      void result.current.resume("active-review");
+    });
+
+    await waitFor(() => expect(resumeReviewStream).toHaveBeenCalledTimes(1));
+    const signal = requireValue(
+      resumeReviewStream.mock.calls[0]?.[0]?.signal,
+      "resume stream abort signal",
+    );
+    expect(signal.aborted).toBe(false);
+
+    unmount();
+
+    expect(signal.aborted).toBe(true);
   });
 
   it("removes reconnect listeners when the stream hook unmounts", async () => {

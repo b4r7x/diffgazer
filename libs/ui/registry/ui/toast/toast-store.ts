@@ -2,8 +2,10 @@
 
 import { type ReactNode, useSyncExternalStore } from "react";
 import type { ToastTone, ToastVariant } from "./toast-variants";
+import { createToastTimers, type ToastTimerSnapshot, type ToastTimers } from "./toast-timers";
 
 export type { ToastPosition } from "./toast-variants";
+export type { ToastTimerSnapshot } from "./toast-timers";
 
 export interface Toast {
   /** ID applied to the rendered element. */
@@ -69,34 +71,24 @@ const INITIAL_STATE: StoreState = {
   timerVersion: 0,
 };
 
-interface TimerEntry {
-  timeout: ReturnType<typeof setTimeout> | undefined;
-  startedAt: number;
-  remaining: number;
-  duration: number;
-}
-
 let state: StoreState = INITIAL_STATE;
 const listeners = new Set<() => void>();
-const timers = new Map<string, TimerEntry>();
+let toastTimers: ToastTimers | undefined;
 let fallbackToastId = 0;
-let timerVersion = 0;
+
+function timers() {
+  if (!toastTimers) {
+    toastTimers = createToastTimers({ onElapsed: (id) => dismiss(id) });
+  }
+  return toastTimers;
+}
 
 function emit() {
   for (const listener of listeners) listener();
 }
 
-function markTimersChanged() {
-  timerVersion += 1;
-}
-
 function clearTimer(id: string) {
-  const entry = timers.get(id);
-  if (entry) {
-    clearTimeout(entry.timeout);
-    timers.delete(id);
-    markTimersChanged();
-  }
+  timers().clear(id);
 }
 
 function subscribe(listener: () => void) {
@@ -116,14 +108,7 @@ function scheduleAutoDismiss(id: string, tone: ToastTone, duration?: number) {
   if ((tone === "error" || tone === "loading") && duration === undefined) return;
   const resolved = duration ?? DEFAULT_DURATION;
   if (!Number.isFinite(resolved) || resolved <= 0) return;
-  const entry: TimerEntry = {
-    timeout: state.paused ? undefined : setTimeout(() => dismiss(id), resolved),
-    startedAt: Date.now(),
-    remaining: resolved,
-    duration: resolved,
-  };
-  timers.set(id, entry);
-  markTimersChanged();
+  timers().schedule(id, resolved, state.paused);
 }
 
 function isEvictable(t: Toast): boolean {
@@ -196,7 +181,12 @@ function create(options: ToastOptions): string {
     if (!nextIds.has(dismissId)) nextDismissing.delete(dismissId);
   }
 
-  state = { ...state, toasts: nextToasts, dismissingIds: nextDismissing, timerVersion };
+  state = {
+    ...state,
+    toasts: nextToasts,
+    dismissingIds: nextDismissing,
+    timerVersion: timers().version,
+  };
   emit();
   return id;
 }
@@ -217,11 +207,22 @@ export function remove(id: string) {
   clearTimer(id);
   const nextDismissing = new Set(state.dismissingIds);
   nextDismissing.delete(id);
+  const nextToasts = state.toasts.filter((t) => t.id !== id);
+  let pauseCauses = state.pauseCauses;
+  let paused = state.paused;
+  if (nextToasts.length === 0) {
+    if (toastTimers) toastTimers.resume();
+    toastTimers = undefined;
+    pauseCauses = new Set();
+    paused = false;
+  }
   state = {
     ...state,
-    toasts: state.toasts.filter((t) => t.id !== id),
+    toasts: nextToasts,
     dismissingIds: nextDismissing,
-    timerVersion,
+    pauseCauses,
+    paused,
+    timerVersion: nextToasts.length === 0 ? 0 : timers().version,
   };
   emit();
 }
@@ -234,13 +235,13 @@ export function pause(cause: ToastPauseCause) {
     emit();
     return;
   }
-  for (const [, entry] of timers) {
-    clearTimeout(entry.timeout);
-    entry.timeout = undefined;
-    entry.remaining = Math.max(0, entry.remaining - (Date.now() - entry.startedAt));
-  }
-  if (timers.size > 0) markTimersChanged();
-  state = { ...state, pauseCauses, paused: true, timerVersion };
+  timers().pause();
+  state = {
+    ...state,
+    pauseCauses,
+    paused: true,
+    timerVersion: timers().version,
+  };
   emit();
 }
 
@@ -253,32 +254,18 @@ export function resume(cause: ToastPauseCause) {
     emit();
     return;
   }
-  for (const [id, entry] of timers) {
-    entry.startedAt = Date.now();
-    entry.timeout = setTimeout(() => dismiss(id), entry.remaining);
-  }
-  if (timers.size > 0) markTimersChanged();
-  state = { ...state, pauseCauses, paused: false, timerVersion };
+  timers().resume();
+  state = {
+    ...state,
+    pauseCauses,
+    paused: false,
+    timerVersion: timers().version,
+  };
   emit();
 }
 
-export interface ToastTimerSnapshot {
-  /** Duration in milliseconds. */
-  duration: number;
-  /** Remaining time in milliseconds. */
-  remaining: number;
-  /** Timestamp when the timer started. */
-  startedAt: number;
-}
-
 export function getTimerSnapshot(id: string): ToastTimerSnapshot | null {
-  const entry = timers.get(id);
-  if (!entry) return null;
-  return {
-    duration: entry.duration,
-    remaining: entry.remaining,
-    startedAt: entry.startedAt,
-  };
+  return timers().snapshot(id);
 }
 
 type ToneMethod = (title: string, options?: Omit<ToastOptions, "tone" | "title">) => string;

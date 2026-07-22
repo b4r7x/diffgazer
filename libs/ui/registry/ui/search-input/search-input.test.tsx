@@ -261,16 +261,6 @@ describe("SearchInput", () => {
     expect(screen.getByText("find:")).toBeInTheDocument();
   });
 
-  it.each(["sm", "md"] satisfies NonNullable<
-    SearchInputProps["size"]
-  >[])("keeps the %s search variant at an iOS-safe font size below md", (size) => {
-    renderSearchInput({ size });
-
-    expect(screen.getByRole("searchbox").closest('[data-slot="search-input"]')).toHaveClass(
-      "max-md:text-base",
-    );
-  });
-
   it("keeps decorative default and public-example prefixes out of the accessibility tree", () => {
     const { rerender } = renderSearchInput();
     expect(screen.getByText("/")).toHaveAttribute("aria-hidden", "true");

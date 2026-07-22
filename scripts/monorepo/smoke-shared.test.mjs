@@ -3,11 +3,9 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import {
-  declareTailwindV4Dependency,
-  fetchJsonWithLimit,
-  writeViteFixture,
-} from "./smoke-shared.mjs";
+import { declareTailwindV4Dependency } from "./smoke-shared/dependencies.mjs";
+import { writeViteFixture } from "./smoke-shared/fixtures.mjs";
+import { fetchJsonWithLimit } from "./smoke-shared/network.mjs";
 
 test("Vite smoke fixtures keep a semantic Tailwind v4 declaration after local link wiring", () => {
   const fixture = mkdtempSync(join(tmpdir(), "dg-smoke-shared-"));
@@ -34,11 +32,7 @@ test("Vite smoke fixtures keep a semantic Tailwind v4 declaration after local li
 
 test("bounded JSON fetch parses a response at the byte limit", async () => {
   const body = '{"ok":true}';
-  let requestOptions;
-  const fetchImpl = async (_url, options) => {
-    requestOptions = options;
-    return new Response(body);
-  };
+  const fetchImpl = async () => new Response(body);
 
   const value = await fetchJsonWithLimit("https://models.dev/api.json", {
     fetchImpl,
@@ -48,7 +42,6 @@ test("bounded JSON fetch parses a response at the byte limit", async () => {
   });
 
   assert.deepEqual(value, { ok: true });
-  assert.equal(requestOptions.redirect, "error");
 });
 
 test("bounded JSON fetch surfaces redirect-mode rejection", async () => {

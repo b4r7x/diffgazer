@@ -64,10 +64,6 @@ describe("mergeIds", () => {
     expect(mergeIds(undefined, undefined)).toBeUndefined();
     expect(mergeIds("")).toBeUndefined();
   });
-
-  it("returns undefined when nothing to merge", () => {
-    expect(mergeIds()).toBeUndefined();
-  });
 });
 
 describe("isHTMLDialogElement", () => {
@@ -90,11 +86,21 @@ describe("isHTMLDialogElement", () => {
 });
 
 describe("isHTMLElementForContainer", () => {
-  it("returns true when value is an HTMLElement in container ownerDocument", () => {
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const child = document.createElement("span");
+  it("returns true for an HTMLElement whose realm matches the container's ownerDocument", () => {
+    const frame = document.createElement("iframe");
+    document.body.append(frame);
+    const frameDocument = frame.contentDocument;
+    if (!frameDocument) throw new Error("Expected iframe document");
+
+    const container = frameDocument.createElement("div");
+    frameDocument.body.append(container);
+    const child = frameDocument.createElement("span");
+    container.append(child);
+
+    expect(child instanceof HTMLElement).toBe(false);
     expect(isHTMLElementForContainer(child, container)).toBe(true);
+
+    frame.remove();
   });
 
   it("returns false when container is null", () => {

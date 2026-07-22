@@ -9,7 +9,10 @@ import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { z } from "zod";
-import type { AIExecutionFingerprint, InitializedAIClient } from "../../shared/lib/ai/client.js";
+import type {
+  AIExecutionFingerprint,
+  InitializedAIClient,
+} from "../../shared/lib/ai/client/initialize.js";
 import type { createGitService as createGitServiceType } from "../../shared/lib/git/service.js";
 import { makeIssue } from "../../shared/lib/testing/factories.js";
 import { requireValue } from "../../testing/assertions.js";
@@ -431,7 +434,7 @@ describe("createReviewSession", () => {
     };
 
     // A mode-only lookup (no scope key) resolves the scoped session so a reload
-    // during a scoped review can resume it (F-163).
+    // during a scoped review can resume it.
     expect(getActiveSessionForProject(projectRoot, lookup)?.reviewId).toBe(result.value.reviewId);
 
     // The matching scope key also resolves the session created through the API.
@@ -731,7 +734,6 @@ describe("POST-to-stream integration", () => {
     const completeEvent = events.find((e) => e.type === "complete");
     expect(completeEvent).toBeDefined();
     if (completeEvent?.type === "complete") {
-      expect(completeEvent.result.issues.length).toBeGreaterThanOrEqual(0);
       expect(completeEvent.reviewId).toBe(result.value.reviewId);
     }
   });

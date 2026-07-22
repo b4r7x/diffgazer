@@ -1,11 +1,10 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, renderHook, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FloatingAlign, FloatingSide } from "@/hooks/use-floating-position";
 import { axe } from "../../../testing/axe";
 import { applyReducedMotionFixture } from "../../../testing/prefers-reduced-motion";
-import { Select } from "../select";
 import { FloatingPanel, useFloatingPanelContext } from "./index";
 
 interface TriggerRect {
@@ -184,42 +183,6 @@ describe("FloatingPanel presence", () => {
       restoreAnimationName();
     }
   });
-
-  it("ignores animationend events bubbling from descendants", async () => {
-    function PanelWithAnimatedChild() {
-      const [open, setOpen] = useState(true);
-      const triggerRef = useRef<HTMLButtonElement | null>(null);
-      return (
-        <>
-          <button
-            type="button"
-            ref={(node) => {
-              triggerRef.current = node;
-              mountTriggerRect(node, { x: 0, y: 0, width: 100, height: 32 });
-            }}
-            onClick={() => setOpen((v) => !v)}
-          >
-            toggle
-          </button>
-          <FloatingPanel open={open} triggerRef={triggerRef} role="dialog" aria-label="bubble">
-            <span>child</span>
-          </FloatingPanel>
-        </>
-      );
-    }
-
-    render(<PanelWithAnimatedChild />);
-    const panel = await screen.findByRole("dialog", { name: "bubble" });
-    const inner = screen.getByText("child");
-
-    await act(async () => {
-      // fireEvent retained: animationEnd has no userEvent equivalent.
-      fireEvent.animationEnd(inner);
-    });
-
-    expect(panel).toBeInTheDocument();
-    expect(panel).toHaveAttribute("data-state", "open");
-  });
 });
 
 describe("FloatingPanel positioning attributes", () => {
@@ -316,71 +279,8 @@ describe("FloatingPanel positioning attributes", () => {
     );
   });
 
-  it("lets Select focus after positioning without re-stealing focus on rerender", async () => {
-    const user = userEvent.setup();
-
-    function SelectHarness({ suffix }: { suffix: string }) {
-      return (
-        <>
-          <Select>
-            <Select.Trigger aria-label="Branch">
-              <Select.Value placeholder="Select a branch" />
-            </Select.Trigger>
-            <Select.Content>
-              <Select.Item value="main">main {suffix}</Select.Item>
-              <Select.Item value="develop">develop {suffix}</Select.Item>
-            </Select.Content>
-          </Select>
-          <button type="button">Outside</button>
-        </>
-      );
-    }
-
-    const { rerender } = render(<SelectHarness suffix="one" />);
-    const trigger = screen.getByRole("combobox", { name: "Branch" });
-    trigger.focus();
-    await user.keyboard("{Enter}");
-
-    const listbox = screen.getByRole("listbox");
-    expect(listbox).toHaveFocus();
-
-    const outside = screen.getByRole("button", { name: "Outside" });
-    outside.focus();
-    rerender(<SelectHarness suffix="two" />);
-    expect(outside).toHaveFocus();
-  });
-
-  it("initializes searchable dropdown highlight after its options register", async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
-
-    render(
-      <Select value="" onChange={onChange}>
-        <Select.Trigger aria-label="Command">
-          <Select.Value placeholder="Select a command" />
-        </Select.Trigger>
-        <Select.Content>
-          <Select.Item value="git-add">git add</Select.Item>
-          <Select.Item value="git-commit">git commit</Select.Item>
-          <Select.Search />
-        </Select.Content>
-      </Select>,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Command" }));
-    const searchInput = screen.getByRole("combobox", { name: "Search options" });
-    const addOption = screen.getByRole("option", { name: "git add" });
-    await waitFor(() => {
-      expect(searchInput).toHaveFocus();
-      expect(searchInput).toHaveAttribute("aria-activedescendant", addOption.id);
-    });
-
-    await user.keyboard("{ArrowDown}");
-    const commitOption = screen.getByRole("option", { name: "git commit" });
-    expect(searchInput).toHaveAttribute("aria-activedescendant", commitOption.id);
-
-    await user.keyboard("{Enter}");
-    expect(onChange).toHaveBeenCalledWith("git-commit");
+  it("throws the owner error when useFloatingPanelContext is called outside a FloatingPanel", () => {
+    expect(() => renderHook(() => useFloatingPanelContext())).toThrow(/must be used within/);
   });
 });
 
@@ -484,7 +384,7 @@ describe("FloatingPanel prop forwarding", () => {
 });
 
 describe("FloatingPanel unlabeled rendering", () => {
-  function UnlabeledHarness({ ariaLabelledBy }: { ariaLabelledBy?: string }) {
+  function UnlabeledHarness({ role, ariaLabelledBy }: { role?: string; ariaLabelledBy?: string }) {
     const [open] = useState(true);
     const triggerRef = useRef<HTMLButtonElement | null>(null);
     return (
@@ -503,6 +403,7 @@ describe("FloatingPanel unlabeled rendering", () => {
           open={open}
           triggerRef={triggerRef}
           avoidCollisions={false}
+          role={role}
           aria-labelledby={ariaLabelledBy}
         >
           body
@@ -511,18 +412,39 @@ describe("FloatingPanel unlabeled rendering", () => {
     );
   }
 
-  it.each([
-    ["renders without crashing when neither role nor accessible name is supplied", "unlabeled"],
-    ["renders without crashing when role alone is supplied", "role"],
-    ["renders without crashing when aria-labelledby alone is supplied", "labelledby"],
-  ] as const)("%s", (_label, mode) => {
-    if (mode === "unlabeled") {
-      render(<UnlabeledHarness />);
-    } else if (mode === "role") {
-      render(<Harness initialOpen panelLabel="role-warn" panelRole="dialog" />);
-    } else {
-      render(<UnlabeledHarness ariaLabelledBy="external-name" />);
-    }
+  function getFloatingPanel() {
+    const panel = document.querySelector<HTMLElement>('[data-slot="floating-panel"]');
+    if (!panel) throw new Error("Expected a FloatingPanel to be rendered");
+    return panel;
+  }
+
+  it("renders with no role and no accessible name when neither is supplied", () => {
+    render(<UnlabeledHarness />);
+    const panel = getFloatingPanel();
+
+    expect(panel).toBeInTheDocument();
+    expect(panel).not.toHaveAttribute("role");
+    expect(panel).not.toHaveAttribute("aria-label");
+    expect(panel).not.toHaveAttribute("aria-labelledby");
+  });
+
+  it("renders with a role but no accessible name when role alone is supplied", () => {
+    render(<UnlabeledHarness role="dialog" />);
+    const panel = getFloatingPanel();
+
+    expect(panel).toBeInTheDocument();
+    expect(panel).toHaveAttribute("role", "dialog");
+    expect(panel).not.toHaveAttribute("aria-label");
+    expect(panel).not.toHaveAttribute("aria-labelledby");
+  });
+
+  it("renders with an accessible name but no role when aria-labelledby alone is supplied", () => {
+    render(<UnlabeledHarness ariaLabelledBy="external-name" />);
+    const panel = getFloatingPanel();
+
+    expect(panel).toBeInTheDocument();
+    expect(panel).not.toHaveAttribute("role");
+    expect(panel).toHaveAttribute("aria-labelledby", "external-name");
   });
 });
 

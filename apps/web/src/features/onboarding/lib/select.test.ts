@@ -7,7 +7,7 @@ describe("resolveAvailableValue", () => {
   });
 
   it("walks candidates in order and stops on the first hit", () => {
-    expect(resolveAvailableValue(["a", "b"] as const, "missing", "a")).toBe("a");
+    expect(resolveAvailableValue(["a", "b"] as const, "b", "a")).toBe("b");
   });
 
   it("falls back to the first available value when no candidate matches", () => {

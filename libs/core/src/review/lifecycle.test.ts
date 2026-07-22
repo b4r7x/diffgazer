@@ -27,8 +27,11 @@ describe("isNoDiffError", () => {
 });
 
 describe("isCheckingForChanges", () => {
-  it("flags checking while the diff step is pending and streaming", () => {
-    expect(isCheckingForChanges(true, [makeStep("diff", "pending")])).toBe(true);
+  it.each<StepState["status"]>([
+    "pending",
+    "active",
+  ])("keeps change checking visible while the diff step is %s (in progress) and streaming", (status) => {
+    expect(isCheckingForChanges(true, [makeStep("diff", status)])).toBe(true);
   });
 
   it("clears checking once the diff step completes", () => {
@@ -81,14 +84,31 @@ describe("getLoadingMessage", () => {
 });
 
 describe("sessionTerminationCopy", () => {
-  it("maps eviction, timeout, shutdown, and stale to four distinct messages", () => {
-    const messages = [
-      sessionTerminationCopy(ReviewErrorCode.SESSION_EVICTED).message,
-      sessionTerminationCopy(ReviewErrorCode.SESSION_TIMEOUT).message,
-      sessionTerminationCopy(ReviewErrorCode.SERVER_SHUTDOWN).message,
-      sessionTerminationCopy(ReviewErrorCode.SESSION_STALE).message,
-    ];
-    expect(new Set(messages).size).toBe(4);
+  it.each([
+    [
+      ReviewErrorCode.SESSION_EVICTED,
+      "Session Evicted",
+      "This review was dropped to make room for newer reviews. Start it again to continue.",
+    ],
+    [
+      ReviewErrorCode.SESSION_TIMEOUT,
+      "Session Timed Out",
+      "The review ran longer than the session limit. Start a new review to retry.",
+    ],
+    [
+      ReviewErrorCode.SERVER_SHUTDOWN,
+      "Server Stopped",
+      "The review was interrupted because the diffgazer server is shutting down.",
+    ],
+    [
+      ReviewErrorCode.SESSION_STALE,
+      "Session Expired",
+      "The review session has become stale. Please start a new review.",
+    ],
+  ] as const)("maps %s to its own title and message", (code, title, message) => {
+    const copy = sessionTerminationCopy(code);
+    expect(copy.title).toBe(title);
+    expect(copy.message).toBe(message);
   });
 
   it("does not tell the user to start/retry a review when the server is shutting down", () => {

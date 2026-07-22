@@ -12,12 +12,14 @@
     {
       "path": "registry/ui/badge/index.ts",
       "content": "export { Badge, type BadgeProps, type BadgeSize, type BadgeVariant, badgeVariants } from \"./badge\";\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/badge/index.ts"
     },
     {
       "path": "registry/ui/badge/badge.tsx",
       "content": "import { cva, type VariantProps } from \"class-variance-authority\";\nimport type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Allowed badge variant values. */\nexport type BadgeVariant = \"success\" | \"warning\" | \"error\" | \"info\" | \"neutral\";\n/** Allowed badge size values. */\nexport type BadgeSize = \"sm\" | \"md\" | \"lg\";\n\n/** Class variants for badge. */\nexport const badgeVariants = cva(\n  \"inline-flex items-center font-bold tracking-wider rounded-sm border shrink-0 whitespace-nowrap\",\n  {\n    variants: {\n      variant: {\n        success:\n          \"[--badge-dot:var(--success-strong)] bg-success-subtle text-success-text border-success-border\",\n        warning:\n          \"[--badge-dot:var(--warning-strong)] bg-warning-subtle text-warning-text border-warning-border\",\n        error:\n          \"[--badge-dot:var(--error-strong)] bg-error-subtle text-error-text border-error-border\",\n        info: \"[--badge-dot:var(--info-strong)] bg-info-subtle text-info-text border-info-border\",\n        neutral:\n          \"[--badge-dot:var(--neutral-strong)] bg-neutral-subtle text-neutral-text border-neutral-border\",\n      },\n      size: {\n        sm: \"px-2 py-0.5 text-xs\",\n        md: \"px-3 py-1 text-sm\",\n        lg: \"px-4 py-1.5 text-base\",\n      },\n    },\n    defaultVariants: { variant: \"neutral\", size: \"sm\" },\n  },\n);\n\n/** Props for badge. */\nexport interface BadgeProps\n  extends ComponentProps<\"span\">,\n    Omit<VariantProps<typeof badgeVariants>, \"variant\"> {\n  /** Semantic color token. Picks foreground, background, border, and dot color together. */\n  variant?: BadgeVariant;\n  /** Renders a leading status dot in the variant color. */\n  dot?: boolean;\n}\n\n/** Root label container with variant and size styling. */\nexport function Badge({ ref, className, variant, size, dot, children, ...props }: BadgeProps) {\n  return (\n    <span\n      ref={ref}\n      data-slot=\"badge\"\n      className={cn(badgeVariants({ variant, size }), className)}\n      {...props}\n    >\n      {dot && (\n        <span\n          aria-hidden=\"true\"\n          className=\"mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-(--badge-dot)\"\n        />\n      )}\n      {children}\n    </span>\n  );\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/badge/badge.tsx"
     }
   ],
   "meta": {

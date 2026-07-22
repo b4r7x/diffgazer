@@ -17,12 +17,4 @@ describe("useActiveHeading SSR", () => {
     const html = renderToString(<Toc />);
     expect(html).toContain("intro");
   });
-
-  it("seeds activeId from the first id before any effect runs", () => {
-    function FirstId() {
-      const { activeId } = useActiveHeading({ ids: ["a", "b", "c"] });
-      return <>{activeId}</>;
-    }
-    expect(renderToString(<FirstId />)).toContain("a");
-  });
 });

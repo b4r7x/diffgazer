@@ -71,12 +71,6 @@ describe("Input", () => {
     expect(screen.getByRole("textbox", { name: "Path" })).toHaveValue("config");
   });
 
-  it("keeps interactive InputGroup suffix content accessible", () => {
-    render(<InputGroup aria-label="Path" suffix={<button type="button">Browse</button>} />);
-
-    expect(screen.getByRole("button", { name: "Browse" })).toBeInTheDocument();
-  });
-
   it("lets consumers hide a decorative non-string affix from assistive tech", () => {
     render(<InputGroup aria-label="Amount" prefix={<span>USD</span>} prefixAriaHidden />);
 

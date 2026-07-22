@@ -43,7 +43,7 @@ interface SearchStatusView {
   severity?: "error";
 }
 
-export function getSearchStatusView(
+function getSearchStatusView(
   hasQuery: boolean,
   status: SearchStatus,
   error: string | null,

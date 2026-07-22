@@ -35,6 +35,11 @@ async function request(app: Hono): Promise<Response> {
   });
 }
 
+const ACCESS_NOT_GRANTED_MESSAGE =
+  "Repository access not granted. Update Trust & Permissions to continue.";
+const REPO_ROOT_MISMATCH_MESSAGE =
+  "Trust was granted for a different repository root. Re-grant trust for this directory.";
+
 describe("requireRepoAccess", () => {
   let warnSpy: ReturnType<typeof vi.spyOn>;
 
@@ -63,10 +68,11 @@ describe("requireRepoAccess", () => {
     const app = await createApp();
 
     const response = await request(app);
-    const body = (await response.json()) as { error: { code: string } };
+    const body = (await response.json()) as { error: { code: string; message: string } };
 
     expect(response.status).toBe(403);
     expect(body.error.code).toBe("TRUST_REQUIRED");
+    expect(body.error.message).toBe(ACCESS_NOT_GRANTED_MESSAGE);
   });
 
   it("blocks requests when readFiles has not been granted", async () => {
@@ -74,10 +80,11 @@ describe("requireRepoAccess", () => {
     const app = await createApp();
 
     const response = await request(app);
-    const body = (await response.json()) as { error: { code: string } };
+    const body = (await response.json()) as { error: { code: string; message: string } };
 
     expect(response.status).toBe(403);
     expect(body.error.code).toBe("TRUST_REQUIRED");
+    expect(body.error.message).toBe(ACCESS_NOT_GRANTED_MESSAGE);
   });
 
   it("passes requests when readFiles has been granted", async () => {
@@ -104,9 +111,10 @@ describe("requireRepoAccess", () => {
     const app = await createApp();
 
     const response = await request(app);
-    const body = (await response.json()) as { error: { code: string } };
+    const body = (await response.json()) as { error: { code: string; message: string } };
 
     expect(response.status).toBe(403);
     expect(body.error.code).toBe("TRUST_REQUIRED");
+    expect(body.error.message).toBe(REPO_ROOT_MISMATCH_MESSAGE);
   });
 });

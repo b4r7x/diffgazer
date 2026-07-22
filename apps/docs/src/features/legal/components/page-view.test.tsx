@@ -4,7 +4,7 @@ import "@testing-library/jest-dom/vitest";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MobileNavProvider } from "@/hooks/mobile-nav-context";
 import { stubMatchMedia } from "@/testing/match-media";
@@ -14,9 +14,18 @@ const routerInvalidate = vi.hoisted(() => vi.fn());
 const termsChunk = vi.hoisted(() => ({
   reject: null as ((error: Error) => void) | null,
 }));
+const privacyFixture = vi.hoisted(() => ({
+  frontmatter: {
+    title: "Privacy policy",
+    description: "How Diffgazer handles the data you give it.",
+  },
+  body: "We only ever process what keeps Diffgazer working for you.",
+}));
 
-// Boundary mock: the generated collection supplies a controllable rejected MDX chunk while the
-// LegalPageView and its useContent call stay on the production path.
+// Boundary mock: the generated collection supplies a controllable rejected MDX chunk for the
+// Terms page and a resolved MDX fixture for the Privacy page, invoking the real `component`
+// renderer LegalPageView supplies so the LegalPageView and its useContent call stay on the
+// production path.
 vi.mock("../../../../.source/browser", async () => {
   const { lazy } = await import("react");
   const RejectedTermsMdx = lazy(
@@ -25,13 +34,29 @@ vi.mock("../../../../.source/browser", async () => {
         termsChunk.reject = reject;
       }),
   );
+  function PrivacyMdxBody() {
+    return <p>{privacyFixture.body}</p>;
+  }
   return {
     default: {
       legal: {
-        createClientLoader: () => ({
+        createClientLoader: (options: {
+          component: (loaded: {
+            frontmatter: typeof privacyFixture.frontmatter;
+            default: ComponentType;
+          }) => ReactNode;
+        }) => ({
           preload: async () => undefined,
           getComponent: () => RejectedTermsMdx,
-          useContent: () => <RejectedTermsMdx />,
+          useContent: (path: string) => {
+            if (path === "privacy.mdx") {
+              return options.component({
+                frontmatter: privacyFixture.frontmatter,
+                default: PrivacyMdxBody,
+              });
+            }
+            return <RejectedTermsMdx />;
+          },
         }),
       },
     },
@@ -93,5 +118,34 @@ describe("LegalPageView", () => {
 
     expect(reload).toHaveBeenCalledTimes(1);
     expect(routerInvalidate).not.toHaveBeenCalled();
+  });
+
+  it("renders a resolved Privacy page's frontmatter, MDX body, and last-updated copy inside the legal shell", async () => {
+    render(
+      <KeyboardProvider>
+        <MobileNavProvider>
+          <LegalPageView
+            panelLabel="PRIVACY"
+            data={{
+              path: "privacy.mdx",
+              title: privacyFixture.frontmatter.title,
+              description: privacyFixture.frontmatter.description,
+              lastUpdated: "January 5, 2026",
+            }}
+          />
+        </MobileNavProvider>
+      </KeyboardProvider>,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: privacyFixture.frontmatter.title }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(privacyFixture.frontmatter.description)).toBeInTheDocument();
+    expect(screen.getByText(privacyFixture.body)).toBeInTheDocument();
+    expect(screen.getByText("Last updated: January 5, 2026")).toBeInTheDocument();
+    expect(screen.getByText("[ LEGAL / PRIVACY ]")).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "Sidebar navigation" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Privacy/ })).toHaveAttribute("href", "/privacy");
+    expect(screen.getByRole("link", { name: /Terms/ })).toHaveAttribute("href", "/terms");
   });
 });

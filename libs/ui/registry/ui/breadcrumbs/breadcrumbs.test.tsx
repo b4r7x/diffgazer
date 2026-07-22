@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { Fragment } from "react";
+import { createRef, Fragment } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { Breadcrumbs } from "./index";
@@ -193,14 +193,23 @@ describe("Breadcrumbs", () => {
   });
 
   it("supports render props for custom item rendering", () => {
+    const ref = createRef<HTMLAnchorElement>();
     render(
       <Breadcrumbs>
-        <Breadcrumbs.Item>
-          <Breadcrumbs.Link href="/">{(props) => <a {...props}>Custom Home</a>}</Breadcrumbs.Link>
+        <Breadcrumbs.Item current>
+          <Breadcrumbs.Link href="/about" className="custom-link" ref={ref}>
+            {(props) => <a {...props}>Custom About</a>}
+          </Breadcrumbs.Link>
         </Breadcrumbs.Item>
       </Breadcrumbs>,
     );
-    expect(screen.getByText("Custom Home")).toBeInTheDocument();
+
+    const link = screen.getByRole("link", { name: "Custom About" });
+    expect(link).toHaveAttribute("href", "/about");
+    expect(link).toHaveAttribute("aria-current", "page");
+    expect(link).toHaveAttribute("data-slot", "breadcrumbs-link");
+    expect(link).toHaveClass("custom-link");
+    expect(ref.current).toBe(link);
   });
 
   it("exposes sr-only 'More' on the ellipsis while keeping the glyph decorative", () => {

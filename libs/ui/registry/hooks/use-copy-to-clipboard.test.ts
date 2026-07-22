@@ -119,16 +119,15 @@ describe("useCopyToClipboard", () => {
 
   it("clears the pending reset timer on unmount", async () => {
     const write = vi.fn().mockResolvedValue(undefined);
-    const clearSpy = vi.spyOn(globalThis, "clearTimeout");
     const { result, unmount } = renderHook(() => useCopyToClipboard({ write }));
 
     await act(async () => {
       await result.current.copy("x");
     });
 
-    clearSpy.mockClear();
+    expect(vi.getTimerCount()).toBe(1);
     unmount();
-    expect(clearSpy).toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it("keeps the latest attempt's outcome when an older copy settles afterward", async () => {

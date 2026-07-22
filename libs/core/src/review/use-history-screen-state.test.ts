@@ -94,6 +94,9 @@ describe("useHistoryScreenState", () => {
     // Changing the filter resets the explicit selection, falling back to the first run.
     act(() => result.current.setSearchQuery("run-a"));
     await waitFor(() => expect(result.current.selectedRunId).toBe("run-a"));
+
+    act(() => result.current.setSearchQuery(""));
+    await waitFor(() => expect(result.current.selectedRunId).toBe("run-a"));
   });
 
   it("clears the selected run when the date filter changes", async () => {
@@ -102,6 +105,9 @@ describe("useHistoryScreenState", () => {
 
     act(() => result.current.setSelectedRunId("run-b"));
     expect(result.current.selectedRunId).toBe("run-b");
+
+    act(() => result.current.setSelectedDateId("2026-02-09"));
+    await waitFor(() => expect(result.current.selectedRunId).toBe("run-a"));
 
     act(() => result.current.setSelectedDateId("all"));
     await waitFor(() => expect(result.current.selectedRunId).toBe("run-a"));

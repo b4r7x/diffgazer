@@ -75,7 +75,7 @@ describe("useComposedRefs", () => {
     const objectRef = createRef<HTMLDivElement>();
     const { result } = renderHook(() => useComposedRefs(objectRef, null, undefined));
     const node = document.createElement("div");
-    expect(() => result.current(node)).not.toThrow();
+    result.current(node);
     expect(objectRef.current).toBe(node);
   });
 });

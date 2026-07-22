@@ -6,6 +6,7 @@ import {
 } from "@diffgazer/registry";
 import {
   aggregateThemeStylesInPublicRegistry,
+  applyUiRegistryTargetsInPublicRegistry,
   transformUiPublicRegistryKeysImports,
 } from "./registry/rewrite-keys-imports.js";
 
@@ -17,6 +18,7 @@ buildShadcnRegistryWithOrigin({
   defaultOrigin: REGISTRY_ORIGIN,
   afterBuild: ({ outputDir }) => {
     transformUiPublicRegistryKeysImports(outputDir);
+    applyUiRegistryTargetsInPublicRegistry(outputDir);
     aggregateThemeStylesInPublicRegistry(outputDir, (seedContent) =>
       aggregateThemeStyles({
         rootDir: ROOT,

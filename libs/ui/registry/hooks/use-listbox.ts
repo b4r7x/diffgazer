@@ -2,12 +2,7 @@
 
 import { composedClosest, composedContains, isEditableElement } from "@diffgazer/keys";
 import {
-  Children,
-  Fragment,
-  isValidElement,
   type KeyboardEvent,
-  type ReactElement,
-  type ReactNode,
   type Ref,
   useCallback,
   useEffect,
@@ -21,6 +16,7 @@ import { useControllableState } from "@/hooks/use-controllable-state";
 import { type NavigationRole, useNavigation } from "@/hooks/use-navigation";
 import { useTypeaheadBuffer } from "@/hooks/use-typeahead-buffer";
 import { typeaheadSearch } from "@/lib/typeahead";
+import { collectListboxItems } from "./listbox-children";
 import {
   getAccessibleText,
   getEncodedListboxItemId,
@@ -32,26 +28,9 @@ import {
 } from "./listbox-dom";
 import { hasEnabledMetadataItem, type ListboxMetadataItem } from "./listbox-metadata";
 
+export { collectListboxItems };
 export { getEncodedListboxItemId };
 export type { ListboxMetadataItem };
-
-interface ListboxItemElementProps {
-  id?: string;
-  disabled?: boolean;
-  hidden?: boolean;
-  inert?: boolean;
-  "aria-hidden"?: boolean | "true" | "false";
-  expanded?: boolean;
-  defaultExpanded?: boolean;
-  children?: ReactNode;
-}
-
-type ListboxChildType = ReactElement["type"];
-
-interface CollectListboxItemsOptions {
-  itemTypes: readonly ListboxChildType[];
-  containerTypes?: readonly ListboxChildType[];
-}
 
 /**
  * Options for shared listbox selection, highlight, keyboard navigation, and ARIA wiring.
@@ -132,45 +111,6 @@ export interface UseListboxReturn<TId extends string = string> {
     "aria-activedescendant": string | undefined;
     onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
   };
-}
-
-function isRenderSeedHidden(props: ListboxItemElementProps): boolean {
-  return (
-    props.hidden === true ||
-    props.inert === true ||
-    props["aria-hidden"] === true ||
-    props["aria-hidden"] === "true"
-  );
-}
-
-function isRenderSeedContainerVisible(props: ListboxItemElementProps): boolean {
-  return !isRenderSeedHidden(props) && (props.expanded ?? props.defaultExpanded ?? true);
-}
-
-/** Collects item IDs and disabled state that are inspectable during render. */
-export function collectListboxItems<TId extends string = string>(
-  children: ReactNode,
-  { itemTypes, containerTypes = [] }: CollectListboxItemsOptions,
-): ListboxMetadataItem<TId>[] {
-  const items: ListboxMetadataItem<TId>[] = [];
-
-  Children.forEach(children, (child) => {
-    if (!isValidElement<ListboxItemElementProps>(child)) return;
-    if (itemTypes.includes(child.type) && typeof child.props.id === "string") {
-      if (isRenderSeedHidden(child.props)) return;
-      // Child id is opaque to TS; consumers parameterize TId.
-      items.push({ id: child.props.id as TId, disabled: child.props.disabled });
-      return;
-    }
-    if (
-      child.type === Fragment ||
-      (containerTypes.includes(child.type) && isRenderSeedContainerVisible(child.props))
-    ) {
-      items.push(...collectListboxItems<TId>(child.props.children, { itemTypes, containerTypes }));
-    }
-  });
-
-  return items;
 }
 
 /** Shared listbox state and keyboard navigation hook. */

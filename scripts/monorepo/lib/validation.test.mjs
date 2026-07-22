@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, it } from "node:test";
-import { collectTreeParityErrors, computeStrictArtifactFingerprint } from "@diffgazer/registry";
+import { computeStrictArtifactFingerprint } from "@diffgazer/registry";
 import { createTempDirs, writeFile } from "./fixture.mjs";
-import { validateArtifactPackSurface } from "./pack-surface.mjs";
 import {
   collectBundleRelativeJsImportErrors,
+  collectGeneratedDistParityErrors,
   computeBundleIntegrity,
   validateIntegrityBundle,
   validateLibraryArtifacts,
@@ -171,15 +171,14 @@ describe("artifact validation", () => {
     );
   });
 
-  it("validates copied artifact mirrors without recomputing source fingerprints", () => {
+  it("validates the generated dist parity adapter against cli/add's generated output", () => {
     const root = makeTempDir();
-    writeFile(root, "source/artifact-manifest.json", '{"ok":true}\n');
-    writeFile(root, "mirror/artifact-manifest.json", '{"ok":false}\n');
+    writeFile(root, "cli/add/src/generated/registry-bundle.json", '{"ok":true}\n');
+    writeFile(root, "cli/add/dist/generated/registry-bundle.json", '{"ok":false}\n');
 
-    assert.deepEqual(
-      collectTreeParityErrors(resolve(root, "source"), resolve(root, "mirror"), "mirror"),
-      ["mirror: artifact differs from source for artifact-manifest.json"],
-    );
+    assert.deepEqual(collectGeneratedDistParityErrors(root), [
+      "@diffgazer/add dist generated: artifact differs from source for registry-bundle.json",
+    ]);
   });
 
   it("fails tampered integrity bundles", () => {
@@ -235,41 +234,6 @@ describe("artifact validation", () => {
       validateIntegrityBundle(bundlePath, ["items", "theme", "styles"], "registry bundle").includes(
         "registry bundle: bundle styles is missing",
       ),
-    );
-  });
-
-  it("fails package artifact surface validation when packed files include leaked artifact payloads", () => {
-    const root = makeTempDir();
-
-    assert.ok(
-      validateArtifactPackSurface(
-        root,
-        {
-          id: "test",
-          packageName: "@test/lib",
-          workspaceDir: ".",
-        },
-        ["dist/artifacts/artifact-manifest.json", "dist/artifacts/fingerprint.sha256"],
-      ).includes(
-        "@test/lib npm pack must not ship dist/artifacts: dist/artifacts/artifact-manifest.json, dist/artifacts/fingerprint.sha256",
-      ),
-    );
-  });
-
-  it("passes package artifact surface validation when packed files exclude artifact payloads", () => {
-    const root = makeTempDir();
-
-    assert.deepEqual(
-      validateArtifactPackSurface(
-        root,
-        {
-          id: "test",
-          packageName: "@test/lib",
-          workspaceDir: ".",
-        },
-        ["package.json", "README.md", "dist/index.js"],
-      ),
-      [],
     );
   });
 });

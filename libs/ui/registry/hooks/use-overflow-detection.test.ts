@@ -6,12 +6,14 @@ import { type OverflowDirection, useOverflowDetection } from "./use-overflow-det
 let resizeCallbacks: (() => void)[] = [];
 let retainedResizeCallbacks: (() => void)[] = [];
 let mutationCallbacks: (() => void)[] = [];
+let mutationObservations: { target: Node; options: MutationObserverInit; cb: () => void }[] = [];
 let animationCallbacks: FrameRequestCallback[] = [];
 
 beforeEach(() => {
   resizeCallbacks = [];
   retainedResizeCallbacks = [];
   mutationCallbacks = [];
+  mutationObservations = [];
   animationCallbacks = [];
   vi.stubGlobal(
     "ResizeObserver",
@@ -37,11 +39,15 @@ beforeEach(() => {
       constructor(cb: () => void) {
         this.cb = cb;
       }
-      observe() {
+      observe(target: Node, options?: MutationObserverInit) {
         if (!mutationCallbacks.includes(this.cb)) mutationCallbacks.push(this.cb);
+        mutationObservations.push({ target, options: options ?? {}, cb: this.cb });
       }
       disconnect() {
         mutationCallbacks = mutationCallbacks.filter((callback) => callback !== this.cb);
+        mutationObservations = mutationObservations.filter(
+          (observation) => observation.cb !== this.cb,
+        );
       }
       takeRecords() {
         return [];
@@ -91,6 +97,16 @@ function flushScheduledChecks() {
   const callbacks = animationCallbacks;
   animationCallbacks = [];
   for (const cb of callbacks) cb(0);
+}
+
+function dispatchMutation(target: Node, options: MutationObserverInit) {
+  for (const observation of mutationObservations) {
+    if (observation.target !== target) continue;
+    const matches = (Object.keys(options) as (keyof MutationObserverInit)[]).every(
+      (key) => observation.options[key] === options[key],
+    );
+    if (matches) observation.cb();
+  }
 }
 
 describe("useOverflowDetection", () => {
@@ -144,6 +160,12 @@ describe("useOverflowDetection", () => {
       dims: { scrollWidth: 100, clientWidth: 100, scrollHeight: 500, clientHeight: 300 },
       expected: true,
     },
+    {
+      scenario: "ignores overflow when direction='both' and both axes exactly fit",
+      direction: "both",
+      dims: { scrollWidth: 100, clientWidth: 100, scrollHeight: 100, clientHeight: 100 },
+      expected: false,
+    },
   ])("$scenario", ({ direction, dims, expected }) => {
     let lastResult = !expected;
     const { getByTestId } = render(
@@ -169,7 +191,7 @@ describe("useOverflowDetection", () => {
 
   it("updates when text content changes", () => {
     let lastResult = false;
-    const { getByTestId, rerender } = render(
+    const { getByTestId } = render(
       React.createElement(TestComponent, {
         direction: "horizontal",
         onResult: (v: boolean) => {
@@ -180,6 +202,7 @@ describe("useOverflowDetection", () => {
 
     // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
     const el = getByTestId("target");
+    el.textContent = "short";
     mockDimensions(el, {
       scrollWidth: 100,
       clientWidth: 100,
@@ -193,14 +216,19 @@ describe("useOverflowDetection", () => {
     });
     expect(lastResult).toBe(false);
 
-    rerender(
-      React.createElement(TestComponent, {
-        direction: "horizontal",
-        onResult: (v: boolean) => {
-          lastResult = v;
-        },
-      }),
-    );
+    // A mutation observed on an unrelated node must not trigger a recheck.
+    act(() => {
+      dispatchMutation(document.createElement("div"), {
+        childList: true,
+        characterData: true,
+        subtree: true,
+        attributes: true,
+      });
+      flushScheduledChecks();
+    });
+    expect(lastResult).toBe(false);
+
+    el.textContent = "a much longer piece of text that no longer fits the container";
     mockDimensions(el, {
       scrollWidth: 200,
       clientWidth: 100,
@@ -209,7 +237,12 @@ describe("useOverflowDetection", () => {
     });
 
     act(() => {
-      for (const cb of mutationCallbacks) cb();
+      dispatchMutation(el, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+        attributes: true,
+      });
       flushScheduledChecks();
     });
 

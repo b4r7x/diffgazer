@@ -83,8 +83,24 @@ describe("buildHomeLibrary", () => {
     ]);
   });
 
-  it("only surfaces curated main sections, dropping the rest", () => {
-    const result = buildHomeLibrary(UI_CONFIG, "ui", SECTIONS);
-    expect(result.sections.map((s) => s.name)).not.toContain("Project");
+  it("caps curated sections at six, dropping the seventh by priority", () => {
+    const sections: LandingSection[] = [
+      "Getting Started",
+      "Components",
+      "Hooks",
+      "API",
+      "Theme",
+      "Patterns",
+      "Guides",
+    ].map((name) => ({ name, items: [{ name: "Page", url: `/ui/${name}/page` }] }));
+    const result = buildHomeLibrary(UI_CONFIG, "ui", sections);
+    expect(result.sections.map((section) => section.name)).toEqual([
+      "Getting Started",
+      "Components",
+      "Hooks",
+      "API",
+      "Theme",
+      "Patterns",
+    ]);
   });
 });

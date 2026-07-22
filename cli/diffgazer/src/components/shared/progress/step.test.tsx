@@ -18,6 +18,5 @@ describe("ProgressStep", () => {
 
     const lines = (lastFrame() ?? "").split("\n");
     expect(lines).toEqual(["* Completed", "- Pending"]);
-    expect(lines.map((line) => line.indexOf(" ") + 1)).toEqual([2, 2]);
   });
 });

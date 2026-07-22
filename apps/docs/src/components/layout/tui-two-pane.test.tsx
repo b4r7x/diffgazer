@@ -7,7 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { MobileNavProvider, useMobileNav } from "@/hooks/mobile-nav-context";
 import { stubControllableMatchMedia } from "@/testing/match-media";
-import { TuiTwoPane } from "./tui-two-pane";
+import { TuiTwoPane, type TuiTwoPaneProps } from "./tui-two-pane";
 
 function MenuButton() {
   const { setOpen, menuButtonRef } = useMobileNav();
@@ -18,12 +18,12 @@ function MenuButton() {
   );
 }
 
-function renderTwoPane() {
+function renderTwoPane(props: Partial<TuiTwoPaneProps> = {}) {
   return render(
     <KeyboardProvider>
       <MobileNavProvider>
         <MenuButton />
-        <TuiTwoPane sidebar={() => <a href="/ui">Sidebar item</a>}>
+        <TuiTwoPane sidebar={() => <a href="/ui">Sidebar item</a>} {...props}>
           <p>Body</p>
         </TuiTwoPane>
       </MobileNavProvider>
@@ -92,5 +92,12 @@ describe("TuiTwoPane", () => {
 
     act(() => viewport.setDesktop(false));
     expect(menuButton).not.toHaveFocus();
+  });
+
+  it("marks the sidebar navigation region as busy when sidebarBusy is true", () => {
+    stubControllableMatchMedia({ isDesktop: true });
+    renderTwoPane({ sidebarBusy: true });
+
+    expect(sidebar()).toHaveAttribute("aria-busy", "true");
   });
 });

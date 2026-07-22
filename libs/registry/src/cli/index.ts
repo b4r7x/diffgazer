@@ -23,14 +23,11 @@ export {
   readPackageVersion,
 } from "./detect.js";
 export type { FileOp } from "./file-write-rollback.js";
-export {
-  atomicWriteFile,
-  copyGeneratedDir,
-  ensureWithinDir,
-  readTsConfigPaths,
-  withFileLock,
-  writeFileSafe,
-} from "./fs.js";
+export { copyGeneratedDir } from "./fs/directories.js";
+export { withFileLock } from "./fs/file-lock.js";
+export { ensureWithinDir } from "./fs/path-safety.js";
+export { readTsConfigPaths } from "./fs/tsconfig-paths.js";
+export { atomicWriteFile, writeFileSafe } from "./fs/writes.js";
 export { createInstallChecker } from "./install-checker.js";
 export { createItemAccessors } from "./item-accessors.js";
 export {
@@ -57,4 +54,4 @@ export {
 export { heading, info, promptSelect, warn } from "./terminal.js";
 export { showSkippedDependencies } from "./workflows/apply-install-plan.js";
 export { type InitWorkflowOptions, runInitWorkflow } from "./workflows/init.js";
-export { findOrphanedNpmDeps } from "./workflows/remove.js";
+export { findOrphanedNpmDeps } from "./workflows/remove/orphaned-deps.js";

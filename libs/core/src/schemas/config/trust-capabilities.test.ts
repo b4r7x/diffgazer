@@ -49,12 +49,11 @@ describe("trust capabilities model", () => {
   });
 
   describe("normalizeTrustCapabilities", () => {
-    it("returns NO_TRUST_CAPABILITIES when value is null", () => {
-      expect(normalizeTrustCapabilities(null)).toEqual(NO_TRUST_CAPABILITIES);
-    });
-
-    it("returns NO_TRUST_CAPABILITIES when value is undefined", () => {
-      expect(normalizeTrustCapabilities(undefined)).toEqual(NO_TRUST_CAPABILITIES);
+    it.each([
+      ["null", null],
+      ["undefined", undefined],
+    ])("returns NO_TRUST_CAPABILITIES when value is %s", (_label, value) => {
+      expect(normalizeTrustCapabilities(value)).toEqual(NO_TRUST_CAPABILITIES);
     });
 
     it("preserves readFiles when present", () => {

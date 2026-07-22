@@ -4,7 +4,7 @@ const GENERATED_ASSETS = [
   { path: "/sitemap.xml", content: "<urlset" },
   { path: "/robots.txt", content: "User-agent: *" },
   { path: "/llms.txt", content: "# Diffgazer documentation" },
-  { path: "/llms-full.txt", content: "# Architecture" },
+  { path: "/llms-full.txt", content: "# Installation" },
   { path: "/app/architecture.md", content: "# Architecture" },
 ] as const;
 

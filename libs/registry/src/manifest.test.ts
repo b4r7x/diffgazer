@@ -262,16 +262,6 @@ describe("createArtifactManifest", () => {
     expect(manifest.source).toEqual({ registryDir: "registry" });
     expect(manifest.generated).toEqual({ hooksFile: "generated/hooks.json" });
   });
-
-  it("produces a manifest that passes schema validation", () => {
-    writeFileSync(
-      resolve(testDir, "package.json"),
-      JSON.stringify({ name: "test-lib", version: "1.0.0" }),
-    );
-    const manifest = createArtifactManifest({ ...baseOptions, rootDir: testDir });
-    const result = ArtifactManifestSchema.safeParse(manifest);
-    expect(result.success).toBe(true);
-  });
 });
 
 describe("validateManifest", () => {

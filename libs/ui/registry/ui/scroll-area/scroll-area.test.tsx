@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ComponentProps } from "react";
+import type { ComponentProps, KeyboardEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { ScrollArea } from "./scroll-area";
@@ -112,6 +112,34 @@ describe("ScrollArea", () => {
     expect(el.scrollLeft).toBe(0);
   });
 
+  it("moves independently per axis and resets/advances both axes with Home and End in both-axis mode", async () => {
+    const user = userEvent.setup();
+    const el = renderScrollArea({ orientation: "both" });
+    defineScrollMetrics(el, {
+      clientHeight: 100,
+      scrollHeight: 1000,
+      clientWidth: 100,
+      scrollWidth: 1000,
+    });
+    el.focus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(el.scrollTop).toBe(40);
+    expect(el.scrollLeft).toBe(0);
+
+    await user.keyboard("{ArrowRight}");
+    expect(el.scrollLeft).toBe(40);
+    expect(el.scrollTop).toBe(40);
+
+    await user.keyboard("{Home}");
+    expect(el.scrollTop).toBe(0);
+    expect(el.scrollLeft).toBe(0);
+
+    await user.keyboard("{End}");
+    expect(el.scrollTop).toBe(1000);
+    expect(el.scrollLeft).toBe(1000);
+  });
+
   it("does not handle keyboard scrolling when keyboardScrollable is false", async () => {
     const user = userEvent.setup();
     const el = renderScrollArea({ keyboardScrollable: false });
@@ -122,13 +150,28 @@ describe("ScrollArea", () => {
     expect(el).not.toHaveAttribute("tabindex");
   });
 
-  it("forwards custom onKeyDown handler", async () => {
+  it("still scrolls on ArrowDown when a consumer onKeyDown handler does not cancel it", async () => {
     const user = userEvent.setup();
     const onKeyDown = vi.fn();
     const el = renderScrollArea({ onKeyDown });
+    defineScrollMetrics(el, { clientHeight: 100, scrollHeight: 1000 });
     el.focus();
     await user.keyboard("{ArrowDown}");
     expect(onKeyDown).toHaveBeenCalled();
+    expect(el.scrollTop).toBe(40);
+  });
+
+  it("leaves scrollTop unchanged when a consumer onKeyDown handler calls preventDefault", async () => {
+    const user = userEvent.setup();
+    const onKeyDown = vi.fn((event: KeyboardEvent<HTMLDivElement>) => {
+      event.preventDefault();
+    });
+    const el = renderScrollArea({ onKeyDown });
+    defineScrollMetrics(el, { clientHeight: 100, scrollHeight: 1000 });
+    el.focus();
+    await user.keyboard("{ArrowDown}");
+    expect(onKeyDown).toHaveBeenCalled();
+    expect(el.scrollTop).toBe(0);
   });
 
   it("does not hijack scroll keys from descendant controls", () => {

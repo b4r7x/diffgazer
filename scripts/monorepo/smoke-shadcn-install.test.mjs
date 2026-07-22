@@ -1,190 +1,30 @@
 import assert from "node:assert/strict";
-import { once } from "node:events";
 import { readFileSync } from "node:fs";
-import { createServer } from "node:net";
 import { join, resolve } from "node:path";
 import { test } from "node:test";
-import { createPackageTarballCache } from "./smoke-package-runner.mjs";
 import {
-  addonSideEffectImports,
-  allRegistryIndexNames,
   assertBundledComponentsRendered,
   buildSmokeApp,
   bundledUiComponents,
+} from "./smoke-shadcn-install/fixture.mjs";
+import {
+  addonSideEffectImports,
+  allRegistryIndexNames,
   directlyInstallableUiNames,
   findUnbundledKeysEntryHooks,
   installedFilePathForFile,
   keysEntryHookNames,
   standaloneKeysHookImports,
   uiComponentNames,
-  uiItems,
-} from "./smoke-shadcn-install.mjs";
-import { CommandTimedOutError, runArgv } from "./smoke-shared.mjs";
+} from "./smoke-shadcn-install/registry.mjs";
 
 const root = process.cwd();
 const uiRegistryDir = resolve(root, "libs/ui/public/r");
 const keysRegistryDir = resolve(root, "libs/keys/public/r");
 
-test(
-  "bounded smoke commands finish TERM-to-KILL after the parent closes and before rejecting",
-  { skip: process.platform === "win32", timeout: 5_000 },
-  async (context) => {
-    context.mock.timers.enable({ apis: ["setTimeout"] });
-    const timeoutMs = 200;
-    const terminationGraceMs = 50;
-    const server = createServer();
-    await new Promise((resolveListen) => server.listen(0, "127.0.0.1", resolveListen));
-    const address = server.address();
-    assert.ok(address && typeof address === "object");
-
-    let parentPid;
-    let descendantPid;
-    let socket;
-    context.after(async () => {
-      socket?.destroy();
-      if (parentPid) {
-        try {
-          process.kill(-parentPid, "SIGKILL");
-        } catch (error) {
-          if (error?.code !== "ESRCH") throw error;
-        }
-      }
-      if (descendantPid) {
-        try {
-          process.kill(descendantPid, "SIGKILL");
-        } catch (error) {
-          if (error?.code !== "ESRCH") throw error;
-        }
-      }
-      await new Promise((resolveClose, rejectClose) => {
-        server.close((error) => (error ? rejectClose(error) : resolveClose()));
-      });
-    });
-
-    const connection = once(server, "connection");
-    let commandSettled = false;
-    const command = runArgv(
-      process.execPath,
-      [
-        "-e",
-        [
-          'const { spawn } = require("node:child_process");',
-          'const { createConnection } = require("node:net");',
-          "const port = Number(process.argv[1]);",
-          'const socket = createConnection({ host: "127.0.0.1", port }, () => {',
-          'const descendant = spawn(process.execPath, ["-e", "process.on(\\"SIGTERM\\", () => {}); process.send({ type: \\"descendant-ready\\" }); setInterval(() => {}, 1000000);"], { stdio: ["ignore", "ignore", "ignore", "ipc"] });',
-          'descendant.once("message", () => socket.write(`${JSON.stringify({ type: "ready", parentPid: process.pid, descendantPid: descendant.pid })}\\n`));',
-          "});",
-          'process.on("SIGTERM", () => socket.end(`${JSON.stringify({ type: "parent-term" })}\\n`, () => process.exit(0)));',
-          "setInterval(() => {}, 1000000);",
-        ].join(""),
-        String(address.port),
-      ],
-      { timeoutMs, terminationGraceMs },
-    ).then(
-      (output) => {
-        commandSettled = true;
-        return output;
-      },
-      (error) => {
-        commandSettled = true;
-        return error;
-      },
-    );
-
-    [socket] = await connection;
-    socket.setEncoding("utf8");
-    let resolveReady;
-    const ready = new Promise((resolve) => {
-      resolveReady = resolve;
-    });
-    let resolveParentTerminated;
-    const parentTerminated = new Promise((resolve) => {
-      resolveParentTerminated = resolve;
-    });
-    let buffer = "";
-    socket.on("data", (chunk) => {
-      buffer += chunk;
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-      for (const line of lines) {
-        const message = JSON.parse(line);
-        if (message.type === "ready") resolveReady(message);
-        if (message.type === "parent-term") resolveParentTerminated();
-      }
-    });
-    const socketClosed = once(socket, "close");
-
-    const readiness = await ready;
-    parentPid = readiness.parentPid;
-    descendantPid = readiness.descendantPid;
-    context.mock.timers.tick(timeoutMs);
-    await parentTerminated;
-    await socketClosed;
-    await new Promise((resolveImmediate) => setImmediate(resolveImmediate));
-
-    assert.equal(commandSettled, false);
-    assert.doesNotThrow(() => process.kill(descendantPid, 0));
-    context.mock.timers.tick(terminationGraceMs);
-
-    const timeoutError = await command;
-    assert.ok(timeoutError instanceof CommandTimedOutError);
-    assert.equal(timeoutError.timeoutMs, timeoutMs);
-    assert.throws(() => process.kill(descendantPid, 0), { code: "ESRCH" });
-    assert.throws(() => process.kill(-parentPid, 0), { code: "ESRCH" });
-  },
-);
-
-test("package smoke cache packs and builds each immutable workspace tarball once", async () => {
-  const packInvocations = [];
-  const buildInvocations = [];
-  const cache = createPackageTarballCache(root, {
-    packDir: "/virtual/package-smoke-cache",
-    pack: async (_root, workspacePackage, packDir) => {
-      packInvocations.push(workspacePackage);
-      if (workspacePackage === "@diffgazer/ui" || workspacePackage === "@diffgazer/keys") {
-        buildInvocations.push(workspacePackage);
-      }
-      return resolve(packDir, `${workspacePackage.replaceAll("/", "-")}.tgz`);
-    },
-    cleanup: () => {},
-  });
-
-  const tarballs = await Promise.all([
-    cache.get("@diffgazer/ui"),
-    cache.get("@diffgazer/keys"),
-    cache.get("@diffgazer/ui"),
-    cache.get("@diffgazer/keys"),
-  ]);
-
-  assert.equal(tarballs[0], tarballs[2]);
-  assert.equal(tarballs[1], tarballs[3]);
-  assert.deepEqual(packInvocations, ["@diffgazer/ui", "@diffgazer/keys"]);
-  assert.deepEqual(buildInvocations, ["@diffgazer/ui", "@diffgazer/keys"]);
-  cache.dispose();
-});
-
 function loadItem(registryDir, name) {
   return JSON.parse(readFileSync(join(registryDir, `${name}.json`), "utf-8"));
 }
-
-test("direct install set covers every public UI index item, not a representative subset", () => {
-  const allNames = allRegistryIndexNames(uiRegistryDir);
-
-  for (const name of uiItems) {
-    assert.ok(allNames.includes(name), `representative item ${name} must exist in the full index`);
-  }
-
-  // Items previously installed only in closure validation must now be in the
-  // exhaustive direct-install set that runSmoke drives from the full index.
-  for (const omitted of ["radio", "toggle-group", "scroll-area", "spinner", "switch", "progress"]) {
-    assert.ok(allNames.includes(omitted), `exhaustive UI install must include ${omitted}`);
-    assert.ok(
-      !uiItems.includes(omitted),
-      `${omitted} should be outside the representative subset to prove exhaustive coverage`,
-    );
-  }
-});
 
 test("direct-install roots include hidden leaf add-ons but not transitive-only internals", () => {
   const installable = directlyInstallableUiNames(uiRegistryDir);

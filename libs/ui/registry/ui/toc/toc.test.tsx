@@ -25,14 +25,21 @@ describe("Toc", () => {
     render(
       <Toc title="Contents">
         <Toc.List>
-          <Toc.Item href="#api">{(props) => <a {...props}>API</a>}</Toc.Item>
+          <Toc.Item active>
+            {(props) => (
+              <a {...props} href="#api">
+                API
+              </a>
+            )}
+          </Toc.Item>
         </Toc.List>
       </Toc>,
     );
 
-    expect(screen.getByRole("listitem")).toContainElement(
-      screen.getByRole("link", { name: "API" }),
-    );
+    const link = screen.getByRole("link", { name: "API" });
+    expect(screen.getByRole("listitem")).toContainElement(link);
+    expect(link).toHaveAttribute("href", "#api");
+    expect(link).toHaveAttribute("aria-current", "location");
   });
 
   it("has no a11y violations", async () => {

@@ -33,32 +33,6 @@ describe("ThemeToggle", () => {
     document.dispatchEvent(new Event("DOMContentLoaded"));
   }
 
-  it.each([
-    { stored: undefined, expected: "dark", label: "missing preference" },
-    { stored: "system", expected: "dark", label: "invalid preference" },
-    { stored: "dark", expected: "dark", label: "dark preference" },
-    { stored: "light", expected: "light", label: "light preference" },
-  ])("bootstraps the exact theme for a $label", ({ stored, expected }) => {
-    if (stored !== undefined) localStorage.setItem("@diffgazer/docs-theme", stored);
-
-    executeThemeBootstrap();
-
-    expect(document.documentElement).toHaveAttribute("data-theme", expected);
-    finishThemeBootstrap();
-  });
-
-  it("falls back to dark when theme storage throws", () => {
-    const getItem = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
-      throw new DOMException("Storage unavailable", "SecurityError");
-    });
-
-    executeThemeBootstrap();
-
-    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
-    finishThemeBootstrap();
-    getItem.mockRestore();
-  });
-
   it("bridges the visible SSR toggle to the bootstrapped light theme before hydration", async () => {
     const user = userEvent.setup();
     localStorage.setItem("@diffgazer/docs-theme", "light");
@@ -149,5 +123,24 @@ describe("ThemeToggle", () => {
 
     expect(document.documentElement).toHaveAttribute("data-theme", "dark");
     expect(localStorage.getItem("@diffgazer/docs-theme")).toBe("dark");
+  });
+
+  it("still advances the theme when persistence is blocked", async () => {
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("Storage unavailable", "SecurityError");
+    });
+    const user = userEvent.setup();
+    render(
+      <ThemeProvider>
+        <ThemeToggle />
+      </ThemeProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: /switch to light theme/i }));
+
+    expect(document.documentElement).toHaveAttribute("data-theme", "light");
+    expect(screen.getByRole("button", { name: /switch to dark theme/i })).toBeInTheDocument();
+
+    setItem.mockRestore();
   });
 });

@@ -12,12 +12,14 @@
     {
       "path": "registry/ui/skeleton/index.ts",
       "content": "export { Skeleton, type SkeletonProps } from \"./skeleton\";\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/skeleton/index.ts"
     },
     {
       "path": "registry/ui/skeleton/skeleton.tsx",
-      "content": "import type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for skeleton. */\nexport type SkeletonProps = ComponentProps<\"div\">;\n\n/** Decorative placeholder div. Use className to set width and height. */\nexport function Skeleton({ className, ref, ...props }: SkeletonProps) {\n  return (\n    <div\n      ref={ref}\n      data-slot=\"skeleton\"\n      aria-hidden=\"true\"\n      className={cn(\"rounded-sm bg-secondary motion-safe:animate-pulse\", className)}\n      {...props}\n    />\n  );\n}\n",
-      "type": "registry:ui"
+      "content": "import type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for skeleton. */\nexport type SkeletonProps = Omit<ComponentProps<\"div\">, \"aria-hidden\">;\n\n/** Decorative placeholder div. Use className to set width and height. */\nexport function Skeleton({ className, ref, ...props }: SkeletonProps) {\n  return (\n    <div\n      ref={ref}\n      data-slot=\"skeleton\"\n      className={cn(\"rounded-sm bg-secondary motion-safe:animate-pulse\", className)}\n      {...props}\n      aria-hidden=\"true\"\n    />\n  );\n}\n",
+      "type": "registry:ui",
+      "target": "@ui/skeleton/skeleton.tsx"
     }
   ],
   "meta": {

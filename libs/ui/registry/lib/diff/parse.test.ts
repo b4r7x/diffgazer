@@ -209,6 +209,23 @@ describe("parseDiff", () => {
     });
   });
 
+  it("decodes Git's octal-escaped UTF-8 form of a non-ASCII path for both old and new headers", () => {
+    // git quotes `żółć.ts` as octal bytes under default core.quotepath.
+    const quoted = "\\305\\274\\303\\263\\305\\202\\304\\207.ts";
+    const patch = [
+      `--- "a/${quoted}"`,
+      `+++ "b/${quoted}"`,
+      "@@ -1 +1 @@",
+      "-before",
+      "+after",
+    ].join("\n");
+
+    expect(parseDiff(patch)[0]).toMatchObject({
+      oldPath: "żółć.ts",
+      newPath: "żółć.ts",
+    });
+  });
+
   it("keeps consecutive standard header pairs as separate files without diff --git lines", () => {
     const patch = [
       "--- src/one.ts",

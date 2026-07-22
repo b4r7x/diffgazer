@@ -23,22 +23,27 @@ describe("getFigletText", () => {
     expect(result.length).toBeGreaterThan(2);
   });
 
-  it("memoizes the figlet module so repeated calls do not re-import", async () => {
-    // Boundary mock: tracks how many times import('figlet') resolves to verify caching.
-    let importCount = 0;
-    vi.doMock("figlet", async () => {
-      importCount += 1;
-      const actual = await vi.importActual<typeof import("figlet")>("figlet");
-      return actual;
+  it("retries the font import after a rejected load", async () => {
+    let fontLoadAttempts = 0;
+    vi.doMock("figlet/importable-fonts/Big.js", async () => {
+      const actual = await vi.importActual<{ default: string }>("figlet/importable-fonts/Big.js");
+      return {
+        get default() {
+          fontLoadAttempts += 1;
+          if (fontLoadAttempts === 1) {
+            throw new Error("chunk load failed");
+          }
+          return actual.default;
+        },
+      };
     });
 
     const { getFigletText } = await import("./figlet-text");
 
-    await getFigletText("A", "Big");
-    await getFigletText("B", "Big");
-    await getFigletText("C", "Big");
+    await expect(getFigletText("OK", "Big")).rejects.toThrow(/optional peer dependency 'figlet'/);
+    const result = await getFigletText("OK", "Big");
 
-    expect(importCount).toBe(1);
+    expect(result.split("\n").length).toBeGreaterThan(1);
   });
 
   it("retries the figlet import after a rejected load", async () => {

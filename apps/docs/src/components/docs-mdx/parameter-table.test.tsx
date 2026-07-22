@@ -53,36 +53,7 @@ const hookData = {
 } satisfies HookPageData;
 
 describe("ParameterTable", () => {
-  it("renders each prop name, type, default, and description as queryable text", () => {
-    render(<ParameterTable params={params} />);
-
-    expect(screen.getByText("open")).toBeInTheDocument();
-    expect(screen.getByText("label")).toBeInTheDocument();
-    expect(screen.getByText("boolean")).toBeInTheDocument();
-    expect(screen.getByText('"start" | "end"')).toBeInTheDocument();
-    expect(screen.getByText("false")).toBeInTheDocument();
-    expect(screen.getByText("Controls visibility.")).toBeInTheDocument();
-    expect(screen.getByText("Where the label sits.")).toBeInTheDocument();
-  });
-
-  it("marks required props with a required badge", () => {
-    render(<ParameterTable params={params} />);
-    expect(screen.getByText("required")).toBeInTheDocument();
-  });
-
-  it("shows an em-dash placeholder when a prop has no default", () => {
-    render(<ParameterTable params={params} />);
-    expect(screen.getByText("—")).toBeInTheDocument();
-  });
-
-  it("labels the columns for the desktop layout", () => {
-    render(<ParameterTable params={params} />);
-    for (const label of ["Name", "Type", "Default", "Description"]) {
-      expect(screen.getByText(label)).toBeInTheDocument();
-    }
-  });
-
-  it("uses one semantic table for every parameter", () => {
+  it("uses one semantic table with each row's values, the required badge, and the em-dash placeholder", () => {
     render(<ParameterTable params={params} />);
 
     const table = screen.getByRole("table");
@@ -104,28 +75,37 @@ describe("ParameterTable", () => {
     }
 
     expect(screen.getByRole("columnheader", { name: "Description" })).toBeVisible();
+
+    const openRow = within(table).getByRole("row", { name: /^open/ });
+    const [openName, openType, openDefault, openDescription] = within(openRow).getAllByRole("cell");
+    expect(openName).toHaveTextContent("open");
+    expect(openType).toHaveTextContent("boolean");
+    expect(openDefault).toHaveTextContent("false");
+    expect(openDescription).toHaveTextContent("Controls visibility.");
+    expect(within(openRow).getByText("required")).toBeInTheDocument();
+
+    const labelRow = within(table).getByRole("row", { name: /^label/ });
+    const [labelName, labelType, labelDefault, labelDescription] =
+      within(labelRow).getAllByRole("cell");
+    expect(labelName).toHaveTextContent("label");
+    expect(labelType).toHaveTextContent('"start" | "end"');
+    expect(labelDefault).toHaveTextContent("—");
+    expect(labelDescription).toHaveTextContent("Where the label sits.");
+    expect(within(labelRow).queryByText("required")).not.toBeInTheDocument();
   });
 
-  it("renders return properties in the same semantic table", () => {
+  it("renders return type, description, and property names and types as queryable text", () => {
     render(
       <DocDataProvider value={{ type: "hook", data: hookData }}>
         <ReturnsTable />
       </DocDataProvider>,
     );
 
-    const table = screen.getByRole("table");
-    const headers = within(table).getAllByRole("columnheader");
-    expect(headers.map((header) => header.textContent)).toEqual([
-      "Name",
-      "Type",
-      "Default",
-      "Description",
-    ]);
-    const cells = within(table).getAllByRole("cell");
-    expect(cells).toHaveLength(8);
-    expect(cells[0]?.textContent).toContain("value");
-    expect(cells[1]?.textContent).toBe("string");
-    expect(cells[4]?.textContent).toBe("reset");
-    expect(cells[5]?.textContent).toBe("() => void");
+    expect(screen.getByText("ExampleState")).toBeInTheDocument();
+    expect(screen.getByText("The current example state.")).toBeInTheDocument();
+    expect(screen.getByText("value")).toBeInTheDocument();
+    expect(screen.getByText("string")).toBeInTheDocument();
+    expect(screen.getByText("reset")).toBeInTheDocument();
+    expect(screen.getByText("() => void")).toBeInTheDocument();
   });
 });

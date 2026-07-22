@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { requireFrameDocument } from "../testing/assertions.js";
 import { getRestorableFocusTarget, restoreFocus } from "./focus-restore.js";
 
@@ -75,6 +75,22 @@ describe("focus restore utilities", () => {
 
     expect(restoreFocus(shadowButton)).toBe(true);
     expect(host.shadowRoot?.activeElement).toBe(shadowButton);
+  });
+
+  it("retries with a plain focus() call when the engine rejects FocusOptions", () => {
+    const target = button("Trigger");
+    const originalFocus = target.focus.bind(target);
+    const focusSpy = vi.spyOn(target, "focus").mockImplementation((options?: FocusOptions) => {
+      if (options) throw new Error("FocusOptions unsupported");
+      originalFocus();
+    });
+
+    expect(restoreFocus(target, { preventScroll: true })).toBe(true);
+    expect(document.activeElement).toBe(target);
+    expect(focusSpy).toHaveBeenNthCalledWith(1, { preventScroll: true });
+    expect(focusSpy).toHaveBeenNthCalledWith(2);
+
+    focusSpy.mockRestore();
   });
 
   it("captures and restores focus in the provided ownerDocument", () => {

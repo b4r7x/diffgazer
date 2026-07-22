@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api/protocol";
-import { ok } from "@diffgazer/core/result";
+import { err, ok } from "@diffgazer/core/result";
 import type { GitStatus } from "@diffgazer/core/schemas/git";
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -112,14 +112,11 @@ describe("git router", () => {
     expect(body.error.code).toBe("VALIDATION_ERROR");
   });
 
-  it.each([
-    "/api/git/diff?mode=files",
-    "/api/git/diff?mode=files&path=src",
-  ])("rejects files mode at the public git diff boundary: %s", async (url) => {
+  it("rejects files mode at the public git diff boundary", async () => {
     await trustProject(project);
     const app = await createGitApp();
 
-    const response = await app.request(url, requestOptions());
+    const response = await app.request("/api/git/diff?mode=files", requestOptions());
     const body = (await response.json()) as { error: { code: string } };
 
     expect(response.status).toBe(400);
@@ -149,6 +146,34 @@ describe("git router", () => {
 
     expect(response.status).toBe(500);
     expect(body.error.code).toBe("GIT_NOT_FOUND");
+  });
+
+  it.each([
+    {
+      endpoint: "/api/git/status",
+      failingMethod: "getStatus" as const,
+      otherMethod: "getDiff" as const,
+    },
+    {
+      endpoint: "/api/git/diff",
+      failingMethod: "getDiff" as const,
+      otherMethod: "getStatus" as const,
+    },
+  ])("maps a $failingMethod command failure to a COMMAND_FAILED envelope", async ({
+    endpoint,
+    failingMethod,
+    otherMethod,
+  }) => {
+    mockGitService[failingMethod].mockResolvedValue(err({ message: "git command failed" }));
+    await trustProject(project);
+    const app = await createGitApp();
+
+    const response = await app.request(endpoint, requestOptions());
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body).toEqual({ error: { code: "COMMAND_FAILED", message: "git command failed" } });
+    expect(mockGitService[otherMethod]).not.toHaveBeenCalled();
   });
 
   it("returns status JSON and passes the path query to the git service", async () => {

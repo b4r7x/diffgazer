@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aliasImportBase, extractLocalImports, stripTemplateLiterals } from "./fs";
+import { aliasImportBase, extractLocalImports } from "./fs";
 
 describe("extractLocalImports", () => {
   it("collects @/ alias and relative specifiers, ignoring bare packages", () => {
@@ -18,12 +18,6 @@ describe("extractLocalImports", () => {
   it("ignores specifiers that appear only inside template literals", () => {
     const source = 'const code = `import { x } from "@/hooks/fake"`;';
     expect(extractLocalImports(source)).toEqual([]);
-  });
-});
-
-describe("stripTemplateLiterals", () => {
-  it("blanks template-literal contents so embedded code is not parsed as imports", () => {
-    expect(stripTemplateLiterals("a `import x` b")).toBe("a `` b");
   });
 });
 

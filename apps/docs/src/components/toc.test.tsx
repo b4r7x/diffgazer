@@ -66,8 +66,6 @@ describe("TableOfContentsPanel", () => {
     ]);
 
     await waitFor(() => expect(tocLinks()).toEqual(["With Id"]));
-    expect(tocLinks()).not.toContain("No Id Heading");
-    expect(tocLinks()).not.toContain("On this page");
   });
 
   it("links each entry to its heading anchor", async () => {
@@ -93,6 +91,34 @@ describe("TableOfContentsPanel", () => {
 
     const link = screen.getByRole("link", { name: "Appended" });
     expect(link).toHaveAttribute("href", "#appended");
+  });
+
+  it("updates the TOC label when a heading's text changes after mount", async () => {
+    renderWithHeadings([{ tag: "h2", id: "intro", text: "Intro" }]);
+
+    await waitFor(() => expect(tocLinks()).toEqual(["Intro"]));
+
+    const heading = document.getElementById("intro");
+    const textNode = heading?.firstChild;
+    if (!(textNode instanceof Text)) throw new Error("missing #intro text node");
+    textNode.data = "Introduction";
+
+    await waitFor(() => expect(tocLinks()).toEqual(["Introduction"]));
+  });
+
+  it("updates the TOC href when a heading's id changes after mount", async () => {
+    renderWithHeadings([{ tag: "h2", id: "intro", text: "Intro" }]);
+
+    const link = await screen.findByRole("link", { name: "Intro" });
+    expect(link).toHaveAttribute("href", "#intro");
+
+    const heading = document.getElementById("intro");
+    if (!heading) throw new Error("missing #intro heading");
+    heading.id = "introduction";
+
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: "Intro" })).toHaveAttribute("href", "#introduction"),
+    );
   });
 
   it("refreshes the TOC when a heading is removed after mount", async () => {
@@ -155,7 +181,6 @@ describe("TableOfContentsPanel", () => {
     const links = within(screen.getByRole("navigation", { name: /on this page/i })).getAllByRole(
       "link",
     );
-    expect(links).toHaveLength(1);
     expect(links[0]).toHaveAttribute("href", "#duplicate");
   });
 

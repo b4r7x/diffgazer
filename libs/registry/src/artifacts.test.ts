@@ -44,7 +44,7 @@ function createMinimalManifest() {
 }
 
 describe("buildRegistryArtifacts", () => {
-  it("creates artifact directory with manifest and fingerprint files", () => {
+  it("writes a manifest and newline-terminated fingerprint under the artifact root", () => {
     const root = createTempRoot();
     const artifactRoot = "dist/artifacts";
 
@@ -56,9 +56,21 @@ describe("buildRegistryArtifacts", () => {
       inputs: [],
     });
 
-    expect(existsSync(result.manifestPath)).toBe(true);
-    expect(existsSync(result.fingerprintPath)).toBe(true);
     expect(result.artifactRoot).toBe(join(root, artifactRoot));
+
+    const written = JSON.parse(readFileSync(result.manifestPath, "utf-8")) as Record<
+      string,
+      unknown
+    >;
+    expect(written.library).toBe("test-lib");
+    expect(written.package).toBe("@test/lib");
+    expect(written.schemaVersion).toBe(1);
+    expect(written.origin).toBe("https://example.com");
+
+    const fingerprintContent = readFileSync(result.fingerprintPath, "utf-8");
+    expect(fingerprintContent.endsWith("\n")).toBe(true);
+    expect(fingerprintContent.trim().length).toBeGreaterThan(0);
+    expect(result.fingerprint).toBe(fingerprintContent.trim());
   });
 
   it("copies directories from copyDirs entries", () => {
@@ -80,27 +92,6 @@ describe("buildRegistryArtifacts", () => {
     expect(readFileSync(copiedFile, "utf-8")).toBe("hello");
   });
 
-  it("writes manifest as JSON", () => {
-    const root = createTempRoot();
-    const manifest = createMinimalManifest();
-
-    const result = buildRegistryArtifacts({
-      rootDir: root,
-      manifest,
-      defaultOrigin: "https://example.com",
-      inputs: [],
-    });
-
-    const written = JSON.parse(readFileSync(result.manifestPath, "utf-8")) as Record<
-      string,
-      unknown
-    >;
-    expect(written.library).toBe("test-lib");
-    expect(written.package).toBe("@test/lib");
-    expect(written.schemaVersion).toBe(1);
-    expect(written.origin).toBe("https://example.com");
-  });
-
   it("writes the normalized requested origin into the provenance manifest", () => {
     const root = createTempRoot();
 
@@ -117,22 +108,6 @@ describe("buildRegistryArtifacts", () => {
       unknown
     >;
     expect(written.origin).toBe("https://registry.example.com/path");
-  });
-
-  it("writes fingerprint as text file with newline", () => {
-    const root = createTempRoot();
-
-    const result = buildRegistryArtifacts({
-      rootDir: root,
-      manifest: createMinimalManifest(),
-      defaultOrigin: "https://example.com",
-      inputs: [],
-    });
-
-    const content = readFileSync(result.fingerprintPath, "utf-8");
-    expect(content.endsWith("\n")).toBe(true);
-    expect(content.trim().length).toBeGreaterThan(0);
-    expect(result.fingerprint).toBe(content.trim());
   });
 
   it("includes the resolved registry origin in the artifact fingerprint", () => {

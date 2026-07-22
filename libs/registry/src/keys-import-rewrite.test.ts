@@ -119,6 +119,7 @@ describe("rewriteKeysPackageImportsInContent", () => {
     ["namespace", 'import * as keys from "@diffgazer/keys";'],
     ["side-effect", 'import "@diffgazer/keys";'],
     ["export", 'export { useKey } from "@diffgazer/keys";'],
+    ["export-all", 'export * from "@diffgazer/keys";'],
     ["dynamic", 'const keys = import("@diffgazer/keys");'],
     ["require", 'const keys = require("@diffgazer/keys");'],
   ])("rejects residual %s root imports", (_form, input) => {

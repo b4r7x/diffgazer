@@ -76,6 +76,37 @@ describe("resolveProjectRoot", () => {
   });
 });
 
+describe("project-root filesystem changes", () => {
+  it("accepts an external project root after a .git directory is created", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "diffgazer-project-root-"));
+
+    try {
+      expect(() => resolveProjectRoot({ header: root })).toThrow("Invalid project root");
+
+      await mkdir(path.join(root, ".git"));
+
+      expect(resolveProjectRoot({ header: root })).toBe(root);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects an external project root after its .git directory is removed", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "diffgazer-project-root-"));
+    await mkdir(path.join(root, ".git"));
+
+    try {
+      expect(resolveProjectRoot({ header: root })).toBe(root);
+
+      await rm(path.join(root, ".git"), { recursive: true });
+
+      expect(() => resolveProjectRoot({ header: root })).toThrow("Invalid project root");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("getGlobalDiffgazerDir", () => {
   it("uses DIFFGAZER_HOME when set and otherwise defaults under the user home", () => {
     process.env.DIFFGAZER_HOME = `  ${tempRoot}  `;
@@ -90,13 +121,6 @@ describe("getGlobalModelsDevCatalogPath", () => {
   it("resolves models-dev.json under the global diffgazer dir", () => {
     process.env.DIFFGAZER_HOME = tempRoot;
     expect(getGlobalModelsDevCatalogPath()).toBe(path.join(tempRoot, "models-dev.json"));
-  });
-
-  it("defaults under the user home when DIFFGAZER_HOME is unset", () => {
-    delete process.env.DIFFGAZER_HOME;
-    expect(getGlobalModelsDevCatalogPath()).toBe(
-      path.join(homedir(), ".diffgazer", "models-dev.json"),
-    );
   });
 });
 

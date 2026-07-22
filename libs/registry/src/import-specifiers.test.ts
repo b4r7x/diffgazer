@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  extractImportSpecifierRanges,
   extractImportSpecifiers,
   extractStaticNamedImports,
   stripTemplateLiterals,
@@ -235,7 +236,6 @@ describe("extractStaticNamedImports", () => {
         isTypeOnly: true,
       },
     ]);
-    expect(source.slice(specifiersStart, specifiersEnd)).toContain("UseFocusRestoreOptions");
   });
 
   it.each([
@@ -244,6 +244,45 @@ describe("extractStaticNamedImports", () => {
     `const jsx = <code>import { useScrollLock } from "@diffgazer/keys"</code>;`,
   ])("returns no declaration range for static-import text in non-code content", (source) => {
     expect(extractStaticNamedImports(source)).toEqual([]);
+  });
+});
+
+describe("extractImportSpecifierRanges", () => {
+  it("returns exact source ranges for static, side-effect, dynamic, and require specifiers", () => {
+    const source = [
+      'import { value } from "./value.js";',
+      'import "./setup.js";',
+      'const lazy = import("./lazy.js");',
+      'const required = require("./required.js");',
+    ].join("\n");
+
+    const ranges = extractImportSpecifierRanges(source);
+
+    expect(ranges.map(({ specifier }) => specifier)).toEqual([
+      "./value.js",
+      "./setup.js",
+      "./lazy.js",
+      "./required.js",
+    ]);
+    for (const range of ranges) {
+      expect(source.slice(range.start, range.end)).toBe(range.specifier);
+    }
+  });
+
+  it("ignores comments, ordinary strings, template literals, JSX strings, and regex literals", () => {
+    const source = [
+      '// import { fake } from "./fake.js";',
+      "/* import { fake2 } from './fake2.js'; */",
+      `const stringExample = 'import { x } from "./fake3.js"';`,
+      'const templateExample = `import { x } from "./fake4.js"`;',
+      `const jsxExample = <code>{'import("./fake5.js")'}</code>;`,
+      'const regexExample = /import\\("\\.\\/fake6\\.js"\\)/;',
+      'import { real } from "./real.js";',
+    ].join("\n");
+
+    expect(extractImportSpecifierRanges(source).map(({ specifier }) => specifier)).toEqual([
+      "./real.js",
+    ]);
   });
 });
 

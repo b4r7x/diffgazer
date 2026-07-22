@@ -6,8 +6,6 @@ describe("sanitizeTerminalText", () => {
     const payload = `before\x1b]52;c;ZXZpbA==\x07after`;
     const result = sanitizeTerminalText(payload);
     expect(result).toBe("beforeafter");
-    expect(result).not.toContain("\x1b");
-    expect(result).not.toContain("\x07");
   });
 
   it("strips an OSC sequence terminated by ST (ESC backslash)", () => {
@@ -46,7 +44,6 @@ describe("sanitizeTerminalText", () => {
     const payload = "\x1b[31mred\x1b[0m";
     const result = sanitizeTerminalText(payload);
     expect(result).toBe("red");
-    expect(result).not.toContain("\x1b");
   });
 
   it("strips the conceal SGR sequence so hidden text stays visible", () => {

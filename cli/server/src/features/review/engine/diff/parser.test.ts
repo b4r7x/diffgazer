@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { requireValue } from "../../../../testing/assertions.js";
-import { createPromptFileIdentities } from "../prompts.js";
 import { parseDiff } from "./parser.js";
 
 describe("parseDiff", () => {
@@ -274,52 +273,30 @@ diff --git a/b.ts b/b.ts
     expect(result.totalStats.deletions).toBe(1);
   });
 
-  it("retains the raw diff text for each file", () => {
-    const diff = `diff --git a/file.ts b/file.ts
---- a/file.ts
-+++ b/file.ts
+  it("computes exact rawDiff, per-file byte length, and aggregate size for a multi-file diff with non-ASCII content", () => {
+    const fileADiff = `diff --git a/a.ts b/a.ts
+--- a/a.ts
++++ b/a.ts
 @@ -1,2 +1,3 @@
  line1
-+added
++// naïve café
  line2`;
-
-    const result = parseDiff(diff);
-
-    expect(result.files[0]?.rawDiff).toContain("diff --git a/file.ts b/file.ts");
-    expect(result.files[0]?.rawDiff).toContain("+added");
-  });
-
-  it("records a non-zero sizeBytes for each file and rolls it into totalStats", () => {
-    const diff = `diff --git a/file.ts b/file.ts
---- a/file.ts
-+++ b/file.ts
+    const fileBDiff = `diff --git a/b.ts b/b.ts
+--- a/b.ts
++++ b/b.ts
 @@ -1,2 +1,3 @@
  line1
-+added
++// żółć
  line2`;
+    const diff = `${fileADiff}\n${fileBDiff}`;
 
     const result = parseDiff(diff);
 
-    expect(result.files[0]?.stats.sizeBytes).toBeGreaterThan(0);
-    expect(result.totalStats.totalSizeBytes).toBeGreaterThan(0);
-  });
-
-  it("does not count context lines as additions or deletions", () => {
-    const diff = `diff --git a/file.ts b/file.ts
---- a/file.ts
-+++ b/file.ts
-@@ -1,5 +1,6 @@
- context1
- context2
-+added
- context3
- context4
- context5`;
-
-    const result = parseDiff(diff);
-
-    expect(result.files[0]?.stats.additions).toBe(1);
-    expect(result.files[0]?.stats.deletions).toBe(0);
+    expect(result.files[0]?.rawDiff).toBe(fileADiff);
+    expect(result.files[1]?.rawDiff).toBe(fileBDiff);
+    expect(result.files[0]?.stats.sizeBytes).toBe(93);
+    expect(result.files[1]?.stats.sizeBytes).toBe(89);
+    expect(result.totalStats.totalSizeBytes).toBe(182);
   });
 
   it("ignores the no-newline marker while still counting the surrounding lines", () => {
@@ -451,7 +428,7 @@ index abc1234..def5678 100644
     expect(result.files[0]?.filePath).toBe("dir\twith\ttabs/file.ts");
   });
 
-  it("keeps control-bearing and sanitization-colliding paths on distinct prompt identities", () => {
+  it("keeps control-bearing and sanitization-colliding paths as distinct parsed files", () => {
     const diff = `diff --git "a/dir\\tname.ts" "b/dir\\tname.ts"
 --- "a/dir\\tname.ts"
 +++ "b/dir\\tname.ts"
@@ -472,15 +449,12 @@ diff --git "a/line\\nbreak.ts" "b/line\\nbreak.ts"
 +new`;
 
     const parsed = parseDiff(diff);
-    const identities = createPromptFileIdentities(parsed);
 
     expect(parsed.files.map((file) => file.filePath)).toEqual([
       "dir\tname.ts",
       "dirname.ts",
       "line\nbreak.ts",
     ]);
-    expect(identities.map(({ id }) => id)).toEqual(["file-1", "file-2", "file-3"]);
-    expect(new Set(identities.map(({ id }) => id)).size).toBe(identities.length);
   });
 
   it("handles quoted rename paths", () => {

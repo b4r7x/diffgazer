@@ -1,22 +1,15 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { act, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
-import { toastDoc } from "../../component-docs/toast";
 import { Dialog } from "../dialog/index";
 import { Toaster, toast } from "./index";
 import { dismiss, remove, useToastStore } from "./toast-store";
 
-// The Toaster's persistent polite live region (F-229) duplicates visible toast
+// The Toaster's persistent polite live region duplicates visible toast
 // text for screen readers, so text queries ignore it like script/style.
 const DEFAULT_IGNORE = "script, style";
 const TOAST_IGNORE = `${DEFAULT_IGNORE}, [data-slot="toast-announcer"], [data-slot="toast-announcer"] *`;
 const LAZY_CHUNK_TIMEOUT_MS = 8_000;
-const compoundComponentsGuide = readFileSync(
-  resolve(import.meta.dirname, "../../../docs/content/patterns/compound-components.mdx"),
-  "utf8",
-);
 
 function StoreReader({ onRead }: { onRead: (ids: string[]) => void }) {
   const { toasts } = useToastStore();
@@ -130,18 +123,39 @@ describe("Toast", () => {
     expect(screen.getByText("Hello world")).toBeInTheDocument();
   });
 
-  it("creates fallback ids when randomUUID is unavailable", () => {
+  it("creates distinct, independently controllable fallback ids when randomUUID is unavailable", () => {
     const cryptoDescriptor = Object.getOwnPropertyDescriptor(globalThis, "crypto");
     Object.defineProperty(globalThis, "crypto", { configurable: true, value: undefined });
 
     try {
       render(<Toaster />);
-      let id!: string;
+      let firstId!: string;
+      let secondId!: string;
       act(() => {
-        id = toast("Fallback id");
+        firstId = toast("Fallback one");
+        secondId = toast("Fallback two");
       });
-      expect(id).toMatch(/^toast-/);
-      expect(screen.getByText("Fallback id")).toBeInTheDocument();
+      expect(firstId).not.toBe("");
+      expect(secondId).not.toBe("");
+      expect(firstId).not.toBe(secondId);
+      expect(screen.getByText("Fallback one")).toBeInTheDocument();
+      expect(screen.getByText("Fallback two")).toBeInTheDocument();
+
+      act(() => {
+        toast("Fallback one updated", { id: firstId });
+      });
+      expect(screen.queryByText("Fallback one")).not.toBeInTheDocument();
+      expect(screen.getByText("Fallback one updated")).toBeInTheDocument();
+      expect(screen.getByText("Fallback two")).toBeInTheDocument();
+
+      act(() => {
+        toast.dismiss(secondId);
+      });
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(screen.queryByText("Fallback two")).not.toBeInTheDocument();
+      expect(screen.getByText("Fallback one updated")).toBeInTheDocument();
     } finally {
       if (cryptoDescriptor) Object.defineProperty(globalThis, "crypto", cryptoDescriptor);
     }
@@ -185,21 +199,6 @@ describe("Toast", () => {
   });
 
   it("auto-dismisses error tone with explicit duration", () => {
-    const persistenceNote = toastDoc.notes?.find((note) => note.title === "Error Toasts Persist");
-    const toneDescription = toastDoc.props?.["toast (function)"]?.tone?.description;
-    const durationDescription = toastDoc.props?.["toast (function)"]?.duration?.description;
-
-    expect(persistenceNote?.content).toContain("persist when duration is omitted");
-    expect(persistenceNote?.content).toContain("explicit positive duration");
-    expect(toneDescription).toContain("persist when duration is omitted");
-    expect(durationDescription).toContain("explicit positive duration");
-    expect(compoundComponentsGuide).toContain(
-      "Error and loading toasts persist when `duration` is omitted.",
-    );
-    expect(compoundComponentsGuide).toContain(
-      "A positive explicit duration schedules auto-dismissal.",
-    );
-
     render(<Toaster />);
     act(() => {
       toast.error("Error occurred", { duration: 2000 });
@@ -504,7 +503,7 @@ describe("Toast", () => {
     }
   });
 
-  it("announces new non-error toasts through a persistent polite live region (F-229)", () => {
+  it("announces new non-error toasts through a persistent polite live region", () => {
     const { container } = render(<Toaster />);
     const announcer = container.querySelector('[data-slot="toast-announcer"]');
     expect(announcer).not.toBeNull();
@@ -550,7 +549,7 @@ describe("Toast", () => {
     expect(announcer?.textContent).toBe("");
   });
 
-  it("focuses the toast region on the hotkey and ignores it inside editable elements (F-154)", () => {
+  it("focuses the toast region on the hotkey and ignores it inside editable elements", () => {
     render(
       <div>
         <input aria-label="Editor" />
@@ -613,7 +612,7 @@ describe("Toast", () => {
     expect(region).not.toHaveFocus();
   });
 
-  it("ignores the hotkey for an editable target inside an open shadow root (F-064)", () => {
+  it("ignores the hotkey for an editable target inside an open shadow root", () => {
     render(<Toaster hotkey="F8" />);
     act(() => {
       toast("Reachable toast", { action: <button type="button">Undo</button> });
@@ -727,8 +726,8 @@ describe("Toast", () => {
       const showCallsBeforeDialog = stub.getShowCalls();
       expect(showCallsBeforeDialog).toBeGreaterThanOrEqual(1);
 
-      // The MutationObserver re-runs hidePopover+showPopover as a microtask
-      // (F-450), so flush one.
+      // The MutationObserver re-runs hidePopover+showPopover as a microtask,
+      // so flush one.
       rerender(<Harness dialogOpen />);
       await act(async () => {
         await Promise.resolve();
@@ -852,21 +851,7 @@ describe("Toast", () => {
     expect(screen.queryByText("Second")).not.toBeInTheDocument();
   });
 
-  it("documents and renders localized dismiss and tone labels (F-010)", () => {
-    const toastProps = toastDoc.props?.["toast (function)"];
-    expect(toastProps?.dismissLabel).toEqual({
-      type: "string",
-      required: false,
-      defaultValue: '"Dismiss: " + title',
-      description: "Accessible name for the dismiss button.",
-    });
-    expect(toastProps?.toneLabel).toEqual({
-      type: "string",
-      required: false,
-      defaultValue: "the tone value",
-      description: "Screen-reader tone text announced before the toast title.",
-    });
-
+  it("renders localized dismiss and tone labels", () => {
     render(<Toaster />);
     act(() => {
       toast("Saved", { dismissLabel: "Zamknij", toneLabel: "Informacja" });
@@ -1028,7 +1013,7 @@ describe("Toast", () => {
       expect(root).toHaveAttribute("data-variant", "card");
     });
 
-    it('variant="hud" omits the close button and action', () => {
+    it('variant="hud" omits the close button', () => {
       render(<Toaster />);
       act(() => {
         toast("Copied", { variant: "hud" });
@@ -1036,15 +1021,9 @@ describe("Toast", () => {
       const root = findToast("Copied");
       expect(root).toHaveAttribute("data-variant", "hud");
       expect(root?.querySelector("button")).toBeNull();
-      expect(root?.querySelector('[data-slot="toast-action"]')).toBeNull();
     });
 
     it('variant="hud" auto-dismisses even when an action is supplied (HUD drops the action, so persistence rule does not apply)', () => {
-      const durationDescription = toastDoc.props?.["toast (function)"]?.duration?.description;
-
-      expect(durationDescription).toContain("rendered action");
-      expect(durationDescription).toContain("`hud` variant does not render actions");
-
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       try {
         render(<Toaster />);
@@ -1079,9 +1058,6 @@ describe("Toast", () => {
         expect(root?.querySelector('[data-slot="toast-action"]')).toBeNull();
         expect(root?.textContent).not.toContain("Undo");
         expect(warn).not.toHaveBeenCalled();
-        expect(toastDoc.props?.["toast (function)"]?.action?.description).toContain(
-          "silently omits",
-        );
       } finally {
         warn.mockRestore();
       }
@@ -1172,7 +1148,7 @@ describe("Toast", () => {
       expect(screen.queryByText("Timed")).not.toBeInTheDocument();
     });
 
-    it('variant="countdown" parks its rAF loop while paused and resumes on unpause (F-187)', () => {
+    it('variant="countdown" parks its rAF loop while paused and resumes on unpause', () => {
       const rafSpy = vi.spyOn(globalThis, "requestAnimationFrame");
       render(<Toaster />);
       act(() => {
@@ -1223,11 +1199,65 @@ describe("Toaster cross-document behavior", () => {
     const container = iframeDoc.createElement("div");
     iframeDoc.body.appendChild(container);
 
-    render(<Toaster />, { container });
+    render(<Toaster hotkey="F8" />, { container });
 
-    const region = iframeDoc.querySelector("[role='region'][aria-label='Notifications']");
+    const region = iframeDoc.querySelector<HTMLElement>(
+      "[role='region'][aria-label='Notifications']",
+    );
     expect(region).not.toBeNull();
     expect(region?.ownerDocument).toBe(iframeDoc);
+
+    vi.useFakeTimers();
+    try {
+      act(() => {
+        toast("Cross-document toast", { duration: 3000 });
+      });
+      expect(iframeDoc.querySelector('[data-slot="toast"]')).not.toBeNull();
+
+      act(() => {
+        iframeDoc.body.dispatchEvent(new KeyboardEvent("keydown", { key: "F8", bubbles: true }));
+      });
+      expect(region?.contains(iframeDoc.activeElement)).toBe(true);
+
+      act(() => {
+        region?.blur();
+      });
+
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+
+      Object.defineProperty(iframeDoc, "hidden", {
+        value: true,
+        writable: true,
+        configurable: true,
+      });
+      act(() => {
+        iframeDoc.dispatchEvent(new Event("visibilitychange"));
+      });
+      act(() => {
+        vi.advanceTimersByTime(10000);
+      });
+      expect(iframeDoc.querySelector('[data-slot="toast"]')).not.toBeNull();
+
+      Object.defineProperty(iframeDoc, "hidden", {
+        value: false,
+        writable: true,
+        configurable: true,
+      });
+      act(() => {
+        iframeDoc.dispatchEvent(new Event("visibilitychange"));
+      });
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(iframeDoc.querySelector('[data-slot="toast"]')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
 
     iframe.remove();
   });

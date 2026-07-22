@@ -114,11 +114,8 @@ describe("docs route not-found handling", () => {
     serverBoundary.failHome = true;
     renderRoute("/");
 
-    const heading = await screen.findByRole("heading", { name: "Something went wrong" });
-    const panel = heading.closest('[data-slot="panel"]');
-    if (!(panel instanceof HTMLElement)) throw new Error("Render-error panel not found");
-    const actionTerm = within(panel).getByText("ACTION:");
-    expect(actionTerm.nextElementSibling).toHaveTextContent("TRY_AGAIN");
+    await screen.findByRole("heading", { name: "Something went wrong" });
+    expect(screen.getByText("TRY_AGAIN")).toBeVisible();
 
     serverBoundary.failHome = false;
     await user.click(screen.getByRole("button", { name: "Try again" }));

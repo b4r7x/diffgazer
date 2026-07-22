@@ -59,6 +59,17 @@ describe("matchQueryState", () => {
 
     expect(matchQueryState(query, handlers)).toBeNull();
   });
+
+  it("renders loading while a query is paused before its first data resolves", () => {
+    const query = queryResult<string>({
+      isLoading: false,
+      error: null,
+      data: undefined,
+      fetchStatus: "paused",
+    });
+
+    expect(matchQueryState(query, handlers)).toBe("loading");
+  });
 });
 
 describe("guardQueryState", () => {
@@ -111,5 +122,16 @@ describe("guardQueryState", () => {
     });
 
     expect(guardQueryState(query, guard)).toBeNull();
+  });
+
+  it("returns the loading element while a query is paused before its first data resolves", () => {
+    const query = queryResult<string>({
+      isLoading: false,
+      error: null,
+      data: undefined,
+      fetchStatus: "paused",
+    });
+
+    expect(guardQueryState(query, guard)).toBe(loadingElement);
   });
 });

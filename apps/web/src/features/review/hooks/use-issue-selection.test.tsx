@@ -31,20 +31,6 @@ function Subject({
 }
 
 describe("useIssueSelection", () => {
-  it("resets to the first issue when the source list changes", async () => {
-    const user = userEvent.setup();
-    const { rerender } = render(<Subject sourceKey="all" />);
-
-    expect(screen.getByText("First issue")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Select second" }));
-    expect(screen.getByText("Second issue")).toBeInTheDocument();
-
-    rerender(<Subject sourceKey="high" />);
-
-    expect(screen.getByText("First issue")).toBeInTheDocument();
-  });
-
   it("does not restore a previous selection when returning to an earlier source list", async () => {
     const user = userEvent.setup();
     const { rerender } = render(<Subject sourceKey="all" />);

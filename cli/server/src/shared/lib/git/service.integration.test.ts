@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 // No node:child_process mock here: this exercises safeEnv() against the REAL git
-// CLI so a regression to F-001 (blanked GIT_DIR → `fatal: not a git repository: ''`)
+// CLI so a blanked-GIT_DIR regression (→ `fatal: not a git repository: ''`)
 // is caught end-to-end.
 import { createGitService } from "./service.js";
 
@@ -29,9 +29,10 @@ describe("createGitService (un-mocked git integration)", () => {
     await writeFile(join(repoDir, "file.ts"), "const x = 1;\n");
     await execFileAsync("git", ["add", "file.ts"], { cwd: repoDir });
 
-    // A blanked (rather than deleted) GIT_DIR is exactly the F-001 break: git
+    // A blanked (rather than deleted) GIT_DIR is exactly the break: git
     // reads it as an explicit git dir of '' and exits 128. safeEnv() must strip
     // the polluted parent value, so the service's status call still succeeds.
+    const originalGitDir = process.env.GIT_DIR;
     process.env.GIT_DIR = "/some/polluted/git/dir";
     try {
       const git = createGitService({ cwd: repoDir });
@@ -42,7 +43,11 @@ describe("createGitService (un-mocked git integration)", () => {
       expect(result.value.isGitRepo).toBe(true);
       expect(result.value.files.staged.some((f) => f.path === "file.ts")).toBe(true);
     } finally {
-      delete process.env.GIT_DIR;
+      if (originalGitDir === undefined) {
+        delete process.env.GIT_DIR;
+      } else {
+        process.env.GIT_DIR = originalGitDir;
+      }
     }
   });
 });

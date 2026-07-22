@@ -1,40 +1,14 @@
 import { type ChildProcess, spawn } from "node:child_process";
-import { PassThrough } from "node:stream";
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import {
-  LIGHTHOUSE_PAGES,
-  parseListeningOrigin,
-  runLhci,
-  verifyDocsPages,
-  waitForListeningOrigin,
-} from "./run-lighthouse";
+import { LIGHTHOUSE_PAGES, runLhci, verifyDocsPages } from "./run-lighthouse";
 
 const CSP = "default-src 'self'; script-src 'self' 'nonce-test'";
+const DOCS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("Docs Lighthouse runner", () => {
-  it("parses the dynamic loopback origin from Nitro's listening line", () => {
-    expect(
-      parseListeningOrigin("\u001b[32m➜ Listening on: http://127.0.0.1:49983/\u001b[39m"),
-    ).toBe("http://127.0.0.1:49983");
-  });
-
-  it("fails when Nitro exits before reporting its origin", async () => {
-    const stdout = new PassThrough();
-    const serverFailure = Promise.reject(new Error("Docs server exited early with code 1"));
-
-    await expect(waitForListeningOrigin(stdout, serverFailure, 100)).rejects.toThrow(
-      "Docs server exited early with code 1",
-    );
-  });
-
-  it("rejects an invalid port through the readiness promise", async () => {
-    const stdout = new PassThrough();
-    const origin = waitForListeningOrigin(stdout, new Promise<never>(() => {}), 100);
-    stdout.write("➜ Listening on: http://127.0.0.1:70000/\n");
-
-    await expect(origin).rejects.toThrow("Nitro reported an invalid port: 70000");
-  });
-
   it("rejects a successful response from the wrong site", async () => {
     const fetchPage = vi.fn<typeof fetch>().mockImplementation(async () => {
       return new Response("<title>Unrelated site</title>", {
@@ -118,6 +92,54 @@ describe("Docs Lighthouse runner", () => {
     ).rejects.toThrow("Docs server exited early with code 1");
     expect(signals).toEqual(["SIGTERM"]);
     expect(child?.signalCode).toBe("SIGTERM");
+  });
+
+  it("rejects with the Lighthouse CI exit diagnostic when the LHCI process exits nonzero", async () => {
+    const launch = () => {
+      const child = spawn(process.execPath, ["-e", "process.exit(2)"], { stdio: "ignore" });
+      return {
+        child,
+        signal(signal: NodeJS.Signals) {
+          child.kill(signal);
+        },
+      };
+    };
+
+    await expect(
+      runLhci("http://127.0.0.1:40000", new Promise<never>(() => {}), launch),
+    ).rejects.toThrow("[lighthouse] Lighthouse CI exited with code 2");
+  });
+
+  it("exits 1 with the missing-build diagnostic when the Docs server was never built", async () => {
+    const docsLocalRoot = mkdtempSync(resolve(DOCS_ROOT, "docs-local-"));
+    try {
+      const scriptsDir = resolve(docsLocalRoot, "scripts");
+      mkdirSync(scriptsDir, { recursive: true });
+      const entry = resolve(scriptsDir, "run-lighthouse.ts");
+      copyFileSync(resolve(DOCS_ROOT, "scripts/run-lighthouse.ts"), entry);
+      copyFileSync(
+        resolve(DOCS_ROOT, "scripts/nitro-server-ready.mjs"),
+        resolve(scriptsDir, "nitro-server-ready.mjs"),
+      );
+
+      const child = spawn(process.execPath, ["--import", "tsx", entry], {
+        cwd: DOCS_ROOT,
+        stdio: ["ignore", "ignore", "pipe"],
+      });
+      let stderr = "";
+      child.stderr.on("data", (chunk: Buffer) => {
+        stderr += chunk.toString();
+      });
+
+      const exitCode = await new Promise<number | null>((resolveExit) => {
+        child.once("exit", (code) => resolveExit(code));
+      });
+
+      expect(exitCode).toBe(1);
+      expect(stderr).toContain("[lighthouse] Built Docs server is missing; run `pnpm build` first");
+    } finally {
+      rmSync(docsLocalRoot, { recursive: true, force: true });
+    }
   });
 
   it("targets the two canonical routes", () => {

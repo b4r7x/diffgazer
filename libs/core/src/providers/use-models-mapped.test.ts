@@ -82,23 +82,19 @@ describe("useProviderModelsMapped", () => {
     );
 
     getProviderModels.mockRejectedValueOnce(new Error("catalog unavailable"));
-    await queryClient.refetchQueries();
-
-    // Wait until TanStack has the failed refetch in hand alongside the retained
-    // data (error state + last-good data both present) before asserting the hook.
-    await waitFor(() => {
-      const query = queryClient.getQueryCache().getAll()[0];
-      expect(query?.state.status).toBe("error");
-      expect(query?.state.data).toBeDefined();
+    await act(async () => {
+      await queryClient.refetchQueries();
     });
 
-    expect(result.current.models.map((m) => m.id)).toEqual([
-      "gemini-2.5-flash",
-      "gemini-3-pro-preview",
-    ]);
-    expect(result.current.error).toBeNull();
-    expect(result.current.source).toBe("live");
-    expect(result.current.fetchedAt).toBe(GEMINI_CATALOG.fetchedAt);
+    await waitFor(() => {
+      expect(result.current.models.map((m) => m.id)).toEqual([
+        "gemini-2.5-flash",
+        "gemini-3-pro-preview",
+      ]);
+      expect(result.current.error).toBeNull();
+      expect(result.current.source).toBe("live");
+      expect(result.current.fetchedAt).toBe(GEMINI_CATALOG.fetchedAt);
+    });
   });
 
   it("reports loading while the catalog query is in flight", () => {

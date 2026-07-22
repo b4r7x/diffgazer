@@ -60,15 +60,13 @@ describe("ContextSidebar (TUI)", () => {
 
     const frame = lastFrame() ?? "";
     const lines = frame.split("\n");
-    expect(
-      lines.filter((line) => line.includes("Trusted:")),
-      frame,
-    ).toHaveLength(1);
+    const trustedLines = lines.filter((line) => line.includes("Trusted:"));
+    expect(trustedLines, frame).toHaveLength(1);
+    expect(trustedLines[0]).toContain("tail");
     expect(
       lines.filter((line) => line.includes("Provider:")),
       frame,
     ).toHaveLength(1);
-    expect(frame).toContain("tail");
     expect(frame).not.toContain("must-not-wrap");
   });
 });

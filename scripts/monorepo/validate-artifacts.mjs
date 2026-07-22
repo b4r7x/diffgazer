@@ -16,6 +16,7 @@ import { runValidationChecks } from "./lib/run-checks.mjs";
 import {
   assertNoDuplicateDemoKeys,
   collectBundleRelativeJsImportErrors,
+  collectGeneratedDistParityErrors,
   validateIntegrityBundle,
   validateLibraryArtifacts,
 } from "./lib/validation.mjs";
@@ -284,11 +285,7 @@ const checks = [
     ["items", "theme", "styles"],
     "@diffgazer/add registry bundle",
   ),
-  ...collectTreeParityErrors(
-    resolve(root, "cli/add/src/generated"),
-    resolve(root, "cli/add/dist/generated"),
-    "@diffgazer/add dist generated",
-  ),
+  ...collectGeneratedDistParityErrors(root),
   ...validatePackageExportTargets("libs/ui", "@diffgazer/ui"),
   ...validateUiPackageExports(),
   ...artifactLibraries.flatMap((library) =>

@@ -1,5 +1,5 @@
 import { render } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { axe } from "../../testing/axe";
 import EmptyStateLive from "./empty-state/empty-state-live";
 import InputDefault from "./input/input-default";
@@ -65,10 +65,6 @@ const examples: Array<[string, () => React.JSX.Element]> = [
 ];
 
 describe("form-control example accessible names", () => {
-  afterEach(() => {
-    document.body.replaceChildren();
-  });
-
   for (const [name, Example] of examples) {
     it(`${name} has no form-label a11y violations`, async () => {
       const { container } = render(<Example />);

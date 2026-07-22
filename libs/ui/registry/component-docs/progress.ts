@@ -19,7 +19,7 @@ export const progressDoc: ComponentDoc = {
     {
       title: "Value Clamping",
       content:
-        "The value is clamped between 0 and max. Values outside this range are silently corrected. A non-finite, zero, or negative max is normalized to the default of 100 before ARIA values and fill width are calculated.",
+        "The value is clamped between 0 and max. Values outside this range are silently corrected. A NaN value is normalized to 0 before clamping. A non-finite, zero, or negative max is normalized to the default of 100 before ARIA values and fill width are calculated.",
     },
     {
       title: "Reduced Motion",

@@ -59,10 +59,10 @@ describe("docs server input parsing", () => {
   });
 
   it("normalizes search queries to the documented maximum length", () => {
-    const query = `  ${"a".repeat(MAX_SEARCH_QUERY_LENGTH + 20)}  `;
+    expect(normalizeSearchQuery("  button  ")).toBe("button");
 
-    expect(parseSearchQueryInput(query)).toHaveLength(MAX_SEARCH_QUERY_LENGTH);
-    expect(normalizeSearchQuery(query)).toHaveLength(MAX_SEARCH_QUERY_LENGTH);
+    const overlongQuery = `  ${"a".repeat(MAX_SEARCH_QUERY_LENGTH + 20)}  `;
+    expect(parseSearchQueryInput(overlongQuery)).toBe("a".repeat(MAX_SEARCH_QUERY_LENGTH));
   });
 
   it("rejects non-string search queries", () => {

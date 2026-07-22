@@ -87,6 +87,26 @@ describe("useOpenRouterModelsMapped", () => {
     ]);
   });
 
+  it("reports loading while the credential-scoped catalog query is in flight", () => {
+    const refetch = vi.fn();
+    mockUseOpenRouterModels.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      error: null,
+      refetch,
+    });
+
+    const { result } = renderHook(() => useOpenRouterModelsMapped(true, "openrouter"));
+
+    expect(result.current.loading).toBe(true);
+    expect(result.current.models).toEqual([]);
+    expect(result.current.error).toBeNull();
+
+    result.current.retry();
+
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+
   it("returns error state when query has error", () => {
     mockUseOpenRouterModels.mockReturnValue({
       data: undefined,

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { REGISTRY_ORIGIN } from "./constants.js";
-import { normalizeOrigin, resolveAndRewriteOrigin, resolveRegistryRoute } from "./origin.js";
+import { normalizeOrigin, resolveRegistryRoute } from "./origin.js";
 import { buildShadcnRegistryWithOrigin } from "./shadcn/build.js";
 
 let fixtureDir: string | null = null;
@@ -35,40 +35,6 @@ describe("normalizeOrigin", () => {
     "https://user:password@example.com/registry",
   ])("rejects unsafe registry origin %s", (origin) => {
     expect(() => normalizeOrigin(origin)).toThrow(/REGISTRY_ORIGIN must be a hosted http\(s\) URL/);
-  });
-
-  it("keeps registry item paths inside a valid origin path prefix", () => {
-    fixtureDir = mkdtempSync(resolve(tmpdir(), "diffgazer-origin-"));
-    const itemPath = resolve(fixtureDir, "button.json");
-    writeFileSync(
-      itemPath,
-      `${JSON.stringify({ registryDependencies: [`${REGISTRY_ORIGIN}/r/ui/button.json`] })}\n`,
-    );
-
-    const result = resolveAndRewriteOrigin({
-      dir: fixtureDir,
-      originRaw: "https://example.com/registry///",
-      defaultOrigin: REGISTRY_ORIGIN,
-    });
-    const item: unknown = JSON.parse(readFileSync(itemPath, "utf8"));
-    if (
-      item === null ||
-      typeof item !== "object" ||
-      !("registryDependencies" in item) ||
-      !Array.isArray(item.registryDependencies)
-    ) {
-      throw new Error("Fixture registry dependencies are missing");
-    }
-    const dependency = item.registryDependencies[0];
-    if (typeof dependency !== "string") {
-      throw new Error("Fixture dependency was not rewritten");
-    }
-    const dependencyUrl = new URL(dependency);
-
-    expect(result.origin).toBe("https://example.com/registry");
-    expect(dependencyUrl.pathname).toBe("/registry/r/ui/button.json");
-    expect(dependencyUrl.search).toBe("");
-    expect(dependencyUrl.hash).toBe("");
   });
 
   it("keeps the path prefix through a successful registry build", () => {

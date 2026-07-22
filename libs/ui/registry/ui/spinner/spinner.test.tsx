@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { createRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
@@ -6,16 +6,29 @@ import { Spinner } from "./index";
 
 const originalMatchMedia = window.matchMedia;
 
-function mockMatchMedia(matches: boolean) {
+function mockMatchMedia(initialMatches: boolean) {
+  let matches = initialMatches;
+  const listeners = new Set<() => void>();
+
   const mql = {
-    matches,
     media: "(prefers-reduced-motion: reduce)",
     onchange: null,
     addListener: vi.fn(),
     removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
+    addEventListener: vi.fn((_event: string, listener: () => void) => {
+      listeners.add(listener);
+    }),
+    removeEventListener: vi.fn((_event: string, listener: () => void) => {
+      listeners.delete(listener);
+    }),
     dispatchEvent: vi.fn(),
+    get matches() {
+      return matches;
+    },
+    setMatches(next: boolean) {
+      matches = next;
+      for (const listener of listeners) listener();
+    },
   };
 
   Object.defineProperty(window, "matchMedia", {
@@ -63,22 +76,64 @@ describe("Spinner", () => {
     expect(ref.current).toBe(screen.getByRole("status", { name: "Loading" }));
   });
 
-  it("renders accessible status when reduced motion is requested", () => {
-    mockMatchMedia(true);
+  it("holds the first braille frame while reduced motion matches, then advances and resets as the query changes", () => {
+    vi.useFakeTimers();
+    try {
+      const mql = mockMatchMedia(true);
 
-    render(<Spinner variant="braille" />);
+      render(<Spinner variant="braille" />);
+      const status = screen.getByRole("status", { name: "Loading" });
+      const firstFrame = status.textContent;
 
-    expect(screen.getByRole("status", { name: "Loading" })).toBeInTheDocument();
+      act(() => {
+        vi.advanceTimersByTime(80 * 5);
+      });
+      expect(status.textContent).toBe(firstFrame);
+
+      act(() => {
+        mql.setMatches(false);
+      });
+      act(() => {
+        vi.advanceTimersByTime(80 * 3);
+      });
+      expect(status.textContent).not.toBe(firstFrame);
+
+      act(() => {
+        mql.setMatches(true);
+      });
+      expect(status.textContent).toBe(firstFrame);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
-  it("does not crash when matchMedia is unavailable", () => {
+  it("removes the change listener and clears the pending interval on unmount", () => {
+    vi.useFakeTimers();
+    try {
+      const mql = mockMatchMedia(false);
+
+      const { unmount } = render(<Spinner variant="braille" />);
+      const [, changeListener] = mql.addEventListener.mock.calls[0] as [string, () => void];
+      expect(vi.getTimerCount()).toBeGreaterThan(0);
+
+      unmount();
+
+      expect(mql.removeEventListener).toHaveBeenCalledWith("change", changeListener);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("renders accessible status when matchMedia is unavailable", () => {
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       writable: true,
       value: undefined,
     });
 
-    expect(() => render(<Spinner variant="braille" />)).not.toThrow();
+    render(<Spinner variant="braille" />);
+
     expect(screen.getByRole("status", { name: "Loading" })).toBeInTheDocument();
   });
 });

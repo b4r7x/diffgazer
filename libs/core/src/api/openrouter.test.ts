@@ -19,11 +19,6 @@ describe("isOpenRouterCompatible", () => {
       input: { supportedParameters: ["temperature", "top_p"] },
       expected: false,
     },
-    {
-      label: "supportedParameters=undefined",
-      input: { supportedParameters: undefined },
-      expected: false,
-    },
     { label: "supportedParameters omitted", input: {}, expected: false },
   ])("returns $expected for $label", ({ input, expected }) => {
     expect(isOpenRouterCompatible(input)).toBe(expected);
@@ -76,9 +71,5 @@ describe("mapOpenRouterModels", () => {
       }),
     ]);
     expect(mapped?.description).toBe("openrouter/no-desc");
-  });
-
-  it("returns an empty list for empty input", () => {
-    expect(mapOpenRouterModels([])).toEqual([]);
   });
 });

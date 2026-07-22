@@ -89,21 +89,6 @@ describe("Tooltip keyboard", () => {
     expect(screen.getByRole("tooltip")).toBeInTheDocument();
   });
 
-  it("dismisses on Escape", async () => {
-    const user = userEvent.setup();
-    render(
-      <Tooltip content="Tip text" defaultOpen>
-        <button type="button">Hover me</button>
-      </Tooltip>,
-    );
-    const tooltip = screen.getByRole("tooltip");
-    expect(tooltip).toBeInTheDocument();
-
-    await user.keyboard("{Escape}");
-
-    expectClosedOrUnmounted(tooltip);
-  });
-
   it("Escape claimed by a hover tooltip closes it without moving unrelated focus", async () => {
     const user = userEvent.setup();
     render(
@@ -318,6 +303,43 @@ describe("Tooltip touch", () => {
 
     // fireEvent retained: document-level pointerdown listener attaches in capture phase
     fireEvent.pointerDown(screen.getByRole("button", { name: "Outside" }));
+    expectClosedOrUnmounted(tooltip);
+  });
+});
+
+describe("Tooltip shorthand controlled mode", () => {
+  it("requests open on focus and requests close on Escape, applying both only after rerender", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    const { rerender } = render(
+      <Tooltip content="Tip text" open={false} onOpenChange={onOpenChange}>
+        <button type="button">Hover me</button>
+      </Tooltip>,
+    );
+    const trigger = screen.getByRole("button", { name: "Hover me" });
+
+    await user.tab();
+    expect(trigger).toHaveFocus();
+    expect(onOpenChange).toHaveBeenCalledWith(true);
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+
+    rerender(
+      <Tooltip content="Tip text" open={true} onOpenChange={onOpenChange}>
+        <button type="button">Hover me</button>
+      </Tooltip>,
+    );
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
+    expect(tooltip).toBeInTheDocument();
+
+    rerender(
+      <Tooltip content="Tip text" open={false} onOpenChange={onOpenChange}>
+        <button type="button">Hover me</button>
+      </Tooltip>,
+    );
     expectClosedOrUnmounted(tooltip);
   });
 });

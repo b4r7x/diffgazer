@@ -86,8 +86,14 @@ describe("computeDiff", () => {
     const lines = Array.from({ length: 20 }, (_, i) => String(i));
     const modified = [...lines];
     modified[1] = "changed-1";
+    modified[4] = "changed-4";
     modified[18] = "changed-18";
     const result = computeDiff(lines.join("\n"), modified.join("\n"));
     expect(result.hunks.length).toBe(2);
+
+    const addedContents = result.hunks.map((hunk) =>
+      hunk.changes.filter((c) => c.type === "add").map((c) => c.content),
+    );
+    expect(addedContents).toEqual([["changed-1", "changed-4"], ["changed-18"]]);
   });
 });

@@ -50,6 +50,24 @@ describe("useSettingsFormActions", () => {
     expect(result.current.canSave).toBe(false);
   });
 
+  it("does not create or save a payload while a mutation is already pending", async () => {
+    mockIsSaving.current = true;
+    const getSettingsPayload = vi.fn(() => ({ agentExecution: "parallel" as const }));
+    const { result } = renderHook(() =>
+      useSettingsFormActions({
+        canSave: true,
+        getSettingsPayload,
+        contentShortcuts: [],
+      }),
+    );
+
+    await act(() => result.current.onSave());
+
+    expect(result.current.canSave).toBe(false);
+    expect(getSettingsPayload).not.toHaveBeenCalled();
+    expect(mockSaveSettings).not.toHaveBeenCalled();
+  });
+
   it("saves the page payload and navigates only after the mutation succeeds", async () => {
     mockSaveSettings.mockResolvedValue(undefined);
     const { result } = renderHook(() =>

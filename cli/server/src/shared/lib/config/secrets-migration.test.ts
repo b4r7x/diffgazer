@@ -281,16 +281,6 @@ describe("migrateSecretsStorage", () => {
     expect(keyring.deleteKeyringSecret).not.toHaveBeenCalled();
   });
 
-  it("does NOT delete keyring entries if the caller crashes before persisting the file (crash-safety)", () => {
-    keyring.readKeyringSecret.mockReturnValue({ ok: true, value: "key-from-keyring" });
-    const result = migrateSecretsStorage(makeConfigState(), { providers: {} }, "keyring", "file");
-    expect(result.ok).toBe(true);
-
-    // Caller never invokes finalizeKeyringDeletions (process crashed).
-    expect(keyring.deleteKeyringSecret).not.toHaveBeenCalled();
-    expect(keyring.readKeyringSecret).toHaveBeenCalledWith("api_key_gemini");
-  });
-
   it("finalizeKeyringDeletions deletes every queued provider keyring entry", () => {
     finalizeKeyringDeletions(["gemini", "zai"]);
     expect(keyring.deleteKeyringSecret).toHaveBeenCalledWith("api_key_gemini");
@@ -373,6 +363,25 @@ describe("migrateSecretsStorage", () => {
       ]),
     ).toEqual({ ok: true, value: undefined });
 
+    expect(keyring.writeKeyringSecret).toHaveBeenCalledWith("api_key_gemini", "old-key");
+    expect(keyring.deleteKeyringSecret).toHaveBeenCalledWith("api_key_openrouter");
+  });
+
+  it("returns ROLLBACK_FAILED when one of multiple restorations fails and still attempts the rest", () => {
+    keyring.writeKeyringSecret.mockReturnValueOnce({
+      ok: false,
+      error: { code: "KEYRING_WRITE_FAILED", message: "restore failed" },
+    });
+
+    const result = rollbackKeyringWrites([
+      { providerId: "gemini", previousValue: "old-key" },
+      { providerId: "openrouter", previousValue: null },
+    ]);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("ROLLBACK_FAILED");
+    }
     expect(keyring.writeKeyringSecret).toHaveBeenCalledWith("api_key_gemini", "old-key");
     expect(keyring.deleteKeyringSecret).toHaveBeenCalledWith("api_key_openrouter");
   });

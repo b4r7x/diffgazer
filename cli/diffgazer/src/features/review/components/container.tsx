@@ -15,7 +15,7 @@ import { useNavigation } from "../../../hooks/use-navigation";
 import { useReviewLifecycle } from "../hooks/use-lifecycle";
 import { ApiKeyMissingView, ConfigurationErrorView } from "./api-key-missing-view";
 import { NoChangesView } from "./no-changes-view";
-import { ReviewProgressView } from "./progress-view";
+import { ReviewProgressView } from "./progress-view/view";
 import { ReviewResultsView } from "./results-view";
 import { ReviewSummaryView } from "./summary-view";
 

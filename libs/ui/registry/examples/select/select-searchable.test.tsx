@@ -9,7 +9,7 @@ describe("SelectSearchable", () => {
     render(<SelectSearchable />);
 
     await user.click(screen.getByRole("button", { name: "Command" }));
-    await user.type(screen.getByPlaceholderText("Filter..."), "checkout");
+    await user.type(screen.getByRole("combobox", { name: "Search options" }), "checkout");
 
     expect(screen.queryAllByRole("option")).toHaveLength(0);
     expect(screen.getByText("> no results.")).toBeVisible();

@@ -54,9 +54,10 @@ describe("ProviderStep (TUI)", () => {
   });
 
   test("lists providers by display name and describes OpenRouter", async () => {
-    const { lastFrame } = render(
+    const onChange = vi.fn();
+    const { lastFrame, stdin } = render(
       <Wrapper>
-        <ProviderStep value="gemini" onChange={() => {}} />
+        <ProviderStep value="gemini" onChange={onChange} />
       </Wrapper>,
     );
 
@@ -66,5 +67,11 @@ describe("ProviderStep (TUI)", () => {
     expect(frame).toContain("Google Gemini");
     expect(frame).toContain("OpenRouter");
     expect(frame).toContain("Access multiple providers via a single API");
+
+    stdin.write("\u001b[B");
+    await new Promise((resolve) => setImmediate(resolve));
+    stdin.write("\r");
+    await flushUntil(() => onChange.mock.calls.length > 0);
+    expect(onChange).toHaveBeenCalledWith("openrouter");
   });
 });

@@ -56,7 +56,7 @@ export function FieldControl({ children, ref }: FieldControlProps) {
   return cloneElement(child, {
     id: resolvedId,
     disabled: disabled || child.props.disabled || undefined,
-    required: child.props.required ?? required,
+    required: required || child.props.required || undefined,
     "aria-invalid": child.props["aria-invalid"] ?? (invalid ? true : undefined),
     "aria-describedby": mergeIds(child.props["aria-describedby"], describedBy),
     "aria-labelledby": mergeIds(child.props["aria-labelledby"], labelId),

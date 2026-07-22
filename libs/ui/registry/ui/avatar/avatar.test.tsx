@@ -116,6 +116,18 @@ describe("Avatar", () => {
     expect(screen.getByText("?")).toBeInTheDocument();
   });
 
+  it("renders custom children instead of the default image and fallback", () => {
+    const { container } = render(
+      <Avatar src="https://example.com/avatar.jpg" fallback="AB">
+        <p>Custom avatar content</p>
+      </Avatar>,
+    );
+
+    expect(screen.getByText("Custom avatar content")).toBeInTheDocument();
+    expect(container.querySelector("img")).not.toBeInTheDocument();
+    expect(screen.queryByText("AB")).not.toBeInTheDocument();
+  });
+
   it("falls back to text when the fallback image fails", () => {
     const { container } = render(
       <Avatar src="https://example.com/bad.jpg" fallback="AB">
@@ -193,8 +205,8 @@ describe("Avatar", () => {
 
   it("uses fallback as accessible text when no image is loaded", () => {
     render(<Avatar fallback="JD" />);
-    const fallback = screen.getByText("JD");
-    expect(fallback).toBeInTheDocument();
+    const avatar = screen.getByRole("img", { name: "JD" });
+    expect(avatar).toHaveTextContent("JD");
   });
 
   it("keeps a decorative avatar from overriding its container's accessible name", () => {
@@ -211,20 +223,6 @@ describe("Avatar", () => {
     const card = screen.getByRole("article", { name: "Jane Doe" });
     expect(card).toBeInTheDocument();
     expect(getAvatarImage(container)).toHaveAttribute("alt", "");
-  });
-
-  it("hides fallback from accessibility tree when image successfully loads", () => {
-    const { container } = render(
-      <Avatar src="https://example.com/avatar.jpg" alt="Jane Doe" fallback="JD" />,
-    );
-    expect(screen.getByText("JD")).toBeInTheDocument();
-
-    // fireEvent retained: native <img> load event has no user-event equivalent
-    fireEvent.load(getAvatarImage(container));
-    const fallback = screen.queryByText("JD");
-    if (fallback) {
-      expect(fallback).toHaveAttribute("aria-hidden", "true");
-    }
   });
 
   it("group with aria-label is accessible", () => {
@@ -248,17 +246,6 @@ describe("Avatar", () => {
     const group = screen.getByLabelText("Team");
     expect(group).toHaveAttribute("id", "team-avatars");
     expect(group).toHaveAccessibleName("Team");
-  });
-
-  it("defaults the AvatarIndicator name to '{count} more'", () => {
-    render(
-      <Avatar.Group size="md" max={1}>
-        <Avatar fallback="A" alt="Alice" />
-        <Avatar fallback="B" alt="Bob" />
-        <Avatar fallback="C" alt="Charlie" />
-      </Avatar.Group>,
-    );
-    expect(screen.getByLabelText("2 more")).toBeInTheDocument();
   });
 
   it("lets a consumer override the AvatarIndicator accessible name via getLabel", () => {

@@ -78,21 +78,19 @@ describe("Field", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
-  it("clicking the label focuses the control", async () => {
-    const user = userEvent.setup();
-
+  it("keeps a required Field authoritative when the child sets required to false", () => {
     render(
-      <Field>
+      <Field required>
         <Field.Label>Project name</Field.Label>
         <Field.Control>
-          <Input />
+          <Input required={false} />
         </Field.Control>
       </Field>,
     );
 
-    await user.click(screen.getByText("Project name"));
-
-    expect(screen.getByRole("textbox", { name: "Project name" })).toHaveFocus();
+    const input = screen.getByRole("textbox", { name: "Project name" });
+    expect(input).toBeRequired();
+    expect(screen.getByText("Project name")).toHaveTextContent("Project name *");
   });
 
   it("uses custom description and error ids for the control description", () => {
@@ -361,19 +359,6 @@ describe("Field", () => {
     expect(screen.getByText("Project name")).toHaveAttribute("for", "custom");
   });
 
-  it("keeps a div-based Checkbox accessible name through a wrapper", () => {
-    render(
-      <Field>
-        <Field.Label>Accept terms</Field.Label>
-        <Field.Control>
-          <Checkbox />
-        </Field.Control>
-      </Field>,
-    );
-
-    expect(screen.getByRole("checkbox", { name: "Accept terms" })).toBeInTheDocument();
-  });
-
   it("clicking a Field.Label toggles and focuses a div-based Checkbox", async () => {
     const user = userEvent.setup();
 
@@ -611,22 +596,6 @@ describe("Field", () => {
     const input = screen.getByRole("textbox", { name: "Email" });
 
     expect(input).toHaveAccessibleDescription("Use your work email.");
-  });
-
-  it("has aria-labelledby on the control during initial render (not after effect)", () => {
-    render(
-      <Field>
-        <Field.Label>Username</Field.Label>
-        <Field.Control>
-          <Input />
-        </Field.Control>
-      </Field>,
-    );
-
-    const input = screen.getByRole("textbox", { name: "Username" });
-    const fieldLabel = screen.getByText("Username");
-
-    expect(input).toHaveAttribute("aria-labelledby", fieldLabel.id);
   });
 
   it("wires native label and aria-labelledby to the control in SSR output before hydration", () => {

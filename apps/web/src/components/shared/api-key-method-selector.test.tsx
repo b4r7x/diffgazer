@@ -76,7 +76,6 @@ describe("ApiKeyMethodSelector", () => {
     expect(env).toBeChecked();
 
     const input = screen.getByLabelText("Gemini API Key");
-    const inputFocus = vi.spyOn(input, "focus");
     const pastePadding = input.closest('[data-slot="input-group"]')?.parentElement;
     if (!pastePadding) throw new Error("Expected paste padding wrapper");
     onFocusChange.mockClear();
@@ -86,6 +85,5 @@ describe("ApiKeyMethodSelector", () => {
     expect(env).toHaveFocus();
     expect(env).toBeChecked();
     expect(onFocusChange).not.toHaveBeenCalled();
-    expect(inputFocus).not.toHaveBeenCalled();
   });
 });

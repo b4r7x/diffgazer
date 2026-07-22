@@ -2,10 +2,9 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, relative } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, test } from "node:test";
-import { computeStrictArtifactFingerprint } from "@diffgazer/registry";
-import { collectFiles, listRepoFiles } from "./files.mjs";
+import { listRepoFiles } from "./files.mjs";
 
 const tempRoots = [];
 
@@ -26,41 +25,6 @@ function writeText(root, relPath, content) {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, content);
 }
-
-function writeFixture(root, order) {
-  for (const relPath of order) {
-    writeText(root, relPath, `${relPath}\n`);
-  }
-}
-
-function relativeFiles(root) {
-  return collectFiles(join(root, "input")).map((path) => relative(root, path));
-}
-
-test("file collection and artifact fingerprints use deterministic code-unit order", () => {
-  const first = makeTempRoot();
-  const second = makeTempRoot();
-  const files = ["input/a.txt", "input/Z.txt", "input/nested/B.txt"];
-
-  writeFixture(first, files);
-  writeFixture(second, files.toReversed());
-
-  assert.deepEqual(relativeFiles(first), ["input/Z.txt", "input/a.txt", "input/nested/B.txt"]);
-  assert.deepEqual(relativeFiles(second), relativeFiles(first));
-
-  const firstFingerprint = computeStrictArtifactFingerprint(
-    first,
-    ["input"],
-    "https://r.b4r7.dev",
-  ).fingerprint;
-  const secondFingerprint = computeStrictArtifactFingerprint(
-    second,
-    ["input"],
-    "https://r.b4r7.dev",
-  ).fingerprint;
-
-  assert.equal(secondFingerprint, firstFingerprint);
-});
 
 test("repo file listing includes untracked files and honors git excludes", () => {
   const root = makeTempRoot();

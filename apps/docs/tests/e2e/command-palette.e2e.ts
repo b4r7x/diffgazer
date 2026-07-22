@@ -13,8 +13,11 @@ test.describe("CommandPalette", () => {
     await expect(search).toBeVisible();
     await search.fill("a");
 
-    const options = page.getByRole("option");
-    await expect(options.first()).toBeVisible();
+    await expect(page.getByRole("option", { name: "Run Diagnostics" })).toBeVisible();
+    await expect(page.getByRole("option")).toHaveCount(1);
+    await expect(page.getByRole("option", { name: "Go to History" })).toHaveCount(0);
+    await expect(page.getByRole("option", { name: "Switch Theme" })).toHaveCount(0);
+
     await expect(search).toHaveScreenshot("command-palette-filtered.png");
 
     const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();

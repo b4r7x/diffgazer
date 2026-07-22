@@ -7,47 +7,37 @@ describe("createGitDiffError", () => {
       kind: "missing repository",
       input: new Error("fatal: not a git repository"),
       expectedFragment: "Not a git repository",
-      includesOriginal: true,
     },
     {
       kind: "spawn ENOENT",
       input: new Error("spawn git ENOENT"),
       expectedFragment: "Git is not installed",
-      includesOriginal: true,
     },
     {
       kind: "command not found",
       input: new Error("git command not found"),
       expectedFragment: "Git is not installed",
-      includesOriginal: true,
     },
     {
       kind: "permission denied",
       input: new Error("EACCES permission denied"),
       expectedFragment: "Permission denied",
-      includesOriginal: true,
     },
     {
       kind: "operation timeout",
       input: new Error("operation timed out"),
       expectedFragment: "timed out",
-      includesOriginal: true,
     },
     {
       kind: "buffer exceeded",
       input: new Error("stdout maxBuffer length exceeded"),
       expectedFragment: "buffer limit",
-      includesOriginal: true,
     },
-  ])("produces a $kind message that wraps the original error", ({
-    input,
-    expectedFragment,
-    includesOriginal,
-  }) => {
+  ])("produces a $kind message that wraps the original error", ({ input, expectedFragment }) => {
     const result = createGitDiffError(input);
 
     expect(result.message).toContain(expectedFragment);
-    if (includesOriginal) expect(result.message).toContain("Original:");
+    expect(result.message).toContain("Original:");
   });
 
   it("returns a generic 'Failed to get git diff' message for unrecognized errors", () => {

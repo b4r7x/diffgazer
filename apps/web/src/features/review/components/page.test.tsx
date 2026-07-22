@@ -440,7 +440,7 @@ describe("ReviewPage saved review loading", () => {
     routeState.search = { mode: "staged" };
     // A fresh error object every render makes the report effect's dependency change
     // identity, so without the fired-once ref guard handleApiError (toast + home
-    // redirect) would re-fire on each re-render (F-304).
+    // redirect) would re-fire on each re-render.
     mockUseReview.mockImplementation(() => reviewQuery({ isError: true, error: apiError(500) }));
 
     const { rerender } = renderPage({ strict: true });
@@ -684,7 +684,6 @@ describe("ReviewPage live review phase transitions", () => {
   });
 
   let capturedOnComplete: (() => void) | null;
-  let streamedIssueCount = 0;
 
   beforeEach(() => {
     resetReviewMocks();
@@ -715,7 +714,6 @@ describe("ReviewPage live review phase transitions", () => {
       (state, event) => reviewReducer(state, { type: "EVENT", event }),
       reviewReducer(createInitialReviewState(), { type: "START" }),
     );
-    streamedIssueCount = streamedState.issues.length;
     const completedEventState = reviewReducer(streamedState, {
       type: "EVENT",
       event: {
@@ -764,7 +762,22 @@ describe("ReviewPage live review phase transitions", () => {
     });
   });
 
-  it("transitions from streaming to summary when onComplete fires", async () => {
+  it("carries the live duplicate-collapse count into the summary", async () => {
+    renderPage();
+
+    await act(() => {
+      capturedOnComplete?.();
+    });
+
+    expect(await screen.findByText("2 issues")).toBeVisible();
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "1 duplicate issue collapsed across lenses (3 → 2 issues)",
+    );
+  });
+
+  it("progresses from streaming through summary to results when review completes", async () => {
+    const user = userEvent.setup();
+
     renderPage();
 
     expect(screen.getByRole("region", { name: "Progress" })).toBeInTheDocument();
@@ -778,34 +791,6 @@ describe("ReviewPage live review phase transitions", () => {
     ).toBeInTheDocument();
     expect(mockClearActiveSession).toHaveBeenCalledWith("unstaged", LIVE_REVIEW_ID);
     expect(screen.getByRole("button", { name: /view results/i })).toBeInTheDocument();
-  });
-
-  it("carries the live duplicate-collapse count into the summary", async () => {
-    renderPage();
-
-    await act(() => {
-      capturedOnComplete?.();
-    });
-
-    expect(streamedIssueCount).toBe(3);
-    expect(await screen.findByText("2 issues")).toBeVisible();
-    expect(screen.getByRole("note")).toHaveTextContent(
-      "1 duplicate issue collapsed across lenses (3 → 2 issues)",
-    );
-  });
-
-  it("transitions from summary to results when Enter Review is clicked", async () => {
-    const user = userEvent.setup();
-
-    renderPage();
-
-    await act(() => {
-      capturedOnComplete?.();
-    });
-
-    expect(
-      await screen.findByText(`Review Complete ${formatRunId(LIVE_REVIEW_ID)}`),
-    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /view results/i }));
 

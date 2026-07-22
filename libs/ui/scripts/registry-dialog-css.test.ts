@@ -19,6 +19,6 @@ describe("dialog-shell registry CSS wiring", () => {
     const cssFile = dialogShell?.files?.find((file) => file.path.endsWith("dialog.css"));
     expect(cssFile, "dialog.css must be listed in dialog-shell.files").toBeDefined();
     expect(cssFile?.type).toBe("registry:style");
-    expect(cssFile?.target).toMatch(/\.css$/);
+    expect(cssFile?.target).toBe("~/styles/dialog.css");
   });
 });

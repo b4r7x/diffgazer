@@ -50,7 +50,11 @@ export function Progress({
 }: ProgressProps) {
   const normalizedMax = Number.isFinite(max) && max > 0 ? max : 100;
   const isIndeterminate = value === undefined;
-  const clampedValue = isIndeterminate ? undefined : Math.min(Math.max(0, value), normalizedMax);
+  const rawValue = isIndeterminate ? 0 : value;
+  const safeValue = Number.isNaN(rawValue) ? 0 : rawValue;
+  const clampedValue = isIndeterminate
+    ? undefined
+    : Math.min(Math.max(0, safeValue), normalizedMax);
   const percentage = clampedValue === undefined ? undefined : (clampedValue / normalizedMax) * 100;
 
   return (

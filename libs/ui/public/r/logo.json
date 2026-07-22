@@ -12,12 +12,14 @@
     {
       "path": "registry/ui/logo/index.ts",
       "content": "export { Logo, type LogoProps } from \"./logo\";\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/logo/index.ts"
     },
     {
       "path": "registry/ui/logo/logo.tsx",
       "content": "import type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for logo. */\nexport interface LogoProps extends ComponentProps<\"pre\"> {\n  /** Display text, also used as the accessible name when asciiText is provided. */\n  text: string;\n  /** Precomputed ASCII art. When set, renders inside <pre role=\"img\" aria-label={text}>. */\n  asciiText?: string;\n}\n\n/**\n * Renders static text or caller-provided ASCII art without loading figlet from the default\n * component export.\n */\nexport function Logo({ ref, text, asciiText, className, ...props }: LogoProps) {\n  return (\n    <pre\n      ref={ref}\n      data-slot=\"logo\"\n      {...(asciiText ? { role: \"img\", \"aria-label\": text } : undefined)}\n      className={cn(\n        asciiText\n          ? \"font-mono whitespace-pre leading-none select-none\"\n          : \"text-lg font-bold tracking-widest\",\n        className,\n      )}\n      {...props}\n    >\n      {asciiText ?? text}\n    </pre>\n  );\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/logo/logo.tsx"
     }
   ],
   "meta": {

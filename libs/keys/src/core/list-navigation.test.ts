@@ -62,6 +62,21 @@ describe("moveHighlight", () => {
     expect(result).toEqual({ index: 2, id: "c", hitBoundary: true });
   });
 
+  it("moves backward across a disabled item and skips it", () => {
+    const result = moveHighlight(items(["a", { id: "b", disabled: true }, "c"]), "c", -1, true);
+    expect(result).toEqual({ index: 0, id: "a", hitBoundary: false });
+  });
+
+  it("wraps backward to the last enabled item when moving before the first item", () => {
+    const result = moveHighlight(items(["a", "b", "c"]), "a", -1, true);
+    expect(result).toEqual({ index: 2, id: "c", hitBoundary: false });
+  });
+
+  it("reports the lower boundary when backward wrapping is disabled", () => {
+    const result = moveHighlight(items(["a", "b", "c"]), "a", -1, false);
+    expect(result).toEqual({ index: 0, id: "a", hitBoundary: true });
+  });
+
   it("reports a boundary when a disabled tail leaves no enabled item ahead", () => {
     const result = moveHighlight(items(["a", { id: "b", disabled: true }]), "a", 1, false);
     expect(result).toEqual({ index: 0, id: "a", hitBoundary: true });

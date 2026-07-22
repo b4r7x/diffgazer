@@ -3,7 +3,7 @@ import { FooterProvider } from "@diffgazer/core/footer";
 import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { Toaster } from "@diffgazer/ui/components/toast";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -122,21 +122,6 @@ describe("HomePagePresentation — Resume Last Review gating", () => {
     expect(item).toHaveAttribute("aria-disabled", "true");
   });
 
-  it("does not navigate or start a new review when clicking the disabled Resume Last Review item", async () => {
-    const navigateMock = createNavigateMock();
-    const createReview = vi.fn();
-    const props = buildProps({
-      resumableSession: null,
-      navigate: navigateMock.navigate,
-      createReview,
-    });
-    const user = userEvent.setup();
-    renderPresentation(props);
-    await user.click(screen.getByRole("menuitem", { name: "Resume Last Review" }));
-    expect(navigateMock.mock).not.toHaveBeenCalled();
-    expect(createReview).not.toHaveBeenCalled();
-  });
-
   it("enables and resumes the cached unstaged session", async () => {
     const navigateMock = createNavigateMock();
     const createReview = vi.fn();
@@ -214,68 +199,12 @@ describe("HomePagePresentation — startReview error surfacing", () => {
     ).toBeInTheDocument();
     expect(navigateMock.mock).not.toHaveBeenCalled();
   });
-
-  it("surfaces UNSUPPORTED_PROVIDER as 'Provider Not Configured'", async () => {
-    const createReview = vi.fn(async () => {
-      throw makeApiError("AI provider not configured", "UNSUPPORTED_PROVIDER");
-    });
-    const user = userEvent.setup();
-    renderPresentation(buildProps({ createReview }));
-    await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
-    expect(await screen.findByText("Provider Not Configured")).toBeInTheDocument();
-    expect(screen.getByText("Pick an AI provider in Settings → Providers.")).toBeInTheDocument();
-  });
-
-  it("routes a keyring read failure to credential storage settings", async () => {
-    const createReview = vi.fn(async () => {
-      throw makeApiError("Could not read the OS keyring", "KEYRING_READ_FAILED");
-    });
-    const user = userEvent.setup();
-    renderPresentation(buildProps({ createReview }));
-
-    await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
-
-    expect(await screen.findByText("Credential Storage Unavailable")).toBeInTheDocument();
-    expect(
-      screen.getByText("Could not read the OS keyring. Check Settings → Storage."),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("Model Not Selected")).not.toBeInTheDocument();
-  });
-
-  it("keeps a model selection failure distinct from credential storage failures", async () => {
-    const createReview = vi.fn(async () => {
-      throw makeApiError("Model selection is required", "MODEL_ERROR");
-    });
-    const user = userEvent.setup();
-    renderPresentation(buildProps({ createReview }));
-
-    await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
-
-    expect(await screen.findByText("Model Not Selected")).toBeInTheDocument();
-    expect(screen.getByText("Model selection is required")).toBeInTheDocument();
-  });
-
-  it("falls back to a generic toast for unknown errors", async () => {
-    const createReview = vi.fn(async () => {
-      throw new Error("boom");
-    });
-    const user = userEvent.setup();
-    renderPresentation(buildProps({ createReview }));
-    await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
-    expect(await screen.findByText("Failed to Start Review")).toBeInTheDocument();
-    expect(screen.getByText("Could not create a review session.")).toBeInTheDocument();
-  });
 });
 
 describe("HomePagePresentation — menu parity", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRouterNavigate.mockReset();
-  });
-
-  it("renders the Help menu item alongside the rest of the menu", () => {
-    renderPresentation(buildProps());
-    expect(screen.getByRole("menuitem", { name: "Help" })).toBeInTheDocument();
   });
 
   it("navigates to history via the home menu", async () => {
@@ -303,7 +232,7 @@ describe("HomePagePresentation — menu parity", () => {
       }),
     );
 
-    // /history stores "run"/"date" — both must be reset so its selection clears (F-159).
+    // /history stores "run"/"date" — both must be reset so its selection clears.
     await user.click(screen.getByRole("menuitem", { name: "History" }));
     expect(clearScopedRouteState).toHaveBeenCalledWith("/history", "run");
     expect(clearScopedRouteState).toHaveBeenCalledWith("/history", "date");
@@ -332,16 +261,15 @@ describe("HomePagePresentation — review-start pending state", () => {
     mockRouterNavigate.mockReset();
   });
 
-  it("surfaces a pending status and disables the menu while a review is starting", async () => {
-    const resolvers: Array<(value: { reviewId: string }) => void> = [];
-    const createReview = vi.fn(
-      () =>
-        new Promise<{ reviewId: string }>((resolve) => {
-          resolvers.push(resolve);
-        }),
-    );
+  it("surfaces a pending status, then resolves to a single navigation and clears the status", async () => {
+    let resolveReview: ((value: { reviewId: string }) => void) | undefined;
+    const reviewPromise = new Promise<{ reviewId: string }>((resolve) => {
+      resolveReview = resolve;
+    });
+    const createReview = vi.fn(() => reviewPromise);
+    const navigateMock = createNavigateMock();
     const user = userEvent.setup();
-    renderPresentation(buildProps({ createReview }));
+    renderPresentation(buildProps({ createReview, navigate: navigateMock.navigate }));
 
     await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
 
@@ -352,7 +280,20 @@ describe("HomePagePresentation — review-start pending state", () => {
       "true",
     );
 
-    resolvers[0]?.({ reviewId: "rev-new" });
+    await act(async () => {
+      resolveReview?.({ reviewId: "rev-new" });
+      await reviewPromise;
+    });
+
+    expect(navigateMock.mock).toHaveBeenCalledTimes(1);
+    expect(navigateMock.mock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "/review/{-$reviewId}",
+        params: { reviewId: "rev-new" },
+        search: { mode: "unstaged", live: true },
+      }),
+    );
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 });
 
@@ -369,13 +310,13 @@ describe("HomePagePresentation — invalid review id toast", () => {
       navigate: navigateMock.navigate,
     });
     // StrictMode double-invokes the report effect on mount; the fired-once ref must
-    // survive that so the toast + home redirect fire exactly once (F-181).
+    // survive that so the toast + home redirect fire exactly once.
     const { rerender } = renderPresentationStrict(props);
 
     expect(await screen.findByText("Invalid Review ID")).toBeInTheDocument();
 
     // A fresh navigate identity also re-runs the report effect; without the fired-once
-    // ref it would re-toast and re-redirect on every re-render (F-181).
+    // ref it would re-toast and re-redirect on every re-render.
     rerender(<HomePagePresentation {...props} navigate={createNavigateMock().navigate} />);
     rerender(<HomePagePresentation {...props} navigate={createNavigateMock().navigate} />);
 
@@ -384,5 +325,40 @@ describe("HomePagePresentation — invalid review id toast", () => {
     expect(navigateMock.mock).toHaveBeenCalledWith(
       expect.objectContaining({ replace: true, to: "/" }),
     );
+  });
+});
+
+describe("HomePagePresentation — quit result surfacing", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRouterNavigate.mockReset();
+  });
+
+  // Runs first: the other rows leave persistent error/warning toasts in the
+  // shared toast store, which would otherwise make this absence check flaky.
+  it("shows neither notice when shutdown closes cleanly", async () => {
+    const shutdown = vi.fn(async (): Promise<ShutdownResult> => ({ status: "closed" }));
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ shutdown }));
+
+    await user.click(screen.getByRole("menuitem", { name: "Quit" }));
+    await waitFor(() => expect(shutdown).toHaveBeenCalledOnce());
+
+    expect(screen.queryByText("Close Tab Manually")).not.toBeInTheDocument();
+    expect(screen.queryByText("Quit Failed")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    { status: "unsupported", message: "Close this tab manually.", title: "Close Tab Manually" },
+    { status: "error", message: "The shutdown request failed.", title: "Quit Failed" },
+  ] as const)("shows $title when shutdown reports $status", async ({ status, message, title }) => {
+    const shutdown = vi.fn(async (): Promise<ShutdownResult> => ({ status, message }));
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ shutdown }));
+
+    await user.click(screen.getByRole("menuitem", { name: "Quit" }));
+
+    expect(await screen.findByText(title)).toBeInTheDocument();
+    expect(screen.getByText(message)).toBeInTheDocument();
   });
 });

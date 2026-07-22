@@ -12,11 +12,6 @@ const BASE_PROPS = {
 };
 
 describe("IssuePreviewItem", () => {
-  it("renders a button when onClick is provided", () => {
-    render(<IssuePreviewItem {...BASE_PROPS} onClick={() => {}} />);
-    expect(screen.getByRole("button")).toBeInTheDocument();
-  });
-
   it("does not render as interactive when onClick is omitted", () => {
     render(<IssuePreviewItem {...BASE_PROPS} />);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
@@ -28,7 +23,10 @@ describe("IssuePreviewItem", () => {
     const onClick = vi.fn();
     const user = userEvent.setup();
     render(<IssuePreviewItem {...BASE_PROPS} onClick={onClick} />);
-    await user.click(screen.getByRole("button"));
+    const issueButton = screen.getByRole("button", {
+      name: new RegExp(BASE_PROPS.title),
+    });
+    await user.click(issueButton);
     expect(onClick).toHaveBeenCalledOnce();
   });
 

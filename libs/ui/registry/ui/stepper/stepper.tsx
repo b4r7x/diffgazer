@@ -1,28 +1,17 @@
 "use client";
 
 import {
-  Children,
   type ComponentProps,
-  isValidElement,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
-  useCallback,
-  useLayoutEffect,
   useMemo,
   useRef,
-  useState,
 } from "react";
-import {
-  isSelectableElementSkipped,
-  isSelectableItemEligible,
-  useSelectableCollection,
-} from "@/lib/selectable-collection";
-import { isStepInteractive, type StepStatus } from "@/lib/step-status";
 import { type StepperVariant, stepperRootVariants } from "@/lib/stepper-variants";
 import { cn } from "@/lib/utils";
 import { StepperContext } from "./stepper-context";
-import { StepperStep, type StepperStepProps } from "./stepper-step";
-import { StepperTrigger, type StepperTriggerProps } from "./stepper-trigger";
+import { handleStepListNavigationKey } from "./step-navigation";
+import { useStepCollection } from "./use-step-collection";
 import { useStepperState } from "./use-state";
 
 /** Props for stepper. */
@@ -37,62 +26,6 @@ export interface StepperProps extends Omit<ComponentProps<"ol">, "children"> {
   variant?: StepperVariant;
   /** StepperStep children rendered inside an <ol>. */
   children: ReactNode;
-}
-
-interface StepDescriptor {
-  id: string;
-  status: StepStatus;
-  label: string | undefined;
-  disabled: boolean;
-}
-
-type StepRegistrationDescriptor = Omit<StepDescriptor, "disabled">;
-
-// SSR-seed mirror of the shared `isSelectableElementSkipped` DOM predicate,
-// reading element props before any step mounts.
-function isStepSeedElementSkipped(props: StepperStepProps): boolean {
-  return (
-    props.hidden === true ||
-    props.inert === true ||
-    props["aria-hidden"] === true ||
-    props["aria-hidden"] === "true"
-  );
-}
-
-// SSR/first-render seed resolving steps from the static child tree before
-// registration effects run; registrations below are then authoritative and
-// also cover steps composed through consumer wrappers.
-function collectStepSeed(children: ReactNode): StepDescriptor[] {
-  return Children.toArray(children).flatMap((child) => {
-    if (!isValidElement(child) || child.type !== StepperStep) return [];
-    const props = child.props as StepperStepProps;
-    const trigger = extractTriggerSeed(props.children);
-    return [
-      {
-        id: props.stepId,
-        status: props.status,
-        label: trigger.label,
-        disabled:
-          !isStepInteractive(props.status) || trigger.disabled || isStepSeedElementSkipped(props),
-      },
-    ];
-  });
-}
-
-function extractTriggerSeed(children: ReactNode): Pick<StepDescriptor, "label" | "disabled"> {
-  for (const child of Children.toArray(children)) {
-    if (!isValidElement(child) || child.type !== StepperTrigger) continue;
-    const props = child.props as StepperTriggerProps;
-    const label =
-      typeof props.children === "string" ? props.children.trim() || undefined : undefined;
-    return { label, disabled: props.disabled === true };
-  }
-  return { label: undefined, disabled: false };
-}
-
-function isRegisteredStepDisabled(status: StepStatus, element: HTMLElement | null): boolean {
-  if (!isStepInteractive(status)) return true;
-  return element?.querySelector<HTMLButtonElement>("[data-step-id]")?.disabled === true;
 }
 
 /** Root provider (manages expansion + variant) */
@@ -113,165 +46,12 @@ export function Stepper({
   });
 
   const listRef = useRef<HTMLOListElement>(null);
-
-  // Steps register through the selectable collection (DOM-ordered); their
-  // status/label travel in a side map keyed by registrationId so the active
-  // step and live-region announcement track rendered order.
-  const [stepMeta, setStepMeta] = useState<
-    Record<string, { status: StepStatus; label: string | undefined }>
-  >({});
-  const {
-    items: registeredSteps,
-    registerItem: registerCollectionItem,
-    unregisterItem: unregisterCollectionItem,
-  } = useSelectableCollection(listRef);
-  const registerStep = useCallback(
-    (
-      registrationId: string,
-      descriptor: StepRegistrationDescriptor,
-      element: HTMLElement | null,
-    ) => {
-      setStepMeta((current) => {
-        const existing = current[registrationId];
-        if (existing?.status === descriptor.status && existing.label === descriptor.label) {
-          return current;
-        }
-        return {
-          ...current,
-          [registrationId]: { status: descriptor.status, label: descriptor.label },
-        };
-      });
-      registerCollectionItem(
-        registrationId,
-        descriptor.id,
-        isRegisteredStepDisabled(descriptor.status, element),
-        element,
-      );
-    },
-    [registerCollectionItem],
-  );
-  const unregisterStep = useCallback(
-    (registrationId: string) => {
-      setStepMeta((current) => {
-        if (!(registrationId in current)) return current;
-        const { [registrationId]: _removed, ...rest } = current;
-        return rest;
-      });
-      unregisterCollectionItem(registrationId);
-    },
-    [unregisterCollectionItem],
-  );
-  const syncRegisteredDisabledState = useCallback(() => {
-    for (const item of registeredSteps) {
-      const meta = stepMeta[item.id];
-      const disabled = isRegisteredStepDisabled(meta?.status ?? "pending", item.element);
-      if (item.disabled === disabled) continue;
-      registerCollectionItem(item.id, item.value, disabled, item.element);
-    }
-  }, [registeredSteps, stepMeta, registerCollectionItem]);
-
-  useLayoutEffect(() => {
-    syncRegisteredDisabledState();
-  }, [syncRegisteredDisabledState]);
-
-  useLayoutEffect(() => {
-    const list = listRef.current;
-    const View = list?.ownerDocument.defaultView;
-    if (!list || !View?.MutationObserver) return;
-
-    const observer = new View.MutationObserver(syncRegisteredDisabledState);
-    observer.observe(list, { attributeFilter: ["disabled"], attributes: true, subtree: true });
-
-    return () => observer.disconnect();
-  }, [syncRegisteredDisabledState]);
-
-  const seed = useMemo(() => collectStepSeed(children), [children]);
-  const steps = useMemo<StepDescriptor[]>(
-    () =>
-      registeredSteps.length
-        ? registeredSteps.map((item) => {
-            const meta = stepMeta[item.id];
-            return {
-              id: item.value,
-              status: meta?.status ?? "pending",
-              label: meta?.label,
-              // Combines status/prop-disabled with hidden/inert/aria-hidden skip
-              // eligibility so tab target and first-active never land on an
-              // unreachable step.
-              disabled: !isSelectableItemEligible(item),
-            };
-          })
-        : seed,
-    [registeredSteps, stepMeta, seed],
-  );
-  const tabTargetId = useMemo(() => {
-    const interactive = steps.filter((step) => !step.disabled);
-    const target = interactive.find((step) => step.status === "active") ?? interactive[0];
-    return target?.id ?? null;
-  }, [steps]);
-
-  // Own roving focus rather than @diffgazer/keys useNavigation: Stepper uses
-  // `data-step-id` selectors + `aria-disabled` filtering, while useNavigation
-  // uses `data-value` + role selectors. Routing through it would rewrite the
-  // step trigger data contract (a public API change).
-  const moveFocus = (next: (count: number, current: number) => number) => {
-    const list = listRef.current;
-    if (!list) return false;
-    const triggers = Array.from(list.querySelectorAll<HTMLButtonElement>("[data-step-id]")).filter(
-      (el) =>
-        el.getAttribute("aria-disabled") !== "true" &&
-        !el.disabled &&
-        !isSelectableElementSkipped(el),
-    );
-    if (triggers.length === 0) return false;
-    const activeElement = list.ownerDocument.activeElement;
-    const ButtonCtor = list.ownerDocument.defaultView?.HTMLButtonElement;
-    const currentIndex =
-      ButtonCtor && activeElement instanceof ButtonCtor ? triggers.indexOf(activeElement) : -1;
-    const nextIndex = next(triggers.length, currentIndex);
-    const target = triggers[nextIndex];
-    if (!target) return false;
-    if (target !== activeElement) target.focus();
-    return list.ownerDocument.activeElement === target;
-  };
+  const { steps, tabTargetId, registerStep, unregisterStep } = useStepCollection(children, listRef);
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLOListElement>) => {
     onKeyDown?.(event);
     if (event.defaultPrevented) return;
-
-    const target = event.target as HTMLElement | null;
-    // Only react on our triggers so editable targets in step content keep
-    // native handling.
-    if (!target?.hasAttribute("data-step-id")) return;
-
-    switch (event.key) {
-      case "ArrowDown":
-      case "ArrowRight": {
-        if (moveFocus((count, current) => (current === -1 ? 0 : (current + 1) % count))) {
-          event.preventDefault();
-        }
-        return;
-      }
-      case "ArrowUp":
-      case "ArrowLeft": {
-        if (
-          moveFocus((count, current) =>
-            current === -1 ? count - 1 : (current - 1 + count) % count,
-          )
-        ) {
-          event.preventDefault();
-        }
-        return;
-      }
-      case "Home": {
-        if (moveFocus(() => 0)) event.preventDefault();
-        return;
-      }
-      case "End": {
-        if (moveFocus((count) => count - 1)) event.preventDefault();
-        return;
-      }
-    }
+    handleStepListNavigationKey(event, listRef.current, event.target as HTMLElement | null);
   };
 
   const ctx = useMemo(

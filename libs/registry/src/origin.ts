@@ -123,22 +123,3 @@ export function rewriteOriginsInDir(
 
   return { changed, total: files.length };
 }
-
-// Not in the public barrel — only used by shadcn/build.ts
-export interface ResolveAndRewriteOriginOptions {
-  dir: string;
-  originRaw?: string;
-  defaultOrigin: string;
-  fromOrigin?: string;
-}
-
-// Not in the public barrel — only used by shadcn/build.ts
-export function resolveAndRewriteOrigin(options: ResolveAndRewriteOriginOptions): {
-  origin: string;
-  rewriteResult: RewriteOriginsResult;
-} {
-  const { dir, originRaw, defaultOrigin, fromOrigin = defaultOrigin } = options;
-  const origin = normalizeOrigin(originRaw, { defaultOrigin });
-  const rewriteResult = rewriteOriginsInDir(dir, { fromOrigin, toOrigin: origin });
-  return { origin, rewriteResult };
-}

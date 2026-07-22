@@ -16,9 +16,6 @@ describe("AVAILABLE_PROVIDERS (derived from overlay)", () => {
   it("lists only the six enabled providers (no disabled/surfaced providers in the picker)", () => {
     const ids = AVAILABLE_PROVIDERS.map((p) => p.id);
     expect(ids).toEqual(["gemini", "zai", "zai-coding", "openrouter", "groq", "cerebras"]);
-    for (const surfaced of ["mistral", "huggingface", "github-models"]) {
-      expect(ids).not.toContain(surfaced);
-    }
   });
 
   it("carries each enabled provider's default model from the overlay", () => {
@@ -62,6 +59,8 @@ describe("PROVIDER_CAPABILITIES (derived from snapshot)", () => {
 
   it("marks free-tier providers with a FREE badge", () => {
     expect(PROVIDER_CAPABILITIES.gemini.tierBadge).toBe("FREE");
+    expect(PROVIDER_CAPABILITIES.zai.tierBadge).toBe("FREE");
+    expect(PROVIDER_CAPABILITIES.openrouter.tierBadge).toBe("FREE");
     expect(PROVIDER_CAPABILITIES.groq.tierBadge).toBe("FREE");
     expect(PROVIDER_CAPABILITIES.cerebras.tierBadge).toBe("FREE");
   });

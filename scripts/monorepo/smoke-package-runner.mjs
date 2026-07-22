@@ -9,15 +9,15 @@ import {
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { stringify as stringifyYaml } from "yaml";
+import { runArgv } from "./smoke-shared/command.mjs";
 import {
-  networkAllowed,
   packageNameFromSpec,
   packWorkspacePackage,
   pnpmAddFlags,
   resolveAndCollectMissing,
-  runArgv,
   skipMissingSmokeDeps,
-} from "./smoke-shared.mjs";
+} from "./smoke-shared/dependencies.mjs";
+import { networkAllowed } from "./smoke-shared/network.mjs";
 
 const packageDirs = {
   "@diffgazer/ui": "libs/ui",

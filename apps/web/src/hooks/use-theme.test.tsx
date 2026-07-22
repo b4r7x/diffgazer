@@ -1,8 +1,7 @@
 import { stubControllableMatchMedia } from "@diffgazer/core/testing/match-media";
 import { act, cleanup, render } from "@testing-library/react";
-import { useContext } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ThemeContext, ThemeProvider } from "@/hooks/use-theme";
+import { ThemeProvider, useTheme } from "@/hooks/use-theme";
 import type { ThemeContextValue } from "@/types/theme";
 
 // Boundary mock: api/hooks is the HTTP-data fetch boundary; we provide canned data and assert on the resulting UI.
@@ -52,8 +51,7 @@ function mockMatchMedia(matches: boolean) {
 }
 
 function ThemeConsumer({ onRender }: { onRender: (ctx: ThemeContextValue) => void }) {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) return null;
+  const ctx = useTheme();
   onRender(ctx);
   return null;
 }
@@ -340,12 +338,6 @@ describe("ThemeProvider", () => {
         <div />
       </ThemeProvider>,
     );
-
-    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
-
-    act(() => {
-      mediaQuery.setMatches(() => false);
-    });
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
 

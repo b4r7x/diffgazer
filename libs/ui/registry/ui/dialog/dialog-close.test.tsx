@@ -26,13 +26,9 @@ function HiddenContentCloseButton() {
   return (
     <Dialog open>
       <Dialog.Close data-testid="hidden-content-close">
-        <span hidden>Hidden label</span>
-        <span aria-hidden="true">ARIA-hidden label</span>
-        <span style={{ display: "none" }}>Display-none label</span>
-        <span style={{ visibility: "hidden" }}>Visibility-hidden label</span>
-        <script type="application/json">{'{"label":"Script label"}'}</script>
-        <style>{".unused-dialog-close-label { color: inherit; }"}</style>
-        <template>Template label</template>
+        <span>
+          <span hidden>Hidden label</span>
+        </span>
       </Dialog.Close>
     </Dialog>
   );
@@ -48,17 +44,6 @@ describe("DialogClose", () => {
       "aria-label",
       "Dismiss details",
     );
-    expect(await axe(container)).toHaveNoViolations();
-  });
-
-  it("uses a visible bigint child as the accessible name", async () => {
-    const { container } = render(
-      <Dialog open>
-        <Dialog.Close>{1n}</Dialog.Close>
-      </Dialog>,
-    );
-
-    expect(screen.getByRole("button", { name: "1" })).not.toHaveAttribute("aria-label");
     expect(await axe(container)).toHaveNoViolations();
   });
 

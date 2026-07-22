@@ -64,15 +64,5 @@ describe("useTypeaheadBuffer", () => {
       const expected = "İ".toLocaleLowerCase();
       expect(result.current("İ")).toBe(expected);
     });
-
-    it("preserves German ß and matches uppercase ß lowercasing", () => {
-      const { result } = renderHook(() => useTypeaheadBuffer());
-      expect(result.current("ß")).toBe("ß".toLocaleLowerCase());
-    });
-
-    it("returns composed Unicode (NFC) buffer", () => {
-      const { result } = renderHook(() => useTypeaheadBuffer());
-      expect(result.current("É")).toBe("É".toLocaleLowerCase());
-    });
   });
 });

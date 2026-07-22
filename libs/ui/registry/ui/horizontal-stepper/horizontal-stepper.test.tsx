@@ -47,6 +47,18 @@ describe("HorizontalStepper", () => {
     expect(screen.getAllByRole("listitem")).toHaveLength(4);
   });
 
+  it("falls back to the default Progress list name when aria-label is omitted", () => {
+    render(
+      <HorizontalStepper steps={steps} value="intro">
+        <HorizontalStepper.Step value="intro">Intro</HorizontalStepper.Step>
+        <HorizontalStepper.Step value="config">Config</HorizontalStepper.Step>
+        <HorizontalStepper.Step value="review">Review</HorizontalStepper.Step>
+        <HorizontalStepper.Step value="done">Done</HorizontalStepper.Step>
+      </HorizontalStepper>,
+    );
+    expect(screen.getByRole("list", { name: "Progress" })).toBeInTheDocument();
+  });
+
   it("uses the value prop as the current step contract", () => {
     renderStepper("review");
 

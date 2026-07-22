@@ -310,9 +310,6 @@ describe("useReviewLifecycle resume and start routing", () => {
       status: "error",
       message: "init unavailable",
     });
-    expect(apiMocks.useReviewLifecycleBase).toHaveBeenLastCalledWith(
-      expect.objectContaining({ configLoading: false, isConfigured: false }),
-    );
 
     await act(async () => {
       await result.current.retryConfig();
@@ -337,28 +334,8 @@ describe("useReviewLifecycle resume and start routing", () => {
 
     expect(apiMocks.createReview).toHaveBeenCalledWith({ mode: "unstaged" });
     await waitFor(() => {
-      const reviewIds = apiMocks.useReviewLifecycleBase.mock.calls.map(
-        ([options]) => (options as UseReviewLifecycleBaseOptions).reviewId,
-      );
-      expect(reviewIds).toContain(CREATED_REVIEW_ID);
+      expect(result.current.state.reviewId).toBe(CREATED_REVIEW_ID);
     });
-  });
-
-  test("marks active-session resume as setup-independent", () => {
-    renderHook(() =>
-      useReviewLifecycle({
-        mode: "staged",
-        reviewId: "active-review",
-        allowResumeWithoutSetup: true,
-      }),
-    );
-
-    expect(apiMocks.useReviewLifecycleBase).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        allowResumeWithoutSetup: true,
-        reviewId: "active-review",
-      }),
-    );
   });
 
   test("does not create a new review while provider setup is incomplete", async () => {
@@ -419,8 +396,11 @@ describe("useReviewLifecycle resume and start routing", () => {
       isLoading: false,
       refetch: apiMocks.refetchInit,
     });
-    apiMocks.useReviewLifecycleBase.mockReturnValue(
-      makeReviewLifecycleBase({ gate: "unconfigured" }),
+    apiMocks.useReviewLifecycleBase.mockImplementation((options: UseReviewLifecycleBaseOptions) =>
+      makeReviewLifecycleBase({
+        gate: options.isConfigured || options.allowResumeWithoutSetup ? "running" : "unconfigured",
+        reviewId: options.reviewId ?? null,
+      }),
     );
 
     const { result } = renderHook(() =>
@@ -431,17 +411,13 @@ describe("useReviewLifecycle resume and start routing", () => {
       }),
     );
 
+    expect(result.current.state.gate).toBe("running");
+
     await act(async () => {
       await result.current.start("staged");
     });
 
-    expect(apiMocks.useReviewLifecycleBase).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        isConfigured: false,
-        allowResumeWithoutSetup: true,
-        reviewId: "active-review",
-      }),
-    );
+    expect(result.current.state.gate).toBe("running");
     expect(apiMocks.createReview).not.toHaveBeenCalled();
   });
 });

@@ -20,5 +20,8 @@ describe("SeverityBar (TUI)", () => {
     expect(frame).toContain(SEVERITY_LABELS.medium);
     expect(frame).not.toContain("medium");
     expect(frame).toContain(`${"█".repeat(12)}${"░".repeat(4)}`);
+    expect(frame).toContain(
+      `${SEVERITY_LABELS.medium.padEnd(8)} ${"█".repeat(12)}${"░".repeat(4)} 3`,
+    );
   });
 });

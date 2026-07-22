@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -27,10 +27,17 @@ function collectSourceFiles(dir: string): string[] {
   return files;
 }
 
+const TS_IMPORT_SPECIFIER = /(?:import|export)[^;]*?\bfrom\s+["']([^"']+)["']/g;
+const CSS_IMPORT_SPECIFIER = /@import\s+["']([^"']+)["']/g;
+
 for (const file of collectSourceFiles(srcRoot)) {
   const source = readFileSync(file, "utf-8");
-  for (const match of source.matchAll(/@diffgazer\/[a-z0-9-]+/g)) {
-    workspaceImports.add(match[0]);
+  const specifierPattern = file.endsWith(".css") ? CSS_IMPORT_SPECIFIER : TS_IMPORT_SPECIFIER;
+  for (const match of source.matchAll(specifierPattern)) {
+    const specifier = match[1];
+    if (specifier?.startsWith("@diffgazer/")) {
+      workspaceImports.add(specifier);
+    }
   }
 }
 
@@ -48,15 +55,12 @@ describe("landing UI-only boundary", () => {
     expect(declared).toEqual(["@diffgazer/ui"]);
   });
 
-  it("imports only @diffgazer/ui from workspace packages in source", () => {
-    expect([...workspaceImports]).toEqual(
-      workspaceImports.has("@diffgazer/ui") ? ["@diffgazer/ui"] : [],
-    );
+  it("imports only @diffgazer/ui/styles.css from workspace packages in source", () => {
+    expect([...workspaceImports]).toEqual(["@diffgazer/ui/styles.css"]);
   });
 
   it("keeps test setup free of private workspace imports", () => {
     const setup = readFileSync(join(srcRoot, "test-setup.ts"), "utf-8");
     expect(setup).not.toMatch(/@diffgazer\/(?!ui\b)/);
-    expect(relative(landingRoot, join(srcRoot, "test-setup.ts"))).toBe("src/test-setup.ts");
   });
 });

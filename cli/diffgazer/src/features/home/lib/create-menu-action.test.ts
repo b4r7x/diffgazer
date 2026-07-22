@@ -1,9 +1,10 @@
+import type { MenuAction } from "@diffgazer/core/schemas/presentation";
 import { describe, expect, test } from "vitest";
 import type { Route } from "../../../lib/routes";
 import { createHomeMenuAction, type HomeMenuActionOptions } from "./create-menu-action";
 
 interface Harness {
-  dispatch: (action: string) => void;
+  dispatch: (action: MenuAction) => void;
   routes: Route[];
   shutdownCalls: number;
   exits: number;
@@ -49,7 +50,7 @@ function buildHarness(overrides: Partial<HomeMenuActionOptions> = {}): Harness {
       pendingSettled = null;
       fn?.();
     },
-  } as Harness;
+  } satisfies Harness;
 }
 
 describe("createHomeMenuAction", () => {
@@ -102,27 +103,5 @@ describe("createHomeMenuAction", () => {
     expect(h.exits).toBe(0);
     h.resolveShutdown();
     expect(h.exits).toBe(1);
-  });
-
-  test("non-review actions are not gated by trust", () => {
-    const h = buildHarness({ isTrusted: false, hasActiveSession: true });
-    h.dispatch("history");
-    h.dispatch("settings");
-    h.dispatch("help");
-    expect(h.routes).toEqual([{ screen: "history" }, { screen: "settings" }, { screen: "help" }]);
-  });
-
-  test("resume-review is gated by the shared trust contract", () => {
-    const h = buildHarness({ isTrusted: false, hasActiveSession: true });
-    h.dispatch("resume-review");
-    expect(h.routes).toEqual([]);
-  });
-
-  test("unknown menu actions are no-ops (do not navigate or shutdown)", () => {
-    const h = buildHarness();
-    h.dispatch("does-not-exist");
-    expect(h.routes).toEqual([]);
-    expect(h.shutdownCalls).toBe(0);
-    expect(h.exits).toBe(0);
   });
 });

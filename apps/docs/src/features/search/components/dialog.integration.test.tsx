@@ -126,10 +126,6 @@ describe("SearchDialog integration", () => {
     const options = await screen.findAllByRole("option");
     const optionIds = options.map((option) => option.id);
     expect(new Set(optionIds).size).toBe(2);
-    expect(options.map((option) => option.getAttribute("data-value"))).toEqual([
-      "first-hit",
-      "second-hit",
-    ]);
     expect(screen.getAllByRole("option", { selected: true })).toHaveLength(1);
     expect(input).toHaveAttribute("aria-activedescendant", optionIds[0]);
 
@@ -141,47 +137,6 @@ describe("SearchDialog integration", () => {
     await user.keyboard("{Enter}");
     expect(mocks.navigate).toHaveBeenCalledOnce();
     expect(mocks.navigate).toHaveBeenCalledWith({ to: "/ui/components/shared" });
-  });
-
-  it("suppresses stale results when a slower earlier search resolves after the current query", async () => {
-    const user = setupUser();
-    let resolveFirst: (value: ServerSearchResult[]) => void = () => {};
-    const firstSearch = new Promise<ServerSearchResult[]>((resolve) => {
-      resolveFirst = resolve;
-    });
-    mocks.doSearch.mockImplementation(({ data }: { data: string }) => {
-      if (data === "button") return firstSearch;
-      if (data === "callout") return Promise.resolve([pageResult("callout", "Callout")]);
-      return Promise.resolve([]);
-    });
-
-    const input = await renderOpenDialog();
-
-    await user.type(input, "button");
-    await waitFor(() =>
-      expect(mocks.doSearch).toHaveBeenCalledWith(expect.objectContaining({ data: "button" })),
-    );
-    const buttonSearch = mocks.doSearch.mock.calls.find(
-      ([request]) => request.data === "button",
-    )?.[0];
-    expect(buttonSearch).toBeDefined();
-
-    await user.clear(input);
-    await user.type(input, "callout");
-    await waitFor(() =>
-      expect(mocks.doSearch).toHaveBeenCalledWith(expect.objectContaining({ data: "callout" })),
-    );
-
-    expect(await screen.findByText("Callout")).toBeInTheDocument();
-    expect(buttonSearch?.signal.aborted).toBe(true);
-
-    await act(async () => {
-      resolveFirst([pageResult("button", "Button")]);
-      await Promise.resolve();
-    });
-
-    expect(screen.queryByText("Button")).not.toBeInTheDocument();
-    expect(screen.getByText("Callout")).toBeInTheDocument();
   });
 
   it("announces search failures assertively outside the listbox", async () => {

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
-import { extractImportSpecifiers, stripTemplateLiterals } from "@diffgazer/registry";
+import { extractImportSpecifiers } from "@diffgazer/registry";
 
 export type { RegistryFile, RegistryItem } from "./types.js";
 
@@ -48,8 +48,6 @@ export function extractLocalImports(source: string): string[] {
 
   return [...imports];
 }
-
-export { stripTemplateLiterals };
 
 export function aliasImportBase(specifier: string): string | null {
   if (specifier.startsWith("@/hooks/"))

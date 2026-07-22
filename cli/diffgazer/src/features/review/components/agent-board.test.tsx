@@ -8,9 +8,11 @@ afterEach(() => {
   cleanup();
 });
 
-function makeAgent(overrides: Partial<AgentState>): AgentState {
+function makeAgent(
+  overrides: Partial<Omit<AgentState, "meta">> & { meta?: Partial<AgentState["meta"]> },
+): AgentState {
   return {
-    id: overrides.id ?? "agent-1",
+    id: overrides.id ?? "detective",
     meta: {
       id: "detective",
       lens: "correctness",
@@ -24,28 +26,53 @@ function makeAgent(overrides: Partial<AgentState>): AgentState {
     progress: overrides.progress ?? 0,
     currentAction: overrides.currentAction ?? "Standing by",
     issueCount: overrides.issueCount ?? 0,
-  } as AgentState;
+  };
 }
 
 describe("AgentBoard (TUI)", () => {
-  test("renders the shared agent status badges", () => {
+  test("renders a running agent with name, RUN badge, detail, and spinner", () => {
     const { lastFrame } = render(
       <CliThemeProvider initialTheme="dark">
         <AgentBoard
           agents={[
-            makeAgent({ id: "detective", status: "queued" }),
-            makeAgent({ id: "guardian", status: "running" }),
-            makeAgent({ id: "optimizer", status: "complete" }),
-            makeAgent({ id: "simplifier", status: "error" }),
+            makeAgent({
+              status: "running",
+              meta: { name: "Detective", badgeLabel: "DT" },
+              progress: 42,
+              currentAction: "Reading file",
+            }),
           ]}
         />
       </CliThemeProvider>,
     );
     const frame = lastFrame() ?? "";
 
-    expect(frame).toContain("WAIT");
+    expect(frame).toContain("Detective");
     expect(frame).toContain("RUN");
-    expect(frame).toContain("DONE");
-    expect(frame).toContain("FAIL");
+    expect(frame).toContain("42% Reading file");
+    expect(frame).toMatch(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⣾⣽⣻⢿⡿⣟⣯⣷]/);
+  });
+
+  test("caps visible agents by maxRows and reports the remaining overflow count", () => {
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <AgentBoard
+          agents={[
+            makeAgent({ id: "detective", meta: { name: "Detective" } }),
+            makeAgent({ id: "guardian", meta: { name: "Sentinel" } }),
+            makeAgent({ id: "optimizer", meta: { name: "Archivist" } }),
+            makeAgent({ id: "simplifier", meta: { name: "Courier" } }),
+          ]}
+          maxRows={2}
+        />
+      </CliThemeProvider>,
+    );
+    const frame = lastFrame() ?? "";
+
+    expect(frame).toContain("Detective");
+    expect(frame).not.toContain("Sentinel");
+    expect(frame).not.toContain("Archivist");
+    expect(frame).not.toContain("Courier");
+    expect(frame).toContain("… 3 more agents");
   });
 });

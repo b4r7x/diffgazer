@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { lcsTableCellCost } from "./lcs";
 import type { DiffChange } from "./parse";
 import { annotateWordDiff, computeWordSegments, createWordDiffBudget } from "./word";
 
@@ -10,14 +11,31 @@ describe("computeWordSegments", () => {
     expect(oldSegs.some((s) => !s.changed && s.text.includes("hello"))).toBe(true);
   });
 
-  it("detects added word", () => {
-    const { new: newSegs } = computeWordSegments("a b", "a b c");
-    expect(newSegs.some((s) => s.changed && s.text.includes("c"))).toBe(true);
-  });
-
-  it("detects removed word", () => {
-    const { old: oldSegs } = computeWordSegments("a b c", "a b");
-    expect(oldSegs.some((s) => s.changed && s.text.includes("c"))).toBe(true);
+  it.each([
+    {
+      name: "detects an added word",
+      oldContent: "a b",
+      newContent: "a b c",
+      old: [{ text: "a b", changed: false }],
+      new: [
+        { text: "a b", changed: false },
+        { text: " c", changed: true },
+      ],
+    },
+    {
+      name: "detects a removed word",
+      oldContent: "a b c",
+      newContent: "a b",
+      old: [
+        { text: "a b", changed: false },
+        { text: " c", changed: true },
+      ],
+      new: [{ text: "a b", changed: false }],
+    },
+  ])("$name", ({ oldContent, newContent, old, new: expectedNew }) => {
+    const { old: oldSegs, new: newSegs } = computeWordSegments(oldContent, newContent);
+    expect(oldSegs).toEqual(old);
+    expect(newSegs).toEqual(expectedNew);
   });
 
   it("preserves whitespace in unchanged segments", () => {
@@ -52,10 +70,12 @@ describe("createWordDiffBudget", () => {
     expect(createWordDiffBudget(10).remainingCells).toBe(10);
   });
 
-  it("is consumed as word comparisons run", () => {
+  it("debits exactly the LCS table cell cost of the compared words", () => {
     const budget = createWordDiffBudget();
+    // "hello world" / "hello earth" each split into 3 tokens (word, space, word),
+    // so the table costs lcsTableCellCost(3, 3) = 16 cells.
     computeWordSegments("hello world", "hello earth", budget);
-    expect(budget.remainingCells).toBeLessThan(50_000);
+    expect(budget.remainingCells).toBe(50_000 - lcsTableCellCost(3, 3));
   });
 });
 
@@ -84,13 +104,34 @@ describe("annotateWordDiff", () => {
     expect(added?.wordSegments?.some((s) => s.changed && s.text === "earth")).toBe(true);
   });
 
-  it("leaves unpaired removes and adds without word segments", () => {
-    const result = annotateWordDiff([
-      change("remove", "only removed", 1, null),
-      change("add", "first added", null, 1),
-      change("add", "second added", null, 2),
-    ]);
-    const extraAdd = result.find((c) => c.type === "add" && c.content === "second added");
-    expect(extraAdd?.wordSegments).toBeUndefined();
+  it.each([
+    {
+      name: "add-surplus",
+      changes: [
+        change("remove", "only removed", 1, null),
+        change("add", "first added", null, 1),
+        change("add", "second added", null, 2),
+      ],
+      surplusType: "add" as const,
+      surplusContent: "second added",
+    },
+    {
+      name: "remove-surplus",
+      changes: [
+        change("remove", "first removed", 1, null),
+        change("remove", "second removed", 2, null),
+        change("add", "only added", null, 1),
+      ],
+      surplusType: "remove" as const,
+      surplusContent: "second removed",
+    },
+  ])("leaves the $name change without word segments", ({
+    changes,
+    surplusType,
+    surplusContent,
+  }) => {
+    const result = annotateWordDiff(changes);
+    const surplus = result.find((c) => c.type === surplusType && c.content === surplusContent);
+    expect(surplus?.wordSegments).toBeUndefined();
   });
 });

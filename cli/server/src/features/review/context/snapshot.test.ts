@@ -29,12 +29,9 @@ vi.mock("../../../shared/lib/fs.js", async () => {
 });
 
 import { createGitService } from "../../../shared/lib/git/service.js";
-import { createKeyedLock } from "../storage/keyed-lock.js";
-import {
-  buildProjectContextSnapshot,
-  buildWorkspaceEdges,
-  loadContextSnapshot,
-} from "./snapshot.js";
+import { loadContextSnapshot } from "./snapshot/artifacts.js";
+import { buildProjectContextSnapshot } from "./snapshot/build.js";
+import { buildWorkspaceEdges } from "./snapshot/content.js";
 
 type GitService = ReturnType<typeof createGitService>;
 type StatusHashResult = Awaited<ReturnType<GitService["getStatusHash"]>>;
@@ -140,49 +137,6 @@ async function readCurrentSnapshotFiles(contextDir: string) {
     meta: await readJson<unknown>(join(contextDir, manifest.artifacts.meta.file)),
   };
 }
-
-describe("createKeyedLock", () => {
-  it("continues in FIFO order after rejection and removes only the settled queue tail", async () => {
-    const registry = new Map<string, Promise<unknown>>();
-    const withLock = createKeyedLock(registry);
-    const firstGate = createDeferred<void>();
-    const secondGate = createDeferred<void>();
-    const firstStarted = createDeferred<void>();
-    const secondStarted = createDeferred<void>();
-    const failure = new Error("first operation failed");
-    const order: string[] = [];
-
-    const first = withLock("project", async () => {
-      order.push("first");
-      firstStarted.resolve();
-      await firstGate.promise;
-    });
-    await firstStarted.promise;
-
-    const second = withLock("project", async () => {
-      order.push("second");
-      secondStarted.resolve();
-      await secondGate.promise;
-    });
-    firstGate.reject(failure);
-
-    await expect(first).rejects.toBe(failure);
-    await secondStarted.promise;
-    expect(registry.size).toBe(1);
-
-    const third = withLock("project", async () => {
-      order.push("third");
-    });
-    await Promise.resolve();
-    expect(order).toEqual(["first", "second"]);
-
-    secondGate.resolve();
-    await Promise.all([second, third]);
-
-    expect(order).toEqual(["first", "second", "third"]);
-    expect(registry.size).toBe(0);
-  });
-});
 
 describe("loadContextSnapshot", () => {
   it("loads a snapshot from real context files", async () => {

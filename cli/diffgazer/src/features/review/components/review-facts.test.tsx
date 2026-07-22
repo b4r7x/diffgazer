@@ -51,6 +51,12 @@ test("renders every canonical review fact in ANSI-free 80x24 TUI frames", async 
       onContinue={vi.fn()}
     />,
   );
+
+  const summaryFrame = stripAnsi(summary.lastFrame() ?? "");
+  for (const { label, count } of facts.severityCounts) {
+    expect(summaryFrame).toMatch(new RegExp(`\\b${label}\\s+\\S+\\s+${String(count)}\\b`));
+  }
+
   const capturedFrames = [summary.lastFrame() ?? ""];
 
   for (let index = 0; index < 30; index += 1) {
@@ -79,7 +85,6 @@ test("renders every canonical review fact in ANSI-free 80x24 TUI frames", async 
   const frame = buildSearchableFrame(capturedFrames);
   const assertedFacts = [
     facts.runId,
-    ...facts.severityCounts.flatMap(({ label, count }) => [label, String(count)]),
     ...facts.issueTitles,
     ...facts.issueLocations,
     ...facts.categoryRows.map(({ label, count }) => `${label}${String(count)}`),

@@ -30,4 +30,19 @@ describe("ToastActions", () => {
     expect(screen.queryByText("Review Submitted")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Dismiss" })).not.toBeInTheDocument();
   });
+
+  it("keeps the custom-duration toast past the five-second default and dismisses it at eight seconds", () => {
+    render(<ToastActions />);
+
+    // fireEvent retained: fake timers drive toast removal; userEvent waits on the same timer queue.
+    fireEvent.click(screen.getByRole("button", { name: "Show with Custom Duration (8s)" }));
+    expect(screen.getByText("Analysis Complete")).toBeInTheDocument();
+
+    act(() => vi.advanceTimersByTime(5000));
+    expect(screen.getByText("Analysis Complete")).toBeInTheDocument();
+
+    act(() => vi.advanceTimersByTime(3000));
+    act(() => vi.advanceTimersByTime(250));
+    expect(screen.queryByText("Analysis Complete")).not.toBeInTheDocument();
+  });
 });

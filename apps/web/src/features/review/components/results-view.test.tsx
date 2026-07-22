@@ -77,6 +77,17 @@ function FooterView() {
   return <Footer shortcuts={shortcuts} rightShortcuts={rightShortcuts} />;
 }
 
+/** jsdom has no scroll layout; emulate scroll APIs on the details region via scrollTop. */
+function installIssueDetailsScrollShim(details: HTMLElement) {
+  Object.defineProperty(details, "scrollTop", { configurable: true, writable: true, value: 0 });
+  Object.defineProperty(details, "scrollBy", {
+    configurable: true,
+    value(options: ScrollToOptions = {}) {
+      details.scrollTop += options.top ?? 0;
+    },
+  });
+}
+
 function renderView(
   issues: ReviewIssue[] = [
     createReviewIssue("issue-1", "Issue one"),
@@ -111,9 +122,8 @@ describe("ReviewResultsView keyboard regression", () => {
     renderView();
 
     // Without focus.autoFocus the listbox never receives DOM focus on mount and a
-    // screen reader hears nothing while j/k move aria-activedescendant (F-351).
+    // screen reader hears nothing while j/k move aria-activedescendant.
     await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
-    expect(document.activeElement).not.toBe(document.body);
   });
 
   it("navigates issue list with ArrowDown immediately in list view", async () => {
@@ -538,49 +548,25 @@ describe("ReviewResultsView keyboard regression", () => {
 
   it("scrolls issue details with up and down arrows after moving focus into details", async () => {
     const user = userEvent.setup();
-    const originalScrollByDescriptor = Object.getOwnPropertyDescriptor(
-      HTMLElement.prototype,
-      "scrollBy",
+    renderView();
+
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
     );
-    const scrollOptions: ScrollToOptions[] = [];
-    // Patch `scrollBy` (not `scrollIntoView`): the public keyboard contract is
-    // "advance one viewport per ArrowDown / ArrowUp", which the component
-    // implements via scrollBy. Coupling the test to scrollBy locks in that
-    // contract and would catch a regression to per-element scrollIntoView.
-    const scrollBy = vi.fn((options: ScrollToOptions) => {
-      scrollOptions.push(options);
-    });
-    Object.defineProperty(HTMLElement.prototype, "scrollBy", {
-      configurable: true,
-      value: scrollBy,
-    });
 
-    try {
-      renderView();
+    const detailsScroll = screen.getByRole("region", { name: "Issue details" });
+    installIssueDetailsScrollShim(detailsScroll);
+    expect(detailsScroll.scrollTop).toBe(0);
 
-      // Direct .focus() is necessary here: the scrollBy monkey-patch prevents
-      // the component's auto-focus effect from running before keyboard events.
-      screen.getByRole("listbox").focus();
-      await user.keyboard("{ArrowRight}");
-      expect(screen.getByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
-      await waitFor(() =>
-        expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
-      );
+    await user.keyboard("{ArrowDown}");
+    expect(detailsScroll.scrollTop).toBeGreaterThan(0);
+    const afterDown = detailsScroll.scrollTop;
 
-      await user.keyboard("{ArrowDown}");
-      await user.keyboard("{ArrowUp}");
-
-      // jsdom has no scroll layout; capture scroll intent via mockImplementation
-      expect(scrollOptions).toHaveLength(2);
-      expect(scrollOptions[0]?.top).toBeGreaterThan(0);
-      expect(scrollOptions[1]?.top).toBeLessThan(0);
-    } finally {
-      if (originalScrollByDescriptor) {
-        Object.defineProperty(HTMLElement.prototype, "scrollBy", originalScrollByDescriptor);
-      } else {
-        Reflect.deleteProperty(HTMLElement.prototype, "scrollBy");
-      }
-    }
+    await user.keyboard("{ArrowUp}");
+    expect(detailsScroll.scrollTop).toBeLessThan(afterDown);
   });
 
   it("moves from focused severity filters back to the issue list with ArrowDown", async () => {
@@ -651,7 +637,7 @@ describe("ReviewResultsView keyboard regression", () => {
     const medium = screen.getByRole("button", { name: /med severity/i });
 
     // The accessible name carries only severity + count; toggle state lives in
-    // aria-pressed, never duplicated as a "selected"/"not selected" suffix (F-287).
+    // aria-pressed, never duplicated as a "selected"/"not selected" suffix.
     expect(high.getAttribute("aria-label")).not.toMatch(/selected/i);
 
     await user.click(high);

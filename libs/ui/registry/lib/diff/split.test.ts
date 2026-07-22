@@ -42,6 +42,10 @@ describe("toSplitRows", () => {
       left: { type: "remove" },
       right: { type: "add" },
     });
+    if (rows[2]?.kind === "change") {
+      expect(rows[2].left.wordSegments).toBeUndefined();
+      expect(rows[2].right.wordSegments).toBeUndefined();
+    }
   });
 
   it("produces empty right cell for unmatched removes", () => {
@@ -86,26 +90,6 @@ describe("toSplitRows", () => {
     }
   });
 
-  it("produces context on both sides for context rows", () => {
-    const hunks = [
-      {
-        oldStart: 1,
-        oldCount: 1,
-        newStart: 1,
-        newCount: 1,
-        heading: "",
-        changes: [mkChange("context", "same", 1, 1)],
-      },
-    ];
-    const rows = toSplitRows(hunks, false);
-    const row = rows.find((r) => r.kind === "change");
-    expect(row).toBeDefined();
-    if (row?.kind === "change") {
-      expect(row.left.type).toBe("context");
-      expect(row.right.type).toBe("context");
-    }
-  });
-
   it("adds word segments when wordDiff is true", () => {
     const hunks = [
       {
@@ -122,9 +106,13 @@ describe("toSplitRows", () => {
     ];
     const rows = toSplitRows(hunks, true);
     const changeRow = rows.find((r) => r.kind === "change" && r.left.type === "remove");
-    if (changeRow?.kind === "change") {
-      expect(changeRow.left.wordSegments).toBeDefined();
-      expect(changeRow.right.wordSegments).toBeDefined();
-    }
+    expect(changeRow).toBeDefined();
+    if (changeRow?.kind !== "change") throw new Error("expected change row");
+
+    const { left, right } = changeRow;
+    expect(left.wordSegments?.some((s) => s.changed && s.text === "world")).toBe(true);
+    expect(right.wordSegments?.some((s) => s.changed && s.text === "earth")).toBe(true);
+    expect(left.wordSegments?.map((s) => s.text).join("")).toBe(left.content);
+    expect(right.wordSegments?.map((s) => s.text).join("")).toBe(right.content);
   });
 });

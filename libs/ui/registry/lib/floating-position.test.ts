@@ -108,7 +108,7 @@ describe("resolveCollisionPosition", () => {
     // A viewport smaller than the content forces every placement to overflow.
     const tinyVp = { width: 10, height: 10 };
     const result = resolveCollisionPosition(trigger, content, "left", "start", 6, 0, 8, tinyVp);
-    expect(result.side).toBe("left");
+    expect(result).toEqual({ side: "left", x: -26, y: 100 });
   });
 });
 

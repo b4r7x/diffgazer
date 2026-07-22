@@ -1,16 +1,10 @@
-import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { err, ok } from "@diffgazer/core/result";
 import type { SettingsConfig } from "@diffgazer/core/schemas/config";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import { LENS_IDS, ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createGitService } from "../../shared/lib/git/service.js";
 import { makeFileDiff, makeIssue, makeParsedDiff } from "../../shared/lib/testing/factories.js";
-import { filterDiffByFiles, resolveGitDiff } from "./diff.js";
 
 const saveReview = vi.fn();
 // Boundary mock: filesystem storage - saveReview is the durable-write boundary finalizeReview gates the report step on.
@@ -36,30 +30,6 @@ function makePipelineFile(filePath: string, additions = 1, deletions = 0) {
   });
 }
 
-const TWO_FILE_DIFF = [
-  "diff --git a/src/index.ts b/src/index.ts",
-  "index 1111111..2222222 100644",
-  "--- a/src/index.ts",
-  "+++ b/src/index.ts",
-  "@@ -1 +1 @@",
-  "-old",
-  "+new",
-  "diff --git a/README.md b/README.md",
-  "index 3333333..4444444 100644",
-  "--- a/README.md",
-  "+++ b/README.md",
-  "@@ -1 +1 @@",
-  "-old",
-  "+new",
-  "",
-].join("\n");
-
-function makeGitService(diff: string): ReturnType<typeof createGitService> {
-  return {
-    getDiff: async () => ok(diff),
-  } as ReturnType<typeof createGitService>;
-}
-
 const makePipelineIssue = (
   id: string,
   file: string,
@@ -78,101 +48,6 @@ const makePipelineIssue = (
     line_end: 5,
   });
 
-describe("structured git branch status", () => {
-  const repositories: string[] = [];
-
-  afterEach(() => {
-    for (const repository of repositories.splice(0)) {
-      rmSync(repository, { recursive: true, force: true });
-    }
-  });
-
-  function createRepository(prefix: string): string {
-    const repository = mkdtempSync(join(tmpdir(), prefix));
-    repositories.push(repository);
-    return repository;
-  }
-
-  function runGit(repository: string, ...args: string[]): string {
-    return execFileSync("git", args, {
-      cwd: repository,
-      encoding: "utf8",
-      stdio: "pipe",
-    });
-  }
-
-  function configureAuthor(repository: string): void {
-    runGit(repository, "config", "user.name", "Diffgazer Test");
-    runGit(repository, "config", "user.email", "diffgazer@example.invalid");
-  }
-
-  function commitFile(repository: string, contents: string, message: string): void {
-    writeFileSync(join(repository, "tracked.txt"), contents);
-    runGit(repository, "add", "--", "tracked.txt");
-    runGit(repository, "commit", "--quiet", "-m", message);
-  }
-
-  it("reports the named branch in a real unborn repository", async () => {
-    const repository = createRepository("diffgazer-unborn-branch-");
-    runGit(repository, "init", "--quiet", "--initial-branch=trunk");
-
-    const result = await createGitService({ cwd: repository }).getStatus();
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.value.branch).toBe("trunk");
-    expect(result.value.remoteBranch).toBeNull();
-    expect(result.value.ahead).toBe(0);
-    expect(result.value.behind).toBe(0);
-  });
-
-  it("represents a real detached HEAD without inventing a branch name", async () => {
-    const repository = createRepository("diffgazer-detached-branch-");
-    runGit(repository, "init", "--quiet", "--initial-branch=main");
-    configureAuthor(repository);
-    commitFile(repository, "base\n", "base");
-    runGit(repository, "checkout", "--quiet", "--detach", "HEAD");
-
-    const result = await createGitService({ cwd: repository }).getStatus();
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.value.branch).toBeNull();
-    expect(result.value.remoteBranch).toBeNull();
-  });
-
-  it("reads structured upstream ahead and behind counts", async () => {
-    const remote = createRepository("diffgazer-upstream-remote-");
-    runGit(remote, "init", "--bare", "--quiet", "--initial-branch=main");
-
-    const local = createRepository("diffgazer-upstream-local-");
-    runGit(local, "init", "--quiet", "--initial-branch=main");
-    configureAuthor(local);
-    commitFile(local, "base\n", "base");
-    runGit(local, "remote", "add", "origin", remote);
-    runGit(local, "push", "--quiet", "--set-upstream", "origin", "main");
-
-    const peerParent = createRepository("diffgazer-upstream-peer-");
-    const peer = join(peerParent, "repository");
-    runGit(peerParent, "clone", "--quiet", remote, peer);
-    configureAuthor(peer);
-    commitFile(peer, "base\npeer\n", "peer");
-    runGit(peer, "push", "--quiet", "origin", "main");
-
-    commitFile(local, "base\nlocal\n", "local");
-    runGit(local, "fetch", "--quiet", "origin");
-
-    const result = await createGitService({ cwd: local }).getStatus();
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.value.branch).toBe("main");
-    expect(result.value.remoteBranch).toBe("origin/main");
-    expect(result.value.ahead).toBe(1);
-    expect(result.value.behind).toBe(1);
-  });
-});
-
 describe("resolveReviewDefaults", () => {
   const baseSettings: SettingsConfig = {
     theme: "auto",
@@ -182,6 +57,19 @@ describe("resolveReviewDefaults", () => {
     severityThreshold: "low",
     agentExecution: "sequential",
   };
+
+  it("uses validated settings defaults when explicit lenses are empty", () => {
+    const settings: SettingsConfig = {
+      theme: "auto",
+      defaultLenses: ["security"],
+      defaultProfile: null,
+      severityThreshold: "low",
+      secretsStorage: null,
+      agentExecution: "sequential",
+    };
+
+    expect(resolveReviewDefaults({ lensIds: [], settings }).activeLenses).toEqual(["security"]);
+  });
 
   it("applies defaultProfile from settings when no explicit profile is provided", () => {
     const defaults = resolveReviewDefaults({
@@ -241,77 +129,6 @@ describe("resolveReviewDefaults", () => {
     });
 
     expect(defaults.concurrency).toBe(defaults.activeLenses.length);
-  });
-});
-
-describe("filterDiffByFiles", () => {
-  const parsed = makeParsedDiff([
-    makePipelineFile("src/index.ts"),
-    makePipelineFile("src/utils.ts"),
-    makePipelineFile("README.md"),
-  ]);
-
-  it("returns all files when no filter is provided", () => {
-    const result = filterDiffByFiles(parsed, []);
-    expect(result.files).toHaveLength(3);
-  });
-
-  it("matches canonical paths and recalculates totals for included files", () => {
-    const result = filterDiffByFiles(parsed, ["src/index.ts", "src/utils.ts"]);
-    expect(result.files).toHaveLength(2);
-    expect(result.files.map((f) => f.filePath)).toEqual(["src/index.ts", "src/utils.ts"]);
-    expect(result.totalStats).toEqual({
-      filesChanged: 2,
-      additions: 2,
-      deletions: 0,
-      totalSizeBytes: 200,
-    });
-  });
-
-  it("returns empty totals when no files match", () => {
-    const result = filterDiffByFiles(parsed, ["nonexistent.ts"]);
-    expect(result.files).toHaveLength(0);
-    expect(result.totalStats.filesChanged).toBe(0);
-  });
-});
-
-describe("resolveGitDiff", () => {
-  it("emits review_started after file filtering", async () => {
-    const events: unknown[] = [];
-
-    const result = await resolveGitDiff({
-      gitService: makeGitService(TWO_FILE_DIFF),
-      mode: "unstaged",
-      files: ["src/index.ts"],
-      emit: async (event) => {
-        events.push(event);
-      },
-      reviewId: "review-1",
-    });
-
-    expect(result.ok).toBe(true);
-    expect(events).toMatchObject([
-      { type: "step_start", step: "diff" },
-      { type: "step_complete", step: "diff" },
-      { type: "review_started", filesTotal: 1 },
-    ]);
-  });
-
-  it("does not emit review_started when file filtering removes every diff file", async () => {
-    const events: unknown[] = [];
-
-    const result = await resolveGitDiff({
-      gitService: makeGitService(TWO_FILE_DIFF),
-      mode: "unstaged",
-      files: ["missing.ts"],
-      emit: async (event) => {
-        events.push(event);
-      },
-      reviewId: "review-1",
-    });
-
-    expect(result.ok).toBe(false);
-    expect(events).toMatchObject([{ type: "step_start", step: "diff" }]);
   });
 });
 

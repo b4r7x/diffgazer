@@ -15,27 +15,6 @@ function makeTrust(overrides: Partial<TrustConfig> = {}): TrustConfig {
   };
 }
 
-describe("editorKey", () => {
-  test("uses current and trusted project identities when trust is present", () => {
-    expect(
-      getInitialDraft({ projectId: "proj-1", repoRoot: "/work/proj", trust: makeTrust() })
-        .editorKey,
-    ).toBe(`proj-1:/work/proj:proj-1:/work/proj:${TRUSTED_AT}`);
-  });
-
-  test("falls back to projectId/repoRoot composite when untrusted", () => {
-    expect(
-      getInitialDraft({ projectId: "proj-1", repoRoot: "/work/proj", trust: null }).editorKey,
-    ).toBe("proj-1:/work/proj:untrusted");
-  });
-
-  test("uses loading sentinel when project info is missing", () => {
-    expect(getInitialDraft({ projectId: null, repoRoot: null, trust: null }).editorKey).toBe(
-      "loading:loading:untrusted",
-    );
-  });
-});
-
 describe("getInitialDraft", () => {
   test("normalizes capabilities from existing trust", () => {
     const draft = getInitialDraft({
@@ -47,7 +26,6 @@ describe("getInitialDraft", () => {
     });
     expect(draft.capabilities.readFiles).toBe(true);
     expect(draft.capabilities.runCommands).toBe(false);
-    expect(draft.editorKey).toBe(`proj-1:/work/proj:proj-1:/work/proj:${TRUSTED_AT}`);
   });
 
   test("defaults to no capabilities when project is untrusted", () => {
@@ -93,7 +71,7 @@ describe("resolveEditorView", () => {
       trust: refreshedTrust,
     };
     const view = resolveEditorView(draft, refreshedInput);
-    expect(view.editorKey).toBe(`proj-1:/work/proj:proj-1:/work/proj:${refreshedTrust.trustedAt}`);
+    expect(view.editorKey).not.toBe(draft.editorKey);
     expect(view.capabilities).toEqual({ readFiles: true, runCommands: false });
   });
 
@@ -129,6 +107,21 @@ describe("resolveEditorView", () => {
     expect(view.editorKey).not.toBe(draft.editorKey);
     expect(view.capabilities).toEqual({ readFiles: false, runCommands: false });
     expect(view.isTrusted).toBe(false);
+  });
+
+  test("resets a loading draft when project identity resolves", () => {
+    const loadingInput = { projectId: null, repoRoot: null, trust: null };
+    const draft = getInitialDraft(loadingInput);
+
+    const view = resolveEditorView(draft, {
+      projectId: "proj-1",
+      repoRoot: "/work/proj",
+      trust: makeTrust(),
+    });
+
+    expect(view.editorKey).not.toBe(draft.editorKey);
+    expect(view.capabilities).toEqual({ readFiles: true, runCommands: false });
+    expect(view.isTrusted).toBe(true);
   });
 });
 

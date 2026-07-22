@@ -1,11 +1,11 @@
-import type { ServerController } from "./process";
+import type { ServerController } from "./controller";
 
 interface ServerSetRegistration {
   readonly servers: readonly ServerController[];
   stopPromise: Promise<void> | undefined;
 }
 
-export const activeServerSets = new Set<readonly ServerController[]>();
+const activeServerSets = new Set<readonly ServerController[]>();
 const currentServerSetRegistrations = new WeakMap<
   readonly ServerController[],
   ServerSetRegistration

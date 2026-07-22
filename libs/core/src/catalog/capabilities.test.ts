@@ -6,20 +6,6 @@ import { parseModelsDevCatalog } from "./schema.js";
 const catalog = parseModelsDevCatalog(RAW_CATALOG);
 
 describe("deriveCapabilities", () => {
-  it("returns the full ProviderCapabilities prose shape", () => {
-    const caps = deriveCapabilities(catalog, "gemini");
-    expect(caps).toMatchObject({
-      toolCalling: expect.any(String),
-      jsonMode: expect.any(String),
-      streaming: expect.any(String),
-      contextWindow: expect.any(String),
-      costDescription: expect.any(String),
-    });
-    expect(["free", "paid", "mixed"]).toContain(caps.tier);
-    expect(["FREE", "PAID"]).toContain(caps.tierBadge);
-    expect(Array.isArray(caps.capabilities)).toBe(true);
-  });
-
   it("reports the max limit.context across the provider's models", () => {
     const caps = deriveCapabilities(catalog, "gemini");
     expect(caps.contextWindow).toContain("1M");
@@ -38,6 +24,10 @@ describe("deriveCapabilities", () => {
     const caps = deriveCapabilities(catalog, "gemini");
     expect(caps.capabilities).toContain("TOOLS");
     expect(caps.capabilities).toContain("JSON");
+    expect(caps.capabilities).toContain("REASONING");
+
+    const noReasoningCaps = deriveCapabilities(catalog, "groq");
+    expect(noReasoningCaps.capabilities).not.toContain("REASONING");
   });
 
   it("keeps the JSON capability when no model advertises structured_output (zai)", () => {

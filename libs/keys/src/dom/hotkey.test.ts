@@ -1,5 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { canonicalizeHotkey, matchesHotkey, parseHotkey } from "./hotkey.js";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 // Unknown-modifier hotkeys are rejected by the compile-time ValidateHotkey type,
 // so the runtime warn/reject path is exercised through a string-typed variable
@@ -82,12 +87,7 @@ describe("matchesHotkey", () => {
 
   it("resolves 'mod' to meta on Mac (lazy isMac)", async () => {
     // isMac is now lazy — reset module to test Mac detection
-    const originalNavigator = globalThis.navigator;
-    Object.defineProperty(globalThis, "navigator", {
-      value: { userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X)" },
-      writable: true,
-      configurable: true,
-    });
+    vi.stubGlobal("navigator", { userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X)" });
 
     // Re-import to get a fresh module with reset _isMac cache
     vi.resetModules();
@@ -95,12 +95,6 @@ describe("matchesHotkey", () => {
 
     expect(freshMatchesHotkey(makeKeyEvent("k", { meta: true }), "mod+k")).toBe(true);
     expect(freshMatchesHotkey(makeKeyEvent("k", { ctrl: true }), "mod+k")).toBe(false);
-
-    Object.defineProperty(globalThis, "navigator", {
-      value: originalNavigator,
-      writable: true,
-      configurable: true,
-    });
   });
 
   it("resolves 'mod' to ctrl on non-Mac and ignores meta", () => {
@@ -116,26 +110,23 @@ describe("matchesHotkey", () => {
 
   describe("unknown modifier validation", () => {
     it("returns false for an unknown modifier", () => {
-      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      vi.spyOn(console, "warn").mockImplementation(() => {});
       expect(matchesHotkey(makeKeyEvent("k", { ctrl: true }), dynamicHotkey("Hyper+k"))).toBe(
         false,
       );
-      spy.mockRestore();
     });
 
     it("warns in development for an unknown modifier", () => {
       const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
       matchesHotkey(makeKeyEvent("k"), dynamicHotkey("Super+k"));
       expect(spy).toHaveBeenCalledWith(expect.stringContaining("unknown modifier"));
-      spy.mockRestore();
     });
 
     it("returns false for partially valid modifiers when one is unknown", () => {
-      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      vi.spyOn(console, "warn").mockImplementation(() => {});
       expect(matchesHotkey(makeKeyEvent("k", { ctrl: true }), dynamicHotkey("Ctrl+Hyper+k"))).toBe(
         false,
       );
-      spy.mockRestore();
     });
   });
 

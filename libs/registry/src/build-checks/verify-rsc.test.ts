@@ -181,9 +181,20 @@ describe("assertSourceRscClientDirectives", () => {
     expect(run()).toBe(0);
   });
 
-  it("detects a directive placed below a leading license comment", () => {
-    writeSrc("index.ts", `/* license */\n${USE_CLIENT}export const a = 1;\n`);
-    writeDist("index.js", `/* license */\n${USE_CLIENT}export const a = 1;\n`);
+  const DIRECTIVE_PROLOGUE_CASES = [
+    ["a leading BOM", (body: string) => `﻿${USE_CLIENT}${body}`],
+    ["leading whitespace", (body: string) => `  \n\t${USE_CLIENT}${body}`],
+    ["a leading line comment", (body: string) => `// license\n${USE_CLIENT}${body}`],
+    ["a leading block comment", (body: string) => `/* license */\n${USE_CLIENT}${body}`],
+    ["a single-quoted directive", (body: string) => `'use client';\n${body}`],
+  ] as const;
+
+  it.each(
+    DIRECTIVE_PROLOGUE_CASES,
+  )("detects the directive past %s in both source and dist", (_label, wrap) => {
+    const body = "export const a = 1;\n";
+    writeSrc("index.ts", wrap(body));
+    writeDist("index.js", wrap(body));
 
     expect(run()).toBe(1);
   });

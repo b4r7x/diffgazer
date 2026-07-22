@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
@@ -18,11 +18,16 @@ function writeFile(path: string, source: string) {
   writeFileSync(path, source);
 }
 
-function registryItems() {
+// clean=true produces a fixture with no metadata violations, for tests that
+// assert a fully successful validator run; clean=false (default) keeps the
+// widget-client and keyboard-widget-integration violations that
+// createInvalidFixture asserts on below.
+function registryItems({ clean = false }: { clean?: boolean } = {}) {
   return [
     {
       name: "widget",
       type: "registry:ui",
+      ...(clean ? { meta: { client: true }, registryDependencies: ["helper"] } : {}),
       files: [{ path: "registry/ui/widget/index.tsx" }],
     },
     {
@@ -40,6 +45,7 @@ function registryItems() {
       name: "keyboard-widget",
       type: "registry:ui",
       registryDependencies: ["@diffgazer-keys/use-key"],
+      ...(clean ? { meta: { optionalIntegrations: ["keyboard-navigation"] } } : {}),
       files: [{ path: "registry/ui/keyboard-widget/index.tsx" }],
     },
   ];
@@ -143,7 +149,7 @@ function createKeysPeerFixture(packageJson: Record<string, unknown>) {
 
   writeJson(resolve(fixtureRoot, "registry/registry.json"), {
     $schema: "https://ui.shadcn.com/schema/registry.json",
-    items: registryItems(),
+    items: registryItems({ clean: true }),
   });
 
   writeJson(resolve(fixtureRoot, "package.json"), {
@@ -184,15 +190,12 @@ function createKeysMissingPeerFixture() {
 }
 
 function runValidator(root: string) {
-  try {
-    return execFileSync(process.execPath, ["--import", "tsx", scriptPath], {
-      encoding: "utf8",
-      env: { ...process.env, DIFFGAZER_UI_REGISTRY_ROOT: root },
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-  } catch (error) {
-    return String((error as { stderr?: Buffer | string }).stderr ?? error);
-  }
+  const result = spawnSync(process.execPath, ["--import", "tsx", scriptPath], {
+    encoding: "utf8",
+    env: { ...process.env, DIFFGAZER_UI_REGISTRY_ROOT: root },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  return { status: result.status, stdout: result.stdout, stderr: result.stderr };
 }
 
 function writePublicItem(root: string, content: string, hidden = false) {
@@ -212,41 +215,42 @@ afterEach(() => {
 
 describe("validate-registry-metadata", () => {
   it("reports negative fixture metadata violations", () => {
-    const output = runValidator(createInvalidFixture());
+    const { status, stderr } = runValidator(createInvalidFixture());
 
-    expect(output).toContain('package export "./components/*" uses a wildcard');
-    expect(output).toContain('package export ./components/bad-export nests "types" under "import"');
-    expect(output).toContain(
+    expect(status).not.toBe(0);
+    expect(stderr).toContain('package export "./components/*" uses a wildcard');
+    expect(stderr).toContain('package export ./components/bad-export nests "types" under "import"');
+    expect(stderr).toContain(
       "hidden-card is hidden but package.json exposes ./components/hidden-card",
     );
-    expect(output).toContain("widget contains a client file but omits meta.client");
-    expect(output).toContain("widget imports @/lib/helper");
-    expect(output).toContain("package.json sideEffects must preserve CSS exports");
+    expect(stderr).toContain("widget contains a client file but omits meta.client");
+    expect(stderr).toContain("widget imports @/lib/helper");
+    expect(stderr).toContain("package.json sideEffects must preserve CSS exports");
 
-    expect(output).toContain(
+    expect(stderr).toContain(
       "keyboard-widget depends on keys registry hooks but omits meta.optionalIntegrations keyboard-navigation",
     );
   });
 
   it("accepts a public keys-backed item when keys is a plain required peer", () => {
-    const output = runValidator(createKeysRequiredPeerFixture());
+    const { status, stdout } = runValidator(createKeysRequiredPeerFixture());
 
-    expect(output).not.toContain('peerDependencies must declare "@diffgazer/keys"');
-    expect(output).not.toContain(
-      'peerDependenciesMeta["@diffgazer/keys"].optional must not be true',
-    );
+    expect(status).toBe(0);
+    expect(stdout).toContain("[ui] registry metadata OK");
   });
 
   it("rejects re-flagging the keys peer optional when a public item imports keys hooks", () => {
-    const output = runValidator(createKeysOptionalFlagFixture());
+    const { status, stderr } = runValidator(createKeysOptionalFlagFixture());
 
-    expect(output).toContain('peerDependenciesMeta["@diffgazer/keys"].optional must not be true');
+    expect(status).not.toBe(0);
+    expect(stderr).toContain('peerDependenciesMeta["@diffgazer/keys"].optional must not be true');
   });
 
   it("rejects dropping keys from peerDependencies when a public item imports keys hooks", () => {
-    const output = runValidator(createKeysMissingPeerFixture());
+    const { status, stderr } = runValidator(createKeysMissingPeerFixture());
 
-    expect(output).toContain('package.json peerDependencies must declare "@diffgazer/keys"');
+    expect(status).not.toBe(0);
+    expect(stderr).toContain('package.json peerDependencies must declare "@diffgazer/keys"');
   });
 
   it("rejects every unsupported root keys import form in public copy content", () => {
@@ -263,9 +267,10 @@ describe("validate-registry-metadata", () => {
       ].join("\n"),
     );
 
-    const output = runValidator(root);
+    const { status, stderr } = runValidator(root);
 
-    expect(output).toContain(
+    expect(status).not.toBe(0);
+    expect(stderr).toContain(
       "unsupported @diffgazer/keys root import (import, export, dynamic-import, require, side-effect)",
     );
   });
@@ -282,9 +287,10 @@ describe("validate-registry-metadata", () => {
       true,
     );
 
-    const output = runValidator(root);
+    const { status, stderr } = runValidator(root);
 
-    expect(output).toContain(
+    expect(status).not.toBe(0);
+    expect(stderr).toContain(
       "unsupported @diffgazer/keys root import (import, dynamic-import, require)",
     );
   });
@@ -301,8 +307,9 @@ describe("validate-registry-metadata", () => {
       ].join("\n"),
     );
 
-    const output = runValidator(root);
+    const { status, stderr } = runValidator(root);
 
-    expect(output).toContain("unsupported @diffgazer/keys root import (dynamic-import, require)");
+    expect(status).not.toBe(0);
+    expect(stderr).toContain("unsupported @diffgazer/keys root import (dynamic-import, require)");
   });
 });

@@ -142,10 +142,11 @@ export function SessionPanel() {
 
       <div className={cn("relative flex-1 p-5 md:p-6", DOT_GRID_CLASS)}>
         <div
-          aria-hidden="true"
+          role="img"
+          aria-label="Session terminal"
           className="relative overflow-x-auto font-mono text-sm leading-relaxed"
         >
-          <div data-session-line="" className="whitespace-pre">
+          <div className="whitespace-pre">
             <span className="text-muted-foreground">$</span>{" "}
             <span className="text-foreground">{COMMAND.slice(0, typedCount)}</span>
             {stage === "typing" ? (
@@ -154,7 +155,6 @@ export function SessionPanel() {
           </div>
 
           <div
-            data-session-line=""
             className={cn(
               "whitespace-pre text-muted-foreground",
               stage === "typing" && "invisible",
@@ -163,19 +163,13 @@ export function SessionPanel() {
             local review · your code never leaves the machine
           </div>
 
-          <div data-session-line="" className="whitespace-pre">
-            {" "}
-          </div>
+          <div className="whitespace-pre">{" "}</div>
 
           {VERDICTS.map((verdict, index) => {
             const showSpinner = index === 0 && stage === "reviewing";
             const visible = showSpinner || reveal > index;
             return (
-              <div
-                key={verdict.agent}
-                data-session-line=""
-                className={cn("whitespace-pre", !visible && "invisible")}
-              >
+              <div key={verdict.agent} className={cn("whitespace-pre", !visible && "invisible")}>
                 {showSpinner ? (
                   <>
                     <span className="text-foreground">{SPINNER_FRAMES[spinnerFrame]}</span>
@@ -197,14 +191,9 @@ export function SessionPanel() {
             );
           })}
 
-          <div data-session-line="" className="whitespace-pre">
-            {" "}
-          </div>
+          <div className="whitespace-pre">{" "}</div>
 
-          <div
-            data-session-line=""
-            className={cn("whitespace-pre", reveal < REVEAL_LINE_10 && "invisible")}
-          >
+          <div className={cn("whitespace-pre", reveal < REVEAL_LINE_10 && "invisible")}>
             <span className="text-muted-foreground">rendered with </span>
             <span className="text-foreground">@diffgazer/ui</span>
             <span className="text-muted-foreground"> — driven by </span>
@@ -212,7 +201,6 @@ export function SessionPanel() {
           </div>
 
           <div
-            data-session-line=""
             className={cn(
               "whitespace-pre font-bold text-foreground",
               reveal < REVEAL_LINE_11 && "invisible",

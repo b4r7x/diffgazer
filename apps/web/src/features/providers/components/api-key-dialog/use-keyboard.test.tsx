@@ -150,6 +150,42 @@ describe("useApiKeyDialogKeyboard", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it("reverses focus back through footer, radios, and input on repeated ArrowUp", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <KeyboardProvider>
+        <Subject canSubmit />
+      </KeyboardProvider>,
+    );
+
+    const paste = screen.getByRole("radio", { name: "Paste Key Now" });
+    const input = screen.getByLabelText("Gemini API Key");
+    const env = screen.getByRole("radio", { name: "Import from Env" });
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+
+    await waitFor(() => expect(paste).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}");
+    expect(input).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(env).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(cancel).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(env).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(paste).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(input).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(paste).toHaveFocus();
+  });
+
   it("repairs footer focus when confirm becomes disabled while focused", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();

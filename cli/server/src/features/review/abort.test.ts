@@ -1,18 +1,6 @@
-import { processReviewStream } from "@diffgazer/core/review";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import { describe, expect, it } from "vitest";
 import { isReviewAbort, reviewAbort } from "./abort.js";
-import { normalizeReviewStreamError, reviewStreamError } from "./stream/events.js";
-
-function createSSEReader(event: unknown): ReadableStreamDefaultReader<Uint8Array> {
-  const bytes = new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`);
-  return new ReadableStream<Uint8Array>({
-    start(controller) {
-      controller.enqueue(bytes);
-      controller.close();
-    },
-  }).getReader();
-}
 
 describe("reviewAbort", () => {
   it("creates review abort objects with an optional step", () => {
@@ -56,41 +44,5 @@ describe("isReviewAbort", () => {
     },
   ])("returns $expected for $value", ({ value, expected }) => {
     expect(isReviewAbort(value)).toBe(expected);
-  });
-
-  it.each([
-    {
-      malformed: {
-        kind: "review_abort",
-        message: "unknown error code",
-        code: "NOT_A_REVIEW_CODE",
-        step: "diff",
-      },
-      expectedCode: ReviewErrorCode.GENERATION_FAILED,
-    },
-    {
-      malformed: {
-        kind: "review_abort",
-        message: "unknown step",
-        code: ReviewErrorCode.AI_ERROR,
-        step: "not-a-step",
-      },
-      expectedCode: ReviewErrorCode.AI_ERROR,
-    },
-  ])("normalizes a malformed abort to client-readable $expectedCode through the shared stream", async ({
-    malformed,
-    expectedCode,
-  }) => {
-    expect(isReviewAbort(malformed)).toBe(false);
-    const normalized = normalizeReviewStreamError(malformed);
-    const result = await processReviewStream(
-      createSSEReader(reviewStreamError(normalized.message, normalized.code)),
-      {},
-    );
-
-    expect(result).toEqual({
-      ok: false,
-      error: { code: expectedCode, message: malformed.message },
-    });
   });
 });

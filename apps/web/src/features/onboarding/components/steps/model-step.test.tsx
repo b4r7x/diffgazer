@@ -98,12 +98,14 @@ describe("ModelStep", () => {
   });
 
   it("announces a catalog rejection and retries without offering manual entry", async () => {
-    const getProviderModels = vi.fn<() => Promise<ProviderModelsResponse>>().mockImplementation(
+    const getProviderModels = vi.fn<() => Promise<ProviderModelsResponse>>();
+    getProviderModels.mockImplementationOnce(
       () =>
         new Promise<ProviderModelsResponse>((_resolve, reject) => {
           setTimeout(() => reject(new Error("catalog unavailable")), 0);
         }),
     );
+    getProviderModels.mockResolvedValue(GEMINI_CATALOG);
     const api = {
       ...createApi({ baseUrl: "http://localhost" }),
       getProviderModels,
@@ -121,6 +123,11 @@ describe("ModelStep", () => {
     expect(screen.queryByRole("textbox", { name: "Model ID" })).not.toBeInTheDocument();
     await userEvent.setup().click(screen.getByRole("button", { name: "Retry" }));
     await vi.waitFor(() => expect(getProviderModels).toHaveBeenCalledTimes(2));
+
+    const modelGroup = await screen.findByRole("radiogroup", { name: /available models/i });
+    expect(
+      within(modelGroup).getByRole("radio", { name: /Gemini 2\.5 Flash/ }),
+    ).toBeInTheDocument();
   });
 
   it("commits the current selected catalog model when Enter is pressed", async () => {
@@ -171,12 +178,14 @@ describe("ModelStep", () => {
 
   it("shows snapshot provenance and retries an empty fallback catalog", async () => {
     const user = userEvent.setup();
-    const getProviderModels = vi.fn<() => Promise<ProviderModelsResponse>>().mockResolvedValue({
+    const getProviderModels = vi.fn<() => Promise<ProviderModelsResponse>>();
+    getProviderModels.mockResolvedValueOnce({
       models: [],
       fetchedAt: new Date().toISOString(),
       source: "snapshot",
       cached: false,
     });
+    getProviderModels.mockResolvedValue(GEMINI_CATALOG);
     const api = {
       ...createApi({ baseUrl: "http://localhost" }),
       getProviderModels,
@@ -189,7 +198,12 @@ describe("ModelStep", () => {
     expect(await screen.findByText(/using the bundled model catalog/i)).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Retry" }));
-    expect(getProviderModels).toHaveBeenCalledTimes(2);
+    await vi.waitFor(() => expect(getProviderModels).toHaveBeenCalledTimes(2));
+
+    const modelGroup = await screen.findByRole("radiogroup", { name: /available models/i });
+    expect(
+      within(modelGroup).getByRole("radio", { name: /Gemini 2\.5 Flash/ }),
+    ).toBeInTheDocument();
   });
 
   it("does not offer manual OpenRouter entry when no models are available", async () => {

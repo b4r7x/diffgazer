@@ -9,12 +9,14 @@
     {
       "path": "registry/ui/logo/figlet.ts",
       "content": "export { type FigletFont, getFigletText } from \"./figlet-text\";\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/logo/figlet.ts"
     },
     {
       "path": "registry/ui/logo/figlet-text.ts",
       "content": "import type figlet from \"figlet\";\n\n/** Font names supported by the optional figlet loader. */\nexport type FigletFont = \"Big\" | \"Small\";\n\ntype FigletModule = typeof figlet;\n\ntype FontModule = { default: string };\n\nconst FONT_LOADERS: Record<FigletFont, () => Promise<FontModule>> = {\n  Big: () => import(\"figlet/importable-fonts/Big.js\"),\n  Small: () => import(\"figlet/importable-fonts/Small.js\"),\n};\n\nconst MISSING_DEPENDENCY_MESSAGE =\n  \"@diffgazer/ui/components/logo/figlet requires the optional peer dependency 'figlet'. Install it with: npm install figlet\";\n\nlet figletPromise: Promise<FigletModule> | null = null;\nconst fontPromises = new Map<FigletFont, Promise<void>>();\n\nfunction loadFiglet(): Promise<FigletModule> {\n  if (!figletPromise) {\n    figletPromise = import(\"figlet\")\n      .then((mod) => (mod.default ?? mod) as FigletModule)\n      .catch(() => {\n        figletPromise = null;\n        throw new Error(MISSING_DEPENDENCY_MESSAGE);\n      });\n  }\n  return figletPromise;\n}\n\nfunction loadFont(figletModule: FigletModule, font: FigletFont): Promise<void> {\n  let promise = fontPromises.get(font);\n  if (!promise) {\n    promise = FONT_LOADERS[font]()\n      .then((mod) => {\n        const data = (mod.default ?? mod) as string;\n        figletModule.parseFont(font, data);\n      })\n      .catch(() => {\n        fontPromises.delete(font);\n        throw new Error(MISSING_DEPENDENCY_MESSAGE);\n      });\n    fontPromises.set(font, promise);\n  }\n  return promise;\n}\n\n/** Returns figlet text. */\nexport async function getFigletText(text: string, font: FigletFont = \"Big\"): Promise<string> {\n  const figletModule = await loadFiglet();\n  await loadFont(figletModule, font);\n  return figletModule.textSync(text, { font });\n}\n",
-      "type": "registry:ui"
+      "type": "registry:ui",
+      "target": "@ui/logo/figlet-text.ts"
     }
   ],
   "meta": {

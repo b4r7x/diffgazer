@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import { collectSecretFindings, formatSecretFindings, MAX_FILE_BYTES } from "./secret-scan.mjs";
 
 function scanSource(source) {
@@ -39,6 +41,20 @@ test("secret scan detects and redacts recognized tokens beyond the in-memory cap
   );
   assert.match(formatted, /<redacted:/);
   assert.doesNotMatch(formatted, new RegExp(fakeToken));
+});
+
+test("secret scan skips a small binary file even when it embeds a recognized token", () => {
+  const dir = mkdtempSync(join(tmpdir(), "dg-secret-scan-small-binary-"));
+  const binaryPath = join(dir, "fixture.bin");
+  const fakeToken = `ghp_${"S".repeat(36)}`;
+
+  try {
+    writeFileSync(binaryPath, `prefix\0${fakeToken}`);
+
+    assert.deepEqual(collectSecretFindings([binaryPath]), []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("secret scan retains oversized binary and ignored-path exclusions", () => {
@@ -128,5 +144,29 @@ test("secret scan includes committed public registry contracts", () => {
   } finally {
     process.chdir(cwd);
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("secret scan CLI entry fails closed on a tracked secret without printing the raw token", () => {
+  const root = mkdtempSync(join(tmpdir(), "dg-secret-scan-worktree-"));
+  const fakeToken = `ghp_${"W".repeat(36)}`;
+
+  try {
+    execFileSync("git", ["init", "--quiet"], { cwd: root });
+    writeFileSync(join(root, "fixture.txt"), `GITHUB_TOKEN="${fakeToken}"\n`);
+    execFileSync("git", ["add", "fixture.txt"], { cwd: root });
+
+    const child = spawnSync(
+      process.execPath,
+      [fileURLToPath(new URL("./secret-scan.mjs", import.meta.url))],
+      { cwd: root, encoding: "utf8" },
+    );
+
+    assert.equal(child.status, 1);
+    assert.match(child.stderr, /Secret scan failed\./);
+    assert.match(child.stderr, /<redacted:/);
+    assert.doesNotMatch(`${child.stdout}${child.stderr}`, new RegExp(fakeToken));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });

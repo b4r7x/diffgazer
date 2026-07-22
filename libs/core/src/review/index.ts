@@ -68,35 +68,38 @@ export {
   sessionTerminationCopy,
 } from "./lifecycle.js";
 export {
-  AGENT_STATUS_META,
   type AgentStatusBadgeVariant,
+  getAgentStatusMeta,
+  getPartialFailureWarning,
+  type PartialFailureWarning,
+} from "./presentation/agent-status.js";
+export {
+  getAlternateReviewMode,
+  getDetailsEmptyCopy,
+  getNoChangesCopy,
+  type ReviewEmptyCopy,
+  type ReviewNoChangesCopy,
+} from "./presentation/empty-state.js";
+export {
   type ApiKeyMissingCopy,
-  buildSeverityBreakdownRows,
   CONFIGURATION_ERROR_COPY,
   CONFIGURE_PROVIDER_LABEL,
   classifyReviewStreamError,
-  DETAILS_EMPTY_COPY,
   describeReviewStartError,
-  formatSeverityFilterLabel,
-  getAgentStatusMeta,
-  getAlternateReviewMode,
   getApiKeyMissingCopy,
-  getDetailsEmptyCopy,
-  getNoChangesCopy,
-  getPartialFailureWarning,
-  type IssueDetailsPresentation,
-  type IssueFixStepPresentation,
-  type IssueTraceStepPresentation,
-  NO_CHANGES_COPY,
-  type PartialFailureWarning,
-  type ReviewEmptyCopy,
-  type ReviewNoChangesCopy,
   type ReviewStartErrorDescription,
   type ReviewStreamErrorGuidance,
   type ReviewStreamErrorKind,
+} from "./presentation/error-guidance.js";
+export {
+  buildSeverityBreakdownRows,
+  formatSeverityFilterLabel,
+  type IssueDetailsPresentation,
+  type IssueFixStepPresentation,
+  type IssueTraceStepPresentation,
   type SeverityBreakdownRow,
   toIssueDetailsPresentation,
-} from "./presentation.js";
+} from "./presentation/issue.js";
 export { mapStepsToProgressData, mapStepsToProgressDataWithAgents } from "./progress-mapping.js";
 export { sanitizeTerminalText } from "./sanitize-terminal.js";
 export {

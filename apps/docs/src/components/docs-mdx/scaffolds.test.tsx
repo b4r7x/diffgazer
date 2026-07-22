@@ -17,6 +17,8 @@ vi.mock("@/hooks/use-demos", () => ({ useDemos: () => ({}) }));
 
 const highlighted = [{ number: 1, content: [{ text: "const example = true;" }] }];
 const source = { raw: "const example = true;", highlighted };
+const componentUsageHighlighted = [{ number: 1, content: [{ text: "<Example />" }] }];
+const hookUsageHighlighted = [{ number: 1, content: [{ text: "useExample()" }] }];
 
 const populatedComponent = {
   name: "example",
@@ -35,7 +37,7 @@ const populatedComponent = {
     },
   },
   usageSnippet: "<Example />",
-  usageSnippetHighlighted: highlighted,
+  usageSnippetHighlighted: componentUsageHighlighted,
   examples: ["example-default", "example-secondary"],
   exampleSource: {
     "example-default": source,
@@ -75,7 +77,7 @@ const populatedHook = {
     examples: [{ name: "use-example-basic", title: "Basic" }],
   },
   usageSnippet: "useExample()",
-  usageSnippetHighlighted: highlighted,
+  usageSnippetHighlighted: hookUsageHighlighted,
   examples: ["use-example-basic"],
   exampleSource: { "use-example-basic": source },
   files: ["src/hooks/use-example.ts"],
@@ -106,6 +108,14 @@ describe("documentation scaffolds", () => {
       expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
     }
 
+    expect(screen.getByText("ui/example")).toBeInTheDocument();
+    expect(screen.getByText("<Example />")).toBeInTheDocument();
+    expect(screen.getByText("Secondary")).toBeInTheDocument();
+    expect(screen.getByText("Disables the example.")).toBeInTheDocument();
+    expect(screen.getByText("Use Enter to activate.")).toBeInTheDocument();
+    expect(screen.getByText("Provide an accessible label.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View component source" })).toBeInTheDocument();
+
     component.unmount();
     render(
       <Providers>
@@ -125,6 +135,14 @@ describe("documentation scaffolds", () => {
     ]) {
       expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
     }
+
+    expect(screen.getByText("ui/use-example")).toBeInTheDocument();
+    expect(screen.getByText("useExample()")).toBeInTheDocument();
+    expect(screen.getByText("Basic")).toBeInTheDocument();
+    expect(screen.getByText("Enables the hook.")).toBeInTheDocument();
+    expect(screen.getByText("Whether the hook is active.")).toBeInTheDocument();
+    expect(screen.getByText("Cleans up on unmount.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View hook source" })).toBeInTheDocument();
   });
 
   it("omits every data-dependent section when its structured data is absent", () => {

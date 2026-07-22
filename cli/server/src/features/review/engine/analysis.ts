@@ -12,13 +12,13 @@ import { LensReviewResultSchema } from "@diffgazer/core/schemas/review";
 import { pluralize } from "@diffgazer/core/strings";
 import type { AIClient, AIError } from "../../../shared/lib/ai/types.js";
 import type { ParsedDiff } from "./diff/types.js";
+import { createIssueEvidenceResolver } from "./issues/evidence.js";
 import {
-  createIssueEvidenceResolver,
   normalizeIssueLineFields,
   normalizeIssueTextFields,
-  severityMeetsMinimum,
   validateIssueCompleteness,
-} from "./issues.js";
+} from "./issues/normalization.js";
+import { severityMeetsMinimum } from "./issues/ordering.js";
 import { buildReviewPrompt } from "./prompts.js";
 import { sanitizeIssue } from "./sanitize-issue.js";
 import type { LensResult } from "./types.js";

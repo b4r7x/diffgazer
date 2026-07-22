@@ -229,36 +229,16 @@ describe("createApiClient", () => {
   });
 
   describe("error handling", () => {
-    it("throws ApiError with message from response body", async () => {
-      mockFetch.mockResolvedValue(
-        errorResponse(400, { error: { message: "Invalid input", code: "VALIDATION" } }),
-      );
-
-      await expect(client.get("/api/test")).rejects.toThrow("Invalid input");
-    });
-
-    it("throws ApiError with status code", async () => {
-      expect.assertions(1);
-      mockFetch.mockResolvedValue(errorResponse(404, { error: { message: "Not found" } }));
-
-      try {
-        await client.get("/api/test");
-      } catch (error) {
-        expect((error as { status: number }).status).toBe(404);
-      }
-    });
-
-    it("throws ApiError with error code from body", async () => {
-      expect.assertions(1);
+    it("throws ApiError with message, status, and code from error envelope", async () => {
       mockFetch.mockResolvedValue(
         errorResponse(409, { error: { message: "Conflict", code: "SESSION_STALE" } }),
       );
 
-      try {
-        await client.get("/api/test");
-      } catch (error) {
-        expect((error as { code: string }).code).toBe("SESSION_STALE");
-      }
+      await expect(client.get("/api/test")).rejects.toMatchObject({
+        message: "Conflict",
+        status: 409,
+        code: "SESSION_STALE",
+      });
     });
 
     it("falls back to HTTP status message when body is not JSON", async () => {

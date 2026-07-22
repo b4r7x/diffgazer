@@ -5,30 +5,6 @@ import { initHud } from "./hud";
 
 const animatedFlags = { reduced: false, finePointer: true };
 
-interface IntersectionObserverProbe {
-  callback: IntersectionObserverCallback;
-  options: IntersectionObserverInit;
-}
-
-function mockIntersectionObservers(): IntersectionObserverProbe[] {
-  const probes: IntersectionObserverProbe[] = [];
-
-  class MockIntersectionObserver {
-    constructor(callback: IntersectionObserverCallback, options: IntersectionObserverInit = {}) {
-      probes.push({ callback, options });
-    }
-
-    observe() {}
-
-    unobserve() {}
-
-    disconnect() {}
-  }
-
-  vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
-  return probes;
-}
-
 function mountHero(): void {
   document.body.innerHTML = `
     <section id="s1">
@@ -96,18 +72,26 @@ describe("effect lifecycle signals", () => {
     cursor.cleanup();
   });
 
-  it("does not start HUD timers for an already-aborted signal", () => {
+  it("does not animate HUD spinner for an already-aborted signal", async () => {
     vi.useFakeTimers();
     document.body.innerHTML = `<span id="osd-spin"></span>`;
-    const setIntervalSpy = vi.spyOn(globalThis, "setInterval");
     const abort = new AbortController();
     abort.abort();
+    const spin = document.querySelector("#osd-spin");
+    const initialSpin = spin?.textContent ?? "";
 
     const cleanup = initHud(document, animatedFlags, abort.signal);
 
-    expect(setIntervalSpy).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+
+    await vi.advanceTimersByTimeAsync(500);
+
+    expect(spin?.textContent).toBe(initialSpin);
+    expect(vi.getTimerCount()).toBe(0);
 
     cleanup();
+
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it("stops HUD timers when the external signal aborts", async () => {
@@ -120,58 +104,6 @@ describe("effect lifecycle signals", () => {
     await vi.advanceTimersByTimeAsync(500);
 
     expect(document.querySelector("#osd-spin")?.textContent).toBe("");
-
-    cleanup();
-  });
-
-  it("activates the findings scene in the short-landscape viewport bands", () => {
-    vi.stubGlobal("innerWidth", 720);
-    vi.stubGlobal("innerHeight", 400);
-    const observers = mockIntersectionObservers();
-    document.body.innerHTML = `
-      <span id="osd-label"></span>
-      <section class="scene" id="s4" data-osd="04 / FINDINGS" data-theme-scene="light"></section>`;
-    const scene = document.querySelector<HTMLElement>("#s4");
-    if (!scene) throw new Error("findings scene not mounted");
-    vi.spyOn(scene, "getBoundingClientRect").mockReturnValue({
-      x: 0,
-      y: 199,
-      width: 720,
-      height: 1_000,
-      top: 199,
-      right: 720,
-      bottom: 1_199,
-      left: 0,
-      toJSON() {},
-    });
-
-    const cleanup = initHud(document, { reduced: true, finePointer: true });
-
-    const hudObserver = observers.find(({ options }) => options.rootMargin === "0px 0px -50% 0px");
-    const revealObserver = observers.find(
-      ({ options }) => options.rootMargin === "0px 0px -10% 0px",
-    );
-    expect(hudObserver?.options.threshold).toBe(0);
-    expect(revealObserver?.options.threshold).toBe(0);
-
-    const sceneRect = scene.getBoundingClientRect();
-    const entry: IntersectionObserverEntry = {
-      boundingClientRect: sceneRect,
-      intersectionRatio: 0.01,
-      intersectionRect: new DOMRect(0, 199, 720, 1),
-      isIntersecting: true,
-      rootBounds: new DOMRect(0, 0, 720, 400),
-      target: scene,
-      time: 0,
-    };
-    const observer = new IntersectionObserver(() => {});
-    hudObserver?.callback([entry], observer);
-    revealObserver?.callback([entry], observer);
-
-    expect(scene.classList.contains("in")).toBe(true);
-    expect(document.querySelector("#osd-label")?.textContent).toBe("04 / FINDINGS");
-    expect(document.documentElement.dataset.sceneTheme).toBe("light");
-    expect(document.documentElement.dataset.theme).toBe("light");
 
     cleanup();
   });

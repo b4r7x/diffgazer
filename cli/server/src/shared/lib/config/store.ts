@@ -22,17 +22,18 @@ import { log } from "../log.js";
 import { getGlobalConfigPath, getGlobalSecretsPath, resolveProjectRoot } from "../paths.js";
 import { deleteKeyringSecret, readKeyringSecret, writeKeyringSecret } from "./keyring.js";
 import {
-  createProjectFile,
   loadConfig,
-  loadSecrets,
   type PersistConfigMerged,
   parseConfigData,
+  withConfigFileTransaction,
+} from "./persistence/config.js";
+import { createProjectFile, readProjectFile } from "./persistence/project.js";
+import {
+  loadSecrets,
   parseSecretsData,
   persistSecretsAsync,
-  readProjectFile,
   syncProvidersWithSecrets,
-  withConfigFileTransaction,
-} from "./persistence.js";
+} from "./persistence/secrets.js";
 import {
   activeProvider,
   applyActiveProvider,
@@ -53,7 +54,8 @@ import {
   rollbackKeyringWrites,
 } from "./secrets-migration.js";
 import { resolveSecretEntry, toSecretEntry } from "./secrets-store.js";
-import { createMutex, runConfigTransaction } from "./transaction.js";
+import { runConfigTransaction } from "./transaction/mutation.js";
+import { createMutex } from "./transaction/mutex.js";
 import { createTrustStore, type TrustStore } from "./trust-store.js";
 import type {
   ConfigState,
@@ -62,7 +64,7 @@ import type {
   SecretsStorageErrorCode,
 } from "./types.js";
 
-// Re-keys review history on a project move (F-447). `shared/` must not import
+// Re-keys review history on a project move. `shared/` must not import
 // `features/`, so the review feature registers its implementation here at startup;
 // defaults to a no-op.
 type ReviewRekeyHandler = (oldProjectPath: string, newProjectPath: string) => Promise<boolean>;
@@ -73,7 +75,7 @@ export function setReviewRekeyHandler(handler: ReviewRekeyHandler): void {
 }
 
 // Log the raw cause (which carries the absolute path) server-side and return a
-// path-free message so API clients never receive host paths or filenames (F-085).
+// path-free message so API clients never receive host paths or filenames.
 const persistFailure = (operation: "config" | "secrets", cause: unknown): SecretsStorageError => {
   log("error", "config_persist_failed", { operation, error: getErrorMessage(cause) });
   return createError<SecretsStorageErrorCode>("PERSIST_FAILED", `Failed to persist ${operation}`);
@@ -166,7 +168,7 @@ const reconcileSecretsRecoveryAtStartup = (): SecretsStorageError | null => {
   }
 };
 
-// Delete keyring entries shadowed by an env sidecar ref (F-105): reads resolve the
+// Delete keyring entries shadowed by an env sidecar ref: reads resolve the
 // sidecar env ref first, so a stale `api_key_<provider>` from an interrupted literal->env
 // switch would linger unreferenced. Keyring mode only, probing env-sidecar providers.
 const deleteShadowedKeyringEntries = (secrets: SecretsState): void => {
@@ -254,7 +256,7 @@ export function createConfigStore(): ConfigStore {
   let secretsMtimeMs: number | null = getFileMtimeMs(getGlobalSecretsPath());
 
   // Serialize config/secrets mutations so concurrent API calls never interleave at
-  // their await points and each observes the previous mutation's settled state (F-167).
+  // their await points and each observes the previous mutation's settled state.
   const mutex = createMutex();
 
   const initialStorage = effectiveStorage(configState);
@@ -371,7 +373,7 @@ export function createConfigStore(): ConfigStore {
 
   // Pre-mutation snapshot persistConfig diffs against to tell which providers/settings
   // THIS instance changed (overwrite disk) from those it left untouched (yield to a
-  // concurrent instance's write) — F-359.
+  // concurrent instance's write).
   let providersBeforeMutation: ProviderStatus[] = configState.providers.map((p) => ({ ...p }));
   let settingsBeforeMutation: SettingsConfig = { ...configState.settings };
 
@@ -520,7 +522,7 @@ export function createConfigStore(): ConfigStore {
   };
 
   // Called at each mutation's snapshot point (after disk refresh, before mutation) to
-  // record the pre-mutation state persistConfig later merges against (F-359).
+  // record the pre-mutation state persistConfig later merges against.
   const markConfigBeforeMutation = (): void => {
     providersBeforeMutation = configState.providers.map((p) => ({ ...p }));
     settingsBeforeMutation = { ...configState.settings };
@@ -569,7 +571,7 @@ export function createConfigStore(): ConfigStore {
   };
 
   // Complete an interrupted secrets-storage migration (crash between the config write
-  // and the file/keyring cleanup, F-449). Keyring mode moves stranded secrets.json
+  // and the file/keyring cleanup). Keyring mode moves stranded secrets.json
   // literals into the keyring. Explicit file mode deletes only entries with a
   // completed file copy. Best-effort keyring failures leave state intact.
   const reconcileStartupStorage = async (): Promise<void> => {
@@ -853,7 +855,7 @@ export function createConfigStore(): ConfigStore {
           }
         } else if (typeof entry !== "string" && entry.kind === "env") {
           // Switching to an env credential must delete this provider's keyring literal,
-          // or the sidecar env ref (resolved first on read) leaves it shadowed (F-105).
+          // or the sidecar env ref (resolved first on read) leaves it shadowed.
           // Capture for rollback, persist the sidecar, then delete — a crash between is
           // repaired at startup.
           const previousKeyringResult = readKeyringSecret(getApiKeyName(provider));

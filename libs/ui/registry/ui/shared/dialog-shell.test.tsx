@@ -2,7 +2,6 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isHTMLDialogElement } from "@/lib/aria";
 import { DialogShell } from "./dialog-shell";
 
 function requireFrameDocument(frame: HTMLIFrameElement): Document {
@@ -97,8 +96,6 @@ describe("DialogShell", () => {
 
     const hostDialog = screen.getByRole("dialog", { name: "Host shell" });
     const frameDialog = within(frameDocument.body).getByRole("dialog", { name: "Frame shell" });
-    expect(isHTMLDialogElement(hostDialog)).toBe(true);
-    expect(isHTMLDialogElement(frameDialog)).toBe(true);
 
     const hostFirst = hostDialog?.querySelector("#host-first") as HTMLButtonElement;
     const hostSecond = hostDialog?.querySelector("#host-second") as HTMLButtonElement;
@@ -143,7 +140,6 @@ describe("DialogShell", () => {
     });
 
     const frameDialog = within(frameDocument.body).getByRole("dialog", { name: "Frame shell" });
-    expect(isHTMLDialogElement(frameDialog)).toBe(true);
     expect(frameDialog).toHaveAttribute("open");
     expect(onBeforeShowModal).toHaveBeenCalledWith(frameDocument);
   });

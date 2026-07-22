@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useState } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
@@ -16,14 +17,6 @@ function getForm(): HTMLFormElement {
 }
 
 describe("Radio", () => {
-  it("selects on click", async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
-    render(<Radio onChange={onChange} label="Option A" />);
-    await user.click(screen.getByRole("radio"));
-    expect(onChange).toHaveBeenCalledWith(true);
-  });
-
   it("emits data-slot and data-state styling hooks", () => {
     const { rerender } = render(<Radio checked={false} label="A" />);
     const control = screen.getByRole("radio");
@@ -82,11 +75,13 @@ describe("Radio", () => {
 
   it("works in uncontrolled mode with defaultChecked", async () => {
     const user = userEvent.setup();
-    render(<Radio defaultChecked={false} label="Option A" />);
+    const onChange = vi.fn();
+    render(<Radio defaultChecked={false} onChange={onChange} label="Option A" />);
     const radio = screen.getByRole("radio");
     expect(radio).toHaveAttribute("aria-checked", "false");
     await user.click(radio);
     expect(radio).toHaveAttribute("aria-checked", "true");
+    expect(onChange).toHaveBeenCalledWith(true);
   });
 
   it("respects controlled value", async () => {
@@ -817,6 +812,27 @@ describe("RadioGroup", () => {
     expect(blue).toHaveAttribute("aria-checked", "false");
   });
 
+  it("lets a consumer onKeyDown handler suppress the built-in arrow navigation", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const onKeyDown = vi.fn((event: ReactKeyboardEvent) => event.preventDefault());
+    render(
+      <RadioGroup label="Colors" defaultValue="red" onChange={onChange} onKeyDown={onKeyDown}>
+        <RadioGroup.Item value="red" label="Red" />
+        <RadioGroup.Item value="blue" label="Blue" />
+      </RadioGroup>,
+    );
+
+    const red = screen.getByRole("radio", { name: /red/i });
+    red.focus();
+    await user.keyboard("{ArrowDown}");
+
+    expect(onKeyDown).toHaveBeenCalledWith(expect.objectContaining({ key: "ArrowDown" }));
+    expect(red).toHaveFocus();
+    expect(red).toHaveAttribute("aria-checked", "true");
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it("reports non-wrapping keyboard boundaries without moving focus", async () => {
     const user = userEvent.setup();
     const onNavigationBoundaryReached = vi.fn();
@@ -965,21 +981,23 @@ describe("RadioGroup", () => {
   });
 
   it("has no a11y violations (unselected and selected)", async () => {
-    const { container, rerender } = render(
+    const { container, unmount } = render(
       <RadioGroup label="Colors">
         <RadioGroup.Item value="red" label="Red" />
         <RadioGroup.Item value="blue" label="Blue" />
       </RadioGroup>,
     );
     expect(await axe(container)).toHaveNoViolations();
+    unmount();
 
-    rerender(
+    const { container: selectedContainer } = render(
       <RadioGroup label="Colors" defaultValue="red">
         <RadioGroup.Item value="red" label="Red" />
         <RadioGroup.Item value="blue" label="Blue" />
       </RadioGroup>,
     );
-    expect(await axe(container)).toHaveNoViolations();
+    expect(screen.getByRole("radio", { name: "Red" })).toHaveAttribute("aria-checked", "true");
+    expect(await axe(selectedContainer)).toHaveNoViolations();
   });
 
   it("uses native aria-labelledby for the group name", () => {
@@ -1067,7 +1085,7 @@ describe("RadioGroup", () => {
     screen.getByRole("radio", { name: /red/i }).focus();
     await user.keyboard("{ArrowDown}{Enter}");
 
-    expect(onEnter).toHaveBeenCalledWith("blue", expect.any(Object));
+    expect(onEnter).toHaveBeenCalledWith("blue", expect.objectContaining({ key: "Enter" }));
     expect(onChange).toHaveBeenCalledWith("blue");
     expect(screen.getByRole("radio", { name: /blue/i })).toHaveAttribute("aria-checked", "true");
   });
@@ -1311,7 +1329,7 @@ describe("RadioGroup", () => {
       );
     }
 
-    const { container, rerender } = render(<RequiredGroup allDisabled={false} />);
+    const { rerender } = render(<RequiredGroup allDisabled={false} />);
     const form = getForm();
     const group = screen.getByRole("radiogroup", { name: "Colors" });
     expect(form.reportValidity()).toBe(false);
@@ -1323,7 +1341,6 @@ describe("RadioGroup", () => {
     expect(group).not.toHaveAttribute("aria-invalid");
     expect(form.checkValidity()).toBe(true);
     expect(new FormData(form).has("color")).toBe(false);
-    expect(container.querySelector('[data-slot="radio-group-validation"]')).toBeNull();
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio).toHaveAttribute("aria-disabled", "true");
       expect(radio).toHaveAttribute("tabindex", "-1");

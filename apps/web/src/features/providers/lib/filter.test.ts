@@ -58,15 +58,9 @@ describe("filterProviders", () => {
     expect(ids(filterProviders(PROVIDERS, "needs-key"))).toEqual(["zai-coding", "openrouter"]);
   });
 
-  it("filters 'free' to providers with a curated free tier", () => {
-    const result = ids(filterProviders(PROVIDERS, "free"));
-    expect(result).toContain("gemini");
-    expect(result).toContain("zai");
-    expect(result).toContain("openrouter");
-    expect(result).not.toContain("zai-coding");
-  });
-
-  it("filters 'paid' to providers without a curated free tier", () => {
+  it("partitions 'free' vs 'paid' by curated free tier (gemini free, zai-coding paid)", () => {
+    expect(ids(filterProviders(PROVIDERS, "free"))).toContain("gemini");
+    expect(ids(filterProviders(PROVIDERS, "free"))).not.toContain("zai-coding");
     expect(ids(filterProviders(PROVIDERS, "paid"))).toEqual(["zai-coding"]);
   });
 

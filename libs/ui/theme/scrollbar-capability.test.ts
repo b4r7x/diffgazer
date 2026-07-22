@@ -1,23 +1,64 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import postcss, { type AtRule } from "postcss";
 import { describe, expect, it } from "vitest";
 
 const themeBaseCss = readFileSync(resolve(import.meta.dirname, "../styles/theme-base.css"), "utf8");
 
-describe("scrollbar capability styles", () => {
-  it("only suppresses scrollbar indicators on devices that can hover", () => {
-    const capabilityRuleStart = themeBaseCss.indexOf("@media (hover: hover)");
-    const animationRulesStart = themeBaseCss.indexOf("@keyframes ui-blink");
-    const defaultCapabilityStyles = themeBaseCss.slice(0, capabilityRuleStart);
-    const hoverCapabilityStyles = themeBaseCss.slice(capabilityRuleStart, animationRulesStart);
+function findHoverCapabilityRule(root: postcss.Root): AtRule {
+  const matches = root.nodes.filter(
+    (node): node is AtRule =>
+      node.type === "atrule" && node.name === "media" && node.params === "(hover: hover)",
+  );
+  expect(matches).toHaveLength(1);
+  const [hoverCapabilityRule] = matches;
+  if (!hoverCapabilityRule) throw new Error("unreachable: length asserted above");
+  return hoverCapabilityRule;
+}
 
-    expect(capabilityRuleStart).toBeGreaterThan(-1);
-    expect(animationRulesStart).toBeGreaterThan(capabilityRuleStart);
-    expect(defaultCapabilityStyles).not.toContain(".scrollbar-hide");
-    expect(defaultCapabilityStyles).not.toContain(".scrollbar-thin");
-    expect(hoverCapabilityStyles).toContain(".scrollbar-hide");
-    expect(hoverCapabilityStyles).toContain("scrollbar-width: none");
-    expect(hoverCapabilityStyles).toContain(".scrollbar-thin");
-    expect(hoverCapabilityStyles).toContain("scrollbar-color: transparent transparent");
+describe("scrollbar capability styles", () => {
+  it("suppresses scrollbar indicators only inside the (hover: hover) media query", () => {
+    const hoverCapabilityRule = findHoverCapabilityRule(postcss.parse(themeBaseCss));
+
+    const scrollbarHideDeclarations: string[] = [];
+    const scrollbarThinDeclarations: string[] = [];
+    hoverCapabilityRule.walkRules((rule) => {
+      if (rule.selector.includes(".scrollbar-hide")) {
+        rule.walkDecls((decl) => {
+          scrollbarHideDeclarations.push(`${decl.prop}: ${decl.value}`);
+        });
+      }
+      if (rule.selector === ".scrollbar-thin") {
+        rule.walkDecls((decl) => {
+          scrollbarThinDeclarations.push(`${decl.prop}: ${decl.value}`);
+        });
+      }
+    });
+
+    expect(scrollbarHideDeclarations).toContain("scrollbar-width: none");
+    expect(scrollbarThinDeclarations).toContain("scrollbar-color: transparent transparent");
+  });
+
+  it("rejects scrollbar-hide selectors and suppressive scrollbar declarations outside the (hover: hover) media query", () => {
+    const root = postcss.parse(themeBaseCss);
+    findHoverCapabilityRule(root).remove();
+
+    let sawScrollbarHideSelector = false;
+    let sawScrollbarWidthNone = false;
+    let sawScrollbarColorTransparentTransparent = false;
+
+    root.walkRules((rule) => {
+      if (rule.selector.includes(".scrollbar-hide")) sawScrollbarHideSelector = true;
+    });
+    root.walkDecls("scrollbar-width", (decl) => {
+      if (decl.value === "none") sawScrollbarWidthNone = true;
+    });
+    root.walkDecls("scrollbar-color", (decl) => {
+      if (decl.value === "transparent transparent") sawScrollbarColorTransparentTransparent = true;
+    });
+
+    expect(sawScrollbarHideSelector).toBe(false);
+    expect(sawScrollbarWidthNone).toBe(false);
+    expect(sawScrollbarColorTransparentTransparent).toBe(false);
   });
 });

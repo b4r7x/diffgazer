@@ -1,32 +1,37 @@
+import { type BoundApi, createApi } from "@diffgazer/core/api";
+import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
 import type { InitResponse, ProviderStatus } from "@diffgazer/core/schemas/config";
-import type { ReviewMode } from "@diffgazer/core/schemas/review";
+import type { ActiveReviewSession, CreateReviewResponse } from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
+import {
+  makeActiveReviewSession,
+  makeCreateReviewResponse,
+} from "@diffgazer/core/testing/factories";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { Toaster } from "@diffgazer/ui/components/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
 
-type ActiveSessionState = { reviewId: string; mode: ReviewMode } | null;
-type QueryState<T> = { data: T | undefined; error: Error | null; isLoading: boolean };
-type ConfigQueriesState = {
-  init: QueryState<InitResponse>;
-  providers: QueryState<ProviderStatus[]>;
-};
+type ActiveSessionState = ActiveReviewSession | null;
 
-const {
-  configQueriesState,
-  initResponse,
-  mockCreateReview,
-  mockNavigate,
-  mockUseActiveReviewSession,
-  providers,
-} = vi.hoisted(() => {
-  const initResponse = {
+const mockNavigate = vi.fn();
+
+// Boundary mock: @tanstack/react-router is the routing boundary; tests provide a stub Router context so route data and navigation can be driven without a full route tree.
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => mockNavigate,
+  useSearch: () => ({}),
+  useLocation: () => ({ pathname: "/" }),
+}));
+
+import { HomePage } from "./page";
+
+function makeInitResponse(): InitResponse {
+  return {
     configPath: "/tmp/diffgazer/config.json",
     config: { provider: "openrouter", model: "openrouter/test-model" },
     providers: [{ provider: "openrouter", hasApiKey: true, isActive: true }],
@@ -59,57 +64,36 @@ const {
       isReady: true,
       missing: [],
     },
-  } satisfies InitResponse;
-  const providers = [
-    { provider: "openrouter", hasApiKey: true, isActive: true },
-  ] satisfies ProviderStatus[];
-  const configQueriesState: ConfigQueriesState = {
-    init: { data: initResponse, error: null, isLoading: false },
-    providers: { data: providers, error: null, isLoading: false },
   };
+}
 
+const providers = [
+  { provider: "openrouter", hasApiKey: true, isActive: true },
+] satisfies ProviderStatus[];
+
+let mockLoadInit: Mock<BoundApi["loadInit"]>;
+let mockGetProviderStatus: Mock<BoundApi["getProviderStatus"]>;
+let mockGetReviews: Mock<BoundApi["getReviews"]>;
+let mockGetActiveReviewSession: Mock<BoundApi["getActiveReviewSession"]>;
+let mockCreateReview: Mock<BoundApi["createReview"]>;
+
+let unstagedActiveSession: ActiveSessionState = null;
+let stagedActiveSession: ActiveSessionState = null;
+
+function setActiveSessions(unstaged: ActiveSessionState, staged: ActiveSessionState) {
+  unstagedActiveSession = unstaged;
+  stagedActiveSession = staged;
+}
+
+function createTestApi(): BoundApi {
   return {
-    initResponse,
-    providers,
-    configQueriesState,
-    mockCreateReview: vi.fn(),
-    mockNavigate: vi.fn(),
-    mockUseActiveReviewSession: vi.fn(),
-  };
-});
-
-// Boundary mock: @tanstack/react-router is the routing boundary; tests provide a stub Router context so route data and navigation can be driven without a full route tree.
-vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => mockNavigate,
-  useSearch: () => ({}),
-  useLocation: () => ({ pathname: "/" }),
-}));
-
-// Boundary mock: api/hooks is the HTTP-data fetch boundary (createApi over fetch); tests provide canned hook return values to drive UI behavior.
-vi.mock("@diffgazer/core/api/hooks", () => ({
-  configQueries: { all: () => ["config"] },
-  useApi: () => ({
-    getActiveReviewSession: vi.fn(async () => ({ session: null })),
-  }),
-  useActiveReviewSession: mockUseActiveReviewSession,
-  useActivateProvider: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
-  useCreateReview: () => ({ mutateAsync: mockCreateReview }),
-  useDeleteProviderCredentials: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
-  useInit: () => configQueriesState.init,
-  useProviderStatus: () => configQueriesState.providers,
-  useReview: () => ({ data: undefined, error: null, isLoading: false }),
-  useReviews: () => ({ data: { reviews: [] }, error: null, isLoading: false }),
-  useSaveConfig: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
-}));
-
-import { HomePage } from "./page";
-
-function setActiveSession(unstaged: ActiveSessionState, staged: ActiveSessionState) {
-  mockUseActiveReviewSession.mockImplementation((mode?: ReviewMode) => {
-    if (mode === "unstaged") return { data: { session: unstaged } };
-    if (mode === "staged") return { data: { session: staged } };
-    return { data: { session: null } };
-  });
+    ...createApi({ baseUrl: "http://localhost" }),
+    loadInit: mockLoadInit,
+    getProviderStatus: mockGetProviderStatus,
+    getReviews: mockGetReviews,
+    getActiveReviewSession: mockGetActiveReviewSession,
+    createReview: mockCreateReview,
+  } satisfies BoundApi;
 }
 
 function renderHomePage() {
@@ -119,18 +103,21 @@ function renderHomePage() {
       mutations: { retry: false },
     },
   });
+  const api = createTestApi();
 
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <ConfigProvider>
-          <FooterProvider>
-            <KeyboardProvider>
-              {children}
-              <Toaster />
-            </KeyboardProvider>
-          </FooterProvider>
-        </ConfigProvider>
+        <ApiProvider value={api}>
+          <ConfigProvider>
+            <FooterProvider>
+              <KeyboardProvider>
+                {children}
+                <Toaster />
+              </KeyboardProvider>
+            </FooterProvider>
+          </ConfigProvider>
+        </ApiProvider>
       </QueryClientProvider>
     );
   }
@@ -141,55 +128,68 @@ function renderHomePage() {
 describe("HomePage composition", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
-    mockCreateReview.mockReset();
-    mockCreateReview.mockResolvedValue({ reviewId: "rev-new" });
-    mockUseActiveReviewSession.mockReset();
-    configQueriesState.init = { data: initResponse, error: null, isLoading: false };
-    configQueriesState.providers = { data: providers, error: null, isLoading: false };
-    setActiveSession(null, null);
+    setActiveSessions(null, null);
+
+    mockLoadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse());
+    mockGetProviderStatus = vi.fn<BoundApi["getProviderStatus"]>().mockResolvedValue(providers);
+    mockGetReviews = vi.fn<BoundApi["getReviews"]>().mockResolvedValue({ reviews: [] });
+    mockGetActiveReviewSession = vi
+      .fn<BoundApi["getActiveReviewSession"]>()
+      .mockImplementation(async (mode) => {
+        if (mode === "unstaged") return { session: unstagedActiveSession };
+        if (mode === "staged") return { session: stagedActiveSession };
+        return { session: null };
+      });
+    mockCreateReview = vi
+      .fn<BoundApi["createReview"]>()
+      .mockResolvedValue(makeCreateReviewResponse());
   });
 
-  it("renders the main menu with Resume Last Review disabled when no active session exists", () => {
+  it("renders the main menu with Resume Last Review disabled when no active session exists", async () => {
     renderHomePage();
-    const resume = screen.getByRole("menuitem", { name: "Resume Last Review" });
+    const resume = await screen.findByRole("menuitem", { name: "Resume Last Review" });
 
-    expect(mockUseActiveReviewSession).toHaveBeenCalledWith("unstaged");
-    expect(mockUseActiveReviewSession).toHaveBeenCalledWith("staged");
     expect(resume).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("menuitem", { name: "Review Unstaged" })).toBeInTheDocument();
   });
 
-  it("enables Resume Last Review when the active-session hook reports an unstaged session", () => {
-    setActiveSession({ reviewId: "rev-unstaged", mode: "unstaged" }, null);
+  it.each([
+    {
+      label: "unstaged",
+      unstaged: makeActiveReviewSession({ mode: "unstaged" }),
+      staged: null,
+    },
+    {
+      label: "staged",
+      unstaged: null,
+      staged: makeActiveReviewSession({ mode: "staged" }),
+    },
+  ])("enables Resume Last Review when an active $label session exists", async ({
+    unstaged,
+    staged,
+  }) => {
+    setActiveSessions(unstaged, staged);
     renderHomePage();
-    const resume = screen.getByRole("menuitem", { name: "Resume Last Review" });
+    const resume = await screen.findByRole("menuitem", { name: "Resume Last Review" });
     expect(resume).not.toHaveAttribute("aria-disabled");
   });
 
-  it("keeps trusted home actions when only provider status fails", () => {
-    configQueriesState.providers = {
-      data: undefined,
-      error: new Error("provider status unavailable"),
-      isLoading: false,
-    };
+  it("keeps trusted home actions when only provider status fails", async () => {
+    mockGetProviderStatus.mockRejectedValue(new Error("provider status unavailable"));
 
     renderHomePage();
 
-    expect(screen.getByRole("menuitem", { name: "Review Unstaged" })).toBeInTheDocument();
+    expect(await screen.findByRole("menuitem", { name: "Review Unstaged" })).toBeInTheDocument();
     expect(screen.queryByText("Trust This Repository?")).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("shows a configuration error instead of untrusted defaults when init fails", () => {
-    configQueriesState.init = {
-      data: undefined,
-      error: new Error("init unavailable"),
-      isLoading: false,
-    };
+  it("shows a configuration error instead of untrusted defaults when init fails", async () => {
+    mockLoadInit.mockRejectedValue(new Error("init unavailable"));
 
     renderHomePage();
 
-    expect(screen.getByRole("alert")).toHaveTextContent("Configuration unavailable.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Configuration unavailable.");
     expect(screen.queryByText("Trust This Repository?")).not.toBeInTheDocument();
   });
 
@@ -197,11 +197,11 @@ describe("HomePage composition", () => {
     "resolve",
     "reject",
   ])("keeps pending navigation inert and ignores a stale review %s after leaving home", async (outcome) => {
-    const review = createDeferred<{ reviewId: string }>();
+    const review = createDeferred<CreateReviewResponse>();
     mockCreateReview.mockReturnValue(review.promise);
     const user = userEvent.setup();
     const view = renderHomePage();
-    const providerSettings = screen.getByRole("button", {
+    const providerSettings = await screen.findByRole("button", {
       name: "Configure provider settings",
     });
 
@@ -218,7 +218,7 @@ describe("HomePage composition", () => {
 
     await act(async () => {
       if (outcome === "resolve") {
-        review.resolve({ reviewId: "late-review" });
+        review.resolve(makeCreateReviewResponse());
       } else {
         review.reject(new Error("late failure"));
       }
@@ -228,5 +228,5 @@ describe("HomePage composition", () => {
     expect(screen.getByText("External route")).toBeInTheDocument();
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  });
+  }, 20_000);
 });

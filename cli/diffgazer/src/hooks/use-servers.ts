@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ServerController } from "../lib/servers/process";
+import type { ServerController } from "../lib/servers/controller";
 import { registerServerSet } from "../lib/servers/stop-all";
 
 export interface ServerControls {

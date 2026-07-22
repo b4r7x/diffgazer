@@ -81,6 +81,8 @@ describe("buildReviewContextResponse", () => {
         "Documentation",
         "literal *README* content",
       ].join("\n"),
+      graph: snapshot.graph,
+      meta: snapshot.meta,
     });
   });
 });

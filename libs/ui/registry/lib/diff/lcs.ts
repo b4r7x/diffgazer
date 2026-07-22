@@ -1,8 +1,18 @@
 const MAX_LCS_CELLS = 250_000;
 
+/**
+ * Actual allocated LCS table cell count for a pair of sequence lengths: the table has
+ * `leftLength + 1` rows and `rightLength + 1` columns. Using the raw lengths (without the +1)
+ * underestimates the cost whenever either axis is small, letting a degenerate table (e.g. one
+ * near-empty side paired with a huge other side) slip past the budget check.
+ */
+export function lcsTableCellCost(leftLength: number, rightLength: number): number {
+  return (leftLength + 1) * (rightLength + 1);
+}
+
 /** Builds an LCS table, returning null when the input would exceed the cell budget. */
 export function buildLcsTable(a: string[], b: string[]): number[][] | null {
-  if (a.length * b.length > MAX_LCS_CELLS) {
+  if (lcsTableCellCost(a.length, b.length) > MAX_LCS_CELLS) {
     return null;
   }
 

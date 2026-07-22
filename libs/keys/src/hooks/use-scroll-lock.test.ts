@@ -1,6 +1,7 @@
 import { render, renderHook, screen } from "@testing-library/react";
 import { createElement, useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { requireFrameDocument, requireValue } from "../testing/assertions.js";
 import { useScrollLock } from "./use-scroll-lock.js";
 
 describe("useScrollLock", () => {
@@ -132,23 +133,42 @@ describe("useScrollLock", () => {
     expect(document.body.style.overflow).toBe("auto");
   });
 
-  it("locks the owner document body when target is derived from a trigger element's ownerDocument", () => {
-    const trigger = document.createElement("button");
-    document.body.appendChild(trigger);
+  it("locks the iframe body when the target is the frame's own document.body, leaving the host body untouched", () => {
+    const iframe = document.createElement("iframe");
+    document.body.appendChild(iframe);
+    const frameDocument = requireFrameDocument(iframe);
+    const frameWindow = requireValue(frameDocument.defaultView, "iframe window");
+
+    frameDocument.body.style.overflow = "auto";
+    frameDocument.body.style.paddingRight = "2px";
     document.body.style.overflow = "auto";
 
-    const ownerBody = trigger.ownerDocument.body;
-    const targetRef = { current: ownerBody };
+    const innerWidthSpy = vi.spyOn(frameWindow, "innerWidth", "get").mockReturnValue(1000);
+    const clientWidthSpy = vi
+      .spyOn(frameDocument.documentElement, "clientWidth", "get")
+      .mockReturnValue(985);
+    const computedStyleSpy = vi
+      .spyOn(frameWindow, "getComputedStyle")
+      .mockReturnValue({ paddingRight: "2px" } as CSSStyleDeclaration);
 
+    const targetRef = { current: frameDocument.body };
     const { unmount } = renderHook(() => useScrollLock({ target: targetRef }));
 
-    expect(ownerBody).toBe(document.body);
-    expect(document.body.style.overflow).toBe("hidden");
+    expect(frameDocument.body.style.overflow).toBe("hidden");
+    expect(frameDocument.body.style.paddingRight).toBe("17px");
+    expect(frameDocument.body.hasAttribute("data-scroll-locked")).toBe(true);
+    expect(document.body.style.overflow).toBe("auto");
+    expect(document.body.hasAttribute("data-scroll-locked")).toBe(false);
 
     unmount();
-    expect(document.body.style.overflow).toBe("auto");
+    expect(frameDocument.body.style.overflow).toBe("auto");
+    expect(frameDocument.body.style.paddingRight).toBe("2px");
+    expect(frameDocument.body.hasAttribute("data-scroll-locked")).toBe(false);
 
-    trigger.remove();
+    innerWidthSpy.mockRestore();
+    clientWidthSpy.mockRestore();
+    computedStyleSpy.mockRestore();
+    iframe.remove();
   });
 
   it("marks the locked element with data-scroll-locked and removes it on release", () => {

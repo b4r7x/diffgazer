@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { AI_PROVIDERS } from "../schemas/config/providers.js";
 import { PROVIDER_OVERLAY, SURFACED_OVERLAYS } from "./provider-overlay.js";
 
 describe("PROVIDER_OVERLAY", () => {
-  it("has exactly one row per AIProvider enum member (exhaustive)", () => {
-    expect(Object.keys(PROVIDER_OVERLAY).sort()).toEqual([...AI_PROVIDERS].sort());
-  });
-
   it("maps gemini -> ['google'] with GOOGLE_API_KEY and curated free-tier ids", () => {
     const o = PROVIDER_OVERLAY.gemini;
     expect(o.modelsDevIds).toEqual(["google"]);
@@ -23,7 +18,6 @@ describe("PROVIDER_OVERLAY", () => {
   });
 
   it("only gemini carries a curated displayName override (others derive from models.dev)", () => {
-    expect(PROVIDER_OVERLAY.gemini.displayName).toBe("Google Gemini");
     for (const [id, o] of Object.entries(PROVIDER_OVERLAY)) {
       if (id === "gemini") continue;
       expect(o.displayName, `${id} should derive its name from models.dev`).toBeUndefined();

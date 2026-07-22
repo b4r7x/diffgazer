@@ -1,6 +1,6 @@
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
-import type { AIExecutionFingerprint } from "../../../shared/lib/ai/client.js";
+import type { AIExecutionFingerprint } from "../../../shared/lib/ai/client/initialize.js";
 import { log } from "../../../shared/lib/log.js";
 import {
   registerSession,

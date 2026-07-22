@@ -34,10 +34,12 @@ function Harness({
   initialFilter = new Set<(typeof SEVERITY_ORDER)[number]>(),
   onChange,
   contentWidth = 80,
+  isActive = true,
 }: {
   initialFilter?: UISeverityFilter;
   onChange?: (filter: UISeverityFilter) => void;
   contentWidth?: number;
+  isActive?: boolean;
 }) {
   const [filter, setFilter] = useState<UISeverityFilter>(initialFilter);
   return (
@@ -49,7 +51,7 @@ function Harness({
           onChange?.(next);
         }}
         issueCounts={ZERO_COUNTS}
-        isActive
+        isActive={isActive}
         contentWidth={contentWidth}
       />
     </CliThemeProvider>
@@ -174,6 +176,46 @@ describe("CLI SeverityFilterGroup keyboard model", () => {
     await flush();
 
     expect(latest.size).toBe(0);
+  });
+});
+
+describe("CLI SeverityFilterGroup inactive gating", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  test("ignores arrow, Enter, Space, and r input while inactive, then honors the untouched focus once reactivated", async () => {
+    const onChange = vi.fn();
+    const initial = new Set([SEVERITY_ORDER[0]]);
+    const { stdin, rerender } = render(
+      <Harness initialFilter={initial} onChange={onChange} isActive={false} />,
+    );
+    await flush();
+
+    stdin.write(ARROW_RIGHT);
+    await flush();
+    stdin.write("\r");
+    await flush();
+    stdin.write(" ");
+    await flush();
+    stdin.write("r");
+    await flush();
+
+    expect(onChange).not.toHaveBeenCalled();
+
+    // Reactivating and pressing Enter must still toggle the default focused
+    // chip (index 0), proving the ArrowRight sent while inactive never moved
+    // focus onto another chip.
+    rerender(<Harness initialFilter={initial} onChange={onChange} isActive />);
+    await flush();
+    stdin.write("\r");
+    await flush();
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const firstCall = onChange.mock.calls[0];
+    if (firstCall === undefined) throw new Error("onChange was not called");
+    const nextFilter = firstCall[0] as UISeverityFilter;
+    expect(nextFilter.has(SEVERITY_ORDER[0])).toBe(false);
   });
 });
 
