@@ -3,7 +3,6 @@ import { isLensId, type LensId } from "@diffgazer/core/schemas/review";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
-import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { type KeyboardEvent, useId, useState } from "react";
 
 const LENS_OPTIONS = buildLensOptions();
@@ -48,43 +47,41 @@ export function AnalysisStep({
         <div id={labelId} className="text-sm font-mono text-foreground/60">
           Review Agents:
         </div>
-        <ScrollArea className="max-h-[50dvh]">
-          <CheckboxGroup
-            value={lenses}
-            onChange={(nextValue) => {
-              onLensesChange(nextValue.filter(isLensId));
-            }}
-            highlighted={enabled ? highlighted : null}
-            onHighlightChange={(nextValue) => {
-              if (isLensId(nextValue)) setHighlighted(nextValue);
-            }}
-            onKeyDown={handleKeyDown}
-            keyboardNavigation={enabled}
-            autoFocus={enabled}
-            onNavigationBoundaryReached={(direction) => {
-              onBoundaryReached?.(toVerticalBoundaryDirection(direction));
-            }}
-            wrap={false}
-            aria-labelledby={labelId}
-            className="space-y-1"
-          >
-            {LENS_OPTIONS.map((option) => (
-              <CheckboxItem
-                key={option.id}
-                value={option.id}
-                label={
-                  <span className="flex items-center gap-2">
-                    {option.label}
-                    <Badge variant={option.badgeVariant} size="sm" className="text-3xs">
-                      {option.badgeLabel}
-                    </Badge>
-                  </span>
-                }
-                description={option.description}
-              />
-            ))}
-          </CheckboxGroup>
-        </ScrollArea>
+        <CheckboxGroup
+          value={lenses}
+          onChange={(nextValue) => {
+            onLensesChange(nextValue.filter(isLensId));
+          }}
+          highlighted={enabled ? highlighted : null}
+          onHighlightChange={(nextValue) => {
+            if (isLensId(nextValue)) setHighlighted(nextValue);
+          }}
+          onKeyDown={handleKeyDown}
+          keyboardNavigation={enabled}
+          autoFocus={enabled}
+          onNavigationBoundaryReached={(direction) => {
+            onBoundaryReached?.(toVerticalBoundaryDirection(direction));
+          }}
+          wrap={false}
+          aria-labelledby={labelId}
+          className="space-y-1"
+        >
+          {LENS_OPTIONS.map((option) => (
+            <CheckboxItem
+              key={option.id}
+              value={option.id}
+              label={
+                <span className="flex items-center gap-2">
+                  {option.label}
+                  <Badge variant={option.badgeVariant} size="sm" className="text-3xs">
+                    {option.badgeLabel}
+                  </Badge>
+                </span>
+              }
+              description={option.description}
+            />
+          ))}
+        </CheckboxGroup>
       </div>
     </div>
   );

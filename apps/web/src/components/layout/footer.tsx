@@ -12,7 +12,7 @@ function renderShortcuts(items: Shortcut[]) {
   const activeItems = items.filter((shortcut) => !shortcut.disabled);
 
   return activeItems.map((shortcut, index) => (
-    <span key={`${shortcut.key}-${shortcut.label}`}>
+    <span key={`${shortcut.key}-${shortcut.label}`} className="whitespace-nowrap">
       <Kbd>{shortcut.key}</Kbd> <span>{shortcut.label}</span>
       {index < activeItems.length - 1 && <span className="text-muted-foreground">•</span>}
     </span>
@@ -23,17 +23,19 @@ export function Footer({ shortcuts, rightShortcuts, className = "" }: FooterProp
   return (
     <footer
       className={cn(
-        "shrink-0 bg-foreground px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-xs font-bold text-background pointer-coarse:px-0 pointer-coarse:pt-0",
+        "hidden shrink-0 bg-foreground px-2 py-1 text-2xs font-bold text-background pointer-fine:block sm:py-2 sm:text-xs",
         className,
       )}
     >
       <div
         data-shortcut-legend
-        className="flex items-center justify-between pointer-coarse:hidden pointer-fine:flex"
+        className="flex items-center justify-between gap-x-4 gap-y-1 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:scrollbar-hide max-sm:[mask-image:linear-gradient(to_right,black_calc(100%-1.25rem),transparent)] sm:flex-wrap"
       >
-        <div className="flex gap-4">{renderShortcuts(shortcuts)}</div>
+        <div className="flex gap-4 max-sm:shrink-0 sm:flex-wrap">{renderShortcuts(shortcuts)}</div>
         {rightShortcuts && rightShortcuts.length > 0 && (
-          <div className="flex gap-4">{renderShortcuts(rightShortcuts)}</div>
+          <div className="flex gap-4 max-sm:shrink-0 sm:flex-wrap">
+            {renderShortcuts(rightShortcuts)}
+          </div>
         )}
       </div>
     </footer>

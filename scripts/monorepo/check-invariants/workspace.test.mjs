@@ -31,9 +31,9 @@ import {
 } from "./topology.mjs";
 
 const CANONICAL_DOCS_E2E_SNAPSHOT_PATH =
-  "apps/docs/tests/e2e/baselines/select.e2e.ts-snapshots/select-listbox-open-chromium-darwin.png";
+  "apps/docs/testing/e2e/baselines/select.e2e.ts-snapshots/select-listbox-open-chromium-darwin.png";
 const WEB_E2E_SNAPSHOT_PATH =
-  "apps/web/tests/e2e/baselines/review-parity.e2e.ts-snapshots/results-layout-chromium-darwin.png";
+  "apps/web/testing/e2e/baselines/review-parity.e2e.ts-snapshots/results-layout-chromium-darwin.png";
 
 test("documentedEnvKeys collects active and commented optional variables", () => {
   const keys = documentedEnvKeys("# OPTIONAL=1\nACTIVE=2\n");
@@ -153,7 +153,7 @@ test("docs e2e snapshot invariant rejects the stale default Playwright path", ()
   );
 
   assert.equal(stale.ok, false);
-  assert.match(stale.details, /apps\/docs\/tests\/e2e\/select\.e2e\.ts-snapshots/);
+  assert.match(stale.details, /apps\/docs\/testing\/e2e\/select\.e2e\.ts-snapshots/);
   assert.equal(canonical.ok, true);
 });
 

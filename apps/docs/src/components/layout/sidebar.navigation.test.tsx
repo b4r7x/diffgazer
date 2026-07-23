@@ -60,11 +60,10 @@ describe("DocsSidebar navigation", () => {
     const bubbledDefaultPrevented: boolean[] = [];
 
     window.history.replaceState(null, "", routerBoundary.pathname);
-    render(
-      <div onClick={(event) => bubbledDefaultPrevented.push(event.defaultPrevented)}>
-        <DocsSidebar tree={TREE} library="ui" onNavigate={onNavigate} />
-      </div>,
-    );
+    const { container } = render(<DocsSidebar tree={TREE} library="ui" onNavigate={onNavigate} />);
+    container.addEventListener("click", (event) => {
+      bubbledDefaultPrevented.push(event.defaultPrevented);
+    });
 
     await user.click(screen.getByRole("link", { name: "Button" }));
 

@@ -16,9 +16,9 @@ const EXPECTED_WORKSPACE_GLOBS = [
 ];
 
 // Every workspace with visual baselines points Playwright's snapshotDir at its own
-// tests/e2e/baselines (apps/docs and apps/web today), so the invariant is that a screenshot
+// testing/e2e/baselines (apps/docs and apps/web today), so the invariant is that a screenshot
 // lives under some workspace's baselines directory rather than beside its spec file.
-const E2E_BASELINE_DIR_RE = /^[^/]+\/[^/]+\/tests\/e2e\/baselines\//;
+const E2E_BASELINE_DIR_RE = /^[^/]+\/[^/]+\/testing\/e2e\/baselines\//;
 const PLAYWRIGHT_SCREENSHOT_RE = /\.e2e\.ts-snapshots\/[^/]+\.png$/;
 
 export function checkRootWorkspaceFile(context) {

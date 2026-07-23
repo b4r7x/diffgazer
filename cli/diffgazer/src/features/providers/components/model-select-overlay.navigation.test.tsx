@@ -4,11 +4,11 @@ import { ModelSelectOverlay } from "./model-select-overlay";
 import {
   ARROW_DOWN,
   ARROW_UP,
+  countPrefixes,
   flush,
   flushUntil,
   geminiName,
   Wrapper,
-  countPrefixes,
 } from "./model-select-overlay.test-harness";
 
 describe("ModelSelectOverlay ArrowUp after the tier filter shrinks the list", () => {

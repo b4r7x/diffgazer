@@ -61,4 +61,14 @@ describe("HelpPage", () => {
     expect(screen.queryByText("Review Unstaged Changes")).not.toBeInTheDocument();
     expect(screen.queryByText("Review Staged Changes")).not.toBeInTheDocument();
   });
+
+  it("lists touch gestures for touch devices", () => {
+    renderPage();
+
+    expect(screen.getByRole("heading", { name: /touch gestures/i })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: /touch gestures/i })).toBeInTheDocument();
+    expect(screen.getByText("Tap")).toBeInTheDocument();
+    expect(screen.getByText("Swipe")).toBeInTheDocument();
+    expect(screen.getByText("Back")).toBeInTheDocument();
+  });
 });

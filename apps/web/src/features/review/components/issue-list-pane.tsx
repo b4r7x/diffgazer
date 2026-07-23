@@ -91,7 +91,7 @@ export function IssueListPane({
       data-pane="list"
       data-focused={isPaneFocused || undefined}
       className={cn(
-        "mt-3 flex min-h-0 w-full basis-2/5 flex-col border border-border data-[focused]:border-info md:w-2/5 md:basis-auto",
+        "mt-3 flex min-h-0 w-full flex-1 flex-col border border-border data-[focused]:border-info md:w-2/5 md:flex-initial md:basis-auto",
         className,
       )}
     >
@@ -176,7 +176,7 @@ export function IssueListPane({
             );
           })}
         </NavigationList>
-        <EmptyState live className={issues.length > 0 ? "sr-only" : "flex-1"}>
+        <EmptyState live className={issues.length > 0 ? "sr-only p-0" : "flex-1"}>
           {issues.length === 0 ? emptyMessage : null}
         </EmptyState>
       </div>

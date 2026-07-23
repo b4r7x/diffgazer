@@ -1,4 +1,3 @@
-import { type BoundApi } from "@diffgazer/core/api";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";

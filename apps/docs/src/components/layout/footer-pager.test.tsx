@@ -4,7 +4,7 @@ import "@testing-library/jest-dom/vitest";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PageTree } from "@/lib/page-tree";
 import { stubMatchMedia } from "@/testing/match-media";

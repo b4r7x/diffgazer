@@ -4,12 +4,7 @@ import { render, screen } from "@testing-library/react";
 import { createElement, Suspense } from "react";
 import { describe, expect, it } from "vitest";
 import { demoLoaders } from "@/generated/demo-loaders";
-import {
-  basename,
-  listRepoFiles,
-  readAbsolute,
-  repoRoot,
-} from "./repo-files.js";
+import { basename, listRepoFiles, readAbsolute, repoRoot } from "./repo-files.js";
 
 type ExampleRef = {
   library: "ui" | "keys";

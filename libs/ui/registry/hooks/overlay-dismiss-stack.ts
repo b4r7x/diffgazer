@@ -419,9 +419,7 @@ export function disposeOutsideClickLayer(entry: OutsideClickLayerHandle): void {
   for (const ownerDocument of entry.ownerDocuments) detachPointerListeners(ownerDocument);
 }
 
-export function registerEscapeKeyLayer(
-  params: RegisterEscapeKeyLayerParams,
-): EscapeKeyLayerHandle {
+export function registerEscapeKeyLayer(params: RegisterEscapeKeyLayerParams): EscapeKeyLayerHandle {
   const id = Symbol("escape-key-layer");
   escapeKeyEntries.push({
     id,

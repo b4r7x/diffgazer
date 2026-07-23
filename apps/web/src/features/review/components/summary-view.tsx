@@ -94,7 +94,7 @@ export function ReviewSummaryView({
   });
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-4">
+    <div className="relative flex-1 overflow-y-auto px-4 py-4">
       <div className="w-full max-w-4xl mx-auto">
         <ReviewCompleteSummary
           stats={stats}

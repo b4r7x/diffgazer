@@ -60,12 +60,10 @@ describe("OnboardingWizard interaction", () => {
     mockDeleteProviderCredentials = vi
       .fn<BoundApi["deleteProviderCredentials"]>()
       .mockResolvedValue({ deleted: true, provider: "openrouter" });
-    mockGetProviderStatus = vi
-      .fn<BoundApi["getProviderStatus"]>()
-      .mockResolvedValue([
-        { provider: "gemini", hasApiKey: false, isActive: false },
-        { provider: "openrouter", hasApiKey: false, isActive: false },
-      ]);
+    mockGetProviderStatus = vi.fn<BoundApi["getProviderStatus"]>().mockResolvedValue([
+      { provider: "gemini", hasApiKey: false, isActive: false },
+      { provider: "openrouter", hasApiKey: false, isActive: false },
+    ]);
     mockGetProviderModels = vi.fn<BoundApi["getProviderModels"]>().mockResolvedValue({
       models: [
         {
@@ -116,7 +114,9 @@ describe("OnboardingWizard interaction", () => {
     view.stdin.write("\r");
     await flushInk();
 
-    await vi.waitFor(() => expect(view.lastFrame()).toContain("Provide your API key for OpenRouter"));
+    await vi.waitFor(() =>
+      expect(view.lastFrame()).toContain("Provide your API key for OpenRouter"),
+    );
 
     view.stdin.write("\u001b[B");
     await flushInk();

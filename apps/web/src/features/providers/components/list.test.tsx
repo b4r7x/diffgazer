@@ -34,7 +34,9 @@ describe("ProviderList", () => {
   });
 
   it("keeps the same live status node when filtering removes every provider", () => {
-    const { rerender } = render(<ProviderList providers={TEST_PROVIDERS} {...DEFAULT_LIST_PROPS} />);
+    const { rerender } = render(
+      <ProviderList providers={TEST_PROVIDERS} {...DEFAULT_LIST_PROPS} />,
+    );
     const liveRegion = screen.getByRole("status");
 
     expect(liveRegion).toHaveTextContent("");

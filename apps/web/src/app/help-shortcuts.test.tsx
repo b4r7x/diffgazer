@@ -1,11 +1,7 @@
 import { FooterProvider } from "@diffgazer/core/footer";
+import { createInitialReviewState, type ReviewEvent, reviewReducer } from "@diffgazer/core/review";
 import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
 import { HELP_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
-import {
-  createInitialReviewState,
-  type ReviewEvent,
-  reviewReducer,
-} from "@diffgazer/core/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { KeyboardProvider, useFocusZone, useScope } from "@diffgazer/keys";
 import {
@@ -18,12 +14,12 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { GlobalShortcuts } from "@/components/layout/global";
-import { ActivityLog } from "@/features/review/components/activity-log/log";
 import { HelpPage } from "@/features/help/components/page";
 import {
   HomePagePresentation,
   type HomePagePresentationProps,
 } from "@/features/home/components/presentation";
+import { ActivityLog } from "@/features/review/components/activity-log/log";
 import { useReviewDetailsTabKeyboard } from "@/features/review/hooks/use-details-tab-keyboard";
 
 const { mockNavigate, mockShutdown } = vi.hoisted(() => ({
@@ -36,14 +32,11 @@ vi.mock("@tanstack/react-router", () => ({
   useLocation: () => ({ pathname: "/" }),
 }));
 
-vi.mock("@/features/home/lib/shutdown", () => ({ shutdown: mockShutdown }));
+vi.mock("@/lib/shutdown", () => ({ shutdown: mockShutdown }));
 
 type ShortcutRow = { key: string; label: string };
 
-const WEB_HELP_SHORTCUTS: ShortcutRow[] = [
-  ...HELP_SHORTCUTS,
-  { key: "h", label: "Open History" },
-];
+const WEB_HELP_SHORTCUTS: ShortcutRow[] = [...HELP_SHORTCUTS, { key: "h", label: "Open History" }];
 
 function readDisplayedShortcutRows(container: HTMLElement): ShortcutRow[] {
   return Array.from(container.querySelectorAll("kbd")).map((kbd) => ({
@@ -289,9 +282,7 @@ describe("help shortcut integration", () => {
 
     it("Scroll Content (PgUp/PgDn and Home/End) via activity log", async () => {
       const user = userEvent.setup();
-      const state = createLogState(
-        Array.from({ length: 401 }, (_, index) => makeLogEvent(index)),
-      );
+      const state = createLogState(Array.from({ length: 401 }, (_, index) => makeLogEvent(index)));
       render(<ActivityLog events={state.events} />);
       const log = screen.getByRole("log");
       setLogScrollMetrics(log, 1_000);

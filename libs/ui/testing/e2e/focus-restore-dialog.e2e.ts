@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("closing a parent before its child restores the original connected opener", async ({
   page,
 }) => {
-  await page.goto("/tests/fixtures/focus-restore-dialog.html");
+  await page.goto("/testing/fixtures/focus-restore-dialog.html");
   const parentOpener = page.getByRole("button", { name: "Open parent" });
 
   await parentOpener.click();
@@ -19,7 +19,7 @@ test("closing a parent before its child restores the original connected opener",
 test("closing a child before its parent restores each nearest surviving opener", async ({
   page,
 }) => {
-  await page.goto("/tests/fixtures/focus-restore-dialog.html");
+  await page.goto("/testing/fixtures/focus-restore-dialog.html");
   const parentOpener = page.getByRole("button", { name: "Open parent" });
 
   await parentOpener.click();

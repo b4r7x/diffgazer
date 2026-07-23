@@ -1,11 +1,11 @@
 "use client";
 
 import { type ReactNode, useSyncExternalStore } from "react";
-import type { ToastTone, ToastVariant } from "./toast-variants";
 import { createToastTimers, type ToastTimerSnapshot, type ToastTimers } from "./toast-timers";
+import type { ToastTone, ToastVariant } from "./toast-variants";
 
-export type { ToastPosition } from "./toast-variants";
 export type { ToastTimerSnapshot } from "./toast-timers";
+export type { ToastPosition } from "./toast-variants";
 
 export interface Toast {
   /** ID applied to the rendered element. */

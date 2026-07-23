@@ -53,7 +53,7 @@ module.exports = {
           "(^|/)bin/",
           // Browser fixtures are Vite entrypoints referenced from HTML rather
           // than imported by another TypeScript module.
-          "(^|/)tests/fixtures/",
+          "(^|/)testing/fixtures/",
           // Tooling scripts are invoked by package scripts rather than imports.
           "^scripts/monorepo/[^/]+\\.mjs$",
           "(^|/)scripts/[^/]+\\.[cm]?[jt]s$",

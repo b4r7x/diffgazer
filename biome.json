@@ -155,6 +155,16 @@
       }
     },
     {
+      "includes": ["libs/ui/testing/e2e/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
+          }
+        }
+      }
+    },
+    {
       "includes": ["libs/registry/**"],
       "linter": {
         "rules": {

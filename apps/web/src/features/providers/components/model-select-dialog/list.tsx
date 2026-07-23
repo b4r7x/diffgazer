@@ -67,7 +67,7 @@ export function ModelList({
   return (
     <div
       ref={ref}
-      className="max-h-[50dvh] overflow-y-auto px-4 py-3 scrollbar-thin"
+      className="max-h-[50dvh] overflow-y-auto overscroll-contain px-4 py-3 scrollbar-thin"
       data-layout-region="model-list"
     >
       {showList ? (

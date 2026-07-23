@@ -197,7 +197,7 @@ describe("HistoryScreen review details", () => {
 
     stdin.write("r");
     await waitUntil(() => getReview.mock.calls.length === 2);
-    await waitUntil(() => (lastFrame() ?? "").includes("Retried detail"));
+    await waitUntil(() => (lastFrame() ?? "").includes("Retried"));
 
     const recoveredFrame = lastFrame() ?? "";
     expect(recoveredFrame).toContain("Footer: Tab Switch Pane | Enter Open Review | / Search");

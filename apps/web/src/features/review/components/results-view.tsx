@@ -50,9 +50,14 @@ export function ReviewResultsView({
     handleToggleStep,
     focusedStepIndex,
     setFocusedStepIndex,
+    mobilePane,
+    backToList,
   } = useReviewResultsKeyboard({ issues, initialIssueId });
   const detailsEmptyKind = selectDetailsEmptyKind(issues.length, filteredIssues.length);
   const duplicateNotice = buildDuplicateCollapseNotice(droppedDuplicates, issues.length);
+  // Below md only the active pane is shown; both stay side-by-side from md up.
+  const listPaneClassName = mobilePane === "details" ? "hidden md:flex" : undefined;
+  const detailsPaneClassName = mobilePane === "list" ? "hidden md:flex" : undefined;
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden px-4 pb-2 font-mono">
@@ -71,7 +76,11 @@ export function ReviewResultsView({
         data-viewport="review-results"
         className="flex flex-1 min-h-0 overflow-hidden"
       >
-        <div data-row="review" className="flex flex-1 min-h-0 flex-col overflow-hidden md:flex-row">
+        <div
+          data-row="review"
+          data-mobile-pane={mobilePane}
+          className="flex flex-1 min-h-0 flex-col overflow-hidden md:flex-row"
+        >
           <IssueListPane
             listState={{
               issues: filteredIssues,
@@ -96,7 +105,7 @@ export function ReviewResultsView({
               onFilterKeyDown: handleFilterKeyDown,
             }}
             refs={{ filterRef, listRef, listBodyRef }}
-            ui={{ isFocused: focusZone === "list" }}
+            ui={{ isFocused: focusZone === "list", className: listPaneClassName }}
           />
           <IssueDetailsPane
             issue={selectedIssue}
@@ -111,6 +120,8 @@ export function ReviewResultsView({
             scrollAreaRef={detailsScrollRef}
             isFocused={focusZone === "details"}
             emptyKind={detailsEmptyKind}
+            onBackToList={backToList}
+            className={detailsPaneClassName}
           />
         </div>
       </section>

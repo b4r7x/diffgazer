@@ -4,10 +4,10 @@ import { useKey, useKeyboardContext } from "@diffgazer/keys";
 import { toast } from "@diffgazer/ui/components/toast";
 import { useCanGoBack, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { shutdown } from "@/features/home/lib/shutdown";
 import { useConfigData } from "@/hooks/use-config";
 import { resolveBackAction } from "@/lib/back-navigation";
 import { getMainContent, MAIN_CONTENT_ID } from "@/lib/main-content";
+import { shutdown } from "@/lib/shutdown";
 import { Footer } from "./footer";
 import { Header } from "./header";
 
@@ -104,7 +104,7 @@ interface GlobalLayoutProps {
 export function GlobalLayout({ children }: GlobalLayoutProps) {
   return (
     <div
-      className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] selection:bg-info selection:text-info-foreground"
+      className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] selection:bg-info selection:text-info-foreground"
       data-layout="app-shell"
     >
       <a

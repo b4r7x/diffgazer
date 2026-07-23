@@ -1,6 +1,13 @@
 import { createQueryClientBase } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
-import { FooterProvider } from "@diffgazer/core/footer";
+import { FooterProvider, usePageFooter } from "@diffgazer/core/footer";
+import type { AgentState } from "@diffgazer/core/schemas/events";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
+import {
+  BACK_SHORTCUT,
+  NAVIGATE_SHORTCUT,
+  SWITCH_PANE_SHORTCUT,
+} from "@diffgazer/core/schemas/presentation";
 import { canonicalReviewFixture } from "@diffgazer/core/testing/review-facts";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { Toaster, toast } from "@diffgazer/ui/components/toast";
@@ -16,6 +23,7 @@ import type { ReactNode } from "react";
 import ReactDOM from "react-dom/client";
 import { GlobalLayout } from "@/components/layout/global";
 import { ProvidersPage } from "@/features/providers/components/page";
+import { ReviewProgressView } from "@/features/review/components/progress-view";
 import { ReviewResultsView } from "@/features/review/components/results-view";
 import { ReviewSummaryView } from "@/features/review/components/summary-view";
 import { ConfigProvider } from "@/hooks/use-config";
@@ -50,11 +58,89 @@ function ProvidersFixture() {
   );
 }
 
+// Mirrors the longest real footer legend (the /history "runs" zone) so the
+// shell fixture exercises a legend wider than a narrow fine-pointer viewport.
+const LONG_LEGEND_SHORTCUTS: Shortcut[] = [
+  SWITCH_PANE_SHORTCUT,
+  NAVIGATE_SHORTCUT,
+  { key: "Enter/Space", label: "Open Review" },
+  { key: "/", label: "Search" },
+];
+const LONG_LEGEND_RIGHT_SHORTCUTS: Shortcut[] = [BACK_SHORTCUT];
+
+function ShellContent({ longLegend }: { longLegend: boolean }) {
+  usePageFooter(
+    longLegend
+      ? { shortcuts: LONG_LEGEND_SHORTCUTS, rightShortcuts: LONG_LEGEND_RIGHT_SHORTCUTS }
+      : { shortcuts: [{ key: "?", label: "Help" }] },
+  );
+  return <div>Shell content</div>;
+}
+
+const PROGRESS_AGENTS: AgentState[] = (
+  [
+    {
+      id: "detective",
+      lens: "correctness",
+      name: "Detective",
+      badgeLabel: "DET",
+      badgeVariant: "info",
+    },
+    {
+      id: "guardian",
+      lens: "security",
+      name: "Guardian",
+      badgeLabel: "SEC",
+      badgeVariant: "warning",
+    },
+    {
+      id: "optimizer",
+      lens: "performance",
+      name: "Optimizer",
+      badgeLabel: "PERF",
+      badgeVariant: "info",
+    },
+    { id: "tester", lens: "tests", name: "Tester", badgeLabel: "TEST", badgeVariant: "info" },
+  ] as const
+).map((meta, index) => ({
+  id: meta.id,
+  meta: { ...meta, description: "" },
+  status: "running" as const,
+  progress: 25 * index,
+  issueCount: index,
+}));
+
+function ProgressFixture() {
+  return (
+    <AppFixtureProviders>
+      <main id={MAIN_CONTENT_ID} className="flex h-dvh w-screen flex-col overflow-hidden">
+        <ReviewProgressView
+          data={{
+            steps: [
+              { id: "parse", label: "Parse diff", status: "completed" },
+              { id: "context", label: "Build context", status: "completed" },
+              { id: "review", label: "Run agents", status: "active" },
+            ],
+            events: [],
+            agents: PROGRESS_AGENTS,
+            metrics: { filesProcessed: 117, filesTotal: 117, issuesFound: 0 },
+            notices: [],
+          }}
+          isRunning
+          onCancel={() => undefined}
+          onBack={() => undefined}
+        />
+      </main>
+    </AppFixtureProviders>
+  );
+}
+
 function ShellFixture() {
+  const longLegend = new URLSearchParams(window.location.search).get("legend") === "long";
   return (
     <AppFixtureProviders>
       <GlobalLayout>
-        <div>Shell content</div>
+        <ShellContent longLegend={longLegend} />
       </GlobalLayout>
     </AppFixtureProviders>
   );
@@ -79,6 +165,7 @@ function ResultsFixture() {
 
   if (view === "providers") return <ProvidersFixture />;
   if (view === "shell") return <ShellFixture />;
+  if (view === "progress") return <ProgressFixture />;
   if (view === "toast") return <ToastFixture />;
 
   const showsSummary = view === "summary";

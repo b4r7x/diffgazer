@@ -2,7 +2,10 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseScaffoldPageArtifact, parseScaffoldSourceArtifact } from "./generate-llms/artifacts.ts";
+import {
+  parseScaffoldPageArtifact,
+  parseScaffoldSourceArtifact,
+} from "./generate-llms/artifacts.ts";
 import { sourceToMarkdown } from "./generate-llms/markdown.ts";
 import { writeLlmsFiles } from "./generate-llms/output.ts";
 

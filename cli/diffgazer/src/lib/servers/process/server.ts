@@ -1,7 +1,12 @@
 import { execa, type ResultPromise } from "execa";
 import { config as appConfig } from "../../../config";
 import type { ServerController } from "../controller";
-import { appendDiagnosticTail, consumeCompleteLines, formatProcessFailure, isProcessErrorLike } from "./output";
+import {
+  appendDiagnosticTail,
+  consumeCompleteLines,
+  formatProcessFailure,
+  isProcessErrorLike,
+} from "./output";
 import { terminateProcess } from "./termination";
 
 export interface ProcessServerConfig {

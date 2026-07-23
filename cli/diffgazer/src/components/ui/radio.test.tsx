@@ -1,3 +1,4 @@
+import { Box, Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { CliThemeProvider } from "../../theme/provider";
@@ -187,7 +188,7 @@ describe("RadioGroup navigation", () => {
     await flush();
 
     const top = (view.lastFrame() ?? "").split("\n").filter(Boolean);
-    expect(top).toHaveLength(3);
+    expect(top).toHaveLength(2);
     expect(top.join("\n")).toContain("Model 0");
     expect(top.at(-1)).toContain("\u25BC");
 
@@ -197,7 +198,7 @@ describe("RadioGroup navigation", () => {
     }
 
     const middle = (view.lastFrame() ?? "").split("\n").filter(Boolean);
-    expect(middle).toHaveLength(3);
+    expect(middle).toHaveLength(2);
     expect(middle[0]).toContain("\u25B2");
     expect(middle.join("\n")).toContain("Model 5");
     expect(middle.at(-1)).toContain("\u25BC");
@@ -208,12 +209,45 @@ describe("RadioGroup navigation", () => {
     }
 
     const bottom = (view.lastFrame() ?? "").split("\n").filter(Boolean);
-    expect(bottom).toHaveLength(3);
+    expect(bottom).toHaveLength(2);
     expect(bottom[0]).toContain("\u25B2");
     expect(bottom.join("\n")).toContain("Model 7");
     view.stdin.write(RETURN);
     await flush();
     expect(onChange).toHaveBeenLastCalledWith("model-7");
+  });
+
+  test("keeps the scroll indicator out of the content column when the model list is height-squeezed", async () => {
+    // Mirrors the onboarding model step on a short terminal: a subtitle plus a
+    // wrapped fallback notice sit above a windowed RadioGroup and the content
+    // zone is one row too short for the full window. Before the gutter fix the
+    // "▼" composited onto the last radio row ("▼   ) Snapshot Model 4"); it must
+    // instead live in a right-hand gutter and never overwrite a row's "(".
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <Box flexDirection="column" height={8} overflow="hidden">
+          <Text>Select a model for Google Gemini.</Text>
+          <Text>Using the bundled model catalog because live</Text>
+          <Text>catalog data is unavailable. Press r to retry.</Text>
+          <Box />
+          <RadioGroup maxVisibleItems={6}>
+            {Array.from({ length: 20 }, (_, index) => (
+              <RadioGroup.Item
+                key={`model-${String(index)}`}
+                value={`model-${String(index)}`}
+                label={`Snapshot Model ${String(index)}`}
+              />
+            ))}
+          </RadioGroup>
+        </Box>
+      </CliThemeProvider>,
+    );
+    await flush();
+
+    const frame = lastFrame() ?? "";
+    expect(frame.split("\n").some((line) => /▼\s+\)/.test(line))).toBe(false);
+    expect(frame).toContain("▼");
+    expect(frame).toContain("(   ) Snapshot Model 4");
   });
 
   test("shows distinct descriptions for enabled and disabled items", async () => {

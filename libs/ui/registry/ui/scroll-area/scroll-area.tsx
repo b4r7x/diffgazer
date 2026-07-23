@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 /** Class variants for scroll area. */
 export const scrollAreaVariants = cva(
-  "scrollbar-thin rounded-[inherit] [scrollbar-gutter:stable]",
+  "relative scrollbar-thin rounded-[inherit] [scrollbar-gutter:stable]",
   {
     variants: {
       orientation: {

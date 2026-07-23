@@ -146,6 +146,7 @@ function HistoryPageContent() {
 
       <SearchInput
         ref={searchInputRef}
+        size="sm"
         value={searchQuery}
         onChange={setSearchQuery}
         onFocus={() => setFocusZone("search")}
@@ -202,7 +203,7 @@ function HistoryPageContent() {
           aria-label="Review runs"
           data-pane="runs"
           data-focused={focusZone === "runs" || focusZone === "load-more" || undefined}
-          className="mt-3 min-w-0 flex flex-col border border-border data-[focused]:border-info focus:outline-none md:flex-1 md:overflow-hidden"
+          className="mt-3 min-w-0 flex flex-col border border-border data-[focused]:border-info focus:outline-none md:flex-1"
         >
           <Panel.Label variant="border" aria-hidden="true">
             Runs
@@ -281,7 +282,7 @@ function HistoryPageContent() {
           aria-label="Review insights"
           data-pane="insights"
           data-focused={focusZone === "insights" || focusZone === "retry" || undefined}
-          className="mt-3 shrink-0 flex flex-col border border-border data-[focused]:border-info focus:outline-none md:min-h-0 md:w-80 md:overflow-hidden"
+          className="mt-3 shrink-0 flex flex-col border border-border data-[focused]:border-info focus:outline-none md:min-h-0 md:w-80"
         >
           <Panel.Label variant="border" aria-hidden="true">
             Insights{selectedRun ? ` · ${formatRunId(selectedRun.id)}` : ""}

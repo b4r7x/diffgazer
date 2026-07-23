@@ -10,10 +10,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import {
-  isSelectableItemEligible,
-  useSelectableCollection,
-} from "@/lib/selectable-collection";
+import { isSelectableItemEligible, useSelectableCollection } from "@/lib/selectable-collection";
 import { isStepInteractive, type StepStatus } from "@/lib/step-status";
 import { StepperStep, type StepperStepProps } from "./stepper-step";
 import { StepperTrigger, type StepperTriggerProps } from "./stepper-trigger";

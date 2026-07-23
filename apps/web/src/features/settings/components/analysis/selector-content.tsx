@@ -2,7 +2,6 @@ import type { LensOption } from "@diffgazer/core/schemas/events";
 import type { LensId } from "@diffgazer/core/schemas/review";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
-import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { useId, useState } from "react";
 
 interface AnalysisSelectorContentProps {
@@ -52,44 +51,42 @@ export function AnalysisSelectorContent({
       >
         Active Agents
       </div>
-      <ScrollArea className="max-h-90 pr-2">
-        <CheckboxGroup
-          value={value}
-          onChange={handleChange}
-          highlighted={navigationEnabled ? effectiveFocusedLens : null}
-          onHighlightChange={(value) => {
-            const nextLens = optionIds.find((id) => id === value);
-            if (nextLens) setFocusedLens(nextLens);
-          }}
-          onNavigationBoundaryReached={(direction) => {
-            onBoundaryReached?.(direction === "previous" ? "up" : "down");
-          }}
-          wrap={false}
-          variant="bullet"
-          disabled={disabled || !enabled}
-          autoFocus={autoFocusReady}
-          required={required}
-          aria-invalid={invalid || undefined}
-          aria-describedby={descriptionId}
-          aria-labelledby={labelId}
-        >
-          {options.map((option) => (
-            <CheckboxItem
-              key={option.id}
-              value={option.id}
-              label={
-                <span className="flex items-center gap-2">
-                  <Badge variant={option.badgeVariant} size="sm">
-                    {option.badgeLabel}
-                  </Badge>
-                  <span>{option.label}</span>
-                </span>
-              }
-              description={option.description}
-            />
-          ))}
-        </CheckboxGroup>
-      </ScrollArea>
+      <CheckboxGroup
+        value={value}
+        onChange={handleChange}
+        highlighted={navigationEnabled ? effectiveFocusedLens : null}
+        onHighlightChange={(value) => {
+          const nextLens = optionIds.find((id) => id === value);
+          if (nextLens) setFocusedLens(nextLens);
+        }}
+        onNavigationBoundaryReached={(direction) => {
+          onBoundaryReached?.(direction === "previous" ? "up" : "down");
+        }}
+        wrap={false}
+        variant="bullet"
+        disabled={disabled || !enabled}
+        autoFocus={autoFocusReady}
+        required={required}
+        aria-invalid={invalid || undefined}
+        aria-describedby={descriptionId}
+        aria-labelledby={labelId}
+      >
+        {options.map((option) => (
+          <CheckboxItem
+            key={option.id}
+            value={option.id}
+            label={
+              <span className="flex items-center gap-2">
+                <Badge variant={option.badgeVariant} size="sm">
+                  {option.badgeLabel}
+                </Badge>
+                <span>{option.label}</span>
+              </span>
+            }
+            description={option.description}
+          />
+        ))}
+      </CheckboxGroup>
     </div>
   );
 }

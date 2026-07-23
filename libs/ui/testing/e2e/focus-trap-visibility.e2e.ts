@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("focus trap reaches an explicitly visible descendant and skips display-none content", async ({
   page,
 }) => {
-  await page.goto("/tests/fixtures/popover-focus.html?case=visibility-override-trap");
+  await page.goto("/testing/fixtures/popover-focus.html?case=visibility-override-trap");
 
   const visibleOverride = page.getByRole("button", { name: "Visible override action" });
   const next = page.getByRole("button", { name: "Next action" });

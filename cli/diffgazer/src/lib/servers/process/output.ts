@@ -18,7 +18,10 @@ export function appendDiagnosticTail(current: Buffer, chunk: Buffer): Buffer {
   return Buffer.concat([retained, chunk]);
 }
 
-export function consumeCompleteLines(tail: Buffer, chunk: Buffer): { lines: string[]; tail: Buffer } {
+export function consumeCompleteLines(
+  tail: Buffer,
+  chunk: Buffer,
+): { lines: string[]; tail: Buffer } {
   const combined = tail.length === 0 ? chunk : Buffer.concat([tail, chunk]);
   const lines: string[] = [];
   let lineStart = 0;
@@ -63,7 +66,11 @@ function formatProcessError(error: unknown): string {
   return String(error);
 }
 
-export function formatProcessFailure(error: unknown, stderrTail: Buffer, stdoutTail: Buffer): string {
+export function formatProcessFailure(
+  error: unknown,
+  stderrTail: Buffer,
+  stdoutTail: Buffer,
+): string {
   const stderr = stderrTail.toString().trim();
   if (stderr) return stderr;
 

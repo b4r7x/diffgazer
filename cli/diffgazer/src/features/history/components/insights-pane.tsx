@@ -99,26 +99,31 @@ export function HistoryInsightsPane({
         <Box marginTop={1} flexDirection="column" height={scrollHeight} overflow="hidden">
           <SectionHeader variant="muted">{`${issues.length} Issues`}</SectionHeader>
           {issueWindow.canScrollUp ? <Text color={tokens.muted}>▲</Text> : null}
-          {visibleIssues.map((issue) => (
-            <Box key={issue.id} gap={1} height={1} overflow="hidden">
-              <Text color={tokens.accent}>
-                {isActive && issue.id === effectiveHighlightedIssueId ? "\u2502" : " "}
-              </Text>
-              <Text color={severityColor(issue.severity, tokens)} bold>
-                [{capitalize(issue.severity)}]
-              </Text>
-              <Text color={tokens.muted} dimColor>
-                {issue.line_start != null ? `L:${issue.line_start}` : ""}
-              </Text>
-              <Text
-                color={tokens.fg}
-                bold={isActive && issue.id === effectiveHighlightedIssueId}
-                wrap="truncate"
-              >
-                {sanitizeTerminalText(issue.title)}
-              </Text>
-            </Box>
-          ))}
+          {visibleIssues.map((issue) => {
+            const isHighlighted = isActive && issue.id === effectiveHighlightedIssueId;
+            return (
+              <Box key={issue.id} gap={1} height={1} overflow="hidden">
+                <Box flexShrink={0}>
+                  <Text color={tokens.accent}>{isHighlighted ? "\u2502" : " "}</Text>
+                </Box>
+                <Box flexShrink={0}>
+                  <Text color={severityColor(issue.severity, tokens)} bold>
+                    [{capitalize(issue.severity)}]
+                  </Text>
+                </Box>
+                <Box flexShrink={0}>
+                  <Text color={tokens.muted} dimColor>
+                    {issue.line_start != null ? `L:${issue.line_start}` : ""}
+                  </Text>
+                </Box>
+                <Box flexShrink={1} minWidth={0}>
+                  <Text color={tokens.fg} bold={isHighlighted} wrap="truncate">
+                    {sanitizeTerminalText(issue.title)}
+                  </Text>
+                </Box>
+              </Box>
+            );
+          })}
           {issueWindow.canScrollDown ? <Text color={tokens.muted}>▼</Text> : null}
         </Box>
       ) : (

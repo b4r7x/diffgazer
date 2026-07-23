@@ -63,7 +63,7 @@ async function formEntries(form: Locator): Promise<Array<[string, string]>> {
 }
 
 async function opensFixture(page: Page): Promise<void> {
-  await page.goto("/tests/fixtures/form-validation.html");
+  await page.goto("/testing/fixtures/form-validation.html");
 }
 
 for (const validationCase of cases) {

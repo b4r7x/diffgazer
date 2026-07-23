@@ -64,7 +64,7 @@
       "entry": ["scripts/monorepo/**/*.mjs", "scripts/monorepo/**/*.test.mjs"]
     },
     "apps/web": {
-      "entry": ["src/main.tsx", "src/app/routes/**/*.tsx", "tests/fixtures/results-layout.tsx"]
+      "entry": ["src/main.tsx", "src/app/routes/**/*.tsx", "testing/fixtures/results-layout.tsx"]
     },
     "apps/landing": {
       "entry": ["src/main.ts", "index.html"]
@@ -76,7 +76,7 @@
         "src/router.tsx",
         "src/routes/**/*.tsx",
         "source.config.ts",
-        "scripts/**/*.{ts,mjs}"
+        "scripts/**/*.{ts,mjs,d.mts}"
       ]
     },
     "cli/add": {
@@ -86,7 +86,15 @@
       "entry": ["src/index.ts", "src/serve.ts", "vitest.config.ts"]
     },
     "cli/diffgazer": {
-      "entry": ["src/index.tsx", "bin/diffgazer.js", "tsup.config.ts", "vitest.config.ts"]
+      // capture-review-frames is invoked by scripts/parity-capture.mjs via a
+      // string path, invisible to import analysis.
+      "entry": [
+        "src/index.tsx",
+        "bin/diffgazer.js",
+        "tsup.config.ts",
+        "vitest.config.ts",
+        "src/testing/capture-review-frames.tsx"
+      ]
     },
     "libs/core": {
       "entry": ["src/**/index.ts", "src/*.ts", "scripts/**/*.ts", "vitest.config.ts"]
@@ -102,7 +110,7 @@
         "registry/**/*.{ts,tsx}",
         "scripts/**/*.ts",
         "tsup.config.ts",
-        "tests/fixtures/*.tsx",
+        "testing/fixtures/*.tsx",
         "vite.e2e.config.ts",
         "vitest.config.ts"
       ]

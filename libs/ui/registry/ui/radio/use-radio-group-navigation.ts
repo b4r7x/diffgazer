@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  type KeyboardEvent as ReactKeyboardEvent,
-  type RefObject,
-  useRef,
-} from "react";
+import { type KeyboardEvent as ReactKeyboardEvent, type RefObject, useRef } from "react";
 import { useNavigation } from "@/hooks/use-navigation";
 import { isHTMLElementForContainer } from "@/lib/aria";
 import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";

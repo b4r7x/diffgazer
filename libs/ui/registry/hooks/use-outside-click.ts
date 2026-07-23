@@ -7,9 +7,9 @@ import {
   disposeOutsideClickLayer,
   type ExcludeRefs,
   getOutsideClickDocuments,
+  type OutsideClickLayerHandle,
   registerEscapeKeyLayer,
   registerOutsideClickLayer,
-  type OutsideClickLayerHandle,
   updateOutsideClickLayer,
 } from "./overlay-dismiss-stack";
 

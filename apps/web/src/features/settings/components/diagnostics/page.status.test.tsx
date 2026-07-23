@@ -1,4 +1,4 @@
-import { type BoundApi } from "@diffgazer/core/api";
+import type { BoundApi } from "@diffgazer/core/api";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";

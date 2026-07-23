@@ -1,7 +1,9 @@
 import type { HistoryDetailState } from "@diffgazer/core/review";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
+import { Box } from "ink";
 import { cleanup, render } from "ink-testing-library";
+import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { buildResponsiveResult, getBreakpointTier } from "../../../lib/breakpoints";
 import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
@@ -263,5 +265,46 @@ describe("HistoryInsightsPane (TUI)", () => {
     expect(frame).toContain("12 ISSUES");
     expect(frame).toContain("▼");
     expect(frame.split("\n")).toHaveLength(24);
+  });
+
+  test("keeps the severity badge and line-ref whole beside a truncating title at the 80x24 pane width", async () => {
+    const issues = [
+      makeIssue({
+        id: "insight-blocker",
+        severity: "blocker",
+        line_start: 18,
+        title:
+          "Session tokens remain valid after account revocation across the authentication service layer",
+      }),
+      ...Array.from({ length: 5 }, (_, index) =>
+        makeIssue({
+          id: `insight-high-${index + 1}`,
+          severity: "high",
+          line_start: index + 20,
+          title: `Additional high severity finding number ${index + 1}`,
+        }),
+      ),
+    ];
+    const { lastFrame } = renderRootFrame(
+      80,
+      24,
+      <Box width={76} flexDirection="column">
+        <HistoryInsightsPane
+          runId="#floor"
+          severityCounts={null}
+          issues={issues}
+          scrollHeight={12}
+          isActive
+          onOpenReview={vi.fn()}
+        />
+      </Box>,
+    );
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("6 ISSUES"));
+    const rows = stripAnsi(lastFrame() ?? "").split("\n");
+    const badgeRow = rows.find((row) => row.includes("[Block"));
+    expect(badgeRow).toBeDefined();
+    expect(badgeRow).toMatch(/\[Blocker\]\s+L:\d+\s+\S/);
+    expect(rows.some((row) => /\[Blocke[^r]/.test(row))).toBe(false);
   });
 });

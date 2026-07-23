@@ -14,7 +14,7 @@ import { useFormReset } from "@/hooks/use-form-reset";
 import { cn } from "@/lib/utils";
 
 const searchInputVariants = cva(
-  "flex items-center gap-2 bg-background border border-border font-mono shrink-0 transition-colors motion-reduce:transition-none focus-within:border-foreground has-[input[aria-invalid=true]]:border-error",
+  "relative flex items-center gap-2 bg-background border border-border font-mono shrink-0 transition-colors motion-reduce:transition-none focus-within:border-foreground has-[input[aria-invalid=true]]:border-error",
   {
     variants: {
       size: {
@@ -141,7 +141,7 @@ export function SearchInput({
         aria-labelledby={ariaLabelledBy}
         disabled={disabled}
         {...rest}
-        className="min-w-0 flex-1 bg-transparent font-mono text-foreground placeholder:text-foreground/55 focus:outline-none disabled:cursor-not-allowed [&::-webkit-search-cancel-button]:appearance-none"
+        className="min-w-0 flex-1 bg-transparent pr-6 font-mono text-foreground placeholder:text-foreground/55 focus:outline-none disabled:cursor-not-allowed pointer-coarse:pr-9 [&::-webkit-search-cancel-button]:appearance-none"
       />
       {current.length > 0 ? (
         <button
@@ -149,7 +149,7 @@ export function SearchInput({
           data-slot="search-input-clear"
           aria-label="Clear search"
           disabled={disabled}
-          className="grid size-6 shrink-0 place-items-center text-base leading-none text-foreground/70 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:cursor-not-allowed pointer-coarse:size-11"
+          className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center text-base leading-none text-foreground/70 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:cursor-not-allowed pointer-coarse:right-0 pointer-coarse:size-11"
           onPointerDown={(event) => event.preventDefault()}
           onClick={() => {
             invalidatePendingReset();

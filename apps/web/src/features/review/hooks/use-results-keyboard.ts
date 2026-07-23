@@ -116,9 +116,23 @@ export function useReviewResultsKeyboard({
   const canGoBack = useCanGoBack();
   const { pathname } = useLocation();
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
+  // Below md the panes swap one at a time; a deep link opens details first.
+  const [mobilePane, setMobilePane] = useState<"list" | "details">(
+    initialIssueId ? "details" : "list",
+  );
   const filterRef = useRef<HTMLDivElement>(null);
   const listBodyRef = useRef<HTMLDivElement>(null);
   const detailsPaneRef = useRef<HTMLElement>(null);
+
+  // Below md exactly one pane is visible, so a keyboard zone move must flip the
+  // shown pane or focus lands on a display:none target. The details zone maps to
+  // the details pane; the list and filter zones both live in the list pane.
+  // Activation is the deliberate exception (see selectIssueAndFocusList): it
+  // reveals details while keeping list-zone focus for j/k browsing.
+  const changeFocusZone = (zone: FocusZone) => {
+    setFocusZone(zone);
+    setMobilePane(zone === "details" ? "details" : "list");
+  };
 
   const {
     severityFilter,
@@ -166,7 +180,7 @@ export function useReviewResultsKeyboard({
     initial: "list",
     zones: ZONES,
     zone: focusZone,
-    onZoneChange: setFocusZone,
+    onZoneChange: changeFocusZone,
     scope: REVIEW_SCOPE,
     tabCycle: ["filters", "list", "details"],
     tabCycleScope: "document",
@@ -209,6 +223,12 @@ export function useReviewResultsKeyboard({
   const selectIssueAndFocusList = (id: string) => {
     setFocusZone("list");
     setSelectedIssueId(id);
+    // On mobile, activating an issue reveals the details pane full-height.
+    setMobilePane("details");
+  };
+
+  const backToList = () => {
+    changeFocusZone("list");
   };
 
   const selectIssue = (id: string | null) => {
@@ -217,7 +237,7 @@ export function useReviewResultsKeyboard({
   };
 
   const handleListBoundary = (direction: "previous" | "next") => {
-    if (direction === "previous") setFocusZone("filters");
+    if (direction === "previous") changeFocusZone("filters");
   };
 
   useScopedNavigation({
@@ -243,7 +263,7 @@ export function useReviewResultsKeyboard({
   const handleFilterKeyDown = (event: KeyboardEvent) => {
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setFocusZone("list");
+      changeFocusZone("list");
       return;
     }
     if (event.key === "ArrowUp") {
@@ -257,7 +277,7 @@ export function useReviewResultsKeyboard({
     "Escape",
     () => {
       if (focusZone === "details") {
-        setFocusZone("list");
+        changeFocusZone("list");
         return;
       }
       const action = resolveBackAction(pathname, canGoBack);
@@ -271,7 +291,7 @@ export function useReviewResultsKeyboard({
   );
 
   const handleDetailsTabsBoundary = (direction: "previous" | "next") => {
-    if (direction === "previous") setFocusZone("list");
+    if (direction === "previous") changeFocusZone("list");
   };
 
   const handleSeverityFilterBoundary = (direction: "previous" | "next") => {
@@ -285,7 +305,7 @@ export function useReviewResultsKeyboard({
       })?.focus();
       return;
     }
-    setFocusZone("details");
+    changeFocusZone("details");
   };
 
   useReviewSeverityFilterKeyboard({
@@ -299,8 +319,8 @@ export function useReviewResultsKeyboard({
     focusChip: findFilterChip,
     toggleSeverityFilter,
     resetSeverityFilter,
-    enterList: () => setFocusZone("list"),
-    enterDetails: () => setFocusZone("details"),
+    enterList: () => changeFocusZone("list"),
+    enterDetails: () => changeFocusZone("details"),
   });
 
   const selectedIssueForKeyboard =
@@ -319,7 +339,7 @@ export function useReviewResultsKeyboard({
     moveTab,
     scrollDetails,
     setActiveTab,
-    enterList: () => setFocusZone("list"),
+    enterList: () => changeFocusZone("list"),
     onToggleStep: handleToggleStep,
   });
 
@@ -365,5 +385,7 @@ export function useReviewResultsKeyboard({
     handleToggleStep,
     focusedStepIndex,
     setFocusedStepIndex,
+    mobilePane,
+    backToList,
   };
 }

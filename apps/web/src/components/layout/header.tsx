@@ -30,14 +30,11 @@ export function Header({ providerName, providerStatus, onBack, wordmark = "full"
 
         <div
           className={cn(
-            "col-span-2 col-start-1 row-start-1 flex flex-col items-center sm:col-span-1 sm:col-start-2",
+            "col-span-2 col-start-1 row-start-1 flex flex-col items-center max-sm:w-full max-sm:@container sm:col-span-1 sm:col-start-2",
             wordmark === "full" && "sm:pt-4 md:pt-6",
           )}
         >
-          <Logo text={WORDMARK_TEXT.toUpperCase()} className="text-info-text sm:hidden" />
-          <div className="hidden sm:block">
-            <DiffgazerWordmark size={wordmark} />
-          </div>
+          <DiffgazerWordmark size={wordmark} />
 
           <div
             className={cn(
@@ -50,12 +47,15 @@ export function Header({ providerName, providerStatus, onBack, wordmark = "full"
         </div>
 
         <output
-          className="col-start-2 row-start-2 block min-w-0 truncate text-right text-xs sm:col-start-3 sm:row-start-1 sm:justify-self-end"
+          className="col-start-2 row-start-2 flex min-w-0 items-center justify-end gap-1 text-xs sm:col-start-3 sm:row-start-1 sm:justify-self-end"
           aria-label={`Provider: ${providerName}, Status: ${providerStatus}`}
         >
-          <span className="text-muted-foreground">●</span> {providerName}{" "}
-          <span className="text-muted-foreground">•</span>{" "}
-          <span className="text-muted-foreground capitalize">{providerStatus}</span>
+          <span className="min-w-0 truncate">
+            <span className="text-muted-foreground">●</span> {providerName}
+          </span>
+          <span className="shrink-0 whitespace-nowrap text-muted-foreground">
+            • <span className="capitalize">{providerStatus}</span>
+          </span>
         </output>
       </div>
     </header>
@@ -85,8 +85,8 @@ function DiffgazerWordmark({ size }: { size: "full" | "compact" }) {
       className={cn(
         "text-info-text font-bold",
         size === "full"
-          ? "text-3xs md:text-2xs lg:text-xs [zoom:0.8] md:[zoom:1] lg:[zoom:1.2]"
-          : "text-3xs md:text-3xs lg:text-2xs",
+          ? "text-[min(2.4cqw,0.45rem)]/[1.5] sm:text-3xs md:text-2xs lg:text-xs sm:[zoom:0.8] md:[zoom:1] lg:[zoom:1.2]"
+          : "text-[min(2.4cqw,0.5625rem)]/[1.5] sm:text-3xs lg:text-2xs",
       )}
     />
   );

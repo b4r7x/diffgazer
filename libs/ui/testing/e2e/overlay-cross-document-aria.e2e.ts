@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("ARIA-linked overlays fall back from a foreign document while Chromium reflects their relationships", async ({
   page,
 }) => {
-  await page.goto("/tests/fixtures/popover-focus.html?case=cross-document-aria");
+  await page.goto("/testing/fixtures/popover-focus.html?case=cross-document-aria");
 
   const helpTrigger = page.getByText("Cross-document help");
   const tooltip = page.getByRole("tooltip");

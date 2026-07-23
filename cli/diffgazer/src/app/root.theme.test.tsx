@@ -3,7 +3,7 @@ import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CliThemeProvider, useTheme } from "../theme/provider";
 import { StartupThemeSync } from "./root";

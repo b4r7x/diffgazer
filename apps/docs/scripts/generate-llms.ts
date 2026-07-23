@@ -1,14 +1,14 @@
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DOCS_ROOT } from "./generate-llms/artifacts.ts";
+import { writeLlmsFiles } from "./generate-llms/output.ts";
 import {
   type PreRenderPage,
   resolveGeneratorOutputDir,
   resolveOrigin,
   writeSitemap,
 } from "./generate-sitemap.ts";
-import { DOCS_ROOT } from "./generate-llms/artifacts.ts";
-import { writeLlmsFiles } from "./generate-llms/output.ts";
 
 export function writeDocsMetadata(
   outDir = resolve(DOCS_ROOT, ".output/public"),

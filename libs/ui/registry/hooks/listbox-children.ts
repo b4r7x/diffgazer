@@ -1,11 +1,5 @@
-import {
-  Children,
-  Fragment,
-  isValidElement,
-  type ReactElement,
-  type ReactNode,
-} from "react";
-import { type ListboxMetadataItem } from "./listbox-metadata";
+import { Children, Fragment, isValidElement, type ReactElement, type ReactNode } from "react";
+import type { ListboxMetadataItem } from "./listbox-metadata";
 
 export interface ListboxItemElementProps {
   id?: string;

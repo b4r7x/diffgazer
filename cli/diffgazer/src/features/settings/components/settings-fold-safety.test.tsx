@@ -88,6 +88,7 @@ describe("settings screens at the 80x24 support floor", () => {
     const view = renderRootFrame(80, 24, <ThemeScreen />);
 
     await vi.waitFor(() => expect(view.lastFrame()).toContain("Live Preview:"));
+    expect(view.lastFrame()).toContain("■ green");
     await press(view, "\r");
 
     await vi.waitFor(() => {

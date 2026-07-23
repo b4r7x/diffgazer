@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("disabled tooltip exposes one named Tab stop and describes its disabled button in Chromium AX", async ({
   page,
 }) => {
-  await page.goto("/tests/fixtures/popover-focus.html?case=tooltip-disabled");
+  await page.goto("/testing/fixtures/popover-focus.html?case=tooltip-disabled");
   const before = page.getByRole("button", { name: "Before disabled tooltip" });
   const disabledButton = page.getByRole("button", { name: "Retry review" });
   const wrapper = disabledButton.locator("..");

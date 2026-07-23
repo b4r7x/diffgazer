@@ -1,4 +1,6 @@
 import { makeIssue } from "@diffgazer/core/testing/factories";
+import { canonicalReviewFixture } from "@diffgazer/core/testing/review-facts";
+import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
 import { ReviewSummaryView } from "./summary-view";
@@ -56,7 +58,7 @@ describe("ReviewSummaryView root frame", () => {
     );
     const { lastFrame } = renderRootFrame(
       100,
-      24,
+      30,
       <ReviewSummaryView
         issues={issues}
         reviewId="review-summary"
@@ -68,6 +70,48 @@ describe("ReviewSummaryView root frame", () => {
     await vi.waitFor(() => expect(lastFrame()).toContain("SUMMARY-3"));
     const previewRows = (lastFrame() ?? "").split("\n").filter((line) => line.includes("SUMMARY-"));
     expect(previewRows).toHaveLength(3);
+  });
+
+  test("composites the scroll indicator and actions without overwriting content at 100x30", async () => {
+    const fixture = canonicalReviewFixture;
+    const { lastFrame } = renderRootFrame(
+      100,
+      30,
+      <ReviewSummaryView
+        issues={fixture.result.issues}
+        reviewId={fixture.metadata.id}
+        durationMs={fixture.metadata.durationMs}
+        lensStats={fixture.lensStats}
+        droppedDuplicates={fixture.droppedDuplicates}
+        onContinue={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("TOP ISSUES PREVIEW"));
+    // Let the ScrollArea's content measurement settle so the scroll window (and
+    // its down-indicator) reflects the overflowing content.
+    for (let tick = 0; tick < 12; tick += 1) {
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    const lines = stripAnsi(lastFrame() ?? "").split("\n");
+
+    // The content overflows at this size, so the down-scroll indicator is shown.
+    // It renders on its own row; pre-fix it merged with a preview row that escaped
+    // the ScrollArea clip (e.g. "▼BLOCKER] …").
+    expect(lines.some((line) => line.includes("▼"))).toBe(true);
+    for (const line of lines.filter((row) => row.includes("▼"))) {
+      expect(line.trim()).toBe("▼");
+    }
+
+    // The action-controls row is not overwritten by escaped preview content;
+    // pre-fix it read "[[ View Results (Enter) ]pi-k[ Back (Esc) ] Provider key errors …".
+    const actionRow = lines.find((line) => line.includes("View Results (Enter)"));
+    expect(actionRow).toBeDefined();
+    expect(actionRow).not.toContain("Provider");
+    expect(actionRow).toContain("Back (Esc)");
+
+    expect(lines).toHaveLength(30);
   });
 
   test("keeps summary actions visible with a realistic 80x24 issue floor", async () => {

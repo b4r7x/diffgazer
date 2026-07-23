@@ -14,12 +14,8 @@
   }
 }
 
-@layer utilities {
-  .overflow-auto,
-  .overflow-x-auto,
-  .overflow-y-auto,
-  .scrollbar-hide,
-  .scrollbar-thin {
-    overscroll-behavior: contain;
-  }
-}
+/* No blanket overscroll-behavior:contain on scrollers: a nested scroller that
+   overflows by even a pixel would trap wheel/touch gestures and make the page
+   scroller behind it unreachable. The root chain stays non-bouncing via the
+   html/body/#root rule above; dialogs prevent background scroll with
+   use-scroll-lock, not CSS containment. */

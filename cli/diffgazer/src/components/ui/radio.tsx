@@ -170,6 +170,7 @@ function RadioGroupRoot({
   }
 
   const isVertical = orientation === "vertical";
+  const showScrollGutter = isVertical && isWindowed;
 
   useInput(
     (_input, key) => {
@@ -202,16 +203,19 @@ function RadioGroupRoot({
         tokens,
       }}
     >
-      <Box
-        flexDirection={isVertical ? "column" : "row"}
-        gap={isVertical ? 0 : 2}
-        height={isVertical && isWindowed ? viewportRows : undefined}
-        overflow={isVertical && isWindowed ? "hidden" : undefined}
-      >
-        {isVertical && window.canScrollUp ? <Text color={tokens.muted}>{"\u25B2"}</Text> : null}
-        {children}
-        {isVertical && window.canScrollDown ? <Text color={tokens.muted}>{"\u25BC"}</Text> : null}
-      </Box>
+      {showScrollGutter ? (
+        <Box flexDirection="row">
+          <Box flexDirection="column">{children}</Box>
+          <Box flexDirection="column" justifyContent="space-between" marginLeft={1}>
+            <Text color={tokens.muted}>{window.canScrollUp ? "\u25B2" : " "}</Text>
+            <Text color={tokens.muted}>{window.canScrollDown ? "\u25BC" : " "}</Text>
+          </Box>
+        </Box>
+      ) : (
+        <Box flexDirection={isVertical ? "column" : "row"} gap={isVertical ? 0 : 2}>
+          {children}
+        </Box>
+      )}
     </RadioGroupContext>
   );
 }

@@ -30,7 +30,7 @@ vi.mock("../lib/config-guards", () => ({
   requireNotConfigured: vi.fn(),
 }));
 
-vi.mock("@/features/home/lib/shutdown", () => ({
+vi.mock("@/lib/shutdown", () => ({
   shutdown: vi.fn().mockResolvedValue({ status: "closed" as const }),
 }));
 

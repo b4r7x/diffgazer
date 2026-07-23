@@ -49,7 +49,7 @@ export function IssuePreviewItem({
   const { pathColumns, titleColumns } = getTextColumnBudget(label, contentWidth);
 
   return (
-    <Box gap={1} width={contentWidth} height={1} overflow="hidden" flexWrap="nowrap">
+    <Box gap={1} width={contentWidth} height={1} flexWrap="nowrap">
       <Box flexShrink={0}>
         <Badge color={color}>{label}</Badge>
       </Box>

@@ -21,7 +21,7 @@ export const PACKAGE_FILES = [
 export const FIXTURE_REPO_FILES = ["Dockerfile", "deploy/landing.Dockerfile"];
 
 export const STALE_DOCS_E2E_SNAPSHOT_PATH =
-  "apps/docs/tests/e2e/select.e2e.ts-snapshots/select-listbox-open-chromium-darwin.png";
+  "apps/docs/testing/e2e/select.e2e.ts-snapshots/select-listbox-open-chromium-darwin.png";
 
 const EMPTY_COMMAND_OUTPUTS = {
   gitLsFilesStaged: "",

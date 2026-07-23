@@ -12,6 +12,7 @@ import {
   NavigationListSubtitle,
   NavigationListTitle,
 } from "@diffgazer/ui/components/navigation-list";
+import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SearchInput } from "@diffgazer/ui/components/search-input";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
@@ -74,7 +75,7 @@ export function ProviderList({
   ref,
 }: ProviderListProps) {
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col md:h-full">
       <div className="p-3 border-b border-border bg-secondary/30">
         <SectionHeader as="h2" className="mb-0 text-foreground">
           Providers
@@ -142,7 +143,10 @@ export function ProviderList({
         })}
       </ToggleGroup>
 
-      <div className="flex-1 overflow-y-auto scrollbar-hide">
+      <ScrollArea
+        keyboardScrollable={false}
+        className="flex-1 max-md:overflow-x-visible max-md:overflow-y-visible"
+      >
         {providers.length > 0 ? (
           <NavigationList
             ref={ref}
@@ -202,11 +206,11 @@ export function ProviderList({
           variant="inline"
           size="sm"
           live
-          className={providers.length > 0 ? "sr-only" : "h-full"}
+          className={providers.length > 0 ? "sr-only p-0" : "h-full"}
         >
           {providers.length === 0 ? "No providers match your filters" : null}
         </EmptyState>
-      </div>
+      </ScrollArea>
     </div>
   );
 }

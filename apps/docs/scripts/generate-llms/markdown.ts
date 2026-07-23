@@ -1,13 +1,13 @@
 import { existsSync, readFileSync } from "node:fs";
-import type { PreRenderPage } from "../generate-sitemap.ts";
-import {
-  type PreparedComponentScaffold,
-  type PreparedExample,
-  type PreparedHookScaffold,
-  type PreparedInstallation,
-  type PreparedScaffoldData,
-  type PreparedSourceFile,
+import type {
+  PreparedComponentScaffold,
+  PreparedExample,
+  PreparedHookScaffold,
+  PreparedInstallation,
+  PreparedScaffoldData,
+  PreparedSourceFile,
 } from "../../src/lib/scaffold-data.ts";
+import type { PreRenderPage } from "../generate-sitemap.ts";
 import { loadPreparedScaffoldData } from "./artifacts.ts";
 
 export interface PageMarkdown {

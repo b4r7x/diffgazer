@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("Tab reaches an eligible radio when its checked peer has negative tabindex", async ({
   page,
 }) => {
-  await page.goto("/tests/fixtures/focus-trap-radio.html?direction=forward");
+  await page.goto("/testing/fixtures/focus-trap-radio.html?direction=forward");
   const start = page.getByRole("button", { name: "Forward start" });
   const eligiblePeer = page.getByRole("radio", { name: "Forward peer" });
 
@@ -18,7 +18,7 @@ test("Tab reaches an eligible radio when its checked peer has negative tabindex"
 test("Shift+Tab reaches an eligible radio when its checked peer has negative tabindex", async ({
   page,
 }) => {
-  await page.goto("/tests/fixtures/focus-trap-radio.html?direction=reverse");
+  await page.goto("/testing/fixtures/focus-trap-radio.html?direction=reverse");
   const eligiblePeer = page.getByRole("radio", { name: "Reverse peer" });
   const end = page.getByRole("button", { name: "Reverse end" });
 

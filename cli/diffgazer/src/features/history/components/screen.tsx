@@ -23,12 +23,19 @@ import { useResponsive } from "../../../hooks/use-terminal-dimensions";
 import { useTheme } from "../../../theme/provider";
 import { useHistoryScreen } from "../hooks/use-screen";
 import { getHistoryFooter } from "../lib/footer";
+import type { HistoryFocusZone } from "../types";
 import { HistoryInsightsPane } from "./insights-pane";
 import { RunsList } from "./runs-list";
 import { SectionsList } from "./sections-list";
 
 const HISTORY_CHROME_ROWS = 10;
 const HISTORY_INSIGHTS_CHROME_ROWS = 5;
+// Below this per-pane slot height the narrow stack cannot give every pane a
+// content row (insights needs HISTORY_INSIGHTS_CHROME_ROWS + 1), so history
+// degrades to the focused pane only instead of rendering empty bordered boxes.
+const MIN_STACKED_PANE_ROWS = HISTORY_INSIGHTS_CHROME_ROWS + 1;
+
+type HistoryPane = "sections" | "runs" | "insights";
 
 function getHistoryWarningRows(messageCount: number): number {
   if (messageCount === 0) return 0;
@@ -37,6 +44,12 @@ function getHistoryWarningRows(messageCount: number): number {
 
 function getInsightScrollHeight(paneHeight: number): number {
   return Math.max(paneHeight - HISTORY_INSIGHTS_CHROME_ROWS, 1);
+}
+
+function getFocusedHistoryPane(focusZone: HistoryFocusZone): HistoryPane {
+  if (focusZone === "timeline") return "sections";
+  if (focusZone === "insights") return "insights";
+  return "runs";
 }
 
 function HistoryWarnings({ warnings }: { warnings: readonly ReviewListWarning[] }) {
@@ -166,7 +179,9 @@ export function HistoryScreen(): ReactElement {
     contentRows - HISTORY_CHROME_ROWS - getHistoryWarningRows(warningMessages.length),
     1,
   );
-  const paneSlotHeight = isNarrow ? Math.max(Math.floor(paneHeight / 3), 3) : paneHeight;
+  const canStackPanes = !isNarrow || Math.floor(paneHeight / 3) >= MIN_STACKED_PANE_ROWS;
+  const paneSlotHeight =
+    isNarrow && canStackPanes ? Math.max(Math.floor(paneHeight / 3), 3) : paneHeight;
   const listHeight = Math.max(paneSlotHeight - 4, 1);
   const insightScrollHeight = getInsightScrollHeight(paneSlotHeight);
 
@@ -189,6 +204,11 @@ export function HistoryScreen(): ReactElement {
     );
   }
 
+  const focusedPane = getFocusedHistoryPane(screen.focusZone);
+  const showSections = canStackPanes || focusedPane === "sections";
+  const showRuns = canStackPanes || focusedPane === "runs";
+  const showInsights = canStackPanes || focusedPane === "insights";
+
   return (
     <Panel>
       <Panel.Content>
@@ -205,79 +225,85 @@ export function HistoryScreen(): ReactElement {
             />
           </Box>
           <Box flexDirection={isNarrow ? "column" : "row"} height={paneHeight} overflow="hidden">
-            <Box
-              width={isNarrow ? undefined : sectionsWidth}
-              height={paneSlotHeight}
-              borderStyle="single"
-              borderColor={screen.focusZone === "timeline" ? tokens.accent : tokens.border}
-              flexDirection="column"
-            >
-              <Box paddingX={1} paddingTop={1}>
-                <SectionHeader variant="muted">Sections</SectionHeader>
+            {showSections ? (
+              <Box
+                width={isNarrow ? undefined : sectionsWidth}
+                height={paneSlotHeight}
+                borderStyle="single"
+                borderColor={screen.focusZone === "timeline" ? tokens.accent : tokens.border}
+                flexDirection="column"
+              >
+                <Box paddingX={1} paddingTop={1}>
+                  <SectionHeader variant="muted">Sections</SectionHeader>
+                </Box>
+                <SectionsList
+                  items={screen.timelineItems}
+                  selectedId={screen.selectedDateId}
+                  onSelect={(id) => {
+                    screen.setFocusZone("timeline");
+                    screen.setSelectedDateId(id);
+                  }}
+                  onHighlightChange={screen.setSelectedDateId}
+                  isActive={screen.focusZone === "timeline"}
+                  height={listHeight}
+                  width={Math.max(sectionsPaneWidth - 2, 1)}
+                />
               </Box>
-              <SectionsList
-                items={screen.timelineItems}
-                selectedId={screen.selectedDateId}
-                onSelect={(id) => {
-                  screen.setFocusZone("timeline");
-                  screen.setSelectedDateId(id);
-                }}
-                onHighlightChange={screen.setSelectedDateId}
-                isActive={screen.focusZone === "timeline"}
-                height={listHeight}
-                width={Math.max(sectionsPaneWidth - 2, 1)}
-              />
-            </Box>
-            <Box
-              flexGrow={1}
-              height={paneSlotHeight}
-              borderStyle="single"
-              borderColor={screen.focusZone === "runs" ? tokens.accent : tokens.border}
-              flexDirection="column"
-            >
-              <Box paddingX={1} paddingTop={1}>
-                <SectionHeader variant="muted">Runs</SectionHeader>
+            ) : null}
+            {showRuns ? (
+              <Box
+                flexGrow={1}
+                height={paneSlotHeight}
+                borderStyle="single"
+                borderColor={screen.focusZone === "runs" ? tokens.accent : tokens.border}
+                flexDirection="column"
+              >
+                <Box paddingX={1} paddingTop={1}>
+                  <SectionHeader variant="muted">Runs</SectionHeader>
+                </Box>
+                <RunsList
+                  runs={screen.mappedRuns}
+                  selectedId={screen.selectedRunId}
+                  onSelect={screen.handleRunActivate}
+                  onHighlightChange={screen.setSelectedRunId}
+                  isActive={screen.focusZone === "runs"}
+                  emptyMessage={screen.emptyRunsMessage}
+                  height={listHeight}
+                  width={Math.max(runsPaneWidth - 2, 1)}
+                  hasMore={screen.hasMoreReviews}
+                  isLoadingMore={screen.isLoadingMoreReviews}
+                />
               </Box>
-              <RunsList
-                runs={screen.mappedRuns}
-                selectedId={screen.selectedRunId}
-                onSelect={screen.handleRunActivate}
-                onHighlightChange={screen.setSelectedRunId}
-                isActive={screen.focusZone === "runs"}
-                emptyMessage={screen.emptyRunsMessage}
-                height={listHeight}
-                width={Math.max(runsPaneWidth - 2, 1)}
-                hasMore={screen.hasMoreReviews}
-                isLoadingMore={screen.isLoadingMoreReviews}
-              />
-            </Box>
-            <Box
-              width={isNarrow ? undefined : insightsWidth}
-              height={paneSlotHeight}
-              borderStyle="single"
-              borderColor={screen.focusZone === "insights" ? tokens.accent : tokens.border}
-            >
-              <HistoryInsightsPane
-                runId={
-                  screen.selectedRun
-                    ? formatRunId(
-                        screen.selectedRun.id,
-                        screen.reviews.map((review) => review.id),
-                      )
-                    : null
-                }
-                severityCounts={screen.hasReviews ? screen.severityCounts : null}
-                issues={screen.hasReviews ? screen.sortedIssues : []}
-                detailState={insightsDetailState}
-                duration={screen.duration}
-                isActive={screen.focusZone === "insights"}
-                scrollHeight={insightScrollHeight}
-                onOpenReview={(issueId) => {
-                  if (!screen.selectedRunId) return;
-                  navigate({ screen: "review", reviewId: screen.selectedRunId, issueId });
-                }}
-              />
-            </Box>
+            ) : null}
+            {showInsights ? (
+              <Box
+                width={isNarrow ? undefined : insightsWidth}
+                height={paneSlotHeight}
+                borderStyle="single"
+                borderColor={screen.focusZone === "insights" ? tokens.accent : tokens.border}
+              >
+                <HistoryInsightsPane
+                  runId={
+                    screen.selectedRun
+                      ? formatRunId(
+                          screen.selectedRun.id,
+                          screen.reviews.map((review) => review.id),
+                        )
+                      : null
+                  }
+                  severityCounts={screen.hasReviews ? screen.severityCounts : null}
+                  issues={screen.hasReviews ? screen.sortedIssues : []}
+                  detailState={insightsDetailState}
+                  duration={screen.duration}
+                  isActive={screen.focusZone === "insights"}
+                  scrollHeight={insightScrollHeight}
+                  onOpenReview={(issueId) => {
+                    if (!screen.selectedRunId) return;
+                    navigate({ screen: "review", reviewId: screen.selectedRunId, issueId });
+                  }}
+                />
+              </Box>
+            ) : null}
           </Box>
         </Box>
       </Panel.Content>

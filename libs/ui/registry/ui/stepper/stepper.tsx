@@ -9,10 +9,10 @@ import {
 } from "react";
 import { type StepperVariant, stepperRootVariants } from "@/lib/stepper-variants";
 import { cn } from "@/lib/utils";
-import { StepperContext } from "./stepper-context";
 import { handleStepListNavigationKey } from "./step-navigation";
-import { useStepCollection } from "./use-step-collection";
+import { StepperContext } from "./stepper-context";
 import { useStepperState } from "./use-state";
+import { useStepCollection } from "./use-step-collection";
 
 /** Props for stepper. */
 export interface StepperProps extends Omit<ComponentProps<"ol">, "children"> {

@@ -38,7 +38,9 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
                   <Text color={tokens.warning} wrap="truncate-middle">
                     {rows.trust.value}
                   </Text>
-                  <Text dimColor>Open Settings → Trust & Permissions to grant</Text>
+                  <Text dimColor wrap="truncate-end">
+                    Open Settings → Trust & Permissions to grant
+                  </Text>
                 </Box>
               }
             />
@@ -54,14 +56,14 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
           <KeyValue
             label={rows.lastRun.label}
             value={
-              rows.lastRun.issueCount ? (
-                <Box>
-                  <Text>{rows.lastRun.value}</Text>
-                  <Text color={tokens.warning}> {rows.lastRun.issueCount}</Text>
-                </Box>
-              ) : (
-                rows.lastRun.value
-              )
+              <Box flexGrow={1} minWidth={1} overflow="hidden">
+                <Text wrap="truncate-end">
+                  {rows.lastRun.value}
+                  {rows.lastRun.issueCount ? (
+                    <Text color={tokens.warning}> {rows.lastRun.issueCount}</Text>
+                  ) : null}
+                </Text>
+              </Box>
             }
           />
         </Box>

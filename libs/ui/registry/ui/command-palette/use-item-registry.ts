@@ -102,10 +102,7 @@ export function useCommandPaletteItemRegistry({
 
   const itemIds = useMemo(() => activeItems.map((item) => item.id), [activeItems]);
 
-  const getItemOnSelect = useCallback(
-    (id: string) => itemCallbacks.get(id),
-    [itemCallbacks],
-  );
+  const getItemOnSelect = useCallback((id: string) => itemCallbacks.get(id), [itemCallbacks]);
 
   const registerItem = useCallback((item: CommandPaletteItemRegistration) => {
     setRegisteredItems((current) => {

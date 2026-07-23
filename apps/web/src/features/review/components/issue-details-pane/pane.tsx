@@ -32,6 +32,7 @@ export interface IssueDetailsPaneProps {
   scrollAreaRef?: Ref<HTMLDivElement>;
   isFocused: boolean;
   emptyKind?: DetailsEmptyKind;
+  onBackToList?: () => void;
   className?: string;
 }
 
@@ -48,6 +49,7 @@ export function IssueDetailsPane({
   scrollAreaRef,
   isFocused,
   emptyKind,
+  onBackToList,
   className,
 }: IssueDetailsPaneProps) {
   const hasPatch = !!issue?.suggested_patch;
@@ -59,7 +61,12 @@ export function IssueDetailsPane({
 
   if (!issue) {
     return (
-      <DetailsPanel paneRef={paneRef} isFocused={isFocused} className={className}>
+      <DetailsPanel
+        paneRef={paneRef}
+        isFocused={isFocused}
+        onBackToList={onBackToList}
+        className={className}
+      >
         <div className="flex flex-1 min-h-0 flex-col px-3 py-2">
           <ScrollArea
             ref={scrollAreaRef}
@@ -85,7 +92,12 @@ export function IssueDetailsPane({
   const presentation = toIssueDetailsPresentation(issue);
 
   return (
-    <DetailsPanel paneRef={paneRef} isFocused={isFocused} className={className}>
+    <DetailsPanel
+      paneRef={paneRef}
+      isFocused={isFocused}
+      onBackToList={onBackToList}
+      className={className}
+    >
       <div className="flex flex-1 min-h-0 flex-col px-3">
         <Tabs value={activeTab} onChange={handleTabChange} className="flex flex-1 min-h-0 flex-col">
           <TabsList
@@ -157,11 +169,13 @@ export function IssueDetailsPane({
 function DetailsPanel({
   paneRef,
   isFocused,
+  onBackToList,
   className,
   children,
 }: {
   paneRef?: Ref<HTMLElement>;
   isFocused: boolean;
+  onBackToList?: () => void;
   className?: string;
   children: ReactNode;
 }) {
@@ -173,13 +187,22 @@ function DetailsPanel({
       data-pane="details"
       data-focused={isFocused || undefined}
       className={cn(
-        "mt-3 flex min-h-0 w-full basis-3/5 flex-col border border-border data-[focused]:border-info md:w-3/5 md:basis-auto",
+        "mt-3 flex min-h-0 w-full flex-1 flex-col border border-border data-[focused]:border-info md:w-3/5 md:flex-initial md:basis-auto",
         className,
       )}
     >
       <Panel.Label variant="border" aria-hidden="true">
         Details
       </Panel.Label>
+      {onBackToList ? (
+        <button
+          type="button"
+          onClick={onBackToList}
+          className="mx-3 mt-2 inline-flex w-fit items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground md:hidden"
+        >
+          <span aria-hidden="true">←</span> Issues
+        </button>
+      ) : null}
       {children}
     </Panel>
   );

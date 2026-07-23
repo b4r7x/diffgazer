@@ -87,7 +87,11 @@ function AgentFilterBar({
           value={agent.name}
           className="h-auto min-h-6 px-2 py-1 text-2xs pointer-coarse:min-h-11 pointer-coarse:px-3"
         >
-          <Badge variant={agent.badgeVariant ?? "info"} size="sm" className="mr-1">
+          <Badge
+            variant={agent.badgeVariant ?? "info"}
+            size="sm"
+            className="mr-1 group-data-[state=on]/segmented-item:border-primary-foreground/40 group-data-[state=on]/segmented-item:bg-primary-foreground/15 group-data-[state=on]/segmented-item:text-primary-foreground"
+          >
             {agent.badgeLabel}
           </Badge>
           <span>{agent.name}</span>
@@ -191,14 +195,14 @@ export function ReviewProgressView({
   const partialFailure = getPartialFailureWarning(agents, error ?? null, lensStats);
 
   return (
-    <div className="flex flex-1 flex-col gap-4 overflow-hidden px-4 pt-4 pb-4 md:flex-row">
+    <div className="flex flex-1 flex-col gap-4 px-4 pt-4 pb-4 max-md:overflow-y-auto md:flex-row md:overflow-hidden">
       <Panel
         ref={progressPaneRef}
         as="section"
         aria-label="Progress"
         data-pane="progress"
         data-focused={focusPane === "progress" || undefined}
-        className="flex min-h-0 w-full basis-1/2 flex-col border border-border data-[focused]:border-info md:w-1/3 md:basis-auto"
+        className="flex w-full flex-col border border-border data-[focused]:border-info max-md:shrink-0 md:min-h-0 md:w-1/3"
       >
         <Panel.Label variant="border" aria-hidden="true">
           Progress
@@ -207,7 +211,7 @@ export function ReviewProgressView({
         <div
           ref={progressScrollRef}
           tabIndex={-1}
-          className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-4 pt-4 focus:outline-none"
+          className="flex-1 px-4 pt-4 focus:outline-none md:min-h-0 md:overflow-y-auto md:scrollbar-hide"
         >
           <ProgressList steps={steps} className="mb-8" />
 
@@ -242,15 +246,18 @@ export function ReviewProgressView({
         aria-label="Live Activity Log"
         data-pane="log"
         data-focused={focusPane === "log" || focusPane === "filters" || undefined}
-        className="flex min-h-0 w-full basis-1/2 flex-col border border-border data-[focused]:border-info md:w-auto md:basis-auto md:flex-1"
+        className="flex w-full flex-col border border-border data-[focused]:border-info max-md:shrink-0 md:min-h-0 md:flex-1"
       >
         <Panel.Label variant="border" aria-hidden="true">
           Live Activity Log
         </Panel.Label>
 
-        <div ref={agentFilterRef} className="flex items-start justify-between gap-3 px-4 pt-3">
+        <div
+          ref={agentFilterRef}
+          className="flex flex-wrap items-start justify-between gap-3 px-4 pt-3"
+        >
           <AgentFilterBar agents={agentOptions} active={agentFilter} onChange={setAgentFilter} />
-          <span className="shrink-0 text-2xs text-muted-foreground font-mono">
+          <span className="shrink-0 text-2xs text-muted-foreground font-mono max-sm:hidden">
             tail -f agent.log
           </span>
         </div>
@@ -289,7 +296,7 @@ export function ReviewProgressView({
             events={events}
             sourceFilter={agentFilter}
             showCursor={isRunning}
-            className="flex-1 min-h-0 px-2 pb-2"
+            className="flex-1 min-h-0 px-2 pb-2 max-md:h-[45dvh] max-md:flex-none"
           />
         </div>
       </Panel>

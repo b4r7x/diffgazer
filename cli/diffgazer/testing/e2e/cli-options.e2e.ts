@@ -1,7 +1,7 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
-import { runCommand, type CommandResult } from "./support/run-command";
+import { type CommandResult, runCommand } from "./support/run-command";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
 const cliEntry = resolve(repoRoot, "cli/diffgazer/src/index.tsx");

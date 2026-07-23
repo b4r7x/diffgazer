@@ -24,7 +24,7 @@ dependencies there, and copies only the generated baselines back to the workspac
 ```bash
 docker run --rm --init --ipc=host \
   -v "$PWD:/src:ro" \
-  -v "$PWD/apps/web/tests/e2e/baselines/review-parity.e2e.ts-snapshots:/out" \
+  -v "$PWD/apps/web/testing/e2e/baselines/review-parity.e2e.ts-snapshots:/out" \
   mcr.microsoft.com/playwright:v1.60.0-noble bash -lc '
     mkdir /work
     git -C /src archive HEAD | tar -x -C /work
@@ -34,7 +34,7 @@ docker run --rm --init --ipc=host \
     pnpm install --frozen-lockfile
     pnpm --filter @diffgazer/core build
     pnpm --filter @diffgazer/web exec playwright test --grep @parity --update-snapshots
-    cp apps/web/tests/e2e/baselines/review-parity.e2e.ts-snapshots/*-linux.png /out/
+    cp apps/web/testing/e2e/baselines/review-parity.e2e.ts-snapshots/*-linux.png /out/
   '
 ```
 

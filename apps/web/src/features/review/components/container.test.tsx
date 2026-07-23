@@ -100,9 +100,7 @@ function renderReviewContainer() {
 
 describe("ReviewContainer configuration gates", () => {
   beforeEach(() => {
-    mockLoadInit = vi
-      .fn<BoundApi["loadInit"]>()
-      .mockRejectedValue(new Error("init unavailable"));
+    mockLoadInit = vi.fn<BoundApi["loadInit"]>().mockRejectedValue(new Error("init unavailable"));
     mockGetProviderStatus = vi
       .fn<BoundApi["getProviderStatus"]>()
       .mockRejectedValue(new Error("providers unavailable"));

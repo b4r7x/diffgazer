@@ -127,12 +127,10 @@ export function useCommandPaletteState({
   const inputRef = useRef<HTMLInputElement>(null);
   const paletteId = useId();
 
-  const { itemIds, getItemOnSelect, registerItem, unregisterItem } = useCommandPaletteItemRegistry(
-    {
-      listRef,
-      enabled: isOpen,
-    },
-  );
+  const { itemIds, getItemOnSelect, registerItem, unregisterItem } = useCommandPaletteItemRegistry({
+    listRef,
+    enabled: isOpen,
+  });
 
   const handleOpenChange = useCallback(
     (next: boolean) => {

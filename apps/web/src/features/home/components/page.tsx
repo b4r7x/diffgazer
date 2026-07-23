@@ -4,9 +4,9 @@ import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
 import { buildHomeContextInfo, MENU_ITEMS } from "@diffgazer/core/schemas/presentation";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ConfigurationStatus } from "@/components/shared/configuration-status";
-import { shutdown } from "@/features/home/lib/shutdown";
 import { useConfigData } from "@/hooks/use-config";
 import { clearScopedRouteState, useScopedRouteState } from "@/hooks/use-scoped-route-state";
+import { shutdown } from "@/lib/shutdown";
 import { HomePagePresentation } from "./presentation";
 
 export function HomePage() {

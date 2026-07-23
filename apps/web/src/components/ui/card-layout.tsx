@@ -23,7 +23,7 @@ export function CardLayout({
   contentInactive = false,
 }: CardLayoutProps) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
       <Card surface="stacked" size="lg" className="m-auto border-border bg-background">
         {title && (
           <Card.Header className="border-border bg-secondary/30 px-6 py-4">
@@ -35,10 +35,7 @@ export function CardLayout({
         )}
 
         <Card.Content
-          className={cn(
-            "max-h-[60dvh] overflow-y-auto px-6 py-6 scrollbar-thin transition-opacity",
-            contentInactive && "opacity-60",
-          )}
+          className={cn("px-6 py-6 transition-opacity", contentInactive && "opacity-60")}
         >
           {children}
         </Card.Content>

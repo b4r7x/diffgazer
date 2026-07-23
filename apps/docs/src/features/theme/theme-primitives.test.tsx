@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { THEME_DOCS_COLOR_GRID_ORDER, THEME_DOCS_PLAYGROUND_ORDER, THEME_DOCS_TOKENS } from "@diffgazer/ui/theme";
+import {
+  THEME_DOCS_COLOR_GRID_ORDER,
+  THEME_DOCS_PLAYGROUND_ORDER,
+  THEME_DOCS_TOKENS,
+} from "@diffgazer/ui/theme";
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ThemeProvider } from "@/hooks/theme-context";
@@ -35,8 +39,8 @@ describe("T-057 docs theme visualizer", () => {
     }
 
     const primitivesSection = screen.getByRole("heading", { name: "Primitives" }).parentElement;
-    expect(primitivesSection).not.toBeNull();
-    expect(primitiveNamesFromCopyButtons(primitivesSection!)).toEqual([
+    if (primitivesSection === null) throw new Error("Primitives heading has no parent section");
+    expect(primitiveNamesFromCopyButtons(primitivesSection)).toEqual([
       ...THEME_DOCS_COLOR_GRID_ORDER,
     ]);
   });

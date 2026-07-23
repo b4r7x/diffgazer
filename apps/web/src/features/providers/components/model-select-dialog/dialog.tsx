@@ -163,6 +163,7 @@ export function ModelSelectDialog({
                 variant="secondary"
                 onClick={retry}
                 disabled={isSaving}
+                className="shrink-0"
               >
                 Retry
               </Button>

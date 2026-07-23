@@ -86,7 +86,7 @@ describe("Docs Vite aliases", () => {
       const resolvedId = resolvedByLibrary[library];
       expect(resolvedId, `@/lib/${library} should resolve`).toBeTruthy();
 
-      const resolvedPath = resolve(resolvedId!.split("?")[0] ?? "");
+      const resolvedPath = resolve(resolvedId?.split("?")[0] ?? "");
       expect(
         resolvedPath.startsWith(normalizedRegistryRoot),
         `@/lib/${library} resolved to ${resolvedPath}, expected under ${normalizedRegistryRoot}`,

@@ -229,7 +229,11 @@ export function usePopoverContentDismissal({
       const content = contentRef.current;
       const trigger = triggerRef.current;
       const View = content?.ownerDocument.defaultView ?? trigger?.ownerDocument.defaultView;
-      if (View && next instanceof View.Node && (content?.contains(next) || trigger?.contains(next))) {
+      if (
+        View &&
+        next instanceof View.Node &&
+        (content?.contains(next) || trigger?.contains(next))
+      ) {
         return;
       }
       restoreFocusAfterCloseRef.current = false;

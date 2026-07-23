@@ -1,5 +1,5 @@
-import { AGENT_METADATA, type AgentState } from "@diffgazer/core/schemas/events";
 import { FooterProvider } from "@diffgazer/core/footer";
+import { AGENT_METADATA, type AgentState } from "@diffgazer/core/schemas/events";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
 

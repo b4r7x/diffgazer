@@ -8,7 +8,7 @@ async function formEntries(form: Locator): Promise<Array<[string, string]>> {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/tests/fixtures/form-fieldset-radio.html");
+  await page.goto("/testing/fixtures/form-fieldset-radio.html");
 });
 
 test("disabled fieldsets gate standalone and grouped controls except the first legend", async ({

@@ -111,19 +111,15 @@ export function PopoverContent({
     "Popover",
   );
 
-  const {
-    onExitComplete,
-    onFocusCaptureDismissal,
-    onBlurCaptureDismissal,
-    onKeyDownDismissal,
-  } = usePopoverContentDismissal({
-    open,
-    isClick,
-    triggerRef,
-    contentRef,
-    markDismissed,
-    onOpenChange,
-  });
+  const { onExitComplete, onFocusCaptureDismissal, onBlurCaptureDismissal, onKeyDownDismissal } =
+    usePopoverContentDismissal({
+      open,
+      isClick,
+      triggerRef,
+      contentRef,
+      markDismissed,
+      onOpenChange,
+    });
 
   const handleMouseEnter = (e: MouseEvent<HTMLDivElement>) => {
     onMouseEnter?.(e);

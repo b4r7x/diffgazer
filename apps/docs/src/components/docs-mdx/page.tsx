@@ -10,8 +10,8 @@ import {
 import { DocsContentLayout } from "@/components/layout/content-layout";
 import { DocsFooterPager } from "@/components/layout/footer-pager";
 import { TuiFaultPanel } from "@/components/layout/tui-fault-panel";
-import { type DocsLibraryId } from "@/lib/library";
-import { type PageTree } from "@/lib/page-tree";
+import type { DocsLibraryId } from "@/lib/library";
+import type { PageTree } from "@/lib/page-tree";
 
 function buildDocData(
   componentData: ComponentPageData | null,

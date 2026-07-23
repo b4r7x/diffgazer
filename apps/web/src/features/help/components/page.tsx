@@ -10,6 +10,12 @@ import { useNavigate } from "@tanstack/react-router";
 // per-surface-extras scoping.
 const SHORTCUTS = [...HELP_SHORTCUTS, { key: "h", label: "Open History" }];
 
+const TOUCH_GESTURES = [
+  { gesture: "Tap", label: "Open the focused card or menu item" },
+  { gesture: "Swipe", label: "Scroll content up and down" },
+  { gesture: "Back", label: "Return using the on-screen Back control" },
+];
+
 export function HelpPage() {
   const navigate = useNavigate();
 
@@ -50,6 +56,28 @@ export function HelpPage() {
                         {s.key}
                       </Kbd>
                       <span className="min-w-0 break-words text-muted-foreground">{s.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
+              <section className="hidden pointer-coarse:block">
+                <Typography
+                  as="h2"
+                  size="xs"
+                  color="muted"
+                  className="uppercase tracking-wider mb-3"
+                >
+                  Touch Gestures
+                </Typography>
+                <ul aria-label="Touch gestures" className="flex flex-col gap-2">
+                  {TOUCH_GESTURES.map((g) => (
+                    <li
+                      key={g.gesture}
+                      className="grid min-w-0 grid-cols-1 items-start gap-1 text-sm sm:grid-cols-[max-content_minmax(0,1fr)] sm:gap-3"
+                    >
+                      <span className="w-fit font-bold text-foreground">{g.gesture}</span>
+                      <span className="min-w-0 break-words text-muted-foreground">{g.label}</span>
                     </li>
                   ))}
                 </ul>

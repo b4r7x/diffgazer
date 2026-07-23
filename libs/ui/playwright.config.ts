@@ -3,7 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 4176);
 
 export default defineConfig({
-  testDir: "./tests/e2e",
+  testDir: "./testing/e2e",
   testMatch: "**/*.e2e.ts",
   outputDir: "./test-results",
   fullyParallel: true,
@@ -22,7 +22,7 @@ export default defineConfig({
   ],
   webServer: {
     command: `pnpm exec vite --config vite.e2e.config.ts --host 127.0.0.1 --port ${PORT}`,
-    url: `http://127.0.0.1:${PORT}/tests/fixtures/popover-focus.html`,
+    url: `http://127.0.0.1:${PORT}/testing/fixtures/popover-focus.html`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

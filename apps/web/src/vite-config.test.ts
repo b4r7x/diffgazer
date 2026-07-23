@@ -20,12 +20,12 @@ function discoverE2eTypeScriptFiles(packageRoot: string): string[] {
     files.push("./playwright.config.ts");
   }
 
-  const testsRoot = resolve(packageRoot, "tests");
+  const testsRoot = resolve(packageRoot, "testing");
   if (existsSync(testsRoot)) {
     for (const entry of readdirSync(testsRoot, { recursive: true, encoding: "utf8" })) {
       const normalized = entry.replaceAll("\\", "/");
       if (/\.tsx?$/.test(normalized)) {
-        files.push(`./tests/${normalized}`);
+        files.push(`./testing/${normalized}`);
       }
     }
   }

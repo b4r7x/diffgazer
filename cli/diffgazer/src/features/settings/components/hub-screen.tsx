@@ -43,7 +43,7 @@ function HubFrame({
       <Box width={Math.min(columns, 70)} flexDirection="column">
         <Panel>
           <Panel.Content>
-            <Box flexDirection="column" gap={1}>
+            <Box flexDirection="column" gap={1} width="100%">
               <SectionHeader variant="muted" bold={false}>
                 Settings Hub
               </SectionHeader>

@@ -7,6 +7,7 @@ import { escapeRegExp } from "../../../testing/escape-regexp";
 import { ModelSelectOverlay } from "./model-select-overlay";
 import {
   ARROW_DOWN,
+  countPrefixes,
   flush,
   flushUntil,
   geminiName,
@@ -14,7 +15,6 @@ import {
   makeQueryClient,
   StableWrapper,
   Wrapper,
-  countPrefixes,
 } from "./model-select-overlay.test-harness";
 
 describe("ModelSelectOverlay selection (Enter -> activate -> close)", () => {

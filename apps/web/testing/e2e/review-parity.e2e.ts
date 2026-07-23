@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 const facts = reviewFacts(canonicalReviewFixture);
 
 test("the review summary exposes every aggregate review fact", async ({ page }) => {
-  await page.goto("/tests/fixtures/results-layout.html?view=summary");
+  await page.goto("/testing/fixtures/results-layout.html?view=summary");
 
   await expect(page.getByRole("heading", { name: `Review Complete ${facts.runId}` })).toBeVisible();
 
@@ -37,12 +37,15 @@ test("the review summary exposes every aggregate review fact", async ({ page }) 
   }
 });
 
-test("the results reader exposes every issue review fact", async ({ page }) => {
-  await page.goto("/tests/fixtures/results-layout.html?view=results");
+test("the results reader exposes every issue review fact", async ({ page }, testInfo) => {
+  await page.goto("/testing/fixtures/results-layout.html?view=results");
 
   await expect(page.getByText(`Review ${facts.runId}`, { exact: true })).toBeVisible();
   const issueList = page.getByRole("listbox", { name: "Issues" });
   const details = page.getByRole("complementary", { name: "Issue details" });
+  // Below md the panes swap: opening an issue hides the list, so the mobile path
+  // returns to the list between issues before selecting the next one.
+  const isMobile = testInfo.project.name === "mobile-chromium";
 
   for (const [index, title] of facts.issueTitles.entries()) {
     const location = facts.issueLocations[index];
@@ -51,6 +54,10 @@ test("the results reader exposes every issue review fact", async ({ page }) => {
     await expect(issue).toHaveCount(1);
     await issue.click();
     await expect(details.getByText(location, { exact: true })).toBeVisible();
+    if (isMobile) {
+      await page.getByRole("button", { name: /issues/i }).click();
+      await expect(issueList).toBeVisible();
+    }
   }
 
   if (facts.duplicateCollapseNotice) {
@@ -61,7 +68,7 @@ test("the results reader exposes every issue review fact", async ({ page }) => {
 test("@parity the results layout matches the desktop and mobile baselines", async ({
   page,
 }, testInfo) => {
-  await page.goto("/tests/fixtures/results-layout.html?view=results");
+  await page.goto("/testing/fixtures/results-layout.html?view=results");
 
   const results = page.locator("main");
   await expect(results).toBeVisible();

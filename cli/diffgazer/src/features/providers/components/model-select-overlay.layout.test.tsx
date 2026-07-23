@@ -1,4 +1,7 @@
-import { setTestTerminalDimensions } from "./model-select-overlay.terminal-mock";
+// Side-effect import first: registers vi.mock("use-terminal-dimensions") before
+// ModelSelectOverlay pulls in the real hook. Must stay above the value imports;
+// biome keeps side-effect imports as chunk separators so sorting cannot sink it.
+import "./model-select-overlay.terminal-mock";
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import type {
   ActivateProviderResponse,
@@ -8,12 +11,13 @@ import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { terminalCellWidth } from "../../../lib/terminal-width";
 import { ModelSelectOverlay } from "./model-select-overlay";
+import { setTestTerminalDimensions } from "./model-select-overlay.terminal-mock";
 import {
   ARROW_DOWN,
+  countPrefixes,
   flush,
   flushUntil,
   Wrapper,
-  countPrefixes,
 } from "./model-select-overlay.test-harness";
 
 function getLargeModelName(index: number): string {

@@ -32,7 +32,7 @@ async function readTintAtFarEdge(row: Locator, cssVariable: string) {
 
 test.describe("DiffView horizontal scroll row tint", () => {
   test("keeps the added and removed row tint spanning the far scrolled edge", async ({ page }) => {
-    await page.goto("/tests/fixtures/diff-view-horizontal-scroll.html");
+    await page.goto("/testing/fixtures/diff-view-horizontal-scroll.html");
 
     const rows = page.getByRole("region", { name: "Unified diff" });
     const addedRow = rows.locator('[data-row][data-state="added"]');

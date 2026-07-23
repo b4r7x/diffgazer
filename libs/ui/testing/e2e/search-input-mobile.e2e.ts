@@ -20,7 +20,7 @@ test.describe("SearchInput mobile font size", () => {
   test("keeps sm and md search inputs at an iOS-safe font size below the md breakpoint", async ({
     page,
   }) => {
-    await page.goto("/tests/fixtures/search-input-mobile.html");
+    await page.goto("/testing/fixtures/search-input-mobile.html");
     await page.addStyleTag({ content: TAILWIND_RULES });
 
     const small = page.getByRole("searchbox", { name: "Small search" });
